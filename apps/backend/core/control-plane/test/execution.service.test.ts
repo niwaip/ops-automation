@@ -105,6 +105,50 @@ describe('ExecutionService.fetchSkillDefaultInput', () => {
       }
     }
   });
+
+  it('distinguishes workflow policy defaults from schema defaults', async () => {
+    mockedAxios.get
+      .mockResolvedValueOnce({
+        data: {
+          paramsSchema: {
+            properties: {
+              username: { type: 'string', default: 'skill-user' },
+            },
+          },
+          executionFlowTemplateIds: ['flow-1'],
+        },
+      } as never)
+      .mockResolvedValueOnce({
+        data: {
+          paramsSchema: {
+            properties: {
+              username: { type: 'string', default: 'flow-user' },
+              loginCredential: { type: 'string', default: 'schema-secret' },
+            },
+          },
+          inputPolicy: {
+            params: {
+              loginCredential: {
+                defaultValue: 'policy-secret',
+              },
+            },
+          },
+        },
+      } as never);
+
+    const service = new ExecutionService({} as never, {} as never, {} as never, {} as never);
+
+    await expect((service as any).fetchSkillDefaultResolution('skill-1', 'Bearer token-1')).resolves.toEqual({
+      input: {
+        username: 'flow-user',
+        loginCredential: 'policy-secret',
+      },
+      sources: {
+        username: 'default',
+        loginCredential: 'workflow_default',
+      },
+    });
+  });
 });
 
 describe('ExecutionService.submitInputAndResume', () => {
@@ -187,7 +231,7 @@ describe('ExecutionService.submitInputAndResume', () => {
     expect(prisma.execution.update).toHaveBeenCalledWith({
       where: { id: 'execution-1' },
       data: {
-        normalizedInputJson: expect.objectContaining({
+        normalizedInputJson: {
           input: {
             url: 'https://example.com',
           },
@@ -199,12 +243,20 @@ describe('ExecutionService.submitInputAndResume', () => {
               missing: false,
               source: 'user_input',
               needs_confirmation: false,
-              missing_reason: undefined,
               value: 'https://example.com',
             }),
           ],
+          paramResolution: {
+            url: expect.objectContaining({
+              value: 'https://example.com',
+              source: 'user_input',
+              missing: false,
+              needsConfirmation: false,
+              final: true,
+            }),
+          },
           url: 'https://example.com',
-        }),
+        },
         status: 'queued',
       },
     });
@@ -224,6 +276,87 @@ describe('ExecutionService.submitInputAndResume', () => {
     expect((service as any).updateStatus).toHaveBeenCalledWith('execution-1', 'running');
     expect((service as any).advanceExecutionFlow).toHaveBeenCalledWith('execution-1', 'runtime-1');
     expect(response).toBe(result);
+  });
+
+  it('normalizes legacy planner paramResolution metadata aliases before resuming execution', async () => {
+    const { service, prisma } = createService();
+    const executionWithParamResolutionOnly = {
+      ...baseExecution,
+      normalizedInputJson: {
+        input: {},
+        paramResolution: {
+          url: {
+            type: 'string',
+            required: true,
+            value: undefined,
+            source: 'unresolved',
+            requiredMode: 'always',
+            missing: true,
+            needsConfirmation: false,
+            confirmed: false,
+            final: false,
+            displayName: '访问地址',
+            groupLabel: '入口参数',
+            previewBlocking: true,
+            missingReason: 'missing',
+          },
+        },
+      },
+    };
+    const result = {
+      id: 'execution-1',
+      status: 'running',
+    };
+    const dto: SubmitInputDto = {
+      stepId: 'step-1',
+      input: {
+        url: 'https://example.com',
+      },
+    };
+
+    prisma.execution.findUnique.mockResolvedValue(executionWithParamResolutionOnly);
+    prisma.executionStep.findUnique.mockResolvedValue(baseStep);
+    prisma.execution.update.mockResolvedValue(undefined);
+    prisma.executionStep.update.mockResolvedValue(undefined);
+    prisma.executionEvent.create.mockResolvedValue(undefined);
+    prisma.runtimeSession.findFirst.mockResolvedValue({ id: 'runtime-1' });
+    jest.spyOn(service, 'getById').mockResolvedValue(result as never);
+
+    await service.submitInputAndResume('execution-1', 'user-1', dto);
+
+    expect(prisma.execution.update).toHaveBeenCalledWith({
+      where: { id: 'execution-1' },
+      data: {
+        normalizedInputJson: {
+          input: {
+            url: 'https://example.com',
+          },
+          requiredInputs: [
+            expect.objectContaining({
+              name: 'url',
+              display_name: '访问地址',
+              group_label: '入口参数',
+              preview_blocking: true,
+              source: 'user_input',
+              missing: false,
+            }),
+          ],
+          paramResolution: {
+            url: expect.objectContaining({
+              value: 'https://example.com',
+              source: 'user_input',
+              missing: false,
+              final: true,
+              display_name: '访问地址',
+              group_label: '入口参数',
+              preview_blocking: true,
+            }),
+          },
+          url: 'https://example.com',
+        },
+        status: 'queued',
+      },
+    });
   });
 
   it('rejects submitted fields that are not currently missing', async () => {
@@ -295,13 +428,13 @@ describe('ExecutionService.submitInputAndResume', () => {
         status: 'waiting_input',
         inputJson: {
           requiredInputs: [
-            {
+            expect.objectContaining({
               name: 'account',
               type: 'string',
               required: true,
               missing: true,
               source: 'unresolved',
-            },
+            }),
           ],
         },
         outputJson: {
@@ -325,7 +458,6 @@ describe('ExecutionService.submitInputAndResume', () => {
               missing: false,
               source: 'user_input',
               needs_confirmation: false,
-              missing_reason: undefined,
               value: 'https://example.com',
             }),
             expect.objectContaining({
@@ -336,6 +468,19 @@ describe('ExecutionService.submitInputAndResume', () => {
               source: 'unresolved',
             }),
           ],
+          paramResolution: {
+            url: expect.objectContaining({
+              value: 'https://example.com',
+              source: 'user_input',
+              missing: false,
+              final: true,
+            }),
+            account: expect.objectContaining({
+              source: 'unresolved',
+              missing: true,
+              final: false,
+            }),
+          },
           url: 'https://example.com',
         }),
         status: 'waiting_input',
@@ -528,11 +673,7 @@ describe('ExecutionService.submitInputAndResume', () => {
             expect.objectContaining({ name: 'deliveryItems[].installationDate', missing: true }),
           ],
         },
-        outputJson: {
-          otherTerms: undefined,
-          installationCondition: undefined,
-          'deliveryItems[].installationDate': undefined,
-        },
+        outputJson: {},
         endedAt: null,
       },
     });
@@ -540,16 +681,17 @@ describe('ExecutionService.submitInputAndResume', () => {
       where: { id: 'execution-1' },
       data: {
         normalizedInputJson: {
-          input: {
-            otherTerms: undefined,
-            installationCondition: undefined,
-            'deliveryItems[].installationDate': undefined,
-          },
+          input: {},
           requiredInputs: [
-            expect.objectContaining({ name: 'otherTerms', missing: true, value: undefined, source: 'unresolved' }),
-            expect.objectContaining({ name: 'installationCondition', missing: true, value: undefined, source: 'unresolved' }),
-            expect.objectContaining({ name: 'deliveryItems[].installationDate', missing: true, value: undefined, source: 'unresolved' }),
+            expect.objectContaining({ name: 'otherTerms', missing: true, source: 'unresolved' }),
+            expect.objectContaining({ name: 'installationCondition', missing: true, source: 'unresolved' }),
+            expect.objectContaining({ name: 'deliveryItems[].installationDate', missing: true, source: 'unresolved' }),
           ],
+          paramResolution: {
+            otherTerms: expect.objectContaining({ missing: true, source: 'unresolved', final: false, value: undefined }),
+            installationCondition: expect.objectContaining({ missing: true, source: 'unresolved', final: false, value: undefined }),
+            'deliveryItems[].installationDate': expect.objectContaining({ missing: true, source: 'unresolved', final: false, value: undefined }),
+          },
           otherTerms: undefined,
           installationCondition: undefined,
           'deliveryItems[].installationDate': undefined,
@@ -603,7 +745,7 @@ describe('ExecutionService.submitInputAndResume', () => {
     expect(prisma.execution.update).toHaveBeenCalledWith({
       where: { id: 'execution-1' },
       data: {
-        normalizedInputJson: expect.objectContaining({
+        normalizedInputJson: {
           input: {
             'deliveryItems[].installationDate': '2025-06-07',
           },
@@ -615,12 +757,19 @@ describe('ExecutionService.submitInputAndResume', () => {
               missing: false,
               source: 'user_input',
               needs_confirmation: false,
-              missing_reason: undefined,
               value: '2025-06-07',
             }),
           ],
+          paramResolution: {
+            'deliveryItems[].installationDate': expect.objectContaining({
+              value: '2025-06-07',
+              source: 'user_input',
+              missing: false,
+              final: true,
+            }),
+          },
           'deliveryItems[].installationDate': '2025-06-07',
-        }),
+        },
         status: 'queued',
       },
     });
@@ -1232,6 +1381,7 @@ describe('ExecutionService.create planner draft reuse', () => {
     const service = new ExecutionService(prisma as never, {} as never, {} as never, {} as never);
     const serviceInternals = service as any;
     jest.spyOn(serviceInternals, 'assertSkillAccessibleByUser').mockResolvedValue(undefined);
+    jest.spyOn(serviceInternals, 'fetchSkillDefaultResolution').mockResolvedValue({ input: {}, sources: {} });
     jest.spyOn(serviceInternals, 'fetchSkillDefaultInput').mockResolvedValue({});
     jest.spyOn(serviceInternals, 'generatePlanDraft').mockResolvedValue(undefined);
     jest.spyOn(serviceInternals, 'createPlannedSteps').mockResolvedValue(undefined);
@@ -1293,6 +1443,58 @@ describe('ExecutionService.create planner draft reuse', () => {
     );
 
     expect((service as any).generatePlanDraft).not.toHaveBeenCalled();
+    expect(prisma.execution.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        skillId: 'skill-1',
+        runtimeType: 'workflow',
+        status: 'queued',
+      }),
+    });
+  });
+
+  it('skips planner rematch when caller explicitly selects a skill and submits structured input', async () => {
+    const { service, prisma } = createService();
+
+    prisma.execution.create.mockResolvedValue({
+      id: 'execution-create-structured-1',
+      requiresApproval: false,
+      createdBy: 'user-1',
+    });
+    prisma.executionEvent.create.mockResolvedValue(undefined);
+
+    await service.create(
+      'user-1',
+      {
+        skillId: 'skill-1',
+        runtimeType: 'workflow',
+        input: {
+          'contract.partyA.name_cn': 'Party A CN Ltd',
+          'contract.contractNo_cn': 'TSC-2026-0528-001',
+        },
+      },
+      {
+        authToken: 'Bearer token-1',
+      },
+    );
+
+    expect((service as any).generatePlanDraft).not.toHaveBeenCalled();
+    expect((service as any).createPlannedSteps).toHaveBeenCalledWith(
+      'execution-create-structured-1',
+      expect.objectContaining({
+        plannerMode: 'skill',
+      }),
+      expect.objectContaining({
+        planner_mode: 'skill',
+        required_inputs: [],
+        steps: [
+          expect.objectContaining({
+            id: 'execute_selected_skill',
+            kind: 'skill',
+            status: 'planned',
+          }),
+        ],
+      }),
+    );
     expect(prisma.execution.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         skillId: 'skill-1',
@@ -1649,6 +1851,7 @@ describe('ExecutionService.create planner draft reuse', () => {
           missing: true,
           source: 'unresolved',
           description: '起始页面地址',
+          render_path: 'document.startUrl',
         },
         {
           name: 'username',
@@ -1657,6 +1860,7 @@ describe('ExecutionService.create planner draft reuse', () => {
           missing: true,
           source: 'unresolved',
           description: '登录用户名',
+          template_binding: 'account.username',
         },
         {
           name: 'loginCredential',
@@ -1730,10 +1934,17 @@ describe('ExecutionService.create planner draft reuse', () => {
         },
       },
     ]);
-    (service as any).fetchSkillDefaultInput.mockResolvedValue({
-      startUrl: 'http://example.test/login',
-      username: 'tester',
-      loginCredential: 'secret',
+    (service as any).fetchSkillDefaultResolution.mockResolvedValue({
+      input: {
+        startUrl: 'http://example.test/login',
+        username: 'tester',
+        loginCredential: 'secret',
+      },
+      sources: {
+        startUrl: 'default',
+        username: 'default',
+        loginCredential: 'workflow_default',
+      },
     });
     prisma.execution.create.mockResolvedValue({
       id: 'execution-create-1',
@@ -1764,6 +1975,28 @@ describe('ExecutionService.create planner draft reuse', () => {
       username: 'tester',
       loginCredential: 'secret',
     });
+    expect(normalizedInput.paramResolution).toEqual({
+      startUrl: expect.objectContaining({
+        value: 'http://example.test/login',
+        source: 'default',
+        missing: false,
+        final: true,
+        render_path: 'document.startUrl',
+      }),
+      username: expect.objectContaining({
+        value: 'tester',
+        source: 'default',
+        missing: false,
+        final: true,
+        template_binding: 'account.username',
+      }),
+      loginCredential: expect.objectContaining({
+        value: 'secret',
+        source: 'workflow_default',
+        missing: false,
+        final: true,
+      }),
+    });
     expect(normalizedInput.requiredInputs).toEqual(expect.arrayContaining([
       expect.objectContaining({
         name: 'startUrl',
@@ -1781,7 +2014,7 @@ describe('ExecutionService.create planner draft reuse', () => {
         name: 'loginCredential',
         value: 'secret',
         missing: false,
-        source: 'default',
+        source: 'workflow_default',
       }),
     ]));
     expect(normalizedInput.planSteps).toEqual([
@@ -1860,8 +2093,13 @@ describe('ExecutionService.create planner draft reuse', () => {
       },
     };
 
-    (service as any).fetchSkillDefaultInput.mockResolvedValue({
-      loginCredential: 'test123',
+    (service as any).fetchSkillDefaultResolution.mockResolvedValue({
+      input: {
+        loginCredential: 'test123',
+      },
+      sources: {
+        loginCredential: 'workflow_default',
+      },
     });
     prisma.execution.create.mockResolvedValue({
       id: 'execution-create-confirmation',
@@ -1893,11 +2131,23 @@ describe('ExecutionService.create planner draft reuse', () => {
     );
 
     const normalizedInput = prisma.execution.create.mock.calls[0][0].data.normalizedInputJson as Record<string, unknown>;
+    expect(normalizedInput.input).toEqual({
+      prompt: '登录主页',
+    });
+    expect(normalizedInput.paramResolution).toEqual({
+      loginCredential: expect.objectContaining({
+        value: 'test123',
+        source: 'workflow_default',
+        missing: true,
+        needsConfirmation: true,
+        final: false,
+      }),
+    });
     expect(normalizedInput.requiredInputs).toEqual(expect.arrayContaining([
       expect.objectContaining({
         name: 'loginCredential',
         value: 'test123',
-        source: 'default',
+        source: 'workflow_default',
         missing: true,
         needs_confirmation: true,
         missing_reason: 'overall_low_confidence',
@@ -1952,8 +2202,13 @@ describe('ExecutionService.create planner draft reuse', () => {
       },
     };
 
-    (service as any).fetchSkillDefaultInput.mockResolvedValue({
-      loginCredential: 'test123',
+    (service as any).fetchSkillDefaultResolution.mockResolvedValue({
+      input: {
+        loginCredential: 'test123',
+      },
+      sources: {
+        loginCredential: 'workflow_default',
+      },
     });
     prisma.execution.create.mockResolvedValue({
       id: 'execution-create-confirmed',
@@ -1978,6 +2233,15 @@ describe('ExecutionService.create planner draft reuse', () => {
     );
 
     const normalizedInput = prisma.execution.create.mock.calls[0][0].data.normalizedInputJson as Record<string, unknown>;
+    expect(normalizedInput.paramResolution).toEqual({
+      loginCredential: expect.objectContaining({
+        value: 'test1234',
+        source: 'user_input',
+        missing: false,
+        needsConfirmation: false,
+        final: true,
+      }),
+    });
     expect(normalizedInput.requiredInputs).toEqual(expect.arrayContaining([
       expect.objectContaining({
         name: 'loginCredential',
@@ -1985,7 +2249,6 @@ describe('ExecutionService.create planner draft reuse', () => {
         source: 'user_input',
         missing: false,
         needs_confirmation: false,
-        missing_reason: undefined,
       }),
     ]));
     expect((service as any).startExecution).toHaveBeenCalledWith('execution-create-confirmed');
@@ -2102,10 +2365,17 @@ describe('ExecutionService.create planner draft reuse', () => {
         },
       },
     ]);
-    (service as any).fetchSkillDefaultInput.mockResolvedValue({
-      startUrl: 'http://example.test/login',
-      username: 'tester',
-      loginCredential: 'secret',
+    (service as any).fetchSkillDefaultResolution.mockResolvedValue({
+      input: {
+        startUrl: 'http://example.test/login',
+        username: 'tester',
+        loginCredential: 'secret',
+      },
+      sources: {
+        startUrl: 'default',
+        username: 'default',
+        loginCredential: 'workflow_default',
+      },
     });
     prisma.execution.create.mockResolvedValue({
       id: 'execution-create-2',

@@ -28,11 +28,17 @@ async def documentRender(input_data: Dict[str, Any]) -> Dict[str, Any]:
     render_data = input_data.get("data", {})
     output_format = input_data.get("outputFormat", "docx")
     output_name = input_data.get("outputName", "")
+    source_language = input_data.get("sourceLanguage")
+    target_languages = input_data.get("targetLanguages") or []
 
     if not template_id:
         raise ApplicationError("templateId 是必需的参数", non_retryable=True)
     if not isinstance(render_data, dict):
         raise ApplicationError("data 参数必须是字典类型", non_retryable=True)
+    if source_language is not None and not isinstance(source_language, str):
+        raise ApplicationError("sourceLanguage 参数必须是字符串类型", non_retryable=True)
+    if not isinstance(target_languages, list):
+        raise ApplicationError("targetLanguages 参数必须是数组类型", non_retryable=True)
 
     external_base_url = (os.getenv("CARBONE_EXTERNAL_URL") or ${JSON.stringify(getCarboneExternalUrl())}).rstrip("/")
 
@@ -48,6 +54,47 @@ async def documentRender(input_data: Dict[str, Any]) -> Dict[str, Any]:
     for candidate in candidate_base_urls:
         if candidate and candidate not in deduped_base_urls:
             deduped_base_urls.append(candidate)
+
+    if source_language or target_languages:
+        render_data_payload = {
+            "templateId": template_id,
+            "userInput": "",
+            "userOverrides": render_data,
+        }
+        if source_language:
+            render_data_payload["sourceLanguage"] = source_language
+        if target_languages:
+            render_data_payload["targetLanguages"] = target_languages
+
+        render_data_result = None
+        last_render_data_error = None
+        for base_url in deduped_base_urls:
+            render_data_url = base_url + "/studio/template/render-data"
+            activity.logger.info(
+                "开始生成模板渲染数据",
+                extra={"templateId": template_id, "renderDataUrl": render_data_url, "fieldCount": len(render_data)},
+            )
+            try:
+                response = requests.post(render_data_url, json=render_data_payload, timeout=60)
+                response.raise_for_status()
+                render_data_result = response.json()
+                activity.heartbeat("template_render_data_completed")
+                break
+            except requests.RequestException as exc:
+                last_render_data_error = exc
+                activity.logger.error(
+                    "模板渲染数据生成失败，尝试下一个地址",
+                    extra={"renderDataUrl": render_data_url, "error": str(exc)},
+                )
+        if render_data_result is None:
+            raise ApplicationError(
+                f"模板渲染数据生成失败: {str(last_render_data_error) if last_render_data_error else 'unknown error'}",
+                non_retryable=True,
+            )
+        resolved_render_data = render_data_result.get("data") if isinstance(render_data_result, dict) else None
+        if not isinstance(resolved_render_data, dict):
+            raise ApplicationError("模板渲染数据生成结果格式无效", non_retryable=True)
+        render_data = resolved_render_data
 
     payload = {
         "templateId": template_id,

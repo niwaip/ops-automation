@@ -386,10 +386,14 @@ export interface RequiredInputDTO {
   description?: string;
   display_name?: string;
   group_label?: string;
+  render_path?: string | string[];
+  template_binding?: string;
   required: boolean;
+  required_mode?: 'always' | 'conditional' | 'optional' | 'system_required';
   value?: unknown;
   missing: boolean;
-  source: 'user_input' | 'default' | 'unresolved';
+  source: 'user_input' | 'default' | 'workflow_default' | 'recognized' | 'external' | 'unresolved';
+  source_priority?: string[];
   confidence?: number;
   needs_confirmation?: boolean;
   missing_reason?: 'missing' | 'low_confidence' | 'overall_low_confidence' | 'partial_group';

@@ -3,7 +3,6 @@ import {
   decideModelFallbackStrategy,
   attachErrorCategory,
   classifyToolResultError,
-  shouldTriggerDocumentParamRecover,
 } from './error-recovery-policy';
 import { ToolResult } from './interfaces';
 
@@ -26,7 +25,7 @@ describe('error-recovery-policy', () => {
     expect(enriched?.data?.errorCategory).toBe('tool_runtime_error');
   });
 
-  it('triggers document param recovery for parameter-like runtime failures', () => {
+  it('still marks parameter-like runtime failures as parameter issues', () => {
     const result: ToolResult = {
       success: false,
       output: '文档渲染服务调用失败: validation failed',
@@ -39,10 +38,10 @@ describe('error-recovery-policy', () => {
       },
     };
 
-    expect(shouldTriggerDocumentParamRecover(result)).toBe(true);
+    expect(result.data?.parameterIssue).toBe(true);
   });
 
-  it('does not trigger param recovery for generic runtime failures without parameter signal', () => {
+  it('preserves generic runtime failure shape without parameter signal', () => {
     const result: ToolResult = {
       success: false,
       output: '文档渲染服务调用失败: upstream timeout',
@@ -54,10 +53,10 @@ describe('error-recovery-policy', () => {
       },
     };
 
-    expect(shouldTriggerDocumentParamRecover(result)).toBe(false);
+    expect(result.data?.parameterIssue).toBeUndefined();
   });
 
-  it('does not trigger recovery for template mismatch', () => {
+  it('treats template mismatch as user-input-driven follow-up', () => {
     const result: ToolResult = {
       success: false,
       output: '模板不一致',
@@ -69,10 +68,13 @@ describe('error-recovery-policy', () => {
       requiresUserInput: true,
     };
 
-    expect(shouldTriggerDocumentParamRecover(result)).toBe(false);
+    expect(decideRecoveryAction('document_render', result)).toEqual({
+      type: 'wait_user_input',
+      message: '模板不一致',
+    });
   });
 
-  it('returns next_action recovery decision for document render failures', () => {
+  it('does not auto-route document render failures to removed param recovery flow', () => {
     const result: ToolResult = {
       success: false,
       output: '文档渲染服务调用失败: validation failed',
@@ -85,10 +87,7 @@ describe('error-recovery-policy', () => {
       },
     };
 
-    expect(decideRecoveryAction('document_render', result)).toMatchObject({
-      type: 'next_action',
-      action: 'document_param_recover',
-    });
+    expect(decideRecoveryAction('document_render', result)).toEqual({ type: 'none' });
     expect(decideRecoveryAction('flow_execute', result)).toEqual({ type: 'none' });
   });
 

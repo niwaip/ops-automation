@@ -931,6 +931,100 @@ describe('ChatController control-plane integration', () => {
     ]);
   });
 
+  it('does not pass auto-fill fallback flags into planner context for end-to-end contract requests', async () => {
+    const { controller, controlPlaneClient, plannerService } = createController();
+
+    const planDraft = {
+      plan_id: 'plan-no-autofill-1',
+      planner_mode: 'skill',
+      objective: '生成技术服务合同',
+      summary: '已识别技能 技术服务合同，但仍缺少 1 个关键输入。',
+      skill_match: {
+        skill_id: 'skill-tech-service',
+        skill_name: '技术服务合同',
+        confidence: 0.98,
+      },
+      required_inputs: [
+        {
+          name: 'contract.partyA',
+          type: 'string',
+          description: '甲方名称',
+          required: true,
+          missing: true,
+          source: 'unresolved',
+        },
+      ],
+      steps: [
+        {
+          id: 'step-no-autofill-1',
+          title: 'Collect document inputs',
+          description: '收集缺失参数',
+          kind: 'human_input',
+          status: 'planned',
+        },
+      ],
+      semantic: undefined,
+      usage: { total_tokens: 30 },
+      risk_summary: {
+        level: 'medium',
+        requires_human_review: false,
+        items: ['missing_required_inputs'],
+      },
+    };
+
+    plannerService.matchSkillPhase.mockResolvedValue({
+      objective: '生成技术服务合同',
+      matchedSkill: {
+        skillId: 'skill-tech-service',
+        skillName: '技术服务合同',
+        confidence: 0.98,
+      },
+      hasVisibleSkills: true,
+    });
+    plannerService.completePlanFromMatchPhase.mockResolvedValue(planDraft);
+    controlPlaneClient.createExecution.mockResolvedValue({ id: 'execution-no-autofill-1' });
+    jest.spyOn(controller as any, 'observeExecution').mockImplementation(async function* () {
+      return;
+    });
+
+    for await (const _event of (controller as any).handleTaskMode(
+      {
+        message: '直接端对端，用任务模式，生成技术服务合同',
+        sessionId: 'session-no-autofill-1',
+        config: {
+          mode: 'task',
+          autoFillMissingRequired: true,
+        },
+      },
+      {
+        sessionId: 'session-no-autofill-1',
+        userId: 'user-no-autofill-1',
+        userRoles: ['employee'],
+        traceId: 'trace-no-autofill-1',
+        history: [],
+      },
+      'Bearer token-no-autofill-1',
+    )) {
+      // consume stream
+    }
+
+    expect(plannerService.matchSkillPhase).toHaveBeenCalledWith({
+      request: {
+        user_input: '直接端对端，用任务模式，生成技术服务合同',
+        user_id: 'user-no-autofill-1',
+        modelId: undefined,
+        context: {
+          sessionId: 'session-no-autofill-1',
+          uploadedFiles: undefined,
+          history: [],
+        },
+      },
+      userId: 'user-no-autofill-1',
+      authToken: 'Bearer token-no-autofill-1',
+      traceId: 'trace-no-autofill-1',
+    });
+  });
+
   it('compacts planner debug payload before creating execution', async () => {
     const {
       controller,

@@ -17,7 +17,7 @@ import '@/features/chat/ChatMessage.css';
 import {
   temporalWorkflowApi, TemporalWorkflowDTO, CreateTemporalWorkflowDTO,
   WorkflowDsl, ActivityDsl, TemporalValidationResult, DEFAULT_WORKFLOW_DSL, DEFAULT_ACTIVITY_DSL,
-  WorkflowCodeResult, WorkflowCodeStreamEvent, WorkflowRealValidationResult, TemplateWorkflowDraft, TemporalWorkflowSourceTemplate, TemporalWorkflowSourceContext, HttpRequestOptimizeResult, HttpRequestPreviewResult, AiWorkflowDraft, AiWorkflowDraftSession, AiWorkflowDraftSessionListItem, AiWorkflowDraftSessionMessage, BrowserDraftCommandInput, WorkflowInputParamDefinition
+  WorkflowCodeResult, WorkflowCodeStreamEvent, WorkflowRealValidationResult, TemplateWorkflowDraft, TemporalWorkflowSourceTemplate, TemporalWorkflowSourceContext, HttpRequestOptimizeResult, HttpRequestPreviewResult, AiWorkflowDraft, AiWorkflowDraftSession, AiWorkflowDraftSessionListItem, AiWorkflowDraftSessionMessage, BrowserDraftCommandInput, WorkflowInputParamDefinition, WorkflowInputPolicy, WorkflowParamPolicy, WorkflowParamRequiredMode, CompileTemplateWorkflowDraftDTO
 } from '@/api/temporal';
 import { carboneAPI, CarboneSkill, CarboneTemplate } from '@/api/carbone';
 import { templateApi, Template } from '@/api/template';
@@ -48,7 +48,6 @@ const STEP_DURATION_DEFAULTS: Record<StepDurationField, string> = {
   scheduleToCloseTimeout: '5m',
   heartbeatTimeout: '30s',
 };
-const PARAMETER_DESCRIPTION_PREVIEW_LIMIT = 120;
 
 const SECTION_CARD_STYLE: React.CSSProperties = {
   borderRadius: 14,
@@ -89,14 +88,6 @@ const beautifyText = (text: string, useDivider = true): string => {
     .replace(/[ \t]+\n/g, '\n') // 去除行尾空格
     .replace(/\n\s*\n\s*\n+/g, useDivider ? '\n\n---\n\n' : '\n\n') // 将3个及以上的连续换行替换为分割线
     .replace(/^[\s\n]+|[\s\n]+$/g, ''); // 去除首尾空白
-};
-
-const truncateText = (text: string, maxLength = PARAMETER_DESCRIPTION_PREVIEW_LIMIT): string => {
-  const normalized = String(text || '').trim();
-  if (!normalized) {
-    return '';
-  }
-  return normalized.length > maxLength ? `${normalized.slice(0, maxLength)}...` : normalized;
 };
 
 const DURATION_INPUT_WIDTH = 64;
@@ -325,10 +316,36 @@ const normalizeWorkflowInputParamMap = (
     if (!key) {
       return acc;
     }
+    const localizedDefaultValue = value?.localizedDefaultValue && typeof value.localizedDefaultValue === 'object'
+      ? Object.entries(value.localizedDefaultValue).reduce<Record<string, string | number | boolean>>((map, [lang, langValue]) => {
+        const normalizedLang = String(lang || '').trim();
+        if (!normalizedLang || langValue === undefined || langValue === null || String(langValue).trim() === '') {
+          return map;
+        }
+        map[normalizedLang] = typeof langValue === 'string' ? langValue : langValue;
+        return map;
+      }, {})
+      : undefined;
+    const renderPath = typeof value?.renderPath === 'string' && value.renderPath.trim()
+      ? value.renderPath.trim()
+      : Array.isArray(value?.renderPath)
+        ? value.renderPath
+          .map((item) => String(item || '').trim())
+          .filter(Boolean)
+        : undefined;
     acc[key] = {
       description: typeof value?.description === 'string' ? value.description : '',
       required: value?.required === true,
       defaultValue: value?.defaultValue === undefined || value?.defaultValue === null ? '' : String(value.defaultValue),
+      localizedDefaultValue: localizedDefaultValue && Object.keys(localizedDefaultValue).length > 0 ? localizedDefaultValue : undefined,
+      localizedVariants: Array.isArray(value?.localizedVariants)
+        ? (() => {
+          const normalizedVariants = value.localizedVariants
+            .map((lang) => String(lang || '').trim())
+            .filter(Boolean);
+          return normalizedVariants.length > 0 ? normalizedVariants : undefined;
+        })()
+        : undefined,
       source: value?.source,
       type: value?.type,
       exampleValue: value?.exampleValue,
@@ -337,6 +354,7 @@ const normalizeWorkflowInputParamMap = (
       paramKind: value?.paramKind,
       arrayPath: typeof value?.arrayPath === 'string' ? value.arrayPath : '',
       fieldName: typeof value?.fieldName === 'string' ? value.fieldName : '',
+      renderPath: renderPath && renderPath.length > 0 ? renderPath : undefined,
     };
     return acc;
   }, {});
@@ -411,6 +429,8 @@ const mergeWorkflowInputParamMaps = (
       description: preferredValue.description || fallbackValue.description || '',
       required: preferredValue.required ?? fallbackValue.required ?? false,
       defaultValue: preferredValue.defaultValue ?? fallbackValue.defaultValue ?? '',
+      localizedDefaultValue: preferredValue.localizedDefaultValue ?? fallbackValue.localizedDefaultValue,
+      localizedVariants: preferredValue.localizedVariants ?? fallbackValue.localizedVariants,
       source: preferredValue.source ?? fallbackValue.source,
       type: preferredValue.type ?? fallbackValue.type,
       exampleValue: preferredValue.exampleValue ?? fallbackValue.exampleValue,
@@ -435,10 +455,110 @@ const withNormalizedWorkflowInputParams = (
   if (Object.keys(mergedInputParams).length === 0) {
     return workflowDsl.inputParams ? { ...workflowDsl, inputParams: {} } : workflowDsl;
   }
+  const policyParams = workflowDsl.inputPolicy?.params || {};
+  const hydratedInputParams = Object.entries(mergedInputParams).reduce<Record<string, WorkflowInputParamDefinition>>((acc, [key, definition]) => {
+    const policy = policyParams[key];
+    const policyDefaultValue = policy?.defaultValue;
+    const required = policy?.requiredMode
+      ? policy.requiredMode !== 'optional'
+      : definition.required;
+    if (policyDefaultValue && typeof policyDefaultValue === 'object' && !Array.isArray(policyDefaultValue)) {
+      const localizedDefaultValue = Object.entries(policyDefaultValue).reduce<Record<string, string | number | boolean>>((map, [lang, value]) => {
+        const normalizedLang = String(lang || '').trim();
+        if (!normalizedLang || value === undefined || value === null || String(value).trim() === '') {
+          return map;
+        }
+        map[normalizedLang] = value as string | number | boolean;
+        return map;
+      }, {});
+      acc[key] = {
+        ...definition,
+        required,
+        defaultValue: '',
+        localizedDefaultValue: Object.keys(localizedDefaultValue).length > 0
+          ? localizedDefaultValue
+          : definition.localizedDefaultValue,
+      };
+      return acc;
+    }
+    if (policyDefaultValue !== undefined && policyDefaultValue !== null && String(policyDefaultValue).trim() !== '') {
+      acc[key] = {
+        ...definition,
+        required,
+        defaultValue: String(policyDefaultValue),
+        localizedDefaultValue: undefined,
+      };
+      return acc;
+    }
+    acc[key] = {
+      ...definition,
+      required,
+    };
+    return acc;
+  }, {});
   return {
     ...workflowDsl,
-    inputParams: mergedInputParams,
+    inputParams: hydratedInputParams,
   };
+};
+
+const resolveSingleWorkflowInputRenderPath = (renderPath?: unknown): string | undefined => {
+  if (typeof renderPath === 'string' && renderPath.trim()) {
+    return renderPath.trim();
+  }
+  if (Array.isArray(renderPath)) {
+    const firstPath = renderPath
+      .map((item) => String(item || '').trim())
+      .find(Boolean);
+    return firstPath || undefined;
+  }
+  return undefined;
+};
+
+const normalizeWorkflowPolicyRequiredMode = (
+  currentMode: WorkflowParamRequiredMode | undefined,
+  required: boolean | undefined,
+): WorkflowParamRequiredMode => {
+  if (currentMode === 'system_required') {
+    return currentMode;
+  }
+  if (currentMode === 'conditional') {
+    return required === false ? 'optional' : currentMode;
+  }
+  return required ? 'always' : 'optional';
+};
+
+const buildSynchronizedWorkflowInputPolicy = (
+  inputParams?: Record<string, WorkflowInputParamDefinition>,
+  existingInputPolicy?: WorkflowInputPolicy,
+): WorkflowInputPolicy | undefined => {
+  const normalizedInputParams = normalizeWorkflowInputParamMap(inputParams);
+  const existingPolicies = existingInputPolicy?.params || {};
+  const nextPolicies = Object.entries(normalizedInputParams).reduce<Record<string, WorkflowParamPolicy>>((acc, [key, definition]) => {
+    const previousPolicy = existingPolicies[key] || {};
+    const nextDefaultValue = definition.localizedDefaultValue && Object.keys(definition.localizedDefaultValue).length > 0
+      ? definition.localizedDefaultValue
+      : (definition.defaultValue !== undefined && definition.defaultValue !== '' ? definition.defaultValue : undefined);
+    const nextPolicy: WorkflowParamPolicy = {
+      ...previousPolicy,
+      enabled: previousPolicy.enabled ?? true,
+      requiredMode: normalizeWorkflowPolicyRequiredMode(previousPolicy.requiredMode, definition.required),
+    };
+    const templateBinding = resolveSingleWorkflowInputRenderPath((definition as WorkflowInputParamDefinition & { renderPath?: unknown }).renderPath);
+    if (templateBinding) {
+      nextPolicy.templateBinding = templateBinding;
+    } else if (!previousPolicy.templateBinding) {
+      delete nextPolicy.templateBinding;
+    }
+    if (nextDefaultValue !== undefined) {
+      nextPolicy.defaultValue = nextDefaultValue;
+    } else {
+      delete nextPolicy.defaultValue;
+    }
+    acc[key] = nextPolicy;
+    return acc;
+  }, {});
+  return Object.keys(nextPolicies).length > 0 ? { params: nextPolicies } : undefined;
 };
 
 const normalizeWorkflowSkillParamKey = (name: unknown): string => (
@@ -818,45 +938,147 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
   openTemplatePickerOnOpen = false,
   initialTemplatePickerMode = 'document',
 }: WorkflowEditModalProps) => {
+  const reportWorkflowPageDebugEvent = (
+    hypothesisId: string,
+    location: string,
+    msg: string,
+    data: Record<string, unknown>,
+  ) => {
+    // #region debug-point A:workflow-page-template-id
+    fetch('http://127.0.0.1:7777/event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId: 'workflow-page-template-id',
+        runId: 'pre-fix',
+        hypothesisId,
+        location,
+        msg: `[DEBUG] ${msg}`,
+        data,
+        ts: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
+  };
 
-        useEffect(() => {
-            if (visible) {
-                if (initialWorkflow) {
-                    // handleEdit logic
-                    setEditingWorkflow(initialWorkflow);
-                    didInitializeCodeSignatureRef.current = false;
-                    form.setFieldsValue({ name: initialWorkflow.name, description: initialWorkflow.description, taskQueue: initialWorkflow.taskQueue });
-                    setWorkflowDsl(initialWorkflow.workflowDsl || DEFAULT_WORKFLOW_DSL);
-                    setActivityDsl(initialWorkflow.activityDsl || DEFAULT_ACTIVITY_DSL);
-                    setGeneratedCode(initialWorkflow.generatedCode || null);
-                    setLastGeneratedSignature(null);
-                    setIsGeneratedCodeStale(false);
-                    setSelectedStepIndexForConfig((initialWorkflow.workflowDsl?.steps?.length) ? 0 : null);
-                } else if (initialDraftDsl) {
-                    // Draft initialization
-                    setEditingWorkflow(null);
-                    didInitializeCodeSignatureRef.current = false;
-                    form.resetFields();
-                    setWorkflowDsl(initialDraftDsl.workflowDsl || DEFAULT_WORKFLOW_DSL);
-                    setActivityDsl(initialDraftDsl.activityDsl || DEFAULT_ACTIVITY_DSL);
-                    setGeneratedCode(null);
-                    setLastGeneratedSignature(null);
-                    setIsGeneratedCodeStale(false);
-                    setSelectedStepIndexForConfig(initialDraftDsl.workflowDsl?.steps?.length ? 0 : null);
-                } else {
-                    // handleCreate logic
-                    setEditingWorkflow(null);
-                    didInitializeCodeSignatureRef.current = false;
-                    form.resetFields();
-                    setWorkflowDsl(DEFAULT_WORKFLOW_DSL);
-                    setActivityDsl(DEFAULT_ACTIVITY_DSL);
-                    setGeneratedCode(null);
-                    setLastGeneratedSignature(null);
-                    setIsGeneratedCodeStale(false);
-                    setSelectedStepIndexForConfig(null);
-                }
-            }
-        }, [visible, initialWorkflow, initialDraftDsl]);
+  const hydrateWorkflowDslForEditor = async (
+    rawWorkflowDsl: WorkflowDsl,
+    rawActivityDsl: ActivityDsl,
+  ): Promise<WorkflowDsl> => {
+    let nextWorkflowDsl = withNormalizedWorkflowInputParams(rawWorkflowDsl, rawActivityDsl);
+    const sourceTemplateId = String(nextWorkflowDsl.sourceContext?.sourceTemplate?.templateId || '').trim();
+    const shouldBackfillTemplateMetadata = Boolean(sourceTemplateId) && Object.values(nextWorkflowDsl.inputParams || {}).some((param) => (
+      !Array.isArray(param.localizedVariants) || param.localizedVariants.length === 0
+    ));
+
+    if (shouldBackfillTemplateMetadata) {
+      try {
+        // #region debug-point D:editor-backfill-before
+        fetch('http://127.0.0.1:7777/event', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: 'template-save-values-lost', runId: 'pre-fix', hypothesisId: 'D', location: 'WorkflowEditModal.tsx:933', msg: '[DEBUG] editor preparing template metadata backfill', data: { sourceTemplateId, existingInputParamCount: Object.keys(nextWorkflowDsl.inputParams || {}).length, existingInputParamKeys: Object.keys(nextWorkflowDsl.inputParams || {}).slice(0, 8), existingPolicyKeys: Object.keys(nextWorkflowDsl.inputPolicy?.params || {}).slice(0, 8), existingInputParamPreview: Object.entries(nextWorkflowDsl.inputParams || {}).slice(0, 3) }, ts: Date.now() }) }).catch(() => {});
+        // #endregion
+        const latestTemplateDraft = await temporalWorkflowApi.generateTemplateDraft(sourceTemplateId);
+        // #region debug-point D:editor-backfill-after
+        fetch('http://127.0.0.1:7777/event', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: 'template-save-values-lost', runId: 'pre-fix', hypothesisId: 'D', location: 'WorkflowEditModal.tsx:936', msg: '[DEBUG] editor received template metadata draft for backfill', data: { sourceTemplateId, draftInputParamCount: Object.keys(latestTemplateDraft.workflowDsl?.inputParams || {}).length, draftInputParamKeys: Object.keys(latestTemplateDraft.workflowDsl?.inputParams || {}).slice(0, 8), draftInputParamPreview: Object.entries(latestTemplateDraft.workflowDsl?.inputParams || {}).slice(0, 3) }, ts: Date.now() }) }).catch(() => {});
+        // #endregion
+        nextWorkflowDsl = {
+          ...nextWorkflowDsl,
+          inputParams: mergeWorkflowInputParamMaps(
+            nextWorkflowDsl.inputParams,
+            latestTemplateDraft.workflowDsl.inputParams,
+          ),
+          sourceContext: nextWorkflowDsl.sourceContext || latestTemplateDraft.workflowDsl.sourceContext,
+        };
+        // #region debug-point D:editor-backfill-merged
+        fetch('http://127.0.0.1:7777/event', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: 'template-save-values-lost', runId: 'pre-fix', hypothesisId: 'D', location: 'WorkflowEditModal.tsx:944', msg: '[DEBUG] editor merged template metadata backfill into workflow state', data: { sourceTemplateId, mergedInputParamCount: Object.keys(nextWorkflowDsl.inputParams || {}).length, mergedInputParamKeys: Object.keys(nextWorkflowDsl.inputParams || {}).slice(0, 8), mergedInputParamPreview: Object.entries(nextWorkflowDsl.inputParams || {}).slice(0, 3) }, ts: Date.now() }) }).catch(() => {});
+        // #endregion
+      } catch (error) {
+        // Keep editing usable even if template metadata backfill fails.
+      }
+    }
+
+    const sourceSkillId = String(nextWorkflowDsl.sourceContext?.sourceTemplate?.skillId || '').trim();
+    if (sourceSkillId && !Object.values(nextWorkflowDsl.inputParams || {}).some((param) => String(param.groupLabel || '').trim())) {
+      try {
+        const sourceSkill = await carboneAPI.getSkill(sourceSkillId);
+        nextWorkflowDsl = {
+          ...nextWorkflowDsl,
+          inputParams: enrichWorkflowInputParamsWithSkill(nextWorkflowDsl.inputParams, sourceSkill),
+        };
+      } catch (error) {
+        // Keep editor usable even if skill enrichment fails.
+      }
+    }
+
+    return nextWorkflowDsl;
+  };
+
+  useEffect(() => {
+    if (!visible) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const initialize = async () => {
+      if (initialWorkflow) {
+        setEditingWorkflow(initialWorkflow);
+        didInitializeCodeSignatureRef.current = false;
+        form.setFieldsValue({ name: initialWorkflow.name, description: initialWorkflow.description, taskQueue: initialWorkflow.taskQueue });
+        const nextActivityDsl = initialWorkflow.activityDsl || DEFAULT_ACTIVITY_DSL;
+        const nextWorkflowDsl = await hydrateWorkflowDslForEditor(
+          initialWorkflow.workflowDsl || DEFAULT_WORKFLOW_DSL,
+          nextActivityDsl,
+        );
+        if (cancelled) {
+          return;
+        }
+        setWorkflowDsl(nextWorkflowDsl);
+        setActivityDsl(nextActivityDsl);
+        setGeneratedCode(initialWorkflow.generatedCode || null);
+        setLastGeneratedSignature(null);
+        setIsGeneratedCodeStale(false);
+        setSelectedStepIndexForConfig(nextWorkflowDsl?.steps?.length ? 0 : null);
+        return;
+      }
+
+      if (initialDraftDsl) {
+        setEditingWorkflow(null);
+        didInitializeCodeSignatureRef.current = false;
+        form.resetFields();
+        const nextActivityDsl = initialDraftDsl.activityDsl || DEFAULT_ACTIVITY_DSL;
+        const nextWorkflowDsl = await hydrateWorkflowDslForEditor(
+          initialDraftDsl.workflowDsl || DEFAULT_WORKFLOW_DSL,
+          nextActivityDsl,
+        );
+        if (cancelled) {
+          return;
+        }
+        setWorkflowDsl(nextWorkflowDsl);
+        setActivityDsl(nextActivityDsl);
+        setGeneratedCode(null);
+        setLastGeneratedSignature(null);
+        setIsGeneratedCodeStale(false);
+        setSelectedStepIndexForConfig(nextWorkflowDsl?.steps?.length ? 0 : null);
+        return;
+      }
+
+      setEditingWorkflow(null);
+      didInitializeCodeSignatureRef.current = false;
+      form.resetFields();
+      setWorkflowDsl(DEFAULT_WORKFLOW_DSL);
+      setActivityDsl(DEFAULT_ACTIVITY_DSL);
+      setGeneratedCode(null);
+      setLastGeneratedSignature(null);
+      setIsGeneratedCodeStale(false);
+      setSelectedStepIndexForConfig(null);
+    };
+
+    void initialize();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [visible, initialWorkflow, initialDraftDsl]);
         
   // const { t } = useTranslation(['admin']);
   const navigate = useNavigate();
@@ -864,6 +1086,7 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
   const [form] = Form.useForm();
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [validateModalVisible, setValidateModalVisible] = useState(false);
+  const [saveSubmitting, setSaveSubmitting] = useState(false);
   const [editingWorkflow, setEditingWorkflow] = useState<TemporalWorkflowDTO | null>(null);
   const [selectedWorkflow] = useState<TemporalWorkflowDTO | null>(null);
   const [validationResult, setValidationResult] = useState<TemporalValidationResult | null>(null);
@@ -1231,6 +1454,8 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
               description: currentDef?.description || def.description || '',
               required: currentDef?.required ?? def.required ?? false,
               defaultValue: currentDef?.defaultValue ?? def.defaultValue ?? '',
+              localizedDefaultValue: currentDef?.localizedDefaultValue ?? def.localizedDefaultValue,
+              localizedVariants: currentDef?.localizedVariants ?? def.localizedVariants,
               source: currentDef?.source ?? def.source,
               type: currentDef?.type ?? def.type,
               exampleValue: currentDef?.exampleValue ?? def.exampleValue,
@@ -1252,6 +1477,8 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
               defaultValue: typeof value === 'string'
                 ? value
                 : currentDef?.defaultValue ?? JSON.stringify(value),
+              localizedDefaultValue: currentDef?.localizedDefaultValue,
+              localizedVariants: currentDef?.localizedVariants,
               source: currentDef?.source,
               type: currentDef?.type,
               exampleValue: currentDef?.exampleValue,
@@ -1273,6 +1500,8 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
                 description: currentDef?.description || '',
                 required: currentDef?.required ?? true,
                 defaultValue: currentDef?.defaultValue ?? '',
+                localizedDefaultValue: currentDef?.localizedDefaultValue,
+                localizedVariants: currentDef?.localizedVariants,
                 source: currentDef?.source,
                 type: currentDef?.type,
                 exampleValue: currentDef?.exampleValue,
@@ -1295,6 +1524,8 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
                 description: currentDef?.description || '',
                 required: currentDef?.required ?? true,
                 defaultValue: currentDef?.defaultValue ?? '',
+                localizedDefaultValue: currentDef?.localizedDefaultValue,
+                localizedVariants: currentDef?.localizedVariants,
                 source: currentDef?.source,
                 type: currentDef?.type,
                 exampleValue: currentDef?.exampleValue,
@@ -1576,19 +1807,16 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
     draft: Pick<TemplateWorkflowDraft, 'name' | 'description' | 'taskQueue' | 'workflowDsl' | 'activityDsl'>,
     successMessage: string,
   ) => {
-    let nextWorkflowDsl = withNormalizedWorkflowInputParams(draft.workflowDsl, draft.activityDsl);
-    const sourceSkillId = String(nextWorkflowDsl.sourceContext?.sourceTemplate?.skillId || '').trim();
-    if (sourceSkillId && !Object.values(nextWorkflowDsl.inputParams || {}).some((param) => String(param.groupLabel || '').trim())) {
-      try {
-        const sourceSkill = await carboneAPI.getSkill(sourceSkillId);
-        nextWorkflowDsl = {
-          ...nextWorkflowDsl,
-          inputParams: enrichWorkflowInputParamsWithSkill(nextWorkflowDsl.inputParams, sourceSkill),
-        };
-      } catch (error) {
-        // Keep editor usable even if skill enrichment fails.
-      }
-    }
+    const nextWorkflowDsl = await hydrateWorkflowDslForEditor(draft.workflowDsl, draft.activityDsl);
+    // #region debug-point B:apply-draft
+    reportWorkflowPageDebugEvent('B', 'WorkflowEditModal.tsx:applyDraftToEditor', 'draft applied to editor state', {
+      draftTemplateId: draft.workflowDsl?.sourceContext?.sourceTemplate?.templateId || null,
+      hydratedTemplateId: nextWorkflowDsl?.sourceContext?.sourceTemplate?.templateId || null,
+      derivedTemplateId: deriveWorkflowSourceTemplate(nextWorkflowDsl, draft.activityDsl)?.templateId || null,
+      activityTemplateId: (draft.activityDsl?.activities || []).find((activity) => activity?.handler === 'carbone' || Array.isArray(activity?.config?.steps))
+        ?.config?.templateId || null,
+    });
+    // #endregion
     setEditingWorkflow(null);
     didInitializeCodeSignatureRef.current = false;
     form.setFieldsValue({
@@ -1689,13 +1917,12 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
   useEffect(() => {
     if (!visible) {
       setTemplateModalVisible(false);
+      setSaveSubmitting(false);
       return;
     }
     if (!openTemplatePickerOnOpen) {
       return;
     }
-    setTemplateModalMode(initialTemplatePickerMode);
-    setTemplateModalVisible(true);
     if (initialTemplatePickerMode === 'browser') {
       void loadBrowserTemplates();
       return;
@@ -1707,6 +1934,14 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
     try {
       setGeneratingTemplateId(template.id);
       const draft: TemplateWorkflowDraft = await temporalWorkflowApi.generateTemplateDraft(template.id);
+      // #region debug-point A:generate-template-draft
+      reportWorkflowPageDebugEvent('A', 'WorkflowEditModal.tsx:handleSelectTemplate', 'template draft returned from api', {
+        selectedTemplateId: template.id,
+        draftSourceContextTemplateId: draft.workflowDsl?.sourceContext?.sourceTemplate?.templateId || null,
+        draftTopLevelSourceTemplateId: (draft as unknown as { sourceTemplate?: { templateId?: string } })?.sourceTemplate?.templateId || null,
+        draftActivityTemplateId: draft.activityDsl?.activities?.[0]?.config?.templateId || null,
+      });
+      // #endregion
       await applyDraftToEditor(draft, '已生成模版工作流草稿');
       setTemplateModalVisible(false);
     } catch (error: unknown) {
@@ -1859,76 +2094,134 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
     });
   };
 
-  const renderInputParamEditor = (key: string, param: WorkflowInputParamDefinition, compactLabel?: boolean) => (
-    <div
-      key={key}
-      style={{
-        display: 'grid',
-        gridTemplateColumns: 'minmax(0, 1fr) auto minmax(160px, 220px)',
-        gap: 10,
-        alignItems: 'center',
-        padding: '12px 14px',
-        border: '1px solid var(--bg-secondary)',
-        borderRadius: 14,
-        background: 'var(--bg-card)',
-        boxShadow: 'var(--shadow-sm)',
-      }}
-    >
-      <div style={{ minWidth: 0, minHeight: 32, display: 'flex', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, width: '100%' }}>
-          <Tooltip title={key}>
-            <Tag color={param.paramKind === 'array' ? 'purple' : 'blue'} style={{ marginInlineEnd: 0, whiteSpace: 'nowrap' }}>
-              {compactLabel ? (param.fieldName || key) : key}
-            </Tag>
-          </Tooltip>
-          {param.displayName && param.displayName !== key && param.displayName !== param.fieldName ? (
-            <Text strong ellipsis style={{ minWidth: 0 }}>{param.displayName}</Text>
-          ) : null}
-          <Button
-            size="small"
-            danger
-            type="text"
-            onClick={() => {
-              const newParams = { ...workflowDsl.inputParams };
-              delete (newParams as any)[key];
-              setWorkflowDsl({ ...workflowDsl, inputParams: newParams });
-            }}
-            style={{ paddingInline: 4, marginLeft: 'auto', flexShrink: 0 }}
-          >
-            ×
-          </Button>
-        </div>
-      </div>
-      <Checkbox
-        checked={param.required === true}
-        onChange={(event) => updateSingleWorkflowInputParam(key, { ...param, required: event.target.checked })}
-        style={{ alignSelf: 'center', whiteSpace: 'nowrap' }}
+  const renderInputParamEditor = (key: string, param: WorkflowInputParamDefinition, compactLabel?: boolean) => {
+    const getLangSortWeight = (lang: string) => {
+      const normalized = String(lang || '').trim().toLowerCase();
+      if (normalized === 'zh' || normalized === 'zh-cn' || normalized === 'zh-hans' || normalized === 'zh-hans-cn') {
+        return 0;
+      }
+      if (normalized === 'cn') {
+        return 0;
+      }
+      if (normalized === 'jp' || normalized === 'ja') {
+        return 1;
+      }
+      if (normalized === 'en' || normalized === 'en-us' || normalized === 'en-gb') {
+        return 2;
+      }
+      return 3;
+    };
+    const normalizedLocalizedVariants = Array.from(new Set([
+      ...(Array.isArray(param.localizedVariants) ? param.localizedVariants : []),
+      ...Object.keys(param.localizedDefaultValue || {}),
+    ].map((lang) => String(lang || '').trim()).filter(Boolean)))
+      .sort((left, right) => {
+        const diff = getLangSortWeight(left) - getLangSortWeight(right);
+        if (diff !== 0) {
+          return diff;
+        }
+        return left.localeCompare(right, 'zh-Hans-CN');
+      });
+    const isBilingual = normalizedLocalizedVariants.length >= 2;
+    const visibleLabel = String(
+      param.displayName
+      || (compactLabel ? param.fieldName : '')
+      || param.fieldName
+      || key
+    ).trim();
+    const getLocalizedLabel = (lang: string) => {
+      const normalized = String(lang || '').trim().toLowerCase();
+      if (normalized === 'zh' || normalized === 'zh-cn' || normalized === 'zh-hans' || normalized === 'zh-hans-cn' || normalized === 'cn') {
+        return '中文';
+      }
+      if (normalized === 'jp' || normalized === 'ja') {
+        return '日文';
+      }
+      if (normalized === 'en' || normalized === 'en-us' || normalized === 'en-gb') {
+        return '英文';
+      }
+      return lang;
+    };
+
+    return (
+      <div
+        key={key}
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'minmax(120px, 220px) auto minmax(0, 1fr) auto',
+          gap: 10,
+          alignItems: 'center',
+          padding: '12px 14px',
+          border: '1px solid var(--bg-secondary)',
+          borderRadius: 14,
+          background: 'var(--bg-card)',
+          boxShadow: 'var(--shadow-sm)',
+        }}
       >
-        必填
-      </Checkbox>
-      <Input
-        value={param.defaultValue || ''}
-        onChange={(event) => updateSingleWorkflowInputParam(key, { ...param, defaultValue: event.target.value })}
-        placeholder="默认值"
-        size="small"
-        style={{ width: '100%' }}
-      />
-      <Tooltip title={param.description || '未填写说明'}>
-        <Text
-          type="secondary"
+        <Tooltip title={param.description || '未填写用途'}>
+          <Text strong ellipsis style={{ minWidth: 0, fontSize: 13, cursor: 'help' }}>
+            {visibleLabel}
+          </Text>
+        </Tooltip>
+        <Checkbox
+          checked={param.required === true}
+          onChange={(event) => updateSingleWorkflowInputParam(key, { ...param, required: event.target.checked })}
+          style={{ whiteSpace: 'nowrap' }}
+        >
+          必填
+        </Checkbox>
+        <div
           style={{
-            gridColumn: '1 / -1',
-            display: 'block',
-            fontSize: 12,
-            lineHeight: 1.5,
-            paddingTop: 2,
+            display: 'grid',
+            gridTemplateColumns: isBilingual ? 'repeat(2, minmax(0, 1fr))' : 'minmax(0, 1fr)',
+            gap: 8,
+            minWidth: 0,
+            width: '100%',
           }}
         >
-          {truncateText(param.description || '未填写说明')}
-        </Text>
-      </Tooltip>
-    </div>
-  );
+          {normalizedLocalizedVariants.length > 0 ? normalizedLocalizedVariants.map((lang) => (
+            <Input
+              key={`${key}-${lang}`}
+              value={param.localizedDefaultValue?.[lang] === undefined || param.localizedDefaultValue?.[lang] === null
+                ? ''
+                : String(param.localizedDefaultValue?.[lang])}
+              onChange={(event) => updateSingleWorkflowInputParam(key, {
+                ...param,
+                localizedDefaultValue: {
+                  ...(param.localizedDefaultValue || {}),
+                  [lang]: event.target.value,
+                },
+              })}
+              placeholder={isBilingual ? `${getLocalizedLabel(lang)}默认值` : '默认值'}
+              size="small"
+              style={{ width: '100%' }}
+            />
+          )) : (
+            <Input
+              value={param.defaultValue || ''}
+              onChange={(event) => updateSingleWorkflowInputParam(key, { ...param, defaultValue: event.target.value })}
+              placeholder="默认值"
+              size="small"
+              style={{ width: '100%' }}
+            />
+          )}
+        </div>
+        <Button
+          size="small"
+          danger
+          type="text"
+          onClick={() => {
+            const newParams = { ...workflowDsl.inputParams };
+            delete (newParams as any)[key];
+            setWorkflowDsl({ ...workflowDsl, inputParams: newParams });
+          }}
+          style={{ paddingInline: 4, flexShrink: 0, justifySelf: 'end' }}
+        >
+          ×
+        </Button>
+      </div>
+    );
+  };
 
   const renderCollapsibleInputSection = (
     panelKey: string,
@@ -1992,7 +2285,7 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
               <Tag style={{ margin: 0 }}>{group.scalarEntries.length} 项</Tag>
             </Space>
           ),
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: group.scalarEntries.length > 1 ? 'repeat(2, minmax(0, 1fr))' : 'minmax(0, 1fr)', gap: 8 }}>
             {group.scalarEntries.map(([key, param]) => renderInputParamEditor(key, param))}
           </div>,
         )
@@ -2002,7 +2295,7 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
           {renderCollapsibleInputSection(
             `${group.key}-${arrayGroup.arrayPath}`,
             renderArrayGroupTitle(arrayGroup),
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 8 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: arrayGroup.entries.length > 1 ? 'repeat(2, minmax(0, 1fr))' : 'minmax(0, 1fr)', gap: 8 }}>
               {arrayGroup.entries.map(([key, param]) => renderInputParamEditor(key, param, true))}
             </div>,
           )}
@@ -2297,9 +2590,34 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
     }
   };
 
-  const handleSave = () => {
-    void form.validateFields().then((values: { name?: string; description?: string; taskQueue?: string }) => {
+  const handleSave = async () => {
+    if (saveSubmitting || loading) {
+      return;
+    }
+    setSaveSubmitting(true);
+    try {
+      const values = await form.validateFields() as { name?: string; description?: string; taskQueue?: string };
       const workflowName = values.name || workflowDsl.name;
+      const synchronizedInputPolicy = buildSynchronizedWorkflowInputPolicy(
+        workflowDsl.inputParams,
+        workflowDsl.inputPolicy,
+      );
+      const sourceTemplate = currentSourceTemplate;
+      // #region debug-point A:editor-save
+      fetch('http://127.0.0.1:7777/event', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: 'template-save-values-lost', runId: 'pre-fix', hypothesisId: 'A', location: 'WorkflowEditModal.tsx:2543', msg: '[DEBUG] editor collected workflow values before save', data: { workflowId: editingWorkflow?.id || null, workflowName, sourceTemplateId: sourceTemplate?.templateId || null, inputParamCount: Object.keys(workflowDsl.inputParams || {}).length, inputParamKeys: Object.keys(workflowDsl.inputParams || {}).slice(0, 8), inputParamPreview: Object.entries(workflowDsl.inputParams || {}).slice(0, 3), synchronizedPolicyKeys: Object.keys(synchronizedInputPolicy?.params || {}).slice(0, 8), synchronizedPolicyPreview: Object.entries(synchronizedInputPolicy?.params || {}).slice(0, 3) }, ts: Date.now() }) }).catch(() => {});
+      // #endregion
+      if (sourceTemplate?.templateId) {
+        const data: CompileTemplateWorkflowDraftDTO & { generatedCode?: string } = {
+          templateId: sourceTemplate.templateId,
+          name: workflowName,
+          description: values.description,
+          taskQueue: values.taskQueue,
+          ...(synchronizedInputPolicy ? { inputPolicy: synchronizedInputPolicy } : {}),
+          ...(generatedCode ? { generatedCode } : {}),
+        };
+        await Promise.resolve(onSave(data));
+        return;
+      }
       const data: CreateTemporalWorkflowDTO = {
         name: workflowName,
         description: values.description,
@@ -2307,6 +2625,7 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
         workflowDsl: {
           ...workflowDsl,
           name: workflowName,
+          ...(synchronizedInputPolicy ? { inputPolicy: synchronizedInputPolicy } : {}),
           steps: workflowDsl.steps.map((step) => {
             if (step.type !== 'activity') {
               return step;
@@ -2322,10 +2641,12 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
         activityDsl,
         generatedCode: generatedCode || undefined,
       };
-      onSave(data);
-    }).catch((error: unknown) => {
+      await Promise.resolve(onSave(data));
+    } catch (error: unknown) {
       void message.error(resolveApiErrorMessage(error, '表单校验失败'));
-    });
+    } finally {
+      setSaveSubmitting(false);
+    }
   };
   const handleAddStep = () => {
     const nextIndex = workflowDsl.steps.length;
@@ -4462,7 +4783,7 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
                   <Button size="small" key="realValidation" icon={<ExperimentOutlined />} onClick={handleOpenRealValidation} loading={realValidationState.isStreaming} disabled={!generatedCode}>真实验证</Button>
                   <Button size="small" key="viewCode" icon={<CodeOutlined />} onClick={() => setCodeModalVisible(true)} disabled={!generatedCode}>查看代码</Button>
                   <Button size="small" key="cancel" onClick={() => onCancel(false)}>取消</Button>
-                  <Button size="small" key="save" type="primary" loading={loading} onClick={handleSave}>保存</Button>
+                  <Button size="small" key="save" type="primary" loading={loading || saveSubmitting} disabled={loading || saveSubmitting} onClick={handleSave}>保存</Button>
                 </div>
               }
               width={1200} style={{ top: 20 }}>

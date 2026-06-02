@@ -34,7 +34,6 @@ export interface SkillConfigDTO {
   tools: string[];
   effectiveTools?: string[];
   apiEndpoints?: {
-    generateParameters?: ApiEndpoint;
     render?: ApiEndpoint;
     getSkill?: ApiEndpoint;
     runtimeMetadata?: {
@@ -91,7 +90,6 @@ export interface CreateSkillDTO {
   executionFlow?: ExecutionFlowStep[];
   tools?: string[];
   apiEndpoints?: {
-    generateParameters?: ApiEndpoint;
     render?: ApiEndpoint;
     getSkill?: ApiEndpoint;
   };

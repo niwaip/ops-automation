@@ -71,6 +71,7 @@ const CAPABILITY_RELEASE_ERROR_CODE = {
   RELEASE_APPROVAL_REJECTED: 'release_approval_rejected',
   SKILL_DRAFT_NOT_FOUND: 'skill_draft_not_found',
   SKILL_PUBLISH_TOOL_VALIDATION_FAILED: 'skill_publish_tool_validation_failed',
+  TEMPORAL_DOCUMENT_MAPPING_NOT_READY: 'temporal_document_mapping_not_ready',
   RELEASE_NOT_PUBLISHED_FOR_DEPLOY: 'release_not_published_for_deploy',
   RELEASE_DEPLOYING: 'release_deploying',
   TEMPORAL_BUILD_NOT_EXECUTABLE: 'temporal_build_not_executable',
@@ -500,10 +501,14 @@ export class CapabilityReleaseService implements OnModuleInit {
         ? snapshot.sourcePayload.taskQueue
         : 'SKILL_TASK_QUEUE';
       const generatedCode = build.generatedCode || '';
+      const renderDataSnippetMatch = generatedCode.match(/def _build_render_data[\s\S]*?return render_data/);
 
       const logs: string[] = [];
       const progressTasks: Promise<void>[] = [];
       let activityOrder = 0;
+      // #region debug-point B:temporal-workflow-runtime-input
+      (()=>{const fs=require('fs'),p='.dbg/tech-service-object-object.env';let u='http://127.0.0.1:7777/event',s='tech-service-object-object';try{const e=fs.readFileSync(p,'utf8');u=e.match(/DEBUG_SERVER_URL=(.+)/)?.[1]||u;s=e.match(/DEBUG_SESSION_ID=(.+)/)?.[1]||s}catch{}fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:s,runId:'pre-fix',hypothesisId:'B',location:'capability-release.service.ts:507',msg:'[DEBUG] temporal workflow runtime received normalized input and generated code snippet',data:{skillId,executionId:options?.executionId||null,runtimeSessionId,suspiciousInput:{paymentFirstDays:normalizedInput.payment?.firstDays ?? normalizedInput['payment.firstDays'],paymentFirstRatio:normalizedInput.payment?.firstRatio ?? normalizedInput['payment.firstRatio'],paymentFirstAmount:normalizedInput.payment?.firstAmount ?? normalizedInput['payment.firstAmount'],paymentTotalAmount:normalizedInput.payment?.totalAmount ?? normalizedInput['payment.totalAmount'],paymentBankAccount:normalizedInput.payment?.bankAccount ?? normalizedInput['payment.bankAccount'],serviceEndUser:normalizedInput.service?.endUser ?? normalizedInput['service.endUser']},renderDataSnippet:renderDataSnippetMatch?.[0]||null},ts:Date.now()})}).catch(()=>{});})();
+      // #endregion
       const result = await this.activityService.executeCodeStreaming(
         generatedCode,
         fn,
@@ -1771,6 +1776,26 @@ export class CapabilityReleaseService implements OnModuleInit {
         message: '发布前工具校验失败',
         toolValidation,
       });
+    }
+
+    if (release.sourceType === 'temporal_workflow') {
+      const snapshot = await this.getCurrentSnapshotOrThrow(release);
+      const mappingReadiness = this.assessTemporalDocumentMappingReadiness(snapshot.sourcePayload);
+      if (mappingReadiness.applicable && mappingReadiness.mappedInputCount === 0) {
+        await this.insertAuditEvent(
+          id,
+          'skill_publish_blocked_by_document_mapping',
+          userId,
+          false,
+          '发布前阻断：模板工作流缺少显式 renderPath/templateBinding',
+          { mappingReadiness },
+        );
+        throw new BadRequestException({
+          code: CAPABILITY_RELEASE_ERROR_CODE.TEMPORAL_DOCUMENT_MAPPING_NOT_READY,
+          message: '当前模板工作流缺少显式 renderPath/templateBinding，暂不允许发布',
+          mappingReadiness,
+        });
+      }
     }
 
     const payload: Record<string, unknown> = normalizedDraftPayload;
@@ -3691,10 +3716,16 @@ ${logs.join('\n')}
     const inferredRequired = Array.isArray(inferredSchema.required)
       ? inferredSchema.required.filter((item): item is string => typeof item === 'string')
       : [];
+    const inferredPropertyKeys = new Set(Object.keys(inferredProperties));
+    const finalRequired = Array.from(new Set([
+      ...rawRequired.filter((key) => !inferredPropertyKeys.has(key)),
+      ...inferredRequired,
+    ]));
 
     const mergedProperties = Object.entries(inferredProperties).reduce<Record<string, unknown>>(
       (acc, [key, inferredValue]) => {
         const rawValue = rawProperties[key];
+        const isRequired = finalRequired.includes(key);
         acc[key] =
           rawValue && typeof rawValue === 'object'
             ? {
@@ -3706,9 +3737,7 @@ ${logs.join('\n')}
                     ? { default: (inferredValue as Record<string, unknown>).default }
                     : {}
                 ),
-                ...(Array.from(new Set([...rawRequired, ...inferredRequired])).includes(key)
-                  ? { required: true }
-                  : {}),
+                required: isRequired,
               }
             : inferredValue;
         return acc;
@@ -3720,7 +3749,7 @@ ${logs.join('\n')}
       ...rawSchema,
       ...inferredSchema,
       properties: mergedProperties,
-      required: Array.from(new Set([...rawRequired, ...inferredRequired])),
+      required: finalRequired,
     };
   }
 
@@ -3828,6 +3857,8 @@ ${logs.join('\n')}
     activityDsl?: Record<string, unknown>,
   ): Record<string, unknown> {
     const inputParams = this.parseJson<Record<string, unknown>>(workflowDsl.inputParams) || {};
+    const workflowInputPolicy = this.extractTemporalWorkflowInputPolicy(workflowDsl);
+    const workflowInputPolicies = asRecord(workflowInputPolicy?.params) || {};
     const properties: Record<string, unknown> = {};
     const required: string[] = [];
 
@@ -3835,10 +3866,28 @@ ${logs.join('\n')}
       const definition = value && typeof value === 'object'
         ? (value as Record<string, unknown>)
         : {};
+      const workflowPolicy = asRecord(workflowInputPolicies[key]) || {};
+      const requiredMode = typeof workflowPolicy.requiredMode === 'string'
+        ? workflowPolicy.requiredMode.trim()
+        : undefined;
+      const isRequired = requiredMode
+        ? requiredMode === 'always'
+        : Boolean(definition.required);
       const description = typeof definition.description === 'string'
         ? definition.description.trim()
         : `Workflow 输入参数 ${key}`;
-      const defaultValue = definition.defaultValue;
+      const localizedDefaultValue = asRecord(definition.localizedDefaultValue);
+      const policyDefaultValue = this.normalizeCapabilityDefaultValue(workflowPolicy.defaultValue);
+      const definitionDefaultValue =
+        definition.defaultValue !== undefined && definition.defaultValue !== ''
+          ? definition.defaultValue
+          : localizedDefaultValue && Object.keys(localizedDefaultValue).length > 0
+            ? localizedDefaultValue
+            : undefined;
+      const defaultValue =
+        policyDefaultValue !== undefined
+          ? policyDefaultValue
+          : definitionDefaultValue;
       const normalizedDefaultValue = this.normalizeCapabilityDefaultValue(defaultValue);
       const inferredType =
         this.normalizeDeclaredTemporalParamType(definition.type, key)
@@ -3848,6 +3897,7 @@ ${logs.join('\n')}
           key,
         );
       const displayName = this.resolveTemporalParamDisplayName(key, definition, description);
+      const renderPath = this.resolveTemporalWorkflowRenderPath(definition, workflowPolicy);
 
       properties[key] = {
         type: inferredType,
@@ -3857,9 +3907,6 @@ ${logs.join('\n')}
           : {}),
         ...(typeof definition.groupLabel === 'string' && definition.groupLabel.trim()
           ? { groupLabel: definition.groupLabel.trim() }
-          : {}),
-        ...(typeof definition.previewBlocking === 'boolean'
-          ? { previewBlocking: definition.previewBlocking }
           : {}),
         ...(typeof definition.semanticRole === 'string' && definition.semanticRole.trim()
           ? { semanticRole: definition.semanticRole.trim() }
@@ -3871,17 +3918,13 @@ ${logs.join('\n')}
                 .map((item) => item.trim()),
             }
           : {}),
-        ...(typeof definition.confirmationThreshold === 'number' && Number.isFinite(definition.confirmationThreshold)
-          ? {
-              confirmationThreshold: Math.max(0, Math.min(1, definition.confirmationThreshold)),
-            }
-          : {}),
-        required: Boolean(definition.required),
-        ...(!definition.required && normalizedDefaultValue !== undefined ? { default: normalizedDefaultValue } : {}),
+        ...(renderPath ? { renderPath } : {}),
+        required: isRequired,
+        ...(!isRequired && normalizedDefaultValue !== undefined ? { default: normalizedDefaultValue } : {}),
         extractionPrompt: description,
       };
 
-      if (definition.required) {
+      if (isRequired) {
         required.push(key);
       }
     });
@@ -3930,6 +3973,149 @@ ${logs.join('\n')}
     }
 
     return { properties, required };
+  }
+
+  private assessTemporalDocumentMappingReadiness(
+    payload: Record<string, unknown>,
+  ): {
+    applicable: boolean;
+    mappedInputCount: number;
+    renderPathParamCount: number;
+    templateBindingParamCount: number;
+  } {
+    const workflowDsl = this.parseJson(payload.workflowDsl) as Record<string, unknown> || {};
+    const activityDsl = this.parseJson(payload.activityDsl) as Record<string, unknown> || {};
+    const declaredPayloadSourceTemplate = this.parseJson<Record<string, unknown>>(payload.sourceTemplate) || {};
+    const sourceContext = this.parseJson<Record<string, unknown>>(workflowDsl.sourceContext) || {};
+    const sourceContextTemplate = this.parseJson<Record<string, unknown>>(sourceContext.sourceTemplate) || {};
+    const extractedSourceTemplate = this.extractTemporalSourceTemplate(workflowDsl, activityDsl) || {};
+    const sourceTemplate = {
+      ...extractedSourceTemplate,
+      ...sourceContextTemplate,
+      ...declaredPayloadSourceTemplate,
+    };
+    const applicable = [
+      sourceTemplate.templateId,
+      sourceTemplate.fileName,
+      sourceTemplate.skillId,
+    ].some((value) => typeof value === 'string' && value.trim().length > 0);
+
+    if (!applicable) {
+      return {
+        applicable: false,
+        mappedInputCount: 0,
+        renderPathParamCount: 0,
+        templateBindingParamCount: 0,
+      };
+    }
+
+    const inputParams = this.parseJson<Record<string, unknown>>(workflowDsl.inputParams) || {};
+    const workflowInputPolicy = this.extractTemporalWorkflowInputPolicy(workflowDsl);
+    const workflowInputPolicies = asRecord(workflowInputPolicy?.params) || {};
+    let renderPathParamCount = 0;
+    let templateBindingParamCount = 0;
+    let mappedInputCount = 0;
+
+    Object.entries(inputParams).forEach(([key, value]) => {
+      const definition = asRecord(value) || {};
+      const policy = asRecord(workflowInputPolicies[key]) || {};
+      const renderPath = this.normalizeTemporalWorkflowRenderPath(definition.renderPath);
+      const templateBinding = typeof policy.templateBinding === 'string' && policy.templateBinding.trim()
+        ? policy.templateBinding.trim()
+        : undefined;
+      if (renderPath) {
+        renderPathParamCount += 1;
+      }
+      if (templateBinding) {
+        templateBindingParamCount += 1;
+      }
+      if (renderPath || templateBinding) {
+        mappedInputCount += 1;
+      }
+    });
+
+    return {
+      applicable,
+      mappedInputCount,
+      renderPathParamCount,
+      templateBindingParamCount,
+    };
+  }
+
+  private extractTemporalWorkflowInputPolicy(
+    workflowDsl: Record<string, unknown>,
+  ): Record<string, unknown> | undefined {
+    const inputPolicy = this.parseJson<Record<string, unknown>>(workflowDsl.inputPolicy) || {};
+    const rawParams =
+      inputPolicy.params && typeof inputPolicy.params === 'object' && !Array.isArray(inputPolicy.params)
+        ? inputPolicy.params as Record<string, unknown>
+        : inputPolicy;
+    const inputParams = this.parseJson<Record<string, unknown>>(workflowDsl.inputParams) || {};
+
+    const params = Object.entries(rawParams || {}).reduce<Record<string, unknown>>((acc, [key, value]) => {
+      const policy = asRecord(value) || {};
+      const inferredTemplateBinding = this.resolveSingleTemporalWorkflowBindingPath(
+        this.normalizeTemporalWorkflowRenderPath(
+          asRecord(inputParams[key])?.renderPath,
+        ),
+      );
+
+      acc[key] = {
+        ...policy,
+        ...(typeof policy.templateBinding === 'string' && policy.templateBinding.trim()
+          ? { templateBinding: policy.templateBinding.trim() }
+          : inferredTemplateBinding
+            ? { templateBinding: inferredTemplateBinding }
+            : {}),
+      };
+      return acc;
+    }, {});
+
+    if (Object.keys(params).length === 0) {
+      return undefined;
+    }
+
+    return { params };
+  }
+
+  private resolveTemporalWorkflowRenderPath(
+    definition: Record<string, unknown>,
+    workflowPolicy: Record<string, unknown>,
+  ): string | string[] | undefined {
+    const declaredRenderPath = this.normalizeTemporalWorkflowRenderPath(definition.renderPath);
+    if (declaredRenderPath) {
+      return declaredRenderPath;
+    }
+
+    return this.normalizeTemporalWorkflowRenderPath(workflowPolicy.templateBinding);
+  }
+
+  private normalizeTemporalWorkflowRenderPath(
+    renderPath: unknown,
+  ): string | string[] | undefined {
+    if (typeof renderPath === 'string' && renderPath.trim()) {
+      return renderPath.trim();
+    }
+
+    if (!Array.isArray(renderPath)) {
+      return undefined;
+    }
+
+    const normalized = renderPath
+      .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+      .map((item) => item.trim());
+
+    if (normalized.length === 0) {
+      return undefined;
+    }
+
+    return normalized.length === 1 ? normalized[0] : normalized;
+  }
+
+  private resolveSingleTemporalWorkflowBindingPath(
+    renderPath: string | string[] | undefined,
+  ): string | undefined {
+    return typeof renderPath === 'string' ? renderPath : undefined;
   }
 
   private resolveTemporalParamDisplayName(
@@ -4159,11 +4345,39 @@ ${logs.join('\n')}
       });
     }
 
+    const fixedTestInput = this.resolveFixedTestInput(snapshot.sourcePayload, environment);
+
     return {
       ...suggestedInput,
+      ...(fixedTestInput || {}),
       smokeTest: true,
       environment,
     };
+  }
+
+  private resolveFixedTestInput(
+    sourcePayload: Record<string, unknown>,
+    environment: string,
+  ): Record<string, unknown> | undefined {
+    const deploymentProfiles = asRecord(sourcePayload.deploymentProfiles) || {};
+    const environmentProfile = asRecord(deploymentProfiles[environment]) || {};
+    const candidateInputs = [
+      environmentProfile.smokeTestInput,
+      environmentProfile.testInput,
+      environmentProfile.validationInput,
+      sourcePayload.smokeTestInput,
+      sourcePayload.testInput,
+      sourcePayload.validationInput,
+    ];
+
+    for (const candidate of candidateInputs) {
+      const record = asRecord(candidate);
+      if (record && Object.keys(record).length > 0) {
+        return record;
+      }
+    }
+
+    return undefined;
   }
 
   private inferTemporalParamType(
@@ -4193,20 +4407,20 @@ ${logs.join('\n')}
       }
     }
 
-    const semanticHint = `${String(fieldName || '')} ${String(description || '')}`.toLowerCase();
-    if (/(currency|curr|币种|货币)/.test(semanticHint)) {
+    const semanticHint = this.buildSemanticHint(fieldName, description);
+    if (/\b(currency|curr)\b|币种|货币/.test(semanticHint)) {
       return 'string';
     }
-    if (/(period|month|months|月数|期数|时长|duration)/.test(semanticHint)) {
+    if (/\b(period|month|months|duration)\b|月数|期数|时长/.test(semanticHint)) {
       return 'number';
     }
-    if (/日期|时间|date|time/i.test(description)) {
+    if (/日期|时间|\b(date|time)\b/.test(semanticHint)) {
       return 'date';
     }
-    if (/数量|金额|number|count|price|age/i.test(description)) {
+    if (/数量|金额|\b(number|count|price|age)\b/.test(semanticHint)) {
       return 'number';
     }
-    if (/是否|true|false|开关|启用/i.test(description)) {
+    if (/是否|开关|启用|\b(true|false)\b/.test(semanticHint)) {
       return 'boolean';
     }
     return 'string';
@@ -4221,17 +4435,29 @@ ${logs.join('\n')}
       return undefined;
     }
 
-    const hint = `${normalized} ${String(fieldName || '').trim().toLowerCase()}`;
-    if (/(date|time|datetime|timestamp)/.test(hint)) {
+    const hint = this.buildSemanticHint(normalized, fieldName);
+    if (/\b(date|time|datetime|timestamp)\b/.test(hint)) {
       return 'date';
     }
-    if (/(bool|boolean)/.test(hint)) {
+    if (/\b(bool|boolean)\b/.test(hint)) {
       return 'boolean';
     }
-    if (/(number|int|integer|float|double|decimal|amount|price|count|qty|quantity|ratio|percent)/.test(hint)) {
+    if (/\b(number|int|integer|float|double|decimal|amount|price|count|qty|quantity|ratio|percent)\b/.test(hint)) {
       return 'number';
     }
     return 'string';
+  }
+
+  private buildSemanticHint(...values: unknown[]): string {
+    return values
+      .filter((value) => value !== undefined && value !== null)
+      .map((value) => String(value)
+        .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+        .replace(/[^a-zA-Z0-9\u4e00-\u9fa5]+/g, ' ')
+        .trim()
+        .toLowerCase())
+      .filter((value) => value.length > 0)
+      .join(' ');
   }
 
   private buildTemporalExecutionFlowKeys(
@@ -4463,6 +4689,10 @@ ${logs.join('\n')}
     const matchSummary = this.buildSkillMatchSummary(payload, baseName, expectedResult);
     const paramCollectionGuidance = this.buildParamCollectionGuidance(paramsSchema || {});
     const validationRules = this.buildValidationRules(payload);
+    const preservedRuntimeMetadata = this.extractRuntimeMetadataFromDraftPayload(payload);
+    const temporalRuntimeMetadata = release.sourceType === 'temporal_workflow'
+      ? this.hydrateTemporalRuntimeMetadata(preservedRuntimeMetadata, workflowDsl)
+      : preservedRuntimeMetadata;
 
     const finalDescription = description.length > 500 ? description.slice(0, 497) + '...' : description;
 
@@ -4511,6 +4741,7 @@ ${logs.join('\n')}
     }
 
     if (release.sourceType === 'execution_flow_template') {
+      const preservedOutputParams = asRecord(preservedRuntimeMetadata.outputParams);
       return {
         name: baseName.replace(/流程$/, ''),
         description: finalDescription,
@@ -4520,46 +4751,117 @@ ${logs.join('\n')}
         tools: ['skill_match', 'flow_execute'],
         apiEndpoints: {
           runtimeMetadata: {
+            ...preservedRuntimeMetadata,
             sourceType: 'execution_flow_template',
-            sourceTemplate: this.extractExecutionFlowSourceTemplate(payload),
-            goal: typeof payload.goal === 'string' ? payload.goal : undefined,
-            expectedResult,
-            outputParams: resolvedOutputParams || {},
-            matchSummary,
-            paramCollectionGuidance,
-            validationRules,
+            sourceTemplate:
+              asRecord(preservedRuntimeMetadata.sourceTemplate)
+              || this.extractExecutionFlowSourceTemplate(payload),
+            goal: this.pickFirstNonEmptyString(payload.goal, preservedRuntimeMetadata.goal),
+            expectedResult: this.pickFirstNonEmptyString(expectedResult, preservedRuntimeMetadata.expectedResult),
+            outputParams: resolvedOutputParams || preservedOutputParams || {},
+            matchSummary: this.pickFirstNonEmptyString(preservedRuntimeMetadata.matchSummary, matchSummary),
+            paramCollectionGuidance: this.pickFirstNonEmptyString(
+              preservedRuntimeMetadata.paramCollectionGuidance,
+              paramCollectionGuidance,
+            ),
+            validationRules: this.pickFirstNonEmptyString(
+              preservedRuntimeMetadata.validationRules,
+              validationRules,
+            ),
           },
         },
         validationId: validation.id,
       };
     }
 
+    const preservedOutputParams = asRecord(preservedRuntimeMetadata.outputParams);
     return {
       name: baseName.replace(/工作流$/, ''),
       description: finalDescription,
       triggerKeywords: executionFlowKeys.length > 0 ? executionFlowKeys : [baseName],
       paramsSchema: paramsSchema || { properties: {}, required: [] },
-      executionFlowTemplateIds: [],
+      executionFlowTemplateIds: release.sourceId ? [release.sourceId] : [],
       tools: ['skill_match', 'flow_execute'],
       apiEndpoints: {
         runtimeMetadata: {
-          matchSummary,
-          paramCollectionGuidance,
-          validationRules,
-          sourceType: 'temporal_workflow',
-          sourceTemplate: this.extractTemporalSourceTemplate(
-            this.parseJson(payload.workflowDsl) as Record<string, unknown> || {},
-            this.parseJson(payload.activityDsl) as Record<string, unknown> || {},
+          ...temporalRuntimeMetadata,
+          matchSummary: this.pickFirstNonEmptyString(temporalRuntimeMetadata.matchSummary, matchSummary),
+          paramCollectionGuidance: this.pickFirstNonEmptyString(
+            temporalRuntimeMetadata.paramCollectionGuidance,
+            paramCollectionGuidance,
           ),
-          goal: typeof payload.goal === 'string' ? payload.goal : undefined,
-          expectedResult,
-          outputParams: resolvedOutputParams || {},
-          taskQueue: typeof payload.taskQueue === 'string' ? payload.taskQueue : undefined,
+          validationRules: this.pickFirstNonEmptyString(
+            temporalRuntimeMetadata.validationRules,
+            validationRules,
+          ),
+          sourceType: 'temporal_workflow',
+          sourceTemplate:
+            asRecord(temporalRuntimeMetadata.sourceTemplate)
+            || this.extractTemporalSourceTemplate(
+              this.parseJson(payload.workflowDsl) as Record<string, unknown> || {},
+              this.parseJson(payload.activityDsl) as Record<string, unknown> || {},
+            ),
+          goal: this.pickFirstNonEmptyString(payload.goal, temporalRuntimeMetadata.goal),
+          expectedResult: this.pickFirstNonEmptyString(expectedResult, temporalRuntimeMetadata.expectedResult),
+          outputParams: resolvedOutputParams || preservedOutputParams || {},
+          taskQueue: this.pickFirstNonEmptyString(payload.taskQueue, temporalRuntimeMetadata.taskQueue),
           workflowSteps,
         },
       },
       validationId: validation.id,
     };
+  }
+
+  private hydrateTemporalRuntimeMetadata(
+    runtimeMetadata: Record<string, unknown>,
+    workflowDsl: Record<string, unknown>,
+  ): Record<string, unknown> {
+    const workflowInputPolicy = this.extractTemporalWorkflowInputPolicy(workflowDsl);
+    const mappingHints = this.buildTemporalWorkflowMappingHints(workflowDsl, workflowInputPolicy);
+
+    return {
+      ...runtimeMetadata,
+      ...(asRecord(runtimeMetadata.workflowInputPolicy)
+        ? {}
+        : workflowInputPolicy
+          ? { workflowInputPolicy }
+          : {}),
+      ...(Array.isArray(runtimeMetadata.mappingHints) && runtimeMetadata.mappingHints.length > 0
+        ? {}
+        : mappingHints.length > 0
+          ? { mappingHints }
+          : {}),
+    };
+  }
+
+  private buildTemporalWorkflowMappingHints(
+    workflowDsl: Record<string, unknown>,
+    workflowInputPolicy?: Record<string, unknown>,
+  ): Array<Record<string, string>> {
+    const inputParams = this.parseJson<Record<string, unknown>>(workflowDsl.inputParams) || {};
+    const workflowInputPolicies = asRecord(workflowInputPolicy?.params) || {};
+
+    return Object.entries(inputParams).flatMap(([key, value]) => {
+      const definition = asRecord(value) || {};
+      const workflowPolicy = asRecord(workflowInputPolicies[key]) || {};
+      const renderPath = this.resolveTemporalWorkflowRenderPath(definition, workflowPolicy);
+      const renderPaths = typeof renderPath === 'string'
+        ? [renderPath]
+        : Array.isArray(renderPath)
+          ? renderPath
+          : [];
+
+      return renderPaths.map((path) => ({
+        parameter: key,
+        path,
+      }));
+    });
+  }
+
+  private extractRuntimeMetadataFromDraftPayload(
+    payload: Record<string, unknown>,
+  ): Record<string, unknown> {
+    return asRecord(asRecord(payload.apiEndpoints)?.runtimeMetadata) || {};
   }
 
   private extractTemporalSourceTemplate(

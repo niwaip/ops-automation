@@ -110,9 +110,9 @@ export class SkillMatchTool extends BaseTool {
       const flowTemplateId = matchResult.executionFlowTemplateId
         || matchResult.executionFlowTemplateIds?.[0];
 
-      // 定义预编译执行流 (Fast-track)
+      // 文档技能统一收敛为最终渲染步骤，参数识别与补参由主链路负责
       if (matchResult.carboneSkillId) {
-        matchResult.executionFlow = ['generate_parameters', 'document_render'];
+        matchResult.executionFlow = ['document_render'];
       }
 
       // 更新context中的skill信息
@@ -152,20 +152,6 @@ export class SkillMatchTool extends BaseTool {
         result.data!.hasFlowTemplate = true;
         result.data!.flowTemplateId = flowTemplateId;
       }
-      // 如果有Carbone配置，提示下一步
-      else if (matchResult.carboneSkillId) {
-        outputMsg += `\n此技能已配置Carbone AI参数生成，下一步请调用 generate_parameters 工具。
-Carbone Skill ID: ${matchResult.carboneSkillId}
-Carbone Template ID: ${matchResult.carboneTemplateId || '无'}
-调用参数: {"skillId": "${matchResult.carboneSkillId}", "description": "${userInput}"}`;
-        result.nextAction = 'generate_parameters';
-        result.nextActionParams = {
-          skillId: matchResult.carboneSkillId,
-          description: userInput,
-        };
-        result.data!.useCarbone = true;
-      }
-
       return result;
     } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';

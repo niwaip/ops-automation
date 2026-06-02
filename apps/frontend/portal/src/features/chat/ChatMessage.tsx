@@ -234,6 +234,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
   const rawContent = isStreaming && streamingContent ? streamingContent : message.content;
   const isWaitingInput = isTaskMode && message.metadata?.taskStatus === 'waiting_input';
   const isPendingApproval = isTaskMode && message.metadata?.taskStatus === 'pending_approval';
+  const isFailed = isTaskMode && message.metadata?.taskStatus === 'failed';
   const finalResult = message.metadata?.finalResult?.trim();
   const finalResultData = message.metadata?.finalResultData;
   const finalSummary = message.metadata?.finalSummary?.trim();
@@ -247,6 +248,10 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
   const showThinking = message.metadata?.showThinking !== false;
   const isRunning = isTaskMode && message.metadata?.taskStatus === 'running';
   const showRunningState = isTaskMode && (isRunning || (Boolean(isStreaming) && !isWaitingInput && !isPendingApproval && !errorMessage));
+  const shouldShowErrorCard = Boolean(
+    errorMessage
+    && (isFailed || (!isWaitingInput && !isPendingApproval && !showRunningState)),
+  );
   const missingInputs = useMemo(
     () => dedupeWaitingInputDisplayFields(
       ((message.metadata?.missingInputs || []) as WaitingInputField[]).filter((item) => item?.missing !== false),
@@ -555,7 +560,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
       </div>
     );
 
-    if (errorMessage) {
+    if (shouldShowErrorCard) {
       return (
         <div className="chat-outcome-card error">
           <div className="chat-outcome-title">任务失败</div>

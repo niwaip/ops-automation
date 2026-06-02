@@ -82,6 +82,29 @@ export interface StepAnalysis {
   suggestion?: string;
 }
 
+export type WorkflowParamRequiredMode =
+  | 'always'
+  | 'conditional'
+  | 'optional'
+  | 'system_required';
+
+export interface WorkflowParamPolicy {
+  enabled?: boolean;
+  requiredMode?: WorkflowParamRequiredMode;
+  defaultValue?: unknown;
+  defaultValueResolver?: string;
+  valueSourcePriority?: string[];
+  confirmationThreshold?: number;
+  previewBlocking?: boolean;
+  validationRules?: Array<Record<string, unknown>>;
+  transformRule?: string;
+  templateBinding?: string;
+}
+
+export interface WorkflowInputPolicy {
+  params: Record<string, WorkflowParamPolicy>;
+}
+
 /**
  * 流程模板 DTO
  */
@@ -92,6 +115,7 @@ export interface ExecutionFlowTemplateDTO {
   goal?: string;             // 流程目标 - 指导AI验证和宏工具生成
   expectedResult?: string;   // 预期结果 - 指导AI验证
   paramsSchema?: Record<string, any>;  // 参数定义 - 可选，指导AI验证参数完整性
+  inputPolicy?: WorkflowInputPolicy;
   category: string;
   steps: ExecutionFlowStep[];
   executionFlowKeys: string[];
@@ -113,6 +137,7 @@ export interface CreateExecutionFlowTemplateDTO {
   goal?: string;             // 流程目标
   expectedResult?: string;   // 预期结果
   paramsSchema?: Record<string, any>;  // 参数定义
+  inputPolicy?: WorkflowInputPolicy;
   category?: string;
   steps: ExecutionFlowStep[];
   executionFlowKeys?: string[];
@@ -129,6 +154,7 @@ export interface UpdateExecutionFlowTemplateDTO {
   goal?: string;
   expectedResult?: string;
   paramsSchema?: Record<string, any>;
+  inputPolicy?: WorkflowInputPolicy;
   category?: string;
   steps?: ExecutionFlowStep[];
   executionFlowKeys?: string[];

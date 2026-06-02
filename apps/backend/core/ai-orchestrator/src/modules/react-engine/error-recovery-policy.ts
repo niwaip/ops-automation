@@ -81,7 +81,6 @@ export function classifyToolResultError(result?: ToolResult): ErrorCategory | un
     'execution_error',
     'api_error',
     'template_fetch_failed',
-    'document_intake_failed',
     'render_error',
   ].includes(code)) {
     return 'tool_runtime_error';
@@ -162,14 +161,6 @@ export function decideRecoveryAction(
     return {
       type: 'wait_user_input',
       message: result.userInputPrompt || result.output,
-    };
-  }
-
-  if (toolName === 'document_render' && shouldTriggerDocumentParamRecover(result)) {
-    return {
-      type: 'next_action',
-      action: 'document_param_recover',
-      observationSuffix: '已进入参数恢复流程（仅修复参数，不切换模板）。',
     };
   }
 

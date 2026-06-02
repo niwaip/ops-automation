@@ -35,6 +35,41 @@ function variableToKey(variable) {
   return variable.replace(/^\{d\./, "").replace(/\}$/, "");
 }
 
+function asRecord(value) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : undefined;
+}
+
+function buildParamMetadataMap(skill) {
+  const schema = asRecord(skill?.paramsSchema) || {};
+  const properties = asRecord(schema.properties) || {};
+  const requiredKeys = new Set(Array.isArray(schema.required) ? schema.required.filter((item) => typeof item === "string") : []);
+  return Object.entries(properties).reduce((acc, [key, value]) => {
+    const definition = asRecord(value) || {};
+    acc[key] = {
+      displayName: typeof definition.displayName === "string" ? definition.displayName.trim() : "",
+      description: typeof definition.description === "string" ? definition.description.trim() : "",
+      groupLabel: typeof definition.groupLabel === "string" ? definition.groupLabel.trim() : "",
+      type: typeof definition.type === "string" ? definition.type.trim() : "",
+      paramKind: typeof definition.paramKind === "string" ? definition.paramKind.trim() : "",
+      required: definition.required === true || requiredKeys.has(key),
+      defaultValue: definition.defaultValue !== undefined ? definition.defaultValue : definition.default,
+    };
+    return acc;
+  }, {});
+}
+
+function buildFieldName(key) {
+  if (typeof key !== "string" || !key.trim()) {
+    return "";
+  }
+  const arrayFieldMatch = key.match(/^(.*)\[\]\.(.+)$/);
+  if (arrayFieldMatch) {
+    return arrayFieldMatch[2];
+  }
+  const segments = key.split(".");
+  return segments[segments.length - 1] || key;
+}
+
 async function requestJson(url, options = {}) {
   const res = await fetch(url, options);
   const text = await res.text();
@@ -65,6 +100,13 @@ async function main() {
   };
 
   const template = await requestJson(`${CARBONE_BASE}/studio/templates/${TEMPLATE_ID}`);
+  const skill = template.skillId
+    ? await requestJson(`${AUTH_BASE}/skills/${template.skillId}`, {
+        method: "GET",
+        headers: authHeaders,
+      }).catch(() => null)
+    : null;
+  const paramMetadataMap = buildParamMetadataMap(skill);
   const vars = uniqueVars(template.variables || []);
   const short = slugFromTemplate(TEMPLATE_ID);
 
@@ -72,11 +114,25 @@ async function main() {
   const workflowName = `保密协议模板-${short}-工作流`;
   const fnName = toFnName(`render_${short}_nda_doc`);
 
-  const inputParamsArray = vars.map((v) => ({
-    key: variableToKey(v),
-    value: "",
-    required: true,
-  }));
+  const inputParamsArray = vars.map((v) => {
+    const key = variableToKey(v);
+    const metadata = paramMetadataMap[key] || {};
+    const fieldName = buildFieldName(key);
+    const arrayPath = key.includes("[].") ? `${key.split("[].")[0]}[]` : "";
+    return {
+      key,
+      value: metadata.defaultValue !== undefined ? metadata.defaultValue : "",
+      required: typeof metadata.required === "boolean" ? metadata.required : true,
+      displayName: metadata.displayName || metadata.description || fieldName || key,
+      description: metadata.description || `模板变量 ${key}`,
+      groupLabel: metadata.groupLabel || "",
+      fieldName,
+      arrayPath,
+      paramKind: metadata.paramKind || (arrayPath ? "array" : "scalar"),
+      type: metadata.type || "string",
+      renderPath: key,
+    };
+  });
 
   const stepConfig = {
     templateId: TEMPLATE_ID,
@@ -125,10 +181,32 @@ async function main() {
   for (const item of inputParamsArray) {
     workflowInputParams[item.key] = {
       required: item.required,
-      defaultValue: "",
-      description: `模板变量 ${item.key}`,
+      defaultValue: item.value,
+      description: item.description,
+      displayName: item.displayName,
+      groupLabel: item.groupLabel,
+      paramKind: item.paramKind,
+      arrayPath: item.arrayPath,
+      fieldName: item.fieldName,
+      type: item.type,
+      renderPath: item.renderPath,
     };
   }
+
+  const workflowInputPolicy = {
+    params: inputParamsArray.reduce((acc, item) => {
+      const policy = {
+        enabled: true,
+        requiredMode: item.required ? "always" : "optional",
+        templateBinding: item.renderPath,
+      };
+      if (item.value !== undefined && item.value !== "") {
+        policy.defaultValue = item.value;
+      }
+      acc[item.key] = policy;
+      return acc;
+    }, {}),
+  };
 
   const workflowPayload = {
     name: workflowName,
@@ -140,6 +218,7 @@ async function main() {
       workflowDefnName: workflowName,
       taskQueue: "SKILL_TASK_QUEUE",
       inputParams: workflowInputParams,
+      inputPolicy: workflowInputPolicy,
       outputParams: {
         result: {
           description: "文档渲染结果",
@@ -171,14 +250,14 @@ async function main() {
     },
   };
 
-  const allWorkflows = await requestJson(`${AUTH_BASE}/temporal-workflow`, {
+  const allWorkflows = await requestJson(`${AUTH_BASE}/temporal`, {
     method: "GET",
     headers: authHeaders,
   });
 
   let workflow = allWorkflows.find((w) => w.name === workflowName);
   if (!workflow) {
-    workflow = await requestJson(`${AUTH_BASE}/temporal-workflow`, {
+    workflow = await requestJson(`${AUTH_BASE}/temporal`, {
       method: "POST",
       headers: authHeaders,
       body: JSON.stringify(workflowPayload),
@@ -189,7 +268,7 @@ async function main() {
     method: "GET",
     headers: authHeaders,
   });
-  const verifyWorkflows = await requestJson(`${AUTH_BASE}/temporal-workflow`, {
+  const verifyWorkflows = await requestJson(`${AUTH_BASE}/temporal`, {
     method: "GET",
     headers: authHeaders,
   });

@@ -591,11 +591,6 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
 
     return (
       <Space direction="vertical" size="small">
-        {endpoints.generateParameters && (
-          <Tag color="green" icon={<RocketOutlined />}>
-            AI生成参数: {endpoints.generateParameters.url}
-          </Tag>
-        )}
         {endpoints.render && (
           <Tag color="blue" icon={<ApiOutlined />}>
             文档渲染: {endpoints.render.url}

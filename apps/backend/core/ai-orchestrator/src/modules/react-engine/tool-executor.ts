@@ -505,7 +505,7 @@ export class ToolExecutor implements OnModuleInit {
       };
     }
 
-    if (['param_collect', 'document_intake', 'generate_parameters', 'document_render', 'document_param_recover', 'flow_execute'].includes(toolName)) {
+    if (['param_collect', 'document_render', 'flow_execute'].includes(toolName)) {
       this.bindSkillContext(params, context);
     }
 

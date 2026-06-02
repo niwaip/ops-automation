@@ -109,6 +109,30 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
     expect(units?.value).toBe('metric');
     expect(units?.missing).toBe(false);
     expect(units?.source).toBe('default');
+    expect(plan.metadata?.execution_snapshot).toEqual({
+      normalizedInputJson: {
+        input: {
+          units: 'metric',
+        },
+        paramResolution: {
+          target: expect.objectContaining({
+            value: null,
+            source: 'unresolved',
+            required: true,
+            missing: true,
+            confirmed: false,
+          }),
+          units: expect.objectContaining({
+            value: 'metric',
+            source: 'default',
+            required: false,
+            missing: false,
+            confirmed: true,
+          }),
+        },
+        requiredInputs: expect.any(Array),
+      },
+    });
 
     const collectStep = draft.steps.find((s) => s.kind === 'human_input');
     expect(collectStep).toBeDefined();
@@ -129,6 +153,126 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
         }),
       }),
     );
+  });
+
+  it('prefers workflow input policy over deprecated schema strategy fields', async () => {
+    const skill: AvailableSkillDefinition = {
+      skillId: 'document-contract',
+      skillName: 'documentContractService',
+      description: 'Generate contract document',
+      triggerKeywords: ['合同'],
+      paramsSchema: {
+        properties: {
+          target: {
+            type: 'string',
+            description: '合同主体',
+            required: true,
+            default: 'schema-target',
+            previewBlocking: true,
+            confirmationThreshold: 0.2,
+          } as any,
+          notes: {
+            type: 'string',
+            description: '备注',
+            default: 'schema-notes',
+          } as any,
+        },
+        required: ['target'],
+      },
+      templateId: 'tpl-contract',
+      carboneTemplateId: undefined,
+      carboneSkillId: undefined,
+      executionFlowTemplateIds: ['flow-1'],
+      executionFlow: ['document_render'],
+      apiEndpoints: {
+        runtimeMetadata: {
+          sourceType: 'document',
+          workflowInputPolicy: {
+            params: {
+              target: {
+                enabled: true,
+                requiredMode: 'optional',
+                defaultValue: 'workflow-target',
+                valueSourcePriority: ['user_input', 'workflow_default'],
+                confirmationThreshold: 0.95,
+                previewBlocking: false,
+              },
+              notes: {
+                enabled: false,
+              },
+            },
+          },
+        },
+      } as any,
+      goal: 'Generate contract',
+      expectedResult: 'Completed contract document',
+      outputParams: undefined,
+    };
+
+    const match: SkillMatchResult = {
+      skillId: skill.skillId,
+      skillName: skill.skillName,
+      matchedKeywords: ['合同'],
+      confidence: 0.9,
+      collectedParams: {},
+      missingParams: [],
+      paramsSchema: skill.paramsSchema,
+      templateId: skill.templateId,
+      carboneTemplateId: skill.carboneTemplateId,
+      carboneSkillId: skill.carboneSkillId,
+      executionFlowTemplateIds: skill.executionFlowTemplateIds,
+      executionFlow: skill.executionFlow,
+      apiEndpoints: skill.apiEndpoints,
+      matchReason: 'test',
+      goal: skill.goal,
+      expectedResult: skill.expectedResult,
+      outputParams: skill.outputParams,
+    };
+
+    jest.spyOn(service as any, 'loadAvailableSkills').mockResolvedValue([skill] as AvailableSkillDefinition[]);
+    const hydratedMatch = (service as any).hydrateMatchedSkill(match, [skill]);
+    jest.spyOn(service as any, 'matchSkill').mockResolvedValue(hydratedMatch);
+    jest.spyOn(recognizerService, 'recognizeParams').mockResolvedValue({
+      params: {},
+      confidence: 0.9,
+    });
+
+    const plan = await service.generatePlan({
+      request: { user_input: '帮我生成合同', user_id: 'u1', modelId: 'selected-model-id' } as any,
+      userId: 'u1',
+      authToken: 'Bearer test',
+      traceId: 'trace-1',
+    });
+
+    const target = plan.required_inputs.find((item) => item.name === 'target');
+    expect(target).toEqual(expect.objectContaining({
+      required: false,
+      required_mode: 'optional',
+      value: 'workflow-target',
+      source: 'workflow_default',
+      source_priority: ['user_input', 'workflow_default'],
+      missing: false,
+      confirmation_threshold: 0.95,
+      preview_blocking: false,
+    }));
+    expect(plan.required_inputs.some((item) => item.name === 'notes')).toBe(false);
+    expect(plan.metadata?.execution_snapshot).toEqual({
+      normalizedInputJson: expect.objectContaining({
+        input: {
+          target: 'workflow-target',
+        },
+        paramResolution: {
+          target: expect.objectContaining({
+            source: 'workflow_default',
+            required: false,
+            requiredMode: 'optional',
+            valueSourcePriority: ['user_input', 'workflow_default'],
+            final: true,
+          }),
+        },
+        requiredInputs: expect.any(Array),
+      }),
+    });
   });
 
   it('does not treat empty placeholder defaults as meaningful optional values', async () => {
@@ -215,6 +359,94 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
     expect(signDate?.missing).toBe(false);
   });
 
+  it('keeps required fields unresolved even if deprecated auto-fill context is present', async () => {
+    const skill: AvailableSkillDefinition = {
+      skillId: 'skill-contract',
+      skillName: 'contractService',
+      description: 'Generate contract',
+      triggerKeywords: ['合同'],
+      paramsSchema: {
+        properties: {
+          partyA: {
+            type: 'string',
+            description: '甲方名称',
+            required: true,
+          } as any,
+          amount: {
+            type: 'number',
+            description: '合同金额',
+            required: true,
+          } as any,
+        },
+        required: ['partyA', 'amount'],
+      },
+      templateId: 'tpl-contract',
+      carboneTemplateId: 'tpl-contract',
+      carboneSkillId: 'carbone-contract',
+      executionFlowTemplateIds: [],
+      executionFlow: ['document_render'],
+      apiEndpoints: {
+        runtimeMetadata: {
+          sourceType: 'document',
+        },
+      } as any,
+      goal: 'Generate contract',
+      expectedResult: 'Contract document',
+      outputParams: undefined,
+    };
+
+    const match: SkillMatchResult = {
+      skillId: skill.skillId,
+      skillName: skill.skillName,
+      matchedKeywords: ['合同'],
+      confidence: 0.95,
+      collectedParams: {},
+      missingParams: ['partyA', 'amount'],
+      paramsSchema: skill.paramsSchema,
+      templateId: skill.templateId,
+      carboneTemplateId: skill.carboneTemplateId,
+      carboneSkillId: skill.carboneSkillId,
+      executionFlowTemplateIds: skill.executionFlowTemplateIds,
+      executionFlow: skill.executionFlow,
+      apiEndpoints: skill.apiEndpoints,
+      matchReason: 'test',
+      goal: skill.goal,
+      expectedResult: skill.expectedResult,
+      outputParams: undefined,
+    };
+
+    jest.spyOn(service as any, 'loadAvailableSkills').mockResolvedValue([skill] as AvailableSkillDefinition[]);
+    jest.spyOn(service as any, 'matchSkill').mockResolvedValue(match);
+    jest.spyOn(recognizerService, 'recognizeParams').mockResolvedValue({
+      params: {},
+      confidence: 0.9,
+    });
+
+    const plan = await service.generatePlan({
+      request: {
+        user_input: '直接端对端生成合同',
+        user_id: 'u1',
+        modelId: 'selected-model-id',
+        context: {
+          auto_fill_missing_required: true,
+        },
+      } as any,
+      userId: 'u1',
+      authToken: 'Bearer test',
+      traceId: 'trace-deprecated-autofill',
+    });
+
+    const partyA = plan.required_inputs.find((item) => item.name === 'partyA');
+    const amount = plan.required_inputs.find((item) => item.name === 'amount');
+
+    expect(partyA?.value).toBeUndefined();
+    expect(partyA?.missing).toBe(true);
+    expect(partyA?.source).toBe('unresolved');
+    expect(amount?.value).toBeUndefined();
+    expect(amount?.missing).toBe(true);
+    expect(amount?.source).toBe('unresolved');
+  });
+
   it('locks waiting_input resume to the provided target skill instead of re-matching skills', async () => {
     const skills: AvailableSkillDefinition[] = [
       {
@@ -236,7 +468,7 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
         carboneTemplateId: 'tpl-contract',
         carboneSkillId: 'carbone-contract',
         executionFlowTemplateIds: [],
-        executionFlow: ['generate_parameters', 'document_render'],
+        executionFlow: ['document_render'],
         apiEndpoints: {
           runtimeMetadata: {
             sourceType: 'document',
@@ -265,7 +497,7 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
         carboneTemplateId: undefined,
         carboneSkillId: undefined,
         executionFlowTemplateIds: [],
-        executionFlow: ['generate_parameters'],
+        executionFlow: ['document_render'],
         apiEndpoints: undefined,
         goal: 'Generate invoice',
         expectedResult: 'Invoice data',
@@ -292,6 +524,276 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
       confidence: 1,
     });
     expect(matched?.paramsSchema.required).toEqual(['info.partyA']);
+  });
+
+  it('merges already collected waiting_input params with the latest recognition result', async () => {
+    const skill: AvailableSkillDefinition = {
+      skillId: 'skill-contract',
+      skillName: 'contractService',
+      description: 'Generate contract',
+      triggerKeywords: ['合同'],
+      paramsSchema: {
+        properties: {
+          'info.partyA': {
+            type: 'string',
+            description: '甲方名称',
+            required: true,
+          } as any,
+          signDate: {
+            type: 'date',
+            description: '签署日期',
+            required: true,
+          } as any,
+        },
+        required: ['info.partyA', 'signDate'],
+      },
+      templateId: 'tpl-contract',
+      carboneTemplateId: 'tpl-contract',
+      carboneSkillId: 'carbone-contract',
+      executionFlowTemplateIds: [],
+      executionFlow: ['document_render'],
+      apiEndpoints: {
+        runtimeMetadata: {
+          sourceType: 'document',
+        },
+      } as any,
+      goal: 'Generate contract',
+      expectedResult: 'Contract document',
+      outputParams: undefined,
+    };
+
+    const match: SkillMatchResult = {
+      skillId: skill.skillId,
+      skillName: skill.skillName,
+      matchedKeywords: ['合同'],
+      confidence: 0.95,
+      collectedParams: {},
+      missingParams: ['signDate'],
+      paramsSchema: skill.paramsSchema,
+      templateId: skill.templateId,
+      carboneTemplateId: skill.carboneTemplateId,
+      carboneSkillId: skill.carboneSkillId,
+      executionFlowTemplateIds: [],
+      executionFlow: skill.executionFlow,
+      apiEndpoints: skill.apiEndpoints,
+      matchReason: 'test',
+      goal: skill.goal,
+      expectedResult: skill.expectedResult,
+      outputParams: undefined,
+    };
+
+    jest.spyOn(service as any, 'loadAvailableSkills').mockResolvedValue([skill] as AvailableSkillDefinition[]);
+    jest.spyOn(service as any, 'matchSkill').mockResolvedValue(match);
+    jest.spyOn(recognizerService, 'recognizeParams').mockResolvedValue({
+      params: {
+        signDate: '2026-06-01',
+      },
+      confidence: 0.92,
+    });
+
+    const plan = await service.generatePlan({
+      request: {
+        user_input: '签署日期改成2026-06-01',
+        user_id: 'u1',
+        modelId: 'selected-model-id',
+        context: {
+          mode: 'waiting_input_resume',
+          target_skill_id: 'skill-contract',
+          missing_inputs: ['signDate'],
+          already_collected: {
+            'info.partyA': '星海智造科技有限公司',
+          },
+        },
+      } as any,
+      userId: 'u1',
+      authToken: 'Bearer test',
+      traceId: 'trace-1',
+    });
+
+    const partyA = plan.required_inputs.find((i) => i.name === 'info.partyA');
+    const signDate = plan.required_inputs.find((i) => i.name === 'signDate');
+
+    expect(partyA?.value).toBe('星海智造科技有限公司');
+    expect(partyA?.missing).toBe(false);
+    expect(partyA?.confidence).toBe(1);
+    expect(signDate?.value).toBe('2026-06-01');
+    expect(signDate?.missing).toBe(false);
+    expect(plan.steps.some((step) => step.kind === 'human_input')).toBe(false);
+    expect(recognizerService.recognizeParams).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params_schema: {
+          properties: {
+            'info.partyA': expect.any(Object),
+            signDate: expect.any(Object),
+          },
+          required: ['signDate'],
+        },
+      }),
+    );
+  });
+
+  it('completes multi-turn parameter collection end-to-end across first turn and resume turn', async () => {
+    const skill: AvailableSkillDefinition = {
+      skillId: 'skill-contract',
+      skillName: 'contractService',
+      description: 'Generate contract',
+      triggerKeywords: ['合同'],
+      paramsSchema: {
+        properties: {
+          'info.partyA': {
+            type: 'string',
+            description: '甲方名称',
+            required: true,
+          } as any,
+          signDate: {
+            type: 'date',
+            description: '签署日期',
+            required: true,
+          } as any,
+          amount: {
+            type: 'number',
+            description: '合同总金额',
+          } as any,
+        },
+        required: ['info.partyA', 'signDate'],
+      },
+      templateId: 'tpl-contract',
+      carboneTemplateId: 'tpl-contract',
+      carboneSkillId: 'carbone-contract',
+      executionFlowTemplateIds: [],
+      executionFlow: ['document_render'],
+      apiEndpoints: {
+        runtimeMetadata: {
+          sourceType: 'document',
+        },
+      } as any,
+      goal: 'Generate contract',
+      expectedResult: 'Contract document',
+      outputParams: undefined,
+    };
+
+    const match: SkillMatchResult = {
+      skillId: skill.skillId,
+      skillName: skill.skillName,
+      matchedKeywords: ['合同'],
+      confidence: 0.95,
+      collectedParams: {},
+      missingParams: ['info.partyA', 'signDate'],
+      paramsSchema: skill.paramsSchema,
+      templateId: skill.templateId,
+      carboneTemplateId: skill.carboneTemplateId,
+      carboneSkillId: skill.carboneSkillId,
+      executionFlowTemplateIds: [],
+      executionFlow: skill.executionFlow,
+      apiEndpoints: skill.apiEndpoints,
+      matchReason: 'test',
+      goal: skill.goal,
+      expectedResult: skill.expectedResult,
+      outputParams: undefined,
+    };
+
+    jest.spyOn(service as any, 'loadAvailableSkills').mockResolvedValue([skill] as AvailableSkillDefinition[]);
+    jest.spyOn(service as any, 'matchSkill').mockResolvedValue(match);
+    jest.spyOn(recognizerService, 'recognizeParams')
+      .mockResolvedValueOnce({
+        params: {
+          'info.partyA': '星海智造科技有限公司',
+        },
+        confidence: 0.93,
+      })
+      .mockResolvedValueOnce({
+        params: {
+          signDate: '2026-06-01',
+        },
+        confidence: 0.94,
+      });
+
+    const firstPlan = await service.generatePlan({
+      request: {
+        user_input: '生成合同，甲方是星海智造科技有限公司',
+        user_id: 'u1',
+        modelId: 'selected-model-id',
+      } as any,
+      userId: 'u1',
+      authToken: 'Bearer test',
+      traceId: 'trace-1',
+    });
+
+    const firstPartyA = firstPlan.required_inputs.find((i) => i.name === 'info.partyA');
+    const firstSignDate = firstPlan.required_inputs.find((i) => i.name === 'signDate');
+    expect(firstPartyA?.value).toBe('星海智造科技有限公司');
+    expect(firstPartyA?.missing).toBe(false);
+    expect(firstSignDate?.missing).toBe(true);
+    expect(firstPlan.steps.some((step) => step.kind === 'human_input')).toBe(true);
+
+    const secondPlan = await service.generatePlan({
+      request: {
+        user_input: '签署日期是2026-06-01',
+        user_id: 'u1',
+        modelId: 'selected-model-id',
+        context: {
+          mode: 'waiting_input_resume',
+          target_skill_id: 'skill-contract',
+          original_objective: '生成合同，甲方是星海智造科技有限公司',
+          missing_inputs: ['signDate'],
+          already_collected: {
+            'info.partyA': firstPartyA?.value,
+          },
+        },
+      } as any,
+      userId: 'u1',
+      authToken: 'Bearer test',
+      traceId: 'trace-1',
+    });
+
+    const secondPartyA = secondPlan.required_inputs.find((i) => i.name === 'info.partyA');
+    const secondSignDate = secondPlan.required_inputs.find((i) => i.name === 'signDate');
+    expect(secondPartyA?.value).toBe('星海智造科技有限公司');
+    expect(secondPartyA?.missing).toBe(false);
+    expect(secondSignDate?.value).toBe('2026-06-01');
+    expect(secondSignDate?.missing).toBe(false);
+    expect(secondPlan.steps.some((step) => step.kind === 'human_input')).toBe(false);
+    expect(secondPlan.metadata?.execution_snapshot).toEqual({
+      normalizedInputJson: {
+        input: {
+          'info.partyA': '星海智造科技有限公司',
+          signDate: '2026-06-01',
+        },
+        paramResolution: {
+          'info.partyA': expect.objectContaining({
+            value: '星海智造科技有限公司',
+            source: 'user_input',
+            required: true,
+            missing: false,
+            confirmed: true,
+          }),
+          signDate: expect.objectContaining({
+            value: '2026-06-01',
+            source: 'user_input',
+            required: true,
+            missing: false,
+            confirmed: true,
+          }),
+          amount: expect.objectContaining({
+            value: null,
+            source: 'unresolved',
+            required: false,
+            missing: false,
+            confirmed: true,
+          }),
+        },
+        requiredInputs: expect.any(Array),
+        semantic: expect.objectContaining({
+          finalReady: true,
+        }),
+      },
+    });
+
+    const firstRecognizeCall = recognizerService.recognizeParams.mock.calls[0]?.[0];
+    const secondRecognizeCall = recognizerService.recognizeParams.mock.calls[1]?.[0];
+    expect(Object.keys(firstRecognizeCall.params_schema.properties)).toEqual(['info.partyA', 'signDate', 'amount']);
+    expect(Object.keys(secondRecognizeCall.params_schema.properties)).toEqual(['signDate', 'info.partyA']);
+    expect(secondRecognizeCall.params_schema.required).toEqual(['signDate']);
   });
 
   it('does not treat placeholder-like recognized strings as meaningful filled inputs', async () => {
@@ -976,7 +1478,7 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
       carboneTemplateId: 'carbone-tpl-1',
       carboneSkillId: 'carbone-skill-1',
       executionFlowTemplateIds: ['flow-1'],
-      executionFlow: ['generate_parameters', 'document_render'],
+      executionFlow: ['document_render'],
       apiEndpoints: {
         runtimeMetadata: {
           sourceType: 'document',
@@ -1083,7 +1585,7 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
       carboneTemplateId: 'carbone-tpl-en',
       carboneSkillId: 'carbone-skill-en',
       executionFlowTemplateIds: ['flow-en'],
-      executionFlow: ['generate_parameters', 'document_render'],
+      executionFlow: ['document_render'],
       apiEndpoints: {
         runtimeMetadata: {
           sourceType: 'document',
@@ -1247,6 +1749,7 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
             extractionHints: ['付款节点金额', '每期应付金额'],
             displayName: '付款金额',
             groupLabel: '付款计划',
+            renderPath: 'payment.schedule.amount',
             previewBlocking: false,
             confirmationThreshold: 0.82,
           } as any,
@@ -1257,10 +1760,17 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
       carboneTemplateId: 'carbone-tpl-1',
       carboneSkillId: 'carbone-skill-1',
       executionFlowTemplateIds: ['flow-1'],
-      executionFlow: ['generate_parameters', 'document_render'],
+      executionFlow: ['document_render'],
       apiEndpoints: {
         runtimeMetadata: {
           sourceType: 'document',
+          workflowInputPolicy: {
+            params: {
+              'paymentSchedule[].amount': {
+                templateBinding: 'contract.payment.amount',
+              },
+            },
+          },
         },
       } as any,
       goal: 'Generate contract',
@@ -1295,7 +1805,7 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
       confidence: 0.9,
     });
 
-    await service.generatePlan({
+    const plan = await service.generatePlan({
       request: { user_input: '帮我生成采购合同', user_id: 'u1', modelId: 'selected-model-id' } as any,
       userId: 'u1',
       authToken: 'Bearer test',
@@ -1319,6 +1829,115 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
         },
       }),
     );
+    const amountResolution = (plan.metadata?.execution_snapshot as any)?.normalizedInputJson?.paramResolution?.['paymentSchedule[].amount'];
+    expect(amountResolution).toEqual(expect.objectContaining({
+      display_name: '付款金额',
+      group_label: '付款计划',
+      render_path: 'payment.schedule.amount',
+      template_binding: 'contract.payment.amount',
+    }));
+    expect(amountResolution?.displayName).toBeUndefined();
+    expect(amountResolution?.groupLabel).toBeUndefined();
+    expect(amountResolution?.previewBlocking).toBeUndefined();
+  });
+
+  it('hydrates render paths from runtime mapping hints before building execution snapshot', async () => {
+    const skill: AvailableSkillDefinition = {
+      skillId: 'document-contract-hydrated',
+      skillName: 'documentContractHydratedService',
+      description: 'Generate contract document with runtime mapping hints',
+      triggerKeywords: ['合同'],
+      paramsSchema: {
+        properties: {
+          'contract.partyA': {
+            type: 'string',
+            description: '甲方名称',
+            required: true,
+          } as any,
+          'payment.bankAccount': {
+            type: 'string',
+            description: '收款账号',
+            required: true,
+          } as any,
+        },
+        required: ['contract.partyA', 'payment.bankAccount'],
+      },
+      templateId: 'tpl-contract-hydrated',
+      carboneTemplateId: 'carbone-tpl-hydrated',
+      carboneSkillId: 'carbone-skill-hydrated',
+      executionFlowTemplateIds: ['flow-hydrated'],
+      executionFlow: ['document_render'],
+      apiEndpoints: {
+        runtimeMetadata: {
+          sourceType: 'document',
+          mappingHints: [
+            { parameter: 'contract.partyA_cn', path: '{d.contract.partyA_cn}' },
+            { parameter: 'contract.partyA_jp', path: '{d.contract.partyA_jp}' },
+            { parameter: 'payment.bankAccount_cn', path: '{d.payment.bankAccount_cn}' },
+          ],
+        },
+      } as any,
+      goal: 'Generate contract',
+      expectedResult: 'Completed contract document',
+      outputParams: undefined,
+    };
+
+    const match: SkillMatchResult = {
+      skillId: skill.skillId,
+      skillName: skill.skillName,
+      matchedKeywords: ['合同'],
+      confidence: 0.96,
+      collectedParams: {},
+      missingParams: [],
+      paramsSchema: skill.paramsSchema,
+      templateId: skill.templateId,
+      carboneTemplateId: skill.carboneTemplateId,
+      carboneSkillId: skill.carboneSkillId,
+      executionFlowTemplateIds: skill.executionFlowTemplateIds,
+      executionFlow: skill.executionFlow,
+      apiEndpoints: skill.apiEndpoints,
+      matchReason: 'test',
+      goal: skill.goal,
+      expectedResult: skill.expectedResult,
+      outputParams: undefined,
+    };
+
+    jest.spyOn(service as any, 'loadAvailableSkills').mockResolvedValue([skill] as AvailableSkillDefinition[]);
+    const hydratedMatch = (service as any).hydrateMatchedSkill(match, [skill]);
+    jest.spyOn(service as any, 'matchSkill').mockResolvedValue(hydratedMatch);
+    jest.spyOn(recognizerService, 'recognizeParams').mockResolvedValue({
+      params: {
+        'contract.partyA': '甲方科技有限公司',
+        'payment.bankAccount': '789456123012',
+      },
+      confidence: 0.95,
+      field_confidences: {
+        'contract.partyA': 0.98,
+        'payment.bankAccount': 0.96,
+      },
+    });
+
+    const plan = await service.generatePlan({
+      request: { user_input: '帮我生成技术服务合同', user_id: 'u1', modelId: 'selected-model-id' } as any,
+      userId: 'u1',
+      authToken: 'Bearer test',
+      traceId: 'trace-1',
+    });
+
+    expect(hydratedMatch.paramsSchema.properties['contract.partyA']).toEqual(expect.objectContaining({
+      renderPath: ['contract.partyA_cn', 'contract.partyA_jp'],
+    }));
+    const paramResolution = (plan.metadata?.execution_snapshot as any)?.normalizedInputJson?.paramResolution || {};
+    expect(paramResolution['contract.partyA']).toEqual(expect.objectContaining({
+      render_path: ['contract.partyA_cn', 'contract.partyA_jp'],
+      final: true,
+      value: '甲方科技有限公司',
+    }));
+    expect(paramResolution['payment.bankAccount']).toEqual(expect.objectContaining({
+      render_path: 'payment.bankAccount_cn',
+      final: true,
+      value: '789456123012',
+    }));
   });
 
   it('loads only the targeted skill when target_skill_id is provided', async () => {
@@ -1346,7 +1965,7 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
               },
             },
             executionFlowTemplateIds: [],
-            executionFlow: ['generate_parameters', 'document_render'],
+            executionFlow: ['document_render'],
             goal: 'Generate contract',
             expectedResult: 'Contract document',
           },
@@ -1389,7 +2008,7 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
     expect(axiosPost).not.toHaveBeenCalled();
   });
 
-  it('caches available skills and linked flow schemas within the same planner instance', async () => {
+  it('caches available skills within the same planner instance without loading linked flow schemas', async () => {
     const axiosGet = jest.spyOn(axios, 'get').mockImplementation(async (url: string) => {
       if (url.endsWith('/skills')) {
         return {
@@ -1421,22 +2040,6 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
           },
         } as any;
       }
-      if (url.endsWith('/flows/flow-1')) {
-        return {
-          data: {
-            paramsSchema: {
-              properties: {
-                'paymentSchedule[].amount': {
-                  type: 'number',
-                  description: '付款金额',
-                  required: true,
-                },
-              },
-              required: ['paymentSchedule[].amount'],
-            },
-          },
-        } as any;
-      }
       throw new Error(`Unexpected GET ${url}`);
     });
 
@@ -1445,12 +2048,10 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
 
     expect(first).toHaveLength(1);
     expect(second).toHaveLength(1);
-    expect(first[0].paramsSchema.required).toEqual(
-      expect.arrayContaining(['subject', 'paymentSchedule[].amount']),
-    );
-    expect(axiosGet).toHaveBeenCalledTimes(2);
+    expect(first[0].paramsSchema.required).toEqual(['subject']);
+    expect(axiosGet).toHaveBeenCalledTimes(1);
     expect(axiosGet.mock.calls.filter(([url]) => String(url).endsWith('/skills'))).toHaveLength(1);
-    expect(axiosGet.mock.calls.filter(([url]) => String(url).endsWith('/flows/flow-1'))).toHaveLength(1);
+    expect(axiosGet.mock.calls.filter(([url]) => String(url).endsWith('/flows/flow-1'))).toHaveLength(0);
   });
 
   it('hydrates API match results with local skill execution metadata when the match payload is sparse', async () => {
@@ -1475,7 +2076,7 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
         carboneTemplateId: 'carbone-tpl-1',
         carboneSkillId: 'carbone-skill-1',
         executionFlowTemplateIds: ['flow-1'],
-        executionFlow: ['generate_parameters', 'document_render'],
+        executionFlow: ['document_render'],
         apiEndpoints: {
           runtimeMetadata: {
             sourceType: 'document',
@@ -1515,30 +2116,20 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
     expect(matched).toMatchObject({
       skillId: 'document-contract',
       executionType: 'document',
-      executionFlow: ['generate_parameters', 'document_render'],
+      executionFlow: ['document_render'],
       carboneTemplateId: 'carbone-tpl-1',
     });
     expect(matched?.paramsSchema.required).toEqual(['subject']);
   });
 
-  it('merges required inputs from linked execution flow template schema without hardcoding', () => {
-    const merged = (service as any).mergeParamsSchemas(
+  it('normalizes skill params schema without introducing linked flow fields', () => {
+    const normalized = (service as any).normalizeParamsSchema(
       {
         properties: {
           target: {
             type: 'string',
             description: '目标对象',
             required: false,
-          },
-        },
-        required: [],
-      },
-      {
-        properties: {
-          target: {
-            type: 'string',
-            description: '目标对象标识',
-            required: true,
           },
           units: {
             type: 'string',
@@ -1547,15 +2138,15 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
             default: 'metric',
           },
         },
-        required: ['target'],
+        required: [],
       },
     );
 
-    expect(merged.required).toEqual(['target']);
-    expect(merged.properties.target.required).toBe(true);
-    expect(merged.properties.target.description).toBe('目标对象');
-    expect(merged.properties.units.required).toBe(false);
-    expect(merged.properties.units.default).toBe('metric');
+    expect(normalized.required).toEqual([]);
+    expect(normalized.properties.target.required).toBe(false);
+    expect(normalized.properties.target.description).toBe('目标对象');
+    expect(normalized.properties.units.required).toBe(false);
+    expect(normalized.properties.units.default).toBe('metric');
   });
 
   it('adds semantic grouping and removes loop markers for complex document plans', async () => {
@@ -1604,7 +2195,7 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
       carboneTemplateId: 'carbone-tpl-1',
       carboneSkillId: 'carbone-skill-1',
       executionFlowTemplateIds: ['flow-1'],
-      executionFlow: ['generate_parameters', 'document_render'],
+      executionFlow: ['document_render'],
       apiEndpoints: {
         runtimeMetadata: {
           sourceType: 'document',
@@ -1866,7 +2457,7 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
       carboneTemplateId: 'carbone-tpl-1',
       carboneSkillId: 'carbone-skill-1',
       executionFlowTemplateIds: ['flow-1'],
-      executionFlow: ['generate_parameters', 'document_render'],
+      executionFlow: ['document_render'],
       apiEndpoints: {
         runtimeMetadata: {
           sourceType: 'document',
@@ -1962,7 +2553,7 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
       carboneTemplateId: 'carbone-tpl-1',
       carboneSkillId: 'carbone-skill-1',
       executionFlowTemplateIds: ['flow-1'],
-      executionFlow: ['generate_parameters', 'document_render'],
+      executionFlow: ['document_render'],
       apiEndpoints: {
         runtimeMetadata: {
           sourceType: 'document',
@@ -2047,7 +2638,7 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
       carboneTemplateId: 'carbone-tpl-1',
       carboneSkillId: 'carbone-skill-1',
       executionFlowTemplateIds: ['flow-1'],
-      executionFlow: ['generate_parameters', 'document_render'],
+      executionFlow: ['document_render'],
       apiEndpoints: {
         runtimeMetadata: {
           sourceType: 'document',
@@ -2094,5 +2685,85 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
 
     const partyA = plan.required_inputs.find((item) => item.name === 'info.partyA');
     expect(partyA?.display_name).toBe('采购方（甲方）名称');
+  });
+
+  it('strips purpose-oriented boilerplate from waiting input labels', async () => {
+    const skill: AvailableSkillDefinition = {
+      skillId: 'tech-service-contract',
+      skillName: 'techServiceContractService',
+      description: 'Generate tech service contract',
+      triggerKeywords: ['技术服务合同'],
+      paramsSchema: {
+        properties: {
+          delegated_party_name: {
+            type: 'string',
+            description: '用于渲染合同文本中的委托方名称占位符',
+            required: true,
+            displayName: 'delegated_party_name',
+            groupLabel: '合同首页',
+          } as any,
+          final_payment_ratio: {
+            type: 'number',
+            description: '用于渲染尾款占总价的比例',
+            required: true,
+            groupLabel: '付款安排',
+          } as any,
+        },
+        required: ['delegated_party_name', 'final_payment_ratio'],
+      },
+      templateId: 'tpl-tech-service',
+      carboneTemplateId: 'carbone-tech-service',
+      carboneSkillId: 'carbone-skill-tech-service',
+      executionFlowTemplateIds: ['flow-tech-service'],
+      executionFlow: ['document_render'],
+      apiEndpoints: {
+        runtimeMetadata: {
+          sourceType: 'document',
+        },
+      } as any,
+      goal: 'Generate contract',
+      expectedResult: 'Completed contract document',
+      outputParams: undefined,
+    };
+
+    const match: SkillMatchResult = {
+      skillId: skill.skillId,
+      skillName: skill.skillName,
+      matchedKeywords: ['技术服务合同'],
+      confidence: 0.95,
+      collectedParams: {},
+      missingParams: ['delegated_party_name', 'final_payment_ratio'],
+      paramsSchema: skill.paramsSchema,
+      templateId: skill.templateId,
+      carboneTemplateId: skill.carboneTemplateId,
+      carboneSkillId: skill.carboneSkillId,
+      executionFlowTemplateIds: skill.executionFlowTemplateIds,
+      executionFlow: skill.executionFlow,
+      apiEndpoints: skill.apiEndpoints,
+      matchReason: 'test',
+      goal: skill.goal,
+      expectedResult: skill.expectedResult,
+      outputParams: undefined,
+    };
+
+    jest.spyOn(service as any, 'loadAvailableSkills').mockResolvedValue([skill] as AvailableSkillDefinition[]);
+    jest.spyOn(service as any, 'matchSkill').mockResolvedValue(match);
+    jest.spyOn(recognizerService, 'recognizeParams').mockResolvedValue({
+      params: {},
+      confidence: 0.9,
+    });
+
+    const plan = await service.generatePlan({
+      request: { user_input: '帮我生成技术服务合同', user_id: 'u1', modelId: 'selected-model-id' } as any,
+      userId: 'u1',
+      authToken: 'Bearer test',
+      traceId: 'trace-1',
+    });
+
+    const delegatedParty = plan.required_inputs.find((item) => item.name === 'delegated_party_name');
+    const finalPaymentRatio = plan.required_inputs.find((item) => item.name === 'final_payment_ratio');
+
+    expect(delegatedParty?.display_name).toBe('委托方名称');
+    expect(finalPaymentRatio?.display_name).toBe('尾款占总价的比例');
   });
 });

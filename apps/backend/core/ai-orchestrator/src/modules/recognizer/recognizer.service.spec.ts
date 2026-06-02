@@ -187,7 +187,11 @@ describe('RecognizerService model routing', () => {
     const request = requestedClient.chatCompletion.mock.calls[0]?.[0];
     const systemPrompt = [request?.assembly?.staticSystem, request?.assembly?.skillContext].filter(Boolean).join('\n\n');
     expect(systemPrompt).toContain('禁止根据常见业务惯例');
-    expect(systemPrompt).toContain('uncertain_fields');
+    expect(systemPrompt).toContain('不要为了让任务继续执行而伪造占位值');
+    expect(systemPrompt).toContain('缺失字段交由后续多轮问询补齐');
+    expect(systemPrompt).toContain('不要把 is、are、in bilingual layout');
+    expect(systemPrompt).toContain('顶层只保留本轮新识别或被用户明确修正的参数键值');
+    expect(systemPrompt).toContain('不要输出 params、confidence、field_confidences、uncertain_fields');
     expect(result.field_confidences).toEqual({
       amount: 0.41,
     });
@@ -246,6 +250,110 @@ describe('RecognizerService model routing', () => {
     });
   });
 
+  it('flattens nested object and object-array outputs into schema-compatible parameter keys', async () => {
+    const requestedModelId = 'requested-model-id';
+    const requestedClient = {
+      chatCompletion: jest.fn().mockResolvedValue({
+        content: JSON.stringify({
+          contract: {
+            contractNo_cn: 'TSC-2026-0528-001',
+            signingDate: '2026-05-28',
+            partyA: {
+              name_cn: '甲方科技有限公司',
+            },
+          },
+          payment: {
+            bankAccount_cn: '789456123012',
+          },
+          items: [
+            {
+              productName_cn: '系统开发服务',
+              quantity: 1,
+            },
+            {
+              productName_cn: '驻场运维服务',
+              quantity: 2,
+            },
+          ],
+          field_confidences: {
+            contract: {
+              contractNo_cn: 0.97,
+              signingDate: 0.96,
+              partyA: {
+                name_cn: 0.95,
+              },
+            },
+            payment: {
+              bankAccount_cn: 0.91,
+            },
+            items: [
+              {
+                productName_cn: 0.87,
+                quantity: 0.85,
+              },
+              {
+                productName_cn: 0.86,
+                quantity: 0.84,
+              },
+            ],
+          },
+          uncertain_fields: [
+            'contract.contractNo_cn',
+            'items[].quantity',
+          ],
+          confidence: 0.93,
+        }),
+        usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+      }),
+    };
+
+    service.registerTemplate({
+      template_id: 'nested-contract-template',
+      name: 'Nested Contract Template',
+      params_schema: {
+        properties: {
+          'contract.contractNo_cn': { type: 'string', description: '合同编号中文' },
+          'contract.signingDate': { type: 'date', description: '签署日期' },
+          'contract.partyA.name_cn': { type: 'string', description: '甲方名称中文' },
+          'payment.bankAccount_cn': { type: 'string', description: '收款账号中文' },
+          'items[].productName_cn': { type: 'array', description: '服务项目名称中文' },
+          'items[].quantity': { type: 'array', description: '数量' },
+        },
+      },
+    });
+
+    modelService.resolveModelId.mockResolvedValue(requestedModelId);
+    modelService.getClient.mockImplementation((id: string) => (id === requestedModelId ? requestedClient : null));
+    modelService.getDefaultModel.mockReturnValue({ id: 'default-model-id' });
+
+    const result = await service.recognizeParams({
+      template_id: 'nested-contract-template',
+      user_input: '生成技术服务合同，包含两项服务。',
+      modelId: requestedModelId,
+    });
+
+    expect(result.params).toEqual({
+      'contract.contractNo_cn': 'TSC-2026-0528-001',
+      'contract.signingDate': '2026-05-28',
+      'contract.partyA.name_cn': '甲方科技有限公司',
+      'payment.bankAccount_cn': '789456123012',
+      'items[].productName_cn': ['系统开发服务', '驻场运维服务'],
+      'items[].quantity': [1, 2],
+    });
+    expect(result.field_confidences).toEqual({
+      'contract.contractNo_cn': 0.97,
+      'contract.signingDate': 0.96,
+      'contract.partyA.name_cn': 0.95,
+      'payment.bankAccount_cn': 0.91,
+      'items[].productName_cn': 0.87,
+      'items[].quantity': 0.85,
+    });
+    expect(result.uncertain_fields).toEqual([
+      'contract.contractNo_cn',
+      'items[].quantity',
+    ]);
+  });
+
   it('builds structured waiting_input resume prompt context without duplicated field list', () => {
     const prompt = buildPromptAssembly({
       templateName: 'contract-template',
@@ -278,6 +386,8 @@ describe('RecognizerService model routing', () => {
     expect(prompt).toContain('[当前仍缺失字段]');
     expect(prompt).toContain('partyA、signDate');
     expect(prompt).toContain('[已确认参数]');
+    expect(prompt).toContain('[本轮输出要求]');
+    expect(prompt).toContain('不要重复返回已确认参数');
     expect(prompt).toContain('partyB = XYZ科技');
     expect(prompt).toContain('amount = 500000');
     expect(prompt).not.toContain('Extract the following parameters');
@@ -315,6 +425,33 @@ describe('RecognizerService model routing', () => {
     expect(prompt).not.toContain('notes: string - 备注 (默认值: )');
     expect(prompt).not.toContain('signDate: date - 签订日期 (默认值: )');
     expect(prompt).toContain('timeout: number - 超时时间 (默认值: 30)');
+  });
+
+  it('adds multi-turn document guidance to avoid placeholder fills for missing contract fields', () => {
+    const prompt = buildPromptAssembly({
+      templateName: 'Tech Service Contract',
+      dto: {
+        template_id: 'tech-service-contract',
+        user_input: '直接端对端生成技术服务合同',
+      },
+      properties: {
+        'contract.partyA': {
+          type: 'string',
+          description: '甲方名称',
+          required: true,
+        },
+      },
+      guideContext: {
+        mode: 'document_skill',
+        templateOverview: '技术服务合同',
+      },
+      normalizePromptDefaultValue,
+    });
+
+    expect(prompt.staticSystem).toContain('不要为了让任务继续执行而伪造占位值');
+    expect(prompt.staticSystem).toContain('缺失字段交由后续多轮问询补齐');
+    expect(prompt.dynamicUser).toContain('如果关键字段缺失、只有低置信度候选值、或数组行信息不完整');
+    expect(prompt.dynamicUser).toContain('让系统在下一轮继续追问');
   });
 
   it('keeps promptCacheKey stable across different user turns for the same schema', () => {

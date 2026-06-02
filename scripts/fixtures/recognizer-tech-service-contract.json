@@ -1,0 +1,119 @@
+{
+  "templateName": "技术服务合同",
+  "description": "用于生成标准技术服务合同，关注甲乙双方、项目名称、服务内容、服务期限、费用与签署信息。",
+  "userInput": "请生成一份完整的技术服务合同。甲方是上海链合智能科技有限公司，乙方是杭州云策软件有限公司，项目名称是企业知识库升级项目，服务内容包括系统部署、接口开发、人员培训，服务周期从2026-06-01到2026-12-31，合同总金额50万元，签约日期2026-05-28。",
+  "paramsSchema": {
+    "properties": {
+      "partyA.name": {
+        "type": "string",
+        "description": "甲方公司名称",
+        "extractionPrompt": "识别委托方或甲方主体全称",
+        "semanticRole": "company_name",
+        "extractionHints": ["甲方", "委托方", "采购方"]
+      },
+      "partyB.name": {
+        "type": "string",
+        "description": "乙方公司名称",
+        "extractionPrompt": "识别服务提供方或乙方主体全称",
+        "semanticRole": "company_name",
+        "extractionHints": ["乙方", "服务方", "供应商"]
+      },
+      "contract.projectName": {
+        "type": "string",
+        "description": "项目名称",
+        "extractionPrompt": "识别合同对应的项目、系统或建设事项名称",
+        "semanticRole": "project_name",
+        "extractionHints": ["项目名称", "项目", "系统名称"]
+      },
+      "service.scope": {
+        "type": "string",
+        "description": "服务范围或服务内容",
+        "extractionPrompt": "提取服务内容的完整描述，可保留并列项",
+        "semanticRole": "service_scope",
+        "extractionHints": ["服务内容", "服务范围", "工作内容"]
+      },
+      "service.startDate": {
+        "type": "date",
+        "description": "服务开始日期",
+        "extractionPrompt": "识别服务开始日期并格式化为 YYYY-MM-DD",
+        "semanticRole": "start_date",
+        "extractionHints": ["开始日期", "服务周期开始", "起始日期"]
+      },
+      "service.endDate": {
+        "type": "date",
+        "description": "服务结束日期",
+        "extractionPrompt": "识别服务结束日期并格式化为 YYYY-MM-DD",
+        "semanticRole": "end_date",
+        "extractionHints": ["结束日期", "服务周期结束", "截止日期"]
+      },
+      "payment.totalAmount": {
+        "type": "number",
+        "description": "合同总金额",
+        "extractionPrompt": "识别合同总金额，可从万元/元表达换算为数值",
+        "semanticRole": "money_amount",
+        "extractionHints": ["合同总金额", "总价", "总费用"]
+      },
+      "contract.signDate": {
+        "type": "date",
+        "description": "合同签订日期",
+        "extractionPrompt": "识别签约或签订日期并格式化为 YYYY-MM-DD",
+        "semanticRole": "sign_date",
+        "extractionHints": ["签约日期", "签订日期", "签署日期"]
+      }
+    },
+    "required": [
+      "partyA.name",
+      "partyB.name",
+      "contract.projectName",
+      "service.scope",
+      "service.startDate",
+      "service.endDate",
+      "payment.totalAmount",
+      "contract.signDate"
+    ]
+  },
+  "guideContext": {
+    "mode": "document_skill",
+    "templateOverview": "技术服务合同模板，覆盖项目背景、服务内容、费用支付、验收与违约责任等条款。",
+    "paramCollectionGuidance": "优先提取合同主体、项目名称、服务范围、服务期限、签约日期和总金额；对于服务内容可保留原句，不要自行拆分成多个字段。",
+    "guideMarkdown": "## 模板用途\n本模板用于企业软件系统实施、集成开发与技术支持类服务合同。\n\n## 关键条款\n1. 甲乙双方主体信息必须准确。\n2. 项目名称需要与立项或采购事项一致。\n3. 服务内容通常包括部署、开发、培训、运维支持等。\n4. 服务期限通常表现为开始日期与结束日期。\n5. 合同金额应优先提取总金额。\n6. 签订日期用于落款。\n\n## 输出要求\n请使用扁平字段键名，不要输出模板变量语法。",
+    "validationRules": "日期统一为 YYYY-MM-DD；金额输出为纯数字，不带单位。",
+    "outputExample": {
+      "partyA": {
+        "name": "上海链合智能科技有限公司"
+      },
+      "partyB": {
+        "name": "杭州云策软件有限公司"
+      },
+      "contract": {
+        "projectName": "企业知识库升级项目",
+        "signDate": "2026-05-28"
+      },
+      "service": {
+        "scope": "系统部署、接口开发、人员培训",
+        "startDate": "2026-06-01",
+        "endDate": "2026-12-31"
+      },
+      "payment": {
+        "totalAmount": 500000
+      }
+    },
+    "extractionHints": [
+      "partyA.name -> 识别甲方主体全称",
+      "partyB.name -> 识别乙方主体全称",
+      "payment.totalAmount -> 优先输出纯数字金额"
+    ]
+  },
+  "expected": {
+    "params": {
+      "partyA.name": "上海链合智能科技有限公司",
+      "partyB.name": "杭州云策软件有限公司",
+      "contract.projectName": "企业知识库升级项目",
+      "service.scope": "系统部署、接口开发、人员培训",
+      "service.startDate": "2026-06-01",
+      "service.endDate": "2026-12-31",
+      "payment.totalAmount": 500000,
+      "contract.signDate": "2026-05-28"
+    }
+  }
+}

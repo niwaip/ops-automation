@@ -48,7 +48,12 @@ function buildStaticContractSection(): string {
     '规则：只提取当前输入中明确提供、或能从当前输入直接定位依据的值。',
     '禁止根据常见业务惯例、行业默认值、模板示例、历史经验或通常应该如此来脑补任何参数。',
     '如果缺少依据，请省略该字段，不要猜。',
-    '返回 JSON，格式包含 params、confidence、field_confidences、uncertain_fields。',
+    '不要为了让任务继续执行而伪造占位值，例如（待补充）、（未记入）、N/A、TBD、0、空数组、空对象。',
+    '如果用户要求“直接生成”“端对端”“不要追问”，但当前输入仍缺少关键字段，仍然只返回已确认字段；缺失字段交由后续多轮问询补齐。',
+    '抽取英文或混合语言句子时，只保留字段本身的值，不要把 is、are、in bilingual layout、contract、please generate 等说明性残句带入字段值。',
+    '返回 JSON 对象，顶层只保留本轮新识别或被用户明确修正的参数键值。',
+    '不要输出 params、confidence、field_confidences、uncertain_fields、notes、explanation。',
+    '如果本轮没有新增或修正任何参数，返回空对象 {}。',
   ].join('\n');
 }
 
@@ -122,6 +127,12 @@ function buildDynamicUserContextSection(
     if (collected) {
       sections.push(`[已确认参数]\n${collected}`);
     }
+    sections.push([
+      '[本轮输出要求]',
+      '优先只返回当前仍缺失字段在本轮用户输入中新增确认的值。',
+      '不要重复返回已确认参数；如果用户本轮明确纠正了已确认参数，可以返回该字段以覆盖旧值。',
+      '最终只返回字段键值 JSON，不要附加解释。',
+    ].join('\n'));
   } else if (context) {
     const lines = Object.entries(context)
       .filter(([, value]) => value !== undefined && value !== null && value !== '')
@@ -136,6 +147,7 @@ function buildDynamicUserContextSection(
     sections.push([
       '注意：如果是文档模板，请结合文档概述、参数用途和示例结构理解业务语义，但最终返回仍必须使用扁平字段键名。',
       '注意：禁止把 Carbone 模板变量语法（如 {d.xxx}、{#...}、{/...}）写进 JSON key；key 必须与 paramsSchema 中的字段路径完全一致，且不应包含 { 或 }。',
+      '注意：如果关键字段缺失、只有低置信度候选值、或数组行信息不完整，请不要硬补占位值；只返回当前可确认字段，让系统在下一轮继续追问。',
     ].join('\n'));
   }
   return sections.join('\n\n');

@@ -27,6 +27,31 @@ interface RetryableAxiosRequestConfig extends InternalAxiosRequestConfig {
   _retry?: boolean;
 }
 
+const extractErrorMessage = (error: AxiosError): string => {
+  const responseData = error.response?.data;
+  if (!responseData || typeof responseData !== 'object') {
+    return error.message;
+  }
+
+  const data = responseData as Record<string, unknown>;
+  if (typeof data.message === 'string' && data.message.trim()) {
+    return data.message.trim();
+  }
+  if (Array.isArray(data.message)) {
+    const firstMessage = data.message.find((item): item is string => (
+      typeof item === 'string' && item.trim().length > 0
+    ));
+    if (firstMessage) {
+      return firstMessage.trim();
+    }
+  }
+  if (typeof data.error === 'string' && data.error.trim()) {
+    return data.error.trim();
+  }
+
+  return error.message;
+};
+
 class ApiClient {
   private client: AxiosInstance;
   private refreshClient: AxiosInstance;
@@ -161,6 +186,19 @@ class ApiClient {
             originalRequest.headers = headers;
             return this.client(originalRequest);
           }
+        }
+
+        const normalizedMessage = extractErrorMessage(error);
+        if (normalizedMessage && normalizedMessage !== error.message) {
+          const enrichedError = new Error(normalizedMessage) as Error & {
+            cause?: unknown;
+            status?: number;
+            responseData?: unknown;
+          };
+          enrichedError.cause = error;
+          enrichedError.status = error.response?.status;
+          enrichedError.responseData = error.response?.data;
+          return Promise.reject(enrichedError);
         }
 
         return Promise.reject(error);

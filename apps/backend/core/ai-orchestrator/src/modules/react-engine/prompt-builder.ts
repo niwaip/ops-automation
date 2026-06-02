@@ -49,11 +49,8 @@ Final Answer: 最终回复
 - 优先从“当前用户可访问的技能”中选择最匹配的 skillId，再围绕该 skillId 进行参数补足和执行
 - 在任务模式下，禁止跳过技能直接调用通用外部 API；不要调用 \`api_call\`，也不要重新调用 \`skill_match\`
 - 当技能有必填参数但信息不足时，先调用 param_collect，不要直接猜测参数
-- 对文档生成类请求，优先调用 document_intake（模板选择 + 参数初稿），再调用 document_render
-- 若 document_intake 返回 requiresUserInput=true，先向用户澄清模板（回复 templateId/skillId）再继续
-- document_intake 支持传 templateId（report_templates.id）进行显式模板锁定
-- document_render 若失败且属于参数问题，只允许调用 document_param_recover 修复参数；不要切换模板
-- 当技能配置了 \`carboneSkillId\` 时，使用 generate_parameters，并传入平台 skillId
+- 对文档生成类请求，优先走技能主链路完成参数识别、补参和执行，不要调用 document_intake 或 generate_parameters
+- document_render 只在已经拿到最终确认参数时使用；不要把它当作参数识别入口
 - 当技能需要实际执行时，使用 flow_execute，并传入平台 skillId
 - 当 Observation 已经足够回答用户且任务完成时，必须输出 \`Final Answer:\`，不要输出普通正文
 - 如果工具返回requiresUserInput，则等待用户回复
@@ -163,8 +160,6 @@ export function buildSystemPromptSections(
     filteredTools = filteredTools.filter((t) => !t.category || t.category === 'discovery' || t.category === 'utility');
   } else if (skill.carboneSkillId) {
     filteredTools = filteredTools.filter((t) => t.name !== 'param_collect');
-  } else {
-    filteredTools = filteredTools.filter((t) => t.name !== 'generate_parameters');
   }
 
   const toolsDescription = filteredTools
@@ -184,7 +179,7 @@ export function buildSystemPromptSections(
 
   const skillsDescription = filteredSkills.length > 0
     ? filteredSkills.map((item) => {
-        const executionTool = item.carboneSkillId ? 'document_intake -> document_render' : 'flow_execute';
+        const executionTool = item.executionType === 'document' ? 'document_render' : 'flow_execute';
         const runtimeHints: string[] = [];
         if (item.goal) runtimeHints.push(`goal=${item.goal}`);
         if (item.expectedResult) runtimeHints.push(`expectedResult=${item.expectedResult}`);
@@ -289,15 +284,6 @@ Carbone Template ID: ${skill.carboneTemplateId || '无'}
 - 禁止把 Carbone 变量语法（如 {d.xxx}、{#...}、{/...}）写进 JSON key；key 必须为纯字段名，不包含 { 或 }。
 \n${guideParts.join('\n\n')}\n`;
       }
-    }
-
-    if (skill.carboneSkillId) {
-      activeSkillSection += `\n重要提示：此技能已配置Carbone文档能力，下一步优先调用 document_intake 工具，参数为:
-{
-  "skillId": "${skill.skillId}",
-  "userInput": "用户的完整描述内容"
-}
-若 document_intake 要求澄清模板，请先等待用户确认 templateId/skillId，再继续调用 document_render。`;
     }
 
     systemSections.push(createPromptSection('active_skill', 'Active Skill', activeSkillSection, 'matched_skill'));

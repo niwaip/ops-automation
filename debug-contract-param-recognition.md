@@ -1,26 +1,57 @@
-# Debug Session: contract-param-recognition
-- **Status**: [OPEN]
-- **Issue**: 创建技术服务合同时，用户已在自然语言中提供部分字段，但执行单仍提示“首次还是无法识别参数”，需要定位补充输入在端到端链路中的丢失点。
-- **Debug Server**: Pending
-- **Log File**: .dbg/trae-debug-log-contract-param-recognition.ndjson
+[OPEN] contract-param-recognition
 
-## Reproduction Steps
-1. 发起“创建技术服务合同”请求，并在首轮输入中提供“验收期限为30天，委托方名称为广州日产通商贸易有限公司”等字段。
-2. 等待工作流进入“等待输入”状态。
-3. 观察系统返回的待补充字段列表是否仍包含已在首轮提供的字段。
-4. 补充剩余字段后，再次观察是否仍无法识别参数。
+# Debug Session
 
-## Hypotheses & Verification
-| ID | Hypothesis | Likelihood | Effort | Evidence |
-|----|------------|------------|--------|----------|
-| A | 自然语言提取后的字段键名与模板工作流期望键名不一致，导致已识别值未命中必填字段 | High | Med | Pending |
-| B | 补充输入合并逻辑只保留当前轮次或覆盖已有值，导致首轮识别结果在进入校验前被清空 | High | Med | Pending |
-| C | “技术服务合同”模板的必填字段映射缺少同义词归一，如“验收期限”未映射到“验收期限天数” | High | Low | Pending |
-| D | 执行单恢复/等待输入状态回填时读取了旧上下文，最新消息未参与二次识别 | Med | Med | Pending |
-| E | 参数在编排层已存在，但 `template-workflow.service.ts` 或 DTO 转换阶段过滤掉了字段 | Med | Med | Pending |
+## User Request
+- 直接端对端
+- 用任务模式
+- 生成技术服务合同
+- 需要自然语言
+- 生成全部参数
+- 不写脚本，直接测试
+- 判断目前参数识别是不是有问题
 
-## Log Evidence
-[Pending]
+## Hypotheses
+1. 任务模式未命中“技术服务合同”模板或意图。
+2. 参数抽取阶段字段映射错误或层级不一致。
+3. 编排阶段覆盖或裁剪了已抽取参数。
+4. “生成全部参数”未触发参数补全策略。
+5. 任务模式入口与其他入口行为不一致。
 
-## Verification Conclusion
-[Pending]
+## Constraints
+- Steps 1-4 不修改业务逻辑。
+- 第一处代码变更仅允许加入取证日志。
+- 优先通过直接运行现有入口完成复现。
+
+## Reproduction
+- 登录：`POST http://127.0.0.1:3001/auth/login`
+- 任务入口：`POST http://127.0.0.1:3007/ai/chat`
+- 模式：`config.mode=task`
+- 输入：`.tmp/tech_service_natural_request.txt`
+
+## Runtime Evidence
+- 本次执行单：`66f72a19-839a-40a3-80fe-c07902a27110`
+- 最终状态：`succeeded`
+- 下载地址：`http://192.168.100.143:3009/studio/download/1faa9ec9-e472-439d-b99c-b5fabd948b72`
+- Temporal：`http://192.168.100.143:8088/namespaces/default/workflows/agent-session-activity-1780057141575-9zxph6`
+- planner 请求上下文包含 `auto_fill_missing_required: true`
+- 同次执行的 `normalizedInput.requiredInputs` 暴露识别错误：
+  - `contract.partyA` => `（待补充）`
+  - `items[].productName` => `["（待补充）"]`
+  - `items[].projectName` => `["（待补充）"]`
+  - `items[].maintenanceFee` => `[0]`
+  - `contract.serviceName` => `合同`
+  - `contract.partyB.representative` 错填成甲方代表内容
+  - `otherTerms.title` => `is Technical Service Contract / Technical Service Contract in Japanese bilingual layout.`
+  - 多个字段带入英文句子残片，如 `contract.partyA.name` / `contract.partyA.phone` / `contract.partyA.fax`
+
+## Hypothesis Status
+1. 任务模式未命中“技术服务合同”模板或意图。=> 否
+2. 参数抽取阶段字段映射错误或层级不一致。=> 是
+3. 编排阶段覆盖或裁剪了已抽取参数。=> 待进一步验证
+4. “生成全部参数”未触发参数补全策略。=> 否，本次有自动补齐兜底
+5. 任务模式入口与其他入口行为不一致。=> 高概率是
+
+## Interim Conclusion
+- 当前参数识别仍然有问题。
+- 本次 E2E 的“成功执行”不等于“识别正确”，更像是被自动补齐/兜底策略掩盖。

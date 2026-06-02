@@ -207,6 +207,78 @@ describe('CapabilityReleaseService', () => {
     }));
   });
 
+  it('prefers fixed source-level test input when building deploy smoke input', () => {
+    const { service } = createService();
+
+    const smokeInput = (service as any).buildSmokeTestInput(
+      {
+        sourceType: 'execution_flow_template',
+      },
+      {
+        sourcePayload: {
+          paramsSchema: {
+            required: ['contractNo', 'partyA'],
+            properties: {
+              contractNo: { type: 'string', required: true, description: '合同编号' },
+              partyA: { type: 'string', required: true, description: '甲方名称' },
+            },
+          },
+          testInput: {
+            contractNo: 'TSC-2026-0528-001',
+            partyA: '上海链合智能科技有限公司',
+          },
+        },
+      },
+      'staging',
+    );
+
+    expect(smokeInput).toEqual({
+      contractNo: 'TSC-2026-0528-001',
+      partyA: '上海链合智能科技有限公司',
+      smokeTest: true,
+      environment: 'staging',
+    });
+  });
+
+  it('prefers environment-specific fixed test input over global test input', () => {
+    const { service } = createService();
+
+    const smokeInput = (service as any).buildSmokeTestInput(
+      {
+        sourceType: 'execution_flow_template',
+      },
+      {
+        sourcePayload: {
+          paramsSchema: {
+            required: ['contractNo'],
+            properties: {
+              contractNo: { type: 'string', required: true, description: '合同编号' },
+            },
+          },
+          testInput: {
+            contractNo: 'GLOBAL-001',
+          },
+          deploymentProfiles: {
+            staging: {
+              testInput: {
+                contractNo: 'STAGING-001',
+                verificationMode: 'smoke',
+              },
+            },
+          },
+        },
+      },
+      'staging',
+    );
+
+    expect(smokeInput).toEqual({
+      contractNo: 'STAGING-001',
+      verificationMode: 'smoke',
+      smokeTest: true,
+      environment: 'staging',
+    });
+  });
+
   it('omits empty placeholder defaults from published temporal params schema', () => {
     const { service } = createService();
 
@@ -244,7 +316,7 @@ describe('CapabilityReleaseService', () => {
     );
   });
 
-  it('preserves temporal input presentation metadata for downstream planner semantics', () => {
+  it('keeps L1 presentation metadata in published temporal params schema without leaking policy fields', () => {
     const { service } = createService();
 
     const schema = (service as any).buildTemporalParamsSchema({
@@ -269,14 +341,518 @@ describe('CapabilityReleaseService', () => {
           type: 'number',
           displayName: '付款金额',
           groupLabel: '付款计划',
-          previewBlocking: false,
           semanticRole: 'payment_amount',
           extractionHints: ['付款节点金额', '每期应付金额'],
-          confirmationThreshold: 0.82,
         }),
       }),
       required: ['paymentSchedule[].amount'],
     });
+    expect(schema.properties['paymentSchedule[].amount']).toEqual(
+      expect.not.objectContaining({
+        previewBlocking: expect.anything(),
+      }),
+    );
+    expect(schema.properties['paymentSchedule[].amount']).toEqual(
+      expect.not.objectContaining({
+        confirmationThreshold: expect.anything(),
+      }),
+    );
+  });
+
+  it('preserves temporal renderPath metadata and falls back to inputPolicy templateBinding', () => {
+    const { service } = createService();
+
+    const schema = (service as any).buildTemporalParamsSchema({
+      inputParams: {
+        'contract.partyA': {
+          type: 'string',
+          description: '甲方名称',
+          required: true,
+          renderPath: ['contract.partyA_cn', 'contract.partyA_jp'],
+        },
+        'payment.bankAccount': {
+          type: 'string',
+          description: '收款账号',
+          required: true,
+        },
+      },
+      inputPolicy: {
+        params: {
+          'payment.bankAccount': {
+            templateBinding: 'payment.bankAccount_cn',
+          },
+        },
+      },
+    });
+
+    expect(schema).toEqual({
+      properties: expect.objectContaining({
+        'contract.partyA': expect.objectContaining({
+          renderPath: ['contract.partyA_cn', 'contract.partyA_jp'],
+        }),
+        'payment.bankAccount': expect.objectContaining({
+          renderPath: 'payment.bankAccount_cn',
+        }),
+      }),
+      required: ['contract.partyA', 'payment.bankAccount'],
+    });
+  });
+
+  it('derives temporal optional defaults from localizedDefaultValue when plain defaultValue is empty', () => {
+    const { service } = createService();
+
+    const schema = (service as any).buildTemporalParamsSchema({
+      inputParams: {
+        'contract.partyA': {
+          type: 'string',
+          description: '甲方名称',
+          required: false,
+          defaultValue: '',
+          localizedDefaultValue: {
+            cn: '阿',
+            jp: 'ashi',
+          },
+          renderPath: ['contract.partyA_cn', 'contract.partyA_jp'],
+        },
+      },
+      inputPolicy: {
+        params: {
+          'contract.partyA': {
+            requiredMode: 'optional',
+          },
+        },
+      },
+    });
+
+    expect(schema).toEqual({
+      properties: {
+        'contract.partyA': expect.objectContaining({
+          type: 'string',
+          renderPath: ['contract.partyA_cn', 'contract.partyA_jp'],
+          default: {
+            cn: '阿',
+            jp: 'ashi',
+          },
+        }),
+      },
+      required: [],
+    });
+  });
+
+  it('prefers workflow inputPolicy defaultValue when building temporal release params schema', () => {
+    const { service } = createService();
+
+    const schema = (service as any).buildTemporalParamsSchema({
+      inputParams: {
+        'contract.projectName': {
+          type: 'string',
+          description: '项目名称',
+          required: false,
+        },
+        'contract.signingDate': {
+          type: 'date',
+          description: '签署日期',
+          required: true,
+        },
+      },
+      inputPolicy: {
+        params: {
+          'contract.projectName': {
+            requiredMode: 'optional',
+            defaultValue: {
+              cn: '默认项目',
+              jp: 'デフォルト案件',
+            },
+          },
+          'contract.signingDate': {
+            requiredMode: 'optional',
+            defaultValue: {
+              cn: '2026-05-30',
+              jp: '2026-05-30',
+            },
+          },
+        },
+      },
+    });
+
+    expect(schema).toEqual({
+      properties: {
+        'contract.projectName': expect.objectContaining({
+          required: false,
+          default: {
+            cn: '默认项目',
+            jp: 'デフォルト案件',
+          },
+        }),
+        'contract.signingDate': expect.objectContaining({
+          required: false,
+          default: {
+            cn: '2026-05-30',
+            jp: '2026-05-30',
+          },
+        }),
+      },
+      required: [],
+    });
+  });
+
+  it('does not infer bankAccount as number when deriving temporal release params schema', () => {
+    const { service } = createService();
+
+    const schema = (service as any).buildTemporalParamsSchema({
+      inputParams: {
+        'payment.bankAccount': {
+          description: '乙方指定的银行账户信息，包括开户行和账号',
+          required: true,
+        },
+      },
+      inputPolicy: {
+        params: {
+          'payment.bankAccount': {
+            templateBinding: 'payment.bankAccount_cn',
+          },
+        },
+      },
+    });
+
+    expect(schema).toEqual({
+      properties: {
+        'payment.bankAccount': expect.objectContaining({
+          type: 'string',
+          required: true,
+          renderPath: 'payment.bankAccount_cn',
+        }),
+      },
+      required: ['payment.bankAccount'],
+    });
+  });
+
+  it('lets workflow inputPolicy requiredMode override temporal inputParams required flags', () => {
+    const { service } = createService();
+
+    const schema = (service as any).buildTemporalParamsSchema({
+      inputParams: {
+        'contract.partyA': {
+          type: 'string',
+          description: '甲方名称',
+          required: true,
+        },
+        'contract.signingDate': {
+          type: 'string',
+          description: '签署日期',
+          required: true,
+        },
+      },
+      inputPolicy: {
+        params: {
+          'contract.partyA': {
+            requiredMode: 'optional',
+          },
+          'contract.signingDate': {
+            requiredMode: 'always',
+          },
+        },
+      },
+    });
+
+    expect(schema).toEqual({
+      properties: {
+        'contract.partyA': expect.objectContaining({
+          type: 'string',
+          required: false,
+        }),
+        'contract.signingDate': expect.objectContaining({
+          required: true,
+        }),
+      },
+      required: ['contract.signingDate'],
+    });
+  });
+
+  it('preserves document runtime mapping metadata when building execution flow skill drafts', () => {
+    const { service } = createService();
+
+    const payload = (service as any).buildSkillDraftPayload(
+      {
+        sourceType: 'execution_flow_template',
+        sourceId: 'tpl-tech-service',
+        releaseVersion: 3,
+      },
+      {
+        sourcePayload: {
+          name: '技术服务合同流程',
+          description: '生成技术服务合同',
+          goal: '生成合同',
+          expectedResult: '输出可下载的合同文档',
+          paramsSchema: {
+            properties: {
+              'contract.partyA': {
+                type: 'string',
+                description: '甲方名称',
+              },
+            },
+            required: ['contract.partyA'],
+          },
+          executionFlowKeys: ['技术服务合同'],
+          apiEndpoints: {
+            runtimeMetadata: {
+              mappingHints: [
+                { parameter: 'contract.partyA', path: '{d.contract.partyA_cn}' },
+              ],
+              workflowInputPolicy: {
+                params: {
+                  'contract.partyA': {
+                    requiredMode: 'always',
+                    templateBinding: 'contract.partyA_cn',
+                  },
+                },
+              },
+              skillGuideMarkdown: 'guide',
+              dataExampleJson: {
+                contract: {
+                  partyA_cn: '上海链合智能科技有限公司',
+                },
+              },
+            },
+          },
+        },
+      },
+      {
+        id: 'validation-1',
+      },
+    );
+
+    expect(payload.apiEndpoints.runtimeMetadata).toEqual(
+      expect.objectContaining({
+        sourceType: 'execution_flow_template',
+        mappingHints: [
+          { parameter: 'contract.partyA', path: '{d.contract.partyA_cn}' },
+        ],
+        workflowInputPolicy: {
+          params: {
+            'contract.partyA': {
+              requiredMode: 'always',
+              templateBinding: 'contract.partyA_cn',
+            },
+          },
+        },
+        skillGuideMarkdown: 'guide',
+        dataExampleJson: {
+          contract: {
+            partyA_cn: '上海链合智能科技有限公司',
+          },
+        },
+      }),
+    );
+  });
+
+  it('preserves document runtime mapping metadata when building temporal workflow skill drafts', () => {
+    const { service } = createService();
+
+    const payload = (service as any).buildSkillDraftPayload(
+      {
+        sourceType: 'temporal_workflow',
+        sourceId: 'wf-tech-service',
+        releaseVersion: 5,
+      },
+      {
+        sourcePayload: {
+          name: 'TechnicalServiceContractRenderingWorkflow',
+          description: '生成技术服务合同工作流',
+          goal: '生成合同',
+          workflowDsl: {},
+          activityDsl: {},
+          paramsSchema: {
+            properties: {
+              'contract.partyA': {
+                type: 'string',
+                description: '甲方名称',
+              },
+            },
+            required: ['contract.partyA'],
+          },
+          workflowSteps: [{ id: 'step-1', name: 'render' }],
+          apiEndpoints: {
+            runtimeMetadata: {
+              mappingHints: [
+                { parameter: 'contract.partyA', path: '{d.contract.partyA_cn}' },
+              ],
+              workflowInputPolicy: {
+                params: {
+                  'contract.partyA': {
+                    requiredMode: 'always',
+                    templateBinding: 'contract.partyA_cn',
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      {
+        id: 'validation-2',
+      },
+    );
+
+    expect(payload.apiEndpoints.runtimeMetadata).toEqual(
+      expect.objectContaining({
+        sourceType: 'temporal_workflow',
+        mappingHints: [
+          { parameter: 'contract.partyA', path: '{d.contract.partyA_cn}' },
+        ],
+        workflowInputPolicy: {
+          params: {
+            'contract.partyA': {
+              requiredMode: 'always',
+              templateBinding: 'contract.partyA_cn',
+            },
+          },
+        },
+      }),
+    );
+    expect(payload.executionFlowTemplateIds).toEqual(['wf-tech-service']);
+  });
+
+  it('derives temporal workflow runtime mapping metadata from workflowDsl when draft payload lacks runtime metadata', () => {
+    const { service } = createService();
+
+    const payload = (service as any).buildSkillDraftPayload(
+      {
+        sourceType: 'temporal_workflow',
+        sourceId: 'wf-tech-service',
+        releaseVersion: 6,
+      },
+      {
+        sourcePayload: {
+          name: 'TechnicalServiceContractRenderingWorkflow',
+          description: '生成技术服务合同工作流',
+          goal: '生成合同',
+          workflowDsl: {
+            inputParams: {
+              'contract.partyA': {
+                type: 'string',
+                description: '甲方名称',
+                required: true,
+                renderPath: ['contract.partyA_cn', 'contract.partyA_jp'],
+              },
+              'payment.bankAccount': {
+                type: 'string',
+                description: '收款账号',
+                required: true,
+              },
+            },
+            inputPolicy: {
+              params: {
+                'payment.bankAccount': {
+                  templateBinding: 'payment.bankAccount_cn',
+                },
+              },
+            },
+          },
+          activityDsl: {},
+          paramsSchema: {
+            properties: {
+              'contract.partyA': {
+                type: 'string',
+                description: '甲方名称',
+              },
+              'payment.bankAccount': {
+                type: 'string',
+                description: '收款账号',
+              },
+            },
+            required: ['contract.partyA', 'payment.bankAccount'],
+          },
+          workflowSteps: [{ id: 'step-1', name: 'render' }],
+        },
+      },
+      {
+        id: 'validation-3',
+      },
+    );
+
+    expect(payload.paramsSchema).toEqual(expect.objectContaining({
+      properties: expect.objectContaining({
+        'contract.partyA': expect.objectContaining({
+          renderPath: ['contract.partyA_cn', 'contract.partyA_jp'],
+        }),
+        'payment.bankAccount': expect.objectContaining({
+          renderPath: 'payment.bankAccount_cn',
+        }),
+      }),
+    }));
+    expect(payload.apiEndpoints.runtimeMetadata).toEqual(
+      expect.objectContaining({
+        sourceType: 'temporal_workflow',
+        mappingHints: expect.arrayContaining([
+          { parameter: 'contract.partyA', path: 'contract.partyA_cn' },
+          { parameter: 'contract.partyA', path: 'contract.partyA_jp' },
+          { parameter: 'payment.bankAccount', path: 'payment.bankAccount_cn' },
+        ]),
+        workflowInputPolicy: {
+          params: {
+            'payment.bankAccount': {
+              templateBinding: 'payment.bankAccount_cn',
+            },
+          },
+        },
+      }),
+    );
+  });
+
+  it('drops stale raw required fields when workflow inputPolicy downgrades temporal params to optional', () => {
+    const { service } = createService();
+
+    const schema = (service as any).resolveEffectiveTemporalParamsSchema({
+      workflowDsl: {
+        inputParams: {
+          'contract.partyA': {
+            type: 'string',
+            description: '甲方名称',
+            required: true,
+          },
+          'contract.signingDate': {
+            type: 'string',
+            description: '签署日期',
+            required: true,
+          },
+        },
+        inputPolicy: {
+          params: {
+            'contract.partyA': {
+              requiredMode: 'optional',
+            },
+            'contract.signingDate': {
+              requiredMode: 'always',
+            },
+          },
+        },
+      },
+      activityDsl: {},
+      paramsSchema: {
+        properties: {
+          'contract.partyA': {
+            type: 'string',
+            description: '甲方名称',
+          },
+          'contract.signingDate': {
+            type: 'string',
+            description: '签署日期',
+          },
+        },
+        required: ['contract.partyA', 'contract.signingDate'],
+      },
+    });
+
+    expect(schema.required).toEqual(['contract.signingDate']);
+    expect(schema.properties).toEqual(expect.objectContaining({
+      'contract.partyA': expect.objectContaining({
+        required: false,
+      }),
+      'contract.signingDate': expect.objectContaining({
+        required: true,
+      }),
+    }));
   });
 
   it('falls back to concise description labels when declared displayName is still machine-like', () => {
@@ -305,6 +881,117 @@ describe('CapabilityReleaseService', () => {
         'deliveryItems[].location': expect.objectContaining({ displayName: '设备交付的地理位置' }),
       }),
       required: ['info.partyA'],
+    });
+  });
+
+  it('persists generateSkillDraft paramsSchema using workflow inputPolicy requiredMode for temporal releases', async () => {
+    const { service, prisma } = createService();
+
+    prisma.$executeRawUnsafe.mockResolvedValue(undefined);
+    jest.spyOn(service as any, 'getReleaseOrThrow')
+      .mockResolvedValueOnce({
+        id: 'release-temporal-1',
+        sourceType: 'temporal_workflow',
+        sourceId: 'wf-contract-1',
+        releaseVersion: 8,
+      })
+      .mockResolvedValueOnce({
+        id: 'release-temporal-1',
+        sourceType: 'temporal_workflow',
+        sourceId: 'wf-contract-1',
+        releaseVersion: 8,
+        currentSkillDraftId: 'draft-generated-1',
+        status: 'pending_approval',
+        approvalStatus: 'pending',
+      });
+    jest.spyOn(service as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
+      id: 'snapshot-temporal-1',
+      sourcePayload: {
+        name: '技术服务合同渲染工作流',
+        description: '根据合同要素生成文档',
+        goal: '生成技术服务合同',
+        workflowDsl: {
+          inputParams: {
+            'contract.partyA': {
+              type: 'string',
+              description: '甲方名称',
+              required: true,
+            },
+            'contract.signingDate': {
+              type: 'string',
+              description: '签署日期',
+              required: true,
+            },
+          },
+          inputPolicy: {
+            params: {
+              'contract.partyA': {
+                requiredMode: 'optional',
+                templateBinding: 'contract.partyA_cn',
+              },
+              'contract.signingDate': {
+                requiredMode: 'always',
+                templateBinding: 'contract.signingDate_cn',
+              },
+            },
+          },
+        },
+        activityDsl: {
+          activities: [],
+        },
+        paramsSchema: {
+          properties: {
+            'contract.partyA': {
+              type: 'string',
+              description: '甲方名称',
+            },
+            'contract.signingDate': {
+              type: 'string',
+              description: '签署日期',
+            },
+          },
+          required: ['contract.partyA', 'contract.signingDate'],
+        },
+        workflowSteps: [{ id: 'render', name: '渲染合同' }],
+      },
+    });
+    jest.spyOn(service as any, 'getLatestSuccessfulValidationOrThrow').mockResolvedValue({
+      id: 'validation-1',
+      buildId: 'build-1',
+      resultSnapshot: null,
+    });
+    jest.spyOn(service as any, 'getSkillDraftOrThrow').mockResolvedValue({
+      id: 'draft-generated-1',
+      paramsSchema: {
+        required: ['contract.signingDate'],
+      },
+      draftPayload: {},
+    });
+    jest.spyOn(service as any, 'insertAuditEvent').mockResolvedValue(undefined);
+
+    const result = await service.generateSkillDraft('release-temporal-1', {}, 'user-1');
+
+    const insertedParamsSchema = JSON.parse(prisma.$executeRawUnsafe.mock.calls[0][9]);
+    expect(insertedParamsSchema.required).toEqual(['contract.signingDate']);
+    expect(insertedParamsSchema.properties).toEqual(expect.objectContaining({
+      'contract.partyA': expect.objectContaining({
+        required: false,
+      }),
+      'contract.signingDate': expect.objectContaining({
+        required: true,
+      }),
+    }));
+    expect(result).toEqual({
+      release: expect.objectContaining({
+        id: 'release-temporal-1',
+        currentSkillDraftId: 'draft-generated-1',
+      }),
+      skillDraft: expect.objectContaining({
+        id: 'draft-generated-1',
+        paramsSchema: {
+          required: ['contract.signingDate'],
+        },
+      }),
     });
   });
 
@@ -364,6 +1051,87 @@ describe('CapabilityReleaseService', () => {
       expect.objectContaining({
         toolValidation: expect.objectContaining({
           isValid: false,
+        }),
+      }),
+    );
+  });
+
+  it('blocks publishing template workflows when document mappings are still empty', async () => {
+    const { service, skillService } = createService();
+
+    jest.spyOn(service as any, 'getReleaseOrThrow').mockResolvedValue({
+      id: 'release-template-1',
+      approvalStatus: 'approved',
+      status: 'approved',
+      sourceType: 'temporal_workflow',
+      currentSkillDraftId: 'draft-template-1',
+      publishedSkillId: null,
+    });
+    jest.spyOn(service as any, 'getSkillDraftOrThrow').mockResolvedValue({
+      id: 'draft-template-1',
+      tools: [],
+      executionFlowTemplateIds: [],
+      draftPayload: {
+        name: '技术服务合同渲染技能',
+        description: 'desc',
+        tools: [],
+      },
+    });
+    jest.spyOn(service as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
+      sourcePayload: {
+        sourceTemplate: {
+          templateId: 'tpl-tech-service',
+          fileName: 'technical-service-contract.docx',
+        },
+        workflowDsl: {
+          inputParams: {
+            'contract.partyA': {
+              type: 'string',
+              description: '甲方名称',
+              required: true,
+            },
+          },
+        },
+        activityDsl: {
+          activities: [],
+        },
+      },
+    });
+    jest.spyOn(service as any, 'insertAuditEvent').mockResolvedValue(undefined);
+    skillService.validateSkillToolsPayload.mockResolvedValue({
+      isValid: true,
+      declaredTools: [],
+      inferredTools: [],
+      effectiveTools: [],
+      missingTools: [],
+      disabledTools: [],
+      forbiddenSkillTools: [],
+      undeclaredFlowTools: [],
+      messages: [],
+    });
+
+    await expect(service.publishSkill('release-template-1', {}, 'user-1')).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: 'temporal_document_mapping_not_ready',
+        message: '当前模板工作流缺少显式 renderPath/templateBinding，暂不允许发布',
+        mappingReadiness: expect.objectContaining({
+          applicable: true,
+          mappedInputCount: 0,
+          renderPathParamCount: 0,
+          templateBindingParamCount: 0,
+        }),
+      }),
+    });
+    expect((service as any).insertAuditEvent).toHaveBeenCalledWith(
+      'release-template-1',
+      'skill_publish_blocked_by_document_mapping',
+      'user-1',
+      false,
+      '发布前阻断：模板工作流缺少显式 renderPath/templateBinding',
+      expect.objectContaining({
+        mappingReadiness: expect.objectContaining({
+          applicable: true,
+          mappedInputCount: 0,
         }),
       }),
     );

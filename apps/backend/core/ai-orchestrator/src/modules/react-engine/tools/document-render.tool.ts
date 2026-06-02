@@ -139,7 +139,7 @@ export class DocumentRenderTool extends BaseTool {
         },
         requiresUserInput: true,
         userInputPrompt:
-          `当前会话已锁定模板（templateId=${lockedTemplateId}）。请确认是否继续使用该模板，或先通过 document_intake 重新选择模板。`,
+          `当前会话已锁定模板（templateId=${lockedTemplateId}）。请确认是否继续使用该模板，或改为通过主链路重新发起文档生成请求。`,
         meta: {
           toolName: this.name,
           capabilityChecked: Boolean(context.capabilitySnapshot),

@@ -16,6 +16,11 @@ import { ExecutionStepService } from './execution-step.service';
 import {
   CreateExecutionDto,
   ExecutionDto,
+  ExecutionNormalizedInputJson,
+  ExecutionParamSource,
+  ExecutionParamRequiredMode,
+  ExecutionParamResolutionEntry,
+  ExecutionRequiredInput,
   ExecutionStepDto,
   TakeoverExecutionDto,
   ResumeExecutionDto,
@@ -62,23 +67,32 @@ interface RequestUserContext {
   role?: string;
 }
 
-interface PlannerRequiredInput {
-  name: string;
-  type: string;
-  description?: string;
-  required: boolean;
-  value?: unknown;
-  missing: boolean;
-  source: 'user_input' | 'default' | 'unresolved';
-  confidence?: number;
-  needs_confirmation?: boolean;
-  confirmation_threshold?: number;
-  missing_reason?: string;
-}
+interface PlannerRequiredInput extends ExecutionRequiredInput {}
 
 interface SkillSchemaProperty {
   type?: string;
   default?: unknown;
+  renderPath?: string | string[];
+}
+
+interface WorkflowParamPolicySnapshot {
+  defaultValue?: unknown;
+  defaultValueResolver?: string;
+  valueSourcePriority?: string[];
+}
+
+interface WorkflowTemplateDefaultsPayload {
+  paramsSchema?: {
+    properties?: Record<string, SkillSchemaProperty>;
+  };
+  inputPolicy?: {
+    params?: Record<string, WorkflowParamPolicySnapshot>;
+  };
+}
+
+interface RuntimeDefaultResolution {
+  input: Record<string, unknown>;
+  sources: Record<string, ExecutionParamSource>;
 }
 
 interface PlannerSkillMatch {
@@ -331,11 +345,12 @@ export class ExecutionService {
       }
     }
 
-    const runtimeDefaultInput = await this.fetchSkillDefaultInput(
+    const runtimeDefaultResolution = await this.fetchSkillDefaultResolution(
       resolvedSkillId,
       options?.authToken,
       { id: userId, role: 'employee' },
     );
+    const runtimeDefaultInput = runtimeDefaultResolution.input;
 
     const providedPlanDraft =
       resolvedDto.planDraft
@@ -343,12 +358,26 @@ export class ExecutionService {
       && !Array.isArray(resolvedDto.planDraft)
         ? (resolvedDto.planDraft as unknown as PlannerPlanDraft)
         : undefined;
+    const shouldUseDirectExecutionPlan = !providedPlanDraft
+      && this.shouldSkipPlannerForExplicitStructuredInput(resolvedDto);
+    const shouldGeneratePlanDraft = !providedPlanDraft
+      && !shouldUseDirectExecutionPlan;
     const generatedPlanDraft = providedPlanDraft
-      || await this.generatePlanDraft(userId, resolvedDto, options?.authToken);
+      || (shouldGeneratePlanDraft
+        ? await this.generatePlanDraft(userId, resolvedDto, options?.authToken)
+        : undefined);
+    const effectiveGeneratedPlanDraft = generatedPlanDraft
+      || (shouldUseDirectExecutionPlan
+        ? this.buildDirectExecutionPlanDraft(resolvedDto, resolvedSkillId)
+        : undefined);
     const reconciledPlanDraft = this.reconcilePlanDraftWithInput(generatedPlanDraft, resolvedDto.input);
+    const reconciledDirectPlanDraft = !reconciledPlanDraft && effectiveGeneratedPlanDraft
+      ? this.reconcilePlanDraftWithInput(effectiveGeneratedPlanDraft, resolvedDto.input)
+      : reconciledPlanDraft;
     const defaultedPlanDraft = this.applyRuntimeDefaultsToPlanDraft(
-      reconciledPlanDraft,
+      reconciledDirectPlanDraft,
       runtimeDefaultInput,
+      runtimeDefaultResolution.sources,
     );
     const planDraft = await this.rewriteBrowserRecordingPlanDraftWithActivities(
       defaultedPlanDraft,
@@ -359,7 +388,12 @@ export class ExecutionService {
     const plannedCapabilityId = planDraft?.skill_match?.skill_id;
     const effectiveSkillId = plannedCapabilityId || resolvedSkillId;
     const effectiveSkillVersion = resolvedSkillVersion;
-    const normalizedInput = this.buildNormalizedInput(resolvedDto, planDraft, runtimeDefaultInput);
+    const normalizedInput = this.buildNormalizedInput(
+      resolvedDto,
+      planDraft,
+      runtimeDefaultInput,
+      runtimeDefaultResolution.sources,
+    );
 
     // 注入 usage 到 normalizedInput 中以便持久化
     const usage = planDraft?.usage || resolvedDto.usage;
@@ -998,6 +1032,7 @@ export class ExecutionService {
 
     const normalized = (execution.normalizedInputJson as Record<string, unknown>) || {};
     const requiredInputs = this.getRequiredInputs(execution);
+    const currentParamResolution = this.getParamResolution(execution);
     const missingInputs = requiredInputs.filter((item) => this.isBlockingRequiredInput(item));
 
     if (missingInputs.length === 0) {
@@ -1019,37 +1054,19 @@ export class ExecutionService {
       missingInputs.map((item) => [item.name, this.normalizeSubmittedInputValue(dto.input?.[item.name], item.type)]),
     );
 
-    const updatedRequiredInputs = requiredInputs.map((item) => {
-      if (!submittedKeys.includes(item.name)) {
-        return item;
-      }
-
-      const normalizedValue = normalizedSubmittedInput[item.name];
-      if (!this.hasMeaningfulSubmittedInputValue(normalizedValue)) {
-        return {
-          ...item,
-          value: undefined,
-          missing: true,
-          source: 'unresolved' as const,
-          needs_confirmation: false,
-          missing_reason: undefined,
-        };
-      }
-
-      return {
-        ...item,
-        value: normalizedValue,
-        missing: false,
-        source: 'user_input' as const,
-        needs_confirmation: false,
-        missing_reason: undefined,
-      };
-    });
+    const updatedParamResolution = this.reconcileParamResolutionWithSubmittedInput(
+      currentParamResolution,
+      requiredInputs,
+      normalizedSubmittedInput,
+      submittedKeys,
+    );
+    const updatedRequiredInputs = this.buildRequiredInputsFromParamResolution(updatedParamResolution);
+    const mergedSubmittedInput = this.buildFinalInputFromParamResolution(updatedParamResolution);
 
     const remainingMissingInputs = updatedRequiredInputs.filter((item) => item.required && this.isBlockingRequiredInput(item));
     const isFullySubmitted = remainingMissingInputs.length === 0;
-    // #region debug-point E:submit-input-merge
-    (()=>{const fs=require('fs');let u='http://127.0.0.1:7777/event',s='contract-param-recognition';try{const e=fs.readFileSync('.dbg/contract-param-recognition.env','utf8');u=e.match(/DEBUG_SERVER_URL=(.+)/)?.[1]||u;s=e.match(/DEBUG_SESSION_ID=(.+)/)?.[1]||s}catch{}fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:s,runId:'pre-fix',hypothesisId:'E',location:'execution.service.ts:1049',msg:'[DEBUG] control-plane merged waiting_input submission',data:{executionId:id,stepId:dto.stepId,allowedKeys:Array.from(allowedKeys),submittedKeys,normalizedSubmittedInput,updatedRequiredInputs:updatedRequiredInputs.map((item)=>({name:item.name,missing:item.missing,value:item.value,source:item.source})),remainingMissing:remainingMissingInputs.map((item)=>item.name),isFullySubmitted},ts:Date.now()})}).catch(()=>{});})();
+    // #region debug-point B:submit-input-merge
+    (()=>{const fs=require('fs'),p='.dbg/missing-last-parameter.env';let u='http://127.0.0.1:7777/event',s='missing-last-parameter';try{const e=fs.readFileSync(p,'utf8');u=e.match(/DEBUG_SERVER_URL=(.+)/)?.[1]||u;s=e.match(/DEBUG_SESSION_ID=(.+)/)?.[1]||s}catch{}fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:s,runId:'pre-fix',hypothesisId:'B',location:'execution.service.ts:1053',msg:'[DEBUG] execution merged waiting_input submission',data:{executionId:id,stepId:dto.stepId,allowedKeys:Array.from(allowedKeys),submittedKeys,normalizedSubmittedInput,updatedRequiredInputs:updatedRequiredInputs.map((item)=>({name:item.name,missing:item.missing,value:item.value,source:item.source,renderPath:item.render_path,templateBinding:item.template_binding})),remainingMissing:remainingMissingInputs.map((item)=>item.name),isFullySubmitted},ts:Date.now()})}).catch(()=>{});})();
     // #endregion
     const currentUsage = normalized.__usage as unknown as LLMUsage | undefined;
     const submittedUsage = dto.usage as unknown as LLMUsage | undefined;
@@ -1059,6 +1076,10 @@ export class ExecutionService {
       normalized.input && typeof normalized.input === 'object'
         ? (normalized.input as Record<string, unknown>)
         : {};
+    const passthroughInput = this.omitTrackedInputKeys(
+      normalizedInputData,
+      new Set(Object.keys(updatedParamResolution)),
+    );
     const updatedSemantic = this.reconcilePlanSemantic(
       normalized.semantic && typeof normalized.semantic === 'object' && !Array.isArray(normalized.semantic)
         ? normalized.semantic as PlannerSemantic
@@ -1070,10 +1091,11 @@ export class ExecutionService {
       ...(totalUsage ? { __usage: totalUsage } : {}),
       ...normalizedSubmittedInput,
       input: {
-        ...normalizedInputData,
-        ...normalizedSubmittedInput,
+        ...passthroughInput,
+        ...this.buildFinalInputFromParamResolution(updatedParamResolution),
       },
       requiredInputs: updatedRequiredInputs,
+      paramResolution: updatedParamResolution,
       ...(updatedSemantic ? { semantic: updatedSemantic } : {}),
     };
 
@@ -1085,7 +1107,7 @@ export class ExecutionService {
           inputJson: this.asJsonValue({
             requiredInputs: updatedRequiredInputs.filter((item) => item.missing),
           }),
-          outputJson: this.asJsonValue(normalizedSubmittedInput),
+          outputJson: this.asJsonValue(mergedSubmittedInput),
           endedAt: isFullySubmitted ? new Date() : null,
         },
       }),
@@ -1628,17 +1650,14 @@ export class ExecutionService {
     }
   }
 
-  private async fetchSkillDefaultInput(
+  private async fetchSkillDefaultResolution(
     skillId: string,
     authToken?: string,
     requester?: RequestUserContext,
-  ): Promise<Record<string, unknown>> {
+  ): Promise<RuntimeDefaultResolution> {
     try {
       const headers = this.buildAuthServiceHeaders(authToken, requester);
-      const response = await axios.get<{
-        paramsSchema?: {
-          properties?: Record<string, SkillSchemaProperty>;
-        };
+      const response = await axios.get<WorkflowTemplateDefaultsPayload & {
         executionFlowTemplateIds?: string[];
       }>(`${this.authServiceUrl}/skills/${skillId}`, {
         headers,
@@ -1650,15 +1669,11 @@ export class ExecutionService {
       const templateSchemas = await Promise.all(
         templateIds.map(async (templateId) => {
           try {
-            const templateResponse = await axios.get<{
-              paramsSchema?: {
-                properties?: Record<string, SkillSchemaProperty>;
-              };
-            }>(`${this.authServiceUrl}/flows/${templateId}`, {
+            const templateResponse = await axios.get<WorkflowTemplateDefaultsPayload>(`${this.authServiceUrl}/flows/${templateId}`, {
               headers,
               timeout: 10000,
             });
-            return templateResponse.data?.paramsSchema;
+            return templateResponse.data;
           } catch (error) {
             const message = error instanceof Error ? error.message : 'unknown error';
             this.logger.warn(`Failed to load runtime defaults from flow ${templateId}: ${message}`);
@@ -1667,28 +1682,67 @@ export class ExecutionService {
         }),
       );
 
-      return [
-        response.data?.paramsSchema,
-        ...templateSchemas,
-      ].reduce<Record<string, unknown>>((acc, schema) => {
-        const properties = schema?.properties || {};
-        Object.entries(properties).forEach(([name, property]) => {
-          const normalizedDefault = this.normalizeSubmittedInputValue(
-            property?.default,
-            String(property?.type || 'string'),
-          );
-          if (!this.hasMeaningfulSubmittedInputValue(normalizedDefault)) {
-            return;
-          }
-          acc[name] = normalizedDefault;
-        });
+      const resolution = templateSchemas.reduce<RuntimeDefaultResolution>((acc, templateSchema) => {
+        const properties = templateSchema?.paramsSchema?.properties || {};
+        this.collectDefaultsFromSchemaProperties(acc, properties, 'default');
+        this.collectDefaultsFromWorkflowPolicy(acc, templateSchema?.inputPolicy?.params, properties);
         return acc;
-      }, {});
+      }, [response.data].reduce<RuntimeDefaultResolution>((acc, skillPayload) => {
+        this.collectDefaultsFromSchemaProperties(acc, skillPayload?.paramsSchema?.properties || {}, 'default');
+        return acc;
+      }, { input: {}, sources: {} }));
+
+      return resolution;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'unknown error';
       this.logger.warn(`Failed to load runtime defaults for skill ${skillId}: ${message}`);
-      return {};
+      return { input: {}, sources: {} };
     }
+  }
+
+  private async fetchSkillDefaultInput(
+    skillId: string,
+    authToken?: string,
+    requester?: RequestUserContext,
+  ): Promise<Record<string, unknown>> {
+    const resolution = await this.fetchSkillDefaultResolution(skillId, authToken, requester);
+    return resolution.input;
+  }
+
+  private collectDefaultsFromSchemaProperties(
+    resolution: RuntimeDefaultResolution,
+    properties: Record<string, SkillSchemaProperty>,
+    source: ExecutionParamSource,
+  ): void {
+    Object.entries(properties || {}).forEach(([name, property]) => {
+      const normalizedDefault = this.normalizeSubmittedInputValue(
+        property?.default,
+        String(property?.type || 'string'),
+      );
+      if (!this.hasMeaningfulSubmittedInputValue(normalizedDefault)) {
+        return;
+      }
+      resolution.input[name] = normalizedDefault;
+      resolution.sources[name] = source;
+    });
+  }
+
+  private collectDefaultsFromWorkflowPolicy(
+    resolution: RuntimeDefaultResolution,
+    policies: Record<string, WorkflowParamPolicySnapshot> | undefined,
+    properties: Record<string, SkillSchemaProperty>,
+  ): void {
+    Object.entries(policies || {}).forEach(([name, policy]) => {
+      const normalizedDefault = this.normalizeSubmittedInputValue(
+        policy?.defaultValue,
+        String(properties[name]?.type || 'string'),
+      );
+      if (!this.hasMeaningfulSubmittedInputValue(normalizedDefault)) {
+        return;
+      }
+      resolution.input[name] = normalizedDefault;
+      resolution.sources[name] = 'workflow_default';
+    });
   }
 
   private ensureExecutionPermission(
@@ -1766,6 +1820,59 @@ export class ExecutionService {
     });
   }
 
+  private shouldSkipPlannerForExplicitStructuredInput(dto: CreateExecutionDto): boolean {
+    const hasExplicitSkill = Boolean(
+      (typeof dto.skillId === 'string' && dto.skillId.trim())
+      || (typeof dto.capabilityId === 'string' && dto.capabilityId.trim()),
+    );
+    if (!hasExplicitSkill) {
+      return false;
+    }
+
+    const input = dto.input && typeof dto.input === 'object' && !Array.isArray(dto.input)
+      ? dto.input
+      : undefined;
+    if (!input || Object.keys(input).length === 0) {
+      return false;
+    }
+
+    const candidateKeys = ['prompt', 'task', 'goal', 'instruction', 'query', 'url'];
+    return !candidateKeys.some((key) => typeof input[key] === 'string' && input[key].trim());
+  }
+
+  private buildDirectExecutionPlanDraft(
+    dto: CreateExecutionDto,
+    resolvedSkillId: string,
+  ): PlannerPlanDraft {
+    return {
+      plan_id: `direct-${resolvedSkillId}`,
+      planner_mode: 'skill',
+      objective: this.buildPlannerUserInput(dto),
+      summary: '调用显式指定的技能执行结构化输入。',
+      skill_match: {
+        skill_id: resolvedSkillId,
+        skill_name: resolvedSkillId,
+        confidence: 1,
+        match_reason: 'explicit_skill_selection',
+      },
+      steps: [
+        {
+          id: 'execute_selected_skill',
+          title: 'Execute selected skill',
+          description: 'Run the explicitly selected skill with the provided structured input.',
+          kind: 'skill',
+          status: 'planned',
+        },
+      ],
+      required_inputs: [],
+      risk_summary: {
+        level: 'low',
+        requires_human_review: false,
+        items: ['explicit_skill_selected'],
+      },
+    };
+  }
+
   private reconcilePlanDraftWithInput(
     planDraft: PlannerPlanDraft | undefined,
     input: Record<string, unknown> | undefined,
@@ -1790,14 +1897,15 @@ export class ExecutionService {
   private applyRuntimeDefaultsToPlanDraft(
     planDraft: PlannerPlanDraft | undefined,
     runtimeDefaultInput: Record<string, unknown>,
+    runtimeDefaultSources?: Record<string, ExecutionParamSource>,
   ): PlannerPlanDraft | undefined {
-    return this.reconcilePlanDraftWithResolvedValues(planDraft, runtimeDefaultInput, 'default');
+    return this.reconcilePlanDraftWithResolvedValues(planDraft, runtimeDefaultInput, runtimeDefaultSources || 'default');
   }
 
   private reconcilePlanDraftWithResolvedValues(
     planDraft: PlannerPlanDraft | undefined,
     resolvedInput: Record<string, unknown>,
-    source: PlannerRequiredInput['source'],
+    source: PlannerRequiredInput['source'] | Record<string, PlannerRequiredInput['source']>,
   ): PlannerPlanDraft | undefined {
     if (!planDraft || Object.keys(resolvedInput || {}).length === 0) {
       return planDraft;
@@ -1819,16 +1927,17 @@ export class ExecutionService {
         return {
           ...item,
           value,
-          source,
+          source: typeof source === 'string' ? source : (source[item.name] || item.source),
           missing: true,
         };
       }
 
+      const resolvedSource = typeof source === 'string' ? source : (source[item.name] || item.source);
       return {
         ...item,
         value,
         missing: false,
-        source,
+        source: resolvedSource,
         needs_confirmation: false,
         missing_reason: undefined,
       };
@@ -2388,34 +2497,55 @@ export class ExecutionService {
     dto: CreateExecutionDto,
     planDraft?: PlannerPlanDraft,
     runtimeDefaultInput?: Record<string, unknown>,
-  ): Record<string, unknown> {
+    runtimeDefaultSources?: Record<string, ExecutionParamSource>,
+  ): ExecutionNormalizedInputJson {
     const rawInput = dto.input || {};
     const promptDebugCandidate = (rawInput as Record<string, unknown>).__promptDebug;
     const input = { ...rawInput } as Record<string, unknown>;
     delete input.__promptDebug;
-    const plannerExtractedInput = (planDraft?.required_inputs || []).reduce<Record<string, unknown>>(
-      (acc, item) => {
-        if (!item || item.missing || item.value === undefined || item.value === null) {
-          return acc;
-        }
-        acc[item.name] = item.value;
-        return acc;
+    const paramResolution = this.buildParamResolutionFromRequiredInputs(planDraft?.required_inputs);
+    const trackedKeys = new Set(Object.keys(paramResolution));
+    const passthroughInput = this.omitTrackedInputKeys(
+      {
+        ...(runtimeDefaultInput || {}),
+        ...input,
       },
-      {},
+      trackedKeys,
     );
-    // Runtime execution should use planner-extracted params (e.g. city) while preserving explicit user input.
+    const plannerExtractedInput = Object.keys(paramResolution).length > 0
+      ? this.buildFinalInputFromParamResolution(paramResolution)
+      : (planDraft?.required_inputs || []).reduce<Record<string, unknown>>(
+          (acc, item) => {
+            if (!item || item.missing || item.needs_confirmation || item.value === undefined || item.value === null) {
+              return acc;
+            }
+            acc[item.name] = item.value;
+            return acc;
+          },
+          {},
+        );
     const mergedInput = {
-      ...(runtimeDefaultInput || {}),
+      ...passthroughInput,
       ...plannerExtractedInput,
-      ...input,
     };
-    const normalizedInput: Record<string, unknown> = {
+    const requiredInputs = Object.keys(paramResolution).length > 0
+      ? this.buildRequiredInputsFromParamResolution(paramResolution)
+      : planDraft?.required_inputs;
+    const normalizedInput: ExecutionNormalizedInputJson = {
       objective: planDraft?.objective || this.buildPlannerUserInput(dto),
       plannerMode: planDraft?.planner_mode,
       plannerSummary: planDraft?.summary,
-      requiredInputs: planDraft?.required_inputs,
+      requiredInputs,
       input: mergedInput,
+      ...(Object.keys(paramResolution).length > 0 ? { paramResolution } : {}),
     };
+    // #region debug-point B:create-normalized-input
+    (()=>{const fs=require('fs'),p='.dbg/missing-last-parameter.env';let u='http://127.0.0.1:7777/event',s='missing-last-parameter';try{const e=fs.readFileSync(p,'utf8');u=e.match(/DEBUG_SERVER_URL=(.+)/)?.[1]||u;s=e.match(/DEBUG_SESSION_ID=(.+)/)?.[1]||s}catch{}fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:s,runId:'pre-fix',hypothesisId:'B',location:'execution.service.ts:2474',msg:'[DEBUG] execution built normalized input',data:{objective:normalizedInput.objective,plannerMode:normalizedInput.plannerMode,inputKeys:Object.keys(normalizedInput.input||{}),requiredInputs:(normalizedInput.requiredInputs||[]).map((item)=>({name:item.name,missing:item.missing,value:item.value,source:item.source,renderPath:item.render_path,templateBinding:item.template_binding,needsConfirmation:item.needs_confirmation===true})),paramResolution:Object.fromEntries(Object.entries(normalizedInput.paramResolution||{}).map(([name,entry])=>[name,{final:entry.final===true,value:entry.value,source:entry.source,renderPath:entry.render_path,templateBinding:entry.template_binding,missing:entry.missing===true,needsConfirmation:entry.needsConfirmation===true}])),passthroughInputKeys:Object.keys(passthroughInput),plannerExtractedInput},ts:Date.now()})}).catch(()=>{});})();
+    // #endregion
+
+    if (runtimeDefaultSources && Object.keys(runtimeDefaultSources).length > 0) {
+      normalizedInput.runtimeDefaultSources = runtimeDefaultSources;
+    }
 
     if (planDraft?.skill_match) {
       normalizedInput.skillMatch = planDraft.skill_match;
@@ -4402,11 +4532,202 @@ export class ExecutionService {
 
   private getRequiredInputs(execution: Record<string, unknown>): PlannerRequiredInput[] {
     const normalizedInput = execution.normalizedInputJson as Record<string, unknown> | undefined;
+    const paramResolution = normalizedInput?.paramResolution;
+    if (paramResolution && typeof paramResolution === 'object' && !Array.isArray(paramResolution)) {
+      return this.buildRequiredInputsFromParamResolution(
+        paramResolution as Record<string, ExecutionParamResolutionEntry>,
+      );
+    }
     const requiredInputs = Array.isArray(normalizedInput?.requiredInputs)
       ? normalizedInput.requiredInputs as PlannerRequiredInput[]
       : [];
 
     return requiredInputs;
+  }
+
+  private getParamResolution(execution: Record<string, unknown>): Record<string, ExecutionParamResolutionEntry> {
+    const normalizedInput = execution.normalizedInputJson as ExecutionNormalizedInputJson | undefined;
+    const paramResolution = normalizedInput?.paramResolution;
+    if (paramResolution && typeof paramResolution === 'object' && !Array.isArray(paramResolution)) {
+      return this.normalizeParamResolutionEntries(
+        paramResolution as Record<string, ExecutionParamResolutionEntry>,
+      );
+    }
+    return this.buildParamResolutionFromRequiredInputs(this.getRequiredInputs(execution));
+  }
+
+  private normalizeParamResolutionEntries(
+    paramResolution: Record<string, ExecutionParamResolutionEntry>,
+  ): Record<string, ExecutionParamResolutionEntry> {
+    return Object.fromEntries(
+      Object.entries(paramResolution).map(([name, entry]) => [name, this.normalizeParamResolutionEntry(entry)]),
+    );
+  }
+
+  private normalizeParamResolutionEntry(
+    entry: ExecutionParamResolutionEntry,
+  ): ExecutionParamResolutionEntry {
+    const rawEntry = entry as ExecutionParamResolutionEntry & Record<string, unknown>;
+
+    return {
+      ...entry,
+      ...(rawEntry.display_name === undefined && typeof rawEntry.displayName === 'string'
+        ? { display_name: rawEntry.displayName }
+        : {}),
+      ...(rawEntry.group_label === undefined && typeof rawEntry.groupLabel === 'string'
+        ? { group_label: rawEntry.groupLabel }
+        : {}),
+      ...(rawEntry.missing_reason === undefined && typeof rawEntry.missingReason === 'string'
+        ? { missing_reason: rawEntry.missingReason }
+        : {}),
+      ...(rawEntry.preview_blocking === undefined && typeof rawEntry.previewBlocking === 'boolean'
+        ? { preview_blocking: rawEntry.previewBlocking }
+        : {}),
+      ...(rawEntry.confirmation_threshold === undefined && typeof rawEntry.confirmationThreshold === 'number'
+        ? { confirmation_threshold: rawEntry.confirmationThreshold }
+        : {}),
+      ...(rawEntry.render_path === undefined && (
+        typeof rawEntry.renderPath === 'string'
+        || (Array.isArray(rawEntry.renderPath) && rawEntry.renderPath.every((item) => typeof item === 'string'))
+      )
+        ? { render_path: rawEntry.renderPath as string | string[] }
+        : {}),
+      ...(rawEntry.template_binding === undefined && typeof rawEntry.templateBinding === 'string'
+        ? { template_binding: rawEntry.templateBinding }
+        : {}),
+    };
+  }
+
+  private buildParamResolutionFromRequiredInputs(
+    requiredInputs?: PlannerRequiredInput[],
+  ): Record<string, ExecutionParamResolutionEntry> {
+    return (requiredInputs || []).reduce<Record<string, ExecutionParamResolutionEntry>>((acc, item) => {
+      if (!item?.name) {
+        return acc;
+      }
+
+      const requiredMode: ExecutionParamRequiredMode = item.required_mode || (item.required ? 'always' : 'optional');
+      acc[item.name] = {
+        type: item.type || 'string',
+        required: Boolean(item.required),
+        value: item.value,
+        source: item.source || 'unresolved',
+        requiredMode,
+        ...(Array.isArray(item.source_priority) ? { valueSourcePriority: item.source_priority } : {}),
+        missing: item.missing === true,
+        needsConfirmation: item.needs_confirmation === true,
+        confirmed: item.source === 'user_input' ? true : undefined,
+        final: item.missing !== true && item.needs_confirmation !== true,
+        ...(item.description ? { description: item.description } : {}),
+        ...(item.display_name ? { display_name: item.display_name } : {}),
+        ...(item.group_label ? { group_label: item.group_label } : {}),
+        ...(item.render_path ? { render_path: item.render_path } : {}),
+        ...(item.template_binding ? { template_binding: item.template_binding } : {}),
+        ...(typeof item.confidence === 'number' ? { confidence: item.confidence } : {}),
+        ...(typeof item.confirmation_threshold === 'number'
+          ? { confirmation_threshold: item.confirmation_threshold }
+          : {}),
+        ...(item.missing_reason ? { missing_reason: item.missing_reason } : {}),
+        ...(typeof item.preview_blocking === 'boolean'
+          ? { preview_blocking: item.preview_blocking }
+          : {}),
+      };
+      return acc;
+    }, {});
+  }
+
+  private buildRequiredInputsFromParamResolution(
+    paramResolution: Record<string, ExecutionParamResolutionEntry>,
+  ): PlannerRequiredInput[] {
+    return Object.entries(this.normalizeParamResolutionEntries(paramResolution)).map(([name, entry]) => ({
+      name,
+      type: entry.type || 'string',
+      ...(entry.description ? { description: entry.description } : {}),
+      ...(entry.display_name ? { display_name: entry.display_name } : {}),
+      ...(entry.group_label ? { group_label: entry.group_label } : {}),
+      ...(entry.render_path ? { render_path: entry.render_path } : {}),
+      ...(entry.template_binding ? { template_binding: entry.template_binding } : {}),
+      required: entry.required === true,
+      required_mode: entry.requiredMode,
+      ...(entry.value !== undefined ? { value: entry.value } : {}),
+      missing: entry.missing === true,
+      source: entry.source || 'unresolved',
+      ...(Array.isArray(entry.valueSourcePriority) ? { source_priority: entry.valueSourcePriority } : {}),
+      ...(typeof entry.confidence === 'number' ? { confidence: entry.confidence } : {}),
+      needs_confirmation: entry.needsConfirmation === true,
+      ...(typeof entry.confirmation_threshold === 'number'
+        ? { confirmation_threshold: entry.confirmation_threshold }
+        : {}),
+      ...(entry.missing_reason ? { missing_reason: entry.missing_reason } : {}),
+      ...(typeof entry.preview_blocking === 'boolean'
+        ? { preview_blocking: entry.preview_blocking }
+        : {}),
+    }));
+  }
+
+  private buildFinalInputFromParamResolution(
+    paramResolution: Record<string, ExecutionParamResolutionEntry>,
+  ): Record<string, unknown> {
+    return Object.entries(this.normalizeParamResolutionEntries(paramResolution)).reduce<Record<string, unknown>>((acc, [name, entry]) => {
+      if (entry.final !== true || entry.value === undefined || entry.value === null) {
+        return acc;
+      }
+      acc[name] = entry.value;
+      return acc;
+    }, {});
+  }
+
+  private omitTrackedInputKeys(
+    input: Record<string, unknown>,
+    trackedKeys: Set<string>,
+  ): Record<string, unknown> {
+    return Object.fromEntries(
+      Object.entries(input).filter(([name]) => !trackedKeys.has(name)),
+    );
+  }
+
+  private reconcileParamResolutionWithSubmittedInput(
+    currentParamResolution: Record<string, ExecutionParamResolutionEntry>,
+    requiredInputs: PlannerRequiredInput[],
+    normalizedSubmittedInput: Record<string, unknown>,
+    submittedKeys: string[],
+  ): Record<string, ExecutionParamResolutionEntry> {
+    const baseParamResolution = Object.keys(currentParamResolution).length > 0
+      ? currentParamResolution
+      : this.buildParamResolutionFromRequiredInputs(requiredInputs);
+
+    return Object.fromEntries(
+      Object.entries(baseParamResolution).map(([name, entry]) => {
+        if (!submittedKeys.includes(name)) {
+          return [name, entry];
+        }
+
+        const normalizedValue = normalizedSubmittedInput[name];
+        if (!this.hasMeaningfulSubmittedInputValue(normalizedValue)) {
+          return [name, {
+            ...entry,
+            value: undefined,
+            source: 'unresolved' as const,
+            missing: true,
+            needsConfirmation: false,
+            confirmed: false,
+            final: false,
+            missing_reason: undefined,
+          }];
+        }
+
+        return [name, {
+          ...entry,
+          value: normalizedValue,
+          source: 'user_input' as const,
+          missing: false,
+          needsConfirmation: false,
+          confirmed: true,
+          final: true,
+          missing_reason: undefined,
+        }];
+      }),
+    );
   }
 
   private isBlockingRequiredInput(item?: PlannerRequiredInput | null): boolean {

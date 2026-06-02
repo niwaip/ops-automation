@@ -27,17 +27,28 @@ type SkillListResponse = {
   skills?: Array<Record<string, unknown>>;
 };
 
-type ExecutionFlowTemplateResponse = {
-  id?: string;
-  paramsSchema?: {
-    properties?: Record<string, unknown>;
-    required?: string[];
-  };
-};
-
 type SkillCacheEntry<T> = {
   expiresAt: number;
   value: T;
+};
+
+type WorkflowParamRequiredMode =
+  | 'always'
+  | 'conditional'
+  | 'optional'
+  | 'system_required';
+
+type WorkflowParamPolicySnapshot = {
+  enabled?: boolean;
+  requiredMode?: WorkflowParamRequiredMode;
+  defaultValue?: unknown;
+  defaultValueResolver?: string;
+  valueSourcePriority?: string[];
+  confirmationThreshold?: number;
+  previewBlocking?: boolean;
+  validationRules?: Array<Record<string, unknown>>;
+  transformRule?: string;
+  templateBinding?: string;
 };
 
 export interface PlannerMatchPhaseResult {
@@ -65,7 +76,6 @@ export class PlannerService {
   private readonly authServiceUrl = getAuthServiceUrl();
   private readonly availableSkillsCache = new Map<string, SkillCacheEntry<AvailableSkillDefinition[]>>();
   private readonly skillByIdCache = new Map<string, SkillCacheEntry<AvailableSkillDefinition | null>>();
-  private readonly flowSchemaCache = new Map<string, SkillCacheEntry<ExecutionFlowTemplateResponse['paramsSchema'] | undefined>>();
 
   constructor(
     private readonly recognizerService: RecognizerService,
@@ -141,11 +151,6 @@ export class PlannerService {
   }): Promise<PlanDraftDTO> {
     const { objective, matchedSkill } = input;
     const isDocumentSkill = this.isDocumentTask(matchedSkill);
-    const autoFillMissingRequired = Boolean(
-      input.context
-      && typeof (input.context as Record<string, unknown>).auto_fill_missing_required === 'boolean'
-      && (input.context as Record<string, unknown>).auto_fill_missing_required === true,
-    );
     const recognized = await this.recognizerService.recognizeParams({
       template_id: matchedSkill.skillId,
       user_input: objective,
@@ -161,32 +166,33 @@ export class PlannerService {
         paramsSchema: matchedSkill.paramsSchema,
         runtimeMetadata: matchedSkill.apiEndpoints?.runtimeMetadata,
       }),
-      params_schema: {
-        properties: this.buildRecognizerParamsSchemaProperties(matchedSkill.paramsSchema?.properties || {}),
-        required: matchedSkill.paramsSchema?.required || [],
-      },
+      params_schema: this.buildRecognizerParamsSchema(matchedSkill.paramsSchema, input.context),
     });
-    const enrichedRecognized = await this.applyBilingualCompletionToRecognized(
+    const mergedRecognized = this.mergeRecognizedWithCollectedContext(
       recognized,
       matchedSkill.paramsSchema,
+      input.context,
     );
-    const adjustedRecognized = autoFillMissingRequired
-      ? this.applyEndToEndAutofill(enrichedRecognized, matchedSkill.paramsSchema)
-      : enrichedRecognized;
+    const enrichedRecognized = await this.applyBilingualCompletionToRecognized(
+      mergedRecognized,
+      matchedSkill.paramsSchema,
+    );
 
     // 累积消耗
     const totalUsage = this.sumUsage(matchedSkill.usage, enrichedRecognized.usage);
+    const workflowParamPolicies = this.resolveWorkflowParamPolicies(matchedSkill);
 
     const semanticContext = this.buildDocumentSemanticContext(
       matchedSkill,
-      this.buildRequiredInputs(matchedSkill, adjustedRecognized, { relaxConfirmationBlocking: autoFillMissingRequired }),
+      this.buildRequiredInputs(matchedSkill, enrichedRecognized, workflowParamPolicies),
     );
     const requiredInputs = semanticContext.requiredInputs;
+    const executionSnapshot = this.buildExecutionSnapshot(requiredInputs, semanticContext.semantic);
+    // #region debug-point A:planner-required-inputs
+    (()=>{const fs=require('fs'),p='.dbg/empty-document-output.env',n=(executionSnapshot.normalizedInputJson||{}) as Record<string, unknown>,r=(n.paramResolution&&typeof n.paramResolution==='object'&&!Array.isArray(n.paramResolution)?n.paramResolution:{}) as Record<string, Record<string, unknown>>,i=(n.input&&typeof n.input==='object'&&!Array.isArray(n.input)?n.input:{}) as Record<string, unknown>;let u='http://127.0.0.1:7777/event',s='empty-document-output';try{const e=fs.readFileSync(p,'utf8');u=e.match(/DEBUG_SERVER_URL=(.+)/)?.[1]||u;s=e.match(/DEBUG_SESSION_ID=(.+)/)?.[1]||s}catch{}fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:s,runId:'pre-fix',hypothesisId:'A',location:'planner.service.ts:190',msg:'[DEBUG] planner built required inputs and execution snapshot',data:{skillId:matchedSkill.skillId,skillName:matchedSkill.skillName,recognizedParams:enrichedRecognized.params||{},requiredInputs:requiredInputs.map((item)=>({name:item.name,missing:item.missing,value:item.value,source:item.source,needsConfirmation:item.needs_confirmation===true,required:item.required,renderPath:item.render_path,templateBinding:item.template_binding})),snapshotInputKeys:Object.keys(i),snapshotParamResolution:Object.fromEntries(Object.entries(r).map(([name,entry])=>[name,{final:entry.final===true,value:entry.value,source:entry.source,renderPath:entry.render_path,templateBinding:entry.template_binding}])),workflowPolicyKeys:Object.keys(workflowParamPolicies||{})},ts:Date.now()})}).catch(()=>{});})();
+    // #endregion
     const steps = this.buildPlanSteps(matchedSkill, requiredInputs);
     const missingInputs = requiredInputs.filter((item) => item.missing);
-    // #region debug-point A:planner-recognition
-    (()=>{const fs=require('fs');let u='http://127.0.0.1:7777/event',s='contract-param-recognition';try{const e=fs.readFileSync('.dbg/contract-param-recognition.env','utf8');u=e.match(/DEBUG_SERVER_URL=(.+)/)?.[1]||u;s=e.match(/DEBUG_SESSION_ID=(.+)/)?.[1]||s}catch{}fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:s,runId:'pre-fix',hypothesisId:'A',location:'planner.service.ts:164',msg:'[DEBUG] planner built skill plan',data:{skillId:matchedSkill.skillId,skillName:matchedSkill.skillName,objective,recognizedKeys:Object.keys(recognized?.params||{}),recognizedParams:recognized?.params||{},requiredInputs:requiredInputs.map((item)=>({name:item.name,missing:item.missing,value:item.value})),missingInputs:missingInputs.map((item)=>item.name),semanticGroupedMissing:semanticContext.semantic?.groupedMissing||[]},ts:Date.now()})}).catch(()=>{});})();
-    // #endregion
     // Missing required inputs should be handled by waiting_input, not approval.
     const requiresHumanReview = false;
     const baseSummary = missingInputs.length > 0
@@ -222,10 +228,11 @@ export class PlannerService {
           ],
           notes: [
             ...(matchedSkill.debug?.notes || []),
-            ...(recognized.debug?.notes || []),
+            ...(mergedRecognized.debug?.notes || []),
           ],
           semanticDebug: semanticContext.debug,
         },
+        execution_snapshot: executionSnapshot,
       },
     };
   }
@@ -254,18 +261,14 @@ export class PlannerService {
       const response = await axios.get<SkillListResponse>(`${this.authServiceUrl}/skills`, { headers });
 
       const rawSkills = Array.isArray(response.data.skills) ? response.data.skills : [];
-      const mappedSkills = rawSkills
+      const normalizedSkills = rawSkills
         .map((item) => this.mapRawSkillDefinition(item))
         .filter((item) => item.skillId && item.skillName);
-
-      const enrichedSkills = await Promise.all(
-        mappedSkills.map((skill) => this.enrichSkillParamsSchema(skill, headers)),
-      );
-      this.setCacheValue(this.availableSkillsCache, cacheKey, enrichedSkills);
-      enrichedSkills.forEach((skill) => {
+      this.setCacheValue(this.availableSkillsCache, cacheKey, normalizedSkills);
+      normalizedSkills.forEach((skill) => {
         this.setCacheValue(this.skillByIdCache, this.buildSkillCacheKey(cacheKey, skill.skillId), skill);
       });
-      return enrichedSkills;
+      return normalizedSkills;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'unknown';
       this.logger.warn(`Failed to load available skills for planner: ${message}`);
@@ -308,13 +311,12 @@ export class PlannerService {
         return null;
       }
 
-      const enrichedSkill = await this.enrichSkillParamsSchema(mappedSkill, headers);
       this.setCacheValue(
         this.skillByIdCache,
         this.buildSkillCacheKey(authCacheKey, trimmedSkillId),
-        enrichedSkill,
+        mappedSkill,
       );
-      return enrichedSkill;
+      return mappedSkill;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'unknown';
       this.logger.warn(`Failed to load planner target skill ${trimmedSkillId}: ${message}`);
@@ -325,6 +327,9 @@ export class PlannerService {
   private mapRawSkillDefinition(item: Record<string, unknown>): AvailableSkillDefinition {
     const apiEndpoints = (typeof item.apiEndpoints === 'object' && item.apiEndpoints)
       ? item.apiEndpoints as AvailableSkillDefinition['apiEndpoints']
+      : undefined;
+    const runtimeMetadata = (apiEndpoints?.runtimeMetadata && typeof apiEndpoints.runtimeMetadata === 'object')
+      ? apiEndpoints.runtimeMetadata as Record<string, unknown>
       : undefined;
     const sourceTemplate = apiEndpoints?.runtimeMetadata?.sourceTemplate;
     const sourceType = apiEndpoints?.runtimeMetadata?.sourceType;
@@ -338,8 +343,11 @@ export class PlannerService {
       skillName: String(item.name || item.skillName || ''),
       description: typeof item.description === 'string' ? item.description : undefined,
       triggerKeywords: Array.isArray(item.triggerKeywords) ? item.triggerKeywords.map(String) : [],
-      paramsSchema: this.normalizeParamsSchema(
-        (item.paramsSchema as AvailableSkillDefinition['paramsSchema']) || { properties: {}, required: [] },
+      paramsSchema: this.hydrateParamsSchemaRenderPaths(
+        this.normalizeParamsSchema(
+          (item.paramsSchema as AvailableSkillDefinition['paramsSchema']) || { properties: {}, required: [] },
+        ),
+        runtimeMetadata,
       ),
       executionType,
       templateId:
@@ -361,106 +369,22 @@ export class PlannerService {
             ? sourceTemplate.skillId
             : undefined,
       executionFlowTemplateIds: Array.isArray(item.executionFlowTemplateIds) ? item.executionFlowTemplateIds.map(String) : [],
-      executionFlow: Array.isArray(item.executionFlow)
-        ? item.executionFlow
-            .map((step) => (step && typeof step === 'object'
-              ? String((step as Record<string, unknown>).name || (step as Record<string, unknown>).type || '')
-              : String(step || '')))
-            .filter(Boolean)
-        : [],
+      executionFlow: this.normalizeExecutionFlow(
+        Array.isArray(item.executionFlow)
+          ? item.executionFlow
+              .map((step) => (step && typeof step === 'object'
+                ? String((step as Record<string, unknown>).name || (step as Record<string, unknown>).type || '')
+                : String(step || '')))
+              .filter(Boolean)
+          : [],
+        sourceType,
+      ),
       apiEndpoints,
       goal: typeof item.goal === 'string' ? item.goal : undefined,
       expectedResult: typeof item.expectedResult === 'string' ? item.expectedResult : undefined,
       outputParams: typeof item.outputParams === 'object' && item.outputParams
         ? item.outputParams as Record<string, unknown>
         : undefined,
-    };
-  }
-
-  private async enrichSkillParamsSchema(
-    skill: AvailableSkillDefinition,
-    headers: Record<string, string>,
-  ): Promise<AvailableSkillDefinition> {
-    const templateIds = Array.isArray(skill.executionFlowTemplateIds)
-      ? skill.executionFlowTemplateIds.filter(Boolean)
-      : [];
-
-    if (templateIds.length === 0) {
-      return {
-        ...skill,
-        paramsSchema: this.normalizeParamsSchema(skill.paramsSchema),
-      };
-    }
-
-    const templateSchemas = await Promise.all(
-      templateIds.map(async (templateId) => {
-        const cachedSchema = this.getCacheValue(
-          this.flowSchemaCache,
-          this.buildFlowSchemaCacheKey(headers.Authorization, templateId),
-        );
-        if (cachedSchema !== undefined) {
-          return cachedSchema;
-        }
-
-        try {
-          const response = await axios.get<ExecutionFlowTemplateResponse>(
-            `${this.authServiceUrl}/flows/${templateId}`,
-            { headers },
-          );
-          const paramsSchema = response.data.paramsSchema;
-          this.setCacheValue(
-            this.flowSchemaCache,
-            this.buildFlowSchemaCacheKey(headers.Authorization, templateId),
-            paramsSchema,
-          );
-          return paramsSchema;
-        } catch (error) {
-          const message = error instanceof Error ? error.message : 'unknown';
-          this.logger.warn(`Failed to load execution flow template ${templateId}: ${message}`);
-          return undefined;
-        }
-      }),
-    );
-
-    return {
-      ...skill,
-      paramsSchema: this.mergeParamsSchemas(skill.paramsSchema, ...templateSchemas),
-    };
-  }
-
-  private mergeParamsSchemas(
-    ...schemas: Array<AvailableSkillDefinition['paramsSchema'] | ExecutionFlowTemplateResponse['paramsSchema'] | undefined>
-  ): AvailableSkillDefinition['paramsSchema'] {
-    const mergedProperties: AvailableSkillDefinition['paramsSchema']['properties'] = {};
-    const mergedRequired = new Set<string>();
-
-    schemas
-      .filter((schema): schema is NonNullable<typeof schema> => Boolean(schema))
-      .map((schema) => this.normalizeParamsSchema(schema as AvailableSkillDefinition['paramsSchema']))
-      .forEach((schema) => {
-        Object.entries(schema.properties || {}).forEach(([name, property]) => {
-          const existing = mergedProperties[name];
-          mergedProperties[name] = existing
-            ? { ...property, ...existing }
-            : property;
-        });
-
-        (schema.required || []).forEach((name) => mergedRequired.add(name));
-      });
-
-    Object.entries(mergedProperties).forEach(([name, property]) => {
-      if (property.required) {
-        mergedRequired.add(name);
-      }
-      mergedProperties[name] = {
-        ...property,
-        required: mergedRequired.has(name),
-      };
-    });
-
-    return {
-      properties: mergedProperties,
-      required: Array.from(mergedRequired),
     };
   }
 
@@ -482,6 +406,12 @@ export class PlannerService {
             ...(Array.isArray(property.extractionHints) ? { extractionHints: property.extractionHints } : {}),
             ...(typeof property.displayName === 'string' ? { displayName: property.displayName } : {}),
             ...(typeof property.groupLabel === 'string' ? { groupLabel: property.groupLabel } : {}),
+            ...(
+              typeof property.renderPath === 'string'
+              || (Array.isArray(property.renderPath) && property.renderPath.every((item) => typeof item === 'string'))
+                ? { renderPath: property.renderPath }
+                : {}
+            ),
             ...(typeof property.previewBlocking === 'boolean' ? { previewBlocking: property.previewBlocking } : {}),
             ...(typeof property.confirmationThreshold === 'number'
               ? { confirmationThreshold: property.confirmationThreshold }
@@ -505,6 +435,132 @@ export class PlannerService {
     });
 
     return { properties, required };
+  }
+
+  private hydrateParamsSchemaRenderPaths(
+    schema: AvailableSkillDefinition['paramsSchema'],
+    runtimeMetadata?: Record<string, unknown>,
+  ): AvailableSkillDefinition['paramsSchema'] {
+    const mappingIndex = this.buildRuntimeMappingIndex(runtimeMetadata);
+    if (mappingIndex.size === 0) {
+      return schema;
+    }
+
+    let changed = false;
+    const nextProperties = Object.fromEntries(
+      Object.entries(schema.properties || {}).map(([name, property]) => {
+        const existingRenderPath = property.renderPath;
+        const alreadyHasRenderPath = typeof existingRenderPath === 'string'
+          ? existingRenderPath.trim().length > 0
+          : Array.isArray(existingRenderPath)
+            ? existingRenderPath.some((item) => typeof item === 'string' && item.trim().length > 0)
+            : false;
+        if (alreadyHasRenderPath) {
+          return [name, property];
+        }
+
+        const renderPaths = this.resolveRuntimeRenderPathsForParam(name, mappingIndex);
+        if (renderPaths.length === 0) {
+          return [name, property];
+        }
+
+        changed = true;
+        return [
+          name,
+          {
+            ...property,
+            renderPath: renderPaths.length === 1 ? renderPaths[0] : renderPaths,
+          },
+        ];
+      }),
+    ) as AvailableSkillDefinition['paramsSchema']['properties'];
+
+    if (!changed) {
+      return schema;
+    }
+
+    return {
+      ...schema,
+      properties: nextProperties,
+    };
+  }
+
+  private buildRuntimeMappingIndex(
+    runtimeMetadata?: Record<string, unknown>,
+  ): Map<string, string[]> {
+    const mappingIndex = new Map<string, string[]>();
+    const mappingHints = Array.isArray(runtimeMetadata?.mappingHints)
+      ? runtimeMetadata.mappingHints
+      : [];
+
+    mappingHints.forEach((hint) => {
+      if (!hint || typeof hint !== 'object' || Array.isArray(hint)) {
+        return;
+      }
+
+      const parameterName = typeof hint.parameter === 'string'
+        ? hint.parameter.trim()
+        : '';
+      const renderPath = this.normalizeRuntimeMappingPath(
+        typeof hint.path === 'string' ? hint.path : undefined,
+      );
+      if (!parameterName || !renderPath) {
+        return;
+      }
+
+      const existing = mappingIndex.get(parameterName) || [];
+      if (!existing.includes(renderPath)) {
+        mappingIndex.set(parameterName, [...existing, renderPath]);
+      }
+    });
+
+    return mappingIndex;
+  }
+
+  private resolveRuntimeRenderPathsForParam(
+    paramName: string,
+    mappingIndex: Map<string, string[]>,
+  ): string[] {
+    const directMatch = mappingIndex.get(paramName);
+    if (directMatch?.length) {
+      return directMatch;
+    }
+
+    const variantMatches = Array.from(mappingIndex.entries())
+      .filter(([name]) => name.startsWith(`${paramName}_`))
+      .flatMap(([, renderPaths]) => renderPaths);
+
+    return Array.from(new Set(variantMatches));
+  }
+
+  private normalizeRuntimeMappingPath(path: string | undefined): string | undefined {
+    if (!path) {
+      return undefined;
+    }
+
+    const trimmed = path.trim();
+    const carboneBindingMatch = trimmed.match(/^\{#?d\.([^}:]+)(?::[^}]*)?\}$/);
+    if (carboneBindingMatch?.[1]) {
+      return carboneBindingMatch[1].trim();
+    }
+
+    return trimmed.replace(/^data\./, '').trim() || undefined;
+  }
+
+  private normalizeExecutionFlow(
+    executionFlow: string[] | undefined,
+    sourceType?: string,
+  ): string[] {
+    // Drop historical bypass step names and keep only the unified document runtime path.
+    const normalized = (executionFlow || []).filter((step) =>
+      step && !['document_intake', 'generate_parameters'].includes(step),
+    );
+
+    if (normalized.length > 0) {
+      return normalized;
+    }
+
+    return sourceType === 'document' ? ['document_render'] : [];
   }
 
   private async matchSkill(
@@ -539,7 +595,7 @@ export class PlannerService {
           executionFlow: targetedSkill.executionFlow?.length
             ? targetedSkill.executionFlow
             : targetedSkill.apiEndpoints?.runtimeMetadata?.sourceType === 'document'
-              ? ['generate_parameters', 'document_render']
+              ? ['document_render']
               : undefined,
           apiEndpoints: targetedSkill.apiEndpoints,
           matchReason: 'target_skill_context',
@@ -566,7 +622,7 @@ export class PlannerService {
         const matchedSkill = this.hydrateMatchedSkill(response.data.match, availableSkills);
         if (matchedSkill?.confidence && matchedSkill.confidence > 0) {
           if (matchedSkill.apiEndpoints?.runtimeMetadata?.sourceType === 'document' && (!matchedSkill.executionFlow || matchedSkill.executionFlow.length === 0)) {
-            matchedSkill.executionFlow = ['generate_parameters', 'document_render'];
+            matchedSkill.executionFlow = ['document_render'];
           }
           return matchedSkill;
         }
@@ -624,7 +680,7 @@ export class PlannerService {
       executionFlow: bestSkill.executionFlow?.length
         ? bestSkill.executionFlow
         : bestSkill.apiEndpoints?.runtimeMetadata?.sourceType === 'document'
-          ? ['generate_parameters', 'document_render']
+          ? ['document_render']
           : undefined,
       apiEndpoints: bestSkill.apiEndpoints,
       matchReason: 'keyword_fallback_match',
@@ -707,30 +763,43 @@ export class PlannerService {
   private buildRequiredInputs(
     matchedSkill: SkillMatchResult,
     recognized: RecognizeParamsResponseDTO,
-    options?: {
-      relaxConfirmationBlocking?: boolean;
-    },
+    workflowParamPolicies?: Record<string, WorkflowParamPolicySnapshot>,
   ): RequiredInputDTO[] {
     const recognizedParams = recognized.params || {};
     const uncertainFields = new Set(recognized.uncertain_fields || []);
     const fieldConfidences = recognized.field_confidences || {};
     const overallLowConfidence = (recognized.confidence || 0) < RECOGNITION_RESULT_LOW_CONFIDENCE_THRESHOLD;
-    const relaxConfirmationBlocking = Boolean(options?.relaxConfirmationBlocking);
+    const allowSchemaStrategyFallback = !this.hasWorkflowPolicyStrategySource(workflowParamPolicies);
     const arrayGroupTargetCounts = this.buildArrayGroupTargetCounts(
       matchedSkill.paramsSchema?.properties || {},
       recognizedParams,
     );
 
-    return Object.entries(matchedSkill.paramsSchema?.properties || {}).map(([name, schema]) => {
+    return Object.entries(matchedSkill.paramsSchema?.properties || {}).reduce<RequiredInputDTO[]>((acc, [name, schema]) => {
       const schemaMeta = schema as unknown as Record<string, unknown>;
-      const required = Boolean(schema.required || matchedSkill.paramsSchema.required?.includes(name));
+      const workflowPolicy = workflowParamPolicies?.[name];
+      if (workflowPolicy?.enabled === false) {
+        return acc;
+      }
+      const requiredMode = this.resolveWorkflowRequiredMode(
+        workflowPolicy,
+        Boolean(schema.required || matchedSkill.paramsSchema.required?.includes(name)),
+        allowSchemaStrategyFallback,
+      );
+      const required = requiredMode === 'always' || requiredMode === 'system_required';
       const rawHasValue = Object.prototype.hasOwnProperty.call(recognizedParams, name);
       const rawValue = rawHasValue ? recognizedParams[name] : undefined;
       const normalizedRawValue = rawHasValue ? this.normalizeMeaningfulInputValue(rawValue) : undefined;
       const hasValue = this.hasMeaningfulRequiredInputValue(normalizedRawValue);
-      const normalizedDefaultValue = !required
+      const normalizedWorkflowDefaultValue = !required && workflowPolicy?.defaultValue !== undefined
+        ? this.normalizeOptionalDefaultValue(workflowPolicy.defaultValue)
+        : undefined;
+      const normalizedSchemaDefaultValue = allowSchemaStrategyFallback && !required && normalizedWorkflowDefaultValue === undefined
         ? this.normalizeOptionalDefaultValue(schema.default)
         : undefined;
+      const normalizedDefaultValue = normalizedWorkflowDefaultValue !== undefined
+        ? normalizedWorkflowDefaultValue
+        : normalizedSchemaDefaultValue;
       const canUseDefault = !required && !hasValue && normalizedDefaultValue !== undefined;
       const value = hasValue ? normalizedRawValue : canUseDefault ? normalizedDefaultValue : undefined;
       const arrayGroupKey = this.extractArrayGroupKey(name, schema.type);
@@ -746,12 +815,18 @@ export class PlannerService {
       const fieldConfidence = typeof fieldConfidences[name] === 'number'
         ? Math.max(0, Math.min(1, fieldConfidences[name] as number))
         : undefined;
-      const confirmationThreshold = typeof schemaMeta.confirmationThreshold === 'number'
-        && Number.isFinite(schemaMeta.confirmationThreshold)
-        ? Math.max(0, Math.min(1, schemaMeta.confirmationThreshold))
-        : RECOGNIZED_FIELD_LOW_CONFIDENCE_THRESHOLD;
-      const previewBlocking = typeof schemaMeta.previewBlocking === 'boolean'
-        ? Boolean(schemaMeta.previewBlocking)
+      const confirmationThreshold = typeof workflowPolicy?.confirmationThreshold === 'number'
+        && Number.isFinite(workflowPolicy.confirmationThreshold)
+        ? Math.max(0, Math.min(1, workflowPolicy.confirmationThreshold))
+        : allowSchemaStrategyFallback
+          && typeof schemaMeta.confirmationThreshold === 'number'
+          && Number.isFinite(schemaMeta.confirmationThreshold)
+          ? Math.max(0, Math.min(1, schemaMeta.confirmationThreshold))
+          : RECOGNIZED_FIELD_LOW_CONFIDENCE_THRESHOLD;
+      const previewBlocking = typeof workflowPolicy?.previewBlocking === 'boolean'
+        ? workflowPolicy.previewBlocking
+        : allowSchemaStrategyFallback && typeof schemaMeta.previewBlocking === 'boolean'
+          ? Boolean(schemaMeta.previewBlocking)
         : undefined;
       const shouldBlockOnConfirmation = required || previewBlocking === true;
       const needsConfidenceConfirmation = hasValue && shouldBlockOnConfirmation && (
@@ -762,7 +837,7 @@ export class PlannerService {
       const needsPartialGroupConfirmation = hasPartialArrayGroupValue && shouldBlockOnConfirmation;
       const needsConfirmation = needsConfidenceConfirmation || needsPartialGroupConfirmation;
       const isValueMissing = !this.hasMeaningfulRequiredInputValue(value);
-      const isBlockingMissing = (required && isValueMissing) || (!relaxConfirmationBlocking && needsConfirmation);
+      const isBlockingMissing = (required && isValueMissing) || needsConfirmation;
       const missingReason = isBlockingMissing && needsConfidenceConfirmation
         ? fieldConfidence === undefined && overallLowConfidence
           ? 'overall_low_confidence' as const
@@ -789,7 +864,7 @@ export class PlannerService {
         schema.description,
       );
 
-      return {
+      acc.push({
         name,
         type: schema.type,
         description,
@@ -799,10 +874,38 @@ export class PlannerService {
         ...(typeof schemaMeta.groupLabel === 'string'
           ? { group_label: String(schemaMeta.groupLabel) }
           : {}),
+        ...(() => {
+          if (typeof schemaMeta.renderPath === 'string' && schemaMeta.renderPath.trim()) {
+            return { render_path: schemaMeta.renderPath.trim() };
+          }
+          if (Array.isArray(schemaMeta.renderPath)) {
+            const renderPaths = schemaMeta.renderPath
+              .filter((item): item is string => typeof item === 'string')
+              .map((item) => item.trim())
+              .filter((item) => item.length > 0);
+            if (renderPaths.length > 0) {
+              return { render_path: renderPaths };
+            }
+          }
+          return {};
+        })(),
+        ...(typeof workflowPolicy?.templateBinding === 'string'
+          ? { template_binding: workflowPolicy.templateBinding.trim() }
+          : {}),
         required,
+        required_mode: requiredMode,
         value,
         missing: isBlockingMissing,
-        source: hasValue ? 'user_input' : canUseDefault && value !== undefined ? 'default' : 'unresolved',
+        source: hasValue
+          ? 'user_input'
+          : canUseDefault && value !== undefined
+            ? normalizedWorkflowDefaultValue !== undefined
+              ? 'workflow_default'
+              : 'default'
+            : 'unresolved',
+        ...(Array.isArray(workflowPolicy?.valueSourcePriority) && workflowPolicy.valueSourcePriority.length > 0
+          ? { source_priority: workflowPolicy.valueSourcePriority }
+          : {}),
         confidence: fieldConfidence,
         needs_confirmation: needsConfirmation,
         confirmation_threshold: confirmationThreshold,
@@ -810,8 +913,44 @@ export class PlannerService {
           ? { preview_blocking: previewBlocking }
           : {}),
         ...(missingReason ? { missing_reason: missingReason } : {}),
-      };
-    });
+      });
+      return acc;
+    }, []);
+  }
+
+  private resolveWorkflowParamPolicies(
+    matchedSkill: SkillMatchResult,
+  ): Record<string, WorkflowParamPolicySnapshot> | undefined {
+    const workflowInputPolicy = matchedSkill.apiEndpoints?.runtimeMetadata?.workflowInputPolicy;
+    if (!workflowInputPolicy || typeof workflowInputPolicy !== 'object') {
+      return undefined;
+    }
+    const params = workflowInputPolicy.params;
+    if (!params || typeof params !== 'object') {
+      return undefined;
+    }
+    return params;
+  }
+
+  private resolveWorkflowRequiredMode(
+    workflowPolicy: WorkflowParamPolicySnapshot | undefined,
+    schemaRequired: boolean,
+    allowSchemaStrategyFallback: boolean,
+  ): WorkflowParamRequiredMode {
+    const mode = workflowPolicy?.requiredMode;
+    if (mode === 'always' || mode === 'conditional' || mode === 'optional' || mode === 'system_required') {
+      return mode;
+    }
+    if (!allowSchemaStrategyFallback) {
+      return 'optional';
+    }
+    return schemaRequired ? 'always' : 'optional';
+  }
+
+  private hasWorkflowPolicyStrategySource(
+    workflowParamPolicies?: Record<string, WorkflowParamPolicySnapshot>,
+  ): boolean {
+    return Boolean(workflowParamPolicies && Object.keys(workflowParamPolicies).length > 0);
   }
 
   private identifyBilingualPairs(
@@ -847,133 +986,6 @@ export class PlannerService {
     }
 
     return pairs;
-  }
-
-  private applyEndToEndAutofill(
-    recognized: RecognizeParamsResponseDTO,
-    schema: SkillMatchResult['paramsSchema'],
-  ): RecognizeParamsResponseDTO {
-    const required = Array.isArray(schema?.required)
-      ? schema.required.filter((item): item is string => typeof item === 'string' && item.length > 0)
-      : [];
-
-    if (required.length === 0) {
-      return recognized;
-    }
-
-    const params: Record<string, unknown> = { ...(recognized.params || {}) };
-    const fieldConfidences: Record<string, number> = { ...(recognized.field_confidences || {}) } as Record<string, number>;
-
-    const getSchemaType = (name: string): string | undefined => {
-      const prop = schema?.properties?.[name] as unknown as { type?: string } | undefined;
-      return prop?.type;
-    };
-
-    const buildPlaceholder = (name: string, type: string | undefined): unknown => {
-      const jp = name.endsWith('_jp') || name.endsWith('_ja');
-      if (type === 'number') {
-        if (/(?:days|Days)/.test(name) || name.includes('.days')) {
-          return 30;
-        }
-        if (/(?:copyCount|CopyCount)/.test(name)) {
-          return 2;
-        }
-        return 0;
-      }
-      if (type === 'boolean') {
-        return false;
-      }
-      if (type === 'array') {
-        return [];
-      }
-      if (type === 'object') {
-        return {};
-      }
-      return jp ? '（未記入）' : '（待补充）';
-    };
-
-    const resolveLanguageCounterpartKey = (name: string): string | undefined => {
-      if (name.endsWith('_jp')) {
-        return `${name.slice(0, -3)}_cn`;
-      }
-      if (name.endsWith('_ja')) {
-        return `${name.slice(0, -3)}_zh`;
-      }
-      if (name.endsWith('_en')) {
-        return `${name.slice(0, -3)}_cn`;
-      }
-      return undefined;
-    };
-
-    const ensureArrayFieldValues = (arrayFieldName: string): void => {
-      const match = arrayFieldName.match(/^([a-zA-Z0-9_]+)\[\]\.(.+)$/);
-      if (!match) {
-        return;
-      }
-      const baseArrayKey = match[1];
-      const fieldKey = match[2];
-      if (!baseArrayKey || !fieldKey) {
-        return;
-      }
-      const schemaType = getSchemaType(arrayFieldName);
-      const existingArray = params[baseArrayKey];
-      const hasMeaningfulArrayValue = this.hasMeaningfulRequiredInputValue(this.normalizeMeaningfulInputValue(params[arrayFieldName]));
-      if (hasMeaningfulArrayValue) {
-        return;
-      }
-
-      if (Array.isArray(existingArray) && existingArray.length > 0 && typeof existingArray[0] === 'object' && existingArray[0]) {
-        const mapped = existingArray.map((item) => {
-          const value = (item as Record<string, unknown>)[fieldKey];
-          const normalized = this.normalizeMeaningfulInputValue(value);
-          return normalized !== undefined ? normalized : buildPlaceholder(arrayFieldName, schemaType);
-        });
-        params[arrayFieldName] = mapped;
-        return;
-      }
-
-      params[arrayFieldName] = [buildPlaceholder(arrayFieldName, schemaType)];
-    };
-
-    for (const name of required) {
-      const normalizedExisting = this.normalizeMeaningfulInputValue(params[name]);
-      if (this.hasMeaningfulRequiredInputValue(normalizedExisting)) {
-        continue;
-      }
-
-      if (/^[a-zA-Z0-9_]+\[\]\./.test(name)) {
-        ensureArrayFieldValues(name);
-        if (typeof fieldConfidences[name] !== 'number') {
-          fieldConfidences[name] = 0.6;
-        }
-        continue;
-      }
-
-      const counterpartKey = resolveLanguageCounterpartKey(name);
-      if (counterpartKey) {
-        const normalizedCounterpart = this.normalizeMeaningfulInputValue(params[counterpartKey]);
-        if (this.hasMeaningfulRequiredInputValue(normalizedCounterpart)) {
-          params[name] = normalizedCounterpart;
-          if (typeof fieldConfidences[name] !== 'number') {
-            fieldConfidences[name] = typeof fieldConfidences[counterpartKey] === 'number'
-              ? Math.max(0.6, Math.min(1, fieldConfidences[counterpartKey] as number))
-              : 0.6;
-          }
-          continue;
-        }
-      }
-
-      params[name] = buildPlaceholder(name, getSchemaType(name));
-      if (typeof fieldConfidences[name] !== 'number') {
-        fieldConfidences[name] = 0.6;
-      }
-    }
-
-    return {
-      ...recognized,
-      params,
-      field_confidences: fieldConfidences,
-    };
   }
 
   private async applyBilingualCompletionToRecognized(
@@ -1295,7 +1307,6 @@ ${JSON.stringify(data, null, 2)}`;
     });
 
     return matchedSkill.apiEndpoints?.runtimeMetadata?.sourceType === 'document'
-      || matchedSkill.executionFlow?.includes('generate_parameters')
       || matchedSkill.executionFlow?.includes('document_render')
       || Boolean(matchedSkill.carboneTemplateId)
       || Boolean(matchedSkill.executionFlowTemplateIds?.length)
@@ -1503,11 +1514,17 @@ ${JSON.stringify(data, null, 2)}`;
       return matchedSkill;
     }
 
+    const resolvedApiEndpoints = matchedSkill.apiEndpoints || sourceSkill.apiEndpoints;
+    const normalizedParamsSchema = Object.keys(matchedSkill.paramsSchema?.properties || {}).length > 0
+      ? this.normalizeParamsSchema(matchedSkill.paramsSchema)
+      : sourceSkill.paramsSchema;
+
     return {
       ...matchedSkill,
-      paramsSchema: Object.keys(matchedSkill.paramsSchema?.properties || {}).length > 0
-        ? this.normalizeParamsSchema(matchedSkill.paramsSchema)
-        : sourceSkill.paramsSchema,
+      paramsSchema: this.hydrateParamsSchemaRenderPaths(
+        normalizedParamsSchema,
+        (resolvedApiEndpoints?.runtimeMetadata || {}) as Record<string, unknown>,
+      ),
       templateId: matchedSkill.templateId || sourceSkill.templateId,
       carboneSkillId: matchedSkill.carboneSkillId || sourceSkill.carboneSkillId,
       carboneTemplateId: matchedSkill.carboneTemplateId || sourceSkill.carboneTemplateId,
@@ -1515,10 +1532,13 @@ ${JSON.stringify(data, null, 2)}`;
         ? matchedSkill.executionFlowTemplateIds
         : sourceSkill.executionFlowTemplateIds,
       executionType: matchedSkill.executionType || sourceSkill.executionType,
-      executionFlow: matchedSkill.executionFlow?.length
-        ? matchedSkill.executionFlow
-        : sourceSkill.executionFlow,
-      apiEndpoints: matchedSkill.apiEndpoints || sourceSkill.apiEndpoints,
+      executionFlow: this.normalizeExecutionFlow(
+        matchedSkill.executionFlow?.length
+          ? matchedSkill.executionFlow
+          : sourceSkill.executionFlow,
+        matchedSkill.apiEndpoints?.runtimeMetadata?.sourceType || sourceSkill.apiEndpoints?.runtimeMetadata?.sourceType,
+      ),
+      apiEndpoints: resolvedApiEndpoints,
       goal: matchedSkill.goal || sourceSkill.goal,
       expectedResult: matchedSkill.expectedResult || sourceSkill.expectedResult,
       outputParams: matchedSkill.outputParams || sourceSkill.outputParams,
@@ -1538,6 +1558,38 @@ ${JSON.stringify(data, null, 2)}`;
     return undefined;
   }
 
+  private buildRecognizerParamsSchema(
+    schema: SkillMatchResult['paramsSchema'],
+    context?: Record<string, unknown>,
+  ): NonNullable<RecognizeParamsDTO['params_schema']> {
+    const allProperties = schema?.properties || {};
+    const allRequired = Array.isArray(schema?.required) ? schema.required : [];
+    const narrowedFieldNames = this.resolveRecognizerFieldNamesForContext(allProperties, context);
+
+    if (narrowedFieldNames.length === 0) {
+      return {
+        properties: this.buildRecognizerParamsSchemaProperties(allProperties),
+        required: allRequired,
+      };
+    }
+
+    const narrowedProperties = narrowedFieldNames.reduce<
+      NonNullable<AvailableSkillDefinition['paramsSchema']>['properties']
+    >((acc, name) => {
+      const property = allProperties[name];
+      if (property) {
+        acc[name] = property;
+      }
+      return acc;
+    }, {});
+    const narrowedRequired = this.resolveRecognizerRequiredFieldsForContext(allRequired, narrowedFieldNames, context);
+
+    return {
+      properties: this.buildRecognizerParamsSchemaProperties(narrowedProperties),
+      required: narrowedRequired,
+    };
+  }
+
   private buildRecognizerParamsSchemaProperties(
     properties: NonNullable<AvailableSkillDefinition['paramsSchema']>['properties'],
   ): NonNullable<RecognizeParamsDTO['params_schema']>['properties'] {
@@ -1552,11 +1604,179 @@ ${JSON.stringify(data, null, 2)}`;
     );
   }
 
+  private resolveRecognizerFieldNamesForContext(
+    properties: NonNullable<AvailableSkillDefinition['paramsSchema']>['properties'],
+    context?: Record<string, unknown>,
+  ): string[] {
+    if (!context || context.mode !== 'waiting_input_resume') {
+      return [];
+    }
+
+    const schemaKeys = new Set(Object.keys(properties));
+    const missingInputs = Array.isArray(context.missing_inputs)
+      ? context.missing_inputs.filter((item): item is string => typeof item === 'string' && schemaKeys.has(item))
+      : [];
+    const alreadyCollectedKeys = (
+      typeof context.already_collected === 'object'
+      && context.already_collected
+      && !Array.isArray(context.already_collected)
+    )
+      ? Object.keys(context.already_collected as Record<string, unknown>)
+          .filter((key) => schemaKeys.has(key))
+      : [];
+
+    return Array.from(new Set([...missingInputs, ...alreadyCollectedKeys]));
+  }
+
+  private resolveRecognizerRequiredFieldsForContext(
+    allRequired: string[],
+    narrowedFieldNames: string[],
+    context?: Record<string, unknown>,
+  ): string[] {
+    if (!context || context.mode !== 'waiting_input_resume') {
+      return allRequired;
+    }
+
+    const narrowedSet = new Set(narrowedFieldNames);
+    const missingInputs = Array.isArray(context.missing_inputs)
+      ? context.missing_inputs.filter((item): item is string => typeof item === 'string')
+      : [];
+
+    return missingInputs.filter((name) => narrowedSet.has(name));
+  }
+
+  private mergeRecognizedWithCollectedContext(
+    recognized: RecognizeParamsResponseDTO,
+    schema: SkillMatchResult['paramsSchema'],
+    context?: Record<string, unknown>,
+  ): RecognizeParamsResponseDTO {
+    const collectedParams = this.extractCollectedParamsFromContext(context, schema);
+    if (Object.keys(collectedParams).length === 0) {
+      return recognized;
+    }
+
+    const recognizedParams = recognized.params || {};
+    const recognizedKeys = new Set(Object.keys(recognizedParams));
+    const mergedParams = {
+      ...collectedParams,
+      ...recognizedParams,
+    };
+
+    const mergedFieldConfidences: Record<string, number> = {
+      ...Object.fromEntries(
+        Object.keys(collectedParams).map((key) => [key, 1]),
+      ),
+      ...(recognized.field_confidences || {}),
+    };
+
+    const mergedUncertainFields = (recognized.uncertain_fields || []).filter((field) => (
+      !Object.prototype.hasOwnProperty.call(collectedParams, field) || recognizedKeys.has(field)
+    ));
+
+    return {
+      ...recognized,
+      params: mergedParams,
+      field_confidences: Object.keys(mergedFieldConfidences).length > 0
+        ? mergedFieldConfidences
+        : recognized.field_confidences,
+      uncertain_fields: mergedUncertainFields,
+      debug: {
+        llmCalls: recognized.debug?.llmCalls,
+        notes: [
+          ...(recognized.debug?.notes || []),
+          `planner 已合并 waiting_input 上下文中的 ${Object.keys(collectedParams).length} 个已确认参数`,
+        ],
+      },
+    };
+  }
+
+  private extractCollectedParamsFromContext(
+    context: Record<string, unknown> | undefined,
+    schema: SkillMatchResult['paramsSchema'],
+  ): Record<string, unknown> {
+    if (!context || context.mode !== 'waiting_input_resume') {
+      return {};
+    }
+
+    const alreadyCollected = (
+      typeof context.already_collected === 'object'
+      && context.already_collected
+      && !Array.isArray(context.already_collected)
+    )
+      ? context.already_collected as Record<string, unknown>
+      : undefined;
+    if (!alreadyCollected) {
+      return {};
+    }
+
+    const schemaProperties = schema?.properties || {};
+    return Object.fromEntries(
+      Object.entries(alreadyCollected)
+        .filter(([key]) => Boolean(schemaProperties[key]))
+        .map(([key, value]) => [key, this.normalizeMeaningfulInputValue(value)] as const)
+        .filter(([, value]) => value !== undefined),
+    );
+  }
+
   private buildRequestHeaders(authToken?: string, traceId?: string): Record<string, string> {
     return {
       ...(authToken ? { Authorization: authToken } : {}),
       ...(traceId ? { [TRACE_ID_HEADER]: traceId } : {}),
     };
+  }
+
+  private buildExecutionSnapshot(
+    requiredInputs: RequiredInputDTO[],
+    semantic?: PlanSemanticDTO,
+  ): Record<string, unknown> {
+    const input = requiredInputs.reduce<Record<string, unknown>>((acc, item) => {
+      if (!this.isExecutionInputSafe(item)) {
+        return acc;
+      }
+      acc[item.name] = item.value;
+      return acc;
+    }, {});
+
+    const paramResolution = requiredInputs.reduce<Record<string, unknown>>((acc, item) => {
+      acc[item.name] = {
+        type: item.type,
+        value: item.value ?? null,
+        source: item.source,
+        required: item.required,
+        requiredMode: item.required_mode || (item.required ? 'always' : 'optional'),
+        ...(Array.isArray(item.source_priority) ? { valueSourcePriority: item.source_priority } : {}),
+        missing: item.missing,
+        needsConfirmation: item.needs_confirmation === true,
+        confirmed: !item.missing && item.needs_confirmation !== true,
+        final: !item.missing && item.needs_confirmation !== true,
+        ...(typeof item.confidence === 'number' ? { confidence: item.confidence } : {}),
+        ...(typeof item.confirmation_threshold === 'number'
+          ? { confirmation_threshold: item.confirmation_threshold }
+          : {}),
+        ...(item.missing_reason ? { missing_reason: item.missing_reason } : {}),
+        ...(item.display_name ? { display_name: item.display_name } : {}),
+        ...(item.group_label ? { group_label: item.group_label } : {}),
+        ...(item.render_path ? { render_path: item.render_path } : {}),
+        ...(item.template_binding ? { template_binding: item.template_binding } : {}),
+        ...(typeof item.preview_blocking === 'boolean' ? { preview_blocking: item.preview_blocking } : {}),
+      };
+      return acc;
+    }, {});
+
+    return {
+      normalizedInputJson: {
+        input,
+        paramResolution,
+        requiredInputs,
+        ...(semantic ? { semantic } : {}),
+      },
+    };
+  }
+
+  private isExecutionInputSafe(item: RequiredInputDTO): boolean {
+    return !item.missing
+      && item.needs_confirmation !== true
+      && this.hasMeaningfulRequiredInputValue(item.value);
   }
 
   private buildAuthCacheKey(authToken?: string): string {
@@ -1566,10 +1786,6 @@ ${JSON.stringify(data, null, 2)}`;
 
   private buildSkillCacheKey(authCacheKey: string, skillId: string): string {
     return `${authCacheKey}:skill:${skillId}`;
-  }
-
-  private buildFlowSchemaCacheKey(authToken: string | undefined, templateId: string): string {
-    return `${this.buildAuthCacheKey(authToken)}:flow:${templateId}`;
   }
 
   private getCacheValue<T>(
@@ -1633,7 +1849,7 @@ ${JSON.stringify(data, null, 2)}`;
     const executionFlow = matchedSkill.executionFlow?.length
       ? matchedSkill.executionFlow
       : matchedSkill.apiEndpoints?.runtimeMetadata?.sourceType === 'document'
-        ? ['generate_parameters', 'document_render']
+        ? ['document_render']
         : [];
 
     if (executionFlow.length === 0) {

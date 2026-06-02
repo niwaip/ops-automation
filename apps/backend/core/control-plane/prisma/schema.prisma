@@ -104,7 +104,7 @@ model ExecutionFlowTemplate {
   steps           Json      @default("[]")
 
   // Default execution flow keys (for quick selection in Skills)
-  // Example: ["skill_match", "generate_parameters", "confirm", "document_render"]
+  // Example: ["skill_match", "param_collect", "waiting_input", "document_render"]
   executionFlowKeys Json   @default("[]") @map("execution_flow_keys")
 
   // AI validation result (populated after validation)

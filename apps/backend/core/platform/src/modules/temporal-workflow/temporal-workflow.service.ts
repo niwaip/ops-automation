@@ -64,10 +64,14 @@ export type WorkflowInputParamSource =
 
 export type WorkflowInputParamType = 'string' | 'number' | 'boolean' | 'date';
 
+export type WorkflowLocalizedValueMap = Record<string, string | number | boolean>;
+
 export interface WorkflowInputParamDefinition {
   description?: string;
   required?: boolean;
   defaultValue?: string;
+  localizedDefaultValue?: WorkflowLocalizedValueMap;
+  localizedVariants?: string[];
   source?: WorkflowInputParamSource;
   type?: WorkflowInputParamType;
   exampleValue?: string | number | boolean;
@@ -76,6 +80,30 @@ export interface WorkflowInputParamDefinition {
   paramKind?: 'scalar' | 'array';
   arrayPath?: string;
   fieldName?: string;
+  renderPath?: string | string[];
+}
+
+export type WorkflowParamRequiredMode =
+  | 'always'
+  | 'conditional'
+  | 'optional'
+  | 'system_required';
+
+export interface WorkflowParamPolicy {
+  enabled?: boolean;
+  requiredMode?: WorkflowParamRequiredMode;
+  defaultValue?: unknown;
+  defaultValueResolver?: string;
+  valueSourcePriority?: string[];
+  confirmationThreshold?: number;
+  previewBlocking?: boolean;
+  validationRules?: Array<Record<string, unknown>>;
+  transformRule?: string;
+  templateBinding?: string;
+}
+
+export interface WorkflowInputPolicy {
+  params: Record<string, WorkflowParamPolicy>;
 }
 
 export interface WorkflowDsl {
@@ -86,6 +114,7 @@ export interface WorkflowDsl {
   steps: WorkflowStep[];
   sourceContext?: TemporalWorkflowSourceContext;
   inputParams?: Record<string, WorkflowInputParamDefinition>;
+  inputPolicy?: WorkflowInputPolicy;
   outputParams?: Record<string, { description?: string; sourceStep?: string }>;
   extraPrompt?: string;
   workflowExecutionTimeout?: string;
@@ -222,6 +251,14 @@ export interface TemplateWorkflowDraft {
   };
 }
 
+export interface CompileTemplateWorkflowDraftDTO {
+  templateId: string;
+  name?: string;
+  description?: string;
+  taskQueue?: string;
+  inputPolicy?: WorkflowInputPolicy;
+}
+
 export interface BrowserWorkflowDraft {
   name: string;
   description: string;
@@ -298,9 +335,24 @@ interface CarboneTemplateMeta {
   variables?: string[];
   skillId?: string;
   loops?: Array<{ arrayPath: string }>;
+  suggestions?: Array<{
+    suggestedName?: string;
+    originalText?: string;
+    elementPath?: string;
+    details?: {
+      description?: string;
+      significance?: string;
+      chapter?: string;
+      displayPosition?: string;
+    };
+  }>;
   templateAssetManifest?: {
     assetVersion: string;
     fieldCount: number;
+    languageProfile?: {
+      sourceLanguage?: string;
+      targetLanguages?: string[];
+    };
     templateFieldSpecs?: Array<{
       fieldId: string;
       description?: string;
@@ -596,9 +648,12 @@ export class TemporalWorkflowService {
       required: param.required,
     }));
     const inputParams = paramSeeds.reduce<Record<string, WorkflowInputParamDefinition>>((acc, item) => {
+      const renderPath = this.normalizeWorkflowInputRenderPath(item.renderPath);
       acc[item.key] = {
         required: item.required,
         defaultValue: '',
+        localizedDefaultValue: undefined,
+        localizedVariants: item.localizedVariants,
         description: analysis.inputParamDescriptions?.[item.key]?.trim() || item.description,
         source: 'inferred_from_template',
         type: item.type,
@@ -608,9 +663,11 @@ export class TemporalWorkflowService {
         paramKind: item.paramKind,
         arrayPath: item.arrayPath,
         fieldName: item.fieldName,
+        ...(renderPath ? { renderPath } : {}),
       };
       return acc;
     }, {});
+    const inputPolicyParams = this.buildDefaultWorkflowInputPolicyParams(inputParams);
 
     const builtinDocumentRender = this.getBuiltinDocumentRenderActivity();
     const sharedActivityName = builtinDocumentRender.name;
@@ -652,6 +709,13 @@ export class TemporalWorkflowService {
           } : undefined,
         },
         inputParams,
+        ...(Object.keys(inputPolicyParams).length > 0
+          ? {
+              inputPolicy: {
+                params: inputPolicyParams,
+              },
+            }
+          : {}),
         outputParams: {
           result: {
             sourceStep: 'step_1',
@@ -695,6 +759,10 @@ export class TemporalWorkflowService {
               variableCount: paramSeeds.length,
               templateAssetVersion: templateAssetVersion || null,
               renderPlanVersion: renderPlanVersion || null,
+              sourceLanguage: templateAssetManifest?.languageProfile?.sourceLanguage || null,
+              targetLanguages: Array.isArray(templateAssetManifest?.languageProfile?.targetLanguages)
+                ? templateAssetManifest.languageProfile.targetLanguages
+                : [],
               templateFieldCount: templateAssetManifest ? resolvedTemplateFieldCount : null,
               templateAssetSource: templateAssetManifest ? templateAssetSource : null,
               steps: [
@@ -727,6 +795,26 @@ export class TemporalWorkflowService {
         renderPlanVersion,
       },
     };
+  }
+
+  async compileTemplateWorkflowDraft(
+    data: CompileTemplateWorkflowDraftDTO,
+  ): Promise<TemplateWorkflowDraft> {
+    // #region debug-point C:compile-entry
+    (()=>{const fs=require('fs'),p='.dbg/template-save-values-lost.env';let u='http://127.0.0.1:7777/event',s='template-save-values-lost';try{const e=fs.readFileSync(p,'utf8');u=e.match(/DEBUG_SERVER_URL=(.+)/)?.[1]||u;s=e.match(/DEBUG_SESSION_ID=(.+)/)?.[1]||s}catch{}fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:s,runId:'pre-fix',hypothesisId:'C',location:'temporal-workflow.service.ts:800',msg:'[DEBUG] backend entered compileTemplateWorkflowDraft',data:{templateId:data.templateId,name:data.name||null,taskQueue:data.taskQueue||null,inputPolicyKeys:Object.keys(data.inputPolicy?.params||{}).slice(0,8),inputPolicyPreview:Object.entries(data.inputPolicy?.params||{}).slice(0,3)},ts:Date.now()})}).catch(()=>{});})();
+    // #endregion
+    const baseDraft = await this.generateTemplateWorkflowDraft(data.templateId);
+    // #region debug-point C:compile-base-draft
+    (()=>{const fs=require('fs'),p='.dbg/template-save-values-lost.env';let u='http://127.0.0.1:7777/event',s='template-save-values-lost';try{const e=fs.readFileSync(p,'utf8');u=e.match(/DEBUG_SERVER_URL=(.+)/)?.[1]||u;s=e.match(/DEBUG_SESSION_ID=(.+)/)?.[1]||s}catch{}fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:s,runId:'pre-fix',hypothesisId:'C',location:'temporal-workflow.service.ts:803',msg:'[DEBUG] backend generated base template draft before overrides',data:{templateId:data.templateId,baseInputParamCount:Object.keys(baseDraft.workflowDsl?.inputParams||{}).length,baseInputParamKeys:Object.keys(baseDraft.workflowDsl?.inputParams||{}).slice(0,8),baseInputParamPreview:Object.entries(baseDraft.workflowDsl?.inputParams||{}).slice(0,3),basePolicyKeys:Object.keys(baseDraft.workflowDsl?.inputPolicy?.params||{}).slice(0,8),basePolicyPreview:Object.entries(baseDraft.workflowDsl?.inputPolicy?.params||{}).slice(0,3)},ts:Date.now()})}).catch(()=>{});})();
+    // #endregion
+    const compiledDraft = await this.applyTemplateWorkflowDraftOverrides(baseDraft, {
+      ...data,
+      inputPolicy: this.stripTemplateBindingOverridesFromInputPolicy(data.inputPolicy),
+    });
+    // #region debug-point C:compile-result
+    (()=>{const fs=require('fs'),p='.dbg/template-save-values-lost.env';let u='http://127.0.0.1:7777/event',s='template-save-values-lost';try{const e=fs.readFileSync(p,'utf8');u=e.match(/DEBUG_SERVER_URL=(.+)/)?.[1]||u;s=e.match(/DEBUG_SESSION_ID=(.+)/)?.[1]||s}catch{}fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:s,runId:'pre-fix',hypothesisId:'C',location:'temporal-workflow.service.ts:807',msg:'[DEBUG] backend produced compiled template draft after overrides',data:{templateId:data.templateId,compiledInputParamCount:Object.keys(compiledDraft.workflowDsl?.inputParams||{}).length,compiledInputParamKeys:Object.keys(compiledDraft.workflowDsl?.inputParams||{}).slice(0,8),compiledInputParamPreview:Object.entries(compiledDraft.workflowDsl?.inputParams||{}).slice(0,3),compiledPolicyKeys:Object.keys(compiledDraft.workflowDsl?.inputPolicy?.params||{}).slice(0,8),compiledPolicyPreview:Object.entries(compiledDraft.workflowDsl?.inputPolicy?.params||{}).slice(0,3)},ts:Date.now()})}).catch(()=>{});})();
+    // #endregion
+    return compiledDraft;
   }
 
   async generateBrowserWorkflowDraft(
@@ -2762,19 +2850,49 @@ export class TemporalWorkflowService {
     const templateId = String(carboneStep.config?.templateId || activityDef.config?.templateId || '');
     const outputFormat = String(carboneStep.config?.format || 'docx');
     const outputName = String(carboneStep.config?.outputName || '');
+    const sourceLanguage = this.pickFirstNonEmptyString(
+      activityDef.config?.sourceLanguage,
+      carboneStep.config?.sourceLanguage,
+    );
+    const targetLanguages = Array.isArray(activityDef.config?.targetLanguages)
+      ? activityDef.config.targetLanguages
+      : Array.isArray(carboneStep.config?.targetLanguages)
+        ? carboneStep.config.targetLanguages
+        : [];
+    const workflowInputPolicies = workflowDsl.inputPolicy?.params || {};
+    const renderBindingsLiteral = this.toPythonLiteral(
+      inputParams.reduce<Record<string, string[]>>((acc, [key, config]) => {
+        acc[key] = this.resolveDocumentWorkflowBindingPaths(
+          workflowInputPolicies?.[key]?.templateBinding,
+          config?.renderPath,
+          key,
+        );
+        return acc;
+      }, {}),
+      4,
+    );
     const normalizeLines = inputParams.map(([key, config]) => {
-      const defaultValue = config?.defaultValue ?? '';
-      return `            ${JSON.stringify(key)}: cls._normalize(params.get(${JSON.stringify(key)}, ${JSON.stringify(String(defaultValue))})),`;
+      const defaultValueExpr = config?.localizedDefaultValue && Object.keys(config.localizedDefaultValue).length > 0
+        ? this.buildPythonJsonLiteral(config.localizedDefaultValue)
+        : this.buildPythonJsonLiteral(config?.defaultValue ?? '');
+      return `            ${JSON.stringify(key)}: cls._normalize(params.get(${JSON.stringify(key)}, ${defaultValueExpr})),`;
     });
     const requiredParamNames = inputParams
-      .filter(([, config]) => Boolean(config?.required))
+      .filter(([key, config]) => {
+        const requiredMode = this.normalizeWorkflowPolicyRequiredMode(
+          workflowInputPolicies?.[key]?.requiredMode,
+          config?.required,
+        );
+        return requiredMode === 'always';
+      })
       .map(([key]) => key)
       .filter((key) => !String(key).includes('{#') && !String(key).includes('{/'));
 
     return [
       'import json',
+      'import re',
       'from datetime import timedelta',
-      'from typing import Any, Dict',
+      'from typing import Any, Dict, List',
       '',
       'from temporalio import activity, workflow',
       'from temporalio.exceptions import ApplicationError',
@@ -2784,6 +2902,7 @@ export class TemporalWorkflowService {
       `@workflow.defn(name=${JSON.stringify(workflowDisplayName)})`,
       `class ${workflowClassName}:`,
       `    ACTIVITY_START_TO_CLOSE_TIMEOUT = ${workflowTimeoutCode}`,
+      `    RENDER_BINDINGS = ${renderBindingsLiteral}`,
       '',
       '    @staticmethod',
       '    def _normalize(value: Any) -> Any:',
@@ -2797,6 +2916,12 @@ export class TemporalWorkflowService {
       '        except Exception:',
       '            return str(value)',
       '',
+      '    @classmethod',
+      '    def _normalize_params(cls, params: Dict[str, Any]) -> Dict[str, Any]:',
+      '        return {',
+      ...normalizeLines,
+      '        }',
+      '',
       '    @staticmethod',
       '    def _is_missing(value: Any) -> bool:',
       '        if value is None:',
@@ -2808,26 +2933,135 @@ export class TemporalWorkflowService {
       '        return False',
       '',
       '    @classmethod',
-      '    def _build_render_data(cls, params: Dict[str, Any]) -> Dict[str, Any]:',
-      '        return {',
-      ...normalizeLines,
-      '        }',
+      '    def _resolve_binding_paths(cls, key: str) -> List[str]:',
+      '        raw_paths = cls.RENDER_BINDINGS.get(key) or [key]',
+      '        if isinstance(raw_paths, str):',
+      '            raw_paths = [raw_paths]',
+      '        normalized: List[str] = []',
+      '        for item in raw_paths:',
+      '            if not isinstance(item, str):',
+      '                continue',
+      '            path = item.strip()',
+      '            if not path:',
+      '                continue',
+      '            if path.startswith("{d.") and path.endswith("}"):',
+      '                path = path[3:-1].strip()',
+      '            if path.startswith("d."):',
+      '                path = path[2:].strip()',
+      '            if path.startswith("data."):',
+      '                path = path[5:].strip()',
+      '            if path and path not in normalized:',
+      '                normalized.append(path)',
+      '        return normalized or [key]',
       '',
       '    @staticmethod',
-      '    def _validate_required_params(render_data: Dict[str, Any]) -> None:',
+      '    def _set_nested_value(target: Dict[str, Any], path: str, value: Any) -> None:',
+      '        segments = [segment.strip() for segment in str(path or "").split(".") if segment and segment.strip()]',
+      '        if not segments:',
+      '            return',
+      '        current = target',
+      '        for segment in segments[:-1]:',
+      '            existing = current.get(segment)',
+      '            if not isinstance(existing, dict):',
+      '                existing = {}',
+      '                current[segment] = existing',
+      '            current = existing',
+      '        current[segments[-1]] = value',
+      '',
+      '    @staticmethod',
+      '    def _ensure_array_path(target: Dict[str, Any], path: str) -> list:',
+      '        segments = [segment.strip() for segment in str(path or "").split(".") if segment and segment.strip()]',
+      '        if not segments:',
+      '            return []',
+      '        current = target',
+      '        for segment in segments[:-1]:',
+      '            existing = current.get(segment)',
+      '            if not isinstance(existing, dict):',
+      '                existing = {}',
+      '                current[segment] = existing',
+      '            current = existing',
+      '        leaf_key = segments[-1]',
+      '        existing_leaf = current.get(leaf_key)',
+      '        if not isinstance(existing_leaf, list):',
+      '            existing_leaf = []',
+      '            current[leaf_key] = existing_leaf',
+      '        return existing_leaf',
+      '',
+      '    @staticmethod',
+      '    def _extract_binding_locale(path: str) -> str | None:',
+      '        normalized_path = str(path or "").strip()',
+      '        if re.search(r"(_cn|_zh)$", normalized_path, re.IGNORECASE):',
+      '            return "cn"',
+      '        if re.search(r"(_jp|_ja)$", normalized_path, re.IGNORECASE):',
+      '            return "jp"',
+      '        return None',
+      '',
+      '    @classmethod',
+      '    def _resolve_localized_binding_value(cls, path: str, value: Any) -> Any:',
+      '        if not isinstance(value, dict):',
+      '            return value',
+      '        locale = cls._extract_binding_locale(path)',
+      '        if not locale:',
+      '            for candidate in ["cn", "zh", "jp", "ja"]:',
+      '                if candidate in value and value[candidate] is not None:',
+      '                    return value[candidate]',
+      '            return value',
+      '        locale_candidates = ["cn", "zh"] if locale == "cn" else ["jp", "ja"]',
+      '        for candidate in locale_candidates:',
+      '            if candidate in value and value[candidate] is not None:',
+      '                return value[candidate]',
+      '        return None',
+      '',
+      '    @classmethod',
+      '    def _set_bound_value(cls, target: Dict[str, Any], path: str, value: Any) -> None:',
+      '        resolved_value = cls._resolve_localized_binding_value(path, value)',
+      '        if resolved_value is None:',
+      '            return',
+      '        array_match = re.match(r"^(.*)\\[\\]\\.(.+)$", str(path or "").strip())',
+      '        if array_match:',
+      '            array_path = array_match.group(1).strip()',
+      '            item_path = array_match.group(2).strip()',
+      '            if not array_path or not item_path or not isinstance(resolved_value, list):',
+      '                return',
+      '            items = cls._ensure_array_path(target, array_path)',
+      '            for index, item_value in enumerate(resolved_value):',
+      '                existing_item = items[index] if index < len(items) else None',
+      '                if not isinstance(existing_item, dict):',
+      '                    existing_item = {}',
+      '                    if index < len(items):',
+      '                        items[index] = existing_item',
+      '                    else:',
+      '                        items.append(existing_item)',
+      '                cls._set_nested_value(existing_item, item_path, item_value)',
+      '            return',
+      '        cls._set_nested_value(target, path, resolved_value)',
+      '',
+      '    @classmethod',
+      '    def _build_render_data(cls, params: Dict[str, Any]) -> Dict[str, Any]:',
+      '        render_data: Dict[str, Any] = {}',
+      '        for key, value in params.items():',
+      '            for binding_path in cls._resolve_binding_paths(key):',
+      '                cls._set_bound_value(render_data, binding_path, value)',
+      '        return render_data',
+      '',
+      '    @staticmethod',
+      '    def _validate_required_params(params: Dict[str, Any]) -> None:',
       `        required_params = ${JSON.stringify(requiredParamNames)}`,
-      `        missing_params = [key for key in required_params if ${workflowClassName}._is_missing(render_data.get(key))]`,
+      `        missing_params = [key for key in required_params if ${workflowClassName}._is_missing(params.get(key))]`,
       '        if missing_params:',
       '            raise ApplicationError(f"缺少必需参数: {\', \'.join(missing_params)}", non_retryable=True)',
       '',
       '    async def run(self, params: dict) -> Dict[str, Any]:',
       `        workflow.logger.info(${JSON.stringify(`启动工作流: ${workflowDisplayName}`)})`,
-      '        render_data = self._build_render_data(params or {})',
-      '        self._validate_required_params(render_data)',
+      '        normalized_params = self._normalize_params(params or {})',
+      '        self._validate_required_params(normalized_params)',
       '        activity_input = {',
       `            "templateId": ${JSON.stringify(templateId)},`,
-      '            "data": render_data,',
+      '            "data": normalized_params,',
       `            "outputFormat": ${JSON.stringify(outputFormat)},`,
+      ...(sourceLanguage ? [`            "sourceLanguage": ${JSON.stringify(sourceLanguage)},`] : []),
+      ...(targetLanguages.length > 0 ? [`            "targetLanguages": ${this.buildPythonJsonLiteral(targetLanguages)},`] : []),
+      '            "prepareLocalizedRenderData": True,',
       ...(outputName ? [`            "outputName": ${JSON.stringify(outputName)},`] : []),
       '        }',
       `        workflow.logger.info(${JSON.stringify(`执行共享文档渲染 Activity: ${activityDef.name}`)})`,
@@ -3376,22 +3610,22 @@ export class TemporalWorkflowService {
     description: string | undefined,
     referenceUrl: string,
   ): string | number | boolean {
-    const hint = `${key} ${description || ''}`.toLowerCase();
+    const hint = this.buildWorkflowSemanticHint(key, description);
     const normalizedKey = String(key || '')
       .trim()
       .replace(/[^a-zA-Z0-9]+/g, '_')
       .replace(/^_+|_+$/g, '')
       .toLowerCase() || 'value';
-    if (/(url|uri|link|网址|链接)/i.test(hint)) {
+    if (/\b(url|uri|link)\b|网址|链接/.test(hint)) {
       return referenceUrl || `https://example.com/${normalizedKey}`;
     }
-    if (/(bool|boolean|启用|是否)/i.test(hint)) {
+    if (/\b(bool|boolean)\b|启用|是否/.test(hint)) {
       return true;
     }
-    if (/(number|int|float|double|decimal|count|size|limit|page|offset|age|数量|页码|大小|编号)/i.test(hint)) {
+    if (/\b(number|int|float|double|decimal|count|size|limit|page|offset|age)\b|数量|页码|大小|编号/.test(hint)) {
       return 1;
     }
-    if (/(date|day|time|datetime|时间|日期)/i.test(hint)) {
+    if (/\b(date|day|time|datetime)\b|时间|日期/.test(hint)) {
       return new Date().toISOString().slice(0, 10);
     }
     return `sample_${normalizedKey}`;
@@ -3541,6 +3775,10 @@ export class TemporalWorkflowService {
       value: typeof value === 'string' ? value : '',
       required: !value,
     }));
+  }
+
+  private buildPythonJsonLiteral(value: unknown): string {
+    return `json.loads(${JSON.stringify(JSON.stringify(value ?? ''))})`;
   }
 
   private durationToTimedeltaCode(duration: string): string {
@@ -4354,17 +4592,26 @@ export class TemporalWorkflowService {
     return entries.reduce<Record<string, WorkflowInputParamDefinition>>((acc, [key, value]) => {
       const normalizedKey = String(key).trim();
       const defaultValue = value?.defaultValue ?? '';
+      const localizedDefaultValue = value?.localizedDefaultValue && Object.keys(value.localizedDefaultValue).length > 0
+        ? value.localizedDefaultValue
+        : undefined;
       const description = this.pickFirstNonEmptyString(value?.description) || this.buildDefaultDraftInputDescription(normalizedKey);
       const exampleValue = value?.exampleValue !== undefined
         ? value.exampleValue
         : this.buildGenericAiDraftSampleValue(normalizedKey, description, referenceUrl);
       acc[String(key).trim()] = {
         description,
-        required: value?.required === undefined ? !String(defaultValue).trim() : value.required !== false,
+        required: value?.required === undefined
+          ? (!String(defaultValue).trim() && !localizedDefaultValue)
+          : value.required !== false,
         defaultValue,
+        localizedDefaultValue,
         source: value?.source,
         type: value?.type || this.inferWorkflowInputParamType(normalizedKey, description, defaultValue, exampleValue),
         exampleValue,
+        ...(this.normalizeWorkflowInputRenderPath(value?.renderPath)
+          ? { renderPath: this.normalizeWorkflowInputRenderPath(value?.renderPath) }
+          : {}),
       };
       return acc;
     }, {});
@@ -4389,9 +4636,15 @@ export class TemporalWorkflowService {
         description: this.pickFirstNonEmptyString(value?.description),
         required: value?.required,
         defaultValue: value?.defaultValue ?? '',
+        localizedDefaultValue: value?.localizedDefaultValue && Object.keys(value.localizedDefaultValue).length > 0
+          ? value.localizedDefaultValue
+          : undefined,
         source: value?.source || 'declared',
         type: value?.type,
         exampleValue: value?.exampleValue,
+        ...(this.normalizeWorkflowInputRenderPath(value?.renderPath)
+          ? { renderPath: this.normalizeWorkflowInputRenderPath(value?.renderPath) }
+          : {}),
       };
     });
 
@@ -4502,18 +4755,14 @@ export class TemporalWorkflowService {
     if (candidates.some((value) => typeof value === 'number')) {
       return 'number';
     }
-    const text = [key, description, defaultValue, exampleValue]
-      .filter((value) => value !== undefined && value !== null)
-      .map((value) => String(value))
-      .join(' ')
-      .toLowerCase();
-    if (/(bool|boolean|启用|是否|enable|disabled?)/i.test(text)) {
+    const text = this.buildWorkflowSemanticHint(key, description, defaultValue, exampleValue);
+    if (/\b(bool|boolean|enable|disabled?)\b|启用|是否/.test(text)) {
       return 'boolean';
     }
-    if (/(date|day|time|datetime|日期|时间)/i.test(text)) {
+    if (/\b(date|day|time|datetime)\b|日期|时间/.test(text)) {
       return 'date';
     }
-    if (/(number|int|float|double|decimal|count|size|limit|page|offset|age|数量|页码|大小|编号|temperature|temp|speed|pressure)/i.test(text)) {
+    if (/\b(number|int|float|double|decimal|count|size|limit|page|offset|age|temperature|temp|speed|pressure)\b|数量|页码|大小|编号/.test(text)) {
       return 'number';
     }
     return 'string';
@@ -4601,12 +4850,14 @@ export class TemporalWorkflowService {
   private toWorkflowDto(workflow: TemporalWorkflow): TemporalWorkflowDTO {
     const workflowDsl = this.parseJson<WorkflowDsl>(workflow.workflowDsl) || DEFAULT_TEMPLATE_WORKFLOW_DSL;
     const activityDsl = this.parseJson<ActivityDsl>(workflow.activityDsl) || { activities: [] };
+    const extractedSourceTemplate = this.extractSourceTemplate(workflowDsl, activityDsl);
+    const extractedSourceContext = this.extractSourceContext(workflowDsl, activityDsl);
     return {
       ...workflow,
       workflowDsl: workflowDsl as any,
       activityDsl: activityDsl as any,
-      sourceTemplate: this.extractSourceTemplate(workflowDsl, activityDsl),
-      sourceContext: this.extractSourceContext(workflowDsl, activityDsl),
+      sourceTemplate: extractedSourceTemplate,
+      sourceContext: extractedSourceContext,
     };
   }
 
@@ -4714,14 +4965,406 @@ export class TemporalWorkflowService {
     const normalizedSteps = await Promise.all(
       (normalized.steps || []).map((step) => this.normalizeWorkflowStep(step, activityDsl)),
     );
+    const normalizedInputParams = normalized.inputParams
+      && typeof normalized.inputParams === 'object'
+      && !Array.isArray(normalized.inputParams)
+        ? normalized.inputParams
+        : undefined;
+    const normalizedInputPolicy = await this.normalizeWorkflowInputPolicy(
+      normalized.inputPolicy,
+      normalizedInputParams,
+      normalized.sourceContext,
+    );
     const finalName = this.normalizeName(workflowName || normalized.name || '未命名工作流');
     return {
       ...normalized,
       name: finalName,
       workflowClassName: this.normalizeWorkflowClassName(normalized.workflowClassName, finalName),
       taskQueue: this.normalizeTaskQueue(taskQueue || normalized.taskQueue),
+      ...(normalizedInputParams ? { inputParams: normalizedInputParams } : {}),
+      ...(normalizedInputPolicy ? { inputPolicy: normalizedInputPolicy } : {}),
       steps: normalizedSteps,
     };
+  }
+
+  private async applyTemplateWorkflowDraftOverrides(
+    baseDraft: TemplateWorkflowDraft,
+    overrides: Omit<CompileTemplateWorkflowDraftDTO, 'templateId'>,
+  ): Promise<TemplateWorkflowDraft> {
+    const nextName = this.normalizeName(overrides.name || baseDraft.name);
+    const nextTaskQueue = this.normalizeTaskQueue(
+      overrides.taskQueue || baseDraft.taskQueue || baseDraft.workflowDsl.taskQueue,
+    );
+    const nextDescription = this.normalizeDescription(
+      overrides.description !== undefined ? overrides.description : baseDraft.description,
+    ) || baseDraft.description;
+    const nextWorkflowDsl = await this.normalizeWorkflowDsl(
+      {
+        ...baseDraft.workflowDsl,
+        name: nextName,
+        workflowDefnName: nextName,
+        taskQueue: nextTaskQueue,
+        ...(overrides.inputPolicy ? { inputPolicy: overrides.inputPolicy } : {}),
+      },
+      nextName,
+      nextTaskQueue,
+      baseDraft.activityDsl,
+    );
+
+    return {
+      ...baseDraft,
+      name: nextName,
+      description: nextDescription,
+      taskQueue: nextTaskQueue,
+      workflowDsl: nextWorkflowDsl,
+    };
+  }
+
+  private stripTemplateBindingOverridesFromInputPolicy(
+    inputPolicy?: WorkflowInputPolicy,
+  ): WorkflowInputPolicy | undefined {
+    if (!inputPolicy?.params || typeof inputPolicy.params !== 'object') {
+      return inputPolicy;
+    }
+
+    const params = Object.entries(inputPolicy.params).reduce<Record<string, WorkflowParamPolicy>>((acc, [key, value]) => {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        return acc;
+      }
+      const nextPolicy = { ...value } as WorkflowParamPolicy;
+      delete nextPolicy.templateBinding;
+      acc[key] = nextPolicy;
+      return acc;
+    }, {});
+
+    return { params };
+  }
+
+  private async normalizeWorkflowInputPolicy(
+    inputPolicy: WorkflowInputPolicy | Record<string, unknown> | undefined,
+    inputParams: Record<string, WorkflowInputParamDefinition> | undefined,
+    sourceContext?: TemporalWorkflowSourceContext,
+  ): Promise<WorkflowInputPolicy | undefined> {
+    const defaultPolicies = this.buildDefaultWorkflowInputPolicyParams(inputParams);
+    const explicitPolicies = this.extractWorkflowInputPolicyParams(inputPolicy, inputParams);
+    const allowedKeys = await this.resolveWorkflowInputPolicyAllowedKeys(inputParams, sourceContext);
+
+    if (allowedKeys.size > 0) {
+      const invalidKeys = Object.keys(explicitPolicies).filter((key) => !allowedKeys.has(key));
+      if (invalidKeys.length > 0) {
+        throw new BadRequestException(
+          `workflowDsl.inputPolicy.params 包含未注册参数: ${invalidKeys.join(', ')}`,
+        );
+      }
+    }
+
+    const mergedPolicies = Object.keys({
+      ...defaultPolicies,
+      ...explicitPolicies,
+    }).reduce<Record<string, WorkflowParamPolicy>>((acc, key) => {
+      const mergedPolicy: WorkflowParamPolicy = {
+        ...(defaultPolicies[key] || {}),
+        ...(explicitPolicies[key] || {}),
+      };
+      this.applyInputParamDefinitionToWorkflowPolicy(mergedPolicy, inputParams?.[key]);
+      acc[key] = mergedPolicy;
+      return acc;
+    }, {});
+
+    if (Object.keys(mergedPolicies).length === 0) {
+      return undefined;
+    }
+
+    return {
+      params: mergedPolicies,
+    };
+  }
+
+  private buildDefaultWorkflowInputPolicyParams(
+    inputParams: Record<string, WorkflowInputParamDefinition> | undefined,
+  ): Record<string, WorkflowParamPolicy> {
+    return Object.entries(inputParams || {}).reduce<Record<string, WorkflowParamPolicy>>((acc, [key, definition]) => {
+      const trimmedKey = String(key || '').trim();
+      if (!trimmedKey) {
+        return acc;
+      }
+
+      const policy: WorkflowParamPolicy = {
+        enabled: true,
+        requiredMode: definition?.required ? 'always' : 'optional',
+      };
+      const defaultTemplateBinding = this.resolveSingleWorkflowInputRenderPath(definition?.renderPath);
+      if (defaultTemplateBinding) {
+        policy.templateBinding = defaultTemplateBinding;
+      }
+
+      if (definition?.defaultValue !== undefined && definition.defaultValue !== '') {
+        policy.defaultValue = definition.defaultValue;
+      }
+
+      acc[trimmedKey] = policy;
+      return acc;
+    }, {});
+  }
+
+  private applyInputParamDefinitionToWorkflowPolicy(
+    policy: WorkflowParamPolicy,
+    definition?: WorkflowInputParamDefinition,
+  ): void {
+    if (!definition) {
+      return;
+    }
+
+    policy.enabled = true;
+    policy.requiredMode = this.normalizeWorkflowPolicyRequiredMode(policy.requiredMode, definition.required);
+
+    const defaultTemplateBinding = this.resolveSingleWorkflowInputRenderPath(definition.renderPath);
+    if (!policy.templateBinding && defaultTemplateBinding) {
+      policy.templateBinding = defaultTemplateBinding;
+    } else if (!policy.templateBinding) {
+      delete policy.templateBinding;
+    }
+
+    if (policy.defaultValue !== undefined) {
+      return;
+    }
+
+    if (definition.defaultValue !== undefined && definition.defaultValue !== '') {
+      policy.defaultValue = definition.defaultValue;
+      return;
+    }
+
+    if (definition.localizedDefaultValue && Object.keys(definition.localizedDefaultValue).length > 0) {
+      policy.defaultValue = definition.localizedDefaultValue;
+      return;
+    }
+
+    delete policy.defaultValue;
+  }
+
+  private normalizeWorkflowPolicyRequiredMode(
+    currentMode: WorkflowParamRequiredMode | undefined,
+    required: boolean | undefined,
+  ): WorkflowParamRequiredMode {
+    if (required === false && currentMode === 'always') {
+      return 'optional';
+    }
+    if (currentMode === 'always' || currentMode === 'conditional' || currentMode === 'optional' || currentMode === 'system_required') {
+      return currentMode;
+    }
+    return required ? 'always' : 'optional';
+  }
+
+  private extractWorkflowInputPolicyParams(
+    inputPolicy: WorkflowInputPolicy | Record<string, unknown> | undefined,
+    inputParams?: Record<string, WorkflowInputParamDefinition>,
+  ): Record<string, WorkflowParamPolicy> {
+    if (!inputPolicy || typeof inputPolicy !== 'object' || Array.isArray(inputPolicy)) {
+      return {};
+    }
+
+    const rawParams =
+      'params' in inputPolicy
+      && inputPolicy.params
+      && typeof inputPolicy.params === 'object'
+      && !Array.isArray(inputPolicy.params)
+        ? inputPolicy.params
+        : inputPolicy;
+
+    return Object.entries(rawParams).reduce<Record<string, WorkflowParamPolicy>>((acc, [key, value]) => {
+      const trimmedKey = String(key || '').trim();
+      if (!trimmedKey) {
+        return acc;
+      }
+
+      const normalizedPolicy = this.normalizeWorkflowParamPolicy(value, trimmedKey, inputParams?.[trimmedKey]);
+      if (normalizedPolicy) {
+        acc[trimmedKey] = normalizedPolicy;
+      }
+      return acc;
+    }, {});
+  }
+
+  private normalizeWorkflowParamPolicy(
+    value: unknown,
+    paramName?: string,
+    inputParamDefinition?: WorkflowInputParamDefinition,
+  ): WorkflowParamPolicy | undefined {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return undefined;
+    }
+
+    const rawPolicy = value as Record<string, unknown>;
+    const allowedPolicyKeys = new Set([
+      'enabled',
+      'requiredMode',
+      'defaultValue',
+      'defaultValueResolver',
+      'valueSourcePriority',
+      'confirmationThreshold',
+      'previewBlocking',
+      'validationRules',
+      'transformRule',
+      'templateBinding',
+    ]);
+    const invalidPolicyKeys = Object.keys(rawPolicy).filter((key) => !allowedPolicyKeys.has(key));
+    if (invalidPolicyKeys.length > 0) {
+      throw new BadRequestException(
+        `workflowDsl.inputPolicy.params.${paramName || '*'} 包含非法字段: ${invalidPolicyKeys.join(', ')}`,
+      );
+    }
+    const normalizedPolicy: WorkflowParamPolicy = {};
+    const allowedRequiredModes = new Set<WorkflowParamRequiredMode>([
+      'always',
+      'conditional',
+      'optional',
+      'system_required',
+    ]);
+
+    if (typeof rawPolicy.enabled === 'boolean') {
+      normalizedPolicy.enabled = rawPolicy.enabled;
+    } else if (rawPolicy.enabled !== undefined) {
+      throw new BadRequestException(`workflowDsl.inputPolicy.params.${paramName || '*'}.enabled 必须是 boolean`);
+    }
+    if (
+      typeof rawPolicy.requiredMode === 'string'
+      && allowedRequiredModes.has(rawPolicy.requiredMode as WorkflowParamRequiredMode)
+    ) {
+      normalizedPolicy.requiredMode = rawPolicy.requiredMode as WorkflowParamRequiredMode;
+    } else if (rawPolicy.requiredMode !== undefined) {
+      throw new BadRequestException(
+        `workflowDsl.inputPolicy.params.${paramName || '*'}.requiredMode 非法: ${String(rawPolicy.requiredMode)}`,
+      );
+    }
+    if (rawPolicy.defaultValue !== undefined) {
+      this.assertWorkflowPolicyDefaultValueCompatible(paramName, rawPolicy.defaultValue, inputParamDefinition?.type);
+      normalizedPolicy.defaultValue = rawPolicy.defaultValue;
+    }
+    if (typeof rawPolicy.defaultValueResolver === 'string' && rawPolicy.defaultValueResolver.trim()) {
+      normalizedPolicy.defaultValueResolver = rawPolicy.defaultValueResolver.trim();
+    } else if (rawPolicy.defaultValueResolver !== undefined) {
+      throw new BadRequestException(`workflowDsl.inputPolicy.params.${paramName || '*'}.defaultValueResolver 必须是非空字符串`);
+    }
+    if (Array.isArray(rawPolicy.valueSourcePriority)) {
+      const valueSourcePriority = Array.from(new Set(rawPolicy.valueSourcePriority
+        .map((item) => String(item || '').trim())
+        .filter((item) => item.length > 0)));
+      if (valueSourcePriority.length > 0) {
+        normalizedPolicy.valueSourcePriority = valueSourcePriority;
+      }
+    } else if (rawPolicy.valueSourcePriority !== undefined) {
+      throw new BadRequestException(`workflowDsl.inputPolicy.params.${paramName || '*'}.valueSourcePriority 必须是字符串数组`);
+    }
+    if (typeof rawPolicy.confirmationThreshold === 'number' && Number.isFinite(rawPolicy.confirmationThreshold)) {
+      normalizedPolicy.confirmationThreshold = Math.max(0, Math.min(1, rawPolicy.confirmationThreshold));
+    } else if (rawPolicy.confirmationThreshold !== undefined) {
+      throw new BadRequestException(`workflowDsl.inputPolicy.params.${paramName || '*'}.confirmationThreshold 必须是数字`);
+    }
+    if (typeof rawPolicy.previewBlocking === 'boolean') {
+      normalizedPolicy.previewBlocking = rawPolicy.previewBlocking;
+    } else if (rawPolicy.previewBlocking !== undefined) {
+      throw new BadRequestException(`workflowDsl.inputPolicy.params.${paramName || '*'}.previewBlocking 必须是 boolean`);
+    }
+    if (Array.isArray(rawPolicy.validationRules)) {
+      const validationRules = rawPolicy.validationRules.filter((item): item is Record<string, unknown> => (
+        Boolean(item) && typeof item === 'object' && !Array.isArray(item)
+      ));
+      if (validationRules.length > 0) {
+        normalizedPolicy.validationRules = validationRules;
+      }
+    } else if (rawPolicy.validationRules !== undefined) {
+      throw new BadRequestException(`workflowDsl.inputPolicy.params.${paramName || '*'}.validationRules 必须是对象数组`);
+    }
+    if (typeof rawPolicy.transformRule === 'string' && rawPolicy.transformRule.trim()) {
+      normalizedPolicy.transformRule = rawPolicy.transformRule.trim();
+    } else if (rawPolicy.transformRule !== undefined) {
+      throw new BadRequestException(`workflowDsl.inputPolicy.params.${paramName || '*'}.transformRule 必须是非空字符串`);
+    }
+    if (typeof rawPolicy.templateBinding === 'string' && rawPolicy.templateBinding.trim()) {
+      normalizedPolicy.templateBinding = rawPolicy.templateBinding.trim();
+    } else if (rawPolicy.templateBinding !== undefined) {
+      throw new BadRequestException(`workflowDsl.inputPolicy.params.${paramName || '*'}.templateBinding 必须是非空字符串`);
+    }
+
+    return Object.keys(normalizedPolicy).length > 0 ? normalizedPolicy : undefined;
+  }
+
+  private assertWorkflowPolicyDefaultValueCompatible(
+    paramName: string | undefined,
+    defaultValue: unknown,
+    inputParamType?: WorkflowInputParamType,
+  ): void {
+    if (!inputParamType) {
+      return;
+    }
+
+    const compatible = this.isWorkflowPolicyDefaultValueCompatible(defaultValue, inputParamType);
+
+    if (!compatible) {
+      throw new BadRequestException(
+        `workflowDsl.inputPolicy.params.${paramName || '*'}.defaultValue 与参数类型 ${inputParamType} 不兼容`,
+      );
+    }
+  }
+
+  private isWorkflowPolicyDefaultValueCompatible(
+    defaultValue: unknown,
+    inputParamType: WorkflowInputParamType,
+  ): boolean {
+    if (this.isLocalizedWorkflowDefaultValue(defaultValue)) {
+      const localizedValues = Object.values(defaultValue);
+      return localizedValues.length > 0
+        && localizedValues.every((value) => this.isWorkflowPolicyDefaultValueCompatible(value, inputParamType));
+    }
+
+    return inputParamType === 'string' || inputParamType === 'date'
+      ? typeof defaultValue === 'string'
+      : inputParamType === 'number'
+        ? typeof defaultValue === 'number' && Number.isFinite(defaultValue)
+        : inputParamType === 'boolean'
+          ? typeof defaultValue === 'boolean'
+          : true;
+  }
+
+  private isLocalizedWorkflowDefaultValue(value: unknown): value is WorkflowLocalizedValueMap {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return false;
+    }
+
+    const entries = Object.entries(value);
+    return entries.length > 0
+      && entries.every(([key, entryValue]) => (
+        typeof key === 'string'
+        && key.trim().length > 0
+        && (
+          typeof entryValue === 'string'
+          || typeof entryValue === 'number'
+          || typeof entryValue === 'boolean'
+        )
+      ));
+  }
+
+  private async resolveWorkflowInputPolicyAllowedKeys(
+    inputParams: Record<string, WorkflowInputParamDefinition> | undefined,
+    sourceContext?: TemporalWorkflowSourceContext,
+  ): Promise<Set<string>> {
+    const skillId = String(sourceContext?.sourceTemplate?.skillId || '').trim();
+    if (skillId) {
+      const skill = await this.prisma.skillConfig.findUnique({
+        where: { id: skillId },
+        select: { paramsSchema: true },
+      }).catch(() => null);
+      const schema = skill?.paramsSchema as Record<string, unknown> | undefined;
+      const properties = schema?.properties && typeof schema.properties === 'object' && !Array.isArray(schema.properties)
+        ? schema.properties as Record<string, unknown>
+        : {};
+      const skillKeys = Object.keys(properties);
+      if (skillKeys.length > 0) {
+        return new Set(skillKeys);
+      }
+    }
+
+    return new Set(Object.keys(inputParams || {}));
   }
 
   private normalizeActivityDsl(activityDsl: ActivityDsl): ActivityDsl {
@@ -5424,9 +6067,11 @@ export class TemporalWorkflowService {
     description: string;
     displayName?: string;
     groupLabel?: string;
+    localizedVariants?: string[];
     paramKind: 'scalar' | 'array';
     arrayPath?: string;
     fieldName?: string;
+    renderPath?: string | string[];
   }> {
     const skillParameters = Array.isArray(skill?.parameters) ? skill.parameters : [];
     const paramMap = new Map<string, {
@@ -5437,9 +6082,11 @@ export class TemporalWorkflowService {
       description: string;
       displayName?: string;
       groupLabel?: string;
+      localizedVariants?: string[];
       paramKind: 'scalar' | 'array';
       arrayPath?: string;
       fieldName?: string;
+      renderPath?: string | string[];
     }>();
     const manifestBindings = Array.isArray(template.templateAssetManifest?.renderPlan?.bindings)
       ? template.templateAssetManifest?.renderPlan?.bindings
@@ -5457,6 +6104,7 @@ export class TemporalWorkflowService {
       ...manifestBindings.map((binding) => this.variableToKey(binding.variablePath)).filter(Boolean),
       ...this.uniqueVariables(template.variables || []).map((variable) => this.variableToKey(variable)).filter(Boolean),
     ]);
+    const suggestionMetaByKey = this.buildTemplateSuggestionMetaMap(template, bilingualBaseKeyByVariant);
     const bindingFieldIdByKey = manifestBindings.reduce<Map<string, string>>((acc, binding) => {
       const bindingKey = this.variableToKey(binding.variablePath);
       const fieldId = String(binding.fieldId || '').trim();
@@ -5465,6 +6113,82 @@ export class TemporalWorkflowService {
       }
       return acc;
     }, new Map());
+    const manifestRenderPathsByKey = manifestBindings.reduce<Map<string, string[]>>((acc, binding) => {
+      const rawBindingKey = this.normalizeTemplateWorkflowParamKey(
+        this.normalizeTemplateWorkflowRenderPath(String(binding.variablePath || '')) || '',
+      );
+      const fieldId = this.normalizeTemplateWorkflowParamKey(String(binding.fieldId || '').trim());
+      const key = fieldId || bilingualBaseKeyByVariant.get(rawBindingKey) || rawBindingKey;
+      const renderPath = this.normalizeTemplateWorkflowRenderPath(String(binding.variablePath || ''));
+      if (!key || !renderPath) {
+        return acc;
+      }
+      const existing = acc.get(key) || [];
+      if (!existing.includes(renderPath)) {
+        acc.set(key, [...existing, renderPath]);
+      }
+      return acc;
+    }, new Map());
+    const variableRenderPathsByKey = this.uniqueVariables(template.variables || []).reduce<Map<string, string[]>>((acc, variable) => {
+      const rawVariableKey = this.normalizeTemplateWorkflowParamKey(this.variableToKey(variable));
+      const key = bilingualBaseKeyByVariant.get(rawVariableKey) || rawVariableKey;
+      const renderPath = this.normalizeTemplateWorkflowRenderPath(variable);
+      if (!key || !renderPath) {
+        return acc;
+      }
+      const existing = acc.get(key) || [];
+      if (!existing.includes(renderPath)) {
+        acc.set(key, [...existing, renderPath]);
+      }
+      return acc;
+    }, new Map());
+    const resolvedRenderPathsByKey = new Map<string, string[]>();
+    const appendRenderPaths = (key: string, renderPaths: string[]) => {
+      const normalizedKey = this.normalizeTemplateWorkflowParamKey(key);
+      if (!normalizedKey || !Array.isArray(renderPaths) || renderPaths.length === 0) {
+        return;
+      }
+      const existing = resolvedRenderPathsByKey.get(normalizedKey) || [];
+      const merged = Array.from(new Set([
+        ...existing,
+        ...renderPaths
+          .map((item) => this.normalizeTemplateWorkflowRenderPath(item))
+          .filter((item): item is string => Boolean(item)),
+      ]));
+      if (merged.length > 0) {
+        resolvedRenderPathsByKey.set(normalizedKey, merged);
+      }
+    };
+    variableRenderPathsByKey.forEach((renderPaths, key) => appendRenderPaths(key, renderPaths));
+    manifestRenderPathsByKey.forEach((renderPaths, key) => appendRenderPaths(key, renderPaths));
+
+    // 当模板只有 suggestions（没有 variables/manifest）时，从 suggestions 里的 suggestedName
+    // 提取 Carbone 变量路径（如 {d.contract.partyA.name_cn}），作为 RENDER_BINDINGS 的来源。
+    // 没有这一步时，带 _cn/_jp 后缀的变体会被合并成无后缀的 key，导致渲染时字段名不匹配、内容全部为空白。
+    const suggestions = Array.isArray(template.suggestions) ? template.suggestions : [];
+    const suggestionRenderPathsByKey = suggestions.reduce<Map<string, string[]>>((acc, suggestion) => {
+      const rawName = String(suggestion?.suggestedName || '').trim();
+      const renderPath = this.normalizeTemplateWorkflowRenderPath(rawName);
+      if (!renderPath) {
+        return acc;
+      }
+      const rawKey = this.normalizeTemplateWorkflowParamKey(this.variableToKey(rawName));
+      const key = bilingualBaseKeyByVariant.get(rawKey) || rawKey;
+      if (!key) {
+        return acc;
+      }
+      const existing = acc.get(key) || [];
+      if (!existing.includes(renderPath)) {
+        acc.set(key, [...existing, renderPath]);
+      }
+      return acc;
+    }, new Map());
+    // 仅在 variables 和 manifest 都未提供 render paths 时，用 suggestions 补充填充
+    suggestionRenderPathsByKey.forEach((renderPaths, key) => {
+      if (!resolvedRenderPathsByKey.has(key)) {
+        appendRenderPaths(key, renderPaths);
+      }
+    });
 
     for (const parameter of skillParameters) {
       const rawName = String(parameter?.name || '').trim();
@@ -5474,15 +6198,19 @@ export class TemporalWorkflowService {
         continue;
       }
       const field = manifestFieldMap.get(key);
+      const suggestionMeta = suggestionMetaByKey.get(key);
       const description = this.resolveTemplateWorkflowParamLabel(
+        suggestionMeta?.description,
         field?.description,
         parameter?.usage,
         parameter?.displayName,
         `模板参数 ${key}`,
       );
       const displayName = this.resolveTemplateWorkflowParamLabel(
+        suggestionMeta?.displayName,
+        field?.description,
         parameter?.displayName,
-        parameter?.usage,
+        parameter?.example,
         field?.description,
         key,
       );
@@ -5501,14 +6229,19 @@ export class TemporalWorkflowService {
         ) || existing.description;
         existing.groupLabel = this.pickFirstNonEmptyString(
           existing.groupLabel,
+          suggestionMeta?.groupLabel,
           parameter?.groupLabel,
           parameter?.sheetName,
           parameter?.chapter,
           parameter?.section,
           parameter?.group,
         );
+        existing.localizedVariants = this.mergeLocalizedVariants(existing.localizedVariants, suggestionMeta?.localizedVariants);
         if (existing.exampleValue === undefined) {
           existing.exampleValue = this.normalizeWorkflowExampleValue(parameter?.example, parameter?.dataType);
+        }
+        if (!existing.renderPath) {
+          existing.renderPath = this.normalizeWorkflowInputRenderPath(resolvedRenderPathsByKey.get(key));
         }
         continue;
       }
@@ -5521,15 +6254,18 @@ export class TemporalWorkflowService {
         description,
         displayName,
         groupLabel: this.pickFirstNonEmptyString(
+          suggestionMeta?.groupLabel,
           parameter?.groupLabel,
           parameter?.sheetName,
           parameter?.chapter,
           parameter?.section,
           parameter?.group,
         ),
+        localizedVariants: suggestionMeta?.localizedVariants,
         paramKind: arrayMatch ? 'array' : 'scalar',
         arrayPath: arrayMatch?.[1],
         fieldName: field?.fieldId || arrayMatch?.[2] || key,
+        renderPath: this.normalizeWorkflowInputRenderPath(resolvedRenderPathsByKey.get(key)),
       });
     }
 
@@ -5556,20 +6292,25 @@ export class TemporalWorkflowService {
             || bilingualBaseKeyByVariant.get(rawKey)
             || rawKey;
           const field = manifestFieldMap.get(binding.fieldId);
+        const suggestionMeta = suggestionMetaByKey.get(key);
           return {
             key,
             required: binding.required !== false && field?.required !== false,
             type: this.normalizeWorkflowInputParamType(field?.type, key),
             description: this.resolveTemplateWorkflowParamLabel(
+            suggestionMeta?.description,
               field?.description,
               `模板参数 ${key}`,
             ),
             displayName: this.resolveTemplateWorkflowParamLabel(
+            suggestionMeta?.displayName,
               field?.description,
               key,
             ),
+          localizedVariants: suggestionMeta?.localizedVariants,
             paramKind: 'scalar' as const,
             fieldName: field?.fieldId || key,
+            renderPath: this.normalizeWorkflowInputRenderPath(resolvedRenderPathsByKey.get(key)),
           };
         });
     }
@@ -5587,8 +6328,10 @@ export class TemporalWorkflowService {
       type: WorkflowInputParamType;
       description: string;
       displayName?: string;
+      localizedVariants?: string[];
       paramKind: 'scalar' | 'array';
       fieldName?: string;
+      renderPath?: string | string[];
     }>>((acc, variable) => {
       const rawKey = this.variableToKey(variable);
       const key = bilingualBaseKeyByVariant.get(rawKey) || rawKey;
@@ -5596,17 +6339,249 @@ export class TemporalWorkflowService {
         return acc;
       }
       seen.add(key);
+      const suggestionMeta = suggestionMetaByKey.get(key);
       acc.push({
         key,
         required: true,
         type: 'string' as WorkflowInputParamType,
-        description: `模板参数 ${key}`,
-        displayName: key,
+        description: this.resolveTemplateWorkflowParamLabel(
+          suggestionMeta?.description,
+          `模板参数 ${key}`,
+        ),
+        displayName: this.resolveTemplateWorkflowParamLabel(
+          suggestionMeta?.displayName,
+          key,
+        ),
+        localizedVariants: suggestionMeta?.localizedVariants,
         paramKind: 'scalar' as const,
         fieldName: key,
+        renderPath: this.normalizeWorkflowInputRenderPath(resolvedRenderPathsByKey.get(key)),
       });
       return acc;
     }, []);
+  }
+
+  private normalizeTemplateWorkflowRenderPath(path: string | undefined): string | undefined {
+    if (!path) {
+      return undefined;
+    }
+
+    const trimmed = path.trim();
+    if (!trimmed) {
+      return undefined;
+    }
+
+    const carboneBindingMatch = trimmed.match(/^\{#?d\.([^}:]+)(?::[^}]*)?\}$/);
+    if (carboneBindingMatch?.[1]) {
+      return carboneBindingMatch[1].trim();
+    }
+
+    return trimmed.replace(/^d\./, '').replace(/^data\./, '').trim() || undefined;
+  }
+
+  private normalizeWorkflowInputRenderPath(
+    renderPath: string | string[] | undefined,
+  ): string | string[] | undefined {
+    if (typeof renderPath === 'string') {
+      const normalized = this.normalizeTemplateWorkflowRenderPath(renderPath);
+      return normalized || undefined;
+    }
+    if (!Array.isArray(renderPath)) {
+      return undefined;
+    }
+    const normalized = Array.from(new Set(
+      renderPath
+        .map((item) => this.normalizeTemplateWorkflowRenderPath(typeof item === 'string' ? item : undefined))
+        .filter((item): item is string => Boolean(item)),
+    ));
+    if (normalized.length === 0) {
+      return undefined;
+    }
+    return normalized.length === 1 ? normalized[0] : normalized;
+  }
+
+  private resolveSingleWorkflowInputRenderPath(
+    renderPath: string | string[] | undefined,
+  ): string | undefined {
+    const normalized = this.normalizeWorkflowInputRenderPath(renderPath);
+    return typeof normalized === 'string' ? normalized : undefined;
+  }
+
+  private resolveDocumentWorkflowBindingPaths(
+    templateBinding: unknown,
+    renderPath: string | string[] | undefined,
+    fallbackKey: string,
+  ): string[] {
+    const normalizedTemplateBinding = typeof templateBinding === 'string'
+      ? this.normalizeTemplateWorkflowRenderPath(templateBinding)
+      : undefined;
+    if (normalizedTemplateBinding) {
+      return [normalizedTemplateBinding];
+    }
+
+    const normalizedRenderPath = this.normalizeWorkflowInputRenderPath(renderPath);
+    if (typeof normalizedRenderPath === 'string') {
+      return [normalizedRenderPath];
+    }
+    if (Array.isArray(normalizedRenderPath) && normalizedRenderPath.length > 0) {
+      return normalizedRenderPath;
+    }
+
+    const fallbackPath = this.normalizeTemplateWorkflowRenderPath(fallbackKey) || fallbackKey.trim();
+    return fallbackPath ? [fallbackPath] : [];
+  }
+
+  private buildTemplateSuggestionMetaMap(
+    template: CarboneTemplateMeta,
+    bilingualBaseKeyByVariant: Map<string, string>,
+  ): Map<string, {
+    displayName?: string;
+    description?: string;
+    groupLabel?: string;
+    localizedVariants?: string[];
+  }> {
+    const suggestions = Array.isArray(template.suggestions) ? template.suggestions : [];
+    const aggregated = new Map<string, {
+      displayName?: string;
+      description?: string;
+      groupLabel?: string;
+      localizedVariants: string[];
+      hasBaseVariant: boolean;
+      displayNamePriority: number;
+      descriptionPriority: number;
+    }>();
+
+    suggestions.forEach((suggestion) => {
+      const rawKey = this.normalizeTemplateWorkflowParamKey(String(suggestion?.suggestedName || ''));
+      if (!rawKey) {
+        return;
+      }
+      const key = bilingualBaseKeyByVariant.get(rawKey) || rawKey;
+      const details = suggestion?.details || {};
+      const variant = this.extractTemplateWorkflowLanguageVariant(rawKey);
+      const priority = this.getTemplateWorkflowLanguageVariantPriority(variant);
+      const nextDisplayName = this.resolveTemplateWorkflowParamLabel(
+        details.description,
+        suggestion?.originalText,
+      );
+      const nextDescription = this.resolveTemplateWorkflowParamLabel(
+        details.significance,
+        details.description,
+      );
+      const existing = aggregated.get(key) || {
+        localizedVariants: [],
+        hasBaseVariant: false,
+        displayNamePriority: Number.POSITIVE_INFINITY,
+        descriptionPriority: Number.POSITIVE_INFINITY,
+      };
+
+      if (nextDisplayName && (priority < existing.displayNamePriority || !existing.displayName)) {
+        existing.displayName = nextDisplayName;
+        existing.displayNamePriority = priority;
+      }
+      if (nextDescription && (priority < existing.descriptionPriority || !existing.description)) {
+        existing.description = nextDescription;
+        existing.descriptionPriority = priority;
+      }
+      existing.groupLabel = this.pickFirstNonEmptyString(
+        existing.groupLabel,
+        details.chapter,
+        details.displayPosition,
+        suggestion?.elementPath,
+      );
+      if (variant && !existing.localizedVariants.includes(variant)) {
+        existing.localizedVariants.push(variant);
+        existing.localizedVariants.sort((left, right) => (
+          this.getTemplateWorkflowLanguageVariantPriority(left) - this.getTemplateWorkflowLanguageVariantPriority(right)
+        ));
+      } else if (!variant) {
+        existing.hasBaseVariant = true;
+      }
+      aggregated.set(key, existing);
+    });
+
+    return new Map(Array.from(aggregated.entries()).map(([key, value]) => [
+      key,
+      {
+        displayName: value.displayName,
+        description: value.description,
+        groupLabel: value.groupLabel,
+        localizedVariants: this.normalizeLocalizedVariantsForDisplay(
+          value.localizedVariants,
+          value.hasBaseVariant,
+          template.templateAssetManifest?.languageProfile?.sourceLanguage,
+        ),
+      },
+    ]));
+  }
+
+  private extractTemplateWorkflowLanguageVariant(key: string): string | undefined {
+    const match = String(key || '').trim().match(/(?:[_-])(cn|jp|zh|ja|en)$/iu);
+    return match?.[1]?.toLowerCase();
+  }
+
+  private getTemplateWorkflowLanguageVariantPriority(variant?: string): number {
+    const normalized = String(variant || '').trim().toLowerCase();
+    if (normalized === 'cn' || normalized === 'zh') {
+      return 0;
+    }
+    if (normalized === 'jp' || normalized === 'ja') {
+      return 1;
+    }
+    if (normalized === 'en') {
+      return 2;
+    }
+    return 3;
+  }
+
+  private mergeLocalizedVariants(
+    current?: string[],
+    incoming?: string[],
+  ): string[] | undefined {
+    const merged = Array.from(new Set([...(current || []), ...(incoming || [])]))
+      .filter(Boolean)
+      .sort((left, right) => (
+        this.getTemplateWorkflowLanguageVariantPriority(left) - this.getTemplateWorkflowLanguageVariantPriority(right)
+      ));
+    return merged.length > 0 ? merged : undefined;
+  }
+
+  private normalizeLocalizedVariantsForDisplay(
+    localizedVariants: string[],
+    hasBaseVariant: boolean,
+    sourceLanguage?: string,
+  ): string[] | undefined {
+    const normalized = Array.from(new Set((localizedVariants || []).map((item) => String(item || '').trim().toLowerCase()).filter(Boolean)));
+    const normalizedSourceLanguage = this.normalizeTemplateWorkflowLanguageCode(sourceLanguage)
+      || (hasBaseVariant && normalized.length > 0 ? 'zh' : undefined);
+
+    if (hasBaseVariant && normalizedSourceLanguage && !normalized.includes(normalizedSourceLanguage)) {
+      normalized.unshift(normalizedSourceLanguage);
+    }
+
+    const merged = Array.from(new Set(normalized))
+      .sort((left, right) => this.getTemplateWorkflowLanguageVariantPriority(left) - this.getTemplateWorkflowLanguageVariantPriority(right));
+    return merged.length > 0 ? merged : undefined;
+  }
+
+  private normalizeTemplateWorkflowLanguageCode(value: unknown): string | undefined {
+    const normalized = String(value || '').trim().toLowerCase();
+    if (!normalized) {
+      return undefined;
+    }
+    if (normalized === 'cn' || normalized === 'zh-cn' || normalized === 'zh-hans' || normalized === 'zh-hans-cn') {
+      return 'zh';
+    }
+    if (normalized === 'jp' || normalized === 'ja-jp') {
+      return 'ja';
+    }
+    if (normalized === 'en-us' || normalized === 'en-gb') {
+      return 'en';
+    }
+    if (normalized === 'zh' || normalized === 'ja' || normalized === 'en') {
+      return normalized;
+    }
+    return undefined;
   }
 
   private resolveTemplateAssetRenderPlanVersion(templateAssetManifest?: CarboneTemplateMeta['templateAssetManifest']): number | undefined {
@@ -5665,8 +6640,8 @@ export class TemporalWorkflowService {
     }
 
     const withoutLanguageMarker = trimmed
-      .replace(/\s*[（(](?:中文|日文|日语|日语翻译|zh|ja|cn|jp)[）)]\s*$/iu, '')
-      .replace(/[_-](?:zh|ja|cn|jp)$/iu, '')
+      .replace(/\s*[（(](?:中文|日文|日语|日语翻译|英文|英语|zh|ja|cn|jp|en)[）)]\s*$/iu, '')
+      .replace(/[_-](?:zh|ja|cn|jp|en)$/iu, '')
       .trim();
 
     return withoutLanguageMarker || trimmed;
@@ -5676,10 +6651,10 @@ export class TemporalWorkflowService {
     const normalizedKeys = Array.from(new Set(keys.map((item) => String(item || '').trim()).filter(Boolean)));
     const keySet = new Set(normalizedKeys);
     const map = new Map<string, string>();
-    const languageVariants = ['cn', 'jp', 'zh', 'ja'];
+    const languageVariants = ['cn', 'jp', 'zh', 'ja', 'en'];
 
     normalizedKeys.forEach((key) => {
-      const match = key.match(/^(.*?)([_-](?:cn|jp|zh|ja))$/iu);
+      const match = key.match(/^(.*?)([_-](?:cn|jp|zh|ja|en))$/iu);
       if (!match?.[1]) {
         return;
       }
@@ -5694,17 +6669,29 @@ export class TemporalWorkflowService {
   }
 
   private normalizeWorkflowInputParamType(dataType: unknown, fieldName: string): WorkflowInputParamType {
-    const hint = `${String(dataType || '')} ${String(fieldName || '')}`.toLowerCase();
-    if (/(number|int|float|double|decimal|amount|price|count|qty|quantity|ratio)/.test(hint)) {
+    const hint = this.buildWorkflowSemanticHint(dataType, fieldName);
+    if (/\b(number|int|float|double|decimal|amount|price|count|qty|quantity|ratio)\b/.test(hint)) {
       return 'number';
     }
-    if (/(bool|boolean|flag|enabled|is[A-Z_]?)/.test(hint)) {
+    if (/\b(bool|boolean|flag|enabled)\b|\bis\b/.test(hint)) {
       return 'boolean';
     }
-    if (/(date|time|deadline|day)/.test(hint)) {
+    if (/\b(date|time|deadline|day)\b/.test(hint)) {
       return 'date';
     }
     return 'string';
+  }
+
+  private buildWorkflowSemanticHint(...values: unknown[]): string {
+    return values
+      .filter((value) => value !== undefined && value !== null)
+      .map((value) => String(value)
+        .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+        .replace(/[^a-zA-Z0-9\u4e00-\u9fa5]+/g, ' ')
+        .trim()
+        .toLowerCase())
+      .filter((value) => value.length > 0)
+      .join(' ');
   }
 
   private normalizeWorkflowExampleValue(

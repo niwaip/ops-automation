@@ -343,6 +343,20 @@ export interface SkillRuntimeMetadata {
     type?: string;
     activityName?: string;
   }>;
+  workflowInputPolicy?: {
+    params: Record<string, {
+      enabled?: boolean;
+      requiredMode?: 'always' | 'conditional' | 'optional' | 'system_required';
+      defaultValue?: unknown;
+      defaultValueResolver?: string;
+      valueSourcePriority?: string[];
+      confirmationThreshold?: number;
+      previewBlocking?: boolean;
+      validationRules?: Array<Record<string, unknown>>;
+      transformRule?: string;
+      templateBinding?: string;
+    }>;
+  };
 }
 
 export interface AvailableSkillDefinition {
@@ -432,6 +446,7 @@ export interface ParamProperty {
   extractionHints?: string[];
   displayName?: string;
   groupLabel?: string;
+  renderPath?: string | string[];
   previewBlocking?: boolean;
   confirmationThreshold?: number;
 }
