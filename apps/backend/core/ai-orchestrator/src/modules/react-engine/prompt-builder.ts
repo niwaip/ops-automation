@@ -445,9 +445,6 @@ export function parseActionResponse(response: string): {
   action: string;
   actionInput: Record<string, unknown>;
 } | null {
-  // 调试日志
-  console.log('[DEBUG parseActionResponse] Raw response length:', response?.length);
-  console.log('[DEBUG parseActionResponse] Raw response preview:', response?.substring(0, 500));
 
   let cleanedResponse = response
     .replace(/<think>[\s\S]*?<\/think>/gi, '')
@@ -463,7 +460,6 @@ export function parseActionResponse(response: string): {
     .replace(/<\/?think>/gi, '')
     .trim();
 
-  console.log('[DEBUG parseActionResponse] Cleaned response preview:', cleanedResponse?.substring(0, 500));
 
   // 提取Thought
   const thoughtMatch = cleanedResponse.match(/Thought:\s*([\s\S]+?)(?=Action:|$)/);
@@ -473,8 +469,6 @@ export function parseActionResponse(response: string): {
   const actionMatch = cleanedResponse.match(/Action:\s*([^\n]+)/);
   const action = actionMatch?.[1]?.trim() ?? '';
 
-  console.log('[DEBUG parseActionResponse] Extracted thought:', thought?.substring(0, 200));
-  console.log('[DEBUG parseActionResponse] Extracted action:', action?.substring(0, 200));
 
   // 提取Action Input
   const actionInputMatch = cleanedResponse.match(/Action Input:\s*([\s\S]+?)(?=Observation|Final Answer|$)/);

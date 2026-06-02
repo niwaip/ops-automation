@@ -4,6 +4,9 @@
 
 import { Module } from '@nestjs/common';
 import { StudioController } from './studio.controller';
+import { StudioAiController } from './studio-ai.controller';
+import { StudioRenderController } from './studio-render.controller';
+import { StudioTemplateController } from './studio-template.controller';
 import { PreviewService } from './preview.service';
 import { AIIdentifierService } from './ai-identifier.service';
 import { DocumentStructureService } from './document-structure.service';
@@ -13,7 +16,12 @@ import { RenderOutputRepository } from './render-output.repository';
 import { TemplateWorkflowService } from './template-workflow.service';
 
 @Module({
-  controllers: [StudioController],
+  controllers: [
+    StudioController,
+    StudioRenderController,
+    StudioTemplateController,
+    StudioAiController,
+  ],
   providers: [
     PreviewService,
     AIIdentifierService,

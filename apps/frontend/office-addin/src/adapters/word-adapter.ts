@@ -1,5 +1,5 @@
 import { AISuggestion } from '../taskpane/store';
-import { OfficeHelper } from '../utils/office-api';
+import { WordAPI } from '../utils/office/word/api';
 import { HostCapabilities } from './capabilities';
 import { Anchor, DocumentElement, DocumentIR, DocumentSelection, TemplateSource } from './document-ir';
 import { HostAdapter } from './types';
@@ -90,7 +90,7 @@ export class WordAdapter implements HostAdapter {
     }
 
     if (wordAnchor.type === 'content-control' && typeof wordAnchor.contentControlId === 'number') {
-      return OfficeHelper.Word.highlightContentControlById(wordAnchor.contentControlId);
+      return WordAPI.highlightContentControlById(wordAnchor.contentControlId);
     }
 
     if (
@@ -99,7 +99,7 @@ export class WordAdapter implements HostAdapter {
       typeof wordAnchor.rowIndex === 'number' &&
       typeof wordAnchor.cellIndex === 'number'
     ) {
-      return OfficeHelper.Word.highlightTableCell(
+      return WordAPI.highlightTableCell(
         wordAnchor.tableIndex,
         wordAnchor.rowIndex,
         wordAnchor.cellIndex
@@ -112,7 +112,7 @@ export class WordAdapter implements HostAdapter {
       typeof wordAnchor.start === 'number' &&
       typeof wordAnchor.end === 'number'
     ) {
-      return OfficeHelper.Word.highlightUnderlineByPosition(
+      return WordAPI.highlightUnderlineByPosition(
         wordAnchor.paragraphIndex,
         wordAnchor.start,
         wordAnchor.end
@@ -129,7 +129,7 @@ export class WordAdapter implements HostAdapter {
     }
 
     if (wordAnchor.type === 'content-control' && typeof wordAnchor.contentControlId === 'number') {
-      return OfficeHelper.Word.replaceContentControlText(wordAnchor.contentControlId, suggestion.suggestedName);
+      return WordAPI.replaceContentControlText(wordAnchor.contentControlId, suggestion.suggestedName);
     }
 
     if (
@@ -142,7 +142,7 @@ export class WordAdapter implements HostAdapter {
       const tableCellReplacementText = this.normalizeTableCellReplacementText(suggestion.suggestedName);
 
       if (this.isTableLoopSuggestion(suggestion) && loopArrayPath) {
-        return OfficeHelper.Word.applyLoopTableMarkersOnNextRow(
+        return WordAPI.applyLoopTableMarkersOnNextRow(
           wordAnchor.tableIndex,
           wordAnchor.rowIndex,
           loopArrayPath
@@ -150,7 +150,7 @@ export class WordAdapter implements HostAdapter {
       }
 
       if (this.isTableLoopColumnSuggestion(suggestion) && loopArrayPath) {
-        const columnApplied = await OfficeHelper.Word.replaceTableCellTextOnNextRow(
+        const columnApplied = await WordAPI.replaceTableCellTextOnNextRow(
           wordAnchor.tableIndex,
           wordAnchor.rowIndex,
           wordAnchor.cellIndex,
@@ -160,7 +160,7 @@ export class WordAdapter implements HostAdapter {
         return columnApplied;
       }
 
-      return OfficeHelper.Word.replaceTableCellText(
+      return WordAPI.replaceTableCellText(
         wordAnchor.tableIndex,
         wordAnchor.rowIndex,
         wordAnchor.cellIndex,
@@ -174,7 +174,7 @@ export class WordAdapter implements HostAdapter {
       typeof wordAnchor.start === 'number' &&
       typeof wordAnchor.end === 'number'
     ) {
-      return OfficeHelper.Word.replaceUnderlineByPosition(
+      return WordAPI.replaceUnderlineByPosition(
         wordAnchor.paragraphIndex,
         wordAnchor.start,
         wordAnchor.end,
@@ -200,11 +200,11 @@ export class WordAdapter implements HostAdapter {
 
   async extractDocument(): Promise<DocumentIR> {
     const [structure, paragraphFormats, underlineInfo, contentControls, tableCells] = await Promise.all([
-      OfficeHelper.Word.getDocumentStructure(),
-      OfficeHelper.Word.getParagraphsWithFormat(),
-      OfficeHelper.Word.getUnderlinedTexts(),
-      OfficeHelper.Word.getContentControls(),
-      OfficeHelper.Word.getTableCells(),
+      WordAPI.getDocumentStructure(),
+      WordAPI.getParagraphsWithFormat(),
+      WordAPI.getUnderlinedTexts(),
+      WordAPI.getContentControls(),
+      WordAPI.getTableCells(),
     ]);
 
     const paragraphElements: DocumentElement[] = paragraphFormats.map((paragraph) => ({
@@ -325,7 +325,7 @@ export class WordAdapter implements HostAdapter {
   }
 
   async extractSelection(): Promise<DocumentSelection | null> {
-    const text = await OfficeHelper.Word.getSelectedText();
+    const text = await WordAPI.getSelectedText();
     if (!text.trim()) {
       return null;
     }
@@ -334,7 +334,7 @@ export class WordAdapter implements HostAdapter {
   }
 
   async previewSuggestion(suggestion: AISuggestion): Promise<void> {
-    await OfficeHelper.Word.clearAllHighlights();
+    await WordAPI.clearAllHighlights();
 
     const anchorPreviewSuccess = await this.previewByAnchor(suggestion);
     if (anchorPreviewSuccess) {
@@ -344,7 +344,7 @@ export class WordAdapter implements HostAdapter {
     if (suggestion.underlineInfo?.paragraphIndex !== undefined) {
       const info = suggestion.underlineInfo;
       const paragraphIndex = info.paragraphIndex ?? 0;
-      const success = await OfficeHelper.Word.highlightUnderlineByPosition(
+      const success = await WordAPI.highlightUnderlineByPosition(
         paragraphIndex,
         info.position?.start || 0,
         info.position?.end || 0,
@@ -357,14 +357,14 @@ export class WordAdapter implements HostAdapter {
 
     const contextSnippet = suggestion.context || suggestion.details?.context || suggestion.elementPath;
     if (this.canUseContextSnippet(contextSnippet)) {
-      const result = await OfficeHelper.Word.highlightByContext(contextSnippet);
+      const result = await WordAPI.highlightByContext(contextSnippet);
       if (result.found) {
         return;
       }
     }
 
     if (suggestion.originalText) {
-      const count = await OfficeHelper.Word.highlightText(suggestion.originalText);
+      const count = await WordAPI.highlightText(suggestion.originalText);
       if (count > 0) {
         return;
       }
@@ -386,7 +386,7 @@ export class WordAdapter implements HostAdapter {
     if (suggestion.underlineInfo?.paragraphIndex !== undefined) {
       const info = suggestion.underlineInfo;
       const paragraphIndex = info.paragraphIndex ?? 0;
-      const success = await OfficeHelper.Word.replaceUnderlineByPosition(
+      const success = await WordAPI.replaceUnderlineByPosition(
         paragraphIndex,
         info.position?.start || 0,
         info.position?.end || 0,
@@ -401,7 +401,7 @@ export class WordAdapter implements HostAdapter {
 
     const contextSnippet = suggestion.context || suggestion.details?.context || suggestion.elementPath;
     if (this.canUseContextSnippet(contextSnippet)) {
-      const result = await OfficeHelper.Word.replaceBlankWithContext(
+      const result = await WordAPI.replaceBlankWithContext(
         contextSnippet,
         suggestion.suggestedName
       );
@@ -411,7 +411,7 @@ export class WordAdapter implements HostAdapter {
     }
 
     if (this.isSafeLiteralPlaceholder(suggestion.originalText)) {
-      await OfficeHelper.Word.replaceText(suggestion.originalText, suggestion.suggestedName);
+      await WordAPI.replaceText(suggestion.originalText, suggestion.suggestedName);
       return;
     }
 
@@ -419,11 +419,11 @@ export class WordAdapter implements HostAdapter {
   }
 
   async clearPreview(): Promise<void> {
-    await OfficeHelper.Word.clearAllHighlights();
+    await WordAPI.clearAllHighlights();
   }
 
   async exportTemplateSource(): Promise<TemplateSource> {
-    const result = await OfficeHelper.Word.getDocumentFileBase64WithFallback();
+    const result = await WordAPI.getDocumentFileBase64WithFallback();
 
     return {
       format: 'docx',

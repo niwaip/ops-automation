@@ -4,6 +4,33 @@ import JSZip from 'jszip';
 import { getAiOrchestratorUrl } from '../../config/service-endpoints';
 import { buildWorkflowUnderstandingPromptText } from './template-workflow.prompt';
 import {
+  safeText,
+  escapeRegExp,
+  numberOrUndefined,
+  hasBlankPlaceholder,
+  getElementHostData,
+  getElementFormat,
+  isLikelyDocumentTitle,
+  isLikelySectionHeading,
+  isLikelyTableLabel,
+  isLikelyTableHeaderRow,
+  isBlankTableTemplateCell,
+  findNearestLeftTableLabel,
+  findNearestRightTableLabel,
+  splitTableCellLines,
+  extractCompareLabels,
+  extractWordTableCellText,
+  isStandardLoopTable,
+  classifyTemplateTableStructure,
+  extractTableCellCompareAnchors,
+  extractTableCellSampleValueByAnchor,
+  extractPlaceholderMatcher,
+  extractPlaceholderSampleValue,
+  buildSampleTableMatrices,
+  extractTableMatricesFromWordXml,
+  extractSampleTableMatrices,
+} from './utils/document-xml-parser';
+import {
   DEFAULT_RENDER_PLAN_VERSION,
   TEMPLATE_ASSET_MANIFEST_VERSION,
   TEMPLATE_ASSET_SOURCE_OFFICE_ADDIN,
@@ -2323,59 +2350,7 @@ ${enumHints || '无'}
   }
 
   private async extractSampleTableMatrices(contentBase64: string | undefined): Promise<string[][][]> {
-    if (!contentBase64) {
-      return [];
-    }
-
-    try {
-      const base64 = contentBase64.replace(/^base64:/, '');
-      const buffer = Buffer.from(base64, 'base64');
-      const header = buffer.subarray(0, 2).toString('utf-8');
-
-      if (header === 'PK') {
-        const zip = await JSZip.loadAsync(buffer);
-        const documentFile = zip.file('word/document.xml');
-        if (documentFile) {
-          const xml = await documentFile.async('text');
-          return this.extractTableMatricesFromWordXml(xml);
-        }
-      }
-
-      const text = buffer.toString('utf-8');
-      if (text.includes('<w:t')) {
-        return this.extractTableMatricesFromWordXml(text);
-      }
-
-      return this.buildSampleTableMatrices(text);
-    } catch {
-      return [];
-    }
-  }
-
-  private extractTableMatricesFromWordXml(xml: string): string[][][] {
-    const tables: string[][][] = [];
-    const tableMatches = xml.match(/<w:tbl\b[\s\S]*?<\/w:tbl>/gu) || [];
-
-    for (const tableXml of tableMatches) {
-      const rows: string[][] = [];
-      const rowMatches = tableXml.match(/<w:tr\b[\s\S]*?<\/w:tr>/gu) || [];
-      for (const rowXml of rowMatches) {
-        const cells: string[] = [];
-        const cellMatches = rowXml.match(/<w:tc\b[\s\S]*?<\/w:tc>/gu) || [];
-        for (const cellXml of cellMatches) {
-          const cellText = this.extractWordTableCellText(cellXml);
-          cells.push(cellText);
-        }
-        if (cells.some(Boolean)) {
-          rows.push(cells);
-        }
-      }
-      if (rows.length > 0) {
-        tables.push(rows);
-      }
-    }
-
-    return tables;
+    return extractSampleTableMatrices(contentBase64);
   }
 
   private buildTableCompareInputs(
@@ -2549,109 +2524,25 @@ ${enumHints || '无'}
     }));
   }
 
-  private extractWordTableCellText(cellXml: string): string {
-    return cellXml
-      .replace(/<\/w:p>/g, '\n')
-      .replace(/<w:tab\/>/g, '\t')
-      .replace(/<w:br\/>/g, '\n')
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/[^\S\r\n\t]+/g, ' ')
-      .split(/\n+/u)
-      .map((line) => this.safeText(line))
-      .filter(Boolean)
-      .join('\n');
-  }
-
   private classifyTemplateTableStructure(
     templateTable: string[][],
   ): { kind: 'standard_loop'; templateRowIndex: number; headerRow: string[] } | { kind: 'generic' } {
-    if (this.isStandardLoopTable(templateTable)) {
-      return {
-        kind: 'standard_loop',
-        templateRowIndex: 1,
-        headerRow: templateTable[0] || [],
-      };
-    }
-    return { kind: 'generic' };
-  }
-
-  private isStandardLoopTable(templateTable: string[][]): boolean {
-    if (templateTable.length < 2) {
-      return false;
-    }
-    const headerRow = templateTable[0] || [];
-    if (headerRow.length < 2) {
-      return false;
-    }
-    const normalizedHeaders = headerRow.map((cell) => this.safeText(cell));
-    if (normalizedHeaders.some((cell) => !cell) || !this.isLikelyTableHeaderRow(normalizedHeaders)) {
-      return false;
-    }
-
-    return templateTable.slice(1).every((row) => {
-      const width = Math.max(headerRow.length, row.length);
-      if (width === 0) {
-        return false;
-      }
-      for (let index = 0; index < width; index += 1) {
-        if (!this.isBlankTableTemplateCell(row[index])) {
-          return false;
-        }
-      }
-      return true;
-    });
-  }
-
-  private isBlankTableTemplateCell(text: string | undefined): boolean {
-    const normalizedText = this.safeText(text);
-    return !normalizedText || this.hasBlankPlaceholder(normalizedText);
+    return classifyTemplateTableStructure(templateTable);
   }
 
   private findNearestLeftTableLabel(row: string[], cellIndex: number): string {
-    return row
-      .slice(0, cellIndex)
-      .map((cell) => this.safeText(cell))
-      .reverse()
-      .find((cell) => this.isLikelyTableLabel(cell)) || '';
+    return findNearestLeftTableLabel(row, cellIndex);
   }
 
   private findNearestRightTableLabel(
     row: string[],
     cellIndex: number,
   ): { text: string; cellIndex: number } | undefined {
-    for (let index = cellIndex + 1; index < row.length; index += 1) {
-      const text = this.safeText(row[index]);
-      if (!text) {
-        continue;
-      }
-      return { text, cellIndex: index };
-    }
-    return undefined;
-  }
-
-  private splitTableCellLines(text: string): string[] {
-    const normalizedText = this.safeText(text);
-    if (!normalizedText) {
-      return [];
-    }
-    return normalizedText
-      .split(/\r?\n/u)
-      .map((line) => this.safeText(line))
-      .filter(Boolean);
+    return findNearestRightTableLabel(row, cellIndex);
   }
 
   private extractTableCellCompareAnchors(text: string): string[] {
-    const labels = this.extractCompareLabels(text);
-    if (labels.length >= 2) {
-      return labels;
-    }
-
-    const lines = this.splitTableCellLines(text);
-    if (lines.length >= 2) {
-      return lines;
-    }
-
-    return [];
+    return extractTableCellCompareAnchors(text);
   }
 
   private extractTableCellSampleValueByAnchor(
@@ -2659,55 +2550,7 @@ ${enumHints || '无'}
     anchors: string[],
     anchorIndex: number,
   ): string {
-    const normalizedSampleText = this.safeText(sampleCellText);
-    if (!normalizedSampleText) {
-      return '';
-    }
-
-    const sampleLines = this.splitTableCellLines(normalizedSampleText);
-    if (sampleLines.length === anchors.length && sampleLines.length > 1) {
-      const pairedLine = sampleLines[anchorIndex] || '';
-      for (const anchorPattern of Array.from(new Set([
-        this.escapeRegExp(this.safeText(anchors[anchorIndex])),
-        this.escapeRegExp(this.safeText(anchors[anchorIndex]).replace(/[：:]$/u, '').trim()),
-      ].filter(Boolean)))) {
-        const matched = pairedLine.match(new RegExp(`^${anchorPattern}[：:]?\\s*(.*)$`, 'u'));
-        const value = this.safeText(matched?.[1]);
-        if (value) {
-          return value;
-        }
-      }
-      return pairedLine;
-    }
-
-    const anchor = this.safeText(anchors[anchorIndex]);
-    if (!anchor) {
-      return sampleLines[anchorIndex] || sampleLines[0] || normalizedSampleText;
-    }
-
-    const nextAnchors = anchors
-      .slice(anchorIndex + 1)
-      .map((item) => this.safeText(item))
-      .filter(Boolean)
-      .map((item) => this.escapeRegExp(item));
-    const suffixPattern = nextAnchors.length > 0
-      ? `(?=${nextAnchors.join('|')})`
-      : '$';
-    const anchorPatterns = Array.from(new Set([
-      this.escapeRegExp(anchor),
-      this.escapeRegExp(anchor.replace(/[：:]$/u, '').trim()),
-    ].filter(Boolean)));
-
-    for (const anchorPattern of anchorPatterns) {
-      const matcher = new RegExp(`${anchorPattern}[：:]?\\s*(.{1,160}?)\\s*${suffixPattern}`, 'u');
-      const matched = normalizedSampleText.match(matcher);
-      const value = this.safeText(matched?.[1]);
-      if (value) {
-        return value;
-      }
-    }
-
-    return sampleLines[anchorIndex] || sampleLines[0] || normalizedSampleText;
+    return extractTableCellSampleValueByAnchor(sampleCellText, anchors, anchorIndex);
   }
 
   private shouldCreateCompareCandidate(
@@ -3665,66 +3508,15 @@ ${enumHints || '无'}
     alignment?: string;
     isTitle?: boolean;
   } {
-    const format = element?.hostData?.format;
-    if (!format || typeof format !== 'object') {
-      return {};
-    }
-    return format as {
-      fontSize?: number;
-      isBold?: boolean;
-      alignment?: string;
-      isTitle?: boolean;
-    };
+    return getElementFormat(element);
   }
 
   private isLikelyDocumentTitle(text: string, element?: WorkflowDocumentElement): boolean {
-    const normalizedText = this.safeText(text);
-    if (!normalizedText || this.hasBlankPlaceholder(normalizedText)) {
-      return false;
-    }
-
-    const format = this.getElementFormat(element);
-    const looksLikeContractTitle = /合同|协议|契約|契约/u.test(normalizedText)
-      && !/[:：，。,.;；]/u.test(normalizedText)
-      && normalizedText.length <= 40;
-    const looksLikeStyledTitle = (format.isTitle || format.alignment === 'center')
-      && !/[:：]/u.test(normalizedText)
-      && normalizedText.length <= 40;
-
-    return looksLikeContractTitle || looksLikeStyledTitle;
+    return isLikelyDocumentTitle(text, element);
   }
 
   private isLikelySectionHeading(text: string, element?: WorkflowDocumentElement): boolean {
-    const normalizedText = this.safeText(text);
-    if (!normalizedText) {
-      return false;
-    }
-    if (this.hasBlankPlaceholder(normalizedText)) {
-      return false;
-    }
-    if (this.isLikelyDocumentTitle(normalizedText, element)) {
-      return true;
-    }
-    if (/^[一二三四五六七八九十百]+、/u.test(normalizedText)) {
-      return true;
-    }
-    if (/^[(（]?[一二三四五六七八九十百0-9]+[)）][^。\n]{0,40}$/u.test(normalizedText)) {
-      return true;
-    }
-    if (/^[0-9]+[、.．]/u.test(normalizedText)) {
-      return true;
-    }
-    if (/^第[一二三四五六七八九十0-9]+[章节条]/u.test(normalizedText)) {
-      return true;
-    }
-    if (/[:：]|[_＿]{2,}|【|】|\(\s*\)|（\s*）/u.test(normalizedText)) {
-      return false;
-    }
-    const format = this.getElementFormat(element);
-    if ((format.isBold || (format.fontSize || 0) >= 14) && normalizedText.length <= 32) {
-      return true;
-    }
-    return false;
+    return isLikelySectionHeading(text, element);
   }
 
   private hasCompareFieldShape(text: string): boolean {
@@ -4814,7 +4606,7 @@ ${enumHints || '无'}
   }
 
   private escapeRegExp(value: string): string {
-    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return escapeRegExp(value);
   }
 
   private scopePriority(scope?: WorkflowAssetScope): number {
@@ -5399,56 +5191,15 @@ ${enumHints || '无'}
   }
 
   private hasBlankPlaceholder(text: string): boolean {
-    const normalized = this.safeText(text);
-    return /[_＿]{2,}|\s{4,}/u.test(normalized);
+    return hasBlankPlaceholder(text);
   }
 
   private extractPlaceholderMatcher(text: string): { prefix: string; suffix: string } | undefined {
-    const normalized = this.safeText(text);
-    if (!normalized) {
-      return undefined;
-    }
-    const match = normalized.match(/^(.*?)(?:[_＿]{2,}|\s{4,})(.*)$/u);
-    if (!match) {
-      return undefined;
-    }
-    return {
-      prefix: this.safeText(match[1]).slice(-32),
-      suffix: this.safeText(match[2]).slice(0, 32),
-    };
+    return extractPlaceholderMatcher(text);
   }
 
   private extractPlaceholderSampleValue(templateText: string, sampleText: string): string {
-    const matcher = this.extractPlaceholderMatcher(templateText);
-    const normalizedSampleText = this.safeText(sampleText);
-    if (!matcher || !normalizedSampleText) {
-      return '';
-    }
-
-    if (matcher.prefix && matcher.suffix) {
-      const pattern = new RegExp(
-        `${this.escapeRegExp(matcher.prefix)}\\s*(.{1,80}?)\\s*${this.escapeRegExp(matcher.suffix)}`,
-        'u',
-      );
-      const matched = normalizedSampleText.match(pattern);
-      const value = this.safeText(matched?.[1]);
-      if (value) {
-        return value;
-      }
-    }
-
-    if (matcher.prefix) {
-      const pattern = new RegExp(`${this.escapeRegExp(matcher.prefix)}\\s*(.{1,80})`, 'u');
-      const matched = normalizedSampleText.match(pattern);
-      const value = this.safeText(matched?.[1])
-        .split(/[，。；\n]/u)[0]
-        ?.trim();
-      if (value) {
-        return value;
-      }
-    }
-
-    return '';
+    return extractPlaceholderSampleValue(templateText, sampleText);
   }
 
   private inferRecognitionBlockTitle(text: string, blockType: string): string {
@@ -5463,25 +5214,22 @@ ${enumHints || '无'}
   }
 
   private numberOrUndefined(value: unknown): number | undefined {
-    if (typeof value === 'number' && Number.isFinite(value)) {
-      return value;
-    }
-    if (typeof value === 'string' && value.trim() !== '') {
-      const parsed = Number(value);
-      if (Number.isFinite(parsed)) {
-        return parsed;
-      }
-    }
-    return undefined;
+    return numberOrUndefined(value);
   }
 
   private getElementHostData(element: WorkflowDocumentElement): Record<string, unknown> {
-    return element.hostData && typeof element.hostData === 'object'
-      ? element.hostData as Record<string, unknown>
-      : {};
+    return getElementHostData(element);
   }
 
   private safeText(value: unknown): string {
-    return String(value ?? '').trim();
+    return safeText(value);
+  }
+
+  private isBlankTableTemplateCell(text: string | undefined): boolean {
+    return isBlankTableTemplateCell(text);
+  }
+
+  private splitTableCellLines(text: string): string[] {
+    return splitTableCellLines(text);
   }
 }

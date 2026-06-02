@@ -11,6 +11,11 @@ import { SkillController } from './skill.controller';
 import { ExecutionFlowModule } from '../execution-flow/execution-flow.module';
 import { ToolCatalogService } from './tool-catalog.service';
 import { ToolCatalogController } from './tool-catalog.controller';
+import { SkillToolBindingService } from './skill-tool-binding.service';
+import { SkillEnrichmentService } from './skill-enrichment.service';
+import { SkillValidationService } from './skill-validation.service';
+import { SkillAccessService } from './skill-access.service';
+import { SkillMatcherService } from './skill-matcher.service';
 
 @Module({
   imports: [
@@ -23,7 +28,23 @@ import { ToolCatalogController } from './tool-catalog.controller';
     ExecutionFlowModule,
   ],
   controllers: [SkillController, ToolCatalogController],
-  providers: [SkillService, ToolCatalogService],
-  exports: [SkillService, ToolCatalogService],
+  providers: [
+    SkillService,
+    ToolCatalogService,
+    SkillToolBindingService,
+    SkillEnrichmentService,
+    SkillAccessService,
+    SkillMatcherService,
+    SkillValidationService,
+  ],
+  exports: [
+    SkillService,
+    ToolCatalogService,
+    SkillToolBindingService,
+    SkillEnrichmentService,
+    SkillAccessService,
+    SkillMatcherService,
+    SkillValidationService,
+  ],
 })
 export class SkillModule {}

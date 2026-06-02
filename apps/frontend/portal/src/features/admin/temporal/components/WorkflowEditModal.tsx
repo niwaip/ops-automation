@@ -938,29 +938,6 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
   openTemplatePickerOnOpen = false,
   initialTemplatePickerMode = 'document',
 }: WorkflowEditModalProps) => {
-  const reportWorkflowPageDebugEvent = (
-    hypothesisId: string,
-    location: string,
-    msg: string,
-    data: Record<string, unknown>,
-  ) => {
-    // #region debug-point A:workflow-page-template-id
-    fetch('http://127.0.0.1:7777/event', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sessionId: 'workflow-page-template-id',
-        runId: 'pre-fix',
-        hypothesisId,
-        location,
-        msg: `[DEBUG] ${msg}`,
-        data,
-        ts: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
-  };
-
   const hydrateWorkflowDslForEditor = async (
     rawWorkflowDsl: WorkflowDsl,
     rawActivityDsl: ActivityDsl,
@@ -973,13 +950,7 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
 
     if (shouldBackfillTemplateMetadata) {
       try {
-        // #region debug-point D:editor-backfill-before
-        fetch('http://127.0.0.1:7777/event', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: 'template-save-values-lost', runId: 'pre-fix', hypothesisId: 'D', location: 'WorkflowEditModal.tsx:933', msg: '[DEBUG] editor preparing template metadata backfill', data: { sourceTemplateId, existingInputParamCount: Object.keys(nextWorkflowDsl.inputParams || {}).length, existingInputParamKeys: Object.keys(nextWorkflowDsl.inputParams || {}).slice(0, 8), existingPolicyKeys: Object.keys(nextWorkflowDsl.inputPolicy?.params || {}).slice(0, 8), existingInputParamPreview: Object.entries(nextWorkflowDsl.inputParams || {}).slice(0, 3) }, ts: Date.now() }) }).catch(() => {});
-        // #endregion
         const latestTemplateDraft = await temporalWorkflowApi.generateTemplateDraft(sourceTemplateId);
-        // #region debug-point D:editor-backfill-after
-        fetch('http://127.0.0.1:7777/event', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: 'template-save-values-lost', runId: 'pre-fix', hypothesisId: 'D', location: 'WorkflowEditModal.tsx:936', msg: '[DEBUG] editor received template metadata draft for backfill', data: { sourceTemplateId, draftInputParamCount: Object.keys(latestTemplateDraft.workflowDsl?.inputParams || {}).length, draftInputParamKeys: Object.keys(latestTemplateDraft.workflowDsl?.inputParams || {}).slice(0, 8), draftInputParamPreview: Object.entries(latestTemplateDraft.workflowDsl?.inputParams || {}).slice(0, 3) }, ts: Date.now() }) }).catch(() => {});
-        // #endregion
         nextWorkflowDsl = {
           ...nextWorkflowDsl,
           inputParams: mergeWorkflowInputParamMaps(
@@ -988,9 +959,6 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
           ),
           sourceContext: nextWorkflowDsl.sourceContext || latestTemplateDraft.workflowDsl.sourceContext,
         };
-        // #region debug-point D:editor-backfill-merged
-        fetch('http://127.0.0.1:7777/event', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: 'template-save-values-lost', runId: 'pre-fix', hypothesisId: 'D', location: 'WorkflowEditModal.tsx:944', msg: '[DEBUG] editor merged template metadata backfill into workflow state', data: { sourceTemplateId, mergedInputParamCount: Object.keys(nextWorkflowDsl.inputParams || {}).length, mergedInputParamKeys: Object.keys(nextWorkflowDsl.inputParams || {}).slice(0, 8), mergedInputParamPreview: Object.entries(nextWorkflowDsl.inputParams || {}).slice(0, 3) }, ts: Date.now() }) }).catch(() => {});
-        // #endregion
       } catch (error) {
         // Keep editing usable even if template metadata backfill fails.
       }
@@ -1808,15 +1776,6 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
     successMessage: string,
   ) => {
     const nextWorkflowDsl = await hydrateWorkflowDslForEditor(draft.workflowDsl, draft.activityDsl);
-    // #region debug-point B:apply-draft
-    reportWorkflowPageDebugEvent('B', 'WorkflowEditModal.tsx:applyDraftToEditor', 'draft applied to editor state', {
-      draftTemplateId: draft.workflowDsl?.sourceContext?.sourceTemplate?.templateId || null,
-      hydratedTemplateId: nextWorkflowDsl?.sourceContext?.sourceTemplate?.templateId || null,
-      derivedTemplateId: deriveWorkflowSourceTemplate(nextWorkflowDsl, draft.activityDsl)?.templateId || null,
-      activityTemplateId: (draft.activityDsl?.activities || []).find((activity) => activity?.handler === 'carbone' || Array.isArray(activity?.config?.steps))
-        ?.config?.templateId || null,
-    });
-    // #endregion
     setEditingWorkflow(null);
     didInitializeCodeSignatureRef.current = false;
     form.setFieldsValue({
@@ -1934,14 +1893,6 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
     try {
       setGeneratingTemplateId(template.id);
       const draft: TemplateWorkflowDraft = await temporalWorkflowApi.generateTemplateDraft(template.id);
-      // #region debug-point A:generate-template-draft
-      reportWorkflowPageDebugEvent('A', 'WorkflowEditModal.tsx:handleSelectTemplate', 'template draft returned from api', {
-        selectedTemplateId: template.id,
-        draftSourceContextTemplateId: draft.workflowDsl?.sourceContext?.sourceTemplate?.templateId || null,
-        draftTopLevelSourceTemplateId: (draft as unknown as { sourceTemplate?: { templateId?: string } })?.sourceTemplate?.templateId || null,
-        draftActivityTemplateId: draft.activityDsl?.activities?.[0]?.config?.templateId || null,
-      });
-      // #endregion
       await applyDraftToEditor(draft, '已生成模版工作流草稿');
       setTemplateModalVisible(false);
     } catch (error: unknown) {
@@ -2603,9 +2554,6 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
         workflowDsl.inputPolicy,
       );
       const sourceTemplate = currentSourceTemplate;
-      // #region debug-point A:editor-save
-      fetch('http://127.0.0.1:7777/event', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: 'template-save-values-lost', runId: 'pre-fix', hypothesisId: 'A', location: 'WorkflowEditModal.tsx:2543', msg: '[DEBUG] editor collected workflow values before save', data: { workflowId: editingWorkflow?.id || null, workflowName, sourceTemplateId: sourceTemplate?.templateId || null, inputParamCount: Object.keys(workflowDsl.inputParams || {}).length, inputParamKeys: Object.keys(workflowDsl.inputParams || {}).slice(0, 8), inputParamPreview: Object.entries(workflowDsl.inputParams || {}).slice(0, 3), synchronizedPolicyKeys: Object.keys(synchronizedInputPolicy?.params || {}).slice(0, 8), synchronizedPolicyPreview: Object.entries(synchronizedInputPolicy?.params || {}).slice(0, 3) }, ts: Date.now() }) }).catch(() => {});
-      // #endregion
       if (sourceTemplate?.templateId) {
         const data: CompileTemplateWorkflowDraftDTO & { generatedCode?: string } = {
           templateId: sourceTemplate.templateId,

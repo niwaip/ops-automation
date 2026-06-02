@@ -5,7 +5,8 @@
 
 import React, { useState } from 'react';
 import { useAppStore } from '../taskpane/store';
-import { OfficeHelper } from '../utils/office-api';
+import { ExcelAPI } from '../utils/office/excel/api';
+import { WordAPI } from '../utils/office/word/api';
 
 interface Props {
   onInsert: (marker: string) => void;
@@ -35,14 +36,14 @@ export const ManualSelector: React.FC<Props> = ({ onInsert }) => {
   const handleGetSelection = async () => {
     try {
       if (officeType === 'word') {
-        const selectedText = await OfficeHelper.Word.getSelectedText();
+        const selectedText = await WordAPI.getSelectedText();
         addSelectedElement({
           type: 'text',
           id: `word-${Date.now()}`,
           content: selectedText,
         });
       } else if (officeType === 'excel') {
-        const selectedRange = await OfficeHelper.Excel.getSelectedRange();
+        const selectedRange = await ExcelAPI.getSelectedRange();
         addSelectedElement({
           type: 'cell',
           id: selectedRange.address,
@@ -82,9 +83,9 @@ export const ManualSelector: React.FC<Props> = ({ onInsert }) => {
     try {
       if (officeType === 'word') {
         if (loopMode) {
-          await OfficeHelper.Word.insertLoopMarker(arrayPath, marker);
+          await WordAPI.insertLoopMarker(arrayPath, marker);
         } else {
-          await OfficeHelper.Word.replaceText(
+          await WordAPI.replaceText(
             selectedElements[selectedElements.length - 1]?.content || '',
             marker
           );
@@ -92,7 +93,7 @@ export const ManualSelector: React.FC<Props> = ({ onInsert }) => {
       } else if (officeType === 'excel') {
         const lastElement = selectedElements[selectedElements.length - 1];
         if (lastElement) {
-          await OfficeHelper.Excel.insertMarkerInCell(lastElement.id, marker);
+          await ExcelAPI.insertMarkerInCell(lastElement.id, marker);
         }
       }
 
@@ -113,8 +114,8 @@ export const ManualSelector: React.FC<Props> = ({ onInsert }) => {
   const handleAddTableLoop = async () => {
     try {
       if (officeType === 'word') {
-        const selection = await OfficeHelper.Word.getSelectedText();
-        await OfficeHelper.Word.insertLoopMarker(arrayPath, selection);
+        const selection = await WordAPI.getSelectedText();
+        await WordAPI.insertLoopMarker(arrayPath, selection);
       }
     } catch (error) {
       console.error('添加表格循环失败:', error);

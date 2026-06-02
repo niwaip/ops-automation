@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { OfficeHelper } from '../utils/office-api';
+import { ExcelAPI } from '../utils/office/excel/api';
 import { ExcelSheetPairState, useAppStore } from '../taskpane/store';
 import { analyzeExcelWorkbookUnderstanding } from '../services/suggestion-service';
 import { getHostScopedStorageKey } from '../utils/host-storage';
@@ -105,7 +105,7 @@ export const ExcelSheetPairsTab: React.FC = () => {
     setError(null);
 
     try {
-      const sheets = await OfficeHelper.Excel.getWorkbookSheets();
+      const sheets = await ExcelAPI.getWorkbookSheets();
       setWorkbookSheets(sheets);
       const previousPairsById = new Map(useAppStore.getState().excelSheetPairs.map((pair) => [pair.id, pair]));
       const nextPairs = buildSheetPairs(sheets).map((pair) => {

@@ -3,6 +3,7 @@ import {
   UnauthorizedException,
   ConflictException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -18,6 +19,7 @@ import { UserDto, RoleDto, LoginResponse, MeResponse } from '../../dto/response.
 @Injectable()
 export class AuthService {
   private readonly BCRYPT_COST = 12;
+  private readonly logger = new Logger(AuthService.name);
 
   constructor(
     private readonly prisma: PrismaService,
@@ -37,20 +39,39 @@ export class AuthService {
       throw new UnauthorizedException('User account is disabled');
     }
 
-    const isPasswordValid = await bcrypt.compare(
-      loginDto.password,
-      user.passwordHash,
-    );
+    if (typeof user.passwordHash !== 'string' || !user.passwordHash.trim()) {
+      this.logger.warn(`User ${user.username} has an invalid password hash`);
+      throw new UnauthorizedException('Invalid username or password');
+    }
+
+    let isPasswordValid = false;
+    try {
+      isPasswordValid = await bcrypt.compare(
+        loginDto.password,
+        user.passwordHash,
+      );
+    } catch (error: any) {
+      this.logger.warn(
+        `Password verification failed for user ${user.username}: ${error?.message || error}`,
+      );
+      throw new UnauthorizedException('Invalid username or password');
+    }
 
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid username or password');
     }
 
-    // Update last login time
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: { lastLoginAt: new Date() },
-    });
+    // lastLoginAt is auxiliary metadata and should not block a successful login
+    try {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { lastLoginAt: new Date() },
+      });
+    } catch (error: any) {
+      this.logger.warn(
+        `Failed to update lastLoginAt for user ${user.username}: ${error?.message || error}`,
+      );
+    }
 
     // Generate tokens
     const accessToken = this.generateAccessToken(user);

@@ -1,5 +1,5 @@
 import { AISuggestion, ExcelSheetPairState, useAppStore } from '../taskpane/store';
-import { OfficeHelper } from '../utils/office-api';
+import { ExcelAPI } from '../utils/office/excel/api';
 import { HostCapabilities } from './capabilities';
 import { Anchor, DocumentElement, DocumentIR, DocumentSelection, TemplateSource } from './document-ir';
 import { HostAdapter } from './types';
@@ -137,7 +137,7 @@ export class ExcelAdapter implements HostAdapter {
   }
 
   async extractDocument(): Promise<DocumentIR> {
-    const workbookSheets = (await OfficeHelper.Excel.getWorkbookSheets()) as WorkbookSheetSummary[];
+    const workbookSheets = (await ExcelAPI.getWorkbookSheets()) as WorkbookSheetSummary[];
     const elements: DocumentElement[] = [];
     const anchors: Anchor[] = [];
 
@@ -256,7 +256,7 @@ export class ExcelAdapter implements HostAdapter {
   }
 
   async extractSelection(): Promise<DocumentSelection | null> {
-    const selection = await OfficeHelper.Excel.getSelectedRange();
+    const selection = await ExcelAPI.getSelectedRange();
     const firstValue = selection.values[0]?.[0];
 
     return {
@@ -281,7 +281,7 @@ export class ExcelAdapter implements HostAdapter {
       if (!marker.startsWith('{')) {
         marker = marker.startsWith('d.') ? `{${marker}}` : `{d.${marker}}`;
       }
-      await OfficeHelper.Excel.insertMarkerInSheetCell(
+      await ExcelAPI.insertMarkerInSheetCell(
         targetSheet.sheetName,
         excelAnchor.address,
         marker
@@ -295,7 +295,7 @@ export class ExcelAdapter implements HostAdapter {
         throw new Error('循环建议缺少 arrayPath，无法写回 Excel 表格');
       }
 
-      await OfficeHelper.Excel.insertLoopMarkersInTable(
+      await ExcelAPI.insertLoopMarkersInTable(
         targetSheet.sheetName,
         excelAnchor.tableName,
         arrayPath,
@@ -304,12 +304,12 @@ export class ExcelAdapter implements HostAdapter {
       return;
     }
 
-    const selection = await OfficeHelper.Excel.getSelectedRange();
-    await OfficeHelper.Excel.insertMarkerInCell(selection.address, suggestion.suggestedName);
+    const selection = await ExcelAPI.getSelectedRange();
+    await ExcelAPI.insertMarkerInCell(selection.address, suggestion.suggestedName);
   }
 
   async exportTemplateSource(): Promise<TemplateSource> {
-    const result = await OfficeHelper.Excel.getWorkbookFileBase64WithFallback();
+    const result = await ExcelAPI.getWorkbookFileBase64WithFallback();
 
     return {
       format: 'xlsx',

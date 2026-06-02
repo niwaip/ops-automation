@@ -4,6 +4,15 @@ import { PrismaModule } from '../../prisma/prisma.module';
 import { ExecutionFlowModule } from '../execution-flow/execution-flow.module';
 import { TemporalWorkflowModule } from '../temporal-workflow/temporal-workflow.module';
 import { SkillModule } from '../skill/skill.module';
+import { CapabilityReleaseBrowserRecordingService } from './capability-release-browser-recording.service';
+import { CapabilityReleaseAssistService } from './capability-release-assist.service';
+import { CapabilityReleaseBuildValidationService } from './capability-release-build-validation.service';
+import { CapabilityReleaseDeploymentSmokeService } from './capability-release-deployment-smoke.service';
+import { CapabilityReleaseDeploymentService } from './capability-release-deployment.service';
+import { CapabilityReleasePublishService } from './capability-release-publish.service';
+import { CapabilityReleaseRuntimeService } from './capability-release-runtime.service';
+import { CapabilityReleaseSkillDraftService } from './capability-release-skill-draft.service';
+import { CapabilityReleaseTemporalSchemaService } from './capability-release-temporal-schema.service';
 import { CapabilityReleaseController } from './capability-release.controller';
 import { CapabilityReleaseService } from './capability-release.service';
 
@@ -21,7 +30,18 @@ import { CapabilityReleaseService } from './capability-release.service';
     }),
   ],
   controllers: [CapabilityReleaseController],
-  providers: [CapabilityReleaseService],
+  providers: [
+    CapabilityReleaseService,
+    CapabilityReleaseTemporalSchemaService,
+    CapabilityReleaseBrowserRecordingService,
+    CapabilityReleaseAssistService,
+    CapabilityReleaseBuildValidationService,
+    CapabilityReleaseDeploymentSmokeService,
+    CapabilityReleaseDeploymentService,
+    CapabilityReleasePublishService,
+    CapabilityReleaseRuntimeService,
+    CapabilityReleaseSkillDraftService,
+  ],
   exports: [CapabilityReleaseService],
 })
 export class CapabilityReleaseModule {}

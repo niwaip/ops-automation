@@ -56,8 +56,11 @@ export class ContextWindowManager {
     meta: { truncated?: boolean; originalLength?: number };
   } {
     const clipped = clipText(observation, MAX_OBSERVATION_CHARS);
+    const content = clipped.text.trim().startsWith('Observation:')
+      ? clipped.text
+      : `Observation: ${clipped.text}`;
     return {
-      content: `Observation: ${clipped.text}`,
+      content,
       meta: clipped.truncated
         ? { truncated: true, originalLength: observation.length }
         : {},

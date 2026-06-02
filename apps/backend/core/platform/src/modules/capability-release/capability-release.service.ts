@@ -6,31 +6,48 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import axios from 'axios';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
-  getAiOrchestratorUrl,
-  getBrowserWorkerUrl,
-  getCarboneExternalUrl,
-  getCarboneServiceUrl,
-  getControlPlaneApiUrl,
-  getTemporalUiUrl,
-} from '../../config/service-endpoints';
-import { resolveFriendlyInputDisplayName } from '../../common/input-label';
-import { TemporalWorkflowService } from '../temporal-workflow/temporal-workflow.service';
-import { ActivityService } from '../temporal-workflow/temporal-activity.service';
-import { ExecutionFlowTemplateService } from '../execution-flow/execution-flow-template.service';
-import { SkillService } from '../skill/skill.service';
-import { ToolCatalogService } from '../skill/tool-catalog.service';
-import { ToolPromptExposure } from '../skill/interfaces';
+  CapabilityReleaseBuildValidationAccessors,
+  CapabilityReleaseBuildValidationService,
+} from './capability-release-build-validation.service';
+import {
+  CapabilityReleaseDeploymentAccessors,
+  CapabilityReleaseDeploymentService,
+} from './capability-release-deployment.service';
+import {
+  CapabilityReleaseAssistAccessors,
+  CapabilityReleaseAssistService,
+} from './capability-release-assist.service';
+import {
+  CapabilityReleasePublishAccessors,
+  CapabilityReleasePublishService,
+} from './capability-release-publish.service';
+import {
+  CapabilityPublishedSkillRuntimeContext,
+  CapabilityReleaseRuntimeAccessors,
+  CapabilityReleaseRuntimeExecutionOptions,
+  CapabilityReleaseRuntimeService,
+} from './capability-release-runtime.service';
+import { CapabilityReleaseSkillDraftService } from './capability-release-skill-draft.service';
+import { CapabilityReleaseTemporalSchemaService } from './capability-release-temporal-schema.service';
+import {
+  mapCapabilityAuditEvent,
+  mapCapabilityBuild,
+  mapCapabilityDeployment,
+  mapCapabilityRelease,
+  mapCapabilitySkillDraft,
+  mapCapabilitySourceSnapshot,
+  mapCapabilityValidation,
+  parseCapabilityReleaseJson,
+} from './capability-release.mapper';
 import {
   ApproveCapabilityReleaseDTO,
+  AnalyzeFailureDTO,
+  AnalyzeFailureResultDTO,
   BridgeRecorderExportDTO,
   BridgeRecorderExportResultDTO,
   CapabilityBuildDTO,
-  CapabilityBuildType,
-  CapabilityDeploymentRuntimeType,
-  CapabilityDeploymentStatus,
   CapabilityReleaseDTO,
   CapabilityReleaseDetailDTO,
   CapabilitySourceSnapshotDTO,
@@ -46,124 +63,26 @@ import {
   ReleaseAuditEventDTO,
   RollbackCapabilityReleaseDTO,
   SkillDraftDTO,
+  SuggestReleaseWizardAssistDTO,
+  SuggestReleaseWizardAssistResultDTO,
   UpdateCapabilitySourceDTO,
   UpdateSkillDraftDTO,
   ValidateCapabilityDTO,
-  AnalyzeFailureDTO,
-  AnalyzeFailureResultDTO,
-  SuggestReleaseWizardAssistDTO,
-  SuggestReleaseWizardAssistResultDTO,
-  RecorderBridgePublishPayloadDTO,
 } from './interfaces';
-
-type SkillRuntimeToolPolicy = {
-  name: string;
-  promptExposure: ToolPromptExposure;
-  defaultRequiresConfirmation: boolean;
-  defaultRequiresApproval: boolean;
-  status: string;
-};
-
-const CAPABILITY_RELEASE_ERROR_CODE = {
-  MISSING_PUBLISH_PAYLOAD: 'missing_publish_payload',
-  INVALID_RELEASE_TYPE: 'invalid_release_type',
-  RELEASE_APPROVAL_PENDING: 'release_approval_pending',
-  RELEASE_APPROVAL_REJECTED: 'release_approval_rejected',
-  SKILL_DRAFT_NOT_FOUND: 'skill_draft_not_found',
-  SKILL_PUBLISH_TOOL_VALIDATION_FAILED: 'skill_publish_tool_validation_failed',
-  TEMPORAL_DOCUMENT_MAPPING_NOT_READY: 'temporal_document_mapping_not_ready',
-  RELEASE_NOT_PUBLISHED_FOR_DEPLOY: 'release_not_published_for_deploy',
-  RELEASE_DEPLOYING: 'release_deploying',
-  TEMPORAL_BUILD_NOT_EXECUTABLE: 'temporal_build_not_executable',
-  ROLLBACK_TARGET_SAME_RELEASE: 'rollback_target_same_release',
-  ROLLBACK_SOURCE_IDENTIFIER_MISSING: 'rollback_source_identifier_missing',
-  ROLLBACK_TARGET_RELEASE_NOT_FOUND: 'rollback_target_release_not_found',
-} as const;
-
-const asRecord = (value: unknown): Record<string, unknown> | undefined => {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return undefined;
-  }
-  return value as Record<string, unknown>;
-};
-
-const normalizeBrowserRecordingToolName = (toolName: unknown): string | undefined => {
-  if (typeof toolName !== 'string' || !toolName.trim()) {
-    return undefined;
-  }
-  const normalized = toolName.trim();
-  return normalized === 'browser_execute' ? 'browser_step' : normalized;
-};
-
-const toExternalCarboneUrl = (value: unknown): string | undefined => {
-  if (typeof value !== 'string' || !value.trim()) {
-    return undefined;
-  }
-  const trimmed = value.trim();
-  if (/^https?:\/\//i.test(trimmed)) {
-    return trimmed;
-  }
-  if (trimmed.startsWith('/')) {
-    return `${getCarboneExternalUrl()}${trimmed}`;
-  }
-  return `${getCarboneExternalUrl()}/${trimmed.replace(/^\/+/, '')}`;
-};
-
-const extractDownloadUrl = (value: unknown): string | undefined => {
-  const queue: unknown[] = [value];
-  const visited = new Set<unknown>();
-  let inspected = 0;
-
-  while (queue.length > 0 && inspected < 50) {
-    const current = queue.shift();
-    inspected += 1;
-
-    if (!current || typeof current !== 'object' || visited.has(current)) {
-      continue;
-    }
-    visited.add(current);
-
-    if (Array.isArray(current)) {
-      current.forEach((item) => queue.push(item));
-      continue;
-    }
-
-    const record = current as Record<string, unknown>;
-    const directUrl = [record.downloadUrl, record.download_url, record.url]
-      .map((item) => toExternalCarboneUrl(item))
-      .find((item): item is string => typeof item === 'string' && item.trim().length > 0);
-    if (directUrl) {
-      return directUrl;
-    }
-
-    const documentId = [record.documentId, record.document_id]
-      .find((item): item is string => typeof item === 'string' && item.trim().length > 0);
-    if (documentId) {
-      return `${getCarboneExternalUrl()}/studio/download/${documentId}`;
-    }
-
-    Object.values(record).forEach((item) => {
-      if (item && typeof item === 'object') {
-        queue.push(item);
-      }
-    });
-  }
-
-  return undefined;
-};
 
 @Injectable()
 export class CapabilityReleaseService implements OnModuleInit {
   private readonly logger = new Logger(CapabilityReleaseService.name);
-  private readonly controlPlaneApiUrl = getControlPlaneApiUrl();
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly temporalWorkflowService: TemporalWorkflowService,
-    private readonly activityService: ActivityService,
-    private readonly executionFlowTemplateService: ExecutionFlowTemplateService,
-    private readonly skillService: SkillService,
-    private readonly toolCatalogService: ToolCatalogService,
+    private readonly capabilityReleaseBuildValidationService: CapabilityReleaseBuildValidationService,
+    private readonly capabilityReleaseDeploymentService: CapabilityReleaseDeploymentService,
+    private readonly capabilityReleaseAssistService: CapabilityReleaseAssistService,
+    private readonly capabilityReleasePublishService: CapabilityReleasePublishService,
+    private readonly capabilityReleaseRuntimeService: CapabilityReleaseRuntimeService,
+    private readonly capabilityReleaseSkillDraftService: CapabilityReleaseSkillDraftService,
+    private readonly capabilityReleaseTemporalSchemaService: CapabilityReleaseTemporalSchemaService,
   ) {}
 
   async onModuleInit() {
@@ -178,7 +97,7 @@ export class CapabilityReleaseService implements OnModuleInit {
        WHERE archived_at IS NULL
        ORDER BY updated_at DESC`
     );
-    return rows.map((row) => this.mapRelease(row));
+    return rows.map((row) => mapCapabilityRelease(row));
   }
 
   async listPublishedCapabilities(): Promise<CapabilityReleaseDTO[]> {
@@ -194,7 +113,7 @@ export class CapabilityReleaseService implements OnModuleInit {
          )
        ORDER BY updated_at DESC`
     );
-    return rows.map((row) => this.mapRelease(row));
+    return rows.map((row) => mapCapabilityRelease(row));
   }
 
   async getCapabilityDetail(id: string): Promise<CapabilityReleaseDetailDTO> {
@@ -205,42 +124,42 @@ export class CapabilityReleaseService implements OnModuleInit {
          FROM capability_source_snapshots
          WHERE release_id = $1::uuid
          ORDER BY snapshot_version DESC`,
-        id
+        id,
       ),
       this.prisma.$queryRawUnsafe<any[]>(
         `SELECT *
          FROM capability_builds
          WHERE release_id = $1::uuid
          ORDER BY created_at DESC`,
-        id
+        id,
       ),
       this.prisma.$queryRawUnsafe<any[]>(
         `SELECT *
          FROM capability_validations
          WHERE release_id = $1::uuid
          ORDER BY created_at DESC`,
-        id
+        id,
       ),
       this.prisma.$queryRawUnsafe<any[]>(
         `SELECT *
          FROM skill_drafts
          WHERE release_id = $1::uuid
          ORDER BY updated_at DESC`,
-        id
+        id,
       ),
       this.prisma.$queryRawUnsafe<any[]>(
         `SELECT *
          FROM deployment_records
          WHERE release_id = $1::uuid
          ORDER BY created_at DESC`,
-        id
+        id,
       ),
       this.prisma.$queryRawUnsafe<any[]>(
         `SELECT *
          FROM release_audit_events
          WHERE release_id = $1::uuid
          ORDER BY created_at DESC`,
-        id
+        id,
       ),
     ]);
 
@@ -252,23 +171,23 @@ export class CapabilityReleaseService implements OnModuleInit {
     return {
       release,
       currentSourceSnapshot: currentSourceSnapshot
-        ? this.mapSourceSnapshot(currentSourceSnapshot)
+        ? mapCapabilitySourceSnapshot(currentSourceSnapshot)
         : null,
-      sourceSnapshots: snapshots.map((row) => this.mapSourceSnapshot(row)),
-      builds: builds.map((row) => this.mapBuild(row)),
-      validations: validations.map((row) => this.mapValidation(row)),
-      currentSkillDraft: currentSkillDraft ? this.mapSkillDraft(currentSkillDraft) : null,
-      deployments: deployments.map((row) => this.mapDeployment(row)),
-      auditEvents: auditEvents.map((row) => this.mapAuditEvent(row)),
+      sourceSnapshots: snapshots.map((row) => mapCapabilitySourceSnapshot(row)),
+      builds: builds.map((row) => mapCapabilityBuild(row)),
+      validations: validations.map((row) => mapCapabilityValidation(row)),
+      currentSkillDraft: currentSkillDraft ? mapCapabilitySkillDraft(currentSkillDraft) : null,
+      deployments: deployments.map((row) => mapCapabilityDeployment(row)),
+      auditEvents: auditEvents.map((row) => mapCapabilityAuditEvent(row)),
     };
   }
 
   async getPublishedCapabilityDetail(id: string): Promise<CapabilityReleaseDetailDTO> {
     const release = await this.getReleaseOrThrow(id);
     const isVisible =
-      Boolean(release.publishedSkillId) ||
-      ['published', 'deployed', 'rolled_back'].includes(release.status) ||
-      ['running', 'succeeded', 'deployed', 'rolled_back'].includes(release.deploymentStatus);
+      Boolean(release.publishedSkillId)
+      || ['published', 'deployed', 'rolled_back'].includes(release.status)
+      || ['running', 'succeeded', 'deployed', 'rolled_back'].includes(release.deploymentStatus);
 
     if (!isVisible) {
       throw new NotFoundException('该 Release 尚未进入发布中心');
@@ -315,344 +234,32 @@ export class CapabilityReleaseService implements OnModuleInit {
     dto: ExecuteCapabilityRuntimeDTO,
     userId?: string,
   ): Promise<ExecuteCapabilityRuntimeResultDTO> {
-    const capabilityId = dto.capabilityId || dto.publishedSkillId;
-    if (!capabilityId) {
-      throw new BadRequestException('capabilityId 或 publishedSkillId 不能为空');
-    }
-
-    return this.executePublishedSkill(
-      capabilityId,
-      dto.input,
+    return this.capabilityReleaseRuntimeService.executeCapabilityRuntime(
+      dto,
       userId,
-      {
-        executionId: dto.executionId,
-        stepId: dto.stepId,
-        capabilityVersion: dto.capabilityVersion,
-        runtimeType: dto.runtimeType,
-        runtimeSessionId: dto.runtimeSessionId,
-        phaseKey: dto.phaseKey,
-        metadata: dto.metadata,
-      },
+      this.getRuntimeAccessors(),
     );
   }
 
-  async getPublishedSkillRuntimeContext(skillId: string): Promise<{
-    publishedSkillId: string;
-    releaseId: string;
-    sourceType: string;
-    runtimeType: string;
-    runtimeSource: 'deployment' | 'sandbox_fallback' | 'flow_runtime_fallback';
-    allowedToolNames: string[];
-    toolPolicies: SkillRuntimeToolPolicy[];
-    environment?: string | null;
-    deploymentId?: string | null;
-  }> {
-    const releaseRows = await this.prisma.$queryRawUnsafe<any[]>(
-      `SELECT *
-       FROM capability_releases
-       WHERE published_skill_id = $1::uuid
-         AND archived_at IS NULL
-       ORDER BY updated_at DESC
-       LIMIT 1`,
-      skillId,
-    );
-
-    if (!releaseRows[0]) {
-      throw new NotFoundException('未找到与该 Skill 绑定的 Capability');
-    }
-
-    const release = this.mapRelease(releaseRows[0]);
-    const toolBindings = await this.skillService.getSkillToolBindings(skillId);
-    const allowedToolNames = toolBindings.validation.effectiveTools;
-    const toolPolicies = await this.buildRuntimeToolPolicies(allowedToolNames);
-
-    const latestSuccessfulDeploymentRows = await this.prisma.$queryRawUnsafe<any[]>(
-      `SELECT *
-       FROM deployment_records
-       WHERE release_id = $1::uuid
-         AND success = true
-       ORDER BY created_at DESC
-       LIMIT 1`,
-      release.id,
-    );
-
-    const lastDeployment =
-      release.lastDeploymentId
-        ? await this.prisma.$queryRawUnsafe<any[]>(
-            `SELECT *
-             FROM deployment_records
-             WHERE id = $1::uuid
-             LIMIT 1`,
-            release.lastDeploymentId,
-          )
-        : [];
-
-    const deploymentRow =
-      (Array.isArray(lastDeployment) && lastDeployment[0]?.success ? lastDeployment[0] : null)
-      || latestSuccessfulDeploymentRows[0]
-      || null;
-
-    if (deploymentRow) {
-      const deployment = this.mapDeployment(deploymentRow);
-      return {
-        publishedSkillId: skillId,
-        releaseId: release.id,
-        sourceType: release.sourceType,
-        runtimeType: deployment.runtimeType,
-        runtimeSource: 'deployment',
-        allowedToolNames,
-        toolPolicies,
-        environment: deployment.environment,
-        deploymentId: deployment.id,
-      };
-    }
-
-    if (release.sourceType === 'temporal_workflow') {
-      return {
-        publishedSkillId: skillId,
-        releaseId: release.id,
-        sourceType: release.sourceType,
-        runtimeType: 'sandbox',
-        runtimeSource: 'sandbox_fallback',
-        allowedToolNames,
-        toolPolicies,
-        environment: null,
-        deploymentId: null,
-      };
-    }
-
-    return {
-      publishedSkillId: skillId,
-      releaseId: release.id,
-      sourceType: release.sourceType,
-      runtimeType: 'flow_runtime',
-      runtimeSource: 'flow_runtime_fallback',
-      allowedToolNames,
-      toolPolicies,
-      environment: null,
-      deploymentId: null,
-    };
-  }
-
-  private async buildRuntimeToolPolicies(toolNames: string[]): Promise<SkillRuntimeToolPolicy[]> {
-    const uniqueToolNames = Array.from(new Set(toolNames.filter(Boolean)));
-    if (uniqueToolNames.length === 0) {
-      return [];
-    }
-
-    const catalogMap = await this.toolCatalogService.getCatalogItemsByNames(uniqueToolNames);
-    return uniqueToolNames.map((toolName) => {
-      const catalogItem = catalogMap.get(toolName);
-      return {
-        name: toolName,
-        promptExposure: catalogItem?.promptExposure || 'prompt_and_runtime',
-        defaultRequiresConfirmation: Boolean(catalogItem?.defaultRequiresConfirmation),
-        defaultRequiresApproval: Boolean(catalogItem?.defaultRequiresApproval),
-        status: catalogItem?.status || 'active',
-      };
-    });
+  async getPublishedSkillRuntimeContext(
+    skillId: string,
+  ): Promise<CapabilityPublishedSkillRuntimeContext> {
+    return this.capabilityReleaseRuntimeService.getPublishedSkillRuntimeContext(skillId);
   }
 
   async executePublishedSkill(
     skillId: string,
     input: Record<string, unknown> | undefined,
     userId?: string,
-    options?: {
-      executionId?: string;
-      stepId?: string;
-      capabilityVersion?: string;
-      runtimeType?: string;
-      runtimeSessionId?: string;
-      phaseKey?: string;
-      metadata?: Record<string, unknown>;
-    },
+    options?: CapabilityReleaseRuntimeExecutionOptions,
   ): Promise<ExecuteCapabilityRuntimeResultDTO> {
-    const releaseRows = await this.prisma.$queryRawUnsafe<any[]>(
-      `SELECT *
-       FROM capability_releases
-       WHERE published_skill_id = $1::uuid
-         AND archived_at IS NULL
-       ORDER BY updated_at DESC
-       LIMIT 1`,
+    return this.capabilityReleaseRuntimeService.executePublishedSkill(
       skillId,
+      input,
+      userId,
+      options,
+      this.getRuntimeAccessors(),
     );
-
-    if (!releaseRows[0]) {
-      throw new NotFoundException('未找到与该 Skill 绑定的 Capability');
-    }
-
-    const release = this.mapRelease(releaseRows[0]);
-    if (release.sourceType === 'temporal_workflow') {
-      const snapshot = await this.getCurrentSnapshotOrThrow(release);
-      const build = await this.resolveTemporalExecutableBuildOrThrow(release, snapshot, undefined, userId);
-      const runtimeSessionId = options?.runtimeSessionId || `capability-runtime-${randomUUID()}`;
-      const normalizedInput: Record<string, any> = {
-        ...(input as Record<string, any> || {}),
-      };
-      if (!normalizedInput.runtimeSessionId) {
-        normalizedInput.runtimeSessionId = runtimeSessionId;
-      }
-      if (!normalizedInput.workflowId) {
-        normalizedInput.workflowId = runtimeSessionId;
-      }
-
-      const fn = this.resolveWorkflowFnOrThrow(snapshot.sourcePayload);
-      const taskQueue = typeof snapshot.sourcePayload.taskQueue === 'string'
-        ? snapshot.sourcePayload.taskQueue
-        : 'SKILL_TASK_QUEUE';
-      const generatedCode = build.generatedCode || '';
-      const renderDataSnippetMatch = generatedCode.match(/def _build_render_data[\s\S]*?return render_data/);
-
-      const logs: string[] = [];
-      const progressTasks: Promise<void>[] = [];
-      let activityOrder = 0;
-      // #region debug-point B:temporal-workflow-runtime-input
-      (()=>{const fs=require('fs'),p='.dbg/tech-service-object-object.env';let u='http://127.0.0.1:7777/event',s='tech-service-object-object';try{const e=fs.readFileSync(p,'utf8');u=e.match(/DEBUG_SERVER_URL=(.+)/)?.[1]||u;s=e.match(/DEBUG_SESSION_ID=(.+)/)?.[1]||s}catch{}fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:s,runId:'pre-fix',hypothesisId:'B',location:'capability-release.service.ts:507',msg:'[DEBUG] temporal workflow runtime received normalized input and generated code snippet',data:{skillId,executionId:options?.executionId||null,runtimeSessionId,suspiciousInput:{paymentFirstDays:normalizedInput.payment?.firstDays ?? normalizedInput['payment.firstDays'],paymentFirstRatio:normalizedInput.payment?.firstRatio ?? normalizedInput['payment.firstRatio'],paymentFirstAmount:normalizedInput.payment?.firstAmount ?? normalizedInput['payment.firstAmount'],paymentTotalAmount:normalizedInput.payment?.totalAmount ?? normalizedInput['payment.totalAmount'],paymentBankAccount:normalizedInput.payment?.bankAccount ?? normalizedInput['payment.bankAccount'],serviceEndUser:normalizedInput.service?.endUser ?? normalizedInput['service.endUser']},renderDataSnippet:renderDataSnippetMatch?.[0]||null},ts:Date.now()})}).catch(()=>{});})();
-      // #endregion
-      const result = await this.activityService.executeCodeStreaming(
-        generatedCode,
-        fn,
-        taskQueue,
-        normalizedInput,
-        (log) => {
-          logs.push(log);
-          const activityName = this.extractWorkflowActivityNameFromLog(log);
-          if (!activityName || !options?.executionId || !options.phaseKey) {
-            return;
-          }
-
-          activityOrder += 1;
-          const progressTask = this.pushWorkflowActivityProgress({
-            executionId: options.executionId,
-            parentPhaseKey: options.phaseKey,
-            runtimeSessionId,
-            activityOrder,
-            activityName,
-            userId,
-          });
-          progressTasks.push(progressTask);
-          void progressTask.catch((error: unknown) => {
-            const message = error instanceof Error ? error.message : String(error || '');
-            this.logger.warn(`Failed to push workflow activity progress: ${message}`);
-          });
-        },
-        {
-          preferSandboxStreaming: true,
-        },
-      );
-      await Promise.allSettled(progressTasks);
-
-      const rawResult = result.result;
-      const rawResultRecord = rawResult && typeof rawResult === 'object' && !Array.isArray(rawResult)
-        ? rawResult as Record<string, unknown>
-        : null;
-      const runtimeStatus = typeof rawResultRecord?.status === 'string'
-        ? rawResultRecord.status
-        : undefined;
-      const normalizedRuntimeStatus = typeof runtimeStatus === 'string'
-        ? runtimeStatus.trim().toLowerCase()
-        : undefined;
-      const runtimeRequiresTakeover = rawResultRecord?.requiresTakeover === true;
-      const runtimeRetryable = rawResultRecord?.retryable === true;
-      const runtimeTakeoverReason = typeof rawResultRecord?.takeoverReason === 'string'
-        ? rawResultRecord.takeoverReason
-        : null;
-      const runtimeSuccess = rawResultRecord?.success === false
-        ? false
-        : rawResultRecord?.success === true
-          ? true
-          : !normalizedRuntimeStatus || ['completed', 'succeeded', 'success', 'rendered'].includes(normalizedRuntimeStatus);
-      const effectiveSuccess = result.success && runtimeSuccess && !runtimeRequiresTakeover;
-      const downloadUrl = extractDownloadUrl(rawResult);
-      const temporalWorkflowId = result.workflowId;
-      const temporalLink = temporalWorkflowId 
-        ? `${getTemporalUiUrl()}/namespaces/default/workflows/${temporalWorkflowId}`
-        : null;
-      const runtimeError = typeof rawResultRecord?.errorMessage === 'string'
-        ? rawResultRecord.errorMessage
-        : result.error || null;
-
-      // 允许非对象结果透传，包装为标准对象
-      const normalizedResult = (rawResult !== undefined && rawResult !== null)
-        ? (typeof rawResult === 'object' && !Array.isArray(rawResult)
-          ? { 
-              ...(rawResult as Record<string, unknown>), 
-              ...(downloadUrl ? { downloadUrl } : {}),
-              ...(temporalLink ? { temporalLink } : {})
-            }
-          : { 
-              result: rawResult, 
-              ...(downloadUrl ? { downloadUrl } : {}),
-              ...(temporalLink ? { temporalLink } : {})
-            })
-        : (downloadUrl || temporalLink 
-            ? { ...(downloadUrl ? { downloadUrl } : {}), ...(temporalLink ? { temporalLink } : {}) } 
-            : null);
-
-      await this.insertAuditEvent(
-        release.id,
-        'skill_runtime_invoked',
-        userId,
-        effectiveSuccess,
-        effectiveSuccess
-          ? `运行时调用 Skill 成功: ${skillId}`
-          : `运行时调用 Skill 失败: ${skillId}`,
-        {
-          publishedSkillId: skillId,
-          capabilityId: skillId,
-          capabilityVersion: options?.capabilityVersion || null,
-          runtime: 'temporal_workflow',
-          requestedRuntimeType: options?.runtimeType || null,
-          executionId: options?.executionId || null,
-          stepId: options?.stepId || null,
-          runtimeSessionId,
-          fn,
-          taskQueue,
-          temporalWorkflowId,
-        },
-      );
-
-      return {
-        releaseId: release.id,
-        capabilityId: skillId,
-        capabilityVersion: options?.capabilityVersion || null,
-        publishedSkillId: skillId,
-        runtime: 'temporal_workflow',
-        fn,
-        taskQueue,
-        status:
-          runtimeRequiresTakeover || normalizedRuntimeStatus === 'takeover_required'
-            ? 'takeover_required'
-            : normalizedRuntimeStatus === 'waiting'
-              ? 'waiting'
-              : normalizedRuntimeStatus === 'blocked'
-                ? 'blocked'
-                : effectiveSuccess
-                  ? 'completed'
-                  : 'failed',
-        success: effectiveSuccess,
-        runtimeSessionId,
-        downloadUrl: downloadUrl || null,
-        temporalWorkflowId: temporalWorkflowId || null,
-        output: normalizedResult,
-        result: normalizedResult,
-        retryable: runtimeRetryable,
-        requiresTakeover: runtimeRequiresTakeover || runtimeStatus === 'takeover_required',
-        takeoverReason: runtimeTakeoverReason,
-        logs,
-        error: runtimeError,
-      };
-    }
-
-    if (release.sourceType === 'execution_flow_template') {
-      return this.executeDocumentPublishedSkill(release, skillId, input, userId, options);
-    }
-
-    if (release.sourceType === 'browser_recording') {
-      return this.executeBrowserRecordingPublishedSkill(release, skillId, input, userId, options);
-    }
-
-    throw new BadRequestException(`当前不支持执行 ${release.sourceType} 类型的已发布 Skill`);
   }
 
   async createCapability(
@@ -706,116 +313,11 @@ export class CapabilityReleaseService implements OnModuleInit {
     dto: BridgeRecorderExportDTO,
     userId?: string,
   ): Promise<BridgeRecorderExportResultDTO> {
-    const publishPayload = dto.exportArtifacts?.skillDraft?.publishPayload;
-    if (!publishPayload || typeof publishPayload !== 'object' || Array.isArray(publishPayload)) {
-      throw new BadRequestException({
-        code: CAPABILITY_RELEASE_ERROR_CODE.MISSING_PUBLISH_PAYLOAD,
-        message: '缺少 exportArtifacts.skillDraft.publishPayload',
-      });
-    }
-
-    const normalizedPayload = this.normalizeRecorderPublishPayload(publishPayload);
-    const sourcePayload = this.buildRecorderSourcePayload(dto, normalizedPayload);
-
-    const sourceName = dto.sourceName
-      || normalizedPayload.name
-      || dto.userGoal
-      || dto.exportArtifacts?.skillDraft?.name
-      || 'Recorder Bridge Capability';
-
-    let releaseId = dto.releaseId;
-    if (releaseId) {
-      const existing = await this.getReleaseOrThrow(releaseId);
-      if (existing.sourceType !== 'browser_recording') {
-        throw new BadRequestException({
-          code: CAPABILITY_RELEASE_ERROR_CODE.INVALID_RELEASE_TYPE,
-          message: 'bridge 仅支持 browser_recording 类型 release',
-          expected: 'browser_recording',
-          actual: existing.sourceType,
-        });
-      }
-      await this.updateSource(
-        releaseId,
-        { sourceName, sourcePayload },
-        userId,
-      );
-    } else {
-      const created = await this.createCapability(
-        {
-          sourceType: 'browser_recording',
-          sourceName,
-          sourcePayload,
-        },
-        userId,
-      );
-      releaseId = created.release.id;
-    }
-
-    const release = await this.getReleaseOrThrow(releaseId);
-    const draftPayload = {
-      ...normalizedPayload,
-      sourceType: 'browser_recording',
-      bridgeMode: 'browser_recording_native',
-      recorderBridge: {
-        userGoal: dto.userGoal || null,
-        guidance: typeof dto.exportArtifacts?.guidance === 'string' ? dto.exportArtifacts.guidance : null,
-        commandCount: Array.isArray(dto.exportArtifacts?.commands) ? dto.exportArtifacts.commands.length : 0,
-      },
-    } as Record<string, unknown>;
-
-    const draftId = randomUUID();
-    await this.prisma.$executeRawUnsafe(
-      `INSERT INTO skill_drafts (
-        id, release_id, generated_from_build_id, generated_from_validation_id, source_type,
-        name, description, trigger_keywords, params_schema, execution_flow_template_ids,
-        tools, api_endpoints, draft_payload_json, status, created_by, created_at, updated_at
-      ) VALUES (
-        $1::uuid, $2::uuid, NULL, NULL, $3,
-        $4, $5, $6::jsonb, $7::jsonb, $8::jsonb,
-        $9::jsonb, $10::jsonb, $11::jsonb, 'draft', $12::uuid, now(), now()
-      )`,
-      draftId,
-      releaseId,
-      release.sourceType,
-      normalizedPayload.name,
-      normalizedPayload.description,
-      JSON.stringify(normalizedPayload.triggerKeywords),
-      JSON.stringify(normalizedPayload.paramsSchema),
-      JSON.stringify(normalizedPayload.executionFlowTemplateIds),
-      JSON.stringify(normalizedPayload.tools),
-      JSON.stringify(normalizedPayload.apiEndpoints || null),
-      JSON.stringify(draftPayload),
-      userId || null,
-    );
-
-    await this.prisma.$executeRawUnsafe(
-      `UPDATE capability_releases
-       SET current_skill_draft_id = $2::uuid,
-           status = 'pending_approval',
-           approval_status = 'pending',
-           updated_at = now()
-       WHERE id = $1::uuid`,
-      releaseId,
-      draftId,
-    );
-
-    await this.insertAuditEvent(
-      releaseId,
-      'recorder_export_bridged',
+    return this.capabilityReleasePublishService.bridgeRecorderExport(
+      dto,
       userId,
-      true,
-      'Recorder 导出结果已桥接为 Skill 草案',
-      {
-        bridgeMode: 'browser_recording_native',
-        commandCount: Array.isArray(dto.exportArtifacts?.commands) ? dto.exportArtifacts.commands.length : 0,
-      },
+      this.getPublishAccessors(),
     );
-
-    return {
-      release: await this.getReleaseOrThrow(releaseId),
-      skillDraft: await this.getSkillDraftOrThrow(draftId),
-      bridgeMode: 'browser_recording_native',
-    };
   }
 
   async updateSource(
@@ -853,124 +355,12 @@ export class CapabilityReleaseService implements OnModuleInit {
     dto: CreateCapabilityBuildDTO,
     userId?: string,
   ): Promise<{ release: CapabilityReleaseDTO; build: CapabilityBuildDTO }> {
-    const release = await this.getReleaseOrThrow(id);
-    const snapshot = await this.getCurrentSnapshotOrThrow(release);
-    const buildId = randomUUID();
-    const buildType = dto.buildType || this.getDefaultBuildType(release.sourceType);
-    const modelId = dto.modelId || 'default';
-    const inputSnapshot = snapshot.sourcePayload;
-
-    await this.prisma.$executeRawUnsafe(
-      `INSERT INTO capability_builds (
-        id, release_id, source_snapshot_id, build_type, model_id, input_snapshot_json,
-        logs_json, status, started_at, created_by, created_at
-      ) VALUES (
-        $1::uuid, $2::uuid, $3::uuid, $4, $5, $6::jsonb, '[]'::jsonb, 'running', now(), $7::uuid, now()
-      )`,
-      buildId,
+    return this.capabilityReleaseBuildValidationService.build(
       id,
-      snapshot.id,
-      buildType,
-      modelId,
-      JSON.stringify(inputSnapshot),
-      userId || null,
+      dto,
+      userId,
+      this.getBuildValidationAccessors(),
     );
-
-    await this.prisma.$executeRawUnsafe(
-      `UPDATE capability_releases
-       SET status = 'building', current_build_id = $2::uuid, updated_at = now()
-       WHERE id = $1::uuid`,
-      id,
-      buildId,
-    );
-
-    await this.insertAuditEvent(id, 'build_started', userId, true, `开始构建 (${buildType})`);
-
-    try {
-      const logs: string[] = [];
-      let generatedCode: string | null = null;
-      let generatedConfig: Record<string, unknown> | null = null;
-      let diffSummary: string | null = null;
-
-      logs.push(`[${new Date().toISOString()}] 开始构建，类型: ${buildType}`);
-      logs.push(`[${new Date().toISOString()}] 模型: ${modelId}`);
-
-      if (release.sourceType === 'temporal_workflow') {
-        logs.push(`[${new Date().toISOString()}] 识别为 Temporal 工作流，开始解析 DSL`);
-        const workflowDsl = this.expectRecord(inputSnapshot.workflowDsl, '缺少 workflowDsl');
-        const activityDsl = this.expectRecord(inputSnapshot.activityDsl, '缺少 activityDsl');
-        logs.push(`[${new Date().toISOString()}] 调用 AI 生成工作流代码`);
-        const result = await this.temporalWorkflowService.generateWorkflowCode(
-          workflowDsl as any,
-          activityDsl as any,
-          dto.errorContext,
-        );
-        if (!result.success || !result.code) {
-          throw new Error(result.error || 'Temporal 工作流代码生成失败');
-        }
-        generatedCode = result.code;
-        diffSummary = '已生成 Temporal Workflow Python 代码';
-        logs.push(`[${new Date().toISOString()}] 代码生成完成，长度: ${generatedCode?.length || 0} 字符`);
-      } else {
-        generatedConfig = inputSnapshot;
-        diffSummary = '模板型能力已固化当前配置快照，可进入验证和草案生成阶段';
-        logs.push(`[${new Date().toISOString()}] 模板型能力无需代码生成，已固化配置快照`);
-      }
-
-      await this.prisma.$executeRawUnsafe(
-        `UPDATE capability_builds
-         SET generated_code = $2,
-             generated_config_json = $3::jsonb,
-             diff_summary = $4,
-             logs_json = $5::jsonb,
-             status = 'succeeded',
-             finished_at = now()
-         WHERE id = $1::uuid`,
-        buildId,
-        generatedCode,
-        JSON.stringify(generatedConfig),
-        diffSummary,
-        JSON.stringify(logs),
-      );
-
-      await this.prisma.$executeRawUnsafe(
-        `UPDATE capability_releases
-         SET status = 'draft',
-             current_build_id = $2::uuid,
-             latest_successful_build_id = $2::uuid,
-             updated_at = now()
-         WHERE id = $1::uuid`,
-        id,
-        buildId,
-      );
-
-      await this.insertAuditEvent(id, 'build_succeeded', userId, true, `构建成功 (${buildType})`);
-      return {
-        release: await this.getReleaseOrThrow(id),
-        build: await this.getBuildOrThrow(buildId),
-      };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : '未知错误';
-      await this.prisma.$executeRawUnsafe(
-        `UPDATE capability_builds
-         SET status = 'failed',
-             logs_json = $3::jsonb,
-             error_summary = $2,
-             finished_at = now()
-         WHERE id = $1::uuid`,
-        buildId,
-        message,
-        JSON.stringify([`[${new Date().toISOString()}] ${message}`]),
-      );
-      await this.prisma.$executeRawUnsafe(
-        `UPDATE capability_releases
-         SET status = 'build_failed', updated_at = now()
-         WHERE id = $1::uuid`,
-        id,
-      );
-      await this.insertAuditEvent(id, 'build_failed', userId, false, `构建失败: ${message}`);
-      throw new BadRequestException(message);
-    }
   }
 
   async buildStream(
@@ -979,145 +369,13 @@ export class CapabilityReleaseService implements OnModuleInit {
     userId: string | undefined,
     onEvent: (event: string, payload: Record<string, unknown>) => void,
   ): Promise<void> {
-    const release = await this.getReleaseOrThrow(id);
-    const snapshot = await this.getCurrentSnapshotOrThrow(release);
-    const buildId = randomUUID();
-    const buildType = dto.buildType || this.getDefaultBuildType(release.sourceType);
-    const modelId = dto.modelId || 'default';
-    const inputSnapshot = snapshot.sourcePayload;
-    const logs: string[] = [];
-    const pushLog = (message: string) => {
-      logs.push(message);
-      onEvent('log', { message });
-    };
-
-    await this.prisma.$executeRawUnsafe(
-      `INSERT INTO capability_builds (
-        id, release_id, source_snapshot_id, build_type, model_id, input_snapshot_json,
-        logs_json, status, started_at, created_by, created_at
-      ) VALUES (
-        $1::uuid, $2::uuid, $3::uuid, $4, $5, $6::jsonb,
-        '[]'::jsonb, 'running', now(), $7::uuid, now()
-      )`,
-      buildId,
+    return this.capabilityReleaseBuildValidationService.buildStream(
       id,
-      snapshot.id,
-      buildType,
-      modelId,
-      JSON.stringify(inputSnapshot),
-      userId || null,
+      dto,
+      userId,
+      onEvent,
+      this.getBuildValidationAccessors(),
     );
-
-    await this.prisma.$executeRawUnsafe(
-      `UPDATE capability_releases
-       SET status = 'building', current_build_id = $2::uuid, updated_at = now()
-       WHERE id = $1::uuid`,
-      id,
-      buildId,
-    );
-
-    onEvent('status', {
-      phase: 'started',
-      releaseId: id,
-      buildId,
-      buildType,
-      sourceType: release.sourceType,
-    });
-    await this.insertAuditEvent(id, 'build_started', userId, true, `开始构建 (${buildType})`);
-
-    try {
-      let generatedCode: string | null = null;
-      let generatedConfig: Record<string, unknown> | null = null;
-      let diffSummary: string | null = null;
-
-      pushLog(`[${new Date().toISOString()}] 开始构建，类型: ${buildType}`);
-      pushLog(`[${new Date().toISOString()}] 模型: ${modelId}`);
-
-      if (release.sourceType === 'temporal_workflow') {
-        onEvent('status', { phase: 'preparing_dsl', buildId });
-        pushLog(`[${new Date().toISOString()}] 识别为 Temporal 工作流，开始解析 DSL`);
-        const workflowDsl = this.expectRecord(inputSnapshot.workflowDsl, '缺少 workflowDsl');
-        const activityDsl = this.expectRecord(inputSnapshot.activityDsl, '缺少 activityDsl');
-        onEvent('status', { phase: 'generating_code', buildId });
-        pushLog(`[${new Date().toISOString()}] 调用 AI 生成工作流代码`);
-        const result = await this.temporalWorkflowService.generateWorkflowCode(
-          workflowDsl as any,
-          activityDsl as any,
-          dto.errorContext,
-        );
-        if (!result.success || !result.code) {
-          throw new Error(result.error || 'Temporal 工作流代码生成失败');
-        }
-        generatedCode = result.code;
-        diffSummary = '已生成 Temporal Workflow Python 代码';
-        pushLog(`[${new Date().toISOString()}] 代码生成完成，长度: ${generatedCode?.length || 0} 字符`);
-      } else {
-        onEvent('status', { phase: 'solidifying_config', buildId });
-        generatedConfig = inputSnapshot;
-        diffSummary = '模板型能力已固化当前配置快照，可进入验证和草案生成阶段';
-        pushLog(`[${new Date().toISOString()}] 模板型能力无需代码生成，已固化配置快照`);
-      }
-
-      onEvent('status', { phase: 'persisting', buildId });
-      await this.prisma.$executeRawUnsafe(
-        `UPDATE capability_builds
-         SET generated_code = $2,
-             generated_config_json = $3::jsonb,
-             diff_summary = $4,
-             logs_json = $5::jsonb,
-             status = 'succeeded',
-             finished_at = now()
-         WHERE id = $1::uuid`,
-        buildId,
-        generatedCode,
-        JSON.stringify(generatedConfig),
-        diffSummary,
-        JSON.stringify(logs),
-      );
-
-      await this.prisma.$executeRawUnsafe(
-        `UPDATE capability_releases
-         SET status = 'draft',
-             current_build_id = $2::uuid,
-             latest_successful_build_id = $2::uuid,
-             updated_at = now()
-         WHERE id = $1::uuid`,
-        id,
-        buildId,
-      );
-
-      await this.insertAuditEvent(id, 'build_succeeded', userId, true, `构建成功 (${buildType})`);
-      onEvent('complete', {
-        release: (await this.getReleaseOrThrow(id)) as unknown as Record<string, unknown>,
-        build: (await this.getBuildOrThrow(buildId)) as unknown as Record<string, unknown>,
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : '未知错误';
-      logs.push(`[${new Date().toISOString()}] ${message}`);
-      await this.prisma.$executeRawUnsafe(
-        `UPDATE capability_builds
-         SET status = 'failed',
-             logs_json = $3::jsonb,
-             error_summary = $2,
-             finished_at = now()
-         WHERE id = $1::uuid`,
-        buildId,
-        message,
-        JSON.stringify(logs),
-      );
-      await this.prisma.$executeRawUnsafe(
-        `UPDATE capability_releases
-         SET status = 'build_failed', updated_at = now()
-         WHERE id = $1::uuid`,
-        id,
-      );
-      await this.insertAuditEvent(id, 'build_failed', userId, false, `构建失败: ${message}`);
-      onEvent('error', {
-        message,
-        release: (await this.getReleaseOrThrow(id)) as unknown as Record<string, unknown>,
-        build: (await this.getBuildOrThrow(buildId)) as unknown as Record<string, unknown>,
-      });
-    }
   }
 
   async validateStatic(
@@ -1125,94 +383,12 @@ export class CapabilityReleaseService implements OnModuleInit {
     dto: ValidateCapabilityDTO,
     userId?: string,
   ): Promise<{ release: CapabilityReleaseDTO; validation: CapabilityValidationDTO }> {
-    const release = await this.getReleaseOrThrow(id);
-    const snapshot = await this.getCurrentSnapshotOrThrow(release);
-    const build = await this.resolveBuildForValidation(release, snapshot, dto.buildId, userId);
-    const preserveReleaseStatus = this.shouldPreserveReleaseStatusDuringValidation(release);
-    const validationId = await this.createValidationRecord(
+    return this.capabilityReleaseBuildValidationService.validateStatic(
       id,
-      build.id,
-      'static',
-      dto.input,
+      dto,
       userId,
-      !preserveReleaseStatus,
+      this.getBuildValidationAccessors(),
     );
-
-    await this.insertAuditEvent(id, 'validation_started', userId, true, '开始静态校验');
-
-    try {
-      let resultSnapshot: Record<string, unknown>;
-      let logs: string[];
-      let success: boolean;
-      let score: number;
-      let errorSummary: string | null = null;
-
-      if (release.sourceType === 'temporal_workflow') {
-        const workflowDsl = this.expectRecord(snapshot.sourcePayload.workflowDsl, '缺少 workflowDsl');
-        const activityDsl = this.expectRecord(snapshot.sourcePayload.activityDsl, '缺少 activityDsl');
-        const result = await this.temporalWorkflowService.validate(
-          workflowDsl as any,
-          activityDsl as any,
-        );
-        success = result.isValid;
-        score = result.score;
-        resultSnapshot = result as unknown as Record<string, unknown>;
-        logs = [
-          ...result.errors.map((item: string) => `[Error] ${item}`),
-          ...result.warnings.map((item: string) => `[Warning] ${item}`),
-        ];
-        errorSummary = result.errors[0] || null;
-      } else {
-        const result = this.validateExecutionFlowPayload(snapshot.sourcePayload);
-        success = result.isValid;
-        score = result.score;
-        resultSnapshot = result as unknown as Record<string, unknown>;
-        logs = [
-          ...result.errors.map((item) => `[Error] ${item}`),
-          ...result.warnings.map((item) => `[Warning] ${item}`),
-        ];
-        errorSummary = result.errors[0] || null;
-      }
-
-      await this.finishValidation(
-        validationId,
-        id,
-        success ? 'draft_ready' : 'validation_failed',
-        success,
-        score,
-        logs,
-        resultSnapshot,
-        errorSummary,
-        preserveReleaseStatus,
-      );
-
-      await this.insertAuditEvent(
-        id,
-        success ? 'validation_succeeded' : 'validation_failed',
-        userId,
-        success,
-        success ? '静态校验通过' : `静态校验失败: ${errorSummary || '未知错误'}`,
-      );
-
-      return {
-        release: await this.getReleaseOrThrow(id),
-        validation: await this.getValidationOrThrow(validationId),
-      };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : '未知错误';
-      await this.finishValidation(
-        validationId,
-        id,
-        'validation_failed',
-        false,
-        0,
-        [`[Error] ${message}`],
-        null,
-        message,
-      );
-      await this.insertAuditEvent(id, 'validation_failed', userId, false, `静态校验失败: ${message}`);
-      throw new BadRequestException(message);
-    }
   }
 
   async validateSandbox(
@@ -1221,169 +397,13 @@ export class CapabilityReleaseService implements OnModuleInit {
     userId?: string,
     authToken?: string,
   ): Promise<{ release: CapabilityReleaseDTO; validation: CapabilityValidationDTO }> {
-    const release = await this.getReleaseOrThrow(id);
-    const snapshot = await this.getCurrentSnapshotOrThrow(release);
-    const build = await this.resolveBuildForValidation(release, snapshot, dto.buildId, userId);
-    const preserveReleaseStatus = this.shouldPreserveReleaseStatusDuringValidation(release);
-    const validationId = await this.createValidationRecord(
+    return this.capabilityReleaseBuildValidationService.validateSandbox(
       id,
-      build.id,
-      'sandbox',
-      dto.input,
+      dto,
       userId,
-      !preserveReleaseStatus,
+      authToken,
+      this.getBuildValidationAccessors(),
     );
-
-    await this.insertAuditEvent(id, 'validation_started', userId, true, '开始 Sandbox 校验');
-
-    try {
-      let success = false;
-      let score = 0;
-      let logs: string[] = [];
-      let resultSnapshot: Record<string, unknown> | null = null;
-      let errorSummary: string | null = null;
-      const testCasesFromRequest = Array.isArray(dto.testCases)
-        ? dto.testCases.map((item) => (typeof item === 'string' ? item.trim() : '')).filter(Boolean)
-        : [];
-      const naturalLanguageCases = testCasesFromRequest.length > 0
-        ? testCasesFromRequest
-        : (dto.testUserInput?.trim() ? [dto.testUserInput.trim()] : []);
-      const templateId = this.resolveExecutionTemplateIdForRuntime(release, snapshot);
-
-      if (release.sourceType === 'temporal_workflow') {
-        if (naturalLanguageCases.length > 0 && (!dto.input || Object.keys(dto.input).length === 0)) {
-          if (!release.publishedSkillId) {
-            throw new Error('请先发布 Skill，再使用自然语言进行真实验证');
-          }
-          const caseResults: Array<{
-            caseIndex: number;
-            testUserInput: string;
-            success: boolean;
-            score: number;
-            error?: string;
-            logs: string[];
-            result?: Record<string, unknown> | null;
-          }> = [];
-
-          for (let i = 0; i < naturalLanguageCases.length; i += 1) {
-            const currentCase = naturalLanguageCases[i] as string;
-            const runtimeResult = await this.executePublishedSkillByPromptForValidation(
-              release.publishedSkillId,
-              currentCase,
-              authToken,
-            );
-            caseResults.push({
-              caseIndex: i + 1,
-              testUserInput: currentCase,
-              success: runtimeResult.success,
-              score: runtimeResult.success ? 100 : 50,
-              ...(runtimeResult.error ? { error: runtimeResult.error } : {}),
-              logs: runtimeResult.logs,
-              result: runtimeResult.result ?? null,
-            });
-          }
-
-          const passedCases = caseResults.filter((item) => item.success).length;
-          success = passedCases === caseResults.length;
-          score = caseResults.length > 0 ? Math.round((passedCases / caseResults.length) * 100) : 0;
-          logs = caseResults.flatMap((item) => [
-            `[Case ${item.caseIndex}] ${item.testUserInput}`,
-            ...item.logs.map((line) => `[Case ${item.caseIndex}] ${line}`),
-          ]);
-          resultSnapshot = {
-            mode: 'nl_task_runtime_batch',
-            totalCases: caseResults.length,
-            passedCases,
-            caseResults,
-          };
-          const firstError = caseResults.find((item) => !item.success)?.error;
-          errorSummary = firstError || null;
-        } else {
-          if (!build.generatedCode) {
-            throw new Error('当前构建没有可执行代码，请先完成代码生成');
-          }
-          const fn = dto.fn || this.resolveWorkflowFnOrThrow(snapshot.sourcePayload);
-          const result = await this.temporalWorkflowService.validateWorkflowReal(
-            build.generatedCode,
-            fn,
-            dto.input,
-          );
-          success = result.success;
-          score = result.score;
-          logs = result.logs;
-          resultSnapshot = {
-            result: result.result ?? null,
-            error: result.error ?? null,
-            fn,
-          };
-          errorSummary = result.error || null;
-        }
-      } else if (release.sourceType === 'browser_recording') {
-        const result = this.validateBrowserRecordingSnapshot(snapshot, {
-          input: dto.input,
-          testCases: naturalLanguageCases,
-        });
-        success = result.success;
-        score = result.score;
-        logs = result.logs;
-        resultSnapshot = result.resultSnapshot;
-        errorSummary = result.errorSummary;
-      } else if (templateId) {
-        const validation = await this.executionFlowTemplateService.validateTemplate(
-          templateId,
-          undefined,
-          dto.input,
-          true,
-          dto.testUserInput,
-        );
-        success = validation.isValid;
-        score = validation.score || 0;
-        logs = validation.details?.executionTest?.log || [];
-        resultSnapshot = validation as unknown as Record<string, unknown>;
-        errorSummary = validation.warnings?.[0] || null;
-      } else {
-        throw new Error('模板/浏览器能力缺少可用模板标识，无法执行 Sandbox 校验');
-      }
-
-      await this.finishValidation(
-        validationId,
-        id,
-        success ? 'draft_ready' : 'validation_failed',
-        success,
-        score,
-        logs,
-        resultSnapshot,
-        errorSummary,
-        preserveReleaseStatus,
-      );
-
-      await this.insertAuditEvent(
-        id,
-        success ? 'validation_succeeded' : 'validation_failed',
-        userId,
-        success,
-        success ? 'Sandbox 校验通过' : `Sandbox 校验失败: ${errorSummary || '未知错误'}`,
-      );
-
-      return {
-        release: await this.getReleaseOrThrow(id),
-        validation: await this.getValidationOrThrow(validationId),
-      };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : '未知错误';
-      await this.finishValidation(
-        validationId,
-        id,
-        'validation_failed',
-        false,
-        0,
-        [`[Error] ${message}`],
-        null,
-        message,
-      );
-      await this.insertAuditEvent(id, 'validation_failed', userId, false, `Sandbox 校验失败: ${message}`);
-      throw new BadRequestException(message);
-    }
   }
 
   async validateSandboxStream(
@@ -1393,156 +413,13 @@ export class CapabilityReleaseService implements OnModuleInit {
     _authToken: string | undefined,
     onEvent: (event: string, payload: Record<string, unknown>) => void,
   ): Promise<void> {
-    const release = await this.getReleaseOrThrow(id);
-    const snapshot = await this.getCurrentSnapshotOrThrow(release);
-    const build = await this.resolveBuildForValidation(release, snapshot, dto.buildId, userId);
-    const validationId = await this.createValidationRecord(id, build.id, 'sandbox', dto.input, userId);
-
-    onEvent('status', {
-      phase: 'started',
-      releaseId: id,
-      validationId,
-      buildId: build.id,
-      sourceType: release.sourceType,
-    });
-
-    await this.insertAuditEvent(id, 'validation_started', userId, true, '开始 Sandbox 校验');
-
-    try {
-      let success = false;
-      let score = 0;
-      let logs: string[] = [];
-      let resultSnapshot: Record<string, unknown> | null = null;
-      let errorSummary: string | null = null;
-      const streamedLogs: string[] = [];
-      const testCasesFromRequest = Array.isArray(dto.testCases)
-        ? dto.testCases.map((item) => (typeof item === 'string' ? item.trim() : '')).filter(Boolean)
-        : [];
-      const naturalLanguageCases = testCasesFromRequest.length > 0
-        ? testCasesFromRequest
-        : (dto.testUserInput?.trim() ? [dto.testUserInput.trim()] : []);
-      const templateId = this.resolveExecutionTemplateIdForRuntime(release, snapshot);
-
-      if (release.sourceType === 'temporal_workflow') {
-        if (!build.generatedCode) {
-          throw new Error('当前构建没有可执行代码，请先完成代码生成');
-        }
-        const fn = dto.fn || this.resolveWorkflowFnOrThrow(snapshot.sourcePayload);
-        onEvent('status', {
-          phase: 'executing',
-          runtime: 'temporal_workflow',
-          fn,
-        });
-        const result = await this.temporalWorkflowService.validateWorkflowRealStreaming(
-          build.generatedCode,
-          fn,
-          dto.input as Record<string, any> | undefined,
-          undefined,
-          undefined,
-          (log: string) => {
-            streamedLogs.push(log);
-            onEvent('log', { message: log });
-          },
-        );
-        success = result.success;
-        score = result.score;
-        logs = streamedLogs.length > 0 ? streamedLogs : result.logs || [];
-        resultSnapshot = {
-          result: result.result ?? null,
-          error: result.error ?? null,
-          traceback: result.traceback ?? null,
-          fn,
-        };
-        errorSummary = result.error || null;
-      } else if (release.sourceType === 'browser_recording') {
-        onEvent('status', {
-          phase: 'executing',
-          runtime: 'browser_recording',
-          note: '当前浏览器录制能力通过静态快照校验回放日志',
-        });
-        const result = this.validateBrowserRecordingSnapshot(snapshot, {
-          input: dto.input,
-          testCases: naturalLanguageCases,
-        });
-        success = result.success;
-        score = result.score;
-        logs = result.logs;
-        for (const log of logs) {
-          onEvent('log', { message: log });
-        }
-        resultSnapshot = result.resultSnapshot;
-        errorSummary = result.errorSummary;
-      } else if (templateId) {
-        onEvent('status', {
-          phase: 'executing',
-          runtime: 'flow_runtime',
-          note: '当前模板型能力通过同步校验结果回放日志',
-        });
-        const validation = await this.executionFlowTemplateService.validateTemplate(
-          templateId,
-          undefined,
-          dto.input,
-          true,
-          dto.testUserInput,
-        );
-        success = validation.isValid;
-        score = validation.score || 0;
-        logs = validation.details?.executionTest?.log || [];
-        for (const log of logs) {
-          onEvent('log', { message: log });
-        }
-        resultSnapshot = validation as unknown as Record<string, unknown>;
-        errorSummary = validation.warnings?.[0] || null;
-      } else {
-        throw new Error('模板/浏览器能力缺少可用模板标识，无法执行 Sandbox 校验');
-      }
-
-      await this.finishValidation(
-        validationId,
-        id,
-        success ? 'draft_ready' : 'validation_failed',
-        success,
-        score,
-        logs,
-        resultSnapshot,
-        errorSummary,
-      );
-
-      await this.insertAuditEvent(
-        id,
-        success ? 'validation_succeeded' : 'validation_failed',
-        userId,
-        success,
-        success ? 'Sandbox 校验通过' : `Sandbox 校验失败: ${errorSummary || '未知错误'}`,
-      );
-
-      const finalRelease = await this.getReleaseOrThrow(id);
-      const finalValidation = await this.getValidationOrThrow(validationId);
-      onEvent('complete', {
-        release: finalRelease as unknown as Record<string, unknown>,
-        validation: finalValidation as unknown as Record<string, unknown>,
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : '未知错误';
-      await this.finishValidation(
-        validationId,
-        id,
-        'validation_failed',
-        false,
-        0,
-        [`[Error] ${message}`],
-        null,
-        message,
-      );
-      await this.insertAuditEvent(id, 'validation_failed', userId, false, `Sandbox 校验失败: ${message}`);
-      const failedRelease = await this.getReleaseOrThrow(id);
-      const failedValidation = await this.getValidationOrThrow(validationId);
-      onEvent('error', {
-        message,
-        release: failedRelease as unknown as Record<string, unknown>,
-        validation: failedValidation as unknown as Record<string, unknown>,
-      });
-    }
+    return this.capabilityReleaseBuildValidationService.validateSandboxStream(
+      id,
+      dto,
+      userId,
+      onEvent,
+      this.getBuildValidationAccessors(),
+    );
   }
 
   async generateSkillDraft(
@@ -1550,57 +427,12 @@ export class CapabilityReleaseService implements OnModuleInit {
     dto: GenerateSkillDraftDTO,
     userId?: string,
   ): Promise<{ release: CapabilityReleaseDTO; skillDraft: SkillDraftDTO }> {
-    const release = await this.getReleaseOrThrow(id);
-    const snapshot = await this.getCurrentSnapshotOrThrow(release);
-    const validation = dto.validationId
-      ? await this.getValidationOrThrow(dto.validationId)
-      : await this.getLatestSuccessfulValidationOrThrow(id);
-
-    const draftPayload = this.buildSkillDraftPayload(release, snapshot, validation);
-    const draftId = randomUUID();
-
-    await this.prisma.$executeRawUnsafe(
-      `INSERT INTO skill_drafts (
-        id, release_id, generated_from_build_id, generated_from_validation_id, source_type,
-        name, description, trigger_keywords, params_schema, execution_flow_template_ids,
-        tools, api_endpoints, draft_payload_json, status, created_by, created_at, updated_at
-      ) VALUES (
-        $1::uuid, $2::uuid, $3::uuid, $4::uuid, $5,
-        $6, $7, $8::jsonb, $9::jsonb, $10::jsonb,
-        $11::jsonb, $12::jsonb, $13::jsonb, 'draft', $14::uuid, now(), now()
-      )`,
-      draftId,
+    return this.capabilityReleaseBuildValidationService.generateSkillDraft(
       id,
-      validation.buildId,
-      validation.id,
-      release.sourceType,
-      draftPayload.name,
-      draftPayload.description,
-      JSON.stringify(draftPayload.triggerKeywords),
-      JSON.stringify(draftPayload.paramsSchema),
-      JSON.stringify(draftPayload.executionFlowTemplateIds),
-      JSON.stringify(draftPayload.tools),
-      JSON.stringify(draftPayload.apiEndpoints || null),
-      JSON.stringify(draftPayload),
-      userId || null,
+      dto,
+      userId,
+      this.getBuildValidationAccessors(),
     );
-
-    await this.prisma.$executeRawUnsafe(
-      `UPDATE capability_releases
-       SET current_skill_draft_id = $2::uuid,
-           status = 'pending_approval',
-           approval_status = 'pending',
-           updated_at = now()
-       WHERE id = $1::uuid`,
-      id,
-      draftId,
-    );
-
-    await this.insertAuditEvent(id, 'skill_draft_generated', userId, true, '生成 Skill 草案');
-    return {
-      release: await this.getReleaseOrThrow(id),
-      skillDraft: await this.getSkillDraftOrThrow(draftId),
-    };
   }
 
   async getCurrentSkillDraft(id: string): Promise<SkillDraftDTO> {
@@ -1616,60 +448,12 @@ export class CapabilityReleaseService implements OnModuleInit {
     dto: UpdateSkillDraftDTO,
     userId?: string,
   ): Promise<SkillDraftDTO> {
-    const release = await this.getReleaseOrThrow(id);
-    if (!release.currentSkillDraftId) {
-      throw new NotFoundException('当前 Release 没有 Skill 草案');
-    }
-    const draft = await this.getSkillDraftOrThrow(release.currentSkillDraftId);
-    const payload = {
-      ...draft.draftPayload,
-      ...(dto.name !== undefined ? { name: dto.name } : {}),
-      ...(dto.description !== undefined ? { description: dto.description } : {}),
-      ...(dto.triggerKeywords !== undefined ? { triggerKeywords: dto.triggerKeywords } : {}),
-      ...(dto.paramsSchema !== undefined ? { paramsSchema: dto.paramsSchema } : {}),
-      ...(dto.executionFlow !== undefined ? { executionFlow: dto.executionFlow } : {}),
-      ...(dto.executionFlowTemplateIds !== undefined
-        ? { executionFlowTemplateIds: dto.executionFlowTemplateIds }
-        : {}),
-      ...(dto.tools !== undefined ? { tools: dto.tools } : {}),
-      ...(dto.apiEndpoints !== undefined ? { apiEndpoints: dto.apiEndpoints } : {}),
-    };
-
-    await this.prisma.$executeRawUnsafe(
-      `UPDATE skill_drafts
-       SET name = $2,
-           description = $3,
-           trigger_keywords = $4::jsonb,
-           params_schema = $5::jsonb,
-           execution_flow_template_ids = $6::jsonb,
-           tools = $7::jsonb,
-           api_endpoints = $8::jsonb,
-           draft_payload_json = $9::jsonb,
-           status = 'reviewed',
-           updated_at = now()
-       WHERE id = $1::uuid`,
-      draft.id,
-      payload.name,
-      payload.description,
-      JSON.stringify(payload.triggerKeywords || []),
-      JSON.stringify(payload.paramsSchema || {}),
-      JSON.stringify(payload.executionFlowTemplateIds || []),
-      JSON.stringify(payload.tools || []),
-      JSON.stringify(payload.apiEndpoints || null),
-      JSON.stringify(payload),
-    );
-
-    await this.prisma.$executeRawUnsafe(
-      `UPDATE capability_releases
-       SET status = 'pending_approval',
-           approval_status = 'pending',
-           updated_at = now()
-       WHERE id = $1::uuid`,
+    return this.capabilityReleasePublishService.updateSkillDraft(
       id,
+      dto,
+      userId,
+      this.getPublishAccessors(),
     );
-
-    await this.insertAuditEvent(id, 'skill_draft_updated', userId, true, '更新 Skill 草案');
-    return this.getSkillDraftOrThrow(draft.id);
   }
 
   async approveRelease(
@@ -1677,33 +461,12 @@ export class CapabilityReleaseService implements OnModuleInit {
     dto: ApproveCapabilityReleaseDTO,
     userId?: string,
   ): Promise<CapabilityReleaseDetailDTO> {
-    const release = await this.getReleaseOrThrow(id);
-    if (!['draft_ready', 'pending_approval', 'approved'].includes(release.status)) {
-      throw new BadRequestException('当前 Release 不处于可审批状态');
-    }
-
-    const approved = dto.decision === 'approved';
-    await this.prisma.$executeRawUnsafe(
-      `UPDATE capability_releases
-       SET status = $2,
-           approval_status = $3,
-           updated_at = now()
-       WHERE id = $1::uuid`,
+    return this.capabilityReleasePublishService.approveRelease(
       id,
-      approved ? 'approved' : 'draft',
-      approved ? 'approved' : 'rejected',
-    );
-
-    await this.insertAuditEvent(
-      id,
-      approved ? 'approval_approved' : 'approval_rejected',
+      dto,
       userId,
-      approved,
-      dto.comment || (approved ? '审批通过' : '审批拒绝'),
-      { decision: dto.decision, comment: dto.comment || null },
+      this.getPublishAccessors(),
     );
-
-    return this.getCapabilityDetail(id);
   }
 
   async publishSkill(
@@ -1711,171 +474,12 @@ export class CapabilityReleaseService implements OnModuleInit {
     dto: PublishSkillDraftDTO,
     userId?: string,
   ): Promise<{ release: CapabilityReleaseDTO; publishedSkillId: string }> {
-    const release = await this.getReleaseOrThrow(id);
-    if (release.approvalStatus === 'pending' || release.status === 'pending_approval') {
-      throw new BadRequestException({
-        code: CAPABILITY_RELEASE_ERROR_CODE.RELEASE_APPROVAL_PENDING,
-        message: '当前 Release 尚未审批通过',
-      });
-    }
-    if (release.approvalStatus === 'rejected') {
-      throw new BadRequestException({
-        code: CAPABILITY_RELEASE_ERROR_CODE.RELEASE_APPROVAL_REJECTED,
-        message: '当前 Release 审批未通过，请调整草案后重新提交',
-      });
-    }
-    const draftId = dto.draftId || release.currentSkillDraftId;
-    if (!draftId) {
-      throw new NotFoundException({
-        code: CAPABILITY_RELEASE_ERROR_CODE.SKILL_DRAFT_NOT_FOUND,
-        message: '没有可发布的 Skill 草案',
-      });
-    }
-    const previousPublishedSkillId = release.publishedSkillId;
-    const draft = await this.getSkillDraftOrThrow(draftId);
-    const normalizedDraftTools = release.sourceType === 'browser_recording'
-      ? (Array.isArray(draft.tools)
-        ? draft.tools
-          .map((item) => normalizeBrowserRecordingToolName(item))
-          .filter((item): item is string => typeof item === 'string')
-        : [])
-      : draft.tools;
-    const normalizedDraftPayload: Record<string, unknown> =
-      release.sourceType === 'browser_recording'
-        ? {
-            ...(draft.draftPayload as Record<string, unknown>),
-            tools: Array.isArray((draft.draftPayload as Record<string, unknown>).tools)
-              ? ((draft.draftPayload as Record<string, unknown>).tools as unknown[])
-                .map((item) => normalizeBrowserRecordingToolName(item))
-                .filter((item): item is string => typeof item === 'string')
-              : normalizedDraftTools,
-            executionFlow: this.normalizeBrowserRecordingExecutionFlow(
-              (draft.draftPayload as Record<string, unknown>).executionFlow,
-            ),
-          }
-        : { ...(draft.draftPayload as Record<string, unknown>) };
-    const toolValidation = await this.skillService.validateSkillToolsPayload({
-      tools: normalizedDraftTools,
-      executionFlow: release.sourceType === 'browser_recording'
-        ? (normalizedDraftPayload.executionFlow as Record<string, unknown>[])
-        : [],
-      executionFlowTemplateIds: draft.executionFlowTemplateIds,
-    });
-
-    if (!toolValidation.isValid) {
-      await this.insertAuditEvent(
-        id,
-        'skill_publish_blocked_by_tool_validation',
-        userId,
-        false,
-        '发布前工具校验失败',
-        { toolValidation },
-      );
-      throw new BadRequestException({
-        code: CAPABILITY_RELEASE_ERROR_CODE.SKILL_PUBLISH_TOOL_VALIDATION_FAILED,
-        message: '发布前工具校验失败',
-        toolValidation,
-      });
-    }
-
-    if (release.sourceType === 'temporal_workflow') {
-      const snapshot = await this.getCurrentSnapshotOrThrow(release);
-      const mappingReadiness = this.assessTemporalDocumentMappingReadiness(snapshot.sourcePayload);
-      if (mappingReadiness.applicable && mappingReadiness.mappedInputCount === 0) {
-        await this.insertAuditEvent(
-          id,
-          'skill_publish_blocked_by_document_mapping',
-          userId,
-          false,
-          '发布前阻断：模板工作流缺少显式 renderPath/templateBinding',
-          { mappingReadiness },
-        );
-        throw new BadRequestException({
-          code: CAPABILITY_RELEASE_ERROR_CODE.TEMPORAL_DOCUMENT_MAPPING_NOT_READY,
-          message: '当前模板工作流缺少显式 renderPath/templateBinding，暂不允许发布',
-          mappingReadiness,
-        });
-      }
-    }
-
-    const payload: Record<string, unknown> = normalizedDraftPayload;
-    if (typeof payload.description === 'string' && payload.description.length > 500) {
-      payload.description = payload.description.slice(0, 497) + '...';
-    }
-    const baseName =
-      (typeof payload.name === 'string' && payload.name.trim()) || release.sourceName || `Skill-${release.id.slice(0, 8)}`;
-    let finalName = String(baseName);
-    // 确保每个 Release 发布都会新建新 Skill：如果同名已存在，则派生唯一名称（含递增后缀）
-    const nameExists = async (name: string) => {
-      const rows = await this.prisma.$queryRawUnsafe<any[]>(
-        `SELECT id FROM skill_configs WHERE name = $1 LIMIT 1`,
-        name,
-      );
-      return Boolean(rows[0]?.id);
-    };
-    if (await nameExists(finalName)) {
-      const baseCandidate = `${baseName}-${release.id.slice(0, 8)}`;
-      finalName = baseCandidate;
-      let suffix = 1;
-      while (await nameExists(finalName)) {
-        finalName = `${baseCandidate}-${suffix}`;
-        suffix += 1;
-        if (suffix > 1000) {
-          finalName = `${baseCandidate}-${Date.now()}`;
-          break;
-        }
-      }
-    }
-    payload.name = finalName;
-    const created = await this.skillService.createSkill(payload as any);
-    const publishedSkillId = created.id;
-
-    // Re-publish safety: deactivate the previously bound skill for this release
-    // so skill matching does not continue to route to stale versions.
-    if (
-      previousPublishedSkillId
-      && previousPublishedSkillId !== publishedSkillId
-    ) {
-      await this.prisma.skillConfig.updateMany({
-        where: { id: previousPublishedSkillId },
-        data: { isActive: false },
-      });
-      await this.insertAuditEvent(
-        id,
-        'published_skill_deactivated',
-        userId,
-        true,
-        `重新发布后停用旧 Skill: ${previousPublishedSkillId}`,
-        {
-          previousPublishedSkillId,
-          newPublishedSkillId: publishedSkillId,
-        },
-      );
-    }
-
-    await this.prisma.$executeRawUnsafe(
-      `UPDATE skill_drafts
-       SET status = 'published', updated_at = now()
-       WHERE id = $1::uuid`,
-      draft.id,
-    );
-    await this.prisma.$executeRawUnsafe(
-      `UPDATE capability_releases
-       SET published_skill_id = $2::uuid,
-           status = 'published',
-           approval_status = $3,
-           updated_at = now()
-       WHERE id = $1::uuid`,
+    return this.capabilityReleasePublishService.publishSkill(
       id,
-      publishedSkillId,
-      release.approvalStatus === 'not_required' ? 'not_required' : 'approved',
+      dto,
+      userId,
+      this.getPublishAccessors(),
     );
-
-    await this.insertAuditEvent(id, 'skill_published', userId, true, `发布 Skill 成功: ${publishedSkillId}`);
-    return {
-      release: await this.getReleaseOrThrow(id),
-      publishedSkillId,
-    };
   }
 
   async deploy(
@@ -1883,269 +487,19 @@ export class CapabilityReleaseService implements OnModuleInit {
     dto: DeployCapabilityReleaseDTO,
     userId?: string,
   ): Promise<{ release: CapabilityReleaseDTO; deployment: DeploymentRecordDTO }> {
-    const release = await this.getReleaseOrThrow(id);
-    if (release.status === 'deploying') {
-      throw new BadRequestException({
-        code: CAPABILITY_RELEASE_ERROR_CODE.RELEASE_DEPLOYING,
-        message: '当前 Release 正在部署中',
-      });
-    }
-
-    const deploymentId = randomUUID();
-    const environment = dto.environment || 'staging';
-    const snapshot = await this.getCurrentSnapshotOrThrow(release);
-    const deploymentProfile = this.resolveDeploymentProfile(snapshot.sourcePayload, environment);
-    const configOverrides = dto.configOverrides || {};
-    const effectiveConfig = { ...deploymentProfile, ...configOverrides };
-    const runtimeType: CapabilityDeploymentRuntimeType =
-      release.sourceType === 'temporal_workflow' ? 'temporal_worker' : 'flow_runtime';
-    const strategy =
-      dto.strategy ||
-      (typeof deploymentProfile.strategy === 'string' ? deploymentProfile.strategy : undefined) ||
-      'rolling_restart';
-    let preResolvedTemporalBuild: CapabilityBuildDTO | null = null;
-
-    if (release.sourceType === 'temporal_workflow') {
-      try {
-        preResolvedTemporalBuild = await this.resolveTemporalExecutableBuildOrThrow(
-          release,
-          snapshot,
-          undefined,
-          userId,
-        );
-      } catch (error) {
-        const message = error instanceof Error ? error.message : '当前 Release 缺少可执行代码';
-        throw new BadRequestException({
-          code: CAPABILITY_RELEASE_ERROR_CODE.TEMPORAL_BUILD_NOT_EXECUTABLE,
-          message: `${message}。请先在该 Release 上执行“构建 / AI 生成代码”，确认生成的 Workflow 代码已保存，再重新部署。`,
-        });
-      }
-    }
-
-    await this.prisma.$executeRawUnsafe(
-      `INSERT INTO deployment_records (
-        id, release_id, published_skill_id, environment, runtime_type, reload_strategy,
-        request_payload_json, logs_json, status, success, started_at, created_by, created_at
-      ) VALUES (
-        $1::uuid, $2::uuid, $3::uuid, $4, $5, $6,
-        $7::jsonb, '[]'::jsonb, 'running', false, now(), $8::uuid, now()
-      )`,
-      deploymentId,
+    return this.capabilityReleaseDeploymentService.deploy(
       id,
-      release.publishedSkillId,
-      environment,
-      runtimeType,
-      strategy,
-      JSON.stringify({ environment, strategy, deploymentProfile, configOverrides, effectiveConfig }),
-      userId || null,
+      dto,
+      userId,
+      this.getDeploymentAccessors(),
     );
-
-    await this.prisma.$executeRawUnsafe(
-      `UPDATE capability_releases
-       SET status = 'deploying',
-           deployment_status = 'deploying',
-           last_deployment_id = $2::uuid,
-           updated_at = now()
-       WHERE id = $1::uuid`,
-      id,
-      deploymentId,
-    );
-
-    await this.insertAuditEvent(id, 'deployment_started', userId, true, `开始部署到 ${environment}`);
-
-    try {
-      const logs: string[] = [];
-      let artifactUri: string | null = null;
-      let artifactHash: string | null = null;
-      let workerVersion: string | null = null;
-      let resultSnapshot: Record<string, unknown> | null = null;
-      let smokeValidationId: string | null = null;
-      let deploymentBuild: CapabilityBuildDTO | null = null;
-
-      if (release.sourceType === 'temporal_workflow') {
-        const build = preResolvedTemporalBuild || await this.resolveTemporalExecutableBuildOrThrow(release, snapshot, undefined, userId);
-        deploymentBuild = build;
-        const workflowDsl = this.expectRecord(snapshot.sourcePayload.workflowDsl, '缺少 workflowDsl');
-        const activityDsl = this.expectRecord(snapshot.sourcePayload.activityDsl, '缺少 activityDsl');
-        const workflowName = String(snapshot.sourcePayload.name || release.sourceName || 'GeneratedWorkflow');
-        const description = String(snapshot.sourcePayload.description || '');
-        const taskQueue =
-          typeof effectiveConfig.taskQueue === 'string'
-            ? effectiveConfig.taskQueue
-            : typeof snapshot.sourcePayload.taskQueue === 'string'
-              ? snapshot.sourcePayload.taskQueue
-            : 'SKILL_TASK_QUEUE';
-        const workerReloadRequested =
-          typeof effectiveConfig.workerReload === 'boolean'
-            ? effectiveConfig.workerReload
-            : strategy !== 'hot_reload';
-        logs.push(`Environment: ${environment}`);
-        logs.push('Deployment target: ops-temporal');
-        logs.push(`Strategy: ${strategy}`);
-        if (Object.keys(deploymentProfile).length > 0) {
-          logs.push(`Deployment profile loaded for ${environment}`);
-        }
-        if (Object.keys(configOverrides).length > 0) {
-          logs.push(`Deployment overrides applied: ${JSON.stringify(configOverrides)}`);
-        }
-        logs.push(`Worker reload requested: ${workerReloadRequested ? 'yes' : 'no'}`);
-
-        const generatedCode = build.generatedCode || '';
-        const workflow =
-          release.sourceId
-            ? await this.temporalWorkflowService.update(release.sourceId, {
-                name: workflowName,
-                description,
-                taskQueue,
-                workflowDsl: workflowDsl as any,
-                activityDsl: activityDsl as any,
-                generatedCode,
-                isActive: true,
-              })
-            : await this.temporalWorkflowService.create({
-                name: workflowName,
-                description,
-                taskQueue,
-                workflowDsl: workflowDsl as any,
-                activityDsl: activityDsl as any,
-                generatedCode,
-              });
-
-        const workflowRef = workflow as any;
-        if (!release.sourceId) {
-          await this.prisma.$executeRawUnsafe(
-            `UPDATE capability_releases
-             SET source_id = $2::uuid, source_name = $3, updated_at = now()
-             WHERE id = $1::uuid`,
-            id,
-            workflowRef.id,
-            workflowRef.name,
-          );
-        }
-
-        const deployedWorkflowRef = await this.temporalWorkflowService.deploy(workflowRef.id) as any;
-        logs.push('Workflow code synced to ops-temporal metadata');
-        logs.push(`Temporal workflow deployed: ${deployedWorkflowRef.id}`);
-        logs.push(`Task queue: ${deployedWorkflowRef.taskQueue}`);
-        artifactUri = `temporal-workflow://${deployedWorkflowRef.id}`;
-        artifactHash = build.id;
-        workerVersion = build.id;
-        resultSnapshot = {
-          workflowId: deployedWorkflowRef.id,
-          taskQueue: deployedWorkflowRef.taskQueue,
-          deployedAt: deployedWorkflowRef.deployedAt?.toISOString?.() || null,
-          generatedFromBuildId: build.id,
-          targetService: 'ops-temporal',
-          environment,
-          strategy,
-          deploymentProfile,
-          effectiveConfig,
-          workerReloadRequested,
-        };
-      } else {
-        deploymentBuild = await this.resolveBuildForValidation(release, snapshot, undefined, userId);
-        const templateId = this.resolveExecutionTemplateIdForRuntime(release, snapshot);
-        logs.push(`Environment: ${environment}`);
-        logs.push(`Strategy: ${strategy}`);
-        if (Object.keys(deploymentProfile).length > 0) {
-          logs.push(`Deployment profile loaded for ${environment}`);
-        }
-        if (Object.keys(configOverrides).length > 0) {
-          logs.push(`Deployment overrides applied: ${JSON.stringify(configOverrides)}`);
-        }
-        logs.push('模板/浏览器能力无需独立 Worker 部署，已完成运行配置下发并进入 smoke test');
-        if (release.publishedSkillId) {
-          logs.push(`当前绑定已发布 Skill: ${release.publishedSkillId}`);
-        } else {
-          logs.push('当前尚未发布 Skill，本次部署用于验证运行链路与参数，不影响线上 Skill 路由');
-        }
-        artifactUri = release.publishedSkillId
-          ? `skill-config://${release.publishedSkillId}`
-          : templateId
-            ? `template-runtime://${templateId}`
-            : `release-runtime://${release.id}`;
-        artifactHash = release.publishedSkillId || templateId || release.id;
-        resultSnapshot = {
-          publishedSkillId: release.publishedSkillId,
-          mode: 'skill_config_activation',
-          prePublishDeploy: !release.publishedSkillId,
-          sourceTemplateId: templateId,
-          environment,
-          strategy,
-          deploymentProfile,
-          effectiveConfig,
-        };
-      }
-
-      if (deploymentBuild) {
-        logs.push(`[Smoke] 开始执行部署后验证 (${environment})`);
-        const smokeResult = await this.runPostDeploySmokeTest(
-          release,
-          snapshot,
-          deploymentBuild,
-          deploymentId,
-          environment,
-          userId,
-        );
-        smokeValidationId = smokeResult.validationId;
-        logs.push(...smokeResult.logs.map((item) => `[Smoke] ${item}`));
-        if (!smokeResult.success) {
-          throw new Error(smokeResult.errorSummary || `${environment} smoke test failed`);
-        }
-        logs.push(`[Smoke] 部署后验证通过，分数: ${smokeResult.score}`);
-      }
-
-      await this.finishDeployment(
-        deploymentId,
-        id,
-        'deployed',
-        'succeeded',
-        true,
-        logs,
-        resultSnapshot,
-        artifactUri,
-        artifactHash,
-        workerVersion,
-        smokeValidationId,
-        null,
-      );
-      await this.insertAuditEvent(id, 'deployment_succeeded', userId, true, `部署成功 (${environment})`);
-
-      return {
-        release: await this.getReleaseOrThrow(id),
-        deployment: await this.getDeploymentOrThrow(deploymentId),
-      };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : '未知错误';
-      await this.finishDeployment(
-        deploymentId,
-        id,
-        'deploy_failed',
-        'failed',
-        false,
-        [`[Error] ${message}`],
-        { error: message },
-        null,
-        null,
-        null,
-        null,
-        null,
-      );
-      await this.insertAuditEvent(id, 'deployment_failed', userId, false, `部署失败: ${message}`);
-      throw new BadRequestException(message);
-    }
   }
 
   async getDeployments(id: string): Promise<DeploymentRecordDTO[]> {
-    await this.getReleaseOrThrow(id);
-    const rows = await this.prisma.$queryRawUnsafe<any[]>(
-      `SELECT *
-       FROM deployment_records
-       WHERE release_id = $1::uuid
-       ORDER BY created_at DESC`,
+    return this.capabilityReleaseDeploymentService.getDeployments(
       id,
+      this.getDeploymentAccessors(),
     );
-    return rows.map((row) => this.mapDeployment(row));
   }
 
   async getAuditEvents(id: string): Promise<ReleaseAuditEventDTO[]> {
@@ -2157,7 +511,7 @@ export class CapabilityReleaseService implements OnModuleInit {
        ORDER BY created_at DESC`,
       id,
     );
-    return rows.map((row) => this.mapAuditEvent(row));
+    return rows.map((row) => mapCapabilityAuditEvent(row));
   }
 
   async rollback(
@@ -2165,188 +519,12 @@ export class CapabilityReleaseService implements OnModuleInit {
     dto: RollbackCapabilityReleaseDTO,
     userId?: string,
   ): Promise<{ release: CapabilityReleaseDTO; deployment: DeploymentRecordDTO; targetReleaseId: string }> {
-    const release = await this.getReleaseOrThrow(id);
-    const targetRelease = await this.getRollbackTargetOrThrow(release, dto.targetReleaseId);
-
-    const deploymentId = randomUUID();
-    const runtimeType: CapabilityDeploymentRuntimeType =
-      release.sourceType === 'temporal_workflow' ? 'temporal_worker' : 'flow_runtime';
-
-    await this.prisma.$executeRawUnsafe(
-      `INSERT INTO deployment_records (
-        id, release_id, published_skill_id, environment, runtime_type, reload_strategy,
-        request_payload_json, logs_json, status, success, rollback_target_release_id,
-        started_at, created_by, created_at
-      ) VALUES (
-        $1::uuid, $2::uuid, $3::uuid, 'staging', $4, 'rolling_restart',
-        $5::jsonb, '[]'::jsonb, 'running', false, $6::uuid,
-        now(), $7::uuid, now()
-      )`,
-      deploymentId,
+    return this.capabilityReleaseDeploymentService.rollback(
       id,
-      release.publishedSkillId || targetRelease.publishedSkillId || null,
-      runtimeType,
-      JSON.stringify({ targetReleaseId: targetRelease.id, reason: dto.reason || null }),
-      targetRelease.id,
-      userId || null,
-    );
-
-    await this.prisma.$executeRawUnsafe(
-      `UPDATE capability_releases
-       SET status = 'deploying',
-           deployment_status = 'deploying',
-           last_deployment_id = $2::uuid,
-           updated_at = now()
-       WHERE id = $1::uuid`,
-      id,
-      deploymentId,
-    );
-
-    await this.insertAuditEvent(
-      id,
-      'rollback_started',
+      dto,
       userId,
-      true,
-      `开始回滚到 Release ${targetRelease.id}`,
-      { targetReleaseId: targetRelease.id, reason: dto.reason || null },
+      this.getDeploymentAccessors(),
     );
-
-    try {
-      const logs: string[] = [];
-      let restoredSkillId = targetRelease.publishedSkillId || null;
-      let resultSnapshot: Record<string, unknown> | null = null;
-
-      if (targetRelease.currentSkillDraftId) {
-        const targetDraft = await this.getSkillDraftOrThrow(targetRelease.currentSkillDraftId);
-        if (release.publishedSkillId) {
-          const updated = await this.skillService.updateSkill(release.publishedSkillId, targetDraft.draftPayload as any);
-          restoredSkillId = updated?.id || release.publishedSkillId;
-        } else if (targetRelease.publishedSkillId) {
-          const updated = await this.skillService.updateSkill(targetRelease.publishedSkillId, targetDraft.draftPayload as any);
-          restoredSkillId = updated?.id || targetRelease.publishedSkillId;
-        } else {
-          const created = await this.skillService.createSkill(targetDraft.draftPayload as any);
-          restoredSkillId = created.id;
-        }
-        logs.push(`Skill configuration rolled back using draft ${targetDraft.id}`);
-      }
-
-      if (release.sourceType === 'temporal_workflow') {
-        const targetSnapshot = await this.getCurrentSnapshotOrThrow(targetRelease);
-        const targetBuild = await this.resolveTemporalExecutableBuildOrThrow(
-          targetRelease,
-          targetSnapshot,
-          undefined,
-          userId,
-        );
-        const workflowDsl = this.expectRecord(targetSnapshot.sourcePayload.workflowDsl, '缺少 workflowDsl');
-        const activityDsl = this.expectRecord(targetSnapshot.sourcePayload.activityDsl, '缺少 activityDsl');
-        const workflowName = String(
-          targetSnapshot.sourcePayload.name || targetRelease.sourceName || 'GeneratedWorkflow',
-        );
-        const description = String(targetSnapshot.sourcePayload.description || '');
-        const taskQueue =
-          typeof targetSnapshot.sourcePayload.taskQueue === 'string'
-            ? targetSnapshot.sourcePayload.taskQueue
-            : 'SKILL_TASK_QUEUE';
-        const workflowId = release.sourceId || targetRelease.sourceId;
-        const generatedCode = targetBuild.generatedCode || '';
-        const workflow =
-          workflowId
-            ? await this.temporalWorkflowService.update(workflowId, {
-                name: workflowName,
-                description,
-                taskQueue,
-                workflowDsl: workflowDsl as any,
-                activityDsl: activityDsl as any,
-                generatedCode,
-                isActive: true,
-              })
-            : await this.temporalWorkflowService.create({
-                name: workflowName,
-                description,
-                taskQueue,
-                workflowDsl: workflowDsl as any,
-                activityDsl: activityDsl as any,
-                generatedCode,
-              });
-
-        const workflowRef = workflow as any;
-        await this.temporalWorkflowService.deploy(workflowRef.id);
-        logs.push('Workflow code synced to ops-temporal metadata');
-        logs.push(`Temporal workflow rolled back to build ${targetBuild.id}`);
-        resultSnapshot = {
-          workflowId: workflowRef.id,
-          restoredFromReleaseId: targetRelease.id,
-          restoredBuildId: targetBuild.id,
-          restoredSkillId,
-        };
-      } else {
-        logs.push(`模板型能力已回滚到 Release ${targetRelease.id} 的已发布配置`);
-        resultSnapshot = {
-          restoredFromReleaseId: targetRelease.id,
-          restoredSkillId,
-        };
-      }
-
-      await this.prisma.$executeRawUnsafe(
-        `UPDATE capability_releases
-         SET published_skill_id = $2::uuid,
-             rollback_of_release_id = $3::uuid,
-             updated_at = now()
-         WHERE id = $1::uuid`,
-        id,
-        restoredSkillId,
-        targetRelease.id,
-      );
-
-      await this.finishDeployment(
-        deploymentId,
-        id,
-        'rolled_back',
-        'rolled_back',
-        true,
-        logs,
-        resultSnapshot,
-        restoredSkillId ? `skill-config://${restoredSkillId}` : null,
-        restoredSkillId,
-        targetRelease.latestSuccessfulBuildId || null,
-        null,
-        targetRelease.id,
-      );
-      await this.insertAuditEvent(
-        id,
-        'rollback_succeeded',
-        userId,
-        true,
-        `已回滚到 Release ${targetRelease.id}`,
-        { targetReleaseId: targetRelease.id, restoredSkillId },
-      );
-
-      return {
-        release: await this.getReleaseOrThrow(id),
-        deployment: await this.getDeploymentOrThrow(deploymentId),
-        targetReleaseId: targetRelease.id,
-      };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : '未知错误';
-      await this.finishDeployment(
-        deploymentId,
-        id,
-        'deploy_failed',
-        'failed',
-        false,
-        [`[Error] ${message}`],
-        { error: message, targetReleaseId: targetRelease.id },
-        null,
-        null,
-        null,
-        null,
-        targetRelease.id,
-      );
-      await this.insertAuditEvent(id, 'rollback_failed', userId, false, `回滚失败: ${message}`);
-      throw new BadRequestException(message);
-    }
   }
 
   async analyzeFailure(
@@ -2354,101 +532,12 @@ export class CapabilityReleaseService implements OnModuleInit {
     dto: AnalyzeFailureDTO,
     userId?: string,
   ): Promise<AnalyzeFailureResultDTO> {
-    const release = await this.getReleaseOrThrow(id);
-    let logs: string[] = [];
-    let errorSummary = '';
-    let recordContext = '';
-
-    if (dto.recordType === 'build') {
-      const build = await this.getBuildOrThrow(dto.recordId);
-      logs = build.logs || [];
-      errorSummary = build.errorSummary || '';
-      recordContext = `Build Type: ${build.buildType}, Model: ${build.modelId}`;
-    } else if (dto.recordType === 'validation') {
-      const validation = await this.getValidationOrThrow(dto.recordId);
-      logs = validation.logs || [];
-      errorSummary = validation.errorSummary || '';
-      recordContext = `Validation Type: ${validation.validationType}`;
-    } else if (dto.recordType === 'deployment') {
-      const deployment = await this.getDeploymentOrThrow(dto.recordId);
-      logs = deployment.logs || [];
-      errorSummary = logs.find((l) => l.includes('[Error]')) || '';
-      recordContext = `Env: ${deployment.environment}, Runtime: ${deployment.runtimeType}`;
-    }
-
-    const prompt = `你是一个高级系统调试专家。正在分析一个自动化能力发布过程中的失败。
-上下文：
-能力名称: ${release.sourceName}
-源类型: ${release.sourceType}
-记录类型: ${dto.recordType} (${recordContext})
-失败摘要: ${errorSummary}
-执行日志:
-${logs.join('\n')}
-
-任务：
-1. 识别失败的根本原因。
-2. 判断失败是否是由于测试输入（testInput/input）中缺失或错误的参数导致的。如果是网络超时或SSL错误，请结合日志判断是否是因为输入了非法参数（如 [None]）触发的请求。
-3. 如果是参数问题，请生成一个 JSON 对象，代表建议的正确测试参数。
-4. 提供一个简明扼要的解释给用户。
-5. 给出建议的下一步操作（suggestedAction）。
-
-输出格式 (JSON)：
-{
-  "analysis": "原因分析文本",
-  "explanation": "给用户的简短解释",
-  "isParameterIssue": true/false,
-  "suggestedParams": { "key": "value" } 或 null,
-  "suggestedAction": "建议的操作，如：更新测试参数并重新校验"
-}`;
-
-    try {
-      const orchestratorUrl = getAiOrchestratorUrl();
-      const response = await axios.post<{ result: string }>(
-        `${orchestratorUrl}/ai/model/call`,
-        {
-          modelId: 'default',
-          prompt,
-        },
-        { timeout: 60000 },
-      );
-
-      const content = response.data?.result || '';
-      // 提取 JSON
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        return {
-          analysis: content,
-          explanation: 'AI 未能返回结构化分析结果，请参考分析内容',
-          isParameterIssue: false,
-        };
-      }
-
-      const result = JSON.parse(jsonMatch[0]);
-      await this.insertAuditEvent(
-        id,
-        'failure_analyzed',
-        userId,
-        true,
-        `AI 失败分析完成: ${result.explanation}`,
-        { recordId: dto.recordId, recordType: dto.recordType },
-      );
-
-      return {
-        analysis: result.analysis,
-        explanation: result.explanation,
-        isParameterIssue: !!result.isParameterIssue,
-        suggestedParams: result.suggestedParams,
-        suggestedAction: result.suggestedAction,
-      };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : '未知错误';
-      this.logger.error(`AI failure analysis failed: ${message}`);
-      return {
-        analysis: `AI 分析调用失败: ${message}`,
-        explanation: '暂时无法提供 AI 自动分析，请手动检查日志',
-        isParameterIssue: false,
-      };
-    }
+    return this.capabilityReleaseAssistService.analyzeFailure(
+      id,
+      dto,
+      userId,
+      this.getAssistAccessors(),
+    );
   }
 
   async suggestWizardAssist(
@@ -2456,71 +545,12 @@ ${logs.join('\n')}
     dto: SuggestReleaseWizardAssistDTO,
     userId?: string,
   ): Promise<SuggestReleaseWizardAssistResultDTO> {
-    const release = await this.getReleaseOrThrow(id);
-    const snapshot = await this.getCurrentSnapshotOrThrow(release);
-    const environment = dto.environment || 'test';
-    const paramsSchema = this.resolveEffectiveTemporalParamsSchema(snapshot.sourcePayload);
-    const fallbackTestInput = this.buildSuggestedInputFromSchema(paramsSchema);
-    const deployConfig = this.resolveDeploymentProfile(snapshot.sourcePayload, environment);
-
-    const prompt = `你是企业技能发布向导的 AI 助手。请基于以下能力定义，给出“部署配置建议”和“真实校验测试参数建议”。\n\n能力名称: ${
-      release.sourceName || release.id
-    }\n能力类型: ${release.sourceType}\n目标环境: ${environment}\n参数 Schema: ${JSON.stringify(
-      paramsSchema,
-      null,
-      2,
-    )}\n源定义快照: ${JSON.stringify(snapshot.sourcePayload, null, 2)}\n\n要求：\n1. 返回一个适合演示和校验的 testInput JSON。\n2. 如果有比较合理的 testUserInput，自然语言给一句。\n3. deployConfig 只返回用户本次需要重点关注或覆盖的字段；没有必要覆盖则返回空对象。\n4. explanation 用中文，告诉用户这些参数为什么这样推荐。\n5. 只返回 JSON，不要 Markdown。\n\n返回格式：\n{\n  "explanation": "中文说明",\n  "deployConfig": {},\n  "testInput": {},\n  "testUserInput": "..." \n}`;
-
-    try {
-      const orchestratorUrl = getAiOrchestratorUrl();
-      const response = await axios.post<{ result: string }>(
-        `${orchestratorUrl}/ai/model/call`,
-        { modelId: 'default', prompt },
-        { timeout: 60000 },
-      );
-      const content = response.data?.result || '';
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
-
-      const result: SuggestReleaseWizardAssistResultDTO = {
-        explanation:
-          typeof parsed?.explanation === 'string' && parsed.explanation.trim()
-            ? parsed.explanation.trim()
-            : '已根据当前能力定义自动生成推荐的部署与测试参数。',
-        deployConfig:
-          parsed?.deployConfig && typeof parsed.deployConfig === 'object'
-            ? parsed.deployConfig
-            : deployConfig,
-        testInput:
-          parsed?.testInput && typeof parsed.testInput === 'object'
-            ? parsed.testInput
-            : fallbackTestInput,
-        testUserInput:
-          typeof parsed?.testUserInput === 'string' && parsed.testUserInput.trim()
-            ? parsed.testUserInput.trim()
-            : null,
-      };
-
-      await this.insertAuditEvent(
-        id,
-        'wizard_assist_suggested',
-        userId,
-        true,
-        `已生成向导建议 (${environment})`,
-        { environment },
-      );
-
-      return result;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : '未知错误';
-      this.logger.warn(`Wizard assist fallback due to AI error: ${message}`);
-      return {
-        explanation: 'AI 暂时不可用，已根据参数 Schema 自动生成建议参数。',
-        deployConfig,
-        testInput: fallbackTestInput,
-        testUserInput: Object.keys(fallbackTestInput).length > 0 ? `请使用这些参数验证 ${release.sourceName || '当前能力'}` : null,
-      };
-    }
+    return this.capabilityReleaseAssistService.suggestWizardAssist(
+      id,
+      dto,
+      userId,
+      this.getAssistAccessors(),
+    );
   }
 
   private async ensureInfrastructure(): Promise<void> {
@@ -2682,7 +712,7 @@ ${logs.join('\n')}
     if (!rows[0]) {
       throw new NotFoundException('Capability 不存在');
     }
-    return this.mapRelease(rows[0]);
+    return mapCapabilityRelease(rows[0]);
   }
 
   private async getCurrentSnapshotOrThrow(
@@ -2698,7 +728,7 @@ ${logs.join('\n')}
     if (!rows[0]) {
       throw new NotFoundException('源定义快照不存在');
     }
-    return this.mapSourceSnapshot(rows[0]);
+    return mapCapabilitySourceSnapshot(rows[0]);
   }
 
   private async getBuildOrThrow(id: string): Promise<CapabilityBuildDTO> {
@@ -2709,7 +739,7 @@ ${logs.join('\n')}
     if (!rows[0]) {
       throw new NotFoundException('构建记录不存在');
     }
-    return this.mapBuild(rows[0]);
+    return mapCapabilityBuild(rows[0]);
   }
 
   private async getValidationOrThrow(id: string): Promise<CapabilityValidationDTO> {
@@ -2720,7 +750,7 @@ ${logs.join('\n')}
     if (!rows[0]) {
       throw new NotFoundException('验证记录不存在');
     }
-    return this.mapValidation(rows[0]);
+    return mapCapabilityValidation(rows[0]);
   }
 
   private async getDeploymentOrThrow(id: string): Promise<DeploymentRecordDTO> {
@@ -2731,7 +761,7 @@ ${logs.join('\n')}
     if (!rows[0]) {
       throw new NotFoundException('部署记录不存在');
     }
-    return this.mapDeployment(rows[0]);
+    return mapCapabilityDeployment(rows[0]);
   }
 
   private async getSkillDraftOrThrow(id: string): Promise<SkillDraftDTO> {
@@ -2742,7 +772,7 @@ ${logs.join('\n')}
     if (!rows[0]) {
       throw new NotFoundException('Skill 草案不存在');
     }
-    return this.mapSkillDraft(rows[0]);
+    return mapCapabilitySkillDraft(rows[0]);
   }
 
   private async getLatestSuccessfulValidationOrThrow(
@@ -2759,22 +789,7 @@ ${logs.join('\n')}
     if (!rows[0]) {
       throw new NotFoundException('当前 Release 没有通过的验证记录');
     }
-    return this.mapValidation(rows[0]);
-  }
-
-  private async getLatestSuccessfulBuildOrThrow(releaseId: string): Promise<CapabilityBuildDTO> {
-    const rows = await this.prisma.$queryRawUnsafe<any[]>(
-      `SELECT *
-       FROM capability_builds
-       WHERE release_id = $1::uuid AND status = 'succeeded'
-       ORDER BY created_at DESC
-       LIMIT 1`,
-      releaseId,
-    );
-    if (!rows[0]) {
-      throw new NotFoundException('当前 Release 没有成功的构建记录');
-    }
-    return this.mapBuild(rows[0]);
+    return mapCapabilityValidation(rows[0]);
   }
 
   private async getLatestSuccessfulCodeBuild(
@@ -2791,7 +806,7 @@ ${logs.join('\n')}
        LIMIT 1`,
       releaseId,
     );
-    return rows[0] ? this.mapBuild(rows[0]) : null;
+    return rows[0] ? mapCapabilityBuild(rows[0]) : null;
   }
 
   private async createSyntheticTemporalCodeBuild(
@@ -2929,587 +944,7 @@ ${logs.join('\n')}
     if (!rows[0]) {
       throw new NotFoundException('源定义快照不存在');
     }
-    return this.mapSourceSnapshot(rows[0]);
-  }
-
-  private async createValidationRecord(
-    releaseId: string,
-    buildId: string,
-    validationType: 'static' | 'sandbox' | 'post_deploy_smoke',
-    input: Record<string, unknown> | undefined,
-    userId?: string,
-    updateReleaseStatus = true,
-  ): Promise<string> {
-    const validationId = randomUUID();
-    await this.prisma.$executeRawUnsafe(
-      `INSERT INTO capability_validations (
-        id, release_id, build_id, validation_type, input_snapshot_json,
-        logs_json, score, success, started_at, created_by, created_at
-      ) VALUES (
-        $1::uuid, $2::uuid, $3::uuid, $4, $5::jsonb,
-        '[]'::jsonb, 0, false, now(), $6::uuid, now()
-      )`,
-      validationId,
-      releaseId,
-      buildId,
-      validationType,
-      JSON.stringify(input || null),
-      userId || null,
-    );
-    if (updateReleaseStatus) {
-      await this.prisma.$executeRawUnsafe(
-        `UPDATE capability_releases
-         SET status = 'validating', latest_validation_id = $2::uuid, updated_at = now()
-         WHERE id = $1::uuid`,
-        releaseId,
-        validationId,
-      );
-    } else {
-      await this.prisma.$executeRawUnsafe(
-        `UPDATE capability_releases
-         SET latest_validation_id = $2::uuid, updated_at = now()
-         WHERE id = $1::uuid`,
-        releaseId,
-        validationId,
-      );
-    }
-    return validationId;
-  }
-
-  private async createSmokeValidationRecord(
-    releaseId: string,
-    buildId: string,
-    input: Record<string, unknown> | undefined,
-    userId?: string,
-  ): Promise<string> {
-    const validationId = randomUUID();
-    await this.prisma.$executeRawUnsafe(
-      `INSERT INTO capability_validations (
-        id, release_id, build_id, validation_type, input_snapshot_json,
-        logs_json, score, success, started_at, created_by, created_at
-      ) VALUES (
-        $1::uuid, $2::uuid, $3::uuid, 'post_deploy_smoke', $4::jsonb,
-        '[]'::jsonb, 0, false, now(), $5::uuid, now()
-      )`,
-      validationId,
-      releaseId,
-      buildId,
-      JSON.stringify(input || null),
-      userId || null,
-    );
-    return validationId;
-  }
-
-  private async finishValidation(
-    validationId: string,
-    releaseId: string,
-    releaseStatus: string,
-    success: boolean,
-    score: number,
-    logs: string[],
-    resultSnapshot: Record<string, unknown> | null,
-    errorSummary: string | null,
-    preserveReleaseStatus = false,
-  ): Promise<void> {
-    await this.prisma.$executeRawUnsafe(
-      `UPDATE capability_validations
-       SET result_snapshot_json = $2::jsonb,
-           logs_json = $3::jsonb,
-           score = $4,
-           success = $5,
-           error_summary = $6,
-           finished_at = now()
-       WHERE id = $1::uuid`,
-      validationId,
-      JSON.stringify(resultSnapshot),
-      JSON.stringify(logs),
-      score,
-      success,
-      errorSummary,
-    );
-
-    if (preserveReleaseStatus) {
-      await this.prisma.$executeRawUnsafe(
-        `UPDATE capability_releases
-         SET latest_validation_id = $2::uuid,
-             latest_successful_validation_id = CASE WHEN $3 THEN $2::uuid ELSE latest_successful_validation_id END,
-             updated_at = now()
-         WHERE id = $1::uuid`,
-        releaseId,
-        validationId,
-        success,
-      );
-      return;
-    }
-
-    await this.prisma.$executeRawUnsafe(
-      `UPDATE capability_releases
-       SET status = $2,
-           latest_validation_id = $3::uuid,
-           latest_successful_validation_id = CASE WHEN $4 THEN $3::uuid ELSE latest_successful_validation_id END,
-           updated_at = now()
-       WHERE id = $1::uuid`,
-      releaseId,
-      releaseStatus,
-      validationId,
-      success,
-    );
-  }
-
-  private shouldPreserveReleaseStatusDuringValidation(release: CapabilityReleaseDTO): boolean {
-    return (
-      Boolean(release.publishedSkillId) ||
-      ['published', 'deploying', 'deployed', 'rolled_back'].includes(release.status) ||
-      ['running', 'succeeded', 'deployed', 'rolled_back'].includes(release.deploymentStatus)
-    );
-  }
-
-  private async finishSmokeValidation(
-    validationId: string,
-    releaseId: string,
-    success: boolean,
-    score: number,
-    logs: string[],
-    resultSnapshot: Record<string, unknown> | null,
-    errorSummary: string | null,
-  ): Promise<void> {
-    await this.prisma.$executeRawUnsafe(
-      `UPDATE capability_validations
-       SET result_snapshot_json = $2::jsonb,
-           logs_json = $3::jsonb,
-           score = $4,
-           success = $5,
-           error_summary = $6,
-           finished_at = now()
-       WHERE id = $1::uuid`,
-      validationId,
-      JSON.stringify(resultSnapshot),
-      JSON.stringify(logs),
-      score,
-      success,
-      errorSummary,
-    );
-
-    await this.prisma.$executeRawUnsafe(
-      `UPDATE capability_releases
-       SET latest_validation_id = $2::uuid,
-           latest_successful_validation_id = CASE WHEN $3 THEN $2::uuid ELSE latest_successful_validation_id END,
-           updated_at = now()
-       WHERE id = $1::uuid`,
-      releaseId,
-      validationId,
-      success,
-    );
-  }
-
-  private async finishDeployment(
-    deploymentId: string,
-    releaseId: string,
-    releaseStatus: string,
-    deploymentStatus: CapabilityDeploymentStatus,
-    success: boolean,
-    logs: string[],
-    resultSnapshot: Record<string, unknown> | null,
-    artifactUri: string | null,
-    artifactHash: string | null,
-    workerVersion: string | null,
-    smokeValidationId: string | null,
-    rollbackTargetReleaseId: string | null,
-  ): Promise<void> {
-    await this.prisma.$executeRawUnsafe(
-      `UPDATE deployment_records
-       SET artifact_uri = $2,
-           artifact_hash = $3,
-           worker_version = $4,
-           result_snapshot_json = $5::jsonb,
-           logs_json = $6::jsonb,
-           status = $7,
-           success = $8,
-           smoke_validation_id = $9::uuid,
-           rollback_target_release_id = $10::uuid,
-           finished_at = now()
-       WHERE id = $1::uuid`,
-      deploymentId,
-      artifactUri,
-      artifactHash,
-      workerVersion,
-      JSON.stringify(resultSnapshot),
-      JSON.stringify(logs),
-      deploymentStatus,
-      success,
-      smokeValidationId,
-      rollbackTargetReleaseId,
-    );
-
-    await this.prisma.$executeRawUnsafe(
-      `UPDATE capability_releases
-       SET status = $2,
-           deployment_status = $3,
-           last_deployment_id = $4::uuid,
-           updated_at = now()
-       WHERE id = $1::uuid`,
-      releaseId,
-      releaseStatus,
-      deploymentStatus === 'succeeded'
-        ? 'deployed'
-        : deploymentStatus === 'rolled_back'
-          ? 'rolled_back'
-          : 'failed',
-      deploymentId,
-    );
-  }
-
-  private validateBrowserRecordingSnapshot(
-    snapshot: CapabilitySourceSnapshotDTO,
-    options?: {
-      environment?: string;
-      deploymentId?: string;
-      input?: Record<string, unknown>;
-      testCases?: string[];
-    },
-  ): {
-    success: boolean;
-    score: number;
-    logs: string[];
-    resultSnapshot: Record<string, unknown>;
-    errorSummary: string | null;
-  } {
-    const payload = (snapshot.sourcePayload as Record<string, unknown>) || {};
-    const steps = Array.isArray(payload.steps) ? payload.steps : [];
-    const executionFlow = this.normalizeBrowserRecordingExecutionFlow(payload.executionFlow);
-    const testCases = Array.isArray(options?.testCases) ? options?.testCases.filter(Boolean) : [];
-
-    if (steps.length === 0 && executionFlow.length === 0) {
-      throw new Error('浏览器录制快照缺少执行步骤或执行流');
-    }
-
-    const logs = [
-      '开始执行浏览器录制快照静态验证...',
-      '当前浏览器录制 Sandbox 校验采用静态快照验证，尚未接入静默回放。',
-      `快照验证通过: 包含 ${steps.length} 个录制步骤, ${executionFlow.length} 个执行节点`,
-    ];
-    if (testCases.length > 0) {
-      logs.push(`收到 ${testCases.length} 条自然语言测试用例，将记录到校验结果中`);
-      testCases.forEach((item, index) => {
-        logs.push(`[Case ${index + 1}] ${item}`);
-      });
-    }
-
-    return {
-      success: true,
-      score: 100,
-      logs,
-      resultSnapshot: {
-        mode: 'static_snapshot_validation',
-        environment: options?.environment || null,
-        deploymentId: options?.deploymentId || null,
-        stepCount: steps.length,
-        flowNodeCount: executionFlow.length,
-        testCases,
-        input: options?.input || null,
-      },
-      errorSummary: null,
-    };
-  }
-
-  private async runPostDeploySmokeTest(
-    release: CapabilityReleaseDTO,
-    snapshot: CapabilitySourceSnapshotDTO,
-    build: CapabilityBuildDTO,
-    deploymentId: string,
-    environment: string,
-    userId?: string,
-  ): Promise<{
-    validationId: string;
-    success: boolean;
-    score: number;
-    logs: string[];
-    resultSnapshot: Record<string, unknown> | null;
-    errorSummary: string | null;
-  }> {
-    const validationId = await this.createSmokeValidationRecord(
-      release.id,
-      build.id,
-      { deploymentId, environment },
-      userId,
-    );
-
-    try {
-      let success = false;
-      let score = 0;
-      let logs: string[] = [];
-      let resultSnapshot: Record<string, unknown> | null = null;
-      let errorSummary: string | null = null;
-      const smokeInput = this.buildSmokeTestInput(release, snapshot, environment);
-      const templateId = this.resolveExecutionTemplateIdForRuntime(release, snapshot);
-
-      if (release.sourceType === 'temporal_workflow') {
-        if (!build.generatedCode) {
-          throw new Error('当前构建没有可执行代码，无法执行部署后 smoke test');
-        }
-        const fn = this.resolveWorkflowFnOrThrow(snapshot.sourcePayload);
-        const result = await this.temporalWorkflowService.validateWorkflowReal(
-          build.generatedCode,
-          fn,
-          smokeInput,
-        );
-        success = result.success;
-        score = result.score;
-        logs = result.logs;
-        resultSnapshot = {
-          result: result.result ?? null,
-          error: result.error ?? null,
-          fn,
-          environment,
-          deploymentId,
-          input: smokeInput,
-        };
-        errorSummary = result.error || null;
-      } else if (release.sourceType === 'browser_recording') {
-        const result = this.validateBrowserRecordingSnapshot(snapshot, {
-          environment,
-          deploymentId,
-          input: smokeInput,
-          testCases: [`smoke test for ${environment}`],
-        });
-        success = result.success;
-        score = result.score;
-        logs = result.logs;
-        resultSnapshot = result.resultSnapshot;
-        errorSummary = result.errorSummary;
-      } else if (templateId) {
-        const validation = await this.executionFlowTemplateService.validateTemplate(
-          templateId,
-          undefined,
-          smokeInput,
-          true,
-          `smoke test for ${environment}`,
-        );
-        success = validation.isValid;
-        score = validation.score || 0;
-        logs = validation.details?.executionTest?.log || [];
-        resultSnapshot = {
-          ...((validation as unknown as Record<string, unknown>) || {}),
-          environment,
-          deploymentId,
-          input: smokeInput,
-        };
-        errorSummary = validation.warnings?.[0] || null;
-      } else {
-        throw new Error('当前能力缺少可用模板标识，无法执行部署后 smoke test');
-      }
-
-      await this.finishSmokeValidation(
-        validationId,
-        release.id,
-        success,
-        score,
-        logs,
-        resultSnapshot,
-        errorSummary,
-      );
-
-      await this.insertAuditEvent(
-        release.id,
-        success ? 'deployment_smoke_succeeded' : 'deployment_smoke_failed',
-        userId,
-        success,
-        success
-          ? `部署后 smoke test 通过 (${environment})`
-          : `部署后 smoke test 失败: ${errorSummary || '未知错误'}`,
-        { deploymentId, environment, validationId },
-      );
-
-      return {
-        validationId,
-        success,
-        score,
-        logs,
-        resultSnapshot,
-        errorSummary,
-      };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : '未知错误';
-      await this.finishSmokeValidation(
-        validationId,
-        release.id,
-        false,
-        0,
-        [`[Error] ${message}`],
-        { deploymentId, environment, error: message },
-        message,
-      );
-      await this.insertAuditEvent(
-        release.id,
-        'deployment_smoke_failed',
-        userId,
-        false,
-        `部署后 smoke test 失败: ${message}`,
-        { deploymentId, environment, validationId },
-      );
-      return {
-        validationId,
-        success: false,
-        score: 0,
-        logs: [`[Error] ${message}`],
-        resultSnapshot: { deploymentId, environment, error: message },
-        errorSummary: message,
-      };
-    }
-  }
-
-  private async resolveBuildForValidation(
-    release: CapabilityReleaseDTO,
-    snapshot: CapabilitySourceSnapshotDTO,
-    buildId: string | undefined,
-    userId?: string,
-  ): Promise<CapabilityBuildDTO> {
-    if (release.sourceType === 'temporal_workflow') {
-      return this.resolveTemporalExecutableBuildOrThrow(release, snapshot, buildId, userId);
-    }
-
-    if (buildId) {
-      return this.getBuildOrThrow(buildId);
-    }
-    if (release.currentBuildId) {
-      return this.getBuildOrThrow(release.currentBuildId);
-    }
-
-    const syntheticBuildId = randomUUID();
-    await this.prisma.$executeRawUnsafe(
-      `INSERT INTO capability_builds (
-        id, release_id, source_snapshot_id, build_type, model_id, input_snapshot_json,
-        generated_config_json, status, started_at, finished_at, created_by, created_at
-      ) VALUES (
-        $1::uuid, $2::uuid, $3::uuid, 'config_enhancement', 'system', $4::jsonb,
-        $5::jsonb, 'succeeded', now(), now(), $6::uuid, now()
-      )`,
-      syntheticBuildId,
-      release.id,
-      snapshot.id,
-      JSON.stringify(snapshot.sourcePayload),
-      JSON.stringify(snapshot.sourcePayload),
-      userId || null,
-    );
-
-    await this.prisma.$executeRawUnsafe(
-      `UPDATE capability_releases
-       SET current_build_id = $2::uuid, latest_successful_build_id = $2::uuid, updated_at = now()
-       WHERE id = $1::uuid`,
-      release.id,
-      syntheticBuildId,
-    );
-
-    return this.getBuildOrThrow(syntheticBuildId);
-  }
-
-  private resolveExecutionTemplateIdForRuntime(
-    release: CapabilityReleaseDTO,
-    snapshot: CapabilitySourceSnapshotDTO,
-  ): string | null {
-    if (release.sourceType === 'temporal_workflow') {
-      return null;
-    }
-    if (release.sourceId && release.sourceId.trim()) {
-      return release.sourceId.trim();
-    }
-    const payload = snapshot.sourcePayload && typeof snapshot.sourcePayload === 'object'
-      ? snapshot.sourcePayload as Record<string, unknown>
-      : {};
-    const sourceTemplate = payload.sourceTemplate && typeof payload.sourceTemplate === 'object'
-      ? payload.sourceTemplate as Record<string, unknown>
-      : {};
-    const fromTemplate = sourceTemplate.templateId;
-    if (typeof fromTemplate === 'string' && fromTemplate.trim()) {
-      return fromTemplate.trim();
-    }
-    const fromPayloadId = payload.id;
-    if (typeof fromPayloadId === 'string' && fromPayloadId.trim()) {
-      return fromPayloadId.trim();
-    }
-    return null;
-  }
-
-  private normalizeBrowserRecordingExecutionFlow(
-    flow: unknown,
-  ): Array<Record<string, unknown>> {
-    if (!Array.isArray(flow)) {
-      return [];
-    }
-    return flow
-      .filter(
-        (item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object' && !Array.isArray(item),
-      )
-      .map((step) => {
-        const tool = step.tool;
-        if (!tool || typeof tool !== 'object' || Array.isArray(tool)) {
-          return step;
-        }
-        const normalizedToolName = normalizeBrowserRecordingToolName(
-          (tool as Record<string, unknown>).name,
-        );
-        if (!normalizedToolName) {
-          return step;
-        }
-        return {
-          ...step,
-          tool: {
-            ...(tool as Record<string, unknown>),
-            name: normalizedToolName,
-          },
-        };
-      });
-  }
-
-  private async getRollbackTargetOrThrow(
-    release: CapabilityReleaseDTO,
-    targetReleaseId?: string,
-  ): Promise<CapabilityReleaseDTO> {
-    if (targetReleaseId) {
-      const target = await this.getReleaseOrThrow(targetReleaseId);
-      if (target.id === release.id) {
-        throw new BadRequestException({
-          code: CAPABILITY_RELEASE_ERROR_CODE.ROLLBACK_TARGET_SAME_RELEASE,
-          message: '不能回滚到当前 Release 自身',
-        });
-      }
-      return target;
-    }
-
-    if (!release.sourceId && !release.sourceName) {
-      throw new BadRequestException({
-        code: CAPABILITY_RELEASE_ERROR_CODE.ROLLBACK_SOURCE_IDENTIFIER_MISSING,
-        message: '当前 Release 缺少可用于推断回滚目标的源标识',
-      });
-    }
-
-    const rows = await this.prisma.$queryRawUnsafe<any[]>(
-      `SELECT *
-       FROM capability_releases
-       WHERE id <> $1::uuid
-         AND source_type = $2
-         AND published_skill_id IS NOT NULL
-         AND archived_at IS NULL
-         AND (
-           ($3::uuid IS NOT NULL AND source_id = $3::uuid)
-           OR ($3::uuid IS NULL AND $4 IS NOT NULL AND source_name = $4)
-         )
-       ORDER BY updated_at DESC
-       LIMIT 1`,
-      release.id,
-      release.sourceType,
-      release.sourceId || null,
-      release.sourceName || null,
-    );
-
-    if (!rows[0]) {
-      throw new NotFoundException({
-        code: CAPABILITY_RELEASE_ERROR_CODE.ROLLBACK_TARGET_RELEASE_NOT_FOUND,
-        message: '未找到可回滚的目标 Release',
-      });
-    }
-
-    return this.mapRelease(rows[0]);
+    return mapCapabilitySourceSnapshot(rows[0]);
   }
 
   private async insertAuditEvent(
@@ -3561,8 +996,8 @@ ${logs.join('\n')}
       if (!rows[0]) {
         throw new NotFoundException('Temporal Workflow 不存在');
       }
-      const workflowDsl = this.parseJson<Record<string, unknown>>(rows[0].workflowDsl) || {};
-      const activityDsl = this.parseJson<Record<string, unknown>>(rows[0].activityDsl) || {};
+      const workflowDsl = parseCapabilityReleaseJson<Record<string, unknown>>(rows[0].workflowDsl) || {};
+      const activityDsl = parseCapabilityReleaseJson<Record<string, unknown>>(rows[0].activityDsl) || {};
 
       return {
         id: rows[0].id,
@@ -3572,13 +1007,18 @@ ${logs.join('\n')}
         generatedCode: rows[0].generatedCode || null,
         workflowDsl,
         activityDsl,
-        goal: this.extractTemporalGoal(workflowDsl, rows[0].description),
-        expectedResult: this.extractTemporalExpectedResult(workflowDsl),
-        paramsSchema: this.buildTemporalParamsSchema(workflowDsl, activityDsl),
-        executionFlowKeys: this.buildTemporalExecutionFlowKeys(rows[0].name, workflowDsl, activityDsl),
-        outputParams: this.parseJson(workflowDsl.outputParams) || {},
-        workflowSteps: this.buildTemporalWorkflowSteps(workflowDsl),
-        sourceTemplate: this.extractTemporalSourceTemplate(workflowDsl, activityDsl),
+        goal: this.capabilityReleaseTemporalSchemaService
+          .extractTemporalGoal(workflowDsl, rows[0].description),
+        expectedResult: this.capabilityReleaseTemporalSchemaService
+          .extractTemporalExpectedResult(workflowDsl),
+        paramsSchema: this.capabilityReleaseTemporalSchemaService
+          .buildTemporalParamsSchema(workflowDsl, activityDsl),
+        executionFlowKeys: this.capabilityReleaseSkillDraftService
+          .buildTemporalExecutionFlowKeys(rows[0].name, workflowDsl, activityDsl),
+        outputParams: parseCapabilityReleaseJson(workflowDsl.outputParams) || {},
+        workflowSteps: this.capabilityReleaseSkillDraftService.buildTemporalWorkflowSteps(workflowDsl),
+        sourceTemplate: this.capabilityReleaseTemporalSchemaService
+          .extractTemporalSourceTemplate(workflowDsl, activityDsl),
       };
     }
 
@@ -3599,11 +1039,11 @@ ${logs.join('\n')}
       description: rows[0].description,
       goal: rows[0].goal,
       expectedResult: rows[0].expectedResult,
-      paramsSchema: this.parseJson(rows[0].paramsSchema),
+      paramsSchema: parseCapabilityReleaseJson(rows[0].paramsSchema),
       category: rows[0].category,
-      steps: this.parseJson(rows[0].steps),
-      executionFlowKeys: this.parseJson(rows[0].executionFlowKeys),
-      sourceTemplate: this.extractExecutionFlowSourceTemplate({
+      steps: parseCapabilityReleaseJson(rows[0].steps),
+      executionFlowKeys: parseCapabilityReleaseJson(rows[0].executionFlowKeys),
+      sourceTemplate: this.capabilityReleaseSkillDraftService.extractExecutionFlowSourceTemplate({
         id: rows[0].id,
         name: rows[0].name,
         description: rows[0].description,
@@ -3617,140 +1057,9 @@ ${logs.join('\n')}
     };
   }
 
-  private getDefaultBuildType(sourceType: string): CapabilityBuildType {
-    return sourceType === 'temporal_workflow' ? 'codegen_workflow' : 'config_enhancement';
-  }
-
-  private resolveDeploymentProfile(
-    sourcePayload: Record<string, unknown>,
-    environment: string,
-  ): Record<string, unknown> {
-    const profiles =
-      sourcePayload.deploymentProfiles && typeof sourcePayload.deploymentProfiles === 'object'
-        ? (sourcePayload.deploymentProfiles as Record<string, unknown>)
-        : {};
-
-    return profiles[environment] && typeof profiles[environment] === 'object'
-      ? (profiles[environment] as Record<string, unknown>)
-      : {};
-  }
-
   private extractSourceName(payload: Record<string, unknown>): string | null {
     const name = payload.name;
     return typeof name === 'string' && name.trim() ? name.trim() : null;
-  }
-
-  private extractTemporalGoal(
-    workflowDsl: Record<string, unknown>,
-    fallbackDescription?: string | null,
-  ): string | null {
-    const extraPrompt = workflowDsl.extraPrompt;
-    if (typeof extraPrompt === 'string' && extraPrompt.trim()) {
-      return extraPrompt.trim();
-    }
-    return typeof fallbackDescription === 'string' && fallbackDescription.trim()
-      ? fallbackDescription.trim()
-      : null;
-  }
-
-  private extractTemporalExpectedResult(workflowDsl: Record<string, unknown>): string | null {
-    const outputParams = this.parseJson<Record<string, unknown>>(workflowDsl.outputParams) || {};
-    const entries = Object.entries(outputParams)
-      .map(([key, value]) => {
-        const definition = value && typeof value === 'object'
-          ? (value as Record<string, unknown>)
-          : {};
-        const description = typeof definition.description === 'string'
-          ? definition.description.trim()
-          : '';
-        return description ? `${key}: ${description}` : key;
-      })
-      .filter(Boolean);
-
-    return entries.length > 0 ? entries.join('; ') : null;
-  }
-
-  private buildTemporalOutputParamsFromValidation(
-    validation: CapabilityValidationDTO,
-  ): Record<string, unknown> {
-    const snapshot = validation.resultSnapshot && typeof validation.resultSnapshot === 'object'
-      ? validation.resultSnapshot
-      : {};
-    const resultContainer = this.parseJson<Record<string, unknown>>(
-      (snapshot as Record<string, unknown>).result,
-    ) || {};
-    const rawResult = this.parseJson<Record<string, unknown>>(resultContainer.result) || {};
-    const properties = Object.entries(rawResult).reduce<Record<string, unknown>>((acc, [key, value]) => {
-      acc[key] = {
-        type: this.inferTemporalParamType(value, key),
-        description: `Workflow 输出字段 ${key}`,
-      };
-      return acc;
-    }, {});
-    return properties;
-  }
-
-  private resolveEffectiveTemporalParamsSchema(
-    payload: Record<string, unknown>,
-  ): Record<string, unknown> {
-    const workflowDsl = this.parseJson(payload.workflowDsl) as Record<string, unknown> || {};
-    const activityDsl = this.parseJson(payload.activityDsl) as Record<string, unknown> || {};
-    const rawSchema = this.parseJson(payload.paramsSchema) as Record<string, unknown> | null;
-    const inferredSchema = this.buildTemporalParamsSchema(workflowDsl, activityDsl);
-
-    if (!rawSchema || typeof rawSchema !== 'object') {
-      return inferredSchema;
-    }
-
-    const rawProperties =
-      rawSchema.properties && typeof rawSchema.properties === 'object'
-        ? (rawSchema.properties as Record<string, unknown>)
-        : {};
-    const inferredProperties =
-      inferredSchema.properties && typeof inferredSchema.properties === 'object'
-        ? (inferredSchema.properties as Record<string, unknown>)
-        : {};
-    const rawRequired = Array.isArray(rawSchema.required)
-      ? rawSchema.required.filter((item): item is string => typeof item === 'string')
-      : [];
-    const inferredRequired = Array.isArray(inferredSchema.required)
-      ? inferredSchema.required.filter((item): item is string => typeof item === 'string')
-      : [];
-    const inferredPropertyKeys = new Set(Object.keys(inferredProperties));
-    const finalRequired = Array.from(new Set([
-      ...rawRequired.filter((key) => !inferredPropertyKeys.has(key)),
-      ...inferredRequired,
-    ]));
-
-    const mergedProperties = Object.entries(inferredProperties).reduce<Record<string, unknown>>(
-      (acc, [key, inferredValue]) => {
-        const rawValue = rawProperties[key];
-        const isRequired = finalRequired.includes(key);
-        acc[key] =
-          rawValue && typeof rawValue === 'object'
-            ? {
-                ...(inferredValue as Record<string, unknown>),
-                ...(rawValue as Record<string, unknown>),
-                ...(
-                  (rawValue as Record<string, unknown>).default === undefined &&
-                  (inferredValue as Record<string, unknown>).default !== undefined
-                    ? { default: (inferredValue as Record<string, unknown>).default }
-                    : {}
-                ),
-                required: isRequired,
-              }
-            : inferredValue;
-        return acc;
-      },
-      { ...rawProperties },
-    );
-
-    return {
-      ...rawSchema,
-      ...inferredSchema,
-      properties: mergedProperties,
-      required: finalRequired,
-    };
   }
 
   private resolveWorkflowFnOrThrow(payload: Record<string, unknown>): string {
@@ -3771,2338 +1080,70 @@ ${logs.join('\n')}
     return workflowClassName;
   }
 
-  private async executePublishedSkillByPromptForValidation(
-    skillId: string,
-    prompt: string,
-    authToken?: string,
-  ): Promise<{ success: boolean; logs: string[]; result?: Record<string, unknown> | null; error?: string }> {
-    const runtimeContext = await this.getPublishedSkillRuntimeContext(skillId);
-    const controlPlaneUrl = getControlPlaneApiUrl();
-    const logs: string[] = [
-      `[NL-Validation] 使用自然语言调用已发布 Skill: ${skillId}`,
-      `[NL-Validation] runtimeType=${runtimeContext.runtimeType}, runtimeSource=${runtimeContext.runtimeSource}`,
-    ];
-
-    const createRes = await axios.post<{ id: string }>(
-      `${controlPlaneUrl}/executions`,
-      {
-        skillId,
-        runtimeType: runtimeContext.runtimeType,
-        input: {
-          prompt,
-        },
-      },
-      {
-        headers: authToken ? { Authorization: authToken } : undefined,
-      },
-    );
-    const executionId = createRes.data.id;
-    logs.push(`[NL-Validation] 已创建执行单: ${executionId}`);
-
-    const maxAttempts = 60;
-    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-      const detailRes = await axios.get<Record<string, unknown>>(
-        `${controlPlaneUrl}/executions/${executionId}`,
-        {
-          headers: authToken ? { Authorization: authToken } : undefined,
-        },
-      );
-      const status = String(detailRes.data?.status || '');
-      logs.push(`[NL-Validation] 执行状态: ${status}`);
-
-      if (status === 'succeeded') {
-        return {
-          success: true,
-          logs,
-          result:
-            detailRes.data?.result && typeof detailRes.data.result === 'object'
-              ? (detailRes.data.result as Record<string, unknown>)
-              : null,
-        };
-      }
-
-      if (status === 'failed' || status === 'cancelled' || status === 'rolled_back') {
-        const failureReason = String(detailRes.data?.failureReason || '执行失败');
-        return {
-          success: false,
-          logs,
-          error: failureReason,
-          result:
-            detailRes.data?.result && typeof detailRes.data.result === 'object'
-              ? (detailRes.data.result as Record<string, unknown>)
-              : null,
-        };
-      }
-
-      if (status === 'waiting_input' || status === 'pending_approval') {
-        return {
-          success: false,
-          logs,
-          error: `自然语言验证未完成：执行进入 ${status}，请补充信息或审批后重试`,
-        };
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-    }
-
+  private getRuntimeAccessors(): CapabilityReleaseRuntimeAccessors {
     return {
-      success: false,
-      logs,
-      error: '自然语言验证超时：执行长时间未进入终态',
+      getCurrentSnapshotOrThrow: (release) => this.getCurrentSnapshotOrThrow(release),
+      resolveTemporalExecutableBuildOrThrow: (release, snapshot, buildId, userId) =>
+        this.resolveTemporalExecutableBuildOrThrow(release, snapshot, buildId, userId),
+      resolveWorkflowFnOrThrow: (payload) => this.resolveWorkflowFnOrThrow(payload),
+      insertAuditEvent: (releaseId, eventType, actorId, success, summary, details) =>
+        this.insertAuditEvent(releaseId, eventType, actorId, success, summary, details || undefined),
     };
   }
 
-  private buildTemporalParamsSchema(
-    workflowDsl: Record<string, unknown>,
-    activityDsl?: Record<string, unknown>,
-  ): Record<string, unknown> {
-    const inputParams = this.parseJson<Record<string, unknown>>(workflowDsl.inputParams) || {};
-    const workflowInputPolicy = this.extractTemporalWorkflowInputPolicy(workflowDsl);
-    const workflowInputPolicies = asRecord(workflowInputPolicy?.params) || {};
-    const properties: Record<string, unknown> = {};
-    const required: string[] = [];
-
-    Object.entries(inputParams).forEach(([key, value]) => {
-      const definition = value && typeof value === 'object'
-        ? (value as Record<string, unknown>)
-        : {};
-      const workflowPolicy = asRecord(workflowInputPolicies[key]) || {};
-      const requiredMode = typeof workflowPolicy.requiredMode === 'string'
-        ? workflowPolicy.requiredMode.trim()
-        : undefined;
-      const isRequired = requiredMode
-        ? requiredMode === 'always'
-        : Boolean(definition.required);
-      const description = typeof definition.description === 'string'
-        ? definition.description.trim()
-        : `Workflow 输入参数 ${key}`;
-      const localizedDefaultValue = asRecord(definition.localizedDefaultValue);
-      const policyDefaultValue = this.normalizeCapabilityDefaultValue(workflowPolicy.defaultValue);
-      const definitionDefaultValue =
-        definition.defaultValue !== undefined && definition.defaultValue !== ''
-          ? definition.defaultValue
-          : localizedDefaultValue && Object.keys(localizedDefaultValue).length > 0
-            ? localizedDefaultValue
-            : undefined;
-      const defaultValue =
-        policyDefaultValue !== undefined
-          ? policyDefaultValue
-          : definitionDefaultValue;
-      const normalizedDefaultValue = this.normalizeCapabilityDefaultValue(defaultValue);
-      const inferredType =
-        this.normalizeDeclaredTemporalParamType(definition.type, key)
-        || this.inferTemporalParamType(
-          normalizedDefaultValue !== undefined ? normalizedDefaultValue : definition.exampleValue,
-          description,
-          key,
-        );
-      const displayName = this.resolveTemporalParamDisplayName(key, definition, description);
-      const renderPath = this.resolveTemporalWorkflowRenderPath(definition, workflowPolicy);
-
-      properties[key] = {
-        type: inferredType,
-        description,
-        ...(displayName
-          ? { displayName }
-          : {}),
-        ...(typeof definition.groupLabel === 'string' && definition.groupLabel.trim()
-          ? { groupLabel: definition.groupLabel.trim() }
-          : {}),
-        ...(typeof definition.semanticRole === 'string' && definition.semanticRole.trim()
-          ? { semanticRole: definition.semanticRole.trim() }
-          : {}),
-        ...(Array.isArray(definition.extractionHints)
-          ? {
-              extractionHints: definition.extractionHints
-                .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
-                .map((item) => item.trim()),
-            }
-          : {}),
-        ...(renderPath ? { renderPath } : {}),
-        required: isRequired,
-        ...(!isRequired && normalizedDefaultValue !== undefined ? { default: normalizedDefaultValue } : {}),
-        extractionPrompt: description,
-      };
-
-      if (isRequired) {
-        required.push(key);
-      }
-    });
-
-    if (Object.keys(properties).length === 0) {
-      const inferredFromActivities = this.inferTemporalParamsFromActivityDsl(activityDsl);
-      const steps = Array.isArray(workflowDsl.steps) ? workflowDsl.steps : [];
-      steps.forEach((step) => {
-        if (!step || typeof step !== 'object') {
-          return;
-        }
-        const stepRecord = step as Record<string, unknown>;
-        const input = this.parseJson<Record<string, unknown>>(stepRecord.input) || {};
-        Object.entries(input).forEach(([key, value]) => {
-          if (properties[key]) {
-            return;
-          }
-
-          let description = `Workflow 输入参数 ${key}`;
-          if (key === 'city') {
-            description = '城市名称';
-          } else if (key === 'format') {
-            description = '返回格式';
-          } else if (key === 'timeout') {
-            description = '超时时间';
-          }
-
-          properties[key] = {
-            type: this.normalizeDeclaredTemporalParamType(undefined, key)
-              || this.inferTemporalParamType(value, description, key),
-            description,
-            ...(this.normalizeCapabilityDefaultValue(inferredFromActivities[key]?.default) !== undefined
-              ? { default: this.normalizeCapabilityDefaultValue(inferredFromActivities[key]?.default) }
-              : this.normalizeCapabilityDefaultValue(key === 'timeout' ? value : undefined) !== undefined
-                ? { default: this.normalizeCapabilityDefaultValue(value) }
-                : {}),
-            ...(inferredFromActivities[key]?.required ? { required: true } : {}),
-            extractionPrompt: description,
-          };
-
-          if (inferredFromActivities[key]?.required) {
-            required.push(key);
-          }
-        });
-      });
-    }
-
-    return { properties, required };
-  }
-
-  private assessTemporalDocumentMappingReadiness(
-    payload: Record<string, unknown>,
-  ): {
-    applicable: boolean;
-    mappedInputCount: number;
-    renderPathParamCount: number;
-    templateBindingParamCount: number;
-  } {
-    const workflowDsl = this.parseJson(payload.workflowDsl) as Record<string, unknown> || {};
-    const activityDsl = this.parseJson(payload.activityDsl) as Record<string, unknown> || {};
-    const declaredPayloadSourceTemplate = this.parseJson<Record<string, unknown>>(payload.sourceTemplate) || {};
-    const sourceContext = this.parseJson<Record<string, unknown>>(workflowDsl.sourceContext) || {};
-    const sourceContextTemplate = this.parseJson<Record<string, unknown>>(sourceContext.sourceTemplate) || {};
-    const extractedSourceTemplate = this.extractTemporalSourceTemplate(workflowDsl, activityDsl) || {};
-    const sourceTemplate = {
-      ...extractedSourceTemplate,
-      ...sourceContextTemplate,
-      ...declaredPayloadSourceTemplate,
-    };
-    const applicable = [
-      sourceTemplate.templateId,
-      sourceTemplate.fileName,
-      sourceTemplate.skillId,
-    ].some((value) => typeof value === 'string' && value.trim().length > 0);
-
-    if (!applicable) {
-      return {
-        applicable: false,
-        mappedInputCount: 0,
-        renderPathParamCount: 0,
-        templateBindingParamCount: 0,
-      };
-    }
-
-    const inputParams = this.parseJson<Record<string, unknown>>(workflowDsl.inputParams) || {};
-    const workflowInputPolicy = this.extractTemporalWorkflowInputPolicy(workflowDsl);
-    const workflowInputPolicies = asRecord(workflowInputPolicy?.params) || {};
-    let renderPathParamCount = 0;
-    let templateBindingParamCount = 0;
-    let mappedInputCount = 0;
-
-    Object.entries(inputParams).forEach(([key, value]) => {
-      const definition = asRecord(value) || {};
-      const policy = asRecord(workflowInputPolicies[key]) || {};
-      const renderPath = this.normalizeTemporalWorkflowRenderPath(definition.renderPath);
-      const templateBinding = typeof policy.templateBinding === 'string' && policy.templateBinding.trim()
-        ? policy.templateBinding.trim()
-        : undefined;
-      if (renderPath) {
-        renderPathParamCount += 1;
-      }
-      if (templateBinding) {
-        templateBindingParamCount += 1;
-      }
-      if (renderPath || templateBinding) {
-        mappedInputCount += 1;
-      }
-    });
-
+  private getBuildValidationAccessors(): CapabilityReleaseBuildValidationAccessors {
     return {
-      applicable,
-      mappedInputCount,
-      renderPathParamCount,
-      templateBindingParamCount,
+      getReleaseOrThrow: (id) => this.getReleaseOrThrow(id),
+      getCurrentSnapshotOrThrow: (release) => this.getCurrentSnapshotOrThrow(release),
+      getBuildOrThrow: (id) => this.getBuildOrThrow(id),
+      getValidationOrThrow: (id) => this.getValidationOrThrow(id),
+      getSkillDraftOrThrow: (id) => this.getSkillDraftOrThrow(id),
+      getLatestSuccessfulValidationOrThrow: (releaseId) => this.getLatestSuccessfulValidationOrThrow(releaseId),
+      resolveTemporalExecutableBuildOrThrow: (release, snapshot, buildId, userId) =>
+        this.resolveTemporalExecutableBuildOrThrow(release, snapshot, buildId, userId),
+      resolveWorkflowFnOrThrow: (payload) => this.resolveWorkflowFnOrThrow(payload),
+      insertAuditEvent: (releaseId, eventType, actorId, success, summary, details) =>
+        this.insertAuditEvent(releaseId, eventType, actorId, success, summary, details || undefined),
     };
   }
 
-  private extractTemporalWorkflowInputPolicy(
-    workflowDsl: Record<string, unknown>,
-  ): Record<string, unknown> | undefined {
-    const inputPolicy = this.parseJson<Record<string, unknown>>(workflowDsl.inputPolicy) || {};
-    const rawParams =
-      inputPolicy.params && typeof inputPolicy.params === 'object' && !Array.isArray(inputPolicy.params)
-        ? inputPolicy.params as Record<string, unknown>
-        : inputPolicy;
-    const inputParams = this.parseJson<Record<string, unknown>>(workflowDsl.inputParams) || {};
-
-    const params = Object.entries(rawParams || {}).reduce<Record<string, unknown>>((acc, [key, value]) => {
-      const policy = asRecord(value) || {};
-      const inferredTemplateBinding = this.resolveSingleTemporalWorkflowBindingPath(
-        this.normalizeTemporalWorkflowRenderPath(
-          asRecord(inputParams[key])?.renderPath,
-        ),
-      );
-
-      acc[key] = {
-        ...policy,
-        ...(typeof policy.templateBinding === 'string' && policy.templateBinding.trim()
-          ? { templateBinding: policy.templateBinding.trim() }
-          : inferredTemplateBinding
-            ? { templateBinding: inferredTemplateBinding }
-            : {}),
-      };
-      return acc;
-    }, {});
-
-    if (Object.keys(params).length === 0) {
-      return undefined;
-    }
-
-    return { params };
-  }
-
-  private resolveTemporalWorkflowRenderPath(
-    definition: Record<string, unknown>,
-    workflowPolicy: Record<string, unknown>,
-  ): string | string[] | undefined {
-    const declaredRenderPath = this.normalizeTemporalWorkflowRenderPath(definition.renderPath);
-    if (declaredRenderPath) {
-      return declaredRenderPath;
-    }
-
-    return this.normalizeTemporalWorkflowRenderPath(workflowPolicy.templateBinding);
-  }
-
-  private normalizeTemporalWorkflowRenderPath(
-    renderPath: unknown,
-  ): string | string[] | undefined {
-    if (typeof renderPath === 'string' && renderPath.trim()) {
-      return renderPath.trim();
-    }
-
-    if (!Array.isArray(renderPath)) {
-      return undefined;
-    }
-
-    const normalized = renderPath
-      .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
-      .map((item) => item.trim());
-
-    if (normalized.length === 0) {
-      return undefined;
-    }
-
-    return normalized.length === 1 ? normalized[0] : normalized;
-  }
-
-  private resolveSingleTemporalWorkflowBindingPath(
-    renderPath: string | string[] | undefined,
-  ): string | undefined {
-    return typeof renderPath === 'string' ? renderPath : undefined;
-  }
-
-  private resolveTemporalParamDisplayName(
-    key: string,
-    definition: Record<string, unknown>,
-    description?: string,
-  ): string | undefined {
-    const declaredDisplayName = typeof definition.displayName === 'string'
-      ? definition.displayName.trim()
-      : undefined;
-    return resolveFriendlyInputDisplayName({
-      name: key,
-      display_name: declaredDisplayName,
-      description,
-    });
-  }
-
-  private normalizeCapabilityDefaultValue(value: unknown): unknown {
-    if (value === undefined || value === null) {
-      return undefined;
-    }
-    if (typeof value === 'string') {
-      return value.trim().length > 0 ? value : undefined;
-    }
-    if (Array.isArray(value)) {
-      return value.length > 0 ? value : undefined;
-    }
-    if (typeof value === 'object') {
-      return Object.keys(value as Record<string, unknown>).length > 0 ? value : undefined;
-    }
-    return value;
-  }
-
-  private inferTemporalParamsFromActivityDsl(
-    activityDsl?: Record<string, unknown>,
-  ): Record<string, { required: boolean; default?: unknown }> {
-    const result: Record<string, { required: boolean; default?: unknown }> = {};
-    const activities = Array.isArray(activityDsl?.activities) ? activityDsl.activities : [];
-
-    activities.forEach((activity) => {
-      if (!activity || typeof activity !== 'object') {
-        return;
-      }
-      const record = activity as Record<string, unknown>;
-      const config = this.parseJson<Record<string, unknown>>(record.config) || {};
-      const configSteps = Array.isArray(config.steps) ? config.steps : [];
-
-      configSteps.forEach((step) => {
-        if (!step || typeof step !== 'object') {
-          return;
-        }
-        const stepRecord = step as Record<string, unknown>;
-        const inputParams = this.parseJson<Record<string, unknown>>(stepRecord.inputParams) || {};
-        Object.entries(inputParams).forEach(([key, value]) => {
-          if (result[key]?.required) {
-            return;
-          }
-          result[key] = {
-            required: result[key]?.required || false,
-            default: value,
-          };
-        });
-      });
-
-      const generatedCode =
-        typeof config.generatedCode === 'string'
-          ? config.generatedCode
-          : typeof record.generatedCode === 'string'
-            ? record.generatedCode
-            : '';
-
-      if (!generatedCode.trim()) {
-        return;
-      }
-
-      const getPattern =
-        /input_data\.get\(\s*["']([A-Za-z0-9_]+)["'](?:\s*,\s*([^)]+))?\s*\)/g;
-      let match: RegExpExecArray | null;
-      while ((match = getPattern.exec(generatedCode))) {
-        const [, key, defaultLiteral] = match;
-        if (!key) {
-          continue;
-        }
-
-        if (defaultLiteral === undefined) {
-          result[key] = { required: true };
-          continue;
-        }
-
-        if (result[key]?.required) {
-          continue;
-        }
-
-        const normalizedDefault = defaultLiteral.trim();
-        result[key] = {
-          required: false,
-          default: this.parsePythonLiteral(normalizedDefault),
-        };
-      }
-    });
-
-    return result;
-  }
-
-  private parsePythonLiteral(value: string): unknown {
-    const normalized = value.trim();
-    if (
-      (normalized.startsWith('"') && normalized.endsWith('"')) ||
-      (normalized.startsWith('\'') && normalized.endsWith('\''))
-    ) {
-      return normalized.slice(1, -1);
-    }
-    if (normalized === 'True') {
-      return true;
-    }
-    if (normalized === 'False') {
-      return false;
-    }
-    if (normalized === 'None') {
-      return null;
-    }
-    if (/^-?\d+(\.\d+)?$/.test(normalized)) {
-      return Number(normalized);
-    }
-    return normalized;
-  }
-
-  private buildSuggestedInputFromSchema(paramsSchema: Record<string, unknown>): Record<string, unknown> {
-    const properties =
-      paramsSchema && typeof paramsSchema === 'object'
-        ? ((paramsSchema as Record<string, unknown>).properties as Record<string, unknown> | undefined)
-        : undefined;
-    if (!properties) {
-      return {};
-    }
-
-    return Object.entries(properties).reduce<Record<string, unknown>>((acc, [key, rawValue]) => {
-      const definition = rawValue && typeof rawValue === 'object'
-        ? (rawValue as Record<string, unknown>)
-        : {};
-      const type = typeof definition.type === 'string' ? definition.type : 'string';
-      if (definition.default !== undefined) {
-        acc[key] = this.normalizeSmokeInputValue(key, definition.default, type);
-        return acc;
-      }
-
-      if (type === 'number') {
-        acc[key] = 1;
-      } else if (type === 'boolean') {
-        acc[key] = true;
-      } else if (type === 'array') {
-        acc[key] = [];
-      } else if (type === 'object') {
-        acc[key] = {};
-      } else if (type === 'date') {
-        acc[key] = new Date().toISOString().split('T')[0];
-      } else {
-        acc[key] = this.normalizeSmokeInputValue(key, `test_${key}`, type);
-      }
-
-      return acc;
-    }, {});
-  }
-
-  private normalizeSmokeInputValue(key: string, value: unknown, typeHint?: string): unknown {
-    if (typeof value !== 'string') {
-      return value;
-    }
-
-    const trimmed = value.trim();
-    // Guard against markdown-style quoted URLs such as: `https://www.bing.com`
-    const unquoted = trimmed.startsWith('`') && trimmed.endsWith('`')
-      ? trimmed.slice(1, -1).trim()
-      : trimmed;
-
-    const type = String(typeHint || '').toLowerCase();
-    const normalizedKey = String(key || '').trim();
-    const isUrlLikeKey = /(^|[_-])(url|uri|link|endpoint|site|website)$/i.test(normalizedKey)
-      || /(?:url|uri|link|endpoint|site|website)$/i.test(normalizedKey);
-    if (type === 'string' && isUrlLikeKey) {
-      return this.normalizeUrlLikeSmokeValue(unquoted);
-    }
-
-    return unquoted;
-  }
-
-  private normalizeUrlLikeSmokeValue(value: string): string {
-    const normalized = String(value || '').trim();
-    if (!normalized || /^test[_-]?url$/i.test(normalized) || /^test_/i.test(normalized)) {
-      return 'https://www.bing.com';
-    }
-    if (/^https?:\/\//i.test(normalized)) {
-      return normalized;
-    }
-    if (/^[\w.-]+\.[a-z]{2,}(\/.*)?$/i.test(normalized)) {
-      return `https://${normalized}`;
-    }
-    return 'https://www.bing.com';
-  }
-
-  private buildSmokeTestInput(
-    release: CapabilityReleaseDTO,
-    snapshot: CapabilitySourceSnapshotDTO,
-    environment: string,
-  ): Record<string, unknown> {
-    const schema =
-      release.sourceType === 'temporal_workflow'
-        ? this.resolveEffectiveTemporalParamsSchema(snapshot.sourcePayload)
-        : (this.parseJson(snapshot.sourcePayload.paramsSchema) as Record<string, unknown> | null) || {};
-
-    const suggestedInput = this.buildSuggestedInputFromSchema(schema);
-    if (release.sourceType === 'temporal_workflow') {
-      const workflowDsl = this.parseJson(snapshot.sourcePayload.workflowDsl) as Record<string, unknown> || {};
-      const inputParams = this.parseJson<Record<string, unknown>>(workflowDsl.inputParams) || {};
-      Object.entries(inputParams).forEach(([key, rawValue]) => {
-        const definition = rawValue && typeof rawValue === 'object'
-          ? (rawValue as Record<string, unknown>)
-          : {};
-        if (definition.defaultValue === undefined) {
-          return;
-        }
-        const normalizedDefaultValue = this.normalizeCapabilityDefaultValue(definition.defaultValue);
-        if (normalizedDefaultValue !== undefined) {
-          const typeHint = typeof definition.type === 'string' ? definition.type : undefined;
-          suggestedInput[key] = this.normalizeSmokeInputValue(key, normalizedDefaultValue, typeHint);
-        }
-      });
-    }
-
-    const fixedTestInput = this.resolveFixedTestInput(snapshot.sourcePayload, environment);
-
+  private getPublishAccessors(): CapabilityReleasePublishAccessors {
     return {
-      ...suggestedInput,
-      ...(fixedTestInput || {}),
-      smokeTest: true,
-      environment,
+      getReleaseOrThrow: (id) => this.getReleaseOrThrow(id),
+      getSkillDraftOrThrow: (id) => this.getSkillDraftOrThrow(id),
+      getCurrentSnapshotOrThrow: (release) => this.getCurrentSnapshotOrThrow(release),
+      getCapabilityDetail: (id) => this.getCapabilityDetail(id),
+      createCapability: (dto, userId) => this.createCapability(dto, userId),
+      updateSource: (id, dto, userId) => this.updateSource(id, dto, userId),
+      insertAuditEvent: (releaseId, eventType, actorId, success, summary, details) =>
+        this.insertAuditEvent(releaseId, eventType, actorId, success, summary, details || undefined),
     };
   }
 
-  private resolveFixedTestInput(
-    sourcePayload: Record<string, unknown>,
-    environment: string,
-  ): Record<string, unknown> | undefined {
-    const deploymentProfiles = asRecord(sourcePayload.deploymentProfiles) || {};
-    const environmentProfile = asRecord(deploymentProfiles[environment]) || {};
-    const candidateInputs = [
-      environmentProfile.smokeTestInput,
-      environmentProfile.testInput,
-      environmentProfile.validationInput,
-      sourcePayload.smokeTestInput,
-      sourcePayload.testInput,
-      sourcePayload.validationInput,
-    ];
-
-    for (const candidate of candidateInputs) {
-      const record = asRecord(candidate);
-      if (record && Object.keys(record).length > 0) {
-        return record;
-      }
-    }
-
-    return undefined;
-  }
-
-  private inferTemporalParamType(
-    defaultValue: unknown,
-    description: string,
-    fieldName = '',
-  ): 'string' | 'number' | 'date' | 'boolean' {
-    if (typeof defaultValue === 'boolean') {
-      return 'boolean';
-    }
-    if (typeof defaultValue === 'number') {
-      return 'number';
-    }
-    if (typeof defaultValue === 'string') {
-      const normalized = defaultValue.trim().toLowerCase();
-      if (/^\d+[smh]$/.test(normalized)) {
-        return 'string';
-      }
-      if (normalized === 'true' || normalized === 'false') {
-        return 'boolean';
-      }
-      if (/^-?\d+(\.\d+)?$/.test(normalized)) {
-        return 'number';
-      }
-      if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(normalized)) {
-        return 'date';
-      }
-    }
-
-    const semanticHint = this.buildSemanticHint(fieldName, description);
-    if (/\b(currency|curr)\b|币种|货币/.test(semanticHint)) {
-      return 'string';
-    }
-    if (/\b(period|month|months|duration)\b|月数|期数|时长/.test(semanticHint)) {
-      return 'number';
-    }
-    if (/日期|时间|\b(date|time)\b/.test(semanticHint)) {
-      return 'date';
-    }
-    if (/数量|金额|\b(number|count|price|age)\b/.test(semanticHint)) {
-      return 'number';
-    }
-    if (/是否|开关|启用|\b(true|false)\b/.test(semanticHint)) {
-      return 'boolean';
-    }
-    return 'string';
-  }
-
-  private normalizeDeclaredTemporalParamType(
-    declaredType: unknown,
-    fieldName = '',
-  ): 'string' | 'number' | 'date' | 'boolean' | undefined {
-    const normalized = String(declaredType || '').trim().toLowerCase();
-    if (!normalized) {
-      return undefined;
-    }
-
-    const hint = this.buildSemanticHint(normalized, fieldName);
-    if (/\b(date|time|datetime|timestamp)\b/.test(hint)) {
-      return 'date';
-    }
-    if (/\b(bool|boolean)\b/.test(hint)) {
-      return 'boolean';
-    }
-    if (/\b(number|int|integer|float|double|decimal|amount|price|count|qty|quantity|ratio|percent)\b/.test(hint)) {
-      return 'number';
-    }
-    return 'string';
-  }
-
-  private buildSemanticHint(...values: unknown[]): string {
-    return values
-      .filter((value) => value !== undefined && value !== null)
-      .map((value) => String(value)
-        .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-        .replace(/[^a-zA-Z0-9\u4e00-\u9fa5]+/g, ' ')
-        .trim()
-        .toLowerCase())
-      .filter((value) => value.length > 0)
-      .join(' ');
-  }
-
-  private buildTemporalExecutionFlowKeys(
-    workflowName: string,
-    workflowDsl: Record<string, unknown>,
-    activityDsl: Record<string, unknown>,
-  ): string[] {
-    const candidates = new Set<string>();
-    [workflowName, workflowDsl.name]
-      .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
-      .forEach((item) => candidates.add(item.trim()));
-
-    const activities = Array.isArray(activityDsl.activities) ? activityDsl.activities : [];
-    activities.forEach((activity) => {
-      if (activity && typeof activity === 'object') {
-        const record = activity as Record<string, unknown>;
-        if (typeof record.name === 'string' && record.name.trim()) {
-          candidates.add(record.name.trim());
-        }
-      }
-    });
-
-    return Array.from(candidates).slice(0, 10);
-  }
-
-  private buildTemporalWorkflowSteps(
-    workflowDsl: Record<string, unknown>,
-  ): Array<{ id?: string; name?: string; type?: string; activityName?: string }> {
-    const steps = Array.isArray(workflowDsl.steps) ? workflowDsl.steps : [];
-    return steps
-      .filter((step): step is Record<string, unknown> => Boolean(step) && typeof step === 'object')
-      .map((step) => ({
-        id: typeof step.id === 'string' ? step.id : undefined,
-        name: typeof step.name === 'string' ? step.name : undefined,
-        type: typeof step.type === 'string' ? step.type : undefined,
-        activityName: typeof step.activityName === 'string' ? step.activityName : undefined,
-      }));
-  }
-
-  private buildTemporalSkillDescription(
-    payload: Record<string, unknown>,
-    baseName: string,
-    _paramsSchema: Record<string, unknown>,
-  ): string {
-    const baseDescription = typeof payload.description === 'string' && this.sanitizeSkillNarrative(payload.description).trim()
-      ? this.sanitizeSkillNarrative(payload.description).trim()
-      : `${baseName} 自动生成技能`;
-    return baseDescription;
-  }
-
-  private sanitizeSkillNarrative(value: string): string {
-    const text = String(value || '').trim();
-    if (!text) {
-      return '';
-    }
-
-    const markers = [
-      /\n\s*输入参数\s*[：:]/,
-      /\n\s*参数定义\s*[：:]/,
-      /\n\s*请求参数\s*[：:]/,
-      /\n\s*必填参数\s*[：:]/,
-      /\n\s*参数列表\s*[：:]/,
-    ];
-
-    let sliced = text;
-    for (const marker of markers) {
-      const match = sliced.match(marker);
-      if (match?.index !== undefined) {
-        sliced = sliced.slice(0, match.index).trim();
-        break;
-      }
-    }
-
-    return sliced
-      .replace(/\s*\n{3,}/g, '\n\n')
-      .replace(/[ \t]{2,}/g, ' ')
-      .trim();
-  }
-
-  private buildSkillMatchSummary(
-    payload: Record<string, unknown>,
-    baseName: string,
-    expectedResult?: string,
-  ): string {
-    const parts: string[] = [];
-    const description = typeof payload.description === 'string'
-      ? this.sanitizeSkillNarrative(payload.description).trim()
-      : '';
-    const goal = typeof payload.goal === 'string'
-      ? this.sanitizeSkillNarrative(payload.goal).trim()
-      : '';
-    const normalizedExpectedResult = typeof expectedResult === 'string'
-      ? this.sanitizeSkillNarrative(expectedResult).trim()
-      : '';
-
-    if (description) {
-      parts.push(description);
-    } else {
-      parts.push(`${baseName} 自动生成技能`);
-    }
-
-    if (
-      normalizedExpectedResult
-      && normalizedExpectedResult !== description
-      && normalizedExpectedResult !== goal
-      && normalizedExpectedResult.length <= 80
-    ) {
-      parts.push(`输出：${normalizedExpectedResult}`);
-    }
-
-    return parts.join('；').slice(0, 240);
-  }
-
-  private buildParamCollectionGuidance(
-    paramsSchema: Record<string, unknown>,
-  ): string | undefined {
-    const schema = paramsSchema && typeof paramsSchema === 'object'
-      ? paramsSchema as Record<string, unknown>
-      : undefined;
-    const properties = schema?.properties && typeof schema.properties === 'object'
-      ? schema.properties as Record<string, unknown>
-      : undefined;
-    const required = Array.isArray(schema?.required)
-      ? schema.required.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
-      : [];
-
-    if (!properties || Object.keys(properties).length === 0) {
-      return undefined;
-    }
-
-    const orderedKeys = [
-      ...required,
-      ...Object.keys(properties).filter((key) => !required.includes(key)),
-    ];
-
-    const lines = orderedKeys.map((key) => {
-      const definition = properties[key] && typeof properties[key] === 'object'
-        ? properties[key] as Record<string, unknown>
-        : {};
-      const label = typeof definition.description === 'string' && definition.description.trim()
-        ? definition.description.trim()
-        : key;
-      return `${key}: ${label}${required.includes(key) ? '（必填）' : '（可选）'}`;
-    });
-
-    return `收集参数时，请优先补齐以下信息：${lines.join('；')}`.slice(0, 600);
-  }
-
-  private buildValidationRules(
-    payload: Record<string, unknown>,
-  ): string | undefined {
-    const goal = typeof payload.goal === 'string'
-      ? this.sanitizeSkillNarrative(payload.goal).trim()
-      : '';
-    return goal || undefined;
-  }
-
-  private validateExecutionFlowPayload(payload: Record<string, unknown>) {
-    const errors: string[] = [];
-    const warnings: string[] = [];
-    const steps = Array.isArray(payload.steps) ? payload.steps : [];
-    const paramsSchema = this.parseJson(payload.paramsSchema) as Record<string, unknown>;
-
-    if (!payload.name || typeof payload.name !== 'string') {
-      errors.push('模板名称不能为空');
-    }
-    if (steps.length === 0) {
-      errors.push('至少需要一个流程步骤');
-    }
-    steps.forEach((step, index) => {
-      const record = this.parseJson(step) as Record<string, unknown>;
-      if (!record.name) {
-        errors.push(`步骤 ${index + 1} 缺少名称`);
-      }
-      if (!record.type) {
-        errors.push(`步骤 ${index + 1} 缺少类型`);
-      }
-      if (record.type === 'api' && !(record.api as Record<string, unknown> | undefined)?.endpoint) {
-        errors.push(`步骤 ${index + 1} 的 API endpoint 不能为空`);
-      }
-    });
-    if (!paramsSchema || typeof paramsSchema !== 'object') {
-      warnings.push('未配置 paramsSchema，后续参数提取能力会受限');
-    }
-
-    const score = Math.max(0, 100 - errors.length * 20 - warnings.length * 5);
+  private getDeploymentAccessors(): CapabilityReleaseDeploymentAccessors {
     return {
-      isValid: errors.length === 0,
-      score,
-      errors,
-      warnings,
+      getReleaseOrThrow: (id) => this.getReleaseOrThrow(id),
+      getCurrentSnapshotOrThrow: (release) => this.getCurrentSnapshotOrThrow(release),
+      getBuildOrThrow: (id) => this.getBuildOrThrow(id),
+      getDeploymentOrThrow: (id) => this.getDeploymentOrThrow(id),
+      getSkillDraftOrThrow: (id) => this.getSkillDraftOrThrow(id),
+      resolveTemporalExecutableBuildOrThrow: (release, snapshot, buildId, userId) =>
+        this.resolveTemporalExecutableBuildOrThrow(release, snapshot, buildId, userId),
+      resolveWorkflowFnOrThrow: (payload) => this.resolveWorkflowFnOrThrow(payload),
+      insertAuditEvent: (releaseId, eventType, actorId, success, summary, details) =>
+        this.insertAuditEvent(releaseId, eventType, actorId, success, summary, details || undefined),
     };
   }
 
-  private buildSkillDraftPayload(
-    release: CapabilityReleaseDTO,
-    snapshot: CapabilitySourceSnapshotDTO,
-    validation: CapabilityValidationDTO,
-  ) {
-    const payload = snapshot.sourcePayload;
-    const baseName = this.extractSourceName(payload) || `Release-${release.releaseVersion}`;
-    const rawParamsSchema = this.parseJson(payload.paramsSchema) as Record<string, unknown> | null;
-    const paramsSchema =
-      release.sourceType === 'temporal_workflow'
-        ? this.resolveEffectiveTemporalParamsSchema(payload)
-        : rawParamsSchema && typeof rawParamsSchema === 'object'
-          ? rawParamsSchema
-          : {};
-    const workflowDsl = this.parseJson(payload.workflowDsl) as Record<string, unknown> || {};
-    const outputParams = this.parseJson(payload.outputParams) as Record<string, unknown> | null;
-    const resolvedOutputParams = outputParams && Object.keys(outputParams).length > 0
-      ? outputParams
-      : this.buildTemporalOutputParamsFromValidation(validation);
-    const expectedResult = typeof payload.expectedResult === 'string' && payload.expectedResult.trim()
-      ? payload.expectedResult.trim()
-      : this.extractTemporalExpectedResult({
-        ...workflowDsl,
-        outputParams: resolvedOutputParams,
-      }) || undefined;
-    const workflowSteps = Array.isArray(payload.workflowSteps)
-      ? payload.workflowSteps
-      : this.buildTemporalWorkflowSteps(workflowDsl);
-    const executionFlowKeys = Array.isArray(payload.executionFlowKeys)
-      ? payload.executionFlowKeys.filter((item): item is string => typeof item === 'string')
-      : [];
-    const description = release.sourceType === 'temporal_workflow'
-      ? this.buildTemporalSkillDescription(payload, baseName, paramsSchema || { properties: {}, required: [] })
-      : this.sanitizeSkillNarrative(String(payload.description || payload.goal || `${baseName} 自动生成技能`));
-    const matchSummary = this.buildSkillMatchSummary(payload, baseName, expectedResult);
-    const paramCollectionGuidance = this.buildParamCollectionGuidance(paramsSchema || {});
-    const validationRules = this.buildValidationRules(payload);
-    const preservedRuntimeMetadata = this.extractRuntimeMetadataFromDraftPayload(payload);
-    const temporalRuntimeMetadata = release.sourceType === 'temporal_workflow'
-      ? this.hydrateTemporalRuntimeMetadata(preservedRuntimeMetadata, workflowDsl)
-      : preservedRuntimeMetadata;
-
-    const finalDescription = description.length > 500 ? description.slice(0, 497) + '...' : description;
-
-    if (release.sourceType === 'browser_recording') {
-      const browserExecutionFlow = this.normalizeBrowserRecordingExecutionFlow(payload.executionFlow);
-      const declaredTools = Array.isArray(payload.tools)
-        ? payload.tools
-          .map((item) => normalizeBrowserRecordingToolName(item))
-          .filter((item): item is string => typeof item === 'string')
-        : [];
-      const flowTools = browserExecutionFlow
-        .map((step) => {
-          const tool = step.tool;
-          if (!tool || typeof tool !== 'object' || Array.isArray(tool)) {
-            return undefined;
-          }
-          return normalizeBrowserRecordingToolName((tool as Record<string, unknown>).name);
-        })
-        .filter((item): item is string => typeof item === 'string');
-      const tools = Array.from(new Set(['skill_match', ...declaredTools, ...flowTools]));
-      const apiEndpoints =
-        payload.apiEndpoints && typeof payload.apiEndpoints === 'object' && !Array.isArray(payload.apiEndpoints)
-          ? payload.apiEndpoints as Record<string, unknown>
-          : {
-              runtimeMetadata: {
-                sourceType: 'browser_recording',
-                matchSummary,
-                paramCollectionGuidance,
-                validationRules,
-                goal: typeof payload.goal === 'string' ? payload.goal : undefined,
-                expectedResult,
-              },
-            };
-
-      return {
-        name: baseName,
-        description: finalDescription,
-        triggerKeywords: executionFlowKeys.length > 0 ? executionFlowKeys : [baseName],
-        paramsSchema: paramsSchema || { properties: {}, required: [] },
-        executionFlowTemplateIds: [],
-        executionFlow: browserExecutionFlow,
-        tools,
-        apiEndpoints,
-        validationId: validation.id,
-      };
-    }
-
-    if (release.sourceType === 'execution_flow_template') {
-      const preservedOutputParams = asRecord(preservedRuntimeMetadata.outputParams);
-      return {
-        name: baseName.replace(/流程$/, ''),
-        description: finalDescription,
-        triggerKeywords: executionFlowKeys.length > 0 ? executionFlowKeys : [baseName],
-        paramsSchema: paramsSchema || { properties: {}, required: [] },
-        executionFlowTemplateIds: release.sourceId ? [release.sourceId] : [],
-        tools: ['skill_match', 'flow_execute'],
-        apiEndpoints: {
-          runtimeMetadata: {
-            ...preservedRuntimeMetadata,
-            sourceType: 'execution_flow_template',
-            sourceTemplate:
-              asRecord(preservedRuntimeMetadata.sourceTemplate)
-              || this.extractExecutionFlowSourceTemplate(payload),
-            goal: this.pickFirstNonEmptyString(payload.goal, preservedRuntimeMetadata.goal),
-            expectedResult: this.pickFirstNonEmptyString(expectedResult, preservedRuntimeMetadata.expectedResult),
-            outputParams: resolvedOutputParams || preservedOutputParams || {},
-            matchSummary: this.pickFirstNonEmptyString(preservedRuntimeMetadata.matchSummary, matchSummary),
-            paramCollectionGuidance: this.pickFirstNonEmptyString(
-              preservedRuntimeMetadata.paramCollectionGuidance,
-              paramCollectionGuidance,
-            ),
-            validationRules: this.pickFirstNonEmptyString(
-              preservedRuntimeMetadata.validationRules,
-              validationRules,
-            ),
-          },
-        },
-        validationId: validation.id,
-      };
-    }
-
-    const preservedOutputParams = asRecord(preservedRuntimeMetadata.outputParams);
+  private getAssistAccessors(): CapabilityReleaseAssistAccessors {
     return {
-      name: baseName.replace(/工作流$/, ''),
-      description: finalDescription,
-      triggerKeywords: executionFlowKeys.length > 0 ? executionFlowKeys : [baseName],
-      paramsSchema: paramsSchema || { properties: {}, required: [] },
-      executionFlowTemplateIds: release.sourceId ? [release.sourceId] : [],
-      tools: ['skill_match', 'flow_execute'],
-      apiEndpoints: {
-        runtimeMetadata: {
-          ...temporalRuntimeMetadata,
-          matchSummary: this.pickFirstNonEmptyString(temporalRuntimeMetadata.matchSummary, matchSummary),
-          paramCollectionGuidance: this.pickFirstNonEmptyString(
-            temporalRuntimeMetadata.paramCollectionGuidance,
-            paramCollectionGuidance,
-          ),
-          validationRules: this.pickFirstNonEmptyString(
-            temporalRuntimeMetadata.validationRules,
-            validationRules,
-          ),
-          sourceType: 'temporal_workflow',
-          sourceTemplate:
-            asRecord(temporalRuntimeMetadata.sourceTemplate)
-            || this.extractTemporalSourceTemplate(
-              this.parseJson(payload.workflowDsl) as Record<string, unknown> || {},
-              this.parseJson(payload.activityDsl) as Record<string, unknown> || {},
-            ),
-          goal: this.pickFirstNonEmptyString(payload.goal, temporalRuntimeMetadata.goal),
-          expectedResult: this.pickFirstNonEmptyString(expectedResult, temporalRuntimeMetadata.expectedResult),
-          outputParams: resolvedOutputParams || preservedOutputParams || {},
-          taskQueue: this.pickFirstNonEmptyString(payload.taskQueue, temporalRuntimeMetadata.taskQueue),
-          workflowSteps,
-        },
-      },
-      validationId: validation.id,
+      getReleaseOrThrow: (id) => this.getReleaseOrThrow(id),
+      getCurrentSnapshotOrThrow: (release) => this.getCurrentSnapshotOrThrow(release),
+      getBuildOrThrow: (id) => this.getBuildOrThrow(id),
+      getValidationOrThrow: (id) => this.getValidationOrThrow(id),
+      getDeploymentOrThrow: (id) => this.getDeploymentOrThrow(id),
+      insertAuditEvent: (releaseId, eventType, actorId, success, summary, details) =>
+        this.insertAuditEvent(releaseId, eventType, actorId, success, summary, details || undefined),
     };
-  }
-
-  private hydrateTemporalRuntimeMetadata(
-    runtimeMetadata: Record<string, unknown>,
-    workflowDsl: Record<string, unknown>,
-  ): Record<string, unknown> {
-    const workflowInputPolicy = this.extractTemporalWorkflowInputPolicy(workflowDsl);
-    const mappingHints = this.buildTemporalWorkflowMappingHints(workflowDsl, workflowInputPolicy);
-
-    return {
-      ...runtimeMetadata,
-      ...(asRecord(runtimeMetadata.workflowInputPolicy)
-        ? {}
-        : workflowInputPolicy
-          ? { workflowInputPolicy }
-          : {}),
-      ...(Array.isArray(runtimeMetadata.mappingHints) && runtimeMetadata.mappingHints.length > 0
-        ? {}
-        : mappingHints.length > 0
-          ? { mappingHints }
-          : {}),
-    };
-  }
-
-  private buildTemporalWorkflowMappingHints(
-    workflowDsl: Record<string, unknown>,
-    workflowInputPolicy?: Record<string, unknown>,
-  ): Array<Record<string, string>> {
-    const inputParams = this.parseJson<Record<string, unknown>>(workflowDsl.inputParams) || {};
-    const workflowInputPolicies = asRecord(workflowInputPolicy?.params) || {};
-
-    return Object.entries(inputParams).flatMap(([key, value]) => {
-      const definition = asRecord(value) || {};
-      const workflowPolicy = asRecord(workflowInputPolicies[key]) || {};
-      const renderPath = this.resolveTemporalWorkflowRenderPath(definition, workflowPolicy);
-      const renderPaths = typeof renderPath === 'string'
-        ? [renderPath]
-        : Array.isArray(renderPath)
-          ? renderPath
-          : [];
-
-      return renderPaths.map((path) => ({
-        parameter: key,
-        path,
-      }));
-    });
-  }
-
-  private extractRuntimeMetadataFromDraftPayload(
-    payload: Record<string, unknown>,
-  ): Record<string, unknown> {
-    return asRecord(asRecord(payload.apiEndpoints)?.runtimeMetadata) || {};
-  }
-
-  private extractTemporalSourceTemplate(
-    workflowDsl: Record<string, unknown>,
-    activityDsl: Record<string, unknown>,
-  ): Record<string, unknown> | undefined {
-    const workflowSource = this.parseJson<Record<string, unknown>>(workflowDsl.sourceTemplate) || {};
-    const activities = Array.isArray(activityDsl.activities) ? activityDsl.activities as Array<Record<string, unknown>> : [];
-    const carboneActivity = activities.find((activity) => {
-      if (activity?.handler === 'carbone') {
-        return true;
-      }
-      const config = activity?.config && typeof activity.config === 'object'
-        ? activity.config as Record<string, unknown>
-        : {};
-      const steps = Array.isArray(config.steps) ? config.steps as Array<Record<string, unknown>> : [];
-      return steps.some((step) => step?.type === 'carbone');
-    });
-    const carboneConfig = carboneActivity?.config && typeof carboneActivity.config === 'object'
-      ? carboneActivity.config as Record<string, unknown>
-      : {};
-    const carboneSteps = Array.isArray(carboneConfig.steps) ? carboneConfig.steps as Array<Record<string, unknown>> : [];
-    const carboneStep = carboneSteps.find((step) => step?.type === 'carbone');
-    const carboneStepConfig = carboneStep?.config && typeof carboneStep.config === 'object'
-      ? carboneStep.config as Record<string, unknown>
-      : {};
-    const inputParams = this.parseJson<Record<string, unknown>>(workflowDsl.inputParams) || {};
-
-    const sourceTemplate = {
-      templateId: this.pickFirstNonEmptyString(workflowSource.templateId, carboneStepConfig.templateId, carboneConfig.templateId),
-      skillId: this.pickFirstNonEmptyString(workflowSource.skillId, carboneConfig.skillId),
-      fileName: this.pickFirstNonEmptyString(workflowSource.fileName, carboneConfig.fileName),
-      format: this.pickFirstNonEmptyString(workflowSource.format, carboneStepConfig.format, carboneConfig.format),
-      variableCount: this.pickFirstPositiveNumber(
-        workflowSource.variableCount,
-        carboneConfig.variableCount,
-        Object.keys(inputParams).length,
-      ),
-    };
-
-    if (!sourceTemplate.templateId && !sourceTemplate.skillId && !sourceTemplate.fileName) {
-      return undefined;
-    }
-
-    return sourceTemplate;
-  }
-
-  private extractExecutionFlowSourceTemplate(
-    payload: Record<string, unknown>,
-  ): Record<string, unknown> | undefined {
-    const declaredSourceTemplate = this.parseJson<Record<string, unknown>>(payload.sourceTemplate) || {};
-    const steps = this.parseJson<Array<Record<string, unknown>>>(payload.steps) || [];
-    const paramsSchema = this.parseJson<Record<string, unknown>>(payload.paramsSchema) || {};
-    const paramsProperties =
-      paramsSchema.properties && typeof paramsSchema.properties === 'object'
-        ? (paramsSchema.properties as Record<string, unknown>)
-        : paramsSchema;
-    const renderStep = steps.find((step) => {
-      const api = step?.api && typeof step.api === 'object'
-        ? step.api as Record<string, unknown>
-        : {};
-      return typeof api.endpoint === 'string' && api.endpoint.includes('/api/carbone/render');
-    });
-    const renderApi = renderStep?.api && typeof renderStep.api === 'object'
-      ? renderStep.api as Record<string, unknown>
-      : {};
-    const renderBody = renderApi.body && typeof renderApi.body === 'object'
-      ? renderApi.body as Record<string, unknown>
-      : {};
-
-    const sourceTemplate = {
-      templateId: this.pickFirstNonEmptyString(
-        declaredSourceTemplate.templateId,
-        payload.templateId,
-        payload.template_id,
-        renderBody.templateId,
-        renderBody.template_id,
-      ),
-      skillId: this.pickFirstNonEmptyString(
-        declaredSourceTemplate.skillId,
-        payload.skillId,
-        payload.skill_id,
-        renderBody.skillId,
-        renderBody.skill_id,
-      ),
-      fileName: this.pickFirstNonEmptyString(
-        declaredSourceTemplate.fileName,
-        payload.fileName,
-        payload.file_name,
-        renderBody.fileName,
-        renderBody.file_name,
-      ),
-      format: this.pickFirstNonEmptyString(
-        declaredSourceTemplate.format,
-        payload.outputFormat,
-        payload.output_format,
-        payload.format,
-        renderBody.outputFormat,
-        renderBody.output_format,
-        renderBody.format,
-      ),
-      variableCount: this.pickFirstPositiveNumber(
-        declaredSourceTemplate.variableCount,
-        Object.keys(paramsProperties).length,
-      ),
-    };
-
-    const isDocumentCategory = typeof payload.category === 'string' && payload.category === 'document';
-    if (
-      !sourceTemplate.templateId
-      && !sourceTemplate.skillId
-      && !sourceTemplate.fileName
-      && !isDocumentCategory
-    ) {
-      return undefined;
-    }
-
-    return sourceTemplate;
-  }
-
-  private async executeDocumentPublishedSkill(
-    release: CapabilityReleaseDTO,
-    skillId: string,
-    input: Record<string, unknown> | undefined,
-    userId?: string,
-    options?: {
-      executionId?: string;
-      stepId?: string;
-      capabilityVersion?: string;
-      runtimeType?: string;
-    },
-  ): Promise<ExecuteCapabilityRuntimeResultDTO> {
-    const snapshot = await this.getCurrentSnapshotOrThrow(release);
-    const sourceTemplate =
-      this.parseJson<Record<string, unknown>>(snapshot.sourcePayload.sourceTemplate)
-      || this.extractExecutionFlowSourceTemplate(snapshot.sourcePayload)
-      || {};
-    const renderInput = this.resolveDocumentRenderInput(input, sourceTemplate);
-    const renderViaTemplateId = typeof renderInput.templateId === 'string' && renderInput.templateId.trim().length > 0;
-    const url = renderViaTemplateId
-      ? `${getCarboneServiceUrl()}/studio/render`
-      : `${getCarboneServiceUrl()}/studio/render-with-skill`;
-    const requestBody = renderViaTemplateId
-      ? {
-          templateId: renderInput.templateId,
-          data: renderInput.data,
-          outputFormat: renderInput.outputFormat,
-        }
-      : {
-          skillId,
-          params: renderInput.data,
-          outputFormat: renderInput.outputFormat,
-        };
-    const logs = [
-      `[DocumentRuntime] 调用文档运行时: ${renderViaTemplateId ? 'template_render' : 'skill_render'}`,
-      `[DocumentRuntime] endpoint=${url}`,
-      `[DocumentRuntime] publishedSkillId=${skillId}`,
-      ...(renderViaTemplateId ? [`[DocumentRuntime] templateId=${renderInput.templateId}`] : []),
-      ...(renderInput.outputFormat ? [`[DocumentRuntime] outputFormat=${renderInput.outputFormat}`] : []),
-    ];
-
-    try {
-      const response = await axios.post<Record<string, unknown>>(url, requestBody, {
-        timeout: 120000,
-      });
-      const responseData = response.data;
-      const downloadUrl = extractDownloadUrl(responseData);
-      
-      const rawResult = (responseData !== undefined && responseData !== null)
-        ? (typeof responseData === 'object' && !Array.isArray(responseData)
-          ? (responseData as Record<string, unknown>)
-          : { result: responseData })
-        : {};
-
-      const normalizedResult = {
-        ...rawResult,
-        ...(downloadUrl ? { downloadUrl } : {}),
-        ...(renderViaTemplateId && renderInput.templateId ? { templateId: renderInput.templateId } : {}),
-      };
-
-      await this.insertAuditEvent(
-        release.id,
-        'skill_runtime_invoked',
-        userId,
-        true,
-        `运行时调用 Document Skill 成功: ${skillId}`,
-        {
-          publishedSkillId: skillId,
-          capabilityId: skillId,
-          capabilityVersion: options?.capabilityVersion || null,
-          runtime: 'document',
-          requestedRuntimeType: options?.runtimeType || null,
-          executionId: options?.executionId || null,
-          stepId: options?.stepId || null,
-          sourceTemplate,
-          renderMode: renderViaTemplateId ? 'templateId' : 'published_skill',
-        },
-      );
-
-      return {
-        releaseId: release.id,
-        capabilityId: skillId,
-        capabilityVersion: options?.capabilityVersion || null,
-        publishedSkillId: skillId,
-        runtime: 'document',
-        success: true,
-        downloadUrl: downloadUrl || null,
-        output: normalizedResult,
-        result: normalizedResult,
-        logs,
-        error: null,
-      };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Document runtime execution failed';
-      logs.push(`[DocumentRuntime][Error] ${message}`);
-
-      await this.insertAuditEvent(
-        release.id,
-        'skill_runtime_invoked',
-        userId,
-        false,
-        `运行时调用 Document Skill 失败: ${skillId}`,
-        {
-          publishedSkillId: skillId,
-          capabilityId: skillId,
-          capabilityVersion: options?.capabilityVersion || null,
-          runtime: 'document',
-          requestedRuntimeType: options?.runtimeType || null,
-          executionId: options?.executionId || null,
-          stepId: options?.stepId || null,
-          sourceTemplate,
-          renderMode: renderViaTemplateId ? 'templateId' : 'published_skill',
-          error: message,
-        },
-      );
-
-      return {
-        releaseId: release.id,
-        capabilityId: skillId,
-        capabilityVersion: options?.capabilityVersion || null,
-        publishedSkillId: skillId,
-        runtime: 'document',
-        success: false,
-        downloadUrl: null,
-        output: null,
-        result: null,
-        logs,
-        error: message,
-      };
-    }
-  }
-
-  private async executeBrowserRecordingPublishedSkill(
-    release: CapabilityReleaseDTO,
-    skillId: string,
-    input: Record<string, unknown> | undefined,
-    userId?: string,
-    options?: {
-      executionId?: string;
-      stepId?: string;
-      capabilityVersion?: string;
-      runtimeType?: string;
-      runtimeSessionId?: string;
-      metadata?: Record<string, unknown>;
-    },
-  ): Promise<ExecuteCapabilityRuntimeResultDTO> {
-    const snapshot = await this.getCurrentSnapshotOrThrow(release);
-    const runtimeInput = input || {};
-    const runtimeSessionId = options?.runtimeSessionId || `capability-runtime-${randomUUID()}`;
-    const shouldResetSession = !options?.runtimeSessionId;
-    const backend = this.resolveBrowserRecordingBackend(snapshot.sourcePayload);
-    const browserWorkerUrl = getBrowserWorkerUrl();
-    const runtimeExecutionId = options?.executionId || `capability-runtime-${release.id}`;
-    const runtimeSteps = this.buildBrowserRecordingRuntimeSteps(snapshot.sourcePayload, runtimeInput);
-    const executionStepMetadata = this.extractRequestedExecutionStepMetadata(options?.metadata);
-    const targetRuntimeStep = this.resolveRequestedBrowserRecordingStep(runtimeSteps, executionStepMetadata);
-    const runtimeStepsToExecute = targetRuntimeStep ? [targetRuntimeStep] : runtimeSteps;
-    const initialUrl = this.pickFirstNonEmptyString(
-      runtimeInput.url,
-      runtimeSteps.find((step) => step.action === 'goto')?.target,
-    );
-    const logs = [
-      `[BrowserRuntime] 调用浏览器录制运行时`,
-      `[BrowserRuntime] backend=${backend}`,
-      `[BrowserRuntime] runtimeSessionId=${runtimeSessionId}`,
-      `[BrowserRuntime] publishedSkillId=${skillId}`,
-      `[BrowserRuntime] stepCount=${runtimeStepsToExecute.length}`,
-    ];
-    let preserveRuntimeSession = false;
-
-    try {
-      const shouldInitBrowserSession = !options?.runtimeSessionId || !targetRuntimeStep || targetRuntimeStep.action === 'goto';
-      if (shouldInitBrowserSession) {
-        await axios.post<{ success: boolean; message?: string }>(
-          `${browserWorkerUrl}/browser/init`,
-          {
-            backend,
-            runtimeSessionId,
-            ...(initialUrl ? { initialUrl } : {}),
-            sessionPreferences: this.resolveBrowserRecordingSessionPreferences(snapshot.sourcePayload),
-          },
-          { timeout: 60000 },
-        );
-      }
-
-      const stepResults: Array<Record<string, unknown>> = [];
-      for (let index = 0; index < runtimeStepsToExecute.length; index += 1) {
-        const step = runtimeStepsToExecute[index] as {
-          id: string;
-          name: string;
-          action: string;
-          target?: string;
-          args?: Record<string, unknown>;
-        };
-        logs.push(`[BrowserRuntime][Step ${index + 1}] ${step.action}${step.target ? ` -> ${step.target}` : ''}`);
-
-        const response = await axios.post<{
-          success: boolean;
-          snapshotId?: string;
-          output?: Record<string, unknown>;
-          errorCode?: string;
-          errorMessage?: string;
-          shouldTakeover?: boolean;
-          takeoverReason?: string;
-        }>(
-          `${browserWorkerUrl}/browser/execute-step`,
-          {
-            executionId: runtimeExecutionId,
-            runtimeSessionId,
-            backend,
-            stepId: `${options?.stepId || release.id}:${step.id}`,
-            action: step.action,
-            ...(step.target ? { target: step.target } : {}),
-            ...(step.args && Object.keys(step.args).length > 0 ? { args: step.args } : {}),
-          },
-          { timeout: 120000 },
-        );
-
-        const result = response.data;
-        if (!result.success) {
-          const message = result.errorMessage || `浏览器步骤执行失败: ${step.action}`;
-          if (result.shouldTakeover) {
-            preserveRuntimeSession = true;
-          }
-          logs.push(`[BrowserRuntime][Error] ${message}`);
-          return {
-            releaseId: release.id,
-            capabilityId: skillId,
-            capabilityVersion: options?.capabilityVersion || null,
-            publishedSkillId: skillId,
-            runtime: 'browser_recording',
-            success: false,
-            output: {
-              stepResults,
-              failedStep: step.name,
-              failedAction: step.action,
-              snapshotId: result.snapshotId || null,
-            },
-            result: {
-              stepResults,
-              failedStep: step.name,
-              failedAction: step.action,
-              snapshotId: result.snapshotId || null,
-            },
-            logs,
-            error: message,
-          };
-        }
-
-        stepResults.push({
-          stepId: step.id,
-          name: step.name,
-          action: step.action,
-          target: step.target || null,
-          snapshotId: result.snapshotId || null,
-          output: result.output || null,
-        });
-      }
-
-      const normalizedResult = {
-        runtimeSessionId,
-        backend,
-        stepResults,
-      };
-
-      await this.insertAuditEvent(
-        release.id,
-        'skill_runtime_invoked',
-        userId,
-        true,
-        `运行时调用 Browser Recording Skill 成功: ${skillId}`,
-        {
-          publishedSkillId: skillId,
-          capabilityId: skillId,
-          capabilityVersion: options?.capabilityVersion || null,
-          runtime: 'browser_recording',
-          requestedRuntimeType: options?.runtimeType || null,
-          executionId: options?.executionId || null,
-          stepId: options?.stepId || null,
-          runtimeSessionId,
-          backend,
-        },
-      );
-
-      return {
-        releaseId: release.id,
-        capabilityId: skillId,
-        capabilityVersion: options?.capabilityVersion || null,
-        publishedSkillId: skillId,
-        runtime: 'browser_recording',
-        success: true,
-        output: normalizedResult,
-        result: normalizedResult,
-        logs,
-        error: null,
-      };
-    } catch (error) {
-      const axiosLikeError = error as { response?: { status?: number; data?: unknown }; message?: string } | undefined;
-      const message = axiosLikeError?.response
-        ? (() => {
-            const detail = axiosLikeError.response?.data;
-            if (detail !== undefined) {
-              return `HTTP ${axiosLikeError.response?.status || 500}: ${JSON.stringify(detail)}`;
-            }
-            return axiosLikeError.message || 'Browser recording runtime execution failed';
-          })()
-        : error instanceof Error
-          ? error.message
-          : 'Browser recording runtime execution failed';
-      logs.push(`[BrowserRuntime][Error] ${message}`);
-
-      await this.insertAuditEvent(
-        release.id,
-        'skill_runtime_invoked',
-        userId,
-        false,
-        `运行时调用 Browser Recording Skill 失败: ${skillId}`,
-        {
-          publishedSkillId: skillId,
-          capabilityId: skillId,
-          capabilityVersion: options?.capabilityVersion || null,
-          runtime: 'browser_recording',
-          requestedRuntimeType: options?.runtimeType || null,
-          executionId: options?.executionId || null,
-          stepId: options?.stepId || null,
-          runtimeSessionId,
-          backend,
-          error: message,
-        },
-      );
-
-      return {
-        releaseId: release.id,
-        capabilityId: skillId,
-        capabilityVersion: options?.capabilityVersion || null,
-        publishedSkillId: skillId,
-        runtime: 'browser_recording',
-        success: false,
-        output: null,
-        result: null,
-        logs,
-        error: message,
-      };
-    } finally {
-      if (shouldResetSession && !preserveRuntimeSession) {
-        await axios.post(
-          `${browserWorkerUrl}/browser/reset`,
-          { backend, runtimeSessionId },
-          { timeout: 30000 },
-        ).catch(() => undefined);
-      }
-    }
-  }
-
-  private resolveBrowserRecordingBackend(payload: Record<string, unknown>): string {
-    const apiEndpoints = asRecord(payload.apiEndpoints);
-    const runtimeMetadata = asRecord(apiEndpoints?.runtimeMetadata);
-    const executionPlan = asRecord(runtimeMetadata?.executionPlan);
-
-    return this.pickFirstNonEmptyString(
-      payload.backend,
-      payload.executionBackend,
-      runtimeMetadata?.backend,
-      executionPlan?.backend,
-      process.env.BROWSER_RECORDING_BACKEND,
-      process.env.BROWSER_EXECUTION_BACKEND,
-      'cli',
-    ) || 'cli';
-  }
-
-  private resolveBrowserRecordingSessionPreferences(
-    payload: Record<string, unknown>,
-  ): {
-    mode?: 'interactive' | 'agent';
-    enableCodegen?: boolean;
-    headless?: boolean;
-  } {
-    const apiEndpoints = asRecord(payload.apiEndpoints);
-    const runtimeMetadata = asRecord(apiEndpoints?.runtimeMetadata);
-    const executionPlan = asRecord(runtimeMetadata?.executionPlan);
-    const sessionPreferences =
-      asRecord(payload.sessionPreferences)
-      || asRecord(runtimeMetadata?.sessionPreferences)
-      || asRecord(executionPlan?.sessionPreferences)
-      || {};
-    const mode = this.pickFirstNonEmptyString(
-      sessionPreferences.mode,
-      process.env.BROWSER_RUNTIME_SESSION_MODE,
-      'agent',
-    );
-
-    return {
-      ...(mode === 'interactive' || mode === 'agent' ? { mode } : {}),
-      enableCodegen:
-        typeof sessionPreferences.enableCodegen === 'boolean'
-          ? sessionPreferences.enableCodegen
-          : process.env.BROWSER_RUNTIME_ENABLE_CODEGEN === 'true'
-            ? true
-            : process.env.BROWSER_RUNTIME_ENABLE_CODEGEN === 'false'
-              ? false
-              : false,
-      headless:
-        typeof sessionPreferences.headless === 'boolean'
-          ? sessionPreferences.headless
-          : process.env.BROWSER_RUNTIME_HEADLESS === 'true'
-            ? true
-            : process.env.BROWSER_RUNTIME_HEADLESS === 'false'
-              ? false
-              : false,
-    };
-  }
-
-  private buildBrowserRecordingRuntimeSteps(
-    payload: Record<string, unknown>,
-    runtimeInput: Record<string, unknown>,
-  ): Array<{
-    id: string;
-    name: string;
-    action: string;
-    target?: string;
-    args?: Record<string, unknown>;
-  }> {
-    const executionFlow = this.normalizeBrowserRecordingExecutionFlow(payload.executionFlow);
-    const sourceSteps = Array.isArray(payload.steps)
-      ? payload.steps.filter(
-          (item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object' && !Array.isArray(item),
-        )
-      : [];
-    const baseSteps = executionFlow.length > 0 ? executionFlow : sourceSteps;
-
-    return baseSteps.map((step, index) => {
-      const runtimePayload = asRecord(step.input) || asRecord(step.config) || {};
-      const resolvedPayload = asRecord(
-        this.resolveBrowserRecordingRuntimeValue(runtimePayload, runtimeInput),
-      ) || {};
-      const resolvedParams = asRecord(resolvedPayload.params) || {};
-      const action = this.normalizeBrowserRecordingStepAction(
-        this.pickFirstNonEmptyString(resolvedPayload.action, step.action),
-      );
-      if (!action) {
-        throw new BadRequestException(`浏览器录制步骤缺少 action: ${step.id || `step_${index + 1}`}`);
-      }
-      const target = this.resolveBrowserRecordingRuntimeTarget(
-        action,
-        resolvedPayload,
-        resolvedParams,
-      );
-      const args = this.buildBrowserRecordingRuntimeArgs(
-        action,
-        resolvedPayload,
-        resolvedParams,
-      );
-
-      return {
-        id: this.pickFirstNonEmptyString(step.id, resolvedPayload.id, `step_${index + 1}`) || `step_${index + 1}`,
-        name: this.pickFirstNonEmptyString(step.name, `Step ${index + 1}`) || `Step ${index + 1}`,
-        action,
-        ...(target ? { target } : {}),
-        ...(Object.keys(args).length > 0 ? { args } : {}),
-      };
-    });
-  }
-
-  private resolveBrowserRecordingRuntimeTarget(
-    action: string,
-    resolvedPayload: Record<string, unknown>,
-    resolvedParams: Record<string, unknown>,
-  ): string | undefined {
-    const locatorTarget = this.buildBrowserRecordingTargetFromLocator(
-      asRecord(resolvedPayload.locator) || asRecord(resolvedParams.locator),
-    );
-    if (locatorTarget) {
-      return locatorTarget;
-    }
-
-    const selectorTarget = this.normalizeBrowserRecordingTarget(
-      this.pickFirstNonEmptyString(
-        resolvedPayload.selector,
-        resolvedParams.selector,
-      ),
-    );
-    if (selectorTarget) {
-      return selectorTarget;
-    }
-
-    const explicitTarget = this.normalizeBrowserRecordingTarget(
-      this.pickFirstNonEmptyString(
-        resolvedPayload.target,
-        resolvedParams.target,
-        action === 'goto' ? resolvedPayload.url : undefined,
-        action === 'goto' ? resolvedParams.url : undefined,
-      ),
-    );
-    if (!explicitTarget) {
-      return undefined;
-    }
-
-    if (this.isSuspiciousBrowserRecordingTarget(action, explicitTarget, resolvedPayload, resolvedParams)) {
-      return undefined;
-    }
-
-    return explicitTarget;
-  }
-
-  private buildBrowserRecordingRuntimeArgs(
-    action: string,
-    resolvedPayload: Record<string, unknown>,
-    resolvedParams: Record<string, unknown>,
-  ): Record<string, unknown> {
-    const pick = (...values: unknown[]) => values.find((value) => value !== undefined);
-
-    switch (action) {
-      case 'goto':
-        return Object.fromEntries(
-          Object.entries({
-            url: pick(resolvedPayload.url, resolvedParams.url),
-          }).filter(([, value]) => value !== undefined),
-        );
-      case 'fill':
-        return Object.fromEntries(
-          Object.entries({
-            value: pick(resolvedParams.value, resolvedPayload.value, resolvedPayload.text, resolvedPayload.query),
-          }).filter(([, value]) => value !== undefined),
-        );
-      case 'type_text':
-        return Object.fromEntries(
-          Object.entries({
-            text: pick(resolvedParams.text, resolvedPayload.text, resolvedPayload.value),
-            submit_key: pick(resolvedParams.submit_key, resolvedPayload.submit_key),
-          }).filter(([, value]) => value !== undefined),
-        );
-      case 'press_key':
-        return Object.fromEntries(
-          Object.entries({
-            key: pick(resolvedParams.key, resolvedPayload.key, resolvedPayload.value),
-          }).filter(([, value]) => value !== undefined),
-        );
-      case 'wait':
-        return Object.fromEntries(
-          Object.entries({
-            duration: pick(
-              resolvedParams.duration,
-              resolvedParams.timeoutMs,
-              resolvedPayload.duration,
-              resolvedPayload.timeoutMs,
-            ),
-            selector: pick(resolvedParams.selector, resolvedPayload.selector),
-          }).filter(([, value]) => value !== undefined),
-        );
-      case 'smart_search':
-      case 'search':
-        return Object.fromEntries(
-          Object.entries({
-            query: pick(resolvedParams.query, resolvedPayload.query, resolvedPayload.text, resolvedPayload.value),
-          }).filter(([, value]) => value !== undefined),
-        );
-      case 'click_result':
-        return Object.fromEntries(
-          Object.entries({
-            index: pick(resolvedParams.index, resolvedPayload.index),
-          }).filter(([, value]) => value !== undefined),
-        );
-      case 'screenshot':
-      case 'snapshot':
-      case 'read_page':
-      case 'get_text':
-      case 'switch_latest_tab':
-      case 'hover':
-      case 'click':
-        return {};
-      default:
-        return { ...resolvedParams };
-    }
-  }
-
-  private buildBrowserRecordingTargetFromLocator(
-    locator?: Record<string, unknown>,
-  ): string | undefined {
-    if (!locator) {
-      return undefined;
-    }
-
-    const locatorType = this.pickFirstNonEmptyString(locator.type)?.toLowerCase();
-    const locatorValue = this.pickFirstNonEmptyString(locator.value);
-    if (!locatorType || !locatorValue) {
-      return undefined;
-    }
-
-    switch (locatorType) {
-      case 'ref':
-        return locatorValue;
-      case 'role':
-        return `role=${locatorValue}`;
-      case 'text':
-        return `text=${locatorValue}`;
-      case 'test-id':
-        return `[data-testid="${locatorValue}"]`;
-      case 'xpath':
-        return `xpath=${locatorValue}`;
-      default:
-        return locatorValue;
-    }
-  }
-
-  private normalizeBrowserRecordingTarget(target?: string): string | undefined {
-    const value = typeof target === 'string' ? target.trim() : '';
-    if (!value) {
-      return undefined;
-    }
-
-    if (/^[a-zA-Z-]+\[name=.*\]$/.test(value) && !value.split('[', 1)[0]?.includes('=')) {
-      return `role=${value}`;
-    }
-
-    return value;
-  }
-
-  private isSuspiciousBrowserRecordingTarget(
-    action: string,
-    target: string,
-    resolvedPayload: Record<string, unknown>,
-    resolvedParams: Record<string, unknown>,
-  ): boolean {
-    if (!['fill', 'click', 'hover', 'press_key', 'type_text'].includes(action)) {
-      return false;
-    }
-
-    if (this.looksLikeBrowserSelector(target)) {
-      return false;
-    }
-
-    const valueCandidates = [
-      resolvedPayload.value,
-      resolvedPayload.text,
-      resolvedPayload.query,
-      resolvedPayload.url,
-      resolvedPayload.key,
-      resolvedParams.value,
-      resolvedParams.text,
-      resolvedParams.query,
-      resolvedParams.url,
-      resolvedParams.key,
-    ]
-      .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
-      .map((value) => value.trim());
-
-    return valueCandidates.includes(target);
-  }
-
-  private looksLikeBrowserSelector(target: string): boolean {
-    const value = target.trim();
-    if (!value) {
-      return false;
-    }
-
-    return /^e\d+$/i.test(value)
-      || /^(role|text|xpath)=/i.test(value)
-      || /^(#|\.|\[|\/\/)/.test(value)
-      || /[a-zA-Z-]+\[name=/.test(value)
-      || value.includes('>>')
-      || value.includes(':has')
-      || value.includes('[data-testid=');
-  }
-
-  private normalizeBrowserRecordingStepAction(action: string | undefined): string | undefined {
-    if (!action) {
-      return undefined;
-    }
-    const normalized = action.trim().toLowerCase();
-    switch (normalized) {
-      case 'navigate':
-        return 'goto';
-      case 'waitforselector':
-        return 'wait';
-      case 'press':
-        return 'press_key';
-      case 'type':
-        return 'type_text';
-      default:
-        return normalized;
-    }
-  }
-
-  private extractRequestedExecutionStepMetadata(
-    metadata?: Record<string, unknown>,
-  ): { name?: string; index?: number } {
-    const name = this.pickFirstNonEmptyString(
-      metadata?.executionStepName,
-      metadata?.stepName,
-    );
-    const rawIndex = metadata?.executionStepIndex ?? metadata?.stepIndex;
-    const index =
-      typeof rawIndex === 'number' && Number.isFinite(rawIndex)
-        ? rawIndex
-        : typeof rawIndex === 'string' && rawIndex.trim() && !Number.isNaN(Number(rawIndex))
-          ? Number(rawIndex)
-          : undefined;
-
-    return {
-      ...(name ? { name } : {}),
-      ...(typeof index === 'number' ? { index } : {}),
-    };
-  }
-
-  private resolveRequestedBrowserRecordingStep(
-    runtimeSteps: Array<{
-      id: string;
-      name: string;
-      action: string;
-      target?: string;
-      args?: Record<string, unknown>;
-    }>,
-    requestedStep: { name?: string; index?: number },
-  ) {
-    if (requestedStep.name) {
-      const matchedByName = runtimeSteps.find((step) => step.name === requestedStep.name);
-      if (matchedByName) {
-        return matchedByName;
-      }
-    }
-
-    if (
-      typeof requestedStep.index === 'number'
-      && Number.isInteger(requestedStep.index)
-      && requestedStep.index > 0
-      && requestedStep.index <= runtimeSteps.length
-    ) {
-      return runtimeSteps[requestedStep.index - 1];
-    }
-
-    return null;
-  }
-
-  private resolveBrowserRecordingRuntimeValue(
-    value: unknown,
-    runtimeInput: Record<string, unknown>,
-  ): unknown {
-    if (typeof value === 'string') {
-      const exactMatch = value.match(/^\$\{([^}]+)\}$/);
-      if (exactMatch) {
-        const directValue = runtimeInput[exactMatch[1] as string];
-        return directValue !== undefined ? directValue : value;
-      }
-      return value.replace(/\$\{([^}]+)\}/g, (_match, key: string) => {
-        const resolved = runtimeInput[key];
-        return resolved === undefined || resolved === null ? '' : String(resolved);
-      });
-    }
-    if (Array.isArray(value)) {
-      return value.map((item) => this.resolveBrowserRecordingRuntimeValue(item, runtimeInput));
-    }
-    if (value && typeof value === 'object') {
-      return Object.entries(value as Record<string, unknown>).reduce<Record<string, unknown>>((acc, [key, current]) => {
-        acc[key] = this.resolveBrowserRecordingRuntimeValue(current, runtimeInput);
-        return acc;
-      }, {});
-    }
-    return value;
-  }
-
-  private resolveDocumentRenderInput(
-    input: Record<string, unknown> | undefined,
-    sourceTemplate: Record<string, unknown>,
-  ): {
-    templateId?: string;
-    outputFormat?: string;
-    data: Record<string, unknown>;
-  } {
-    const normalizedInput = input || {};
-    const directData = asRecord(normalizedInput.data);
-    const directParams = asRecord(normalizedInput.params);
-    const data = directData || directParams || this.omitRuntimeEnvelopeFields(normalizedInput);
-
-    return {
-      templateId: this.pickFirstNonEmptyString(
-        normalizedInput.templateId,
-        normalizedInput.template_id,
-        sourceTemplate.templateId,
-      ),
-      outputFormat: this.pickFirstNonEmptyString(
-        normalizedInput.outputFormat,
-        normalizedInput.output_format,
-        normalizedInput.format,
-        sourceTemplate.format,
-      ),
-      data,
-    };
-  }
-
-  private omitRuntimeEnvelopeFields(
-    value: Record<string, unknown>,
-  ): Record<string, unknown> {
-    const omittedKeys = new Set([
-      'templateId',
-      'template_id',
-      'params',
-      'data',
-      'outputFormat',
-      'output_format',
-      'format',
-      'outputName',
-      'output_name',
-      'action',
-      'sourceTemplate',
-    ]);
-
-    return Object.entries(value).reduce<Record<string, unknown>>((acc, [key, current]) => {
-      if (!omittedKeys.has(key)) {
-        acc[key] = current;
-      }
-      return acc;
-    }, {});
-  }
-
-  private pickFirstNonEmptyString(...values: unknown[]): string | undefined {
-    for (const value of values) {
-      if (typeof value === 'string' && value.trim()) {
-        return value.trim();
-      }
-    }
-    return undefined;
-  }
-
-  private pickFirstPositiveNumber(...values: unknown[]): number | undefined {
-    for (const value of values) {
-      if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
-        return value;
-      }
-    }
-    return undefined;
-  }
-
-  private expectRecord(value: unknown, errorMessage: string): Record<string, unknown> {
-    const record = this.parseJson(value);
-    if (!record || typeof record !== 'object' || Array.isArray(record)) {
-      throw new BadRequestException(errorMessage);
-    }
-    return record as Record<string, unknown>;
-  }
-
-  private extractWorkflowActivityNameFromLog(log: string): string | null {
-    const match = log.match(/执行(?:浏览器 Phase |共享文档渲染 |共享 HTTP 请求 |共享结构化转换 )?Activity:\s*(.+?)\s*$/);
-    return match && typeof match[1] === 'string' && match[1].trim() ? match[1].trim() : null;
-  }
-
-  private async pushWorkflowActivityProgress(input: {
-    executionId: string;
-    parentPhaseKey: string;
-    runtimeSessionId?: string;
-    activityOrder: number;
-    activityName: string;
-    userId?: string;
-  }): Promise<void> {
-    const internalSecret = process.env.INTERNAL_API_SHARED_SECRET || process.env.JWT_SECRET;
-    if (!internalSecret) {
-      return;
-    }
-
-    await axios.post(
-      `${this.controlPlaneApiUrl}/executions/${input.executionId}/phases/progress`,
-      {
-        parentPhaseKey: input.parentPhaseKey,
-        activityOrder: input.activityOrder,
-        activityName: input.activityName,
-        runtimeSessionId: input.runtimeSessionId,
-      },
-      {
-        timeout: 10000,
-        headers: {
-          'x-internal-auth': internalSecret,
-          'x-user-id': input.userId || 'platform-runtime',
-          'x-user-role': 'admin',
-          'x-user-name': 'platform-runtime',
-        },
-      },
-    );
-  }
-
-  private parseJson<T = unknown>(value: unknown): T {
-    if (value === null || value === undefined) {
-      return value as T;
-    }
-    if (typeof value === 'string') {
-      try {
-        return JSON.parse(value) as T;
-      } catch {
-        return value as T;
-      }
-    }
-    return value as T;
-  }
-
-  private normalizeRecorderPublishPayload(
-    input: RecorderBridgePublishPayloadDTO,
-  ): {
-    name: string;
-    description: string;
-    triggerKeywords: string[];
-    paramsSchema: Record<string, unknown>;
-    executionFlowTemplateIds: string[];
-    executionFlow: Array<Record<string, unknown>>;
-    tools: string[];
-    apiEndpoints: Record<string, unknown> | null;
-  } {
-    const name = typeof input.name === 'string' && input.name.trim()
-      ? input.name.trim()
-      : `recorder-bridge-${Date.now()}`;
-    const description = typeof input.description === 'string' && input.description.trim()
-      ? input.description.trim()
-      : `浏览器录制桥接草案：${name}`;
-    const triggerKeywords = Array.isArray(input.triggerKeywords)
-      ? input.triggerKeywords.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
-      : [];
-    const paramsSchema = input.paramsSchema && typeof input.paramsSchema === 'object' && !Array.isArray(input.paramsSchema)
-      ? input.paramsSchema
-      : { properties: {}, required: [] };
-    const executionFlowTemplateIds = Array.isArray(input.executionFlowTemplateIds)
-      ? input.executionFlowTemplateIds.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
-      : [];
-    const executionFlow = this.normalizeBrowserRecordingExecutionFlow(input.executionFlow);
-    const toolNamesFromFlow = executionFlow
-      .map((step) => {
-        const tool = step.tool;
-        if (!tool || typeof tool !== 'object' || Array.isArray(tool)) {
-          return undefined;
-        }
-        return normalizeBrowserRecordingToolName((tool as Record<string, unknown>).name);
-      })
-      .filter((item): item is string => typeof item === 'string');
-    const declaredTools = Array.isArray(input.tools)
-      ? input.tools
-        .map((item) => normalizeBrowserRecordingToolName(item))
-        .filter((item): item is string => typeof item === 'string')
-      : [];
-    const tools = Array.from(new Set(['skill_match', ...declaredTools, ...toolNamesFromFlow]));
-    const apiEndpoints = input.apiEndpoints && typeof input.apiEndpoints === 'object' && !Array.isArray(input.apiEndpoints)
-      ? input.apiEndpoints
-      : null;
-
-    return {
-      name,
-      description,
-      triggerKeywords: triggerKeywords.length > 0 ? triggerKeywords : [name],
-      paramsSchema,
-      executionFlowTemplateIds,
-      executionFlow,
-      tools,
-      apiEndpoints,
-    };
-  }
-
-  private buildRecorderSourcePayload(
-    dto: BridgeRecorderExportDTO,
-    normalizedPayload: {
-      description: string;
-      paramsSchema: Record<string, unknown>;
-      executionFlow: Array<Record<string, unknown>>;
-      tools: string[];
-      apiEndpoints: Record<string, unknown> | null;
-    },
-  ): Record<string, unknown> {
-    return {
-      goal: dto.userGoal || normalizedPayload.description,
-      description: normalizedPayload.description,
-      paramsSchema: normalizedPayload.paramsSchema,
-      executionFlow: normalizedPayload.executionFlow,
-      tools: normalizedPayload.tools,
-      runtimeMetadata: normalizedPayload.apiEndpoints?.runtimeMetadata || {},
-      recordingCommands: Array.isArray(dto.exportArtifacts?.commands) ? dto.exportArtifacts.commands : [],
-      guidance: typeof dto.exportArtifacts?.guidance === 'string' ? dto.exportArtifacts.guidance : '',
-      sourceType: 'browser_recording',
-    };
-  }
-
-  private mapRelease(raw: any): CapabilityReleaseDTO {
-    return {
-      id: raw.id,
-      sourceType: raw.source_type,
-      sourceId: raw.source_id,
-      sourceName: raw.source_name,
-      sourceStatus: raw.source_status,
-      releaseVersion: Number(raw.release_version || 1),
-      status: raw.status,
-      approvalStatus: raw.approval_status,
-      deploymentStatus: raw.deployment_status,
-      currentSourceSnapshotId: raw.current_source_snapshot_id,
-      currentBuildId: raw.current_build_id,
-      latestSuccessfulBuildId: raw.latest_successful_build_id,
-      latestValidationId: raw.latest_validation_id,
-      latestSuccessfulValidationId: raw.latest_successful_validation_id,
-      currentSkillDraftId: raw.current_skill_draft_id,
-      publishedSkillId: raw.published_skill_id,
-      lastDeploymentId: raw.last_deployment_id,
-      lastDeploymentEnvironment: raw.last_deployment_environment,
-      rollbackOfReleaseId: raw.rollback_of_release_id,
-      createdBy: raw.created_by,
-      createdAt: this.toIsoString(raw.created_at),
-      updatedAt: this.toIsoString(raw.updated_at),
-    };
-  }
-
-  private mapSourceSnapshot(raw: any): CapabilitySourceSnapshotDTO {
-    return {
-      id: raw.id,
-      releaseId: raw.release_id,
-      snapshotVersion: Number(raw.snapshot_version || 1),
-      sourceType: raw.source_type,
-      sourceId: raw.source_id,
-      sourcePayload: this.parseJson(raw.source_payload_json) || {},
-      summary: raw.summary,
-      createdBy: raw.created_by,
-      createdAt: this.toIsoString(raw.created_at),
-    };
-  }
-
-  private mapBuild(raw: any): CapabilityBuildDTO {
-    return {
-      id: raw.id,
-      releaseId: raw.release_id,
-      sourceSnapshotId: raw.source_snapshot_id,
-      buildType: raw.build_type,
-      modelId: raw.model_id,
-      promptVersion: raw.prompt_version,
-      inputSnapshot: this.parseJson(raw.input_snapshot_json) || {},
-      generatedCode: raw.generated_code,
-      generatedConfig: this.parseJson(raw.generated_config_json) || null,
-      logs: this.parseJson<string[]>(raw.logs_json) || [],
-      diffSummary: raw.diff_summary,
-      status: raw.status,
-      errorSummary: raw.error_summary,
-      startedAt: raw.started_at ? this.toIsoString(raw.started_at) : null,
-      finishedAt: raw.finished_at ? this.toIsoString(raw.finished_at) : null,
-      createdBy: raw.created_by,
-      createdAt: this.toIsoString(raw.created_at),
-    };
-  }
-
-  private mapValidation(raw: any): CapabilityValidationDTO {
-    return {
-      id: raw.id,
-      releaseId: raw.release_id,
-      buildId: raw.build_id,
-      validationType: raw.validation_type,
-      inputSnapshot: this.parseJson(raw.input_snapshot_json) || null,
-      resultSnapshot: this.parseJson(raw.result_snapshot_json) || null,
-      logs: this.parseJson<string[]>(raw.logs_json) || [],
-      score: Number(raw.score || 0),
-      success: Boolean(raw.success),
-      errorSummary: raw.error_summary,
-      startedAt: raw.started_at ? this.toIsoString(raw.started_at) : null,
-      finishedAt: raw.finished_at ? this.toIsoString(raw.finished_at) : null,
-      createdBy: raw.created_by,
-      createdAt: this.toIsoString(raw.created_at),
-    };
-  }
-
-  private mapSkillDraft(raw: any): SkillDraftDTO {
-    return {
-      id: raw.id,
-      releaseId: raw.release_id,
-      generatedFromBuildId: raw.generated_from_build_id,
-      generatedFromValidationId: raw.generated_from_validation_id,
-      sourceType: raw.source_type,
-      name: raw.name,
-      description: raw.description,
-      triggerKeywords: this.parseJson<string[]>(raw.trigger_keywords) || [],
-      paramsSchema: this.parseJson(raw.params_schema) || {},
-      executionFlowTemplateIds: this.parseJson<string[]>(raw.execution_flow_template_ids) || [],
-      tools: this.parseJson<string[]>(raw.tools) || [],
-      apiEndpoints: this.parseJson(raw.api_endpoints) || null,
-      draftPayload: this.parseJson(raw.draft_payload_json) || {},
-      status: raw.status,
-      createdBy: raw.created_by,
-      createdAt: this.toIsoString(raw.created_at),
-      updatedAt: this.toIsoString(raw.updated_at),
-    };
-  }
-
-  private mapDeployment(raw: any): DeploymentRecordDTO {
-    return {
-      id: raw.id,
-      releaseId: raw.release_id,
-      publishedSkillId: raw.published_skill_id,
-      environment: raw.environment,
-      runtimeType: raw.runtime_type,
-      artifactUri: raw.artifact_uri,
-      artifactHash: raw.artifact_hash,
-      workerVersion: raw.worker_version,
-      reloadStrategy: raw.reload_strategy,
-      requestPayload: this.parseJson(raw.request_payload_json) || null,
-      resultSnapshot: this.parseJson(raw.result_snapshot_json) || null,
-      logs: this.parseJson<string[]>(raw.logs_json) || [],
-      status: raw.status,
-      success: Boolean(raw.success),
-      smokeValidationId: raw.smoke_validation_id,
-      rollbackTargetReleaseId: raw.rollback_target_release_id,
-      startedAt: raw.started_at ? this.toIsoString(raw.started_at) : null,
-      finishedAt: raw.finished_at ? this.toIsoString(raw.finished_at) : null,
-      createdBy: raw.created_by,
-      createdAt: this.toIsoString(raw.created_at),
-    };
-  }
-
-  private mapAuditEvent(raw: any): ReleaseAuditEventDTO {
-    return {
-      id: raw.id,
-      releaseId: raw.release_id,
-      eventType: raw.event_type,
-      actorId: raw.actor_id,
-      actorName: raw.actor_name,
-      success: Boolean(raw.success),
-      summary: raw.summary,
-      details: this.parseJson(raw.details_json) || null,
-      createdAt: this.toIsoString(raw.created_at),
-    };
-  }
-
-  private toIsoString(value: unknown): string {
-    if (value instanceof Date) {
-      return value.toISOString();
-    }
-    return new Date(String(value)).toISOString();
   }
 }

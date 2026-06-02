@@ -8,6 +8,7 @@ import { LoginDto, RegisterDto } from '../src/dto';
 
 // Type for mocked Prisma service
 type MockPrismaService = {
+  $transaction: jest.Mock;
   user: {
     findUnique: jest.Mock;
     create: jest.Mock;
@@ -15,6 +16,11 @@ type MockPrismaService = {
   };
   userRole: {
     findMany: jest.Mock;
+    upsert: jest.Mock;
+  };
+  role: {
+    findUnique: jest.Mock;
+    create: jest.Mock;
   };
 };
 
@@ -37,6 +43,7 @@ describe('AuthService', () => {
 
   beforeEach(async () => {
     prisma = {
+      $transaction: jest.fn(),
       user: {
         findUnique: jest.fn(),
         create: jest.fn(),
@@ -44,6 +51,11 @@ describe('AuthService', () => {
       },
       userRole: {
         findMany: jest.fn(),
+        upsert: jest.fn(),
+      },
+      role: {
+        findUnique: jest.fn(),
+        create: jest.fn(),
       },
     };
 
@@ -129,6 +141,39 @@ describe('AuthService', () => {
         UnauthorizedException,
       );
     });
+
+    it('should throw UnauthorizedException when password hash is malformed', async () => {
+      const loginDto: LoginDto = {
+        username: 'testuser',
+        password: 'correct-password',
+      };
+
+      prisma.user.findUnique.mockResolvedValue({
+        ...mockUser,
+        passwordHash: '' as unknown as string,
+      });
+
+      await expect(service.login(loginDto)).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+
+    it('should still login when lastLoginAt update fails', async () => {
+      const loginDto: LoginDto = {
+        username: 'testuser',
+        password: 'correct-password',
+      };
+
+      prisma.user.findUnique.mockResolvedValue(mockUser);
+      jest.spyOn(bcrypt, 'compare').mockResolvedValue(true as never);
+      jwtService.sign.mockReturnValue('access-token');
+      prisma.user.update.mockRejectedValue(new Error('write failed'));
+
+      const result = await service.login(loginDto);
+
+      expect(result.accessToken).toBe('access-token');
+      expect(result.user.username).toBe('testuser');
+    });
   });
 
   describe('register', () => {
@@ -142,7 +187,12 @@ describe('AuthService', () => {
 
       prisma.user.findUnique.mockResolvedValue(null);
       jest.spyOn(bcrypt, 'hash').mockResolvedValue('hashed-password' as never);
-      prisma.user.create.mockResolvedValue(mockUser);
+      prisma.role.findUnique.mockResolvedValue({ id: 'role-1', name: 'employee' });
+      prisma.userRole.upsert.mockResolvedValue({});
+      prisma.$transaction.mockImplementation(async (callback: (tx: MockPrismaService) => Promise<unknown>) => {
+        prisma.user.create.mockResolvedValue(mockUser);
+        return callback(prisma);
+      });
 
       const result = await service.register(registerDto);
 
@@ -196,6 +246,7 @@ describe('AuthService', () => {
       prisma.user.findUnique.mockResolvedValue({
         ...mockUser,
         userRoles: [mockUserRole],
+        orgMemberships: [],
       } as never);
 
       const result = await service.me(mockUser.id);

@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useAppStore, AISuggestion } from '../../taskpane/store';
-import { OfficeHelper } from '../../utils/office-api';
+import { WordAPI } from '../../utils/office/word/api';
 
 export function useParameterApply(hostAdapter: any, isExcelMode: boolean) {
   const store = useAppStore();
@@ -61,12 +61,12 @@ export function useParameterApply(hostAdapter: any, isExcelMode: boolean) {
       return undefined;
     }
 
-    OfficeHelper.Word.setDebugLogger((level, message, details) => {
+    WordAPI.setDebugLogger((level, message, details) => {
       addDebugLog(level, message, details);
     });
 
     return () => {
-      OfficeHelper.Word.clearDebugLogger();
+      WordAPI.clearDebugLogger();
     };
   }, [addDebugLog, hostAdapter]);
 

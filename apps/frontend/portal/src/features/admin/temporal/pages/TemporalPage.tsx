@@ -155,13 +155,7 @@ const TemporalPage: React.FC = () => {
   ) => {
     if ('templateId' in data) {
       try {
-        // #region debug-point B:compile-request
-        fetch('http://127.0.0.1:7777/event', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: 'template-save-values-lost', runId: 'pre-fix', hypothesisId: 'B', location: 'TemporalPage.tsx:156', msg: '[DEBUG] page sending compile-template-draft request', data: { workflowId: editingWorkflow?.id || null, templateId: data.templateId, name: data.name || null, taskQueue: data.taskQueue || null, inputPolicyKeys: Object.keys(data.inputPolicy?.params || {}).slice(0, 8), inputPolicyPreview: Object.entries(data.inputPolicy?.params || {}).slice(0, 3) }, ts: Date.now() }) }).catch(() => {});
-        // #endregion
         const compiledDraft = await temporalWorkflowApi.compileTemplateDraft(data);
-        // #region debug-point B:compile-response
-        fetch('http://127.0.0.1:7777/event', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: 'template-save-values-lost', runId: 'pre-fix', hypothesisId: 'B', location: 'TemporalPage.tsx:158', msg: '[DEBUG] page received compile-template-draft response', data: { workflowId: editingWorkflow?.id || null, compiledName: compiledDraft.name, compiledTaskQueue: compiledDraft.taskQueue, compiledInputParamCount: Object.keys(compiledDraft.workflowDsl?.inputParams || {}).length, compiledInputParamKeys: Object.keys(compiledDraft.workflowDsl?.inputParams || {}).slice(0, 8), compiledInputParamPreview: Object.entries(compiledDraft.workflowDsl?.inputParams || {}).slice(0, 3), compiledPolicyKeys: Object.keys(compiledDraft.workflowDsl?.inputPolicy?.params || {}).slice(0, 8), compiledPolicyPreview: Object.entries(compiledDraft.workflowDsl?.inputPolicy?.params || {}).slice(0, 3) }, ts: Date.now() }) }).catch(() => {});
-        // #endregion
         const payload = {
           name: compiledDraft.name,
           description: compiledDraft.description,

@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import { RedisService } from '../lock/redis.service';
 import { LockService } from '../lock/lock.service';
@@ -194,20 +194,25 @@ export class SessionService {
     const sessionId = uuidv4();
     const now = Date.now();
 
-    // Step 1: Try to acquire profile write lock (disabled for dev - no 409 limit)
-    // const lockResult = await this.lockService.acquireProfileLock(request.user_id, sessionId);
-    // if (!lockResult.success) {
-    //   throw new ConflictException(
-    //     `User ${request.user_id} already has an active session. Lock held by another session.`,
-    //   );
-    // }
+    // Step 1: Try to acquire profile write lock (disabled for dev - no 409 limit unless SESSION_LOCK_ENABLED=true)
+    const sessionLockEnabled = process.env.SESSION_LOCK_ENABLED === 'true';
+    if (sessionLockEnabled) {
+      const lockResult = await this.lockService.acquireProfileLock(request.user_id, sessionId);
+      if (!lockResult.success) {
+        throw new ConflictException(
+          `User ${request.user_id} already has an active session. Lock held by another session.`,
+        );
+      }
+    }
 
     // Step 2: Allocate a worker
     const workerInfo = await this.allocationService.allocateWorker(sessionId, request.user_id);
 
     if (!workerInfo) {
       // No workers available - release lock and throw error
-      await this.lockService.releaseProfileLock(request.user_id, sessionId);
+      if (sessionLockEnabled) {
+        await this.lockService.releaseProfileLock(request.user_id, sessionId);
+      }
       throw new BadRequestException('No available workers in pool');
     }
 
@@ -492,7 +497,10 @@ export class SessionService {
     }
 
     // Release profile lock
-    await this.lockService.releaseProfileLock(currentSession.user_id, sessionId);
+    const sessionLockEnabled = process.env.SESSION_LOCK_ENABLED === 'true';
+    if (sessionLockEnabled) {
+      await this.lockService.releaseProfileLock(currentSession.user_id, sessionId);
+    }
 
     // Release worker back to pool
     if (currentSession.worker_ref) {

@@ -12,7 +12,15 @@ describe('SkillService workflow input policy enrichment', () => {
     };
     const toolCatalogService = {} as any;
 
-    const service = new SkillService(prisma as any, executionFlowService as any, toolCatalogService);
+    const service = new SkillService(
+      prisma as any, 
+      executionFlowService as any, 
+      toolCatalogService,
+      {} as any, // temporalWorkflowService
+      {} as any, // capabilityReleaseRuntimeService
+      {} as any, // userFeatureService
+      {} as any  // skillEnrichmentService
+    );
     return { service, prisma, executionFlowService };
   };
 

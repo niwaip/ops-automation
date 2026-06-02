@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Res } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
-import { ActivityService, ActivityFormData, ActivityValidationResult, BuiltinActivityDTO, GenerateCodeResult } from './temporal-activity.service';
+import { ActivityService } from './temporal-activity.service';
+import { ActivityFormData, ActivityValidationResult, BuiltinActivityDTO, GenerateCodeResult } from './temporal-activity.types';
 import { Activity } from '@prisma/client';
 
 @ApiTags('Activities')
