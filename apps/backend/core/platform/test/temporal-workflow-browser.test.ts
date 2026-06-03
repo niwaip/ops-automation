@@ -515,4 +515,42 @@ describe('TemporalWorkflowBrowserDraftService', () => {
     expect(validation.errors).toEqual([]);
   });
 
+  it('validates custom activityRef against activityDsl id-based refs', async () => {
+    const { service } = createService();
+
+    const validation = await service.validate(
+      {
+        name: '文档类型工作流',
+        workflowClassName: 'DocumentTypeWorkflow',
+        workflowDefnName: '文档类型工作流',
+        taskQueue: 'SKILL_TASK_QUEUE',
+        steps: [
+          {
+            id: 'step_1',
+            name: '执行文档渲染',
+            type: 'activity',
+            activityRef: 'custom:activity-doc-render-1',
+            startToCloseTimeout: '60s',
+          },
+        ],
+      },
+      {
+        activities: [
+          {
+            id: 'activity-doc-render-1',
+            activityRef: 'custom:activity-doc-render-1',
+            name: '执行文档渲染',
+            fn: 'documentRenderDraft',
+            timeout: '60s',
+            handler: 'carbone',
+            config: {},
+          },
+        ],
+      },
+    );
+
+    expect(validation.isValid).toBe(true);
+    expect(validation.errors).toEqual([]);
+  });
+
 });

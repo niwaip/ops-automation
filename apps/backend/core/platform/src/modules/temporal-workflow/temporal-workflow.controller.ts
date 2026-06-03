@@ -17,6 +17,8 @@ import {
   BrowserWorkflowDraft,
   GenerateBrowserWorkflowDraftDTO,
   CompileTemplateWorkflowDraftDTO,
+  GenerateTemplateWorkflowDraftDTO,
+  TemporalWorkflowArtifactDTO,
 } from './temporal-workflow.service';
 import { TemporalWorkflow } from '@prisma/client';
 
@@ -79,6 +81,52 @@ export class TemporalWorkflowController {
     );
   }
 
+  @Post(':id/generate-and-save')
+  @ApiOperation({ summary: 'Generate workflow Python code from saved DSL and persist generated code' })
+  async generateAndSave(
+    @Param('id') id: string,
+    @Body() data: { errorContext?: string; forceAiGeneration?: boolean },
+  ): Promise<{
+    workflow: TemporalWorkflow;
+    generation: {
+      success: boolean;
+      code: string;
+      attempts?: number;
+      autoRetried?: boolean;
+      generationMode?: 'deterministic' | 'ai';
+    };
+  }> {
+    return this.temporalWorkflowService.generateAndSaveWorkflowCode(
+      id,
+      data?.errorContext,
+      Boolean(data?.forceAiGeneration),
+    ) as unknown as {
+      workflow: TemporalWorkflow;
+      generation: {
+        success: boolean;
+        code: string;
+        attempts?: number;
+        autoRetried?: boolean;
+        generationMode?: 'deterministic' | 'ai';
+      };
+    };
+  }
+
+  @Post(':id/generate-code-and-save')
+  @ApiOperation({ summary: 'Alias of generate-and-save for persisted workflow artifact generation' })
+  async generateCodeAndSave(
+    @Param('id') id: string,
+    @Body() data: { errorContext?: string; forceAiGeneration?: boolean },
+  ) {
+    return this.generateAndSave(id, data);
+  }
+
+  @Get(':id/artifact')
+  @ApiOperation({ summary: 'Get persisted workflow artifact metadata and generated code' })
+  async getArtifact(@Param('id') id: string): Promise<TemporalWorkflowArtifactDTO> {
+    return this.temporalWorkflowService.getArtifact(id);
+  }
+
   @Post('generate-code/stream')
   @ApiOperation({ summary: 'Generate workflow Python code from DSL with streaming status' })
   async generateCodeStream(
@@ -120,9 +168,9 @@ export class TemporalWorkflowController {
   @Post('generate-template-draft')
   @ApiOperation({ summary: 'Generate template-based workflow draft from Carbone template' })
   async generateTemplateDraft(
-    @Body() data: { templateId: string },
+    @Body() data: GenerateTemplateWorkflowDraftDTO,
   ): Promise<import('./temporal-workflow.service').TemplateWorkflowDraft> {
-    return this.temporalWorkflowService.generateTemplateWorkflowDraft(data.templateId);
+    return this.temporalWorkflowService.generateTemplateWorkflowDraft(data);
   }
 
   @Post('compile-template-draft')
@@ -250,6 +298,34 @@ export class TemporalWorkflowController {
     @Body() data: { code: string; fn: string; input?: Record<string, any>; taskQueue?: string; timeout?: string },
   ): Promise<{ success: boolean; logs: string[]; result?: any; error?: string; score: number }> {
     return this.temporalWorkflowService.validateWorkflowReal(data.code, data.fn, data.input, data.taskQueue, data.timeout);
+  }
+
+  @Post(':id/validate-saved-artifact')
+  @ApiOperation({ summary: 'Validate saved generated workflow artifact with test worker' })
+  async validateSavedArtifact(
+    @Param('id') id: string,
+    @Body() data: { input?: Record<string, any>; timeout?: string },
+  ): Promise<{
+    workflow: TemporalWorkflow;
+    validation: { success: boolean; logs: string[]; result?: any; error?: string; score: number };
+  }> {
+    return this.temporalWorkflowService.validateSavedWorkflowArtifact(
+      id,
+      data?.input,
+      data?.timeout,
+    ) as unknown as {
+      workflow: TemporalWorkflow;
+      validation: { success: boolean; logs: string[]; result?: any; error?: string; score: number };
+    };
+  }
+
+  @Post(':id/validate-artifact')
+  @ApiOperation({ summary: 'Alias of validate-saved-artifact for persisted workflow artifact validation' })
+  async validateArtifact(
+    @Param('id') id: string,
+    @Body() data: { input?: Record<string, any>; timeout?: string },
+  ) {
+    return this.validateSavedArtifact(id, data);
   }
 
   @Post('validate-code/stream')

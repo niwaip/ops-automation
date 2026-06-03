@@ -113,6 +113,37 @@ describe('Studio API (e2e)', () => {
     return zip.generateAsync({ type: 'nodebuffer' });
   }
 
+  async function createTemplateWorkflowDocxTemplate(): Promise<Buffer> {
+    const zip = new JSZip();
+
+    zip.file('[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>`);
+
+    zip.folder('_rels')?.file('.rels', `<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`);
+
+    zip.folder('word')?.file('document.xml', `<?xml version="1.0" encoding="UTF-8"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:p><w:r><w:t>合同编号：{d.contractNo_zh}</w:t></w:r></w:p>
+    <w:p><w:r><w:t>客户名称：{d.customerName_zh}</w:t></w:r></w:p>
+    <w:p><w:r><w:t>合同金额：{d.amount_zh}</w:t></w:r></w:p>
+  </w:body>
+</w:document>`);
+
+    zip.folder('word')?.folder('_rels')?.file('document.xml.rels', `<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+</Relationships>`);
+
+    return zip.generateAsync({ type: 'nodebuffer' });
+  }
+
   describe('/studio/upload (POST)', () => {
     it('should upload a docx template and return template info', async () => {
       const response = await request(app.getHttpServer())
@@ -211,7 +242,7 @@ describe('Studio API (e2e)', () => {
     });
   });
 
-  describe('/studio/render (POST)', () => {
+  describe('/studio/render-resolved (POST)', () => {
     it('should render template with data', async () => {
       // 上传模板
       const uploadRes = await request(app.getHttpServer())
@@ -228,7 +259,7 @@ describe('Studio API (e2e)', () => {
       };
 
       const response = await request(app.getHttpServer())
-        .post('/studio/render')
+        .post('/studio/render-resolved')
         .send(renderData)
         .expect(200);
 
@@ -244,7 +275,7 @@ describe('Studio API (e2e)', () => {
       };
 
       await request(app.getHttpServer())
-        .post('/studio/render')
+        .post('/studio/render-resolved')
         .send(renderData)
         .expect(404);
     });
@@ -257,7 +288,7 @@ describe('Studio API (e2e)', () => {
         .expect(201);
 
       const renderRes = await request(app.getHttpServer())
-        .post('/studio/render')
+        .post('/studio/render-resolved')
         .send({
           templateId: uploadRes.body.id,
           data: {
@@ -281,6 +312,132 @@ describe('Studio API (e2e)', () => {
       expect(documentXml).toContain('<w:t>人民元120,000円</w:t>');
       expect(documentXml).toContain('</w:tr><w:tr>');
       expect(documentXml).not.toContain('人民元280,000円系统集成与部署');
+    });
+  });
+
+  describe('/studio/render-resolved (POST)', () => {
+    it('should honor outputName when rendering through the unified runtime endpoint', async () => {
+      const uploadRes = await request(app.getHttpServer())
+        .post('/studio/upload')
+        .attach('file', testDocxBuffer, 'resolved_render.docx');
+
+      const response = await request(app.getHttpServer())
+        .post('/studio/render-resolved')
+        .send({
+          templateId: uploadRes.body.id,
+          data: {
+            name: 'Resolved User',
+            email: 'resolved@example.com',
+            total: 888.88,
+          },
+          outputFormat: 'docx',
+          outputName: '统一入口合同',
+        })
+        .expect(200);
+
+      expect(response.body.downloadUrl).toBeDefined();
+      expect(response.body.fileName).toMatch(/^统一入口合同_\d{12}\.docx$/);
+      expect(response.body.format).toBe('docx');
+    });
+  });
+
+  describe('Template Workflow E2E', () => {
+    it('generates template workflow for 1234.docx and renders correct content end-to-end', async () => {
+      const workflowTemplate = await createTemplateWorkflowDocxTemplate();
+      const uploadRes = await request(app.getHttpServer())
+        .post('/studio/upload')
+        .attach('file', workflowTemplate, '1234.docx')
+        .expect(201);
+
+      expect(uploadRes.body.fileName).toBe('1234.docx');
+
+      const saveRes = await request(app.getHttpServer())
+        .post('/studio/template/save')
+        .send({
+          templateId: uploadRes.body.id,
+          templateMeta: {
+            templateName: '1234.docx',
+            sourceLanguage: 'zh',
+            targetLanguages: [],
+          },
+          templateFieldSpecs: [
+            {
+              fieldId: 'contractNo',
+              type: 'string',
+              description: '合同编号',
+              sourceLanguage: 'zh',
+              targetLanguages: [],
+              required: true,
+            },
+            {
+              fieldId: 'customerName',
+              type: 'string',
+              description: '客户名称',
+              sourceLanguage: 'zh',
+              targetLanguages: [],
+              required: true,
+            },
+            {
+              fieldId: 'amount',
+              type: 'string',
+              description: '合同金额',
+              sourceLanguage: 'zh',
+              targetLanguages: [],
+              required: true,
+            },
+          ],
+          saveMode: 'publish',
+        });
+
+      expect([200, 201]).toContain(saveRes.status);
+      expect(saveRes.body.templateAssetManifest).toEqual(
+        expect.objectContaining({
+          templateId: uploadRes.body.id,
+          fileName: '1234.docx',
+          fieldCount: 3,
+        }),
+      );
+
+      const renderDataRes = await request(app.getHttpServer())
+        .post('/studio/template/render-data')
+        .send({
+          templateId: uploadRes.body.id,
+          userInput: '',
+          userOverrides: {
+            contractNo: 'HT-2026-1234',
+            customerName: '上海云章科技有限公司',
+            amount: '1234元',
+          },
+        });
+
+      expect([200, 201]).toContain(renderDataRes.status);
+      expect(renderDataRes.body.missingFields).toEqual([]);
+      expect(renderDataRes.body.data).toEqual(expect.objectContaining({
+        contractNo_zh: 'HT-2026-1234',
+        customerName_zh: '上海云章科技有限公司',
+        amount_zh: '1234元',
+      }));
+
+      const renderRes = await request(app.getHttpServer())
+        .post('/studio/render-resolved')
+        .send({
+          templateId: uploadRes.body.id,
+          data: renderDataRes.body.data,
+        })
+        .expect(200);
+
+      const downloadId = renderRes.body.downloadUrl.split('/').pop();
+      const outputBuffer = fs.readFileSync(path.join(getOutputsDir(), `${downloadId}.docx`));
+      const outputZip = await JSZip.loadAsync(outputBuffer);
+      const documentXml = await outputZip.file('word/document.xml')?.async('text');
+
+      expect(documentXml).toBeDefined();
+      expect(documentXml).toContain('合同编号：HT-2026-1234');
+      expect(documentXml).toContain('客户名称：上海云章科技有限公司');
+      expect(documentXml).toContain('合同金额：1234元');
+      expect(documentXml).not.toContain('{d.contractNo_zh}');
+      expect(documentXml).not.toContain('{d.customerName_zh}');
+      expect(documentXml).not.toContain('{d.amount_zh}');
     });
   });
 
@@ -336,7 +493,7 @@ describe('Studio API (e2e)', () => {
         .attach('file', testDocxBuffer, 'test_download.docx');
 
       const renderRes = await request(app.getHttpServer())
-        .post('/studio/render')
+        .post('/studio/render-resolved')
         .send({
           templateId: uploadRes.body.id,
           data: { name: 'Download Test', email: 'download@test.com', total: 999 }
@@ -398,7 +555,7 @@ describe('Studio API (e2e)', () => {
 
       // 3. Render
       const renderRes = await request(app.getHttpServer())
-        .post('/studio/render')
+        .post('/studio/render-resolved')
         .send({
           templateId: uploadRes.body.id,
           data: { name: 'Workflow User', email: 'workflow@test.com', total: 1500.75 }

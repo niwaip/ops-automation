@@ -42,6 +42,28 @@ interface DeterministicBuilderDependencies {
   workflowNormalizationService: TemporalWorkflowNormalizationService;
 }
 
+function durationToSeconds(duration: string | undefined, fallbackSeconds = 300): number {
+  const normalized = String(duration || '').trim();
+  const match = normalized.match(/^(\d+)\s*([smhd])$/i);
+  if (!match) {
+    return fallbackSeconds;
+  }
+
+  const value = Number(match[1]);
+  const unit = match[2].toLowerCase();
+  switch (unit) {
+    case 'm':
+      return value * 60;
+    case 'h':
+      return value * 60 * 60;
+    case 'd':
+      return value * 60 * 60 * 24;
+    case 's':
+    default:
+      return value;
+  }
+}
+
 export function buildDeterministicActivityCodeForWorkflow(
   activityDef: ActivityDsl['activities'][number],
 ): string | null {
@@ -206,6 +228,10 @@ export function buildDeterministicWorkflowCodeForWorkflow(
   const inputParams = Object.entries(workflowDsl.inputParams || {});
   const workflowTimeoutCode = durationToTimedeltaCode(step.startToCloseTimeout || activityDef.timeout || '60s');
   const executeActivityTimeoutLines = buildExecuteActivityTimeoutLines(step, activityDef.timeout || '60s');
+  const requestTimeoutSeconds = durationToSeconds(step.startToCloseTimeout || activityDef.timeout, 300);
+  const extraActivityInputLines = activityDef.handler === 'carbone'
+    ? [`            "requestTimeoutSeconds": ${requestTimeoutSeconds},`]
+    : [];
 
   const normalizeLines = inputParams.map(([key, config]) => {
     const defaultValue = config?.defaultValue ?? '';
@@ -263,6 +289,7 @@ export function buildDeterministicWorkflowCodeForWorkflow(
     '    async def run(self, params: dict) -> Dict[str, Any]:',
     `        workflow.logger.info(${JSON.stringify(`启动工作流: ${workflowDisplayName}`)})`,
     '        activity_input = self._build_activity_input(params or {})',
+    ...extraActivityInputLines,
     '        self._validate_required_params(activity_input)',
     `        workflow.logger.info(${JSON.stringify(`执行 Activity: ${activityDef.name}`)})`,
     '        result = await workflow.execute_activity(',

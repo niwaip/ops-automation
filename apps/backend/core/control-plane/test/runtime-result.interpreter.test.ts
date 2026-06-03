@@ -102,7 +102,7 @@ describe('RuntimeResultInterpreter', () => {
         success: true,
         status: 'completed',
         output: {
-          documentId: 'doc-1',
+          downloadUrl: 'http://localhost:3009/studio/download/doc-1',
         },
         rawResult: {
           runtime: 'capability_runtime',
@@ -130,15 +130,15 @@ describe('RuntimeResultInterpreter', () => {
       capabilityId: 'capability-1',
       capabilityVersion: 'v1',
       publishedSkillId: 'published-1',
-      result: { documentId: 'doc-1' },
-      output: { documentId: 'doc-1' },
+      result: { downloadUrl: 'http://localhost:3009/studio/download/doc-1' },
+      output: { downloadUrl: 'http://localhost:3009/studio/download/doc-1' },
       logs: ['ok'],
       error: null,
     });
     expect(prisma.execution.update).toHaveBeenCalledWith({
       where: { id: 'execution-2' },
       data: {
-        resultJson: { documentId: 'doc-1' },
+        resultJson: { downloadUrl: 'http://localhost:3009/studio/download/doc-1' },
         normalizedInputJson: {
           __usage: {
             prompt_tokens: 12,
@@ -154,7 +154,7 @@ describe('RuntimeResultInterpreter', () => {
     expect(emitEvent).toHaveBeenCalledWith('step.succeeded', {
       runtimeSessionId: 'runtime-2',
       stepId: 'step-2',
-      result: { documentId: 'doc-1' },
+      result: { downloadUrl: 'http://localhost:3009/studio/download/doc-1' },
       error: undefined,
       shouldTakeover: false,
     });

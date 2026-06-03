@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { useNavigate } from 'react-router-dom';
 import {
-  temporalWorkflowApi, TemporalWorkflowDTO, CreateTemporalWorkflowDTO, WorkflowDsl, CompileTemplateWorkflowDraftDTO
+  temporalWorkflowApi, TemporalWorkflowDTO, CreateTemporalWorkflowDTO, WorkflowDsl
 } from '@/api/temporal';
 import { executionApi } from '@/api/execution';
 import { ListSectionHeader } from '@/components/page/PageScaffold';
@@ -30,6 +30,19 @@ const SECTION_CARD_STYLE = {
 
 const centerTitle = (title: string) => <div style={{ textAlign: 'center' }}>{title}</div>;
 const shorten = (str: string, len = 20) => str && str.length > len ? str.substring(0, len) + '...' : str;
+
+const getArtifactStatusMeta = (status?: string) => {
+  switch (status) {
+    case 'validated':
+      return { color: 'green', label: '已验证' };
+    case 'generated':
+      return { color: 'blue', label: '已生成' };
+    case 'failed':
+      return { color: 'red', label: '验证失败' };
+    default:
+      return { color: 'default', label: '草稿' };
+  }
+};
 
 const TemporalPage: React.FC = () => {
   const { t } = useTranslation();
@@ -55,18 +68,35 @@ const TemporalPage: React.FC = () => {
   const executionsQuery = useQuery(['executions'], () => executionApi.list());
 
   const deleteMutation = useMutation(temporalWorkflowApi.delete, {
-    onSuccess: () => { message.success(t('common:success')); queryClient.invalidateQueries(['temporal']); },
+    onSuccess: () => {
+      message.success(t('common:success'));
+      queryClient.invalidateQueries(['temporal']);
+      queryClient.invalidateQueries(['temporal-options']);
+    },
     onError: () => { message.error(t('common:error')); },
   });
 
   const createMutation = useMutation(temporalWorkflowApi.create, {
-    onSuccess: () => { message.success(t('common:success')); queryClient.invalidateQueries(['temporal']); setEditModalVisible(false); },
+    onSuccess: () => {
+      message.success(t('common:success'));
+      queryClient.invalidateQueries(['temporal']);
+      queryClient.invalidateQueries(['temporal-options']);
+      setEditModalVisible(false);
+    },
     onError: () => { message.error(t('common:error')); },
   });
 
   const updateMutation = useMutation(
     ({ id, data }: { id: string; data: Partial<CreateTemporalWorkflowDTO> }) => temporalWorkflowApi.update(id, data),
-    { onSuccess: () => { message.success(t('common:success')); queryClient.invalidateQueries(['temporal']); setEditModalVisible(false); }, onError: () => { message.error(t('common:error')); } }
+    {
+      onSuccess: () => {
+        message.success(t('common:success'));
+        queryClient.invalidateQueries(['temporal']);
+        queryClient.invalidateQueries(['temporal-options']);
+        setEditModalVisible(false);
+      },
+      onError: () => { message.error(t('common:error')); },
+    }
   );
 
   const filteredWorkflows = useMemo(() => {
@@ -150,31 +180,8 @@ const TemporalPage: React.FC = () => {
 
   const handleSaveWorkflow = async (
     data:
-      | { workflowDsl: any; activityDsl: any; name: string; description: string; taskQueue?: string; generatedCode?: string }
-      | (CompileTemplateWorkflowDraftDTO & { generatedCode?: string }),
+      | { workflowDsl: any; activityDsl: any; name: string; description: string; taskQueue?: string; generatedCode?: string },
   ) => {
-    if ('templateId' in data) {
-      try {
-        const compiledDraft = await temporalWorkflowApi.compileTemplateDraft(data);
-        const payload = {
-          name: compiledDraft.name,
-          description: compiledDraft.description,
-          taskQueue: compiledDraft.taskQueue || 'SKILL_TASK_QUEUE',
-          workflowDsl: compiledDraft.workflowDsl,
-          activityDsl: compiledDraft.activityDsl,
-          generatedCode: data.generatedCode,
-        };
-        if (editingWorkflow) {
-          updateMutation.mutate({ id: editingWorkflow.id, data: payload });
-        } else {
-          createMutation.mutate(payload);
-        }
-      } catch (error) {
-        message.error('模板工作流编译失败');
-      }
-      return;
-    }
-
     const payload = {
       name: data.name,
       description: data.description,
@@ -238,6 +245,34 @@ const TemporalPage: React.FC = () => {
     { title: centerTitle('描述'), dataIndex: 'description', key: 'description', width: 360, align: 'center', render: (desc: string) => <Tooltip title={desc || '-'}>{shorten(desc, 40)}</Tooltip> },
     { title: centerTitle('步骤数'), key: 'stepCount', width: 60, align: 'center', render: (_, r) => <Badge count={r.workflowDsl?.steps?.length || 0} showZero color="blue" /> },
     { title: centerTitle('工作单元数'), key: 'activityCount', width: 72, align: 'center', render: (_, r) => <Badge count={r.activityDsl?.activities?.length || 0} showZero color="green" /> },
+    {
+      title: centerTitle('工件版本'),
+      key: 'artifactVersion',
+      width: 88,
+      align: 'center',
+      render: (_, r) => <Tag color="purple">v{Number(r.artifactVersion || 0)}</Tag>,
+    },
+    {
+      title: centerTitle('工件状态'),
+      key: 'artifactStatus',
+      width: 92,
+      align: 'center',
+      render: (_, r) => {
+        const meta = getArtifactStatusMeta(r.validationStatus);
+        return <Tag color={meta.color}>{meta.label}</Tag>;
+      },
+    },
+    {
+      title: centerTitle('验证时间'),
+      key: 'validatedAt',
+      width: 160,
+      align: 'center',
+      render: (_, r) => (
+        <Text type="secondary" style={{ fontSize: 12 }}>
+          {r.validatedAt ? new Date(r.validatedAt).toLocaleString() : '-'}
+        </Text>
+      ),
+    },
     { title: centerTitle('状态'), key: 'status', width: 72, align: 'center', render: (_, r) => <Tag color={r.isActive ? 'green' : 'default'}>{r.isActive ? '启用' : '禁用'}</Tag> },
     {
       title: centerTitle(t('common:actions')),

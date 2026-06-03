@@ -425,4 +425,56 @@ describe('ExecutionFlowTemplateService', () => {
       steps: [{ type: 'text', name: '收集参数' }],
     })).rejects.toThrow('inputPolicy.params.retryCount.defaultValue 与参数类型 number 不兼容');
   });
+
+  it('syncs default document flow template to render-resolved endpoint on module init', async () => {
+    const { service, prisma } = createService();
+
+    prisma.$queryRawUnsafe.mockImplementation(async (sql: string, ...params: any[]) => {
+      if (sql.includes('SELECT id FROM execution_flow_templates')) {
+        return [];
+      }
+
+      if (sql.includes('INSERT INTO execution_flow_templates')) {
+        return [
+          {
+            id: params[0],
+            name: params[1],
+            description: params[2],
+            goal: params[3],
+            expectedResult: params[4],
+            paramsSchema: JSON.parse(params[5]),
+            category: params[6],
+            steps: JSON.parse(params[7]),
+            executionFlowKeys: JSON.parse(params[8]),
+            usageCount: 0,
+            isPublic: params[9],
+            isActive: true,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        ];
+      }
+
+      throw new Error(`Unexpected SQL in test: ${sql}`);
+    });
+
+    await service.onModuleInit();
+
+    const insertCalls = prisma.$queryRawUnsafe.mock.calls.filter((call) => {
+      return typeof call[0] === 'string' && call[0].includes('INSERT INTO execution_flow_templates');
+    });
+    expect(insertCalls).toHaveLength(2);
+
+    const createdDocumentFlowSteps = JSON.parse(insertCalls[1][8]);
+    expect(createdDocumentFlowSteps).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        type: 'api',
+        name: '渲染文档',
+        api: expect.objectContaining({
+          endpoint: '/api/carbone/render-resolved',
+          method: 'POST',
+        }),
+      }),
+    ]));
+  });
 });

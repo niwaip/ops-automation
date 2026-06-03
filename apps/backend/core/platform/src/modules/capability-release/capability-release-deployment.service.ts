@@ -90,7 +90,7 @@ export class CapabilityReleaseDeploymentService {
         const message = error instanceof Error ? error.message : '当前 Release 缺少可执行代码';
         throw new BadRequestException({
           code: CAPABILITY_RELEASE_ERROR_CODE.TEMPORAL_BUILD_NOT_EXECUTABLE,
-          message: `${message}。请先在该 Release 上执行“构建 / AI 生成代码”，确认生成的 Workflow 代码已保存，再重新部署。`,
+          message: `${message}。请先在 Workflow 页面完成“生成并保存代码”与“端到端验证”，再重新部署。`,
         });
       }
     }
@@ -140,10 +140,10 @@ export class CapabilityReleaseDeploymentService {
           preResolvedTemporalBuild
           || await accessors.resolveTemporalExecutableBuildOrThrow(release, snapshot, undefined, userId);
         deploymentBuild = build;
-        const workflowDsl = this.expectRecord(snapshot.sourcePayload.workflowDsl, '缺少 workflowDsl');
-        const activityDsl = this.expectRecord(snapshot.sourcePayload.activityDsl, '缺少 activityDsl');
-        const workflowName = String(snapshot.sourcePayload.name || release.sourceName || 'GeneratedWorkflow');
-        const description = String(snapshot.sourcePayload.description || '');
+        const workflowArtifactRef = this.resolveWorkflowArtifactRef(snapshot.sourcePayload, release.sourceId || snapshot.sourceId || null);
+        if (!workflowArtifactRef?.workflowId) {
+          throw new Error('当前 Release 未绑定 Workflow artifact，无法部署');
+        }
         const taskQueue =
           typeof effectiveConfig.taskQueue === 'string'
             ? effectiveConfig.taskQueue
@@ -165,47 +165,18 @@ export class CapabilityReleaseDeploymentService {
         }
         logs.push(`Worker reload requested: ${workerReloadRequested ? 'yes' : 'no'}`);
 
-        const generatedCode = build.generatedCode || '';
-        const workflow = release.sourceId
-          ? await this.temporalWorkflowService.update(release.sourceId, {
-              name: workflowName,
-              description,
-              taskQueue,
-              workflowDsl: workflowDsl as any,
-              activityDsl: activityDsl as any,
-              generatedCode,
-              isActive: true,
-            })
-          : await this.temporalWorkflowService.create({
-              name: workflowName,
-              description,
-              taskQueue,
-              workflowDsl: workflowDsl as any,
-              activityDsl: activityDsl as any,
-              generatedCode,
-            });
-
-        const workflowRef = workflow as any;
-        if (!release.sourceId) {
-          await this.prisma.$executeRawUnsafe(
-            `UPDATE capability_releases
-             SET source_id = $2::uuid, source_name = $3, updated_at = now()
-             WHERE id = $1::uuid`,
-            id,
-            workflowRef.id,
-            workflowRef.name,
-          );
-        }
-
-        const deployedWorkflowRef = await this.temporalWorkflowService.deploy(workflowRef.id) as any;
-        logs.push('Workflow code synced to ops-temporal metadata');
+        const deployedWorkflowRef = await this.temporalWorkflowService.deploy(workflowArtifactRef.workflowId) as any;
+        logs.push('Workflow artifact resolved and deployed');
         logs.push(`Temporal workflow deployed: ${deployedWorkflowRef.id}`);
         logs.push(`Task queue: ${deployedWorkflowRef.taskQueue}`);
         artifactUri = `temporal-workflow://${deployedWorkflowRef.id}`;
-        artifactHash = build.id;
-        workerVersion = build.id;
+        artifactHash = workflowArtifactRef.artifactHash || this.extractArtifactHashFromBuild(build) || null;
+        workerVersion = workflowArtifactRef.artifactVersion
+          ? `artifact:${workflowArtifactRef.artifactVersion}`
+          : artifactHash;
         resultSnapshot = {
           workflowId: deployedWorkflowRef.id,
+          workflowArtifactRef,
           taskQueue: deployedWorkflowRef.taskQueue,
           deployedAt: deployedWorkflowRef.deployedAt?.toISOString?.() || null,
           generatedFromBuildId: build.id,
@@ -417,43 +388,19 @@ export class CapabilityReleaseDeploymentService {
           undefined,
           userId,
         );
-        const workflowDsl = this.expectRecord(targetSnapshot.sourcePayload.workflowDsl, '缺少 workflowDsl');
-        const activityDsl = this.expectRecord(targetSnapshot.sourcePayload.activityDsl, '缺少 activityDsl');
-        const workflowName = String(
-          targetSnapshot.sourcePayload.name || targetRelease.sourceName || 'GeneratedWorkflow',
+        const workflowArtifactRef = this.resolveWorkflowArtifactRef(
+          targetSnapshot.sourcePayload,
+          targetRelease.sourceId || targetSnapshot.sourceId || null,
         );
-        const description = String(targetSnapshot.sourcePayload.description || '');
-        const taskQueue =
-          typeof targetSnapshot.sourcePayload.taskQueue === 'string'
-            ? targetSnapshot.sourcePayload.taskQueue
-            : 'SKILL_TASK_QUEUE';
-        const workflowId = release.sourceId || targetRelease.sourceId;
-        const generatedCode = targetBuild.generatedCode || '';
-        const workflow = workflowId
-          ? await this.temporalWorkflowService.update(workflowId, {
-              name: workflowName,
-              description,
-              taskQueue,
-              workflowDsl: workflowDsl as any,
-              activityDsl: activityDsl as any,
-              generatedCode,
-              isActive: true,
-            })
-          : await this.temporalWorkflowService.create({
-              name: workflowName,
-              description,
-              taskQueue,
-              workflowDsl: workflowDsl as any,
-              activityDsl: activityDsl as any,
-              generatedCode,
-            });
-
-        const workflowRef = workflow as any;
-        await this.temporalWorkflowService.deploy(workflowRef.id);
-        logs.push('Workflow code synced to ops-temporal metadata');
+        if (!workflowArtifactRef?.workflowId) {
+          throw new Error('目标 Release 缺少可回滚的 Workflow artifact');
+        }
+        await this.temporalWorkflowService.deploy(workflowArtifactRef.workflowId);
+        logs.push('Workflow artifact restored to deployment target');
         logs.push(`Temporal workflow rolled back to build ${targetBuild.id}`);
         resultSnapshot = {
-          workflowId: workflowRef.id,
+          workflowArtifactRef,
+          workflowId: workflowArtifactRef.workflowId,
           restoredFromReleaseId: targetRelease.id,
           restoredBuildId: targetBuild.id,
           restoredSkillId,
@@ -610,6 +557,48 @@ export class CapabilityReleaseDeploymentService {
       return fromPayloadId.trim();
     }
     return null;
+  }
+
+  private resolveWorkflowArtifactRef(
+    sourcePayload: Record<string, unknown>,
+    fallbackWorkflowId?: string | null,
+  ): { workflowId: string; artifactVersion?: number | null; artifactHash?: string | null } | null {
+    const directRef = sourcePayload.workflowArtifactRef;
+    if (directRef && typeof directRef === 'object') {
+      const record = directRef as Record<string, unknown>;
+      const workflowId = typeof record.workflowId === 'string' ? record.workflowId.trim() : '';
+      if (workflowId) {
+        return {
+          workflowId,
+          artifactVersion: typeof record.artifactVersion === 'number' ? record.artifactVersion : null,
+          artifactHash: typeof record.artifactHash === 'string' ? record.artifactHash : null,
+        };
+      }
+    }
+
+    const workflowId = typeof sourcePayload.id === 'string' && sourcePayload.id.trim()
+      ? sourcePayload.id.trim()
+      : typeof fallbackWorkflowId === 'string' && fallbackWorkflowId.trim()
+        ? fallbackWorkflowId.trim()
+        : '';
+    if (!workflowId) {
+      return null;
+    }
+    return {
+      workflowId,
+      artifactVersion: typeof sourcePayload.artifactVersion === 'number' ? sourcePayload.artifactVersion : null,
+      artifactHash: typeof sourcePayload.artifactHash === 'string' ? sourcePayload.artifactHash : null,
+    };
+  }
+
+  private extractArtifactHashFromBuild(build: CapabilityBuildDTO): string | null {
+    const workflowArtifactRef = build.generatedConfig?.workflowArtifactRef;
+    if (!workflowArtifactRef || typeof workflowArtifactRef !== 'object') {
+      return null;
+    }
+    return typeof (workflowArtifactRef as Record<string, unknown>).artifactHash === 'string'
+      ? (workflowArtifactRef as Record<string, unknown>).artifactHash as string
+      : null;
   }
 
   private async getRollbackTargetOrThrow(

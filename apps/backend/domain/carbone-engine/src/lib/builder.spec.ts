@@ -1,6 +1,44 @@
 import { Builder } from './builder';
 
 describe('Builder', () => {
+  it('prefers exact dotted keys over nested traversal', () => {
+    const builder = new Builder();
+    const xml = '<root><t>{d.contract.partyA}</t><t>{d.contract.partyA.name}</t></root>';
+    const result = builder.buildXML(xml, {
+      'contract.partyA': '委托方：',
+      'contract.partyA.name': '甲 方',
+      contract: {
+        partyA: {
+          name: 'nested fallback should not win',
+        },
+      },
+    });
+
+    expect(result.xml).toBe('<root><t>委托方：</t><t>甲 方</t></root>');
+  });
+
+  it('resolves exact dotted keys inside loop rows', () => {
+    const builder = new Builder();
+    const xml = [
+      '<w:tr>',
+      '<w:tc><w:p><w:r><w:t>{#d.items}{d.items[].partyA}</w:t></w:r></w:p></w:tc>',
+      '<w:tc><w:p><w:r><w:t>{d.items[].partyA.name}{/d.items}</w:t></w:r></w:p></w:tc>',
+      '</w:tr>',
+    ].join('');
+
+    const result = builder.buildXML(xml, {
+      items: [
+        {
+          partyA: '委托方：',
+          'partyA.name': '甲 方',
+        },
+      ],
+    });
+
+    expect(result.xml).toContain('<w:t>委托方：</w:t>');
+    expect(result.xml).toContain('<w:t>甲 方</w:t>');
+  });
+
   it('escapes xml special characters when replacing scalar markers', () => {
     const builder = new Builder();
     const xml = '<si><t>{d.qualityLiability}</t></si>';

@@ -14,6 +14,8 @@ import requests
 from temporalio import activity
 from temporalio.exceptions import ApplicationError
 from typing import Dict, Any
+import json
+import urllib.request
 
 
 @activity.defn(name="documentRender")
@@ -25,101 +27,235 @@ async def documentRender(input_data: Dict[str, Any]) -> Dict[str, Any]:
         raise ApplicationError("input_data 必须是 dict", non_retryable=True)
 
     template_id = input_data.get("templateId")
+    skill_id = input_data.get("skillId")
+    published_skill_id = input_data.get("publishedSkillId")
     render_data = input_data.get("data", {})
+    workflow_input_params = input_data.get("workflowInputParams")
+    workflow_input_policy = input_data.get("workflowInputPolicy")
     output_format = input_data.get("outputFormat", "docx")
     output_name = input_data.get("outputName", "")
+    request_timeout_seconds = input_data.get("requestTimeoutSeconds")
     source_language = input_data.get("sourceLanguage")
     target_languages = input_data.get("targetLanguages") or []
+    prepare_localized_render_data = input_data.get("prepareLocalizedRenderData")
 
-    if not template_id:
-        raise ApplicationError("templateId 是必需的参数", non_retryable=True)
+    if not template_id and not skill_id:
+        raise ApplicationError("templateId 或 skillId 至少需要提供一个", non_retryable=True)
     if not isinstance(render_data, dict):
         raise ApplicationError("data 参数必须是字典类型", non_retryable=True)
+    if workflow_input_params is not None and not isinstance(workflow_input_params, dict):
+        raise ApplicationError("workflowInputParams 参数必须是字典类型", non_retryable=True)
+    if workflow_input_policy is not None and not isinstance(workflow_input_policy, dict):
+        raise ApplicationError("workflowInputPolicy 参数必须是字典类型", non_retryable=True)
+    if request_timeout_seconds is None:
+        resolved_request_timeout_seconds = 300
+    elif isinstance(request_timeout_seconds, bool) or not isinstance(request_timeout_seconds, (int, float)):
+        raise ApplicationError("requestTimeoutSeconds 参数必须是数字类型", non_retryable=True)
+    else:
+        resolved_request_timeout_seconds = float(request_timeout_seconds)
+    if resolved_request_timeout_seconds <= 0:
+        raise ApplicationError("requestTimeoutSeconds 参数必须大于 0", non_retryable=True)
     if source_language is not None and not isinstance(source_language, str):
         raise ApplicationError("sourceLanguage 参数必须是字符串类型", non_retryable=True)
     if not isinstance(target_languages, list):
         raise ApplicationError("targetLanguages 参数必须是数组类型", non_retryable=True)
+    if prepare_localized_render_data is None:
+        should_prepare_localized_render_data = False
+    elif not isinstance(prepare_localized_render_data, bool):
+        raise ApplicationError("prepareLocalizedRenderData 参数必须是布尔类型", non_retryable=True)
+    else:
+        should_prepare_localized_render_data = prepare_localized_render_data
 
-    external_base_url = (os.getenv("CARBONE_EXTERNAL_URL") or ${JSON.stringify(getCarboneExternalUrl())}).rstrip("/")
+    if (source_language or target_languages) and not should_prepare_localized_render_data:
+        should_prepare_localized_render_data = True
+
+    def _normalize_base_url(value: Any) -> str:
+        normalized = str(value or "").strip()
+        while len(normalized) >= 2 and normalized[0] == normalized[-1] and normalized[0] in ('"', "'", "\`"):
+            normalized = normalized[1:-1].strip()
+        return normalized.rstrip("/")
+
+    external_base_url = _normalize_base_url(os.getenv("CARBONE_EXTERNAL_URL") or ${JSON.stringify(getCarboneExternalUrl())})
 
     candidate_base_urls = []
-    configured_base_url = (os.getenv("CARBONE_SERVICE_URL") or ${JSON.stringify(getCarboneServiceUrl())})
+    configured_base_url = _normalize_base_url(os.getenv("CARBONE_SERVICE_URL") or ${JSON.stringify(getCarboneServiceUrl())})
     if configured_base_url:
-        candidate_base_urls.append(str(configured_base_url).rstrip("/"))
-    default_base_url = ${JSON.stringify(getCarboneServiceUrl())}
+        candidate_base_urls.append(configured_base_url)
+    default_base_url = _normalize_base_url(${JSON.stringify(getCarboneServiceUrl())})
     if default_base_url:
-        candidate_base_urls.append(str(default_base_url).rstrip("/"))
+        candidate_base_urls.append(default_base_url)
 
     deduped_base_urls = []
     for candidate in candidate_base_urls:
-        if candidate and candidate not in deduped_base_urls:
-            deduped_base_urls.append(candidate)
+        normalized_candidate = _normalize_base_url(candidate)
+        if normalized_candidate and normalized_candidate not in deduped_base_urls:
+            deduped_base_urls.append(normalized_candidate)
 
-    if source_language or target_languages:
-        render_data_payload = {
-            "templateId": template_id,
-            "userInput": "",
-            "userOverrides": render_data,
-        }
-        if source_language:
-            render_data_payload["sourceLanguage"] = source_language
-        if target_languages:
-            render_data_payload["targetLanguages"] = target_languages
+    if not deduped_base_urls:
+        raise ApplicationError("未配置可用的 Carbone 服务地址", non_retryable=True)
 
-        render_data_result = None
-        last_render_data_error = None
-        for base_url in deduped_base_urls:
-            render_data_url = base_url + "/studio/template/render-data"
-            activity.logger.info(
-                "开始生成模板渲染数据",
-                extra={"templateId": template_id, "renderDataUrl": render_data_url, "fieldCount": len(render_data)},
-            )
+    # #region debug-point B:debug-report
+    def _debug_report(msg: str, data: Dict[str, Any], hypothesis_id: str = "B") -> None:
+        try:
+            debug_server_url = "http://127.0.0.1:7777/event"
+            debug_session_id = "document-render-aborted"
             try:
-                response = requests.post(render_data_url, json=render_data_payload, timeout=60)
-                response.raise_for_status()
-                render_data_result = response.json()
-                activity.heartbeat("template_render_data_completed")
-                break
-            except requests.RequestException as exc:
-                last_render_data_error = exc
-                activity.logger.error(
-                    "模板渲染数据生成失败，尝试下一个地址",
-                    extra={"renderDataUrl": render_data_url, "error": str(exc)},
-                )
-        if render_data_result is None:
-            raise ApplicationError(
-                f"模板渲染数据生成失败: {str(last_render_data_error) if last_render_data_error else 'unknown error'}",
-                non_retryable=True,
-            )
-        resolved_render_data = render_data_result.get("data") if isinstance(render_data_result, dict) else None
-        if not isinstance(resolved_render_data, dict):
-            raise ApplicationError("模板渲染数据生成结果格式无效", non_retryable=True)
-        render_data = resolved_render_data
+                with open(".dbg/document-render-aborted.env", "r", encoding="utf-8") as debug_env_file:
+                    for debug_line in debug_env_file.read().splitlines():
+                        if debug_line.startswith("DEBUG_SERVER_URL="):
+                            debug_server_url = debug_line.split("=", 1)[1].strip() or debug_server_url
+                        elif debug_line.startswith("DEBUG_SESSION_ID="):
+                            debug_session_id = debug_line.split("=", 1)[1].strip() or debug_session_id
+            except Exception:
+                pass
+            urllib.request.urlopen(urllib.request.Request(
+                debug_server_url,
+                data=json.dumps({
+                    "sessionId": debug_session_id,
+                    "runId": "pre-fix",
+                    "hypothesisId": hypothesis_id,
+                    "location": "fixed-activity-templates:documentRender",
+                    "msg": msg,
+                    "data": data,
+                }).encode("utf-8"),
+                headers={"Content-Type": "application/json"},
+            )).read()
+        except Exception:
+            pass
+    # #endregion
 
     payload = {
-        "templateId": template_id,
         "data": render_data,
         "outputFormat": output_format,
     }
+    if template_id:
+        payload["templateId"] = template_id
+    if skill_id:
+        payload["skillId"] = skill_id
+    if published_skill_id:
+        payload["publishedSkillId"] = published_skill_id
     if output_name:
         payload["outputName"] = output_name
+    if source_language:
+        payload["sourceLanguage"] = source_language
+    if target_languages:
+        payload["targetLanguages"] = target_languages
+    if workflow_input_params is not None:
+        payload["workflowInputParams"] = workflow_input_params
+    if workflow_input_policy is not None:
+        payload["workflowInputPolicy"] = workflow_input_policy
+    if should_prepare_localized_render_data:
+        payload["prepareLocalizedRenderData"] = True
+
+    def _prepare_render_payload(base_url: str) -> Dict[str, Any]:
+        standardize_url = base_url + "/studio/generate-render-data-with-skill"
+        standardize_payload = {
+            "simulatedData": render_data,
+            "outputFormat": output_format,
+        }
+        if template_id:
+            standardize_payload["templateId"] = template_id
+        if skill_id:
+            standardize_payload["skillId"] = skill_id
+        if published_skill_id:
+            standardize_payload["publishedSkillId"] = published_skill_id
+        if output_name:
+            standardize_payload["outputName"] = output_name
+        if source_language:
+            standardize_payload["sourceLanguage"] = source_language
+        if target_languages:
+            standardize_payload["targetLanguages"] = target_languages
+        if workflow_input_params is not None:
+            standardize_payload["workflowInputParams"] = workflow_input_params
+        if workflow_input_policy is not None:
+            standardize_payload["workflowInputPolicy"] = workflow_input_policy
+        if should_prepare_localized_render_data:
+            standardize_payload["prepareLocalizedRenderData"] = True
+
+        try:
+            standardize_response = requests.post(
+                standardize_url,
+                json=standardize_payload,
+                timeout=resolved_request_timeout_seconds,
+            )
+            standardize_response.raise_for_status()
+            standardize_result = standardize_response.json()
+            render_resolved_request = (
+                standardize_result.get("renderResolvedRequest")
+                if isinstance(standardize_result, dict)
+                else None
+            )
+            if (
+                isinstance(render_resolved_request, dict)
+                and isinstance(render_resolved_request.get("data"), dict)
+            ):
+                return render_resolved_request
+        except requests.RequestException as exc:
+            activity.logger.warning(
+                "Carbone 标准数据生成失败，回退直渲染",
+                extra={"standardizeUrl": standardize_url, "error": str(exc)},
+            )
+
+        return payload
+
 
     last_error = None
     render_result = None
+    resolved_payload = payload
 
     for base_url in deduped_base_urls:
-        render_url = base_url + "/studio/render"
+        render_url = base_url + "/studio/render-resolved"
+        request_payload = _prepare_render_payload(base_url)
+        field_count = len(request_payload.get("data", {})) if isinstance(request_payload.get("data"), dict) else len(render_data)
         activity.logger.info(
             "开始调用 Carbone 渲染",
-            extra={"templateId": template_id, "renderUrl": render_url, "fieldCount": len(render_data)},
+            extra={
+                "templateId": template_id,
+                "skillId": skill_id,
+                "publishedSkillId": published_skill_id,
+                "renderUrl": render_url,
+                "fieldCount": field_count,
+                "requestTimeoutSeconds": resolved_request_timeout_seconds,
+                "prepareLocalizedRenderData": should_prepare_localized_render_data,
+            },
         )
         try:
-            response = requests.post(render_url, json=payload, timeout=60)
+            # #region debug-point B:before-render-request
+            _debug_report("[DEBUG] documentRender before requests.post", {
+                "templateId": template_id,
+                "skillId": skill_id,
+                "publishedSkillId": published_skill_id,
+                "baseUrl": base_url,
+                "renderUrl": render_url,
+                "renderUrlRepr": repr(render_url),
+                "requestTimeoutSeconds": resolved_request_timeout_seconds,
+                "dedupedBaseUrls": deduped_base_urls,
+                "fieldCount": field_count,
+            })
+            # #endregion
+            response = requests.post(render_url, json=request_payload, timeout=resolved_request_timeout_seconds)
+            # #region debug-point C:render-response
+            _debug_report("[DEBUG] documentRender received response", {
+                "renderUrl": render_url,
+                "statusCode": getattr(response, "status_code", None),
+                "contentType": response.headers.get("Content-Type") if getattr(response, "headers", None) else None,
+            }, "C")
+            # #endregion
             response.raise_for_status()
             render_result = response.json()
+            resolved_payload = request_payload
             activity.heartbeat("carbone_render_completed")
             break
         except requests.RequestException as exc:
+            # #region debug-point D:render-request-exception
+            _debug_report("[DEBUG] documentRender requests exception", {
+                "renderUrl": render_url,
+                "errorType": exc.__class__.__name__,
+                "errorMessage": str(exc),
+                "errorRepr": repr(exc),
+                "responseStatusCode": getattr(getattr(exc, "response", None), "status_code", None),
+            }, "D")
+            # #endregion
             last_error = exc
             activity.logger.error(
                 "Carbone 渲染失败，尝试下一个地址",
@@ -136,19 +272,16 @@ async def documentRender(input_data: Dict[str, Any]) -> Dict[str, Any]:
     if isinstance(download_url, str) and download_url.startswith("/"):
         download_url = external_base_url + download_url
     elif not isinstance(download_url, str) or not download_url.strip():
-        document_id = render_result.get("documentId")
-        if isinstance(document_id, str) and document_id.strip():
-            download_url = f"{external_base_url}/studio/download/{document_id}"
-        else:
-            raise ApplicationError("Carbone 返回结果缺少 downloadUrl/documentId", non_retryable=True)
+        raise ApplicationError("Carbone 返回结果缺少 downloadUrl", non_retryable=True)
 
     return {
         "status": "rendered",
-        "templateId": template_id,
+        "templateId": resolved_payload.get("templateId") if isinstance(resolved_payload, dict) else template_id,
+        "skillId": resolved_payload.get("skillId") if isinstance(resolved_payload, dict) else skill_id,
+        "publishedSkillId": resolved_payload.get("publishedSkillId") if isinstance(resolved_payload, dict) else published_skill_id,
         "downloadUrl": download_url,
         "fileName": render_result.get("fileName"),
-        "format": render_result.get("format", output_format),
-        "documentId": render_result.get("documentId"),
+        "format": render_result.get("format", resolved_payload.get("outputFormat") if isinstance(resolved_payload, dict) else output_format),
     }
 `;
 

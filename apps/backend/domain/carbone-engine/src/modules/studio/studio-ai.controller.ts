@@ -26,6 +26,7 @@ import { TemplateRepository } from './template.repository';
 import { SkillRepository } from './skill.repository';
 import { RenderOutputRepository } from './render-output.repository';
 import { TemplateWorkflowService } from './template-workflow.service';
+import { isStudioSkillDebugEnabled, isStudioVerboseDebugEnabled } from './studio-debug.helper';
 import {
   AIIdentifyDto,
   AIVerifyDto,
@@ -36,6 +37,9 @@ import { StudioControllerBase } from './studio.controller.base';
 @ApiTags('studio')
 @Controller('studio')
 export class StudioAiController extends StudioControllerBase {
+  private readonly verboseDebugEnabled = isStudioVerboseDebugEnabled();
+  private readonly skillDebugEnabled = isStudioSkillDebugEnabled();
+
   constructor(
     previewService: PreviewService,
     aiIdentifierService: AIIdentifierService,
@@ -255,7 +259,9 @@ export class StudioAiController extends StudioControllerBase {
         dto.context,
         // 进度回调 - 用于日志记录
         (progress) => {
-          console.log(`[MultiStage Progress] ${progress.stageName}: ${progress.progress}% - ${progress.message}`);
+          if (this.verboseDebugEnabled) {
+            this.logger.debug(`[MultiStage Progress] ${progress.stageName}: ${progress.progress}% - ${progress.message}`);
+          }
         },
         dto.underlineInfo,    // 下划线信息
         dto.paragraphFormats, // 段落格式信息
@@ -399,9 +405,11 @@ export class StudioAiController extends StudioControllerBase {
 
       // 获取模版配置
       const config = dto.templateConfig || meta.templateConfig || {};
-      console.log('AI Verify config:', JSON.stringify(config, null, 2));
-      console.log('dto.templateConfig exists:', !!dto.templateConfig);
-      console.log('meta.templateConfig exists:', !!meta.templateConfig);
+      if (this.verboseDebugEnabled) {
+        this.logger.debug(`AI Verify config keys: ${Object.keys(config || {}).join(',')}`);
+        this.logger.debug(`dto.templateConfig exists: ${!!dto.templateConfig}`);
+        this.logger.debug(`meta.templateConfig exists: ${!!meta.templateConfig}`);
+      }
 
       // 步骤2: 调用AI生成验证报告
       sendProgress('ai_call', 30, '调用AI生成验证报告...');
@@ -428,12 +436,18 @@ export class StudioAiController extends StudioControllerBase {
       if (!parsedTestData || Object.keys(parsedTestData).length === 0) {
         // 优先使用模版配置生成数据
         if (config && Object.keys(config).length > 0) {
-          console.log('Generating sample data from config...');
+          if (this.verboseDebugEnabled) {
+            this.logger.debug('Generating sample data from config...');
+          }
           sampleData = this.engine.generateSampleDataFromConfig(config, config.tableLoops?.[0]?.dataRowCount || 5, true);
-          console.log('Generated sampleData:', JSON.stringify(sampleData, null, 2));
+          if (this.verboseDebugEnabled) {
+            this.logger.debug(`Generated sampleData keys: ${Object.keys(sampleData || {}).join(',')}`);
+          }
         } else {
           // 否则使用模板变量生成
-          console.log('Using fallback generateSampleData, config empty');
+          if (this.verboseDebugEnabled) {
+            this.logger.debug('Using fallback generateSampleData, config empty');
+          }
           sampleData = this.engine.generateSampleData(templateInfo, 5);
         }
       }
@@ -623,12 +637,18 @@ export class StudioAiController extends StudioControllerBase {
       if (!parsedTestData || Object.keys(parsedTestData).length === 0) {
         // 优先使用模版配置生成数据
         if (config && Object.keys(config).length > 0) {
-          console.log('Generating sample data from config...');
+          if (this.verboseDebugEnabled) {
+            this.logger.debug('Generating sample data from config...');
+          }
           sampleData = this.engine.generateSampleDataFromConfig(config, config.tableLoops?.[0]?.dataRowCount || 5, true);
-          console.log('Generated sampleData:', JSON.stringify(sampleData, null, 2));
+          if (this.verboseDebugEnabled) {
+            this.logger.debug(`Generated sampleData keys: ${Object.keys(sampleData || {}).join(',')}`);
+          }
         } else {
           // 否则使用模板变量生成
-          console.log('Using fallback generateSampleData, config empty');
+          if (this.verboseDebugEnabled) {
+            this.logger.debug('Using fallback generateSampleData, config empty');
+          }
           sampleData = this.engine.generateSampleData(templateInfo, 5);
         }
       }
@@ -841,15 +861,17 @@ export class StudioAiController extends StudioControllerBase {
         templateMeta?.templateConfig,
         body.templateConfig,
       );
-      this.logger.log(
-        `[skill-debug] generate-skill templateId=${body.templateId || 'none'} incomingSuggestions=${Array.isArray(body.suggestions) ? body.suggestions.length : 0} cachedSuggestions=${Array.isArray(templateMeta?.suggestions) ? templateMeta!.suggestions!.length : 0} mergedSuggestions=${suggestions.length} templateType=${templateType}`,
-      );
-      this.logger.log(
-        `[skill-debug] mergedSuggestionNames=${suggestions
-          .map((suggestion) => String(suggestion?.suggestedName || suggestion?.details?.variableName || '').trim())
-          .filter(Boolean)
-          .join(', ') || 'none'}`,
-      );
+      if (this.skillDebugEnabled) {
+        this.logger.debug(
+          `[skill-debug] generate-skill templateId=${body.templateId || 'none'} incomingSuggestions=${Array.isArray(body.suggestions) ? body.suggestions.length : 0} cachedSuggestions=${Array.isArray(templateMeta?.suggestions) ? templateMeta!.suggestions!.length : 0} mergedSuggestions=${suggestions.length} templateType=${templateType}`,
+        );
+        this.logger.debug(
+          `[skill-debug] mergedSuggestionNames=${suggestions
+            .map((suggestion) => String(suggestion?.suggestedName || suggestion?.details?.variableName || '').trim())
+            .filter(Boolean)
+            .join(', ') || 'none'}`,
+        );
+      }
 
       // 调用服务层方法生成skill
       const skill = await this.aiIdentifierService.generateAISkillGuide(
@@ -858,9 +880,11 @@ export class StudioAiController extends StudioControllerBase {
         templateType,
         body.documentDescription
       );
-      this.logger.log(
-        `[skill-debug] generatedSkillParameters=${Array.isArray(skill?.parameters) ? skill.parameters.length : 0}`,
-      );
+      if (this.skillDebugEnabled) {
+        this.logger.debug(
+          `[skill-debug] generatedSkillParameters=${Array.isArray(skill?.parameters) ? skill.parameters.length : 0}`,
+        );
+      }
 
       // 保存skill文件
       const skillId = skill.id;
@@ -928,7 +952,9 @@ export class StudioAiController extends StudioControllerBase {
   }> {
     const debugLogs: string[] = [];
     const addLog = (msg: string) => {
-      console.log(msg);
+      if (this.verboseDebugEnabled) {
+        this.logger.debug(msg);
+      }
       debugLogs.push(msg);
     };
 

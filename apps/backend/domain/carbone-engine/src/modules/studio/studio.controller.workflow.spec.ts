@@ -26,6 +26,7 @@ describe('StudioController template workflow', () => {
     upsertFromMeta: jest.Mock;
     updateConfig: jest.Mock;
   };
+  let skillRepository: any;
   let tempRootDir: string;
   let templatesDir: string;
   let outputsDir: string;
@@ -55,7 +56,7 @@ describe('StudioController template workflow', () => {
     };
 
     const previewService = {} as any;
-    const skillRepository = {
+    skillRepository = {
       findById: jest.fn().mockResolvedValue(null),
       upsertFromDocument: jest.fn().mockResolvedValue(undefined),
     } as any;
@@ -494,24 +495,9 @@ describe('StudioController template workflow', () => {
       saveMode: 'draft',
     });
 
-    const renderDataSpy = jest.spyOn((renderController as any).templateWorkflowService, 'renderData').mockResolvedValue({
-      data: {
-        partyAName_zh: '上海云章科技有限公司',
-        partyAName_ja: '上海クラウドドキュメント科技有限公司',
-      },
-      sourceTrace: {
-        partyAName: {
-          resolution: 'llm_translated',
-        },
-      },
-      warnings: [],
-      missingFields: [],
-      needsReviewFields: [],
-    });
-    jest.spyOn((renderController as any).engine, 'validateData').mockReturnValue({ valid: true, missing: [] });
     const renderSpy = jest.spyOn((renderController as any).engine, 'render').mockResolvedValue(Buffer.from('rendered-output'));
 
-    const result = await renderController.renderTemplate({
+    const result = await renderController.renderResolved({
       templateId,
       data: {
         partyAName: '上海云章科技有限公司',
@@ -521,30 +507,275 @@ describe('StudioController template workflow', () => {
       prepareLocalizedRenderData: true,
     });
 
-    expect(renderDataSpy).toHaveBeenCalledWith(
-      '',
-      expect.arrayContaining([
-        expect.objectContaining({
-          fieldId: 'partyAName',
-        }),
-      ]),
-      expect.anything(),
-      'zh',
-      ['ja'],
-      {
-        partyAName: '上海云章科技有限公司',
-      },
-      undefined,
-    );
     expect(renderSpy).toHaveBeenCalledWith(
       expect.any(Buffer),
       expect.objectContaining({
-        partyAName_zh: '上海云章科技有限公司',
-        partyAName_ja: '上海クラウドドキュメント科技有限公司',
+        partyAName: '上海云章科技有限公司',
       }),
       'render-before-translate.docx',
     );
     expect(result.downloadUrl).toMatch(/^\/studio\/download\//);
+  });
+
+  it('uses outputName and localized render data in render-resolved', async () => {
+    const templateId = 'tpl-render-resolved-runtime';
+    fs.writeFileSync(path.join(templatesDir, `${templateId}.docx`), Buffer.from('template-binary-demo'));
+
+    await workflowController.saveTemplateWorkflow({
+      templateId,
+      templateMeta: {
+        templateName: 'resolved-runtime.docx',
+        sourceLanguage: 'zh',
+        targetLanguages: ['ja'],
+        documentMode: 'single_or_bilingual',
+      },
+      templateDocumentIr: {
+        host: 'word',
+        elements: [
+          {
+            id: 'p-1',
+            type: 'paragraph',
+            text: '委托方：______________',
+          },
+        ],
+      },
+      templateFieldSpecs: [
+        {
+          fieldId: 'partyAName',
+          type: 'legal_entity_name',
+          sourceLanguage: 'zh',
+          targetLanguages: ['ja'],
+          policy: 'llm_translate',
+          required: true,
+        },
+      ],
+      saveMode: 'draft',
+    });
+
+    const renderSpy = jest.spyOn((renderController as any).engine, 'render').mockResolvedValue(Buffer.from('rendered-output'));
+
+    const result = await renderController.renderResolved({
+      templateId,
+      publishedSkillId: 'published-skill-1',
+      data: {
+        partyAName: '上海云章科技有限公司',
+      },
+      outputFormat: 'docx',
+      outputName: '统一入口合同',
+      sourceLanguage: 'zh',
+      targetLanguages: ['ja'],
+      prepareLocalizedRenderData: true,
+    });
+
+    expect(renderSpy).toHaveBeenCalledWith(
+      expect.any(Buffer),
+      expect.objectContaining({
+        partyAName: '上海云章科技有限公司',
+      }),
+      'resolved-runtime.docx',
+    );
+    expect(result.fileName).toMatch(/^统一入口合同_\d{12}\.docx$/);
+    expect(result.downloadUrl).toMatch(/^\/studio\/download\//);
+  });
+
+  it('falls back to templateId when embedded carbone skillId is stale in render-resolved', async () => {
+    const templateId = 'tpl-render-resolved-stale-skill';
+    fs.writeFileSync(path.join(templatesDir, `${templateId}.docx`), Buffer.from('template-binary-demo'));
+
+    await workflowController.saveTemplateWorkflow({
+      templateId,
+      templateMeta: {
+        templateName: 'stale-skill-fallback.docx',
+      },
+      templateDocumentIr: {
+        host: 'word',
+        elements: [
+          {
+            id: 'p-1',
+            type: 'paragraph',
+            text: '客户名称：______________',
+          },
+        ],
+      },
+      templateFieldSpecs: [
+        {
+          fieldId: 'customerName',
+          type: 'string',
+          required: false,
+        },
+      ],
+      saveMode: 'draft',
+    });
+
+    skillRepository.findById.mockResolvedValueOnce(null);
+    const renderSpy = jest.spyOn((renderController as any).engine, 'render').mockResolvedValue(Buffer.from('rendered-output'));
+
+    const result = await renderController.renderResolved({
+      templateId,
+      skillId: 'deleted-carbone-skill',
+      publishedSkillId: 'published-skill-current',
+      data: {
+        customerName: 'Alice',
+      },
+      outputFormat: 'docx',
+    });
+
+    expect(renderSpy).toHaveBeenCalledWith(
+      expect.any(Buffer),
+      expect.objectContaining({
+        customerName: 'Alice',
+      }),
+      'stale-skill-fallback.docx',
+    );
+    expect(result.fileName).toMatch(/^stale-skill-fallback_\d{12}\.docx$/);
+    expect(result.downloadUrl).toMatch(/^\/studio\/download\//);
+  });
+
+  it('prefers workflow input mappings in render-resolved when template field specs are missing', async () => {
+    const templateId = 'tpl-render-workflow-mapping-first';
+    fs.writeFileSync(path.join(templatesDir, `${templateId}.docx`), Buffer.from('template-binary-demo'));
+
+    await workflowController.saveTemplateWorkflow({
+      templateId,
+      templateMeta: {
+        templateName: 'workflow-mapping-first.docx',
+        sourceLanguage: 'zh',
+        targetLanguages: ['ja'],
+        documentMode: 'single_or_bilingual',
+      },
+      templateDocumentIr: {
+        host: 'word',
+        elements: [
+          {
+            id: 'p-1',
+            type: 'paragraph',
+            text: '委托方：______________',
+          },
+        ],
+      },
+      templateFieldSpecs: [
+        {
+          fieldId: 'contract.partyA.name',
+          type: 'legal_entity_name',
+          sourceLanguage: 'zh',
+          targetLanguages: ['ja'],
+          policy: 'llm_translate',
+          required: true,
+        },
+      ],
+      saveMode: 'draft',
+    });
+
+    const metaPath = path.join(templatesDir, `${templateId}.json`);
+    const meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+    meta.templateConfig.templateWorkflow.templateFieldSpecs = [];
+    meta.templateConfig.templateWorkflow.carboneBindingPlan = undefined;
+    meta.templateConfig.templateAssetManifest.templateFieldSpecs = [];
+    meta.templateConfig.templateAssetManifest.fieldCount = 0;
+    meta.templateConfig.templateAssetManifest.renderPlan = {
+      templateId,
+      version: 1,
+      bindings: [],
+    };
+    fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2));
+
+    const renderSpy = jest.spyOn((renderController as any).engine, 'render').mockResolvedValue(Buffer.from('rendered-output'));
+
+    const result = await renderController.renderResolved({
+      templateId,
+      data: {
+        'contract.partyA.name': '测试甲方',
+      },
+      workflowInputParams: {
+        'contract.partyA.name': {
+          type: 'string',
+          required: true,
+          renderPath: ['contract.partyA.name_cn', 'contract.partyA.name_jp'],
+          localizedVariants: ['cn', 'jp'],
+        },
+      },
+      sourceLanguage: 'zh',
+      targetLanguages: ['ja'],
+      prepareLocalizedRenderData: true,
+    });
+
+    expect(renderSpy).toHaveBeenCalledWith(
+      expect.any(Buffer),
+      expect.objectContaining({
+        contract: {
+          partyA: {
+            name_cn: '测试甲方',
+            name_jp: '测试甲方',
+          },
+        },
+      }),
+      'workflow-mapping-first.docx',
+    );
+    expect(result.downloadUrl).toMatch(/^\/studio\/download\//);
+  });
+
+  it('maps scalar loop inputs onto final renderPath rows in render-resolved', async () => {
+    const templateId = 'tpl-render-direct-loop-paths';
+    fs.writeFileSync(path.join(templatesDir, `${templateId}.docx`), Buffer.from('template-binary-demo'));
+
+    await workflowController.saveTemplateWorkflow({
+      templateId,
+      templateMeta: {
+        templateName: 'direct-loop-paths.docx',
+      },
+      templateDocumentIr: {
+        host: 'word',
+        elements: [
+          {
+            id: 'p-1',
+            type: 'paragraph',
+            text: '项目：______________',
+          },
+        ],
+      },
+      templateFieldSpecs: [
+        {
+          fieldId: 'items[].productName',
+          type: 'string',
+          required: false,
+        },
+      ],
+      saveMode: 'draft',
+    });
+
+    const renderSpy = jest.spyOn((renderController as any).engine, 'render').mockResolvedValue(Buffer.from('rendered-output'));
+
+    await renderController.renderResolved({
+      templateId,
+      data: {
+        'items[].productName': '品名',
+        'items[].quantity': '数量',
+      },
+      workflowInputParams: {
+        'items[].productName': {
+          renderPath: ['items[].productName_cn', 'items[].productName_jp'],
+        },
+        'items[].quantity': {
+          renderPath: ['items[].quantity_cn', 'items[].quantity_jp'],
+        },
+      },
+      prepareLocalizedRenderData: true,
+    });
+
+    expect(renderSpy).toHaveBeenCalledWith(
+      expect.any(Buffer),
+      expect.objectContaining({
+        items: [
+          {
+            productName_cn: '品名',
+            productName_jp: '品名',
+            quantity_cn: '数量',
+            quantity_jp: '数量',
+          },
+        ],
+      }),
+      'direct-loop-paths.docx',
+    );
   });
 
   it('returns block results and context analysis from recognize endpoint', async () => {

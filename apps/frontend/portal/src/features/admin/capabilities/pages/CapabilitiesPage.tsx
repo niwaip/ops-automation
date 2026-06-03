@@ -113,6 +113,7 @@ interface CapabilitySourceOption {
   label: string;
   value: string;
   description?: string;
+  disabled?: boolean;
 }
 
 interface TemporalDeployReadiness {
@@ -159,13 +160,13 @@ const getValidationTypeLabel = (value: string) => {
 const getNextStepHint = (release: CapabilityRelease): { label: string; color: string } => {
   if (release.deploymentStatus === 'succeeded' || release.deploymentStatus === 'deployed' || release.status === 'deployed') return { label: '观察运行/回滚', color: 'green' };
   if (release.status === 'deploying' || release.deploymentStatus === 'deploying') return { label: '正在部署...', color: 'processing' };
-  if (release.status === 'build_failed') return { label: '重新构建', color: 'red' };
+  if (release.status === 'build_failed') return { label: '重新绑定工件', color: 'red' };
   if (release.status === 'validation_failed') return { label: '重新校验', color: 'volcano' };
   if (release.status === 'deploy_failed') return { label: '重新部署', color: 'magenta' };
   if (release.status === 'rolled_back') return { label: '确认回滚结果', color: 'orange' };
 
   if (release.sourceType === 'temporal_workflow' && release.latestSuccessfulValidationId) {
-    return { label: '代码部署 / 发布 Skill', color: 'blue' };
+    return { label: '部署 / 发布 Skill', color: 'blue' };
   }
   if (release.sourceType === 'browser_recording' && release.latestSuccessfulValidationId) {
     return { label: '发布 Browser Skill', color: 'cyan' };
@@ -187,7 +188,7 @@ const getNextStepHint = (release: CapabilityRelease): { label: string; color: st
   if (release.currentBuildId || release.latestSuccessfulBuildId) return { label: 'Sandbox 校验', color: 'purple' };
   if (release.sourceType === 'browser_recording') return { label: '准备浏览器回放校验', color: 'default' };
 
-  return { label: '开始构建', color: 'default' };
+  return { label: '绑定 Workflow 工件', color: 'default' };
 };
 
 const canEnterReleaseCenter = (release: CapabilityRelease): boolean =>
@@ -293,6 +294,14 @@ const getTemporalDeployReadiness = (
   }
 
   if (hasNonEmptyCode(sourceWorkflow?.generatedCode)) {
+    if (sourceWorkflow.validationStatus && sourceWorkflow.validationStatus !== 'validated') {
+      return {
+        hasExecutableCode: false,
+        source: 'workflow',
+        message:
+          '关联的 Workflow 已有代码，但当前工件尚未完成端到端验证。请先在 Workflow 页面执行“生成并保存代码”和“端到端验证”，再继续部署。',
+      };
+    }
     return { hasExecutableCode: true, source: 'workflow' };
   }
 
@@ -300,7 +309,7 @@ const getTemporalDeployReadiness = (
     hasExecutableCode: false,
     source: 'missing',
     message:
-      '当前 Release 还没有可执行 Workflow 代码。请先执行一次“构建 / AI 生成代码”，确认代码已保存，再进行部署。',
+      '当前 Release 还没有可部署的 Workflow artifact。请先在 Workflow 页面完成“生成并保存代码”和“端到端验证”，再进行部署。',
   };
 };
 
@@ -900,11 +909,24 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
 
   const createSourceOptions = useMemo<CapabilitySourceOption[]>(() => {
     if (createSourceType === 'temporal_workflow') {
-      return (temporalWorkflowOptionsQuery.data || []).map((workflow: TemporalWorkflowDTO) => ({
-        label: workflow.name || `Workflow ${workflow.id.slice(0, 8)}`,
-        value: workflow.id,
-        description: workflow.description || `Task Queue: ${workflow.taskQueue}`,
-      }));
+      return (temporalWorkflowOptionsQuery.data || [])
+        .filter((workflow: TemporalWorkflowDTO) => (
+          workflow.validationStatus === 'validated'
+          && Boolean(workflow.generatedCode?.trim())
+        ))
+        .map((workflow: TemporalWorkflowDTO) => ({
+          label: workflow.name || `Workflow ${workflow.id.slice(0, 8)}`,
+          value: workflow.id,
+          description: [
+            workflow.description || null,
+            `Artifact v${Number(workflow.artifactVersion || 0)}`,
+            `状态: ${workflow.validationStatus || 'draft'}`,
+            workflow.validatedAt
+              ? `验证时间: ${new Date(workflow.validatedAt).toLocaleString()}`
+              : null,
+            `Task Queue: ${workflow.taskQueue}`,
+          ].filter(Boolean).join(' | '),
+        }));
     }
 
     if (createSourceType === 'execution_flow_template') {
@@ -2003,12 +2025,12 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
             description={
               <Text>
                 {hasSnapshotDrift
-                  ? '当前快照与最近一次构建不一致，建议重新构建。'
+                  ? '当前快照与最近一次工件绑定记录不一致，建议重新绑定。'
                   : hasNoBuild
-                    ? '当前 Release 还没有构建记录，建议先构建。'
+                    ? '当前 Release 还没有工件绑定记录，建议先绑定已验证 Workflow artifact。'
                     : hasNoValidation
                       ? '当前 Release 还没有验证记录，建议完成验证。'
-                      : '建议重新执行构建与校验。'}
+                      : '建议重新执行工件绑定检查与校验。'}
               </Text>
             }
             style={{ marginBottom: 16 }}
@@ -2846,7 +2868,7 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                         loading={isCreateSourceLoading}
                         placeholder={
                           createSourceType === 'temporal_workflow'
-                            ? '选择一个已有工作流'
+                            ? '选择一个已验证的 Workflow artifact'
                             : createSourceType === 'browser_recording'
                               ? '选择一个浏览器工作流'
                               : '选择一个已有模版'
@@ -2876,14 +2898,14 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                       showIcon
                       message={
                         createSourceType === 'temporal_workflow'
-                          ? '当前没有可选的编排工作流'
+                          ? '当前没有可选的已验证 Workflow artifact'
                           : createSourceType === 'browser_recording'
                             ? '当前没有可选的浏览器工作流'
                             : '当前没有可选的模版'
                       }
                       description={
                         createSourceType === 'temporal_workflow'
-                          ? '请先在工作流页面创建后再回来。'
+                          ? '请先在 Workflow 页面完成“生成并保存代码”和“端到端验证”，再回来创建 Release。'
                           : createSourceType === 'browser_recording'
                             ? '请先在 Temporal 页面生成浏览器工作流后再回来。'
                             : '请先在模板页面创建后再回来。'

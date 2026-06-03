@@ -3,7 +3,7 @@
  * 解析Office文档的结构化元素（标题、段落、表格等）
  */
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import JSZip from 'jszip';
 // @ts-ignore - xml2js没有类型定义
 import * as xml2js from 'xml2js';
@@ -84,6 +84,7 @@ export class DocumentStructureService {
 
 export class DocumentStructureParser {
   private xml2jsParser: xml2js.Parser;
+  private readonly logger = new Logger(DocumentStructureParser.name);
 
   // Word命名空间
   private static readonly WORD_NS = {
@@ -413,7 +414,7 @@ export class DocumentStructureParser {
         if (!node) continue;
         this.injectTextLinesToElement(node, texts);
         if (texts.length > 1) {
-          console.log(
+          this.logger.debug(
             `[DocumentStructure] merged variable mappings for index=${index}: ${texts.join(' | ')}`,
           );
         }

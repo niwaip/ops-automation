@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BuiltinActivityRegistry, type BuiltinActivityDefinition } from './builtin-activity.registry';
+import { resolveCustomActivityRef } from './temporal-workflow-custom-activity-ref.helper';
 import type { ActivityDefinition, ActivityDsl, WorkflowStep } from './temporal-workflow.types';
 
 export interface TemporalWorkflowActivityResolutionSupport {
@@ -125,6 +126,7 @@ export class TemporalWorkflowActivityResolutionService {
   }
 
   private mapDbActivityToDefinition(activity: {
+    id?: string;
     name: string;
     fn: string;
     timeout: string;
@@ -134,6 +136,10 @@ export class TemporalWorkflowActivityResolutionService {
     generatedCode?: string | null;
   }): ActivityDefinition {
     return {
+      ...(activity.id ? {
+        id: activity.id,
+        activityRef: `custom:${activity.id}`,
+      } : {}),
       name: activity.name,
       fn: activity.fn,
       timeout: activity.timeout || '60s',
@@ -147,6 +153,12 @@ export class TemporalWorkflowActivityResolutionService {
   private findMatchingActivityInDsl(step: WorkflowStep, activityDsl: ActivityDsl): ActivityDefinition | null {
     const builtinFromRef = step.activityRef ? this.builtinActivityRegistry.getByRef(step.activityRef) : null;
     const candidates = activityDsl.activities || [];
+    if (step.activityRef?.startsWith('custom:')) {
+      const byRef = candidates.find((activity, index) => resolveCustomActivityRef(activity, index) === step.activityRef);
+      if (byRef) {
+        return byRef;
+      }
+    }
     if (step.activityName) {
       const byName = candidates.find((activity) => activity.name === step.activityName);
       if (byName) {

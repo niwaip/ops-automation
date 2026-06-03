@@ -802,4 +802,68 @@ describe('TemporalWorkflowService', () => {
       }),
     );
   });
+
+  it('repairs legacy artifact metadata when listing workflows', async () => {
+    const { service, prisma } = createService();
+    const updatedAt = new Date('2026-06-03T05:13:46.886Z');
+    const legacyWorkflow = {
+      id: 'workflow-legacy-1',
+      name: '中日双语技术服务合同生成工作流',
+      description: 'legacy workflow row',
+      taskQueue: 'SKILL_TASK_QUEUE',
+      workflowDsl: {
+        name: '中日双语技术服务合同生成工作流',
+        workflowClassName: 'Template1febbc18Workflow',
+        taskQueue: 'SKILL_TASK_QUEUE',
+        steps: [],
+      },
+      activityDsl: { activities: [] },
+      generatedCode: 'print("legacy artifact")',
+      artifactVersion: 0,
+      artifactHash: null,
+      validationStatus: null,
+      validationScore: 0,
+      validationResultJson: {
+        success: true,
+        score: 98,
+      },
+      validatedAt: null,
+      isActive: true,
+      deployedAt: null,
+      createdAt: updatedAt,
+      updatedAt,
+    } as any;
+    const repairedWorkflow = {
+      ...legacyWorkflow,
+      artifactVersion: 1,
+      artifactHash: 'sha256:dbc8a18fe702cc1bd6edde3f1a11a1f332a572a0cfe22d753a3475dd5456ca5d',
+      validationStatus: 'validated',
+      validationScore: 98,
+      validatedAt: updatedAt,
+    };
+
+    prisma.temporalWorkflow.findMany.mockResolvedValue([legacyWorkflow]);
+    prisma.temporalWorkflow.update.mockResolvedValue(repairedWorkflow);
+
+    const result = await service.findAll();
+
+    expect(prisma.temporalWorkflow.update).toHaveBeenCalledWith({
+      where: { id: 'workflow-legacy-1' },
+      data: expect.objectContaining({
+        artifactVersion: 1,
+        artifactHash: expect.stringMatching(/^sha256:/),
+        validationStatus: 'validated',
+        validationScore: 98,
+        validatedAt: updatedAt,
+      }),
+    });
+    expect(result[0]).toEqual(expect.objectContaining({
+      id: 'workflow-legacy-1',
+      artifactVersion: 1,
+      artifactHash: repairedWorkflow.artifactHash,
+      validationStatus: 'validated',
+      validationScore: 98,
+      validatedAt: updatedAt,
+    }));
+  });
 });

@@ -86,7 +86,7 @@ const DEFAULT_FLOW_TEMPLATES: CreateExecutionFlowTemplateDTO[] = [
         type: 'api',
         name: '渲染文档',
         api: {
-          endpoint: '/api/carbone/render',
+          endpoint: '/api/carbone/render-resolved',
           method: 'POST',
         },
         expectedOutput: '基于 execution.normalizedInputJson.input 的文档结果',

@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
+import { TemporalWorkflowService } from '../temporal-workflow/temporal-workflow.service';
 import {
   CapabilityReleaseBuildValidationAccessors,
   CapabilityReleaseBuildValidationService,
@@ -68,6 +69,7 @@ import {
   UpdateCapabilitySourceDTO,
   UpdateSkillDraftDTO,
   ValidateCapabilityDTO,
+  WorkflowArtifactRefDTO,
 } from './interfaces';
 
 @Injectable()
@@ -83,6 +85,7 @@ export class CapabilityReleaseService implements OnModuleInit {
     private readonly capabilityReleaseRuntimeService: CapabilityReleaseRuntimeService,
     private readonly capabilityReleaseSkillDraftService: CapabilityReleaseSkillDraftService,
     private readonly capabilityReleaseTemporalSchemaService: CapabilityReleaseTemporalSchemaService,
+    private readonly temporalWorkflowService: TemporalWorkflowService,
   ) {}
 
   async onModuleInit() {
@@ -267,10 +270,11 @@ export class CapabilityReleaseService implements OnModuleInit {
     userId?: string,
   ): Promise<CapabilityReleaseDetailDTO> {
     const releaseId = randomUUID();
+    const normalizedSourceId = this.resolveReleaseSourceId(dto);
     const sourcePayload = dto.sourcePayload
-      ? dto.sourcePayload
-      : dto.sourceId
-        ? await this.loadSourcePayload(dto.sourceType, dto.sourceId)
+      ? this.mergeWorkflowArtifactRefIntoPayload(dto.sourcePayload, dto.sourceType, normalizedSourceId, dto.workflowArtifactRef)
+      : normalizedSourceId
+        ? await this.loadSourcePayload(dto.sourceType, normalizedSourceId)
         : {};
     const sourceName = dto.sourceName || this.extractSourceName(sourcePayload) || null;
 
@@ -283,7 +287,7 @@ export class CapabilityReleaseService implements OnModuleInit {
       )`,
       releaseId,
       dto.sourceType,
-      dto.sourceId || null,
+      normalizedSourceId,
       sourceName,
       userId || null,
     );
@@ -292,7 +296,7 @@ export class CapabilityReleaseService implements OnModuleInit {
       const snapshot = await this.createSourceSnapshot(
         releaseId,
         dto.sourceType,
-        dto.sourceId || null,
+        normalizedSourceId,
         sourcePayload,
         userId,
       );
@@ -326,11 +330,17 @@ export class CapabilityReleaseService implements OnModuleInit {
     userId?: string,
   ): Promise<CapabilityReleaseDetailDTO> {
     const release = await this.getReleaseOrThrow(id);
+    const sourcePayload = this.mergeWorkflowArtifactRefIntoPayload(
+      dto.sourcePayload,
+      release.sourceType,
+      release.sourceId || null,
+      dto.workflowArtifactRef,
+    );
     const snapshot = await this.createSourceSnapshot(
       id,
       release.sourceType,
       release.sourceId || null,
-      dto.sourcePayload,
+      sourcePayload,
       userId,
     );
 
@@ -342,7 +352,7 @@ export class CapabilityReleaseService implements OnModuleInit {
            updated_at = now()
        WHERE id = $1::uuid`,
       id,
-      dto.sourceName || this.extractSourceName(dto.sourcePayload) || release.sourceName || null,
+      dto.sourceName || this.extractSourceName(sourcePayload) || release.sourceName || null,
       snapshot.id,
     );
 
@@ -809,96 +819,30 @@ export class CapabilityReleaseService implements OnModuleInit {
     return rows[0] ? mapCapabilityBuild(rows[0]) : null;
   }
 
-  private async createSyntheticTemporalCodeBuild(
-    release: CapabilityReleaseDTO,
-    snapshot: CapabilitySourceSnapshotDTO,
-    generatedCode: string,
-    userId?: string,
-  ): Promise<CapabilityBuildDTO> {
-    const syntheticBuildId = randomUUID();
-    await this.prisma.$executeRawUnsafe(
-      `INSERT INTO capability_builds (
-        id, release_id, source_snapshot_id, build_type, model_id, input_snapshot_json,
-        generated_code, generated_config_json, diff_summary, status, started_at, finished_at, created_by, created_at
-      ) VALUES (
-        $1::uuid, $2::uuid, $3::uuid, 'codegen_workflow', 'system', $4::jsonb,
-        $5, $6::jsonb, $7, 'succeeded', now(), now(), $8::uuid, now()
-      )`,
-      syntheticBuildId,
-      release.id,
-      snapshot.id,
-      JSON.stringify(snapshot.sourcePayload),
-      generatedCode,
-      JSON.stringify(snapshot.sourcePayload),
-      '复用当前 Temporal Workflow 已生成代码',
-      userId || null,
-    );
-
-    await this.prisma.$executeRawUnsafe(
-      `UPDATE capability_releases
-       SET current_build_id = $2::uuid,
-           latest_successful_build_id = $2::uuid,
-           updated_at = now()
-       WHERE id = $1::uuid`,
-      release.id,
-      syntheticBuildId,
-    );
-
-    return this.getBuildOrThrow(syntheticBuildId);
-  }
-
   private async resolveTemporalExecutableBuildOrThrow(
     release: CapabilityReleaseDTO,
     snapshot: CapabilitySourceSnapshotDTO,
     buildId: string | undefined,
     userId?: string,
   ): Promise<CapabilityBuildDTO> {
+    const artifact = await this.getTemporalWorkflowArtifactOrThrow(release, snapshot);
+
     if (buildId) {
       const build = await this.getBuildOrThrow(buildId);
-      if (build.generatedCode) {
-        return build;
-      }
+      return this.attachArtifactCodeToBuild(build, artifact);
     }
 
     if (release.currentBuildId) {
       const currentBuild = await this.getBuildOrThrow(release.currentBuildId);
-      if (currentBuild.generatedCode) {
-        return currentBuild;
-      }
+      return this.attachArtifactCodeToBuild(currentBuild, artifact);
     }
 
     const successfulCodeBuild = await this.getLatestSuccessfulCodeBuild(release.id);
     if (successfulCodeBuild) {
-      return successfulCodeBuild;
+      return this.attachArtifactCodeToBuild(successfulCodeBuild, artifact);
     }
 
-    const sourceGeneratedCode =
-      typeof snapshot.sourcePayload.generatedCode === 'string' && snapshot.sourcePayload.generatedCode.trim()
-        ? snapshot.sourcePayload.generatedCode.trim()
-        : null;
-
-    if (sourceGeneratedCode) {
-      return this.createSyntheticTemporalCodeBuild(release, snapshot, sourceGeneratedCode, userId);
-    }
-
-    if (release.sourceId) {
-      const rows = await this.prisma.$queryRawUnsafe<any[]>(
-        `SELECT generated_code as "generatedCode"
-         FROM temporal_workflows
-         WHERE id = $1::uuid
-         LIMIT 1`,
-        release.sourceId,
-      );
-      const workflowGeneratedCode =
-        typeof rows[0]?.generatedCode === 'string' && rows[0].generatedCode.trim()
-          ? rows[0].generatedCode.trim()
-          : null;
-      if (workflowGeneratedCode) {
-        return this.createSyntheticTemporalCodeBuild(release, snapshot, workflowGeneratedCode, userId);
-      }
-    }
-
-    throw new BadRequestException('当前构建没有可执行代码，请先完成代码生成');
+    return this.createWorkflowArtifactBindingBuild(release, snapshot, artifact, userId);
   }
 
   private async createSourceSnapshot(
@@ -985,7 +929,13 @@ export class CapabilityReleaseService implements OnModuleInit {
                 name,
                 description,
                 "taskQueue" as "taskQueue",
+                artifact_version as "artifactVersion",
+                artifact_hash as "artifactHash",
                 generated_code as "generatedCode",
+                validated_at as "validatedAt",
+                validation_result_json as "validationResultJson",
+                validation_score as "validationScore",
+                validation_status as "validationStatus",
                 workflow_dsl as "workflowDsl",
                 activity_dsl as "activityDsl"
          FROM temporal_workflows
@@ -1000,12 +950,23 @@ export class CapabilityReleaseService implements OnModuleInit {
       const activityDsl = parseCapabilityReleaseJson<Record<string, unknown>>(rows[0].activityDsl) || {};
 
       return {
+        artifactHash: rows[0].artifactHash || null,
+        artifactVersion: Number(rows[0].artifactVersion || 0),
         id: rows[0].id,
         name: rows[0].name,
         description: rows[0].description,
         taskQueue: rows[0].taskQueue,
         generatedCode: rows[0].generatedCode || null,
+        validatedAt: rows[0].validatedAt || null,
+        validationResult: parseCapabilityReleaseJson(rows[0].validationResultJson) || null,
+        validationScore: Number(rows[0].validationScore || 0),
+        validationStatus: rows[0].validationStatus || 'draft',
         workflowDsl,
+        workflowArtifactRef: {
+          workflowId: rows[0].id,
+          artifactVersion: Number(rows[0].artifactVersion || 0),
+          artifactHash: rows[0].artifactHash || null,
+        },
         activityDsl,
         goal: this.capabilityReleaseTemporalSchemaService
           .extractTemporalGoal(workflowDsl, rows[0].description),
@@ -1060,6 +1021,219 @@ export class CapabilityReleaseService implements OnModuleInit {
   private extractSourceName(payload: Record<string, unknown>): string | null {
     const name = payload.name;
     return typeof name === 'string' && name.trim() ? name.trim() : null;
+  }
+
+  private resolveReleaseSourceId(
+    dto: CreateCapabilityReleaseDTO,
+  ): string | null {
+    if (dto.sourceType !== 'temporal_workflow') {
+      return dto.sourceId || null;
+    }
+    return (
+      dto.sourceId
+      || dto.workflowId
+      || dto.workflowArtifactRef?.workflowId
+      || null
+    );
+  }
+
+  private mergeWorkflowArtifactRefIntoPayload(
+    sourcePayload: Record<string, unknown>,
+    sourceType: string,
+    sourceId: string | null,
+    explicitRef?: WorkflowArtifactRefDTO,
+  ): Record<string, unknown> {
+    if (sourceType !== 'temporal_workflow') {
+      return sourcePayload;
+    }
+
+    const payloadRef = this.extractWorkflowArtifactRef(sourcePayload, sourceId);
+    const mergedRef = explicitRef?.workflowId
+      ? explicitRef
+      : payloadRef;
+
+    return {
+      ...sourcePayload,
+      ...(mergedRef ? { workflowArtifactRef: mergedRef } : {}),
+    };
+  }
+
+  private extractWorkflowArtifactRef(
+    payload: Record<string, unknown>,
+    fallbackWorkflowId?: string | null,
+  ): WorkflowArtifactRefDTO | null {
+    const directRef = payload.workflowArtifactRef;
+    if (directRef && typeof directRef === 'object') {
+      const workflowId = typeof (directRef as Record<string, unknown>).workflowId === 'string'
+        ? ((directRef as Record<string, unknown>).workflowId as string).trim()
+        : '';
+      if (workflowId) {
+        return {
+          workflowId,
+          artifactVersion: this.asNullableNumber((directRef as Record<string, unknown>).artifactVersion),
+          artifactHash: this.asNullableString((directRef as Record<string, unknown>).artifactHash),
+        };
+      }
+    }
+
+    const payloadId = typeof payload.id === 'string' ? payload.id.trim() : '';
+    const workflowId = payloadId || (fallbackWorkflowId || '').trim();
+    if (!workflowId) {
+      return null;
+    }
+
+    return {
+      workflowId,
+      artifactVersion: this.asNullableNumber(payload.artifactVersion),
+      artifactHash: this.asNullableString(payload.artifactHash),
+    };
+  }
+
+  private async getTemporalWorkflowArtifactOrThrow(
+    release: CapabilityReleaseDTO,
+    snapshot: CapabilitySourceSnapshotDTO,
+  ): Promise<{
+    workflowId: string;
+    workflowName: string;
+    artifactVersion?: number | null;
+    artifactHash?: string | null;
+    generatedCode: string;
+  }> {
+    const workflowArtifactRef = this.extractWorkflowArtifactRef(
+      snapshot.sourcePayload,
+      release.sourceId || snapshot.sourceId || null,
+    );
+
+    if (!workflowArtifactRef?.workflowId) {
+      throw new BadRequestException('当前 Release 未绑定 Workflow artifact，请先重新同步 Workflow 并完成工件绑定');
+    }
+
+    const artifact = await this.temporalWorkflowService.getArtifact(workflowArtifactRef.workflowId);
+    const generatedCode = typeof artifact.generatedCode === 'string' ? artifact.generatedCode.trim() : '';
+    if (!generatedCode) {
+      throw new BadRequestException(
+        `关联的 Workflow 尚未保存可执行代码: ${artifact.workflowName || workflowArtifactRef.workflowId}`,
+      );
+    }
+    if (artifact.validationStatus !== 'validated') {
+      throw new BadRequestException(
+        `关联的 Workflow artifact 尚未通过验证: ${artifact.workflowName || workflowArtifactRef.workflowId}`,
+      );
+    }
+    if (
+      workflowArtifactRef.artifactVersion !== undefined
+      && workflowArtifactRef.artifactVersion !== null
+      && Number(workflowArtifactRef.artifactVersion) !== Number(artifact.artifactVersion || 0)
+    ) {
+      throw new BadRequestException('当前 Release 绑定的 Workflow artifact 版本已过期，请重新绑定最新已验证工件');
+    }
+    if (
+      workflowArtifactRef.artifactHash
+      && artifact.artifactHash
+      && workflowArtifactRef.artifactHash !== artifact.artifactHash
+    ) {
+      throw new BadRequestException('当前 Release 绑定的 Workflow artifact 哈希已变化，请重新绑定最新工件');
+    }
+
+    return {
+      workflowId: artifact.workflowId,
+      workflowName: artifact.workflowName,
+      artifactVersion: artifact.artifactVersion,
+      artifactHash: artifact.artifactHash,
+      generatedCode,
+    };
+  }
+
+  private attachArtifactCodeToBuild(
+    build: CapabilityBuildDTO,
+    artifact: {
+      workflowId: string;
+      workflowName: string;
+      artifactVersion?: number | null;
+      artifactHash?: string | null;
+      generatedCode: string;
+    },
+  ): CapabilityBuildDTO {
+    if (build.generatedCode?.trim()) {
+      return build;
+    }
+    return {
+      ...build,
+      diffSummary: build.diffSummary || `引用 Workflow artifact ${artifact.workflowId}`,
+      generatedCode: artifact.generatedCode,
+    };
+  }
+
+  private async createWorkflowArtifactBindingBuild(
+    release: CapabilityReleaseDTO,
+    snapshot: CapabilitySourceSnapshotDTO,
+    artifact: {
+      workflowId: string;
+      workflowName: string;
+      artifactVersion?: number | null;
+      artifactHash?: string | null;
+      generatedCode: string;
+    },
+    userId?: string,
+  ): Promise<CapabilityBuildDTO> {
+    const buildId = randomUUID();
+    const logs = [
+      `[${new Date().toISOString()}] 自动创建 Workflow artifact 绑定记录`,
+      `[${new Date().toISOString()}] Workflow: ${artifact.workflowName} (${artifact.workflowId})`,
+      `[${new Date().toISOString()}] Artifact version: ${artifact.artifactVersion ?? 0}`,
+      `[${new Date().toISOString()}] Artifact hash: ${artifact.artifactHash || 'n/a'}`,
+    ];
+
+    await this.prisma.$executeRawUnsafe(
+      `INSERT INTO capability_builds (
+        id, release_id, source_snapshot_id, build_type, model_id, input_snapshot_json,
+        generated_config_json, logs_json, diff_summary, status, started_at, finished_at, created_by, created_at
+      ) VALUES (
+        $1::uuid, $2::uuid, $3::uuid, 'codegen_workflow', 'workflow_artifact', $4::jsonb,
+        $5::jsonb, $6::jsonb, $7, 'succeeded', now(), now(), $8::uuid, now()
+      )`,
+      buildId,
+      release.id,
+      snapshot.id,
+      JSON.stringify(snapshot.sourcePayload),
+      JSON.stringify({
+        workflowArtifactRef: {
+          workflowId: artifact.workflowId,
+          artifactVersion: artifact.artifactVersion ?? null,
+          artifactHash: artifact.artifactHash || null,
+        },
+      }),
+      JSON.stringify(logs),
+      `自动绑定 Workflow artifact ${artifact.workflowId}`,
+      userId || null,
+    );
+
+    await this.prisma.$executeRawUnsafe(
+      `UPDATE capability_releases
+       SET current_build_id = $2::uuid,
+           latest_successful_build_id = $2::uuid,
+           updated_at = now()
+       WHERE id = $1::uuid`,
+      release.id,
+      buildId,
+    );
+
+    const build = await this.getBuildOrThrow(buildId);
+    return this.attachArtifactCodeToBuild(build, artifact);
+  }
+
+  private asNullableString(value: unknown): string | null {
+    return typeof value === 'string' && value.trim() ? value.trim() : null;
+  }
+
+  private asNullableNumber(value: unknown): number | null {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+    if (typeof value === 'string' && value.trim() && !Number.isNaN(Number(value))) {
+      return Number(value);
+    }
+    return null;
   }
 
   private resolveWorkflowFnOrThrow(payload: Record<string, unknown>): string {

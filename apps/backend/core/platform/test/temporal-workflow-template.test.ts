@@ -178,7 +178,7 @@ describe('TemporalWorkflowTemplateService', () => {
       },
     });
 
-    const draft = await service.generateTemplateWorkflowDraft('tpl-tech-service');
+    const draft = await service.generateTemplateWorkflowDraft({ templateId: 'tpl-tech-service' });
 
     expect(draft.workflowDsl.inputParams).toEqual(expect.objectContaining({
       'contract.partyA': expect.objectContaining({
@@ -240,7 +240,7 @@ describe('TemporalWorkflowTemplateService', () => {
       },
     });
 
-    const draft = await service.generateTemplateWorkflowDraft('tpl-tech-service-legacy');
+    const draft = await service.generateTemplateWorkflowDraft({ templateId: 'tpl-tech-service-legacy' });
 
     expect(draft.workflowDsl.inputParams).toEqual(expect.objectContaining({
       'contract.partyA.name': expect.objectContaining({
@@ -263,6 +263,69 @@ describe('TemporalWorkflowTemplateService', () => {
         }),
       },
     });
+    expect(draft.activityDsl.activities[0].config.targetLanguages).toEqual(['ja']);
+  });
+
+  it('falls back to english target language when manifest has no targetLanguages but fields expose english variants', async () => {
+    const { service, workflowTemplateService } = createService();
+
+    jest.spyOn(workflowTemplateService as any, 'fetchCarboneTemplate').mockResolvedValue({
+      id: 'tpl-english-legacy',
+      fileName: 'english-contract.docx',
+      format: 'docx',
+      skillId: 'skill-english-legacy',
+      templateAssetManifest: {
+        assetVersion: '1.0',
+        fieldCount: 1,
+        languageProfile: {
+          sourceLanguage: 'zh',
+          targetLanguages: [],
+        },
+        templateFieldSpecs: [
+          {
+            fieldId: 'contract.projectName',
+            description: '项目名称',
+            required: true,
+            type: 'string',
+          },
+        ],
+        renderPlan: {
+          bindings: [
+            {
+              fieldId: 'contract.projectName',
+              variablePath: 'd.contract.projectName_en',
+              required: true,
+            },
+          ],
+        },
+      },
+      variables: ['{d.contract.projectName_en}'],
+    });
+    jest.spyOn(workflowTemplateService as any, 'fetchCarboneSkill').mockResolvedValue({
+      id: 'skill-english-legacy',
+      parameters: [
+        {
+          name: 'contract.projectName',
+          required: true,
+          dataType: 'string',
+          displayName: '项目名称',
+          usage: '合同项目名称',
+        },
+      ],
+    });
+    jest.spyOn(workflowTemplateService as any, 'analyzeTemplateWorkflow').mockResolvedValue({
+      workflowName: '英文合同渲染工作流',
+      workflowDescription: '生成英文合同',
+      activityDescription: '渲染英文合同',
+      outputName: '英文合同-输出',
+      inputParamDescriptions: {
+        'contract.projectName': '合同项目名称',
+      },
+    });
+
+    const draft = await service.generateTemplateWorkflowDraft({ templateId: 'tpl-english-legacy' });
+
+    expect(draft.activityDsl.activities[0].config.targetLanguages).toEqual(['en']);
   });
 
   it('compiles template workflow draft on backend and ignores frontend templateBinding overrides', async () => {
@@ -346,6 +409,33 @@ describe('TemporalWorkflowTemplateService', () => {
     });
   });
 
+  it('uses system default model for template workflow analysis', async () => {
+    const { service, workflowTemplateService } = createService();
+
+    jest.spyOn(workflowTemplateService as any, 'fetchCarboneTemplate').mockResolvedValue({
+      id: 'tpl-model-aware',
+      fileName: 'model-aware.docx',
+      format: 'docx',
+      skillId: 'skill-model-aware',
+      variables: ['{d.contract.partyA_cn}'],
+    });
+    jest.spyOn(workflowTemplateService as any, 'fetchCarboneSkill').mockResolvedValue({
+      id: 'skill-model-aware',
+      parameters: [],
+    });
+    const analyzeSpy = jest.spyOn(workflowTemplateService as any, 'analyzeTemplateWorkflow').mockResolvedValue({});
+
+    await service.generateTemplateWorkflowDraft({
+      templateId: 'tpl-model-aware',
+    });
+
+    expect(analyzeSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'tpl-model-aware' }),
+      expect.objectContaining({ id: 'skill-model-aware' }),
+      expect.anything(),
+    );
+  });
+
   it('maps fixed document workflow inputs with templateBinding and renderPath when generating code', async () => {
     const {
       builtinRegistry,
@@ -418,6 +508,7 @@ describe('TemporalWorkflowTemplateService', () => {
       generatedCode: builtinActivity.generatedCode,
       config: {
         templateId: 'tpl-tech-service',
+        skillId: 'carbone-skill-tech-service',
         format: 'docx',
         outputName: '技术服务合同',
         steps: [
@@ -425,6 +516,7 @@ describe('TemporalWorkflowTemplateService', () => {
             type: 'carbone',
             config: {
               templateId: 'tpl-tech-service',
+              skillId: 'carbone-skill-tech-service',
               format: 'docx',
               outputName: '技术服务合同',
             },
@@ -444,22 +536,29 @@ describe('TemporalWorkflowTemplateService', () => {
     );
 
     expect(code).toBeTruthy();
-    expect(code).toContain('"contract.partyA": [');
+    expect(code).toContain('"contract.partyA": {');
     expect(code).toContain('"contract.partyA_cn"');
     expect(code).toContain('"contract.partyA_jp"');
-    expect(code).toContain('"customerName": [');
+    expect(code).toContain('"customerName": {');
     expect(code).toContain('"contract.customer.fullName"');
     expect(code).toContain('normalized_params = self._normalize_params(params or {})');
     expect(code).toContain('self._validate_required_params(normalized_params)');
-    expect(code).not.toContain('render_data = self._build_render_data(normalized_params)');
-    expect(code).toContain('def _extract_binding_locale(path: str) -> str | None:');
-    expect(code).toContain('resolved_value = cls._resolve_localized_binding_value(path, value)');
-    expect(code).toContain('locale_candidates = ["cn", "zh"] if locale == "cn" else ["jp", "ja"]');
-    expect(code).toContain('array_match = re.match(r"^(.*)\\[\\]\\.(.+)$", str(path or "").strip())');
-    expect(code).toContain('missing_params = [key for key in required_params if TechnicalServiceContractWorkflow._is_missing(params.get(key))]');
+    expect(code).toContain('"skillId": "carbone-skill-tech-service"');
     expect(code).toContain('"data": normalized_params');
-    expect(code).toContain('"prepareLocalizedRenderData": True');
-    expect(code).toContain('"contract.signingDate": [');
+    expect(code).toContain('"requestTimeoutSeconds": 60,');
+    expect(code).toContain('WORKFLOW_INPUT_PARAMS = {');
+    expect(code).toContain('WORKFLOW_INPUT_POLICY = {');
+    expect(code).toContain('PREPARE_LOCALIZED_RENDER_DATA = True');
+    expect(code).toContain('"workflowInputParams": self.WORKFLOW_INPUT_PARAMS');
+    expect(code).toContain('"workflowInputPolicy": self.WORKFLOW_INPUT_POLICY');
+    expect(code).toContain('"prepareLocalizedRenderData": self.PREPARE_LOCALIZED_RENDER_DATA');
+    expect(code).toContain('def _normalize_base_url(value: Any) -> str:');
+    expect(code).toContain('configured_base_url = _normalize_base_url(');
+    expect(code).toContain('default_base_url = _normalize_base_url(');
+    expect(code).toContain('raise ApplicationError("未配置可用的 Carbone 服务地址", non_retryable=True)');
+    expect(code).toContain('/studio/generate-render-data-with-skill');
+    expect(code).toContain('/studio/render-resolved');
+    expect(code).toContain('"contract.signingDate": {');
     expect(code).toContain('"contract.signingDate_cn"');
     expect(code).toContain('"contract.signingDate_jp"');
     const requiredParamsMatch = (code || '').match(/required_params = \[(.*?)\]/s);
@@ -468,6 +567,27 @@ describe('TemporalWorkflowTemplateService', () => {
     expect(requiredParamsMatch?.[1]).toContain('"contractNumber"');
     expect(requiredParamsMatch?.[1]).not.toContain('"contract.signingDate"');
     expect(requiredParamsMatch?.[1]).not.toContain('"customerName"');
+  });
+
+  it('keeps workflow mapping first in builtin document render activity', () => {
+    const { builtinRegistry } = createService();
+
+    const code = builtinRegistry.getByKey('documentRender')?.generatedCode || '';
+
+    expect(code).toContain('workflow_input_params = input_data.get("workflowInputParams")');
+    expect(code).toContain('prepare_localized_render_data = input_data.get("prepareLocalizedRenderData")');
+    expect(code).toContain('if (source_language or target_languages) and not should_prepare_localized_render_data:');
+    expect(code).toContain('def _normalize_base_url(value: Any) -> str:');
+    expect(code).toContain('configured_base_url = _normalize_base_url(');
+    expect(code).toContain('default_base_url = _normalize_base_url(');
+    expect(code).toContain('raise ApplicationError("未配置可用的 Carbone 服务地址", non_retryable=True)');
+    expect(code).toContain('/studio/generate-render-data-with-skill');
+    expect(code).toContain('payload["prepareLocalizedRenderData"] = True');
+    expect(code).toContain('payload["workflowInputParams"] = workflow_input_params');
+    expect(code).toContain('payload["workflowInputPolicy"] = workflow_input_policy');
+    expect(code).toContain('request_timeout_seconds = input_data.get("requestTimeoutSeconds")');
+    expect(code).toContain('resolved_request_timeout_seconds = 300');
+    expect(code).toContain('timeout=resolved_request_timeout_seconds');
   });
 
 });

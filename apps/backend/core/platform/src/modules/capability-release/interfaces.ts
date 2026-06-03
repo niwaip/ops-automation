@@ -44,15 +44,29 @@ export type CapabilityDeploymentRuntimeType = 'flow_runtime' | 'temporal_worker'
 
 export type CapabilityDeploymentStatus = 'running' | 'succeeded' | 'failed' | 'rolled_back';
 
+export interface WorkflowArtifactRefDTO {
+  workflowId: string;
+  artifactVersion?: number | null;
+  artifactHash?: string | null;
+}
+
 export interface CreateCapabilityReleaseDTO {
   sourceType: CapabilitySourceType;
   sourceId?: string;
   sourceName?: string;
+  workflowArtifactRef?: WorkflowArtifactRefDTO;
+  workflowId?: string;
+  artifactVersion?: number;
+  artifactHash?: string;
   sourcePayload?: Record<string, unknown>;
 }
 
 export interface UpdateCapabilitySourceDTO {
   sourceName?: string;
+  workflowArtifactRef?: WorkflowArtifactRefDTO;
+  workflowId?: string;
+  artifactVersion?: number;
+  artifactHash?: string;
   sourcePayload: Record<string, unknown>;
 }
 
@@ -300,6 +314,7 @@ export interface CapabilitySourceSnapshotDTO {
   snapshotVersion: number;
   sourceType: CapabilitySourceType;
   sourceId?: string | null;
+  workflowArtifactRef?: WorkflowArtifactRefDTO | null;
   sourcePayload: Record<string, unknown>;
   summary?: string | null;
   createdBy?: string | null;

@@ -2,14 +2,16 @@ import { Navigate } from 'react-router-dom';
 import { useAuthStore } from '@/shared/store/authStore';
 
 export const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated } = useAuthStore();
-  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
+  const { isAuthenticated, accessToken, refreshToken } = useAuthStore();
+  const hasSession = Boolean(accessToken || refreshToken);
+  return isAuthenticated && hasSession ? <>{children}</> : <Navigate to="/login" replace />;
 };
 
 export const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated, accessToken, refreshToken, user } = useAuthStore();
+  const hasSession = Boolean(accessToken || refreshToken);
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || !hasSession) {
     return <Navigate to="/login" replace />;
   }
 

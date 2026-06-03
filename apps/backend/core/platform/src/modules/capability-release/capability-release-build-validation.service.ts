@@ -104,21 +104,19 @@ export class CapabilityReleaseBuildValidationService {
       logs.push(`[${new Date().toISOString()}] 模型: ${modelId}`);
 
       if (release.sourceType === 'temporal_workflow') {
-        logs.push(`[${new Date().toISOString()}] 识别为 Temporal 工作流，开始解析 DSL`);
-        const workflowDsl = this.expectRecord(inputSnapshot.workflowDsl, '缺少 workflowDsl');
-        const activityDsl = this.expectRecord(inputSnapshot.activityDsl, '缺少 activityDsl');
-        logs.push(`[${new Date().toISOString()}] 调用 AI 生成工作流代码`);
-        const result = await this.temporalWorkflowService.generateWorkflowCode(
-          workflowDsl as any,
-          activityDsl as any,
-          dto.errorContext,
+        logs.push(`[${new Date().toISOString()}] 识别为 Temporal 工作流，开始读取已保存的 Workflow 代码工件`);
+        const artifact = await this.resolveSavedTemporalWorkflowArtifact(release, snapshot);
+        generatedConfig = {
+          workflowArtifactRef: {
+            workflowId: artifact.workflowId,
+            artifactVersion: artifact.artifactVersion ?? null,
+            artifactHash: artifact.artifactHash || null,
+          },
+        };
+        diffSummary = `已绑定 Workflow artifact: ${artifact.workflowId}@${artifact.artifactVersion ?? 0}`;
+        logs.push(
+          `[${new Date().toISOString()}] 已确认 Workflow 工件 ${artifact.workflowId} 已验证，代码长度: ${artifact.generatedCode.length} 字符`,
         );
-        if (!result.success || !result.code) {
-          throw new Error(result.error || 'Temporal 工作流代码生成失败');
-        }
-        generatedCode = result.code;
-        diffSummary = '已生成 Temporal Workflow Python 代码';
-        logs.push(`[${new Date().toISOString()}] 代码生成完成，长度: ${generatedCode?.length || 0} 字符`);
       } else {
         generatedConfig = inputSnapshot;
         diffSummary = '模板型能力已固化当前配置快照，可进入验证和草案生成阶段';
@@ -243,23 +241,20 @@ export class CapabilityReleaseBuildValidationService {
       pushLog(`[${new Date().toISOString()}] 模型: ${modelId}`);
 
       if (release.sourceType === 'temporal_workflow') {
-        onEvent('status', { phase: 'preparing_dsl', buildId });
-        pushLog(`[${new Date().toISOString()}] 识别为 Temporal 工作流，开始解析 DSL`);
-        const workflowDsl = this.expectRecord(inputSnapshot.workflowDsl, '缺少 workflowDsl');
-        const activityDsl = this.expectRecord(inputSnapshot.activityDsl, '缺少 activityDsl');
-        onEvent('status', { phase: 'generating_code', buildId });
-        pushLog(`[${new Date().toISOString()}] 调用 AI 生成工作流代码`);
-        const result = await this.temporalWorkflowService.generateWorkflowCode(
-          workflowDsl as any,
-          activityDsl as any,
-          dto.errorContext,
+        onEvent('status', { phase: 'loading_workflow_artifact', buildId });
+        pushLog(`[${new Date().toISOString()}] 识别为 Temporal 工作流，开始读取已保存的 Workflow 代码工件`);
+        const artifact = await this.resolveSavedTemporalWorkflowArtifact(release, snapshot);
+        generatedConfig = {
+          workflowArtifactRef: {
+            workflowId: artifact.workflowId,
+            artifactVersion: artifact.artifactVersion ?? null,
+            artifactHash: artifact.artifactHash || null,
+          },
+        };
+        diffSummary = `已绑定 Workflow artifact: ${artifact.workflowId}@${artifact.artifactVersion ?? 0}`;
+        pushLog(
+          `[${new Date().toISOString()}] 已确认 Workflow 工件 ${artifact.workflowId} 已验证，代码长度: ${artifact.generatedCode.length} 字符`,
         );
-        if (!result.success || !result.code) {
-          throw new Error(result.error || 'Temporal 工作流代码生成失败');
-        }
-        generatedCode = result.code;
-        diffSummary = '已生成 Temporal Workflow Python 代码';
-        pushLog(`[${new Date().toISOString()}] 代码生成完成，长度: ${generatedCode?.length || 0} 字符`);
       } else {
         onEvent('status', { phase: 'solidifying_config', buildId });
         generatedConfig = inputSnapshot;
@@ -819,6 +814,46 @@ export class CapabilityReleaseBuildValidationService {
 
   private getDefaultBuildType(sourceType: string): CapabilityBuildType {
     return sourceType === 'temporal_workflow' ? 'codegen_workflow' : 'config_enhancement';
+  }
+
+  private async resolveSavedTemporalWorkflowArtifact(
+    release: CapabilityReleaseDTO,
+    snapshot: CapabilitySourceSnapshotDTO,
+  ): Promise<{ workflowId: string; artifactVersion?: number | null; artifactHash?: string | null; generatedCode: string }> {
+    const snapshotPayload = snapshot.sourcePayload && typeof snapshot.sourcePayload === 'object'
+      ? snapshot.sourcePayload as Record<string, unknown>
+      : {};
+    const workflowId = (
+      typeof release.sourceId === 'string' && release.sourceId.trim()
+        ? release.sourceId.trim()
+        : typeof snapshotPayload.id === 'string' && snapshotPayload.id.trim()
+          ? snapshotPayload.id.trim()
+          : ''
+    );
+
+    if (!workflowId) {
+      throw new Error('当前 Release 未绑定 Workflow，请先在 Workflow 页面保存并关联后再进入 Release');
+    }
+
+    const artifact = await this.temporalWorkflowService.getArtifact(workflowId);
+    const generatedCode = typeof artifact.generatedCode === 'string' ? artifact.generatedCode.trim() : '';
+    if (!generatedCode) {
+      throw new Error(
+        `关联的 Workflow 尚未生成并保存代码: ${artifact.workflowName || workflowId}。请先在 Workflow 页面执行“生成并保存代码”`,
+      );
+    }
+    if (artifact.validationStatus !== 'validated') {
+      throw new Error(
+        `关联的 Workflow 尚未完成 artifact 验证: ${artifact.workflowName || workflowId}。请先在 Workflow 页面执行“端到端验证”`,
+      );
+    }
+
+    return {
+      workflowId,
+      artifactVersion: artifact.artifactVersion,
+      artifactHash: artifact.artifactHash,
+      generatedCode,
+    };
   }
 
   private async createValidationRecord(

@@ -6,7 +6,7 @@ import { WorkerEndpoints, WorkerInfo } from '../../interfaces';
 @Injectable()
 export class AllocationService implements OnModuleInit {
   private readonly logger = new Logger(AllocationService.name);
-  private readonly browserWorkerUrl = getBrowserWorkerUrl('http://browser-worker:3004');
+  private readonly browserWorkerUrl = getBrowserWorkerUrl('http://ops-browser-worker:3004');
 
   constructor(private readonly redisService: RedisService) {}
 

@@ -1,4 +1,12 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+  OnModuleInit,
+} from '@nestjs/common';
+import { createHash } from 'crypto';
+import { Prisma, TemporalWorkflow } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   TemporalWorkflowAiDraftService,
@@ -20,7 +28,10 @@ import { TemporalWorkflowNormalizationService } from './temporal-workflow-normal
 import {
   TemporalWorkflowTemplateService,
 } from './temporal-workflow-template.service';
-import { toTemporalWorkflowDto } from './temporal-workflow-dto.helpers';
+import {
+  toTemporalWorkflowArtifactDto,
+  toTemporalWorkflowDto,
+} from './temporal-workflow-dto.helpers';
 import { parseJson } from './temporal-workflow-service.utils';
 import { TemporalWorkflowSupportService } from './temporal-workflow-support.service';
 import {
@@ -34,11 +45,14 @@ import {
   type GenerateAiWorkflowDraftDTO,
   type GenerateAiWorkflowDraftSessionDTO,
   type GenerateBrowserWorkflowDraftDTO,
+  type GenerateTemplateWorkflowDraftDTO,
   type RefineAiWorkflowDraftDTO,
   type RefineAiWorkflowDraftSessionDTO,
   type TemplateWorkflowDraft,
   type TemporalValidationResult,
+  type TemporalWorkflowArtifactDTO,
   type TemporalWorkflowDTO,
+  type TemporalWorkflowValidationStatus,
   type UpdateTemporalWorkflowDTO,
   type WorkflowDsl,
 } from './temporal-workflow.types';
@@ -46,7 +60,7 @@ import {
 export * from './temporal-workflow.types';
 
 @Injectable()
-export class TemporalWorkflowService {
+export class TemporalWorkflowService implements OnModuleInit {
   private readonly logger = new Logger(TemporalWorkflowService.name);
 
   constructor(
@@ -62,16 +76,28 @@ export class TemporalWorkflowService {
     private readonly workflowSupportService: TemporalWorkflowSupportService,
   ) {}
 
+  async onModuleInit(): Promise<void> {
+    await this.ensureArtifactInfrastructure();
+    await this.repairLegacyArtifactMetadataOnStartup();
+  }
+
   async findAll(): Promise<TemporalWorkflowDTO[]> {
     const workflows = await this.prisma.temporalWorkflow.findMany({
       orderBy: { createdAt: 'desc' },
     });
-    return workflows.map((workflow) => toTemporalWorkflowDto(workflow));
+    const normalizedWorkflows = await Promise.all(
+      workflows.map((workflow) => this.repairWorkflowArtifactMetadataIfNeeded(workflow)),
+    );
+    return normalizedWorkflows.map((workflow) => toTemporalWorkflowDto(workflow));
   }
 
   async findOne(id: string): Promise<TemporalWorkflowDTO | null> {
     const workflow = await this.prisma.temporalWorkflow.findUnique({ where: { id } });
-    return workflow ? toTemporalWorkflowDto(workflow) : null;
+    if (!workflow) {
+      return null;
+    }
+    const normalizedWorkflow = await this.repairWorkflowArtifactMetadataIfNeeded(workflow);
+    return toTemporalWorkflowDto(normalizedWorkflow);
   }
 
   async create(data: CreateTemporalWorkflowDTO): Promise<TemporalWorkflowDTO> {
@@ -85,13 +111,19 @@ export class TemporalWorkflowService {
       );
       const created = await this.prisma.temporalWorkflow.create({
         data: {
+          activityDsl: normalizedActivityDsl as any,
+          artifactHash: data.generatedCode ? this.computeArtifactHash(data.generatedCode) : null,
+          artifactVersion: data.generatedCode ? 1 : 0,
+          generatedCode: data.generatedCode || null,
+          isActive: true,
           name: this.workflowNormalizationService.normalizeName(data.name),
           description: this.workflowNormalizationService.normalizeDescription(data.description),
           taskQueue: this.workflowNormalizationService.normalizeTaskQueue(data.taskQueue || data.workflowDsl?.taskQueue),
           workflowDsl: normalizedWorkflowDsl as any,
-          activityDsl: normalizedActivityDsl as any,
-          generatedCode: data.generatedCode || null,
-          isActive: true,
+          validatedAt: null,
+          validationResultJson: Prisma.JsonNull,
+          validationScore: 0,
+          validationStatus: data.generatedCode ? 'generated' : 'draft',
         },
       });
       return toTemporalWorkflowDto(created);
@@ -123,17 +155,28 @@ export class TemporalWorkflowService {
             normalizedActivityDsl,
           )
         : undefined;
+      const updatePayload: Prisma.TemporalWorkflowUpdateInput = {
+        ...(data.name !== undefined && { name: this.workflowNormalizationService.normalizeName(data.name) }),
+        ...(data.description !== undefined && { description: this.workflowNormalizationService.normalizeDescription(data.description) }),
+        ...(data.taskQueue !== undefined && { taskQueue: this.workflowNormalizationService.normalizeTaskQueue(nextTaskQueue) }),
+        ...(normalizedWorkflowDsl && { workflowDsl: normalizedWorkflowDsl as any }),
+        ...(data.activityDsl && { activityDsl: normalizedActivityDsl as any }),
+        ...(data.isActive !== undefined && { isActive: data.isActive }),
+        ...(data.generatedCode !== undefined
+          ? {
+              artifactHash: data.generatedCode ? this.computeArtifactHash(data.generatedCode) : null,
+              artifactVersion: this.getCurrentArtifactVersion(existing) + (data.generatedCode ? 1 : 0),
+              generatedCode: data.generatedCode || null,
+              validatedAt: null,
+              validationResultJson: Prisma.JsonNull,
+              validationScore: 0,
+              validationStatus: data.generatedCode ? 'generated' : 'draft',
+            }
+          : {}),
+      };
       const updated = await this.prisma.temporalWorkflow.update({
         where: { id },
-        data: {
-          ...(data.name !== undefined && { name: this.workflowNormalizationService.normalizeName(data.name) }),
-          ...(data.description !== undefined && { description: this.workflowNormalizationService.normalizeDescription(data.description) }),
-          ...(data.taskQueue !== undefined && { taskQueue: this.workflowNormalizationService.normalizeTaskQueue(nextTaskQueue) }),
-          ...(normalizedWorkflowDsl && { workflowDsl: normalizedWorkflowDsl as any }),
-          ...(data.activityDsl && { activityDsl: normalizedActivityDsl as any }),
-          ...(data.isActive !== undefined && { isActive: data.isActive }),
-          ...(data.generatedCode !== undefined && { generatedCode: data.generatedCode || null }),
-        },
+        data: updatePayload,
       });
       return toTemporalWorkflowDto(updated);
     } catch (error: any) {
@@ -153,30 +196,19 @@ export class TemporalWorkflowService {
       throw new NotFoundException(`Temporal Workflow 不存在: ${id}`);
     }
 
-    const workflowDsl = parseJson<WorkflowDsl>(existing.workflowDsl);
-    const activityDsl = parseJson<ActivityDsl>(existing.activityDsl);
-    const deterministicCode = workflowDsl && activityDsl
-      ? await this.workflowSupportService.createEnrichedActivityDsl(workflowDsl, activityDsl)
-        .then((enrichedActivityDsl) => (
-          this.workflowSupportService.buildDeterministicWorkflowCode(workflowDsl, enrichedActivityDsl)
-        ))
-        .catch(() => null)
-      : null;
-
     const deployed = await this.prisma.temporalWorkflow.update({
       where: { id },
       data: {
         deployedAt: new Date(),
-        ...(deterministicCode ? { generatedCode: deterministicCode } : {}),
       },
     });
 
     return toTemporalWorkflowDto(deployed);
   }
 
-  async generateTemplateWorkflowDraft(templateId: string): Promise<TemplateWorkflowDraft> {
-    return this.workflowTemplateService.generateTemplateWorkflowDraft(
-      templateId,
+  async generateTemplateWorkflowDraft(data: GenerateTemplateWorkflowDraftDTO): Promise<TemplateWorkflowDraft> {
+    return this.workflowTemplateService.generateTemplateWorkflowDraftFromRequest(
+      data,
       this.workflowSupportService.createTemplateSupport(),
     );
   }
@@ -293,6 +325,139 @@ export class TemporalWorkflowService {
     );
   }
 
+  async generateAndSaveWorkflowCode(
+    id: string,
+    errorContext?: string,
+    forceAiGeneration = false,
+  ): Promise<{
+    workflow: TemporalWorkflowDTO;
+    generation: {
+      success: boolean;
+      code: string;
+      attempts?: number;
+      autoRetried?: boolean;
+      generationMode?: 'deterministic' | 'ai';
+    };
+  }> {
+    const existing = await this.prisma.temporalWorkflow.findUnique({ where: { id } });
+    if (!existing) {
+      throw new NotFoundException(`Temporal Workflow 不存在: ${id}`);
+    }
+
+    const workflowDsl = parseJson<WorkflowDsl>(existing.workflowDsl);
+    const activityDsl = parseJson<ActivityDsl>(existing.activityDsl);
+    if (!workflowDsl || !activityDsl) {
+      throw new BadRequestException('当前 Workflow 缺少完整 DSL，无法生成代码');
+    }
+
+    const result = await this.generateWorkflowCode(
+      workflowDsl,
+      activityDsl,
+      errorContext,
+      forceAiGeneration,
+    );
+    if (!result.success || !result.code) {
+      throw new BadRequestException(result.error || 'Workflow 代码生成失败');
+    }
+
+    const updated = await this.prisma.temporalWorkflow.update({
+      where: { id },
+      data: {
+        artifactHash: this.computeArtifactHash(result.code),
+        artifactVersion: this.getCurrentArtifactVersion(existing) + 1,
+        generatedCode: result.code,
+        validatedAt: null,
+        validationResultJson: Prisma.JsonNull,
+        validationScore: 0,
+        validationStatus: 'generated',
+      },
+    });
+
+    return {
+      workflow: toTemporalWorkflowDto(updated),
+      generation: {
+        success: true,
+        code: result.code,
+        attempts: result.attempts,
+        autoRetried: result.autoRetried,
+        generationMode: result.generationMode,
+      },
+    };
+  }
+
+  async validateSavedWorkflowArtifact(
+    id: string,
+    input?: Record<string, any>,
+    timeout?: string,
+  ): Promise<{
+    workflow: TemporalWorkflowDTO;
+    validation: { success: boolean; logs: string[]; result?: any; error?: string; score: number };
+  }> {
+    const current = await this.prisma.temporalWorkflow.findUnique({ where: { id } });
+    const existing = current
+      ? await this.repairWorkflowArtifactMetadataIfNeeded(current)
+      : null;
+    if (!existing) {
+      throw new NotFoundException(`Temporal Workflow 不存在: ${id}`);
+    }
+
+    if (!existing.generatedCode?.trim()) {
+      throw new BadRequestException('当前 Workflow 尚未生成并保存代码，请先执行“生成并保存代码”');
+    }
+
+    const workflow = toTemporalWorkflowDto(existing);
+    const workflowDsl = parseJson<WorkflowDsl>(existing.workflowDsl);
+    const workflowClassName = workflowDsl?.workflowClassName?.trim();
+    if (!workflowClassName) {
+      throw new BadRequestException(
+        `工作流 "${workflow.name}" 缺少 Python 类名 (workflowDsl.workflowClassName)，无法执行真实验证`,
+      );
+    }
+
+    const validation = await this.validateWorkflowReal(
+      existing.generatedCode,
+      workflowClassName,
+      input,
+      existing.taskQueue,
+      timeout,
+    );
+
+    const updated = await this.prisma.temporalWorkflow.update({
+      where: { id },
+      data: {
+        validatedAt: new Date(),
+        validationResultJson: {
+          error: validation.error || null,
+          input: input || null,
+          logs: validation.logs,
+          result: validation.result ?? null,
+          score: validation.score,
+          success: validation.success,
+          timeout: timeout || null,
+          workflowClassName,
+        } as any,
+        validationScore: validation.score,
+        validationStatus: (validation.success ? 'validated' : 'failed') as TemporalWorkflowValidationStatus,
+      },
+    });
+
+    return {
+      workflow: toTemporalWorkflowDto(updated),
+      validation,
+    };
+  }
+
+  async getArtifact(id: string): Promise<TemporalWorkflowArtifactDTO> {
+    const current = await this.prisma.temporalWorkflow.findUnique({ where: { id } });
+    const workflow = current
+      ? await this.repairWorkflowArtifactMetadataIfNeeded(current)
+      : null;
+    if (!workflow) {
+      throw new NotFoundException(`Temporal Workflow 不存在: ${id}`);
+    }
+    return toTemporalWorkflowArtifactDto(workflow);
+  }
+
   async optimizeHttpRequestConfig(
     stepConfig: Record<string, any>,
     inputParams: Record<string, any> = {},
@@ -359,6 +524,134 @@ export class TemporalWorkflowService {
     error?: string;
   }> {
     return this.workflowConfigService.generateStructuredTransformConfig(sourceSample, userRequest, existingConfig);
+  }
+
+  private async ensureArtifactInfrastructure(): Promise<void> {
+    const statements = [
+      `ALTER TABLE temporal_workflows
+       ADD COLUMN IF NOT EXISTS artifact_version integer NOT NULL DEFAULT 0`,
+      `ALTER TABLE temporal_workflows
+       ADD COLUMN IF NOT EXISTS artifact_hash varchar(128) NULL`,
+      `ALTER TABLE temporal_workflows
+       ADD COLUMN IF NOT EXISTS validation_status varchar(32) NOT NULL DEFAULT 'draft'`,
+      `ALTER TABLE temporal_workflows
+       ADD COLUMN IF NOT EXISTS validation_score integer NOT NULL DEFAULT 0`,
+      `ALTER TABLE temporal_workflows
+       ADD COLUMN IF NOT EXISTS validation_result_json jsonb NULL`,
+      `ALTER TABLE temporal_workflows
+       ADD COLUMN IF NOT EXISTS validated_at timestamptz NULL`,
+      `CREATE INDEX IF NOT EXISTS idx_temporal_workflows_validation_status
+       ON temporal_workflows(validation_status)`,
+      `CREATE INDEX IF NOT EXISTS idx_temporal_workflows_validated_at
+       ON temporal_workflows(validated_at DESC)`,
+    ];
+
+    for (const statement of statements) {
+      await this.prisma.$executeRawUnsafe(statement);
+    }
+  }
+
+  private async repairLegacyArtifactMetadataOnStartup(): Promise<void> {
+    const workflows = await this.prisma.temporalWorkflow.findMany({
+      orderBy: { updatedAt: 'desc' },
+    });
+    let repairedCount = 0;
+
+    for (const workflow of workflows) {
+      const repaired = await this.repairWorkflowArtifactMetadataIfNeeded(workflow);
+      if (repaired !== workflow) {
+        repairedCount += 1;
+      }
+    }
+
+    if (repairedCount > 0) {
+      this.logger.log(`Repaired ${repairedCount} temporal workflow artifact metadata record(s)`);
+    }
+  }
+
+  private async repairWorkflowArtifactMetadataIfNeeded(
+    workflow: TemporalWorkflow,
+  ): Promise<TemporalWorkflow> {
+    const patch = this.buildLegacyArtifactMetadataPatch(workflow);
+    if (!patch) {
+      return workflow;
+    }
+
+    return this.prisma.temporalWorkflow.update({
+      where: { id: workflow.id },
+      data: patch,
+    });
+  }
+
+  private buildLegacyArtifactMetadataPatch(
+    workflow: TemporalWorkflow,
+  ): Prisma.TemporalWorkflowUpdateInput | null {
+    const generatedCode = typeof workflow.generatedCode === 'string'
+      ? workflow.generatedCode.trim()
+      : '';
+    const validationResult = parseJson<Record<string, unknown>>(workflow.validationResultJson) || {};
+    const validationSuccess = typeof validationResult.success === 'boolean'
+      ? validationResult.success
+      : undefined;
+    const validationScore = typeof validationResult.score === 'number'
+      ? validationResult.score
+      : undefined;
+    const persistedArtifactVersion = Number((workflow as any).artifactVersion || 0);
+    const persistedValidationScore = Number((workflow as any).validationScore || 0);
+    const persistedValidationStatus = typeof (workflow as any).validationStatus === 'string'
+      ? String((workflow as any).validationStatus).trim()
+      : '';
+    const hasValidatedAt = Boolean((workflow as any).validatedAt);
+
+    const derivedArtifactVersion = generatedCode ? Math.max(persistedArtifactVersion, 1) : 0;
+    const derivedArtifactHash = generatedCode
+      ? this.computeArtifactHash(generatedCode)
+      : null;
+    const derivedValidationStatus: TemporalWorkflowValidationStatus = validationSuccess === true
+      || hasValidatedAt
+      ? 'validated'
+      : validationSuccess === false
+        ? 'failed'
+        : generatedCode
+          ? 'generated'
+          : 'draft';
+    const derivedValidationScore = validationScore !== undefined
+      ? validationScore
+      : validationSuccess === true
+        ? 100
+        : generatedCode
+          ? persistedValidationScore
+          : 0;
+
+    const patch: Prisma.TemporalWorkflowUpdateInput = {};
+
+    if (generatedCode && persistedArtifactVersion <= 0) {
+      patch.artifactVersion = derivedArtifactVersion as any;
+    }
+    if (generatedCode && (!workflow.artifactHash || workflow.artifactHash !== derivedArtifactHash)) {
+      patch.artifactHash = derivedArtifactHash as any;
+    }
+    if (persistedValidationStatus !== derivedValidationStatus) {
+      patch.validationStatus = derivedValidationStatus as any;
+    }
+    if (persistedValidationScore !== derivedValidationScore) {
+      patch.validationScore = derivedValidationScore as any;
+    }
+    if (derivedValidationStatus === 'validated' && !hasValidatedAt) {
+      patch.validatedAt = workflow.updatedAt || new Date();
+    }
+
+    return Object.keys(patch).length > 0 ? patch : null;
+  }
+
+  private getCurrentArtifactVersion(
+    workflow: { artifactVersion?: number | null } | null | undefined,
+  ): number {
+    return Number(workflow?.artifactVersion || 0);
+  }
+
+  private computeArtifactHash(code: string): string {
+    return `sha256:${createHash('sha256').update(code).digest('hex')}`;
   }
 
 }

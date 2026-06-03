@@ -591,6 +591,12 @@ model TemporalWorkflow {
   workflowDsl   Json      @map("workflow_dsl")
   activityDsl   Json      @map("activity_dsl")
   generatedCode String?   @map("generated_code") @db.Text
+  artifactVersion Int     @default(0) @map("artifact_version")
+  artifactHash    String? @map("artifact_hash") @db.VarChar(128)
+  validationStatus String @default("draft") @map("validation_status") @db.VarChar(32)
+  validationScore  Int    @default(0) @map("validation_score")
+  validationResultJson Json? @map("validation_result_json")
+  validatedAt      DateTime? @map("validated_at") @db.Timestamptz
   isActive      Boolean   @default(true) @map("is_active")
   deployedAt    DateTime? @map("deployed_at") @db.Timestamptz
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
@@ -599,5 +605,7 @@ model TemporalWorkflow {
   @@index([name])
   @@index([taskQueue])
   @@index([isActive])
+  @@index([validationStatus])
+  @@index([validatedAt])
   @@map("temporal_workflows")
 }

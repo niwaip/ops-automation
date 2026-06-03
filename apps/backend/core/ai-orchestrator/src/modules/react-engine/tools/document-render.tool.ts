@@ -17,7 +17,19 @@ type DocumentRenderResponse = {
   downloadUrl?: string;
   fileName?: string;
   format?: string;
-  documentId?: string;
+};
+
+type RenderResolvedRequest = {
+  publishedSkillId?: string;
+  templateId?: string;
+  skillId?: string;
+  data: Record<string, unknown>;
+  outputFormat?: string;
+};
+
+type GenerateRenderDataResponse = {
+  success?: boolean;
+  renderResolvedRequest?: RenderResolvedRequest;
 };
 
 const looksLikeParameterIssue = (value: string | undefined): boolean => {
@@ -50,6 +62,21 @@ const isTemplateVisibleInSnapshot = (
       || skill.executionFlowTemplateIds?.includes(templateId),
     );
   });
+};
+
+const resolveSelectedPublishedSkillId = (
+  context: ExecutionContext,
+): string | undefined => {
+  return context.skill?.skillId
+    || context.documentContext?.selectedSkillId
+    || context.capabilitySnapshot?.selectedSkillId;
+};
+
+const asPlainObject = (value: unknown): Record<string, unknown> | undefined => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return undefined;
+  }
+  return value as Record<string, unknown>;
 };
 
 @Injectable()
@@ -113,6 +140,8 @@ export class DocumentRenderTool extends BaseTool {
     context: ExecutionContext,
   ): Promise<ToolResult> {
     const lockedTemplateId = context.documentContext?.selectedTemplateId;
+    const publishedSkillId = resolveSelectedPublishedSkillId(context);
+    const carboneSkillId = context.skill?.carboneSkillId;
     const requestedTemplateId = params.templateId as string | undefined;
     const templateId = lockedTemplateId || requestedTemplateId || context.skill?.carboneTemplateId;
     let data = params.data as Record<string, unknown> | undefined;
@@ -148,15 +177,15 @@ export class DocumentRenderTool extends BaseTool {
       };
     }
 
-    if (!templateId || !data) {
+    if ((!templateId && !carboneSkillId) || !data) {
       return {
         success: false,
-        output: '缺少必要参数：需要提供templateId和data，或者先执行参数收集步骤',
+        output: '缺少必要参数：需要提供 templateId 或可解析的文档技能上下文，以及 data，或者先执行参数收集步骤',
         code: 'missing_params',
         severity: 'warning',
         data: {
           error: 'missing_params',
-          missingTemplateId: !templateId,
+          missingRenderTarget: !templateId && !carboneSkillId,
           missingData: !data,
         },
         meta: {
@@ -186,14 +215,47 @@ export class DocumentRenderTool extends BaseTool {
     }
 
     try {
-      // 调用Carbone引擎的render API
-      const response = await axios.post<DocumentRenderResponse>(`${getCarboneServiceUrl()}/studio/render`, {
-        templateId,
+      const defaultRequest: RenderResolvedRequest = {
+        ...(publishedSkillId ? { publishedSkillId } : {}),
+        ...(templateId ? { templateId } : {}),
+        ...(carboneSkillId ? { skillId: carboneSkillId } : {}),
         data,
-        format,
-      });
+        outputFormat: format,
+      };
+      let renderRequest = defaultRequest;
+
+      try {
+        const standardizeResponse = await axios.post<GenerateRenderDataResponse>(
+          `${getCarboneServiceUrl()}/studio/generate-render-data-with-skill`,
+          {
+            ...(publishedSkillId ? { publishedSkillId } : {}),
+            ...(templateId ? { templateId } : {}),
+            ...(carboneSkillId ? { skillId: carboneSkillId } : {}),
+            simulatedData: data,
+            outputFormat: format,
+          },
+        );
+        const standardizedRequest = standardizeResponse.data?.renderResolvedRequest;
+        const standardizedData = asPlainObject(standardizedRequest?.data);
+        if (standardizeResponse.data?.success && standardizedRequest && standardizedData) {
+          renderRequest = {
+            ...standardizedRequest,
+            data: standardizedData,
+            ...(standardizedRequest.outputFormat ? {} : { outputFormat: format }),
+          };
+        }
+      } catch {
+        // 标准数据生成失败时回退到原始渲染请求，避免阻断纯模板渲染链路。
+      }
+
+      // 正式运行时统一收口到 render-resolved，显式区分平台 published skill 与 Carbone skill。
+      const response = await axios.post<DocumentRenderResponse>(
+        `${getCarboneServiceUrl()}/studio/render-resolved`,
+        renderRequest,
+      );
 
       const renderResult = response.data;
+      const resolvedTemplateId = renderRequest.templateId || templateId;
 
       // Carbone API返回格式: {downloadUrl, fileName, format}
       if (renderResult && renderResult.downloadUrl) {
@@ -216,32 +278,7 @@ export class DocumentRenderTool extends BaseTool {
           meta: {
             toolName: this.name,
             capabilityChecked: Boolean(context.capabilitySnapshot),
-            selectedTemplateId: templateId,
-          },
-        };
-      }
-
-      // 兼容旧格式 {documentId}
-      if (renderResult && renderResult.documentId) {
-        const downloadUrl = `${getCarboneExternalUrl()}/studio/download/${renderResult.documentId}`;
-        const finalAnswer = `文档生成成功！您可以点击下方链接下载：\n\n[下载文档](${downloadUrl})`;
-
-        return {
-          success: true,
-          output: `文档生成成功！任务已完成。\n\n下载链接: ${downloadUrl}\n\n【任务完成】请输出 Final Answer，告知用户文档已生成并提供下载链接。不要再调用任何工具。`,
-          code: 'document_render_completed',
-          severity: 'info',
-          data: {
-            documentId: renderResult.documentId,
-            downloadUrl,
-            format,
-            taskComplete: true,
-            finalAnswer,
-          },
-          meta: {
-            toolName: this.name,
-            capabilityChecked: Boolean(context.capabilitySnapshot),
-            selectedTemplateId: templateId,
+            selectedTemplateId: resolvedTemplateId,
           },
         };
       }
@@ -255,7 +292,7 @@ export class DocumentRenderTool extends BaseTool {
         meta: {
           toolName: this.name,
           capabilityChecked: Boolean(context.capabilitySnapshot),
-          selectedTemplateId: templateId,
+          selectedTemplateId: resolvedTemplateId,
         },
       };
     } catch (error) {

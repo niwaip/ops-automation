@@ -15,6 +15,28 @@ type NormalizeInputParamsFn = (
   inputParams: Array<{ key?: string; value?: string; required?: boolean }> | Record<string, string> | undefined,
 ) => NormalizedInputParam[];
 
+function durationToSeconds(duration: string | undefined, fallbackSeconds = 300): number {
+  const normalized = String(duration || '').trim();
+  const match = normalized.match(/^(\d+)\s*([smhd])$/i);
+  if (!match) {
+    return fallbackSeconds;
+  }
+
+  const value = Number(match[1]);
+  const unit = match[2].toLowerCase();
+  switch (unit) {
+    case 'm':
+      return value * 60;
+    case 'h':
+      return value * 60 * 60;
+    case 'd':
+      return value * 60 * 60 * 24;
+    case 's':
+    default:
+      return value;
+  }
+}
+
 export function buildDeterministicCarboneActivityCode(args: {
   activityDef: ActivityDsl['activities'][number];
   normalizeInputParams: NormalizeInputParamsFn;
@@ -43,6 +65,8 @@ export function buildDeterministicCarboneActivityCode(args: {
   const outputName = carboneStep.config?.outputName || '';
   const format = carboneStep.config?.format || 'docx';
   const templateId = carboneStep.config?.templateId || activityDef.config?.templateId || '';
+  const skillId = carboneStep.config?.skillId || activityDef.config?.skillId || '';
+  const defaultRequestTimeoutSeconds = durationToSeconds(activityDef.timeout, 300);
 
   return [
     'from typing import Any, Dict',
@@ -65,8 +89,19 @@ export function buildDeterministicCarboneActivityCode(args: {
     '        return str(value)',
     '',
     `    template_id = ${JSON.stringify(String(templateId))}`,
+    `    skill_id = ${JSON.stringify(String(skillId))}`,
     `    output_format = ${JSON.stringify(String(format))}`,
     `    output_name = ${JSON.stringify(String(outputName))}`,
+    '    request_timeout_seconds = input_data.get("requestTimeoutSeconds")',
+    `    default_request_timeout_seconds = ${defaultRequestTimeoutSeconds}`,
+    '    if request_timeout_seconds is None:',
+    '        resolved_request_timeout_seconds = default_request_timeout_seconds',
+    '    elif isinstance(request_timeout_seconds, bool) or not isinstance(request_timeout_seconds, (int, float)):',
+    '        raise ApplicationError("requestTimeoutSeconds 参数必须是数字类型", non_retryable=True)',
+    '    else:',
+    '        resolved_request_timeout_seconds = float(request_timeout_seconds)',
+    '    if resolved_request_timeout_seconds <= 0:',
+    '        raise ApplicationError("requestTimeoutSeconds 参数必须大于 0", non_retryable=True)',
     '    render_data = {',
     ...renderAssignments,
     '    }',
@@ -76,37 +111,83 @@ export function buildDeterministicCarboneActivityCode(args: {
     '    if missing_params:',
     '        raise ApplicationError(f"缺少必需参数: {\', \'.join(missing_params)}", non_retryable=True)',
     '',
-    `    external_base_url = (os.getenv("CARBONE_EXTERNAL_URL") or ${JSON.stringify(getCarboneExternalUrl())}).rstrip("/")`,
+    '    def _normalize_base_url(value: Any) -> str:',
+    '        normalized = str(value or "").strip()',
+    '        while len(normalized) >= 2 and normalized[0] == normalized[-1] and normalized[0] in (\'"\', "\'", "`"):',
+    '            normalized = normalized[1:-1].strip()',
+    '        return normalized.rstrip("/")',
+    '',
+    `    external_base_url = _normalize_base_url(os.getenv("CARBONE_EXTERNAL_URL") or ${JSON.stringify(getCarboneExternalUrl())})`,
+    '    if not template_id and not skill_id:',
+    '        raise ApplicationError("templateId 或 skillId 至少需要提供一个", non_retryable=True)',
     '    payload = {',
-    '        "templateId": template_id,',
     '        "data": render_data,',
     '        "outputFormat": output_format,',
     '    }',
+    '    if template_id:',
+    '        payload["templateId"] = template_id',
+    '    if skill_id:',
+    '        payload["skillId"] = skill_id',
     '    if output_name:',
     '        payload["outputName"] = output_name',
     '',
+    '    def _prepare_render_payload(base_url: str) -> Dict[str, Any]:',
+    '        standardize_url = base_url + "/studio/generate-render-data-with-skill"',
+    '        standardize_payload = {',
+    '            "simulatedData": render_data,',
+    '            "outputFormat": output_format,',
+    '        }',
+    '        if template_id:',
+    '            standardize_payload["templateId"] = template_id',
+    '        if skill_id:',
+    '            standardize_payload["skillId"] = skill_id',
+    '        if output_name:',
+    '            standardize_payload["outputName"] = output_name',
+    '        try:',
+    '            standardize_response = requests.post(',
+    '                standardize_url,',
+    '                json=standardize_payload,',
+    '                timeout=resolved_request_timeout_seconds,',
+    '            )',
+    '            standardize_response.raise_for_status()',
+    '            standardize_result = standardize_response.json()',
+    '            render_resolved_request = standardize_result.get("renderResolvedRequest") if isinstance(standardize_result, dict) else None',
+    '            if isinstance(render_resolved_request, dict) and isinstance(render_resolved_request.get("data"), dict):',
+    '                return render_resolved_request',
+    '        except requests.RequestException as exc:',
+    '            activity.logger.warning("Carbone 标准数据生成失败，回退直渲染", extra={"error": str(exc), "standardizeUrl": standardize_url})',
+    '        return payload',
+    '',
     '    candidate_base_urls = []',
-    `    configured_base_url = ${internalBaseExpr}`,
+    `    configured_base_url = _normalize_base_url(${internalBaseExpr})`,
     '    if configured_base_url:',
-    '        candidate_base_urls.append(str(configured_base_url).rstrip("/"))',
-    `    default_base_url = ${JSON.stringify(getCarboneServiceUrl())}`,
+    '        candidate_base_urls.append(configured_base_url)',
+    `    default_base_url = _normalize_base_url(${JSON.stringify(getCarboneServiceUrl())})`,
     '    if default_base_url:',
-    '        candidate_base_urls.append(str(default_base_url).rstrip("/"))',
+    '        candidate_base_urls.append(default_base_url)',
     '    deduped_base_urls = []',
     '    for candidate in candidate_base_urls:',
-    '        if candidate and candidate not in deduped_base_urls:',
-    '            deduped_base_urls.append(candidate)',
+    '        normalized_candidate = _normalize_base_url(candidate)',
+    '        if normalized_candidate and normalized_candidate not in deduped_base_urls:',
+    '            deduped_base_urls.append(normalized_candidate)',
+    '',
+    '    if not deduped_base_urls:',
+    '        raise ApplicationError("未配置可用的 Carbone 服务地址", non_retryable=True)',
     '',
     '    last_error = None',
     '    render_result = None',
+    '    resolved_payload = payload',
     '    for base_url in deduped_base_urls:',
-    '        render_url = base_url + "/studio/render"',
-    '        activity.logger.info("开始调用 Carbone 渲染", extra={"templateId": template_id, "renderUrl": render_url})',
+    '        render_url = base_url + "/studio/render-resolved"',
+    '        request_payload = _prepare_render_payload(base_url)',
+    '        field_count = len(request_payload.get("data", {})) if isinstance(request_payload.get("data"), dict) else len(render_data)',
+    '        activity.logger.info("开始调用 Carbone 渲染", extra={"templateId": template_id, "skillId": skill_id, "renderUrl": render_url, "requestTimeoutSeconds": resolved_request_timeout_seconds, "fieldCount": field_count})',
     '        try:',
-    '            response = requests.post(render_url, json=payload, timeout=60)',
+    '            response = requests.post(render_url, json=request_payload, timeout=resolved_request_timeout_seconds)',
     '            response.raise_for_status()',
     '            activity.heartbeat("carbone_render_completed")',
     '            render_result = response.json()',
+    '            resolved_payload = request_payload',
     '            break',
     '        except requests.RequestException as exc:',
     '            last_error = exc',
@@ -119,20 +200,16 @@ export function buildDeterministicCarboneActivityCode(args: {
     '    if isinstance(download_url, str) and download_url.startswith("/"):',
     '        download_url = external_base_url + download_url',
     '    elif not isinstance(download_url, str) or not download_url.strip():',
-    '        document_id = render_result.get("documentId")',
-    '        if isinstance(document_id, str) and document_id.strip():',
-    '            download_url = f"{external_base_url}/studio/download/{document_id}"',
-    '        else:',
-    '            raise ApplicationError("Carbone 返回结果缺少 downloadUrl/documentId", non_retryable=True)',
+    '        raise ApplicationError("Carbone 返回结果缺少 downloadUrl", non_retryable=True)',
     '',
     '    return {',
     '        "status": "rendered",',
-    '        "templateId": template_id,',
-    '        "params_used": render_data,',
+    '        "templateId": resolved_payload.get("templateId") if isinstance(resolved_payload, dict) else template_id,',
+    '        "skillId": resolved_payload.get("skillId") if isinstance(resolved_payload, dict) else skill_id,',
+    '        "params_used": resolved_payload.get("data") if isinstance(resolved_payload, dict) else render_data,',
     '        "downloadUrl": download_url,',
     '        "fileName": render_result.get("fileName"),',
-    '        "format": render_result.get("format", output_format),',
-    '        "documentId": render_result.get("documentId"),',
+    '        "format": render_result.get("format", resolved_payload.get("outputFormat") if isinstance(resolved_payload, dict) else output_format),',
     '        "raw": render_result,',
     '    }',
     '',

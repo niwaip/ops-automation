@@ -94,12 +94,49 @@ export class TemporalWorkflowValidationService {
       streamedLogs.push(log);
       onLog(log);
     };
+    // #region debug-point A:stream-debug-report
+    const debugReport = (hypothesisId: string, msg: string, data: Record<string, unknown>) => {
+      (() => {
+        const fs = require('fs');
+        const envPath = '.dbg/document-render-aborted.env';
+        let debugServerUrl = 'http://127.0.0.1:7777/event';
+        let debugSessionId = 'document-render-aborted';
+        try {
+          const envContent = fs.readFileSync(envPath, 'utf8');
+          debugServerUrl = envContent.match(/DEBUG_SERVER_URL=(.+)/)?.[1]?.trim() || debugServerUrl;
+          debugSessionId = envContent.match(/DEBUG_SESSION_ID=(.+)/)?.[1]?.trim() || debugSessionId;
+        } catch {}
+        fetch(debugServerUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: debugSessionId,
+            runId: 'pre-fix',
+            hypothesisId,
+            location: 'temporal-workflow-validation.service:validateWorkflowRealStreaming',
+            msg,
+            data,
+            ts: Date.now(),
+          }),
+        }).catch(() => {});
+      })();
+    };
+    // #endregion
 
     pushLog(`[${new Date().toISOString()}] 连接到 Workflow 测试 Worker: ${validationAgentUrl}`);
     pushLog(`[${new Date().toISOString()}] Workflow ID: ${workflowId}`);
 
     try {
       pushLog(`[${new Date().toISOString()}] 开始真实验证工作流代码...`);
+      // #region debug-point A:before-agent-stream-request
+      debugReport('A', '[DEBUG] validateWorkflowRealStreaming before axios.post', {
+        validationAgentUrl,
+        workflowId,
+        fn,
+        taskQueue: taskQueue || null,
+        timeout: timeout || null,
+      });
+      // #endregion
       const response = await axios.post(`${validationAgentUrl}/validate-workflow/stream`, {
         code,
         fn_name: fn,
@@ -111,6 +148,14 @@ export class TemporalWorkflowValidationService {
         responseType: 'stream',
         timeout: Number(process.env.WORKFLOW_VALIDATION_TIMEOUT_MS || 300000),
       });
+      // #region debug-point A:after-agent-stream-response
+      debugReport('A', '[DEBUG] validateWorkflowRealStreaming received axios stream response', {
+        workflowId,
+        status: response.status,
+        statusText: response.statusText,
+        hasReadableStream: Boolean(response.data),
+      });
+      // #endregion
       const stream = response.data as NodeJS.ReadableStream;
 
       const finalEvent = await new Promise<any>((resolve, reject) => {
@@ -164,6 +209,16 @@ export class TemporalWorkflowValidationService {
           }
         });
         stream.on('error', (streamError: Error) => {
+          // #region debug-point E:stream-error
+          debugReport('E', '[DEBUG] validateWorkflowRealStreaming stream error', {
+            workflowId,
+            errorName: (streamError as any)?.name || null,
+            errorMessage: streamError?.message || null,
+            errorCode: (streamError as any)?.code || null,
+            errorType: streamError?.constructor?.name || null,
+            errorStack: streamError?.stack || null,
+          });
+          // #endregion
           reject(streamError);
         });
       });
@@ -192,6 +247,18 @@ export class TemporalWorkflowValidationService {
         score: resultSuccess ? 100 : 0,
       };
     } catch (error: any) {
+      // #region debug-point E:outer-catch
+      debugReport('E', '[DEBUG] validateWorkflowRealStreaming outer catch', {
+        workflowId,
+        errorName: error?.name || null,
+        errorMessage: error?.message || null,
+        errorCode: error?.code || null,
+        errorType: error?.constructor?.name || null,
+        responseStatus: error?.response?.status || null,
+        responseData: typeof error?.response?.data === 'string' ? error.response.data.slice(0, 1000) : error?.response?.data || null,
+        stack: error?.stack || null,
+      });
+      // #endregion
       this.logger.error(`Workflow real validation failed: ${error.message}`);
       pushLog(`[${new Date().toISOString()}] 错误: ${error.message}`);
       return {

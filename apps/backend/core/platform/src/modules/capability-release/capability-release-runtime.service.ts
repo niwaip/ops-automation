@@ -32,6 +32,24 @@ type SkillRuntimeToolPolicy = {
   status: string;
 };
 
+type RenderResolvedRequest = {
+  publishedSkillId?: string;
+  templateId?: string;
+  skillId?: string;
+  data: Record<string, unknown>;
+  outputFormat?: string;
+  outputName?: string;
+  sourceLanguage?: string;
+  targetLanguages?: string[];
+  prepareLocalizedRenderData?: boolean;
+};
+
+type GenerateRenderDataResponse = {
+  success?: boolean;
+  error?: string;
+  renderResolvedRequest?: RenderResolvedRequest;
+};
+
 export interface CapabilityPublishedSkillRuntimeContext {
   publishedSkillId: string;
   releaseId: string;
@@ -121,12 +139,6 @@ const extractDownloadUrl = (value: unknown): string | undefined => {
       .find((item): item is string => typeof item === 'string' && item.trim().length > 0);
     if (directUrl) {
       return directUrl;
-    }
-
-    const documentId = [record.documentId, record.document_id]
-      .find((item): item is string => typeof item === 'string' && item.trim().length > 0);
-    if (documentId) {
-      return `${getCarboneExternalUrl()}/studio/download/${documentId}`;
     }
 
     Object.values(record).forEach((item) => {
@@ -569,31 +581,27 @@ export class CapabilityReleaseRuntimeService {
       || this.capabilityReleaseSkillDraftService.extractExecutionFlowSourceTemplate(snapshot.sourcePayload)
       || {};
     const renderInput = this.resolveDocumentRenderInput(input, sourceTemplate);
-    const renderViaTemplateId = typeof renderInput.templateId === 'string' && renderInput.templateId.trim().length > 0;
-    const url = renderViaTemplateId
-      ? `${getCarboneServiceUrl()}/studio/render`
-      : `${getCarboneServiceUrl()}/studio/render-with-skill`;
-    const requestBody = renderViaTemplateId
-      ? {
-          templateId: renderInput.templateId,
-          data: renderInput.data,
-          outputFormat: renderInput.outputFormat,
-        }
-      : {
-          skillId,
-          params: renderInput.data,
-          outputFormat: renderInput.outputFormat,
-        };
+    const renderRequest = await this.resolveDocumentRenderRequest(skillId, renderInput);
+    const resolvedTemplateId = renderRequest.templateId || renderInput.templateId;
+    const resolvedSkillId = renderRequest.skillId || renderInput.skillId;
+    const url = `${getCarboneServiceUrl()}/studio/render-resolved`;
     const logs = [
-      `[DocumentRuntime] 调用文档运行时: ${renderViaTemplateId ? 'template_render' : 'skill_render'}`,
+      '[DocumentRuntime] 调用文档运行时: resolved_render',
       `[DocumentRuntime] endpoint=${url}`,
       `[DocumentRuntime] publishedSkillId=${skillId}`,
-      ...(renderViaTemplateId ? [`[DocumentRuntime] templateId=${renderInput.templateId}`] : []),
-      ...(renderInput.outputFormat ? [`[DocumentRuntime] outputFormat=${renderInput.outputFormat}`] : []),
+      ...(resolvedTemplateId ? [`[DocumentRuntime] templateId=${resolvedTemplateId}`] : []),
+      ...(resolvedSkillId ? [`[DocumentRuntime] sourceSkillId=${resolvedSkillId}`] : []),
+      ...(renderRequest.outputFormat ? [`[DocumentRuntime] outputFormat=${renderRequest.outputFormat}`] : []),
+      ...(renderRequest.outputName ? [`[DocumentRuntime] outputName=${renderRequest.outputName}`] : []),
+      ...(renderRequest.sourceLanguage ? [`[DocumentRuntime] sourceLanguage=${renderRequest.sourceLanguage}`] : []),
+      ...(renderRequest.targetLanguages?.length
+        ? [`[DocumentRuntime] targetLanguages=${renderRequest.targetLanguages.join(',')}`]
+        : []),
+      ...(renderRequest.prepareLocalizedRenderData ? ['[DocumentRuntime] prepareLocalizedRenderData=true'] : []),
     ];
 
     try {
-      const response = await axios.post<Record<string, unknown>>(url, requestBody, {
+      const response = await axios.post<Record<string, unknown>>(url, renderRequest, {
         timeout: 120000,
       });
       const responseData = response.data;
@@ -608,7 +616,8 @@ export class CapabilityReleaseRuntimeService {
       const normalizedResult = {
         ...rawResult,
         ...(downloadUrl ? { downloadUrl } : {}),
-        ...(renderViaTemplateId && renderInput.templateId ? { templateId: renderInput.templateId } : {}),
+        ...(resolvedTemplateId ? { templateId: resolvedTemplateId } : {}),
+        ...(resolvedSkillId ? { skillId: resolvedSkillId } : {}),
       };
 
       await accessors.insertAuditEvent(
@@ -626,7 +635,7 @@ export class CapabilityReleaseRuntimeService {
           executionId: options?.executionId || null,
           stepId: options?.stepId || null,
           sourceTemplate,
-          renderMode: renderViaTemplateId ? 'templateId' : 'published_skill',
+          renderMode: 'resolved',
         },
       );
 
@@ -662,7 +671,7 @@ export class CapabilityReleaseRuntimeService {
           executionId: options?.executionId || null,
           stepId: options?.stepId || null,
           sourceTemplate,
-          renderMode: renderViaTemplateId ? 'templateId' : 'published_skill',
+          renderMode: 'resolved',
           error: message,
         },
       );
@@ -906,13 +915,36 @@ export class CapabilityReleaseRuntimeService {
     sourceTemplate: Record<string, unknown>,
   ): {
     templateId?: string;
+    skillId?: string;
     outputFormat?: string;
+    outputName?: string;
+    sourceLanguage?: string;
+    targetLanguages: string[];
+    prepareLocalizedRenderData?: boolean;
     data: Record<string, unknown>;
   } {
     const normalizedInput = input || {};
     const directData = asRecord(normalizedInput.data);
     const directParams = asRecord(normalizedInput.params);
     const data = directData || directParams || this.omitRuntimeEnvelopeFields(normalizedInput);
+    const targetLanguages = this.pickFirstStringArray(
+      normalizedInput.targetLanguages,
+      normalizedInput.target_languages,
+      sourceTemplate.targetLanguages,
+      sourceTemplate.target_languages,
+    );
+    const sourceLanguage = this.pickFirstNonEmptyString(
+      normalizedInput.sourceLanguage,
+      normalizedInput.source_language,
+      sourceTemplate.sourceLanguage,
+      sourceTemplate.source_language,
+    );
+    const prepareLocalizedRenderData = this.pickFirstBoolean(
+      normalizedInput.prepareLocalizedRenderData,
+      normalizedInput.prepare_localized_render_data,
+      sourceTemplate.prepareLocalizedRenderData,
+      sourceTemplate.prepare_localized_render_data,
+    );
 
     return {
       templateId: this.pickFirstNonEmptyString(
@@ -920,14 +952,85 @@ export class CapabilityReleaseRuntimeService {
         normalizedInput.template_id,
         sourceTemplate.templateId,
       ),
+      skillId: this.pickFirstNonEmptyString(
+        normalizedInput.skillId,
+        normalizedInput.skill_id,
+        sourceTemplate.skillId,
+      ),
       outputFormat: this.pickFirstNonEmptyString(
         normalizedInput.outputFormat,
         normalizedInput.output_format,
         normalizedInput.format,
         sourceTemplate.format,
       ),
+      outputName: this.pickFirstNonEmptyString(
+        normalizedInput.outputName,
+        normalizedInput.output_name,
+        sourceTemplate.outputName,
+        sourceTemplate.output_name,
+      ),
+      sourceLanguage,
+      targetLanguages,
+      prepareLocalizedRenderData:
+        prepareLocalizedRenderData === undefined
+          ? (Boolean(sourceLanguage) || targetLanguages.length > 0 ? true : undefined)
+          : prepareLocalizedRenderData,
       data,
     };
+  }
+
+  private async resolveDocumentRenderRequest(
+    publishedSkillId: string,
+    renderInput: ReturnType<CapabilityReleaseRuntimeService['resolveDocumentRenderInput']>,
+  ): Promise<RenderResolvedRequest> {
+    const fallbackRequest: RenderResolvedRequest = {
+      publishedSkillId,
+      templateId: renderInput.templateId,
+      skillId: renderInput.skillId,
+      data: renderInput.data,
+      outputFormat: renderInput.outputFormat,
+      ...(renderInput.outputName ? { outputName: renderInput.outputName } : {}),
+      ...(renderInput.sourceLanguage ? { sourceLanguage: renderInput.sourceLanguage } : {}),
+      ...(renderInput.targetLanguages.length > 0 ? { targetLanguages: renderInput.targetLanguages } : {}),
+      ...(renderInput.prepareLocalizedRenderData !== undefined
+        ? { prepareLocalizedRenderData: renderInput.prepareLocalizedRenderData }
+        : {}),
+    };
+
+    try {
+      const response = await axios.post<GenerateRenderDataResponse>(
+        `${getCarboneServiceUrl()}/studio/generate-render-data-with-skill`,
+        {
+          publishedSkillId,
+          templateId: renderInput.templateId,
+          skillId: renderInput.skillId,
+          simulatedData: renderInput.data,
+          outputFormat: renderInput.outputFormat,
+          ...(renderInput.outputName ? { outputName: renderInput.outputName } : {}),
+          ...(renderInput.sourceLanguage ? { sourceLanguage: renderInput.sourceLanguage } : {}),
+          ...(renderInput.targetLanguages.length > 0 ? { targetLanguages: renderInput.targetLanguages } : {}),
+          ...(renderInput.prepareLocalizedRenderData !== undefined
+            ? { prepareLocalizedRenderData: renderInput.prepareLocalizedRenderData }
+            : {}),
+        },
+        {
+          timeout: 120000,
+        },
+      );
+      const standardizedRequest = response.data?.renderResolvedRequest;
+      const standardizedData = asRecord(standardizedRequest?.data);
+      if (response.data?.success && standardizedRequest && standardizedData) {
+        return {
+          ...standardizedRequest,
+          data: standardizedData,
+          ...(standardizedRequest.outputFormat ? {} : { outputFormat: renderInput.outputFormat }),
+        };
+      }
+    } catch {
+      // 标准数据生成失败时回退到直连 render-resolved，兼容仅模板渲染等历史场景。
+    }
+
+    return fallbackRequest;
   }
 
   private omitRuntimeEnvelopeFields(
@@ -936,6 +1039,8 @@ export class CapabilityReleaseRuntimeService {
     const omittedKeys = new Set([
       'templateId',
       'template_id',
+      'skillId',
+      'skill_id',
       'params',
       'data',
       'outputFormat',
@@ -943,6 +1048,12 @@ export class CapabilityReleaseRuntimeService {
       'format',
       'outputName',
       'output_name',
+      'sourceLanguage',
+      'source_language',
+      'targetLanguages',
+      'target_languages',
+      'prepareLocalizedRenderData',
+      'prepare_localized_render_data',
       'action',
       'sourceTemplate',
     ]);
@@ -959,6 +1070,31 @@ export class CapabilityReleaseRuntimeService {
     for (const value of values) {
       if (typeof value === 'string' && value.trim()) {
         return value.trim();
+      }
+    }
+    return undefined;
+  }
+
+  private pickFirstStringArray(...values: unknown[]): string[] {
+    for (const value of values) {
+      if (!Array.isArray(value)) {
+        continue;
+      }
+      const normalized = value
+        .filter((item): item is string => typeof item === 'string')
+        .map((item) => item.trim())
+        .filter((item) => item.length > 0);
+      if (normalized.length > 0) {
+        return normalized;
+      }
+    }
+    return [];
+  }
+
+  private pickFirstBoolean(...values: unknown[]): boolean | undefined {
+    for (const value of values) {
+      if (typeof value === 'boolean') {
+        return value;
       }
     }
     return undefined;

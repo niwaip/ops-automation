@@ -131,6 +131,8 @@ export interface WorkflowDsl {
 
 export interface ActivityDsl {
   activities: Array<{
+    id?: string;
+    activityRef?: string;
     name: string;
     fn: string;
     timeout: string;
@@ -174,12 +176,30 @@ export interface TemporalWorkflowDTO {
   workflowDsl: WorkflowDsl;
   activityDsl: ActivityDsl;
   generatedCode?: string | null;
+  artifactVersion?: number;
+  artifactHash?: string | null;
+  validationStatus?: 'draft' | 'generated' | 'validated' | 'failed' | string;
+  validationScore?: number;
+  validatedAt?: string | null;
   isActive: boolean;
   deployedAt: string | null;
   createdAt: string;
   updatedAt: string;
   sourceTemplate?: TemporalWorkflowSourceTemplate | null;
   sourceContext?: TemporalWorkflowSourceContext | null;
+}
+
+export interface TemporalWorkflowArtifactDTO {
+  workflowId: string;
+  workflowName: string;
+  taskQueue: string;
+  artifactVersion?: number | null;
+  artifactHash?: string | null;
+  generatedCode?: string | null;
+  validationStatus: 'draft' | 'generated' | 'validated' | 'failed' | string;
+  validationScore: number;
+  validatedAt?: string | null;
+  validationResult?: Record<string, unknown> | null;
 }
 
 export interface CreateTemporalWorkflowDTO {
@@ -237,6 +257,16 @@ export interface WorkflowRealValidationResult {
   score: number;
 }
 
+export interface GenerateAndSaveWorkflowCodeResult {
+  workflow: TemporalWorkflowDTO;
+  generation: WorkflowCodeResult;
+}
+
+export interface ValidateSavedArtifactResult {
+  workflow: TemporalWorkflowDTO;
+  validation: WorkflowRealValidationResult;
+}
+
 export interface HttpRequestOptimizeResult {
   success: boolean;
   optimizedConfig?: Record<string, any>;
@@ -268,6 +298,10 @@ export interface TemplateWorkflowDraft {
     templateAssetVersion?: string; // 新增
     renderPlanVersion?: number;    // 新增
   };
+}
+
+export interface GenerateTemplateWorkflowDraftDTO {
+  templateId: string;
 }
 
 export interface CompileTemplateWorkflowDraftDTO {
@@ -398,6 +432,17 @@ export const temporalWorkflowApi = {
     return apiClient.post<WorkflowCodeResult>('/temporal/generate-code', { workflowDsl, activityDsl, errorContext });
   },
 
+  generateAndSave: async (
+    id: string,
+    data?: { errorContext?: string; forceAiGeneration?: boolean },
+  ): Promise<GenerateAndSaveWorkflowCodeResult> => {
+    return apiClient.post<GenerateAndSaveWorkflowCodeResult>(`/temporal/${id}/generate-and-save`, data);
+  },
+
+  getArtifact: async (id: string): Promise<TemporalWorkflowArtifactDTO> => {
+    return apiClient.get<TemporalWorkflowArtifactDTO>(`/temporal/${id}/artifact`);
+  },
+
   generateWorkflowCodeStream: async (
     workflowDsl: WorkflowDsl,
     activityDsl: ActivityDsl,
@@ -419,6 +464,13 @@ export const temporalWorkflowApi = {
     return apiClient.post<WorkflowRealValidationResult>('/temporal/validate-code', { code, fn, input, taskQueue, timeout });
   },
 
+  validateSavedArtifact: async (
+    id: string,
+    data?: { input?: Record<string, any>; timeout?: string },
+  ): Promise<ValidateSavedArtifactResult> => {
+    return apiClient.post<ValidateSavedArtifactResult>(`/temporal/${id}/validate-saved-artifact`, data);
+  },
+
   // SSE streaming real validation with the workflow test worker
   validateWorkflowRealStream: async (code: string, fn: string, input: Record<string, any>, taskQueue: string | undefined, onEvent: (event: { type: string; content?: string; result?: any; error?: string; success?: boolean; score?: number }) => void, timeout?: string): Promise<void> => {
     const token = await ensureFreshAccessToken() || useAuthStore.getState().accessToken;
@@ -431,8 +483,12 @@ export const temporalWorkflowApi = {
     });
   },
 
-  generateTemplateDraft: async (templateId: string): Promise<TemplateWorkflowDraft> => {
-    return apiClient.post<TemplateWorkflowDraft>('/temporal/generate-template-draft', { templateId });
+  generateTemplateDraft: async (
+    templateId: string,
+  ): Promise<TemplateWorkflowDraft> => {
+    return apiClient.post<TemplateWorkflowDraft>('/temporal/generate-template-draft', {
+      templateId,
+    });
   },
 
   compileTemplateDraft: async (data: CompileTemplateWorkflowDraftDTO): Promise<TemplateWorkflowDraft> => {
