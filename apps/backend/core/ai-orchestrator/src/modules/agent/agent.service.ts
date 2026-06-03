@@ -9,6 +9,20 @@ import { promisify } from 'util';
 const exec = promisify(require('child_process').exec);
 
 /**
+ * 验证函数名/任务队列名仅含合法字符（字母、数字、下划线、连字符、点）
+ * 防止命令注入攻击
+ */
+const SAFE_IDENTIFIER_RE = /^[a-zA-Z0-9_\-.]+$/;
+function assertSafeIdentifier(value: string, label: string): void {
+  if (!SAFE_IDENTIFIER_RE.test(value)) {
+    throw new Error(
+      `[Security] ${label} contains invalid characters: "${value}". ` +
+      'Only alphanumeric characters, underscores, hyphens and dots are allowed.',
+    );
+  }
+}
+
+/**
  * Agent Service
  * Creates and manages AI agent instances
  * Each agent is bound to a specific model and optionally a session
@@ -219,6 +233,21 @@ export class AgentService {
     taskQueue: string,
     input?: Record<string, any>,
   ): Promise<ExecuteActivityResponseDTO> {
+    // ⚠️ 安全门控：此端点仅用于开发/测试目的，生产环境必须显式开启才可使用。
+    // 设置环境变量 ENABLE_AGENT_EXECUTE_ACTIVITY=true 以启用（不建议在生产开启）。
+    if (process.env.ENABLE_AGENT_EXECUTE_ACTIVITY !== 'true') {
+      this.logger.warn('executeActivity endpoint is disabled. Set ENABLE_AGENT_EXECUTE_ACTIVITY=true to enable (not recommended in production).');
+      return {
+        success: false,
+        error: 'This endpoint is disabled. It is intended for development/testing only and must be explicitly enabled via ENABLE_AGENT_EXECUTE_ACTIVITY=true.',
+        logs: [],
+      };
+    }
+
+    // 参数白名单校验：防止命令注入
+    assertSafeIdentifier(fn, 'fn');
+    assertSafeIdentifier(taskQueue, 'taskQueue');
+
     this.logger.log(`Executing activity function: ${fn} on task queue: ${taskQueue}`);
     const logs: string[] = [];
 

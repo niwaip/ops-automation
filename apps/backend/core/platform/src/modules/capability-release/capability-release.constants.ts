@@ -1,0 +1,15 @@
+export const CAPABILITY_RELEASE_ERROR_CODE = {
+  MISSING_PUBLISH_PAYLOAD: 'missing_publish_payload',
+  INVALID_RELEASE_TYPE: 'invalid_release_type',
+  RELEASE_APPROVAL_PENDING: 'release_approval_pending',
+  RELEASE_APPROVAL_REJECTED: 'release_approval_rejected',
+  SKILL_DRAFT_NOT_FOUND: 'skill_draft_not_found',
+  SKILL_PUBLISH_TOOL_VALIDATION_FAILED: 'skill_publish_tool_validation_failed',
+  TEMPORAL_DOCUMENT_MAPPING_NOT_READY: 'temporal_document_mapping_not_ready',
+  RELEASE_NOT_PUBLISHED_FOR_DEPLOY: 'release_not_published_for_deploy',
+  RELEASE_DEPLOYING: 'release_deploying',
+  TEMPORAL_BUILD_NOT_EXECUTABLE: 'temporal_build_not_executable',
+  ROLLBACK_TARGET_SAME_RELEASE: 'rollback_target_same_release',
+  ROLLBACK_SOURCE_IDENTIFIER_MISSING: 'rollback_source_identifier_missing',
+  ROLLBACK_TARGET_RELEASE_NOT_FOUND: 'rollback_target_release_not_found',
+} as const;

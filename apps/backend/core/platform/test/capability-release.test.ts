@@ -44,6 +44,17 @@ describe('CapabilityReleaseService', () => {
       {} as any,
       skillService as any,
       toolCatalogService as any,
+      {
+        generateSkillDraft: jest.fn(),
+      } as any, // capabilityReleaseSkillDraftService
+      {
+        publishSkill: jest.fn(),
+        bridgeRecorderExport: jest.fn(),
+      } as any, // capabilityReleasePublishService
+      {
+        deploy: jest.fn(),
+      } as any, // capabilityReleaseDeploymentService
+      {} as any, // activityService
     );
 
     return { service, prisma, skillService, toolCatalogService, activityService };

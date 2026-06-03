@@ -48,7 +48,7 @@ import { CONTROL_PLANE_EXECUTION_STATUS } from '../../client/control-plane.contr
  * 默认配置
  */
 const DEFAULT_CONFIG: ReActConfig = {
-  maxIterations: 10,  // 增加到10次，支持更复杂的多步骤流程
+  maxIterations: Number(process.env.REACT_MAX_ITERATIONS || 10),  // 增加到10次，支持更复杂的多步骤流程
   modelId: 'default',
   tools: ['skill_match', 'preview_params', 'document_render', 'param_collect', 'user_ask', 'file_parse', 'api_call', 'flow_execute'],
   mode: 'task',

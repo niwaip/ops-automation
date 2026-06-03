@@ -1,12 +1,19 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { StudioController, TemplateRenderDataDto, TemplateSaveDto } from './studio.controller';
+import { StudioAiController } from './studio-ai.controller';
+import { StudioController } from './studio.controller';
+import { StudioRenderController } from './studio-render.controller';
+import { StudioTemplateController } from './studio-template.controller';
+import { TemplateRenderDataDto, TemplateSaveDto } from './studio.dto';
 import { DEFAULT_RENDER_PLAN_VERSION, TEMPLATE_ASSET_MANIFEST_VERSION } from './studio.types';
 import { TemplateWorkflowService } from './template-workflow.service';
 
 describe('StudioController template workflow', () => {
-  let controller: StudioController;
+  let workflowController: StudioController;
+  let renderController: StudioRenderController;
+  let templateController: StudioTemplateController;
+  let aiController: StudioAiController;
   let aiIdentifierService: {
     normalizeTemplateConfig: jest.Mock;
     generateAISkillGuide: jest.Mock;
@@ -47,21 +54,57 @@ describe('StudioController template workflow', () => {
       applyConfigToDocx: jest.fn(async (buffer) => buffer),
     };
 
-    controller = new StudioController(
-      {} as any,
+    const previewService = {} as any;
+    const skillRepository = {
+      findById: jest.fn().mockResolvedValue(null),
+      upsertFromDocument: jest.fn().mockResolvedValue(undefined),
+    } as any;
+    const renderOutputRepository = {
+      createFromMeta: jest.fn().mockResolvedValue(undefined),
+    } as any;
+    const templateWorkflowService = new TemplateWorkflowService();
+
+    workflowController = new StudioController(
+      previewService,
       aiIdentifierService as any,
       documentStructureService as any,
       templateRepository as any,
-      {
-        findById: jest.fn().mockResolvedValue(null),
-        upsertFromDocument: jest.fn().mockResolvedValue(undefined),
-      } as any,
-      {} as any,
-      new TemplateWorkflowService(),
+      skillRepository,
+      renderOutputRepository,
+      templateWorkflowService,
+    );
+    renderController = new StudioRenderController(
+      previewService,
+      aiIdentifierService as any,
+      documentStructureService as any,
+      templateRepository as any,
+      skillRepository,
+      renderOutputRepository,
+      templateWorkflowService,
+    );
+    templateController = new StudioTemplateController(
+      previewService,
+      aiIdentifierService as any,
+      documentStructureService as any,
+      templateRepository as any,
+      skillRepository,
+      renderOutputRepository,
+      templateWorkflowService,
+    );
+    aiController = new StudioAiController(
+      previewService,
+      aiIdentifierService as any,
+      documentStructureService as any,
+      templateRepository as any,
+      skillRepository,
+      renderOutputRepository,
+      templateWorkflowService,
     );
 
-    (controller as any).templatesDir = templatesDir;
-    (controller as any).outputsDir = outputsDir;
+    for (const controller of [workflowController, renderController, templateController, aiController]) {
+      (controller as any).templatesDir = templatesDir;
+      (controller as any).outputsDir = outputsDir;
+    }
   });
 
   afterEach(() => {
@@ -109,7 +152,7 @@ describe('StudioController template workflow', () => {
       saveMode: 'draft',
     };
 
-    const result = await controller.saveTemplateWorkflow(dto);
+    const result = await workflowController.saveTemplateWorkflow(dto);
 
     const metaPath = path.join(templatesDir, `${result.templateId}.json`);
     expect(fs.existsSync(metaPath)).toBe(true);
@@ -156,7 +199,7 @@ describe('StudioController template workflow', () => {
     const binaryContent = Buffer.from('template-binary-demo');
     fs.writeFileSync(path.join(templatesDir, `${templateId}.docx`), binaryContent);
 
-    const saveResult = await controller.saveTemplateWorkflow({
+    const saveResult = await workflowController.saveTemplateWorkflow({
       templateId,
       templateMeta: {
         templateName: 'asset-roundtrip.docx',
@@ -187,7 +230,7 @@ describe('StudioController template workflow', () => {
       saveMode: 'publish',
     });
 
-    const exported = await controller.exportTemplateAsset({
+    const exported = await workflowController.exportTemplateAsset({
       templateId: saveResult.templateId,
       includeBinary: true,
     });
@@ -200,7 +243,7 @@ describe('StudioController template workflow', () => {
     );
     expect(exported.templateBinary).toBe(binaryContent.toString('base64'));
 
-    const imported = await controller.importTemplateAsset({
+    const imported = await workflowController.importTemplateAsset({
       manifest: {
         ...exported.manifest,
         templateId: 'tpl-imported-roundtrip',
@@ -219,7 +262,7 @@ describe('StudioController template workflow', () => {
   });
 
   it('persists template asset manifest when saveTemplateFull receives field specs', async () => {
-    const result = await controller.saveTemplateFull({
+    const result = await templateController.saveTemplateFull({
       documentContent: Buffer.from('template-binary-demo').toString('base64'),
       format: 'docx',
       templateName: 'published-asset-template',
@@ -283,7 +326,7 @@ describe('StudioController template workflow', () => {
   });
 
   it('returns compare candidates from compare endpoint', async () => {
-    const result = await controller.compareTemplateWorkflow({
+    const result = await workflowController.compareTemplateWorkflow({
       templateDocumentIr: {
         host: 'word',
         elements: [
@@ -390,7 +433,7 @@ describe('StudioController template workflow', () => {
       saveMode: 'draft',
     };
 
-    const saveResult = await controller.saveTemplateWorkflow(saveDto);
+    const saveResult = await workflowController.saveTemplateWorkflow(saveDto);
     const renderDto: TemplateRenderDataDto = {
       templateId: saveResult.templateId,
       userInput: '项目是无线网络设备更新。',
@@ -398,7 +441,7 @@ describe('StudioController template workflow', () => {
       targetLanguages: ['ja'],
     };
 
-    const result = await controller.renderTemplateData(renderDto);
+    const result = await workflowController.renderTemplateData(renderDto);
 
     expect(result.data).toEqual(
       expect.objectContaining({
@@ -420,7 +463,7 @@ describe('StudioController template workflow', () => {
     const templateId = 'tpl-render-before-translate';
     fs.writeFileSync(path.join(templatesDir, `${templateId}.docx`), Buffer.from('template-binary-demo'));
 
-    await controller.saveTemplateWorkflow({
+    await workflowController.saveTemplateWorkflow({
       templateId,
       templateMeta: {
         templateName: 'render-before-translate.docx',
@@ -451,7 +494,7 @@ describe('StudioController template workflow', () => {
       saveMode: 'draft',
     });
 
-    const renderDataSpy = jest.spyOn((controller as any).templateWorkflowService, 'renderData').mockResolvedValue({
+    const renderDataSpy = jest.spyOn((renderController as any).templateWorkflowService, 'renderData').mockResolvedValue({
       data: {
         partyAName_zh: '上海云章科技有限公司',
         partyAName_ja: '上海クラウドドキュメント科技有限公司',
@@ -465,10 +508,10 @@ describe('StudioController template workflow', () => {
       missingFields: [],
       needsReviewFields: [],
     });
-    jest.spyOn((controller as any).engine, 'validateData').mockReturnValue({ valid: true, missing: [] });
-    const renderSpy = jest.spyOn((controller as any).engine, 'render').mockResolvedValue(Buffer.from('rendered-output'));
+    jest.spyOn((renderController as any).engine, 'validateData').mockReturnValue({ valid: true, missing: [] });
+    const renderSpy = jest.spyOn((renderController as any).engine, 'render').mockResolvedValue(Buffer.from('rendered-output'));
 
-    const result = await controller.renderTemplate({
+    const result = await renderController.renderTemplate({
       templateId,
       data: {
         partyAName: '上海云章科技有限公司',
@@ -505,7 +548,7 @@ describe('StudioController template workflow', () => {
   });
 
   it('returns block results and context analysis from recognize endpoint', async () => {
-    const result = await controller.recognizeTemplateWorkflow({
+    const result = await workflowController.recognizeTemplateWorkflow({
       templateDocumentIr: {
         host: 'word',
         elements: [
@@ -585,7 +628,7 @@ describe('StudioController template workflow', () => {
       }, null, 2),
     );
 
-    await controller.saveTemplateConfig(templateId, {
+    await templateController.saveTemplateConfig(templateId, {
       templateId,
       templateConfig: {
         variableMappings: [{ index: 0, path: 'd.customerName' }],
@@ -607,7 +650,7 @@ describe('StudioController template workflow', () => {
       ],
     });
 
-    const config = await controller.getTemplateConfig(templateId);
+    const config = await templateController.getTemplateConfig(templateId);
 
     expect(config.templateConfig).toEqual(
       expect.objectContaining({
@@ -655,7 +698,7 @@ describe('StudioController template workflow', () => {
       }, null, 2),
     );
 
-    await controller.generateAISkill({
+    await aiController.generateAISkill({
       templateId,
       suggestions: [
         {

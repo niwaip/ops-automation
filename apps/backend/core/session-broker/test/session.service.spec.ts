@@ -5,6 +5,8 @@ import { RedisService } from '../src/modules/lock/redis.service';
 import { LockService } from '../src/modules/lock/lock.service';
 import { AllocationService } from '../src/modules/allocation/allocation.service';
 import { FreezeService } from '../src/modules/freeze/freeze.service';
+import { TemplateClient } from '../src/modules/template/template.client';
+import { CdpExecutor } from '../src/modules/execution/cdp.executor';
 
 describe('SessionService', () => {
   let service: SessionService;
@@ -23,6 +25,8 @@ describe('SessionService', () => {
   };
 
   beforeEach(async () => {
+    process.env.SESSION_LOCK_ENABLED = 'true';
+
     // Create mocks
     const mockLockService = {
       acquireProfileLock: jest.fn(),
@@ -33,6 +37,7 @@ describe('SessionService', () => {
     const mockAllocationService = {
       allocateWorker: jest.fn(),
       releaseWorker: jest.fn(),
+      getWorkerInfo: jest.fn(),
     };
 
     const mockFreezeService = {
@@ -50,6 +55,15 @@ describe('SessionService', () => {
       del: jest.fn(),
     };
 
+    const mockTemplateClient = {
+      getTemplate: jest.fn(),
+    };
+
+    const mockCdpExecutor = {
+      executeSteps: jest.fn(),
+      captureFinalState: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SessionService,
@@ -57,6 +71,8 @@ describe('SessionService', () => {
         { provide: AllocationService, useValue: mockAllocationService },
         { provide: FreezeService, useValue: mockFreezeService },
         { provide: RedisService, useValue: mockRedisService },
+        { provide: TemplateClient, useValue: mockTemplateClient },
+        { provide: CdpExecutor, useValue: mockCdpExecutor },
       ],
     }).compile();
 
@@ -96,7 +112,7 @@ describe('SessionService', () => {
       expect(result.session.user_id).toBe(mockUserId);
       expect(result.endpoints).toEqual(mockEndpoints);
       expect(lockService.acquireProfileLock).toHaveBeenCalledWith(mockUserId, expect.any(String));
-      expect(allocationService.allocateWorker).toHaveBeenCalledWith(expect.any(String));
+      expect(allocationService.allocateWorker).toHaveBeenCalledWith(expect.any(String), mockUserId);
     });
 
     // TC02: User already has session -> POST /sessions -> Return 409

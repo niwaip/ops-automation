@@ -1,0 +1,702 @@
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { randomUUID } from 'crypto';
+import { PrismaService } from '../../prisma/prisma.service';
+import { SkillService } from '../skill/skill.service';
+import { TemporalWorkflowService } from '../temporal-workflow/temporal-workflow.service';
+import { CAPABILITY_RELEASE_ERROR_CODE } from './capability-release.constants';
+import { CapabilityReleaseDeploymentSmokeService } from './capability-release-deployment-smoke.service';
+import { mapCapabilityDeployment } from './capability-release.mapper';
+import {
+  CapabilityBuildDTO,
+  CapabilityDeploymentRuntimeType,
+  CapabilityDeploymentStatus,
+  CapabilityReleaseDTO,
+  CapabilitySourceSnapshotDTO,
+  DeployCapabilityReleaseDTO,
+  DeploymentRecordDTO,
+  RollbackCapabilityReleaseDTO,
+  SkillDraftDTO,
+} from './interfaces';
+
+export interface CapabilityReleaseDeploymentAccessors {
+  getReleaseOrThrow(id: string): Promise<CapabilityReleaseDTO>;
+  getCurrentSnapshotOrThrow(release: CapabilityReleaseDTO): Promise<CapabilitySourceSnapshotDTO>;
+  getBuildOrThrow(id: string): Promise<CapabilityBuildDTO>;
+  getDeploymentOrThrow(id: string): Promise<DeploymentRecordDTO>;
+  getSkillDraftOrThrow(id: string): Promise<SkillDraftDTO>;
+  resolveTemporalExecutableBuildOrThrow(
+    release: CapabilityReleaseDTO,
+    snapshot: CapabilitySourceSnapshotDTO,
+    buildId: string | undefined,
+    userId?: string,
+  ): Promise<CapabilityBuildDTO>;
+  resolveWorkflowFnOrThrow(payload: Record<string, unknown>): string;
+  insertAuditEvent(
+    releaseId: string,
+    eventType: string,
+    actorId: string | undefined,
+    success: boolean,
+    summary: string,
+    details?: Record<string, unknown>,
+  ): Promise<void>;
+}
+
+@Injectable()
+export class CapabilityReleaseDeploymentService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly temporalWorkflowService: TemporalWorkflowService,
+    private readonly skillService: SkillService,
+    private readonly capabilityReleaseDeploymentSmokeService: CapabilityReleaseDeploymentSmokeService,
+  ) {}
+
+  async deploy(
+    id: string,
+    dto: DeployCapabilityReleaseDTO,
+    userId: string | undefined,
+    accessors: CapabilityReleaseDeploymentAccessors,
+  ): Promise<{ release: CapabilityReleaseDTO; deployment: DeploymentRecordDTO }> {
+    const release = await accessors.getReleaseOrThrow(id);
+    if (release.status === 'deploying') {
+      throw new BadRequestException({
+        code: CAPABILITY_RELEASE_ERROR_CODE.RELEASE_DEPLOYING,
+        message: '当前 Release 正在部署中',
+      });
+    }
+
+    const deploymentId = randomUUID();
+    const environment = dto.environment || 'staging';
+    const snapshot = await accessors.getCurrentSnapshotOrThrow(release);
+    const deploymentProfile = this.resolveDeploymentProfile(snapshot.sourcePayload, environment);
+    const configOverrides = dto.configOverrides || {};
+    const effectiveConfig = { ...deploymentProfile, ...configOverrides };
+    const runtimeType: CapabilityDeploymentRuntimeType =
+      release.sourceType === 'temporal_workflow' ? 'temporal_worker' : 'flow_runtime';
+    const strategy =
+      dto.strategy
+      || (typeof deploymentProfile.strategy === 'string' ? deploymentProfile.strategy : undefined)
+      || 'rolling_restart';
+    let preResolvedTemporalBuild: CapabilityBuildDTO | null = null;
+
+    if (release.sourceType === 'temporal_workflow') {
+      try {
+        preResolvedTemporalBuild = await accessors.resolveTemporalExecutableBuildOrThrow(
+          release,
+          snapshot,
+          undefined,
+          userId,
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : '当前 Release 缺少可执行代码';
+        throw new BadRequestException({
+          code: CAPABILITY_RELEASE_ERROR_CODE.TEMPORAL_BUILD_NOT_EXECUTABLE,
+          message: `${message}。请先在该 Release 上执行“构建 / AI 生成代码”，确认生成的 Workflow 代码已保存，再重新部署。`,
+        });
+      }
+    }
+
+    await this.prisma.$executeRawUnsafe(
+      `INSERT INTO deployment_records (
+        id, release_id, published_skill_id, environment, runtime_type, reload_strategy,
+        request_payload_json, logs_json, status, success, started_at, created_by, created_at
+      ) VALUES (
+        $1::uuid, $2::uuid, $3::uuid, $4, $5, $6,
+        $7::jsonb, '[]'::jsonb, 'running', false, now(), $8::uuid, now()
+      )`,
+      deploymentId,
+      id,
+      release.publishedSkillId,
+      environment,
+      runtimeType,
+      strategy,
+      JSON.stringify({ environment, strategy, deploymentProfile, configOverrides, effectiveConfig }),
+      userId || null,
+    );
+
+    await this.prisma.$executeRawUnsafe(
+      `UPDATE capability_releases
+       SET status = 'deploying',
+           deployment_status = 'deploying',
+           last_deployment_id = $2::uuid,
+           updated_at = now()
+       WHERE id = $1::uuid`,
+      id,
+      deploymentId,
+    );
+
+    await accessors.insertAuditEvent(id, 'deployment_started', userId, true, `开始部署到 ${environment}`);
+
+    try {
+      const logs: string[] = [];
+      let artifactUri: string | null = null;
+      let artifactHash: string | null = null;
+      let workerVersion: string | null = null;
+      let resultSnapshot: Record<string, unknown> | null = null;
+      let smokeValidationId: string | null = null;
+      let deploymentBuild: CapabilityBuildDTO | null = null;
+
+      if (release.sourceType === 'temporal_workflow') {
+        const build =
+          preResolvedTemporalBuild
+          || await accessors.resolveTemporalExecutableBuildOrThrow(release, snapshot, undefined, userId);
+        deploymentBuild = build;
+        const workflowDsl = this.expectRecord(snapshot.sourcePayload.workflowDsl, '缺少 workflowDsl');
+        const activityDsl = this.expectRecord(snapshot.sourcePayload.activityDsl, '缺少 activityDsl');
+        const workflowName = String(snapshot.sourcePayload.name || release.sourceName || 'GeneratedWorkflow');
+        const description = String(snapshot.sourcePayload.description || '');
+        const taskQueue =
+          typeof effectiveConfig.taskQueue === 'string'
+            ? effectiveConfig.taskQueue
+            : typeof snapshot.sourcePayload.taskQueue === 'string'
+              ? snapshot.sourcePayload.taskQueue
+              : 'SKILL_TASK_QUEUE';
+        const workerReloadRequested =
+          typeof effectiveConfig.workerReload === 'boolean'
+            ? effectiveConfig.workerReload
+            : strategy !== 'hot_reload';
+        logs.push(`Environment: ${environment}`);
+        logs.push('Deployment target: ops-temporal');
+        logs.push(`Strategy: ${strategy}`);
+        if (Object.keys(deploymentProfile).length > 0) {
+          logs.push(`Deployment profile loaded for ${environment}`);
+        }
+        if (Object.keys(configOverrides).length > 0) {
+          logs.push(`Deployment overrides applied: ${JSON.stringify(configOverrides)}`);
+        }
+        logs.push(`Worker reload requested: ${workerReloadRequested ? 'yes' : 'no'}`);
+
+        const generatedCode = build.generatedCode || '';
+        const workflow = release.sourceId
+          ? await this.temporalWorkflowService.update(release.sourceId, {
+              name: workflowName,
+              description,
+              taskQueue,
+              workflowDsl: workflowDsl as any,
+              activityDsl: activityDsl as any,
+              generatedCode,
+              isActive: true,
+            })
+          : await this.temporalWorkflowService.create({
+              name: workflowName,
+              description,
+              taskQueue,
+              workflowDsl: workflowDsl as any,
+              activityDsl: activityDsl as any,
+              generatedCode,
+            });
+
+        const workflowRef = workflow as any;
+        if (!release.sourceId) {
+          await this.prisma.$executeRawUnsafe(
+            `UPDATE capability_releases
+             SET source_id = $2::uuid, source_name = $3, updated_at = now()
+             WHERE id = $1::uuid`,
+            id,
+            workflowRef.id,
+            workflowRef.name,
+          );
+        }
+
+        const deployedWorkflowRef = await this.temporalWorkflowService.deploy(workflowRef.id) as any;
+        logs.push('Workflow code synced to ops-temporal metadata');
+        logs.push(`Temporal workflow deployed: ${deployedWorkflowRef.id}`);
+        logs.push(`Task queue: ${deployedWorkflowRef.taskQueue}`);
+        artifactUri = `temporal-workflow://${deployedWorkflowRef.id}`;
+        artifactHash = build.id;
+        workerVersion = build.id;
+        resultSnapshot = {
+          workflowId: deployedWorkflowRef.id,
+          taskQueue: deployedWorkflowRef.taskQueue,
+          deployedAt: deployedWorkflowRef.deployedAt?.toISOString?.() || null,
+          generatedFromBuildId: build.id,
+          targetService: 'ops-temporal',
+          environment,
+          strategy,
+          deploymentProfile,
+          effectiveConfig,
+          workerReloadRequested,
+        };
+      } else {
+        deploymentBuild = await this.capabilityReleaseDeploymentSmokeService.resolveBuildForDeployment(
+          release,
+          snapshot,
+          undefined,
+          userId,
+          accessors,
+        );
+        const templateId = this.resolveExecutionTemplateIdForRuntime(release, snapshot);
+        logs.push(`Environment: ${environment}`);
+        logs.push(`Strategy: ${strategy}`);
+        if (Object.keys(deploymentProfile).length > 0) {
+          logs.push(`Deployment profile loaded for ${environment}`);
+        }
+        if (Object.keys(configOverrides).length > 0) {
+          logs.push(`Deployment overrides applied: ${JSON.stringify(configOverrides)}`);
+        }
+        logs.push('模板/浏览器能力无需独立 Worker 部署，已完成运行配置下发并进入 smoke test');
+        if (release.publishedSkillId) {
+          logs.push(`当前绑定已发布 Skill: ${release.publishedSkillId}`);
+        } else {
+          logs.push('当前尚未发布 Skill，本次部署用于验证运行链路与参数，不影响线上 Skill 路由');
+        }
+        artifactUri = release.publishedSkillId
+          ? `skill-config://${release.publishedSkillId}`
+          : templateId
+            ? `template-runtime://${templateId}`
+            : `release-runtime://${release.id}`;
+        artifactHash = release.publishedSkillId || templateId || release.id;
+        resultSnapshot = {
+          publishedSkillId: release.publishedSkillId,
+          mode: 'skill_config_activation',
+          prePublishDeploy: !release.publishedSkillId,
+          sourceTemplateId: templateId,
+          environment,
+          strategy,
+          deploymentProfile,
+          effectiveConfig,
+        };
+      }
+
+      if (deploymentBuild) {
+        logs.push(`[Smoke] 开始执行部署后验证 (${environment})`);
+        const smokeResult = await this.capabilityReleaseDeploymentSmokeService.runPostDeploySmokeTest(
+          release,
+          snapshot,
+          deploymentBuild,
+          deploymentId,
+          environment,
+          userId,
+          accessors,
+        );
+        smokeValidationId = smokeResult.validationId;
+        logs.push(...smokeResult.logs.map((item) => `[Smoke] ${item}`));
+        if (!smokeResult.success) {
+          throw new Error(smokeResult.errorSummary || `${environment} smoke test failed`);
+        }
+        logs.push(`[Smoke] 部署后验证通过，分数: ${smokeResult.score}`);
+      }
+
+      await this.finishDeployment(
+        deploymentId,
+        id,
+        'deployed',
+        'succeeded',
+        true,
+        logs,
+        resultSnapshot,
+        artifactUri,
+        artifactHash,
+        workerVersion,
+        smokeValidationId,
+        null,
+      );
+      await accessors.insertAuditEvent(id, 'deployment_succeeded', userId, true, `部署成功 (${environment})`);
+
+      return {
+        release: await accessors.getReleaseOrThrow(id),
+        deployment: await accessors.getDeploymentOrThrow(deploymentId),
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '未知错误';
+      await this.finishDeployment(
+        deploymentId,
+        id,
+        'deploy_failed',
+        'failed',
+        false,
+        [`[Error] ${message}`],
+        { error: message },
+        null,
+        null,
+        null,
+        null,
+        null,
+      );
+      await accessors.insertAuditEvent(id, 'deployment_failed', userId, false, `部署失败: ${message}`);
+      throw new BadRequestException(message);
+    }
+  }
+
+  async getDeployments(
+    id: string,
+    accessors: CapabilityReleaseDeploymentAccessors,
+  ): Promise<DeploymentRecordDTO[]> {
+    await accessors.getReleaseOrThrow(id);
+    const rows = await this.prisma.$queryRawUnsafe<any[]>(
+      `SELECT *
+       FROM deployment_records
+       WHERE release_id = $1::uuid
+       ORDER BY created_at DESC`,
+      id,
+    );
+    return rows.map((row) => mapCapabilityDeployment(row));
+  }
+
+  async rollback(
+    id: string,
+    dto: RollbackCapabilityReleaseDTO,
+    userId: string | undefined,
+    accessors: CapabilityReleaseDeploymentAccessors,
+  ): Promise<{ release: CapabilityReleaseDTO; deployment: DeploymentRecordDTO; targetReleaseId: string }> {
+    const release = await accessors.getReleaseOrThrow(id);
+    const targetRelease = await this.getRollbackTargetOrThrow(release, dto.targetReleaseId, accessors);
+    const deploymentId = randomUUID();
+    const runtimeType: CapabilityDeploymentRuntimeType =
+      release.sourceType === 'temporal_workflow' ? 'temporal_worker' : 'flow_runtime';
+
+    await this.prisma.$executeRawUnsafe(
+      `INSERT INTO deployment_records (
+        id, release_id, published_skill_id, environment, runtime_type, reload_strategy,
+        request_payload_json, logs_json, status, success, rollback_target_release_id,
+        started_at, created_by, created_at
+      ) VALUES (
+        $1::uuid, $2::uuid, $3::uuid, 'staging', $4, 'rolling_restart',
+        $5::jsonb, '[]'::jsonb, 'running', false, $6::uuid,
+        now(), $7::uuid, now()
+      )`,
+      deploymentId,
+      id,
+      release.publishedSkillId || targetRelease.publishedSkillId || null,
+      runtimeType,
+      JSON.stringify({ targetReleaseId: targetRelease.id, reason: dto.reason || null }),
+      targetRelease.id,
+      userId || null,
+    );
+
+    await this.prisma.$executeRawUnsafe(
+      `UPDATE capability_releases
+       SET status = 'deploying',
+           deployment_status = 'deploying',
+           last_deployment_id = $2::uuid,
+           updated_at = now()
+       WHERE id = $1::uuid`,
+      id,
+      deploymentId,
+    );
+
+    await accessors.insertAuditEvent(
+      id,
+      'rollback_started',
+      userId,
+      true,
+      `开始回滚到 Release ${targetRelease.id}`,
+      { targetReleaseId: targetRelease.id, reason: dto.reason || null },
+    );
+
+    try {
+      const logs: string[] = [];
+      let restoredSkillId = targetRelease.publishedSkillId || null;
+      let resultSnapshot: Record<string, unknown> | null = null;
+
+      if (targetRelease.currentSkillDraftId) {
+        const targetDraft = await accessors.getSkillDraftOrThrow(targetRelease.currentSkillDraftId);
+        if (release.publishedSkillId) {
+          const updated = await this.skillService.updateSkill(
+            release.publishedSkillId,
+            targetDraft.draftPayload as any,
+          );
+          restoredSkillId = updated?.id || release.publishedSkillId;
+        } else if (targetRelease.publishedSkillId) {
+          const updated = await this.skillService.updateSkill(
+            targetRelease.publishedSkillId,
+            targetDraft.draftPayload as any,
+          );
+          restoredSkillId = updated?.id || targetRelease.publishedSkillId;
+        } else {
+          const created = await this.skillService.createSkill(targetDraft.draftPayload as any);
+          restoredSkillId = created.id;
+        }
+        logs.push(`Skill configuration rolled back using draft ${targetDraft.id}`);
+      }
+
+      if (release.sourceType === 'temporal_workflow') {
+        const targetSnapshot = await accessors.getCurrentSnapshotOrThrow(targetRelease);
+        const targetBuild = await accessors.resolveTemporalExecutableBuildOrThrow(
+          targetRelease,
+          targetSnapshot,
+          undefined,
+          userId,
+        );
+        const workflowDsl = this.expectRecord(targetSnapshot.sourcePayload.workflowDsl, '缺少 workflowDsl');
+        const activityDsl = this.expectRecord(targetSnapshot.sourcePayload.activityDsl, '缺少 activityDsl');
+        const workflowName = String(
+          targetSnapshot.sourcePayload.name || targetRelease.sourceName || 'GeneratedWorkflow',
+        );
+        const description = String(targetSnapshot.sourcePayload.description || '');
+        const taskQueue =
+          typeof targetSnapshot.sourcePayload.taskQueue === 'string'
+            ? targetSnapshot.sourcePayload.taskQueue
+            : 'SKILL_TASK_QUEUE';
+        const workflowId = release.sourceId || targetRelease.sourceId;
+        const generatedCode = targetBuild.generatedCode || '';
+        const workflow = workflowId
+          ? await this.temporalWorkflowService.update(workflowId, {
+              name: workflowName,
+              description,
+              taskQueue,
+              workflowDsl: workflowDsl as any,
+              activityDsl: activityDsl as any,
+              generatedCode,
+              isActive: true,
+            })
+          : await this.temporalWorkflowService.create({
+              name: workflowName,
+              description,
+              taskQueue,
+              workflowDsl: workflowDsl as any,
+              activityDsl: activityDsl as any,
+              generatedCode,
+            });
+
+        const workflowRef = workflow as any;
+        await this.temporalWorkflowService.deploy(workflowRef.id);
+        logs.push('Workflow code synced to ops-temporal metadata');
+        logs.push(`Temporal workflow rolled back to build ${targetBuild.id}`);
+        resultSnapshot = {
+          workflowId: workflowRef.id,
+          restoredFromReleaseId: targetRelease.id,
+          restoredBuildId: targetBuild.id,
+          restoredSkillId,
+        };
+      } else {
+        logs.push(`模板型能力已回滚到 Release ${targetRelease.id} 的已发布配置`);
+        resultSnapshot = {
+          restoredFromReleaseId: targetRelease.id,
+          restoredSkillId,
+        };
+      }
+
+      await this.prisma.$executeRawUnsafe(
+        `UPDATE capability_releases
+         SET published_skill_id = $2::uuid,
+             rollback_of_release_id = $3::uuid,
+             updated_at = now()
+         WHERE id = $1::uuid`,
+        id,
+        restoredSkillId,
+        targetRelease.id,
+      );
+
+      await this.finishDeployment(
+        deploymentId,
+        id,
+        'rolled_back',
+        'rolled_back',
+        true,
+        logs,
+        resultSnapshot,
+        restoredSkillId ? `skill-config://${restoredSkillId}` : null,
+        restoredSkillId,
+        targetRelease.latestSuccessfulBuildId || null,
+        null,
+        targetRelease.id,
+      );
+      await accessors.insertAuditEvent(
+        id,
+        'rollback_succeeded',
+        userId,
+        true,
+        `已回滚到 Release ${targetRelease.id}`,
+        { targetReleaseId: targetRelease.id, restoredSkillId },
+      );
+
+      return {
+        release: await accessors.getReleaseOrThrow(id),
+        deployment: await accessors.getDeploymentOrThrow(deploymentId),
+        targetReleaseId: targetRelease.id,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '未知错误';
+      await this.finishDeployment(
+        deploymentId,
+        id,
+        'deploy_failed',
+        'failed',
+        false,
+        [`[Error] ${message}`],
+        { error: message, targetReleaseId: targetRelease.id },
+        null,
+        null,
+        null,
+        null,
+        targetRelease.id,
+      );
+      await accessors.insertAuditEvent(id, 'rollback_failed', userId, false, `回滚失败: ${message}`);
+      throw new BadRequestException(message);
+    }
+  }
+
+  private async finishDeployment(
+    deploymentId: string,
+    releaseId: string,
+    releaseStatus: string,
+    deploymentStatus: CapabilityDeploymentStatus,
+    success: boolean,
+    logs: string[],
+    resultSnapshot: Record<string, unknown> | null,
+    artifactUri: string | null,
+    artifactHash: string | null,
+    workerVersion: string | null,
+    smokeValidationId: string | null,
+    rollbackTargetReleaseId: string | null,
+  ): Promise<void> {
+    await this.prisma.$executeRawUnsafe(
+      `UPDATE deployment_records
+       SET artifact_uri = $2,
+           artifact_hash = $3,
+           worker_version = $4,
+           result_snapshot_json = $5::jsonb,
+           logs_json = $6::jsonb,
+           status = $7,
+           success = $8,
+           smoke_validation_id = $9::uuid,
+           rollback_target_release_id = $10::uuid,
+           finished_at = now()
+       WHERE id = $1::uuid`,
+      deploymentId,
+      artifactUri,
+      artifactHash,
+      workerVersion,
+      JSON.stringify(resultSnapshot),
+      JSON.stringify(logs),
+      deploymentStatus,
+      success,
+      smokeValidationId,
+      rollbackTargetReleaseId,
+    );
+
+    await this.prisma.$executeRawUnsafe(
+      `UPDATE capability_releases
+       SET status = $2,
+           deployment_status = $3,
+           last_deployment_id = $4::uuid,
+           updated_at = now()
+       WHERE id = $1::uuid`,
+      releaseId,
+      releaseStatus,
+      deploymentStatus === 'succeeded'
+        ? 'deployed'
+        : deploymentStatus === 'rolled_back'
+          ? 'rolled_back'
+          : 'failed',
+      deploymentId,
+    );
+  }
+
+  private resolveExecutionTemplateIdForRuntime(
+    release: CapabilityReleaseDTO,
+    snapshot: CapabilitySourceSnapshotDTO,
+  ): string | null {
+    if (release.sourceType === 'temporal_workflow') {
+      return null;
+    }
+    if (release.sourceId && release.sourceId.trim()) {
+      return release.sourceId.trim();
+    }
+    const payload =
+      snapshot.sourcePayload && typeof snapshot.sourcePayload === 'object'
+        ? (snapshot.sourcePayload as Record<string, unknown>)
+        : {};
+    const sourceTemplate =
+      payload.sourceTemplate && typeof payload.sourceTemplate === 'object'
+        ? (payload.sourceTemplate as Record<string, unknown>)
+        : {};
+    const fromTemplate = sourceTemplate.templateId;
+    if (typeof fromTemplate === 'string' && fromTemplate.trim()) {
+      return fromTemplate.trim();
+    }
+    const fromPayloadId = payload.id;
+    if (typeof fromPayloadId === 'string' && fromPayloadId.trim()) {
+      return fromPayloadId.trim();
+    }
+    return null;
+  }
+
+  private async getRollbackTargetOrThrow(
+    release: CapabilityReleaseDTO,
+    targetReleaseId: string | undefined,
+    accessors: CapabilityReleaseDeploymentAccessors,
+  ): Promise<CapabilityReleaseDTO> {
+    if (targetReleaseId) {
+      const target = await accessors.getReleaseOrThrow(targetReleaseId);
+      if (target.id === release.id) {
+        throw new BadRequestException({
+          code: CAPABILITY_RELEASE_ERROR_CODE.ROLLBACK_TARGET_SAME_RELEASE,
+          message: '不能回滚到当前 Release 自身',
+        });
+      }
+      return target;
+    }
+
+    if (!release.sourceId && !release.sourceName) {
+      throw new BadRequestException({
+        code: CAPABILITY_RELEASE_ERROR_CODE.ROLLBACK_SOURCE_IDENTIFIER_MISSING,
+        message: '当前 Release 缺少可用于推断回滚目标的源标识',
+      });
+    }
+
+    const rows = await this.prisma.$queryRawUnsafe<any[]>(
+      `SELECT *
+       FROM capability_releases
+       WHERE id <> $1::uuid
+         AND source_type = $2
+         AND published_skill_id IS NOT NULL
+         AND archived_at IS NULL
+         AND (
+           ($3::uuid IS NOT NULL AND source_id = $3::uuid)
+           OR ($3::uuid IS NULL AND $4 IS NOT NULL AND source_name = $4)
+         )
+       ORDER BY updated_at DESC
+       LIMIT 1`,
+      release.id,
+      release.sourceType,
+      release.sourceId || null,
+      release.sourceName || null,
+    );
+
+    if (!rows[0]) {
+      throw new NotFoundException({
+        code: CAPABILITY_RELEASE_ERROR_CODE.ROLLBACK_TARGET_RELEASE_NOT_FOUND,
+        message: '未找到可回滚的目标 Release',
+      });
+    }
+
+    return accessors.getReleaseOrThrow(rows[0].id);
+  }
+
+  private resolveDeploymentProfile(
+    sourcePayload: Record<string, unknown>,
+    environment: string,
+  ): Record<string, unknown> {
+    const profiles =
+      sourcePayload.deploymentProfiles && typeof sourcePayload.deploymentProfiles === 'object'
+        ? (sourcePayload.deploymentProfiles as Record<string, unknown>)
+        : {};
+
+    return profiles[environment] && typeof profiles[environment] === 'object'
+      ? (profiles[environment] as Record<string, unknown>)
+      : {};
+  }
+
+  private expectRecord(value: unknown, errorMessage: string): Record<string, unknown> {
+    const record = this.parseJson(value);
+    if (!record || typeof record !== 'object' || Array.isArray(record)) {
+      throw new BadRequestException(errorMessage);
+    }
+    return record as Record<string, unknown>;
+  }
+
+  private parseJson<T = unknown>(value: unknown): T {
+    if (value === null || value === undefined) {
+      return value as T;
+    }
+    if (typeof value === 'string') {
+      try {
+        return JSON.parse(value) as T;
+      } catch {
+        return value as T;
+      }
+    }
+    return value as T;
+  }
+}

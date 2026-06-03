@@ -8,7 +8,7 @@ jest.mock('axios');
 
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 
-describe('ExecutionService.fetchSkillDefaultInput', () => {
+describe('ExecutionService.fetchSkillDefaultResolution', () => {
   beforeEach(() => {
     mockedAxios.get.mockReset();
   });
@@ -40,10 +40,17 @@ describe('ExecutionService.fetchSkillDefaultInput', () => {
 
     const service = new ExecutionService({} as never, {} as never, {} as never, {} as never);
 
-    await expect((service as any).fetchSkillDefaultInput('skill-1', 'Bearer token-1')).resolves.toEqual({
-      username: 'flow-user',
-      loginCredential: 'secret',
-      retryCount: 3,
+    await expect((service as any).fetchSkillDefaultResolution('skill-1', 'Bearer token-1')).resolves.toEqual({
+      input: {
+        username: 'flow-user',
+        loginCredential: 'secret',
+        retryCount: 3,
+      },
+      sources: {
+        username: 'default',
+        loginCredential: 'default',
+        retryCount: 'default',
+      },
     });
     expect(mockedAxios.get).toHaveBeenNthCalledWith(
       1,
@@ -80,11 +87,16 @@ describe('ExecutionService.fetchSkillDefaultInput', () => {
     try {
       const service = new ExecutionService({} as never, {} as never, {} as never, {} as never);
 
-      await expect((service as any).fetchSkillDefaultInput('skill-1', undefined, {
+      await expect((service as any).fetchSkillDefaultResolution('skill-1', undefined, {
         id: 'user-1',
         role: 'admin',
       })).resolves.toEqual({
-        startUrl: 'http://example.test/login',
+        input: {
+          startUrl: 'http://example.test/login',
+        },
+        sources: {
+          startUrl: 'default',
+        },
       });
       expect(mockedAxios.get).toHaveBeenCalledWith(
         expect.stringContaining('/skills/skill-1'),
@@ -1382,7 +1394,6 @@ describe('ExecutionService.create planner draft reuse', () => {
     const serviceInternals = service as any;
     jest.spyOn(serviceInternals, 'assertSkillAccessibleByUser').mockResolvedValue(undefined);
     jest.spyOn(serviceInternals, 'fetchSkillDefaultResolution').mockResolvedValue({ input: {}, sources: {} });
-    jest.spyOn(serviceInternals, 'fetchSkillDefaultInput').mockResolvedValue({});
     jest.spyOn(serviceInternals, 'generatePlanDraft').mockResolvedValue(undefined);
     jest.spyOn(serviceInternals, 'createPlannedSteps').mockResolvedValue(undefined);
     jest.spyOn(serviceInternals, 'startExecution').mockResolvedValue(undefined);
@@ -3516,6 +3527,8 @@ describe('ExecutionService browser phase execution', () => {
       undefined,
       undefined,
       executionStepService as never,
+      undefined,
+      undefined,
       browserPhaseExecutor as never,
     );
     jest.spyOn(service as any, 'createEvent').mockResolvedValue(undefined);
@@ -3668,6 +3681,8 @@ describe('ExecutionService browser phase execution', () => {
       undefined,
       undefined,
       executionStepService as never,
+      undefined,
+      undefined,
       browserPhaseExecutor as never,
     );
     jest.spyOn(service as any, 'createEvent').mockResolvedValue(undefined);

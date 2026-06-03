@@ -691,7 +691,7 @@ export class FlowExecuteTool extends BaseTool {
               },
               data: currentStep.api.method === 'GET' ? undefined : { ...currentStep.api.body, ...execParams },
               params: currentStep.api.method === 'GET' ? buildGetParams(execParams, usedKeys) : undefined,
-              timeout: currentStep.api.timeout || 30000,
+              timeout: currentStep.api.timeout || Number(process.env.FLOW_API_TIMEOUT_MS || 30000),
             });
 
             // 格式化API响应

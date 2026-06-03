@@ -6,7 +6,7 @@ import { TemplateConfigPanel } from './TemplateConfigPanel';
 import { VerifySaveSection } from './AIIdentifyPanel/VerifySaveSection';
 import { useWordIdentifyPanel } from './AIIdentifyPanel/useWordIdentifyPanel';
 import { createHostAdapter } from '../adapters';
-import { WordAPI } from '../utils/office-api';
+import { WordAPI } from '../utils/office/word/api';
 import {
   carboneAPI,
   TemplateFieldCandidate,

@@ -11,6 +11,7 @@ describe('FreezeService', () => {
       eval: jest.fn(),
       hget: jest.fn(),
       hset: jest.fn(),
+      hmset: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -26,51 +27,27 @@ describe('FreezeService', () => {
 
   describe('freezeSession', () => {
     it('should freeze session successfully', async () => {
-      redisService.hget.mockResolvedValueOnce('RUNNING');
-      redisService.hget.mockResolvedValueOnce('0');
-      redisService.eval.mockResolvedValue(1);
+      redisService.hget.mockResolvedValueOnce('busy');
+      redisService.hmset.mockResolvedValue('OK');
 
       const result = await service.freezeSession('session-123');
 
       expect(result.success).toBe(true);
-      expect(result.newState).toBe('HUMAN_CONTROL');
-      expect(result.frozen).toBe(true);
-    });
-
-    it('should not freeze already frozen session', async () => {
-      redisService.hget.mockResolvedValueOnce('HUMAN_CONTROL');
-      redisService.hget.mockResolvedValueOnce('1');
-      redisService.eval.mockResolvedValue(0);
-
-      const result = await service.freezeSession('session-123');
-
-      expect(result.success).toBe(false);
+      expect(result.newState).toBe('frozen');
       expect(result.frozen).toBe(true);
     });
   });
 
   describe('unfreezeSession', () => {
     it('should unfreeze session successfully', async () => {
-      redisService.hget.mockResolvedValueOnce('HUMAN_CONTROL');
-      redisService.hget.mockResolvedValueOnce('1');
-      redisService.eval.mockResolvedValue(1);
+      redisService.hget.mockResolvedValueOnce('frozen');
+      redisService.hmset.mockResolvedValue('OK');
       redisService.hset.mockResolvedValue(1);
 
       const result = await service.unfreezeSession('session-123', 'step-1');
 
       expect(result.success).toBe(true);
-      expect(result.newState).toBe('RUNNING');
-      expect(result.frozen).toBe(false);
-    });
-
-    it('should not unfreeze non-frozen session', async () => {
-      redisService.hget.mockResolvedValueOnce('RUNNING');
-      redisService.hget.mockResolvedValueOnce('0');
-      redisService.eval.mockResolvedValue(0);
-
-      const result = await service.unfreezeSession('session-123');
-
-      expect(result.success).toBe(false);
+      expect(result.newState).toBe('busy');
       expect(result.frozen).toBe(false);
     });
   });

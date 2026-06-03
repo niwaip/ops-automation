@@ -1,7 +1,7 @@
 import { HostAdapter } from '../adapters';
 import { DocumentIR } from '../adapters/document-ir';
 import { AISuggestion, ExcelSheetPairState } from '../taskpane/store';
-import { OfficeHelper } from '../utils/office-api';
+import { ExcelAPI } from '../utils/office/excel/api';
 import {
   resolveAnalysisExecutor,
   AnalysisExecutorKind,
@@ -2115,7 +2115,7 @@ export async function analyzeExcelWorkbookUnderstanding(
     throw new Error('请至少选择一个 sheet 再执行文档理解');
   }
 
-  const workbookSheets = (await OfficeHelper.Excel.getWorkbookSheets()) as WorkbookSheetSummary[];
+  const workbookSheets = (await ExcelAPI.getWorkbookSheets()) as WorkbookSheetSummary[];
   const documentIR = buildExcelDocumentIRFromWorkbookSheets(
     workbookSheets,
     options.selectedSheetIndexes,

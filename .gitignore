@@ -54,6 +54,8 @@ test-results/
 # Temp
 tmp/
 temp/
+.tmp/
+.dbg/
 .cache/
 .data/
 
@@ -81,6 +83,7 @@ outputs/
 保密协议*.docx
 confidential_agreement*.docx
 doc-preview-*.png
+Template*Workflow.json
 # Playwright MCP test files
 .playwright-mcp/
 *.png

@@ -241,12 +241,6 @@ export class RuntimeStepRequestFactory {
       existingData,
       diagnostics,
     });
-    // #region debug-point A:document-binding-samples
-    (()=>{const fs=require('fs'),p='.dbg/tech-service-object-object.env';let u='http://127.0.0.1:7777/event',s='tech-service-object-object';try{const e=fs.readFileSync(p,'utf8');u=e.match(/DEBUG_SERVER_URL=(.+)/)?.[1]||u;s=e.match(/DEBUG_SESSION_ID=(.+)/)?.[1]||s}catch{}fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:s,runId:'pre-fix',hypothesisId:'A',location:'runtime-step-request.factory.ts:222',msg:'[DEBUG] document runtime binding samples',data:{executionId,bindingSamples,dataPayloadSample:{payment:dataPayload.payment,service:dataPayload.service}},ts:Date.now()})}).catch(()=>{});})();
-    // #endregion
-    // #region debug-point C:runtime-document-mapping
-    (()=>{const fs=require('fs'),p='.dbg/missing-last-parameter.env';let u='http://127.0.0.1:7777/event',s='missing-last-parameter';try{const e=fs.readFileSync(p,'utf8');u=e.match(/DEBUG_SERVER_URL=(.+)/)?.[1]||u;s=e.match(/DEBUG_SESSION_ID=(.+)/)?.[1]||s}catch{}fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:s,runId:'pre-fix',hypothesisId:'C',location:'runtime-step-request.factory.ts:219',msg:'[DEBUG] runtime evaluated document payload mapping',data:{executionId,inputKeys:Object.keys(input||{}),diagnostics,hasExistingData:Boolean(existingData&&Object.keys(existingData).length>0),resolvedDataKeys:Object.keys(dataPayload)},ts:Date.now()})}).catch(()=>{});})();
-    // #endregion
 
     if (!hasBindingMappings) {
       return result;

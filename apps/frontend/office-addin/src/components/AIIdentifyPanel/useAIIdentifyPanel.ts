@@ -11,7 +11,7 @@ import type {
 import { exportTemplateSource } from '../../services/template-source-service';
 import { analyzeDocumentWithAI } from '../../services/suggestion-service';
 import { AnalysisSummary, buildAnalysisSummary, mergeExcelSuggestionsByPairResult } from '../AIIdentifyPanel.helpers';
-import { OfficeHelper } from '../../utils/office-api';
+import { ExcelAPI } from '../../utils/office/excel/api';
 import { getDefaultTemplateFormatForHost, getHostScopedStorageKey } from '../../utils/host-storage';
 
 const DRAFT_STORAGE_KEY_SUFFIX = 'ai-template-draft';
@@ -1125,7 +1125,7 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
     try {
       let nextSuggestions = suggestions;
       if (isExcelMode) {
-        const workbookResult = await OfficeHelper.Excel.prepareWorkbookForDraft(store.excelSheetPairs);
+        const workbookResult = await ExcelAPI.prepareWorkbookForDraft(store.excelSheetPairs);
         if (workbookResult.renamedSheets.length > 0) {
           const renameMap = new Map(workbookResult.renamedSheets.map((item) => [item.from, item.to]));
           nextSuggestions = suggestions.map((suggestion) => {

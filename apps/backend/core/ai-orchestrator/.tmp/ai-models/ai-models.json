@@ -1,11 +1,11 @@
 [
   {
     "model": {
-      "id": "186c4e5a-d720-483f-9b5a-f3eee57db0fa",
+      "id": "0b6b7385-2492-48e4-83ae-aa33213844ea",
       "name": "speech-model",
       "provider": "openai",
       "api_endpoint": "https://api.openai.com/v1",
-      "providerConfigId": "921707f8-49df-40c3-9b0f-a15f3ae630e7",
+      "providerConfigId": "0e059dea-16b1-4fce-8138-573b3532fcfd",
       "config": {
         "default_scope": {
           "global": false,
@@ -26,21 +26,21 @@
         "default": false
       },
       "status": "active",
-      "created_at": "2026-05-28T09:26:29.244Z",
-      "updated_at": "2026-05-28T09:26:29.244Z"
+      "created_at": "2026-06-02T03:34:47.810Z",
+      "updated_at": "2026-06-02T03:34:47.810Z"
     },
     "apiKeyRef": {
-      "reference_id": "AI_API_KEY_186c4e5a-d720-483f-9b5a-f3eee57db0fa",
+      "reference_id": "AI_API_KEY_0b6b7385-2492-48e4-83ae-aa33213844ea",
       "secret_type": "env"
     }
   },
   {
     "model": {
-      "id": "4d084b8e-8ddd-4f3f-a2c3-29717295fbde",
+      "id": "28a50d64-83dc-4be6-af0d-feffdfd7c17f",
       "name": "task-model",
       "provider": "openai",
       "api_endpoint": "https://api.openai.com/v1",
-      "providerConfigId": "921707f8-49df-40c3-9b0f-a15f3ae630e7",
+      "providerConfigId": "0e059dea-16b1-4fce-8138-573b3532fcfd",
       "config": {
         "default_scope": {
           "global": false,
@@ -61,11 +61,11 @@
         "default": false
       },
       "status": "active",
-      "created_at": "2026-05-28T09:26:29.245Z",
-      "updated_at": "2026-05-28T09:26:29.245Z"
+      "created_at": "2026-06-02T03:34:47.811Z",
+      "updated_at": "2026-06-02T03:34:47.811Z"
     },
     "apiKeyRef": {
-      "reference_id": "AI_API_KEY_4d084b8e-8ddd-4f3f-a2c3-29717295fbde",
+      "reference_id": "AI_API_KEY_28a50d64-83dc-4be6-af0d-feffdfd7c17f",
       "secret_type": "env"
     }
   }

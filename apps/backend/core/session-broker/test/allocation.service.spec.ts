@@ -5,16 +5,28 @@ import { RedisService } from '../src/modules/lock/redis.service';
 describe('AllocationService', () => {
   let service: AllocationService;
   let redisService: jest.Mocked<RedisService>;
+  let originalFetch: typeof global.fetch;
+
+  const mockEndpoints = {
+    novnc: 'http://10.0.0.1:8080/vnc.html',
+    cdp: 'ws://10.0.0.1:9222',
+    vnc: 'vnc://10.0.0.1:5900',
+  };
+
+  beforeAll(() => {
+    originalFetch = global.fetch;
+  });
+
+  afterAll(() => {
+    global.fetch = originalFetch;
+  });
 
   beforeEach(async () => {
     const mockRedisService = {
-      spop: jest.fn(),
       set: jest.fn(),
-      del: jest.fn(),
-      sadd: jest.fn(),
-      get: jest.fn(),
-      smembers: jest.fn(),
     };
+
+    global.fetch = jest.fn();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -28,21 +40,36 @@ describe('AllocationService', () => {
   });
 
   describe('allocateWorker', () => {
-    it('should allocate worker successfully', async () => {
-      redisService.spop.mockResolvedValue('worker-1');
-      redisService.set.mockResolvedValue('OK');
+    it('should allocate worker successfully via HTTP API', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        text: () => Promise.resolve(JSON.stringify({
+          worker_id: 'worker-1',
+          endpoints: mockEndpoints,
+        })),
+      });
 
-      const result = await service.allocateWorker('session-123');
+      const result = await service.allocateWorker('session-123', 'user-1');
 
       expect(result).not.toBeNull();
       expect(result?.worker_id).toBe('worker-1');
       expect(result?.status).toBe('busy');
       expect(result?.session_id).toBe('session-123');
-      expect(result?.endpoints).toBeDefined();
+      expect(result?.endpoints).toEqual(mockEndpoints);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/workers'),
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({
+            user_id: 'user-1',
+            runtime_session_id: 'session-123',
+          }),
+        }),
+      );
     });
 
-    it('should return null when no workers available', async () => {
-      redisService.spop.mockResolvedValue(null);
+    it('should return null when HTTP request fails', async () => {
+      (global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'));
 
       const result = await service.allocateWorker('session-123');
 
@@ -51,37 +78,54 @@ describe('AllocationService', () => {
   });
 
   describe('releaseWorker', () => {
-    it('should release worker and return to pool', async () => {
-      redisService.del.mockResolvedValue(1);
-      redisService.sadd.mockResolvedValue(1);
+    it('should release worker successfully via HTTP API', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        text: () => Promise.resolve(''),
+      });
 
       const result = await service.releaseWorker('worker-1');
 
       expect(result).toBe(true);
-      expect(redisService.del).toHaveBeenCalledWith('worker:pool:busy:worker-1');
-      expect(redisService.sadd).toHaveBeenCalledWith('worker:pool:available', ['worker-1']);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/workers/worker-1'),
+        expect.objectContaining({
+          method: 'DELETE',
+        }),
+      );
+    });
+
+    it('should return false when release request fails', async () => {
+      (global.fetch as jest.Mock).mockRejectedValue(new Error('Delete failed'));
+
+      const result = await service.releaseWorker('worker-1');
+
+      expect(result).toBe(false);
     });
   });
 
   describe('getAvailableWorkerCount', () => {
-    it('should return count of available workers', async () => {
-      redisService.smembers.mockResolvedValue(['worker-1', 'worker-2', 'worker-3']);
-
+    it('should return static count of 999', async () => {
       const result = await service.getAvailableWorkerCount();
-
-      expect(result).toBe(3);
+      expect(result).toBe(999);
     });
   });
 
   describe('initializeWorkerPool', () => {
-    it('should add workers to pool', async () => {
-      redisService.sadd.mockResolvedValue(5);
+    it('should ignore initialization call without errors', async () => {
+      await expect(service.initializeWorkerPool(['worker-1'])).resolves.not.toThrow();
+    });
+  });
 
-      await service.initializeWorkerPool(['worker-1', 'worker-2', 'worker-3', 'worker-4', 'worker-5']);
-
-      expect(redisService.sadd).toHaveBeenCalledWith('worker:pool:available', [
-        'worker-1', 'worker-2', 'worker-3', 'worker-4', 'worker-5',
-      ]);
+  describe('updateHeartbeat', () => {
+    it('should save heartbeat to Redis with 30s TTL', async () => {
+      redisService.set.mockResolvedValue('OK');
+      await service.updateHeartbeat('worker-1');
+      expect(redisService.set).toHaveBeenCalledWith(
+        'worker:heartbeat:worker-1',
+        expect.any(String),
+        30,
+      );
     });
   });
 });

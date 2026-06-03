@@ -1,5 +1,5 @@
 import { AISuggestion } from '../taskpane/store';
-import { OfficeHelper } from '../utils/office-api';
+import { PPTAPI } from '../utils/office/powerpoint/api';
 import { HostCapabilities } from './capabilities';
 import { Anchor, DocumentElement, DocumentIR, DocumentSelection, TemplateSource } from './document-ir';
 import { HostAdapter } from './types';
@@ -19,7 +19,7 @@ export class PowerPointAdapter implements HostAdapter {
   }
 
   async extractDocument(): Promise<DocumentIR> {
-    const slides = await OfficeHelper.PowerPoint.getSlidesContent();
+    const slides = await PPTAPI.getSlidesContent();
     const elements: DocumentElement[] = [];
     const anchors: Anchor[] = [];
 
@@ -88,7 +88,7 @@ export class PowerPointAdapter implements HostAdapter {
   }
 
   async exportTemplateSource(): Promise<TemplateSource> {
-    const slides = await OfficeHelper.PowerPoint.getSlidesContent();
+    const slides = await PPTAPI.getSlidesContent();
 
     return {
       format: 'pptx',
