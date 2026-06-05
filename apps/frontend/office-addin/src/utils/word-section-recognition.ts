@@ -1,5 +1,5 @@
 import { TemplateFieldCandidate } from '../api/carbone-api';
-import { extractWordParamName, resolveWordHeaderFieldKey } from './word-parameter-rules';
+import { extractWordParamName, resolveWordHeaderFieldKey } from './office/word/parameter';
 
 export type WordRecognitionBatchOptions = {
   retryLoopIds: string[];

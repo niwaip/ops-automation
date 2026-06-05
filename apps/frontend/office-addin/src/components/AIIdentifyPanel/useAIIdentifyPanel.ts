@@ -15,8 +15,6 @@ import { ExcelAPI } from '../../utils/office/excel/api';
 import { getDefaultTemplateFormatForHost, getHostScopedStorageKey } from '../../utils/host-storage';
 
 const DRAFT_STORAGE_KEY_SUFFIX = 'ai-template-draft';
-const AI_AUTO_RETRY_MAX_RETRIES = 3;
-
 export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
   const store = useAppStore();
   const {
@@ -1444,61 +1442,45 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
     setTemplateAssetRenderDiagnostics(null);
 
     try {
-      const effectiveDescription = currentDescription.trim();
       carboneAPI.setBaseUrl(apiBaseUrl);
+      let previewTemplateId = draftId;
+      if (!previewTemplateId) {
+        const { documentContent, format } = await loadTemplateSource();
+        const templateResult = await carboneAPI.generateTemplate({
+          documentContent,
+          suggestions: suggestions.map((s) => ({ ...s, applied: true })),
+          templateConfig,
+          format,
+        });
 
-      const fallbackDescription = effectiveDescription || '请基于当前 Skill Guide 生成一份默认实例参数，要求优先使用真实业务示例值、字段完整、值合理、可直接用于预览；如果存在循环数组，默认生成至少 2 条数据。';
-      let retryCount = 0;
-      while (retryCount <= AI_AUTO_RETRY_MAX_RETRIES) {
-        if (retryCount > 0) {
-          addDebugLog(
-            'warn',
-            '生成参数自动重试',
-            `第 ${retryCount} 次重试，thinking=${retryCount > 0 ? 'on' : analysisThinkingEnabled ? 'on' : 'off'}`
-          );
-        }
-
-        const result = await carboneAPI.generateParameters({
-          description: fallbackDescription,
-          skillId: aiSkillGuide.id,
-          skill: aiSkillGuide,
-          thinking: retryCount > 0 ? true : analysisThinkingEnabled,
-        } as any);
-
-        if (result.success && result.generatedData) {
-          setAiGeneratedData(result.generatedData);
-          setTemplateAssetRenderDiagnostics(null);
-          setAiDescription(JSON.stringify(result.generatedData, null, 2));
-          setAiGenerateResult({
-            success: true,
-            message: currentDescription.trim() ? '✅ 数据生成成功！' : '✅ 默认实例参数生成成功！'
-          });
+        if (!templateResult.success || !templateResult.templateId) {
+          setAiGenerateResult({ success: false, message: `生成失败: ${templateResult.error || '模板生成失败'}` });
           return;
         }
 
-        if (retryCount < AI_AUTO_RETRY_MAX_RETRIES) {
-          if (result.debugInfo) {
-            const debugText = JSON.stringify(result.debugInfo, null, 2);
-            console.error('生成参数失败调试信息:', result.debugInfo);
-            addDebugLog('error', '生成参数失败调试信息', debugText);
-          }
-          addDebugLog(
-            'warn',
-            '生成参数失败，准备重试',
-            `第 ${retryCount + 1} 次尝试失败: ${result.error || '未知错误'}`
-          );
-          retryCount++;
-          continue;
-        }
+        previewTemplateId = templateResult.templateId;
+      }
 
-        if (result.debugInfo) {
-          const debugText = JSON.stringify(result.debugInfo, null, 2);
-          console.error('生成参数失败调试信息:', result.debugInfo);
-          addDebugLog('error', '生成参数失败调试信息', debugText);
-        }
-        setAiGenerateResult({ success: false, message: `生成失败: ${result.error || '未知错误'}` });
+      const result = await carboneAPI.previewWithSkill({
+        templateId: previewTemplateId,
+        skill: aiSkillGuide,
+      });
+
+      if (result.success && result.generatedData) {
+        setAiGeneratedData(result.generatedData);
+        setTemplateAssetRenderDiagnostics(null);
+        setAiDescription(JSON.stringify(result.generatedData, null, 2));
+        setAiGenerateResult({
+          success: true,
+          message: currentDescription.trim() ? '✅ 数据生成成功！' : '✅ 默认实例参数生成成功！'
+        });
         return;
       }
+
+      if (result.debugLogs?.length) {
+        addDebugLog('error', '生成参数失败调试信息', result.debugLogs.join('\n'));
+      }
+      setAiGenerateResult({ success: false, message: `生成失败: ${result.error || '未知错误'}` });
     } catch (error: any) {
       setAiGenerateResult({ success: false, message: `生成失败: ${error.message}` });
     } finally {

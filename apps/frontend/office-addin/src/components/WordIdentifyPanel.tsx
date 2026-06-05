@@ -18,11 +18,13 @@ import { DocumentIR } from '../adapters/document-ir';
 import { AISuggestion, useAppStore } from '../taskpane/store';
 import { getHostScopedStorageKey } from '../utils/host-storage';
 import {
+  buildWordKeywordFocusedDebugExcerpt,
+  buildWordParameterDetectionDebugText,
   buildWordParamPromptParts,
   detectWordParameterChecks,
   extractWordParamName,
   resolveWordHeaderFieldKey,
-} from '../utils/word-parameter-rules';
+} from '../utils/office/word/parameter';
 import { extractReadableTextFromWordBase64 } from '../utils/office-file-upload';
 import {
   resolveAnalysisExecutor,
@@ -32,16 +34,30 @@ import {
 } from '../services/analysis-executor';
 import { enrichWordSuggestionAnchors } from '../services/suggestion-service';
 import {
+  buildWordChapterDetectionDebugText,
+  buildWordDocumentStructureDebugText,
   deriveWordSectionsFromDocumentIr,
   deriveWordSectionsFromParagraphs,
   WordDetectedSection,
   WordSectionDisplayLanguage,
-} from '../utils/word-section-detector';
+} from '../utils/office/word/chapter';
+
 import {
   buildWordSectionBilingualPairsForRecognition,
   mergeWordCandidatesBySlotForRecognition,
   takeWordRecognitionBatchForRecognition,
 } from '../utils/word-section-recognition';
+
+const WORD_TECHNICAL_SERVICE_DEBUG_KEYWORDS = [
+  '技术服务地点',
+  'Place where the technical service is to be rendered',
+  '技术服务期限',
+  'Duration of technical service',
+  '技术服务费总额为',
+  'The total amount of such compensation for technical service is',
+  '乙方指定银行帐号为',
+  'Number of the Bank account designated by Party B is as follows',
+];
 
 interface Props {
   onApplyComplete?: () => void;
@@ -66,6 +82,8 @@ type CompareParagraph = {
     isBold?: boolean;
     alignment?: string;
     isTitle?: boolean;
+    style?: string;
+    styleBuiltIn?: string;
   };
 };
 
@@ -189,6 +207,13 @@ type WordCandidateHintSummary = {
 const WORD_UNDERSTANDING_CACHE_STORAGE_KEY = getHostScopedStorageKey('word', 'understanding-cache:v5');
 const WORD_COMPARE_CACHE_STORAGE_KEY = getHostScopedStorageKey('word', 'compare-cache:v1');
 const WORD_RECOGNITION_CACHE_STORAGE_KEY = getHostScopedStorageKey('word', 'recognition-cache:v1');
+const WORD_UNDERSTANDING_CACHE_MAX_ENTRIES = 3;
+const WORD_COMPARE_CACHE_MAX_ENTRIES = 3;
+const WORD_RECOGNITION_CACHE_MAX_ENTRIES = 3;
+const WORD_RECOGNITION_CACHE_MAX_EXCERPT_LENGTH = 320;
+const WORD_RECOGNITION_CACHE_MAX_PROMPT_SUMMARY_LENGTH = 400;
+const WORD_RECOGNITION_CACHE_MAX_QUALITY_ISSUES = 6;
+const WORD_RECOGNITION_CACHE_MAX_ERROR_TEXT_LENGTH = 240;
 const WORD_FIELD_HINT_MAP: Record<string, {
   fieldTypeHint: string;
   generationPolicyHint: NonNullable<TemplateFieldCandidate['generationPolicyHint']>;
@@ -343,6 +368,121 @@ function loadWordRecognitionCache(): Record<string, WordRecognitionCacheEntry> {
   }
 }
 
+function trimCacheString(value: unknown, maxLength: number): string | undefined {
+  const text = String(value || '').trim();
+  if (!text) {
+    return undefined;
+  }
+  if (text.length <= maxLength) {
+    return text;
+  }
+  return `${text.slice(0, maxLength)}...`;
+}
+
+function isStorageQuotaExceeded(error: unknown): boolean {
+  if (!error) {
+    return false;
+  }
+  if (typeof DOMException !== 'undefined' && error instanceof DOMException) {
+    const quotaMessage = `${error.name} ${error.message}`.toLowerCase();
+    return quotaMessage.includes('quota') && quotaMessage.includes('exceed');
+  }
+  return String((error as { message?: string })?.message || '').includes('quota');
+}
+
+function limitCacheEntries<T extends { cacheKey: string; updatedAt: number }>(
+  cache: Record<string, T>,
+  maxEntries: number,
+  preferredKey?: string
+): Record<string, T> {
+  const sortedEntries = Object.entries(cache)
+    .sort(([, left], [, right]) => {
+      if (preferredKey) {
+        if (left.cacheKey === preferredKey && right.cacheKey !== preferredKey) {
+          return -1;
+        }
+        if (right.cacheKey === preferredKey && left.cacheKey !== preferredKey) {
+          return 1;
+        }
+      }
+      return right.updatedAt - left.updatedAt;
+    })
+    .slice(0, Math.max(maxEntries, preferredKey && cache[preferredKey] ? 1 : 0));
+
+  return sortedEntries.reduce<Record<string, T>>((acc, [key, value]) => {
+    acc[key] = value;
+    return acc;
+  }, {});
+}
+
+function writeCacheMapToStorage<T extends { cacheKey: string; updatedAt: number }>(
+  storageKey: string,
+  cache: Record<string, T>,
+  preferredKey: string | undefined,
+  maxEntries: number
+): void {
+  const nextCache = limitCacheEntries(cache, maxEntries, preferredKey);
+  const preferredOnlyCache = preferredKey && nextCache[preferredKey]
+    ? { [preferredKey]: nextCache[preferredKey] }
+    : undefined;
+
+  try {
+    localStorage.setItem(storageKey, JSON.stringify(nextCache));
+    return;
+  } catch (error) {
+    if (!isStorageQuotaExceeded(error)) {
+      console.warn(`Failed to persist cache for ${storageKey}`, error);
+      return;
+    }
+  }
+
+  if (preferredOnlyCache) {
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(preferredOnlyCache));
+      return;
+    } catch (error) {
+      if (!isStorageQuotaExceeded(error)) {
+        console.warn(`Failed to persist compact cache for ${storageKey}`, error);
+        return;
+      }
+    }
+  }
+
+  try {
+    localStorage.removeItem(storageKey);
+  } catch {
+    // Ignore cleanup failures. The cache is best-effort only.
+  }
+}
+
+function sanitizeWordRecognitionResultForStorage(
+  result: WordRecognitionCacheEntry['result']
+): WordRecognitionCacheEntry['result'] {
+  return {
+    suggestions: Array.isArray(result.suggestions) ? result.suggestions : [],
+    sectionGenerationResults: (Array.isArray(result.sectionGenerationResults) ? result.sectionGenerationResults : [])
+      .map((section) => ({
+        ...section,
+        excerpt: trimCacheString(section.excerpt, WORD_RECOGNITION_CACHE_MAX_EXCERPT_LENGTH),
+        promptDebugSummary: trimCacheString(section.promptDebugSummary, WORD_RECOGNITION_CACHE_MAX_PROMPT_SUMMARY_LENGTH),
+        promptRequestText: undefined,
+        rawAiResponse: undefined,
+        qualityIssues: Array.isArray(section.qualityIssues)
+          ? section.qualityIssues.slice(0, WORD_RECOGNITION_CACHE_MAX_QUALITY_ISSUES)
+          : undefined,
+        error: section.error
+          ? {
+              message: trimCacheString(section.error.message, WORD_RECOGNITION_CACHE_MAX_ERROR_TEXT_LENGTH),
+              reason: trimCacheString(section.error.reason, WORD_RECOGNITION_CACHE_MAX_ERROR_TEXT_LENGTH),
+              url: trimCacheString(section.error.url, WORD_RECOGNITION_CACHE_MAX_ERROR_TEXT_LENGTH),
+              status: section.error.status,
+            }
+          : undefined,
+      })),
+    collapsedSections: result.collapsedSections,
+  };
+}
+
 function isWordCompareCacheCompatible(entry: WordCompareCacheEntry | undefined): boolean {
   return Boolean(
     entry
@@ -396,19 +536,45 @@ function isWordUnderstandingCacheCompatible(entry: WordUnderstandingCacheEntry |
 function saveWordUnderstandingCacheEntry(entry: WordUnderstandingCacheEntry): void {
   const cache = loadWordUnderstandingCache();
   cache[entry.cacheKey] = entry;
-  localStorage.setItem(WORD_UNDERSTANDING_CACHE_STORAGE_KEY, JSON.stringify(cache));
+  writeCacheMapToStorage(
+    WORD_UNDERSTANDING_CACHE_STORAGE_KEY,
+    cache,
+    entry.cacheKey,
+    WORD_UNDERSTANDING_CACHE_MAX_ENTRIES
+  );
 }
 
 function saveWordCompareCacheEntry(entry: WordCompareCacheEntry): void {
   const cache = loadWordCompareCache();
-  cache[entry.cacheKey] = entry;
-  localStorage.setItem(WORD_COMPARE_CACHE_STORAGE_KEY, JSON.stringify(cache));
+  cache[entry.cacheKey] = {
+    ...entry,
+    result: entry.result.recognitionSnapshot
+      ? {
+          ...entry.result,
+          recognitionSnapshot: sanitizeWordRecognitionResultForStorage(entry.result.recognitionSnapshot),
+        }
+      : entry.result,
+  };
+  writeCacheMapToStorage(
+    WORD_COMPARE_CACHE_STORAGE_KEY,
+    cache,
+    entry.cacheKey,
+    WORD_COMPARE_CACHE_MAX_ENTRIES
+  );
 }
 
 function saveWordRecognitionCacheEntry(entry: WordRecognitionCacheEntry): void {
   const cache = loadWordRecognitionCache();
-  cache[entry.cacheKey] = entry;
-  localStorage.setItem(WORD_RECOGNITION_CACHE_STORAGE_KEY, JSON.stringify(cache));
+  cache[entry.cacheKey] = {
+    ...entry,
+    result: sanitizeWordRecognitionResultForStorage(entry.result),
+  };
+  writeCacheMapToStorage(
+    WORD_RECOGNITION_CACHE_STORAGE_KEY,
+    cache,
+    entry.cacheKey,
+    WORD_RECOGNITION_CACHE_MAX_ENTRIES
+  );
 }
 
 function removeWordCompareCacheEntry(cacheKey: string): void {
@@ -417,7 +583,7 @@ function removeWordCompareCacheEntry(cacheKey: string): void {
     return;
   }
   delete cache[cacheKey];
-  localStorage.setItem(WORD_COMPARE_CACHE_STORAGE_KEY, JSON.stringify(cache));
+  writeCacheMapToStorage(WORD_COMPARE_CACHE_STORAGE_KEY, cache, undefined, WORD_COMPARE_CACHE_MAX_ENTRIES);
 }
 
 function removeWordUnderstandingCacheEntry(cacheKey: string): void {
@@ -426,7 +592,7 @@ function removeWordUnderstandingCacheEntry(cacheKey: string): void {
     return;
   }
   delete cache[cacheKey];
-  localStorage.setItem(WORD_UNDERSTANDING_CACHE_STORAGE_KEY, JSON.stringify(cache));
+  writeCacheMapToStorage(WORD_UNDERSTANDING_CACHE_STORAGE_KEY, cache, undefined, WORD_UNDERSTANDING_CACHE_MAX_ENTRIES);
 }
 
 function removeWordRecognitionCacheEntry(cacheKey: string): void {
@@ -435,7 +601,7 @@ function removeWordRecognitionCacheEntry(cacheKey: string): void {
     return;
   }
   delete cache[cacheKey];
-  localStorage.setItem(WORD_RECOGNITION_CACHE_STORAGE_KEY, JSON.stringify(cache));
+  writeCacheMapToStorage(WORD_RECOGNITION_CACHE_STORAGE_KEY, cache, undefined, WORD_RECOGNITION_CACHE_MAX_ENTRIES);
 }
 
 function mergeRecognitionResultWithAppliedCache(
@@ -2529,6 +2695,23 @@ function buildCompareDebugText(
     ].filter(Boolean).join('\n');
   };
 
+  const buildSampleValueDiagnostics = (): string => {
+    if (result.candidateFields.length === 0) {
+      return '本次没有候选参数。';
+    }
+
+    return result.candidateFields
+      .slice(0, 20)
+      .map((candidate, index) => [
+        `${index + 1}. ${getCompareCandidateDisplayName(candidate)}`,
+        `锚点: ${candidate.anchorText || '无锚点'}`,
+        `参考值: ${candidate.sampleValue || '待补参考值'}`,
+        `参考片段: ${candidate.matchText || candidate.segmentText || '无参考片段'}`,
+        `位置: ${formatCompareLocation(candidate)}`,
+      ].join(' | '))
+      .join('\n');
+  };
+
   return [
     '【参数查询结果】',
     `workflowId: ${result.workflowId}`,
@@ -2553,6 +2736,9 @@ function buildCompareDebugText(
     '',
     '【下划线锚点对照】',
     buildUnderlineDiagnostics(),
+    '',
+    '【参考值提取预览】',
+    buildSampleValueDiagnostics(),
   ].join('\n');
 }
 
@@ -2795,7 +2981,6 @@ function buildFrontendCompareResult(args: {
 }): TemplateCompareResponse {
   const {
     templateType,
-    headingLanguages,
     paragraphs,
     underlines,
     tableCells,
@@ -2810,11 +2995,7 @@ function buildFrontendCompareResult(args: {
       text: paragraph.text,
       paragraphIndex: paragraph.index,
       format: paragraph.format,
-    })),
-    {
-      preferredLanguages: headingLanguages,
-      mergeAdjacentBilingualHeadings: true,
-    }
+    }))
   );
 
   const detectedParams = detectWordParameterChecks({
@@ -2876,7 +3057,7 @@ function buildFrontendCompareResult(args: {
     return {
       candidateId: `frontend-word-query-${index + 1}`,
       sourceBlockId: param.sourceBlockId || fallbackSectionId,
-      anchorText: param.localAnchorText || param.anchorText,
+      anchorText: param.anchorText,
       localAnchorText: param.localAnchorText,
       parameterSlot: param.parameterSlot,
       sampleValue: param.sampleValue || '',
@@ -3106,10 +3287,7 @@ export const WordIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
     }
 
     const detectedSections = compareDocumentIr
-      ? deriveWordSectionsFromDocumentIr(compareDocumentIr, {
-          preferredLanguages: effectiveCompareHeadingLanguages,
-          mergeAdjacentBilingualHeadings: true,
-        })
+      ? deriveWordSectionsFromDocumentIr(compareDocumentIr)
       : [];
 
     if (detectedSections.length > 0) {
@@ -3504,10 +3682,7 @@ export const WordIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
     : '';
   const derivedPrimaryChapters = useMemo<WordDetectedSection[]>(
     () => (compareDocumentIr
-      ? deriveWordSectionsFromDocumentIr(compareDocumentIr, {
-          preferredLanguages: effectiveCompareHeadingLanguages,
-          mergeAdjacentBilingualHeadings: true,
-        })
+      ? deriveWordSectionsFromDocumentIr(compareDocumentIr)
       : []),
     [compareDocumentIr, effectiveCompareHeadingLanguages]
   );
@@ -4100,7 +4275,51 @@ export const WordIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
       addDebugLog(
         'debug',
         'Word 保修期下划线采集诊断',
-        WordAPI.getLastUnderlineDebugReport()
+        buildWordKeywordFocusedDebugExcerpt({
+          title: '【下划线定向诊断】',
+          text: WordAPI.getLastUnderlineDebugReport(),
+          keywords: WORD_TECHNICAL_SERVICE_DEBUG_KEYWORDS,
+        })
+      );
+      addDebugLog(
+        'debug',
+        'Word 参数查询逐段诊断',
+        buildWordParameterDetectionDebugText({
+          templateType: selectedTemplateType,
+          paragraphs: paragraphs.map((paragraph) => ({
+            id: `word-paragraph-${paragraph.index}`,
+            text: paragraph.text,
+            index: paragraph.index,
+            format: paragraph.format,
+          })),
+          underlines: underlines.map((underline) => ({
+            text: underline.text,
+            underlineType: underline.underlineType,
+            paragraphIndex: underline.paragraphIndex,
+            paragraphText: underline.paragraphText,
+            position: underline.position,
+          })),
+          tableCells: tableCells.map((cell) => ({
+            sourceBlockId: `word-cell-${cell.tableIndex}-${cell.rowIndex}-${cell.cellIndex}`,
+            tableIndex: cell.tableIndex,
+            rowIndex: cell.rowIndex,
+            cellIndex: cell.cellIndex,
+            text: cell.text,
+          })),
+          sampleText,
+          includeLabelOnly: true,
+          keywordFilters: WORD_TECHNICAL_SERVICE_DEBUG_KEYWORDS,
+        })
+      );
+      addDebugLog(
+        'debug',
+        'Word 完整文档结构快照',
+        buildWordDocumentStructureDebugText(templateDocumentIr as DocumentIR)
+      );
+      addDebugLog(
+        'debug',
+        'Word 章节判定明细',
+        buildWordChapterDetectionDebugText(templateDocumentIr as DocumentIR)
       );
     } catch (error: any) {
       setAnalysisError(error?.message || '参数查询失败', error?.stack || error?.response?.data ? JSON.stringify(error.response?.data, null, 2) : undefined);

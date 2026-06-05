@@ -888,6 +888,7 @@ class CarboneAPI {
     generatedData?: any;
     skillUsed?: any;
     error?: string;
+    debugLogs?: string[];
   }> {
     const response = await axios.post(
       `${this.baseUrl}/studio/preview-with-skill`,

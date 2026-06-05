@@ -1,5 +1,5 @@
 import { DocumentFileAPI, hasZipHeader } from '../shared/document-file';
-import { getWordHeaderAliasCandidates } from '../../word-parameter-rules';
+import { getWordHeaderAliasCandidates } from './parameter';
 
 const WORD_BLANK_PATTERNS = [
   /[＿_]{2,}/g,
@@ -8,6 +8,10 @@ const WORD_BLANK_PATTERNS = [
   /:\s{2,}/g,
   /[\s＿_　]{2,}/g,
 ];
+
+function shouldDebugWordUnderlineParagraph(text: string): boolean {
+  return /technical service is to be rendered|duration of technical service|技术服务地点|技术服务期限/iu.test(String(text || ''));
+}
 
 function stripWordContextSnippet(contextSnippet: string): string {
   return String(contextSnippet || '')
@@ -301,6 +305,43 @@ function buildWordInsertionSearchSnippets(text: string, fromEnd: boolean): strin
       .map((snippet) => snippet.trim())
       .filter((snippet) => snippet.length >= 2)
   ));
+}
+
+function countWordTextOccurrencesBefore(sourceText: string, searchText: string, targetStart: number): number {
+  const haystack = String(sourceText || '');
+  const needle = String(searchText || '');
+  if (!haystack || !needle) {
+    return 0;
+  }
+
+  const safeTargetStart = Math.max(0, Math.min(targetStart, haystack.length));
+  let count = 0;
+  let searchFrom = 0;
+
+  while (searchFrom < safeTargetStart) {
+    const foundIndex = haystack.indexOf(needle, searchFrom);
+    if (foundIndex < 0 || foundIndex >= safeTargetStart) {
+      break;
+    }
+    count += 1;
+    searchFrom = foundIndex + Math.max(needle.length, 1);
+  }
+
+  return count;
+}
+
+function pickWordSearchResultByPosition<T>(
+  items: T[],
+  sourceText: string,
+  searchText: string,
+  targetStart: number,
+): T | undefined {
+  if (!Array.isArray(items) || items.length === 0) {
+    return undefined;
+  }
+
+  const occurrenceIndex = countWordTextOccurrencesBefore(sourceText, searchText, targetStart);
+  return items[Math.min(occurrenceIndex, items.length - 1)] || items[0];
 }
 
 async function insertWordTextAtParagraphPosition(
@@ -942,6 +983,12 @@ export const WordAPI = {
       isBold?: boolean;
       alignment?: string;
       isTitle?: boolean;
+      style?: string;
+      styleBuiltIn?: string;
+      isListItem?: boolean;
+      listLevel?: number;
+      listString?: string;
+      listId?: number;
     };
   }>> {
     return new Promise((resolve) => {
@@ -954,18 +1001,33 @@ export const WordAPI = {
         const ranges: any[] = [];
         for (let i = 0; i < paragraphs.items.length; i++) {
           const p = paragraphs.items[i];
-          p.load('text');
+          const paragraphObject = p as any;
+          paragraphObject.load('text,style,styleBuiltIn,isListItem');
+          const listItemObject = paragraphObject.listItemOrNullObject || paragraphObject.listItem;
+          if (listItemObject) {
+            listItemObject.load('level,listString');
+          }
+          const listObject = paragraphObject.listOrNullObject || paragraphObject.list;
+          if (listObject) {
+            listObject.load('id');
+          }
           const r = p.getRange(Word.RangeLocation.whole);
           r.load('font/size,font/bold,alignment');
-          ranges.push({ paragraph: p, range: r, index: i });
+          ranges.push({ paragraph: paragraphObject, range: r, listItem: listItemObject, list: listObject, index: i });
         }
         await context.sync();
 
         // 然后读取格式信息（使用已经加载的对象）
-        const result = ranges.map(({ paragraph, range, index }) => {
+        const result = ranges.map(({ paragraph, range, listItem, list, index }) => {
           const fontSize = range.font.size || 12;
           const isBold = range.font.bold || false;
           const alignment = range.alignment;
+          const style = typeof paragraph.style === 'string' ? paragraph.style : '';
+          const styleBuiltIn = typeof paragraph.styleBuiltIn === 'string' ? paragraph.styleBuiltIn : '';
+          const isListItem = Boolean(paragraph.isListItem);
+          const listLevel = isListItem && typeof listItem?.level === 'number' ? listItem.level : undefined;
+          const listString = isListItem && typeof listItem?.listString === 'string' ? listItem.listString : '';
+          const listId = isListItem && typeof list?.id === 'number' ? list.id : undefined;
 
           const isTitle = (fontSize > 14 || isBold) && paragraph.text.trim().length < 50;
 
@@ -978,7 +1040,13 @@ export const WordAPI = {
               alignment: alignment === Word.Alignment.left ? 'left' :
                          alignment === Word.Alignment.centered ? 'center' :
                          alignment === Word.Alignment.right ? 'right' : 'justified',
-              isTitle: isTitle
+              isTitle: isTitle,
+              style,
+              styleBuiltIn,
+              isListItem,
+              listLevel,
+              listString,
+              listId,
             }
           };
         });
@@ -1052,9 +1120,17 @@ export const WordAPI = {
         const result: any[] = [];
         const spaceCandidates: UnderlineSpaceCandidate[] = [];
         const warrantyDebugLines: string[] = [];
+        const targetUnderlineDebugLines: string[] = [];
         const pushWarrantyDebug = (line: string) => {
           warrantyDebugLines.push(line);
           console.log(line);
+        };
+        const pushTargetUnderlineDebug = (line: string, details?: Record<string, unknown>) => {
+          const detailText = details ? ` | ${JSON.stringify(details)}` : '';
+          const finalLine = `${line}${detailText}`;
+          targetUnderlineDebugLines.push(finalLine);
+          console.log(finalLine);
+          WordAPI.emitDebugLog('debug', line, details ? JSON.stringify(details, null, 2) : undefined);
         };
         const detectionStats = {
           spaceRanges: 0,
@@ -1082,12 +1158,24 @@ export const WordAPI = {
             const fullText = paragraph.text || '';
             if (!fullText || fullText.length < 2) continue;
             const isWarrantyDebugParagraph = /保修期|アフターサービス保証期間|年内|年とする/u.test(fullText);
+            const isUnderlineDebugParagraph = shouldDebugWordUnderlineParagraph(fullText);
             const paragraphLanguage = detectUnderlineFallbackLanguage(fullText);
             const paragraphHasKana = /[\u3040-\u30ff]/u.test(fullText);
 
             if (isWarrantyDebugParagraph) {
               pushWarrantyDebug(`[DEBUG][WARRANTY] 段落${pIdx} 原文: ${JSON.stringify(fullText)}`);
             }
+            // #region debug-point A:underline-paragraph-entry
+            if (isUnderlineDebugParagraph) {
+              pushTargetUnderlineDebug('[DEBUG][UNDERLINE][A] target paragraph entered underline scan', {
+                location: 'api.ts:getUnderlinedTexts:paragraph-entry',
+                paragraphIndex: pIdx,
+                paragraphLanguage,
+                paragraphHasKana,
+                paragraphText: fullText,
+              });
+            }
+            // #endregion
 
             // ===== 步骤1：分类查找空白区域 =====
             // A. 下划线字符：直接作为参数
@@ -1119,6 +1207,19 @@ export const WordAPI = {
             const totalBlankCount = underlineCharMatches.length + spaceMatches.length;
             if (totalBlankCount === 0) continue;
             console.log(`[DEBUG] 段落 ${pIdx}: 发现 ${underlineCharMatches.length} 个下划线字符 + ${spaceMatches.length} 个空格区域`);
+            // #region debug-point A:underline-blank-scan
+            if (isUnderlineDebugParagraph) {
+              pushTargetUnderlineDebug('[DEBUG][UNDERLINE][A] target paragraph blank scan result', {
+                location: 'api.ts:getUnderlinedTexts:blank-scan',
+                paragraphIndex: pIdx,
+                underlineCharCount: underlineCharMatches.length,
+                underlineCharRanges: underlineCharMatches,
+                spaceCount: spaceMatches.length,
+                spaceRanges: spaceMatches,
+                paragraphText: fullText,
+              });
+            }
+            // #endregion
             if (isWarrantyDebugParagraph) {
               pushWarrantyDebug(
                 `[DEBUG][WARRANTY] 段落${pIdx} 空白统计: underlineChar=${underlineCharMatches.length}, spaces=${spaceMatches.length}`
@@ -1173,6 +1274,10 @@ export const WordAPI = {
                 let hasUnderlineFormat = false;
                 let foundByContext = false;
                 let countedUnderlineFilter = false;
+                let contextRangeCount = 0;
+                let directRangeCount = 0;
+                let contextUnderlineStates: string[] = [];
+                let directUnderlineStates: string[] = [];
 
                 // 优先使用上下文扩展文本定位，避免直接搜索纯空格带来的误命中或漏命中。
                 const extendBefore = 4;
@@ -1209,6 +1314,8 @@ export const WordAPI = {
                         foundRange.load('text,font/underline');
                       }
                       await context.sync();
+                      contextRangeCount = blankInExt.items.length;
+                      contextUnderlineStates = blankInExt.items.map((foundRange) => String(foundRange.font.underline));
 
                       if (isWarrantyDebugParagraph) {
                         pushWarrantyDebug(
@@ -1282,6 +1389,8 @@ export const WordAPI = {
                     foundRange.load('text,font/underline');
                   }
                   await context.sync();
+                  directRangeCount = searchResults.items.length;
+                  directUnderlineStates = searchResults.items.map((foundRange) => String(foundRange.font.underline));
 
                   if (isWarrantyDebugParagraph) {
                     searchResults.items.forEach((foundRange, foundIndex) => {
@@ -1332,6 +1441,27 @@ export const WordAPI = {
                     `[DEBUG][WARRANTY] 段落${pIdx} 空格${spaceMatch.start}-${spaceMatch.end}: 未写入结果，原因=underline 未通过或搜索未命中`
                   );
                 }
+                // #region debug-point B:underline-space-decision
+                if (isUnderlineDebugParagraph) {
+                  pushTargetUnderlineDebug('[DEBUG][UNDERLINE][B] target paragraph space candidate decision', {
+                    location: 'api.ts:getUnderlinedTexts:space-decision',
+                    paragraphIndex: pIdx,
+                    paragraphText: fullText,
+                    blankIndex: spaceIndex,
+                    blankStart: spaceMatch.start,
+                    blankEnd: spaceMatch.end,
+                    blankLength: spaceMatch.text.length,
+                    extendedText,
+                    contextRangeCount,
+                    contextUnderlineStates,
+                    directRangeCount,
+                    directUnderlineStates,
+                    hasUnderlineFormat,
+                    foundByContext,
+                    resultWritten: hasUnderlineFormat,
+                  });
+                }
+                // #endregion
               } catch (searchErr) {
                 detectionStats.searchErrors += 1;
                 console.warn('[DEBUG] 空格搜索错误:', searchErr);
@@ -1372,12 +1502,45 @@ export const WordAPI = {
             paragraphCandidateMap.get(candidate.paragraphIndex - 1) || [],
             paragraphCandidateMap.get(candidate.paragraphIndex + 1) || [],
           ].flat();
+            if (shouldDebugWordUnderlineParagraph(candidate.paragraphText)) {
+              pushTargetUnderlineDebug('[DEBUG][UNDERLINE][C] evaluating mirror fallback candidates', {
+                location: 'api.ts:getUnderlinedTexts:mirror-fallback',
+                paragraphIndex: candidate.paragraphIndex,
+                paragraphText: candidate.paragraphText,
+                candidateLanguage: candidate.language,
+                candidateHasKana: candidate.hasKana,
+                candidateBlankIndex: candidate.blankIndex,
+                candidateBlankCount: candidate.blankCount,
+                candidateBlankLength: candidate.blankLength,
+                candidateMirrorShape: candidate.mirrorShape,
+                neighborSummaries: neighborParagraphs.map((neighbor) => ({
+                  paragraphIndex: neighbor.paragraphIndex,
+                  language: neighbor.language,
+                  hasKana: neighbor.hasKana,
+                  blankIndex: neighbor.blankIndex,
+                  blankCount: neighbor.blankCount,
+                  blankLength: neighbor.blankLength,
+                  hasUnderlineFormat: neighbor.hasUnderlineFormat,
+                  mirrorShapeMatched: neighbor.mirrorShape === candidate.mirrorShape,
+                  paragraphText: neighbor.paragraphText,
+                })),
+              });
+            }
 
           const mirroredSource = neighborParagraphs.find((neighbor) =>
             canUseMirrorUnderlineFallback(candidate, neighbor)
           );
 
           if (!mirroredSource) {
+              if (shouldDebugWordUnderlineParagraph(candidate.paragraphText)) {
+                pushTargetUnderlineDebug('[DEBUG][UNDERLINE][C] mirror fallback not applied', {
+                  location: 'api.ts:getUnderlinedTexts:mirror-fallback-miss',
+                  paragraphIndex: candidate.paragraphIndex,
+                  paragraphText: candidate.paragraphText,
+                  candidateLanguage: candidate.language,
+                  candidateHasKana: candidate.hasKana,
+                });
+              }
             return;
           }
 
@@ -1397,15 +1560,42 @@ export const WordAPI = {
               `[DEBUG][WARRANTY] 段落${candidate.paragraphIndex} 空格${candidate.start}-${candidate.end}: 镜像兜底生效，参考段落${mirroredSource.paragraphIndex} 同序号空格已确认 underline`
             );
           }
+            if (shouldDebugWordUnderlineParagraph(candidate.paragraphText)) {
+              pushTargetUnderlineDebug('[DEBUG][UNDERLINE][C] mirror fallback applied', {
+                location: 'api.ts:getUnderlinedTexts:mirror-fallback-hit',
+                paragraphIndex: candidate.paragraphIndex,
+                paragraphText: candidate.paragraphText,
+                mirroredSourceParagraphIndex: mirroredSource.paragraphIndex,
+                mirroredSourceLanguage: mirroredSource.language,
+                mirroredSourceHasKana: mirroredSource.hasKana,
+                mirroredSourceParagraphText: mirroredSource.paragraphText,
+              });
+            }
         });
 
         if (fallbackCandidates.length > 0) {
           fallbackCandidates.forEach((item) => result.push(item));
         }
 
-        WordAPI._lastUnderlineDebugReport = warrantyDebugLines.length > 0
-          ? warrantyDebugLines.join('\n')
-          : '本次未捕获到保修期 / アフターサービス保証期間 相关段落的定向下划线调试信息。';
+          const targetResultEntries = result.filter((entry) => shouldDebugWordUnderlineParagraph(entry.paragraphText));
+          if (targetResultEntries.length > 0 || targetUnderlineDebugLines.length > 0) {
+            pushTargetUnderlineDebug('[DEBUG][UNDERLINE][D] final underline result snapshot', {
+              location: 'api.ts:getUnderlinedTexts:final-result',
+              matchedEntryCount: targetResultEntries.length,
+              matchedEntries: targetResultEntries.map((entry) => ({
+                paragraphIndex: entry.paragraphIndex,
+                underlineType: entry.underlineType,
+                start: entry.position.start,
+                end: entry.position.end,
+                text: entry.text,
+                paragraphText: entry.paragraphText,
+              })),
+            });
+          }
+
+        WordAPI._lastUnderlineDebugReport = [...targetUnderlineDebugLines, ...warrantyDebugLines].length > 0
+          ? [...targetUnderlineDebugLines, ...warrantyDebugLines].join('\n')
+          : '本次未捕获到目标英文下划线段落或保修期定向下划线调试信息。';
 
         console.log('[DEBUG] 最终检测到', result.length, '个参数位置');
         console.log('[DEBUG] 下划线空格检测统计:', detectionStats);
@@ -1474,7 +1664,12 @@ export const WordAPI = {
 
             if (extSearchResults.items.length > 0) {
               // 在扩展文本范围内搜索空白
-              const extRange = extSearchResults.items[0];
+              const extRange = pickWordSearchResultByPosition(
+                extSearchResults.items,
+                fullText,
+                extendedText,
+                extendedStart,
+              ) || extSearchResults.items[0];
               const blankInExt = extRange.search(blankText, {
                 matchCase: false,
                 matchWholeWord: false
@@ -1483,7 +1678,12 @@ export const WordAPI = {
               await context.sync();
 
               if (blankInExt.items.length > 0) {
-                const targetRange = blankInExt.items[0];
+                const targetRange = pickWordSearchResultByPosition(
+                  blankInExt.items,
+                  extendedText,
+                  blankText,
+                  startPos - extendedStart,
+                ) || blankInExt.items[0];
                 targetRange.select();
                 targetRange.font.highlightColor = 'yellow';
                 await context.sync();
@@ -1503,7 +1703,12 @@ export const WordAPI = {
 
             if (blankSearchResults.items.length > 0) {
               // 高亮第一个匹配
-              const targetRange = blankSearchResults.items[0];
+              const targetRange = pickWordSearchResultByPosition(
+                blankSearchResults.items,
+                fullText,
+                blankText,
+                startPos,
+              ) || blankSearchResults.items[0];
               targetRange.select();
               targetRange.font.highlightColor = 'yellow';
               await context.sync();
@@ -1612,7 +1817,12 @@ export const WordAPI = {
 
                 if (extendedSearch.items.length > 0) {
                   // 在扩展文本中搜索空白部分
-                  const foundRange = extendedSearch.items[0];
+                  const foundRange = pickWordSearchResultByPosition(
+                    extendedSearch.items,
+                    fullText,
+                    extendedText,
+                    extendedStart,
+                  ) || extendedSearch.items[0];
                   const blankInExtended = foundRange.search(blankText, {
                     matchCase: false,
                     matchWholeWord: false
@@ -1621,7 +1831,12 @@ export const WordAPI = {
                   await context.sync();
 
                   if (blankInExtended.items.length > 0) {
-                    const targetRange = blankInExtended.items[0];
+                    const targetRange = pickWordSearchResultByPosition(
+                      blankInExtended.items,
+                      extendedText,
+                      blankText,
+                      startPos - extendedStart,
+                    ) || blankInExtended.items[0];
                     targetRange.insertText(replacement, Word.InsertLocation.replace);
                     await context.sync();
                     console.log(`[DEBUG] ✓ 已替换（扩展定位）: "${blankText.substring(0, 10)}..." → "${replacement}"`);
@@ -1632,7 +1847,12 @@ export const WordAPI = {
               }
 
               // 单个匹配或扩展定位失败，直接替换第一个
-              const targetRange = searchResults.items[0];
+              const targetRange = pickWordSearchResultByPosition(
+                searchResults.items,
+                fullText,
+                blankText,
+                startPos,
+              ) || searchResults.items[0];
               targetRange.insertText(replacement, Word.InsertLocation.replace);
               await context.sync();
               console.log(`[DEBUG] ✓ 已替换（直接）: "${blankText.substring(0, 10)}..." → "${replacement}"`);
