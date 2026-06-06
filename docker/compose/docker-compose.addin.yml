@@ -35,14 +35,14 @@ services:
 
   office-addin:
     build:
-      context: ${PROJECT_ROOT:-..}/apps/frontend/office-addin
+      context: ${PROJECT_ROOT:-..}/apps/office-addin
       dockerfile: ../../../docker/office-addin/Dockerfile.dev
     container_name: office-addin
     ports:
       - "3000:3000"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/frontend/office-addin/src:/app/src
-      - ${PROJECT_ROOT:-..}/apps/frontend/office-addin/public:/app/public
+      - ${PROJECT_ROOT:-..}/apps/office-addin:/app
+      - /app/node_modules
       - ../office-addin/certs:/app/certs:ro
     environment:
       - VITE_ADDIN_BASE_URL=https://${OFFICE_ADDIN_PUBLIC_HOST:-localhost}:${OFFICE_ADDIN_PORT:-3000}
