@@ -50,6 +50,13 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
   private readonly defaultHeadless =
     (process.env.SESSION_HEADLESS || 'false').toLowerCase() === 'true';
   private readonly sessionBrokerUrl = getSessionBrokerUrl();
+  private readonly screenWidth = process.env.SESSION_SCREEN_WIDTH || '1920';
+  private readonly screenHeight = process.env.SESSION_SCREEN_HEIGHT || '1080';
+  private readonly screenDepth = process.env.SESSION_SCREEN_DEPTH || '24';
+  private readonly novncPort = process.env.SESSION_NOVNC_PORT || '8080';
+  private readonly vncPort = process.env.SESSION_VNC_PORT || '5900';
+  private readonly chromeDebugPort = process.env.SESSION_CHROME_DEBUG_PORT || '9222';
+  private readonly codegenApiPort = process.env.SESSION_CODEGEN_API_PORT || '3011';
   private readonly orphanSweepEnabled =
     (process.env.BROWSER_WORKER_ORPHAN_SWEEP_ENABLED || 'true').toLowerCase() !== 'false';
   private readonly orphanSweepIntervalMs = this.readPositiveInt(
@@ -163,27 +170,27 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
       name: containerName,
       Cmd: ['/start-recorder.sh'],
       Env: [
-        'SCREEN_WIDTH=1920',
-        'SCREEN_HEIGHT=1080',
-        'SCREEN_DEPTH=24',
-        'NOVNC_PORT=8080',
-        'VNC_PORT=5900',
-        'CHROME_DEBUG_PORT=9222',
-        'CODEGEN_API_PORT=3011',
+        `SCREEN_WIDTH=${this.screenWidth}`,
+        `SCREEN_HEIGHT=${this.screenHeight}`,
+        `SCREEN_DEPTH=${this.screenDepth}`,
+        `NOVNC_PORT=${this.novncPort}`,
+        `VNC_PORT=${this.vncPort}`,
+        `CHROME_DEBUG_PORT=${this.chromeDebugPort}`,
+        `CODEGEN_API_PORT=${this.codegenApiPort}`,
         `SESSION_MODE=${mode}`,
         `HEADLESS=${headless ? 'true' : 'false'}`,
         `ENABLE_CODEGEN=${effectiveEnableCodegen ? 'true' : 'false'}`,
         `CHROME_PROFILE_PATH=${profilePath}`,
       ],
       ExposedPorts: {
-        '8080/tcp': {},
-        '9222/tcp': {},
+        [`${this.novncPort}/tcp`]: {},
+        [`${this.chromeDebugPort}/tcp`]: {},
       },
       HostConfig: {
         AutoRemove: true,
         PortBindings: {
-          '8080/tcp': [{ HostPort: '' }],
-          '9222/tcp': [{ HostPort: '' }],
+          [`${this.novncPort}/tcp`]: [{ HostPort: '' }],
+          [`${this.chromeDebugPort}/tcp`]: [{ HostPort: '' }],
         },
       },
       NetworkingConfig: {
@@ -214,8 +221,8 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
       mode,
       enable_codegen: effectiveEnableCodegen,
       headless,
-      internal_cdp_url: `http://${containerIp}:9222`,
-      internal_codegen_url: effectiveEnableCodegen ? `http://${containerIp}:3011` : undefined,
+      internal_cdp_url: `http://${containerIp}:${this.chromeDebugPort}`,
+      internal_codegen_url: effectiveEnableCodegen ? `http://${containerIp}:${this.codegenApiPort}` : undefined,
     };
 
     this.workers.set(workerId, workerStatus);
@@ -401,7 +408,7 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
     if (worker?.enable_codegen === false) {
       return undefined;
     }
-    return worker ? `http://${worker.container_ip}:3011` : undefined;
+    return worker ? `http://${worker.container_ip}:${this.codegenApiPort}` : undefined;
   }
 
   private requiresWorkerRecreation(
@@ -442,8 +449,8 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
   }
 
   private resolvePublishedEndpoints(inspect: any): WorkerEndpointsDto {
-    const cdpHostPort = inspect?.NetworkSettings?.Ports?.['9222/tcp']?.[0]?.HostPort;
-    const novncHostPort = inspect?.NetworkSettings?.Ports?.['8080/tcp']?.[0]?.HostPort;
+    const cdpHostPort = inspect?.NetworkSettings?.Ports?.[`${this.chromeDebugPort}/tcp`]?.[0]?.HostPort;
+    const novncHostPort = inspect?.NetworkSettings?.Ports?.[`${this.novncPort}/tcp`]?.[0]?.HostPort;
 
     if (!cdpHostPort) {
       throw new Error('CDP host port was not published for worker container');

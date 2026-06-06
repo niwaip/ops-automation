@@ -3,7 +3,7 @@
  * 文档预览渲染服务，将Office文档转换为PDF/HTML以便在浏览器中显示
  */
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import { exec } from 'child_process';
@@ -26,6 +26,7 @@ export interface PreviewResult {
 export class PreviewService {
   private libreOfficePath: string;
   private tmpDir: string;
+  private readonly logger = new Logger(PreviewService.name);
 
   constructor() {
     // LibreOffice路径配置
@@ -49,7 +50,7 @@ export class PreviewService {
         return pdfResult;
       }
     } catch (error) {
-      console.warn('PDF conversion failed, falling back to HTML:', error);
+      this.logger.warn(`PDF conversion failed, falling back to HTML: ${error instanceof Error ? error.message : String(error)}`);
     }
 
     // 回退到HTML预览
@@ -76,7 +77,7 @@ export class PreviewService {
     try {
       await execAsync(`${this.libreOfficePath} --version`);
     } catch {
-      console.warn('LibreOffice not available');
+      this.logger.warn('LibreOffice not available');
       return null;
     }
 
@@ -318,7 +319,6 @@ export class PreviewService {
           pageNumPending = null;
         }
       } catch (err) {
-        console.error('Page render error:', err);
         container.innerHTML = '<div class="loading">Error rendering page</div>';
         pageRendering = false;
       }
@@ -381,7 +381,6 @@ export class PreviewService {
       pageInfo.textContent = 'Page ' + pageNum + ' of ' + pdf.numPages;
       renderPage(pageNum);
     }).catch(function(error) {
-      console.error('PDF load error:', error);
       container.innerHTML = '<div class="loading">Error loading PDF: ' + error.message + '</div>';
     });
   </script>

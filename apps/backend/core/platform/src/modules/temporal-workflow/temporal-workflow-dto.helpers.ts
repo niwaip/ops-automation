@@ -2,6 +2,7 @@ import { TemporalWorkflow } from '@prisma/client';
 import {
   DEFAULT_TEMPLATE_WORKFLOW_DSL,
   type ActivityDsl,
+  type TemporalWorkflowArtifactDTO,
   type TemporalWorkflowDTO,
   type TemporalWorkflowSourceContext,
   type TemporalWorkflowSourceTemplate,
@@ -24,6 +25,23 @@ export function toTemporalWorkflowDto(workflow: TemporalWorkflow): TemporalWorkf
     activityDsl: activityDsl as any,
     sourceTemplate: extractedSourceTemplate,
     sourceContext: extractedSourceContext,
+  };
+}
+
+export function toTemporalWorkflowArtifactDto(
+  workflow: TemporalWorkflow,
+): TemporalWorkflowArtifactDTO {
+  return {
+    workflowId: workflow.id,
+    workflowName: workflow.name,
+    taskQueue: workflow.taskQueue,
+    artifactVersion: Number((workflow as any).artifactVersion || 0),
+    artifactHash: (workflow as any).artifactHash || null,
+    generatedCode: workflow.generatedCode || null,
+    validationStatus: ((workflow as any).validationStatus || 'draft') as string,
+    validationScore: Number((workflow as any).validationScore || 0),
+    validatedAt: (workflow as any).validatedAt || null,
+    validationResult: parseJson<Record<string, unknown>>((workflow as any).validationResultJson) || null,
   };
 }
 

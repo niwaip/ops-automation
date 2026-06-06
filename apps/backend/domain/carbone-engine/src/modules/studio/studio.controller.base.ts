@@ -177,14 +177,14 @@ export abstract class StudioControllerBase {
         const suffix = String(rawSuffix || '').replace(/^\./, '').trim();
         if (prefix && suffix) {
           const entry = arrayGroups.get(prefix) || {};
-          entry[suffix] = value;
+          entry[suffix] = this.normalizeRenderValue(value);
           arrayGroups.set(prefix, entry);
           continue;
         }
       }
 
       if (key.includes('.')) {
-        this.setNestedValue(normalized, key, value);
+        normalized[key] = this.normalizeRenderValue(value);
         continue;
       }
 
@@ -222,23 +222,25 @@ export abstract class StudioControllerBase {
           if (valueAtIndex === undefined) {
             continue;
           }
-          if (fieldPath.includes('.')) {
-            this.setNestedValue(row, fieldPath, valueAtIndex);
-          } else {
-            row[fieldPath] = valueAtIndex;
-          }
+          row[fieldPath] = valueAtIndex;
         }
         rows.push(row);
       }
 
-      if (prefix.includes('.')) {
-        this.setNestedValue(normalized, prefix, rows);
-      } else {
-        normalized[prefix] = rows;
-      }
+      normalized[prefix] = rows;
     }
 
     return normalized;
+  }
+
+  protected normalizeRenderValue(value: unknown): unknown {
+    if (Array.isArray(value)) {
+      return value.map((item) => (this.isPlainObject(item) ? this.normalizeRenderData(item) : item));
+    }
+    if (this.isPlainObject(value)) {
+      return this.normalizeRenderData(value);
+    }
+    return value;
   }
 
   protected getPreviewSeedDataFromSkill(skill: any): Record<string, any> | null {
@@ -457,7 +459,7 @@ export abstract class StudioControllerBase {
         meta,
       );
     } catch (error) {
-      console.warn(`Failed to sync template ${id} to database`, error);
+      this.logger.warn(`Failed to sync template ${id} to database: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -471,7 +473,7 @@ export abstract class StudioControllerBase {
         savedAt: new Date(updatedMeta.savedAt),
       });
     } catch (error) {
-      console.warn(`Failed to sync template markings for ${id} to database`, error);
+      this.logger.warn(`Failed to sync template markings for ${id} to database: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -479,7 +481,7 @@ export abstract class StudioControllerBase {
     try {
       await this.templateRepository.updateConfig(id, templateConfig, new Date(savedAt));
     } catch (error) {
-      console.warn(`Failed to sync template config for ${id} to database`, error);
+      this.logger.warn(`Failed to sync template config for ${id} to database: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -487,7 +489,7 @@ export abstract class StudioControllerBase {
     try {
       await this.skillRepository.upsertFromDocument(skill, templateId);
     } catch (error) {
-      console.warn(`Failed to sync skill ${String(skill.id ?? '')} to database`, error);
+      this.logger.warn(`Failed to sync skill ${String(skill.id ?? '')} to database: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -509,7 +511,7 @@ export abstract class StudioControllerBase {
         createdAt?: string;
       }, filePath);
     } catch (error) {
-      console.warn(`Failed to sync render output ${String(meta.id ?? '')} to database`, error);
+      this.logger.warn(`Failed to sync render output ${String(meta.id ?? '')} to database: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 

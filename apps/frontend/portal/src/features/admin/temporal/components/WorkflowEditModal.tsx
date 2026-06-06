@@ -17,7 +17,7 @@ import '@/features/chat/ChatMessage.css';
 import {
   temporalWorkflowApi, TemporalWorkflowDTO, CreateTemporalWorkflowDTO,
   WorkflowDsl, ActivityDsl, TemporalValidationResult, DEFAULT_WORKFLOW_DSL, DEFAULT_ACTIVITY_DSL,
-  WorkflowCodeResult, WorkflowCodeStreamEvent, WorkflowRealValidationResult, TemplateWorkflowDraft, TemporalWorkflowSourceTemplate, TemporalWorkflowSourceContext, HttpRequestOptimizeResult, HttpRequestPreviewResult, AiWorkflowDraft, AiWorkflowDraftSession, AiWorkflowDraftSessionListItem, AiWorkflowDraftSessionMessage, BrowserDraftCommandInput, WorkflowInputParamDefinition, WorkflowInputPolicy, WorkflowParamPolicy, WorkflowParamRequiredMode, CompileTemplateWorkflowDraftDTO
+  WorkflowCodeResult, WorkflowCodeStreamEvent, WorkflowRealValidationResult, TemplateWorkflowDraft, TemporalWorkflowSourceTemplate, TemporalWorkflowSourceContext, HttpRequestOptimizeResult, HttpRequestPreviewResult, AiWorkflowDraft, AiWorkflowDraftSession, AiWorkflowDraftSessionListItem, AiWorkflowDraftSessionMessage, BrowserDraftCommandInput, WorkflowInputParamDefinition, WorkflowInputPolicy, WorkflowParamPolicy, WorkflowParamRequiredMode
 } from '@/api/temporal';
 import { carboneAPI, CarboneSkill, CarboneTemplate } from '@/api/carbone';
 import { templateApi, Template } from '@/api/template';
@@ -943,10 +943,13 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
     rawActivityDsl: ActivityDsl,
   ): Promise<WorkflowDsl> => {
     let nextWorkflowDsl = withNormalizedWorkflowInputParams(rawWorkflowDsl, rawActivityDsl);
+    const sourceContextType = String(nextWorkflowDsl.sourceContext?.sourceType || '').trim();
     const sourceTemplateId = String(nextWorkflowDsl.sourceContext?.sourceTemplate?.templateId || '').trim();
-    const shouldBackfillTemplateMetadata = Boolean(sourceTemplateId) && Object.values(nextWorkflowDsl.inputParams || {}).some((param) => (
+    const shouldBackfillTemplateMetadata = sourceContextType === 'template'
+      && Boolean(sourceTemplateId)
+      && Object.values(nextWorkflowDsl.inputParams || {}).some((param) => (
       !Array.isArray(param.localizedVariants) || param.localizedVariants.length === 0
-    ));
+      ));
 
     if (shouldBackfillTemplateMetadata) {
       try {
@@ -1170,7 +1173,8 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
 
     // 2. 尝试从当前正在编辑的 activityDsl 中找 (包含草稿/未发布的)
     const overlay = (activityDsl.activities || []).find((activity) =>
-      activity.name === step.activityName
+      (step.activityRef && (activity.activityRef === step.activityRef || (activity.id && `custom:${activity.id}` === step.activityRef)))
+      || activity.name === step.activityName
       || activity.fn === step.activityName
       || (base && (activity.fn === base.fn || activity.name === base.name)),
     );
@@ -1182,9 +1186,13 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
     // 如果只有 overlay (例如新建的草稿 Activity)，则基于 overlay 构建基础资源对象
     if (!base && overlay) {
       return {
-        id: String(overlay.name || overlay.fn || 'draft-activity'),
+        id: String(overlay.id || overlay.name || overlay.fn || 'draft-activity'),
         source: 'custom' as const,
-        ref: `custom:${overlay.fn || overlay.name}`,
+        ref: String(
+          overlay.activityRef
+          || (overlay.id ? `custom:${overlay.id}` : '')
+          || `custom:${overlay.fn || overlay.name}`,
+        ),
         name: overlay.name || '未命名 Activity',
         fn: overlay.fn || '',
         timeout: overlay.timeout || '300s',
@@ -1882,6 +1890,8 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
     if (!openTemplatePickerOnOpen) {
       return;
     }
+    setTemplateModalVisible(true);
+    setTemplateModalMode(initialTemplatePickerMode);
     if (initialTemplatePickerMode === 'browser') {
       void loadBrowserTemplates();
       return;
@@ -2263,6 +2273,42 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
     const nextWorkflowDsl = { ...workflowDsl, name: workflowName };
     dispatchCodeGeneration({ type: 'START' });
     try {
+      if (editingWorkflow?.id) {
+        const synchronizedInputPolicy = buildSynchronizedWorkflowInputPolicy(
+          workflowDsl.inputParams,
+          workflowDsl.inputPolicy,
+        );
+        appendCodeGenerationLog(`[${new Date().toISOString()}] 已保存当前 Workflow 草稿，准备生成并持久化 artifact`);
+        await temporalWorkflowApi.update(editingWorkflow.id, {
+          name: workflowName,
+          description: formValues.description,
+          taskQueue: formValues.taskQueue,
+          workflowDsl: {
+            ...nextWorkflowDsl,
+            ...(synchronizedInputPolicy ? { inputPolicy: synchronizedInputPolicy } : {}),
+          },
+          activityDsl,
+        });
+        appendCodeGenerationLog(`[${new Date().toISOString()}] 已同步最新 DSL，开始调用 generate-and-save`);
+        const persistedGeneration = await temporalWorkflowApi.generateAndSave(editingWorkflow.id, {
+          errorContext,
+          forceAiGeneration,
+        });
+        dispatchCodeGeneration({ type: 'SET_RESULT', payload: persistedGeneration.generation });
+        if (persistedGeneration.generation.success && persistedGeneration.generation.code) {
+          setEditingWorkflow(persistedGeneration.workflow);
+          setGeneratedCode(persistedGeneration.generation.code);
+          setLastGeneratedSignature(currentDraftSignature);
+          setIsGeneratedCodeStale(false);
+          setCodeModalVisible(true);
+          void queryClient.invalidateQueries(['temporal']);
+          message.success('代码已生成并保存为 Workflow artifact');
+        } else {
+          message.error(persistedGeneration.generation.error || '代码生成失败');
+        }
+        return;
+      }
+
       await temporalWorkflowApi.generateWorkflowCodeStream(
         nextWorkflowDsl,
         activityDsl,
@@ -2465,13 +2511,13 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
   };
 
   const handleOpenRealValidation = () => {
-    if (!generatedCode) { void message.warning('请先生成代码'); return; }
+    if (!generatedCode) { void message.warning('请先生成并保存代码'); return; }
     const inputParams = collectWorkflowInputParams();
     dispatchRealValidation({ type: 'OPEN', payload: inputParams });
   };
 
   const handleRealValidation = async () => {
-    if (!generatedCode) { void message.warning('请先生成代码'); return; }
+    if (!generatedCode) { void message.warning('请先生成并保存代码'); return; }
     const fn = workflowDsl.workflowClassName?.trim() || (workflowDsl.name.replace(/\s+/g, '') + 'Workflow');
     dispatchRealValidation({ type: 'START' });
 
@@ -2488,6 +2534,21 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
     }
 
     try {
+      if (editingWorkflow?.id && !isGeneratedCodeStale) {
+        appendRealValidationLog(`[${new Date().toISOString()}] 开始校验已保存 Workflow artifact`);
+        const persistedValidation = await temporalWorkflowApi.validateSavedArtifact(
+          editingWorkflow.id,
+          { input: inputParams },
+        );
+        dispatchRealValidation({
+          type: 'SET_RESULT',
+          payload: persistedValidation.validation,
+        });
+        setEditingWorkflow(persistedValidation.workflow);
+        void queryClient.invalidateQueries(['temporal']);
+        return;
+      }
+
       await temporalWorkflowApi.validateWorkflowRealStream(
         generatedCode,
         fn,
@@ -2549,23 +2610,15 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
     try {
       const values = await form.validateFields() as { name?: string; description?: string; taskQueue?: string };
       const workflowName = values.name || workflowDsl.name;
+      const shouldPersistGeneratedCode = Boolean(generatedCode)
+        && (!editingWorkflow || String(editingWorkflow.generatedCode || '') !== generatedCode);
+      const persistedGeneratedCode = shouldPersistGeneratedCode && typeof generatedCode === 'string'
+        ? generatedCode
+        : undefined;
       const synchronizedInputPolicy = buildSynchronizedWorkflowInputPolicy(
         workflowDsl.inputParams,
         workflowDsl.inputPolicy,
       );
-      const sourceTemplate = currentSourceTemplate;
-      if (sourceTemplate?.templateId) {
-        const data: CompileTemplateWorkflowDraftDTO & { generatedCode?: string } = {
-          templateId: sourceTemplate.templateId,
-          name: workflowName,
-          description: values.description,
-          taskQueue: values.taskQueue,
-          ...(synchronizedInputPolicy ? { inputPolicy: synchronizedInputPolicy } : {}),
-          ...(generatedCode ? { generatedCode } : {}),
-        };
-        await Promise.resolve(onSave(data));
-        return;
-      }
       const data: CreateTemporalWorkflowDTO = {
         name: workflowName,
         description: values.description,
@@ -2587,7 +2640,7 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
           }),
         },
         activityDsl,
-        generatedCode: generatedCode || undefined,
+        generatedCode: persistedGeneratedCode,
       };
       await Promise.resolve(onSave(data));
     } catch (error: unknown) {
@@ -2615,6 +2668,10 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
   });
 
   const buildActivityDslEntry = (activity: WorkflowSelectableActivity) => ({
+    ...(activity.source === 'custom' ? {
+      id: activity.id,
+      activityRef: activity.ref,
+    } : {}),
     name: activity.name,
     fn: activity.fn,
     timeout: activity.timeout,
@@ -4522,7 +4579,7 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
                     type="info"
                     showIcon
                     message="这会把当前 AI 草稿回填到工作流编辑器"
-                    description="应用后你仍然可以继续人工调整 DSL、生成代码、做真实验证并保存。"
+                    description="应用后你仍然可以继续人工调整 DSL、生成并保存代码、做端到端验证并保存。"
                   />
 
                   <Card size="small" style={SECTION_CARD_STYLE} styles={{ body: { padding: 12 } }}>
@@ -4571,7 +4628,7 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
                       <Text strong>应用后建议动作</Text>
                       <Text>1. 检查步骤配置和输入输出定义是否符合预期。</Text>
                       <Text>2. 重新生成工作流代码。</Text>
-                      <Text>3. 做真实验证后再保存。</Text>
+                      <Text>3. 做端到端验证后再保存。</Text>
                     </Space>
                   </Card>
                 </Space>
@@ -4709,7 +4766,7 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
                 </Space>
               )}
       </Modal>
-      <Modal title={<div style={{ textAlign: 'center', width: '100%' }}><Space direction="vertical" size={2}><Space size={8}><ThunderboltOutlined style={{ color: 'var(--primary-color)' }} /><Text strong style={{ fontSize: 18 }}>{editingWorkflow ? '编辑工作流' : '创建工作流'}</Text></Space><Text type="secondary" style={{ fontSize: 12 }}>配置工作流基础信息、执行参数、步骤编排与 AI 代码生成</Text></Space></div>} open={visible} onOk={handleSave} onCancel={() => onCancel(false)}
+      <Modal title={<div style={{ textAlign: 'center', width: '100%' }}><Space direction="vertical" size={2}><Space size={8}><ThunderboltOutlined style={{ color: 'var(--primary-color)' }} /><Text strong style={{ fontSize: 18 }}>{editingWorkflow ? '编辑工作流' : '创建工作流'}</Text></Space><Text type="secondary" style={{ fontSize: 12 }}>配置工作流基础信息、执行参数、步骤编排与 artifact 生成验证</Text></Space></div>} open={visible} onOk={handleSave} onCancel={() => onCancel(false)}
               footer={
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end', alignItems: 'center' }}>
                   <Space size={6} style={{ marginRight: 'auto' }}>
@@ -4720,15 +4777,15 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
                       onChange={setForceAiGeneration}
                       disabled={codeGenerationState.isStreaming}
                     />
-                    <Tooltip title="开启后会跳过固定模版编译路径，即使当前 DSL 命中确定性模式，也会直接走 AI 代码生成。">
+                    <Tooltip title="开启后会跳过固定模版编译路径，即使当前 DSL 命中确定性模式，也会直接走 AI artifact 生成。">
                       <InfoCircleOutlined style={{ color: 'var(--text-secondary)' }} />
                     </Tooltip>
                   </Space>
                   <Button size="small" key="validate" icon={<PlayCircleOutlined />} onClick={handleValidate}>验证DSL</Button>
                   <Button size="small" key="generate" icon={<RobotOutlined />} onClick={() => {
                     void handleGenerateCode();
-                  }} loading={codeGenerationState.isStreaming}>AI生成代码</Button>
-                  <Button size="small" key="realValidation" icon={<ExperimentOutlined />} onClick={handleOpenRealValidation} loading={realValidationState.isStreaming} disabled={!generatedCode}>真实验证</Button>
+                  }} loading={codeGenerationState.isStreaming}>生成并保存代码</Button>
+                  <Button size="small" key="realValidation" icon={<ExperimentOutlined />} onClick={handleOpenRealValidation} loading={realValidationState.isStreaming} disabled={!generatedCode}>端到端验证</Button>
                   <Button size="small" key="viewCode" icon={<CodeOutlined />} onClick={() => setCodeModalVisible(true)} disabled={!generatedCode}>查看代码</Button>
                   <Button size="small" key="cancel" onClick={() => onCancel(false)}>取消</Button>
                   <Button size="small" key="save" type="primary" loading={loading || saveSubmitting} disabled={loading || saveSubmitting} onClick={handleSave}>保存</Button>
@@ -4743,7 +4800,7 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
                       showIcon
                       style={{ marginBottom: 12 }}
                       message="工作流配置已变更，旧代码已失效"
-                      description="你刚刚修改了步骤、参数或配置，系统已清空旧的生成代码。请重新点击“AI生成代码”后再做真实验证。"
+                      description="你刚刚修改了步骤、参数或配置，系统已清空旧的生成代码。请重新点击“生成并保存代码”后再做端到端验证。"
                     />
                   )}
                   {currentSourceContext && (
@@ -5734,7 +5791,7 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
         </div>
         </Card>
 
-        <Card title="补足情报（指导 AI 代码生成）" size="small" style={SECTION_CARD_STYLE} styles={{ body: SECTION_CARD_BODY_STYLE }}>
+        <Card title="补足情报（指导 AI artifact 生成）" size="small" style={SECTION_CARD_STYLE} styles={{ body: SECTION_CARD_BODY_STYLE }}>
           <Form.Item label={renderTipLabel('额外提示词', '补充上下文给 AI，帮助生成更准确的工作流代码。')} style={{ marginBottom: 0 }}>
             <Input.TextArea rows={3} placeholder="例如：&#10;- 该工作流需要处理中文内容，请使用 utf-8 编码&#10;- 返回结果需要包含完整的错误处理逻辑&#10;- 第三方 API 调用需要添加重试机制" value={workflowDsl.extraPrompt || ''} onChange={e => setWorkflowDsl({ ...workflowDsl, extraPrompt: e.target.value || undefined })} />
           </Form.Item>
@@ -5766,7 +5823,7 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
           {!codeGenerationState.isStreaming && codeGenerationState.result && (
             <Alert
               type={codeGenerationState.result.success ? 'success' : 'error'}
-              message={codeGenerationState.result.success ? '代码生成完成' : '代码生成失败'}
+              message={codeGenerationState.result.success ? '代码已生成并保存' : '代码生成失败'}
               description={codeGenerationState.result.error || (
                 codeGenerationState.result.generationMode === 'deterministic'
                   ? '本次命中固定模版编译路径。'
@@ -5798,9 +5855,9 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
           </pre>
         )}
       </Modal>
-      <Modal title="真实验证结果" open={realValidationState.visible} onCancel={() => dispatchRealValidation({ type: 'CLOSE' })} footer={realValidationModalFooter} width={800}>
+      <Modal title="端到端验证结果" open={realValidationState.visible} onCancel={() => dispatchRealValidation({ type: 'CLOSE' })} footer={realValidationModalFooter} width={800}>
         <Space direction="vertical" style={{ width: '100%' }}>
-          {realValidationState.isStreaming && <Alert type="info" message="真实验证进行中..." showIcon />}
+          {realValidationState.isStreaming && <Alert type="info" message="端到端验证进行中..." showIcon />}
 
           {/* 输入参数区域 - 仅在未运行时显示 */}
           {!realValidationState.isStreaming && (
@@ -5824,7 +5881,7 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
                   </div>
                 </>
               ) : (
-                <Text type="secondary">当前工作流没有可填写的输入参数，可直接开始真实验证。</Text>
+                <Text type="secondary">当前工作流没有可填写的输入参数，可直接开始端到端验证。</Text>
               )}
               <Button
                 type="primary"
@@ -5834,14 +5891,14 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
                 }}
                 style={{ marginTop: 12 }}
               >
-                开始真实验证
+                开始端到端验证
               </Button>
             </Card>
           )}
 
           {realValidationState.result && (
             <>
-              <Alert type={realValidationState.result.success ? 'success' : 'error'} message={realValidationState.result.success ? '真实验证通过' : '真实验证失败'} showIcon />
+              <Alert type={realValidationState.result.success ? 'success' : 'error'} message={realValidationState.result.success ? '端到端验证通过' : '端到端验证失败'} showIcon />
               <Card><Text><strong>评分:</strong> {realValidationState.result.score}/100</Text></Card>
               {realValidationState.result.error && <Alert type="error" message="错误" description={realValidationState.result.error} showIcon />}
               {realValidationState.result.result?.error && <Alert type="error" message="执行错误" description={String(realValidationState.result.result.error).substring(0, 500)} showIcon />}

@@ -7,6 +7,7 @@ import { NotificationModule } from './modules/notifications/notification.module'
 import { PrismaModule } from './modules/prisma/prisma.module';
 import { AuthMiddleware } from './modules/auth/auth.middleware';
 import { McpModule } from './modules/mcp/mcp.module';
+import { JwtSecretGuard } from './modules/auth/jwt-secret.guard';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { McpModule } from './modules/mcp/mcp.module';
     NotificationModule,
     McpModule,
   ],
+  providers: [JwtSecretGuard],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

@@ -29,15 +29,41 @@ import { RenderResponse } from './studio.types';
 import { TemplateWorkflowService } from './template-workflow.service';
 import {
   PreviewDto,
-  RenderDto,
-  RenderWithSkillDto,
+  RenderResolvedDto,
   ValidateDto,
 } from './studio.dto';
-import { StudioControllerBase, TemplateInfoForValidation } from './studio.controller.base';
+import { StudioControllerBase } from './studio.controller.base';
+import { applyDirectRenderPaths } from './utils/direct-render-path.helper';
 
 @ApiTags('studio')
 @Controller('studio')
 export class StudioRenderController extends StudioControllerBase {
+  // #region debug-point B:studio-render
+  private debugReport(hypothesisId: string, msg: string, data: Record<string, unknown> = {}): void {
+    const fs = require('fs');
+    let url = 'http://127.0.0.1:7777/event';
+    let sessionId = 'signing-date-render';
+    try {
+      const env = fs.readFileSync('.dbg/signing-date-render.env', 'utf8');
+      url = env.match(/DEBUG_SERVER_URL=(.+)/)?.[1] || url;
+      sessionId = env.match(/DEBUG_SESSION_ID=(.+)/)?.[1] || sessionId;
+    } catch {}
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId,
+        runId: 'pre-fix',
+        hypothesisId,
+        location: 'studio-render.controller.ts',
+        msg: `[DEBUG] ${msg}`,
+        data,
+        ts: Date.now(),
+      }),
+    }).catch(() => {});
+  }
+  // #endregion
+
   constructor(
     previewService: PreviewService,
     aiIdentifierService: AIIdentifierService,
@@ -59,139 +85,184 @@ export class StudioRenderController extends StudioControllerBase {
   }
 
   /**
-   * 渲染模板
+   * 基于已解析上下文渲染文档
+   * 允许同时携带 templateId 和 skillId，并校验两者是否指向同一模板
    */
-  @Post('render')
-  @ApiOperation({ summary: 'Render template with data' })
-  @ApiBody({ type: RenderDto })
-  async renderTemplate(@Body() dto: RenderDto): Promise<RenderResponse> {
-    const meta = await this.getTemplateMetaWithDbFallback(dto.templateId);
-    const workflow = this.readWorkflowConfig(meta as Record<string, any>);
-    const templatePath = path.join(this.templatesDir, `${dto.templateId}.${meta.format}`);
-    let renderInputData = dto.data || {};
-    const sourceLanguage = dto.sourceLanguage || workflow.sourceLanguage || 'zh';
-    const targetLanguages = Array.isArray(dto.targetLanguages)
-      ? dto.targetLanguages
-      : (workflow.targetLanguages || []);
+  @Post('render-resolved')
+  @Header('X-Document-Render-Entry', 'unified-runtime')
+  @ApiOperation({
+    summary: 'Render document with resolved template and skill context',
+    description:
+      '正式文档运行时统一入口。Capability Runtime、AI tool、Temporal Activity 等正式调用方应收口到该接口。',
+  })
+  @ApiBody({ type: RenderResolvedDto })
+  async renderResolved(@Body() dto: RenderResolvedDto): Promise<RenderResponse> {
+    const resolved = await this.resolveRenderTarget({
+      templateId: dto.templateId,
+      skillId: dto.skillId,
+      publishedSkillId: dto.publishedSkillId,
+    });
 
-    if (
-      dto.prepareLocalizedRenderData === true
-      && workflow.templateFieldSpecs.length > 0
-    ) {
-      const workflowRenderData = await this.templateWorkflowService.renderData(
-        '',
-        workflow.templateFieldSpecs,
-        workflow.carboneBindingPlan,
-        sourceLanguage,
-        targetLanguages,
-        dto.data || {},
-        workflow.termAssets,
-      );
-      renderInputData = workflowRenderData.data;
-    }
-
-    const normalizedData = this.normalizeRenderData(renderInputData);
-
-    if (!fs.existsSync(templatePath)) {
-      throw new HttpException('Template file not found', HttpStatus.NOT_FOUND);
-    }
-
-    try {
-      // 验证数据
-      const validation = this.engine.validateData(meta as TemplateInfoForValidation, normalizedData);
-      if (!validation.valid) {
-        console.warn(`Missing data for variables: ${validation.missing.join(', ')}`);
-      }
-
-      // 渲染模板
-      const templateBuffer = fs.readFileSync(templatePath);
-      const loopFallback = Array.isArray(meta.loops) && meta.loops.length > 0
-        ? { tableLoops: meta.loops }
-        : (() => {
-            const inferred = this.extractLoopsFromMeta(meta);
-            return inferred.length > 0 ? { tableLoops: inferred } : {};
-          })();
-      const config = meta.templateConfig || loopFallback || {};
-      const markedBuffer = await this.documentStructureService.applyConfigToDocx(templateBuffer, config);
-      const outputBuffer = await this.engine.render(markedBuffer, normalizedData, meta.fileName);
-
-      // 保存输出文件
-      const outputId = uuidv4();
-      const outputFormat = dto.outputFormat || meta.format;
-      const outputFileName = this.generateOutputFileName(meta.fileName, outputFormat);
-      const outputPath = path.join(this.outputsDir, `${outputId}.${outputFormat}`);
-      fs.writeFileSync(outputPath, outputBuffer);
-
-      // 保存输出元数据
-      const outputMeta = {
-        id: outputId,
-        templateId: dto.templateId,
-        fileName: outputFileName,
-        format: outputFormat,
-        size: outputBuffer.length,
-        renderedAt: new Date().toISOString(),
-      };
-      const outputMetaPath = path.join(this.outputsDir, `${outputId}.json`);
-      fs.writeFileSync(outputMetaPath, JSON.stringify(outputMeta));
-      await this.syncRenderOutputToDb(outputMeta, outputPath);
-
-      return {
-        downloadUrl: `/studio/download/${outputId}`,
-        fileName: outputFileName,
-        format: outputFormat
-      };
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      throw new HttpException(
-        `Failed to render template: ${message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
-      );
-    }
+    return this.renderResolvedDocument({
+      templateId: resolved.templateId,
+      skillId: resolved.skillId,
+      publishedSkillId: resolved.publishedSkillId,
+      data: dto.data || {},
+      workflowInputParams: dto.workflowInputParams,
+      workflowInputPolicy: dto.workflowInputPolicy,
+      outputFormat: dto.outputFormat,
+      outputName: dto.outputName,
+      sourceLanguage: dto.sourceLanguage,
+      targetLanguages: dto.targetLanguages,
+      prepareLocalizedRenderData: dto.prepareLocalizedRenderData,
+    });
   }
 
-  /**
-   * 基于Skill渲染文档
-   * 根据skillId找到关联模板，使用参数渲染
-   */
-  @Post('render-with-skill')
-  @ApiOperation({ summary: 'Render document based on skill and params' })
-  @ApiBody({ type: RenderWithSkillDto })
-  async renderWithSkill(@Body() dto: RenderWithSkillDto): Promise<RenderResponse> {
-    const skillMeta = await this.getSkillWithDbFallback(dto.skillId);
-    const templateId = typeof skillMeta?.templateId === 'string' ? skillMeta.templateId : dto.skillId;
+  private async resolveRenderTarget(input: {
+    templateId?: string;
+    skillId?: string;
+    publishedSkillId?: string;
+  }): Promise<{
+    templateId: string;
+    skillId?: string;
+    publishedSkillId?: string;
+  }> {
+    const requestedTemplateId = typeof input.templateId === 'string' && input.templateId.trim()
+      ? input.templateId.trim()
+      : undefined;
+    const requestedSkillId = typeof input.skillId === 'string' && input.skillId.trim()
+      ? input.skillId.trim()
+      : undefined;
+    const publishedSkillId = typeof input.publishedSkillId === 'string' && input.publishedSkillId.trim()
+      ? input.publishedSkillId.trim()
+      : undefined;
 
-    const meta = this.getTemplateMeta(templateId);
-    const templatePath = path.join(this.templatesDir, `${templateId}.${meta.format}`);
+    if (!requestedTemplateId && !requestedSkillId) {
+      throw new HttpException(
+        'Missing render target: require templateId or skillId',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    if (!requestedSkillId) {
+      return {
+        templateId: requestedTemplateId as string,
+        publishedSkillId,
+      };
+    }
+
+    const skillMeta = await this.getSkillWithDbFallback(requestedSkillId);
+    if (!skillMeta) {
+      if (requestedTemplateId) {
+        return {
+          templateId: requestedTemplateId,
+          publishedSkillId,
+        };
+      }
+      throw new HttpException(`Skill not found: ${requestedSkillId}`, HttpStatus.NOT_FOUND);
+    }
+
+    const resolvedTemplateId = typeof skillMeta.templateId === 'string' && skillMeta.templateId.trim()
+      ? skillMeta.templateId.trim()
+      : undefined;
+    if (!resolvedTemplateId) {
+      throw new HttpException(
+        `Skill ${requestedSkillId} is not bound to a template`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    if (requestedTemplateId && requestedTemplateId !== resolvedTemplateId) {
+      throw new HttpException(
+        `Skill ${requestedSkillId} resolves to template ${resolvedTemplateId}, but received templateId ${requestedTemplateId}`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    return {
+      templateId: resolvedTemplateId,
+      skillId: requestedSkillId,
+      publishedSkillId,
+    };
+  }
+
+  private async renderResolvedDocument(input: {
+    templateId: string;
+    data: Record<string, any>;
+    workflowInputParams?: Record<string, unknown>;
+    workflowInputPolicy?: Record<string, unknown>;
+    outputFormat?: 'docx' | 'xlsx' | 'pptx' | 'pdf' | 'html';
+    skillId?: string;
+    publishedSkillId?: string;
+    outputName?: string;
+    sourceLanguage?: string;
+    targetLanguages?: string[];
+    prepareLocalizedRenderData?: boolean;
+  }): Promise<RenderResponse> {
+    const meta = await this.getTemplateMetaWithDbFallback(input.templateId);
+    const workflow = this.readWorkflowConfig(meta as Record<string, any>);
+    const templatePath = path.join(this.templatesDir, `${input.templateId}.${meta.format}`);
 
     if (!fs.existsSync(templatePath)) {
       throw new HttpException('Template file not found', HttpStatus.NOT_FOUND);
     }
 
     try {
-      const data = this.normalizeRenderData(dto.params || {});
+      let renderInputData = input.data || {};
+      const sourceLanguage = input.sourceLanguage || workflow.sourceLanguage || 'zh';
+      const targetLanguages = Array.isArray(input.targetLanguages)
+        ? input.targetLanguages
+        : (workflow.targetLanguages || []);
 
-      // 渲染模板
+      if (input.prepareLocalizedRenderData === true) {
+        renderInputData = applyDirectRenderPaths(
+          input.data || {},
+          input.workflowInputParams,
+        );
+      }
+
+      const normalizedData = this.normalizeRenderData(renderInputData);
+      // #region debug-point B:normalized-data
+      this.debugReport('B', 'render-resolved normalized data prepared', {
+        templateId: input.templateId,
+        prepareLocalizedRenderData: input.prepareLocalizedRenderData === true,
+        sourceLanguage,
+        targetLanguages,
+        signingDateCnType: typeof normalizedData?.contract?.signingDate_cn,
+        signingDateJpType: typeof normalizedData?.contract?.signingDate_jp,
+        signingDateCnValue: normalizedData?.contract?.signingDate_cn ?? null,
+        signingDateJpValue: normalizedData?.contract?.signingDate_jp ?? null,
+        itemRowCount: Array.isArray(normalizedData?.items) ? normalizedData.items.length : 0,
+      });
+      // #endregion
+
       const templateBuffer = fs.readFileSync(templatePath);
       const config = meta.templateConfig || {};
       const markedBuffer = await this.documentStructureService.applyConfigToDocx(templateBuffer, config);
-      const outputBuffer = await this.engine.render(markedBuffer, data, meta.fileName);
+      const outputBuffer = await this.engine.render(markedBuffer, normalizedData, meta.fileName);
 
-      // 保存输出文件
       const outputId = uuidv4();
-      const outputFormat = dto.outputFormat || meta.format;
-      const outputFileName = this.generateOutputFileName(meta.fileName, outputFormat);
+      const outputFormat = input.outputFormat || meta.format;
+      const outputFileName = this.generateOutputFileName(
+        input.outputName || meta.fileName,
+        outputFormat,
+      );
       const outputPath = path.join(this.outputsDir, `${outputId}.${outputFormat}`);
       fs.writeFileSync(outputPath, outputBuffer);
 
-      // 保存输出元数据
       const outputMeta = {
         id: outputId,
-        templateId,
-        skillId: dto.skillId,
+        templateId: input.templateId,
+        ...(input.skillId ? { skillId: input.skillId } : {}),
+        ...(input.publishedSkillId ? { publishedSkillId: input.publishedSkillId } : {}),
+        ...(input.outputName ? { outputName: input.outputName } : {}),
+        ...(sourceLanguage ? { sourceLanguage } : {}),
+        ...(targetLanguages.length > 0 ? { targetLanguages } : {}),
+        ...(input.prepareLocalizedRenderData === true ? { prepareLocalizedRenderData: true } : {}),
         fileName: outputFileName,
         format: outputFormat,
         size: outputBuffer.length,
-        params: dto.params,
+        params: renderInputData,
         renderedAt: new Date().toISOString(),
       };
       const outputMetaPath = path.join(this.outputsDir, `${outputId}.json`);
@@ -205,8 +276,35 @@ export class StudioRenderController extends StudioControllerBase {
       };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
+      const stack = error instanceof Error ? error.stack : undefined;
+      // #region debug-point B:render-resolved-error
+      this.logger.error(
+        `render-resolved failed for template=${input.templateId}: ${message}`,
+        stack,
+      );
+      this.debugReport('B', 'render-resolved failed', {
+        templateId: input.templateId,
+        skillId: input.skillId || null,
+        publishedSkillId: input.publishedSkillId || null,
+        sourceLanguage: input.sourceLanguage || null,
+        targetLanguages: Array.isArray(input.targetLanguages) ? input.targetLanguages : [],
+        prepareLocalizedRenderData: input.prepareLocalizedRenderData === true,
+        inputKeyCount: input.data && typeof input.data === 'object' ? Object.keys(input.data).length : 0,
+        inputKeysSample: input.data && typeof input.data === 'object'
+          ? Object.keys(input.data).slice(0, 15)
+          : [],
+        workflowInputParamKeys: input.workflowInputParams && typeof input.workflowInputParams === 'object'
+          ? Object.keys(input.workflowInputParams).slice(0, 15)
+          : [],
+        workflowInputPolicyKeys: input.workflowInputPolicy && typeof input.workflowInputPolicy === 'object'
+          ? Object.keys(input.workflowInputPolicy).slice(0, 15)
+          : [],
+        errorName: error instanceof Error ? error.name : typeof error,
+        errorMessage: message,
+      });
+      // #endregion
       throw new HttpException(
-        `Failed to render with skill: ${message}`,
+        `Failed to render resolved document: ${message}`,
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
@@ -559,14 +657,14 @@ export class StudioRenderController extends StudioControllerBase {
       let templateBuffer: Buffer;
       let isValidDocx = true;
 
-      console.log('generateTemplate received documentContent length:', body.documentContent.length);
-      console.log('documentContent prefix:', body.documentContent.substring(0, 20));
+      this.logger.debug(`generateTemplate received documentContent length: ${body.documentContent.length}`);
+      this.logger.debug(`documentContent prefix: ${body.documentContent.substring(0, 20)}`);
 
       if (body.documentContent.startsWith('base64:')) {
         const base64Data = body.documentContent.substring(7);
-        console.log('base64 data length:', base64Data.length);
+        this.logger.debug(`base64 data length: ${base64Data.length}`);
         templateBuffer = Buffer.from(base64Data, 'base64');
-        console.log('decoded buffer length:', templateBuffer.length);
+        this.logger.debug(`decoded buffer length: ${templateBuffer.length}`);
       } else if (body.documentContent.startsWith('{')) {
         // JSON格式（Excel数据或OOXML）
         templateBuffer = Buffer.from(body.documentContent, 'utf-8');
@@ -584,9 +682,9 @@ export class StudioRenderController extends StudioControllerBase {
       // 验证是否是有效的docx文件（docx是zip格式，前4字节应该是PK）
       if (format === 'docx' && templateBuffer.length > 4) {
         const header = templateBuffer.slice(0, 4).toString();
-        console.log('file header:', header);
+        this.logger.debug(`file header: ${header}`);
         if (!header.startsWith('PK')) {
-          console.warn('Not a valid docx file (not PK header), but will save metadata');
+          this.logger.warn('Not a valid docx file (not PK header), but will save metadata');
           isValidDocx = false;
         }
       }
@@ -597,7 +695,7 @@ export class StudioRenderController extends StudioControllerBase {
       if (isValidDocx && templateBuffer.length > 0) {
         fs.writeFileSync(templateFilePath, templateBuffer);
       } else {
-        console.log('Saving metadata only (no valid docx file)');
+        this.logger.debug('Saving metadata only (no valid docx file)');
         // 保存文本内容作为参考
         const textPath = path.join(this.templatesDir, `${templateId}_content.txt`);
         fs.writeFileSync(textPath, templateBuffer.toString('utf-8'));

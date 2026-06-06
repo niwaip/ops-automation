@@ -57,13 +57,23 @@ export function mapCapabilityRelease(raw: any): CapabilityReleaseDTO {
 }
 
 export function mapCapabilitySourceSnapshot(raw: any): CapabilitySourceSnapshotDTO {
+  const sourcePayload = (
+    parseCapabilityReleaseJson<Record<string, unknown>>(raw.source_payload_json)
+    || {}
+  ) as Record<string, unknown>;
   return {
     id: raw.id,
     releaseId: raw.release_id,
     snapshotVersion: Number(raw.snapshot_version || 1),
     sourceType: raw.source_type,
     sourceId: raw.source_id,
-    sourcePayload: parseCapabilityReleaseJson(raw.source_payload_json) || {},
+    workflowArtifactRef:
+      sourcePayload.workflowArtifactRef
+      && typeof sourcePayload.workflowArtifactRef === 'object'
+      && typeof (sourcePayload.workflowArtifactRef as Record<string, unknown>).workflowId === 'string'
+        ? sourcePayload.workflowArtifactRef as CapabilitySourceSnapshotDTO['workflowArtifactRef']
+        : null,
+    sourcePayload,
     summary: raw.summary,
     createdBy: raw.created_by,
     createdAt: toCapabilityReleaseIsoString(raw.created_at),

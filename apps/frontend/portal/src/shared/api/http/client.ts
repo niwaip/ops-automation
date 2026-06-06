@@ -186,6 +186,9 @@ class ApiClient {
             originalRequest.headers = headers;
             return this.client(originalRequest);
           }
+
+          useAuthStore.getState().logout();
+          window.location.href = '/login';
         }
 
         const normalizedMessage = extractErrorMessage(error);

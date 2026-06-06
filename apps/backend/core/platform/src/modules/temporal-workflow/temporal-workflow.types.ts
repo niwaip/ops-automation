@@ -112,6 +112,8 @@ export interface WorkflowDsl {
 
 export interface ActivityDsl {
   activities: Array<{
+    id?: string;
+    activityRef?: string;
     name: string;
     fn: string;
     timeout: string;
@@ -155,6 +157,14 @@ export interface CreateTemporalWorkflowDTO {
   generatedCode?: string;
 }
 
+export type TemporalWorkflowValidationStatus = 'draft' | 'generated' | 'validated' | 'failed';
+
+export interface TemporalWorkflowArtifactRef {
+  workflowId: string;
+  artifactVersion?: number | null;
+  artifactHash?: string | null;
+}
+
 export interface TemporalWorkflowSourceTemplate {
   templateId?: string;
   skillId?: string;
@@ -183,6 +193,16 @@ export interface TemporalWorkflowSourceContext {
 export interface TemporalWorkflowDTO extends TemporalWorkflow {
   sourceTemplate?: TemporalWorkflowSourceTemplate | null;
   sourceContext?: TemporalWorkflowSourceContext | null;
+}
+
+export interface TemporalWorkflowArtifactDTO extends TemporalWorkflowArtifactRef {
+  workflowName: string;
+  taskQueue: string;
+  generatedCode?: string | null;
+  validationStatus: TemporalWorkflowValidationStatus | string;
+  validationScore: number;
+  validatedAt?: Date | string | null;
+  validationResult?: Record<string, unknown> | null;
 }
 
 export interface UpdateTemporalWorkflowDTO {
@@ -217,6 +237,10 @@ export interface TemplateWorkflowDraft {
     templateAssetVersion?: string;
     renderPlanVersion?: number;
   };
+}
+
+export interface GenerateTemplateWorkflowDraftDTO {
+  templateId: string;
 }
 
 export interface CompileTemplateWorkflowDraftDTO {

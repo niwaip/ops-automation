@@ -417,7 +417,7 @@ export class StudioTemplateController extends StudioControllerBase {
         const existingMetaPath = path.join(this.templatesDir, `${templateId}.json`);
         if (fs.existsSync(existingMetaPath)) {
           // 模版已存在，复用
-          console.log(`复用已有模版: ${templateId}`);
+          this.logger.debug(`复用已有模版: ${templateId}`);
         } else {
           // 模版不存在，需要生成新的
           templateId = uuidv4();

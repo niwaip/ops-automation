@@ -64,6 +64,92 @@ describe('TemplateWorkflowService', () => {
     );
   });
 
+  it('infers japanese as the only target language when document contains japanese text', () => {
+    const documentIr: WorkflowDocumentIR = {
+      host: 'word',
+      elements: [
+        {
+          id: 'p-1',
+          type: 'paragraph',
+          text: '委托方：______________',
+        },
+        {
+          id: 'p-2',
+          type: 'paragraph',
+          text: '委託者（イタクシャ）：______________',
+        },
+      ],
+      anchors: [],
+    };
+
+    const result = service.analyzeTemplate(documentIr, undefined, 'zh', []);
+
+    expect(result.languageProfile).toEqual({
+      sourceLanguage: 'zh',
+      targetLanguages: ['ja'],
+      documentMode: 'single_or_bilingual',
+    });
+  });
+
+  it('infers english as the target language when document contains english without japanese', () => {
+    const documentIr: WorkflowDocumentIR = {
+      host: 'word',
+      elements: [
+        {
+          id: 'p-1',
+          type: 'paragraph',
+          text: '项目名称：______________',
+        },
+        {
+          id: 'p-2',
+          type: 'paragraph',
+          text: 'Project Name: ____________',
+        },
+      ],
+      anchors: [],
+    };
+
+    const result = service.analyzeTemplate(documentIr, undefined, 'zh', []);
+
+    expect(result.languageProfile).toEqual({
+      sourceLanguage: 'zh',
+      targetLanguages: ['en'],
+      documentMode: 'single_or_bilingual',
+    });
+  });
+
+  it('prefers japanese over english when both appear in the document', () => {
+    const documentIr: WorkflowDocumentIR = {
+      host: 'word',
+      elements: [
+        {
+          id: 'p-1',
+          type: 'paragraph',
+          text: '项目名称：______________',
+        },
+        {
+          id: 'p-2',
+          type: 'paragraph',
+          text: 'Project Name: ____________',
+        },
+        {
+          id: 'p-3',
+          type: 'paragraph',
+          text: '案件名（アンケンメイ）：______________',
+        },
+      ],
+      anchors: [],
+    };
+
+    const result = service.analyzeTemplate(documentIr, undefined, 'zh', ['en']);
+
+    expect(result.languageProfile).toEqual({
+      sourceLanguage: 'zh',
+      targetLanguages: ['ja'],
+      documentMode: 'single_or_bilingual',
+    });
+  });
+
   it('builds compare candidates before understanding and recognition', async () => {
     const documentIr: WorkflowDocumentIR = {
       host: 'word',
@@ -668,6 +754,46 @@ describe('TemplateWorkflowService', () => {
       })
     );
     expect(chineseCandidate?.matchText).toBeUndefined();
+  });
+
+  it('does not treat adjacent english and japanese blocks as a supported bilingual pair', async () => {
+    const documentIr: WorkflowDocumentIR = {
+      host: 'word',
+      elements: [
+        {
+          id: 'sec-1',
+          type: 'paragraph',
+          text: '第一条 Basic Information',
+        },
+        {
+          id: 'p-1',
+          type: 'paragraph',
+          text: 'Project Name: ____________',
+        },
+        {
+          id: 'p-2',
+          type: 'paragraph',
+          text: '案件名（アンケンメイ）：______________',
+        },
+      ],
+      anchors: [],
+    };
+    const sampleDocument = {
+      fileName: 'sample.docx',
+      contentBase64: Buffer.from(
+        '第一条 Basic Information\n案件名（アンケンメイ）：無線ネットワーク設備更新'
+      ).toString('base64'),
+    };
+
+    const result = await service.compareTemplate(documentIr, sampleDocument, 'zh', []);
+    const englishCandidate = result.candidateFields.find((candidate) => candidate.sourceBlockId === 'p-1');
+
+    expect(englishCandidate?.languageRelation).toEqual(
+      expect.objectContaining({
+        mode: 'single_language',
+        currentLanguageHint: 'en',
+      })
+    );
   });
 
   it('uses the right-side table cell as the sample value in key-value rows', async () => {
@@ -1670,6 +1796,59 @@ describe('TemplateWorkflowService', () => {
     expect(result.needsReviewFields).toHaveLength(0);
   });
 
+  it('generates render data for dotted field ids with runtime compat selectors', async () => {
+    const fieldSpecs: WorkflowTemplateFieldSpec[] = [
+      {
+        fieldId: 'contract.partyA.name',
+        type: 'string',
+        sourceLanguage: 'zh',
+        targetLanguages: ['ja'],
+        required: true,
+      },
+    ];
+
+    const result = await service.renderData(
+      '',
+      fieldSpecs,
+      {
+        templateId: 'tpl_runtime_compat',
+        version: 1,
+        bindings: [
+          {
+            fieldId: 'contract.partyA.name',
+            variablePath: 'contract.partyA.name_cn',
+            valueSelector: 'contract.partyA.name.zh',
+            language: 'zh',
+            transform: 'identity',
+            required: true,
+          },
+          {
+            fieldId: 'contract.partyA.name',
+            variablePath: 'contract.partyA.name_jp',
+            valueSelector: 'contract.partyA.name.ja',
+            language: 'ja',
+            transform: 'identity',
+            required: true,
+          },
+        ],
+      },
+      'zh',
+      ['ja'],
+      {
+        'contract.partyA.name': {
+          zh: '上海云章科技有限公司',
+          ja: '上海云章科技有限公司（日本語）',
+        },
+      },
+    );
+
+    expect(result.data).toEqual({
+      'contract.partyA.name_cn': '上海云章科技有限公司',
+      'contract.partyA.name_jp': '上海云章科技有限公司（日本語）',
+    });
+    expect(result.missingFields).toHaveLength(0);
+  });
+
   it('preserves list values in binding plan and render data', async () => {
     const fieldSpecs: WorkflowTemplateFieldSpec[] = [
       {
@@ -2060,9 +2239,53 @@ describe('TemplateWorkflowService', () => {
       expect.objectContaining({
         contractPartyAName_zh: '上海云章科技有限公司',
         contractPartyAName_ja: '上海クラウドドキュメント科技有限公司',
+        contractPartyAName_cn: '上海云章科技有限公司',
+        contractPartyAName_jp: '上海クラウドドキュメント科技有限公司',
       }),
     );
     expect(result.sourceTrace.contractPartyAName).toEqual(
+      expect.objectContaining({
+        resolution: 'localized_override',
+      }),
+    );
+  });
+
+  it('accepts flat localized sibling overrides produced by workflow render bindings', async () => {
+    const fieldSpecs: WorkflowTemplateFieldSpec[] = [
+      {
+        fieldId: 'companyName',
+        type: 'legal_entity_name',
+        sourceLanguage: 'zh',
+        targetLanguages: ['ja'],
+        policy: 'llm_translate',
+        required: true,
+      },
+    ];
+    const bindingPlan = service.compileBindingPlan('tpl_demo', 1, fieldSpecs, 'zh', ['ja']);
+    const postSpy = jest.spyOn(axios, 'post');
+
+    const result = await service.renderData(
+      '',
+      fieldSpecs,
+      bindingPlan,
+      'zh',
+      ['ja'],
+      {
+        companyName_zh: '上海云章科技有限公司',
+        companyName_ja: '上海クラウドドキュメント科技有限公司',
+      },
+    );
+
+    expect(postSpy).not.toHaveBeenCalled();
+    expect(result.data).toEqual(
+      expect.objectContaining({
+        companyName_zh: '上海云章科技有限公司',
+        companyName_ja: '上海クラウドドキュメント科技有限公司',
+        companyName_cn: '上海云章科技有限公司',
+        companyName_jp: '上海クラウドドキュメント科技有限公司',
+      }),
+    );
+    expect(result.sourceTrace.companyName).toEqual(
       expect.objectContaining({
         resolution: 'localized_override',
       }),

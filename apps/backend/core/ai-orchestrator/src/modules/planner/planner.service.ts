@@ -1404,21 +1404,38 @@ ${JSON.stringify(data, null, 2)}`;
     const blockingGroups = groupedMissing.filter((item) => item.blocking);
     const previewReady = blockingGroups.length === 0;
     const finalReady = groupedMissing.length === 0;
+    const mode = shouldUseSemanticBypass ? 'complex_document' : 'field_level';
 
     return {
       enabled: true,
-      mode: shouldUseSemanticBypass ? 'complex_document' : 'field_level',
+      mode,
       previewReady,
       finalReady,
       fallbackToFieldLevel: !shouldUseSemanticBypass,
-      summary: finalReady
-        ? '文档参数已满足最终渲染要求。'
-        : previewReady
-          ? `文档可以先进入预览，但仍缺少 ${groupedMissing.length} 个业务组。`
-          : `文档仍缺少 ${blockingGroups.length} 个关键业务组。`,
+      summary: this.buildSemanticSummary(mode, finalReady, previewReady, groupedMissing.length, blockingGroups.length),
       groupedMissing,
       complexity,
     };
+  }
+
+  private buildSemanticSummary(
+    mode: 'field_level' | 'complex_document',
+    finalReady: boolean,
+    previewReady: boolean,
+    groupedMissingCount: number,
+    blockingGroupCount: number,
+  ): string {
+    if (mode === 'complex_document') {
+      return finalReady
+        ? '文档参数已满足最终渲染要求。'
+        : previewReady
+          ? `文档可以先进入预览，但仍缺少 ${groupedMissingCount} 个业务组。`
+          : `文档仍缺少 ${blockingGroupCount} 个关键业务组。`;
+    }
+
+    return finalReady
+      ? '执行参数已满足要求。'
+      : `仍缺少 ${blockingGroupCount} 个必填参数。`;
   }
 
   private buildGroupedMissing(requiredInputs: RequiredInputDTO[]): SemanticGroupedMissingDTO[] {

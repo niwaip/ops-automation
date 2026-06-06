@@ -42,6 +42,11 @@ export class Builder {
       .replace(/'/g, '&apos;');
   }
 
+  private hasOwnKey(target: unknown, key: string): target is Record<string, any> {
+    return Boolean(target) && (typeof target === 'object' || typeof target === 'function')
+      && Object.prototype.hasOwnProperty.call(target, key);
+  }
+
   /**
    * 数据路径求值
    * 例如: d.user.name -> data.user.name
@@ -79,15 +84,24 @@ export class Builder {
    * 执行标准化路径求值
    */
   private evaluateNormalizedPath(path: string, data: any): any {
+    if (this.hasOwnKey(data, path)) {
+      return data[path];
+    }
+
     const parts = path.split('.');
     let current = data;
 
-    for (const part of parts) {
+    for (let i = 0; i < parts.length; i += 1) {
       if (current === null || current === undefined) {
         return undefined;
       }
 
-      const prev = current;
+      const remainingPath = parts.slice(i).join('.');
+      if (this.hasOwnKey(current, remainingPath)) {
+        return current[remainingPath];
+      }
+
+      const part = parts[i];
       // Handle array index: items[0] or items[]
       const arrayMatch = part.match(/^([^\[]+)\[(\d+)?\]$/);
       if (arrayMatch) {

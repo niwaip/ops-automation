@@ -63,7 +63,7 @@ services:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-ops}:${POSTGRES_PASSWORD:-ops_secret}@postgres:5432/${POSTGRES_DB:-ops}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - JWT_SECRET=jwt_secret_key_change_in_production
+      - JWT_SECRET=${JWT_SECRET:-ops_local_dev_jwt_secret_2026_06_02_8f4a6c9d7b1e53aa}
       - INTERNAL_API_SHARED_SECRET=${INTERNAL_API_SHARED_SECRET:-ops_internal_shared_secret_change_me}
       - PORT=${PLATFORM_PORT:-3001}
       - EXTERNAL_HOST=${HOST_IP:-localhost}
@@ -116,7 +116,7 @@ services:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-ops}:${POSTGRES_PASSWORD:-ops_secret}@postgres:5432/${POSTGRES_DB:-ops}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - JWT_SECRET=jwt_secret_key_change_in_production
+      - JWT_SECRET=${JWT_SECRET:-ops_local_dev_jwt_secret_2026_06_02_8f4a6c9d7b1e53aa}
       - INTERNAL_API_SHARED_SECRET=${INTERNAL_API_SHARED_SECRET:-ops_internal_shared_secret_change_me}
       - PORT=${CONTROL_PLANE_PORT:-3003}
       - AUTH_SERVICE_URL=http://${PLATFORM_SERVICE_HOST:-platform}:${PLATFORM_PORT:-3001}

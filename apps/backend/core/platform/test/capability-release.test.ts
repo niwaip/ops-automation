@@ -37,7 +37,7 @@ describe('CapabilityReleaseService', () => {
       getCatalogItemsByNames: jest.fn(),
     };
 
-    const service = new CapabilityReleaseService(
+    const service = new (CapabilityReleaseService as any)(
       prisma as any,
       {} as any,
       activityService as any,
@@ -46,15 +46,15 @@ describe('CapabilityReleaseService', () => {
       toolCatalogService as any,
       {
         generateSkillDraft: jest.fn(),
-      } as any, // capabilityReleaseSkillDraftService
+      } as any,
       {
         publishSkill: jest.fn(),
         bridgeRecorderExport: jest.fn(),
-      } as any, // capabilityReleasePublishService
+      } as any,
       {
         deploy: jest.fn(),
-      } as any, // capabilityReleaseDeploymentService
-      {} as any, // activityService
+      } as any,
+      {} as any,
     );
 
     return { service, prisma, skillService, toolCatalogService, activityService };
@@ -97,6 +97,38 @@ describe('CapabilityReleaseService', () => {
       true,
       '归档 Capability',
     );
+  });
+
+  it('requires a real temporal build instead of reusing snapshot generated code', async () => {
+    const { service, prisma } = createService();
+
+    prisma.$queryRawUnsafe.mockResolvedValueOnce([]);
+
+    await expect((service as any).resolveTemporalExecutableBuildOrThrow(
+      {
+        id: 'release-1',
+        currentBuildId: null,
+        sourceId: 'workflow-1',
+      },
+      {
+        id: 'snapshot-1',
+        sourcePayload: {
+          generatedCode: 'LEGACY_CODE',
+        },
+      },
+      undefined,
+      'user-1',
+    )).rejects.toThrow('当前 Release 缺少真实构建产物，请先执行一次构建 / 代码生成');
+
+    expect(prisma.$executeRawUnsafe).not.toHaveBeenCalled();
+    expect(prisma.$queryRawUnsafe).toHaveBeenCalledTimes(1);
+    expect(prisma.$queryRawUnsafe).toHaveBeenCalledWith(
+      expect.stringContaining('FROM capability_builds'),
+      'release-1',
+    );
+    expect(
+      prisma.$queryRawUnsafe.mock.calls.some(([sql]) => String(sql).includes('FROM temporal_workflows')),
+    ).toBe(false);
   });
 
   it('prefers declared temporal input param types over description heuristics', () => {
@@ -1473,7 +1505,7 @@ describe('CapabilityReleaseService', () => {
           type: 'api',
           name: '渲染文档',
           api: {
-            endpoint: '/api/carbone/render',
+            endpoint: '/api/carbone/render-resolved',
             body: {
               templateId: 'tpl-contract',
               outputFormat: 'pdf',
@@ -1492,7 +1524,7 @@ describe('CapabilityReleaseService', () => {
     });
   });
 
-  it('executes published document skill via template render when templateId is available', async () => {
+  it('executes published document skill via render-resolved when templateId is available', async () => {
     const { service, prisma } = createService();
 
     prisma.$queryRawUnsafe.mockResolvedValueOnce([{ id: 'release-row-1' }]);
@@ -1511,13 +1543,20 @@ describe('CapabilityReleaseService', () => {
       },
     });
     jest.spyOn(service as any, 'insertAuditEvent').mockResolvedValue(undefined);
-    mockedAxios.post.mockResolvedValue({
-      data: {
-        downloadUrl: '/studio/download/doc-1',
-        fileName: 'contract.docx',
-        format: 'docx',
-      },
-    } as any);
+    mockedAxios.post
+      .mockResolvedValueOnce({
+        data: {
+          success: false,
+          error: 'Skill not found',
+        },
+      } as any)
+      .mockResolvedValueOnce({
+        data: {
+          downloadUrl: '/studio/download/doc-1',
+          fileName: 'contract.docx',
+          format: 'docx',
+        },
+      } as any);
 
     const result = await service.executePublishedSkill(
       'skill-1',
@@ -1533,9 +1572,27 @@ describe('CapabilityReleaseService', () => {
       },
     );
 
-    expect(mockedAxios.post).toHaveBeenCalledWith(
-      'http://localhost:3009/studio/render',
+    expect(mockedAxios.post).toHaveBeenNthCalledWith(
+      1,
+      'http://localhost:3009/studio/generate-render-data-with-skill',
       {
+        publishedSkillId: 'skill-1',
+        templateId: 'tpl-001',
+        skillId: undefined,
+        simulatedData: {
+          customerName: 'Alice',
+        },
+        outputFormat: 'docx',
+      },
+      {
+        timeout: 120000,
+      },
+    );
+    expect(mockedAxios.post).toHaveBeenNthCalledWith(
+      2,
+      'http://localhost:3009/studio/render-resolved',
+      {
+        publishedSkillId: 'skill-1',
         templateId: 'tpl-001',
         data: {
           customerName: 'Alice',
@@ -1558,7 +1615,7 @@ describe('CapabilityReleaseService', () => {
     );
   });
 
-  it('executes published document skill via render-with-skill fallback when templateId is unavailable', async () => {
+  it('executes published document skill via render-resolved when only source skillId is available', async () => {
     const { service, prisma } = createService();
 
     prisma.$queryRawUnsafe.mockResolvedValueOnce([{ id: 'release-row-1' }]);
@@ -1570,24 +1627,34 @@ describe('CapabilityReleaseService', () => {
       id: 'snapshot-1',
       sourcePayload: {
         category: 'document',
+        sourceTemplate: {
+          skillId: 'carbone-skill-2',
+        },
         steps: [
           {
             type: 'api',
             api: {
-              endpoint: '/api/carbone/render',
+              endpoint: '/api/carbone/render-resolved',
             },
           },
         ],
       },
     });
     jest.spyOn(service as any, 'insertAuditEvent').mockResolvedValue(undefined);
-    mockedAxios.post.mockResolvedValue({
-      data: {
-        downloadUrl: '/studio/download/doc-2',
-        fileName: 'fallback.docx',
-        format: 'docx',
-      },
-    } as any);
+    mockedAxios.post
+      .mockResolvedValueOnce({
+        data: {
+          success: false,
+          error: 'Skill not found',
+        },
+      } as any)
+      .mockResolvedValueOnce({
+        data: {
+          downloadUrl: '/studio/download/doc-2',
+          fileName: 'fallback.docx',
+          format: 'docx',
+        },
+      } as any);
 
     const result = await service.executePublishedSkill(
       'skill-2',
@@ -1600,11 +1667,29 @@ describe('CapabilityReleaseService', () => {
       'user-1',
     );
 
-    expect(mockedAxios.post).toHaveBeenCalledWith(
-      'http://localhost:3009/studio/render-with-skill',
+    expect(mockedAxios.post).toHaveBeenNthCalledWith(
+      1,
+      'http://localhost:3009/studio/generate-render-data-with-skill',
       {
-        skillId: 'skill-2',
-        params: {
+        publishedSkillId: 'skill-2',
+        templateId: undefined,
+        skillId: 'carbone-skill-2',
+        simulatedData: {
+          customerName: 'Bob',
+        },
+        outputFormat: 'pdf',
+      },
+      {
+        timeout: 120000,
+      },
+    );
+    expect(mockedAxios.post).toHaveBeenNthCalledWith(
+      2,
+      'http://localhost:3009/studio/render-resolved',
+      {
+        publishedSkillId: 'skill-2',
+        skillId: 'carbone-skill-2',
+        data: {
           customerName: 'Bob',
         },
         outputFormat: 'pdf',
@@ -1635,9 +1720,16 @@ describe('CapabilityReleaseService', () => {
     jest.spyOn(service as any, 'insertAuditEvent').mockResolvedValue(undefined);
     
     // Carbone engine returns a plain string for some reason (hypothetical)
-    mockedAxios.post.mockResolvedValue({
-      data: 'SUCCESS_STRING',
-    } as any);
+    mockedAxios.post
+      .mockResolvedValueOnce({
+        data: {
+          success: false,
+          error: 'Skill not found',
+        },
+      } as any)
+      .mockResolvedValueOnce({
+        data: 'SUCCESS_STRING',
+      } as any);
 
     const result = await service.executePublishedSkill(
       'skill-doc-string',

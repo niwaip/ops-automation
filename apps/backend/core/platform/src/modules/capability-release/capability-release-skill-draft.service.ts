@@ -14,6 +14,15 @@ const asRecord = (value: unknown): Record<string, unknown> | undefined => {
   return value as Record<string, unknown>;
 };
 
+const isExecutionFlowDocumentRenderEndpoint = (value: unknown): boolean => {
+  if (typeof value !== 'string' || !value.trim()) {
+    return false;
+  }
+
+  const normalized = value.trim();
+  return normalized.includes('/api/carbone/render-resolved');
+};
+
 @Injectable()
 export class CapabilityReleaseSkillDraftService {
   constructor(
@@ -223,7 +232,7 @@ export class CapabilityReleaseSkillDraftService {
       const api = step?.api && typeof step.api === 'object'
         ? step.api as Record<string, unknown>
         : {};
-      return typeof api.endpoint === 'string' && api.endpoint.includes('/api/carbone/render');
+      return isExecutionFlowDocumentRenderEndpoint(api.endpoint);
     });
     const renderApi = renderStep?.api && typeof renderStep.api === 'object'
       ? renderStep.api as Record<string, unknown>

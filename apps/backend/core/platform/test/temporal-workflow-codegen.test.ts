@@ -274,6 +274,70 @@ describe('TemporalWorkflowCodegenService', () => {
     expect(result.code).toContain('heartbeat_timeout=timedelta(seconds=20)');
   });
 
+  it('generates deterministic code for custom carbone activity with step timeout override', async () => {
+    const { service } = createService();
+
+    const result = await service.generateWorkflowCode(
+      {
+        name: '合同渲染工作流',
+        workflowClassName: 'ContractRenderWorkflow',
+        workflowDefnName: '合同渲染工作流',
+        taskQueue: 'SKILL_TASK_QUEUE',
+        inputParams: {
+          customerName: {
+            required: true,
+            description: '客户名称',
+          },
+        },
+        steps: [
+          {
+            id: 'step_1',
+            name: '渲染合同',
+            type: 'activity',
+            activityRef: 'custom:contract-render',
+            activityName: '合同渲染 Activity',
+            startToCloseTimeout: '4m',
+          },
+        ],
+      } as any,
+      {
+        activities: [
+          {
+            id: 'contract-render',
+            activityRef: 'custom:contract-render',
+            name: '合同渲染 Activity',
+            fn: 'contractRenderActivity',
+            timeout: '2m',
+            handler: 'carbone',
+            config: {
+              templateId: 'tpl-contract',
+              steps: [
+                {
+                  type: 'carbone',
+                  inputParams: [
+                    { key: 'customerName', value: '', required: true },
+                  ],
+                  config: {
+                    templateId: 'tpl-contract',
+                    format: 'docx',
+                    outputName: '合同文件',
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      } as any,
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.code).toContain('"requestTimeoutSeconds": 240,');
+    expect(result.code).toContain('request_timeout_seconds = input_data.get("requestTimeoutSeconds")');
+    expect(result.code).toContain('default_request_timeout_seconds = 120');
+    expect(result.code).toContain('resolved_request_timeout_seconds = float(request_timeout_seconds)');
+    expect(result.code).toContain('timeout=resolved_request_timeout_seconds');
+  });
+
   it('generates deterministic code for builtin httpRequest bodyMap response mode', async () => {
     const { service } = createService();
 

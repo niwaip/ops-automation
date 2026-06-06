@@ -162,6 +162,8 @@ export class TemporalWorkflowBrowserDraftService {
     const activityDefinitions = browserPhases.map((phase, index) => {
       const phaseActivityFn = `${activityFnBase}_${String(index + 1).padStart(2, '0')}`;
       return {
+        id: phaseActivityFn,
+        activityRef: `custom:${phaseActivityFn}`,
         name: phase.name,
         fn: phaseActivityFn,
         timeout: phase.timeout,

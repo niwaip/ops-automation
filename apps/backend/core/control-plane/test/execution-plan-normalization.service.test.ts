@@ -297,7 +297,7 @@ describe('ExecutionPlanNormalizationService', () => {
     expect(semantic).toEqual(expect.objectContaining({
       previewReady: false,
       finalReady: false,
-      summary: '文档仍缺少 2 个关键业务组。',
+      summary: '仍缺少 2 个必填参数。',
       complexity: expect.objectContaining({
         requiredFields: 3,
         missingFields: 3,

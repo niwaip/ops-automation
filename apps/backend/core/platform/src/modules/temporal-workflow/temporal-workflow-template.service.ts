@@ -8,6 +8,7 @@ import {
   resolveTemplateAssetFieldCount,
   resolveTemplateAssetRenderPlanVersion,
   resolveTemplateAssetSource,
+  resolveTemplateWorkflowTargetLanguages,
   slugFromTemplate,
   stripTemplateExtension,
 } from './temporal-workflow-template.helpers';
@@ -17,6 +18,7 @@ import {
   type CarboneSkillMeta,
   type CarboneTemplateMeta,
   type CompileTemplateWorkflowDraftDTO,
+  type GenerateTemplateWorkflowDraftDTO,
   type TemplateWorkflowAiAnalysis,
   type TemplateWorkflowDraft,
   type WorkflowDsl,
@@ -47,6 +49,13 @@ export interface TemporalWorkflowTemplateSupport {
 @Injectable()
 export class TemporalWorkflowTemplateService {
   private readonly logger = new Logger(TemporalWorkflowTemplateService.name);
+
+  async generateTemplateWorkflowDraftFromRequest(
+    data: GenerateTemplateWorkflowDraftDTO,
+    support: TemporalWorkflowTemplateSupport,
+  ): Promise<TemplateWorkflowDraft> {
+    return this.generateTemplateWorkflowDraft(data.templateId, support);
+  }
 
   async generateTemplateWorkflowDraft(
     templateId: string,
@@ -81,6 +90,7 @@ export class TemporalWorkflowTemplateService {
       uniqueVariables: (variables) => support.uniqueVariables(variables),
       buildWorkflowSemanticHint: (...values) => support.buildWorkflowSemanticHint(...values),
     });
+    const resolvedTargetLanguages = resolveTemplateWorkflowTargetLanguages(template, paramSeeds);
     const resolvedTemplateFieldCount = resolveTemplateAssetFieldCount(templateAssetManifest, paramSeeds.length);
     const inputParamsArray = paramSeeds.map((param) => ({
       key: param.key,
@@ -200,9 +210,7 @@ export class TemporalWorkflowTemplateService {
               templateAssetVersion: templateAssetVersion || null,
               renderPlanVersion: renderPlanVersion || null,
               sourceLanguage: templateAssetManifest?.languageProfile?.sourceLanguage || null,
-              targetLanguages: Array.isArray(templateAssetManifest?.languageProfile?.targetLanguages)
-                ? templateAssetManifest.languageProfile.targetLanguages
-                : [],
+              targetLanguages: resolvedTargetLanguages,
               templateFieldCount: templateAssetManifest ? resolvedTemplateFieldCount : null,
               templateAssetSource: templateAssetManifest ? templateAssetSource : null,
               steps: [

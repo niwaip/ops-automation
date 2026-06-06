@@ -41,9 +41,9 @@ export const toExternalDownloadUrl = (value?: unknown): string | undefined => {
   return `${getCarboneExternalUrl()}/${trimmed.replace(/^\/+/, '')}`;
 };
 
-export const extractNestedDownloadInfo = (
+export const extractNestedDownloadUrl = (
   value: unknown,
-): { downloadUrl?: string; documentId?: string } => {
+): string | undefined => {
   const queue: unknown[] = [value];
   const visited = new Set<unknown>();
   let inspected = 0;
@@ -67,14 +67,9 @@ export const extractNestedDownloadInfo = (
       toExternalDownloadUrl(record.downloadUrl)
       || toExternalDownloadUrl(record.download_url)
       || toExternalDownloadUrl(record.url);
-    const documentId = typeof record.documentId === 'string'
-      ? record.documentId
-      : typeof record.document_id === 'string'
-        ? record.document_id
-        : undefined;
 
-    if (downloadUrl || documentId) {
-      return { downloadUrl, documentId };
+    if (downloadUrl) {
+      return downloadUrl;
     }
 
     Object.values(record).forEach((item) => {
@@ -84,7 +79,7 @@ export const extractNestedDownloadInfo = (
     });
   }
 
-  return {};
+  return undefined;
 };
 
 export const normalizeDocumentExecutionResult = (value: unknown): unknown => {
@@ -93,9 +88,7 @@ export const normalizeDocumentExecutionResult = (value: unknown): unknown => {
     return value;
   }
 
-  const nestedInfo = extractNestedDownloadInfo(record);
-  const downloadUrl = nestedInfo.downloadUrl
-    || (nestedInfo.documentId ? toExternalDownloadUrl(`/studio/download/${nestedInfo.documentId}`) : undefined);
+  const downloadUrl = extractNestedDownloadUrl(record);
 
   if (!downloadUrl || record.downloadUrl === downloadUrl) {
     return value;

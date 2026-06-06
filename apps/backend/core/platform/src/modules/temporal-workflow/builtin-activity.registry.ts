@@ -44,7 +44,7 @@ export class BuiltinActivityRegistry {
       version: '1.0.0',
       name: '文档渲染',
       fn: FIXED_DOCUMENT_RENDER_ACTIVITY_FN,
-      timeout: '60s',
+      timeout: '300s',
       retryPolicy: { maxRetries: 2, backoffMs: 1000 },
       handler: 'carbone',
       config: {},

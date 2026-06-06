@@ -48,7 +48,10 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         }),
 
       setUser: (user) =>
-        set({ user, isAuthenticated: true }),
+        set((state) => ({
+          user,
+          isAuthenticated: Boolean(state.accessToken && state.refreshToken),
+        })),
 
       login: (accessToken, refreshToken, user) =>
         set({

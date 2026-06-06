@@ -5,6 +5,7 @@ import {
   DOCUMENT_RENDER_ACTIVITY_KEY,
 } from './builtin-activity.registry';
 import { collectEnrichedActivities } from './temporal-workflow-activity.helpers';
+import { resolveCustomActivityRef } from './temporal-workflow-custom-activity-ref.helper';
 import {
   TemporalWorkflowActivityResolutionService,
   type TemporalWorkflowActivityResolutionSupport,
@@ -273,7 +274,7 @@ export class TemporalWorkflowSupportService {
     }));
 
     const customActivityResources = (activityDsl.activities || []).map((activity, index) => ({
-      ref: `custom:${String(activity.fn || activity.name || `activity_${index + 1}`).trim()}`,
+      ref: resolveCustomActivityRef(activity, index),
       name: activity.name,
       fn: activity.fn,
       timeout: activity.timeout,

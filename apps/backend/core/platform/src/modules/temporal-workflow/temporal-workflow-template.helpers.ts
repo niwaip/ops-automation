@@ -298,6 +298,57 @@ export function buildTemplateWorkflowParamSeeds(args: {
   }, []);
 }
 
+export function resolveTemplateWorkflowTargetLanguages(
+  template: CarboneTemplateMeta,
+  paramSeeds: TemplateWorkflowParamSeed[],
+): string[] {
+  const manifestTargetLanguages = Array.isArray(template.templateAssetManifest?.languageProfile?.targetLanguages)
+    ? template.templateAssetManifest.languageProfile.targetLanguages
+      .map((item) => normalizeTemplateWorkflowLanguageCode(item))
+      .filter((item): item is string => item === 'ja' || item === 'en')
+    : [];
+  if (manifestTargetLanguages.length > 0) {
+    return Array.from(new Set(manifestTargetLanguages));
+  }
+
+  const detected = new Set<string>();
+  const collectLanguage = (value: unknown) => {
+    const normalized = normalizeTemplateWorkflowLanguageCode(value);
+    if (normalized === 'ja' || normalized === 'en') {
+      detected.add(normalized);
+    }
+  };
+  const collectFromPath = (value: unknown) => {
+    const variant = extractTemplateWorkflowLanguageVariant(String(value || ''));
+    collectLanguage(variant);
+  };
+
+  for (const seed of paramSeeds) {
+    for (const variant of seed.localizedVariants || []) {
+      collectLanguage(variant);
+    }
+    if (typeof seed.renderPath === 'string') {
+      collectFromPath(seed.renderPath);
+    } else if (Array.isArray(seed.renderPath)) {
+      for (const path of seed.renderPath) {
+        collectFromPath(path);
+      }
+    }
+  }
+
+  for (const variable of template.variables || []) {
+    collectFromPath(variableToKey(variable));
+  }
+
+  if (detected.has('ja')) {
+    return ['ja'];
+  }
+  if (detected.has('en')) {
+    return ['en'];
+  }
+  return [];
+}
+
 export function normalizeTemplateWorkflowRenderPath(path: string | undefined): string | undefined {
   if (!path) {
     return undefined;

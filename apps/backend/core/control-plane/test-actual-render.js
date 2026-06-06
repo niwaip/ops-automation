@@ -408,7 +408,10 @@ async function main() {
   const JSZip = require('jszip');
 
   // Check the original generated output file
-  const originalOutputPath = path.join(__dirname, '../../../../.data/carbone-engine/outputs', `${execution.steps[1].outputJson.result.documentId || 'aa1d89e2-444c-47ac-9a55-084a5ccd36e1'}.docx`);
+  const runtimeDownloadUrl = execution.steps[1].outputJson.result.downloadUrl || '';
+  const outputIdMatch = String(runtimeDownloadUrl).match(/\/studio\/download\/([^/?#]+)/);
+  const outputId = outputIdMatch?.[1] || 'aa1d89e2-444c-47ac-9a55-084a5ccd36e1';
+  const originalOutputPath = path.join(__dirname, '../../../../.data/carbone-engine/outputs', `${outputId}.docx`);
   if (fs.existsSync(originalOutputPath)) {
     console.log("\n--- Checking original generated output file: " + originalOutputPath + " ---");
     const originalBuffer = fs.readFileSync(originalOutputPath);
