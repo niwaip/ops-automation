@@ -15,8 +15,7 @@ const stripWrappingQuotes = (value: string): string => {
   return normalized;
 };
 
-const isContainerRuntime = (): boolean =>
-  process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production';
+const isContainerRuntime = (): boolean => process.env.DOCKER_ENV === 'true';
 
 const readConfiguredUrl = (...candidates: Array<string | undefined>): string | undefined => {
   const configured = candidates.find((value) => typeof value === 'string' && value.trim());

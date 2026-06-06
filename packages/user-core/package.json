@@ -1,0 +1,47 @@
+{
+  "name": "@ops/user-core",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./api": {
+      "types": "./dist/api/index.d.ts",
+      "default": "./dist/api/index.js"
+    },
+    "./lib": {
+      "types": "./dist/lib/index.d.ts",
+      "default": "./dist/lib/index.js"
+    },
+    "./ports": {
+      "types": "./dist/ports/index.d.ts",
+      "default": "./dist/ports/index.js"
+    },
+    "./state": {
+      "types": "./dist/state/index.d.ts",
+      "default": "./dist/state/index.js"
+    },
+    "./types": {
+      "types": "./dist/types/index.d.ts",
+      "default": "./dist/types/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "eslint src --ext .ts"
+  },
+  "dependencies": {
+    "@ops/contracts": "workspace:*",
+    "axios": "^1.6.2",
+    "zustand": "^4.4.7"
+  },
+  "peerDependencies": {
+    "typescript": "^5.3.3"
+  }
+}
