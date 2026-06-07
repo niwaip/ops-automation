@@ -68,11 +68,7 @@ jobs:
           PGPASSWORD: ops_secret
 
       - name: Build services
-        run: |
-          # Generate Prisma client for platform service
-          cd apps/backend/core/platform && npx prisma generate && cd ../../../..
-          # Build all services
-          pnpm -r run build
+        run: pnpm build
 
       - name: Start services (background)
         run: |
