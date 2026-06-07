@@ -85,7 +85,7 @@ jobs:
 
       - name: Validate infrastructure dev overrides
         run: |
-          ./docker/start-smart.sh docker-compose.yml -f docker-compose.dev.yml config --quiet
+          ./docker/start-smart.sh docker-compose.yml -f compose/docker-compose.dev.yml config --quiet
 
       - name: Validate V4 core compose
         run: |
