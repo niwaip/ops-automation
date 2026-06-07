@@ -3783,11 +3783,11 @@ P0 不建议一开始追求大而全测试集，建议围绕关键闭环做小�
 
 前端 Add-in：
 
-1. 调整 `apps/frontend/office-addin/src/components/WordIdentifyPanel.tsx`，使第三步从“直接请求合并后的字段结果”升级为“展示块级 AI 识别进度 + 汇总最终字段结果”。
+1. 调整 `apps/office-addin/src/components/WordIdentifyPanel.tsx`，使第三步从“直接请求合并后的字段结果”升级为“展示块级 AI 识别进度 + 汇总最终字段结果”。
 2. 在 `WordIdentifyPanel.tsx` 中增加块级状态视图，包括 `blockResults`、当前识别中的块、块级错误与块级重试提示。
-3. 调整 `apps/frontend/office-addin/src/api/carbone-api.ts` 的 `recognizeTemplateWorkflow()` 类型定义，补充 `blockResults`、`contextAnalysis`、`sourceBlockId` 等字段。
-4. 在 `apps/frontend/office-addin/src/components/AIIdentifyPanel/useAIIdentifyPanel.ts` 中补充 Word 模式下的调试展示逻辑，使其能输出识别阶段的 prompt、原始返回、块级重试与回退信息。
-5. 参考 `apps/frontend/office-addin/src/components/ExcelSheetPairsTab.tsx` 与 `apps/frontend/office-addin/src/services/suggestion-service.ts`，为 Word 模式补齐“全局理解缓存 + 分块识别进度 + 调试日志”的一致体验。
+3. 调整 `apps/office-addin/src/api/carbone-api.ts` 的 `recognizeTemplateWorkflow()` 类型定义，补充 `blockResults`、`contextAnalysis`、`sourceBlockId` 等字段。
+4. 在 `apps/office-addin/src/components/AIIdentifyPanel/useAIIdentifyPanel.ts` 中补充 Word 模式下的调试展示逻辑，使其能输出识别阶段的 prompt、原始返回、块级重试与回退信息。
+5. 参考 `apps/office-addin/src/components/ExcelSheetPairsTab.tsx` 与 `apps/office-addin/src/services/suggestion-service.ts`，为 Word 模式补齐“全局理解缓存 + 分块识别进度 + 调试日志”的一致体验。
 
 后端接口层：
 
@@ -3823,7 +3823,7 @@ AI 调用与 Prompt：
    - 候选参数的位置、语段、样本值和字段类型提示
 2. 保持整体理解 prompt 与块级识别 prompt 分离，避免一个 prompt 同时承担“全局理解”和“字段生成”两种职责。
 3. 统一 AI 响应解析策略，支持标准 JSON、轻度格式污染修复和失败重试，并把每次调用的请求摘要、响应摘要、fallback 信息与最近一次有效请求原文/原始返回写入结构化 `contextAnalysis`。
-4. 如需复用 Excel 的 executor 经验，可参考 `apps/frontend/office-addin/src/services/analysis-executor.ts` 的 `ChatAnalysisExecutor` 行为，但 Word 工作流应优先在后端集中管理 prompt 和重试策略。
+4. 如需复用 Excel 的 executor 经验，可参考 `apps/office-addin/src/services/analysis-executor.ts` 的 `ChatAnalysisExecutor` 行为，但 Word 工作流应优先在后端集中管理 prompt 和重试策略。
 
 术语与规则资产：
 

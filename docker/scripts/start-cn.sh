@@ -91,7 +91,7 @@ if [ "$USE_DOCKER" = false ]; then
 
     # 安装 Office Add-in 依赖
     echo "安装 Office Add-in 依赖..."
-    cd "$REPO_ROOT/apps/frontend/office-addin"
+    cd "$REPO_ROOT/apps/office-addin"
     if [ ! -d "node_modules" ]; then
         npm install --registry=https://registry.npmmirror.com
     fi
@@ -111,7 +111,7 @@ if [ "$USE_DOCKER" = false ]; then
     CARBONE_PID=$!
 
     echo "启动 Office Add-in..."
-    cd "$REPO_ROOT/apps/frontend/office-addin"
+    cd "$REPO_ROOT/apps/office-addin"
     npm run dev &
     ADDIN_PID=$!
 
@@ -152,7 +152,7 @@ echo "方法2: 手动加载"
 echo "  1. 打开 Word/Excel/PPT"
 echo "  2. 插入 → 加载项 → 我的加载项"
 echo "  3. 上传 manifest 文件:"
-echo "     $REPO_ROOT/apps/frontend/office-addin/manifest-word.xml"
+echo "     $REPO_ROOT/apps/office-addin/manifest-word.xml"
 echo ""
 echo "方法3: 下载 manifest 文件"
 echo "  访问: https://localhost:3000/manifest-word.xml"
