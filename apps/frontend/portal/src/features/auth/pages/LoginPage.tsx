@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { useMutation } from 'react-query';
 import { authApi } from '@/api/auth';
 import { useAuthStore } from '@/shared/store/authStore';
+import { usePreferencesStore } from '@/shared/store/preferencesStore';
 
 const REMEMBERED_CREDENTIALS_KEY = 'remembered_credentials';
 
@@ -24,7 +25,8 @@ interface SavedCredentials {
 const LoginPage: React.FC = () => {
   const { t } = useTranslation(['auth', 'common']);
   const navigate = useNavigate();
-  const { login, language, setLanguage, theme } = useAuthStore();
+  const { login } = useAuthStore();
+  const { language, setLanguage, theme } = usePreferencesStore();
   const [form] = Form.useForm();
   const isDarkTheme = theme === 'dark';
 

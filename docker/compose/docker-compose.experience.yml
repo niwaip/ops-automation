@@ -22,12 +22,37 @@ services:
     volumes:
       - ${PROJECT_ROOT:-..}/apps/frontend/portal:/app
       - ${PROJECT_ROOT:-..}/packages/contracts:/packages/contracts
+      - ${PROJECT_ROOT:-..}/packages/user-core:/packages/user-core
       - portal_node_modules:/app/node_modules
+    networks:
+      - ops-network
+
+  user-web:
+    image: ${DOCKER_REGISTRY:-}node:20-bullseye
+    container_name: ops-user-web
+    working_dir: /app
+    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && npm run dev"
+    environment:
+      NODE_ENV: development
+      DOCKER_ENV: true
+      USER_WEB_PORT: ${USER_WEB_PORT:-5174}
+      VITE_API_BASE_URL: /api
+      VITE_CONTROL_PLANE_API_URL: http://${HOST_IP:-localhost}:${CONTROL_PLANE_PORT:-3003}/api
+      VITE_AI_API_BASE_URL: /api/ai
+      VITE_HOST_IP: ${HOST_IP:-localhost}
+    ports:
+      - "${USER_WEB_PORT:-5174}:${USER_WEB_PORT:-5174}"
+    volumes:
+      - ${PROJECT_ROOT:-..}/apps/frontend/user-web:/app
+      - ${PROJECT_ROOT:-..}/packages/contracts:/packages/contracts
+      - ${PROJECT_ROOT:-..}/packages/user-core:/packages/user-core
+      - user_web_node_modules:/app/node_modules
     networks:
       - ops-network
 
 volumes:
   portal_node_modules:
+  user_web_node_modules:
 
 networks:
   ops-network:

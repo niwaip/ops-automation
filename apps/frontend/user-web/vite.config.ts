@@ -1,0 +1,88 @@
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import { existsSync } from "fs";
+import path from "path";
+
+const readEnv = (...keys: string[]): string | undefined => {
+  const configured = keys.find((key) => typeof process.env[key] === "string" && process.env[key]?.trim());
+  return configured ? process.env[configured]?.trim() : undefined;
+};
+
+const getProxyTarget = (
+  service: string,
+  defaultPort: number,
+  hostEnvKeys: string[] = [],
+  portEnvKeys: string[] = [],
+): string => {
+  const host = readEnv(...hostEnvKeys) || (process.env.DOCKER_ENV ? service : "localhost");
+  const port = readEnv(...portEnvKeys) || String(defaultPort);
+  return `http://${host}:${port}`;
+};
+
+const resolveDependencyEntry = (relativePath: string): string => {
+  const localPath = path.resolve(__dirname, relativePath);
+  if (existsSync(localPath)) {
+    return localPath;
+  }
+  return path.resolve(__dirname, "../../../", relativePath);
+};
+
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+      "@ops/user-core": path.resolve(__dirname, "../../../packages/user-core/src/index.ts"),
+      axios: resolveDependencyEntry("./node_modules/axios/index.js"),
+      "zustand/vanilla": resolveDependencyEntry("./node_modules/zustand/vanilla.js"),
+    },
+  },
+  server: {
+    port: Number(readEnv("USER_WEB_PORT") || "5174"),
+    host: "0.0.0.0",
+    allowedHosts: ["user-web", "ops-user-web", "host.docker.internal"],
+    headers: {
+      "Cache-Control": "no-store",
+    },
+    proxy: {
+      "/api/auth": {
+        target: getProxyTarget("ops-platform", 3001, ["AUTH_SERVICE_HOST", "PLATFORM_HOST"], ["AUTH_PORT", "PLATFORM_PORT"]),
+        changeOrigin: true,
+        rewrite: (requestPath) => requestPath.replace(/^\/api/, ""),
+      },
+      "/api/executions": {
+        target: getProxyTarget("ops-control-plane", 3003, ["CONTROL_PLANE_HOST"], ["CONTROL_PLANE_PORT"]),
+        changeOrigin: true,
+      },
+      "/api/reports": {
+        target: getProxyTarget("ops-report", 3008, ["REPORT_HOST"], ["REPORT_PORT"]),
+        changeOrigin: true,
+        rewrite: (requestPath) => requestPath.replace(/^\/api/, ""),
+      },
+      "/api/report-templates": {
+        target: getProxyTarget("ops-report", 3008, ["REPORT_HOST"], ["REPORT_PORT"]),
+        changeOrigin: true,
+        rewrite: (requestPath) => requestPath.replace(/^\/api/, ""),
+      },
+      "/api/skills": {
+        target: getProxyTarget("ops-platform", 3001, ["PLATFORM_HOST"], ["PLATFORM_PORT"]),
+        changeOrigin: true,
+        rewrite: (requestPath) => requestPath.replace(/^\/api/, ""),
+      },
+      "/api/notifications": {
+        target: getProxyTarget("ops-platform", 3001, ["PLATFORM_HOST"], ["PLATFORM_PORT"]),
+        changeOrigin: true,
+        rewrite: (requestPath) => requestPath.replace(/^\/api/, ""),
+      },
+      "/api/ai": {
+        target: getProxyTarget("ai-orchestrator", 3007, ["AI_ORCHESTRATOR_HOST"], ["AI_ORCHESTRATOR_PORT"]),
+        changeOrigin: true,
+        rewrite: (requestPath) => requestPath.replace(/^\/api/, ""),
+      },
+    },
+  },
+  build: {
+    outDir: "dist",
+    sourcemap: true,
+  },
+});

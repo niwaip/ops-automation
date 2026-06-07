@@ -32,5 +32,27 @@ module.exports = {
     'prefer-const': 'error',
     'no-var': 'error',
   },
+  overrides: [
+    {
+      files: ['packages/user-core/**/*.{ts,tsx}'],
+      rules: {
+        'no-restricted-imports': [
+          'error',
+          {
+            paths: ['react', 'antd', 'react-router-dom'],
+            patterns: ['**/*.tsx'],
+          },
+        ],
+        'no-restricted-globals': [
+          'error',
+          'window',
+          'document',
+          'localStorage',
+          'sessionStorage',
+          'XMLHttpRequest',
+        ],
+      },
+    },
+  ],
   ignorePatterns: ['dist', 'node_modules', '*.js', '!.eslintrc.js'],
 };

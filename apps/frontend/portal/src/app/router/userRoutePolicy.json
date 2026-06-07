@@ -1,0 +1,39 @@
+{
+  "portalInternalWorkbenchRoutes": [
+    "/dashboard",
+    "/executions",
+    "/executions/new",
+    "/executions/:id",
+    "/reports",
+    "/reports/:id"
+  ],
+  "portalRedirectRoutes": [
+    {
+      "path": "/chat",
+      "targetPath": "/chat"
+    },
+    {
+      "path": "/notifications",
+      "targetPath": "/notifications"
+    },
+    {
+      "path": "/published-skills",
+      "targetPath": "/published-skills"
+    },
+    {
+      "path": "/published-skills/:skillId",
+      "targetPath": "/published-skills"
+    }
+  ],
+  "userWebRequiredRoutes": [
+    "/dashboard",
+    "/chat",
+    "/executions",
+    "/executions/new",
+    "/executions/:id",
+    "/notifications",
+    "/published-skills",
+    "/reports",
+    "/reports/:id"
+  ]
+}

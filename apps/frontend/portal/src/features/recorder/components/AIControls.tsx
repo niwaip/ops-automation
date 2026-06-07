@@ -43,6 +43,7 @@ import recorderRuntimeService, {
   type RecorderTakeoverObservation,
 } from '@/services/recorder.service';
 import { useAuthStore } from '@/shared/store/authStore';
+import { usePreferencesStore } from '@/shared/store/preferencesStore';
 
 const { TextArea } = Input;
 const { Text } = Typography;
@@ -470,7 +471,8 @@ const AIControls: React.FC<AIControlsProps> = ({
 }) => {
   const { t } = useTranslation(['common', 'recorder']);
   const navigate = useNavigate();
-  const { user, theme } = useAuthStore();
+  const { user } = useAuthStore();
+  const theme = usePreferencesStore((state) => state.theme);
   const isDarkTheme = theme === 'dark';
 
   // Predefined commands configuration

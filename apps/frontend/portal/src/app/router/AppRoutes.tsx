@@ -60,7 +60,7 @@ const AppRoutes: React.FC = () => (
       })}
     </Route>
 
-    <Route path="*" element={<Navigate to="/executions" replace />} />
+    <Route path="*" element={<Navigate to="/templates" replace />} />
   </Routes>
 );
 

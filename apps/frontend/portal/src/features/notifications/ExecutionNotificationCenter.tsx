@@ -4,8 +4,8 @@ import { BellOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from 'react-query';
 import { notificationApi } from '@/api/notification';
-import { useAuthStore } from '@/shared/store/authStore';
 import { useNotificationStore } from '@/shared/store/notificationStore';
+import { usePreferencesStore } from '@/shared/store/preferencesStore';
 import type { AppNotification } from '@/shared/notifications/types';
 import {
   EXECUTION_STATUS_COLORS,
@@ -151,7 +151,7 @@ const hasPendingExecutionNotifications = (notifications: AppNotification[]) => (
 const ExecutionNotificationCenter: React.FC = () => {
   const { notification } = App.useApp();
   const navigate = useNavigate();
-  const { language } = useAuthStore();
+  const { language } = usePreferencesStore();
   const items = useNotificationStore((state) => state.items);
   const syncNotifications = useNotificationStore((state) => state.syncNotifications);
   const markAsRead = useNotificationStore((state) => state.markAsRead);

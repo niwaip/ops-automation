@@ -7,8 +7,10 @@ SCRIPT_PATH="$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' 
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
 DOCKER_DIR="$(dirname "$SCRIPT_DIR")"
 REPO_ROOT="$(dirname "$DOCKER_DIR")"
+SMART_START="$DOCKER_DIR/start-smart.sh"
+DOCKER_CONFIG_FILE="$DOCKER_DIR/configs/daemon.json"
 
-echo "[DEPRECATED] 建议优先使用 ./docker/scripts/start-smart.sh docker-compose.addin.yml up -d"
+echo "[DEPRECATED] 建议优先使用 ./docker/start-smart.sh docker-compose.addin.yml up -d"
 echo "[DEPRECATED] 本脚本仅保留为国内镜像环境的本地兼容入口。"
 echo ""
 
@@ -32,7 +34,7 @@ if [ "$USE_DOCKER" = true ]; then
     echo "配置 Docker 镜像源（中国境内加速）..."
     echo "请将以下内容添加到 Docker Desktop 设置中："
     echo ""
-    cat "$DOCKER_DIR/daemon.json"
+    cat "$DOCKER_CONFIG_FILE"
     echo ""
     read -p "已配置镜像源？继续... (y/n): " confirm
     if [ "$confirm" != "y" ]; then
@@ -77,8 +79,8 @@ fi
 if [ "$USE_DOCKER" = true ]; then
     echo ""
     echo "启动 Docker 服务..."
-    cd "$DOCKER_DIR"
-    docker-compose up -d --build 2>&1 || {
+    cd "$REPO_ROOT"
+    "$SMART_START" docker-compose.addin.yml up -d --build || {
         echo "⚠️ Docker 启动失败，切换到本地模式"
         USE_DOCKER=false
     }
@@ -146,7 +148,7 @@ echo "   下一步：加载 Office Add-in"
 echo "=========================================="
 echo ""
 echo "方法1: 自动打开 Office 并加载"
-echo "  运行: $DOCKER_DIR/load-addin.sh word"
+echo "  运行: $DOCKER_DIR/scripts/load-addin.sh word"
 echo ""
 echo "方法2: 手动加载"
 echo "  1. 打开 Word/Excel/PPT"
@@ -157,4 +159,4 @@ echo ""
 echo "方法3: 下载 manifest 文件"
 echo "  访问: https://localhost:3000/manifest-word.xml"
 echo ""
-echo "停止服务: $DOCKER_DIR/stop.sh"
+echo "停止服务: $DOCKER_DIR/scripts/stop.sh"

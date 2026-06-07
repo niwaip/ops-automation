@@ -63,7 +63,6 @@ import {
   isLiveRuntimeSessionState,
   isPreviewRuntimeSessionState,
 } from '@/features/executions/lib/runtimeSession';
-import { useAuthStore } from '@/shared/store/authStore';
 import { replaceLocalhostWithCurrentHost } from '@/shared/lib/publicUrl';
 import {
   EXECUTION_ACTIVE_POLLING_STATUSES,
@@ -77,6 +76,7 @@ import {
 } from '@/shared/lib/waitingInputDisplay';
 import LiveSessionPreviewCard from '@/components/runtime/LiveSessionPreviewCard';
 import InlineRecoveryPanel from '@/features/executions/components/InlineRecoveryPanel';
+import { usePreferencesStore } from '@/shared/store/preferencesStore';
 
 const { Title, Text } = Typography;
 
@@ -228,7 +228,7 @@ const ExecutionDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [form] = Form.useForm();
-  const { language } = useAuthStore();
+  const language = usePreferencesStore((state) => state.language);
   const isEnglish = language === 'en-US';
   const text = {
     loading: isEnglish ? 'Loading execution...' : '正在加载执行详情...',

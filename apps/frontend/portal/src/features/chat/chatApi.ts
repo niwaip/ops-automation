@@ -3,6 +3,7 @@
  * 聊天API调用封装
  */
 
+import { createChatApi } from '@ops/user-core';
 import {
   StreamEvent,
   ChatRequest,
@@ -14,8 +15,10 @@ import {
   LLMUsage,
   PromptDebugPayload,
 } from './types';
+import { browserStreamingTransport } from '@/adapters/streaming/browserStreamingTransport';
+import { apiClient, ensureFreshAccessToken, refreshAccessToken } from '@/shared/api/http/client';
+import { runtimeConfig } from '@/shared/config/runtime';
 import { useAuthStore } from '@/shared/store/authStore';
-import { ensureFreshAccessToken, refreshAccessToken } from '@/shared/api/http/client';
 
 // 使用 Vite 代理路径 /api/ai -> ai-orchestrator:3007
 const AI_API_BASE = '/api/ai';
@@ -261,19 +264,7 @@ const normalizeStreamEvent = (value: unknown): StreamEvent | null => {
   };
 };
 
-const isAIModel = (value: unknown): value is AIModel => {
-  const record = asRecord(value);
-  if (!record) {
-    return false;
-  }
-
-  return (
-    typeof record.id === 'string'
-    && typeof record.name === 'string'
-    && typeof record.provider === 'string'
-    && (record.status === 'active' || record.status === 'inactive')
-  );
-};
+const coreChatApi = createChatApi(apiClient, runtimeConfig);
 
 const buildAuthHeaders = (): Record<string, string> => {
   const token = useAuthStore.getState().accessToken;
@@ -337,74 +328,17 @@ export function streamChat(
   // 异步执行流式请求
   void (async () => {
     try {
-      // 文件信息只发送元数据（fileId等），内容已在上传时保存到后端
-      const filesMetadata = (request.files || []).map((f) => ({
-        fileId: f.fileId,
-        fileName: f.fileName,
-        mimeType: f.mimeType,
-        size: f.size,
-      }));
-
-      const response = await fetchWithAuthRetry(`${AI_API_BASE}/chat/stream`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: request.message,
-          sessionId: request.sessionId,
-          userId: request.userId,
-          executionId: request.executionId,
-          userRoles: request.userRoles,
-          modelId: request.modelId,
-          files: filesMetadata,
-          config: request.config, // 包含mode等配置
-        }),
-        signal: abortController.signal, // 支持中止
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error: ${response.status}`);
-      }
-
-      // 处理SSE流
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-
-      if (!reader) {
-        throw new Error('Response body is null');
-      }
-
-      let buffer = '';
-
-      for (;;) {
-        const { done, value } = await reader.read();
-
-        if (done) {
-          break;
-        }
-
-        buffer += decoder.decode(value, { stream: true });
-
-        // 解析SSE事件
-        const lines = buffer.split('\n\n');
-        buffer = lines.pop() || ''; // 保留不完整的部分
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const data: unknown = JSON.parse(line.slice(6));
-              const event = normalizeStreamEvent(data);
-              if (event) {
-                onEvent(event);
-              }
-            } catch (e) {
-              console.warn('Failed to parse SSE data:', line);
-            }
+      await coreChatApi.stream(
+        browserStreamingTransport,
+        useAuthStore.getState().accessToken,
+        request,
+        (rawEvent) => {
+          const event = normalizeStreamEvent(rawEvent);
+          if (event) {
+            onEvent(event);
           }
-        }
-      }
-
+        },
+      );
       onComplete?.();
     } catch (error) {
       // 如果是中止错误，不触发 onError
@@ -427,13 +361,7 @@ export function streamChat(
  */
 export async function getAvailableModels(): Promise<AIModel[]> {
   try {
-    const response = await fetchWithAuthRetry(`${AI_API_BASE}/models`);
-    if (!response.ok) {
-      throw new Error(`HTTP error: ${response.status}`);
-    }
-    const data: unknown = await response.json();
-    const payload = asRecord(data);
-    return Array.isArray(payload?.models) ? payload.models.filter(isAIModel) : [];
+    return await coreChatApi.getAvailableModels();
   } catch (error) {
     console.error('Failed to get models:', error);
     return [];
@@ -514,17 +442,8 @@ export async function transcribeAudio(file: Blob | File, modelId: string): Promi
  */
 export async function getChatHistory(sessionId: string): Promise<ChatMessage[]> {
   try {
-    const response = await fetchWithAuthRetry(`${AI_API_BASE}/chat/history/${sessionId}`);
-    if (!response.ok) {
-      throw new Error(`HTTP error: ${response.status}`);
-    }
-    const data: unknown = await response.json();
-    const payload = asRecord(data);
-    if (!Array.isArray(payload?.messages)) {
-      return [];
-    }
-
-    return payload.messages
+    const messages = await coreChatApi.getChatHistory(sessionId);
+    return messages
       .map((message) => normalizeChatMessage(message))
       .filter((message): message is ChatMessage => message !== null);
   } catch (error) {

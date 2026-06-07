@@ -173,7 +173,7 @@ export interface ResumeAfterTakeoverResponse {
   generatedSteps?: Array<Record<string, unknown>>;
 }
 
-const WS_URL = runtimeConfig.recorderWsUrl;
+const WS_URL = runtimeConfig.recorderWsUrl || 'ws://localhost:3004';
 const WS_PATH = '/recorder';
 
 class RecorderService {

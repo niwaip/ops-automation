@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { existsSync } from 'fs';
 import path from 'path';
 
 const readEnv = (...keys: string[]): string | undefined => {
@@ -20,11 +21,22 @@ const getCarboneProxyTarget = () => {
   return `http://${host}:${port}`;
 };
 
+const resolveDependencyEntry = (relativePath: string): string => {
+  const localPath = path.resolve(__dirname, relativePath);
+  if (existsSync(localPath)) {
+    return localPath;
+  }
+  return path.resolve(__dirname, '../../../', relativePath);
+};
+
 export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      '@ops/user-core': path.resolve(__dirname, '../../../packages/user-core/src/index.ts'),
+      axios: resolveDependencyEntry('./node_modules/axios/index.js'),
+      'zustand/vanilla': resolveDependencyEntry('./node_modules/zustand/vanilla.js'),
     },
   },
   server: {

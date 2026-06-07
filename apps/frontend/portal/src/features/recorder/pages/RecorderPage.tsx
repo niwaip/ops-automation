@@ -20,13 +20,15 @@ import recorderService, {
   type ValidationResult,
 } from '@/services/recorder.service';
 import { useAuthStore } from '@/shared/store/authStore';
+import { usePreferencesStore } from '@/shared/store/preferencesStore';
 import { templateApi, type CompileResult } from '@/api/template';
 
 const { Text } = Typography;
 
 const RecorderPage: React.FC = () => {
   const { t } = useTranslation(['common', 'recorder', 'session']);
-  const { user, theme } = useAuthStore();
+  const { user } = useAuthStore();
+  const theme = usePreferencesStore((state) => state.theme);
   const isDarkTheme = theme === 'dark';
 
   const [recorderState, setRecorderState] = useState<RecorderPageState>({
@@ -215,7 +217,7 @@ const RecorderPage: React.FC = () => {
   const previewUrl = previewMode === 'session'
     ? dynamicNoVncUrl
     : previewMode === 'shared'
-      ? defaultNoVncUrl
+      ? (defaultNoVncUrl ?? null)
       : null;
   const activeTakeover = takeoverState.mode !== 'idle';
   const takeoverAlertType = takeoverState.mode === 'ready_to_resume'

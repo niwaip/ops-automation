@@ -6,6 +6,9 @@
     "lib": ["ES2022", "DOM"],
     "jsx": "react-jsx",
     "baseUrl": ".",
+    "paths": {
+      "@ops/user-core": ["packages/user-core/src/index.ts"]
+    },
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
