@@ -1,105 +1,34 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import i18n from '@/shared/i18n';
-import type { UserDto } from '@/api/auth';
-import { useNotificationStore } from '@/shared/store/notificationStore';
+import { createAuthStore, type AuthStoreState } from '@ops/user-core';
+import { useStore } from 'zustand';
+import { browserStorage } from '@/adapters/storage/browserStorage';
+import { notificationStore } from '@/shared/store/notificationStore';
 
-type Language = 'zh-CN' | 'en-US' | 'ja-JP';
-type ThemeMode = 'light' | 'dark';
+export const authStore = createAuthStore({
+  storage: browserStorage,
+  storageKey: 'auth-storage',
+  onLogout: () => {
+    notificationStore.getState().reset();
+  },
+});
 
-interface AuthState {
-  accessToken: string | null;
-  refreshToken: string | null;
-  user: UserDto | null;
-  isAuthenticated: boolean;
-  language: Language;
-  theme: ThemeMode;
-  sidebarCollapsed: boolean;
+type UseAuthStore = {
+  (): AuthStoreState;
+  <T>(selector: (state: AuthStoreState) => T): T;
+  getState: typeof authStore.getState;
+  setState: typeof authStore.setState;
+  subscribe: typeof authStore.subscribe;
+};
+
+const identity = (state: AuthStoreState): AuthStoreState => state;
+
+function useAuthStoreImpl(): AuthStoreState;
+function useAuthStoreImpl<T>(selector: (state: AuthStoreState) => T): T;
+function useAuthStoreImpl<T>(selector?: (state: AuthStoreState) => T): AuthStoreState | T {
+  return useStore(authStore, (selector ?? identity) as (state: AuthStoreState) => T);
 }
 
-interface AuthActions {
-  setTokens: (accessToken: string, refreshToken: string) => void;
-  setUser: (user: UserDto) => void;
-  login: (accessToken: string, refreshToken: string, user: UserDto) => void;
-  logout: () => void;
-  setLanguage: (language: Language) => void;
-  setTheme: (theme: ThemeMode) => void;
-  toggleTheme: () => void;
-  toggleSidebar: () => void;
-  setSidebarCollapsed: (collapsed: boolean) => void;
-}
-
-export const useAuthStore = create<AuthState & AuthActions>()(
-  persist(
-    (set) => ({
-      accessToken: null,
-      refreshToken: null,
-      user: null,
-      isAuthenticated: false,
-      language: 'zh-CN',
-      theme: 'light',
-      sidebarCollapsed: false,
-
-      setTokens: (accessToken, refreshToken) =>
-        set({
-          accessToken,
-          refreshToken,
-          isAuthenticated: Boolean(accessToken && refreshToken),
-        }),
-
-      setUser: (user) =>
-        set((state) => ({
-          user,
-          isAuthenticated: Boolean(state.accessToken && state.refreshToken),
-        })),
-
-      login: (accessToken, refreshToken, user) =>
-        set({
-          accessToken,
-          refreshToken,
-          user,
-          isAuthenticated: true,
-        }),
-
-      logout: () =>
-        set(() => {
-          useNotificationStore.getState().reset();
-          return {
-            accessToken: null,
-            refreshToken: null,
-            user: null,
-            isAuthenticated: false,
-          };
-        }),
-
-      setLanguage: (language) => {
-        void i18n.changeLanguage(language);
-        set({ language });
-      },
-
-      setTheme: (theme) =>
-        set({ theme }),
-
-      toggleTheme: () =>
-        set((state) => ({ theme: state.theme === 'light' ? 'dark' : 'light' })),
-
-      toggleSidebar: () =>
-        set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
-
-      setSidebarCollapsed: (collapsed) =>
-        set({ sidebarCollapsed: collapsed }),
-    }),
-    {
-      name: 'auth-storage',
-      partialize: (state) => ({
-        accessToken: state.accessToken,
-        refreshToken: state.refreshToken,
-        user: state.user,
-        isAuthenticated: state.isAuthenticated,
-        language: state.language,
-        theme: state.theme,
-        sidebarCollapsed: state.sidebarCollapsed,
-      }),
-    }
-  )
-);
+export const useAuthStore = Object.assign(useAuthStoreImpl as UseAuthStore, {
+  getState: authStore.getState,
+  setState: authStore.setState,
+  subscribe: authStore.subscribe,
+});

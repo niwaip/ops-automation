@@ -6,7 +6,7 @@ import enUS from 'antd/locale/en_US';
 import jaJP from 'antd/locale/ja_JP';
 import { QueryClient, QueryClientProvider } from 'react-query';
 import App from '@/app/App';
-import { useAuthStore } from '@/shared/store/authStore';
+import { usePreferencesStore } from '@/shared/store/preferencesStore';
 import '@/shared/i18n';
 import './index.css';
 
@@ -20,7 +20,7 @@ const queryClient = new QueryClient({
 });
 
 const AntdProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { language, theme } = useAuthStore();
+  const { language, theme } = usePreferencesStore();
   const locale = language === 'en-US' ? enUS : language === 'ja-JP' ? jaJP : zhCN;
 
   useEffect(() => {

@@ -301,11 +301,35 @@ services:
     volumes:
       - ${PROJECT_ROOT:-..}/apps/frontend/portal:/app
       - ${PROJECT_ROOT:-..}/packages/contracts:/packages/contracts
+      - ${PROJECT_ROOT:-..}/packages/user-core:/packages/user-core
       - portal_node_modules:/app/node_modules
     depends_on:
       - platform
       - browser-worker
       - browser-template
+
+  user-web:
+    <<: *common-node-service
+    container_name: ops-user-web
+    environment:
+      NODE_ENV: development
+      DOCKER_ENV: true
+      USER_WEB_PORT: ${USER_WEB_PORT:-5174}
+      VITE_API_BASE_URL: /api
+      VITE_CONTROL_PLANE_API_URL: http://${HOST_IP:-localhost}:${CONTROL_PLANE_PORT:-3003}/api
+      VITE_AI_API_BASE_URL: /api/ai
+      VITE_HOST_IP: ${HOST_IP:-localhost}
+    ports:
+      - "${USER_WEB_PORT:-5174}:${USER_WEB_PORT:-5174}"
+    volumes:
+      - ${PROJECT_ROOT:-..}/apps/frontend/user-web:/app
+      - ${PROJECT_ROOT:-..}/packages/contracts:/packages/contracts
+      - ${PROJECT_ROOT:-..}/packages/user-core:/packages/user-core
+      - user_web_node_modules:/app/node_modules
+    depends_on:
+      - platform
+      - control-plane
+      - ai-orchestrator
 
   # ============================================
   # Browser Chrome (noVNC + CDP + Codegen)
@@ -348,6 +372,7 @@ volumes:
   ai_orchestrator_node_modules:
   ai_orchestrator_data:
   portal_node_modules:
+  user_web_node_modules:
   report_node_modules:
   report_files:
 

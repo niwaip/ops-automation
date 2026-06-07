@@ -1,5 +1,5 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Layout, Menu, Dropdown, Button, Avatar, Space } from 'antd';
+import { Layout, Menu, Dropdown, Button, Avatar, Space, Tag, Typography } from 'antd';
 import type { MenuProps } from 'antd';
 import {
   UserOutlined,
@@ -8,20 +8,32 @@ import {
   GlobalOutlined,
   LogoutOutlined,
   BgColorsOutlined,
+  ExportOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { buildNavigationMenuItems, getDefaultNavigationOpenKeys, getSelectedNavigationKey } from '@/app/navigation/menu';
-import { useAuthStore } from '@/shared/store/authStore';
 import { ChatWidget } from '@/features/chat';
 import ExecutionNotificationCenter from '@/features/notifications/ExecutionNotificationCenter';
+import { buildUserWebUrl } from '@/shared/config/runtime';
+import { useAuthStore } from '@/shared/store/authStore';
+import { usePreferencesStore } from '@/shared/store/preferencesStore';
 
 const { Header, Sider, Content } = Layout;
+const { Text } = Typography;
 
 const MainLayout: React.FC = () => {
   const { t } = useTranslation('common');
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout, language, setLanguage, theme, toggleTheme, sidebarCollapsed, toggleSidebar } = useAuthStore();
+  const { user, logout } = useAuthStore();
+  const {
+    language,
+    setLanguage,
+    theme,
+    toggleTheme,
+    sidebarCollapsed,
+    toggleSidebar,
+  } = usePreferencesStore();
   const menuItems = buildNavigationMenuItems(t, user?.role);
 
   const languageMenu: MenuProps = {
@@ -195,9 +207,19 @@ const MainLayout: React.FC = () => {
                 justifyContent: 'center',
               }}
             />
+            <Space size={8}>
+              <Tag color="purple" style={{ marginInlineEnd: 0, borderRadius: 999 }}>
+                内部工作台
+              </Tag>
+              <Text type="secondary">
+                管理员与内部运营使用，普通用户入口逐步迁往 user-web
+              </Text>
+            </Space>
           </div>
 
           <Space size={12}>
+            <ExecutionNotificationCenter />
+
             <Button
               type="text"
               icon={<BgColorsOutlined />}
@@ -212,7 +234,21 @@ const MainLayout: React.FC = () => {
               {theme === 'light' ? '深色' : '浅色'}
             </Button>
 
-            <ExecutionNotificationCenter />
+            <Button
+              type="text"
+              icon={<ExportOutlined />}
+              href={buildUserWebUrl('/login')}
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                color: 'var(--text-secondary)',
+                borderRadius: 10,
+                height: 36,
+                padding: '0 12px',
+              }}
+            >
+              用户入口
+            </Button>
 
             <Dropdown menu={languageMenu} placement="bottomRight" trigger={['click']}>
               <Button
@@ -265,8 +301,6 @@ const MainLayout: React.FC = () => {
           <Outlet />
         </Content>
       </Layout>
-
-      {/* AI Chat Widget */}
       <ChatWidget />
     </Layout>
   );

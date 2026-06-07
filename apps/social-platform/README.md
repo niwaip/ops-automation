@@ -1,25 +1,15 @@
 # apps/social-platform
 
-## Purpose
+This package keeps only the host integration scaffold.
 
-This directory is a generic scaffold for social platform containers.
+## Current scope
 
-## Possible Hosts
+- Bootstrap entry placeholder
+- Host-specific adapter directories
+- One example showing `@ops/user-core` usage
 
-- WeChat
-- LINE / LIFF
-- Telegram Mini App
-- Taro-based containers
-- Other embedded social runtimes
+## Out of scope
 
-## Current Scope
-
-- Keep only host-agnostic scaffold
-- Define adapters for `@ops/user-core`
-- Keep minimal host placeholders and examples
-
-## Out Of Scope For Now
-
-- Host-specific full implementation
-- Full business pages
-- Store review and publishing workflow
+- Full WeChat or LINE implementation
+- Production host SDK integration
+- End-to-end user flows

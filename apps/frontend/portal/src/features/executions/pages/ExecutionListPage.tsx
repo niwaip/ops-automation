@@ -99,7 +99,6 @@ import {
   isLiveRuntimeSessionState,
   isPreviewRuntimeSessionState,
 } from '@/features/executions/lib/runtimeSession';
-import { useAuthStore } from '@/shared/store/authStore';
 import { replaceLocalhostWithCurrentHost } from '@/shared/lib/publicUrl';
 import {
   EXECUTION_ACTIVE_POLLING_STATUSES,
@@ -110,6 +109,7 @@ import {
   buildWaitingInputDisplayGroups,
   resolveWaitingInputDisplayLabel,
 } from '@/shared/lib/waitingInputDisplay';
+import { usePreferencesStore } from '@/shared/store/preferencesStore';
 import dayjs, { Dayjs } from 'dayjs';
 
 const { Text } = Typography;
@@ -334,7 +334,7 @@ const ExecutionListPage: React.FC = () => {
   const [selectedExecutionId, setSelectedExecutionId] = useState<string | undefined>(
     searchParams.get('executionId') || undefined,
   );
-  const { theme } = useAuthStore();
+  const theme = usePreferencesStore((state) => state.theme);
   const isDarkTheme = theme === 'dark';
 
   useEffect(() => {

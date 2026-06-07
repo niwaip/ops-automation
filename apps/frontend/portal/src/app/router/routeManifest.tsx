@@ -1,9 +1,10 @@
 import type { ReactElement, ReactNode } from 'react';
 import {
-  BugOutlined,
   DashboardOutlined,
+  BugOutlined,
   FileTextOutlined,
   FileWordOutlined,
+  MessageOutlined,
   OrderedListOutlined,
   PlayCircleOutlined,
   SettingOutlined,
@@ -11,7 +12,6 @@ import {
   ToolOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import DashboardPage from '@/features/dashboard/pages/DashboardPage';
 import LoginPage from '@/features/auth/pages/LoginPage';
 import SessionListPage from '@/features/sessions/pages/SessionListPage';
 import SessionStartPage from '@/features/sessions/pages/SessionStartPage';
@@ -31,13 +31,15 @@ import ActivityPage from '@/features/admin/activities/pages/ActivityPage';
 import CapabilitiesPage from '@/features/admin/capabilities/pages/CapabilitiesPage';
 import CapabilityStudioPage from '@/features/admin/capabilities/pages/CapabilityStudioPage';
 import CapabilityBuildDetailPage from '@/features/admin/capabilities/pages/CapabilityBuildDetailPage';
-import ReportListPage from '@/features/reports/pages/ReportListPage';
-import ReportDetailPage from '@/features/reports/pages/ReportDetailPage';
 import CarboneTemplateListPage from '@/features/carbone-templates/pages/CarboneTemplateListPage';
-import ExecutionListPage from '@/features/executions/pages/ExecutionListPage';
+import DashboardPage from '@/features/dashboard/pages/DashboardPage';
 import ExecutionCreatePage from '@/features/executions/pages/ExecutionCreatePage';
 import ExecutionDetailPage from '@/features/executions/pages/ExecutionDetailPage';
-import PublishedSkillDetailPage from '@/features/skills/pages/PublishedSkillDetailPage';
+import ExecutionListPage from '@/features/executions/pages/ExecutionListPage';
+import ReportDetailPage from '@/features/reports/pages/ReportDetailPage';
+import ReportListPage from '@/features/reports/pages/ReportListPage';
+import UserWebRedirectPage from '@/app/router/UserWebRedirectPage';
+import userRoutePolicy from '@/app/router/userRoutePolicy.json';
 
 export type NavGroup = 'root' | 'admin';
 
@@ -74,9 +76,23 @@ export type PortalRouteEntry = PortalRouteDefinition | PortalRedirectDefinition;
 
 const isRouteDefinition = (entry: PortalRouteEntry): entry is PortalRouteDefinition => 'element' in entry;
 
+const redirectTargetByPath = new Map(
+  userRoutePolicy.portalRedirectRoutes.map((route) => [
+    route.path,
+    route.targetPath === route.path ? undefined : route.targetPath,
+  ]),
+);
+
+const renderUserWebRedirect = (path: string) => {
+  const targetPath = redirectTargetByPath.get(path);
+  return targetPath
+    ? <UserWebRedirectPage targetPath={targetPath} />
+    : <UserWebRedirectPage />;
+};
+
 export const portalRouteEntries: PortalRouteEntry[] = [
   { path: '/login', element: <LoginPage /> },
-  { path: '/', redirectTo: '/executions', isIndex: true },
+  { path: '/', redirectTo: '/dashboard', isIndex: true },
   {
     path: '/dashboard',
     element: <DashboardPage />,
@@ -87,6 +103,8 @@ export const portalRouteEntries: PortalRouteEntry[] = [
       icon: <DashboardOutlined />,
     },
   },
+  { path: '/chat', element: renderUserWebRedirect('/chat') },
+  { path: '/notifications', element: renderUserWebRedirect('/notifications') },
   {
     path: '/executions',
     element: <ExecutionListPage />,
@@ -139,17 +157,19 @@ export const portalRouteEntries: PortalRouteEntry[] = [
   { path: '/admin/capability-builds/:buildId', element: <CapabilityBuildDetailPage />, requiresAdmin: true, activeMenuKey: '/admin/capabilities' },
   {
     path: '/published-skills',
-    element: <PublishedSkillDetailPage />,
+    element: renderUserWebRedirect('/published-skills'),
+  },
+  { path: '/published-skills/:skillId', element: renderUserWebRedirect('/published-skills/:skillId') },
+  {
+    path: '/sessions',
+    element: <SessionListPage />,
     nav: {
-      key: '/published-skills',
+      key: '/sessions',
       group: 'root',
-      label: '可用技能',
-      icon: <ThunderboltOutlined />,
-      requiresAdmin: true,
+      labelKey: 'sessions',
+      icon: <MessageOutlined />,
     },
   },
-  { path: '/published-skills/:skillId', element: <PublishedSkillDetailPage />, activeMenuKey: '/published-skills' },
-  { path: '/sessions', element: <SessionListPage /> },
   { path: '/sessions/new', element: <SessionStartPage />, activeMenuKey: '/sessions' },
   { path: '/sessions/:id', element: <SessionDetailPage />, activeMenuKey: '/sessions' },
   {
@@ -178,6 +198,12 @@ export const portalRouteEntries: PortalRouteEntry[] = [
   {
     path: '/reports',
     element: <ReportListPage />,
+    nav: {
+      key: '/reports',
+      group: 'root',
+      labelKey: 'reports',
+      icon: <FileTextOutlined />,
+    },
   },
   { path: '/reports/:id', element: <ReportDetailPage />, activeMenuKey: '/reports' },
   {

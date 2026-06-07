@@ -6,7 +6,8 @@ import enUS from "antd/locale/en_US";
 import jaJP from "antd/locale/ja_JP";
 import { QueryClient, QueryClientProvider } from "react-query";
 import { useStore } from "zustand";
-import { authStore } from "./auth";
+import { browserI18n } from "./adapters/i18n/browserI18n";
+import { preferencesStore } from "./adapters/preferences/preferencesStore";
 import App from "./app.tsx";
 import "./index.css";
 
@@ -20,13 +21,14 @@ const queryClient = new QueryClient({
 });
 
 const AntdProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const language = useStore(authStore, (state) => state.language);
-  const theme = useStore(authStore, (state) => state.theme);
+  const language = useStore(preferencesStore, (state) => state.language);
+  const theme = useStore(preferencesStore, (state) => state.theme);
   const locale = language === "en-US" ? enUS : language === "ja-JP" ? jaJP : zhCN;
 
   useEffect(() => {
+    void browserI18n.changeLanguage(language);
     document.documentElement.setAttribute("data-theme", theme);
-  }, [theme]);
+  }, [language, theme]);
 
   const themeConfig = useMemo(() => ({
     algorithm: theme === "dark" ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,

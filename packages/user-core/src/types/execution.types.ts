@@ -22,7 +22,10 @@ export interface ExecutionDto {
   runtimeSessionId?: string;
   currentPhaseKey?: string;
   currentPhaseStatus?: string;
+  takeoverStatus?: string;
+  requiresApproval?: boolean;
   approvalStatus?: ApprovalStatus;
+  takeoverRequired?: boolean;
   takeoverReason?: string;
   resultJson?: Record<string, unknown>;
   failureCode?: string;
@@ -35,6 +38,8 @@ export interface ExecutionDto {
   normalizedInput?: Record<string, unknown>;
   semantic?: ExecutionSemantic;
   result?: Record<string, unknown>;
+  createdBy?: string;
+  createdByName?: string;
   phases?: ExecutionPhaseDto[];
 }
 
@@ -51,10 +56,59 @@ export interface ExecutionStepDto {
   errorCode?: string;
   errorMessage?: string;
   snapshotId?: string;
+  takeoverTriggered?: boolean;
   startedAt?: string;
   endedAt?: string;
   createdAt: string;
   updatedAt: string;
+  input?: Record<string, unknown>;
+  output?: Record<string, unknown>;
+  target?: Record<string, unknown>;
+  retryCount?: number;
+}
+
+export interface ExecutionPhaseArtifactDto {
+  id: string;
+  artifactType: string;
+  snapshotId?: string;
+  pageUrl?: string;
+  pageFingerprint?: string;
+  payload?: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface ExecutionTakeoverRecordDto {
+  id: string;
+  status: string;
+  reason?: string;
+  requestedBy?: string;
+  resolvedBy?: string;
+  resolutionNote?: string;
+  createdAt: string;
+  resolvedAt?: string;
+}
+
+export interface BrowserPhaseCheck {
+  matched?: boolean;
+  ok?: boolean;
+  satisfied?: boolean;
+  pageUrl?: string;
+  page_url?: string;
+  pageUrlIncludes?: string;
+  page_url_includes?: string;
+  pageTitle?: string;
+  page_title?: string;
+  pageTitleIncludes?: string;
+  page_title_includes?: string;
+  pageFingerprint?: string;
+  page_fingerprint?: string;
+  readyState?: string;
+  ready_state?: string;
+  selectorExists?: string;
+  selector_exists?: string;
+  textIncludes?: string;
+  text_includes?: string;
+  [key: string]: unknown;
 }
 
 export interface ExecutionPhaseStepDto {
@@ -85,13 +139,18 @@ export interface ExecutionPhaseDto {
   runtimeSessionId?: string;
   input?: Record<string, unknown>;
   output?: Record<string, unknown>;
+  precheck?: BrowserPhaseCheck;
+  postcheck?: BrowserPhaseCheck;
   errorCode?: string;
   errorMessage?: string;
+  recoveryDecision?: Record<string, unknown>;
   startedAt?: string;
   completedAt?: string;
   createdAt: string;
   updatedAt: string;
+  artifacts?: ExecutionPhaseArtifactDto[];
   steps?: ExecutionPhaseStepDto[];
+  takeovers?: ExecutionTakeoverRecordDto[];
 }
 
 export interface WaitingInputDisplayField {

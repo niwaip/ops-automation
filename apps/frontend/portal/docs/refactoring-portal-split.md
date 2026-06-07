@@ -12,7 +12,7 @@
 
 ### 目标
 
-1. `portal` 收敛为纯管理后台（Admin Only）。
+1. `portal` 保留为内部全量工作台，承载管理员与排障调试所需的完整能力集。
 2. 新建 `user-web` 作为用户侧 Web 薄壳。
 3. 新建 `packages/user-core` 作为用户侧平台无关核心层。
 4. 后续移动端、桌面端、社交平台容器优先复用 `user-core`，而不是复用 `portal` 页面代码；但本轮仅保留这些平台的接口和脚手架，不交付完整功能。
@@ -74,7 +74,7 @@ ops-automation/
                           └──────────────────┘
 ```
 
-> **注意**：`portal` 作为纯管理后台，目标状态下**不依赖 `user-core`**。`user-core` 只被用户侧各平台消费；迁移过程中允许短期并存，但最终应移除 `portal -> user-core` 依赖。
+> **注意**：当前阶段 `portal` 的定位是“内部全集工作台”，不是“纯 Admin Only”。`portal` 允许继续保留 `/executions`、`/reports` 等完整链路，方便管理员、研发与运营在排障、复盘、联调时使用；`user-core` 仍主要服务于 `user-web` 等用户侧平台消费。
 >
 > **交付边界**：本轮实际落地平台只有 `user-web`。`mobile`、`desktop`、`social-platform` 在本图中表示未来接入方向，当前只保留消费 `user-core` 的接口和脚手架设计。
 
@@ -396,6 +396,17 @@ apps/frontend/user-web/
 ## 六、迁移前必须确认的决策
 
 > 以下事项必须先定，再开始大规模迁移。
+>
+> **当前已确认的落地决策（2026-06）**
+>
+> 1. `portal` 暂不做“纯 Admin Only”的强制收口，而是保留现有管理员可见的完整能力集。
+> 2. `user-web` 面向普通用户，只暴露管理员能力中的“安全子集”，默认不提供高级调试、Prompt 细节查看、系统级配置等能力。
+> 3. `portal` 与 `user-web` 的关系在当前阶段是“内部全量工作台 + 外部用户薄壳”，而不是二选一替代。
+> 4. SSO 是后续目标；本轮只保留登录态与认证接入接口，不实现真正的 SSO 共享流程。
+> 5. 因此，本轮代码目标调整为：
+>    - 优先完成 `user-core` 边界和 `user-web` 普通用户闭环
+>    - 暂不强制删除 `portal` 中的用户链路
+>    - 通过路由、导航、页面范围控制普通用户可见能力
 
 ### 1. `portal` 用户路由如何处置
 
@@ -411,6 +422,13 @@ apps/frontend/user-web/
   - 用户侧全部走 `user-web`
   - 适合架构最干净的长期方案
 
+**当前建议落地**：
+
+- 短期采用“保留内部工作台 + 新建外部用户壳”的折中方案
+- `portal` 继续承载管理员和内部运营需要的全量能力
+- `user-web` 只承载普通用户可见的稳定子集
+- 待 SSO、权限模型、通知链路都稳定后，再决定是否把 `portal` 继续收敛为纯 Admin Only
+
 ### 2. 登录态共享方式
 
 需要明确：
@@ -418,6 +436,12 @@ apps/frontend/user-web/
 - 是否同域
 - 是否共享 cookie
 - 是否需要 portal 与 user-web 单点登录
+
+**当前建议落地**：
+
+- 本轮不实现 SSO
+- `user-core` 继续通过 `AuthSessionPort` / 运行时配置等接口对接认证能力
+- `user-web` 保持独立登录入口，后续再由平台层替换为 SSO 适配器
 
 ### 3. 通知 / WebSocket 生命周期归属
 
@@ -510,6 +534,17 @@ apps/frontend/user-web/
 1. 登录
 2. 执行列表
 3. 执行详情
+
+结合当前决策，建议额外纳入：
+
+4. 报告列表
+5. 报告详情
+
+原因：
+
+- 报告属于普通用户可见能力，且风险明显低于高级聊天调试链路
+- 现有能力已经在 `portal` 中实现，适合作为 `user-web` 的第二批稳定页面
+- 这样可以形成“登录 -> 执行 -> 报告”的用户主路径
 
 不建议做法：
 
@@ -766,7 +801,7 @@ apps/
 - [ ] `apps/frontend/user-web` 能独立启动
 - [ ] 登录、执行列表、执行详情可用
 - [ ] 聊天、报告、通知链路迁移后可用
-- [ ] `portal` 删除用户侧主链路后仍可正常启动
+- [ ] `portal` 在保留内部调试所需用户链路（如 `/executions`、`/reports`）时仍可正常启动
 
 ### 代码收敛验收
 
@@ -968,6 +1003,7 @@ apps/
 
 - `user-web` 首次可运行
 - 登录、执行列表、执行详情形成最小闭环
+- 报告列表与报告详情纳入普通用户可见范围
 
 #### Sprint 5：补齐用户侧主链路
 
@@ -984,6 +1020,7 @@ apps/
 
 - 报告、聊天、通知迁移完成
 - 用户侧主流程基本独立于 `portal`
+- 补充最小验收清单与静态边界校验，见 `docs/sprint5-minimal-acceptance.md`
 
 #### Sprint 6：portal 收敛与清理
 
@@ -998,8 +1035,9 @@ apps/
 
 交付目标：
 
-- `portal` 收敛为管理后台
-- 用户侧代码不再与 `portal` 长期混生
+- `portal` 保持“内部全集工作台”定位，继续保留 `/executions`、`/reports` 等排障和调试常用链路
+- `portal` 与 `user-web` 的职责边界更清晰：`portal` 偏内部运营/排障，`user-web` 偏普通用户入口
+- 优先清理真正重复且无内部调试价值的用户侧代码，而不是机械删除全部用户链路
 
 #### 后续 Backlog：多端脚手架
 
@@ -1032,3 +1070,144 @@ Backlog 验收标准：
 3. C2-C11：先迁 HTTP client、API、类型、工具函数
 4. E1-E6：做 `user-web` 最小闭环
 5. D1-D3：再持续拆执行详情中的纯逻辑
+
+---
+
+## 十四、重构后评估（2026-06）
+
+> 本章记录用户完成实际重构后的现状核查、风险识别与下一步建议。
+
+### 已完成状态
+
+| Sprint | 目标 | 落地状态 |
+|---|---|---|
+| Sprint 1 | 架构决策 | ✅ 已决策（见第六章） |
+| Sprint 2 | user-core 基础设施 | ✅ 目录骨架 / workspace / tsconfig / exports / ports 均已到位 |
+| Sprint 3 | 纯基础层迁移 | ✅ API client、auth/execution/report/session/skill/streaming/chat API、类型、工具函数已迁入 |
+| Sprint 4 | 执行链路最小闭环 | ✅ user-web 可启动；执行列表、详情、聊天、通知页均已建立 |
+| Sprint 5 | 补齐用户侧主链路 | 🔄 聊天、报告、通知页框架已建立，业务闭环尚需验收 |
+| Sprint 6 | portal 收敛清理 | ⏳ 待按“保留内部全集工作台”原则执行 |
+
+### 边界合规性检查
+
+| 约束项 | 状态 | 说明 |
+|---|---|---|
+| `user-core` 无 `.tsx` 文件 | ✅ | 已核查，全部为 `.ts` |
+| `user-core` 无 `react` / `antd` / `react-router-dom` import | ✅ | grep 无命中 |
+| `user-core` 无 `localStorage` / `sessionStorage` / `window` / `document` 直接引用 | ✅ | grep 无命中 |
+| `user-core` 无 `import.meta.env` 直接访问 | ✅ | grep 无命中 |
+| `auth.state.ts` 使用 `zustand/vanilla` 的 `createStore` | ✅ | 符合规范 |
+| `ApiClient` 通过 `RuntimeConfigPort` 注入配置 | ✅ | 符合规范 |
+| `user-web` adapters 层正确注入 `storage` / `i18n` / `onLogout` | ✅ | `authStore.ts` 结构正确 |
+
+### 识别到的风险
+
+#### 风险 1：`globalThis.atob` 依赖——Node 18 以下 / 某些 SSR 场景不可用
+
+`ApiClient.decodeJwtExpiry` 使用了 `globalThis.atob`，这在浏览器和 Node 18+ 可用，但在 Node 16 或部分 SSR 环境中不存在。虽然当前仅针对浏览器，但若将来 `user-core` 被服务端消费，需替换为 `Buffer.from(payload, 'base64').toString()`，或通过 `RuntimeConfigPort` 注入解码函数。
+
+**建议**：现阶段可接受；若未来有 Node 端消费，将 `atob` 抽象进 `RuntimeConfigPort.decodeBase64`。
+
+#### 风险 2：`domain/executions/index.ts` 体积偏大（318 行）
+
+当前 `domain/executions/index.ts` 同时承载了：
+- View Model 接口定义
+- 输入字段解析逻辑
+- 详情摘要/步骤/阶段构建逻辑
+- 操作卡片构建逻辑
+
+这已接近 800 行拆分警戒线的 40%，但逻辑量还会随业务增长。**建议**按职责拆分：
+
+```text
+domain/executions/
+├── index.ts          # 仅做 re-export
+├── artifacts.ts      # 已有
+├── browser.ts        # 已有
+├── common.ts         # 已有
+├── listHelpers.ts    # 已有
+├── listView.ts       # 已有
+├── phase.ts          # 已有
+├── runtimeSession.ts # 已有
+├── inputFields.ts    # 新拆：输入字段解析（parseExecutionInputValue、normalizeSkillExecutionInput 等）
+└── detailView.ts     # 新拆：detail 摘要 / 步骤 / 阶段 / 操作卡片构建（buildExecutionDetail* 等）
+```
+
+#### 风险 3：`auth.state.ts` 包含 UI 偏好（theme / sidebarCollapsed）
+
+`AuthStoreState` 目前混合了认证状态（`accessToken` / `refreshToken` / `user`）与 UI 偏好（`theme` / `language` / `sidebarCollapsed`）。这会导致：
+- 未来多端使用时，非 Web 端（RN / Electron）也持有了不需要的 Web UI 偏好字段
+- 状态持久化逻辑与认证逻辑耦合在一个 store 中
+
+**建议**（非紧急）：后续拆分为 `authStore`（token + user）和 `preferencesStore`（theme + language + sidebarCollapsed）。
+
+#### 风险 4：`notification.state.ts` 与 WebSocket 生命周期绑定点需持续验收
+
+`packages/user-core/src/state/notification.state.ts` 仍由状态层承载通知数据，但生命周期绑定点已经收敛到 `apps/frontend/user-web/src/app/UserRuntimeEffects.tsx`：
+- 登录后由 `UserRuntimeEffects` 负责建立 `runtimeSocket` 连接并挂载订阅
+- 登出或无会话时由同一入口负责 `disconnect()` 与 `notificationStore.reset()`
+- 组件卸载时统一清理 subscription，避免 socket 生命周期分散在页面层
+
+**当前判断**：绑定点已明确，不再是“未知接线风险”；后续重点应转为聊天 / 报告 / 通知功能闭环验收。
+
+#### 风险 5：SSO 认证接口尚未落地
+
+目前 `user-web` 保持独立登录入口，`user-core` 通过 `AuthSessionPort` 抽象了会话能力。当需要支持 SSO 时：
+- `AuthSessionPort.getSnapshot()` / `setTokens()` / `clearSession()` 的接口设计已经足够支撑 SSO 适配器替换
+- 需要新增的能力：SSO 重定向（`onUnauthorized` 可复用）、token 交换、静默刷新
+
+**下一步 SSO 路线图**（见下节）
+
+#### 风险 6：`portal` 与 `user-web` 仍然各自维护认证逻辑
+
+`portal` 目前有自己的 auth store 和登录链路，`user-web` 使用 `@ops/user-core` 的 `createAuthStore`。两者目前互相独立（符合当前决策），但：
+- 若用户同时打开 `portal` 和 `user-web`，token 刷新会各自独立执行，可能导致 token 竞争
+- Sprint 6 清理 portal 时，需要先确认 token 管理策略，并明确哪些用户链路应继续保留给内部排障与调试使用
+
+### SSO 支持路线图
+
+> 文档第六章第 2 条已明确：本轮不实现 SSO，保留接口。以下为后续落地建议。
+
+#### 阶段一：统一认证入口（可单独迭代）
+
+1. 后端提供 SSO 重定向端点（`GET /auth/sso/login`）和 token 交换端点（`POST /auth/sso/callback`）
+2. `user-web` 新增 `SsoAdapter` 实现 `AuthSessionPort`，替换当前 `authSessionPort`
+3. 登录页检测 `?sso=1` 参数后跳转至 SSO 流程，否则保留本地登录
+
+#### 阶段二：portal 与 user-web 共享会话
+
+1. 设为同域部署（或配置 CORS + Cookie SameSite）
+2. 两个前端应用共享 HttpOnly Cookie 持有 refresh token
+3. `user-core` 的 `ApiClient` refresh 逻辑不变，只是 `storagePort` 从 `localStorage` 换为 Cookie 适配器
+4. 这样 `portal` 登录后，`user-web` 无需二次登录
+
+#### 阶段三：可选——单点登出
+
+1. 后端实现 session 注销端点
+2. `AuthSessionPort.clearSession()` 调用后，同时通知后端注销
+3. 各端监听 `storage` 事件（或 BroadcastChannel）感知登出，统一跳转
+
+#### `user-core` 需要新增的最小 Port 扩展
+
+```ts
+// ports/auth-session.port.ts 扩展（向后兼容）
+export interface AuthSessionPort {
+  getSnapshot(): AuthSessionSnapshot;
+  setTokens(accessToken: string, refreshToken: string): void;
+  clearSession(): void;
+  onUnauthorized?(): void;
+  // SSO 阶段新增（可选）
+  initiateLogin?(): void;          // 触发 SSO 重定向
+  handleCallback?(code: string): Promise<void>; // 交换 token
+}
+```
+
+### 下一步优先建议
+
+| 优先级 | 建议 | 原因 |
+|---|---|---|
+| P0 | 按 `docs/sprint5-minimal-acceptance.md` 验收 Sprint 5 功能闭环（聊天/报告/通知）| 当前 user-web 功能尚未完整回归 |
+| P1 | 拆分 `domain/executions/index.ts` → `inputFields.ts` + `detailView.ts` | 防止单文件继续膨胀 |
+| P1 | 验收 `UserRuntimeEffects` 中的通知 / Socket 生命周期闭环 | 绑定点已明确，需继续做功能回归 |
+| P2 | 启动 Sprint 6：按“内部全集工作台”原则收敛 portal | 保留 `/executions`、`/reports` 等调试入口，同时清理无必要重复链路 |
+| P2 | 继续推进 SSO 阶段一（统一认证入口）| `AuthSessionPort` 与 `user-web` 登录入口已可承载最小前端适配 |
+| P3 | 将 theme/language/sidebarCollapsed 从 authStore 拆出为 preferencesStore | 风险 3，非紧急 |

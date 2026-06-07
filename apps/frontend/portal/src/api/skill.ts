@@ -1,3 +1,6 @@
+import {
+  createSkillApi,
+} from '@ops/user-core';
 import { apiClient } from './client';
 import { ExecutionFlowStep } from './flows';
 import { useAuthStore } from '@/shared/store/authStore';
@@ -155,15 +158,13 @@ export interface SkillValidationStreamEvent {
   };
 }
 
+const baseSkillApi = createSkillApi(apiClient);
+
 // Skill API
 export const skillApi = {
-  list: async (): Promise<SkillListResponse> => {
-    return apiClient.get<SkillListResponse>('/skills');
-  },
+  list: baseSkillApi.list as () => Promise<SkillListResponse>,
 
-  getById: async (id: string): Promise<SkillConfigDTO> => {
-    return apiClient.get<SkillConfigDTO>(`/skills/${id}`);
-  },
+  getById: baseSkillApi.getById as (id: string) => Promise<SkillConfigDTO>,
 
   create: async (data: CreateSkillDTO): Promise<SkillConfigDTO> => {
     return apiClient.post<SkillConfigDTO>('/skills', data);

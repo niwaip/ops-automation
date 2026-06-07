@@ -1,66 +1,20 @@
+import {
+  createAuthApi,
+  type LoginRequest,
+  type LoginResponse,
+  type MeResponse,
+  type RefreshResponse,
+  type RegisterRequest,
+  type RoleDto,
+  type UserDto,
+} from '@ops/user-core';
 import { apiClient } from './client';
-
-// Types based on auth service DTOs (READ-ONLY reference)
-export interface UserDto {
-  id: string;
-  username: string;
-  email?: string | null;
-  role: 'employee' | 'admin' | 'agent';
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface RoleDto {
-  id: string;
-  name: string;
-  description?: string | null;
-  permissions: Record<string, boolean>;
-  isSystem: boolean;
-}
-
-export interface LoginResponse {
-  accessToken: string;
-  refreshToken: string;
-  user: UserDto;
-  activeOrgId?: string | null;
-}
-
-export interface RefreshResponse {
-  accessToken: string;
-  refreshToken: string;
-}
-
-export interface MeResponse {
-  user: UserDto;
-  roles: RoleDto[];
-  activeOrgId?: string | null;
-  organizations?: Array<{
-    id: string;
-    name: string;
-    code: string;
-    membershipId: string;
-    status: string;
-  }>;
-}
 
 export interface UserListResponse {
   users: UserDto[];
   total: number;
   page: number;
   pageSize: number;
-}
-
-export interface LoginRequest {
-  username: string;
-  password: string;
-}
-
-export interface RegisterRequest {
-  username: string;
-  password: string;
-  email?: string;
-  role: 'employee' | 'admin' | 'agent';
 }
 
 export interface UpdateUserRolesRequest {
@@ -72,28 +26,17 @@ export interface UserQueryParams {
   role?: string;
 }
 
-// Auth API
-export const authApi = {
-  login: async (data: LoginRequest): Promise<LoginResponse> => {
-    return apiClient.post<LoginResponse>('/auth/login', data);
-  },
-
-  register: async (data: RegisterRequest): Promise<LoginResponse> => {
-    return apiClient.post<LoginResponse>('/auth/register', data);
-  },
-
-  refresh: async (refreshToken: string): Promise<RefreshResponse> => {
-    return apiClient.post<RefreshResponse>('/auth/refresh', { refreshToken });
-  },
-
-  logout: async (): Promise<void> => {
-    return apiClient.post('/auth/logout');
-  },
-
-  me: async (): Promise<MeResponse> => {
-    return apiClient.get<MeResponse>('/auth/me');
-  },
+export type {
+  LoginRequest,
+  LoginResponse,
+  MeResponse,
+  RefreshResponse,
+  RegisterRequest,
+  RoleDto,
+  UserDto,
 };
+
+export const authApi = createAuthApi(apiClient);
 
 // User API
 export const userApi = {

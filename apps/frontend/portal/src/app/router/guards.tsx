@@ -16,7 +16,7 @@ export const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }
   }
 
   if (user?.role !== 'admin') {
-    return <Navigate to="/executions" replace />;
+    return <Navigate to="/templates" replace />;
   }
 
   return <>{children}</>;

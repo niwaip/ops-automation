@@ -1,17 +1,15 @@
 # apps/mobile
 
-## Purpose
+This package is a scaffold for a future mobile client.
 
-This directory is a scaffold for a future mobile client.
+## Current scope
 
-## Current Scope
+- Keep a minimal `App.tsx` entry
+- Provide storage, i18n, and runtime adapter placeholders
+- Show one example of consuming `@ops/user-core`
 
-- Keep only project skeleton
-- Define adapters for `@ops/user-core`
-- Provide example integration points
+## Out of scope
 
-## Out Of Scope For Now
-
-- Full feature pages
-- Release pipeline
-- Production-ready UI
+- Production React Native UI
+- Full authentication flow
+- Release and packaging setup

@@ -18,7 +18,7 @@ import {
   message,
 } from "antd";
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "react-query";
 import type {
   AIAnalysisResult,
@@ -27,7 +27,7 @@ import type {
   ValidationResult,
 } from "@ops/user-core";
 import { authStore } from "../../../adapters/auth/authStore";
-import { reportApi } from "../../../api";
+import { reportApi, resolveApiUrl } from "../../../api";
 
 const { Title, Text } = Typography;
 
@@ -40,6 +40,7 @@ const STATUS_COLORS: Record<ReportStatus, string> = {
 
 export function ReportDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [polling, setPolling] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const accessToken = authStore.getState().accessToken;
@@ -85,7 +86,7 @@ export function ReportDetailPage() {
 
     setDownloading(true);
     try {
-      const response = await fetch(`/api/reports/${report.id}/download`, {
+      const response = await fetch(resolveApiUrl(`/reports/${report.id}/download`), {
         headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
       });
 
@@ -138,7 +139,10 @@ export function ReportDetailPage() {
   return (
     <Card>
       <Space style={{ width: "100%", justifyContent: "space-between", marginBottom: 16 }}>
-        <Title level={3} style={{ margin: 0 }}>报告详情</Title>
+        <Space>
+          <Button onClick={() => navigate("/reports")}>返回列表</Button>
+          <Title level={3} style={{ margin: 0 }}>报告详情</Title>
+        </Space>
         <Space>
           <Button icon={<ReloadOutlined />} onClick={() => void reportQuery.refetch()} loading={polling}>
             刷新

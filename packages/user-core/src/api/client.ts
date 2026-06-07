@@ -5,13 +5,6 @@ import axios, {
   type AxiosRequestConfig,
   type InternalAxiosRequestConfig,
 } from "axios";
-import type {
-  ExecutionDto,
-  ExecutionPhaseDto,
-  ExecutionPhaseStepDto,
-  ExecutionStepDto,
-} from "../types/execution.types.js";
-import type { UserDto } from "../types/user.types.js";
 import type { AuthSessionPort } from "../ports/auth-session.port.js";
 import type { RuntimeConfigPort } from "../ports/runtime.port.js";
 
@@ -22,30 +15,6 @@ type RetryableAxiosRequestConfig = InternalAxiosRequestConfig & {
 export type RequestConfig = AxiosRequestConfig & {
   _retry?: boolean;
 };
-
-export interface LoginRequest {
-  username: string;
-  password: string;
-}
-
-export interface LoginResponse {
-  accessToken: string;
-  refreshToken: string;
-  user: UserDto;
-}
-
-export interface ListExecutionsRequest {
-  page?: number;
-  pageSize?: number;
-  status?: ExecutionDto["status"];
-  skillId?: string;
-}
-
-export interface SubmitInputRequest {
-  stepId: string;
-  input: Record<string, unknown>;
-  submittedBy?: string;
-}
 
 export class ApiClient {
   private static readonly TOKEN_REFRESH_BUFFER_MS = 60 * 1000;
@@ -226,111 +195,7 @@ const normalizeAxiosError = (error: AxiosError): Error => {
   return new Error(message);
 };
 
-const normalizeExecutionStep = (raw: ExecutionStepDto): ExecutionStepDto => ({
-  ...raw,
-  action: raw.action || undefined,
-  inputJson: raw.inputJson || undefined,
-  outputJson: raw.outputJson || undefined,
-  errorCode: raw.errorCode || undefined,
-  errorMessage: raw.errorMessage || undefined,
-  snapshotId: raw.snapshotId || undefined,
-  startedAt: raw.startedAt || undefined,
-  endedAt: raw.endedAt || undefined,
-});
-
-const normalizeExecutionPhaseStep = (raw: ExecutionPhaseStepDto): ExecutionPhaseStepDto => ({
-  ...raw,
-  stepId: raw.stepId || undefined,
-  input: raw.input || undefined,
-  output: raw.output || undefined,
-  errorCode: raw.errorCode || undefined,
-  errorMessage: raw.errorMessage || undefined,
-  snapshotId: raw.snapshotId || undefined,
-  startedAt: raw.startedAt || undefined,
-  endedAt: raw.endedAt || undefined,
-});
-
-const normalizeExecutionPhase = (raw: ExecutionPhaseDto): ExecutionPhaseDto => ({
-  ...raw,
-  runtimeSessionId: raw.runtimeSessionId || undefined,
-  input: raw.input || undefined,
-  output: raw.output || undefined,
-  errorCode: raw.errorCode || undefined,
-  errorMessage: raw.errorMessage || undefined,
-  startedAt: raw.startedAt || undefined,
-  completedAt: raw.completedAt || undefined,
-  steps: raw.steps?.map(normalizeExecutionPhaseStep) || [],
-});
-
-const normalizeExecution = (raw: ExecutionDto): ExecutionDto => ({
-  ...raw,
-  runtimeType: raw.runtimeType || undefined,
-  riskLevel: raw.riskLevel || undefined,
-  currentStepId: raw.currentStepId || undefined,
-  currentPhaseKey: raw.currentPhaseKey || undefined,
-  currentPhaseStatus: raw.currentPhaseStatus || undefined,
-  approvalStatus: raw.approvalStatus || undefined,
-  takeoverReason: raw.takeoverReason || undefined,
-  resultJson: raw.resultJson || undefined,
-  failureCode: raw.failureCode || undefined,
-  failureReason: raw.failureReason || undefined,
-  startedAt: raw.startedAt || undefined,
-  endedAt: raw.endedAt || undefined,
-  semantic: raw.semantic || undefined,
-  result: raw.resultJson || undefined,
-  phases: raw.phases?.map(normalizeExecutionPhase) || [],
-});
-
-const resolveExecutionPath = (runtimeConfig: RuntimeConfigPort, path: string): string => {
-  const baseUrl = runtimeConfig.controlPlaneApiBaseUrl?.trim();
-  return baseUrl ? `${baseUrl.replace(/\/+$/, "")}${path}` : path;
-};
-
 export const createApiClient = (
   runtimeConfig: RuntimeConfigPort,
   auth?: AuthSessionPort,
 ): ApiClient => new ApiClient(runtimeConfig, auth);
-
-export const createAuthApi = (client: ApiClient) => ({
-  login: async (data: LoginRequest): Promise<LoginResponse> => client.post<LoginResponse>("/auth/login", data),
-  me: async (): Promise<{ user: UserDto }> => client.get<{ user: UserDto }>("/auth/me"),
-});
-
-export const createExecutionApi = (client: ApiClient, runtimeConfig: RuntimeConfigPort) => ({
-  list: async (params?: ListExecutionsRequest): Promise<{
-    data: ExecutionDto[];
-    total: number;
-    page: number;
-    pageSize: number;
-  }> => {
-    const response = await client.get<{
-      data: ExecutionDto[];
-      total: number;
-      page: number;
-      pageSize: number;
-    }>(resolveExecutionPath(runtimeConfig, "/executions"), { params });
-    return {
-      ...response,
-      data: response.data.map(normalizeExecution),
-    };
-  },
-  getById: async (id: string): Promise<ExecutionDto> => {
-    const response = await client.get<ExecutionDto>(resolveExecutionPath(runtimeConfig, `/executions/${id}`));
-    return normalizeExecution(response);
-  },
-  getSteps: async (id: string): Promise<ExecutionStepDto[]> => {
-    const response = await client.get<ExecutionStepDto[]>(resolveExecutionPath(runtimeConfig, `/executions/${id}/steps`));
-    return response.map(normalizeExecutionStep);
-  },
-  getPhases: async (id: string): Promise<ExecutionPhaseDto[]> => {
-    const response = await client.get<ExecutionPhaseDto[]>(resolveExecutionPath(runtimeConfig, `/executions/${id}/phases`));
-    return response.map(normalizeExecutionPhase);
-  },
-  submitInput: async (id: string, data: SubmitInputRequest): Promise<ExecutionDto> => {
-    const response = await client.post<ExecutionDto>(
-      resolveExecutionPath(runtimeConfig, `/executions/${id}/submit-input`),
-      data,
-    );
-    return normalizeExecution(response);
-  },
-});

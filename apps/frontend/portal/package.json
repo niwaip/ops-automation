@@ -8,10 +8,12 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "lint": "eslint src --ext .ts,.tsx",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "check:user-route-policy": "node ./scripts/check-user-route-policy.mjs"
   },
   "dependencies": {
     "@ops/contracts": "file:../../../packages/contracts",
+    "@ops/user-core": "file:../../../packages/user-core",
     "@ant-design/icons": "^5.2.6",
     "@types/uuid": "^10.0.0",
     "antd": "^5.12.0",

@@ -34,7 +34,7 @@ module.exports = {
   },
   overrides: [
     {
-      files: ['packages/user-core/**/*.ts'],
+      files: ['packages/user-core/**/*.{ts,tsx}'],
       rules: {
         'no-restricted-imports': [
           'error',
@@ -42,6 +42,14 @@ module.exports = {
             paths: ['react', 'antd', 'react-router-dom'],
             patterns: ['**/*.tsx'],
           },
+        ],
+        'no-restricted-globals': [
+          'error',
+          'window',
+          'document',
+          'localStorage',
+          'sessionStorage',
+          'XMLHttpRequest',
         ],
       },
     },

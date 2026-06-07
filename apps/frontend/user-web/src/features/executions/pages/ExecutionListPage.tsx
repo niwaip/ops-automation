@@ -1,11 +1,12 @@
 import { Button, Card, Table, Tag, Typography, Space } from "antd";
-import { ReloadOutlined } from "@ant-design/icons";
+import { PlusOutlined, ReloadOutlined } from "@ant-design/icons";
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "react-query";
 import {
   EXECUTION_STATUS_COLORS,
   EXECUTION_STATUS_LABELS_ZH,
+  sortExecutionsByRecent,
   type ExecutionDto,
 } from "@ops/user-core";
 import { executionApi } from "../../../api";
@@ -18,7 +19,7 @@ export function ExecutionListPage() {
   );
 
   const rows = useMemo(
-    () => [...(data?.data || [])].sort((a, b) => new Date(b.startedAt || b.createdAt).getTime() - new Date(a.startedAt || a.createdAt).getTime()),
+    () => sortExecutionsByRecent(data?.data || []),
     [data?.data],
   );
 
@@ -31,7 +32,10 @@ export function ExecutionListPage() {
             当前页面由 user-web 独立承载，并直接复用 user-core 的类型、状态和 API 封装。
           </Typography.Paragraph>
         </div>
-        <Button icon={<ReloadOutlined />} onClick={() => void refetch()} loading={isFetching}>刷新</Button>
+        <Space>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate("/executions/new")}>创建执行</Button>
+          <Button icon={<ReloadOutlined />} onClick={() => void refetch()} loading={isFetching}>刷新</Button>
+        </Space>
       </Space>
       <Table<ExecutionDto>
         rowKey="id"
