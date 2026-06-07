@@ -109,17 +109,17 @@ jobs:
 
       - name: Run V4 layering audit
         run: |
-          bash ./docker/validate-layering.sh
+          bash ./docker/scripts/v4/validate-layering.sh
 
       - name: Run V4 full alignment audit
         run: |
-          bash ./docker/validate-full-alignment.sh
+          bash ./docker/scripts/v4/validate-full-alignment.sh
 
       - name: Check V4 shell entrypoints
         run: |
-          bash -n ./docker/addin-smoke.sh
-          bash -n ./docker/core-smoke.sh
-          bash -n ./docker/planner-smoke.sh
-          bash -n ./docker/runtime-smoke.sh
-          bash -n ./docker/full-smoke.sh
-          bash -n ./docker/v4-acceptance.sh
+          bash -n ./docker/scripts/smoke/addin-smoke.sh
+          bash -n ./docker/scripts/smoke/core-smoke.sh
+          bash -n ./docker/scripts/smoke/planner-smoke.sh
+          bash -n ./docker/scripts/smoke/runtime-smoke.sh
+          bash -n ./docker/scripts/smoke/full-smoke.sh
+          bash -n ./docker/scripts/v4/v4-acceptance.sh
