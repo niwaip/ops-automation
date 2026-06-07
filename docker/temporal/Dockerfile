@@ -9,13 +9,13 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
-COPY apps/backend/runtime/temporal-sandbox-agent/requirements.txt /app/requirements.txt
+COPY apps/backend/runtime/sandbox-agent/requirements.txt /app/requirements.txt
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
 # Copy source code
-COPY apps/backend/runtime/temporal-sandbox-agent/*.py /app/
+COPY apps/backend/runtime/sandbox-agent/*.py /app/
 
 # Set Python path
 ENV PYTHONPATH=/app

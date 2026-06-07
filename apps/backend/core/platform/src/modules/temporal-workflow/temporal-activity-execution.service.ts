@@ -484,13 +484,49 @@ export class ActivityExecutionService {
       // Create simple runner script
       const runnerScript = `
 import json
+import json as json_module
 import sys
 import os
 import traceback
 import types
 import inspect
+import urllib.request
+import urllib.error
+import urllib.parse
+import ssl
 
 os.environ.setdefault('TEMPORAL_SANDBOX', 'true')
+
+# #region debug-point A:runner-debug-report
+def _debug_report(hypothesis_id, msg, data):
+    try:
+        import urllib.request
+        debug_server_url = "http://127.0.0.1:7777/event"
+        debug_session_id = "shared-http-fallback"
+        try:
+            with open(".dbg/shared-http-fallback.env", "r", encoding="utf-8") as debug_env_file:
+                for debug_line in debug_env_file.read().splitlines():
+                    if debug_line.startswith("DEBUG_SERVER_URL="):
+                        debug_server_url = debug_line.split("=", 1)[1].strip() or debug_server_url
+                    elif debug_line.startswith("DEBUG_SESSION_ID="):
+                        debug_session_id = debug_line.split("=", 1)[1].strip() or debug_session_id
+        except Exception:
+            pass
+        urllib.request.urlopen(urllib.request.Request(
+            debug_server_url,
+            data=json.dumps({
+                "sessionId": debug_session_id,
+                "runId": "pre-fix",
+                "hypothesisId": hypothesis_id,
+                "location": "temporal-activity-execution.service:fallback-runner",
+                "msg": msg,
+                "data": data,
+            }).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+        )).read()
+    except Exception:
+        pass
+# #endregion
 
 # Set SSL certificates location for HTTPS requests when certifi is available
 try:
@@ -500,8 +536,13 @@ try:
 except ImportError:
     pass
 
+try:
+    _ssl_context = ssl.create_default_context(cafile=os.environ.get('SSL_CERT_FILE'))
+except Exception:
+    _ssl_context = ssl.create_default_context()
+
 # Add temp dir to path for imports
-sys.path.insert(0, '\${tempDir}')
+sys.path.insert(0, '${tempDir}')
 
 # Mock temporalio module for standalone execution
 class MockActivityLogger:
@@ -557,47 +598,173 @@ class MockApplicationError(Exception):
         self.non_retryable = non_retryable
         self.kwargs = kwargs
 
-class MockResponse:
-    def __init__(self, payload=None, status_code=200, headers=None, url="", text=None):
-        self._payload = payload or {}
-        self.status_code = status_code
-        self.headers = headers or {"Content-Type": "application/json"}
+class RequestsShimResponse:
+    def __init__(self, status, data, headers=None, url="", reason="", exceptions_source=None):
+        self.status = status
+        self.status_code = status
+        self.headers = headers or {}
         self.url = url
-        self.text = text if text is not None else json.dumps(self._payload)
+        self.reason = reason
+        self.exceptions_source = exceptions_source
+        if isinstance(data, bytes):
+            self.text = data.decode('utf-8', errors='replace')
+        elif data is None:
+            self.text = ""
+        else:
+            self.text = str(data)
 
     def raise_for_status(self):
         if self.status_code >= 400:
-            raise MockRequestException(f"HTTP {self.status_code}")
+            body_preview = (self.text or "").strip().replace("\\n", " ")[:300]
+            reason = self.reason or f"HTTP {self.status_code} for {self.url}. body={body_preview}"
+            if self.exceptions_source is not None:
+                raise self.exceptions_source.HTTPError(reason)
+            raise urllib.error.HTTPError(self.url, self.status_code, reason, self.headers, None)
 
     def json(self):
-        return self._payload
+        return json.loads(self.text)
 
-class MockRequestException(Exception):
-    pass
+class RequestsShim(types.ModuleType):
+    def __init__(self):
+        super().__init__('requests')
 
-def mock_requests_request(method, url, timeout=30, **kwargs):
-    payload = {
-        "ok": True,
-        "mocked": True,
-        "request": {
-            "method": method,
-            "url": url,
+        class RequestException(Exception):
+            pass
+
+        class Timeout(RequestException):
+            pass
+
+        class HTTPError(RequestException):
+            pass
+
+        class ConnectionError(RequestException):
+            pass
+
+        self.RequestException = RequestException
+        self.Timeout = Timeout
+        self.HTTPError = HTTPError
+        self.ConnectionError = ConnectionError
+        self.exceptions = types.ModuleType('requests.exceptions')
+        self.exceptions.RequestException = RequestException
+        self.exceptions.Timeout = Timeout
+        self.exceptions.HTTPError = HTTPError
+        self.exceptions.ConnectionError = ConnectionError
+
+    def _append_params(self, url, params):
+        if not params:
+            return url
+        parsed = urllib.parse.urlsplit(url)
+        current_query = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
+        extra_query = []
+        if isinstance(params, dict):
+            for key, value in params.items():
+                if isinstance(value, (list, tuple)):
+                    for item in value:
+                        extra_query.append((str(key), '' if item is None else str(item)))
+                else:
+                    extra_query.append((str(key), '' if value is None else str(value)))
+        elif isinstance(params, (list, tuple)):
+            for item in params:
+                if isinstance(item, (list, tuple)) and len(item) >= 2:
+                    extra_query.append((str(item[0]), '' if item[1] is None else str(item[1])))
+        merged_query = urllib.parse.urlencode(current_query + extra_query, doseq=True)
+        return urllib.parse.urlunsplit((
+            parsed.scheme,
+            parsed.netloc,
+            parsed.path,
+            merged_query,
+            parsed.fragment,
+        ))
+
+    def _normalize_url(self, url):
+        parsed = urllib.parse.urlsplit(url)
+        return urllib.parse.urlunsplit((
+            parsed.scheme,
+            parsed.netloc.encode('idna').decode('ascii'),
+            urllib.parse.quote(parsed.path, safe='/%'),
+            urllib.parse.quote(parsed.query, safe='=&%/:,+-._~'),
+            parsed.fragment,
+        ))
+
+    def request(self, method, url, headers=None, params=None, data=None, json=None, timeout=None, **kwargs):
+        request_headers = dict(headers or {})
+        target_url = self._append_params(url, params)
+        body = None
+
+        if json is not None:
+            body = json_module.dumps(json).encode('utf-8')
+            request_headers.setdefault('Content-Type', 'application/json')
+        elif isinstance(data, str):
+            body = data.encode('utf-8')
+        elif isinstance(data, bytes):
+            body = data
+        elif isinstance(data, dict):
+            body = urllib.parse.urlencode(data, doseq=True).encode('utf-8')
+            request_headers.setdefault('Content-Type', 'application/x-www-form-urlencoded')
+        elif data is not None:
+            body = str(data).encode('utf-8')
+
+        normalized_url = self._normalize_url(target_url)
+
+        # #region debug-point A:requests-shim-hit
+        _debug_report("A", "[DEBUG] fallback runner requests shim called", {
+            "method": str(method).upper(),
+            "url": normalized_url,
             "timeout": timeout,
-            "kwargs": kwargs,
-        },
-        "data": {
-            "message": "sandbox mock response"
-        }
-    }
-    return MockResponse({
-        **payload
-    }, url=url)
+            "hasJson": json is not None,
+            "hasData": data is not None,
+            "paramsKeys": sorted(list(params.keys())) if isinstance(params, dict) else None,
+        })
+        # #endregion
 
-def mock_requests_get(url, timeout=30, **kwargs):
-    return mock_requests_request("GET", url, timeout=timeout, **kwargs)
+        try:
+            request = urllib.request.Request(
+                normalized_url,
+                data=body,
+                headers=request_headers,
+                method=str(method).upper(),
+            )
+            with urllib.request.urlopen(request, timeout=timeout or 30, context=_ssl_context) as response:
+                return RequestsShimResponse(
+                    response.status,
+                    response.read(),
+                    dict(response.headers),
+                    url=normalized_url,
+                    reason=getattr(response, 'reason', '') or '',
+                    exceptions_source=self,
+                )
+        except urllib.error.HTTPError as exc:
+            response_body = exc.read() if exc.fp else b''
+            response_headers = dict(exc.headers) if exc.headers else {}
+            return RequestsShimResponse(
+                exc.code,
+                response_body,
+                response_headers,
+                url=normalized_url,
+                reason=str(exc),
+                exceptions_source=self,
+            )
+        except urllib.error.URLError as exc:
+            raise self.ConnectionError(str(exc))
+        except TimeoutError as exc:
+            raise self.Timeout(str(exc))
+        except Exception as exc:
+            raise self.RequestException(str(exc))
 
-def mock_requests_post(url, timeout=30, **kwargs):
-    return mock_requests_request("POST", url, timeout=timeout, **kwargs)
+    def get(self, url, timeout=None, **kwargs):
+        return self.request('GET', url, timeout=timeout, **kwargs)
+
+    def post(self, url, timeout=None, **kwargs):
+        return self.request('POST', url, timeout=timeout, **kwargs)
+
+    def put(self, url, timeout=None, **kwargs):
+        return self.request('PUT', url, timeout=timeout, **kwargs)
+
+    def patch(self, url, timeout=None, **kwargs):
+        return self.request('PATCH', url, timeout=timeout, **kwargs)
+
+    def delete(self, url, timeout=None, **kwargs):
+        return self.request('DELETE', url, timeout=timeout, **kwargs)
 
 # Create mock temporalio module as a proper ModuleType with submodules
 mock_temporalio = types.ModuleType('temporalio')
@@ -605,7 +772,22 @@ mock_temporalio.activity = types.ModuleType('temporalio.activity')
 mock_temporalio.workflow = types.ModuleType('temporalio.workflow')
 mock_temporalio.exceptions = types.ModuleType('temporalio.exceptions')
 mock_temporalio.common = types.ModuleType('temporalio.common')
-mock_requests = types.ModuleType('requests')
+try:
+    import requests as native_requests
+    requests_backend = native_requests
+    requests_backend_name = 'native_requests'
+except ImportError:
+    requests_backend = RequestsShim()
+    requests_backend_name = 'urllib_requests_shim'
+    sys.modules['requests.exceptions'] = requests_backend.exceptions
+
+# #region debug-point C:requests-module-patched
+_debug_report("C", "[DEBUG] fallback runner prepared requests backend", {
+    "moduleName": "requests",
+    "backend": requests_backend_name,
+    "tempDir": '${tempDir}',
+})
+# #endregion
 
 # Set up activity with all required attributes
 # Make defn work as @activity.defn() decorator - returns a decorator function
@@ -634,6 +816,15 @@ def workflow_run(func):
 
 async def workflow_execute_activity(fn, input_data=None, *args, **kwargs):
     payload = input_data or {}
+    # #region debug-point B:execute-activity-input
+    _debug_report("B", "[DEBUG] fallback runner execute_activity invoked", {
+        "activityName": getattr(fn, "_activity_name", getattr(fn, "__name__", "unknown")),
+        "payloadType": type(payload).__name__,
+        "payloadKeys": sorted(list(payload.keys()))[:20] if isinstance(payload, dict) else None,
+        "argCount": len(args),
+        "kwargKeys": sorted(list(kwargs.keys())),
+    })
+    # #endregion
     if isinstance(payload, dict):
         sig = inspect.signature(fn)
         positional_params = [
@@ -661,10 +852,13 @@ mock_temporalio.workflow.logger = MockActivityLogger()
 mock_temporalio.workflow.execute_activity = workflow_execute_activity
 
 mock_temporalio.exceptions.ApplicationError = MockApplicationError
-mock_requests.get = mock_requests_get
-mock_requests.post = mock_requests_post
-mock_requests.request = mock_requests_request
-mock_requests.RequestException = MockRequestException
+
+# #region debug-point E:requests-backend-mode
+_debug_report("E", "[DEBUG] fallback runner requests backend selected", {
+    "backend": requests_backend_name,
+    "reason": "prefer native requests and fall back to urllib-based shim when requests is unavailable",
+})
+# #endregion
 
 # RetryPolicy mock - accept various parameter names
 class MockRetryPolicy:
@@ -683,7 +877,7 @@ sys.modules['temporalio.activity'] = mock_temporalio.activity
 sys.modules['temporalio.workflow'] = mock_temporalio.workflow
 sys.modules['temporalio.exceptions'] = mock_temporalio.exceptions
 sys.modules['temporalio.common'] = mock_temporalio.common
-sys.modules['requests'] = mock_requests
+sys.modules['requests'] = requests_backend
 
 # Also make 'activity' available as a standalone import
 sys.modules['activity'] = mock_temporalio.activity
@@ -693,31 +887,32 @@ namespace = {
     'temporalio': mock_temporalio,
     'activity': mock_temporalio.activity,
     'workflow': mock_temporalio.workflow,
+    'requests': requests_backend,
 }
 
 # Read input
-with open('\${inputFilePath}', 'r') as f:
+with open('${inputFilePath}', 'r') as f:
     input_data = json.load(f)
 
 # Read and execute activity code
 try:
-    with open('\${activityFilePath}', 'r') as f:
+    with open('${activityFilePath}', 'r') as f:
         activity_code = f.read()
 
     # Compile and execute the activity code with our namespace
-    exec(compile(activity_code, '\${activityFilePath}', 'exec'), namespace)
+    exec(compile(activity_code, '${activityFilePath}', 'exec'), namespace)
 
     # Find the executable symbol
-    activity_fn = namespace.get('\${fn}')
+    activity_fn = namespace.get('${fn}')
     if activity_fn is None:
         # Try to find it by name
         for name, obj in namespace.items():
-            if name == '\${fn}':
+            if name == '${fn}':
                 activity_fn = obj
                 break
 
     if activity_fn is None:
-        print(json.dumps({"error": "Function '\${fn}' not found in activity code", "result": None}))
+        print(json.dumps({"error": "Function '${fn}' not found in activity code", "result": None}))
         sys.exit(1)
 
     # Execute the activity
@@ -770,7 +965,7 @@ except Exception as e:
         let stderrData = '';
 
         proc.stdout.on('data', (data) => { stdoutData += data.toString(); });
-        proc.stderr.on('data', (data) => { stderrData += data.toString(); onLog(`[Python stderr] \${data.toString().trim()}`); });
+        proc.stderr.on('data', (data) => { stderrData += data.toString(); onLog(`[Python stderr] ${data.toString().trim()}`); });
 
         proc.on('close', (code) => {
           if (code === 0) {
@@ -781,12 +976,12 @@ except Exception as e:
             let actualError = '';
             try {
               // Try to parse the last JSON line from stdout to get actual error
-              const outputLines = stdoutData.trim().split('\\n').filter(Boolean);
+              const outputLines = stdoutData.trim().split('\n').filter(Boolean);
               const parsed = JSON.parse(outputLines[outputLines.length - 1] || '{}');
               if (parsed.error) {
                 actualError = parsed.error;
                 if (parsed.traceback) {
-                  actualError += '\\n' + parsed.traceback;
+                  actualError += '\n' + parsed.traceback;
                 }
               }
             } catch (e) {
@@ -799,7 +994,7 @@ except Exception as e:
             if (!actualError && stderrData.trim()) {
               actualError = 'stderr: ' + stderrData.trim();
             }
-            reject(new Error(`Python exited with code \${code}. Error: \${actualError || 'Unknown error'}`));
+            reject(new Error(`Python exited with code ${code}. Error: ${actualError || 'Unknown error'}`));
           }
         });
         proc.on('error', (err) => reject(err));
@@ -808,11 +1003,11 @@ except Exception as e:
       // Parse result
       let result: any;
       try {
-        const outputLines = stdout.trim().split('\\n').filter(Boolean);
+        const outputLines = stdout.trim().split('\n').filter(Boolean);
         result = JSON.parse(outputLines[outputLines.length - 1] || '{}');
       } catch (e) {
-        onLog(`解析结果失败: \${stdout}`);
-        throw new Error(`Failed to parse execution result: \${stdout}`);
+        onLog(`解析结果失败: ${stdout}`);
+        throw new Error(`Failed to parse execution result: ${stdout}`);
       }
 
       if (result.error) {

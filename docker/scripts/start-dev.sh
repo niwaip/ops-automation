@@ -63,11 +63,11 @@ get_service_port() {
 
 get_service_dir() {
     case "$1" in
-        "ai-orchestrator") echo "apps/backend/core/ai-orchestrator" ;;
+        "ai-orchestrator") echo "apps/backend/orchestration/ai-orchestrator" ;;
         "platform") echo "apps/backend/core/platform" ;;
         "auth") echo "apps/backend/core/platform" ;;
-        "session-broker") echo "apps/backend/core/session-broker" ;;
-        "control-plane") echo "apps/backend/core/control-plane" ;;
+        "session-broker") echo "apps/backend/sessions/session-broker" ;;
+        "control-plane") echo "apps/backend/orchestration/control-plane" ;;
         "browser-worker") echo "apps/backend/runtime/browser-worker" ;;
         "browser-template") echo "apps/backend/domain/browser-template" ;;
         "portal") echo "apps/frontend/portal" ;;
@@ -252,6 +252,7 @@ start_service() {
     export AI_ORCHESTRATOR_HOST="${AI_ORCHESTRATOR_HOST:-$DEV_HOST}"
     export AI_ORCHESTRATOR_PORT="${AI_ORCHESTRATOR_PORT:-3007}"
     export AI_ORCHESTRATOR_URL="${AI_ORCHESTRATOR_URL:-http://${DEV_HOST}:${AI_ORCHESTRATOR_PORT}}"
+    export AI_MODELS_DATA_DIR="${AI_MODELS_DATA_DIR:-$PROJECT_ROOT/apps/backend/var/cache/ai-orchestrator}"
     export CARBONE_SERVICE_URL="${CARBONE_SERVICE_URL:-http://${DEV_HOST}:${CARBONE_ENGINE_PORT}}"
     export CARBONE_EXTERNAL_URL="${CARBONE_EXTERNAL_URL:-http://${DEV_PUBLIC_HOST}:${CARBONE_ENGINE_PORT}}"
     export VITE_HOST_IP="${VITE_HOST_IP:-$DEV_PUBLIC_HOST}"

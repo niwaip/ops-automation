@@ -78,19 +78,19 @@ jobs:
 
       - name: Build services
         run: |
-          # Generate Prisma client for auth service
-          cd apps/backend/core/auth && npx prisma generate && cd ../../../..
+          # Generate Prisma client for platform service
+          cd apps/backend/core/platform && npx prisma generate && cd ../../../..
           # Build all services
           pnpm -r run build
 
       - name: Start services (background)
         run: |
           # Start all services in background
-          node apps/backend/core/auth/dist/main.js &
-          node apps/backend/core/session-broker/dist/main.js &
-          node apps/backend/domain/template/dist/main.js &
-          node apps/backend/core/ai-orchestrator/dist/main.js &
-          node apps/backend/runtime/replay-engine/dist/main.js &
+          node apps/backend/core/platform/dist/main.js &
+          node apps/backend/sessions/session-broker/dist/main.js &
+          node apps/backend/domain/browser-template/dist/main.js &
+          node apps/backend/orchestration/ai-orchestrator/dist/main.js &
+          node apps/backend/runtime/replay-worker/dist/main.js &
 
           # Wait for services to start
           sleep 10

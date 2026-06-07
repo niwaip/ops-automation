@@ -23,7 +23,9 @@ import { ExportOptions } from './application/browser-script-export.service';
 @ApiTags('browser')
 @Controller('browser')
 export class BrowserController {
-  private readonly artifactDir = path.join(process.cwd(), 'temp', 'playwright-cli-artifacts');
+  private readonly artifactDir =
+    process.env.PLAYWRIGHT_CLI_ARTIFACT_DIR?.trim()
+    || path.join(process.cwd(), 'temp', 'playwright-cli-artifacts');
 
   constructor(private readonly browserService: BrowserService) {}
 

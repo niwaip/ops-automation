@@ -36,7 +36,7 @@ export class WorkerService implements OnModuleInit {
       // The worker will look for workflows and activities in the src directory
       this.worker = await Worker.create({
         workflowsPath: path.join(process.cwd(), 'src', 'workflows'),
-        activitiesPath: path.join(process.cwd(), 'src', 'activities'),
+        activities: {},
         taskQueue,
       });
 

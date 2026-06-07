@@ -1,0 +1,42 @@
+# Debug Session: carbone-downloadurl-null
+
+- Status: OPEN
+- Started: 2026-06-07
+- Symptom:
+  - 任务执行失败，错误为 `Carbone 返回结果缺少 downloadUrl`
+  - 用户说明日志应该已经记录，另有“空值”问题需要一起排查
+- Scope:
+  - 查明 `documentRender` 返回值缺少 `downloadUrl` 的根因
+  - 查明相关空值来源
+- Hypotheses:
+  - H1: Carbone API 实际返回了错误对象或非成功结构，代码仍按成功结构读取 `data.downloadUrl`
+  - H2: 上游传给 Carbone 的模板数据存在空值，导致渲染链路返回不完整结果
+  - H3: HTTP 适配层对 Carbone 响应做了解包/字段映射，`downloadUrl` 在适配过程中被丢失
+  - H4: 日志里已存在渲染前后的关键字段，但异常抛出处缺少上下文，导致空值和缺字段被混为一类
+  - H5: Carbone 服务在当前环境下返回的字段名不是 `downloadUrl`，而是其他 URL 字段
+- Evidence Log:
+  - `documentRender` 在成功响应后直接读取 `response.json().downloadUrl`，抛错点位于共享 Activity 模板，说明缺字段发生在 HTTP 返回之后。
+  - `temporal-activity-execution.service.ts` 在 Sandbox Agent 不可用时会进入“回退到直接执行”路径。
+  - fallback runner 之前将 `sys.modules['requests']` 全局替换为固定 mock，任何 Activity 中的 HTTP 调用都会拿到伪造 JSON，而不是真实远端响应。
+  - 当前本机 Python 环境 `importlib.util.find_spec('requests')` 结果为 `False`，说明 fallback 环境没有原生 `requests` 包。
+  - 仓库中已有 `debug-shared-http-fallback.md`，同一时间窗内同时记录了天气字段全空与执行单 `ecda9417-a7df-42c8-bdc7-6543d4beb864` 的 `downloadUrl` 缺失，符合共享根因。
+- Hypothesis Status:
+  - H1: 否。更像是根本没有拿到真实 Carbone 响应，而不是 Carbone 成功响应字段变形。
+  - H2: 否。空值问题与 Carbone 缺字段同时出现，且都落在 fallback 路径，说明不是单一模板数据问题。
+  - H3: 否。字段不是在业务适配层丢失，而是在 mock `requests` 响应阶段就不存在。
+  - H4: 是。已有日志与代码证据能把“空值”和“缺少 downloadUrl”统一到 fallback runner。
+  - H5: 否。当前没有证据表明 Carbone 改了字段名。
+- Fix:
+  - fallback runner 改为优先使用原生 `requests`；若环境未安装，则使用基于 `urllib` 的兼容 shim 发真实 HTTP 请求，并保留调试上报。
+  - `documentRender` 的 Carbone 候选地址列表补入 `CARBONE_EXTERNAL_URL`，避免 fallback subprocess 只能尝试容器内主机名。
+- Validation:
+  - VS Code 诊断未报告本次文件新增错误，仅有既有未使用参数提示。
+  - 项目内 `jest temporal-workflow-core.test.ts` 仍被无关 Prisma 类型错误阻断，未形成本次改动回归结论。
+  - 用户复测后，天气结果已恢复，说明真实 HTTP shim 生效；文档渲染报错演进为 `Name or service not known`，证明问题已从假响应推进到地址解析层。
+  - 端到端复测通过真实登录态重新创建执行单 `81829144-a5fa-4b19-8d0b-a5b76737bd80`，错误进一步演进为 `HTTP Error 404: Not Found`。
+  - `ops-platform` 容器内访问 `http://carbone-engine:3009/api` 返回 200，说明当前 Docker 网络连通性已恢复。
+  - 执行单绑定的 release `b2f8b7fb-50bc-4bc2-8e75-0f11ff1beec9` source snapshot 指向模板 `3ac4a303-bd96-4046-a38e-b04c3aeeef6a` 与 skill `5f41298d-f3f6-4e78-9438-de802d028fa8`。
+  - `carbone_templates` 表中存在该模板记录，`file_path=/app/templates/3ac4a303-bd96-4046-a38e-b04c3aeeef6a.docx` 且 `has_valid_file=true`，但 Carbone 容器内 `/app/templates/3ac4a303-bd96-4046-a38e-b04c3aeeef6a.docx` 与对应 `.json` 实际均不存在。
+  - 结论：代码层根因已修复；当前剩余失败根因是发布能力绑定了一个“DB 元数据存在但模板文件未落盘/未挂载”的 Carbone 模板资产。
+- Next Step:
+  - 恢复模板文件 `3ac4a303-bd96-4046-a38e-b04c3aeeef6a.docx` 与对应元数据文件到 `apps/backend/var/templates/document-engine`，或重新发布绑定到一个当前存在的模板 ID，再做最终回归验证

@@ -331,6 +331,7 @@ export class WordGenerator {
                   width: section.format?.width || 500,
                   height: section.format?.height || 350,
                 },
+                type: 'png',
               }),
             ],
             spacing: { after: 300 },

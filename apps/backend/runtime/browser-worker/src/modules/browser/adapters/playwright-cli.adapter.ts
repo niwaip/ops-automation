@@ -73,8 +73,12 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
 
   private readonly logger = new Logger(PlaywrightCliAdapter.name);
   private readonly sessions = new Map<string, CliSessionState>();
-  private readonly profileDir = path.join(process.cwd(), 'temp', 'playwright-profiles');
-  private readonly artifactDir = path.join(process.cwd(), 'temp', 'playwright-cli-artifacts');
+  private readonly profileDir =
+    process.env.PLAYWRIGHT_CLI_PROFILE_DIR?.trim()
+    || path.join(process.cwd(), 'temp', 'playwright-profiles');
+  private readonly artifactDir =
+    process.env.PLAYWRIGHT_CLI_ARTIFACT_DIR?.trim()
+    || path.join(process.cwd(), 'temp', 'playwright-cli-artifacts');
   private readonly screenshotCompressionThresholdBytes = 350 * 1024;
   private readonly screenshotMaxDimension = 1600;
   private readonly screenshotJpegQuality = 70;
