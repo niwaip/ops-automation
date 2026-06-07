@@ -66,13 +66,13 @@ jobs:
 
       - name: Setup database schema
         run: |
-          psql -h localhost -U ops -d ops -f infra/sql/migrations/001_init.sql
+          psql -h localhost -U ops -d ops -f docker/sql/migrations/001_init.sql
         env:
           PGPASSWORD: ops_secret
 
       - name: Seed test data
         run: |
-          psql -h localhost -U ops -d ops -f infra/sql/seed.sql
+          psql -h localhost -U ops -d ops -f docker/sql/seed.sql
         env:
           PGPASSWORD: ops_secret
 
