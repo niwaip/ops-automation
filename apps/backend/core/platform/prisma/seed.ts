@@ -4,7 +4,7 @@ import * as bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('Seeding database...');
+  console.info('Seeding database...');
 
   // 1. Create System Roles
   const roles = [
@@ -47,7 +47,7 @@ async function main() {
         permissions: role.permissions,
       },
     });
-    console.log(`Ensured role: ${role.name}`);
+    console.info(`Ensured role: ${role.name}`);
   }
 
   // 2. Create admin user
@@ -70,7 +70,7 @@ async function main() {
     },
   });
 
-  console.log('Created admin user:', admin.username);
+  console.info('Created admin user:', admin.username);
 
   // Link admin user to admin role
   const adminRole = await prisma.role.findUnique({ where: { name: 'admin' } });
@@ -110,7 +110,7 @@ async function main() {
     },
   });
 
-  console.log('Created test user:', testUser.username);
+  console.info('Created test user:', testUser.username);
 
   // Link test user to employee role
   const employeeRole = await prisma.role.findUnique({ where: { name: 'employee' } });
@@ -130,18 +130,22 @@ async function main() {
     });
   }
 
-  console.log('Database seeded successfully!');
-  console.log('');
-  console.log('Login credentials:');
-  console.log('  Admin: username=admin, password=admin123');
-  console.log('  Test:  username=test, password=test123');
+  console.info('Database seeded successfully!');
+  console.info('');
+  console.info('Login credentials:');
+  console.info('  Admin: username=admin, password=admin123');
+  console.info('  Test:  username=test, password=test123');
 }
 
-main()
-  .catch((e) => {
+async function run() {
+  try {
+    await main();
+  } catch (e) {
     console.error(e);
     process.exit(1);
-  })
-  .finally(async () => {
+  } finally {
     await prisma.$disconnect();
-  });
+  }
+}
+
+void run();
