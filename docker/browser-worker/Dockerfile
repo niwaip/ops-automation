@@ -104,12 +104,16 @@ RUN echo "=== Playwright cache contents ===" && \
         CHROME_BIN=$(find "${CHROMIUM_DIR}" -type f -name "chrome" | head -1) && \
         echo "Chrome binary: ${CHROME_BIN}" && \
         mv "${CHROMIUM_DIR}" /opt/chromium && \
-        ln -sf /opt/chromium/chrome-linux/chrome /usr/bin/google-chrome && \
-        chmod +x /opt/chromium/chrome-linux/chrome && \
+        CHROME_BIN=$(find /opt/chromium -type f -name "chrome" | head -1) && \
+        test -n "$CHROME_BIN" && \
+        ln -sf "$CHROME_BIN" /opt/chromium/chrome && \
+        ln -sf /opt/chromium/chrome /usr/bin/google-chrome && \
+        chmod +x "$CHROME_BIN" /opt/chromium/chrome && \
         chmod -R a+rx /opt/chromium && \
         ln -sf /opt/chromium /root/.cache/ms-playwright/chromium-$(basename "${CHROMIUM_DIR}" | sed 's/chromium-//') && \
         ls -la /usr/bin/google-chrome && \
-        ls -la /opt/chromium/chrome-linux/; \
+        ls -la /opt/chromium && \
+        ls -la "$(dirname "$CHROME_BIN")"; \
     else \
         echo "No Chromium found, using npm playwright"; \
         npm config set registry https://registry.npmmirror.com && \
@@ -117,7 +121,11 @@ RUN echo "=== Playwright cache contents ===" && \
         npx playwright install chromium --with-deps && \
         CHROMIUM_DIR=$(ls -d /root/.cache/ms-playwright/chromium-* | head -1) && \
         mv "${CHROMIUM_DIR}" /opt/chromium && \
-        ln -sf /opt/chromium/chrome-linux/chrome /usr/bin/google-chrome; \
+        CHROME_BIN=$(find /opt/chromium -type f -name "chrome" | head -1) && \
+        test -n "$CHROME_BIN" && \
+        ln -sf "$CHROME_BIN" /opt/chromium/chrome && \
+        ln -sf /opt/chromium/chrome /usr/bin/google-chrome && \
+        chmod +x "$CHROME_BIN" /opt/chromium/chrome; \
     fi && \
     ls -la /root/.cache/ms-playwright/
 

@@ -44,6 +44,28 @@ ai_mode_active = False
 
 os.makedirs(CODEGEN_DIR, exist_ok=True)
 
+def resolve_chrome_executable() -> str:
+    """Resolve the Chrome executable inside the container."""
+    candidates = [
+        "/opt/chromium/chrome",
+        "/usr/bin/google-chrome",
+        "/usr/bin/google-chrome-stable",
+        "/usr/bin/chromium",
+        "/usr/bin/chromium-browser",
+    ]
+    for candidate in candidates:
+        if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+            return candidate
+
+    for root, _, files in os.walk("/opt/chromium"):
+        if "chrome" not in files:
+            continue
+        candidate = os.path.join(root, "chrome")
+        if os.access(candidate, os.X_OK):
+            return candidate
+
+    raise FileNotFoundError("Chrome executable not found")
+
 def resolve_active_browser_state():
     """Inspect the live Chrome instance exposed by CDP and export storage state."""
     if not PLAYWRIGHT_AVAILABLE:
@@ -315,12 +337,13 @@ def ai_start(url="about:blank"):
     try:
         print(f"[INFO] Starting AI control browser, URL: {url}")
         os.environ["DISPLAY"] = ":99"
+        chrome_executable = resolve_chrome_executable()
 
         ai_playwright = sync_playwright().start()
         # Use the chromium installed via npm playwright
         ai_browser = ai_playwright.chromium.launch(
             headless=False,
-            executable_path="/opt/chromium/chrome-linux/chrome",
+            executable_path=chrome_executable,
             args=[
                 "--window-size=1920,1080",
                 "--no-sandbox",

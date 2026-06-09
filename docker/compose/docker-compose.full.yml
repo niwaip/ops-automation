@@ -388,6 +388,7 @@ services:
     build:
       context: ../..
       dockerfile: docker/browser-worker/Dockerfile
+    image: ${SESSION_BROWSER_IMAGE:-ops-browser-chrome:local}
     container_name: ops-browser-chrome
     ports:
       - "${NOVNC_PORT:-6080}:8080"  # noVNC
@@ -412,7 +413,7 @@ services:
   # Temporal Server & UI
   # ============================================
   temporal:
-    image: docker.1ms.run/library/temporalio/auto-setup:1.22.0
+    image: temporalio/auto-setup:1.22.0
     container_name: ops-temporal
     ports:
       - "7233:7233"   # Frontend gRPC
@@ -438,7 +439,7 @@ services:
       - ops-network
 
   temporal-ui:
-    image: docker.1ms.run/library/temporalio/ui:2.20.0
+    image: temporalio/ui:2.20.0
     container_name: ops-temporal-ui
     ports:
       - "8088:8080"

@@ -78,6 +78,7 @@ services:
     build:
       context: ../..
       dockerfile: docker/browser-worker/Dockerfile
+    image: ${SESSION_BROWSER_IMAGE:-ops-browser-chrome:local}
     container_name: ops-browser-chrome
     ports:
       - "${NOVNC_PORT:-6080}:8080"

@@ -165,30 +165,7 @@ stop_docker() {
 # Function to run database migrations
 run_migrations() {
     log_info "Running database migrations..."
-
-    # Set database URL
-    export DATABASE_URL="${DATABASE_URL:-postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${LOCAL_DB_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}}"
-
-    # Run SQL migrations if they exist
-    if [ -d "docker/sql/migrations" ]; then
-        for sql_file in docker/sql/migrations/*.sql; do
-            if [ -f "$sql_file" ]; then
-                log_info "Applying migration: $sql_file"
-                bash ./docker/start-smart.sh docker-compose.yml exec -T postgres \
-                    psql -U ops -d ops -f - < "$sql_file" 2>/dev/null || true
-            fi
-        done
-    fi
-
-    # Run Prisma migrations for platform service
-    if [ -d "apps/backend/core/platform/prisma" ]; then
-        log_info "Running Prisma migrations for platform service..."
-        cd apps/backend/core/platform
-        if [ -f "prisma/schema.prisma" ]; then
-            npx prisma migrate deploy 2>/dev/null || npx prisma db push --skip-generate 2>/dev/null || true
-        fi
-        cd "$PROJECT_ROOT"
-    fi
+    bash ./docker/scripts/apply-latest-db-schema.sh
 
     log_success "Database migrations completed!"
 }
