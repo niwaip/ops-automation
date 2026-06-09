@@ -1,5 +1,6 @@
 import { Injectable, Logger, NotFoundException, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import * as http from 'http';
+import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import {
   CreateWorkerRequestDto,
@@ -12,6 +13,7 @@ import { getPublicHost, getSessionBrokerUrl } from '../../config/service-endpoin
 const Docker = require('dockerode');
 
 const DEFAULT_DOCKER_SOCKET_PATH = '/var/run/docker.sock';
+const DEFAULT_BROWSER_PROFILE_ROOT = '/tmp/browser-profiles';
 
 interface ManagedWorkerStatus extends WorkerStatusDto {
   container_name: string;
@@ -50,6 +52,8 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
   private readonly defaultHeadless =
     (process.env.SESSION_HEADLESS || 'false').toLowerCase() === 'true';
   private readonly sessionBrokerUrl = getSessionBrokerUrl();
+  private readonly browserProfileRoot =
+    process.env.BROWSER_WORKER_PROFILE_ROOT?.trim() || DEFAULT_BROWSER_PROFILE_ROOT;
   private readonly screenWidth = process.env.SESSION_SCREEN_WIDTH || '1920';
   private readonly screenHeight = process.env.SESSION_SCREEN_HEIGHT || '1080';
   private readonly screenDepth = process.env.SESSION_SCREEN_DEPTH || '24';
@@ -158,7 +162,9 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
     const workerId = uuidv4();
     const containerName = `ops-browser-session-${workerId}`;
     const runtimeSessionId = request.runtime_session_id;
-    const profilePath = request.profile_path || `/tmp/browser-profiles/${request.user_id}/${workerId}`;
+    const profileOwner = request.user_id || 'anonymous';
+    const profilePath =
+      request.profile_path || path.join(this.browserProfileRoot, profileOwner, workerId);
     const mode = request.mode || this.defaultSessionMode;
     const headless = request.headless ?? (mode === 'agent' ? true : this.defaultHeadless);
     const enableCodegen = request.enable_codegen ?? this.defaultEnableCodegen;

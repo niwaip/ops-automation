@@ -90,6 +90,12 @@ Template*Workflow.json
 test_contract.docx
 
 # Browser worker runtime artifacts
+# Playwright MCP test files
+.playwright-mcp/
+*.png
+test_contract.docx
+
+# Browser worker runtime artifacts
 .playwright-cli/
 apps/backend/runtime/browser-worker/.playwright-cli/page-*.yml
 
@@ -103,3 +109,6 @@ apps/backend/runtime/browser-worker/.playwright-cli/page-*.yml
 *.dot
 *.dotx
 *.dotm
+
+# Backend runtime data
+apps/backend/var/

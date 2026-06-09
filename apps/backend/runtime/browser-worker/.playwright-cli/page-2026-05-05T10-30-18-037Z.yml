@@ -1,1 +1,0 @@
-- generic [ref=e2]: "Blocked request. This host (\"portal\") is not allowed. To allow this host, add \"portal\" to `server.allowedHosts` in vite.config.js."

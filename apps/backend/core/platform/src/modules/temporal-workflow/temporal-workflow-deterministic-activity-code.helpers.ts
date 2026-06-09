@@ -165,6 +165,8 @@ export function buildDeterministicCarboneActivityCode(args: {
     `    default_base_url = _normalize_base_url(${JSON.stringify(getCarboneServiceUrl())})`,
     '    if default_base_url:',
     '        candidate_base_urls.append(default_base_url)',
+    '    if external_base_url:',
+    '        candidate_base_urls.append(external_base_url)',
     '    deduped_base_urls = []',
     '    for candidate in candidate_base_urls:',
     '        normalized_candidate = _normalize_base_url(candidate)',

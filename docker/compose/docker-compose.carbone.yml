@@ -22,10 +22,10 @@ services:
     ports:
       - "3009:3009"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/backend/domain/carbone-engine:/app
+      - ${PROJECT_ROOT:-..}/apps/backend/domain/document-engine:/app
       - carbone_engine_node_modules:/app/node_modules
-      - ${PROJECT_ROOT:-..}/.data/carbone-engine/templates:/app/templates
-      - ${PROJECT_ROOT:-..}/.data/carbone-engine/outputs:/app/outputs
+      - ${PROJECT_ROOT:-..}/apps/backend/var/templates/document-engine:/app/templates
+      - ${PROJECT_ROOT:-..}/apps/backend/var/outputs/document-engine:/app/outputs
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3009/api"]
       interval: 30s
@@ -49,10 +49,10 @@ services:
     ports:
       - "3010:3009"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/backend/domain/carbone-engine:/app
+      - ${PROJECT_ROOT:-..}/apps/backend/domain/document-engine:/app
       - carbone_engine_dev_node_modules:/app/node_modules
-      - ${PROJECT_ROOT:-..}/.data/carbone-engine/templates:/app/templates
-      - ${PROJECT_ROOT:-..}/.data/carbone-engine/outputs:/app/outputs
+      - ${PROJECT_ROOT:-..}/apps/backend/var/templates/document-engine:/app/templates
+      - ${PROJECT_ROOT:-..}/apps/backend/var/outputs/document-engine:/app/outputs
     networks:
       - ops-network
     profiles:

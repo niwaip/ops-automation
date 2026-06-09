@@ -75,6 +75,7 @@ EOF
 
 experience_expected=$(cat <<'EOF'
 portal
+user-web
 EOF
 )
 
@@ -92,6 +93,7 @@ session-broker
 temporal
 temporal-sandbox-agent
 temporal-ui
+user-web
 EOF
 )
 

@@ -34,7 +34,7 @@ services:
     ports:
       - "13009:3009"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/backend/domain/carbone-engine:/app
+      - ${PROJECT_ROOT:-..}/apps/backend/domain/document-engine:/app
       - carbone_test_node_modules:/app/node_modules
     depends_on:
       - mock-ai-server

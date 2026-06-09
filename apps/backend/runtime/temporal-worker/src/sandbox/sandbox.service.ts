@@ -17,7 +17,7 @@ interface ExecutionRequest {
   input?: Record<string, any>;
 }
 
-interface ExecutionResponse {
+export interface ExecutionResponse {
   success: boolean;
   result?: any;
   logs?: string[];

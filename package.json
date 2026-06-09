@@ -15,7 +15,7 @@
     "typecheck": "tsc --noEmit",
     "validate:user-core": "pnpm --filter @ops/user-core run typecheck && pnpm --filter @ops/user-core run build && pnpm --filter @ops/user-core run check:boundaries",
     "debug:recognizer-prompt": "node scripts/recognizer-prompt-debug.js",
-    "build": "pnpm run --filter @ops/* build",
+    "build": "pnpm --workspace-concurrency=1 run --filter @ops/* build",
     "clean": "rm -rf node_modules dist .turbo",
     "docker:up": "bash ./docker/start-smart.sh docker-compose.yml up -d",
     "docker:down": "bash ./docker/start-smart.sh docker-compose.yml down",
@@ -35,6 +35,7 @@
   "workspaces": [
     "apps/*",
     "apps/*/*",
+    "apps/*/*/*",
     "tests/*",
     "packages/*"
   ],

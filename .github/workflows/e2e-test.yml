@@ -6,15 +6,6 @@ on:
   pull_request:
     branches: [main, develop]
   workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Test environment'
-        required: false
-        default: 'docker'
-        type: choice
-        options:
-          - docker
-          - staging
 
 jobs:
   e2e-tests:
@@ -66,31 +57,27 @@ jobs:
 
       - name: Setup database schema
         run: |
-          psql -h localhost -U ops -d ops -f infra/sql/migrations/001_init.sql
+          psql -h localhost -U ops -d ops -f docker/sql/migrations/001_init.sql
         env:
           PGPASSWORD: ops_secret
 
       - name: Seed test data
         run: |
-          psql -h localhost -U ops -d ops -f infra/sql/seed.sql
+          psql -h localhost -U ops -d ops -f docker/sql/seed.sql
         env:
           PGPASSWORD: ops_secret
 
       - name: Build services
-        run: |
-          # Generate Prisma client for auth service
-          cd apps/backend/core/auth && npx prisma generate && cd ../../../..
-          # Build all services
-          pnpm -r run build
+        run: pnpm build
 
       - name: Start services (background)
         run: |
           # Start all services in background
-          node apps/backend/core/auth/dist/main.js &
-          node apps/backend/core/session-broker/dist/main.js &
-          node apps/backend/domain/template/dist/main.js &
-          node apps/backend/core/ai-orchestrator/dist/main.js &
-          node apps/backend/runtime/replay-engine/dist/main.js &
+          node apps/backend/core/platform/dist/main.js &
+          node apps/backend/sessions/session-broker/dist/main.js &
+          node apps/backend/domain/browser-template/dist/main.js &
+          node apps/backend/orchestration/ai-orchestrator/dist/main.js &
+          node apps/backend/runtime/replay-worker/dist/main.js &
 
           # Wait for services to start
           sleep 10
@@ -99,9 +86,9 @@ jobs:
           REDIS_URL: redis://localhost:6379
           AUTH_PORT: 3001
           SESSION_BROKER_PORT: 3002
-          TEMPLATE_PORT: 3004
-          AI_ORCHESTRATOR_PORT: 3000
-          REPLAY_ENGINE_PORT: 3005
+          BROWSER_TEMPLATE_PORT: 3005
+          AI_ORCHESTRATOR_PORT: 3007
+          REPLAY_ENGINE_PORT: 3006
           SKIP_SERVICE_HEALTH_CHECK: true
 
       - name: Run E2E tests
@@ -114,12 +101,12 @@ jobs:
           AUTH_PORT: 3001
           SESSION_BROKER_HOST: localhost
           SESSION_BROKER_PORT: 3002
-          TEMPLATE_HOST: localhost
-          TEMPLATE_PORT: 3004
+          BROWSER_TEMPLATE_HOST: localhost
+          BROWSER_TEMPLATE_PORT: 3005
           AI_ORCHESTRATOR_HOST: localhost
-          AI_ORCHESTRATOR_PORT: 3000
+          AI_ORCHESTRATOR_PORT: 3007
           REPLAY_ENGINE_HOST: localhost
-          REPLAY_ENGINE_PORT: 3005
+          REPLAY_ENGINE_PORT: 3006
           SKIP_SERVICE_HEALTH_CHECK: true
 
       - name: Upload coverage report
@@ -147,47 +134,3 @@ jobs:
             coverage/integration/
             test-results/
           retention-days: 7
-
-  e2e-tests-docker:
-    name: E2E Tests with Docker Compose
-    runs-on: ubuntu-latest
-    needs: e2e-tests
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'docker'
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 8.12.0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Start Docker Compose
-        run: |
-          docker compose -f docker/docker-compose.shared.yml -f docker/docker-compose.dev.yml up -d
-          sleep 30
-
-      - name: Run E2E tests
-        run: pnpm exec jest --config tests/integration/jest.config.js
-        env:
-          DATABASE_URL: postgresql://ops:ops_secret@postgres:5432/ops
-          REDIS_URL: redis://redis:6379
-          AUTH_HOST: auth
-          SESSION_BROKER_HOST: session-broker
-          TEMPLATE_HOST: template
-          AI_ORCHESTRATOR_HOST: ai-orchestrator
-          REPLAY_ENGINE_HOST: replay-engine
-
-      - name: Stop Docker Compose
-        if: always()
-        run: docker compose -f docker/docker-compose.shared.yml -f docker/docker-compose.dev.yml down -v

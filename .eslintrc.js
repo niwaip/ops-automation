@@ -53,6 +53,14 @@ module.exports = {
         ],
       },
     },
+    {
+      files: ['apps/backend/**/prisma/seed.ts'],
+      rules: {
+        '@typescript-eslint/no-unsafe-assignment': 'off',
+        '@typescript-eslint/no-unsafe-call': 'off',
+        '@typescript-eslint/no-unsafe-member-access': 'off',
+      },
+    },
   ],
   ignorePatterns: ['dist', 'node_modules', '*.js', '!.eslintrc.js'],
 };
