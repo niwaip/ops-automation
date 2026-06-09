@@ -55,7 +55,10 @@ echo "✓ Fluxbox started"
 # 3. Start Chrome
 echo "[3/5] Starting Google Chrome..."
 # Find Chrome binary
-CHROME_BIN="/opt/chromium/chrome-linux/chrome"
+CHROME_BIN="/opt/chromium/chrome"
+if [ ! -x "$CHROME_BIN" ] && [ -d /opt/chromium ]; then
+    CHROME_BIN=$(find /opt/chromium -type f -name chrome 2>/dev/null | head -1)
+fi
 if [ ! -x "$CHROME_BIN" ]; then
     CHROME_BIN="/usr/bin/google-chrome"
 fi

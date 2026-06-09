@@ -3,6 +3,14 @@ import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@example.com';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
+const TEST_USERNAME = process.env.TEST_USERNAME || 'test';
+const TEST_EMAIL = process.env.TEST_EMAIL || 'test@example.com';
+const TEST_PASSWORD = process.env.TEST_PASSWORD || 'test123';
+const SKIP_TEST_USER = ['1', 'true', 'yes'].includes((process.env.SKIP_TEST_USER || '').toLowerCase());
+
 async function main() {
   console.info('Seeding database...');
 
@@ -51,20 +59,20 @@ async function main() {
   }
 
   // 2. Create admin user
-  const passwordHash = await bcrypt.hash('admin123', 10);
+  const passwordHash = await bcrypt.hash(ADMIN_PASSWORD, 10);
 
   const admin = await prisma.user.upsert({
-    where: { username: 'admin' },
+    where: { username: ADMIN_USERNAME },
     update: {
       passwordHash,
-      email: 'admin@example.com',
+      email: ADMIN_EMAIL,
       role: UserRoleType.admin,
       isActive: true,
     },
     create: {
-      username: 'admin',
+      username: ADMIN_USERNAME,
       passwordHash,
-      email: 'admin@example.com',
+      email: ADMIN_EMAIL,
       role: UserRoleType.admin,
       isActive: true,
     },
@@ -91,50 +99,54 @@ async function main() {
   }
 
   // 3. Create test user
-  const testPasswordHash = await bcrypt.hash('test123', 10);
+  if (!SKIP_TEST_USER) {
+    const testPasswordHash = await bcrypt.hash(TEST_PASSWORD, 10);
 
-  const testUser = await prisma.user.upsert({
-    where: { username: 'test' },
-    update: {
-      passwordHash: testPasswordHash,
-      email: 'test@example.com',
-      role: UserRoleType.employee,
-      isActive: true,
-    },
-    create: {
-      username: 'test',
-      passwordHash: testPasswordHash,
-      email: 'test@example.com',
-      role: UserRoleType.employee,
-      isActive: true,
-    },
-  });
+    const testUser = await prisma.user.upsert({
+      where: { username: TEST_USERNAME },
+      update: {
+        passwordHash: testPasswordHash,
+        email: TEST_EMAIL,
+        role: UserRoleType.employee,
+        isActive: true,
+      },
+      create: {
+        username: TEST_USERNAME,
+        passwordHash: testPasswordHash,
+        email: TEST_EMAIL,
+        role: UserRoleType.employee,
+        isActive: true,
+      },
+    });
 
-  console.info('Created test user:', testUser.username);
+    console.info('Created test user:', testUser.username);
 
-  // Link test user to employee role
-  const employeeRole = await prisma.role.findUnique({ where: { name: 'employee' } });
-  if (employeeRole) {
-    await prisma.userRole.upsert({
-      where: {
-        userId_roleId: {
+    // Link test user to employee role
+    const employeeRole = await prisma.role.findUnique({ where: { name: 'employee' } });
+    if (employeeRole) {
+      await prisma.userRole.upsert({
+        where: {
+          userId_roleId: {
+            userId: testUser.id,
+            roleId: employeeRole.id,
+          },
+        },
+        update: {},
+        create: {
           userId: testUser.id,
           roleId: employeeRole.id,
         },
-      },
-      update: {},
-      create: {
-        userId: testUser.id,
-        roleId: employeeRole.id,
-      },
-    });
+      });
+    }
   }
 
   console.info('Database seeded successfully!');
   console.info('');
   console.info('Login credentials:');
-  console.info('  Admin: username=admin, password=admin123');
-  console.info('  Test:  username=test, password=test123');
+  console.info(`  Admin: username=${ADMIN_USERNAME}, password=${ADMIN_PASSWORD}`);
+  if (!SKIP_TEST_USER) {
+    console.info(`  Test:  username=${TEST_USERNAME}, password=${TEST_PASSWORD}`);
+  }
 }
 
 async function run() {

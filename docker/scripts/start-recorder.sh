@@ -99,7 +99,10 @@ if [ "$HEADLESS" != "true" ]; then
 fi
 
 echo "[3/5] Starting Chrome with CDP on port ${CHROME_DEBUG_PORT}..."
-CHROME_BIN="/opt/chromium/chrome-linux/chrome"
+CHROME_BIN="/opt/chromium/chrome"
+if [ ! -x "$CHROME_BIN" ] && [ -d /opt/chromium ]; then
+    CHROME_BIN=$(find /opt/chromium -type f -name chrome 2>/dev/null | head -1)
+fi
 if [ ! -x "$CHROME_BIN" ]; then
     CHROME_BIN="/usr/bin/google-chrome"
 fi
