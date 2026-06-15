@@ -133,7 +133,7 @@ CHROME_COMMON_ARGS=(
     --disable-background-timer-throttling
     --disable-backgrounding-occluded-windows
     --disable-renderer-backgrounding
-    --disable-features=TranslateUI,VizDisplayCompositor
+    --disable-features=TranslateUI,VizDisplayCompositor,HttpsUpgrades,HTTPS-FirstBalancedModeAutoEnable,HTTPS-FirstModeV2ForEngagedSites
     --disable-ipc-flooding-protection
     --remote-debugging-port=${INTERNAL_CDP_PORT}
     --remote-allow-origins=*

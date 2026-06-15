@@ -50,4 +50,5 @@ volumes:
 
 networks:
   ops-network:
-    driver: bridge
+    external: true
+    name: ${NETWORK_NAME:-ops-network}

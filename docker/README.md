@@ -51,7 +51,7 @@ cp env/.env.example .env
 ```
 
 主要配置项：
-- `DOCKER_REGISTRY`: 镜像源（国内推荐使用 `docker.1ms.run/library/`）
+- `DOCKER_REGISTRY`: 镜像源（国内推荐使用 `docker.1ms.run/`，不要带 `/library/`）
 - `HOST_IP`: 对外访问主机 IP（用于容器间及外部访问）
 - `PROJECT_ROOT`: 代码挂载根路径（`start-smart.sh` 会自动设置）
 

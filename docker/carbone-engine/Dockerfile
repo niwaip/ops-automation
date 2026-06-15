@@ -1,7 +1,7 @@
 # Carbone Engine Dockerfile
 # Optimized with LibreOffice pre-installed to avoid runtime installation overhead
 
-FROM docker.1ms.run/library/node:20-bullseye
+FROM node:20-bullseye
 
 # Install LibreOffice with retries because Debian mirrors can close long downloads.
 RUN apt-get -o Acquire::Retries=5 update \

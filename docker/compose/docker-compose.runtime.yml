@@ -100,7 +100,7 @@ services:
       - ops-network
 
   temporal:
-    image: docker.1ms.run/library/temporalio/auto-setup:1.22.0
+    image: temporalio/auto-setup:1.22.0
     container_name: ops-temporal
     ports:
       - "7233:7233"
@@ -123,7 +123,7 @@ services:
       - ops-network
 
   temporal-ui:
-    image: docker.1ms.run/library/temporalio/ui:2.20.0
+    image: temporalio/ui:2.20.0
     container_name: ops-temporal-ui
     ports:
       - "8088:8080"

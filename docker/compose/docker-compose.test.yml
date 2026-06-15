@@ -5,7 +5,7 @@
 services:
   # Mock AI服务（用于测试）
   mock-ai-server:
-    image: docker.1ms.run/library/node:20-bullseye
+    image: node:20-bullseye
     container_name: mock-ai-server-test
     working_dir: /app
     command: >
@@ -19,7 +19,7 @@ services:
 
   # Carbone Engine测试容器
   carbone-engine-test:
-    image: docker.1ms.run/library/node:20-bullseye
+    image: node:20-bullseye
     container_name: carbone-engine-test
     working_dir: /app
     command: >

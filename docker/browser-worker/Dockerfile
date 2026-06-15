@@ -2,7 +2,7 @@
 # Based on johnymoo/chrome-novnc-docker
 # Chrome + Xvfb + noVNC for browser automation with CDP support
 
-FROM docker.1ms.run/library/ubuntu:22.04
+FROM ubuntu:22.04
 
 LABEL maintainer="OPS Automation"
 LABEL description="Chrome + Xvfb + noVNC for browser automation"
@@ -13,6 +13,7 @@ ENV DISPLAY=:99
 ENV SCREEN_WIDTH=1920
 ENV SCREEN_HEIGHT=1080
 ENV SCREEN_DEPTH=24
+ENV NODE_TLS_REJECT_UNAUTHORIZED=0
 
 # Use mirrors for better connectivity
 RUN sed -i 's|http://ports.ubuntu.com|http://mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list || true
