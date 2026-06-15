@@ -13,12 +13,33 @@ import {
   ThunderboltOutlined,
   UserOutlined,
 } from "@ant-design/icons";
-import { Avatar, Button, Dropdown, Layout, Menu, Space, Tag, Typography } from "antd";
+import {
+  Avatar,
+  Badge,
+  Button,
+  Dropdown,
+  Empty,
+  Layout,
+  Menu,
+  Space,
+  Tag,
+  Typography,
+} from "antd";
 import type { MenuProps } from "antd";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useStore } from "zustand";
+import {
+  buildNotificationContent,
+  EXECUTION_STATUS_COLORS,
+  EXECUTION_STATUS_LABELS_EN,
+  EXECUTION_STATUS_LABELS_ZH,
+  getNotificationSeverityTagColor,
+  getNotificationSeverityText,
+  isExecutionStatusValue,
+} from "@ops/user-core";
 import { UserChatWidget } from "@/features/chat/components/UserChatWidget";
 import { authStore } from "../../adapters/auth/authStore";
+import { notificationStore } from "../../adapters/notifications/notificationStore";
 import { preferencesStore } from "../../adapters/preferences/preferencesStore";
 import "./UserLayout.css";
 
@@ -29,6 +50,13 @@ export function UserLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const user = useStore(authStore, (state) => state.user);
+  const notifications = useStore(notificationStore, (state) => state.items);
+  const unreadNotificationCount = useStore(
+    notificationStore,
+    (state) => state.items.filter((item) => item.unread).length,
+  );
+  const markAsRead = useStore(notificationStore, (state) => state.markAsRead);
+  const markAllAsRead = useStore(notificationStore, (state) => state.markAllAsRead);
   const language = useStore(preferencesStore, (state) => state.language);
   const setLanguage = useStore(preferencesStore, (state) => state.setLanguage);
   const theme = useStore(preferencesStore, (state) => state.theme);
@@ -47,6 +75,11 @@ export function UserLayout() {
           : location.pathname.startsWith("/reports")
             ? "/reports"
             : location.pathname;
+  const statusLabels = language === "en-US" ? EXECUTION_STATUS_LABELS_EN : EXECUTION_STATUS_LABELS_ZH;
+  const previewNotifications = notifications
+    .slice()
+    .sort((left, right) => new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime())
+    .slice(0, 5);
 
   const languageMenu: MenuProps = {
     items: [
@@ -78,6 +111,15 @@ export function UserLayout() {
       }
       authStore.getState().logout();
     },
+  };
+  const resolveActionPath = (actionUrl: string, source: string, sourceId: string): string => {
+    if (source === "execution") {
+      return `/executions/${sourceId}`;
+    }
+    if (source === "report") {
+      return `/reports/${sourceId}`;
+    }
+    return actionUrl;
   };
 
   return (
@@ -145,12 +187,121 @@ export function UserLayout() {
             </Space>
           </div>
           <div className="user-shell-header-right">
-            <Button
-              type="text"
-              icon={<BellOutlined />}
-              onClick={() => navigate("/notifications")}
-              style={{ color: "var(--text-secondary)", borderRadius: 10, height: 36, width: 36 }}
-            />
+            <Dropdown
+              trigger={["click"]}
+              placement="bottomRight"
+              popupRender={() => (
+                <div
+                  style={{
+                    width: 360,
+                    maxWidth: "calc(100vw - 32px)",
+                    background: "var(--surface-primary)",
+                    border: "1px solid var(--border-color)",
+                    borderRadius: 16,
+                    boxShadow: "0 12px 40px rgba(15, 23, 42, 0.16)",
+                    padding: 12,
+                  }}
+                >
+                  <Space
+                    style={{ width: "100%", justifyContent: "space-between", marginBottom: 12 }}
+                    align="start"
+                  >
+                    <div>
+                      <Typography.Text strong>通知预览</Typography.Text>
+                      <div style={{ marginTop: 4 }}>
+                        <Typography.Text type="secondary">
+                          {unreadNotificationCount > 0 ? `未读 ${unreadNotificationCount} 条` : "当前没有未读通知"}
+                        </Typography.Text>
+                      </div>
+                    </div>
+                    <Space size={4}>
+                      <Button
+                        type="link"
+                        size="small"
+                        disabled={unreadNotificationCount === 0}
+                        onClick={() => markAllAsRead()}
+                      >
+                        全部已读
+                      </Button>
+                      <Button
+                        type="link"
+                        size="small"
+                        onClick={() => navigate("/notifications")}
+                      >
+                        查看全部
+                      </Button>
+                    </Space>
+                  </Space>
+                  {previewNotifications.length === 0 ? (
+                    <Empty
+                      image={Empty.PRESENTED_IMAGE_SIMPLE}
+                      description="暂无通知"
+                      style={{ margin: "20px 0 8px" }}
+                    />
+                  ) : (
+                    <Space direction="vertical" size={8} style={{ width: "100%" }}>
+                      {previewNotifications.map((item) => {
+                        const content = buildNotificationContent(item, language);
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => {
+                              markAsRead(item.id);
+                              navigate(resolveActionPath(item.actionUrl, item.source, item.sourceId));
+                            }}
+                            style={{
+                              width: "100%",
+                              textAlign: "left",
+                              border: item.unread ? "1px solid rgba(59, 130, 246, 0.24)" : "1px solid var(--border-color)",
+                              borderRadius: 12,
+                              padding: 12,
+                              background: item.unread ? "rgba(59, 130, 246, 0.06)" : "var(--surface-secondary)",
+                              cursor: "pointer",
+                            }}
+                          >
+                            <Space direction="vertical" size={6} style={{ width: "100%" }}>
+                              <Space wrap size={[6, 6]}>
+                                <Typography.Text strong>{content.title}</Typography.Text>
+                                {isExecutionStatusValue(item.status) ? (
+                                  <Tag color={EXECUTION_STATUS_COLORS[item.status]}>{statusLabels[item.status]}</Tag>
+                                ) : null}
+                                <Tag color={getNotificationSeverityTagColor(item.severity)}>
+                                  {getNotificationSeverityText(item.severity, language)}
+                                </Tag>
+                                {item.unread ? <Tag color="blue">未读</Tag> : null}
+                              </Space>
+                              <Typography.Text
+                                type="secondary"
+                                style={{
+                                  display: "block",
+                                  lineHeight: 1.6,
+                                }}
+                              >
+                                {content.description}
+                              </Typography.Text>
+                              <Typography.Text type="secondary">
+                                {new Date(item.timestamp).toLocaleString()}
+                              </Typography.Text>
+                            </Space>
+                          </button>
+                        );
+                      })}
+                    </Space>
+                  )}
+                </div>
+              )}
+            >
+              <Button
+                type="text"
+                icon={(
+                  <Badge count={unreadNotificationCount} size="small" overflowCount={99}>
+                    <BellOutlined />
+                  </Badge>
+                )}
+                style={{ color: "var(--text-secondary)", borderRadius: 10, height: 36, width: 36 }}
+              />
+            </Dropdown>
             <Button
               type="text"
               icon={<ExportOutlined />}

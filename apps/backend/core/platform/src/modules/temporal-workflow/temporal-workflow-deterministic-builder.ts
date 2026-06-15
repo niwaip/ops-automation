@@ -6,6 +6,30 @@ import {
   HTTP_REQUEST_STEP_CONFIG_KEY,
   STRUCTURED_TRANSFORM_ACTIVITY_KEY,
   STRUCTURED_TRANSFORM_STEP_CONFIG_KEY,
+  FILE_READ_ACTIVITY_KEY,
+  FILE_WRITE_ACTIVITY_KEY,
+  WEBHOOK_NOTIFY_ACTIVITY_KEY,
+  EMAIL_SEND_ACTIVITY_KEY,
+  IM_NOTIFY_ACTIVITY_KEY,
+  CSV_PARSE_ACTIVITY_KEY,
+  JSON_TRANSFORM_ACTIVITY_KEY,
+  TEMPLATE_RENDER_ACTIVITY_KEY,
+  DATABASE_QUERY_ACTIVITY_KEY,
+  SHELL_COMMAND_ACTIVITY_KEY,
+  WAIT_DELAY_ACTIVITY_KEY,
+  CONDITION_CHECK_ACTIVITY_KEY,
+  FILE_READ_STEP_CONFIG_KEY,
+  FILE_WRITE_STEP_CONFIG_KEY,
+  WEBHOOK_NOTIFY_STEP_CONFIG_KEY,
+  EMAIL_SEND_STEP_CONFIG_KEY,
+  IM_NOTIFY_STEP_CONFIG_KEY,
+  CSV_PARSE_STEP_CONFIG_KEY,
+  JSON_TRANSFORM_STEP_CONFIG_KEY,
+  TEMPLATE_RENDER_STEP_CONFIG_KEY,
+  DATABASE_QUERY_STEP_CONFIG_KEY,
+  SHELL_COMMAND_STEP_CONFIG_KEY,
+  WAIT_DELAY_STEP_CONFIG_KEY,
+  CONDITION_CHECK_STEP_CONFIG_KEY,
 } from './builtin-activity.registry';
 import {
   buildDeterministicBrowserActivityCode,
@@ -17,6 +41,7 @@ import {
   buildFixedHttpRequestStructuredTransformWorkflowCode as buildFixedHttpRequestStructuredTransformWorkflowCodeHelper,
   buildFixedHttpRequestWorkflowCode as buildFixedHttpRequestWorkflowCodeHelper,
   buildFixedStructuredTransformWorkflowCode as buildFixedStructuredTransformWorkflowCodeHelper,
+  buildFixedBuiltinWorkflowCode as buildFixedBuiltinWorkflowCodeHelper,
 } from './temporal-workflow-fixed-workflow-code.helpers';
 import { TemporalWorkflowConfigService } from './temporal-workflow-config.service';
 import { TemporalWorkflowNormalizationService } from './temporal-workflow-normalization.service';
@@ -221,6 +246,40 @@ export function buildDeterministicWorkflowCodeForWorkflow(
       toPythonLiteral,
     });
   }
+  if (
+    builtinKey === FILE_READ_ACTIVITY_KEY ||
+    builtinKey === FILE_WRITE_ACTIVITY_KEY ||
+    builtinKey === WEBHOOK_NOTIFY_ACTIVITY_KEY ||
+    builtinKey === EMAIL_SEND_ACTIVITY_KEY ||
+    builtinKey === IM_NOTIFY_ACTIVITY_KEY ||
+    builtinKey === CSV_PARSE_ACTIVITY_KEY ||
+    builtinKey === JSON_TRANSFORM_ACTIVITY_KEY ||
+    builtinKey === TEMPLATE_RENDER_ACTIVITY_KEY ||
+    builtinKey === DATABASE_QUERY_ACTIVITY_KEY ||
+    builtinKey === SHELL_COMMAND_ACTIVITY_KEY ||
+    builtinKey === WAIT_DELAY_ACTIVITY_KEY ||
+    builtinKey === CONDITION_CHECK_ACTIVITY_KEY
+  ) {
+    const builtin = builtinActivityRegistry.getByKey(builtinKey);
+    const stepConfigKey = builtin?.config?.stepConfigKey;
+    const defaultStepConfig = builtin?.config?.defaultStepConfig || {};
+    const normalizedConfig = getStepBuiltinConfig(
+      step,
+      stepConfigKey,
+      defaultStepConfig,
+      workflowNormalizationService,
+    );
+    return buildFixedBuiltinWorkflowCodeHelper({
+      workflowDsl,
+      activityDef,
+      step,
+      normalizedConfig,
+      durationToTimedeltaCode,
+      buildExecuteActivityTimeoutLines,
+      toPythonLiteral,
+    });
+  }
+
 
   const workflowClassName = workflowDsl.workflowClassName?.trim()
     || `${(workflowDsl.name || 'Custom').replace(/\s+/g, '') || 'Custom'}Workflow`;
@@ -340,3 +399,30 @@ function getStepStructuredTransformConfig(
   }
   return workflowConfigService.normalizeStructuredTransformConfig(rawConfig as Record<string, any>, declaredInputKeys);
 }
+
+function getStepBuiltinConfig(
+  step: WorkflowStep,
+  stepConfigKey: string,
+  defaultStepConfig: Record<string, unknown>,
+  workflowNormalizationService: TemporalWorkflowNormalizationService,
+): Record<string, unknown> {
+  if (!stepConfigKey) {
+    return defaultStepConfig;
+  }
+  const rawInput = step?.input && typeof step.input === 'object' && !Array.isArray(step.input)
+    ? (step.input as Record<string, unknown>)
+    : {};
+  const rawConfig = rawInput[stepConfigKey];
+  if (!rawConfig || typeof rawConfig !== 'object' || Array.isArray(rawConfig)) {
+    return defaultStepConfig;
+  }
+  const sanitized = workflowNormalizationService.sanitizeJsonValue(rawConfig);
+  if (sanitized && typeof sanitized === 'object' && !Array.isArray(sanitized)) {
+    return {
+      ...defaultStepConfig,
+      ...sanitized,
+    };
+  }
+  return defaultStepConfig;
+}
+

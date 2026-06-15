@@ -430,7 +430,11 @@ describe('TemporalWorkflowCodegenService', () => {
     expect(result.code).toContain('"contentType": "html"');
     expect(result.code).toContain('"instructionTemplate": "提取标题和摘要，返回 JSON"');
     expect(result.code).toContain('"outputMode": "json"');
-    expect(result.code).toContain('return result.get("result") if isinstance(result, dict) and "result" in result else result');
+    expect(result.code).toContain('normalized_result = result.get("result") if isinstance(result, dict) and "result" in result else result');
+    expect(result.code).toContain('return self._build_workflow_result(normalized_result)');
+    expect(result.code).toContain('"resultType": "generic"');
+    expect(result.code).toContain('"summaryFormat": "plain_text"');
+    expect(result.code).toContain('"detailFormat": "plain_text"');
   });
 
   it('generates deterministic code for builtin httpRequest -> structuredTransform pipeline', async () => {
@@ -569,6 +573,227 @@ describe('TemporalWorkflowCodegenService', () => {
     expect(result.generationMode).toBe('deterministic');
     expect(logs.some((item) => item.includes('准备生成 Workflow 代码流'))).toBe(true);
     expect(logs.some((item) => item.includes('命中固定模板编译路径'))).toBe(true);
+  });
+
+  it('includes WorkflowResultEnvelope output contract in AI codegen prompt', () => {
+    const { codegenService } = createService();
+
+    const prompt = (codegenService as any).buildWorkflowCodePrompt(
+      {
+        name: 'AI 输出测试工作流',
+        workflowClassName: 'AiOutputWorkflow',
+        workflowDefnName: 'AI 输出测试工作流',
+        taskQueue: 'SKILL_TASK_QUEUE',
+        inputParams: {
+          city: {
+            required: true,
+            description: '城市名',
+          },
+        },
+        steps: [
+          {
+            id: 'step_1',
+            name: '查询天气',
+            type: 'activity',
+            activityRef: 'builtin:httpRequest',
+            activityName: 'httpRequest',
+            input: {
+              __httpRequest: {
+                method: 'GET',
+                urlTemplate: 'https://wttr.in/{city}',
+              },
+            },
+          },
+        ],
+      },
+      {
+        activities: [],
+      },
+      undefined,
+    );
+
+    expect(prompt).toContain('WorkflowResultEnvelope');
+    expect(prompt).toContain('最终返回值至少包含 `execution`、`trigger`、`result`、`artifacts`、`presentation` 五个顶层字段');
+    expect(prompt).toContain('presentation.preferAiSummary`、`presentation.preferStructuredView`、`presentation.summaryFormat`、`presentation.detailFormat`');
+    expect(prompt).toContain('请在 Workflow 类中实现 `_extract_summary()`、`_extract_detail_text()`、`_collect_artifacts()`、`_build_workflow_result()`');
+  });
+
+  it('detects missing WorkflowResultEnvelope fields in generated code', () => {
+    const { codegenService } = createService();
+
+    const invalidCheck = (codegenService as any).validateGeneratedWorkflowOutputContract(`
+from temporalio import workflow
+
+@workflow.defn(name="BadWorkflow")
+class BadWorkflow:
+    async def run(self, params: dict):
+        return {"summary": "done"}
+`);
+    expect(invalidCheck.success).toBe(false);
+    expect(invalidCheck.error).toContain('execution');
+
+    const validCheck = (codegenService as any).validateGeneratedWorkflowOutputContract(`
+from temporalio import workflow
+
+@workflow.defn(name="GoodWorkflow")
+class GoodWorkflow:
+    def _build_workflow_result(self, raw_result):
+        return {
+            "execution": {"status": "success"},
+            "trigger": {"type": "manual"},
+            "result": {"resultType": "generic", "title": "ok", "summary": "ok", "businessData": raw_result},
+            "artifacts": [],
+            "presentation": {"preferAiSummary": True, "preferStructuredView": False, "summaryFormat": "plain_text", "detailFormat": "plain_text", "detailText": "ok"},
+        }
+
+    async def run(self, params: dict):
+        return self._build_workflow_result({"value": 1})
+`);
+    expect(validCheck.success).toBe(true);
+  });
+
+  it('auto-retries AI generation when workflow output contract is missing', async () => {
+    const { codegenService } = createService();
+    mockedAxios.post
+      .mockResolvedValueOnce({
+        data: {
+          result: `
+from temporalio import workflow
+
+@workflow.defn(name="AiWorkflow")
+class AiWorkflow:
+    async def run(self, params: dict):
+        return {"summary": "done"}
+`,
+        },
+      } as any)
+      .mockResolvedValueOnce({
+        data: {
+          result: `
+from temporalio import workflow
+
+@workflow.defn(name="AiWorkflow")
+class AiWorkflow:
+    def _build_workflow_result(self, raw_result):
+        return {
+            "execution": {"status": "success"},
+            "trigger": {"type": "manual"},
+            "result": {"resultType": "generic", "title": "AI 输出测试工作流", "summary": "done", "businessData": raw_result},
+            "artifacts": [],
+            "presentation": {"preferAiSummary": True, "preferStructuredView": False, "chatSummary": "done", "notificationSummary": "done", "summaryFormat": "plain_text", "detailText": "done", "detailFormat": "plain_text"},
+        }
+
+    async def run(self, params: dict):
+        return self._build_workflow_result({"value": 1})
+`,
+        },
+      } as any);
+
+    const result = await codegenService.generateWorkflowCode(
+      {
+        name: 'AI 输出测试工作流',
+        workflowClassName: 'AiWorkflow',
+        workflowDefnName: 'AI 输出测试工作流',
+        taskQueue: 'SKILL_TASK_QUEUE',
+        steps: [],
+      } as any,
+      { activities: [] },
+      undefined,
+      true,
+      {
+        buildDeterministicWorkflowCode: () => null,
+      },
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.generationMode).toBe('ai');
+    expect(result.attempts).toBe(2);
+    expect(result.autoRetried).toBe(true);
+    expect(result.code).toContain('"execution": {"status": "success"}');
+    expect(mockedAxios.post).toHaveBeenCalledTimes(2);
+  });
+
+  it('generates deterministic code for new builtin fileRead activity', async () => {
+    const { service } = createService();
+
+    const result = await service.generateWorkflowCode(
+      {
+        name: '文件读取工作流',
+        workflowClassName: 'FileReadWorkflow',
+        workflowDefnName: '文件读取工作流',
+        taskQueue: 'SKILL_TASK_QUEUE',
+        inputParams: {
+          filePath: {
+            required: true,
+            description: '文件路径',
+          },
+        },
+        steps: [
+          {
+            id: 'step_1',
+            name: '读取文件',
+            type: 'activity',
+            activityRef: 'builtin:fileRead',
+            activityName: 'fileRead',
+            startToCloseTimeout: '60s',
+            input: {
+              __fileRead: {
+                protocol: 'local',
+                path: '{filePath}',
+                encoding: 'utf-8',
+                returnMode: 'text',
+              },
+            },
+          },
+        ],
+      },
+      {
+        activities: [],
+      },
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.generationMode).toBe('deterministic');
+    expect(result.code).toContain('BUILTIN_CONFIG');
+    expect(result.code).toContain('"protocol": "local"');
+    expect(result.code).toContain('fileRead');
+    expect(result.code).toContain('开始执行文件读取任务');
+  });
+
+  it('generates deterministic code for new builtin waitDelay activity with sleep optimization', async () => {
+    const { service } = createService();
+
+    const result = await service.generateWorkflowCode(
+      {
+        name: '等待延迟工作流',
+        workflowClassName: 'WaitDelayWorkflow',
+        workflowDefnName: '等待延迟工作流',
+        taskQueue: 'SKILL_TASK_QUEUE',
+        steps: [
+          {
+            id: 'step_1',
+            name: '延迟等候',
+            type: 'activity',
+            activityRef: 'builtin:waitDelay',
+            activityName: 'waitDelay',
+            input: {
+              __waitDelay: {
+                duration: '5m',
+                message: '等待 5 分钟',
+              },
+            },
+          },
+        ],
+      },
+      {
+        activities: [],
+      },
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.generationMode).toBe('deterministic');
+    expect(result.code).toContain('BUILTIN_CONFIG');
+    expect(result.code).toContain('workflow.sleep(timedelta(seconds=duration_seconds))');
   });
 
 });

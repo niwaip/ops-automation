@@ -1,5 +1,6 @@
 import type { ExecutionDto } from "../../types/execution.types.js";
 import { asRecord } from "./common.js";
+import { resolveExecutionNormalizedResult } from "./result.js";
 
 const INPUT_TEXT_CANDIDATE_KEYS = ["user_input", "prompt", "task", "goal", "instruction", "query", "url"] as const;
 const HIDDEN_INPUT_KEYS = new Set(["promptDebug"]);
@@ -92,6 +93,27 @@ export const summarizeExecutionListInput = (record: ExecutionDto) => {
   );
 };
 
+export const summarizeExecutionListResult = (record: ExecutionDto) => {
+  const normalizedResult = resolveExecutionNormalizedResult(record);
+  const summary = summarizeText(
+    normalizedResult?.detailText
+      || normalizedResult?.summary
+      || normalizedResult?.body
+      || normalizedResult?.title,
+    72,
+  );
+
+  if (summary) {
+    return summary;
+  }
+
+  if (normalizedResult?.artifacts.length) {
+    return normalizedResult.artifacts[0]?.label || normalizedResult.artifacts[0]?.name || "已生成结果产物";
+  }
+
+  return "暂无结果";
+};
+
 export const extractDownloadUrl = (result: unknown): string | undefined => {
   const resultRecord = asRecord(result);
   if (!resultRecord) {
@@ -108,6 +130,15 @@ export const extractDownloadUrl = (result: unknown): string | undefined => {
   }
 
   return extractDownloadUrl(resultRecord.result);
+};
+
+export const extractExecutionDownloadUrl = (record: ExecutionDto): string | undefined => {
+  const normalizedResult = resolveExecutionNormalizedResult(record);
+  if (normalizedResult?.downloadUrl) {
+    return normalizedResult.downloadUrl;
+  }
+
+  return extractDownloadUrl(record.resultJson || record.result || undefined);
 };
 
 export const buildAiResumeDraft = (

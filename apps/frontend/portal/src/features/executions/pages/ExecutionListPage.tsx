@@ -43,6 +43,11 @@ import {
   DeleteOutlined,
 } from '@ant-design/icons';
 import '@/features/chat/ChatMessage.css';
+import { resolveExecutionNormalizedResult } from '@ops/user-core';
+import {
+  extractExecutionDownloadUrl,
+  summarizeExecutionListResult,
+} from '@ops/user-core';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
 import {
   executionApi,
@@ -75,7 +80,6 @@ import { normalizeRequiredInputValues, renderRequiredInputField, type RequiredIn
 import {
   buildAiResumeDraft,
   extractExecutionDisplayInput,
-  extractDownloadUrl,
   summarizeExecutionListInput,
 } from '@/features/executions/lib/listHelpers';
 import {
@@ -477,6 +481,9 @@ const ExecutionListPage: React.FC = () => {
   const selectedExecutionInput = selectedExecution
     ? extractExecutionDisplayInput(selectedExecution)
     : undefined;
+  const selectedExecutionNormalizedResult = selectedExecution
+    ? resolveExecutionNormalizedResult(selectedExecution)
+    : undefined;
 
   const waitingInputStep = selectedExecution?.status === 'waiting_input'
     ? selectedSteps?.find((step) =>
@@ -673,6 +680,7 @@ const ExecutionListPage: React.FC = () => {
         record.riskLevel,
         record.status,
         summarizeExecutionListInput(record),
+        summarizeExecutionListResult(record),
       ]
         .filter(Boolean)
         .some((item) => String(item).toLowerCase().includes(keyword));
@@ -765,6 +773,24 @@ const ExecutionListPage: React.FC = () => {
           }}
         >
           {summarizeExecutionListInput(record)}
+        </Text>
+      ),
+    },
+    {
+      title: '结果摘要',
+      key: 'result',
+      width: 260,
+      ellipsis: true,
+      render: (_: unknown, record: ExecutionDto) => (
+        <Text
+          style={{
+            display: 'block',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          {summarizeExecutionListResult(record)}
         </Text>
       ),
     },
@@ -1037,12 +1063,12 @@ const ExecutionListPage: React.FC = () => {
                         {selectedExecution.failureReason || '-'}
                       </Descriptions.Item>
                       <Descriptions.Item label="下载地址">
-                        {extractDownloadUrl(selectedExecution.resultJson || undefined) ? (
+                        {extractExecutionDownloadUrl(selectedExecution) ? (
                           <Button
                             type="link"
                             icon={<DownloadOutlined />}
                             style={{ paddingInline: 0 }}
-                            onClick={() => window.open(extractDownloadUrl(selectedExecution.resultJson || undefined), '_blank', 'noopener,noreferrer')}
+                            onClick={() => window.open(extractExecutionDownloadUrl(selectedExecution), '_blank', 'noopener,noreferrer')}
                           >
                             下载结果
                           </Button>
@@ -1077,10 +1103,67 @@ const ExecutionListPage: React.FC = () => {
                   <div>
                     <Text strong>结果：</Text>
                     <div style={{ marginTop: 8 }}>
-                      {renderExecutionPayloadContent(effectiveSelectedResultJson, {
-                        emptyText: '该执行暂无结果输出。',
-                        treatSingleResultFieldAsMarkdown: true,
-                      })}
+                      {selectedExecutionNormalizedResult?.hasBusinessResult ? (
+                        <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                          {selectedExecutionNormalizedResult.title ? (
+                            <Space wrap size={[8, 8]}>
+                              <Text strong>{selectedExecutionNormalizedResult.title}</Text>
+                              {selectedExecutionNormalizedResult.resultType ? (
+                                <Tag>{selectedExecutionNormalizedResult.resultType}</Tag>
+                              ) : null}
+                            </Space>
+                          ) : null}
+                          {selectedExecutionNormalizedResult.summary || selectedExecutionNormalizedResult.body ? (
+                            <Text style={{ whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>
+                              {selectedExecutionNormalizedResult.summary || selectedExecutionNormalizedResult.body}
+                            </Text>
+                          ) : null}
+                          {selectedExecutionNormalizedResult.artifacts.length > 0 ? (
+                            <Space wrap>
+                              {selectedExecutionNormalizedResult.artifacts.map((artifact, index) => {
+                                const href = replaceLocalhostWithCurrentHost(artifact.downloadUrl || artifact.url);
+                                if (!href) {
+                                  return null;
+                                }
+                                return (
+                                  <Button
+                                    key={`${href}-${index}`}
+                                    type="link"
+                                    href={href}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{ paddingInline: 0 }}
+                                  >
+                                    {artifact.label || artifact.name || `结果产物 ${index + 1}`}
+                                  </Button>
+                                );
+                              })}
+                            </Space>
+                          ) : null}
+                          {selectedExecutionNormalizedResult.temporalLink ? (
+                            <Button
+                              type="link"
+                              href={replaceLocalhostWithCurrentHost(selectedExecutionNormalizedResult.temporalLink)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{ paddingInline: 0, width: 'fit-content' }}
+                            >
+                              打开 Temporal 执行链路
+                            </Button>
+                          ) : null}
+                          {renderExecutionPayloadContent(
+                            selectedExecutionNormalizedResult.structuredData ?? selectedExecutionNormalizedResult.envelope,
+                            {
+                              emptyText: '该执行暂无结构化结果。',
+                            },
+                          )}
+                        </Space>
+                      ) : (
+                        renderExecutionPayloadContent(effectiveSelectedResultJson, {
+                          emptyText: '该执行暂无结果输出。',
+                          treatSingleResultFieldAsMarkdown: true,
+                        })
+                      )}
                     </div>
                   </div>
                 </Space>

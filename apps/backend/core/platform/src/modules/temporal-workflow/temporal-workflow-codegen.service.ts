@@ -236,9 +236,22 @@ export class TemporalWorkflowCodegenService {
     lines.push('21. 【严格禁用的 Temporal API】：严禁生成 `workflow.unsafe`、`workflow.unsafe.is_replaying()`、`workflow.patch()`、`workflow.deprecate_patch()`、`activity.RetryPolicy(...)`、`workflow.RetryPolicy(...)`、`temporalio.activity.RetryPolicy(...)`。遇到回放、版本或重试问题时，只能使用标准 `workflow` API、`workflow.execute_activity(...)` 与 `temporalio.common.RetryPolicy`。');
     lines.push('22. 【默认优先固定规则转换】：如果目标可通过字段映射、路径提取、模板拼接、文本模板实现，优先沿用 builtin:structuredTransform（固定规则版）；只有当 DSL 已明确使用 builtin:aiStructuredTransform 时，才生成 AI 转换调用路径。');
     lines.push('23. 【不要发明 replay guard】：不要写 `if workflow.unsafe.is_replaying()`、不要写任何 `is_replaying` 判断、不要为了日志或分支控制去探测 replay 状态。');
+    lines.push('24. 【最终输出协议强制】：Workflow `run()` 的最终返回值必须是统一的 `WorkflowResultEnvelope` 风格字典，不能直接返回裸字符串、裸数组、裸 downloadUrl 或裸 activity result。');
+    lines.push('25. 【最终输出结构强制】：最终返回值至少包含 `execution`、`trigger`、`result`、`artifacts`、`presentation` 五个顶层字段；允许字段值为 `None`，但字段结构不得缺失。');
+    lines.push('26. 【execution 字段强制】：必须返回 `execution.status`，成功时使用 `"success"`，失败或取消时也要有明确状态。');
+    lines.push('27. 【trigger 字段强制】：默认返回 `{"type": "manual"}`；如果 DSL 或上下文明确是定时任务，可返回 `schedule` 并补充调度信息。');
+    lines.push('28. 【result 字段强制】：必须返回 `result.resultType`、`result.title`、`result.summary`、`result.businessData`。其中 `businessData` 可以直接使用最终业务结果。');
+    lines.push('29. 【artifacts 字段强制】：如果任一步骤结果中存在 `downloadUrl`、`url`、文件路径或文档产物，必须提取到 `artifacts` 数组中，而不是只留在 `businessData` 里。');
+    lines.push('30. 【presentation 字段强制】：必须返回 `presentation.preferAiSummary`、`presentation.preferStructuredView`、`presentation.summaryFormat`、`presentation.detailFormat`，并优先补充 `presentation.chatSummary`、`presentation.notificationSummary`、`presentation.detailText`。');
+    lines.push('31. 【用户可读输出强制】：如果结果需要给用户直接阅读，必须把“简洁摘要”放进 `result.summary`，把“完整可读正文”放进 `presentation.detailText`，并用 `summaryFormat/detailFormat` 明确声明是 `plain_text` 还是 `markdown`。禁止只返回一坨原始 JSON 让前端自己猜。');
+    lines.push('32. 【建议实现方式】：请在 Workflow 类中实现 `_extract_summary()`、`_extract_detail_text()`、`_collect_artifacts()`、`_build_workflow_result()` 之类的辅助方法，在 `run()` 末尾统一封装最终结果。');
+    lines.push('33. 【兼容已有 activity 返回值】：如果 Activity 返回的是 `{ status, result, raw }`、`{ downloadUrl }`、`{ summary }` 或其他对象，请先归一化，再封装为 `WorkflowResultEnvelope`。不要把 activity 原始对象直接作为 Workflow 最终返回值。');
+    lines.push('34. 【聊天与详情页兼容】：生成的最终输出必须让聊天窗口和执行详情页都可以直接消费，因此摘要、完整正文、业务数据和产物链接必须分层表达，不要把所有信息混在一个字符串里。');
+    lines.push('35. 【文本型步骤特殊规则】：即使业务结果本身是纯文本，Workflow 最终返回也必须放到 `result.summary` / `presentation.detailText` / `result.businessData` 中，并仍返回完整 envelope。');
+    lines.push('36. 【下载型步骤特殊规则】：如果结果主要是文件或文档，请在 `result.summary` 中说明“已生成结果”，并在 `artifacts` 中提供下载链接或路径。');
 
     if (workflowDsl.errorHandling?.type === 'saga') {
-      lines.push('24. 【Saga 模式】：必须维护 compensations 列表，在失败时逆序执行补偿任务。');
+      lines.push('37. 【Saga 模式】：必须维护 compensations 列表，在失败时逆序执行补偿任务。');
     }
 
     if (workflowDsl.extraPrompt) {
@@ -360,6 +373,48 @@ export class TemporalWorkflowCodegenService {
     return { success: true };
   }
 
+  private validateGeneratedWorkflowOutputContract(code: string): { success: boolean; error?: string } {
+    const requiredFields = ['execution', 'trigger', 'result', 'artifacts', 'presentation'];
+    const missingFields = requiredFields.filter((field) => {
+      const pattern = new RegExp(`["']${field}["']\\s*:`);
+      return !pattern.test(code);
+    });
+
+    if (missingFields.length > 0) {
+      return {
+        success: false,
+        error: `Workflow 最终输出缺少统一结果协议字段: ${missingFields.join(', ')}。最终返回值必须是 WorkflowResultEnvelope。`,
+      };
+    }
+
+    const hasWorkflowResultBuilder = /def\s+_build_workflow_result\s*\(/.test(code);
+    const hasEnvelopeReturn = /return\s+\{[\s\S]*["']execution["']\s*:[\s\S]*["']presentation["']\s*:/.test(code)
+      || /return\s+self\._build_workflow_result\s*\(/.test(code)
+      || /return\s+cls\._build_workflow_result\s*\(/.test(code);
+
+    if (!hasWorkflowResultBuilder && !hasEnvelopeReturn) {
+      return {
+        success: false,
+        error: 'Workflow 代码未检测到统一结果封装逻辑。请实现 `_build_workflow_result()` 或在 `run()` 末尾直接返回包含 execution/trigger/result/artifacts/presentation 的字典。',
+      };
+    }
+
+    const requiredPresentationFields = ['preferAiSummary', 'preferStructuredView', 'summaryFormat', 'detailFormat'];
+    const missingPresentationFields = requiredPresentationFields.filter((field) => {
+      const pattern = new RegExp(`["']${field}["']\\s*:`);
+      return !pattern.test(code);
+    });
+
+    if (missingPresentationFields.length > 0) {
+      return {
+        success: false,
+        error: `Workflow presentation 字段缺失: ${missingPresentationFields.join(', ')}。请明确声明可读文本格式，避免前端猜测渲染方式。`,
+      };
+    }
+
+    return { success: true };
+  }
+
   private buildSdkViolationRepairContext(errorMessage: string): string {
     const normalized = String(errorMessage || '').trim();
     if (!normalized) {
@@ -379,6 +434,22 @@ export class TemporalWorkflowCodegenService {
       ].join('\n');
     }
     return `AI 生成的代码违反 Temporal Python SDK 约束，请根据以下问题重新生成完整代码：\n${normalized}`;
+  }
+
+  private buildWorkflowOutputContractRepairContext(errorMessage: string): string {
+    const normalized = String(errorMessage || '').trim();
+    return [
+      'AI 生成的 Workflow 最终输出不符合统一结果协议，请根据以下问题重新生成完整代码：',
+      normalized || '缺少 WorkflowResultEnvelope 输出结构。',
+      '',
+      '强制修复要求：',
+      '1. `run()` 的最终返回值必须是 WorkflowResultEnvelope 风格字典，而不是裸字符串、裸数组或裸 activity result。',
+      '2. 最终返回值必须包含 `execution`、`trigger`、`result`、`artifacts`、`presentation` 五个顶层字段。',
+      '3. 请在 Workflow 类中实现 `_extract_summary()`、`_extract_detail_text()`、`_collect_artifacts()`、`_build_workflow_result()` 之类的辅助方法，并在 `run()` 末尾统一调用。',
+      '4. `result` 中必须包含 `resultType`、`title`、`summary`、`businessData`。',
+      '5. 若存在下载链接、文档或文件路径，必须提取到 `artifacts` 数组中。',
+      '6. `presentation` 中必须包含 `preferAiSummary`、`preferStructuredView`、`summaryFormat`、`detailFormat`，并优先补充 `chatSummary`、`notificationSummary`、`detailText`。',
+    ].join('\n');
   }
 
   private async generateWorkflowCodeViaAi(
@@ -428,6 +499,24 @@ export class TemporalWorkflowCodegenService {
         return {
           success: false,
           error: `AI 生成的代码违反 Temporal Python SDK 约束: ${codeShapeCheck.error}`,
+          attempts,
+          autoRetried: attempts > 1,
+        };
+      }
+
+      const outputContractCheck = this.validateGeneratedWorkflowOutputContract(code);
+      if (!outputContractCheck.success) {
+        onProgress?.(`[${new Date().toISOString()}] Workflow output contract 检查失败: ${outputContractCheck.error}`);
+        if (attempt === 0) {
+          errorContext = this.mergeErrorContext(
+            initialErrorContext,
+            this.buildWorkflowOutputContractRepairContext(outputContractCheck.error || ''),
+          );
+          continue;
+        }
+        return {
+          success: false,
+          error: `AI 生成的代码未满足 WorkflowResultEnvelope 输出协议: ${outputContractCheck.error}`,
           attempts,
           autoRetried: attempts > 1,
         };

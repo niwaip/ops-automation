@@ -47,6 +47,38 @@ export interface PromptDebugLLMCall {
   note?: string;
 }
 
+export interface ChatResultArtifact {
+  type?: string;
+  name?: string;
+  label?: string;
+  downloadUrl?: string;
+  url?: string;
+  path?: string;
+  mimeType?: string;
+}
+
+export interface ChatProgressLog {
+  stage: "thought" | "action" | "observation";
+  text: string;
+}
+
+export interface NormalizedChatExecutionResult {
+  resultType?: string;
+  title?: string;
+  summary?: string;
+  body?: string;
+  summaryFormat?: "plain_text" | "markdown";
+  detailText?: string;
+  detailFormat?: "plain_text" | "markdown";
+  structuredData?: unknown;
+  artifacts?: ChatResultArtifact[];
+  downloadUrl?: string;
+  temporalLink?: string;
+  hasBusinessResult?: boolean;
+  envelope?: Record<string, unknown>;
+  rawResult?: unknown;
+}
+
 export interface LLMUsage {
   prompt_tokens: number;
   completion_tokens: number;
@@ -90,11 +122,17 @@ export interface ChatMessage {
     taskStatus?: "waiting_input" | "pending_approval" | "running" | "completed" | "failed";
     executionId?: string;
     executionStatus?: string;
+    resultType?: string;
+    resultTitle?: string;
     finalResult?: string;
     finalResultData?: unknown;
     finalSummary?: string;
+    progressLogs?: ChatProgressLog[];
     errorMessage?: string;
+    failureReason?: string;
     hasBusinessResult?: boolean;
+    artifacts?: ChatResultArtifact[];
+    normalizedResult?: NormalizedChatExecutionResult;
     promptDebug?: PromptDebugPayload;
   };
   isStreaming?: boolean;

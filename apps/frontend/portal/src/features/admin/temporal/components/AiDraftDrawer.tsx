@@ -23,6 +23,13 @@ export interface AiDraftDrawerProps {
   onApplyDraft: (draft: Pick<TemplateWorkflowDraft, 'name' | 'description' | 'taskQueue' | 'workflowDsl' | 'activityDsl'>) => void;
 }
 
+const resolveApiErrorMessage = (error: unknown, fallback = '请求失败'): string => {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message.trim();
+  }
+  return fallback;
+};
+
 export const AiDraftDrawer: React.FC<AiDraftDrawerProps> = ({ visible, onClose, onApplyDraft }) => {
   const queryClient = useQueryClient();
 
@@ -42,7 +49,12 @@ export const AiDraftDrawer: React.FC<AiDraftDrawerProps> = ({ visible, onClose, 
   const aiDraftSessionsQuery = useQuery(
     ['temporal-draft-sessions'],
     () => temporalWorkflowApi.listAiDraftSessions(),
-    { enabled: visible },
+    {
+      enabled: visible,
+      onError: (error: unknown) => {
+        message.error(`加载草稿会话失败: ${resolveApiErrorMessage(error, '未知错误')}`);
+      },
+    },
   );
 
   const syncAiDraftSessionState = (session: AiWorkflowDraftSession) => {
@@ -930,7 +942,20 @@ export const AiDraftDrawer: React.FC<AiDraftDrawerProps> = ({ visible, onClose, 
                   </div>
                 </Card>
               ))}
-              {(!aiDraftSessionsQuery.data || aiDraftSessionsQuery.data.length === 0) && (
+              {aiDraftSessionsQuery.isError && (
+                <Alert
+                  type="error"
+                  showIcon
+                  message="加载历史草稿会话失败"
+                  description={
+                    resolveApiErrorMessage(
+                      aiDraftSessionsQuery.error,
+                      '请检查登录状态；如果刚过期，重新登录后再试。',
+                    )
+                  }
+                />
+              )}
+              {!aiDraftSessionsQuery.isError && (!aiDraftSessionsQuery.data || aiDraftSessionsQuery.data.length === 0) && (
                 <div style={{ padding: 24, textAlign: 'center' }}>
                   <Text type="secondary">暂无历史草稿会话</Text>
                 </div>

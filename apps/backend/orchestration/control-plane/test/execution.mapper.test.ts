@@ -57,8 +57,104 @@ describe('execution.mapper', () => {
     });
     expect(dto.usage).toEqual({ total_tokens: 10 });
     expect(dto.result).toEqual({ ok: true });
+    expect(dto.normalizedResult).toEqual(
+      expect.objectContaining({
+        hasBusinessResult: true,
+        structuredData: { ok: true },
+        envelope: expect.objectContaining({
+          execution: expect.objectContaining({
+            executionId: 'execution-1',
+          }),
+          result: expect.objectContaining({
+            resultType: 'generic',
+          }),
+        }),
+      }),
+    );
     expect(dto.createdBy).toBe('user-1');
     expect(dto.createdByName).toBe('Alice');
+  });
+
+  it('maps normalized result metadata from legacy execution outputs', () => {
+    const dto = mapExecutionToDto({
+      id: 'execution-legacy',
+      skillId: 'skill-legacy',
+      status: 'succeeded',
+      runtimeType: 'workflow',
+      requiresApproval: false,
+      takeoverRequired: false,
+      resultJson: {
+        title: '日报生成',
+        summary: '日报已生成',
+        output: {
+          total: 3,
+        },
+        downloadUrl: 'https://example.com/report.pdf',
+        temporalLink: 'https://temporal.example/executions/legacy',
+        detailText: '## 日报结果\n\n- 总数: 3',
+        detailFormat: 'markdown',
+      },
+      createdAt: new Date('2026-05-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-05-01T00:00:00.000Z'),
+    });
+
+    expect(dto.normalizedResult).toEqual(
+      expect.objectContaining({
+        title: '日报生成',
+        summary: '日报已生成',
+        detailText: '## 日报结果\n\n- 总数: 3',
+        detailFormat: 'markdown',
+        downloadUrl: 'https://example.com/report.pdf',
+        temporalLink: 'https://temporal.example/executions/legacy',
+        structuredData: { total: 3 },
+        artifacts: [
+          expect.objectContaining({
+            downloadUrl: 'https://example.com/report.pdf',
+          }),
+        ],
+        envelope: expect.objectContaining({
+          execution: expect.objectContaining({
+            executionId: 'execution-legacy',
+            status: 'success',
+          }),
+          result: expect.objectContaining({
+            title: '日报生成',
+            summary: '日报已生成',
+          }),
+        }),
+      }),
+    );
+  });
+
+  it('promotes string result field into summary for workflow outputs', () => {
+    const dto = mapExecutionToDto({
+      id: 'execution-weather',
+      skillId: 'skill-weather',
+      status: 'succeeded',
+      runtimeType: 'workflow',
+      requiresApproval: false,
+      takeoverRequired: false,
+      resultJson: {
+        result: 'Beijing 天气报告\n\n【今天概览】\n当前天气：Mist',
+        temporalLink: 'https://temporal.example/executions/weather',
+      },
+      createdAt: new Date('2026-05-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-05-01T00:00:00.000Z'),
+    });
+
+    expect(dto.normalizedResult).toEqual(
+      expect.objectContaining({
+        summary: 'Beijing 天气报告\n\n【今天概览】\n当前天气：Mist',
+        body: 'Beijing 天气报告\n\n【今天概览】\n当前天气：Mist',
+        structuredData: undefined,
+        temporalLink: 'https://temporal.example/executions/weather',
+        envelope: expect.objectContaining({
+          result: expect.objectContaining({
+            summary: 'Beijing 天气报告\n\n【今天概览】\n当前天气：Mist',
+          }),
+        }),
+      }),
+    );
   });
 
   it('maps execution step record to dto', () => {

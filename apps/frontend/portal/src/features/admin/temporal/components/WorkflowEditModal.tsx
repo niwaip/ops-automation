@@ -1118,7 +1118,12 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
   const aiDraftSessionsQuery = useQuery(
     ['temporal-draft-sessions'],
     () => temporalWorkflowApi.listAiDraftSessions(),
-    { enabled: aiDraftDrawerVisible },
+    {
+      enabled: aiDraftDrawerVisible,
+      onError: (error: unknown) => {
+        void message.error(`加载草稿会话失败: ${resolveApiErrorMessage(error, '未知错误')}`);
+      },
+    },
   );
   const activitiesQuery = useQuery('activities', () => activityApi.list());
   const builtinActivitiesQuery = useQuery('builtin-activities', () => activityApi.listBuiltin());
@@ -4323,6 +4328,16 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
                         </Space>
                         {aiDraftSessionsQuery.isLoading ? (
                           <Alert type="info" showIcon message="正在加载最近草稿会话..." />
+                        ) : aiDraftSessionsQuery.isError ? (
+                          <Alert
+                            type="error"
+                            showIcon
+                            message="加载历史草稿会话失败"
+                            description={resolveApiErrorMessage(
+                              aiDraftSessionsQuery.error,
+                              '请检查登录状态；如果登录已过期，请重新登录后再试。',
+                            )}
+                          />
                         ) : (aiDraftSessionsQuery.data || []).length === 0 ? (
                           <Alert type="info" showIcon message="暂无历史草稿会话，可直接创建新的草稿。" />
                         ) : (

@@ -6,6 +6,7 @@ import { useQuery } from "react-query";
 import {
   EXECUTION_STATUS_COLORS,
   EXECUTION_STATUS_LABELS_ZH,
+  summarizeExecutionListResult,
   sortExecutionsByRecent,
   type ExecutionDto,
 } from "@ops/user-core";
@@ -66,6 +67,11 @@ export function ExecutionListPage() {
             title: "创建时间",
             key: "createdAt",
             render: (_, record) => new Date(record.startedAt || record.createdAt).toLocaleString(),
+          },
+          {
+            title: "结果摘要",
+            key: "resultSummary",
+            render: (_, record) => summarizeExecutionListResult(record),
           },
         ]}
       />

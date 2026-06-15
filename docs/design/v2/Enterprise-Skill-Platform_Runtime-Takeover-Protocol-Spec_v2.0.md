@@ -513,7 +513,7 @@ resume 时允许两种模式：
 
 - 运行时治理：见 `Enterprise-Skill-Platform_Runtime-and-Policy_v2.0.md`
 - 执行状态机：见 `Enterprise-Skill-Platform_Execution-Lifecycle-RFC_v2.0.md`
-- 主链路蓝图：见 `Enterprise-Skill-Platform_MVP-Implementation-Blueprint_v2.0.md`
-- Portal 页面流：见 `Enterprise-Skill-Platform_Portal-UX-and-Page-Flow-Spec_v2.0.md`
+- 主链路蓝图：见 `archive/Enterprise-Skill-Platform_MVP-Implementation-Blueprint_v2.0.md`
+- Portal 页面流：见 `archive/Enterprise-Skill-Platform_Portal-UX-and-Page-Flow-Spec_v2.0.md`
 
 本文定位是“接管协议实施规范”，用于统一 Runtime、Portal 和 control-plane 在人工接管链路上的行为约束。

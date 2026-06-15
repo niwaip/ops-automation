@@ -11,6 +11,7 @@ import type {
   ExecutionStepDto,
   ExecutionTakeoverRecordDto,
 } from "../types/execution.types.js";
+import { resolveExecutionNormalizedResult } from "../domain/executions/result.js";
 
 export type {
   ApprovalStatus,
@@ -140,6 +141,7 @@ const normalizeExecution = (raw: ExecutionDto): ExecutionDto => ({
   normalizedInput: raw.normalizedInput || undefined,
   semantic: raw.semantic || (raw.normalizedInput?.semantic as ExecutionDto["semantic"] | undefined) || undefined,
   result: raw.resultJson || raw.result || undefined,
+  normalizedResult: raw.normalizedResult || resolveExecutionNormalizedResult(raw),
   createdBy: raw.createdBy || undefined,
   createdByName: raw.createdByName || undefined,
   phases: raw.phases?.map(normalizeExecutionPhase) || [],

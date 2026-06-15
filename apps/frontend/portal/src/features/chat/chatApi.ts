@@ -187,6 +187,20 @@ const normalizeMessageMetadata = (value: unknown): ChatMessage['metadata'] | und
     : undefined;
   const mode = record.mode === 'chat' || record.mode === 'task' ? record.mode : undefined;
   const taskStatus = record.taskStatus;
+  const progressLogs: NonNullable<ChatMessage['metadata']>['progressLogs'] = Array.isArray(record.progressLogs)
+    ? record.progressLogs.reduce<NonNullable<NonNullable<ChatMessage['metadata']>['progressLogs']>>((acc, item) => {
+        const progress = asRecord(item);
+        const stage = progress?.stage;
+        const text = asString(progress?.text);
+        if (
+          (stage === 'thought' || stage === 'action' || stage === 'observation')
+          && text
+        ) {
+          acc.push({ stage, text });
+        }
+        return acc;
+      }, [])
+    : undefined;
 
   return {
     mode,
@@ -213,6 +227,7 @@ const normalizeMessageMetadata = (value: unknown): ChatMessage['metadata'] | und
     finalResult: asString(record.finalResult),
     finalResultData: record.finalResultData,
     finalSummary: asString(record.finalSummary),
+    progressLogs,
     errorMessage: asString(record.errorMessage),
     hasBusinessResult: typeof record.hasBusinessResult === 'boolean' ? record.hasBusinessResult : undefined,
     promptDebug: normalizePromptDebugPayload(record.promptDebug),

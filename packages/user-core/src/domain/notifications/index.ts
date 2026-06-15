@@ -61,14 +61,23 @@ export const buildNotificationContent = (
   const takeoverReason = typeof item.metadata?.takeoverReason === "string" ? item.metadata.takeoverReason : undefined;
   const approvalStatus = typeof item.metadata?.approvalStatus === "string" ? item.metadata.approvalStatus : undefined;
   const skillId = typeof item.metadata?.skillId === "string" ? item.metadata.skillId : item.sourceName;
+  const resultTitle = typeof item.metadata?.resultTitle === "string" ? item.metadata.resultTitle : undefined;
+  const resultSummary = typeof item.metadata?.resultSummary === "string" ? item.metadata.resultSummary : undefined;
+  const businessSummary = [resultTitle, resultSummary]
+    .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+    .join(isEnglish ? " - " : "：");
 
   switch (item.category) {
     case "completed":
       return {
         title: isEnglish ? "Task Completed" : "任务已完成",
-        description: isEnglish
-          ? `Execution ${executionId} completed successfully.`
-          : `执行单 ${executionId} 已成功完成。`,
+        description: businessSummary
+          ? (isEnglish
+            ? `Execution ${executionId} completed successfully. ${businessSummary}`
+            : `执行单 ${executionId} 已成功完成。${businessSummary}`)
+          : (isEnglish
+            ? `Execution ${executionId} completed successfully.`
+            : `执行单 ${executionId} 已成功完成。`),
         actionText: isEnglish ? "View Details" : "查看详情",
       };
     case "failed":
@@ -76,6 +85,10 @@ export const buildNotificationContent = (
         title: isEnglish ? "Task Failed" : "任务执行失败",
         description: failureReason
           ? (isEnglish ? failureReason : `失败原因：${failureReason}`)
+          : businessSummary
+            ? (isEnglish
+              ? `Execution ${executionId} failed. Latest result: ${businessSummary}`
+              : `执行单 ${executionId} 执行失败。最近结果：${businessSummary}`)
           : (isEnglish
             ? `Execution ${executionId} failed and needs attention.`
             : `执行单 ${executionId} 执行失败，请尽快处理。`),
@@ -103,8 +116,8 @@ export const buildNotificationContent = (
       return {
         title: isEnglish ? "Input Required" : "需要补充输入",
         description: isEnglish
-          ? `Execution ${executionId} is waiting for additional input.`
-          : `执行单 ${executionId} 正在等待补充输入。`,
+          ? `Execution ${executionId} is waiting for additional input.${businessSummary ? ` Context: ${businessSummary}` : ""}`
+          : `执行单 ${executionId} 正在等待补充输入。${businessSummary ? `上下文：${businessSummary}` : ""}`,
         actionText: isEnglish ? "Open Execution" : "查看详情",
       };
     case "pending_approval":
@@ -115,8 +128,8 @@ export const buildNotificationContent = (
             ? `Current approval status: ${approvalStatus}.`
             : `当前审批状态：${approvalStatus}`)
           : (isEnglish
-            ? `Execution ${executionId} is waiting for approval.`
-            : `执行单 ${executionId} 正在等待审批。`),
+            ? `Execution ${executionId} is waiting for approval.${businessSummary ? ` Context: ${businessSummary}` : ""}`
+            : `执行单 ${executionId} 正在等待审批。${businessSummary ? `上下文：${businessSummary}` : ""}`),
         actionText: isEnglish ? "Open Execution" : "查看详情",
       };
     default:

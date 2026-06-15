@@ -42,6 +42,7 @@ import {
   type ExecutionDto,
   type AIModel,
   type ChatMessage,
+  type ChatProgressLog,
   type ChatRequest,
   type ChatSession,
   type StreamEvent,
@@ -156,6 +157,59 @@ const normalizeRateLimit = (
     tokens_limit: typeof record.tokens_limit === "number" ? record.tokens_limit : undefined,
     tokens_remaining: typeof record.tokens_remaining === "number" ? record.tokens_remaining : undefined,
     tokens_reset: asString(record.tokens_reset),
+  };
+};
+
+const normalizeResultArtifacts = (
+  value: unknown,
+): NonNullable<NonNullable<ChatMessage["metadata"]>["artifacts"]> | undefined => {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+
+  const artifacts = value.reduce<NonNullable<NonNullable<ChatMessage["metadata"]>["artifacts"]>>((acc, item) => {
+    const record = asRecord(item);
+    if (!record) {
+      return acc;
+    }
+    acc.push({
+      type: asString(record.type),
+      name: asString(record.name),
+      label: asString(record.label),
+      downloadUrl: asString(record.downloadUrl),
+      url: asString(record.url),
+      path: asString(record.path),
+      mimeType: asString(record.mimeType),
+    });
+    return acc;
+  }, []);
+
+  return artifacts.length > 0 ? artifacts : undefined;
+};
+
+const normalizeNormalizedResult = (
+  value: unknown,
+): NonNullable<NonNullable<ChatMessage["metadata"]>["normalizedResult"]> | undefined => {
+  const record = asRecord(value);
+  if (!record) {
+    return undefined;
+  }
+
+  return {
+    resultType: asString(record.resultType),
+    title: asString(record.title),
+    summary: asString(record.summary),
+    body: asString(record.body),
+    summaryFormat: record.summaryFormat === "markdown" ? "markdown" : "plain_text",
+    detailText: asString(record.detailText),
+    detailFormat: record.detailFormat === "markdown" ? "markdown" : "plain_text",
+    structuredData: record.structuredData,
+    artifacts: normalizeResultArtifacts(record.artifacts),
+    downloadUrl: asString(record.downloadUrl),
+    temporalLink: asString(record.temporalLink),
+    hasBusinessResult: record.hasBusinessResult === true,
+    envelope: asRecord(record.envelope),
+    rawResult: record.rawResult,
   };
 };
 
@@ -296,6 +350,73 @@ const toStructuredResultText = (value: unknown): string | null => {
   } catch {
     return String(value);
   }
+};
+
+const compactText = (value: string, maxLength = 120): string => {
+  const normalized = value.replace(/\s+/g, " ").trim();
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
+  return `${normalized.slice(0, maxLength - 1).trim()}…`;
+};
+
+const sanitizeDisplayUrl = (value?: string): string | undefined => {
+  if (!value) {
+    return undefined;
+  }
+  return value.replace(/`/g, "").trim();
+};
+
+const buildTaskProgressLog = (
+  event: StreamEvent,
+  data: Record<string, unknown> | undefined,
+  normalizedResult: NonNullable<NonNullable<ChatMessage["metadata"]>["normalizedResult"]> | undefined,
+): ChatProgressLog | undefined => {
+  if (event.type === StreamEventType.THOUGHT) {
+    const text = compactText(event.content.replace(/[🚀📥]/g, "").trim(), 100);
+    return text ? { stage: "thought", text } : undefined;
+  }
+
+  if (event.type === StreamEventType.ACTION) {
+    const text = compactText(event.content, 100);
+    return text ? { stage: "action", text } : undefined;
+  }
+
+  if (event.type !== StreamEventType.OBSERVATION) {
+    return undefined;
+  }
+
+  const result = asRecord(data?.result);
+  const command = asString(result?.command);
+  const pageTitle = asString(result?.pageTitle);
+  const pageUrl = sanitizeDisplayUrl(asString(result?.pageUrl));
+  const resultData = asRecord(result?.data);
+  const duration = typeof resultData?.duration === "number" ? resultData.duration : undefined;
+  const summary = normalizedResult?.summary || normalizedResult?.detailText || normalizedResult?.body;
+
+  const parts = ["步骤执行成功"];
+  if (command) {
+    parts.push(`命令：${command}`);
+  }
+  if (pageTitle) {
+    parts.push(`页面：${pageTitle}`);
+  } else if (pageUrl) {
+    parts.push(`页面：${pageUrl}`);
+  }
+  if (typeof duration === "number" && Number.isFinite(duration) && duration > 0) {
+    parts.push(`耗时 ${duration} ms`);
+  }
+  if (summary) {
+    const compactSummary = compactText(summary, 80);
+    if (compactSummary && compactSummary !== "步骤执行成功") {
+      parts.push(compactSummary);
+    }
+  }
+
+  return {
+    stage: "observation",
+    text: compactText(parts.join("，"), 160),
+  };
 };
 
 const parseMessageContent = (content: string): { thoughts: string[]; answer: string } => {
@@ -648,6 +769,30 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     )));
   };
 
+  const appendProgressLog = (
+    sessionId: string,
+    messageId: string,
+    progressLog: ChatProgressLog,
+  ) => {
+    updateSessionMessages(sessionId, (messages) => messages.map((message) => {
+      if (message.id !== messageId) {
+        return message;
+      }
+      const currentLogs = message.metadata?.progressLogs || [];
+      const lastLog = currentLogs[currentLogs.length - 1];
+      if (lastLog?.stage === progressLog.stage && lastLog.text === progressLog.text) {
+        return message;
+      }
+      return {
+        ...message,
+        metadata: {
+          ...(message.metadata || {}),
+          progressLogs: [...currentLogs, progressLog].slice(-12),
+        },
+      };
+    }));
+  };
+
   const updateSessionMeta = (
     sessionId: string,
     patch: Partial<ChatSession>,
@@ -718,6 +863,10 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
       request,
       (event) => {
         const data = asRecord(event.data);
+        const normalizedResult = normalizeNormalizedResult(data?.normalizedResult);
+        const progressLog = request.config?.mode === "task"
+          ? buildTaskProgressLog(event, data, normalizedResult)
+          : undefined;
         const taskStatus = (() => {
           switch (event.type) {
             case StreamEventType.WAITING_INPUT:
@@ -738,16 +887,22 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
           || event.type === StreamEventType.ACTION
           || event.type === StreamEventType.OBSERVATION
         ) {
-          const prefix = event.type === StreamEventType.THOUGHT
-            ? "【思考】"
-            : event.type === StreamEventType.ACTION
-              ? "【行动】"
-              : "【观察】";
-          accumulatedContent = `${accumulatedContent}${accumulatedContent ? "\n" : ""}${prefix}${event.content}`;
+          if (request.config?.mode !== "task") {
+            const prefix = event.type === StreamEventType.THOUGHT
+              ? "【思考】"
+              : event.type === StreamEventType.ACTION
+                ? "【行动】"
+                : "【观察】";
+            accumulatedContent = `${accumulatedContent}${accumulatedContent ? "\n" : ""}${prefix}${event.content}`;
+          }
         } else if (event.type === StreamEventType.RESULT && request.config?.mode === "chat") {
           accumulatedContent = event.content;
         } else if (event.type === StreamEventType.ERROR) {
           accumulatedContent = accumulatedContent || event.content;
+        }
+
+        if (progressLog) {
+          appendProgressLog(sessionId, assistantMessageId, progressLog);
         }
 
         setLastEvent(event);
@@ -763,24 +918,38 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
             taskStatus,
             executionId: asString(data?.executionId),
             executionStatus: asString(data?.status),
+            resultType: asString(data?.resultType) || normalizedResult?.resultType,
+            resultTitle: asString(data?.resultTitle) || normalizedResult?.title,
             usage: normalizeUsage(data?.usage),
             rateLimit: normalizeRateLimit(data?.rateLimit),
             finalSummary:
               event.type === StreamEventType.WAITING_INPUT
               || event.type === StreamEventType.PENDING_APPROVAL
               || event.type === StreamEventType.RESULT
-                ? event.content
+                ? asString(data?.resultSummary)
+                  || normalizedResult?.detailText
+                  || normalizedResult?.summary
+                  || normalizedResult?.body
+                  || event.content
                 : undefined,
             finalResult:
               event.type === StreamEventType.RESULT && request.config?.mode === "task"
-                ? event.content
+                ? normalizedResult?.detailText
+                  || normalizedResult?.body
+                  || normalizedResult?.summary
+                  || event.content
                 : undefined,
-            finalResultData: event.type === StreamEventType.RESULT ? (data?.result ?? data) : undefined,
+            finalResultData: event.type === StreamEventType.RESULT
+              ? (normalizedResult?.structuredData ?? data?.result ?? data)
+              : undefined,
             errorMessage: event.type === StreamEventType.ERROR ? event.content : undefined,
+            failureReason: event.type === StreamEventType.ERROR ? asString(data?.failureReason) || event.content : undefined,
             missingInputs: normalizeMissingInputs(data?.missingInputs),
-            hasBusinessResult: data?.hasBusinessResult === true,
-            downloadUrl: asString(data?.downloadUrl),
-            temporalLink: asString(data?.temporalLink),
+            hasBusinessResult: normalizedResult?.hasBusinessResult === true || data?.hasBusinessResult === true,
+            downloadUrl: asString(data?.downloadUrl) || normalizedResult?.downloadUrl,
+            temporalLink: asString(data?.temporalLink) || normalizedResult?.temporalLink,
+            artifacts: normalizeResultArtifacts(data?.artifacts) || normalizedResult?.artifacts,
+            normalizedResult,
           },
         });
       },
@@ -1071,16 +1240,24 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     const finalResult = message.metadata?.finalResult?.trim();
     const finalSummary = message.metadata?.finalSummary?.trim();
     const errorMessage = message.metadata?.errorMessage?.trim();
+    const failureReason = message.metadata?.failureReason?.trim();
     const executionId = message.metadata?.executionId;
-    const structuredResult = toStructuredResultText(message.metadata?.finalResultData);
+    const resultTitle = message.metadata?.resultTitle?.trim();
+    const artifacts = message.metadata?.artifacts || message.metadata?.normalizedResult?.artifacts || [];
+    const structuredResult = toStructuredResultText(
+      message.metadata?.normalizedResult?.structuredData ?? message.metadata?.finalResultData,
+    );
     const hasOutcome = Boolean(
       status === "completed"
       || status === "failed"
       || finalResult
+      || resultTitle
       || (finalSummary && status !== "running" && status !== "waiting_input" && status !== "pending_approval")
+      || failureReason
       || errorMessage
       || message.metadata?.downloadUrl
-      || message.metadata?.temporalLink,
+      || message.metadata?.temporalLink
+      || artifacts.length > 0,
     );
 
     if (!hasOutcome) {
@@ -1097,7 +1274,10 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     return (
       <div className={`user-chat-outcome-card ${outcomeTone}`}>
         <div className="user-chat-outcome-header">
-          <Typography.Text strong>{title}</Typography.Text>
+          <Space direction="vertical" size={2}>
+            <Typography.Text strong>{title}</Typography.Text>
+            {resultTitle ? <Typography.Text type="secondary">{resultTitle}</Typography.Text> : null}
+          </Space>
           <Space size={8} wrap>
             {status ? <Tag color={getStatusTagColor(status)}>{getMessageStatusLabel(status)}</Tag> : null}
             {executionId ? <Tag>{executionId}</Tag> : null}
@@ -1111,7 +1291,10 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
         {finalResult ? (
           <pre className="user-chat-outcome-pre">{finalResult}</pre>
         ) : null}
-        {errorMessage ? (
+        {failureReason && failureReason !== finalSummary && failureReason !== finalResult ? (
+          <pre className="user-chat-outcome-pre error">{failureReason}</pre>
+        ) : null}
+        {errorMessage && errorMessage !== failureReason && errorMessage !== finalSummary && errorMessage !== finalResult ? (
           <pre className="user-chat-outcome-pre error">{errorMessage}</pre>
         ) : null}
         {(message.metadata?.downloadUrl || message.metadata?.temporalLink || executionId) ? (
@@ -1146,6 +1329,26 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
             ) : null}
           </Space>
         ) : null}
+        {artifacts.length > 0 ? (
+          <Space wrap className="user-chat-outcome-actions">
+            {artifacts.map((artifact, index) => {
+              const href = artifact.downloadUrl || artifact.url;
+              if (!href) {
+                return null;
+              }
+              return (
+                <Button
+                  key={`${href}-${index}`}
+                  size="small"
+                  href={href}
+                  target="_blank"
+                >
+                  {artifact.label || artifact.name || `查看产物 ${index + 1}`}
+                </Button>
+              );
+            })}
+          </Space>
+        ) : null}
         {structuredResult && structuredResult !== finalResult && structuredResult !== errorMessage ? (
           <details className="user-chat-outcome-details">
             <summary>查看结构化结果</summary>
@@ -1156,14 +1359,52 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     );
   };
 
+  const renderProgressCard = (message: ChatMessage) => {
+    const progressLogs = message.metadata?.progressLogs || [];
+    if (message.role !== "assistant" || message.metadata?.mode !== "task" || progressLogs.length === 0) {
+      return null;
+    }
+
+    const stageLabelMap: Record<ChatProgressLog["stage"], string> = {
+      thought: "思考",
+      action: "行动",
+      observation: "观察",
+    };
+
+    const stageColorMap: Record<ChatProgressLog["stage"], string> = {
+      thought: "processing",
+      action: "blue",
+      observation: "green",
+    };
+
+    return (
+      <div className="user-chat-progress-card">
+        <div className="user-chat-progress-header">
+          <Typography.Text strong>执行过程</Typography.Text>
+          <Tag>{progressLogs.length} 条</Tag>
+        </div>
+        <div className="user-chat-progress-list">
+          {progressLogs.map((item, index) => (
+            <div key={`${message.id}-progress-${index}`} className="user-chat-progress-item">
+              <Tag color={stageColorMap[item.stage]}>{stageLabelMap[item.stage]}</Tag>
+              <Typography.Text>{item.text}</Typography.Text>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   const renderMessage = (message: ChatMessage) => {
     const statusLabel = getMessageStatusLabel(message.metadata?.taskStatus);
     const statusColor = getStatusTagColor(message.metadata?.taskStatus);
     const showStateCard = Boolean(resolveSpecialStateTitle(message));
     const outcomeCard = renderOutcomeCard(message);
+    const progressCard = renderProgressCard(message);
     const parsedContent = parseMessageContent(message.content);
     const plainContent = (message.role === "assistant" ? parsedContent.answer : message.content).trim();
     const thoughtLogs = message.role === "assistant" ? parsedContent.thoughts : [];
+    const hasProgressLogs = Boolean(message.metadata?.progressLogs?.length);
     const showThoughtLogs = Boolean(
       message.role === "assistant"
       && message.metadata?.mode === "task"
@@ -1173,7 +1414,8 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     const shouldShowMessageContent = Boolean(
       plainContent
       && plainContent !== message.metadata?.finalResult?.trim()
-      && plainContent !== message.metadata?.errorMessage?.trim(),
+      && plainContent !== message.metadata?.errorMessage?.trim()
+      && !(message.metadata?.mode === "task" && hasProgressLogs)
     );
     const usage = message.metadata?.usage;
     const rateLimit = message.metadata?.rateLimit;
@@ -1184,6 +1426,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
         message.metadata?.finalSummary,
         message.metadata?.finalResult,
         plainContent,
+        message.metadata?.failureReason,
         message.metadata?.errorMessage,
       ].find((item) => typeof item === "string" && item.trim());
       if (!copyTarget) {
@@ -1212,6 +1455,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
           </Space>
           {showStateCard ? renderStateCard(message) : null}
           {outcomeCard}
+          {progressCard}
           {showThoughtLogs ? (
             <details className="user-chat-thoughts">
               <summary>查看思考过程（{thoughtLogs.length} 条）</summary>

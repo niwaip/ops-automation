@@ -3,13 +3,13 @@
  * 单条消息渲染组件 - 支持Markdown渲染和思考折叠
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Avatar, Button, Modal, Space, Switch, Tag, Typography, message as antdMessage } from 'antd';
 import { UserOutlined, RobotOutlined, FileTextOutlined, DownOutlined, RightOutlined, CopyOutlined, RedoOutlined, CheckOutlined, CloseOutlined, LoadingOutlined, EyeOutlined, DownloadOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { buildBrowserOutputDisplay, extractBrowserExecutionResult } from '@/features/executions/lib/browser';
-import { ChatMessage } from './types';
+import { ChatMessage, ChatProgressLog } from './types';
 import { useAuthStore } from '@/shared/store/authStore';
 import { replaceLocalhostWithCurrentHost } from '@/shared/lib/publicUrl';
 import {
@@ -149,6 +149,58 @@ const looksLikeVerboseExecutionContent = (text?: string): boolean => {
   return /stepResults|### Ran Playwright code|snapshotId|stdout|executedCommands|任务已完成[,，]?\s*返回结果|```json/i.test(raw);
 };
 
+const asRecord = (value: unknown): Record<string, unknown> | undefined => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return undefined;
+  }
+  return value as Record<string, unknown>;
+};
+
+const asString = (value: unknown): string | undefined => {
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+};
+
+const summarizeDocumentExecutionResult = (
+  value: unknown,
+  downloadUrl?: string,
+): string | null => {
+  const record = asRecord(value);
+  if (!record) {
+    return null;
+  }
+
+  const status = asString(record.status)?.toLowerCase();
+  const fileName = asString(record.fileName) || asString(record.filename) || asString(record.name);
+  const format = asString(record.format)?.toUpperCase();
+  const isDocumentResult = Boolean(
+    fileName
+    || format
+    || downloadUrl
+    || ['rendered', 'success', 'succeeded', 'completed'].includes(status || ''),
+  );
+
+  if (!isDocumentResult) {
+    return null;
+  }
+
+  return [
+    '文档已生成。',
+    ...(fileName ? [`- 文件名：${fileName}`] : []),
+    ...(format ? [`- 格式：${format}`] : []),
+    downloadUrl
+      ? '- 可通过下方按钮下载查看。'
+      : '- 可在执行详情中查看生成结果。',
+  ].join('\n');
+};
+
+const hasBrowserExecutionPayload = (value: unknown): boolean => {
+  const result = extractBrowserExecutionResult(value);
+  if (result && result.stepResults.length > 0) {
+    return true;
+  }
+  return getExecutionStepCount(value) !== undefined;
+};
+
 const summarizeBrowserExecutionResult = (value: unknown): string | null => {
   const result = extractBrowserExecutionResult(value);
   if (!result || result.stepResults.length === 0) {
@@ -183,7 +235,7 @@ const summarizeBrowserExecutionResult = (value: unknown): string | null => {
 const compactExecutionText = (text?: string, executionResultData?: unknown): string => {
   const raw = String(text || '').trim();
   if (!raw) return '';
-  if (looksLikeVerboseExecutionContent(raw)) {
+  if (looksLikeVerboseExecutionContent(raw) && hasBrowserExecutionPayload(executionResultData)) {
     return summarizeBrowserExecutionResult(executionResultData) || '浏览器执行已完成，详细信息请通过下方链接查看。';
   }
   return raw;
@@ -209,10 +261,10 @@ const isBrowserExecutionResult = (
   if (!executionId) {
     return false;
   }
-  if (looksLikeVerboseExecutionContent(answerText)) {
+  if (hasBrowserExecutionPayload(finalResultData)) {
     return true;
   }
-  return getExecutionStepCount(finalResultData) !== undefined;
+  return looksLikeVerboseExecutionContent(answerText) && hasBrowserExecutionPayload(answerText);
 };
 
 const ChatMessageComponent: React.FC<ChatMessageProps> = ({
@@ -239,17 +291,18 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
   const finalResultData = message.metadata?.finalResultData;
   const finalSummary = message.metadata?.finalSummary?.trim();
   const errorMessage = message.metadata?.errorMessage?.trim();
-  const errorPreview = getErrorPreview(errorMessage);
+  const failureReason = typeof message.metadata?.failureReason === 'string' ? message.metadata.failureReason.trim() : undefined;
   const hasBusinessResult = message.metadata?.hasBusinessResult;
   const executionId = message.metadata?.executionId;
   const executionStatus = formatExecutionStatus(message.metadata?.executionStatus);
   const usage = message.metadata?.usage;
   const promptDebug = message.metadata?.promptDebug;
+  const progressLogs = message.metadata?.progressLogs || [];
   const showThinking = message.metadata?.showThinking !== false;
   const isRunning = isTaskMode && message.metadata?.taskStatus === 'running';
   const showRunningState = isTaskMode && (isRunning || (Boolean(isStreaming) && !isWaitingInput && !isPendingApproval && !errorMessage));
   const shouldShowErrorCard = Boolean(
-    errorMessage
+    (failureReason || errorMessage)
     && (isFailed || (!isWaitingInput && !isPendingApproval && !showRunningState)),
   );
   const missingInputs = useMemo(
@@ -356,6 +409,14 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
     () => isBrowserExecutionResult(executionId, answerWithoutTaskCheckbox, finalResultData),
     [executionId, answerWithoutTaskCheckbox, finalResultData],
   );
+  const hasStructuredProgressLogs = !isUser && isTaskMode && progressLogs.length > 0;
+  const currentProgressLog = hasStructuredProgressLogs ? progressLogs[progressLogs.length - 1] : undefined;
+
+  useEffect(() => {
+    if (isRunning) {
+      setThoughtsExpanded(true);
+    }
+  }, [isRunning, progressLogs.length, message.id]);
 
   const handleCopy = async () => {
     try {
@@ -445,7 +506,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
 
   // 渲染思考过程（可折叠）
   const renderThoughts = () => {
-    if (!showThinking || thoughts.length === 0 || isUser) return null;
+    if (!showThinking || thoughts.length === 0 || isUser || hasStructuredProgressLogs) return null;
 
     return (
       <div className="chat-thoughts-wrapper">
@@ -470,6 +531,48 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
     );
   };
 
+  const renderProgressLogs = () => {
+    if (!showThinking || !hasStructuredProgressLogs || !currentProgressLog || !isRunning) {
+      return null;
+    }
+
+    const stageLabelMap: Record<ChatProgressLog['stage'], string> = {
+      thought: '思考',
+      action: '行动',
+      observation: '观察',
+    };
+
+    const stageColorMap: Record<ChatProgressLog['stage'], string> = {
+      thought: 'processing',
+      action: 'blue',
+      observation: 'green',
+    };
+
+    return (
+      <div className="chat-progress-wrapper">
+        <div className="chat-progress-current">
+          <div className="chat-progress-current-header">
+            <div className="chat-progress-current-title-group">
+              {isRunning && (
+                <span className="chat-progress-running-indicator">
+                  <LoadingOutlined className="chat-running-icon" />
+                  <span>执行中</span>
+                </span>
+              )}
+              <span className="chat-thoughts-title">当前步骤</span>
+            </div>
+            <Tag color={stageColorMap[currentProgressLog.stage]}>
+              {stageLabelMap[currentProgressLog.stage]}
+            </Tag>
+          </div>
+          <div className={`chat-progress-current-text ${isRunning ? 'running' : ''}`.trim()}>
+            {currentProgressLog.text}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // 渲染Markdown内容
   const renderContent = () => {
     if (isUser) {
@@ -480,7 +583,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
       return null;
     }
 
-    if (!compactAnswer) {
+    if (!compactAnswer || (hasStructuredProgressLogs && !finalResult && !finalSummary && !isWaitingInput && !isPendingApproval && !shouldShowErrorCard)) {
       return null;
     }
 
@@ -561,6 +664,8 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
     );
 
     if (shouldShowErrorCard) {
+      const detailError = errorMessage || failureReason || '任务执行失败';
+      const previewError = getErrorPreview(detailError);
       return (
         <div className="chat-outcome-card error">
           <div className="chat-outcome-title">任务失败</div>
@@ -569,20 +674,21 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
             {executionId && <span>执行单 ID：{executionId}</span>}
             {executionStepCount !== undefined && <span>执行步骤数：{executionStepCount}</span>}
           </div>
-          <div className="chat-outcome-body">{errorPreview}</div>
+          <div className="chat-outcome-body">{previewError}</div>
           <details className="chat-outcome-details">
             <summary>查看详细错误</summary>
-            <pre className="chat-structured-result chat-error-details">{errorMessage}</pre>
+            <pre className="chat-structured-result chat-error-details">{detailError}</pre>
           </details>
         </div>
       );
     }
 
     if (finalResult) {
-      const fixedFinalResult = compactExecutionText(
-        beautifyText(fixLocalhostLink(finalResult) || ''),
-        finalResultData,
-      );
+      const fixedFinalResult = summarizeDocumentExecutionResult(finalResultData, downloadUrl)
+        || compactExecutionText(
+          beautifyText(fixLocalhostLink(finalResult) || ''),
+          finalResultData,
+        );
       return (
         <div className="chat-outcome-card success">
           <div className="chat-outcome-title">{hasBusinessResult ? '任务结果' : '任务完成'}</div>
@@ -833,18 +939,13 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
                 等待你输入
               </Tag>
             )}
-            {showRunningState && (
-              <Tag color="processing" className="chat-running-tag">
-                <LoadingOutlined className="chat-running-icon" />
-                执行中
-              </Tag>
-            )}
             {isPendingApproval && (
               <Tag color="orange" className="chat-waiting-tag">
                 等待你审批
               </Tag>
             )}
             {renderOutcomeCard()}
+            {renderProgressLogs()}
             {renderContent()}
             {renderDownloadLink()}
             {renderFiles()}

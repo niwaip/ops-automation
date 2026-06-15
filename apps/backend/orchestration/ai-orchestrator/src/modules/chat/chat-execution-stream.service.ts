@@ -9,6 +9,7 @@ import {
 } from '../../client/control-plane.contracts';
 import { StreamEventType } from '../react-engine/interfaces';
 import type { LLMUsage, StreamEvent } from '../react-engine/interfaces';
+import { ChatResultNormalizerService } from './chat-result-normalizer.service';
 import type { ChatUserContext, WaitingInputSemantic } from './chat.types';
 import { ChatWaitingInputService } from './chat-waiting-input.service';
 
@@ -19,6 +20,7 @@ export class ChatExecutionStreamService {
   constructor(
     private readonly controlPlaneClient: ControlPlaneClient,
     private readonly waitingInputService: ChatWaitingInputService,
+    private readonly resultNormalizerService: ChatResultNormalizerService,
   ) {}
 
   async *observeExecution(
@@ -193,18 +195,25 @@ export class ChatExecutionStreamService {
 
       if (status === CONTROL_PLANE_EXECUTION_STATUS.SUCCEEDED) {
         if (rawResult !== null && rawResult !== undefined) {
-          const downloadUrl = this.extractDownloadUrl(rawResult);
-          const temporalLink = this.extractTemporalLink(rawResult);
+          const normalizedResult = this.resultNormalizerService.normalize(rawResult, {
+            executionId,
+            status: 'success',
+          });
           return {
             type: StreamEventType.RESULT,
-            content: this.formatExecutionResult(rawResult, executionId),
+            content: this.resultNormalizerService.formatForChat(normalizedResult, executionId),
             data: {
               executionId,
               status,
               result: rawResult,
-              downloadUrl,
-              temporalLink,
-              hasBusinessResult: true,
+              normalizedResult,
+              resultType: normalizedResult.resultType,
+              resultTitle: normalizedResult.title,
+              resultSummary: normalizedResult.summary,
+              artifacts: normalizedResult.artifacts,
+              downloadUrl: normalizedResult.downloadUrl,
+              temporalLink: normalizedResult.temporalLink,
+              hasBusinessResult: normalizedResult.hasBusinessResult,
               usage: execution.usage,
             },
           };
@@ -223,12 +232,14 @@ export class ChatExecutionStreamService {
       }
 
       if (status === CONTROL_PLANE_EXECUTION_STATUS.FAILED) {
+        const failureReason = execution.failureReason || '未知原因';
         return {
           type: StreamEventType.ERROR,
-          content: `任务执行失败。\n\n原因: ${execution.failureReason || '未知原因'}\n执行单 ID: ${executionId}`,
+          content: failureReason,
           data: {
             executionId,
             status,
+            failureReason,
             usage: execution.usage,
           },
         };
@@ -270,8 +281,8 @@ export class ChatExecutionStreamService {
     if (status === CONTROL_PLANE_EXECUTION_STATUS.FAILED) {
       return {
         type: StreamEventType.ERROR,
-        content: `任务执行失败。\n\n执行单 ID: ${executionId}`,
-        data: { executionId, status },
+        content: '任务执行失败',
+        data: { executionId, status, failureReason: '任务执行失败' },
       };
     }
 
@@ -280,32 +291,6 @@ export class ChatExecutionStreamService {
       content: `任务已取消。\n\n执行单 ID: ${executionId}`,
       data: { executionId, status, hasBusinessResult: false },
     };
-  }
-
-  private formatExecutionResult(result: unknown, executionId: string): string {
-    if (typeof result === 'string') {
-      return result;
-    }
-
-    if (result && typeof result === 'object') {
-      const record = result as Record<string, unknown>;
-      const preferredFields = ['finalAnswer', 'formatted_output', 'summary', 'message', 'text', 'content', 'output', 'result'];
-
-      for (const field of preferredFields) {
-        const value = record[field];
-        if (typeof value === 'string' && value.trim()) {
-          return value;
-        }
-      }
-
-      if (record.temporalLink && Object.keys(record).length <= 2) {
-        return '任务执行成功。';
-      }
-
-      return `任务已完成，返回结果如下：\n\n${JSON.stringify(result, null, 2)}\n\n执行单 ID: ${executionId}`;
-    }
-
-    return `任务已完成，返回结果如下：\n\n${String(result)}\n\n执行单 ID: ${executionId}`;
   }
 
   private mapExecutionEventToStreamEvent(event: any): StreamEvent | null {
@@ -359,20 +344,23 @@ export class ChatExecutionStreamService {
       case CONTROL_PLANE_EVENT_TYPE.STEP_STARTED:
         return {
           type: StreamEventType.ACTION,
-          content: `正在执行: ${payload.stepName || payload.action || '系统步骤'}`,
+          content: this.buildStepStartedSummary(payload),
           data: { stepId: payload.stepId },
         };
       case CONTROL_PLANE_EVENT_TYPE.STEP_SUCCEEDED: {
-        let observationContent = '步骤执行成功。';
-        const downloadUrl = this.extractDownloadUrl(payload.result);
-        if (payload.result) {
-          const resultStr = typeof payload.result === 'string' ? payload.result : JSON.stringify(payload.result, null, 2);
-          observationContent = `步骤执行成功，返回结果:\n${resultStr}`;
-        }
+        const normalizedResult = this.resultNormalizerService.normalize(payload.result, {
+          status: 'success',
+        });
+        const downloadUrl = normalizedResult.downloadUrl;
         return {
           type: StreamEventType.OBSERVATION,
-          content: observationContent,
-          data: { stepId: payload.stepId, result: payload.result, downloadUrl },
+          content: this.buildStepSucceededSummary(payload.result, normalizedResult),
+          data: {
+            stepId: payload.stepId,
+            result: payload.result,
+            normalizedResult,
+            downloadUrl,
+          },
         };
       }
       case CONTROL_PLANE_EVENT_TYPE.STEP_FAILED:
@@ -384,12 +372,12 @@ export class ChatExecutionStreamService {
       case CONTROL_PLANE_EVENT_TYPE.RUNTIME_ALLOCATED:
         return {
           type: StreamEventType.THOUGHT,
-          content: '🚀 已分配运行环境，准备开始执行...',
+          content: '已分配运行环境，准备开始执行。',
         };
       case CONTROL_PLANE_EVENT_TYPE.EXECUTION_INPUT_SUBMITTED:
         return {
           type: StreamEventType.THOUGHT,
-          content: '📥 已接收到您补充的信息，正在继续执行...',
+          content: '已接收到补充信息，正在继续执行。',
         };
       case LEGACY_CONTROL_PLANE_EVENT_TYPE.EXECUTION_WAITING_INPUT:
       case CONTROL_PLANE_EVENT_TYPE.STEP_WAITING_INPUT: {
@@ -419,104 +407,87 @@ export class ChatExecutionStreamService {
     }
   }
 
-  private tryParseJsonString(value: unknown): unknown {
-    if (typeof value !== 'string') {
-      return undefined;
-    }
-
-    const trimmed = value.trim();
-    if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
-      return undefined;
-    }
-
-    try {
-      return JSON.parse(trimmed);
-    } catch {
-      return undefined;
-    }
+  private buildStepStartedSummary(payload: Record<string, unknown>): string {
+    const stepName = this.readString(payload.stepName);
+    const action = this.readString(payload.action);
+    return `正在执行：${stepName || action || '系统步骤'}`;
   }
 
-  private extractDownloadUrl(value: unknown): string | undefined {
-    const queue: unknown[] = [value];
-    const visited = new Set<unknown>();
-    let inspected = 0;
+  private buildStepSucceededSummary(
+    rawResult: unknown,
+    normalizedResult: {
+      detailText?: string;
+      summary?: string;
+      body?: string;
+    },
+  ): string {
+    const structured = this.asRecord(rawResult);
+    const status = this.readString(structured?.status);
+    const command = this.readString(structured?.command);
+    const pageTitle = this.readString(structured?.pageTitle);
+    const pageUrl = this.sanitizeUrl(this.readString(structured?.pageUrl));
+    const duration = this.readNumber(this.asRecord(structured?.data)?.duration);
+    const detailText = this.firstNonEmptyString(
+      normalizedResult.detailText,
+      normalizedResult.summary,
+      normalizedResult.body,
+    );
 
-    while (queue.length > 0 && inspected < 50) {
-      const current = queue.shift();
-      inspected += 1;
-
-      const parsed = this.tryParseJsonString(current);
-      if (parsed !== undefined) {
-        queue.push(parsed);
-        continue;
-      }
-
-      if (!current || typeof current !== 'object' || visited.has(current)) {
-        continue;
-      }
-      visited.add(current);
-
-      if (Array.isArray(current)) {
-        current.forEach((item) => queue.push(item));
-        continue;
-      }
-
-      const record = current as Record<string, unknown>;
-      const directUrl = [record.downloadUrl, record.download_url, record.url]
-        .find((item): item is string => typeof item === 'string' && item.trim().length > 0);
-      if (directUrl) {
-        return directUrl;
-      }
-
-      Object.values(record).forEach((item) => {
-        if (item && typeof item === 'object') {
-          queue.push(item);
-        }
-      });
+    const parts: string[] = [];
+    if (status === 'success') {
+      parts.push('步骤执行成功');
+    } else if (status) {
+      parts.push(`步骤状态：${status}`);
+    } else {
+      parts.push('步骤已完成');
     }
 
-    return undefined;
-  }
-
-  private extractTemporalLink(value: unknown): string | undefined {
-    const queue: unknown[] = [value];
-    const visited = new Set<unknown>();
-    let inspected = 0;
-
-    while (queue.length > 0 && inspected < 50) {
-      const current = queue.shift();
-      inspected += 1;
-
-      const parsed = this.tryParseJsonString(current);
-      if (parsed !== undefined) {
-        queue.push(parsed);
-        continue;
-      }
-
-      if (!current || typeof current !== 'object' || visited.has(current)) {
-        continue;
-      }
-      visited.add(current);
-
-      if (Array.isArray(current)) {
-        current.forEach((item) => queue.push(item));
-        continue;
-      }
-
-      const record = current as Record<string, unknown>;
-      const directUrl = [record.temporalLink, record.temporal_link]
-        .find((item): item is string => typeof item === 'string' && item.trim().length > 0);
-      if (directUrl) {
-        return directUrl;
-      }
-
-      Object.values(record).forEach((item) => {
-        if (item && typeof item === 'object') {
-          queue.push(item);
-        }
-      });
+    if (command) {
+      parts.push(`命令：${command}`);
+    }
+    if (pageTitle) {
+      parts.push(`页面：${pageTitle}`);
+    } else if (pageUrl) {
+      parts.push(`页面：${pageUrl}`);
+    }
+    if (typeof duration === 'number' && duration > 0) {
+      parts.push(`耗时 ${duration} ms`);
     }
 
-    return undefined;
+    if (detailText) {
+      const compactDetail = detailText.replace(/\s+/g, ' ').trim();
+      if (compactDetail && compactDetail.length <= 80) {
+        parts.push(compactDetail);
+      }
+    }
+
+    return parts.join('，');
   }
+
+  private asRecord(value: unknown): Record<string, unknown> | undefined {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return undefined;
+    }
+    return value as Record<string, unknown>;
+  }
+
+  private readString(value: unknown): string | undefined {
+    return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+  }
+
+  private readNumber(value: unknown): number | undefined {
+    return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+  }
+
+  private firstNonEmptyString(...values: Array<string | undefined>): string | undefined {
+    return values.find((value) => typeof value === 'string' && value.trim())?.trim();
+  }
+
+  private sanitizeUrl(value?: string): string | undefined {
+    if (!value) {
+      return undefined;
+    }
+    return value.replace(/`/g, '').trim();
+  }
+
 }

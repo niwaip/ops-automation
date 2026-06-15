@@ -17,6 +17,7 @@ import {
   isNumericInputType,
   normalizeExecutionWaitingInputValues,
   resolveExecutionInputPayload,
+  resolveExecutionNormalizedResult,
   resolveExecutionResultPayload,
   EXECUTION_ACTIVE_POLLING_STATUSES,
   resolveWaitingInputDisplayLabel,
@@ -24,6 +25,7 @@ import {
   type ExecutionDetailStepRow,
   type ExecutionDetailActionButton,
   type RequiredInputField,
+  type WorkflowResultArtifact,
 } from "@ops/user-core";
 import { executionApi } from "../../../api";
 import { JsonPreview } from "../components/JsonPreview";
@@ -39,6 +41,35 @@ function renderRequiredInputField(field: RequiredInputField) {
     return <Input.TextArea rows={4} placeholder="请输入 JSON 字符串" />;
   }
   return <Input placeholder={field.description || `请输入 ${field.name}`} />;
+}
+
+function renderResultArtifacts(artifacts?: WorkflowResultArtifact[]) {
+  if (!artifacts || artifacts.length === 0) {
+    return null;
+  }
+
+  return (
+    <Space wrap>
+      {artifacts.map((artifact, index) => {
+        const href = artifact.downloadUrl || artifact.url;
+        if (!href) {
+          return null;
+        }
+        return (
+          <Button
+            key={`${href}-${index}`}
+            type="link"
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ paddingInline: 0 }}
+          >
+            {artifact.label || artifact.name || `结果产物 ${index + 1}`}
+          </Button>
+        );
+      })}
+    </Space>
+  );
 }
 
 export function ExecutionDetailPage() {
@@ -77,6 +108,24 @@ export function ExecutionDetailPage() {
   const actionCard = buildExecutionDetailActionCard(execution);
   const stepRows = buildExecutionDetailStepRows(steps);
   const phaseRows = buildExecutionDetailPhaseRows(phases);
+  const normalizedResult = resolveExecutionNormalizedResult(execution);
+  const resultPreviewValue =
+    normalizedResult?.structuredData
+    ?? normalizedResult?.envelope
+    ?? resolveExecutionResultPayload(execution);
+  const primaryResultText =
+    normalizedResult?.detailText
+    || normalizedResult?.summary
+    || normalizedResult?.body;
+  const shouldShowStructuredResult = Boolean(
+    resultPreviewValue !== undefined
+    && resultPreviewValue !== null
+    && (
+      normalizedResult?.envelope?.presentation?.preferStructuredView
+      || normalizedResult?.structuredData !== undefined
+      || !primaryResultText
+    ),
+  );
   const refreshExecutionQueries = async () => {
     await Promise.all([
       queryClient.invalidateQueries(["user-web-execution", id]),
@@ -298,7 +347,44 @@ export function ExecutionDetailPage() {
         </Card>
       ) : null}
       <Card title="输入"><JsonPreview value={resolveExecutionInputPayload(execution)} /></Card>
-      <Card title="结果"><JsonPreview value={resolveExecutionResultPayload(execution)} /></Card>
+      <Card title="结果">
+        <Space direction="vertical" size={12} style={{ width: "100%" }}>
+          {normalizedResult?.title ? (
+            <div>
+              <Typography.Text strong>{normalizedResult.title}</Typography.Text>
+              {normalizedResult.resultType ? (
+                <Tag style={{ marginLeft: 8 }}>{normalizedResult.resultType}</Tag>
+              ) : null}
+            </div>
+          ) : null}
+          {primaryResultText ? (
+            <Typography.Paragraph
+              style={{
+                marginBottom: 0,
+                whiteSpace: "pre-wrap",
+                lineHeight: 1.7,
+              }}
+            >
+              {primaryResultText}
+            </Typography.Paragraph>
+          ) : null}
+          {renderResultArtifacts(normalizedResult?.artifacts)}
+          {normalizedResult?.temporalLink ? (
+            <Button
+              type="link"
+              href={normalizedResult.temporalLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ paddingInline: 0, width: "fit-content" }}
+            >
+              查看 Temporal 执行链路
+            </Button>
+          ) : null}
+          {shouldShowStructuredResult ? (
+            <JsonPreview value={resultPreviewValue} />
+          ) : null}
+        </Space>
+      </Card>
       <Card title="步骤">
         <Table<ExecutionDetailStepRow>
           rowKey="id"

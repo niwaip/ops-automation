@@ -826,7 +826,7 @@ Portal 不应：
 ## 14. 与现有文档关系
 
 - 领域边界：见 `Enterprise-Skill-Platform_Service-API-and-Ownership-Contract_v2.0.md`
-- 主链路蓝图：见 `Enterprise-Skill-Platform_MVP-Implementation-Blueprint_v2.0.md`
+- 主链路蓝图：见 `archive/Enterprise-Skill-Platform_MVP-Implementation-Blueprint_v2.0.md`
 - 状态机定义：见 `Enterprise-Skill-Platform_Execution-Lifecycle-RFC_v2.0.md`
 
 本文定位是“接口实施规范”，用于在正式开发前冻结 MVP API 合同。

@@ -32,6 +32,10 @@ export function NotificationsPage() {
   );
 
   const statusLabels = language === "en-US" ? EXECUTION_STATUS_LABELS_EN : EXECUTION_STATUS_LABELS_ZH;
+  const resolveDownloadUrl = (item: (typeof items)[number]): string | undefined =>
+    typeof item.metadata?.downloadUrl === "string" && item.metadata.downloadUrl.trim()
+      ? item.metadata.downloadUrl
+      : undefined;
   const resolveActionPath = (actionUrl: string, source: string, sourceId: string): string => {
     if (source === "execution") {
       return `/executions/${sourceId}`;
@@ -71,6 +75,17 @@ export function NotificationsPage() {
               <List.Item
                 key={item.id}
                 actions={[
+                  ...(resolveDownloadUrl(item) ? [
+                    <Button
+                      key="download"
+                      type="link"
+                      href={resolveDownloadUrl(item)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      下载结果
+                    </Button>,
+                  ] : []),
                   <Button
                     key="open"
                     type="link"

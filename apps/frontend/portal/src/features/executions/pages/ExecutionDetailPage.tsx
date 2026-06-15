@@ -10,6 +10,7 @@ import { Card, Descriptions, Tag, Button, Space, Typography, Spin, Alert, Table,
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import '@/features/chat/ChatMessage.css';
+import { resolveExecutionNormalizedResult } from '@ops/user-core';
 import {
   ArrowLeftOutlined,
   WarningOutlined,
@@ -429,6 +430,7 @@ const ExecutionDetailPage: React.FC = () => {
   );
   const semantic = execution?.semantic;
   const parsedResult = asRecord(tryParseJsonValue(execution?.resultJson));
+  const normalizedResult = resolveExecutionNormalizedResult(execution);
   const browserExecutionResult = extractBrowserExecutionResult(execution?.resultJson);
   const executionPhases = phasesData || execution?.phases || [];
   const sortedExecutionPhases = React.useMemo(
@@ -461,6 +463,18 @@ const ExecutionDetailPage: React.FC = () => {
   const effectiveBrowserExecutionResult = React.useMemo(
     () => browserExecutionResult || extractBrowserExecutionResult(effectiveResultJson),
     [browserExecutionResult, effectiveResultJson],
+  );
+  const resultPreviewValue = normalizedResult?.structuredData ?? normalizedResult?.envelope;
+  const primaryResultText = normalizedResult?.detailText || normalizedResult?.summary || normalizedResult?.body;
+  const shouldRenderPrimaryAsMarkdown = normalizedResult?.detailFormat === 'markdown' || normalizedResult?.summaryFormat === 'markdown';
+  const shouldShowStructuredResult = Boolean(
+    resultPreviewValue !== undefined
+    && resultPreviewValue !== null
+    && (
+      normalizedResult?.envelope?.presentation?.preferStructuredView
+      || normalizedResult?.structuredData !== undefined
+      || !primaryResultText
+    ),
   );
   const phaseRuntimeSessionId = React.useMemo(
     () => [...sortedExecutionPhases]
@@ -838,7 +852,7 @@ const ExecutionDetailPage: React.FC = () => {
     : [];
   const executionInfoRecord = asRecord(tryParseJsonValue(execution.resultJson));
   const executionInfoTemporalLink = fixLocalhostLink(
-    typeof executionInfoRecord?.temporalLink === 'string' ? executionInfoRecord.temporalLink : undefined,
+    normalizedResult?.temporalLink || (typeof executionInfoRecord?.temporalLink === 'string' ? executionInfoRecord.temporalLink : undefined),
   );
 
   const activityProgressCard: React.ReactNode = isBrowserExecution && displayActivityPhases.length > 0 ? (
@@ -1248,7 +1262,68 @@ const ExecutionDetailPage: React.FC = () => {
           </div>
           <div>
             <Text strong>{text.result}:</Text>
-            {renderExecutionPayloadContent(effectiveResultJson, isEnglish ? 'No result output' : '暂无结果输出', true)}
+            {normalizedResult?.hasBusinessResult ? (
+              <Space direction="vertical" size={12} style={{ width: '100%', marginTop: 8 }}>
+                {normalizedResult.title ? (
+                  <Space wrap size={[8, 8]}>
+                    <Text strong>{normalizedResult.title}</Text>
+                    {normalizedResult.resultType ? <Tag>{normalizedResult.resultType}</Tag> : null}
+                  </Space>
+                ) : null}
+                {primaryResultText ? (
+                  shouldRenderPrimaryAsMarkdown ? (
+                    <div className="chat-message-markdown" style={{ lineHeight: 1.7 }}>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {beautifyText(primaryResultText)}
+                      </ReactMarkdown>
+                    </div>
+                  ) : (
+                    <Text style={{ whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>
+                      {primaryResultText}
+                    </Text>
+                  )
+                ) : null}
+                {normalizedResult.artifacts.length > 0 ? (
+                  <Space wrap>
+                    {normalizedResult.artifacts.map((artifact, index) => {
+                      const href = fixLocalhostLink(artifact.downloadUrl || artifact.url);
+                      if (!href) {
+                        return null;
+                      }
+                      return (
+                        <Button
+                          key={`${href}-${index}`}
+                          type="link"
+                          href={href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ paddingInline: 0 }}
+                        >
+                          {artifact.label || artifact.name || `${text.result} ${index + 1}`}
+                        </Button>
+                      );
+                    })}
+                  </Space>
+                ) : null}
+                {normalizedResult.temporalLink ? (
+                  <Button
+                    type="link"
+                    href={fixLocalhostLink(normalizedResult.temporalLink)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ paddingInline: 0, width: 'fit-content' }}
+                  >
+                    {isEnglish ? 'Open Temporal Execution' : '打开 Temporal 执行链路'}
+                  </Button>
+                ) : null}
+                {shouldShowStructuredResult ? renderExecutionPayloadContent(
+                  resultPreviewValue,
+                  isEnglish ? 'No structured result' : '暂无结构化结果',
+                ) : null}
+              </Space>
+            ) : (
+              renderExecutionPayloadContent(effectiveResultJson, isEnglish ? 'No result output' : '暂无结果输出', true)
+            )}
           </div>
         </Card>
       ) : null}

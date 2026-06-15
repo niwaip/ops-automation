@@ -71,6 +71,11 @@ export interface PromptDebugRecord {
   updatedAt: string;
 }
 
+export interface ChatProgressLog {
+  stage: 'thought' | 'action' | 'observation';
+  text: string;
+}
+
 export interface LLMUsage {
   prompt_tokens: number;
   completion_tokens: number;
@@ -120,7 +125,9 @@ export interface ChatMessage {
     finalResult?: string;
     finalResultData?: unknown;
     finalSummary?: string;
+    progressLogs?: ChatProgressLog[];
     errorMessage?: string;
+    failureReason?: string;
     hasBusinessResult?: boolean;
     promptDebug?: PromptDebugPayload;
   };

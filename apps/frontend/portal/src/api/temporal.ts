@@ -3,6 +3,8 @@ import { useAuthStore } from '@/shared/store/authStore';
 import { postSseStream } from './streaming';
 import type { TemplateParamsSchema, TemplateStep } from './template';
 
+const AI_DRAFT_REQUEST_TIMEOUT_MS = 5 * 60 * 1000;
+
 export interface WorkflowSignalHandler {
   name: string;
   description?: string;
@@ -500,11 +502,15 @@ export const temporalWorkflowApi = {
   },
 
   generateAiDraft: async (data: GenerateAiWorkflowDraftDTO): Promise<AiWorkflowDraft> => {
-    return apiClient.post<AiWorkflowDraft>('/temporal/generate-ai-draft', data);
+    return apiClient.post<AiWorkflowDraft>('/temporal/generate-ai-draft', data, {
+      timeout: AI_DRAFT_REQUEST_TIMEOUT_MS,
+    });
   },
 
   createAiDraftSession: async (data: GenerateAiWorkflowDraftSessionDTO): Promise<AiWorkflowDraftSession> => {
-    return apiClient.post<AiWorkflowDraftSession>('/temporal/draft-sessions', data);
+    return apiClient.post<AiWorkflowDraftSession>('/temporal/draft-sessions', data, {
+      timeout: AI_DRAFT_REQUEST_TIMEOUT_MS,
+    });
   },
 
   listAiDraftSessions: async (): Promise<AiWorkflowDraftSessionListItem[]> => {
@@ -520,11 +526,15 @@ export const temporalWorkflowApi = {
   },
 
   refineAiWorkflowDraft: async (data: RefineAiWorkflowDraftDTO): Promise<AiWorkflowDraft> => {
-    return apiClient.post<AiWorkflowDraft>('/temporal/refine-ai-draft', data);
+    return apiClient.post<AiWorkflowDraft>('/temporal/refine-ai-draft', data, {
+      timeout: AI_DRAFT_REQUEST_TIMEOUT_MS,
+    });
   },
 
   refineAiDraftSession: async (sessionId: string, userPrompt: string): Promise<AiWorkflowDraftSession> => {
-    return apiClient.post<AiWorkflowDraftSession>(`/temporal/draft-sessions/${sessionId}/messages`, { userPrompt });
+    return apiClient.post<AiWorkflowDraftSession>(`/temporal/draft-sessions/${sessionId}/messages`, { userPrompt }, {
+      timeout: AI_DRAFT_REQUEST_TIMEOUT_MS,
+    });
   },
 
   optimizeHttpRequestConfig: async (

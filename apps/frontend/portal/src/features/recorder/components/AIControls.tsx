@@ -281,8 +281,11 @@ const buildCompactAiReply = (
     || /stepResults|### Ran Playwright code|stdout|snapshotId|backend/i.test(replyText)
     || /任务已完成[,，]?\s*返回结果/.test(replyText)
   );
-  if (hasBrowserExecutionPayload || looksLikeVerboseExecutionReply) {
+  if (hasBrowserExecutionPayload) {
     return '浏览器执行已完成，详细信息请点击下方“查看详情”或“打开链接”。';
+  }
+  if (looksLikeVerboseExecutionReply) {
+    return '任务已完成，详细信息请点击下方“查看详情”或“打开链接”。';
   }
   return replyText || 'OK';
 };
@@ -302,7 +305,9 @@ const buildCompactHistoryBubbleText = (entry: CommandHistoryEntry): string => {
     ),
   );
   if (entry.type === 'ai' && hasExecutionLikeResult) {
-    return '浏览器执行已完成，详细信息请点击下方“查看详情”或“打开链接”。';
+    return entry.result?.execution || entry.result?.observation || entry.result?.exportArtifacts
+      ? '浏览器执行已完成，详细信息请点击下方“查看详情”或“打开链接”。'
+      : '任务已完成，详细信息请点击下方“查看详情”或“打开链接”。';
   }
 
   const compacted = entry.type === 'ai'

@@ -1,7 +1,7 @@
 # Feature Structure
 
 `features/` follows the business-step-first layout defined in
-`docs/design/Office-Addin-Structure-Refactor-Complete-Solution_v1.0.md`.
+`docs/design/archive/Office-Addin-Structure-Refactor-Complete-Solution_v1.0.md`.
 
 Canonical feature paths:
 - `document-load/`

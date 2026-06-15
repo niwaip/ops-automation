@@ -12,6 +12,7 @@ import { ApprovalStatus } from './contracts/approval-status';
 import { ExecutionStatus } from './contracts/execution-status';
 import { ExecutionStepStatus } from './contracts/execution-step-status';
 import type { ExecutionSemantic } from '@ops/contracts';
+import { resolveExecutionNormalizedResult } from './execution-result-normalizer';
 
 const asRecord = (value: unknown): Record<string, unknown> | null => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -207,6 +208,12 @@ export const mapExecutionToDto = (
     normalizedInput,
     semantic,
     result,
+    normalizedResult: resolveExecutionNormalizedResult({
+      id: execution.id as string,
+      status: execution.status as ExecutionStatus,
+      resultJson: result,
+      result,
+    }),
     usage,
     failureCode: execution.failureCode as string | null,
     failureReason: execution.failureReason as string | null,

@@ -34,6 +34,11 @@ interface SessionWorkerOptions {
   headless?: boolean;
 }
 
+interface RequestedHostPortBindings {
+  novncHostPort: string;
+  cdpHostPort: string;
+}
+
 @Injectable()
 export class WorkerService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(WorkerService.name);
@@ -61,6 +66,26 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
   private readonly vncPort = process.env.SESSION_VNC_PORT || '5900';
   private readonly chromeDebugPort = process.env.SESSION_CHROME_DEBUG_PORT || '9222';
   private readonly codegenApiPort = process.env.SESSION_CODEGEN_API_PORT || '3011';
+  private readonly novncHostPortRangeStart = this.readPositiveInt(
+    process.env.BROWSER_WORKER_NOVNC_HOST_PORT_START,
+    39000,
+  );
+  private readonly novncHostPortRangeEnd = this.readPositiveInt(
+    process.env.BROWSER_WORKER_NOVNC_HOST_PORT_END,
+    39999,
+  );
+  private readonly cdpHostPortRangeStart = this.readPositiveInt(
+    process.env.BROWSER_WORKER_CDP_HOST_PORT_START,
+    40000,
+  );
+  private readonly cdpHostPortRangeEnd = this.readPositiveInt(
+    process.env.BROWSER_WORKER_CDP_HOST_PORT_END,
+    40999,
+  );
+  private readonly hostPortRetryLimit = this.readPositiveInt(
+    process.env.BROWSER_WORKER_HOST_PORT_RETRY_LIMIT,
+    5,
+  );
   private readonly orphanSweepEnabled =
     (process.env.BROWSER_WORKER_ORPHAN_SWEEP_ENABLED || 'true').toLowerCase() !== 'false';
   private readonly orphanSweepIntervalMs = this.readPositiveInt(
@@ -77,6 +102,8 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
   );
   private orphanSweepTimer?: NodeJS.Timeout;
   private orphanSweepRunning = false;
+  private novncHostPortCursor = 0;
+  private cdpHostPortCursor = 0;
 
   onModuleInit() {
     this.logger.log(`Using Docker socket path: ${this.dockerSocketPath}`);
@@ -170,48 +197,76 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
     const enableCodegen = request.enable_codegen ?? this.defaultEnableCodegen;
     const effectiveEnableCodegen = headless ? false : enableCodegen;
     this.logger.log(`Creating browser worker ${workerId} for user ${request.user_id}`);
+    let container;
+    let inspect;
+    const maxAttempts = this.hostPortRetryLimit;
 
-    const container = await this.docker.createContainer({
-      Image: this.sessionBrowserImage,
-      name: containerName,
-      Cmd: ['/start-recorder.sh'],
-      Env: [
-        `SCREEN_WIDTH=${this.screenWidth}`,
-        `SCREEN_HEIGHT=${this.screenHeight}`,
-        `SCREEN_DEPTH=${this.screenDepth}`,
-        `NOVNC_PORT=${this.novncPort}`,
-        `VNC_PORT=${this.vncPort}`,
-        `CHROME_DEBUG_PORT=${this.chromeDebugPort}`,
-        `CODEGEN_API_PORT=${this.codegenApiPort}`,
-        `SESSION_MODE=${mode}`,
-        `HEADLESS=${headless ? 'true' : 'false'}`,
-        `ENABLE_CODEGEN=${effectiveEnableCodegen ? 'true' : 'false'}`,
-        `CHROME_PROFILE_PATH=${profilePath}`,
-      ],
-      ExposedPorts: {
-        [`${this.novncPort}/tcp`]: {},
-        [`${this.chromeDebugPort}/tcp`]: {},
-      },
-      HostConfig: {
-        AutoRemove: true,
-        PortBindings: {
-          [`${this.novncPort}/tcp`]: [{ HostPort: '' }],
-          [`${this.chromeDebugPort}/tcp`]: [{ HostPort: '' }],
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      const requestedHostPorts = await this.allocateRequestedHostPorts();
+      const containerCreateOptions: any = {
+        Image: this.sessionBrowserImage,
+        name: containerName,
+        Cmd: ['/start-recorder.sh'],
+        Env: [
+          `SCREEN_WIDTH=${this.screenWidth}`,
+          `SCREEN_HEIGHT=${this.screenHeight}`,
+          `SCREEN_DEPTH=${this.screenDepth}`,
+          `NOVNC_PORT=${this.novncPort}`,
+          `VNC_PORT=${this.vncPort}`,
+          `CHROME_DEBUG_PORT=${this.chromeDebugPort}`,
+          `CODEGEN_API_PORT=${this.codegenApiPort}`,
+          `SESSION_MODE=${mode}`,
+          `HEADLESS=${headless ? 'true' : 'false'}`,
+          `ENABLE_CODEGEN=${effectiveEnableCodegen ? 'true' : 'false'}`,
+          `CHROME_PROFILE_PATH=${profilePath}`,
+        ],
+        ExposedPorts: {
+          [`${this.novncPort}/tcp`]: {},
+          [`${this.chromeDebugPort}/tcp`]: {},
         },
-      },
-      NetworkingConfig: {
-        EndpointsConfig: {
-          [this.dockerNetworkName]: {
-            Aliases: [containerName],
+        HostConfig: {
+          AutoRemove: true,
+          PortBindings: {
+            [`${this.novncPort}/tcp`]: [{ HostPort: requestedHostPorts.novncHostPort }],
+            [`${this.chromeDebugPort}/tcp`]: [{ HostPort: requestedHostPorts.cdpHostPort }],
           },
         },
-      },
-    });
+        NetworkingConfig: {
+          EndpointsConfig: {
+            [this.dockerNetworkName]: {
+              Aliases: [containerName],
+            },
+          },
+        },
+      };
 
-    await container.start();
-    const inspect = await container.inspect();
-    const endpoints = this.resolvePublishedEndpoints(inspect);
+      try {
+        container = await this.docker.createContainer(containerCreateOptions);
+        await container.start();
+        inspect = await container.inspect();
+        break;
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        if (container) {
+          await container.remove({ force: true }).catch(() => undefined);
+          container = undefined;
+        }
+        if (this.isHostPortConflictError(errorMessage) && attempt < maxAttempts) {
+          this.logger.warn(
+            `Worker ${workerId} host port allocation conflict on attempt ${attempt}, retrying`,
+          );
+          continue;
+        }
+        throw error;
+      }
+    }
+
+    if (!inspect) {
+      throw new Error(`Failed to start browser worker ${workerId}: container was not created`);
+    }
+
     const containerIp = this.resolveContainerIp(inspect);
+    const endpoints = this.resolvePublishedEndpoints(inspect);
     const now = new Date();
     const workerStatus: ManagedWorkerStatus = {
       worker_id: workerId,
@@ -644,5 +699,78 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
       return fallback;
     }
     return Math.floor(parsed);
+  }
+
+  private async allocateRequestedHostPorts(): Promise<RequestedHostPortBindings> {
+    const usedPorts = await this.collectUsedHostPorts();
+    return {
+      novncHostPort: String(
+        this.nextHostPortInRange(
+          'novnc',
+          usedPorts,
+          this.novncHostPortRangeStart,
+          this.novncHostPortRangeEnd,
+        ),
+      ),
+      cdpHostPort: String(
+        this.nextHostPortInRange(
+          'cdp',
+          usedPorts,
+          this.cdpHostPortRangeStart,
+          this.cdpHostPortRangeEnd,
+        ),
+      ),
+    };
+  }
+
+  private async collectUsedHostPorts(): Promise<Set<number>> {
+    const containers = await this.docker.listContainers({
+      all: true,
+      filters: {
+        name: ['ops-browser-session-'],
+      },
+    });
+    const used = new Set<number>();
+    for (const containerInfo of containers) {
+      for (const port of containerInfo.Ports || []) {
+        if (typeof port.PublicPort === 'number' && port.PublicPort > 0) {
+          used.add(port.PublicPort);
+        }
+      }
+    }
+    return used;
+  }
+
+  private nextHostPortInRange(
+    kind: 'novnc' | 'cdp',
+    usedPorts: Set<number>,
+    start: number,
+    end: number,
+  ): number {
+    const normalizedEnd = end >= start ? end : start;
+    const total = normalizedEnd - start + 1;
+    if (total <= 0) {
+      throw new Error(`Invalid host port range for ${kind}: ${start}-${end}`);
+    }
+    const cursor = kind === 'novnc' ? this.novncHostPortCursor : this.cdpHostPortCursor;
+    for (let offset = 0; offset < total; offset += 1) {
+      const port = start + ((cursor + offset) % total);
+      if (usedPorts.has(port)) {
+        continue;
+      }
+      usedPorts.add(port);
+      if (kind === 'novnc') {
+        this.novncHostPortCursor = (port - start + 1) % total;
+      } else {
+        this.cdpHostPortCursor = (port - start + 1) % total;
+      }
+      return port;
+    }
+    throw new Error(`No free host ports available for ${kind} in range ${start}-${normalizedEnd}`);
+  }
+
+  private isHostPortConflictError(message: string): boolean {
+    const normalized = message.toLowerCase();
+    return normalized.includes('failed to bind host port') || normalized.includes('address already in use');
   }
 }
