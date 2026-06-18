@@ -38,7 +38,7 @@ export class WordGenerator {
     template: ReportTemplateDTO,
     stepResults: StepResult[],
     aiAnalysis: AIAnalysisResult[],
-    config?: ReportTemplateConfig,
+    config?: ReportTemplateConfig
   ): Promise<string> {
     this.logger.log(`Generating Word document for template: ${template.name}`);
 
@@ -52,7 +52,7 @@ export class WordGenerator {
         heading: HeadingLevel.HEADING_1,
         alignment: AlignmentType.CENTER,
         spacing: { after: 400 },
-      }),
+      })
     );
 
     // Add header if configured
@@ -61,7 +61,7 @@ export class WordGenerator {
         new Paragraph({
           text: config.header,
           spacing: { after: 200 },
-        }),
+        })
       );
     }
 
@@ -74,13 +74,13 @@ export class WordGenerator {
             text: section.format?.title || section.name,
             heading: HeadingLevel.HEADING_2,
             spacing: { before: 300, after: 200 },
-          }),
+          })
         );
         sections.push(
           new Paragraph({
             text: content,
             spacing: { after: 200 },
-          }),
+          })
         );
       } else if (section.type === 'table') {
         sections.push(
@@ -88,7 +88,7 @@ export class WordGenerator {
             text: section.format?.title || section.name,
             heading: HeadingLevel.HEADING_2,
             spacing: { before: 300, after: 200 },
-          }),
+          })
         );
         const table = this.createTable(section, stepResults, aiAnalysis);
         if (table) {
@@ -101,7 +101,7 @@ export class WordGenerator {
             text: section.format?.title || section.name,
             heading: HeadingLevel.HEADING_2,
             spacing: { before: 300, after: 200 },
-          }),
+          })
         );
         // Add all images
         const imageParagraphs = await this.createImageParagraphs(section, stepResults);
@@ -117,7 +117,7 @@ export class WordGenerator {
         new Paragraph({
           text: config.footer,
           spacing: { before: 400 },
-        }),
+        })
       );
     }
 
@@ -145,43 +145,38 @@ export class WordGenerator {
   private processSection(
     section: ReportSection,
     stepResults: StepResult[],
-    aiAnalysis: AIAnalysisResult[],
+    aiAnalysis: AIAnalysisResult[]
   ): string {
     if (section.source === 'static' && section.content) {
       return section.content;
     }
 
     if (section.source === 'ai_analysis') {
-      const analysis = aiAnalysis.find(a => a.section_id === section.id);
+      const analysis = aiAnalysis.find((a) => a.section_id === section.id);
       return analysis?.analysis || 'No analysis available';
     }
 
     if (section.source === 'step_result') {
       const filteredResults = this.filterStepResults(section, stepResults);
-      return filteredResults
-        .map(r => r.text || r.message || r.error || 'No content')
-        .join('\n');
+      return filteredResults.map((r) => r.text || r.message || r.error || 'No content').join('\n');
     }
 
     return '';
   }
 
-  private filterStepResults(
-    section: ReportSection,
-    stepResults: StepResult[],
-  ): StepResult[] {
+  private filterStepResults(section: ReportSection, stepResults: StepResult[]): StepResult[] {
     let results = stepResults;
 
     if (section.step_filter) {
       const filter = section.step_filter;
       if (filter.actions && filter.actions.length > 0) {
-        results = results.filter(r => filter.actions!.includes(r.action));
+        results = results.filter((r) => filter.actions!.includes(r.action));
       }
       if (filter.success_only) {
-        results = results.filter(r => r.success);
+        results = results.filter((r) => r.success);
       }
       if (filter.step_ids && filter.step_ids.length > 0) {
-        results = results.filter(r => filter.step_ids!.includes(r.step_id));
+        results = results.filter((r) => filter.step_ids!.includes(r.step_id));
       }
     }
 
@@ -191,7 +186,7 @@ export class WordGenerator {
   private createTable(
     section: ReportSection,
     stepResults: StepResult[],
-    aiAnalysis: AIAnalysisResult[],
+    aiAnalysis: AIAnalysisResult[]
   ): Table | null {
     const columns = section.format?.columns || ['Step', 'Action', 'Result', 'Status'];
     const filteredResults = this.filterStepResults(section, stepResults);
@@ -206,7 +201,7 @@ export class WordGenerator {
     rows.push(
       new TableRow({
         children: columns.map(
-          col =>
+          (col) =>
             new TableCell({
               children: [
                 new Paragraph({
@@ -219,9 +214,9 @@ export class WordGenerator {
                 }),
               ],
               width: { size: 100 / columns.length, type: WidthType.PERCENTAGE },
-            }),
+            })
         ),
-      }),
+      })
     );
 
     // Data rows
@@ -230,7 +225,7 @@ export class WordGenerator {
       rows.push(
         new TableRow({
           children: rowData.map(
-            data =>
+            (data) =>
               new TableCell({
                 children: [
                   new Paragraph({
@@ -238,9 +233,9 @@ export class WordGenerator {
                   }),
                 ],
                 width: { size: 100 / columns.length, type: WidthType.PERCENTAGE },
-              }),
+              })
           ),
-        }),
+        })
       );
     }
 
@@ -251,9 +246,10 @@ export class WordGenerator {
   }
 
   private getTableRowData(result: StepResult, columns: string[]): string[] {
-    const timestamp = typeof result.timestamp === 'number'
-      ? new Date(result.timestamp).toISOString()
-      : result.timestamp.toISOString();
+    const timestamp =
+      typeof result.timestamp === 'number'
+        ? new Date(result.timestamp).toISOString()
+        : result.timestamp.toISOString();
 
     const stepNum = result.step_index !== undefined ? result.step_index + 1 : result.step_id;
 
@@ -266,16 +262,16 @@ export class WordGenerator {
       Error: result.error || '',
     };
 
-    return columns.map(col => dataMap[col] || '');
+    return columns.map((col) => dataMap[col] || '');
   }
 
   private async createImageParagraphs(
     section: ReportSection,
-    stepResults: StepResult[],
+    stepResults: StepResult[]
   ): Promise<Paragraph[]> {
     const paragraphs: Paragraph[] = [];
     const filteredResults = this.filterStepResults(section, stepResults);
-    const resultsWithScreenshots = filteredResults.filter(r => r.screenshot);
+    const resultsWithScreenshots = filteredResults.filter((r) => r.screenshot);
 
     this.logger.log(`Found ${resultsWithScreenshots.length} screenshots for section ${section.id}`);
 
@@ -285,7 +281,7 @@ export class WordGenerator {
         new Paragraph({
           text: 'No screenshots available for this section.',
           spacing: { after: 200 },
-        }),
+        })
       );
       return paragraphs;
     }
@@ -304,9 +300,8 @@ export class WordGenerator {
           buffer = Buffer.from(screenshotData, 'base64');
         }
 
-        const stepLabel = result.step_index !== undefined
-          ? `Step ${result.step_index + 1}`
-          : result.step_id;
+        const stepLabel =
+          result.step_index !== undefined ? `Step ${result.step_index + 1}` : result.step_id;
 
         // Add step label
         paragraphs.push(
@@ -318,7 +313,7 @@ export class WordGenerator {
               }),
             ],
             spacing: { before: 200, after: 100 },
-          }),
+          })
         );
 
         // Add image
@@ -335,7 +330,7 @@ export class WordGenerator {
               }),
             ],
             spacing: { after: 300 },
-          }),
+          })
         );
 
         this.logger.log(`Added image for ${stepLabel}`);

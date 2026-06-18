@@ -8,12 +8,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../prisma/prisma.service';
 import * as bcrypt from 'bcryptjs';
-import {
-  LoginDto,
-  RegisterDto,
-  SsoCallbackDto,
-  SsoStartQueryDto,
-} from '../../dto';
+import { LoginDto, RegisterDto, SsoCallbackDto, SsoStartQueryDto } from '../../dto';
 import { UserDto, RoleDto, LoginResponse, MeResponse } from '../../dto/response.dto';
 
 @Injectable()
@@ -23,7 +18,7 @@ export class AuthService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly jwtService: JwtService,
+    private readonly jwtService: JwtService
   ) {}
 
   async login(loginDto: LoginDto): Promise<LoginResponse> {
@@ -46,13 +41,10 @@ export class AuthService {
 
     let isPasswordValid = false;
     try {
-      isPasswordValid = await bcrypt.compare(
-        loginDto.password,
-        user.passwordHash,
-      );
+      isPasswordValid = await bcrypt.compare(loginDto.password, user.passwordHash);
     } catch (error: any) {
       this.logger.warn(
-        `Password verification failed for user ${user.username}: ${error?.message || error}`,
+        `Password verification failed for user ${user.username}: ${error?.message || error}`
       );
       throw new UnauthorizedException('Invalid username or password');
     }
@@ -69,7 +61,7 @@ export class AuthService {
       });
     } catch (error: any) {
       this.logger.warn(
-        `Failed to update lastLoginAt for user ${user.username}: ${error?.message || error}`,
+        `Failed to update lastLoginAt for user ${user.username}: ${error?.message || error}`
       );
     }
 
@@ -107,18 +99,13 @@ export class AuthService {
     }
 
     // Hash password with bcrypt (cost=12)
-    const passwordHash = await bcrypt.hash(
-      registerDto.password,
-      this.BCRYPT_COST,
-    );
+    const passwordHash = await bcrypt.hash(registerDto.password, this.BCRYPT_COST);
 
     // For agent role, require additional service account validation
     if (registerDto.role === 'agent') {
       // In production, this would validate against a service account registry
       // For now, only admin can create agent accounts
-      throw new BadRequestException(
-        'Agent accounts must be created by administrator',
-      );
+      throw new BadRequestException('Agent accounts must be created by administrator');
     }
 
     const user = await this.prisma.$transaction(async (tx) => {
@@ -140,8 +127,16 @@ export class AuthService {
         mappedRole = await tx.role.create({
           data: {
             name: registerDto.role,
-            description: registerDto.role === 'admin' ? '系统管理员角色' : registerDto.role === 'agent' ? '自动化代理角色' : '普通员工角色',
-            permissions: (registerDto.role === 'admin' ? { all_skills: true } : {}) as Record<string, boolean>,
+            description:
+              registerDto.role === 'admin'
+                ? '系统管理员角色'
+                : registerDto.role === 'agent'
+                  ? '自动化代理角色'
+                  : '普通员工角色',
+            permissions: (registerDto.role === 'admin' ? { all_skills: true } : {}) as Record<
+              string,
+              boolean
+            >,
             isSystem: true,
           },
         });
@@ -255,10 +250,7 @@ export class AuthService {
     };
   }
 
-  async switchActiveOrganization(
-    userId: string,
-    orgId: string,
-  ): Promise<{ activeOrgId: string }> {
+  async switchActiveOrganization(userId: string, orgId: string): Promise<{ activeOrgId: string }> {
     const membership = await this.prisma.orgMembership.findFirst({
       where: {
         userId,
@@ -272,9 +264,7 @@ export class AuthService {
     });
 
     if (!membership) {
-      throw new UnauthorizedException(
-        'Organization not found in user memberships',
-      );
+      throw new UnauthorizedException('Organization not found in user memberships');
     }
 
     await this.prisma.user.update({
@@ -323,8 +313,7 @@ export class AuthService {
       where: {
         orgId: query.orgId,
         isEnabled: true,
-        providerType:
-          provider === 'microsoft' ? 'microsoft_oidc' : 'oidc',
+        providerType: provider === 'microsoft' ? 'microsoft_oidc' : 'oidc',
       },
       orderBy: {
         createdAt: 'desc',
@@ -335,8 +324,7 @@ export class AuthService {
       throw new BadRequestException('SSO provider config not found');
     }
 
-    const callbackUri =
-      query.redirectUri || process.env.SSO_DEFAULT_CALLBACK_URL || '';
+    const callbackUri = query.redirectUri || process.env.SSO_DEFAULT_CALLBACK_URL || '';
     if (!callbackUri) {
       throw new BadRequestException('SSO callback URL is not configured');
     }

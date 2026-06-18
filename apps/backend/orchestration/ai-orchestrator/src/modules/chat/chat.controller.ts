@@ -1,12 +1,4 @@
-import {
-  Body,
-  Controller,
-  Post,
-  Req,
-  Res,
-  UploadedFile,
-  UseInterceptors,
-} from '@nestjs/common';
+import { Body, Controller, Post, Req, Res, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { ApiConsumes, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Request, Response } from 'express';
@@ -29,7 +21,7 @@ export class ChatController {
   constructor(
     private readonly chatConversationService: ChatConversationService,
     private readonly chatMediaService: ChatMediaService,
-    private readonly chatOrchestratorService: ChatOrchestratorService,
+    private readonly chatOrchestratorService: ChatOrchestratorService
   ) {}
 
   private writeSse(res: Response, payload: Record<string, unknown>): void {
@@ -41,7 +33,7 @@ export class ChatController {
   async chatStream(
     @Body() body: ChatRequestDTO,
     @Req() req: Request & { traceId?: string },
-    @Res() res: Response,
+    @Res() res: Response
   ): Promise<void> {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
@@ -69,12 +61,14 @@ export class ChatController {
         return;
       }
 
-      const history = await this.chatConversationService.loadTaskHistory(body.sessionId || 'default');
+      const history = await this.chatConversationService.loadTaskHistory(
+        body.sessionId || 'default'
+      );
       const taskModeContext = await this.chatOrchestratorService.buildTaskModeContext(
         body,
         req.headers.authorization,
         traceId,
-        history,
+        history
       );
 
       if (!taskModeContext.context) {
@@ -93,7 +87,7 @@ export class ChatController {
       for await (const event of this.chatOrchestratorService.handleTaskMode(
         body,
         taskModeContext.context,
-        req.headers.authorization,
+        req.headers.authorization
       )) {
         this.writeSse(res, { ...event, traceId });
       }
@@ -114,7 +108,7 @@ export class ChatController {
   @ApiOperation({ summary: 'Simple AI chat (non-streaming)' })
   async chat(
     @Body() body: ChatRequestDTO,
-    @Req() req: Request & { traceId?: string },
+    @Req() req: Request & { traceId?: string }
   ): Promise<ChatResponseDTO> {
     const traceId = getOrCreateTraceId(body.traceId || req.traceId);
     const mode: 'chat' | 'task' = body.config?.mode || 'task';
@@ -137,7 +131,7 @@ export class ChatController {
       body,
       req.headers.authorization,
       traceId,
-      [],
+      []
     );
 
     if (!taskModeContext.context) {
@@ -151,13 +145,15 @@ export class ChatController {
       };
       return {
         response: authError.content,
-        events: [{
-          ...authError,
-          data: {
-            ...(authError.data || {}),
-            traceId,
+        events: [
+          {
+            ...authError,
+            data: {
+              ...(authError.data || {}),
+              traceId,
+            },
           },
-        }],
+        ],
       };
     }
 
@@ -167,7 +163,7 @@ export class ChatController {
     for await (const event of this.chatOrchestratorService.handleTaskMode(
       body,
       taskModeContext.context,
-      req.headers.authorization,
+      req.headers.authorization
     )) {
       const eventWithTrace = {
         ...event,
@@ -178,9 +174,9 @@ export class ChatController {
       };
       events.push(eventWithTrace);
       if (
-        event.type === StreamEventType.RESULT
-        || event.type === StreamEventType.WAITING_INPUT
-        || event.type === StreamEventType.ERROR
+        event.type === StreamEventType.RESULT ||
+        event.type === StreamEventType.WAITING_INPUT ||
+        event.type === StreamEventType.ERROR
       ) {
         finalResponse = event.content;
       }
@@ -195,7 +191,7 @@ export class ChatController {
   @ApiResponse({ status: 200, description: 'File uploaded successfully' })
   @UseInterceptors(FileInterceptor('file'))
   async uploadChatFile(
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile() file: Express.Multer.File
   ): Promise<ChatUploadFileResponseDTO> {
     return this.chatMediaService.uploadChatFile(file);
   }
@@ -207,7 +203,7 @@ export class ChatController {
   @UseInterceptors(FileInterceptor('file'))
   async transcribeAudio(
     @UploadedFile() file: Express.Multer.File,
-    @Body('modelId') modelId: string,
+    @Body('modelId') modelId: string
   ): Promise<ChatAudioTranscriptionResponseDTO> {
     return this.chatMediaService.transcribeAudio(file, modelId);
   }

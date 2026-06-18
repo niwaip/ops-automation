@@ -68,9 +68,7 @@ export class SkillController {
    */
   @Post(':id/validate')
   @Roles('admin')
-  async validateSkill(
-    @Param('id') id: string,
-  ): Promise<{ validation: SkillValidationResult }> {
+  async validateSkill(@Param('id') id: string): Promise<{ validation: SkillValidationResult }> {
     const validation = await this.skillService.validateSkill(id);
     return { validation };
   }
@@ -78,7 +76,7 @@ export class SkillController {
   @Post(':id/validate-tools')
   @Roles('admin')
   async validateSkillTools(
-    @Param('id') id: string,
+    @Param('id') id: string
   ): Promise<{ validation: SkillToolValidationResult }> {
     const validation = await this.skillService.validateSkillTools(id);
     return { validation };
@@ -86,10 +84,7 @@ export class SkillController {
 
   @Post(':id/validate/stream')
   @Roles('admin')
-  async validateSkillStream(
-    @Param('id') id: string,
-    @Res() res: Response,
-  ): Promise<void> {
+  async validateSkillStream(@Param('id') id: string, @Res() res: Response): Promise<void> {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
@@ -111,11 +106,11 @@ export class SkillController {
   @Roles('admin')
   async applyAdjustment(
     @Param('id') id: string,
-    @Body() body?: { generatedSkill?: Partial<CreateSkillDTO> },
+    @Body() body?: { generatedSkill?: Partial<CreateSkillDTO> }
   ): Promise<SkillConfigDto> {
     const updated = await this.skillService.applyGeneratedSkillAdjustment(
       id,
-      body?.generatedSkill as Partial<SkillConfigDto> | undefined,
+      body?.generatedSkill as Partial<SkillConfigDto> | undefined
     );
 
     if (!updated) {
@@ -129,10 +124,7 @@ export class SkillController {
    * 获取 Skill 详情（需检查权限）
    */
   @Get(':id')
-  async getSkill(
-    @Param('id') id: string,
-    @Request() req: any,
-  ): Promise<SkillConfigDto> {
+  async getSkill(@Param('id') id: string, @Request() req: any): Promise<SkillConfigDto> {
     const userId = req.user.id;
 
     // 检查用户是否有权限访问此 Skill
@@ -164,7 +156,7 @@ export class SkillController {
   @Roles('admin')
   async updateSkill(
     @Param('id') id: string,
-    @Body() body: Partial<CreateSkillDTO>,
+    @Body() body: Partial<CreateSkillDTO>
   ): Promise<SkillConfigDto> {
     const skill = await this.skillService.updateSkill(id, body);
     if (!skill) {
@@ -197,7 +189,7 @@ export class SkillController {
   @Post('match')
   async matchSkill(
     @Body() body: { userInput: string; userId?: string },
-    @Request() req: any,
+    @Request() req: any
   ): Promise<{ match: SkillMatchResult | null }> {
     // 优先使用 body.userId（内部服务调用），否则使用 JWT 认证的 userId
     const userId = body.userId || req.user?.id;
@@ -217,7 +209,7 @@ export class SkillController {
   async grantSkill(
     @Param('id') skillId: string,
     @Body() body: GrantSkillDTO,
-    @Request() req: any,
+    @Request() req: any
   ): Promise<{ permission: SkillPermissionDTO }> {
     const grantedBy = req.user.id;
     const permission = await this.skillService.grantSkillToRole(skillId, body.roleId, grantedBy);
@@ -231,7 +223,7 @@ export class SkillController {
   @Roles('admin')
   async revokeSkill(
     @Param('id') skillId: string,
-    @Param('roleId') roleId: string,
+    @Param('roleId') roleId: string
   ): Promise<{ success: boolean }> {
     const success = await this.skillService.revokeSkillFromRole(skillId, roleId);
     return { success };
@@ -243,7 +235,7 @@ export class SkillController {
   @Get(':id/permissions')
   @Roles('admin')
   async getSkillPermissions(
-    @Param('id') skillId: string,
+    @Param('id') skillId: string
   ): Promise<{ permissions: SkillPermissionDTO[] }> {
     const permissions = await this.skillService.getSkillPermissions(skillId);
     return { permissions };
@@ -252,7 +244,7 @@ export class SkillController {
   @Get(':id/tool-bindings')
   @Roles('admin')
   async getSkillToolBindings(
-    @Param('id') skillId: string,
+    @Param('id') skillId: string
   ): Promise<{ bindings: SkillToolBinding[]; validation: SkillToolValidationResult }> {
     return this.skillService.getSkillToolBindings(skillId);
   }
@@ -261,7 +253,7 @@ export class SkillController {
   @Roles('admin')
   async setSkillToolBindings(
     @Param('id') skillId: string,
-    @Body() body: { tools: string[] },
+    @Body() body: { tools: string[] }
   ): Promise<{ bindings: SkillToolBinding[]; validation: SkillToolValidationResult }> {
     return this.skillService.setSkillToolBindings(skillId, body.tools || []);
   }

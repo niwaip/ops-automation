@@ -2,11 +2,7 @@
  * Carbone Engine - Studio Controller Base
  */
 
-import {
-  HttpException,
-  HttpStatus,
-  Logger,
-} from '@nestjs/common';
+import { HttpException, HttpStatus, Logger } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
@@ -59,7 +55,7 @@ export abstract class StudioControllerBase {
     protected readonly templateRepository: TemplateRepository,
     protected readonly skillRepository: SkillRepository,
     protected readonly renderOutputRepository: RenderOutputRepository,
-    protected readonly templateWorkflowService: TemplateWorkflowService,
+    protected readonly templateWorkflowService: TemplateWorkflowService
   ) {
     this.engine = new CarboneEngine();
     this.templatesDir = process.env.TEMPLATES_DIR || path.join(process.cwd(), 'templates');
@@ -105,7 +101,10 @@ export abstract class StudioControllerBase {
     return segments;
   }
 
-  protected mergeObjects(target: Record<string, any>, source: Record<string, any>): Record<string, any> {
+  protected mergeObjects(
+    target: Record<string, any>,
+    source: Record<string, any>
+  ): Record<string, any> {
     for (const [key, value] of Object.entries(source)) {
       if (this.isPlainObject(value) && this.isPlainObject(target[key])) {
         this.mergeObjects(target[key], value);
@@ -174,7 +173,9 @@ export abstract class StudioControllerBase {
       if (key.includes('[]')) {
         const [rawPrefix, rawSuffix] = key.split('[]', 2);
         const prefix = rawPrefix.replace(/\.$/, '').trim();
-        const suffix = String(rawSuffix || '').replace(/^\./, '').trim();
+        const suffix = String(rawSuffix || '')
+          .replace(/^\./, '')
+          .trim();
         if (prefix && suffix) {
           const entry = arrayGroups.get(prefix) || {};
           entry[suffix] = this.normalizeRenderValue(value);
@@ -218,7 +219,7 @@ export abstract class StudioControllerBase {
       for (let i = 0; i < maxLen; i += 1) {
         const row: Record<string, unknown> = {};
         for (const [fieldPath, raw] of fieldEntries) {
-          const valueAtIndex = Array.isArray(raw) ? raw[i] : (i === 0 ? raw : undefined);
+          const valueAtIndex = Array.isArray(raw) ? raw[i] : i === 0 ? raw : undefined;
           if (valueAtIndex === undefined) {
             continue;
           }
@@ -235,7 +236,9 @@ export abstract class StudioControllerBase {
 
   protected normalizeRenderValue(value: unknown): unknown {
     if (Array.isArray(value)) {
-      return value.map((item) => (this.isPlainObject(item) ? this.normalizeRenderData(item) : item));
+      return value.map((item) =>
+        this.isPlainObject(item) ? this.normalizeRenderData(item) : item
+      );
     }
     if (this.isPlainObject(value)) {
       return this.normalizeRenderData(value);
@@ -341,26 +344,35 @@ export abstract class StudioControllerBase {
   }
 
   protected hasUsableTemplateConfig(config: Record<string, any>): boolean {
-    return Array.isArray(config.variableMappings)
-      || Array.isArray(config.tableLoops)
-      || Array.isArray(config.combinedVariables)
-      || Array.isArray(config.mappings);
+    return (
+      Array.isArray(config.variableMappings) ||
+      Array.isArray(config.tableLoops) ||
+      Array.isArray(config.combinedVariables) ||
+      Array.isArray(config.mappings)
+    );
   }
 
   protected async generateTemplateSampleData(
     meta: TemplateResponse,
     templateInfo: TemplateInfoForValidation,
     config: Record<string, any>,
-    rowCount: number,
+    rowCount: number
   ): Promise<Record<string, any>> {
     if (config && Object.keys(config).length > 0 && this.hasUsableTemplateConfig(config)) {
-      return this.engine.generateSampleDataFromConfig(config, config.tableLoops?.[0]?.dataRowCount || rowCount, true);
+      return this.engine.generateSampleDataFromConfig(
+        config,
+        config.tableLoops?.[0]?.dataRowCount || rowCount,
+        true
+      );
     }
 
     const parsedSampleData = this.engine.generateSampleData(templateInfo, rowCount);
-    const parsedVariableCount = Array.isArray(templateInfo.variables) ? templateInfo.variables.length : 0;
+    const parsedVariableCount = Array.isArray(templateInfo.variables)
+      ? templateInfo.variables.length
+      : 0;
     const declaredVariableCount = this.countDeclaredVariables(meta);
-    const hasComparableCoverage = declaredVariableCount === 0 || parsedVariableCount >= declaredVariableCount;
+    const hasComparableCoverage =
+      declaredVariableCount === 0 || parsedVariableCount >= declaredVariableCount;
 
     if (this.hasNonEmptySampleData(parsedSampleData) && hasComparableCoverage) {
       return parsedSampleData;
@@ -450,20 +462,25 @@ export abstract class StudioControllerBase {
   protected async syncTemplateMetaToDb(
     id: string,
     meta: Record<string, any> & { format: string },
-    filePath?: string,
+    filePath?: string
   ): Promise<void> {
     try {
       await this.templateRepository.upsertFromMeta(
         id,
         filePath ?? path.join(this.templatesDir, `${id}.${meta.format}`),
-        meta,
+        meta
       );
     } catch (error) {
-      this.logger.warn(`Failed to sync template ${id} to database: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.warn(
+        `Failed to sync template ${id} to database: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
-  protected async syncTemplateMarkingsToDb(id: string, updatedMeta: Record<string, any>): Promise<void> {
+  protected async syncTemplateMarkingsToDb(
+    id: string,
+    updatedMeta: Record<string, any>
+  ): Promise<void> {
     try {
       await this.templateRepository.updateMarkings(id, {
         markings: updatedMeta.markings,
@@ -473,45 +490,63 @@ export abstract class StudioControllerBase {
         savedAt: new Date(updatedMeta.savedAt),
       });
     } catch (error) {
-      this.logger.warn(`Failed to sync template markings for ${id} to database: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.warn(
+        `Failed to sync template markings for ${id} to database: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
-  protected async syncTemplateConfigToDb(id: string, templateConfig: unknown, savedAt: string): Promise<void> {
+  protected async syncTemplateConfigToDb(
+    id: string,
+    templateConfig: unknown,
+    savedAt: string
+  ): Promise<void> {
     try {
       await this.templateRepository.updateConfig(id, templateConfig, new Date(savedAt));
     } catch (error) {
-      this.logger.warn(`Failed to sync template config for ${id} to database: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.warn(
+        `Failed to sync template config for ${id} to database: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
-  protected async syncSkillToDb(skill: Record<string, unknown>, templateId?: string): Promise<void> {
+  protected async syncSkillToDb(
+    skill: Record<string, unknown>,
+    templateId?: string
+  ): Promise<void> {
     try {
       await this.skillRepository.upsertFromDocument(skill, templateId);
     } catch (error) {
-      this.logger.warn(`Failed to sync skill ${String(skill.id ?? '')} to database: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.warn(
+        `Failed to sync skill ${String(skill.id ?? '')} to database: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
   protected async syncRenderOutputToDb(meta: Record<string, any>, filePath: string): Promise<void> {
     try {
-      await this.renderOutputRepository.createFromMeta(meta as {
-        id: string;
-        templateId?: string;
-        markedTemplateId?: string;
-        skillId?: string;
-        fileName: string;
-        format: string;
-        size?: number;
-        params?: unknown;
-        sampleData?: unknown;
-        simulatedData?: unknown;
-        debugLogs?: unknown;
-        renderedAt?: string;
-        createdAt?: string;
-      }, filePath);
+      await this.renderOutputRepository.createFromMeta(
+        meta as {
+          id: string;
+          templateId?: string;
+          markedTemplateId?: string;
+          skillId?: string;
+          fileName: string;
+          format: string;
+          size?: number;
+          params?: unknown;
+          sampleData?: unknown;
+          simulatedData?: unknown;
+          debugLogs?: unknown;
+          renderedAt?: string;
+          createdAt?: string;
+        },
+        filePath
+      );
     } catch (error) {
-      this.logger.warn(`Failed to sync render output ${String(meta.id ?? '')} to database: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.warn(
+        `Failed to sync render output ${String(meta.id ?? '')} to database: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
@@ -521,11 +556,14 @@ export abstract class StudioControllerBase {
       templateDocumentIr?: WorkflowDocumentIR;
     },
     workflowResult: WorkflowSaveResult,
-    existingMeta?: Record<string, any>,
+    existingMeta?: Record<string, any>
   ): Record<string, any> {
     const format = String(existingMeta?.format || 'docx');
-    const templateName = dto.templateMeta?.templateName || existingMeta?.fileName || `draft-${id}.${format}`;
-    const existingTemplateWorkflow = this.isPlainObject(existingMeta?.templateConfig?.templateWorkflow)
+    const templateName =
+      dto.templateMeta?.templateName || existingMeta?.fileName || `draft-${id}.${format}`;
+    const existingTemplateWorkflow = this.isPlainObject(
+      existingMeta?.templateConfig?.templateWorkflow
+    )
       ? existingMeta.templateConfig.templateWorkflow
       : undefined;
     const templateConfig = {
@@ -539,7 +577,10 @@ export abstract class StudioControllerBase {
         languageProfile: {
           sourceLanguage: dto.templateMeta?.sourceLanguage || 'zh',
           targetLanguages: dto.templateMeta?.targetLanguages || [],
-          documentMode: this.resolveDocumentMode(dto.templateMeta?.targetLanguages, dto.templateMeta?.documentMode),
+          documentMode: this.resolveDocumentMode(
+            dto.templateMeta?.targetLanguages,
+            dto.templateMeta?.documentMode
+          ),
         },
         termAssets: dto.templateMeta?.termAssets,
         status: workflowResult.status,
@@ -567,25 +608,33 @@ export abstract class StudioControllerBase {
 
   protected buildLegacyTemplateAssetManifest(
     meta: Record<string, any>,
-    workflow: Record<string, any> | undefined,
+    workflow: Record<string, any> | undefined
   ): TemplateAssetManifest | undefined {
-    if (!workflow || !Array.isArray(workflow.templateFieldSpecs) || workflow.templateFieldSpecs.length === 0) {
+    if (
+      !workflow ||
+      !Array.isArray(workflow.templateFieldSpecs) ||
+      workflow.templateFieldSpecs.length === 0
+    ) {
       return undefined;
     }
 
-    const sourceLanguage = typeof workflow?.languageProfile?.sourceLanguage === 'string'
-      ? workflow.languageProfile.sourceLanguage
-      : 'zh';
+    const sourceLanguage =
+      typeof workflow?.languageProfile?.sourceLanguage === 'string'
+        ? workflow.languageProfile.sourceLanguage
+        : 'zh';
     const targetLanguages = Array.isArray(workflow?.languageProfile?.targetLanguages)
-      ? workflow.languageProfile.targetLanguages as string[]
+      ? (workflow.languageProfile.targetLanguages as string[])
       : [];
-    const documentMode = typeof workflow?.languageProfile?.documentMode === 'string'
-      ? workflow.languageProfile.documentMode
-      : (targetLanguages.length > 0 ? 'single_or_bilingual' : 'single_language');
+    const documentMode =
+      typeof workflow?.languageProfile?.documentMode === 'string'
+        ? workflow.languageProfile.documentMode
+        : targetLanguages.length > 0
+          ? 'single_or_bilingual'
+          : 'single_language';
     const legacyRenderPlan = this.isPlainObject(workflow?.renderPlan)
-      ? workflow.renderPlan as RenderPlan
+      ? (workflow.renderPlan as RenderPlan)
       : this.isPlainObject(workflow?.carboneBindingPlan)
-        ? workflow.carboneBindingPlan as RenderPlan
+        ? (workflow.carboneBindingPlan as RenderPlan)
         : undefined;
 
     if (!legacyRenderPlan) {
@@ -607,10 +656,10 @@ export abstract class StudioControllerBase {
       renderPlan: legacyRenderPlan,
       renderPlanVersion: this.resolveRenderPlanVersion(
         legacyRenderPlan,
-        Number(workflow?.bindingPlanVersion || workflow?.version || DEFAULT_RENDER_PLAN_VERSION),
+        Number(workflow?.bindingPlanVersion || workflow?.version || DEFAULT_RENDER_PLAN_VERSION)
       ),
       termAssets: this.isPlainObject(workflow?.termAssets)
-        ? workflow.termAssets as WorkflowTermAssets
+        ? (workflow.termAssets as WorkflowTermAssets)
         : undefined,
       metadata: {
         generatedAt: String(meta?.updatedAt || meta?.configSavedAt || new Date().toISOString()),
@@ -633,29 +682,39 @@ export abstract class StudioControllerBase {
       : undefined;
 
     const manifest = this.isPlainObject(meta?.templateConfig?.templateAssetManifest)
-      ? meta.templateConfig.templateAssetManifest as TemplateAssetManifest
+      ? (meta.templateConfig.templateAssetManifest as TemplateAssetManifest)
       : this.buildLegacyTemplateAssetManifest(meta, workflow);
 
     return {
-      templateFieldSpecs: manifest?.templateFieldSpecs || (Array.isArray(workflow?.templateFieldSpecs)
-        ? workflow.templateFieldSpecs as WorkflowTemplateFieldSpec[]
-        : []),
+      templateFieldSpecs:
+        manifest?.templateFieldSpecs ||
+        (Array.isArray(workflow?.templateFieldSpecs)
+          ? (workflow.templateFieldSpecs as WorkflowTemplateFieldSpec[])
+          : []),
       carboneBindingPlan: this.isPlainObject(workflow?.carboneBindingPlan)
-        ? workflow.carboneBindingPlan as WorkflowBindingPlan
+        ? (workflow.carboneBindingPlan as WorkflowBindingPlan)
         : undefined,
-      renderPlan: manifest?.renderPlan || (this.isPlainObject(workflow?.renderPlan)
-        ? workflow.renderPlan as RenderPlan
-        : undefined),
+      renderPlan:
+        manifest?.renderPlan ||
+        (this.isPlainObject(workflow?.renderPlan)
+          ? (workflow.renderPlan as RenderPlan)
+          : undefined),
       templateAssetManifest: manifest,
-      sourceLanguage: manifest?.languageProfile?.sourceLanguage || (typeof workflow?.languageProfile?.sourceLanguage === 'string'
-        ? workflow.languageProfile.sourceLanguage
-        : undefined),
-      targetLanguages: manifest?.languageProfile?.targetLanguages || (Array.isArray(workflow?.languageProfile?.targetLanguages)
-        ? workflow.languageProfile.targetLanguages as string[]
-        : undefined),
-      termAssets: manifest?.termAssets || (this.isPlainObject(workflow?.termAssets)
-        ? workflow.termAssets as WorkflowTermAssets
-        : undefined),
+      sourceLanguage:
+        manifest?.languageProfile?.sourceLanguage ||
+        (typeof workflow?.languageProfile?.sourceLanguage === 'string'
+          ? workflow.languageProfile.sourceLanguage
+          : undefined),
+      targetLanguages:
+        manifest?.languageProfile?.targetLanguages ||
+        (Array.isArray(workflow?.languageProfile?.targetLanguages)
+          ? (workflow.languageProfile.targetLanguages as string[])
+          : undefined),
+      termAssets:
+        manifest?.termAssets ||
+        (this.isPlainObject(workflow?.termAssets)
+          ? (workflow.termAssets as WorkflowTermAssets)
+          : undefined),
     };
   }
 
@@ -706,7 +765,10 @@ export abstract class StudioControllerBase {
     if (Array.isArray(workflow.templateFieldSpecs) && workflow.templateFieldSpecs.length > 0) {
       meta.parameterCount = workflow.templateFieldSpecs.length;
     }
-    if ((!meta.variables || !Array.isArray(meta.variables) || meta.variables.length === 0) && workflow.renderPlan?.bindings?.length) {
+    if (
+      (!meta.variables || !Array.isArray(meta.variables) || meta.variables.length === 0) &&
+      workflow.renderPlan?.bindings?.length
+    ) {
       meta.variables = workflow.renderPlan.bindings.map((binding) => binding.variablePath);
     }
 
@@ -716,7 +778,7 @@ export abstract class StudioControllerBase {
   protected async cacheTemplateSuggestions(
     id: string,
     meta: TemplateResponse,
-    result: Pick<AIIdentifyResponse, 'suggestions' | 'rawSuggestions' | 'templateConfig'>,
+    result: Pick<AIIdentifyResponse, 'suggestions' | 'rawSuggestions' | 'templateConfig'>
   ): Promise<void> {
     const nextSuggestions = Array.isArray(result.suggestions) ? result.suggestions : [];
     const nextRawSuggestions = Array.isArray(result.rawSuggestions) ? result.rawSuggestions : [];
@@ -727,8 +789,18 @@ export abstract class StudioControllerBase {
     const metaPath = path.join(this.templatesDir, `${id}.json`);
     const updatedMeta = {
       ...meta,
-      suggestions: nextSuggestions.length > 0 ? nextSuggestions : (Array.isArray(meta.suggestions) ? meta.suggestions : []),
-      rawSuggestions: nextRawSuggestions.length > 0 ? nextRawSuggestions : (Array.isArray(meta.rawSuggestions) ? meta.rawSuggestions : []),
+      suggestions:
+        nextSuggestions.length > 0
+          ? nextSuggestions
+          : Array.isArray(meta.suggestions)
+            ? meta.suggestions
+            : [],
+      rawSuggestions:
+        nextRawSuggestions.length > 0
+          ? nextRawSuggestions
+          : Array.isArray(meta.rawSuggestions)
+            ? meta.rawSuggestions
+            : [],
       templateConfig: result.templateConfig ?? meta.templateConfig,
     };
 
@@ -736,7 +808,10 @@ export abstract class StudioControllerBase {
     await this.syncTemplateMetaToDb(id, updatedMeta);
   }
 
-  protected mergeSkillGuideSuggestions(cachedSuggestions?: any[], incomingSuggestions?: any[]): any[] {
+  protected mergeSkillGuideSuggestions(
+    cachedSuggestions?: any[],
+    incomingSuggestions?: any[]
+  ): any[] {
     const merged = new Map<string, any>();
 
     const upsertSuggestion = (suggestion: any) => {
@@ -802,13 +877,16 @@ export abstract class StudioControllerBase {
     return null;
   }
 
-  protected mergeSkillGuideTemplateConfig(cachedTemplateConfig?: any, incomingTemplateConfig?: any): any {
-    const cachedConfig = cachedTemplateConfig && typeof cachedTemplateConfig === 'object'
-      ? cachedTemplateConfig
-      : {};
-    const incomingConfig = incomingTemplateConfig && typeof incomingTemplateConfig === 'object'
-      ? incomingTemplateConfig
-      : {};
+  protected mergeSkillGuideTemplateConfig(
+    cachedTemplateConfig?: any,
+    incomingTemplateConfig?: any
+  ): any {
+    const cachedConfig =
+      cachedTemplateConfig && typeof cachedTemplateConfig === 'object' ? cachedTemplateConfig : {};
+    const incomingConfig =
+      incomingTemplateConfig && typeof incomingTemplateConfig === 'object'
+        ? incomingTemplateConfig
+        : {};
 
     return {
       ...cachedConfig,
@@ -847,10 +925,13 @@ export abstract class StudioControllerBase {
     }
   }
 
-
   // Helper methods for skill generation
   protected generateExampleValue(fieldType: string, name: string): string {
-    const normalizedName = String(name || '').replace(/^\{/, '').replace(/\}$/, '').replace(/^d\./, '').toLowerCase();
+    const normalizedName = String(name || '')
+      .replace(/^\{/, '')
+      .replace(/\}$/, '')
+      .replace(/^d\./, '')
+      .toLowerCase();
 
     const exactPatterns: Array<[RegExp, string]> = [
       [/(^|\.)(seq|serialno|serialnumber|lineno)$/, '1'],
@@ -895,9 +976,18 @@ export abstract class StudioControllerBase {
     }
   }
 
-  protected generateAIInstructions(templateType: string, variables: any[], description?: string): string {
-    const varList = variables.map(v => `- **${v.name}**: ${v.aiHint || v.meaning || '填写对应值'}`).join('\n');
-    const exampleData = variables.slice(0, 5).map(v => `  "${v.name}": "${v.example}"`).join(',\n');
+  protected generateAIInstructions(
+    templateType: string,
+    variables: any[],
+    description?: string
+  ): string {
+    const varList = variables
+      .map((v) => `- **${v.name}**: ${v.aiHint || v.meaning || '填写对应值'}`)
+      .join('\n');
+    const exampleData = variables
+      .slice(0, 5)
+      .map((v) => `  "${v.name}": "${v.example}"`)
+      .join(',\n');
 
     const baseInstructions = `# ${templateType}模板AI使用指南
 
@@ -970,12 +1060,17 @@ ${exampleData}
   }
 
   protected generateSimulatedData(skill: any): any {
-    const data: any = {};  // 数据直接在根层级，不需要 d 包装
+    const data: any = {}; // 数据直接在根层级，不需要 d 包装
     // 使用新的parameters结构
     const variables = skill.parameters || skill.parameterization?.variables || [];
     for (const variable of variables) {
-      const rawExampleValue = variable.example ?? this.generateExampleValue(variable.dataType || variable.fieldType, variable.name);
-      const exampleValue = this.coerceSkillExampleValue(rawExampleValue, variable.dataType || variable.fieldType);
+      const rawExampleValue =
+        variable.example ??
+        this.generateExampleValue(variable.dataType || variable.fieldType, variable.name);
+      const exampleValue = this.coerceSkillExampleValue(
+        rawExampleValue,
+        variable.dataType || variable.fieldType
+      );
 
       // 解析变量路径，支持多种格式：
       // 1. {d.partyA.name} -> partyA.name (带花括号)
