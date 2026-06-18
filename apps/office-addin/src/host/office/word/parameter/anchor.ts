@@ -2,8 +2,10 @@ import { normalizeWordLookupText, safeWordRuleText } from '../shared/text';
 import { HEADER_FIELD_SPECS, HeaderFieldSpec } from './profiles';
 
 export function normalizeAnchorCore(value: string): string {
-  return normalizeWordLookupText(String(value || '').replace(/[：:]$/u, ''))
-    .replace(/[，。、．,.・]/g, '');
+  return normalizeWordLookupText(String(value || '').replace(/[：:]$/u, '')).replace(
+    /[，。、．,.・]/g,
+    ''
+  );
 }
 
 export function extractWordAnchorLabelText(anchorText: string): string {
@@ -26,9 +28,11 @@ export function resolveHeaderFieldSpec(anchorText: string): HeaderFieldSpec | nu
     return null;
   }
 
-  return HEADER_FIELD_SPECS.find((spec) =>
-    spec.aliases.some((alias) => normalizedAnchor.includes(normalizeWordLookupText(alias)))
-  ) || null;
+  return (
+    HEADER_FIELD_SPECS.find((spec) =>
+      spec.aliases.some((alias) => normalizedAnchor.includes(normalizeWordLookupText(alias)))
+    ) || null
+  );
 }
 
 export function resolveExactHeaderFieldSpec(anchorText: string): HeaderFieldSpec | null {
@@ -37,9 +41,11 @@ export function resolveExactHeaderFieldSpec(anchorText: string): HeaderFieldSpec
     return null;
   }
 
-  return HEADER_FIELD_SPECS.find((spec) =>
-    spec.aliases.some((alias) => normalizedAnchor === normalizeWordLookupText(alias))
-  ) || null;
+  return (
+    HEADER_FIELD_SPECS.find((spec) =>
+      spec.aliases.some((alias) => normalizedAnchor === normalizeWordLookupText(alias))
+    ) || null
+  );
 }
 
 export function isExplicitWordParamLabelAnchor(anchorText: string): boolean {
@@ -94,19 +100,23 @@ export function getWordHeaderAliasCandidates(anchorText: string): string[] {
   const spec = resolveHeaderFieldSpec(anchorCore || normalizedAnchor);
   const aliases = spec?.aliases || [];
 
-  return Array.from(new Set(
-    [anchorCore, ...aliases]
-      .map((alias) => safeWordRuleText(alias))
-      .filter(Boolean)
-      .map((alias) => (trailingSeparator ? `${alias}${trailingSeparator}` : alias))
-  ));
+  return Array.from(
+    new Set(
+      [anchorCore, ...aliases]
+        .map((alias) => safeWordRuleText(alias))
+        .filter(Boolean)
+        .map((alias) => (trailingSeparator ? `${alias}${trailingSeparator}` : alias))
+    )
+  );
 }
 
 export function buildWordAnchorCandidates(anchorText: string): string[] {
   const directAnchor = safeWordRuleText(anchorText).replace(/[：:]$/u, '');
   const spec = resolveWordAnchorAliasSpec(anchorText);
   const aliases = spec?.aliases || [];
-  return Array.from(new Set([directAnchor, ...aliases].map((item) => safeWordRuleText(item)).filter(Boolean)));
+  return Array.from(
+    new Set([directAnchor, ...aliases].map((item) => safeWordRuleText(item)).filter(Boolean))
+  );
 }
 
 export function extractWordParamName(anchorText: string): string {
@@ -118,9 +128,15 @@ export function extractWordParamName(anchorText: string): string {
   return normalizedAnchor || '未命名参数';
 }
 
-export function extractWordParamAnchorText(paragraphText: string, start: number, end: number): string {
+export function extractWordParamAnchorText(
+  paragraphText: string,
+  start: number,
+  end: number
+): string {
   const prefix = safeWordRuleText(paragraphText.slice(Math.max(0, start - 32), start));
-  const suffix = safeWordRuleText(paragraphText.slice(end, Math.min(paragraphText.length, end + 24)));
+  const suffix = safeWordRuleText(
+    paragraphText.slice(end, Math.min(paragraphText.length, end + 24))
+  );
   const normalizedPrefix = safeWordRuleText(paragraphText.slice(0, start));
   const labelMatch = normalizedPrefix.match(/([^，。；;、\n]{1,40}[：:])\s*$/u);
 

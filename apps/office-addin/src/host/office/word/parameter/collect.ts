@@ -3,15 +3,15 @@ import type { WordParagraphLike, WordTableCellLike, WordUnderlineLike } from './
 import { normalizeWordLookupText, safeWordRuleText } from '../shared/text';
 
 export function getWordDocumentElements(
-  documentIr: DocumentIR | Record<string, any> | null | undefined,
+  documentIr: DocumentIR | Record<string, any> | null | undefined
 ): DocumentElement[] {
-  return Array.isArray(documentIr?.elements) ? documentIr.elements as DocumentElement[] : [];
+  return Array.isArray(documentIr?.elements) ? (documentIr.elements as DocumentElement[]) : [];
 }
 
 export function getWordDocumentAnchors(
-  documentIr: DocumentIR | Record<string, any> | null | undefined,
+  documentIr: DocumentIR | Record<string, any> | null | undefined
 ): Anchor[] {
-  return Array.isArray(documentIr?.anchors) ? documentIr.anchors as Anchor[] : [];
+  return Array.isArray(documentIr?.anchors) ? (documentIr.anchors as Anchor[]) : [];
 }
 
 export function toFiniteNumber(value: unknown): number | null {
@@ -20,7 +20,7 @@ export function toFiniteNumber(value: unknown): number | null {
 }
 
 export function collectWordParagraphs(
-  documentIr: DocumentIR | Record<string, any> | null | undefined,
+  documentIr: DocumentIR | Record<string, any> | null | undefined
 ): WordParagraphLike[] {
   const paragraphs = getWordDocumentElements(documentIr)
     .filter((element) => element.type === 'paragraph')
@@ -33,9 +33,10 @@ export function collectWordParagraphs(
         id: element.id,
         index: paragraphIndex,
         text: String(element.text || ''),
-        format: typeof element.hostData?.format === 'object'
-          ? element.hostData.format as Record<string, unknown>
-          : undefined,
+        format:
+          typeof element.hostData?.format === 'object'
+            ? (element.hostData.format as Record<string, unknown>)
+            : undefined,
       });
       return result;
     }, []);
@@ -44,7 +45,7 @@ export function collectWordParagraphs(
 }
 
 export function collectWordUnderlines(
-  documentIr: DocumentIR | Record<string, any> | null | undefined,
+  documentIr: DocumentIR | Record<string, any> | null | undefined
 ): WordUnderlineLike[] {
   const underlines = getWordDocumentAnchors(documentIr)
     .filter((anchor) => anchor.type === 'word-range')
@@ -65,14 +66,14 @@ export function collectWordUnderlines(
       return result;
     }, []);
 
-  return underlines.sort((left, right) =>
-    left.paragraphIndex - right.paragraphIndex
-    || left.position.start - right.position.start
+  return underlines.sort(
+    (left, right) =>
+      left.paragraphIndex - right.paragraphIndex || left.position.start - right.position.start
   );
 }
 
 export function collectWordTableCells(
-  documentIr: DocumentIR | Record<string, any> | null | undefined,
+  documentIr: DocumentIR | Record<string, any> | null | undefined
 ): WordTableCellLike[] {
   const tableCells = getWordDocumentElements(documentIr)
     .filter((element) => element.type === 'cell')
@@ -93,16 +94,17 @@ export function collectWordTableCells(
       return result;
     }, []);
 
-  return tableCells.sort((left, right) =>
-    left.tableIndex - right.tableIndex
-    || left.rowIndex - right.rowIndex
-    || left.cellIndex - right.cellIndex
+  return tableCells.sort(
+    (left, right) =>
+      left.tableIndex - right.tableIndex ||
+      left.rowIndex - right.rowIndex ||
+      left.cellIndex - right.cellIndex
   );
 }
 
 export function isParagraphLikelyInsideWordTable(
   paragraphText: string,
-  tableCells: WordTableCellLike[],
+  tableCells: WordTableCellLike[]
 ): boolean {
   const normalizedParagraph = normalizeWordLookupText(paragraphText);
   if (!normalizedParagraph || normalizedParagraph.length > 48) {
@@ -113,9 +115,10 @@ export function isParagraphLikelyInsideWordTable(
     .map((cell) => normalizeWordLookupText(String(cell.text || '')))
     .filter(Boolean);
 
-  return normalizedTableTexts.some((cellText) =>
-    cellText === normalizedParagraph
-    || cellText.includes(normalizedParagraph)
-    || normalizedParagraph.includes(cellText)
+  return normalizedTableTexts.some(
+    (cellText) =>
+      cellText === normalizedParagraph ||
+      cellText.includes(normalizedParagraph) ||
+      normalizedParagraph.includes(cellText)
   );
 }

@@ -55,15 +55,22 @@ type WordLineSegment = {
 };
 
 export function extractRepeatedWordTrailingLabels(
-  text: string,
+  text: string
 ): Array<{ anchorText: string; start: number; end: number }> {
   const sourceText = String(text || '');
-  if (!new RegExp(`^\\s*(?:[^\\s：:，。；;、]{1,${WORD_REPEATED_LABEL_MAX_LENGTH}}[：:]\\s*){2,}$`, 'u').test(sourceText)) {
+  if (
+    !new RegExp(
+      `^\\s*(?:[^\\s：:，。；;、]{1,${WORD_REPEATED_LABEL_MAX_LENGTH}}[：:]\\s*){2,}$`,
+      'u'
+    ).test(sourceText)
+  ) {
     return [];
   }
 
   const matches = Array.from(
-    sourceText.matchAll(new RegExp(`([^\\s：:，。；;、]{1,${WORD_REPEATED_LABEL_MAX_LENGTH}}[：:])`, 'gu'))
+    sourceText.matchAll(
+      new RegExp(`([^\\s：:，。；;、]{1,${WORD_REPEATED_LABEL_MAX_LENGTH}}[：:])`, 'gu')
+    )
   );
   if (matches.length < 2) {
     return [];
@@ -77,7 +84,9 @@ export function extractRepeatedWordTrailingLabels(
 }
 
 function splitWordParagraphLines(text: string): WordLineSegment[] {
-  const sourceText = String(text || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const sourceText = String(text || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n');
   if (!sourceText) {
     return [];
   }
@@ -121,7 +130,10 @@ export function endsWithWordParamLabel(text: string): boolean {
   if (looksLikeSectionLeadSentence(normalized)) {
     return false;
   }
-  return !new RegExp(`^[（(【\\[][^：:\\n]{1,${WORD_COLON_ANCHOR_MAX_LENGTH}}[）)】\\]][：:]$`, 'u').test(normalized);
+  return !new RegExp(
+    `^[（(【\\[][^：:\\n]{1,${WORD_COLON_ANCHOR_MAX_LENGTH}}[）)】\\]][：:]$`,
+    'u'
+  ).test(normalized);
 }
 
 export function findWordInlineGapParam(text: string): WordGapParamMatch | null {
@@ -157,7 +169,10 @@ export function findWordInlineGapParam(text: string): WordGapParamMatch | null {
 export function findWordTerminalGapParam(text: string): WordGapParamMatch | null {
   const sourceText = String(text || '');
   const matched = sourceText.match(
-    new RegExp(`^\\s*((?:.{1,${WORD_TERMINAL_ANCHOR_MAX_LENGTH}})[：:])([ 　\\t]{${WORD_PARAM_GAP_MIN_SPACES},})$`, 'u')
+    new RegExp(
+      `^\\s*((?:.{1,${WORD_TERMINAL_ANCHOR_MAX_LENGTH}})[：:])([ 　\\t]{${WORD_PARAM_GAP_MIN_SPACES},})$`,
+      'u'
+    )
   );
   if (!matched) {
     return null;
@@ -206,7 +221,9 @@ function findWordColonPlaceholderEnd(text: string, slotStart: number): number {
 }
 
 function buildWordColonCandidateMatches(text: string): WordColonCandidateMatch[] {
-  const sourceText = String(text || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const sourceText = String(text || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n');
   const lines = splitWordParagraphLines(sourceText);
   if (!sourceText || lines.length === 0) {
     return [];
@@ -227,18 +244,20 @@ function buildWordColonCandidateMatches(text: string): WordColonCandidateMatch[]
     const slotStart = colonIndex + 1;
     const slotEnd = findWordColonPlaceholderEnd(sourceText, slotStart);
     const lineIndex = lines.findIndex((line) => line.start <= colonIndex && colonIndex <= line.end);
-    return [{
-      anchorText,
-      start: slotStart,
-      end: slotEnd,
-      lineIndex,
-    }];
+    return [
+      {
+        anchorText,
+        start: slotStart,
+        end: slotEnd,
+        lineIndex,
+      },
+    ];
   });
 }
 
 function extractWordColonStandaloneValue(
   lines: WordLineSegment[],
-  lineIndex: number,
+  lineIndex: number
 ): string | undefined {
   if (lineIndex < 0) {
     return undefined;
@@ -248,7 +267,9 @@ function extractWordColonStandaloneValue(
     return undefined;
   }
 
-  const normalizedValue = String(nextLine.text || '').replace(/^[：:\s　]+/u, '').trim();
+  const normalizedValue = String(nextLine.text || '')
+    .replace(/^[：:\s　]+/u, '')
+    .trim();
   if (!normalizedValue) {
     return undefined;
   }
@@ -259,7 +280,7 @@ function extractWordColonStandaloneValue(
 function hasImmediateWordColonValue(
   paragraphText: string,
   candidate: Pick<WordColonCandidateMatch, 'start' | 'lineIndex'>,
-  lines: WordLineSegment[],
+  lines: WordLineSegment[]
 ): boolean {
   if (candidate.lineIndex < 0) {
     return false;
@@ -299,13 +320,18 @@ export function detectWordColonParams(
     sampleText?: string;
     includeLabelOnly?: boolean;
     chapterHeadingParagraphIndexes?: Set<number>;
-  },
+  }
 ): WordDetectedParam[] {
   const sampleText = options?.sampleText || '';
   const includeLabelOnly = options?.includeLabelOnly ?? true;
-  const chapterHeadingParagraphIndexes = options?.chapterHeadingParagraphIndexes
-    || buildWordParagraphHeadingIndexSet(paragraphs);
-  const paragraphIdByIndex = new Map(paragraphs.map((paragraph) => [paragraph.index, paragraph.id || `word-paragraph-${paragraph.index}`]));
+  const chapterHeadingParagraphIndexes =
+    options?.chapterHeadingParagraphIndexes || buildWordParagraphHeadingIndexSet(paragraphs);
+  const paragraphIdByIndex = new Map(
+    paragraphs.map((paragraph) => [
+      paragraph.index,
+      paragraph.id || `word-paragraph-${paragraph.index}`,
+    ])
+  );
   const normalizedNonEmptyTableCellTexts = new Set(
     tableCells
       .map((cell) => String(cell.text || '').trim())
@@ -313,15 +339,16 @@ export function detectWordColonParams(
       .map((text) => text.replace(/\s+/g, '').toLowerCase())
   );
   const hasUnderlineSiblingForParam = (paragraphIndex: number, paramName: string): boolean =>
-    underlines.some((underline) =>
-      underline.paragraphIndex === paragraphIndex
-      && extractWordParamName(
-        extractWordParamAnchorText(
-          underline.paragraphText,
-          underline.position.start,
-          underline.position.end
-        )
-      ) === paramName
+    underlines.some(
+      (underline) =>
+        underline.paragraphIndex === paragraphIndex &&
+        extractWordParamName(
+          extractWordParamAnchorText(
+            underline.paragraphText,
+            underline.position.start,
+            underline.position.end
+          )
+        ) === paramName
     );
 
   const params: WordDetectedParam[] = [];
@@ -339,7 +366,9 @@ export function detectWordColonParams(
       return;
     }
 
-    const normalizedParagraphText = String(paragraph.text || '').replace(/\s+/g, '').toLowerCase();
+    const normalizedParagraphText = String(paragraph.text || '')
+      .replace(/\s+/g, '')
+      .toLowerCase();
     if (normalizedNonEmptyTableCellTexts.has(normalizedParagraphText)) {
       return;
     }
@@ -389,12 +418,15 @@ export function detectWordColonParams(
             }).parameterSlot
           : undefined,
         paramName,
-        paragraphText: standaloneHeaderValue ? `${paragraph.text}\n${standaloneHeaderValue}` : paragraph.text,
+        paragraphText: standaloneHeaderValue
+          ? `${paragraph.text}\n${standaloneHeaderValue}`
+          : paragraph.text,
         sourceBlockId: paragraphIdByIndex.get(paragraph.index),
       };
-      param.parameterSlot = safeWordRuleText(
-        `${candidate.anchorText}[参数]${sampleStopAnchorText || ''}`
-      ) || param.parameterSlot || `${candidate.anchorText}[参数]`;
+      param.parameterSlot =
+        safeWordRuleText(`${candidate.anchorText}[参数]${sampleStopAnchorText || ''}`) ||
+        param.parameterSlot ||
+        `${candidate.anchorText}[参数]`;
       const sampleMatch = findSampleMatchForWordParam(sampleText, param);
       params.push({
         ...param,
@@ -406,6 +438,12 @@ export function detectWordColonParams(
 
   return params.filter((param, index, array) => {
     const key = `${param.sourceType}|${param.paragraphIndex}|${param.start}|${param.end}|${param.paramName}`;
-    return array.findIndex((item) => (`${item.sourceType}|${item.paragraphIndex}|${item.start}|${item.end}|${item.paramName}`) === key) === index;
+    return (
+      array.findIndex(
+        (item) =>
+          `${item.sourceType}|${item.paragraphIndex}|${item.start}|${item.end}|${item.paramName}` ===
+          key
+      ) === index
+    );
   });
 }

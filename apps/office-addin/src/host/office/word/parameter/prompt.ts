@@ -1,8 +1,5 @@
 import { extractWordParamName } from './anchor';
-import {
-  extractWordTrailingUnitLabel,
-  shouldPreferWordTrailingUnitLabel,
-} from './sample';
+import { extractWordTrailingUnitLabel, shouldPreferWordTrailingUnitLabel } from './sample';
 import { safeWordRuleText } from '../shared/text';
 
 export function isUsefulWordPromptAnchor(text: string): boolean {
@@ -19,9 +16,8 @@ export function cleanWordPromptSideText(value: string, side: 'left' | 'right'): 
     .split(/[，。；;、：:\n]/u)
     .map((item) => item.trim())
     .filter(Boolean);
-  let nextValue = side === 'left'
-    ? (chunks[chunks.length - 1] || normalized)
-    : (chunks[0] || normalized);
+  let nextValue =
+    side === 'left' ? chunks[chunks.length - 1] || normalized : chunks[0] || normalized;
 
   nextValue = nextValue
     .replace(/^[＋+\-−=,，、.。]+/u, '')
@@ -34,15 +30,17 @@ export function cleanWordPromptSideText(value: string, side: 'left' | 'right'): 
 export const WORD_PROMPT_LEFT_CONTEXT_LIMIT = 5;
 export const WORD_PROMPT_RIGHT_CONTEXT_LIMIT = 3;
 
-export function trimWordPromptContext(value: string, side: 'left' | 'right', maxLength: number): string {
+export function trimWordPromptContext(
+  value: string,
+  side: 'left' | 'right',
+  maxLength: number
+): string {
   const normalized = safeWordRuleText(value);
   if (!normalized) {
     return '';
   }
 
-  return side === 'left'
-    ? normalized.slice(-maxLength)
-    : normalized.slice(0, maxLength);
+  return side === 'left' ? normalized.slice(-maxLength) : normalized.slice(0, maxLength);
 }
 
 export function isWordPromptTerminalBoundaryChar(char: string | undefined): boolean {
@@ -58,7 +56,11 @@ export function findWordPromptBoundaryBefore(text: string, start: number, minSta
   return minStart;
 }
 
-export function findWordPromptBoundaryAfter(text: string, end: number, maxEnd = text.length): number {
+export function findWordPromptBoundaryAfter(
+  text: string,
+  end: number,
+  maxEnd = text.length
+): number {
   for (let index = end; index < maxEnd; index += 1) {
     if (/[，。；;、：:\n]/u.test(text[index])) {
       return index;
@@ -79,7 +81,8 @@ export function buildWordParamPromptParts(args: {
   if (!paragraphText || args.start < 0 || args.end < args.start) {
     return {
       localAnchorText: fallbackAnchorText,
-      parameterSlot: fallbackAnchorText === '未命名参数' ? undefined : `[参数] ${fallbackAnchorText}`,
+      parameterSlot:
+        fallbackAnchorText === '未命名参数' ? undefined : `[参数] ${fallbackAnchorText}`,
     };
   }
 
@@ -123,11 +126,11 @@ export function buildWordParamPromptParts(args: {
 
   const localAnchorText = shouldPreferWordTrailingUnitLabel(beforeText, afterText)
     ? extractWordTrailingUnitLabel(afterText)
-    : (
-      isUsefulWordPromptAnchor(beforeText)
-        ? beforeText
-        : (isUsefulWordPromptAnchor(afterText) ? afterText : fallbackAnchorText)
-    );
+    : isUsefulWordPromptAnchor(beforeText)
+      ? beforeText
+      : isUsefulWordPromptAnchor(afterText)
+        ? afterText
+        : fallbackAnchorText;
   const parameterSlot = safeWordRuleText(`${beforeText}[参数]${afterText}`) || '[参数]';
 
   return {

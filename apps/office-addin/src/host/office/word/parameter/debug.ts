@@ -6,10 +6,7 @@ import type {
   WordUnderlineLike,
 } from './types';
 import { resolveExactHeaderFieldSpec } from './anchor';
-import {
-  collectWordTitleBlockParagraphIndexes,
-  inspectWordHeaderTitle,
-} from './heading-filter';
+import { collectWordTitleBlockParagraphIndexes, inspectWordHeaderTitle } from './heading-filter';
 import { WordDocumentParameterRuleProfile } from './profiles';
 import { normalizeWordLookupText, safeWordRuleText } from '../shared/text';
 
@@ -18,9 +15,7 @@ export function truncateWordDebugText(value: string, maxLength = 72): string {
   if (!normalized) {
     return '';
   }
-  return normalized.length > maxLength
-    ? `${normalized.slice(0, maxLength)}...`
-    : normalized;
+  return normalized.length > maxLength ? `${normalized.slice(0, maxLength)}...` : normalized;
 }
 
 export function formatWordDebugBoolean(value: boolean): string {
@@ -43,7 +38,9 @@ function normalizeWordDebugKeyword(value: string): string {
 }
 
 function buildWordDebugKeywordSet(keywords: string[]): string[] {
-  return Array.from(new Set(keywords.map((keyword) => normalizeWordDebugKeyword(keyword)).filter(Boolean)));
+  return Array.from(
+    new Set(keywords.map((keyword) => normalizeWordDebugKeyword(keyword)).filter(Boolean))
+  );
 }
 
 export function buildWordKeywordFocusedDebugExcerpt(args: {
@@ -53,13 +50,7 @@ export function buildWordKeywordFocusedDebugExcerpt(args: {
   contextLineCount?: number;
   maxBlocks?: number;
 }): string {
-  const {
-    title,
-    text,
-    keywords = [],
-    contextLineCount = 2,
-    maxBlocks = 4,
-  } = args;
+  const { title, text, keywords = [], contextLineCount = 2, maxBlocks = 4 } = args;
   const sourceText = String(text || '').trim();
   if (!sourceText) {
     return `${title}\n无日志内容`;
@@ -76,7 +67,9 @@ export function buildWordKeywordFocusedDebugExcerpt(args: {
       index,
       normalizedLine: normalizeWordDebugKeyword(line),
     }))
-    .filter(({ normalizedLine }) => normalizedKeywords.some((keyword) => normalizedLine.includes(keyword)))
+    .filter(({ normalizedLine }) =>
+      normalizedKeywords.some((keyword) => normalizedLine.includes(keyword))
+    )
     .map(({ index }) => index);
 
   if (matchedLineIndexes.length === 0) {
@@ -103,9 +96,7 @@ export function buildWordKeywordFocusedDebugExcerpt(args: {
   const visibleBlocks = blocks.slice(0, Math.max(maxBlocks, 1));
   const excerptLines = visibleBlocks.flatMap((block, index) => {
     const blockLines = lines.slice(block.start, block.end + 1);
-    return index < visibleBlocks.length - 1
-      ? [...blockLines, '...']
-      : blockLines;
+    return index < visibleBlocks.length - 1 ? [...blockLines, '...'] : blockLines;
   });
 
   return [
@@ -113,8 +104,12 @@ export function buildWordKeywordFocusedDebugExcerpt(args: {
     `关键字: ${keywords.join(' / ')}`,
     `命中行数: ${matchedLineIndexes.length} | 片段数: ${blocks.length}`,
     ...excerptLines,
-    blocks.length > visibleBlocks.length ? `... 其余 ${blocks.length - visibleBlocks.length} 个片段已省略` : undefined,
-  ].filter(Boolean).join('\n');
+    blocks.length > visibleBlocks.length
+      ? `... 其余 ${blocks.length - visibleBlocks.length} 个片段已省略`
+      : undefined,
+  ]
+    .filter(Boolean)
+    .join('\n');
 }
 
 type BuildWordParameterDetectionDebugTextDependencies = {
@@ -129,9 +124,14 @@ type BuildWordParameterDetectionDebugTextDependencies = {
   }) => WordDetectedParam[];
   findWordInlineGapParam: (text: string) => WordGapParamMatch | null;
   findWordTerminalGapParam: (text: string) => WordGapParamMatch | null;
-  extractRepeatedWordTrailingLabels: (text: string) => Array<{ anchorText: string; start: number; end: number }>;
+  extractRepeatedWordTrailingLabels: (
+    text: string
+  ) => Array<{ anchorText: string; start: number; end: number }>;
   endsWithWordParamLabel: (text: string) => boolean;
-  isParagraphLikelyInsideWordTable: (paragraphText: string, tableCells: WordTableCellLike[]) => boolean;
+  isParagraphLikelyInsideWordTable: (
+    paragraphText: string,
+    tableCells: WordTableCellLike[]
+  ) => boolean;
 };
 
 export function buildWordParameterDetectionDebugText(
@@ -145,7 +145,7 @@ export function buildWordParameterDetectionDebugText(
     keywordFilters?: string[];
     maxParagraphs?: number;
   },
-  deps: BuildWordParameterDetectionDebugTextDependencies,
+  deps: BuildWordParameterDetectionDebugTextDependencies
 ): string {
   const {
     templateType,
@@ -214,19 +214,25 @@ export function buildWordParameterDetectionDebugText(
       });
       const paragraphCandidates = candidatesByParagraph.get(paragraph.index) || [];
       const insideTable = deps.isParagraphLikelyInsideWordTable(paragraph.text, tableCells);
-      const duplicatedFromTableCell = normalizedNonEmptyTableCellTexts.has(normalizeWordLookupText(paragraph.text));
-      const shouldHighlight = headerInspection.matched
-        || paragraphCandidates.length > 0
-        || paragraphUnderlines.length > 0
-        || Boolean(inlineGap || terminalGap || trailingLabel || exactHeaderFieldSpec)
-        || repeatedLabels.length > 0
-        || skipParagraphIndexes.has(paragraph.index);
+      const duplicatedFromTableCell = normalizedNonEmptyTableCellTexts.has(
+        normalizeWordLookupText(paragraph.text)
+      );
+      const shouldHighlight =
+        headerInspection.matched ||
+        paragraphCandidates.length > 0 ||
+        paragraphUnderlines.length > 0 ||
+        Boolean(inlineGap || terminalGap || trailingLabel || exactHeaderFieldSpec) ||
+        repeatedLabels.length > 0 ||
+        skipParagraphIndexes.has(paragraph.index);
 
       return {
         shouldHighlight,
-        keywordMatched: normalizedKeywordFilters.length > 0
-          ? normalizedKeywordFilters.some((keyword) => normalizeWordLookupText(paragraph.text).includes(keyword))
-          : false,
+        keywordMatched:
+          normalizedKeywordFilters.length > 0
+            ? normalizedKeywordFilters.some((keyword) =>
+                normalizeWordLookupText(paragraph.text).includes(keyword)
+              )
+            : false,
         lines: [
           `段落#${paragraph.index} | ${JSON.stringify(truncateWordDebugText(paragraph.text, 90))}`,
           `  样式: styleBuiltIn=${JSON.stringify(String(paragraph.format?.styleBuiltIn || ''))} | style=${JSON.stringify(String(paragraph.format?.style || ''))} | fontSize=${String(paragraph.format?.fontSize || '')} | bold=${formatWordDebugBoolean(Boolean(paragraph.format?.isBold))} | isTitle=${formatWordDebugBoolean(Boolean(paragraph.format?.isTitle))} | align=${String(paragraph.format?.alignment || '') || '-'}`,
@@ -240,12 +246,13 @@ export function buildWordParameterDetectionDebugText(
 
   const highlightedReports = paragraphReports.filter((item) => item.shouldHighlight);
   const keywordMatchedReports = paragraphReports.filter((item) => item.keywordMatched);
-  const activeReports = keywordMatchedReports.length > 0
-    ? keywordMatchedReports
-    : (highlightedReports.length > 0 ? highlightedReports : paragraphReports);
-  const visibleReports = activeReports
-    .slice(0, maxParagraphs)
-    .map((item) => item.lines);
+  const activeReports =
+    keywordMatchedReports.length > 0
+      ? keywordMatchedReports
+      : highlightedReports.length > 0
+        ? highlightedReports
+        : paragraphReports;
+  const visibleReports = activeReports.slice(0, maxParagraphs).map((item) => item.lines);
 
   return [
     '【逐段参数识别诊断】',
@@ -260,8 +267,10 @@ export function buildWordParameterDetectionDebugText(
     ...visibleReports,
     activeReports.length > maxParagraphs
       ? `... 其余 ${activeReports.length - maxParagraphs} 个诊断段落已省略`
-      : (paragraphReports.length > visibleReports.length
+      : paragraphReports.length > visibleReports.length
         ? `... 未展示的普通段落 ${paragraphReports.length - visibleReports.length} 个`
-        : undefined),
-  ].filter(Boolean).join('\n');
+        : undefined,
+  ]
+    .filter(Boolean)
+    .join('\n');
 }
