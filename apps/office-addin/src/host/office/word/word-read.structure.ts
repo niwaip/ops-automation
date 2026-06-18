@@ -39,7 +39,8 @@ export async function getDocumentStructure(): Promise<{
       tables.load('items');
       await context.sync();
 
-      const tableData: Array<{ rows: number; cols: number; content: string[][]; index: number }> = [];
+      const tableData: Array<{ rows: number; cols: number; content: string[][]; index: number }> =
+        [];
       for (let i = 0; i < tables.items.length; i += 1) {
         const table = tables.items[i];
         table.load('rowCount,columnCount');
@@ -129,7 +130,7 @@ export async function getContentControls(): Promise<
                 rowIndex: control.parentTableCellOrNullObject.rowIndex,
                 cellIndex: control.parentTableCellOrNullObject.cellIndex,
               },
-        })),
+        }))
       );
     }).catch((error) => {
       console.warn('getContentControls error:', error);
@@ -253,7 +254,8 @@ export async function getParagraphsWithFormat(): Promise<
           const styleBuiltIn =
             typeof paragraph.styleBuiltIn === 'string' ? paragraph.styleBuiltIn : '';
           const isListItem = Boolean(paragraph.isListItem);
-          const listLevel = isListItem && typeof listItem?.level === 'number' ? listItem.level : undefined;
+          const listLevel =
+            isListItem && typeof listItem?.level === 'number' ? listItem.level : undefined;
           const listString =
             isListItem && typeof listItem?.listString === 'string' ? listItem.listString : '';
           const listId = isListItem && typeof list?.id === 'number' ? list.id : undefined;
@@ -281,7 +283,7 @@ export async function getParagraphsWithFormat(): Promise<
               listId,
             },
           };
-        }),
+        })
       );
     }).catch((error) => {
       console.error('getParagraphsWithFormat error:', error);

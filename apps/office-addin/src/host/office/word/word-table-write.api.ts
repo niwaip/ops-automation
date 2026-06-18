@@ -21,7 +21,11 @@ export const WordTableWriteAPI = {
         await context.sync();
 
         if (tableIndex < 0 || tableIndex >= tables.items.length) {
-          WordReadAPI.emitDebugLog('error', '普通表格单元格写入失败', `表格: ${tableIndex}\n行: ${rowIndex}\n列: ${cellIndex}\n原因: 表格索引越界`);
+          WordReadAPI.emitDebugLog(
+            'error',
+            '普通表格单元格写入失败',
+            `表格: ${tableIndex}\n行: ${rowIndex}\n列: ${cellIndex}\n原因: 表格索引越界`
+          );
           resolve(false);
           return;
         }
@@ -54,7 +58,7 @@ export const WordTableWriteAPI = {
               `列: ${cellIndex}`,
               `目标行内容: ${formatWordTableRowSnapshot(rowCells)}`,
               '原因: 未找到可写入单元格',
-            ].join('\n'),
+            ].join('\n')
           );
           resolve(false);
           return;
@@ -82,7 +86,7 @@ export const WordTableWriteAPI = {
               `是否追加新段落: ${updated.debugInfo.appendNewParagraph ? 'yes' : 'no'}`,
               '目标单元格写入后段落:',
               formatWordTableCellParagraphSnapshot(updated.debugInfo.afterParagraphTexts),
-            ].join('\n'),
+            ].join('\n')
           );
         }
         resolve(updated.updated);
@@ -97,7 +101,7 @@ export const WordTableWriteAPI = {
             `列: ${cellIndex}`,
             `写入内容: ${replacementText || '(empty)'}`,
             error instanceof Error ? error.message : String(error),
-          ].join('\n'),
+          ].join('\n')
         );
         resolve(false);
       });

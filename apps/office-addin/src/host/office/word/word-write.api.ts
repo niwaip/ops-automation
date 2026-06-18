@@ -17,18 +17,16 @@ function buildWordInsertionSearchSnippets(text: string, fromEnd: boolean): strin
     ? [normalized.slice(-24), normalized.slice(-16), normalized.slice(-8)]
     : [normalized.slice(0, 24), normalized.slice(0, 16), normalized.slice(0, 8)];
 
-  return Array.from(new Set(
-    snippets
-      .map((snippet) => snippet.trim())
-      .filter((snippet) => snippet.length >= 2)
-  ));
+  return Array.from(
+    new Set(snippets.map((snippet) => snippet.trim()).filter((snippet) => snippet.length >= 2))
+  );
 }
 
 async function insertWordTextAtParagraphPosition(
   paragraph: Word.Paragraph,
   paragraphText: string,
   position: number,
-  replacementText: string,
+  replacementText: string
 ): Promise<boolean> {
   const safePosition = Math.max(0, Math.min(position, paragraphText.length));
   const beforeText = paragraphText.slice(0, safePosition);
@@ -47,7 +45,10 @@ async function insertWordTextAtParagraphPosition(
       continue;
     }
 
-    snippetSearch.items[snippetSearch.items.length - 1].insertText(replacementText, Word.InsertLocation.end);
+    snippetSearch.items[snippetSearch.items.length - 1].insertText(
+      replacementText,
+      Word.InsertLocation.end
+    );
     await paragraph.context.sync();
     return true;
   }
@@ -77,7 +78,7 @@ async function replaceWordValueNearLabel(
   context: Word.RequestContext,
   labelText: string,
   valueText: string,
-  replacementText: string,
+  replacementText: string
 ): Promise<boolean> {
   const paragraphs = context.document.body.paragraphs;
   paragraphs.load('items');
@@ -145,7 +146,7 @@ async function replaceWordValueNearLabel(
 async function insertWordValueAfterLabel(
   foundRange: Word.Range,
   labelText: string,
-  replacementText: string,
+  replacementText: string
 ): Promise<boolean> {
   const normalizedLabel = String(labelText || '').trim();
   const normalizedFoundText = String(foundRange.text || '').trim();
@@ -180,7 +181,7 @@ export const WordWriteAPI = {
     endPos: number,
     replacement: string,
     _textHint?: string,
-    originalParagraphText?: string,
+    originalParagraphText?: string
   ): Promise<boolean> {
     return new Promise((resolve) => {
       Word.run(async (context) => {
@@ -188,7 +189,9 @@ export const WordWriteAPI = {
         paragraphs.load('items');
         await context.sync();
 
-        console.log(`[DEBUG] replaceUnderline: 段落${paragraphIndex}, 位置${startPos}-${endPos}, 替换为 "${replacement}"`);
+        console.log(
+          `[DEBUG] replaceUnderline: 段落${paragraphIndex}, 位置${startPos}-${endPos}, 替换为 "${replacement}"`
+        );
 
         if (paragraphIndex >= paragraphs.items.length) {
           console.warn(`[DEBUG] 段落索引 ${paragraphIndex} 超出范围`);
@@ -226,7 +229,7 @@ export const WordWriteAPI = {
           if (blankText.length >= 2) {
             const searchResults = paragraph.search(blankText, {
               matchCase: false,
-              matchWholeWord: false
+              matchWholeWord: false,
             });
             searchResults.load('items');
             await context.sync();
@@ -247,50 +250,57 @@ export const WordWriteAPI = {
 
                 const extendedSearch = paragraph.search(extendedText, {
                   matchCase: true,
-                  matchWholeWord: false
+                  matchWholeWord: false,
                 });
                 extendedSearch.load('items');
                 await context.sync();
 
                 if (extendedSearch.items.length > 0) {
-                  const foundRange = pickWordSearchResultByPosition(
-                    extendedSearch.items,
-                    fullText,
-                    extendedText,
-                    extendedStart,
-                  ) || extendedSearch.items[0];
+                  const foundRange =
+                    pickWordSearchResultByPosition(
+                      extendedSearch.items,
+                      fullText,
+                      extendedText,
+                      extendedStart
+                    ) || extendedSearch.items[0];
                   const blankInExtended = foundRange.search(blankText, {
                     matchCase: false,
-                    matchWholeWord: false
+                    matchWholeWord: false,
                   });
                   blankInExtended.load('items');
                   await context.sync();
 
                   if (blankInExtended.items.length > 0) {
-                    const targetRange = pickWordSearchResultByPosition(
-                      blankInExtended.items,
-                      extendedText,
-                      blankText,
-                      startPos - extendedStart,
-                    ) || blankInExtended.items[0];
+                    const targetRange =
+                      pickWordSearchResultByPosition(
+                        blankInExtended.items,
+                        extendedText,
+                        blankText,
+                        startPos - extendedStart
+                      ) || blankInExtended.items[0];
                     targetRange.insertText(replacement, Word.InsertLocation.replace);
                     await context.sync();
-                    console.log(`[DEBUG] ✓ 已替换（扩展定位）: "${blankText.substring(0, 10)}..." → "${replacement}"`);
+                    console.log(
+                      `[DEBUG] ✓ 已替换（扩展定位）: "${blankText.substring(0, 10)}..." → "${replacement}"`
+                    );
                     resolve(true);
                     return;
                   }
                 }
               }
 
-              const targetRange = pickWordSearchResultByPosition(
-                searchResults.items,
-                fullText,
-                blankText,
-                startPos,
-              ) || searchResults.items[0];
+              const targetRange =
+                pickWordSearchResultByPosition(
+                  searchResults.items,
+                  fullText,
+                  blankText,
+                  startPos
+                ) || searchResults.items[0];
               targetRange.insertText(replacement, Word.InsertLocation.replace);
               await context.sync();
-              console.log(`[DEBUG] ✓ 已替换（直接）: "${blankText.substring(0, 10)}..." → "${replacement}"`);
+              console.log(
+                `[DEBUG] ✓ 已替换（直接）: "${blankText.substring(0, 10)}..." → "${replacement}"`
+              );
               resolve(true);
               return;
             }
@@ -309,7 +319,10 @@ export const WordWriteAPI = {
     });
   },
 
-  async insertMarker(marker: string, position?: { paragraphIndex: number; textRange: string }): Promise<void> {
+  async insertMarker(
+    marker: string,
+    position?: { paragraphIndex: number; textRange: string }
+  ): Promise<void> {
     return new Promise((resolve, reject) => {
       Word.run(async (context) => {
         if (position) {
@@ -334,10 +347,14 @@ export const WordWriteAPI = {
     });
   },
 
-  async replaceContentControlText(contentControlId: number, replacementText: string): Promise<boolean> {
+  async replaceContentControlText(
+    contentControlId: number,
+    replacementText: string
+  ): Promise<boolean> {
     return new Promise((resolve) => {
       Word.run(async (context) => {
-        const contentControl = context.document.contentControls.getByIdOrNullObject(contentControlId);
+        const contentControl =
+          context.document.contentControls.getByIdOrNullObject(contentControlId);
         contentControl.load('isNullObject');
         await context.sync();
 
@@ -392,7 +409,7 @@ export const WordWriteAPI = {
 
           const searchResults = context.document.body.search(searchText, {
             matchCase: false,
-            matchWholeWord: false
+            matchWholeWord: false,
           });
           searchResults.load('items');
           await context.sync();
@@ -409,11 +426,12 @@ export const WordWriteAPI = {
 
           for (const foundRange of candidateRanges) {
             const foundText = foundRange.text || searchText;
-            const blankText = extractLongestWordBlank(searchText) || extractLongestWordBlank(foundText);
+            const blankText =
+              extractLongestWordBlank(searchText) || extractLongestWordBlank(foundText);
             if (blankText && blankText.length >= 2) {
               const blankSearch = foundRange.search(blankText, {
                 matchCase: false,
-                matchWholeWord: false
+                matchWholeWord: false,
               });
               blankSearch.load('items');
               await context.sync();
@@ -428,10 +446,12 @@ export const WordWriteAPI = {
               }
             }
 
-            const labelValueTarget = extractWordLabelValueTarget(searchText) || extractWordLabelValueTarget(foundText);
+            const labelValueTarget =
+              extractWordLabelValueTarget(searchText) || extractWordLabelValueTarget(foundText);
             if (!labelValueTarget?.valueText) {
-              const multilineLabelValueTarget = extractWordMultilineLabelValueTarget(searchText)
-                || extractWordMultilineLabelValueTarget(foundText);
+              const multilineLabelValueTarget =
+                extractWordMultilineLabelValueTarget(searchText) ||
+                extractWordMultilineLabelValueTarget(foundText);
               if (multilineLabelValueTarget?.valueText) {
                 const replaced = await replaceWordValueNearLabel(
                   context,
@@ -440,14 +460,17 @@ export const WordWriteAPI = {
                   replacementText
                 );
                 if (replaced) {
-                  console.log(`精确替换跨行标签后内容: "${multilineLabelValueTarget.valueText}" → "${replacementText}"`);
+                  console.log(
+                    `精确替换跨行标签后内容: "${multilineLabelValueTarget.valueText}" → "${replacementText}"`
+                  );
                   resolve({ success: true, replacedText: multilineLabelValueTarget.valueText });
                   return;
                 }
               }
 
-              const standaloneLabelText = extractWordStandaloneLabelTarget(searchText)
-                || extractWordStandaloneLabelTarget(foundText);
+              const standaloneLabelText =
+                extractWordStandaloneLabelTarget(searchText) ||
+                extractWordStandaloneLabelTarget(foundText);
               if (!standaloneLabelText) {
                 continue;
               }
@@ -468,7 +491,7 @@ export const WordWriteAPI = {
 
             const valueSearch = foundRange.search(labelValueTarget.valueText, {
               matchCase: false,
-              matchWholeWord: false
+              matchWholeWord: false,
             });
             valueSearch.load('items');
             await context.sync();
@@ -477,7 +500,9 @@ export const WordWriteAPI = {
               valueSearch.items[0].insertText(replacementText, Word.InsertLocation.replace);
               await context.sync();
 
-              console.log(`精确替换标签后内容: "${labelValueTarget.valueText}" → "${replacementText}"`);
+              console.log(
+                `精确替换标签后内容: "${labelValueTarget.valueText}" → "${replacementText}"`
+              );
               resolve({ success: true, replacedText: labelValueTarget.valueText });
               return;
             }
