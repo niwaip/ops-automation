@@ -34,8 +34,8 @@ The following are forbidden inside workflow code but are appropriate to use in a
 
 ```typescript
 // DO NOT do these in workflows:
-import fs from 'fs';           // Node.js modules
-fetch('https://...');          // Network I/O
+import fs from 'fs'; // Node.js modules
+fetch('https://...'); // Network I/O
 ```
 
 Most non-determinism and side effects, such as the above, should be wrapped in Activities.

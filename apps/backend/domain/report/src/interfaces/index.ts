@@ -37,7 +37,7 @@ export interface ReportSection {
   name: string;
   type: SectionType;
   source: SectionSource;
-  content?: string;  // static content
+  content?: string; // static content
   step_filter?: StepFilter;
   ai_prompt?: string;
   validation?: SectionValidation;

@@ -186,7 +186,7 @@ export interface UploadedFile {
   mimeType: string;
   size: number;
   file?: File;
-  content?: string;  // base64编码的文件内容
+  content?: string; // base64编码的文件内容
 }
 
 /**
@@ -201,7 +201,7 @@ export interface ChatRequest {
   modelId?: string;
   files?: UploadedFile[];
   config?: {
-    mode?: 'chat' | 'task';  // 聊天模式：chat(普通) 或 task(ReAct引擎)
+    mode?: 'chat' | 'task'; // 聊天模式：chat(普通) 或 task(ReAct引擎)
     maxIterations?: number;
     thinking?: boolean;
     webSearch?: boolean;

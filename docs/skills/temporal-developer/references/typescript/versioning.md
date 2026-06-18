@@ -53,9 +53,9 @@ import { patched } from '@temporalio/workflow';
 // Original code sent fax notifications
 export async function shippingConfirmation(): Promise<void> {
   if (patched('changedNotificationType')) {
-    await sendEmail();  // New code
+    await sendEmail(); // New code
   } else {
-    await sendFax();    // Old code for replay
+    await sendFax(); // Old code for replay
   }
   await sleep('1 day');
 }
@@ -162,14 +162,14 @@ Worker Versioning allows multiple Worker versions to run simultaneously, routing
 import { Worker, NativeConnection } from '@temporalio/worker';
 
 const worker = await Worker.create({
-  workflowsPath: require.resolve('./workflows'),  // Use workflowBundle for production
+  workflowsPath: require.resolve('./workflows'), // Use workflowBundle for production
   taskQueue: 'my-queue',
   connection: await NativeConnection.connect({ address: 'temporal:7233' }),
   workerDeploymentOptions: {
     useWorkerVersioning: true,
     version: {
       deploymentName: 'order-service',
-      buildId: '1.0.0',  // Git hash, semver, build number, etc.
+      buildId: '1.0.0', // Git hash, semver, build number, etc.
     },
   },
 });
