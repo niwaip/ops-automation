@@ -1,17 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
-import {
-  IsDateString,
-  IsInt,
-  IsObject,
-  IsOptional,
-  IsString,
-  Min,
-} from 'class-validator';
+import { IsDateString, IsInt, IsObject, IsOptional, IsString, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 import type { ExecutionSemantic } from '@ops/contracts';
 import { ApprovalStatus, APPROVAL_STATUS_VALUES } from './contracts/approval-status';
 import { ExecutionStatus, EXECUTION_STATUS_VALUES } from './contracts/execution-status';
-import { ExecutionStepStatus, EXECUTION_STEP_STATUS_VALUES } from './contracts/execution-step-status';
+import {
+  ExecutionStepStatus,
+  EXECUTION_STEP_STATUS_VALUES,
+} from './contracts/execution-step-status';
 
 export type ExecutionParamSource =
   | 'user_input'
@@ -21,11 +17,7 @@ export type ExecutionParamSource =
   | 'external'
   | 'unresolved';
 
-export type ExecutionParamRequiredMode =
-  | 'always'
-  | 'conditional'
-  | 'optional'
-  | 'system_required';
+export type ExecutionParamRequiredMode = 'always' | 'conditional' | 'optional' | 'system_required';
 
 export interface ExecutionRequiredInput {
   name: string;
@@ -189,7 +181,10 @@ export class CreateExecutionDto {
   @IsString()
   skillId?: string;
 
-  @ApiProperty({ description: 'Capability ID, alias of skillId for unified runtime', required: false })
+  @ApiProperty({
+    description: 'Capability ID, alias of skillId for unified runtime',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   capabilityId?: string;
@@ -199,17 +194,28 @@ export class CreateExecutionDto {
   @IsString()
   skillVersion?: string;
 
-  @ApiProperty({ description: 'Capability version, alias of skillVersion for unified runtime', required: false })
+  @ApiProperty({
+    description: 'Capability version, alias of skillVersion for unified runtime',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   capabilityVersion?: string;
 
-  @ApiProperty({ description: 'Runtime type', example: 'browser', default: 'browser', required: false })
+  @ApiProperty({
+    description: 'Runtime type',
+    example: 'browser',
+    default: 'browser',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   runtimeType?: string;
 
-  @ApiProperty({ description: 'Execution input parameters', example: { url: 'https://example.com' } })
+  @ApiProperty({
+    description: 'Execution input parameters',
+    example: { url: 'https://example.com' },
+  })
   @IsObject()
   input: Record<string, unknown>;
 
@@ -740,7 +746,10 @@ export class SubmitInputDto {
   @IsObject()
   input: Record<string, unknown>;
 
-  @ApiProperty({ description: 'Token usage collected while resolving missing inputs', required: false })
+  @ApiProperty({
+    description: 'Token usage collected while resolving missing inputs',
+    required: false,
+  })
   @IsOptional()
   @IsObject()
   usage?: Record<string, unknown>;
@@ -752,7 +761,10 @@ export class SubmitInputDto {
 }
 
 export class CleanupExecutionsBeforeDateDto {
-  @ApiProperty({ description: 'Delete executions created before this date (YYYY-MM-DD)', example: '2026-05-13' })
+  @ApiProperty({
+    description: 'Delete executions created before this date (YYYY-MM-DD)',
+    example: '2026-05-13',
+  })
   @IsDateString()
   beforeDate: string;
 }

@@ -23,7 +23,7 @@ export class ExecutionEventService {
     executionId: string,
     eventType: ExecutionEventType,
     payload: any,
-    options: CreateExecutionEventOptions = {},
+    options: CreateExecutionEventOptions = {}
   ): Promise<ExecutionStreamEventPayload> {
     const timestamp = new Date().toISOString();
 

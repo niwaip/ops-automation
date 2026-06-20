@@ -13,12 +13,14 @@
 ## 2. Phase 2: Refinement & UX (In Progress)
 
 ### 2.1 UI/UX Enhancements
+
 - [x] Implement "Capability Studio": Dedicated editor for DSL and codegen side-by-side.
 - [x] Implement "Release Center": Consumer-facing view of available skills and their release history.
 - [x] Add real-time log streaming via SSE/WebSockets for build/validation steps.
 - [x] Visualize "Diff" between release snapshots.
 
 ### 2.2 Functional Deepening
+
 - [x] Multi-environment configuration management.
 - [x] Automatic smoke tests post-deployment.
 - [x] Support for rollback to specific release version.

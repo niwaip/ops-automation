@@ -5,6 +5,8 @@ import { ExecutionFlowModule } from '../execution-flow/execution-flow.module';
 import { TemporalWorkflowModule } from '../temporal-workflow/temporal-workflow.module';
 import { SkillModule } from '../skill/skill.module';
 import { CapabilityReleaseBrowserRecordingService } from './capability-release-browser-recording.service';
+import { BrowserRecordingActionPolicyService } from './browser-recording-action-policy.service';
+import { BrowserRecordingExecutionPlanValidatorService } from './browser-recording-execution-plan-validator.service';
 import { CapabilityReleaseAssistService } from './capability-release-assist.service';
 import { CapabilityReleaseBuildValidationService } from './capability-release-build-validation.service';
 import { CapabilityReleaseDeploymentSmokeService } from './capability-release-deployment-smoke.service';
@@ -34,6 +36,8 @@ import { CapabilityReleaseService } from './capability-release.service';
     CapabilityReleaseService,
     CapabilityReleaseTemporalSchemaService,
     CapabilityReleaseBrowserRecordingService,
+    BrowserRecordingActionPolicyService,
+    BrowserRecordingExecutionPlanValidatorService,
     CapabilityReleaseAssistService,
     CapabilityReleaseBuildValidationService,
     CapabilityReleaseDeploymentSmokeService,

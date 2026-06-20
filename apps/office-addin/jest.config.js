@@ -8,12 +8,15 @@ module.exports = {
     '.*/config/runtime$': '<rootDir>/test/mocks/runtime.ts',
   },
   transform: {
-    '^.+\\.tsx?$': ['ts-jest', {
-      tsconfig: '<rootDir>/../../tsconfig.json',
-      diagnostics: {
-        ignoreCodes: [151002],
+    '^.+\\.tsx?$': [
+      'ts-jest',
+      {
+        tsconfig: '<rootDir>/../../tsconfig.json',
+        diagnostics: {
+          ignoreCodes: [151002],
+        },
       },
-    }],
+    ],
   },
   testTimeout: 30000,
   verbose: true,

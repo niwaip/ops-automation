@@ -132,19 +132,13 @@ export async function cleanupAllTestData(): Promise<void> {
   }
 
   // Delete test templates
-  await pgPool.query(
-    "DELETE FROM templates WHERE name LIKE 'test-template-%'"
-  );
+  await pgPool.query("DELETE FROM templates WHERE name LIKE 'test-template-%'");
 
   // Delete test users
-  await pgPool.query(
-    "DELETE FROM users WHERE username LIKE 'test-user-%'"
-  );
+  await pgPool.query("DELETE FROM users WHERE username LIKE 'test-user-%'");
 
   // Delete test AI models
-  await pgPool.query(
-    "DELETE FROM ai_models WHERE name LIKE 'test-model-%'"
-  );
+  await pgPool.query("DELETE FROM ai_models WHERE name LIKE 'test-model-%'");
 
   // Clear all test Redis keys
   if (redisClient) {

@@ -3,12 +3,10 @@ const trimTrailingSlash = (value: string): string => value.replace(/\/+$/, '');
 const stripWrappingQuotes = (value: string): string => {
   let normalized = value.trim();
   while (
-    normalized.length >= 2
-    && (
-      (normalized.startsWith('"') && normalized.endsWith('"'))
-      || (normalized.startsWith('\'') && normalized.endsWith('\''))
-      || (normalized.startsWith('`') && normalized.endsWith('`'))
-    )
+    normalized.length >= 2 &&
+    ((normalized.startsWith('"') && normalized.endsWith('"')) ||
+      (normalized.startsWith("'") && normalized.endsWith("'")) ||
+      (normalized.startsWith('`') && normalized.endsWith('`')))
   ) {
     normalized = normalized.slice(1, -1).trim();
   }
@@ -27,9 +25,7 @@ const readConfiguredUrl = (...candidates: Array<string | undefined>): string | u
 };
 
 export const getPublicHost = (): string =>
-  process.env.HOST_IP?.trim()
-  || process.env.EXTERNAL_HOST?.trim()
-  || 'localhost';
+  process.env.HOST_IP?.trim() || process.env.EXTERNAL_HOST?.trim() || 'localhost';
 
 export const getCarboneServiceUrl = (): string => {
   const configured = readConfiguredUrl(process.env.CARBONE_SERVICE_URL);
@@ -82,7 +78,7 @@ export const getWorkflowValidationAgentUrl = (): string => {
     process.env.WORKFLOW_VALIDATION_AGENT_URL,
     process.env.ACTIVITY_VALIDATION_AGENT_URL,
     process.env.TEMPORAL_SANDBOX_AGENT_URL,
-    process.env.SANDBOX_AGENT_URL,
+    process.env.SANDBOX_AGENT_URL
   );
   if (configured) {
     return configured;

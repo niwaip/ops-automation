@@ -61,19 +61,19 @@ describe('TemporalWorkflowCodegenService', () => {
     const builtinRegistry = new BuiltinActivityRegistry();
     const workflowNormalizationService = new TemporalWorkflowNormalizationService(
       prisma as any,
-      builtinRegistry,
+      builtinRegistry
     );
     const aiDraftService = new TemporalWorkflowAiDraftService(prisma as any, builtinRegistry);
     const browserDraftService = new TemporalWorkflowBrowserDraftService();
     const codegenService = new TemporalWorkflowCodegenService();
     const sessionService = new TemporalWorkflowSessionService(
       prisma as any,
-      workflowNormalizationService,
+      workflowNormalizationService
     );
     const validationService = new TemporalWorkflowValidationService();
     const activityResolutionService = new TemporalWorkflowActivityResolutionService(
       prisma as any,
-      builtinRegistry,
+      builtinRegistry
     );
     const workflowConfigService = new TemporalWorkflowConfigService();
     const workflowTemplateService = new TemporalWorkflowTemplateService();
@@ -82,7 +82,7 @@ describe('TemporalWorkflowCodegenService', () => {
       aiDraftService,
       activityResolutionService,
       workflowConfigService,
-      workflowNormalizationService,
+      workflowNormalizationService
     );
     const service = new TemporalWorkflowService(
       prisma as any,
@@ -94,7 +94,7 @@ describe('TemporalWorkflowCodegenService', () => {
       workflowConfigService,
       workflowNormalizationService,
       workflowTemplateService,
-      workflowSupportService,
+      workflowSupportService
     );
 
     return {
@@ -163,8 +163,18 @@ describe('TemporalWorkflowCodegenService', () => {
             handler: 'browser',
             config: {
               steps: [
-                { name: '1. 访问页面', type: 'browser', timeout: '30s', config: { action: 'goto', url: 'https://www.baidu.com' } },
-                { name: '2. 截图', type: 'browser', timeout: '30s', config: { action: 'screenshot' } },
+                {
+                  name: '1. 访问页面',
+                  type: 'browser',
+                  timeout: '30s',
+                  config: { action: 'goto', url: 'https://www.baidu.com' },
+                },
+                {
+                  name: '2. 截图',
+                  type: 'browser',
+                  timeout: '30s',
+                  config: { action: 'screenshot' },
+                },
               ],
               sessionLifecycle: {
                 initializeSession: true,
@@ -179,8 +189,18 @@ describe('TemporalWorkflowCodegenService', () => {
             handler: 'browser',
             config: {
               steps: [
-                { name: '2. 输入关键字', type: 'browser', timeout: '30s', config: { action: 'fill', selector: '#kw', value: '{keyword}' } },
-                { name: '3. 键盘按键', type: 'browser', timeout: '30s', config: { action: 'press', selector: '#kw', value: 'Enter' } },
+                {
+                  name: '2. 输入关键字',
+                  type: 'browser',
+                  timeout: '30s',
+                  config: { action: 'fill', selector: '#kw', value: '{keyword}' },
+                },
+                {
+                  name: '3. 键盘按键',
+                  type: 'browser',
+                  timeout: '30s',
+                  config: { action: 'press', selector: '#kw', value: 'Enter' },
+                },
               ],
               sessionLifecycle: {
                 initializeSession: false,
@@ -189,7 +209,7 @@ describe('TemporalWorkflowCodegenService', () => {
             },
           },
         ],
-      } as any,
+      } as any
     );
 
     expect(result.code).toContain('/browser/init');
@@ -260,7 +280,7 @@ describe('TemporalWorkflowCodegenService', () => {
       },
       {
         activities: [],
-      },
+      }
     );
 
     expect(result.success).toBe(true);
@@ -314,9 +334,7 @@ describe('TemporalWorkflowCodegenService', () => {
               steps: [
                 {
                   type: 'carbone',
-                  inputParams: [
-                    { key: 'customerName', value: '', required: true },
-                  ],
+                  inputParams: [{ key: 'customerName', value: '', required: true }],
                   config: {
                     templateId: 'tpl-contract',
                     format: 'docx',
@@ -327,14 +345,18 @@ describe('TemporalWorkflowCodegenService', () => {
             },
           },
         ],
-      } as any,
+      } as any
     );
 
     expect(result.success).toBe(true);
     expect(result.code).toContain('"requestTimeoutSeconds": 240,');
-    expect(result.code).toContain('request_timeout_seconds = input_data.get("requestTimeoutSeconds")');
+    expect(result.code).toContain(
+      'request_timeout_seconds = input_data.get("requestTimeoutSeconds")'
+    );
     expect(result.code).toContain('default_request_timeout_seconds = 120');
-    expect(result.code).toContain('resolved_request_timeout_seconds = float(request_timeout_seconds)');
+    expect(result.code).toContain(
+      'resolved_request_timeout_seconds = float(request_timeout_seconds)'
+    );
     expect(result.code).toContain('timeout=resolved_request_timeout_seconds');
   });
 
@@ -371,7 +393,7 @@ describe('TemporalWorkflowCodegenService', () => {
       },
       {
         activities: [],
-      },
+      }
     );
 
     expect(result.success).toBe(true);
@@ -379,7 +401,9 @@ describe('TemporalWorkflowCodegenService', () => {
     expect(result.code).toContain('"responseFieldMappings": {');
     expect(result.code).toContain('"weatherText": "current_condition.0.lang_zh.0.value"');
     expect(result.code).toContain('if response_mode == "bodyMap":');
-    expect(result.code).toContain('return {str(key): cls._extract_path(body, str(path)) for key, path in mappings.items()}');
+    expect(result.code).toContain(
+      'return {str(key): cls._extract_path(body, str(path)) for key, path in mappings.items()}'
+    );
   });
 
   it('generates deterministic code for builtin structuredTransform with html extraction config', async () => {
@@ -422,7 +446,7 @@ describe('TemporalWorkflowCodegenService', () => {
       },
       {
         activities: [],
-      },
+      }
     );
 
     expect(result.success).toBe(true);
@@ -430,7 +454,9 @@ describe('TemporalWorkflowCodegenService', () => {
     expect(result.code).toContain('"contentType": "html"');
     expect(result.code).toContain('"instructionTemplate": "提取标题和摘要，返回 JSON"');
     expect(result.code).toContain('"outputMode": "json"');
-    expect(result.code).toContain('normalized_result = result.get("result") if isinstance(result, dict) and "result" in result else result');
+    expect(result.code).toContain(
+      'normalized_result = result.get("result") if isinstance(result, dict) and "result" in result else result'
+    );
     expect(result.code).toContain('return self._build_workflow_result(normalized_result)');
     expect(result.code).toContain('"resultType": "generic"');
     expect(result.code).toContain('"summaryFormat": "plain_text"');
@@ -498,7 +524,7 @@ describe('TemporalWorkflowCodegenService', () => {
       },
       {
         activities: [],
-      },
+      }
     );
 
     expect(result.success).toBe(true);
@@ -507,7 +533,9 @@ describe('TemporalWorkflowCodegenService', () => {
     expect(result.code).toContain('STRUCTURED_TRANSFORM_CONFIG');
     expect(result.code).toContain('"contentTemplate": "{content}"');
     expect(result.code).toContain('"httpResult": http_result');
-    expect(result.code).toContain('http_result = self._normalize_http_result(http_result_raw, normalized_params)');
+    expect(result.code).toContain(
+      'http_result = self._normalize_http_result(http_result_raw, normalized_params)'
+    );
     expect(result.code).toContain('transform_result = await workflow.execute_activity(');
     expect(result.code).toContain('固定规则结构化转换配置摘要');
     expect(result.code).toContain('"fieldMappings": {');
@@ -566,7 +594,7 @@ describe('TemporalWorkflowCodegenService', () => {
       },
       undefined,
       undefined,
-      (log: string) => logs.push(log),
+      (log: string) => logs.push(log)
     );
 
     expect(result.success).toBe(true);
@@ -609,13 +637,19 @@ describe('TemporalWorkflowCodegenService', () => {
       {
         activities: [],
       },
-      undefined,
+      undefined
     );
 
     expect(prompt).toContain('WorkflowResultEnvelope');
-    expect(prompt).toContain('最终返回值至少包含 `execution`、`trigger`、`result`、`artifacts`、`presentation` 五个顶层字段');
-    expect(prompt).toContain('presentation.preferAiSummary`、`presentation.preferStructuredView`、`presentation.summaryFormat`、`presentation.detailFormat`');
-    expect(prompt).toContain('请在 Workflow 类中实现 `_extract_summary()`、`_extract_detail_text()`、`_collect_artifacts()`、`_build_workflow_result()`');
+    expect(prompt).toContain(
+      '最终返回值至少包含 `execution`、`trigger`、`result`、`artifacts`、`presentation` 五个顶层字段'
+    );
+    expect(prompt).toContain(
+      'presentation.preferAiSummary`、`presentation.preferStructuredView`、`presentation.summaryFormat`、`presentation.detailFormat`'
+    );
+    expect(prompt).toContain(
+      '请在 Workflow 类中实现 `_extract_summary()`、`_extract_detail_text()`、`_collect_artifacts()`、`_build_workflow_result()`'
+    );
   });
 
   it('detects missing WorkflowResultEnvelope fields in generated code', () => {
@@ -702,7 +736,7 @@ class AiWorkflow:
       true,
       {
         buildDeterministicWorkflowCode: () => null,
-      },
+      }
     );
 
     expect(result.success).toBe(true);
@@ -749,7 +783,7 @@ class AiWorkflow:
       },
       {
         activities: [],
-      },
+      }
     );
 
     expect(result.success).toBe(true);
@@ -787,7 +821,7 @@ class AiWorkflow:
       },
       {
         activities: [],
-      },
+      }
     );
 
     expect(result.success).toBe(true);
@@ -795,5 +829,4 @@ class AiWorkflow:
     expect(result.code).toContain('BUILTIN_CONFIG');
     expect(result.code).toContain('workflow.sleep(timedelta(seconds=duration_seconds))');
   });
-
 });

@@ -54,7 +54,7 @@ export function hasBlankPlaceholder(text: string): boolean {
 
 export function getElementHostData(element: WorkflowDocumentElement): Record<string, unknown> {
   return element.hostData && typeof element.hostData === 'object'
-    ? element.hostData as Record<string, unknown>
+    ? (element.hostData as Record<string, unknown>)
     : {};
 }
 
@@ -83,12 +83,14 @@ export function isLikelyDocumentTitle(text: string, element?: WorkflowDocumentEl
   }
 
   const format = getElementFormat(element);
-  const looksLikeContractTitle = /合同|协议|契約|契约/u.test(normalizedText)
-    && !/[:：，。,.;；]/u.test(normalizedText)
-    && normalizedText.length <= 40;
-  const looksLikeStyledTitle = (format.isTitle || format.alignment === 'center')
-    && !/[:：]/u.test(normalizedText)
-    && normalizedText.length <= 40;
+  const looksLikeContractTitle =
+    /合同|协议|契約|契约/u.test(normalizedText) &&
+    !/[:：，。,.;；]/u.test(normalizedText) &&
+    normalizedText.length <= 40;
+  const looksLikeStyledTitle =
+    (format.isTitle || format.alignment === 'center') &&
+    !/[:：]/u.test(normalizedText) &&
+    normalizedText.length <= 40;
 
   return looksLikeContractTitle || looksLikeStyledTitle;
 }
@@ -144,16 +146,12 @@ export function isLikelyTableLabel(text: string): boolean {
 }
 
 export function isLikelyTableHeaderRow(row: string[]): boolean {
-  const cells = row
-    .map((cell) => safeText(cell))
-    .filter(Boolean);
+  const cells = row.map((cell) => safeText(cell)).filter(Boolean);
   if (cells.length < 2) {
     return false;
   }
-  return cells.every((cell) =>
-    isLikelyTableLabel(cell)
-    && !/[:：]/u.test(cell)
-    && !hasBlankPlaceholder(cell)
+  return cells.every(
+    (cell) => isLikelyTableLabel(cell) && !/[:：]/u.test(cell) && !hasBlankPlaceholder(cell)
   );
 }
 
@@ -163,16 +161,18 @@ export function isBlankTableTemplateCell(text: string | undefined): boolean {
 }
 
 export function findNearestLeftTableLabel(row: string[], cellIndex: number): string {
-  return row
-    .slice(0, cellIndex)
-    .map((cell) => safeText(cell))
-    .reverse()
-    .find((cell) => isLikelyTableLabel(cell)) || '';
+  return (
+    row
+      .slice(0, cellIndex)
+      .map((cell) => safeText(cell))
+      .reverse()
+      .find((cell) => isLikelyTableLabel(cell)) || ''
+  );
 }
 
 export function findNearestRightTableLabel(
   row: string[],
-  cellIndex: number,
+  cellIndex: number
 ): { text: string; cellIndex: number } | undefined {
   for (let index = cellIndex + 1; index < row.length; index += 1) {
     const text = safeText(row[index]);
@@ -201,11 +201,13 @@ export function extractCompareLabels(text: string): string[] {
     return [];
   }
 
-  return Array.from(new Set(
-    Array.from(normalizedText.matchAll(/([^，,。；;\n\t]{1,24}[:：])/gu))
-      .map((match) => safeText(match[1]))
-      .filter((label) => Boolean(label) && !hasBlankPlaceholder(label))
-  )).slice(0, 6);
+  return Array.from(
+    new Set(
+      Array.from(normalizedText.matchAll(/([^，,。；;\n\t]{1,24}[:：])/gu))
+        .map((match) => safeText(match[1]))
+        .filter((label) => Boolean(label) && !hasBlankPlaceholder(label))
+    )
+  ).slice(0, 6);
 }
 
 export function extractWordTableCellText(cellXml: string): string {
@@ -249,7 +251,7 @@ export function isStandardLoopTable(templateTable: string[][]): boolean {
 }
 
 export function classifyTemplateTableStructure(
-  templateTable: string[][],
+  templateTable: string[][]
 ): { kind: 'standard_loop'; templateRowIndex: number; headerRow: string[] } | { kind: 'generic' } {
   if (isStandardLoopTable(templateTable)) {
     return {
@@ -278,7 +280,7 @@ export function extractTableCellCompareAnchors(text: string): string[] {
 export function extractTableCellSampleValueByAnchor(
   sampleCellText: string,
   anchors: string[],
-  anchorIndex: number,
+  anchorIndex: number
 ): string {
   const normalizedSampleText = safeText(sampleCellText);
   if (!normalizedSampleText) {
@@ -288,10 +290,18 @@ export function extractTableCellSampleValueByAnchor(
   const sampleLines = splitTableCellLines(normalizedSampleText);
   if (sampleLines.length === anchors.length && sampleLines.length > 1) {
     const pairedLine = sampleLines[anchorIndex] || '';
-    for (const anchorPattern of Array.from(new Set([
-      escapeRegExp(safeText(anchors[anchorIndex])),
-      escapeRegExp(safeText(anchors[anchorIndex]).replace(/[：:]$/u, '').trim()),
-    ].filter(Boolean)))) {
+    for (const anchorPattern of Array.from(
+      new Set(
+        [
+          escapeRegExp(safeText(anchors[anchorIndex])),
+          escapeRegExp(
+            safeText(anchors[anchorIndex])
+              .replace(/[：:]$/u, '')
+              .trim()
+          ),
+        ].filter(Boolean)
+      )
+    )) {
       const matched = pairedLine.match(new RegExp(`^${anchorPattern}[：:]?\\s*(.*)$`, 'u'));
       const value = safeText(matched?.[1]);
       if (value) {
@@ -311,13 +321,12 @@ export function extractTableCellSampleValueByAnchor(
     .map((item) => safeText(item))
     .filter(Boolean)
     .map((item) => escapeRegExp(item));
-  const suffixPattern = nextAnchors.length > 0
-    ? `(?=${nextAnchors.join('|')})`
-    : '$';
-  const anchorPatterns = Array.from(new Set([
-    escapeRegExp(anchor),
-    escapeRegExp(anchor.replace(/[：:]$/u, '').trim()),
-  ].filter(Boolean)));
+  const suffixPattern = nextAnchors.length > 0 ? `(?=${nextAnchors.join('|')})` : '$';
+  const anchorPatterns = Array.from(
+    new Set(
+      [escapeRegExp(anchor), escapeRegExp(anchor.replace(/[：:]$/u, '').trim())].filter(Boolean)
+    )
+  );
 
   for (const anchorPattern of anchorPatterns) {
     const matcher = new RegExp(`${anchorPattern}[：:]?\\s*(.{1,160}?)\\s*${suffixPattern}`, 'u');
@@ -331,7 +340,9 @@ export function extractTableCellSampleValueByAnchor(
   return sampleLines[anchorIndex] || sampleLines[0] || normalizedSampleText;
 }
 
-export function extractPlaceholderMatcher(text: string): { prefix: string; suffix: string } | undefined {
+export function extractPlaceholderMatcher(
+  text: string
+): { prefix: string; suffix: string } | undefined {
   const normalized = safeText(text);
   if (!normalized) {
     return undefined;
@@ -356,7 +367,7 @@ export function extractPlaceholderSampleValue(templateText: string, sampleText: 
   if (matcher.prefix && matcher.suffix) {
     const pattern = new RegExp(
       `${escapeRegExp(matcher.prefix)}\\s*(.{1,80}?)\\s*${escapeRegExp(matcher.suffix)}`,
-      'u',
+      'u'
     );
     const matched = normalizedSampleText.match(pattern);
     const value = safeText(matched?.[1]);
@@ -401,9 +412,7 @@ export function buildSampleTableMatrices(sampleText: string): string[][][] {
       }
       continue;
     }
-    const row = line
-      .split('\t')
-      .map((cell) => safeText(cell));
+    const row = line.split('\t').map((cell) => safeText(cell));
     if (row.some(Boolean)) {
       currentTable.push(row);
     }
@@ -442,7 +451,9 @@ export function extractTableMatricesFromWordXml(xml: string): string[][][] {
   return tables;
 }
 
-export async function extractSampleTableMatrices(contentBase64: string | undefined): Promise<string[][][]> {
+export async function extractSampleTableMatrices(
+  contentBase64: string | undefined
+): Promise<string[][][]> {
   if (!contentBase64) {
     return [];
   }

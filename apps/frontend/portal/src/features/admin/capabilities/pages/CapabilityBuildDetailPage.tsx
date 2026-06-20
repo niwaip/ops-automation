@@ -13,17 +13,10 @@ import {
   Typography,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import {
-  LeftOutlined,
-  ReloadOutlined,
-  RocketOutlined,
-} from '@ant-design/icons';
+import { LeftOutlined, ReloadOutlined, RocketOutlined } from '@ant-design/icons';
 import { useQuery } from 'react-query';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import {
-  CapabilityValidation,
-  capabilityReleaseApi,
-} from '@/api/capabilities';
+import { CapabilityValidation, capabilityReleaseApi } from '@/api/capabilities';
 
 const { Title, Text } = Typography;
 
@@ -60,8 +53,7 @@ const statusColor = (status?: string) => {
 
 const sortByCreatedAtDesc = <T extends { createdAt: string }>(items: T[]) =>
   [...items].sort(
-    (left, right) =>
-      new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
+    (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
   );
 
 const CapabilityBuildDetailPage: React.FC = () => {
@@ -97,20 +89,18 @@ const CapabilityBuildDetailPage: React.FC = () => {
   const detailQuery = useQuery(
     ['capability-build-detail', resolvedReleaseId],
     () => capabilityReleaseApi.getById(resolvedReleaseId as string),
-    { enabled: Boolean(resolvedReleaseId) },
+    { enabled: Boolean(resolvedReleaseId) }
   );
 
   const detail = detailQuery.data?.release;
   const build = useMemo(
     () => detail?.builds.find((item) => item.id === buildId),
-    [buildId, detail?.builds],
+    [buildId, detail?.builds]
   );
   const relatedValidations = useMemo(
     () =>
-      sortByCreatedAtDesc(
-        (detail?.validations || []).filter((item) => item.buildId === build?.id),
-      ),
-    [build?.id, detail?.validations],
+      sortByCreatedAtDesc((detail?.validations || []).filter((item) => item.buildId === build?.id)),
+    [build?.id, detail?.validations]
   );
   const selectedValidation =
     relatedValidations.find((item) => item.id === validationIdFromQuery) ||
@@ -153,9 +143,7 @@ const CapabilityBuildDetailPage: React.FC = () => {
       key: 'success',
       width: 120,
       render: (_, record) => (
-        <Tag color={record.success ? 'green' : 'red'}>
-          {record.success ? '通过' : '失败'}
-        </Tag>
+        <Tag color={record.success ? 'green' : 'red'}>{record.success ? '通过' : '失败'}</Tag>
       ),
     },
     {
@@ -214,7 +202,9 @@ const CapabilityBuildDetailPage: React.FC = () => {
             icon={<LeftOutlined />}
             onClick={() =>
               resolvedReleaseId
-                ? navigate(`/admin/capabilities?releaseId=${resolvedReleaseId}&mode=view&tab=studio`)
+                ? navigate(
+                    `/admin/capabilities?releaseId=${resolvedReleaseId}&mode=view&tab=studio`
+                  )
                 : navigate('/admin/capabilities')
             }
           >
@@ -245,7 +235,7 @@ const CapabilityBuildDetailPage: React.FC = () => {
             onClick={() =>
               detail?.release.publishedSkillId
                 ? navigate(
-                    `/published-skills/${detail.release.publishedSkillId}?releaseId=${detail.release.id}`,
+                    `/published-skills/${detail.release.publishedSkillId}?releaseId=${detail.release.id}`
                   )
                 : undefined
             }
@@ -304,12 +294,8 @@ const CapabilityBuildDetailPage: React.FC = () => {
               <Descriptions.Item label="构建状态">
                 <Tag color={statusColor(build.status)}>{build.status}</Tag>
               </Descriptions.Item>
-              <Descriptions.Item label="构建类型">
-                {build.buildType}
-              </Descriptions.Item>
-              <Descriptions.Item label="模型">
-                {build.modelId || '未记录'}
-              </Descriptions.Item>
+              <Descriptions.Item label="构建类型">{build.buildType}</Descriptions.Item>
+              <Descriptions.Item label="模型">{build.modelId || '未记录'}</Descriptions.Item>
               <Descriptions.Item label="关联快照">
                 {currentSnapshot ? `v${currentSnapshot.snapshotVersion}` : build.sourceSnapshotId}
               </Descriptions.Item>
@@ -372,9 +358,7 @@ const CapabilityBuildDetailPage: React.FC = () => {
             </Col>
             <Col span={12}>
               <Card size="small" title="Generated Code">
-                <pre style={codeBlockStyle}>
-                  {build.generatedCode || '当前没有生成代码产物'}
-                </pre>
+                <pre style={codeBlockStyle}>{build.generatedCode || '当前没有生成代码产物'}</pre>
               </Card>
             </Col>
           </Row>
@@ -413,9 +397,7 @@ const CapabilityBuildDetailPage: React.FC = () => {
           <Card
             size="small"
             title={
-              selectedValidation
-                ? `验证详情 · ${selectedValidation.validationType}`
-                : '验证详情'
+              selectedValidation ? `验证详情 · ${selectedValidation.validationType}` : '验证详情'
             }
             extra={
               selectedValidation ? (
@@ -439,9 +421,7 @@ const CapabilityBuildDetailPage: React.FC = () => {
                   <Descriptions.Item label="类型">
                     {selectedValidation.validationType}
                   </Descriptions.Item>
-                  <Descriptions.Item label="分数">
-                    {selectedValidation.score}
-                  </Descriptions.Item>
+                  <Descriptions.Item label="分数">{selectedValidation.score}</Descriptions.Item>
                   <Descriptions.Item label="创建时间">
                     {new Date(selectedValidation.createdAt).toLocaleString()}
                   </Descriptions.Item>

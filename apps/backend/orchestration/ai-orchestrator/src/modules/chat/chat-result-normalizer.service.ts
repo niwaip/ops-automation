@@ -86,7 +86,7 @@ export class ChatResultNormalizerService {
     context?: {
       executionId?: string;
       status?: WorkflowResultExecution['status'];
-    },
+    }
   ): NormalizedChatExecutionResult {
     const envelope = this.buildEnvelope(rawResult, context);
     const artifacts = this.normalizeArtifacts([
@@ -97,7 +97,7 @@ export class ChatResultNormalizerService {
     const temporalLink = this.extractTemporalLink(rawResult);
     const title = this.firstNonEmptyString(
       envelope.result?.title,
-      this.readStringField(rawResult, ['title', 'name']),
+      this.readStringField(rawResult, ['title', 'name'])
     );
     const summary = this.firstNonEmptyString(
       envelope.presentation?.chatSummary,
@@ -109,27 +109,24 @@ export class ChatResultNormalizerService {
         'summary',
         'message',
         'result',
-      ]),
+      ])
     );
     const body = this.firstNonEmptyString(
       envelope.presentation?.chatSummary,
       envelope.result?.summary,
       this.readStringField(rawResult, ['result', 'text', 'content']),
-      typeof rawResult === 'string' ? rawResult : undefined,
+      typeof rawResult === 'string' ? rawResult : undefined
     );
     const summaryFormat = envelope.presentation?.summaryFormat || 'plain_text';
-    const detailText = this.firstNonEmptyString(
-      envelope.presentation?.detailText,
-      body,
-    );
+    const detailText = this.firstNonEmptyString(envelope.presentation?.detailText, body);
     const detailFormat = envelope.presentation?.detailFormat || summaryFormat || 'plain_text';
     const structuredData = this.pickStructuredData(envelope, rawResult);
     const hasBusinessResult = Boolean(
-      summary
-      || body
-      || title
-      || artifacts.length > 0
-      || (structuredData !== undefined && structuredData !== null),
+      summary ||
+      body ||
+      title ||
+      artifacts.length > 0 ||
+      (structuredData !== undefined && structuredData !== null)
     );
 
     return {
@@ -200,14 +197,14 @@ export class ChatResultNormalizerService {
     const fileName = this.firstNonEmptyString(
       this.asString(record.fileName),
       this.asString(record.filename),
-      this.asString(record.name),
+      this.asString(record.name)
     );
     const format = this.asString(record.format)?.trim().toUpperCase();
     const isDocumentResult = Boolean(
-      fileName
-      || format
-      || result.downloadUrl
-      || ['rendered', 'success', 'succeeded', 'completed'].includes(status || ''),
+      fileName ||
+      format ||
+      result.downloadUrl ||
+      ['rendered', 'success', 'succeeded', 'completed'].includes(status || '')
     );
 
     if (!isDocumentResult) {
@@ -218,9 +215,7 @@ export class ChatResultNormalizerService {
       '文档已生成。',
       ...(fileName ? [`- 文件名：${fileName}`] : []),
       ...(format ? [`- 格式：${format}`] : []),
-      result.downloadUrl
-        ? '- 可直接下载查看。'
-        : '- 可在执行详情中查看结果。',
+      result.downloadUrl ? '- 可直接下载查看。' : '- 可在执行详情中查看结果。',
     ].join('\n');
   }
 
@@ -229,7 +224,7 @@ export class ChatResultNormalizerService {
     context?: {
       executionId?: string;
       status?: WorkflowResultExecution['status'];
-    },
+    }
   ): WorkflowResultEnvelope {
     if (this.isEnvelope(rawResult)) {
       return rawResult;
@@ -245,7 +240,7 @@ export class ChatResultNormalizerService {
       result: {
         resultType: this.firstNonEmptyString(
           this.readStringField(rawResult, ['resultType', 'type']),
-          businessData ? 'generic' : undefined,
+          businessData ? 'generic' : undefined
         ),
         title: this.readStringField(rawResult, ['title', 'name']),
         summary: this.readStringField(rawResult, [
@@ -260,31 +255,38 @@ export class ChatResultNormalizerService {
         ]),
         businessData,
         metrics: this.readRecordField(rawResult, ['metrics']),
-        nextActions: this.normalizeNextActions(
-          legacyResultRecord?.nextActions,
-        ),
+        nextActions: this.normalizeNextActions(legacyResultRecord?.nextActions),
       },
       artifacts: this.collectLegacyArtifacts(rawResult),
       presentation: {
         preferAiSummary: Boolean(
-          businessData
-          && !this.readStringField(rawResult, [
+          businessData &&
+          !this.readStringField(rawResult, [
             'chatSummary',
             'finalAnswer',
             'formatted_output',
             'summary',
             'message',
             'result',
-          ]),
+          ])
         ),
         preferStructuredView: false,
         chatSummary: this.readStringField(rawResult, ['chatSummary']),
-        notificationSummary: this.readStringField(rawResult, ['notificationSummary', 'chatSummary']),
+        notificationSummary: this.readStringField(rawResult, [
+          'notificationSummary',
+          'chatSummary',
+        ]),
         summaryFormat:
           this.readStringField(rawResult, ['summaryFormat']) === 'markdown'
             ? 'markdown'
             : 'plain_text',
-        detailText: this.readStringField(rawResult, ['detailText', 'formatted_output', 'result', 'text', 'content']),
+        detailText: this.readStringField(rawResult, [
+          'detailText',
+          'formatted_output',
+          'result',
+          'text',
+          'content',
+        ]),
         detailFormat:
           this.readStringField(rawResult, ['detailFormat']) === 'markdown'
             ? 'markdown'
@@ -299,18 +301,15 @@ export class ChatResultNormalizerService {
       return false;
     }
     return Boolean(
-      this.asRecord(record.execution)
-      || this.asRecord(record.trigger)
-      || this.asRecord(record.presentation)
-      || Array.isArray(record.artifacts)
-      || this.asRecord(record.result),
+      this.asRecord(record.execution) ||
+      this.asRecord(record.trigger) ||
+      this.asRecord(record.presentation) ||
+      Array.isArray(record.artifacts) ||
+      this.asRecord(record.result)
     );
   }
 
-  private pickStructuredData(
-    envelope: WorkflowResultEnvelope,
-    rawResult: unknown,
-  ): unknown {
+  private pickStructuredData(envelope: WorkflowResultEnvelope, rawResult: unknown): unknown {
     if (envelope.result?.businessData !== undefined) {
       return envelope.result.businessData;
     }
@@ -348,7 +347,7 @@ export class ChatResultNormalizerService {
             'title',
             'name',
           ].includes(key);
-        }),
+        })
       );
 
       return Object.keys(remainingRecord).length > 0 ? remainingRecord : undefined;
@@ -389,7 +388,7 @@ export class ChatResultNormalizerService {
           'title',
           'name',
         ].includes(key);
-      }),
+      })
     );
 
     return Object.keys(filteredRecord).length > 0 ? filteredRecord : undefined;
@@ -442,16 +441,16 @@ export class ChatResultNormalizerService {
       const record = current as Record<string, unknown>;
       const downloadUrl = this.firstNonEmptyString(
         this.asString(record.downloadUrl),
-        this.asString(record.download_url),
+        this.asString(record.download_url)
       );
       const url = this.firstNonEmptyString(
         this.asString(record.url),
-        this.asString(record.fileUrl),
+        this.asString(record.fileUrl)
       );
       const name = this.firstNonEmptyString(
         this.asString(record.name),
         this.asString(record.fileName),
-        this.asString(record.label),
+        this.asString(record.label)
       );
       if (downloadUrl || url) {
         artifacts.push({
@@ -485,24 +484,19 @@ export class ChatResultNormalizerService {
         return;
       }
       const artifact: WorkflowResultArtifact = {
-        type: this.asString(record.type) || (this.firstNonEmptyString(
-          this.asString(record.downloadUrl),
-          this.asString(record.url),
-        ) ? 'file' : 'artifact'),
-        name: this.firstNonEmptyString(
-          this.asString(record.name),
-          this.asString(record.label),
-        ),
-        label: this.firstNonEmptyString(
-          this.asString(record.label),
-          this.asString(record.name),
-        ),
+        type:
+          this.asString(record.type) ||
+          (this.firstNonEmptyString(this.asString(record.downloadUrl), this.asString(record.url))
+            ? 'file'
+            : 'artifact'),
+        name: this.firstNonEmptyString(this.asString(record.name), this.asString(record.label)),
+        label: this.firstNonEmptyString(this.asString(record.label), this.asString(record.name)),
         downloadUrl: this.asString(record.downloadUrl),
         url: this.asString(record.url),
         path: this.asString(record.path),
         mimeType: this.firstNonEmptyString(
           this.asString(record.mimeType),
-          this.asString(record.mime_type),
+          this.asString(record.mime_type)
         ),
       };
       const dedupeKey = `${artifact.type}|${artifact.downloadUrl || artifact.url || artifact.path || ''}|${artifact.name || ''}`;
@@ -550,7 +544,7 @@ export class ChatResultNormalizerService {
       const record = current as Record<string, unknown>;
       const directUrl = this.firstNonEmptyString(
         this.asString(record.temporalLink),
-        this.asString(record.temporal_link),
+        this.asString(record.temporal_link)
       );
       if (directUrl) {
         return directUrl;
@@ -631,6 +625,8 @@ export class ChatResultNormalizerService {
   }
 
   private firstNonEmptyString(...values: Array<string | undefined>): string | undefined {
-    return values.find((item): item is string => typeof item === 'string' && item.trim().length > 0);
+    return values.find(
+      (item): item is string => typeof item === 'string' && item.trim().length > 0
+    );
   }
 }

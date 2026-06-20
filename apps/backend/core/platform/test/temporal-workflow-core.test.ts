@@ -61,19 +61,19 @@ describe('TemporalWorkflowService', () => {
     const builtinRegistry = new BuiltinActivityRegistry();
     const workflowNormalizationService = new TemporalWorkflowNormalizationService(
       prisma as any,
-      builtinRegistry,
+      builtinRegistry
     );
     const aiDraftService = new TemporalWorkflowAiDraftService(prisma as any, builtinRegistry);
     const browserDraftService = new TemporalWorkflowBrowserDraftService();
     const codegenService = new TemporalWorkflowCodegenService();
     const sessionService = new TemporalWorkflowSessionService(
       prisma as any,
-      workflowNormalizationService,
+      workflowNormalizationService
     );
     const validationService = new TemporalWorkflowValidationService();
     const activityResolutionService = new TemporalWorkflowActivityResolutionService(
       prisma as any,
-      builtinRegistry,
+      builtinRegistry
     );
     const workflowConfigService = new TemporalWorkflowConfigService();
     const workflowTemplateService = new TemporalWorkflowTemplateService();
@@ -82,7 +82,7 @@ describe('TemporalWorkflowService', () => {
       aiDraftService,
       activityResolutionService,
       workflowConfigService,
-      workflowNormalizationService,
+      workflowNormalizationService
     );
     const service = new TemporalWorkflowService(
       prisma as any,
@@ -94,7 +94,7 @@ describe('TemporalWorkflowService', () => {
       workflowConfigService,
       workflowNormalizationService,
       workflowTemplateService,
-      workflowSupportService,
+      workflowSupportService
     );
 
     return {
@@ -167,7 +167,7 @@ describe('TemporalWorkflowService', () => {
             ],
           }),
         }),
-      }),
+      })
     );
   });
 
@@ -239,7 +239,7 @@ describe('TemporalWorkflowService', () => {
             ],
           }),
         }),
-      }),
+      })
     );
   });
 
@@ -292,7 +292,7 @@ describe('TemporalWorkflowService', () => {
             ],
           }),
         }),
-      }),
+      })
     );
   });
 
@@ -378,7 +378,7 @@ describe('TemporalWorkflowService', () => {
             },
           }),
         }),
-      }),
+      })
     );
   });
 
@@ -478,7 +478,7 @@ describe('TemporalWorkflowService', () => {
             },
           }),
         }),
-      }),
+      })
     );
   });
 
@@ -493,117 +493,125 @@ describe('TemporalWorkflowService', () => {
       },
     });
 
-    await expect(service.create({
-      name: '非法策略工作流',
-      taskQueue: 'SKILL_TASK_QUEUE',
-      workflowDsl: {
+    await expect(
+      service.create({
         name: '非法策略工作流',
         taskQueue: 'SKILL_TASK_QUEUE',
-        sourceContext: {
-          sourceTemplate: {
-            skillId: 'skill-1',
-          },
-        },
-        inputParams: {
-          username: {
-            type: 'string',
-            required: true,
-          },
-        },
-        inputPolicy: {
-          params: {
-            password: {
-              requiredMode: 'always',
+        workflowDsl: {
+          name: '非法策略工作流',
+          taskQueue: 'SKILL_TASK_QUEUE',
+          sourceContext: {
+            sourceTemplate: {
+              skillId: 'skill-1',
             },
           },
-        },
-        steps: [
-          {
-            id: 'step_1',
-            name: '渲染文档',
-            type: 'activity',
-            activityName: 'documentRender',
+          inputParams: {
+            username: {
+              type: 'string',
+              required: true,
+            },
           },
-        ],
-      },
-      activityDsl: {
-        activities: [],
-      },
-    })).rejects.toThrow('workflowDsl.inputPolicy.params 包含未注册参数: password');
+          inputPolicy: {
+            params: {
+              password: {
+                requiredMode: 'always',
+              },
+            },
+          },
+          steps: [
+            {
+              id: 'step_1',
+              name: '渲染文档',
+              type: 'activity',
+              activityName: 'documentRender',
+            },
+          ],
+        },
+        activityDsl: {
+          activities: [],
+        },
+      })
+    ).rejects.toThrow('workflowDsl.inputPolicy.params 包含未注册参数: password');
   });
 
   it('rejects illegal strategy fields inside workflow inputPolicy param entries', async () => {
     const { service } = createService();
 
-    await expect(service.create({
-      name: '非法策略字段工作流',
-      taskQueue: 'SKILL_TASK_QUEUE',
-      workflowDsl: {
+    await expect(
+      service.create({
         name: '非法策略字段工作流',
         taskQueue: 'SKILL_TASK_QUEUE',
-        inputParams: {
-          username: {
-            type: 'string',
-            required: true,
-          },
-        },
-        inputPolicy: {
-          params: {
+        workflowDsl: {
+          name: '非法策略字段工作流',
+          taskQueue: 'SKILL_TASK_QUEUE',
+          inputParams: {
             username: {
+              type: 'string',
               required: true,
-            } as any,
+            },
           },
+          inputPolicy: {
+            params: {
+              username: {
+                required: true,
+              } as any,
+            },
+          },
+          steps: [
+            {
+              id: 'step_1',
+              name: '渲染文档',
+              type: 'activity',
+              activityName: 'documentRender',
+            },
+          ],
         },
-        steps: [
-          {
-            id: 'step_1',
-            name: '渲染文档',
-            type: 'activity',
-            activityName: 'documentRender',
-          },
-        ],
-      },
-      activityDsl: {
-        activities: [],
-      },
-    })).rejects.toThrow('workflowDsl.inputPolicy.params.username 包含非法字段: required');
+        activityDsl: {
+          activities: [],
+        },
+      })
+    ).rejects.toThrow('workflowDsl.inputPolicy.params.username 包含非法字段: required');
   });
 
   it('rejects workflow inputPolicy defaultValue that does not match the declared param type', async () => {
     const { service } = createService();
 
-    await expect(service.create({
-      name: '非法默认值工作流',
-      taskQueue: 'SKILL_TASK_QUEUE',
-      workflowDsl: {
+    await expect(
+      service.create({
         name: '非法默认值工作流',
         taskQueue: 'SKILL_TASK_QUEUE',
-        inputParams: {
-          retryCount: {
-            type: 'number',
-            required: false,
-          },
-        },
-        inputPolicy: {
-          params: {
+        workflowDsl: {
+          name: '非法默认值工作流',
+          taskQueue: 'SKILL_TASK_QUEUE',
+          inputParams: {
             retryCount: {
-              defaultValue: '3',
+              type: 'number',
+              required: false,
             },
           },
-        },
-        steps: [
-          {
-            id: 'step_1',
-            name: '渲染文档',
-            type: 'activity',
-            activityName: 'documentRender',
+          inputPolicy: {
+            params: {
+              retryCount: {
+                defaultValue: '3',
+              },
+            },
           },
-        ],
-      },
-      activityDsl: {
-        activities: [],
-      },
-    })).rejects.toThrow('workflowDsl.inputPolicy.params.retryCount.defaultValue 与参数类型 number 不兼容');
+          steps: [
+            {
+              id: 'step_1',
+              name: '渲染文档',
+              type: 'activity',
+              activityName: 'documentRender',
+            },
+          ],
+        },
+        activityDsl: {
+          activities: [],
+        },
+      })
+    ).rejects.toThrow(
+      'workflowDsl.inputPolicy.params.retryCount.defaultValue 与参数类型 number 不兼容'
+    );
   });
 
   it('accepts localized workflow inputPolicy defaultValue when each localized value matches the declared type', async () => {
@@ -656,35 +664,39 @@ describe('TemporalWorkflowService', () => {
       updatedAt: new Date(),
     }));
 
-    await expect(service.update('workflow-policy-localized', {
-      workflowDsl: {
-        name: '多语言默认值工作流',
-        taskQueue: 'SKILL_TASK_QUEUE',
-        inputParams: {
-          'contract.partyA': {
-            type: 'string',
-            required: false,
-            defaultValue: '',
-            renderPath: ['contract.partyA_cn', 'contract.partyA_jp'],
-          },
-        },
-        inputPolicy: {
-          params: {
+    await expect(
+      service.update('workflow-policy-localized', {
+        workflowDsl: {
+          name: '多语言默认值工作流',
+          taskQueue: 'SKILL_TASK_QUEUE',
+          inputParams: {
             'contract.partyA': {
-              enabled: true,
-              requiredMode: 'optional',
-              defaultValue: {
-                cn: '阿',
-                jp: 'ashi',
+              type: 'string',
+              required: false,
+              defaultValue: '',
+              renderPath: ['contract.partyA_cn', 'contract.partyA_jp'],
+            },
+          },
+          inputPolicy: {
+            params: {
+              'contract.partyA': {
+                enabled: true,
+                requiredMode: 'optional',
+                defaultValue: {
+                  cn: '阿',
+                  jp: 'ashi',
+                },
               },
             },
           },
+          steps: [],
         },
-        steps: [],
-      },
-    })).resolves.toEqual(expect.objectContaining({
-      id: 'workflow-policy-localized',
-    }));
+      })
+    ).resolves.toEqual(
+      expect.objectContaining({
+        id: 'workflow-policy-localized',
+      })
+    );
 
     expect(prisma.temporalWorkflow.update).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -702,7 +714,7 @@ describe('TemporalWorkflowService', () => {
             },
           }),
         }),
-      }),
+      })
     );
   });
 
@@ -737,7 +749,8 @@ describe('TemporalWorkflowService', () => {
           timeout: '60s',
           handler: 'script' as const,
           config: {},
-          generatedCode: 'async def run_login_activity(activity_input: dict) -> dict:\n    return activity_input',
+          generatedCode:
+            'async def run_login_activity(activity_input: dict) -> dict:\n    return activity_input',
         },
       ],
     };
@@ -745,7 +758,7 @@ describe('TemporalWorkflowService', () => {
     const code = workflowSupportService.buildDeterministicWorkflowCode(workflowDsl, activityDsl);
 
     expect(code).toContain(
-      'missing_params = [key for key in required_params if LoginWorkflow._is_missing(activity_input.get(key))]',
+      'missing_params = [key for key in required_params if LoginWorkflow._is_missing(activity_input.get(key))]'
     );
     expect(code).not.toContain('cls._is_missing(activity_input.get(key))');
   });
@@ -755,11 +768,13 @@ describe('TemporalWorkflowService', () => {
 
     const activity = builtinRegistry.getByKey('aiStructuredTransform');
 
-    expect(activity).toEqual(expect.objectContaining({
-      key: 'aiStructuredTransform',
-      ref: 'builtin:aiStructuredTransform',
-      fn: 'aiStructuredTransform',
-    }));
+    expect(activity).toEqual(
+      expect.objectContaining({
+        key: 'aiStructuredTransform',
+        ref: 'builtin:aiStructuredTransform',
+        fn: 'aiStructuredTransform',
+      })
+    );
   });
 
   it('passes timeout through to workflow validation worker', async () => {
@@ -780,7 +795,7 @@ describe('TemporalWorkflowService', () => {
       'BrowserTemplateWorkflow',
       { startUrl: 'http://127.0.0.1:5173/' },
       'SKILL_TASK_QUEUE',
-      '300s',
+      '300s'
     );
 
     expect(result.success).toBe(true);
@@ -799,7 +814,7 @@ describe('TemporalWorkflowService', () => {
       }),
       expect.objectContaining({
         timeout: expect.any(Number),
-      }),
+      })
     );
   });
 
@@ -857,13 +872,15 @@ describe('TemporalWorkflowService', () => {
         validatedAt: updatedAt,
       }),
     });
-    expect(result[0]).toEqual(expect.objectContaining({
-      id: 'workflow-legacy-1',
-      artifactVersion: 1,
-      artifactHash: repairedWorkflow.artifactHash,
-      validationStatus: 'validated',
-      validationScore: 98,
-      validatedAt: updatedAt,
-    }));
+    expect(result[0]).toEqual(
+      expect.objectContaining({
+        id: 'workflow-legacy-1',
+        artifactVersion: 1,
+        artifactHash: repairedWorkflow.artifactHash,
+        validationStatus: 'validated',
+        validationScore: 98,
+        validatedAt: updatedAt,
+      })
+    );
   });
 });

@@ -1,4 +1,11 @@
-import { Injectable, Logger, NotFoundException, BadRequestException, Inject, Optional } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+  Inject,
+  Optional,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { Subject, filter } from 'rxjs';
@@ -6,12 +13,20 @@ import { APPROVAL_STATUS } from './contracts/approval-status';
 import { EXECUTION_STATUS, ExecutionStatus } from './contracts/execution-status';
 import { EXECUTION_EVENT_TYPE } from './contracts/execution-event-type';
 import { EXECUTION_STEP_STATUS } from './contracts/execution-step-status';
-import { CreateExecutionEventOptions, ExecutionEventService, ExecutionStreamEventPayload } from './execution-event.service';
+import {
+  CreateExecutionEventOptions,
+  ExecutionEventService,
+  ExecutionStreamEventPayload,
+} from './execution-event.service';
 import { ExecutionFailureService } from './execution-failure.service';
 import { ExecutionFlowRunnerService } from './execution-flow-runner.service';
 import { ExecutionPhaseService } from './execution-phase.service';
 import { ExecutionPhaseSyncService } from './execution-phase-sync.service';
-import { mapExecutionPhaseToDto, mapExecutionStepToDto, mapExecutionToDto } from './execution.mapper';
+import {
+  mapExecutionPhaseToDto,
+  mapExecutionStepToDto,
+  mapExecutionToDto,
+} from './execution.mapper';
 import { buildPlannedExecutionSteps } from './execution-plan-step.builder';
 import { canTransitionExecutionStatus } from './execution-transition-policy';
 import { ExecutionStateService } from './execution-state.service';
@@ -164,9 +179,9 @@ interface SubmitInputContext {
 }
 
 const hasMethod = (value: unknown, methodName: string): boolean =>
-  Boolean(value)
-  && typeof value === 'object'
-  && typeof (value as Record<string, unknown>)[methodName] === 'function';
+  Boolean(value) &&
+  typeof value === 'object' &&
+  typeof (value as Record<string, unknown>)[methodName] === 'function';
 
 @Injectable()
 export class ExecutionService {
@@ -193,7 +208,9 @@ export class ExecutionService {
     private readonly prisma: PrismaService,
     @Optional()
     @Inject(RuntimeExecutionOrchestrator)
-    private readonly runtimeExecutionOrchestrator?: RuntimeExecutionOrchestrator | ExecutionEventService,
+    private readonly runtimeExecutionOrchestrator?:
+      | RuntimeExecutionOrchestrator
+      | ExecutionEventService,
     @Optional()
     @Inject(RuntimeResultInterpreter)
     private readonly runtimeResultInterpreter?: RuntimeResultInterpreter,
@@ -215,7 +232,7 @@ export class ExecutionService {
     executionRuntimeSessionService?: ExecutionRuntimeSessionService,
     executionFlowRunnerService?: ExecutionFlowRunnerService,
     executionStepExecutorService?: ExecutionStepExecutorService,
-    executionBrowserOrchestrationService?: ExecutionBrowserOrchestrationService,
+    executionBrowserOrchestrationService?: ExecutionBrowserOrchestrationService
   ) {
     const dependencyCandidates = [
       runtimeExecutionOrchestrator,
@@ -240,7 +257,7 @@ export class ExecutionService {
     ];
     const pickDependency = <T>(
       explicit: T | undefined,
-      predicate: (value: unknown) => boolean,
+      predicate: (value: unknown) => boolean
     ): T | undefined => {
       if (predicate(explicit)) {
         return explicit;
@@ -250,135 +267,147 @@ export class ExecutionService {
 
     const resolvedExecutionEventService = pickDependency<ExecutionEventService>(
       executionEventService,
-      (value) => hasMethod(value, 'createEvent'),
+      (value) => hasMethod(value, 'createEvent')
     );
     const resolvedExecutionFailureService = pickDependency<ExecutionFailureService>(
       executionFailureService,
-      (value) => hasMethod(value, 'enterRuntimeWaitingInput') && hasMethod(value, 'skipSingleStep'),
+      (value) => hasMethod(value, 'enterRuntimeWaitingInput') && hasMethod(value, 'skipSingleStep')
     );
     const resolvedExecutionPhaseService = pickDependency<ExecutionPhaseService>(
       executionPhaseService,
-      (value) => hasMethod(value, 'listByExecutionId')
-        || hasMethod(value, 'createOrUpdatePhase')
-        || hasMethod(value, 'markCompleted')
-        || hasMethod(value, 'markRunning')
-        || hasMethod(value, 'getByExecutionIdAndPhaseKey')
-        || hasMethod(value, 'markWaitingTakeover')
-        || hasMethod(value, 'createTakeoverRecord'),
+      (value) =>
+        hasMethod(value, 'listByExecutionId') ||
+        hasMethod(value, 'createOrUpdatePhase') ||
+        hasMethod(value, 'markCompleted') ||
+        hasMethod(value, 'markRunning') ||
+        hasMethod(value, 'getByExecutionIdAndPhaseKey') ||
+        hasMethod(value, 'markWaitingTakeover') ||
+        hasMethod(value, 'createTakeoverRecord')
     );
     const resolvedExecutionPhaseSyncService = pickDependency<ExecutionPhaseSyncService>(
       executionPhaseSyncService,
-      (value) => hasMethod(value, 'syncPhaseAfterStepResult')
-        && hasMethod(value, 'completeActivePhasesOnExecutionSuccess'),
+      (value) =>
+        hasMethod(value, 'syncPhaseAfterStepResult') &&
+        hasMethod(value, 'completeActivePhasesOnExecutionSuccess')
     );
     const resolvedExecutionStateService = pickDependency<ExecutionStateService>(
       executionStateService,
-      (value) => hasMethod(value, 'updateStatus'),
+      (value) => hasMethod(value, 'updateStatus')
     );
     const resolvedExecutionStepService = pickDependency<ExecutionStepService>(
       executionStepService,
-      (value) => hasMethod(value, 'getById')
-        || hasMethod(value, 'createManyPlannedSteps')
-        || hasMethod(value, 'findNextPendingStep')
-        || hasMethod(value, 'finishRuntimeStep')
-        || hasMethod(value, 'requeueFailedStep')
-        || hasMethod(value, 'findPendingBrowserGotoStep')
-        || hasMethod(value, 'setCurrentStep'),
+      (value) =>
+        hasMethod(value, 'getById') ||
+        hasMethod(value, 'createManyPlannedSteps') ||
+        hasMethod(value, 'findNextPendingStep') ||
+        hasMethod(value, 'finishRuntimeStep') ||
+        hasMethod(value, 'requeueFailedStep') ||
+        hasMethod(value, 'findPendingBrowserGotoStep') ||
+        hasMethod(value, 'setCurrentStep')
     );
     const resolvedExecutionInputResolutionService = pickDependency<ExecutionInputResolutionService>(
       executionInputResolutionService,
-      (value) => hasMethod(value, 'resolveSubmitInputState'),
+      (value) => hasMethod(value, 'resolveSubmitInputState')
     );
-    const resolvedExecutionPlanNormalizationService = pickDependency<ExecutionPlanNormalizationService>(
-      executionPlanNormalizationService,
-      (value) => hasMethod(value, 'shouldSkipPlannerForExplicitStructuredInput'),
-    );
+    const resolvedExecutionPlanNormalizationService =
+      pickDependency<ExecutionPlanNormalizationService>(
+        executionPlanNormalizationService,
+        (value) => hasMethod(value, 'shouldSkipPlannerForExplicitStructuredInput')
+      );
     const resolvedBrowserPhaseExecutor = pickDependency<BrowserPhaseExecutor>(
       browserPhaseExecutor,
-      (value) => hasMethod(value, 'execute'),
+      (value) => hasMethod(value, 'execute')
     );
     const resolvedExecutionHumanControlService = pickDependency<ExecutionHumanControlService>(
       executionHumanControlService,
-      (value) => hasMethod(value, 'takeover') && hasMethod(value, 'resumePhaseTakeover'),
+      (value) => hasMethod(value, 'takeover') && hasMethod(value, 'resumePhaseTakeover')
     );
     const resolvedExecutionApprovalService = pickDependency<ExecutionApprovalService>(
       executionApprovalService,
-      (value) => hasMethod(value, 'approve') && hasMethod(value, 'reject'),
+      (value) => hasMethod(value, 'approve') && hasMethod(value, 'reject')
     );
     const resolvedExecutionPlanningService = pickDependency<ExecutionPlanningService>(
       executionPlanningService,
-      (value) => hasMethod(value, 'generatePlanDraft') && hasMethod(value, 'assertSkillAccessibleByUser'),
+      (value) =>
+        hasMethod(value, 'generatePlanDraft') && hasMethod(value, 'assertSkillAccessibleByUser')
     );
     const resolvedExecutionRuntimeSessionService = pickDependency<ExecutionRuntimeSessionService>(
       executionRuntimeSessionService,
-      (value) => hasMethod(value, 'allocateRuntimeSession') && hasMethod(value, 'closeQuietly'),
+      (value) => hasMethod(value, 'allocateRuntimeSession') && hasMethod(value, 'closeQuietly')
     );
     const resolvedExecutionFlowRunnerService = pickDependency<ExecutionFlowRunnerService>(
       executionFlowRunnerService,
-      (value) => hasMethod(value, 'advanceExecutionFlow'),
+      (value) => hasMethod(value, 'advanceExecutionFlow')
     );
     const resolvedExecutionStepExecutorService = pickDependency<ExecutionStepExecutorService>(
       executionStepExecutorService,
-      (value) => hasMethod(value, 'executeBrowserGotoStep') && hasMethod(value, 'executeSystemSkillStep'),
+      (value) =>
+        hasMethod(value, 'executeBrowserGotoStep') && hasMethod(value, 'executeSystemSkillStep')
     );
-    const resolvedExecutionBrowserOrchestrationService = pickDependency<ExecutionBrowserOrchestrationService>(
-      executionBrowserOrchestrationService,
-      (value) => hasMethod(value, 'bootstrapBrowserExecution') && hasMethod(value, 'handleBrowserPhaseStepResult'),
-    );
+    const resolvedExecutionBrowserOrchestrationService =
+      pickDependency<ExecutionBrowserOrchestrationService>(
+        executionBrowserOrchestrationService,
+        (value) =>
+          hasMethod(value, 'bootstrapBrowserExecution') &&
+          hasMethod(value, 'handleBrowserPhaseStepResult')
+      );
 
     this.executionEventService = resolvedExecutionEventService || new ExecutionEventService(prisma);
     this.executionStepService = resolvedExecutionStepService || new ExecutionStepService(prisma);
-    this.executionFlowRunnerService = resolvedExecutionFlowRunnerService
-      || new ExecutionFlowRunnerService(
-        prisma,
-        this.executionStepService,
-      );
+    this.executionFlowRunnerService =
+      resolvedExecutionFlowRunnerService ||
+      new ExecutionFlowRunnerService(prisma, this.executionStepService);
     this.executionPhaseService = resolvedExecutionPhaseService || new ExecutionPhaseService(prisma);
-    this.executionPhaseSyncService = resolvedExecutionPhaseSyncService
-      || new ExecutionPhaseSyncService(
+    this.executionPhaseSyncService =
+      resolvedExecutionPhaseSyncService ||
+      new ExecutionPhaseSyncService(prisma, this.executionPhaseService);
+    this.executionStateService =
+      resolvedExecutionStateService ||
+      new ExecutionStateService(prisma, this.executionEventService);
+    this.executionApprovalService =
+      resolvedExecutionApprovalService || new ExecutionApprovalService(prisma);
+    this.executionHumanControlService =
+      resolvedExecutionHumanControlService ||
+      new ExecutionHumanControlService(
         prisma,
         this.executionPhaseService,
+        this.executionStepService
       );
-    this.executionStateService = resolvedExecutionStateService || new ExecutionStateService(
-      prisma,
-      this.executionEventService,
-    );
-    this.executionApprovalService = resolvedExecutionApprovalService || new ExecutionApprovalService(prisma);
-    this.executionHumanControlService = resolvedExecutionHumanControlService
-      || new ExecutionHumanControlService(
-        prisma,
-        this.executionPhaseService,
-        this.executionStepService,
-      );
-    this.executionInputResolutionService = resolvedExecutionInputResolutionService || new ExecutionInputResolutionService();
-    this.executionFailureService = resolvedExecutionFailureService
-      || new ExecutionFailureService(
+    this.executionInputResolutionService =
+      resolvedExecutionInputResolutionService || new ExecutionInputResolutionService();
+    this.executionFailureService =
+      resolvedExecutionFailureService ||
+      new ExecutionFailureService(
         prisma,
         this.executionStepService,
-        this.executionInputResolutionService,
+        this.executionInputResolutionService
       );
-    this.executionPlanNormalizationService = resolvedExecutionPlanNormalizationService
-      || new ExecutionPlanNormalizationService(this.executionInputResolutionService);
-    this.executionPlanningService = resolvedExecutionPlanningService
-      || new ExecutionPlanningService(prisma, this.executionPlanNormalizationService);
-    this.executionBrowserOrchestrationService = resolvedExecutionBrowserOrchestrationService
-      || new ExecutionBrowserOrchestrationService(
+    this.executionPlanNormalizationService =
+      resolvedExecutionPlanNormalizationService ||
+      new ExecutionPlanNormalizationService(this.executionInputResolutionService);
+    this.executionPlanningService =
+      resolvedExecutionPlanningService ||
+      new ExecutionPlanningService(prisma, this.executionPlanNormalizationService);
+    this.executionBrowserOrchestrationService =
+      resolvedExecutionBrowserOrchestrationService ||
+      new ExecutionBrowserOrchestrationService(
         prisma,
         this.executionStepService,
         this.executionPhaseSyncService,
         this.executionFailureService,
         this.runtimeExecutionOrchestrator as RuntimeExecutionOrchestrator,
         this.runtimeResultInterpreter,
-        this.runtimeStepRequestFactory,
+        this.runtimeStepRequestFactory
       );
-    this.executionRuntimeSessionService = resolvedExecutionRuntimeSessionService
-      || new ExecutionRuntimeSessionService();
-    this.executionStepExecutorService = resolvedExecutionStepExecutorService
-      || new ExecutionStepExecutorService(
+    this.executionRuntimeSessionService =
+      resolvedExecutionRuntimeSessionService || new ExecutionRuntimeSessionService();
+    this.executionStepExecutorService =
+      resolvedExecutionStepExecutorService ||
+      new ExecutionStepExecutorService(
         this.executionStepService,
         this.runtimeExecutionOrchestrator as RuntimeExecutionOrchestrator,
         this.runtimeStepRequestFactory,
-        resolvedBrowserPhaseExecutor,
+        resolvedBrowserPhaseExecutor
       );
   }
 
@@ -391,15 +420,15 @@ export class ExecutionService {
 
   private async createEvent(
     executionId: string,
-    eventType: typeof EXECUTION_EVENT_TYPE[keyof typeof EXECUTION_EVENT_TYPE],
+    eventType: (typeof EXECUTION_EVENT_TYPE)[keyof typeof EXECUTION_EVENT_TYPE],
     payload: any,
-    options: CreateExecutionEventOptions = {},
+    options: CreateExecutionEventOptions = {}
   ): Promise<void> {
     const event = await this.executionEventService.createEvent(
       executionId,
       eventType,
       this.asJsonValue(payload),
-      options,
+      options
     );
 
     this.eventSubject.next(event);
@@ -416,7 +445,7 @@ export class ExecutionService {
 
   private async findExistingExecutionIdByIdempotencyKey(
     userId: string,
-    idempotencyKey: string,
+    idempotencyKey: string
   ): Promise<string | undefined> {
     const rows = await this.prisma.$queryRawUnsafe<Array<{ execution_id: string }>>(
       `
@@ -432,7 +461,7 @@ export class ExecutionService {
       `,
       userId,
       EXECUTION_EVENT_TYPE.EXECUTION_CREATED,
-      idempotencyKey,
+      idempotencyKey
     );
 
     const executionId = rows[0]?.execution_id;
@@ -444,7 +473,7 @@ export class ExecutionService {
   async create(
     userId: string,
     dto: CreateExecutionDto,
-    options?: { authToken?: string },
+    options?: { authToken?: string }
   ): Promise<ExecutionDto> {
     const resolvedSkillId = dto.capabilityId || dto.skillId;
     const resolvedSkillVersion = dto.capabilityVersion || dto.skillVersion;
@@ -453,11 +482,10 @@ export class ExecutionService {
       throw new BadRequestException('skillId or capabilityId is required');
     }
 
-    await this.assertSkillAccessibleByUser(
-      resolvedSkillId,
-      options?.authToken,
-      { id: userId, role: 'employee' },
-    );
+    await this.assertSkillAccessibleByUser(resolvedSkillId, options?.authToken, {
+      id: userId,
+      role: 'employee',
+    });
 
     const resolvedDto: CreateExecutionDto = {
       ...dto,
@@ -471,11 +499,11 @@ export class ExecutionService {
     if (resolvedDto.idempotencyKey) {
       const existingExecutionId = await this.findExistingExecutionIdByIdempotencyKey(
         userId,
-        resolvedDto.idempotencyKey,
+        resolvedDto.idempotencyKey
       );
       if (existingExecutionId) {
         this.logger.log(
-          `Reusing existing execution ${existingExecutionId} for idempotency key ${resolvedDto.idempotencyKey}`,
+          `Reusing existing execution ${existingExecutionId} for idempotency key ${resolvedDto.idempotencyKey}`
         );
         return this.getById(existingExecutionId);
       }
@@ -484,48 +512,57 @@ export class ExecutionService {
     const runtimeDefaultResolution = await this.fetchSkillDefaultResolution(
       resolvedSkillId,
       options?.authToken,
-      { id: userId, role: 'employee' },
+      { id: userId, role: 'employee' }
     );
     const runtimeDefaultInput = runtimeDefaultResolution.input;
 
     const providedPlanDraft =
-      resolvedDto.planDraft
-      && typeof resolvedDto.planDraft === 'object'
-      && !Array.isArray(resolvedDto.planDraft)
+      resolvedDto.planDraft &&
+      typeof resolvedDto.planDraft === 'object' &&
+      !Array.isArray(resolvedDto.planDraft)
         ? (resolvedDto.planDraft as unknown as PlannerPlanDraft)
         : undefined;
-    const shouldUseDirectExecutionPlan = !providedPlanDraft
-      && this.executionPlanNormalizationService.shouldSkipPlannerForExplicitStructuredInput(resolvedDto);
-    const shouldGeneratePlanDraft = !providedPlanDraft
-      && !shouldUseDirectExecutionPlan;
-    const generatedPlanDraft = providedPlanDraft
-      || (shouldGeneratePlanDraft
+    const shouldUseDirectExecutionPlan =
+      !providedPlanDraft &&
+      this.executionPlanNormalizationService.shouldSkipPlannerForExplicitStructuredInput(
+        resolvedDto
+      );
+    const shouldGeneratePlanDraft = !providedPlanDraft && !shouldUseDirectExecutionPlan;
+    const generatedPlanDraft =
+      providedPlanDraft ||
+      (shouldGeneratePlanDraft
         ? await this.generatePlanDraft(userId, resolvedDto, options?.authToken)
         : undefined);
-    const effectiveGeneratedPlanDraft = generatedPlanDraft
-      || (shouldUseDirectExecutionPlan
-        ? this.executionPlanNormalizationService.buildDirectExecutionPlanDraft(resolvedDto, resolvedSkillId)
+    const effectiveGeneratedPlanDraft =
+      generatedPlanDraft ||
+      (shouldUseDirectExecutionPlan
+        ? this.executionPlanNormalizationService.buildDirectExecutionPlanDraft(
+            resolvedDto,
+            resolvedSkillId
+          )
         : undefined);
     const reconciledPlanDraft = this.executionPlanNormalizationService.reconcilePlanDraftWithInput(
       generatedPlanDraft as unknown as any,
-      resolvedDto.input,
+      resolvedDto.input
     ) as unknown as PlannerPlanDraft | undefined;
-    const reconciledDirectPlanDraft = !reconciledPlanDraft && effectiveGeneratedPlanDraft
-      ? this.executionPlanNormalizationService.reconcilePlanDraftWithInput(
-          effectiveGeneratedPlanDraft as unknown as any,
-          resolvedDto.input,
-        ) as unknown as PlannerPlanDraft | undefined
-      : reconciledPlanDraft;
-    const defaultedPlanDraft = this.executionPlanNormalizationService.applyRuntimeDefaultsToPlanDraft(
-      reconciledDirectPlanDraft as unknown as any,
-      runtimeDefaultInput,
-      runtimeDefaultResolution.sources,
-    ) as unknown as PlannerPlanDraft | undefined;
+    const reconciledDirectPlanDraft =
+      !reconciledPlanDraft && effectiveGeneratedPlanDraft
+        ? (this.executionPlanNormalizationService.reconcilePlanDraftWithInput(
+            effectiveGeneratedPlanDraft as unknown as any,
+            resolvedDto.input
+          ) as unknown as PlannerPlanDraft | undefined)
+        : reconciledPlanDraft;
+    const defaultedPlanDraft =
+      this.executionPlanNormalizationService.applyRuntimeDefaultsToPlanDraft(
+        reconciledDirectPlanDraft as unknown as any,
+        runtimeDefaultInput,
+        runtimeDefaultResolution.sources
+      ) as unknown as PlannerPlanDraft | undefined;
     const planDraft = await this.rewriteBrowserRecordingPlanDraftWithActivities(
       defaultedPlanDraft,
       resolvedSkillId,
       resolvedDto.input,
-      runtimeDefaultInput,
+      runtimeDefaultInput
     );
     const plannedCapabilityId = planDraft?.skill_match?.skill_id;
     const effectiveSkillId = plannedCapabilityId || resolvedSkillId;
@@ -535,7 +572,7 @@ export class ExecutionService {
       planDraft as unknown as any,
       runtimeDefaultInput,
       runtimeDefaultResolution.sources,
-      (draftDto) => this.executionPlanNormalizationService.buildPlannerUserInput(draftDto),
+      (draftDto) => this.executionPlanNormalizationService.buildPlannerUserInput(draftDto)
     );
 
     // 注入 usage 到 normalizedInput 中以便持久化
@@ -547,7 +584,7 @@ export class ExecutionService {
     const executionRuntimeType = this.executionPlanNormalizationService.resolveExecutionRuntimeType(
       resolvedDto.runtimeType,
       planDraft as unknown as any,
-      normalizedInput,
+      normalizedInput
     );
     const execution = await this.prisma.execution.create({
       data: {
@@ -561,7 +598,7 @@ export class ExecutionService {
         inputJson: this.asJsonValue(resolvedDto.input),
         normalizedInputJson: this.asJsonValue(normalizedInput),
         riskLevel: this.executionPlanNormalizationService.mapPlannerRiskLevel(
-          planDraft as unknown as any,
+          planDraft as unknown as any
         ),
         requiresApproval: planDraft?.risk_summary.requires_human_review || false,
         approvalStatus: planDraft?.risk_summary.requires_human_review
@@ -609,14 +646,19 @@ export class ExecutionService {
     await this.createPlannedSteps(execution.id, normalizedInput, planDraft);
 
     const hasMissingRequiredInputs = Boolean(
-      planDraft?.required_inputs?.some((item) => item.required && this.executionInputResolutionService.isBlockingRequiredInput(item)),
+      planDraft?.required_inputs?.some(
+        (item) =>
+          item.required && this.executionInputResolutionService.isBlockingRequiredInput(item)
+      )
     );
 
     this.logger.log(`Execution created: ${execution.id}`);
 
     if (!execution.requiresApproval) {
       if (hasMissingRequiredInputs) {
-        const waitingInputStep = await this.executionStepService.findPendingInputCollectionStep(execution.id);
+        const waitingInputStep = await this.executionStepService.findPendingInputCollectionStep(
+          execution.id
+        );
 
         if (waitingInputStep) {
           await this.enterWaitingInput(execution as any, waitingInputStep.id);
@@ -655,13 +697,15 @@ export class ExecutionService {
       });
       await this.advanceExecutionFlow(execution.id, execution.id);
       this.logger.log(
-        `Skipped browser runtime allocation for execution ${executionId} (runtime: ${execution.runtimeType})`,
+        `Skipped browser runtime allocation for execution ${executionId} (runtime: ${execution.runtimeType})`
       );
       return;
     }
 
     try {
-      this.logger.log(`Allocating runtime session for execution ${executionId} (type: ${execution.runtimeType})`);
+      this.logger.log(
+        `Allocating runtime session for execution ${executionId} (type: ${execution.runtimeType})`
+      );
       const runtimeSession = await this.executionRuntimeSessionService.allocateRuntimeSession({
         userId: execution.createdBy,
         executionId: execution.id,
@@ -750,7 +794,7 @@ export class ExecutionService {
   async updateWorkflowActivityProgress(
     executionId: string,
     dto: UpdateWorkflowActivityProgressDto,
-    requester?: RequestUserContext,
+    requester?: RequestUserContext
   ): Promise<void> {
     const execution = await this.prisma.execution.findUnique({
       where: { id: executionId },
@@ -780,7 +824,9 @@ export class ExecutionService {
         if (leftOrder !== rightOrder) {
           return leftOrder - rightOrder;
         }
-        return String(left.phaseKey || left.phase_key || '').localeCompare(String(right.phaseKey || right.phase_key || ''));
+        return String(left.phaseKey || left.phase_key || '').localeCompare(
+          String(right.phaseKey || right.phase_key || '')
+        );
       });
 
     if (workflowActivityPhases.length === 0) {
@@ -794,30 +840,35 @@ export class ExecutionService {
         return true;
       }
       return Boolean(
-        dto.activityName
-        && this.readNonEmptyString(phase.phaseName, phase.phase_name) === dto.activityName,
+        dto.activityName &&
+        this.readNonEmptyString(phase.phaseName, phase.phase_name) === dto.activityName
       );
     });
 
     if (!currentPhase) {
       this.logger.warn(
-        `Workflow activity progress ignored for execution ${executionId}: parentPhaseKey=${dto.parentPhaseKey}, activityOrder=${dto.activityOrder ?? '-'}, activityName=${dto.activityName ?? '-'}`,
+        `Workflow activity progress ignored for execution ${executionId}: parentPhaseKey=${dto.parentPhaseKey}, activityOrder=${dto.activityOrder ?? '-'}, activityName=${dto.activityName ?? '-'}`
       );
       return;
     }
 
     const currentPhaseKey = this.readNonEmptyString(currentPhase.phaseKey, currentPhase.phase_key);
-    const currentPhaseName = this.readNonEmptyString(currentPhase.phaseName, currentPhase.phase_name);
-    const currentPhaseType = this.readNonEmptyString(currentPhase.phaseType, currentPhase.phase_type) || 'workflow_activity';
+    const currentPhaseName = this.readNonEmptyString(
+      currentPhase.phaseName,
+      currentPhase.phase_name
+    );
+    const currentPhaseType =
+      this.readNonEmptyString(currentPhase.phaseType, currentPhase.phase_type) ||
+      'workflow_activity';
     const currentAttempt = Number(currentPhase.attempt || 1);
     const currentInput = this.readRecord(currentPhase.input, currentPhase.input_json);
     const currentOutput = this.readRecord(currentPhase.output, currentPhase.output_json);
     const currentStartedAt = this.toNullableDate(currentPhase.startedAt || currentPhase.started_at);
     const currentOrder = Number(currentInput?.order || dto.activityOrder || 0);
     const runtimeSessionId =
-      dto.runtimeSessionId
-      || this.readNonEmptyString(currentPhase.runtimeSessionId, currentPhase.runtime_session_id)
-      || null;
+      dto.runtimeSessionId ||
+      this.readNonEmptyString(currentPhase.runtimeSessionId, currentPhase.runtime_session_id) ||
+      null;
 
     if (!currentPhaseKey || !currentPhaseName) {
       return;
@@ -832,18 +883,24 @@ export class ExecutionService {
       const phaseInput = this.readRecord(phase.input, phase.input_json);
       const phaseOrder = Number(phaseInput?.order || 0);
       const phaseStatus = this.readNonEmptyString(phase.status) || 'pending';
-      if (phaseOrder > 0 && currentOrder > 0 && phaseOrder < currentOrder && phaseStatus === 'running') {
+      if (
+        phaseOrder > 0 &&
+        currentOrder > 0 &&
+        phaseOrder < currentOrder &&
+        phaseStatus === 'running'
+      ) {
         await this.executionPhaseService.createOrUpdatePhase({
           executionId,
           phaseKey,
           phaseName: this.readNonEmptyString(phase.phaseName, phase.phase_name) || phaseKey,
-          phaseType: this.readNonEmptyString(phase.phaseType, phase.phase_type) || 'workflow_activity',
+          phaseType:
+            this.readNonEmptyString(phase.phaseType, phase.phase_type) || 'workflow_activity',
           status: 'completed',
           attempt: Number(phase.attempt || 1),
           runtimeSessionId:
-            runtimeSessionId
-            || this.readNonEmptyString(phase.runtimeSessionId, phase.runtime_session_id)
-            || null,
+            runtimeSessionId ||
+            this.readNonEmptyString(phase.runtimeSessionId, phase.runtime_session_id) ||
+            null,
           input: phaseInput,
           output: this.readRecord(phase.output, phase.output_json),
           errorCode: null,
@@ -874,27 +931,42 @@ export class ExecutionService {
     }
   }
 
-  async takeover(id: string, userId: string, dto: TakeoverExecutionDto, requester?: RequestUserContext): Promise<ExecutionDto> {
+  async takeover(
+    id: string,
+    userId: string,
+    dto: TakeoverExecutionDto,
+    requester?: RequestUserContext
+  ): Promise<ExecutionDto> {
     return this.executionHumanControlService.takeover(
       id,
       userId,
       dto,
       this.getHumanControlHooks(),
-      requester,
+      requester
     );
   }
 
-  async resume(id: string, userId: string, dto: ResumeExecutionDto, requester?: RequestUserContext): Promise<ExecutionDto> {
+  async resume(
+    id: string,
+    userId: string,
+    dto: ResumeExecutionDto,
+    requester?: RequestUserContext
+  ): Promise<ExecutionDto> {
     return this.executionHumanControlService.resume(
       id,
       userId,
       dto,
       this.getHumanControlHooks(),
-      requester,
+      requester
     );
   }
 
-  async releaseHumanControl(id: string, userId: string, dto: ReleaseHumanControlDto, requester?: RequestUserContext): Promise<ExecutionDto> {
+  async releaseHumanControl(
+    id: string,
+    userId: string,
+    dto: ReleaseHumanControlDto,
+    requester?: RequestUserContext
+  ): Promise<ExecutionDto> {
     return this.resume(id, userId, dto, requester);
   }
 
@@ -903,7 +975,7 @@ export class ExecutionService {
     phaseKey: string,
     userId: string,
     dto: TakeoverExecutionDto,
-    requester?: RequestUserContext,
+    requester?: RequestUserContext
   ): Promise<ExecutionDto> {
     return this.executionHumanControlService.takeoverPhase(
       executionId,
@@ -911,7 +983,7 @@ export class ExecutionService {
       userId,
       dto,
       this.getHumanControlHooks(),
-      requester,
+      requester
     );
   }
 
@@ -920,7 +992,7 @@ export class ExecutionService {
     phaseKey: string,
     userId: string,
     dto: ReconcilePhaseTakeoverDto,
-    requester?: RequestUserContext,
+    requester?: RequestUserContext
   ): Promise<ExecutionDto> {
     return this.executionHumanControlService.reconcilePhaseTakeover(
       executionId,
@@ -928,7 +1000,7 @@ export class ExecutionService {
       userId,
       dto,
       this.getHumanControlHooks(),
-      requester,
+      requester
     );
   }
 
@@ -937,7 +1009,7 @@ export class ExecutionService {
     phaseKey: string,
     userId: string,
     dto: ResumeExecutionDto,
-    requester?: RequestUserContext,
+    requester?: RequestUserContext
   ): Promise<ExecutionDto> {
     return this.executionHumanControlService.resumePhaseTakeover(
       executionId,
@@ -945,31 +1017,46 @@ export class ExecutionService {
       userId,
       dto,
       this.getHumanControlHooks(),
-      requester,
+      requester
     );
   }
 
-  async approve(id: string, userId: string, dto: ApprovalDecisionDto, requester?: RequestUserContext): Promise<ExecutionDto> {
+  async approve(
+    id: string,
+    userId: string,
+    dto: ApprovalDecisionDto,
+    requester?: RequestUserContext
+  ): Promise<ExecutionDto> {
     return this.executionApprovalService.approve(
       id,
       userId,
       dto,
       this.getApprovalHooks(),
-      requester,
+      requester
     );
   }
 
-  async reject(id: string, userId: string, dto: ApprovalDecisionDto, requester?: RequestUserContext): Promise<ExecutionDto> {
+  async reject(
+    id: string,
+    userId: string,
+    dto: ApprovalDecisionDto,
+    requester?: RequestUserContext
+  ): Promise<ExecutionDto> {
     return this.executionApprovalService.reject(
       id,
       userId,
       dto,
       this.getApprovalHooks(),
-      requester,
+      requester
     );
   }
 
-  async submitInputAndResume(id: string, userId: string, dto: SubmitInputDto, requester?: RequestUserContext): Promise<ExecutionDto> {
+  async submitInputAndResume(
+    id: string,
+    userId: string,
+    dto: SubmitInputDto,
+    requester?: RequestUserContext
+  ): Promise<ExecutionDto> {
     const context = await this.loadSubmitInputContext(id, userId, dto, requester);
     const resolution = this.executionInputResolutionService.resolveSubmitInputState(
       {
@@ -982,13 +1069,12 @@ export class ExecutionService {
         input: dto.input,
         currentUsage: context.normalized.__usage as unknown as LLMUsage | undefined,
         submittedUsage: dto.usage as unknown as LLMUsage | undefined,
-        reconcileSemantic: (semantic, requiredInputs) => (
+        reconcileSemantic: (semantic, requiredInputs) =>
           this.executionPlanNormalizationService.reconcilePlanSemantic(
             semantic as Record<string, unknown> | undefined,
-            requiredInputs as ExecutionRequiredInput[],
-          ) as unknown as Record<string, unknown> | undefined
-        ),
-      },
+            requiredInputs as ExecutionRequiredInput[]
+          ) as unknown as Record<string, unknown> | undefined,
+      }
     );
 
     await this.persistSubmitInputState(id, dto.stepId, resolution);
@@ -998,7 +1084,7 @@ export class ExecutionService {
       userId,
       dto.stepId,
       context.effectiveRequester,
-      resolution,
+      resolution
     );
   }
 
@@ -1006,7 +1092,7 @@ export class ExecutionService {
     id: string,
     userId: string,
     dto: SubmitInputDto,
-    requester?: RequestUserContext,
+    requester?: RequestUserContext
   ): Promise<SubmitInputContext> {
     const execution = await this.prisma.execution.findUnique({
       where: { id },
@@ -1020,7 +1106,9 @@ export class ExecutionService {
     this.ensureExecutionPermission(execution.createdBy, effectiveRequester);
 
     if (execution.status !== EXECUTION_STATUS.WAITING_INPUT) {
-      throw new BadRequestException(`Execution ${id} is not in ${EXECUTION_STATUS.WAITING_INPUT} status`);
+      throw new BadRequestException(
+        `Execution ${id} is not in ${EXECUTION_STATUS.WAITING_INPUT} status`
+      );
     }
 
     const step = await this.executionStepService.getById(dto.stepId);
@@ -1030,8 +1118,11 @@ export class ExecutionService {
 
     const normalized = (execution.normalizedInputJson as Record<string, unknown>) || {};
     const requiredInputs = this.executionInputResolutionService.getRequiredInputs(execution);
-    const currentParamResolution = this.executionInputResolutionService.getParamResolution(execution);
-    const missingInputs = requiredInputs.filter((item) => this.executionInputResolutionService.isBlockingRequiredInput(item));
+    const currentParamResolution =
+      this.executionInputResolutionService.getParamResolution(execution);
+    const missingInputs = requiredInputs.filter((item) =>
+      this.executionInputResolutionService.isBlockingRequiredInput(item)
+    );
 
     if (missingInputs.length === 0) {
       throw new BadRequestException(`Execution ${id} has no missing input to submit`);
@@ -1050,13 +1141,15 @@ export class ExecutionService {
   private async persistSubmitInputState(
     executionId: string,
     stepId: string,
-    resolution: SubmitInputResolutionResult,
+    resolution: SubmitInputResolutionResult
   ): Promise<void> {
     await this.prisma.$transaction([
       this.prisma.executionStep.update({
         where: { id: stepId },
         data: {
-          status: resolution.canResumeExecution ? EXECUTION_STEP_STATUS.SUCCEEDED : EXECUTION_STEP_STATUS.WAITING_INPUT,
+          status: resolution.canResumeExecution
+            ? EXECUTION_STEP_STATUS.SUCCEEDED
+            : EXECUTION_STEP_STATUS.WAITING_INPUT,
           inputJson: this.asJsonValue({
             requiredInputs: resolution.updatedRequiredInputs.filter((item) => item.missing),
           }),
@@ -1068,7 +1161,9 @@ export class ExecutionService {
         where: { id: executionId },
         data: {
           normalizedInputJson: this.asJsonValue(resolution.updatedNormalized),
-          status: resolution.canResumeExecution ? EXECUTION_STATUS.QUEUED : EXECUTION_STATUS.WAITING_INPUT,
+          status: resolution.canResumeExecution
+            ? EXECUTION_STATUS.QUEUED
+            : EXECUTION_STATUS.WAITING_INPUT,
         },
       }),
     ]);
@@ -1079,7 +1174,7 @@ export class ExecutionService {
     userId: string,
     stepId: string,
     requester: RequestUserContext,
-    resolution: SubmitInputResolutionResult,
+    resolution: SubmitInputResolutionResult
   ): Promise<ExecutionDto> {
     const runtimeSession = await this.prisma.runtimeSession.findFirst({
       where: { executionId },
@@ -1095,19 +1190,21 @@ export class ExecutionService {
         stepId,
         input: resolution.normalizedSubmittedInput,
         remainingMissing: resolution.remainingMissingInputs.map((item) => item.name),
-      },
+      }
     );
 
     if (!resolution.canResumeExecution) {
       this.logger.log(
-        `Partial input submitted for execution ${executionId}; remaining: ${resolution.remainingMissingInputs.length}`,
+        `Partial input submitted for execution ${executionId}; remaining: ${resolution.remainingMissingInputs.length}`
       );
       return this.getById(executionId, requester);
     }
 
     if (!runtimeSession) {
       await this.startExecution(executionId);
-      this.logger.log(`Input submitted for execution ${executionId}; runtime session will be allocated on start`);
+      this.logger.log(
+        `Input submitted for execution ${executionId}; runtime session will be allocated on start`
+      );
       return this.getById(executionId, requester);
     }
 
@@ -1123,7 +1220,7 @@ export class ExecutionService {
       {
         runtimeSessionId: runtimeSession.id,
         stepId,
-      },
+      }
     );
 
     this.advanceExecutionFlow(executionId, runtimeSession.id).catch((err) => {
@@ -1145,7 +1242,9 @@ export class ExecutionService {
 
     this.ensureExecutionPermission(execution.createdBy, requester || { id: userId });
 
-    if (!canTransitionExecutionStatus(execution.status as ExecutionStatus, EXECUTION_STATUS.CANCELLED)) {
+    if (
+      !canTransitionExecutionStatus(execution.status as ExecutionStatus, EXECUTION_STATUS.CANCELLED)
+    ) {
       throw new BadRequestException(`Cannot cancel from status ${execution.status}`);
     }
 
@@ -1174,7 +1273,7 @@ export class ExecutionService {
 
   async list(
     dto: ListExecutionsDto,
-    requester?: RequestUserContext,
+    requester?: RequestUserContext
   ): Promise<{ data: ExecutionDto[]; total: number; page: number; pageSize: number }> {
     const page = dto.page || 1;
     const pageSize = dto.pageSize || 10;
@@ -1201,17 +1300,18 @@ export class ExecutionService {
       this.prisma.execution.count({ where }),
     ]);
 
-    const runtimeSessions = executions.length > 0
-      ? await this.prisma.runtimeSession.findMany({
-        where: {
-          executionId: {
-            in: executions.map((execution) => execution.id),
-          },
-        },
-        orderBy: { createdAt: 'desc' },
-        select: { id: true, executionId: true },
-      })
-      : [];
+    const runtimeSessions =
+      executions.length > 0
+        ? await this.prisma.runtimeSession.findMany({
+            where: {
+              executionId: {
+                in: executions.map((execution) => execution.id),
+              },
+            },
+            orderBy: { createdAt: 'desc' },
+            select: { id: true, executionId: true },
+          })
+        : [];
     const runtimeSessionIdByExecutionId = new Map<string, string>();
     runtimeSessions.forEach((runtimeSession) => {
       if (!runtimeSessionIdByExecutionId.has(runtimeSession.executionId)) {
@@ -1220,10 +1320,12 @@ export class ExecutionService {
     });
 
     return {
-      data: executions.map((execution) => this.toDto({
-        ...execution,
-        runtimeSessionId: runtimeSessionIdByExecutionId.get(execution.id) || null,
-      })),
+      data: executions.map((execution) =>
+        this.toDto({
+          ...execution,
+          runtimeSessionId: runtimeSessionIdByExecutionId.get(execution.id) || null,
+        })
+      ),
       total,
       page,
       pageSize,
@@ -1240,20 +1342,20 @@ export class ExecutionService {
       getExecutionDto: (id: string, requester?: RequestUserContext) => this.getById(id, requester),
       emitEvent: (
         executionId: string,
-        eventType: typeof EXECUTION_EVENT_TYPE[keyof typeof EXECUTION_EVENT_TYPE],
+        eventType: (typeof EXECUTION_EVENT_TYPE)[keyof typeof EXECUTION_EVENT_TYPE],
         payload: unknown,
-        options: CreateExecutionEventOptions = {},
+        options: CreateExecutionEventOptions = {}
       ) => this.createEvent(executionId, eventType, payload, options),
       updateStatus: (id: string, newStatus: ExecutionStatus) => this.updateStatus(id, newStatus),
       freezeRuntimeSessionQuietly: (
         runtimeSessionId: string | null | undefined,
         executionId: string,
-        reason: string,
+        reason: string
       ) => this.freezeRuntimeSessionQuietly(runtimeSessionId, executionId, reason),
       resumeRuntimeSessionQuietly: (
         runtimeSessionId: string | null | undefined,
         executionId: string,
-        stepId?: string,
+        stepId?: string
       ) => this.resumeRuntimeSessionQuietly(runtimeSessionId, executionId, stepId),
       advanceExecutionFlow: (executionId: string, runtimeSessionId: string) =>
         this.advanceExecutionFlow(executionId, runtimeSessionId),
@@ -1265,9 +1367,9 @@ export class ExecutionService {
       getExecutionDto: (id: string, requester?: RequestUserContext) => this.getById(id, requester),
       emitEvent: (
         executionId: string,
-        eventType: typeof EXECUTION_EVENT_TYPE[keyof typeof EXECUTION_EVENT_TYPE],
+        eventType: (typeof EXECUTION_EVENT_TYPE)[keyof typeof EXECUTION_EVENT_TYPE],
         payload: unknown,
-        options: CreateExecutionEventOptions = {},
+        options: CreateExecutionEventOptions = {}
       ) => this.createEvent(executionId, eventType, payload, options),
       updateStatus: (id: string, newStatus: ExecutionStatus) => this.updateStatus(id, newStatus),
       startExecution: (executionId: string) => this.startExecution(executionId),
@@ -1278,16 +1380,13 @@ export class ExecutionService {
     return {
       emitEvent: (
         executionId: string,
-        eventType: typeof EXECUTION_EVENT_TYPE[keyof typeof EXECUTION_EVENT_TYPE],
+        eventType: (typeof EXECUTION_EVENT_TYPE)[keyof typeof EXECUTION_EVENT_TYPE],
         payload: unknown,
-        options: CreateExecutionEventOptions = {},
+        options: CreateExecutionEventOptions = {}
       ) => this.createEvent(executionId, eventType, payload, options),
       updateStatus: (id: string, newStatus: ExecutionStatus) => this.updateStatus(id, newStatus),
-      closeRuntimeSessionQuietly: (
-        runtimeSessionId: string,
-        executionId: string,
-        reason: string,
-      ) => this.closeRuntimeSessionQuietly(runtimeSessionId, executionId, reason),
+      closeRuntimeSessionQuietly: (runtimeSessionId: string, executionId: string, reason: string) =>
+        this.closeRuntimeSessionQuietly(runtimeSessionId, executionId, reason),
     };
   }
 
@@ -1295,9 +1394,9 @@ export class ExecutionService {
     return {
       emitEvent: (
         executionId: string,
-        eventType: typeof EXECUTION_EVENT_TYPE[keyof typeof EXECUTION_EVENT_TYPE],
+        eventType: (typeof EXECUTION_EVENT_TYPE)[keyof typeof EXECUTION_EVENT_TYPE],
         payload: unknown,
-        options: CreateExecutionEventOptions = {},
+        options: CreateExecutionEventOptions = {}
       ) => this.createEvent(executionId, eventType, payload, options),
       advanceExecutionFlow: (executionId: string, runtimeSessionId: string) =>
         this.advanceExecutionFlow(executionId, runtimeSessionId),
@@ -1306,52 +1405,42 @@ export class ExecutionService {
         runtimeSessionId: string,
         stepId: string,
         requiredInputs: unknown[],
-        reason?: string,
-      ) => this.enterRuntimeWaitingInput(
-        executionId,
-        runtimeSessionId,
-        stepId,
-        requiredInputs,
-        reason,
-      ),
-      enterPendingApprovalFromRuntimeStep: (
-        executionId: string,
-        reason: string,
-      ) => this.enterPendingApprovalFromRuntimeStep(executionId, reason),
-      failExecutionFromRuntimeStep: (
-        input: {
-          executionId: string;
-          stepId: string;
-          failureReason: string;
-          failureCode: string;
-          runtimeSessionId?: string;
-        },
-      ) => this.failExecutionFromRuntimeStep(input),
+        reason?: string
+      ) =>
+        this.enterRuntimeWaitingInput(
+          executionId,
+          runtimeSessionId,
+          stepId,
+          requiredInputs,
+          reason
+        ),
+      enterPendingApprovalFromRuntimeStep: (executionId: string, reason: string) =>
+        this.enterPendingApprovalFromRuntimeStep(executionId, reason),
+      failExecutionFromRuntimeStep: (input: {
+        executionId: string;
+        stepId: string;
+        failureReason: string;
+        failureCode: string;
+        runtimeSessionId?: string;
+      }) => this.failExecutionFromRuntimeStep(input),
       syncPhaseAfterStepResult: (
         executionId: string,
         runtimeSessionId: string,
         result: RuntimeStepInvokeResult,
         phaseMetadata?: ExecutionStepPhaseMetadata,
-        step?: Record<string, unknown> | null,
-      ) => this.syncPhaseAfterStepResult(
-        executionId,
-        runtimeSessionId,
-        result,
-        phaseMetadata,
-        step,
-      ),
-      takeover: (
-        executionId: string,
-        reason: string,
-      ) => this.takeover(
-        executionId,
-        'system',
-        { reason },
-        {
-          id: 'system',
-          role: 'admin',
-        },
-      ).then(() => undefined),
+        step?: Record<string, unknown> | null
+      ) =>
+        this.syncPhaseAfterStepResult(executionId, runtimeSessionId, result, phaseMetadata, step),
+      takeover: (executionId: string, reason: string) =>
+        this.takeover(
+          executionId,
+          'system',
+          { reason },
+          {
+            id: 'system',
+            role: 'admin',
+          }
+        ).then(() => undefined),
       failureHooks: this.getFailureHooks(),
     };
   }
@@ -1364,18 +1453,19 @@ export class ExecutionService {
         executionId: string,
         runtimeSessionId: string,
         phaseMetadata?: ExecutionStepPhaseMetadata,
-        step?: Record<string, unknown> | null,
-      ) => this.executionPhaseSyncService.markPhaseRunningForStep(
-        executionId,
-        runtimeSessionId,
-        phaseMetadata,
-        step,
-      ),
+        step?: Record<string, unknown> | null
+      ) =>
+        this.executionPhaseSyncService.markPhaseRunningForStep(
+          executionId,
+          runtimeSessionId,
+          phaseMetadata,
+          step
+        ),
       emitEvent: (
         executionId: string,
-        eventType: typeof EXECUTION_EVENT_TYPE[keyof typeof EXECUTION_EVENT_TYPE],
+        eventType: (typeof EXECUTION_EVENT_TYPE)[keyof typeof EXECUTION_EVENT_TYPE],
         payload: unknown,
-        options: CreateExecutionEventOptions = {},
+        options: CreateExecutionEventOptions = {}
       ) => this.createEvent(executionId, eventType, payload, options),
       handleBrowserStepResult: (
         executionId: string,
@@ -1383,8 +1473,16 @@ export class ExecutionService {
         stepId: string,
         result: RuntimeStepInvokeResult,
         phaseMetadata?: ExecutionStepPhaseMetadata,
-        step?: Record<string, unknown> | null,
-      ) => this.handleBrowserStepResult(executionId, runtimeSessionId, stepId, result, phaseMetadata, step),
+        step?: Record<string, unknown> | null
+      ) =>
+        this.handleBrowserStepResult(
+          executionId,
+          runtimeSessionId,
+          stepId,
+          result,
+          phaseMetadata,
+          step
+        ),
       extractStepBrowserPhaseConfig: (step?: Record<string, unknown> | null) =>
         this.executionBrowserOrchestrationService.extractStepBrowserPhaseConfig(step),
       skipSingleStep: (stepId: string, executionId: string, reason: string) =>
@@ -1392,7 +1490,7 @@ export class ExecutionService {
           stepId,
           executionId,
           reason,
-          this.getFailureHooks(),
+          this.getFailureHooks()
         ),
       advanceExecutionFlow: (executionId: string, runtimeSessionId: string) =>
         this.advanceExecutionFlow(executionId, runtimeSessionId),
@@ -1406,21 +1504,22 @@ export class ExecutionService {
         executionId: string,
         runtimeSessionId: string,
         stepId: string,
-        result: RuntimePhaseInvokeResult,
+        result: RuntimePhaseInvokeResult
       ) => this.handleBrowserPhaseStepResult(executionId, runtimeSessionId, stepId, result),
       initializeWorkflowActivityPhasesForSkillExecution: (
         executionId: string,
         runtimeSessionId: string,
         capabilityId: string,
         phaseMetadata?: ExecutionStepPhaseMetadata,
-        step?: Record<string, unknown> | null,
-      ) => this.executionPhaseSyncService.initializeWorkflowActivityPhasesForSkillExecution(
-        executionId,
-        runtimeSessionId,
-        capabilityId,
-        phaseMetadata,
-        step,
-      ),
+        step?: Record<string, unknown> | null
+      ) =>
+        this.executionPhaseSyncService.initializeWorkflowActivityPhasesForSkillExecution(
+          executionId,
+          runtimeSessionId,
+          capabilityId,
+          phaseMetadata,
+          step
+        ),
       handleSystemSkillStepResult: (
         executionId: string,
         runtimeSessionId: string,
@@ -1428,23 +1527,24 @@ export class ExecutionService {
         result: RuntimeStepInvokeResult,
         capabilityId: string,
         phaseMetadata?: ExecutionStepPhaseMetadata,
-        step?: Record<string, unknown> | null,
-      ) => this.handleSystemSkillStepResult(
-        executionId,
-        runtimeSessionId,
-        stepId,
-        result,
-        capabilityId,
-        phaseMetadata,
-        step,
-      ),
+        step?: Record<string, unknown> | null
+      ) =>
+        this.handleSystemSkillStepResult(
+          executionId,
+          runtimeSessionId,
+          stepId,
+          result,
+          capabilityId,
+          phaseMetadata,
+          step
+        ),
     };
   }
 
   private async closeRuntimeSessionQuietly(
     runtimeSessionId: string,
     executionId: string,
-    reason: string,
+    reason: string
   ): Promise<void> {
     await this.executionRuntimeSessionService.closeQuietly(runtimeSessionId, executionId, reason);
   }
@@ -1452,7 +1552,7 @@ export class ExecutionService {
   private async freezeRuntimeSessionQuietly(
     runtimeSessionId: string | null | undefined,
     executionId: string,
-    reason: string,
+    reason: string
   ): Promise<void> {
     await this.executionRuntimeSessionService.freezeQuietly(runtimeSessionId, executionId, reason);
   }
@@ -1460,19 +1560,19 @@ export class ExecutionService {
   private async resumeRuntimeSessionQuietly(
     runtimeSessionId: string | null | undefined,
     executionId: string,
-    stepId?: string,
+    stepId?: string
   ): Promise<void> {
     await this.executionRuntimeSessionService.resumeQuietly(runtimeSessionId, executionId, stepId);
   }
 
   private async bootstrapBrowserExecution(
     execution: Record<string, unknown>,
-    runtimeSessionId: string,
+    runtimeSessionId: string
   ): Promise<void> {
     await this.executionBrowserOrchestrationService.bootstrapBrowserExecution(
       execution,
       runtimeSessionId,
-      this.getBrowserOrchestrationHooks(),
+      this.getBrowserOrchestrationHooks()
     );
   }
 
@@ -1482,7 +1582,7 @@ export class ExecutionService {
     stepId: string,
     result: RuntimeStepInvokeResult,
     phaseMetadata?: ExecutionStepPhaseMetadata,
-    step?: Record<string, unknown> | null,
+    step?: Record<string, unknown> | null
   ): Promise<void> {
     await this.executionBrowserOrchestrationService.handleBrowserStepResult(
       executionId,
@@ -1491,7 +1591,7 @@ export class ExecutionService {
       result,
       this.getBrowserOrchestrationHooks(),
       phaseMetadata,
-      step,
+      step
     );
   }
 
@@ -1510,7 +1610,7 @@ export class ExecutionService {
   private async assertSkillAccessibleByUser(
     skillId: string,
     authToken?: string,
-    requester?: RequestUserContext,
+    requester?: RequestUserContext
   ): Promise<void> {
     await this.executionPlanningService.assertSkillAccessibleByUser(skillId, authToken, requester);
   }
@@ -1518,18 +1618,18 @@ export class ExecutionService {
   private async fetchSkillDefaultResolution(
     skillId: string,
     authToken?: string,
-    requester?: RequestUserContext,
+    requester?: RequestUserContext
   ): Promise<RuntimeDefaultResolution> {
     return this.executionPlanningService.fetchSkillDefaultResolution(
       skillId,
       authToken,
-      requester,
+      requester
     ) as Promise<RuntimeDefaultResolution>;
   }
 
   private ensureExecutionPermission(
     executionOwnerId: string,
-    requester?: RequestUserContext,
+    requester?: RequestUserContext
   ): void {
     if (!requester?.id) {
       return;
@@ -1545,29 +1645,28 @@ export class ExecutionService {
   private async generatePlanDraft(
     userId: string,
     dto: CreateExecutionDto,
-    authToken?: string,
+    authToken?: string
   ): Promise<PlannerPlanDraft | undefined> {
-    return this.executionPlanningService.generatePlanDraft(userId, dto, authToken) as Promise<PlannerPlanDraft | undefined>;
+    return this.executionPlanningService.generatePlanDraft(userId, dto, authToken) as Promise<
+      PlannerPlanDraft | undefined
+    >;
   }
 
   private async rewriteBrowserRecordingPlanDraftWithActivities(
     planDraft: PlannerPlanDraft | undefined,
     fallbackCapabilityId?: string,
     input?: Record<string, unknown>,
-    runtimeDefaultInput?: Record<string, unknown>,
+    runtimeDefaultInput?: Record<string, unknown>
   ): Promise<PlannerPlanDraft | undefined> {
     return this.executionPlanningService.rewriteBrowserRecordingPlanDraftWithActivities(
       planDraft,
       fallbackCapabilityId,
       input,
-      runtimeDefaultInput,
+      runtimeDefaultInput
     ) as Promise<PlannerPlanDraft | undefined>;
   }
 
-  private async advanceExecutionFlow(
-    executionId: string,
-    runtimeSessionId: string,
-  ): Promise<void> {
+  private async advanceExecutionFlow(executionId: string, runtimeSessionId: string): Promise<void> {
     await this.executionFlowRunnerService.advanceExecutionFlow(executionId, runtimeSessionId, {
       completeActivePhasesOnExecutionSuccess: (targetExecutionId, targetRuntimeSessionId) =>
         this.completeActivePhasesOnExecutionSuccess(targetExecutionId, targetRuntimeSessionId),
@@ -1581,12 +1680,11 @@ export class ExecutionService {
           stepId,
           targetExecutionId,
           reason,
-          this.getFailureHooks(),
+          this.getFailureHooks()
         ),
       executeBrowserGotoStep: (execution, targetRuntimeSessionId, stepId, url) =>
         this.executeBrowserGotoStep(execution, targetRuntimeSessionId, stepId, url),
-      enterWaitingInput: (execution, stepId) =>
-        this.enterWaitingInput(execution, stepId),
+      enterWaitingInput: (execution, stepId) => this.enterWaitingInput(execution, stepId),
       executeBrowserPhaseStep: (execution, targetRuntimeSessionId, stepId) =>
         this.executeBrowserPhaseStep(execution, targetRuntimeSessionId, stepId),
       executeSystemSkillStep: (execution, targetRuntimeSessionId, stepId) =>
@@ -1597,9 +1695,13 @@ export class ExecutionService {
   private async createPlannedSteps(
     executionId: string,
     normalizedInput: Record<string, unknown>,
-    planDraft?: PlannerPlanDraft,
+    planDraft?: PlannerPlanDraft
   ): Promise<void> {
-    const { steps, bootstrapUrl } = buildPlannedExecutionSteps(executionId, normalizedInput, planDraft);
+    const { steps, bootstrapUrl } = buildPlannedExecutionSteps(
+      executionId,
+      normalizedInput,
+      planDraft
+    );
 
     if (steps.length === 0) {
       return;
@@ -1618,40 +1720,40 @@ export class ExecutionService {
     execution: Record<string, unknown>,
     runtimeSessionId: string,
     stepId: string,
-    url: string,
+    url: string
   ): Promise<void> {
     await this.executionStepExecutorService.executeBrowserGotoStep(
       execution,
       runtimeSessionId,
       stepId,
       url,
-      this.getStepExecutorHooks(),
+      this.getStepExecutorHooks()
     );
   }
 
   private async executeBrowserPhaseStep(
     execution: Record<string, unknown>,
     runtimeSessionId: string,
-    stepId: string,
+    stepId: string
   ): Promise<void> {
     await this.executionStepExecutorService.executeBrowserPhaseStep(
       execution,
       runtimeSessionId,
       stepId,
-      this.getStepExecutorHooks(),
+      this.getStepExecutorHooks()
     );
   }
 
   private async executeSystemSkillStep(
     execution: Record<string, unknown>,
     runtimeSessionId: string,
-    stepId: string,
+    stepId: string
   ): Promise<void> {
     await this.executionStepExecutorService.executeSystemSkillStep(
       execution,
       runtimeSessionId,
       stepId,
-      this.getStepExecutorHooks(),
+      this.getStepExecutorHooks()
     );
   }
 
@@ -1659,14 +1761,14 @@ export class ExecutionService {
     executionId: string,
     runtimeSessionId: string,
     stepId: string,
-    result: RuntimePhaseInvokeResult,
+    result: RuntimePhaseInvokeResult
   ): Promise<void> {
     await this.executionBrowserOrchestrationService.handleBrowserPhaseStepResult(
       executionId,
       runtimeSessionId,
       stepId,
       result,
-      this.getBrowserOrchestrationHooks(),
+      this.getBrowserOrchestrationHooks()
     );
   }
 
@@ -1677,7 +1779,7 @@ export class ExecutionService {
     result: RuntimeStepInvokeResult,
     capabilityId: string,
     phaseMetadata?: ExecutionStepPhaseMetadata,
-    step?: Record<string, unknown> | null,
+    step?: Record<string, unknown> | null
   ): Promise<void> {
     await this.runtimeResultInterpreter.handleSkillRuntimeResult(
       {
@@ -1690,13 +1792,14 @@ export class ExecutionService {
             stepId,
           }),
         advanceExecutionFlow: () => this.advanceExecutionFlow(executionId, runtimeSessionId),
-        failExecution: (failureReason, failureCode) => this.failExecutionFromRuntimeStep({
-          executionId,
-          stepId,
-          failureReason,
-          failureCode,
-          runtimeSessionId,
-        }),
+        failExecution: (failureReason, failureCode) =>
+          this.failExecutionFromRuntimeStep({
+            executionId,
+            stepId,
+            failureReason,
+            failureCode,
+            runtimeSessionId,
+          }),
         takeover: async (reason) => {
           await this.takeover(
             executionId,
@@ -1707,19 +1810,21 @@ export class ExecutionService {
             {
               id: 'system',
               role: 'admin',
-            },
+            }
           );
         },
-        enterWaitingInput: (requiredInputs, reason) => this.enterRuntimeWaitingInput(
-          executionId,
-          runtimeSessionId,
-          stepId,
-          requiredInputs,
-          reason,
-        ),
-        enterPendingApproval: (reason) => this.enterPendingApprovalFromRuntimeStep(executionId, reason),
+        enterWaitingInput: (requiredInputs, reason) =>
+          this.enterRuntimeWaitingInput(
+            executionId,
+            runtimeSessionId,
+            stepId,
+            requiredInputs,
+            reason
+          ),
+        enterPendingApproval: (reason) =>
+          this.enterPendingApprovalFromRuntimeStep(executionId, reason),
       },
-      result,
+      result
     );
     await this.syncPhaseAfterStepResult(executionId, runtimeSessionId, result, phaseMetadata, step);
     await this.syncWorkflowActivityPhasesAfterSkillResult(
@@ -1727,7 +1832,7 @@ export class ExecutionService {
       runtimeSessionId,
       capabilityId,
       result,
-      phaseMetadata,
+      phaseMetadata
     );
   }
 
@@ -1762,7 +1867,7 @@ export class ExecutionService {
 
   private extractStepUrl(
     step: Record<string, unknown>,
-    execution: Record<string, unknown>,
+    execution: Record<string, unknown>
   ): string | undefined {
     return this.executionBrowserOrchestrationService.extractStepUrl(step, execution);
   }
@@ -1772,7 +1877,7 @@ export class ExecutionService {
     runtimeSessionId: string,
     stepId: string,
     requiredInputs: unknown[],
-    reason?: string,
+    reason?: string
   ): Promise<void> {
     await this.executionFailureService.enterRuntimeWaitingInput(
       executionId,
@@ -1780,30 +1885,28 @@ export class ExecutionService {
       stepId,
       requiredInputs,
       reason,
-      this.getFailureHooks(),
+      this.getFailureHooks()
     );
   }
 
   private async enterPendingApprovalFromRuntimeStep(
     executionId: string,
-    reason: string,
+    reason: string
   ): Promise<void> {
     await this.executionFailureService.enterPendingApprovalFromRuntimeStep(
       executionId,
       reason,
-      this.getFailureHooks(),
+      this.getFailureHooks()
     );
   }
 
-  private async failExecutionFromRuntimeStep(
-    input: {
-      executionId: string;
-      stepId: string;
-      failureReason: string;
-      failureCode: string;
-      runtimeSessionId?: string;
-    },
-  ): Promise<void> {
+  private async failExecutionFromRuntimeStep(input: {
+    executionId: string;
+    stepId: string;
+    failureReason: string;
+    failureCode: string;
+    runtimeSessionId?: string;
+  }): Promise<void> {
     await this.prisma.execution.update({
       where: { id: input.executionId },
       data: {
@@ -1814,21 +1917,21 @@ export class ExecutionService {
     await this.skipPendingSteps(
       input.executionId,
       input.stepId,
-      'Execution failed before remaining planned steps were executed',
+      'Execution failed before remaining planned steps were executed'
     );
     await this.updateStatus(input.executionId, EXECUTION_STATUS.FAILED);
     if (input.runtimeSessionId) {
       await this.closeRuntimeSessionQuietly(
         input.runtimeSessionId,
         input.executionId,
-        'runtime_step_failed',
+        'runtime_step_failed'
       );
     }
   }
 
   private async enterWaitingInput(
     execution: Record<string, unknown>,
-    stepId: string,
+    stepId: string
   ): Promise<void> {
     await this.executionFailureService.enterWaitingInput(execution, stepId, this.getFailureHooks());
   }
@@ -1836,13 +1939,13 @@ export class ExecutionService {
   private async skipPendingSteps(
     executionId: string,
     currentStepId: string,
-    reason: string,
+    reason: string
   ): Promise<void> {
     await this.executionFailureService.skipPendingSteps(
       executionId,
       currentStepId,
       reason,
-      this.getFailureHooks(),
+      this.getFailureHooks()
     );
   }
 
@@ -1851,24 +1954,24 @@ export class ExecutionService {
     runtimeSessionId: string,
     result: RuntimeStepInvokeResult,
     phaseMetadata?: ExecutionStepPhaseMetadata,
-    step?: Record<string, unknown> | null,
+    step?: Record<string, unknown> | null
   ): Promise<void> {
     await this.executionPhaseSyncService.syncPhaseAfterStepResult(
       executionId,
       runtimeSessionId,
       result,
       phaseMetadata,
-      step,
+      step
     );
   }
 
   private async completeActivePhasesOnExecutionSuccess(
     executionId: string,
-    runtimeSessionId: string,
+    runtimeSessionId: string
   ): Promise<void> {
     await this.executionPhaseSyncService.completeActivePhasesOnExecutionSuccess(
       executionId,
-      runtimeSessionId,
+      runtimeSessionId
     );
   }
 
@@ -1877,7 +1980,7 @@ export class ExecutionService {
     runtimeSessionId: string,
     capabilityId: string,
     result: RuntimeStepInvokeResult,
-    phaseMetadata?: ExecutionStepPhaseMetadata,
+    phaseMetadata?: ExecutionStepPhaseMetadata
   ): Promise<void> {
     const phaseSyncService = this.executionPhaseSyncService as unknown as {
       syncWorkflowActivityPhasesAfterSkillResult: (
@@ -1885,11 +1988,11 @@ export class ExecutionService {
         runtimeSessionId: string,
         capabilityId: string,
         result: RuntimeStepInvokeResult,
-        phaseMetadata?: ExecutionStepPhaseMetadata,
+        phaseMetadata?: ExecutionStepPhaseMetadata
       ) => Promise<void>;
       loadWorkflowActivityPhaseDefinitions?: (
         capabilityId: string,
-        parentPhaseKey: string,
+        parentPhaseKey: string
       ) => Promise<unknown>;
     };
     const currentLoader = this.loadWorkflowActivityPhaseDefinitions;
@@ -1899,7 +2002,7 @@ export class ExecutionService {
     if (shouldBridgeLoader) {
       phaseSyncService.loadWorkflowActivityPhaseDefinitions = (
         targetCapabilityId: string,
-        parentPhaseKey: string,
+        parentPhaseKey: string
       ) => currentLoader.call(this, targetCapabilityId, parentPhaseKey);
     }
 
@@ -1909,7 +2012,7 @@ export class ExecutionService {
         runtimeSessionId,
         capabilityId,
         result,
-        phaseMetadata,
+        phaseMetadata
       );
     } finally {
       if (shouldBridgeLoader) {
@@ -1918,17 +2021,18 @@ export class ExecutionService {
     }
   }
 
-  private async loadWorkflowActivityPhaseDefinitions(
-    capabilityId: string,
-    parentPhaseKey: string,
-  ) {
+  private async loadWorkflowActivityPhaseDefinitions(capabilityId: string, parentPhaseKey: string) {
     return (this.executionPhaseSyncService as any).loadWorkflowActivityPhaseDefinitions(
       capabilityId,
-      parentPhaseKey,
+      parentPhaseKey
     );
   }
 
-  async delete(id: string, userId: string, requester?: RequestUserContext): Promise<{ success: boolean }> {
+  async delete(
+    id: string,
+    userId: string,
+    requester?: RequestUserContext
+  ): Promise<{ success: boolean }> {
     const execution = await this.prisma.execution.findUnique({
       where: { id },
     });
@@ -1956,7 +2060,7 @@ export class ExecutionService {
   async cleanupBeforeDate(
     beforeDate: string,
     userId: string,
-    requester?: RequestUserContext,
+    requester?: RequestUserContext
   ): Promise<{ success: boolean; deletedCount: number; beforeDate: string }> {
     const cutoff = this.parseCleanupCutoff(beforeDate);
     const effectiveRequester = requester || { id: userId };
@@ -1977,7 +2081,7 @@ export class ExecutionService {
     if (executions.length > MAX_CLEANUP_LIMIT) {
       throw new BadRequestException(
         `Cannot cleanup more than ${MAX_CLEANUP_LIMIT} executions in a single operation. ` +
-        `Found ${executions.length} matching records. Please refine the date cutoff.`,
+          `Found ${executions.length} matching records. Please refine the date cutoff.`
       );
     }
 
@@ -2003,7 +2107,9 @@ export class ExecutionService {
       }),
     ]);
 
-    this.logger.log(`Deleted ${executionIds.length} executions before ${beforeDate} by user ${userId}`);
+    this.logger.log(
+      `Deleted ${executionIds.length} executions before ${beforeDate} by user ${userId}`
+    );
     return {
       success: true,
       deletedCount: executionIds.length,

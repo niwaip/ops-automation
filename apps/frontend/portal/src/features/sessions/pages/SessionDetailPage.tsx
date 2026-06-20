@@ -1,6 +1,22 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Tag, Button, Space, Typography, message, Spin, Popconfirm, Collapse, Image, Empty, Tabs, Select, Timeline, theme as antdTheme } from 'antd';
+import {
+  Card,
+  Tag,
+  Button,
+  Space,
+  Typography,
+  message,
+  Spin,
+  Popconfirm,
+  Collapse,
+  Image,
+  Empty,
+  Tabs,
+  Select,
+  Timeline,
+  theme as antdTheme,
+} from 'antd';
 import {
   ArrowLeftOutlined,
   PlayCircleOutlined,
@@ -33,29 +49,36 @@ const transformLocalhostUrl = (url: string | undefined): string => {
   return replaceLocalhostWithCurrentHost(url) || '';
 };
 
+const getBlockingPresentation = (
+  mode?: 'confirmation' | 'takeover' | 'forbidden'
+): { label: string; color: string } | null => {
+  if (mode === 'confirmation') {
+    return { label: '等待确认', color: 'gold' };
+  }
+  if (mode === 'takeover') {
+    return { label: '人工接管', color: 'orange' };
+  }
+  if (mode === 'forbidden') {
+    return { label: '禁止回放', color: 'red' };
+  }
+  return null;
+};
+
 const SessionDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { t } = useTranslation(['common', 'session']);
   const navigate = useNavigate();
   const { token } = antdTheme.useToken();
 
-  const sessionQuery = useQuery(
-    ['session', id],
-    () => sessionApi.getById(id!),
-    {
-      enabled: !!id,
-      refetchInterval: (data) => (isTerminalSessionState(data?.state) ? false : 3000),
-    }
-  );
+  const sessionQuery = useQuery(['session', id], () => sessionApi.getById(id!), {
+    enabled: !!id,
+    refetchInterval: (data) => (isTerminalSessionState(data?.state) ? false : 3000),
+  });
 
-  const stepsQuery = useQuery(
-    ['session-steps', id],
-    () => sessionApi.getStepResults(id!),
-    {
-      enabled: !!id,
-      refetchInterval: () => (isTerminalSessionState(sessionQuery.data?.state) ? false : 3000),
-    }
-  );
+  const stepsQuery = useQuery(['session-steps', id], () => sessionApi.getStepResults(id!), {
+    enabled: !!id,
+    refetchInterval: () => (isTerminalSessionState(sessionQuery.data?.state) ? false : 3000),
+  });
   const session = sessionQuery.data;
 
   const templateDetailQuery = useQuery(
@@ -63,7 +86,7 @@ const SessionDetailPage: React.FC = () => {
     () => templateApi.getById(session!.template_id!),
     {
       enabled: Boolean(session?.template_id),
-    },
+    }
   );
 
   const templateSessionHistoryQuery = useQuery(
@@ -76,11 +99,15 @@ const SessionDetailPage: React.FC = () => {
       const result = await sessionApi.list({ page: 1, pageSize: 200 });
       return (result.sessions || [])
         .filter((item) => item.template_id === templateId)
-        .sort((a, b) => Number(b.last_activity || b.created_at || 0) - Number(a.last_activity || a.created_at || 0));
+        .sort(
+          (a, b) =>
+            Number(b.last_activity || b.created_at || 0) -
+            Number(a.last_activity || a.created_at || 0)
+        );
     },
     {
       enabled: Boolean(sessionQuery.data?.template_id),
-    },
+    }
   );
 
   const deleteMutation = useMutation(sessionApi.delete, {
@@ -139,7 +166,9 @@ const SessionDetailPage: React.FC = () => {
 
   if (sessionQuery.isLoading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
+      <div
+        style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}
+      >
         <Spin size="large" />
       </div>
     );
@@ -155,6 +184,8 @@ const SessionDetailPage: React.FC = () => {
       </Card>
     );
   }
+
+  const sessionBlocking = getBlockingPresentation(session.blocking_mode);
 
   return (
     <div>
@@ -172,12 +203,16 @@ const SessionDetailPage: React.FC = () => {
               <Tag color={getStateColor(session.state)}>{session.state}</Tag>
               <Tag color={getControlModeColor(session.control_mode)}>{session.control_mode}</Tag>
               {session.frozen && <Tag color="red">FROZEN</Tag>}
+              {sessionBlocking && <Tag color={sessionBlocking.color}>{sessionBlocking.label}</Tag>}
             </Space>
             <Space>
-              <Button icon={<ReloadOutlined />} onClick={() => {
-                void sessionQuery.refetch();
-                void stepsQuery.refetch();
-              }}>
+              <Button
+                icon={<ReloadOutlined />}
+                onClick={() => {
+                  void sessionQuery.refetch();
+                  void stepsQuery.refetch();
+                }}
+              >
                 {t('common:refresh')}
               </Button>
               <Popconfirm
@@ -193,7 +228,15 @@ const SessionDetailPage: React.FC = () => {
         }
       >
         <Space direction="vertical" style={{ width: '100%' }} size="small">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+              flexWrap: 'wrap',
+            }}
+          >
             <Space size={8}>
               <Text type="secondary">模板:</Text>
               <Text strong>{templateDetailQuery.data?.name || session.template_id || '-'}</Text>
@@ -222,31 +265,58 @@ const SessionDetailPage: React.FC = () => {
           {session.step_index !== undefined && (
             <div>
               <Text type="secondary">Step: </Text>
-              <Text>{session.step_index + 1} {session.current_step ? `(${session.current_step})` : ''}</Text>
+              <Text>
+                {session.step_index + 1} {session.current_step ? `(${session.current_step})` : ''}
+              </Text>
             </div>
           )}
-          {session.params && Object.keys(session.params).filter((k) => k !== 'schedule').length > 0 && (
-            <div style={{ marginTop: 8 }}>
-              <Text type="secondary">{t('session:params')}: </Text>
-              <Card
-                size="small"
-                style={{
-                  background: token.colorFillAlter,
-                  borderRadius: 8,
-                  marginTop: 4,
-                  borderColor: token.colorBorderSecondary,
-                }}
-              >
-                {Object.entries(session.params)
-                  .filter(([key]) => key !== 'schedule')
-                  .map(([key, value]) => (
-                    <div key={key} style={{ marginBottom: 4 }}>
-                      <Text code>{key}</Text>: <Text strong>{typeof value === 'object' ? JSON.stringify(value) : String(value)}</Text>
-                    </div>
-                  ))}
-              </Card>
+          {sessionBlocking && (
+            <div
+              style={{
+                background:
+                  session.blocking_mode === 'forbidden'
+                    ? 'rgba(239, 68, 68, 0.10)'
+                    : 'rgba(245, 158, 11, 0.10)',
+                border:
+                  session.blocking_mode === 'forbidden'
+                    ? '1px solid rgba(239, 68, 68, 0.24)'
+                    : '1px solid rgba(245, 158, 11, 0.24)',
+                padding: 10,
+                borderRadius: 8,
+              }}
+            >
+              <Space size="small" wrap>
+                <Tag color={sessionBlocking.color}>{sessionBlocking.label}</Tag>
+                <Text>{session.blocking_reason || '当前会话在此步骤被策略阻塞'}</Text>
+              </Space>
             </div>
           )}
+          {session.params &&
+            Object.keys(session.params).filter((k) => k !== 'schedule').length > 0 && (
+              <div style={{ marginTop: 8 }}>
+                <Text type="secondary">{t('session:params')}: </Text>
+                <Card
+                  size="small"
+                  style={{
+                    background: token.colorFillAlter,
+                    borderRadius: 8,
+                    marginTop: 4,
+                    borderColor: token.colorBorderSecondary,
+                  }}
+                >
+                  {Object.entries(session.params)
+                    .filter(([key]) => key !== 'schedule')
+                    .map(([key, value]) => (
+                      <div key={key} style={{ marginBottom: 4 }}>
+                        <Text code>{key}</Text>:{' '}
+                        <Text strong>
+                          {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                        </Text>
+                      </div>
+                    ))}
+                </Card>
+              </div>
+            )}
         </Space>
       </Card>
 
@@ -269,7 +339,15 @@ const SessionDetailPage: React.FC = () => {
             </Button>
           }
         >
-          <div style={{ width: '100%', height: 600, border: '1px solid #d9d9d9', borderRadius: 4, background: '#1e1e1e' }}>
+          <div
+            style={{
+              width: '100%',
+              height: 600,
+              border: '1px solid #d9d9d9',
+              borderRadius: 4,
+              background: '#1e1e1e',
+            }}
+          >
             <iframe
               src={`${transformLocalhostUrl(session.endpoints.novnc)}?autoconnect=true&resize=scale`}
               style={{ width: '100%', height: '100%', border: 'none' }}
@@ -285,9 +363,7 @@ const SessionDetailPage: React.FC = () => {
           <Space>
             <FileTextOutlined />
             执行步骤结果
-            <Tag color={steps.length > 0 ? 'processing' : 'default'}>
-              {steps.length} 步
-            </Tag>
+            <Tag color={steps.length > 0 ? 'processing' : 'default'}>{steps.length} 步</Tag>
           </Space>
         }
       >
@@ -305,7 +381,9 @@ const SessionDetailPage: React.FC = () => {
                 <Card
                   size="small"
                   style={{
-                    background: step.success ? 'rgba(16, 185, 129, 0.10)' : 'rgba(239, 68, 68, 0.10)',
+                    background: step.success
+                      ? 'rgba(16, 185, 129, 0.10)'
+                      : 'rgba(239, 68, 68, 0.10)',
                     border: `1px solid ${step.success ? 'rgba(16, 185, 129, 0.28)' : 'rgba(239, 68, 68, 0.28)'}`,
                     borderRadius: 8,
                     marginBottom: 8,
@@ -318,6 +396,9 @@ const SessionDetailPage: React.FC = () => {
                           {step.success ? <CheckCircleOutlined /> : <CloseCircleOutlined />}
                         </Tag>
                         <Tag color="blue">{index + 1}</Tag>
+                          {step.confirmation_required && <Tag color="gold">等待确认</Tag>}
+                          {step.takeover && <Tag color="orange">人工接管</Tag>}
+                          {step.replay_forbidden && <Tag color="red">禁止回放</Tag>}
                         <Space size="small">
                           {getActionIcon(step.action)}
                           <Text strong>{step.action}</Text>
@@ -331,13 +412,32 @@ const SessionDetailPage: React.FC = () => {
                     {step.error && (
                       <div
                         style={{
-                          background: 'rgba(239, 68, 68, 0.12)',
-                          border: '1px solid rgba(239, 68, 68, 0.24)',
+                          background: step.confirmation_required
+                            ? 'rgba(245, 158, 11, 0.12)'
+                            : step.takeover
+                              ? 'rgba(249, 115, 22, 0.12)'
+                              : 'rgba(239, 68, 68, 0.12)',
+                          border: step.confirmation_required
+                            ? '1px solid rgba(245, 158, 11, 0.24)'
+                            : step.takeover
+                              ? '1px solid rgba(249, 115, 22, 0.24)'
+                              : '1px solid rgba(239, 68, 68, 0.24)',
                           padding: 8,
                           borderRadius: 4,
                         }}
                       >
                         <Text type="danger">{step.error}</Text>
+                        {(step.confirmation_reason ||
+                          step.takeover_reason ||
+                          step.replay_forbidden_reason) && (
+                          <div style={{ marginTop: 4 }}>
+                            <Text type="secondary">
+                              {step.confirmation_reason ||
+                                step.takeover_reason ||
+                                step.replay_forbidden_reason}
+                            </Text>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -370,9 +470,11 @@ const SessionDetailPage: React.FC = () => {
                             children: (
                               <div style={{ textAlign: 'center' }}>
                                 <Image
-                                  src={step.screenshot.startsWith('data:')
-                                    ? step.screenshot
-                                    : `data:image/png;base64,${step.screenshot}`}
+                                  src={
+                                    step.screenshot.startsWith('data:')
+                                      ? step.screenshot
+                                      : `data:image/png;base64,${step.screenshot}`
+                                  }
                                   alt="Screenshot"
                                   style={{ maxWidth: '100%', maxHeight: 400, borderRadius: 4 }}
                                 />
@@ -396,11 +498,7 @@ const SessionDetailPage: React.FC = () => {
                                 <Text>文本内容</Text>
                               </Space>
                             ),
-                            children: (
-                              <pre style={jsonBlockStyle}>
-                                {step.text}
-                              </pre>
-                            ),
+                            children: <pre style={jsonBlockStyle}>{step.text}</pre>,
                           },
                         ]}
                       />
@@ -452,11 +550,7 @@ const SessionDetailPage: React.FC = () => {
                                   {
                                     key: 'source',
                                     label: '源码',
-                                    children: (
-                                      <pre style={jsonBlockStyle}>
-                                        {step.html}
-                                      </pre>
-                                    ),
+                                    children: <pre style={jsonBlockStyle}>{step.html}</pre>,
                                   },
                                 ]}
                               />
@@ -481,7 +575,9 @@ const SessionDetailPage: React.FC = () => {
               <Button
                 type="link"
                 size="small"
-                onClick={() => window.open(transformLocalhostUrl(session.endpoints!.novnc), '_blank')}
+                onClick={() =>
+                  window.open(transformLocalhostUrl(session.endpoints!.novnc), '_blank')
+                }
               >
                 Open noVNC
               </Button>

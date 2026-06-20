@@ -4,7 +4,10 @@ import type {
   TemplateRecognizeResponse,
   TemplateUnderstandResponse,
 } from '../../../api/carbone-api';
-import type { CompareHeadingLanguageSelection, SampleUploadState } from './word-workflow.panel.helpers';
+import type {
+  CompareHeadingLanguageSelection,
+  SampleUploadState,
+} from './word-workflow.panel.helpers';
 import type { WordSectionGenerationResult } from './word-workflow.cache';
 
 export function useWordWorkflowPanelState() {
@@ -20,10 +23,18 @@ export function useWordWorkflowPanelState() {
     uploaded: false,
     revision: 0,
   });
-  const [compareHeadingLanguages, setCompareHeadingLanguages] = useState<CompareHeadingLanguageSelection[]>(['zh']);
-  const [collapsedCompareSections, setCollapsedCompareSections] = useState<Record<string, boolean>>({});
-  const [collapsedRecognitionSections, setCollapsedRecognitionSections] = useState<Record<string, boolean>>({});
-  const [selectedCompareSections, setSelectedCompareSections] = useState<Record<string, boolean>>({});
+  const [compareHeadingLanguages, setCompareHeadingLanguages] = useState<
+    CompareHeadingLanguageSelection[]
+  >(['zh']);
+  const [collapsedCompareSections, setCollapsedCompareSections] = useState<Record<string, boolean>>(
+    {}
+  );
+  const [collapsedRecognitionSections, setCollapsedRecognitionSections] = useState<
+    Record<string, boolean>
+  >({});
+  const [selectedCompareSections, setSelectedCompareSections] = useState<Record<string, boolean>>(
+    {}
+  );
   const [understandingRevision, setUnderstandingRevision] = useState(0);
   const [understandingLanguageSignature, setUnderstandingLanguageSignature] = useState('');
   const [understandingCompareSignature, setUnderstandingCompareSignature] = useState('no-compare');
@@ -33,9 +44,15 @@ export function useWordWorkflowPanelState() {
   const [recognitionLanguageSignature, setRecognitionLanguageSignature] = useState('');
   const [recognitionCompareSignature, setRecognitionCompareSignature] = useState('no-compare');
   const [recognitionActivated, setRecognitionActivated] = useState(false);
-  const [understandingResult, setUnderstandingResult] = useState<TemplateUnderstandResponse | null>(null);
-  const [recognitionResult, setRecognitionResult] = useState<TemplateRecognizeResponse | null>(null);
-  const [sectionGenerationResults, setSectionGenerationResults] = useState<WordSectionGenerationResult[]>([]);
+  const [understandingResult, setUnderstandingResult] = useState<TemplateUnderstandResponse | null>(
+    null
+  );
+  const [recognitionResult, setRecognitionResult] = useState<TemplateRecognizeResponse | null>(
+    null
+  );
+  const [sectionGenerationResults, setSectionGenerationResults] = useState<
+    WordSectionGenerationResult[]
+  >([]);
   const [isComparing, setIsComparing] = useState(false);
   const [isHighlightingCandidates, setIsHighlightingCandidates] = useState(false);
   const [isClearingHighlights, setIsClearingHighlights] = useState(false);
@@ -44,13 +61,22 @@ export function useWordWorkflowPanelState() {
   const [, setCompareHighlightSummary] = useState<string | null>(null);
   const [compareCacheStatus, setCompareCacheStatus] = useState<'hit' | 'miss' | null>(null);
   const [compareCacheUpdatedAt, setCompareCacheUpdatedAt] = useState<number | null>(null);
-  const [understandingCacheStatus, setUnderstandingCacheStatus] = useState<'hit' | 'miss' | null>(null);
-  const [understandingCacheUpdatedAt, setUnderstandingCacheUpdatedAt] = useState<number | null>(null);
+  const [understandingCacheStatus, setUnderstandingCacheStatus] = useState<'hit' | 'miss' | null>(
+    null
+  );
+  const [understandingCacheUpdatedAt, setUnderstandingCacheUpdatedAt] = useState<number | null>(
+    null
+  );
   const [recognitionCacheStatus, setRecognitionCacheStatus] = useState<'hit' | 'miss' | null>(null);
   const [recognitionCacheUpdatedAt, setRecognitionCacheUpdatedAt] = useState<number | null>(null);
-  const [detectedUploadCacheStatus, setDetectedUploadCacheStatus] = useState<'available' | 'none' | 'checking' | null>(null);
-  const [detectedUploadCacheUpdatedAt, setDetectedUploadCacheUpdatedAt] = useState<number | null>(null);
-  const [detectedUploadCacheResult, setDetectedUploadCacheResult] = useState<TemplateUnderstandResponse | null>(null);
+  const [detectedUploadCacheStatus, setDetectedUploadCacheStatus] = useState<
+    'available' | 'none' | 'checking' | null
+  >(null);
+  const [detectedUploadCacheUpdatedAt, setDetectedUploadCacheUpdatedAt] = useState<number | null>(
+    null
+  );
+  const [detectedUploadCacheResult, setDetectedUploadCacheResult] =
+    useState<TemplateUnderstandResponse | null>(null);
 
   return {
     draftWorkflowCollapsed,

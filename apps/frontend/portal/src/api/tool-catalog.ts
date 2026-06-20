@@ -73,14 +73,16 @@ export const toolCatalogApi = {
   },
 
   getByName: async (name: string): Promise<ToolCatalogItem> => {
-    const response = await apiClient.get<ToolCatalogDetailResponse>(`/tools/catalog/${encodeURIComponent(name)}`);
+    const response = await apiClient.get<ToolCatalogDetailResponse>(
+      `/tools/catalog/${encodeURIComponent(name)}`
+    );
     return response.tool;
   },
 
   update: async (name: string, data: UpdateToolCatalogPayload): Promise<ToolCatalogItem> => {
     const response = await apiClient.patch<ToolCatalogUpdateResponse>(
       `/tools/catalog/${encodeURIComponent(name)}`,
-      data,
+      data
     );
     return response.tool;
   },

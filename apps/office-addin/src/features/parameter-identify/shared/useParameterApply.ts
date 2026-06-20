@@ -1,10 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useAppStore, AISuggestion } from '../../../app/store';
 import { WordAPI } from '../../../host/office/word/api';
-import {
-  getSuggestionGroupIcon,
-  groupSuggestionsByHost,
-} from './common/suggestion-grouping';
+import { getSuggestionGroupIcon, groupSuggestionsByHost } from './common/suggestion-grouping';
 import {
   buildBatchApplyItems,
   extractWordLoopArrayPath,
@@ -40,7 +37,9 @@ export function useParameterApply(hostAdapter: any, isExcelMode: boolean) {
   const [manualSignificance, setManualSignificance] = useState('');
   const [supportsSuggestionPreview, setSupportsSuggestionPreview] = useState(!isExcelMode);
 
-  const [collapsedSuggestionGroups, setCollapsedSuggestionGroups] = useState<Record<string, boolean>>({});
+  const [collapsedSuggestionGroups, setCollapsedSuggestionGroups] = useState<
+    Record<string, boolean>
+  >({});
 
   const visibleExcelPairs = useMemo(
     () => excelSheetPairs.filter((pair) => !pair.hidden),
@@ -108,12 +107,20 @@ export function useParameterApply(hostAdapter: any, isExcelMode: boolean) {
 
       await hostAdapter.applySuggestion(suggestion);
       applySuggestion(suggestion.id);
-      addDebugLog('info', '应用建议成功', `${suggestion.originalText} → ${suggestion.suggestedName}`);
+      addDebugLog(
+        'info',
+        '应用建议成功',
+        `${suggestion.originalText} → ${suggestion.suggestedName}`
+      );
       onApplyComplete?.();
       return { success: true };
     } catch (error: any) {
       const reason = error?.message || '未知错误';
-      addDebugLog('error', '应用建议失败', `${suggestion.originalText} → ${suggestion.suggestedName}\n${reason}`);
+      addDebugLog(
+        'error',
+        '应用建议失败',
+        `${suggestion.originalText} → ${suggestion.suggestedName}\n${reason}`
+      );
       return { success: false, reason };
     }
   };
@@ -144,7 +151,7 @@ export function useParameterApply(hostAdapter: any, isExcelMode: boolean) {
           item,
           item.targetKey?.startsWith('word:table-loop-cell:')
             ? [`arrayPath=${extractWordLoopArrayPath(item.suggestion) || '(none)'}`]
-            : [],
+            : []
         ),
       };
     } catch (error: any) {
@@ -155,7 +162,7 @@ export function useParameterApply(hostAdapter: any, isExcelMode: boolean) {
         logBlock: formatApplyDebugBlock(
           item.sourceSuggestions.length > 1 ? 'apply-merged-failed' : 'apply-failed',
           item,
-          [`reason=${reason}`],
+          [`reason=${reason}`]
         ),
       };
     }
@@ -166,7 +173,10 @@ export function useParameterApply(hostAdapter: any, isExcelMode: boolean) {
   };
 
   const generatePreviewSummary = (items: AISuggestion[], actionLabel: string): string => {
-    const lines = items.map((suggestion, index) => `${index + 1}. "${suggestion.originalText}" → ${suggestion.suggestedName}`);
+    const lines = items.map(
+      (suggestion, index) =>
+        `${index + 1}. "${suggestion.originalText}" → ${suggestion.suggestedName}`
+    );
     return `即将${actionLabel} ${items.length} 个替换:\n\n${lines.join('\n')}`;
   };
 
@@ -223,14 +233,20 @@ export function useParameterApply(hostAdapter: any, isExcelMode: boolean) {
       [
         `成功${actionLabel}了 ${successSuggestionCount} / ${items.length} 个建议`,
         `实际写入目标 ${successCount} / ${batchItems.length} 个`,
-        mergedSuggestionCount > 0 ? `同锚点合并 ${mergedSuggestionCount} 条建议，避免后写覆盖前写` : undefined,
+        mergedSuggestionCount > 0
+          ? `同锚点合并 ${mergedSuggestionCount} 条建议，避免后写覆盖前写`
+          : undefined,
         failedReasons.length > 0 ? '' : undefined,
         failedReasons.length > 0 ? '失败原因:' : undefined,
-        ...(failedReasons.length > 0 ? failedReasons.slice(0, 10).map((item, index) => `${index + 1}. ${item}`) : []),
+        ...(failedReasons.length > 0
+          ? failedReasons.slice(0, 10).map((item, index) => `${index + 1}. ${item}`)
+          : []),
         batchLogBlocks.length > 0 ? '' : undefined,
         batchLogBlocks.length > 0 ? '应用明细:' : undefined,
         ...(batchLogBlocks.length > 0 ? [batchLogBlocks.join('\n\n')] : []),
-      ].filter(Boolean).join('\n')
+      ]
+        .filter(Boolean)
+        .join('\n')
     );
   };
 
@@ -327,13 +343,17 @@ export function useParameterApply(hostAdapter: any, isExcelMode: boolean) {
         description: manualSignificance || '用户手动补充的参数说明',
         chapter: targetGroupName,
         significance: manualSignificance || '用户自定义参数',
-        displayPosition: selectedContent ? `【${selectedContent.substring(0, 30)}...】` : '手动添加',
+        displayPosition: selectedContent
+          ? `【${selectedContent.substring(0, 30)}...】`
+          : '手动添加',
         context: selectedContent || '',
         fieldType: manualLoopMode ? 'loop' : 'text',
         formatter: manualFormatter,
         arrayPath: manualLoopMode ? manualArrayPath : undefined,
         beforeBlank: selectedContent ? selectedContent.substring(0, 15) : '',
-        afterBlank: selectedContent ? selectedContent.substring(Math.max(0, selectedContent.length - 15)) : '',
+        afterBlank: selectedContent
+          ? selectedContent.substring(Math.max(0, selectedContent.length - 15))
+          : '',
         excelAnchor: isExcelMode ? { sheetName: targetGroupName, type: 'cell' } : undefined,
       },
     };
@@ -363,19 +383,12 @@ export function useParameterApply(hostAdapter: any, isExcelMode: boolean) {
   const handleSetVisibleExcelPairsCompare = (compare: boolean) => {
     const visiblePairIds = new Set(visibleExcelPairs.map((pair) => pair.id));
     setExcelSheetPairs(
-      excelSheetPairs.map((pair) => (
-        visiblePairIds.has(pair.id)
-          ? { ...pair, compare }
-          : pair
-      ))
+      excelSheetPairs.map((pair) => (visiblePairIds.has(pair.id) ? { ...pair, compare } : pair))
     );
     addDebugLog('info', compare ? '已全选参考卡片组' : '已全部不选参考卡片组');
   };
 
-  const groupedSuggestions = groupSuggestionsByHost(
-    suggestions,
-    isExcelMode ? 'excel' : 'word'
-  );
+  const groupedSuggestions = groupSuggestionsByHost(suggestions, isExcelMode ? 'excel' : 'word');
 
   const toggleSuggestionGroupCollapse = (groupName: string) => {
     setCollapsedSuggestionGroups((current) => ({

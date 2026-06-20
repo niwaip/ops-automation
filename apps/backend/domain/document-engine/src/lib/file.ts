@@ -30,8 +30,8 @@ export interface OfficeDocumentStructure {
 
 export interface ImageRelationship {
   rId: string;
-  target: string;     // 如 word/media/image1.png
-  type: string;       // 如 http://schemas.openxmlformats.org/officeDocument/2006/relationships/image
+  target: string; // 如 word/media/image1.png
+  type: string; // 如 http://schemas.openxmlformats.org/officeDocument/2006/relationships/image
 }
 
 export interface ImageInfo {
@@ -161,7 +161,7 @@ export class FileHandler {
       fileName,
       size,
       variables: parsed.variables,
-      loops: parsed.loops.map(l => ({ arrayPath: l.arrayPath }))
+      loops: parsed.loops.map((l) => ({ arrayPath: l.arrayPath })),
     };
   }
 
@@ -182,21 +182,18 @@ export class FileHandler {
       fileName,
       size: buffer.length,
       variables: parsed.variables,
-      loops: parsed.loops.map(l => ({ arrayPath: l.arrayPath }))
+      loops: parsed.loops.map((l) => ({ arrayPath: l.arrayPath })),
     };
   }
 
   /**
    * 渲染模板并生成文档
    */
-  async renderTemplate(
-    templateBuffer: Buffer,
-    data: any,
-    fileName: string
-  ): Promise<Buffer> {
+  async renderTemplate(templateBuffer: Buffer, data: any, fileName: string): Promise<Buffer> {
     const format = this.getFormat(fileName);
     const zip = await this.loadZipFromBuffer(templateBuffer);
-    const originalSharedStringsXml = format === 'xlsx' ? await this.getOptionalFileContent(zip, 'xl/sharedStrings.xml') : null;
+    const originalSharedStringsXml =
+      format === 'xlsx' ? await this.getOptionalFileContent(zip, 'xl/sharedStrings.xml') : null;
 
     // 获取所有需要处理的XML文件
     const xmlFiles = this.getXmlFilesToProcess(zip, format);
@@ -244,8 +241,8 @@ export class FileHandler {
         // 处理headers和footers
         const headerFiles = zip.file(/word\/header\d+\.xml/);
         const footerFiles = zip.file(/word\/footer\d+\.xml/);
-        headerFiles.forEach(f => files.push(f.name));
-        footerFiles.forEach(f => files.push(f.name));
+        headerFiles.forEach((f) => files.push(f.name));
+        footerFiles.forEach((f) => files.push(f.name));
 
         // 处理脚注和尾注
         const footnotesFile = zip.file('word/footnotes.xml');
@@ -259,35 +256,35 @@ export class FileHandler {
 
         // 处理图表数据
         const chartFiles = zip.file(/word\/charts\/chart\d+\.xml/);
-        chartFiles.forEach(f => files.push(f.name));
+        chartFiles.forEach((f) => files.push(f.name));
 
         // 处理文本框和其他drawing元素
         const drawingFiles = zip.file(/word\/drawings\/drawing\d+\.xml/);
-        drawingFiles.forEach(f => files.push(f.name));
+        drawingFiles.forEach((f) => files.push(f.name));
         break;
 
       case 'xlsx':
         // 处理所有工作表
         const sheetFiles = zip.file(/xl\/worksheets\/sheet\d+\.xml/);
-        sheetFiles.forEach(f => files.push(f.name));
+        sheetFiles.forEach((f) => files.push(f.name));
 
         // 处理图表
         const xlsxChartFiles = zip.file(/xl\/charts\/chart\d+\.xml/);
-        xlsxChartFiles.forEach(f => files.push(f.name));
+        xlsxChartFiles.forEach((f) => files.push(f.name));
         break;
 
       case 'pptx':
         // 处理所有幻灯片
         const slideFiles = zip.file(/ppt\/slides\/slide\d+\.xml/);
-        slideFiles.forEach(f => files.push(f.name));
+        slideFiles.forEach((f) => files.push(f.name));
 
         // 处理幻灯片布局
         const slideLayoutFiles = zip.file(/ppt\/slideLayouts\/slideLayout\d+\.xml/);
-        slideLayoutFiles.forEach(f => files.push(f.name));
+        slideLayoutFiles.forEach((f) => files.push(f.name));
 
         // 处理图表
         const pptxChartFiles = zip.file(/ppt\/charts\/chart\d+\.xml/);
-        pptxChartFiles.forEach(f => files.push(f.name));
+        pptxChartFiles.forEach((f) => files.push(f.name));
         break;
 
       case 'html':
@@ -322,7 +319,11 @@ export class FileHandler {
    * 对于将循环标记放在 sharedStrings 中的 Excel 模板，
    * 需要在工作表层面把后续空白行绑定到新增的 shared string 索引。
    */
-  private async expandSharedStringLoopRows(zip: JSZip, data: any, originalSharedStringsXml: string): Promise<void> {
+  private async expandSharedStringLoopRows(
+    zip: JSZip,
+    data: any,
+    originalSharedStringsXml: string
+  ): Promise<void> {
     const renderedSharedStringsXml = await this.getOptionalFileContent(zip, 'xl/sharedStrings.xml');
     if (!renderedSharedStringsXml) {
       return;
@@ -331,7 +332,10 @@ export class FileHandler {
     const originalStrings = this.extractSharedStringTexts(originalSharedStringsXml);
     const sharedStringDocument = this.parseSharedStringDocument(renderedSharedStringsXml);
     const sheetFiles = zip.file(/xl\/worksheets\/sheet\d+\.xml/);
-    const sheetExpansions = new Map<string, Array<{ startRow: number; oldEndRow: number; newEndRow: number; delta: number }>>();
+    const sheetExpansions = new Map<
+      string,
+      Array<{ startRow: number; oldEndRow: number; newEndRow: number; delta: number }>
+    >();
 
     for (const sheetFile of sheetFiles) {
       const originalSheetXml = await sheetFile.async('text');
@@ -362,7 +366,7 @@ export class FileHandler {
     while ((match = regex.exec(xml)) !== null) {
       const siXml = match[0];
       const text = Array.from(siXml.matchAll(/<t[^>]*>([\s\S]*?)<\/t>/g))
-        .map(item => item[1])
+        .map((item) => item[1])
         .join('');
       values.push(text);
     }
@@ -370,7 +374,12 @@ export class FileHandler {
     return values;
   }
 
-  private parseSharedStringDocument(xml: string): { prefix: string; suffix: string; entries: string[]; values: string[] } {
+  private parseSharedStringDocument(xml: string): {
+    prefix: string;
+    suffix: string;
+    entries: string[];
+    values: string[];
+  } {
     const firstSi = xml.indexOf('<si');
     const lastSi = xml.lastIndexOf('</si>');
     if (firstSi < 0 || lastSi < 0) {
@@ -389,7 +398,12 @@ export class FileHandler {
     return { prefix, suffix, entries, values };
   }
 
-  private buildSharedStringDocument(document: { prefix: string; suffix: string; entries: string[]; values: string[] }): string {
+  private buildSharedStringDocument(document: {
+    prefix: string;
+    suffix: string;
+    entries: string[];
+    values: string[];
+  }): string {
     const count = document.entries.length;
     const prefix = document.prefix
       .replace(/\bcount="(\d+)"/, `count="${count}"`)
@@ -402,7 +416,10 @@ export class FileHandler {
     originalStrings: string[],
     sharedStringDocument: { prefix: string; suffix: string; entries: string[]; values: string[] },
     data: any
-  ): { xml: string; expansions: Array<{ startRow: number; oldEndRow: number; newEndRow: number; delta: number }> } {
+  ): {
+    xml: string;
+    expansions: Array<{ startRow: number; oldEndRow: number; newEndRow: number; delta: number }>;
+  } {
     const sheetDataMatch = sheetXml.match(/<sheetData>([\s\S]*?)<\/sheetData>/);
     if (!sheetDataMatch) {
       return { xml: sheetXml, expansions: [] };
@@ -419,7 +436,12 @@ export class FileHandler {
     }
 
     const worksheetContext = this.buildWorksheetRenderContext(sheetDataMatch[1], originalStrings);
-    const expansions: Array<{ startRow: number; oldEndRow: number; newEndRow: number; delta: number }> = [];
+    const expansions: Array<{
+      startRow: number;
+      oldEndRow: number;
+      newEndRow: number;
+      delta: number;
+    }> = [];
     const renderedRows: string[] = [];
     let rowOffset = 0;
 
@@ -487,9 +509,12 @@ export class FileHandler {
     };
   }
 
-  private extractSharedStringCells(rowXml: string): Array<{ cellRef: string; sharedStringIndex: number }> {
+  private extractSharedStringCells(
+    rowXml: string
+  ): Array<{ cellRef: string; sharedStringIndex: number }> {
     const cells: Array<{ cellRef: string; sharedStringIndex: number }> = [];
-    const cellRegex = /<c\b[^>]*r="([A-Z]+)(\d+)"[^>]*t="s"[^>]*>[\s\S]*?<v>(\d+)<\/v>[\s\S]*?<\/c>/g;
+    const cellRegex =
+      /<c\b[^>]*r="([A-Z]+)(\d+)"[^>]*t="s"[^>]*>[\s\S]*?<v>(\d+)<\/v>[\s\S]*?<\/c>/g;
     let match: RegExpExecArray | null;
 
     while ((match = cellRegex.exec(rowXml)) !== null) {
@@ -503,7 +528,9 @@ export class FileHandler {
   }
 
   private isBlankSharedStringPlaceholderRow(rowXml: string): boolean {
-    return /<c\b/i.test(rowXml) && !/<v>[\s\S]*?<\/v>/.test(rowXml) && !/<f>[\s\S]*?<\/f>/.test(rowXml);
+    return (
+      /<c\b/i.test(rowXml) && !/<v>[\s\S]*?<\/v>/.test(rowXml) && !/<f>[\s\S]*?<\/f>/.test(rowXml)
+    );
   }
 
   private detectLoopTemplateRow(
@@ -530,7 +557,9 @@ export class FileHandler {
     }
 
     const loopStartCellIndex = rowTexts.findIndex((text) => /\{#([cdt]\.[^}]+)\}/.test(text));
-    const reverseEndIndex = [...rowTexts].reverse().findIndex((text) => /\{\/([cdt]\.[^}]+)\}/.test(text));
+    const reverseEndIndex = [...rowTexts]
+      .reverse()
+      .findIndex((text) => /\{\/([cdt]\.[^}]+)\}/.test(text));
     if (loopStartCellIndex < 0 || reverseEndIndex < 0) {
       return null;
     }
@@ -567,19 +596,32 @@ export class FileHandler {
     let cloned = templateRowXml;
 
     cloned = cloned.replace(/(<row\b[^>]*r=")\d+(")/, `$1${targetRowNumber}$2`);
-    cloned = cloned.replace(/(<c\b[^>]*r=")([A-Z]+)\d+(")/g, (_match, prefix, col, suffix) => `${prefix}${col}${targetRowNumber}${suffix}`);
+    cloned = cloned.replace(
+      /(<c\b[^>]*r=")([A-Z]+)\d+(")/g,
+      (_match, prefix, col, suffix) => `${prefix}${col}${targetRowNumber}${suffix}`
+    );
 
-    for (let cellIndex = loopTemplate.loopStartCellIndex; cellIndex <= loopTemplate.loopEndCellIndex; cellIndex++) {
+    for (
+      let cellIndex = loopTemplate.loopStartCellIndex;
+      cellIndex <= loopTemplate.loopEndCellIndex;
+      cellIndex++
+    ) {
       const cell = loopTemplate.sharedCells[cellIndex];
       const targetRef = cell.cellRef.replace(/\d+$/, String(targetRowNumber));
       const templateText = loopTemplate.rowTexts[cellIndex];
       const renderedText = this.renderLoopCellText(templateText, data, itemIndex);
 
       if (this.shouldWriteNumericCell(templateText, renderedText, targetRef, worksheetContext)) {
-        cloned = this.replaceCellWithNumber(cloned, targetRef, this.normalizeNumericCellValue(renderedText));
+        cloned = this.replaceCellWithNumber(
+          cloned,
+          targetRef,
+          this.normalizeNumericCellValue(renderedText)
+        );
       } else {
         const sharedStringIndex = this.appendSharedStringValue(sharedStringDocument, renderedText);
-        const cellPattern = new RegExp(`(<c\\b[^>]*r="${targetRef}"[^>]*t="s"[^>]*>[\\s\\S]*?<v>)\\d+(<\\/v>)`);
+        const cellPattern = new RegExp(
+          `(<c\\b[^>]*r="${targetRef}"[^>]*t="s"[^>]*>[\\s\\S]*?<v>)\\d+(<\\/v>)`
+        );
         cloned = cloned.replace(cellPattern, `$1${sharedStringIndex}$2`);
       }
     }
@@ -597,8 +639,14 @@ export class FileHandler {
     const targetRowNumber = originalRowNumber + rowOffset;
 
     shifted = shifted.replace(/(<row\b[^>]*r=")\d+(")/, `$1${targetRowNumber}$2`);
-    shifted = shifted.replace(/(<c\b[^>]*r=")([A-Z]+)\d+(")/g, (_match, prefix, col, suffix) => `${prefix}${col}${targetRowNumber}${suffix}`);
-    shifted = shifted.replace(/<f>([\s\S]*?)<\/f>/g, (_match, formula) => `<f>${this.rewriteFormula(formula, expansions)}</f>`);
+    shifted = shifted.replace(
+      /(<c\b[^>]*r=")([A-Z]+)\d+(")/g,
+      (_match, prefix, col, suffix) => `${prefix}${col}${targetRowNumber}${suffix}`
+    );
+    shifted = shifted.replace(
+      /<f>([\s\S]*?)<\/f>/g,
+      (_match, formula) => `<f>${this.rewriteFormula(formula, expansions)}</f>`
+    );
 
     return shifted;
   }
@@ -633,7 +681,9 @@ export class FileHandler {
       .replace(/\{#[cdt]\.[^}]+\}/g, '')
       .replace(/\{\/[cdt]\.[^}]+\}/g, '');
 
-    const markerMatch = textWithoutLoopMarkers.match(/\{([cdt])\.([^}:]+(?:\[[^\]]*\])?(?:[^}]*)?)(:[^}]*)?\}/);
+    const markerMatch = textWithoutLoopMarkers.match(
+      /\{([cdt])\.([^}:]+(?:\[[^\]]*\])?(?:[^}]*)?)(:[^}]*)?\}/
+    );
     if (!markerMatch) {
       return textWithoutLoopMarkers;
     }
@@ -684,10 +734,16 @@ export class FileHandler {
 
   private replaceCellWithNumber(rowXml: string, targetRef: string, numericValue: string): string {
     const cellPattern = new RegExp(`<c\\b([^>]*r="${targetRef}"[^>]*)>[\\s\\S]*?<\\/c>`);
-    return rowXml.replace(cellPattern, (_match, attrs) => `<c${String(attrs).replace(/\s+t="s"/, '')}><v>${numericValue}</v></c>`);
+    return rowXml.replace(
+      cellPattern,
+      (_match, attrs) => `<c${String(attrs).replace(/\s+t="s"/, '')}><v>${numericValue}</v></c>`
+    );
   }
 
-  private buildWorksheetRenderContext(sheetDataXml: string, sharedStrings: string[]): WorksheetRenderContext {
+  private buildWorksheetRenderContext(
+    sheetDataXml: string,
+    sharedStrings: string[]
+  ): WorksheetRenderContext {
     const numericColumns = new Set<string>();
     const headerLabels = new Map<string, string>();
     const rowRegex = /<row\b[^>]*r="(\d+)"[^>]*>[\s\S]*?<\/row>/g;
@@ -697,7 +753,9 @@ export class FileHandler {
     }));
 
     for (const row of rows) {
-      const formulaMatches = Array.from(row.xml.matchAll(/<c\b[^>]*r="([A-Z]+)\d+"[^>]*>[\s\S]*?<f>([\s\S]*?)<\/f>[\s\S]*?<\/c>/g));
+      const formulaMatches = Array.from(
+        row.xml.matchAll(/<c\b[^>]*r="([A-Z]+)\d+"[^>]*>[\s\S]*?<f>([\s\S]*?)<\/f>[\s\S]*?<\/c>/g)
+      );
       for (const formulaMatch of formulaMatches) {
         const formula = formulaMatch[2];
         for (const rangeMatch of formula.matchAll(/([A-Z]+)\d+:([A-Z]+)\d+/g)) {
@@ -723,7 +781,9 @@ export class FileHandler {
   }
 
   private looksLikeNumericHeader(label: string): boolean {
-    return /(金额|单价|总价|小计|合计|税额|数量|比例|税率|price|amount|total|subtotal|qty|quantity|rate|percent)/i.test(label);
+    return /(金额|单价|总价|小计|合计|税额|数量|比例|税率|price|amount|total|subtotal|qty|quantity|rate|percent)/i.test(
+      label
+    );
   }
 
   private extractColumnLetters(cellRef: string): string {
@@ -731,19 +791,27 @@ export class FileHandler {
   }
 
   private updateWorksheetDimension(sheetXml: string, renderedRows: string[]): string {
-    const rowNumbers = renderedRows.map((row) => parseInt(row.match(/<row\b[^>]*r="(\d+)"/)?.[1] || '0', 10));
+    const rowNumbers = renderedRows.map((row) =>
+      parseInt(row.match(/<row\b[^>]*r="(\d+)"/)?.[1] || '0', 10)
+    );
     const maxRow = rowNumbers.reduce((max, value) => Math.max(max, value), 0);
     if (maxRow === 0) {
       return sheetXml;
     }
 
-    return sheetXml.replace(/<dimension ref="([A-Z]+)(\d+):([A-Z]+)(\d+)"\/>/, (_match, startCol, startRow, endCol) => {
-      return `<dimension ref="${startCol}${startRow}:${endCol}${maxRow}"/>`;
-    });
+    return sheetXml.replace(
+      /<dimension ref="([A-Z]+)(\d+):([A-Z]+)(\d+)"\/>/,
+      (_match, startCol, startRow, endCol) => {
+        return `<dimension ref="${startCol}${startRow}:${endCol}${maxRow}"/>`;
+      }
+    );
   }
 
   private clearFormulaCachedValues(sheetXml: string): string {
-    return sheetXml.replace(/(<c\b[^>]*>\s*<f>[\s\S]*?<\/f>)\s*<v>[\s\S]*?<\/v>\s*<\/c>/g, '$1</c>');
+    return sheetXml.replace(
+      /(<c\b[^>]*>\s*<f>[\s\S]*?<\/f>)\s*<v>[\s\S]*?<\/v>\s*<\/c>/g,
+      '$1</c>'
+    );
   }
 
   private rewriteFormula(
@@ -753,25 +821,32 @@ export class FileHandler {
     let rewritten = formula;
 
     for (const expansion of expansions) {
-      rewritten = rewritten.replace(/([A-Z]+)(\d+):([A-Z]+)(\d+)/g, (_match, startCol, startRow, endCol, endRow) => {
-        let fromRow = parseInt(startRow, 10);
-        let toRow = parseInt(endRow, 10);
-        let expandedRange = false;
+      rewritten = rewritten.replace(
+        /([A-Z]+)(\d+):([A-Z]+)(\d+)/g,
+        (_match, startCol, startRow, endCol, endRow) => {
+          let fromRow = parseInt(startRow, 10);
+          let toRow = parseInt(endRow, 10);
+          let expandedRange = false;
 
-        if (toRow === expansion.oldEndRow && fromRow >= expansion.startRow && fromRow <= expansion.oldEndRow) {
-          toRow = expansion.newEndRow;
-          expandedRange = true;
-        }
+          if (
+            toRow === expansion.oldEndRow &&
+            fromRow >= expansion.startRow &&
+            fromRow <= expansion.oldEndRow
+          ) {
+            toRow = expansion.newEndRow;
+            expandedRange = true;
+          }
 
-        if (fromRow > expansion.oldEndRow) {
-          fromRow += expansion.delta;
-        }
-        if (!expandedRange && toRow > expansion.oldEndRow) {
-          toRow += expansion.delta;
-        }
+          if (fromRow > expansion.oldEndRow) {
+            fromRow += expansion.delta;
+          }
+          if (!expandedRange && toRow > expansion.oldEndRow) {
+            toRow += expansion.delta;
+          }
 
-        return `${startCol}${fromRow}:${endCol}${toRow}`;
-      });
+          return `${startCol}${fromRow}:${endCol}${toRow}`;
+        }
+      );
     }
 
     return rewritten;
@@ -779,7 +854,10 @@ export class FileHandler {
 
   private async updateWorksheetTables(
     zip: JSZip,
-    sheetExpansions: Map<string, Array<{ startRow: number; oldEndRow: number; newEndRow: number; delta: number }>>
+    sheetExpansions: Map<
+      string,
+      Array<{ startRow: number; oldEndRow: number; newEndRow: number; delta: number }>
+    >
   ): Promise<void> {
     for (const [sheetPath, expansions] of sheetExpansions.entries()) {
       const tablePaths = await this.getWorksheetTablePaths(zip, sheetPath);
@@ -791,13 +869,16 @@ export class FileHandler {
 
         let updated = tableXml;
         for (const expansion of expansions) {
-          updated = updated.replace(/ref="([A-Z]+)(\d+):([A-Z]+)(\d+)"/g, (_match, startCol, startRow, endCol, endRow) => {
-            const bottomRow = parseInt(endRow, 10);
-            if (bottomRow !== expansion.oldEndRow) {
-              return `ref="${startCol}${startRow}:${endCol}${endRow}"`;
+          updated = updated.replace(
+            /ref="([A-Z]+)(\d+):([A-Z]+)(\d+)"/g,
+            (_match, startCol, startRow, endCol, endRow) => {
+              const bottomRow = parseInt(endRow, 10);
+              if (bottomRow !== expansion.oldEndRow) {
+                return `ref="${startCol}${startRow}:${endCol}${endRow}"`;
+              }
+              return `ref="${startCol}${startRow}:${endCol}${expansion.newEndRow}"`;
             }
-            return `ref="${startCol}${startRow}:${endCol}${expansion.newEndRow}"`;
-          });
+          );
         }
 
         zip.file(tablePath, updated);
@@ -833,9 +914,14 @@ export class FileHandler {
     let updated = workbookXml;
     if (/<calcPr\b/.test(updated)) {
       updated = updated.replace(/<calcPr\b[^>]*\/>/, (match) => this.upsertCalcPrTag(match));
-      updated = updated.replace(/<calcPr\b[^>]*>(?![\s\S]*<calcPr\b)/, (match) => this.upsertCalcPrTag(match));
+      updated = updated.replace(/<calcPr\b[^>]*>(?![\s\S]*<calcPr\b)/, (match) =>
+        this.upsertCalcPrTag(match)
+      );
     } else {
-      updated = updated.replace('</workbook>', '<calcPr calcMode="auto" fullCalcOnLoad="1" forceFullCalc="1"/></workbook>');
+      updated = updated.replace(
+        '</workbook>',
+        '<calcPr calcMode="auto" fullCalcOnLoad="1" forceFullCalc="1"/></workbook>'
+      );
     }
 
     zip.file(workbookPath, updated);
@@ -885,27 +971,44 @@ export class FileHandler {
       return;
     }
 
-    const imagesData = data.images || data.d?.images || data.screenshots || data.d?.screenshots || [];
+    const imagesData =
+      data.images || data.d?.images || data.screenshots || data.d?.screenshots || [];
     if (!Array.isArray(imagesData) || imagesData.length === 0) {
       return;
     }
 
     // 获取媒体文件夹路径和关系文件路径
-    const mediaPath = format === 'docx' ? 'word/media' :
-                      format === 'xlsx' ? 'xl/media' :
-                      format === 'pptx' ? 'ppt/media' : null;
+    const mediaPath =
+      format === 'docx'
+        ? 'word/media'
+        : format === 'xlsx'
+          ? 'xl/media'
+          : format === 'pptx'
+            ? 'ppt/media'
+            : null;
 
     if (!mediaPath) return;
 
     // 解析关系文件以获取图片映射
-    const relationshipsPath = format === 'docx' ? 'word/_rels/document.xml.rels' :
-                              format === 'xlsx' ? 'xl/_rels/workbook.xml.rels' :
-                              format === 'pptx' ? 'ppt/_rels/presentation.xml.rels' : null;
+    const relationshipsPath =
+      format === 'docx'
+        ? 'word/_rels/document.xml.rels'
+        : format === 'xlsx'
+          ? 'xl/_rels/workbook.xml.rels'
+          : format === 'pptx'
+            ? 'ppt/_rels/presentation.xml.rels'
+            : null;
 
-    const imageRelationships = await this.parseImageRelationships(zip, relationshipsPath, mediaPath);
+    const imageRelationships = await this.parseImageRelationships(
+      zip,
+      relationshipsPath,
+      mediaPath
+    );
 
     // 获取现有媒体文件列表
-    const existingMediaFiles = zip.file(new RegExp(mediaPath.replace('/', '\\/') + '\\/image\\d+\\.[a-z]+'));
+    const existingMediaFiles = zip.file(
+      new RegExp(mediaPath.replace('/', '\\/') + '\\/image\\d+\\.[a-z]+')
+    );
     const existingImageCount = existingMediaFiles.length;
 
     // 替换或添加图片
@@ -929,7 +1032,13 @@ export class FileHandler {
 
           // 如果扩展名不同，需要更新关系文件和内容类型
           if (existingExt !== imageExtension) {
-            await this.updateImageExtension(zip, existingName, imageExtension, imageContentType, format);
+            await this.updateImageExtension(
+              zip,
+              existingName,
+              imageExtension,
+              imageContentType,
+              format
+            );
           }
 
           zip.file(existingName, imageBuffer);
@@ -983,7 +1092,10 @@ export class FileHandler {
   /**
    * 从XML内容中提取图片关系
    */
-  private extractImageRelationshipsFromXml(xmlContent: string, mediaPath: string): ImageRelationship[] {
+  private extractImageRelationshipsFromXml(
+    xmlContent: string,
+    mediaPath: string
+  ): ImageRelationship[] {
     const relationships: ImageRelationship[] = [];
 
     // 解析 <Relationship> 元素
@@ -1000,7 +1112,7 @@ export class FileHandler {
         relationships.push({
           rId,
           target: target.startsWith(mediaPath) ? target : `${mediaPath}/${target}`,
-          type
+          type,
         });
       }
     }
@@ -1050,11 +1162,11 @@ export class FileHandler {
     // 从buffer推断类型
     if (buffer.length >= 4) {
       // PNG signature
-      if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47) {
+      if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47) {
         return '.png';
       }
       // JPEG signature
-      if (buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF) {
+      if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
         return '.jpg';
       }
       // GIF signature
@@ -1073,14 +1185,14 @@ export class FileHandler {
   private getImageContentType(extension: string): string {
     const ext = extension.toLowerCase().replace('.', '');
     const types: Record<string, string> = {
-      'png': 'image/png',
-      'jpg': 'image/jpeg',
-      'jpeg': 'image/jpeg',
-      'gif': 'image/gif',
-      'bmp': 'image/bmp',
-      'tif': 'image/tiff',
-      'tiff': 'image/tiff',
-      'webp': 'image/webp'
+      png: 'image/png',
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      gif: 'image/gif',
+      bmp: 'image/bmp',
+      tif: 'image/tiff',
+      tiff: 'image/tiff',
+      webp: 'image/webp',
     };
     return types[ext] || 'image/png';
   }
@@ -1099,11 +1211,14 @@ export class FileHandler {
     const newFileName = oldFileName.replace(oldExt, newExtension);
 
     // 更新关系文件中的Target
-    const relsPaths = format === 'docx' ? [
-      'word/_rels/document.xml.rels',
-      'word/_rels/header1.xml.rels',
-      'word/_rels/footer1.xml.rels'
-    ] : [];
+    const relsPaths =
+      format === 'docx'
+        ? [
+            'word/_rels/document.xml.rels',
+            'word/_rels/header1.xml.rels',
+            'word/_rels/footer1.xml.rels',
+          ]
+        : [];
 
     for (const relsPath of relsPaths) {
       const relsFile = zip.file(relsPath);
@@ -1139,8 +1254,8 @@ export class FileHandler {
 
     // 生成新的rId
     const existingIds = this.extractImageRelationshipsFromXml(relsContent, '')
-      .map(r => r.rId)
-      .filter(id => id.startsWith('rId'));
+      .map((r) => r.rId)
+      .filter((id) => id.startsWith('rId'));
 
     const maxId = existingIds.reduce((max, id) => {
       const num = parseInt(id.replace('rId', ''), 10);
@@ -1174,7 +1289,9 @@ export class FileHandler {
     const ctContent = await ctFile.async('text');
 
     // 检查是否已存在该扩展名的定义
-    const extPattern = new RegExp(`<Default\\s+Extension="${extension.replace('.', '')}"[^\\/]*\\/`);
+    const extPattern = new RegExp(
+      `<Default\\s+Extension="${extension.replace('.', '')}"[^\\/]*\\/`
+    );
     const exists = extPattern.test(ctContent);
 
     if (!exists && !isReplacement) {

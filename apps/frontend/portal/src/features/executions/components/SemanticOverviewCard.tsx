@@ -11,7 +11,7 @@ const renderSemanticGroupedMissing = (
     field: string;
     blocking: string;
     previewOk: string;
-  },
+  }
 ) => {
   if (!groupedMissing.length) {
     return null;
@@ -66,16 +66,26 @@ const SemanticOverviewCard: React.FC<{
   };
 }> = ({ semantic, text }) => {
   const groupedMissing = Array.isArray(semantic.groupedMissing) ? semantic.groupedMissing : [];
-  const complexityCategory = typeof semantic.complexity?.category === 'string' ? semantic.complexity.category : '-';
-  const missingFields = typeof semantic.complexity?.missingFields === 'number' ? semantic.complexity.missingFields : '-';
-  const arrayGroups = typeof semantic.complexity?.arrayGroups === 'number' ? semantic.complexity.arrayGroups : '-';
-  const semanticSummary = typeof semantic.summary === 'string' && semantic.summary.trim().length > 0
-    ? semantic.summary
-    : undefined;
+  const complexityCategory =
+    typeof semantic.complexity?.category === 'string' ? semantic.complexity.category : '-';
+  const missingFields =
+    typeof semantic.complexity?.missingFields === 'number'
+      ? semantic.complexity.missingFields
+      : '-';
+  const arrayGroups =
+    typeof semantic.complexity?.arrayGroups === 'number' ? semantic.complexity.arrayGroups : '-';
+  const semanticSummary =
+    typeof semantic.summary === 'string' && semantic.summary.trim().length > 0
+      ? semantic.summary
+      : undefined;
 
   return (
     <Card title={text.semanticOverview} style={{ marginBottom: 16 }}>
-      <Descriptions column={2} size="small" style={{ marginBottom: groupedMissing.length > 0 ? 16 : 0 }}>
+      <Descriptions
+        column={2}
+        size="small"
+        style={{ marginBottom: groupedMissing.length > 0 ? 16 : 0 }}
+      >
         <Descriptions.Item label={text.semanticMode}>{semantic.mode}</Descriptions.Item>
         <Descriptions.Item label={text.complexity}>{complexityCategory}</Descriptions.Item>
         <Descriptions.Item label={text.previewReady}>
@@ -98,7 +108,9 @@ const SemanticOverviewCard: React.FC<{
       </Descriptions>
       {groupedMissing.length > 0 ? (
         <div>
-          <Text strong style={{ display: 'block', marginBottom: 12 }}>{text.groupedMissing}</Text>
+          <Text strong style={{ display: 'block', marginBottom: 12 }}>
+            {text.groupedMissing}
+          </Text>
           {renderSemanticGroupedMissing(groupedMissing, {
             group: text.groupLabel,
             field: text.fieldLabel,

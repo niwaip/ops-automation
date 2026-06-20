@@ -84,18 +84,22 @@ const WordCompareCandidateCard: React.FC<WordCompareCandidateCardProps> = ({
       {referenceSnippet && (
         <div className="word-compare-candidate-row">
           <div className="analysis-source-label">参考片段</div>
-          <div className="analysis-source-value" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+          <div
+            className="analysis-source-value"
+            style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+          >
             {referenceSnippet}
           </div>
         </div>
       )}
       <div className="word-compare-candidate-row">
         <div className="analysis-source-label">锚点</div>
-        <div className="analysis-source-value">
-          {candidate.anchorText || '未识别锚点'}
-        </div>
+        <div className="analysis-source-value">{candidate.anchorText || '未识别锚点'}</div>
       </div>
-      <div className="suggestion-actions" style={{ marginTop: '12px', display: 'flex', gap: '8px' }}>
+      <div
+        className="suggestion-actions"
+        style={{ marginTop: '12px', display: 'flex', gap: '8px' }}
+      >
         {isEditing ? (
           <>
             <button type="button" className="confirm-btn" onClick={handleSave}>
@@ -110,7 +114,11 @@ const WordCompareCandidateCard: React.FC<WordCompareCandidateCardProps> = ({
             <button type="button" className="dismiss-btn" onClick={() => setIsEditing(true)}>
               编辑
             </button>
-            <button type="button" className="dismiss-btn" onClick={() => onDelete(candidate.candidateId)}>
+            <button
+              type="button"
+              className="dismiss-btn"
+              onClick={() => onDelete(candidate.candidateId)}
+            >
               删除
             </button>
           </>
@@ -128,7 +136,7 @@ export const WordCompareCandidateGroups: React.FC<WordCompareCandidateGroupsProp
   getLanguageHintLabel,
 }) => (
   <div className="word-compare-candidate-list">
-    {groups.map((group) => (
+    {groups.map((group) =>
       group.type === 'sentence_pair' || group.type === 'cell_pair' ? (
         <div
           key={group.key}
@@ -214,7 +222,7 @@ export const WordCompareCandidateGroups: React.FC<WordCompareCandidateGroupsProp
             ) : null}
             <span className="word-tag">候选 {(group.candidates || []).length}</span>
           </div>
-          {(group.loopPairs && group.loopPairs.length > 0) ? (
+          {group.loopPairs && group.loopPairs.length > 0 ? (
             <div style={{ display: 'grid', gap: 12 }}>
               {group.loopPairs.map((pair) => (
                 <div
@@ -242,7 +250,10 @@ export const WordCompareCandidateGroups: React.FC<WordCompareCandidateGroupsProp
                     }}
                   >
                     <div>
-                      <div className="word-tag-list word-tag-list-compact" style={{ marginBottom: 12 }}>
+                      <div
+                        className="word-tag-list word-tag-list-compact"
+                        style={{ marginBottom: 12 }}
+                      >
                         <span className="word-tag">{getLanguageHintLabel(pair.leftLanguage)}</span>
                         <span className="word-tag">候选 {pair.leftCandidates.length}</span>
                       </div>
@@ -257,7 +268,10 @@ export const WordCompareCandidateGroups: React.FC<WordCompareCandidateGroupsProp
                       ))}
                     </div>
                     <div>
-                      <div className="word-tag-list word-tag-list-compact" style={{ marginBottom: 12 }}>
+                      <div
+                        className="word-tag-list word-tag-list-compact"
+                        style={{ marginBottom: 12 }}
+                      >
                         <span className="word-tag">{getLanguageHintLabel(pair.rightLanguage)}</span>
                         <span className="word-tag">候选 {pair.rightCandidates.length}</span>
                       </div>
@@ -313,6 +327,6 @@ export const WordCompareCandidateGroups: React.FC<WordCompareCandidateGroupsProp
           ))}
         </div>
       )
-    ))}
+    )}
   </div>
 );

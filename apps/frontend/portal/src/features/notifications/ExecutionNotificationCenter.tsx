@@ -19,17 +19,18 @@ type NotificationViewMode = 'action_required' | 'all';
 const ACTIVE_POLLING_INTERVAL_MS = 10000;
 const IDLE_POLLING_INTERVAL_MS = 60000;
 
-const buildNotificationContent = (
-  item: AppNotification,
-  language: 'zh-CN' | 'en-US' | 'ja-JP',
-) => {
+const buildNotificationContent = (item: AppNotification, language: 'zh-CN' | 'en-US' | 'ja-JP') => {
   const isEnglish = language === 'en-US';
   const statusLabels = isEnglish ? EXECUTION_STATUS_LABELS_EN : EXECUTION_STATUS_LABELS_ZH;
   const executionId = String(item.metadata?.executionId || item.sourceId);
-  const failureReason = typeof item.metadata?.failureReason === 'string' ? item.metadata.failureReason : undefined;
-  const takeoverReason = typeof item.metadata?.takeoverReason === 'string' ? item.metadata.takeoverReason : undefined;
-  const approvalStatus = typeof item.metadata?.approvalStatus === 'string' ? item.metadata.approvalStatus : undefined;
-  const skillId = typeof item.metadata?.skillId === 'string' ? item.metadata.skillId : item.sourceName;
+  const failureReason =
+    typeof item.metadata?.failureReason === 'string' ? item.metadata.failureReason : undefined;
+  const takeoverReason =
+    typeof item.metadata?.takeoverReason === 'string' ? item.metadata.takeoverReason : undefined;
+  const approvalStatus =
+    typeof item.metadata?.approvalStatus === 'string' ? item.metadata.approvalStatus : undefined;
+  const skillId =
+    typeof item.metadata?.skillId === 'string' ? item.metadata.skillId : item.sourceName;
 
   switch (item.category) {
     case 'completed':
@@ -44,10 +45,12 @@ const buildNotificationContent = (
       return {
         title: isEnglish ? 'Task Failed' : '任务执行失败',
         description: failureReason
-          ? (isEnglish ? failureReason : `失败原因：${failureReason}`)
-          : (isEnglish
+          ? isEnglish
+            ? failureReason
+            : `失败原因：${failureReason}`
+          : isEnglish
             ? `Execution ${executionId} failed and needs attention.`
-            : `执行单 ${executionId} 执行失败，请尽快处理。`),
+            : `执行单 ${executionId} 执行失败，请尽快处理。`,
         actionText: isEnglish ? 'View Details' : '查看详情',
       };
     case 'cancelled':
@@ -62,10 +65,12 @@ const buildNotificationContent = (
       return {
         title: isEnglish ? 'Manual Intervention Required' : '需要人工介入',
         description: takeoverReason
-          ? (isEnglish ? takeoverReason : `介入原因：${takeoverReason}`)
-          : (isEnglish
+          ? isEnglish
+            ? takeoverReason
+            : `介入原因：${takeoverReason}`
+          : isEnglish
             ? `Execution ${executionId} is waiting for manual takeover.`
-            : `执行单 ${executionId} 正在等待人工接管。`),
+            : `执行单 ${executionId} 正在等待人工接管。`,
         actionText: isEnglish ? 'Open Execution' : '查看详情',
       };
     case 'waiting_input':
@@ -80,19 +85,21 @@ const buildNotificationContent = (
       return {
         title: isEnglish ? 'Approval Required' : '需要审批处理',
         description: approvalStatus
-          ? (isEnglish
+          ? isEnglish
             ? `Current approval status: ${approvalStatus}.`
-            : `当前审批状态：${approvalStatus}`)
-          : (isEnglish
+            : `当前审批状态：${approvalStatus}`
+          : isEnglish
             ? `Execution ${executionId} is waiting for approval.`
-            : `执行单 ${executionId} 正在等待审批。`),
+            : `执行单 ${executionId} 正在等待审批。`,
         actionText: isEnglish ? 'Open Execution' : '查看详情',
       };
     default:
       return {
         title: isExecutionStatusValue(item.status)
           ? statusLabels[item.status]
-          : (isEnglish ? 'Status Updated' : '状态已更新'),
+          : isEnglish
+            ? 'Status Updated'
+            : '状态已更新',
         description: isEnglish
           ? `Execution ${executionId} has a status update.${skillId ? ` Skill: ${skillId}.` : ''}`
           : `执行单 ${executionId} 有新的状态变更。${skillId ? ` 技能：${skillId}。` : ''}`,
@@ -114,10 +121,7 @@ const getSeverityTagColor = (notification: AppNotification) => {
   }
 };
 
-const getSeverityText = (
-  notification: AppNotification,
-  language: 'zh-CN' | 'en-US' | 'ja-JP',
-) => {
+const getSeverityText = (notification: AppNotification, language: 'zh-CN' | 'en-US' | 'ja-JP') => {
   const isEnglish = language === 'en-US';
   switch (notification.severity) {
     case 'success':
@@ -131,22 +135,21 @@ const getSeverityText = (
   }
 };
 
-const getSourceText = (
-  notification: AppNotification,
-  language: 'zh-CN' | 'en-US' | 'ja-JP',
-) => {
+const getSourceText = (notification: AppNotification, language: 'zh-CN' | 'en-US' | 'ja-JP') => {
   if (notification.source === 'execution') {
     return language === 'en-US' ? 'Execution' : '执行管理';
   }
   return notification.source;
 };
 
-const isExecutionStatusValue = (value?: string): value is typeof EXECUTION_STATUS_VALUES[number] =>
-  typeof value === 'string' && EXECUTION_STATUS_VALUES.includes(value as typeof EXECUTION_STATUS_VALUES[number]);
+const isExecutionStatusValue = (
+  value?: string
+): value is (typeof EXECUTION_STATUS_VALUES)[number] =>
+  typeof value === 'string' &&
+  EXECUTION_STATUS_VALUES.includes(value as (typeof EXECUTION_STATUS_VALUES)[number]);
 
-const hasPendingExecutionNotifications = (notifications: AppNotification[]) => (
-  notifications.some((item) => item.source === 'execution' && item.requiresAction)
-);
+const hasPendingExecutionNotifications = (notifications: AppNotification[]) =>
+  notifications.some((item) => item.source === 'execution' && item.requiresAction);
 
 const ExecutionNotificationCenter: React.FC = () => {
   const { notification } = App.useApp();
@@ -164,13 +167,12 @@ const ExecutionNotificationCenter: React.FC = () => {
     ['header-notifications'],
     () => notificationApi.list({ limit: 100 }),
     {
-      refetchInterval: (latestData) => (
+      refetchInterval: (latestData) =>
         hasPendingExecutionNotifications(latestData?.items ?? items)
           ? ACTIVE_POLLING_INTERVAL_MS
-          : IDLE_POLLING_INTERVAL_MS
-      ),
+          : IDLE_POLLING_INTERVAL_MS,
       keepPreviousData: true,
-    },
+    }
   );
 
   useEffect(() => {
@@ -197,20 +199,17 @@ const ExecutionNotificationCenter: React.FC = () => {
           message: contentMeta.title,
           description: contentMeta.description,
           placement: 'topRight',
-          duration: item.category === 'waiting_input' ? 5 : (item.requiresAction ? 0 : 6),
+          duration: item.category === 'waiting_input' ? 5 : item.requiresAction ? 0 : 6,
           onClick: () => handleOpenNotification(item),
         });
       });
   }, [items, language, notification]);
 
-  const unreadCount = useMemo(
-    () => items.filter((item) => item.unread).length,
-    [items],
-  );
+  const unreadCount = useMemo(() => items.filter((item) => item.unread).length, [items]);
 
   const visibleItems = useMemo(
     () => (viewMode === 'action_required' ? items.filter((item) => item.requiresAction) : items),
-    [items, viewMode],
+    [items, viewMode]
   );
 
   const handleOpenNotification = (notificationItem: AppNotification) => {
@@ -219,10 +218,16 @@ const ExecutionNotificationCenter: React.FC = () => {
     navigate(notificationItem.actionUrl);
   };
 
-  const statusLabels = language === 'en-US' ? EXECUTION_STATUS_LABELS_EN : EXECUTION_STATUS_LABELS_ZH;
-  const emptyText = language === 'en-US'
-    ? (viewMode === 'action_required' ? 'No pending actions' : 'No new notifications')
-    : (viewMode === 'action_required' ? '暂无待处理消息' : '暂无新消息');
+  const statusLabels =
+    language === 'en-US' ? EXECUTION_STATUS_LABELS_EN : EXECUTION_STATUS_LABELS_ZH;
+  const emptyText =
+    language === 'en-US'
+      ? viewMode === 'action_required'
+        ? 'No pending actions'
+        : 'No new notifications'
+      : viewMode === 'action_required'
+        ? '暂无待处理消息'
+        : '暂无新消息';
   const titleText = language === 'en-US' ? 'Notifications' : '消息中心';
   const markAllText = language === 'en-US' ? 'Mark All Read' : '全部已读';
   const refreshingText = language === 'en-US' ? 'Refreshing...' : '刷新中...';
@@ -239,7 +244,12 @@ const ExecutionNotificationCenter: React.FC = () => {
           <Text strong>{titleText}</Text>
           <Space size={8}>
             {isFetching ? <Text type="secondary">{refreshingText}</Text> : null}
-            <Button type="link" size="small" style={{ paddingInline: 0 }} onClick={() => markAllAsRead()}>
+            <Button
+              type="link"
+              size="small"
+              style={{ paddingInline: 0 }}
+              onClick={() => markAllAsRead()}
+            >
               {markAllText}
             </Button>
           </Space>
@@ -285,11 +295,17 @@ const ExecutionNotificationCenter: React.FC = () => {
                     <Space wrap size={8}>
                       <Text strong>{contentMeta.title}</Text>
                       {isExecutionStatusValue(item.status) ? (
-                        <Tag color={EXECUTION_STATUS_COLORS[item.status]} style={{ marginInlineEnd: 0, borderRadius: 999 }}>
+                        <Tag
+                          color={EXECUTION_STATUS_COLORS[item.status]}
+                          style={{ marginInlineEnd: 0, borderRadius: 999 }}
+                        >
                           {statusLabels[item.status]}
                         </Tag>
                       ) : null}
-                      <Tag color={getSeverityTagColor(item)} style={{ marginInlineEnd: 0, borderRadius: 999 }}>
+                      <Tag
+                        color={getSeverityTagColor(item)}
+                        style={{ marginInlineEnd: 0, borderRadius: 999 }}
+                      >
                         {getSeverityText(item, language)}
                       </Tag>
                       <Tag style={{ marginInlineEnd: 0, borderRadius: 999 }}>

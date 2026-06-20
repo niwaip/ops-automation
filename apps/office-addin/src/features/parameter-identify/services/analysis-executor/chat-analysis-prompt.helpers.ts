@@ -1,6 +1,9 @@
 import { buildPairAnalysisChatPrompt } from '../analysis-pair-prompt/excel';
 import { buildWordSectionAnalysisChatPrompt } from '../analysis-pair-prompt/word';
-import { buildGeneralPromptTemplate, buildGlobalUnderstandingPromptTemplate } from './chat-analysis-prompt-templates';
+import {
+  buildGeneralPromptTemplate,
+  buildGlobalUnderstandingPromptTemplate,
+} from './chat-analysis-prompt-templates';
 import type { StructuredAnalyzeRequest } from './types';
 import {
   buildCompactDocumentContext,
@@ -20,8 +23,6 @@ function buildGlobalUnderstandingChatPrompt(request: StructuredAnalyzeRequest): 
     businessExcerpt,
   });
 }
-
-
 
 function buildGeneralChatPrompt(request: StructuredAnalyzeRequest): string {
   const compactDocumentContext = buildCompactDocumentContext(request);
@@ -53,28 +54,33 @@ export function buildChatAnalysisPrompt(request: StructuredAnalyzeRequest): stri
 }
 
 export function buildPromptDebugSummary(request: StructuredAnalyzeRequest): string {
-  const excelVisibleSheets = request.host === 'excel'
-    ? truncateText(
-        buildExcelVisibleSheetSummary(
-          request.documentIR,
-          'all'
-        ),
-        800
-      )
-    : undefined;
-  const contentExcerpt = request.host === 'excel'
-    ? truncateText(
-        buildExcelBusinessExcerpt(
-          request.documentIR,
-          request.analysisStage === 'excel-global-understanding' ? 'all' : 'all'
-        ).replace(/\s+/g, ' ').trim(),
-        1000
-      )
-    : truncateText(String(request.documentContent || '').replace(/\s+/g, ' ').trim(), 600);
+  const excelVisibleSheets =
+    request.host === 'excel'
+      ? truncateText(buildExcelVisibleSheetSummary(request.documentIR, 'all'), 800)
+      : undefined;
+  const contentExcerpt =
+    request.host === 'excel'
+      ? truncateText(
+          buildExcelBusinessExcerpt(
+            request.documentIR,
+            request.analysisStage === 'excel-global-understanding' ? 'all' : 'all'
+          )
+            .replace(/\s+/g, ' ')
+            .trim(),
+          1000
+        )
+      : truncateText(
+          String(request.documentContent || '')
+            .replace(/\s+/g, ' ')
+            .trim(),
+          600
+        );
   const lines = [
     `stage=${request.analysisStage || 'general'}`,
     request.pairLabel ? `pair=${request.pairLabel}` : undefined,
-    request.globalUnderstandingSummary ? `global=${truncateText(request.globalUnderstandingSummary, 220)}` : undefined,
+    request.globalUnderstandingSummary
+      ? `global=${truncateText(request.globalUnderstandingSummary, 220)}`
+      : undefined,
     request.diffSummary ? `diff=${truncateText(request.diffSummary, 220)}` : undefined,
     excelVisibleSheets ? `sheets=${excelVisibleSheets}` : undefined,
     contentExcerpt ? `content=${contentExcerpt}` : undefined,

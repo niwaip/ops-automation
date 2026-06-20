@@ -1,6 +1,6 @@
 import React from 'react';
-import { Button, Collapse, Descriptions, Input, Tag, Typography } from 'antd';
-import type { TemplateStep } from '@/api/template';
+import { Button, Collapse, Descriptions, Input, Select, Tag, Typography } from 'antd';
+import type { TemplateStep, TemplateStepExecutionPolicy } from '@/api/template';
 
 const { Text } = Typography;
 const { Panel } = Collapse;
@@ -11,8 +11,23 @@ interface TemplateStepsTabProps {
   jsonBlockStyle: React.CSSProperties;
   onAddStep: () => void;
   onDeleteStep: (index: number) => void;
-  onUpdateStepField: (index: number, key: 'action' | 'step_id', value: string) => void;
+  onUpdateStepField: (
+    index: number,
+    key: 'action' | 'step_id' | 'execution_policy',
+    value: string
+  ) => void;
 }
+
+const STEP_POLICY_OPTIONS: Array<{
+  value: TemplateStepExecutionPolicy;
+  label: string;
+  color: string;
+}> = [
+  { value: 'auto_execute', label: '自动执行', color: 'green' },
+  { value: 'require_confirmation', label: '需确认', color: 'gold' },
+  { value: 'require_takeover', label: '人工接管', color: 'orange' },
+  { value: 'forbid_in_replay', label: '禁止回放', color: 'red' },
+];
 
 const TemplateStepsTab: React.FC<TemplateStepsTabProps> = ({
   steps,
@@ -24,12 +39,7 @@ const TemplateStepsTab: React.FC<TemplateStepsTabProps> = ({
 }) => (
   <>
     {isEditMode && (
-      <Button
-        type="dashed"
-        onClick={onAddStep}
-        block
-        style={{ marginBottom: 16 }}
-      >
+      <Button type="dashed" onClick={onAddStep} block style={{ marginBottom: 16 }}>
         + 添加步骤
       </Button>
     )}
@@ -50,18 +60,20 @@ const TemplateStepsTab: React.FC<TemplateStepsTabProps> = ({
             )
           }
           key={index}
-          extra={isEditMode ? (
-            <Button
-              size="small"
-              danger
-              onClick={(event) => {
-                event.stopPropagation();
-                onDeleteStep(index);
-              }}
-            >
-              删除
-            </Button>
-          ) : undefined}
+          extra={
+            isEditMode ? (
+              <Button
+                size="small"
+                danger
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onDeleteStep(index);
+                }}
+              >
+                删除
+              </Button>
+            ) : undefined
+          }
         >
           <Descriptions column={1} size="small">
             <Descriptions.Item label="步骤 ID">
@@ -102,6 +114,31 @@ const TemplateStepsTab: React.FC<TemplateStepsTabProps> = ({
                 {step.wait.value}
               </Descriptions.Item>
             )}
+            <Descriptions.Item label="执行策略">
+              {isEditMode ? (
+                <Select
+                  value={step.execution_policy || 'auto_execute'}
+                  style={{ width: 160 }}
+                  options={STEP_POLICY_OPTIONS.map((option) => ({
+                    value: option.value,
+                    label: option.label,
+                  }))}
+                  onChange={(value) => onUpdateStepField(index, 'execution_policy', value)}
+                />
+              ) : (
+                <Tag
+                  color={
+                    STEP_POLICY_OPTIONS.find(
+                      (option) => option.value === (step.execution_policy || 'auto_execute')
+                    )?.color || 'default'
+                  }
+                >
+                  {STEP_POLICY_OPTIONS.find(
+                    (option) => option.value === (step.execution_policy || 'auto_execute')
+                  )?.label || step.execution_policy || '自动执行'}
+                </Tag>
+              )}
+            </Descriptions.Item>
             {step.retry && (
               <Descriptions.Item label="重试">
                 {step.retry.max_attempts} attempts, {step.retry.delay_ms}ms delay

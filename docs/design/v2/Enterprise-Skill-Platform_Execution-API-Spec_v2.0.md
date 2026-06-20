@@ -497,11 +497,7 @@ interface RuntimeSessionDto {
   "executionId": "execution-123",
   "runtimeType": "browser",
   "profileId": "profile-abc",
-  "capabilities": [
-    "browser.navigate",
-    "browser.click",
-    "browser.type"
-  ]
+  "capabilities": ["browser.navigate", "browser.click", "browser.type"]
 }
 ```
 

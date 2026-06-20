@@ -34,6 +34,11 @@ export interface CompiledTemplate {
     wait?: { type: string; value: number | string };
     on_fail?: string;
     retry?: { max_attempts: number; delay_ms: number };
+    execution_policy?:
+      | 'auto_execute'
+      | 'require_confirmation'
+      | 'require_takeover'
+      | 'forbid_in_replay';
   }>;
   metadata: {
     created_by: string;
@@ -203,9 +208,12 @@ class RecorderService {
         resolve();
       });
 
-      this.socket.on('STATUS', (data: { status: RecorderStatus; url?: string; cdpPort?: number }) => {
-        this.emit('status', data);
-      });
+      this.socket.on(
+        'STATUS',
+        (data: { status: RecorderStatus; url?: string; cdpPort?: number }) => {
+          this.emit('status', data);
+        }
+      );
 
       this.socket.on('SCRIPT_UPDATE', (data: { script: string }) => {
         this.emit('script', data);
@@ -279,14 +287,12 @@ class RecorderService {
   }
 
   reconcileAfterTakeover(
-    request: ReconcileAfterTakeoverRequest,
+    request: ReconcileAfterTakeoverRequest
   ): Promise<ReconcileAfterTakeoverResponse> {
     return apiClient.post('/ai/recorder-debug/reconcile', request);
   }
 
-  resumeAfterTakeover(
-    request: ResumeAfterTakeoverRequest,
-  ): Promise<ResumeAfterTakeoverResponse> {
+  resumeAfterTakeover(request: ResumeAfterTakeoverRequest): Promise<ResumeAfterTakeoverResponse> {
     return apiClient.post('/browser/takeover/resume', request);
   }
 

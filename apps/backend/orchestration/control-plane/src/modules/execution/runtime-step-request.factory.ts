@@ -56,6 +56,7 @@ export class RuntimeStepRequestFactory {
     }
 
     const executionId = input.execution.id as string;
+    const includeExecutionStepMetadata = this.shouldIncludeExecutionStepMetadata(input.execution);
 
     return {
       requestId: `${executionId}:${input.stepId}`,
@@ -71,23 +72,31 @@ export class RuntimeStepRequestFactory {
       policyContext: this.buildPolicyContext(input.execution),
       metadata: {
         capabilityVersion: this.resolveExecutionCapabilityVersion(input.execution),
-        executionStepName:
-          typeof input.step?.name === 'string' && input.step.name.trim()
-            ? input.step.name.trim()
-            : undefined,
-        executionStepAction:
-          typeof input.step?.action === 'string' && input.step.action.trim()
-            ? input.step.action.trim()
-            : undefined,
-        executionStepIndex:
-          typeof input.step?.stepIndex === 'number'
-            ? input.step.stepIndex
-            : typeof input.step?.step_index === 'number'
-              ? input.step.step_index
-              : undefined,
+        ...(includeExecutionStepMetadata
+          ? {
+              executionStepName:
+                typeof input.step?.name === 'string' && input.step.name.trim()
+                  ? input.step.name.trim()
+                  : undefined,
+              executionStepAction:
+                typeof input.step?.action === 'string' && input.step.action.trim()
+                  ? input.step.action.trim()
+                  : undefined,
+              executionStepIndex:
+                typeof input.step?.stepIndex === 'number'
+                  ? input.step.stepIndex
+                  : typeof input.step?.step_index === 'number'
+                    ? input.step.step_index
+                    : undefined,
+            }
+          : {}),
         ...(input.phaseMetadata || {}),
       },
     };
+  }
+
+  private shouldIncludeExecutionStepMetadata(execution: Record<string, unknown>): boolean {
+    return this.resolveExecutionRuntimeSourceType(execution) !== 'browser_recording';
   }
 
   resolveExecutionCapabilityId(execution: Record<string, unknown>): string | undefined {
@@ -116,7 +125,19 @@ export class RuntimeStepRequestFactory {
       : undefined;
   }
 
-  resolveExecutionRuntimeType(execution: Record<string, unknown>): 'document' | 'workflow' | 'custom' {
+  private resolveExecutionRuntimeSourceType(
+    execution: Record<string, unknown>
+  ): string | undefined {
+    const normalizedInput = execution.normalizedInputJson as Record<string, unknown> | undefined;
+    return typeof normalizedInput?.runtimeSourceType === 'string' &&
+      normalizedInput.runtimeSourceType.trim()
+      ? normalizedInput.runtimeSourceType.trim()
+      : undefined;
+  }
+
+  resolveExecutionRuntimeType(
+    execution: Record<string, unknown>
+  ): 'document' | 'workflow' | 'custom' {
     if (execution.runtimeType === 'document') {
       return 'document';
     }
@@ -148,9 +169,11 @@ export class RuntimeStepRequestFactory {
 
   resolveExecutionInput(execution: Record<string, unknown>): Record<string, unknown> {
     const normalizedInput = execution.normalizedInputJson as Record<string, unknown> | undefined;
-    const baseInput = (normalizedInput?.input && typeof normalizedInput.input === 'object'
-      ? normalizedInput.input
-      : execution.inputJson) as Record<string, unknown> | undefined;
+    const baseInput = (
+      normalizedInput?.input && typeof normalizedInput.input === 'object'
+        ? normalizedInput.input
+        : execution.inputJson
+    ) as Record<string, unknown> | undefined;
     if (!baseInput) {
       return {};
     }
@@ -159,7 +182,7 @@ export class RuntimeStepRequestFactory {
       return this.buildDocumentRuntimeInput(
         baseInput,
         normalizedInput?.paramResolution as Record<string, unknown> | undefined,
-        typeof execution.id === 'string' ? execution.id : undefined,
+        typeof execution.id === 'string' ? execution.id : undefined
       );
     }
 
@@ -169,7 +192,7 @@ export class RuntimeStepRequestFactory {
   private buildDocumentRuntimeInput(
     input: Record<string, unknown>,
     rawParamResolution?: Record<string, unknown>,
-    executionId?: string,
+    executionId?: string
   ): Record<string, unknown> {
     const result = { ...input };
     const existingData = this.asRecord(result.data);
@@ -216,12 +239,12 @@ export class RuntimeStepRequestFactory {
       bindingPaths.forEach((bindingPath) => {
         const resolvedValue = this.resolveBindingValue(bindingPath, normalizedEntry.value);
         if (
-          name === 'payment.firstDays'
-          || name === 'payment.firstRatio'
-          || name === 'payment.firstAmount'
-          || name === 'payment.totalAmount'
-          || name === 'payment.bankAccount'
-          || name === 'service.endUser'
+          name === 'payment.firstDays' ||
+          name === 'payment.firstRatio' ||
+          name === 'payment.firstAmount' ||
+          name === 'payment.totalAmount' ||
+          name === 'payment.bankAccount' ||
+          name === 'service.endUser'
         ) {
           bindingSamples.push({
             name,
@@ -273,20 +296,22 @@ export class RuntimeStepRequestFactory {
     }
 
     this.logger.warn(
-      `Document runtime payload resolved zero mapped fields${executionId ? ` for execution ${executionId}` : ''}: ${JSON.stringify({
-        totalEntries: diagnostics.totalEntries,
-        notFinal: diagnostics.notFinal,
-        missingValue: diagnostics.missingValue,
-        missingBindingPath: diagnostics.missingBindingPath,
-        invalidEntry: diagnostics.invalidEntry,
-        hasExistingData: Boolean(existingData && Object.keys(existingData).length > 0),
-        inputKeys: Object.keys(runtimeInput),
-      })}`,
+      `Document runtime payload resolved zero mapped fields${executionId ? ` for execution ${executionId}` : ''}: ${JSON.stringify(
+        {
+          totalEntries: diagnostics.totalEntries,
+          notFinal: diagnostics.notFinal,
+          missingValue: diagnostics.missingValue,
+          missingBindingPath: diagnostics.missingBindingPath,
+          invalidEntry: diagnostics.invalidEntry,
+          hasExistingData: Boolean(existingData && Object.keys(existingData).length > 0),
+          inputKeys: Object.keys(runtimeInput),
+        }
+      )}`
     );
   }
 
   private normalizeDocumentParamResolutionEntry(
-    value: unknown,
+    value: unknown
   ): Record<string, unknown> | undefined {
     if (!value || typeof value !== 'object' || Array.isArray(value)) {
       return undefined;
@@ -298,26 +323,27 @@ export class RuntimeStepRequestFactory {
       ...(entry.template_binding === undefined && typeof entry.templateBinding === 'string'
         ? { template_binding: entry.templateBinding }
         : {}),
-      ...(entry.render_path === undefined && (
-        typeof entry.renderPath === 'string'
-        || (Array.isArray(entry.renderPath) && entry.renderPath.every((item) => typeof item === 'string'))
-      )
+      ...(entry.render_path === undefined &&
+      (typeof entry.renderPath === 'string' ||
+        (Array.isArray(entry.renderPath) &&
+          entry.renderPath.every((item) => typeof item === 'string')))
         ? { render_path: entry.renderPath }
         : {}),
     };
   }
 
   private resolveDocumentBindingPaths(entry: Record<string, unknown>): string[] {
-    const rawBindingPaths = typeof entry.template_binding === 'string' && entry.template_binding.trim()
-      ? [entry.template_binding.trim()]
-      : typeof entry.render_path === 'string' && entry.render_path.trim()
-        ? [entry.render_path.trim()]
-        : Array.isArray(entry.render_path)
-          ? entry.render_path
-              .filter((item): item is string => typeof item === 'string')
-              .map((item) => item.trim())
-              .filter((item) => item.length > 0)
-          : [];
+    const rawBindingPaths =
+      typeof entry.template_binding === 'string' && entry.template_binding.trim()
+        ? [entry.template_binding.trim()]
+        : typeof entry.render_path === 'string' && entry.render_path.trim()
+          ? [entry.render_path.trim()]
+          : Array.isArray(entry.render_path)
+            ? entry.render_path
+                .filter((item): item is string => typeof item === 'string')
+                .map((item) => item.trim())
+                .filter((item) => item.length > 0)
+            : [];
     if (rawBindingPaths.length === 0) {
       return [];
     }
@@ -326,8 +352,8 @@ export class RuntimeStepRequestFactory {
       new Set(
         rawBindingPaths
           .map((bindingPath) => bindingPath.replace(/^data\./, '').trim())
-          .filter((bindingPath) => bindingPath.length > 0),
-      ),
+          .filter((bindingPath) => bindingPath.length > 0)
+      )
     );
   }
 
@@ -381,9 +407,7 @@ export class RuntimeStepRequestFactory {
     }
 
     const record = value as Record<string, unknown>;
-    const localeCandidates = locale === 'cn'
-      ? ['cn', 'zh']
-      : ['jp', 'ja'];
+    const localeCandidates = locale === 'cn' ? ['cn', 'zh'] : ['jp', 'ja'];
 
     for (const candidate of localeCandidates) {
       if (Object.prototype.hasOwnProperty.call(record, candidate)) {

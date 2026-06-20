@@ -31,7 +31,11 @@ interface UseSkillPreviewWorkflowOptions {
   templateTermAssetsDraft: any;
   assetSourceLanguage: string;
   assetTargetLanguages: string[];
-  addDebugLog: (level: 'info' | 'warn' | 'error' | 'debug', message: string, details?: string) => void;
+  addDebugLog: (
+    level: 'info' | 'warn' | 'error' | 'debug',
+    message: string,
+    details?: string
+  ) => void;
   setTemplateAssetNotice: (value: TemplateAssetNotice | null) => void;
   setTemplateAssetRenderDiagnostics: (value: any) => void;
   loadTemplateSource: () => Promise<{ documentContent: string; format: string }>;
@@ -90,8 +94,7 @@ export function useSkillPreviewWorkflow({
       const documentDescription =
         (isExcelMode
           ? excelWorkbookSummary || globalUnderstandingSummary
-          : globalUnderstandingSummary || templateName.trim())
-        || undefined;
+          : globalUnderstandingSummary || templateName.trim()) || undefined;
       const requestSuggestions = suggestions.map((s) => ({ ...s, applied: true }));
       const suggestionNames = requestSuggestions
         .map((s) => String(s?.suggestedName || (s as any)?.details?.variableName || '').trim())
@@ -113,9 +116,7 @@ export function useSkillPreviewWorkflow({
 
       if (result.success && result.skill) {
         const generatedParameterNames = Array.isArray(result.skill.parameters)
-          ? result.skill.parameters
-            .map((p: any) => String(p?.name || '').trim())
-            .filter(Boolean)
+          ? result.skill.parameters.map((p: any) => String(p?.name || '').trim()).filter(Boolean)
           : [];
         addDebugLog(
           'info',
@@ -130,7 +131,10 @@ export function useSkillPreviewWorkflow({
         });
       } else {
         addDebugLog('warn', 'AI 指南生成失败', result.error || '未知错误');
-        setTemplateAssetNotice({ type: 'error', message: `生成模板指南失败: ${result.error || '未知错误'}` });
+        setTemplateAssetNotice({
+          type: 'error',
+          message: `生成模板指南失败: ${result.error || '未知错误'}`,
+        });
       }
     } catch (error: any) {
       addDebugLog('error', 'AI 指南生成异常', error.message || '未知错误');
@@ -167,7 +171,10 @@ export function useSkillPreviewWorkflow({
         });
 
         if (!templateResult.success || !templateResult.templateId) {
-          setAiGenerateResult({ success: false, message: `生成失败: ${templateResult.error || '模板生成失败'}` });
+          setAiGenerateResult({
+            success: false,
+            message: `生成失败: ${templateResult.error || '模板生成失败'}`,
+          });
           return;
         }
 
@@ -322,14 +329,21 @@ export function useSkillPreviewWorkflow({
 
     try {
       carboneAPI.setBaseUrl(apiBaseUrl);
-      const finalTemplateName = templateName.trim() || `${selectedTemplateType}-template-${Date.now()}`;
-      const publishFieldSpecs = templateFieldSpecsDraft.length > 0
-        ? templateFieldSpecsDraft
-        : (templateAssetDraftInfo?.fields || []);
-      const publishSourceLanguage = normalizeLanguageCode(assetSourceLanguage || templateAssetDraftInfo?.sourceLanguage);
+      const finalTemplateName =
+        templateName.trim() || `${selectedTemplateType}-template-${Date.now()}`;
+      const publishFieldSpecs =
+        templateFieldSpecsDraft.length > 0
+          ? templateFieldSpecsDraft
+          : templateAssetDraftInfo?.fields || [];
+      const publishSourceLanguage = normalizeLanguageCode(
+        assetSourceLanguage || templateAssetDraftInfo?.sourceLanguage
+      );
       const publishTargetLanguages = Array.from(
         new Set(
-          (assetTargetLanguages.length > 0 ? assetTargetLanguages : (templateAssetDraftInfo?.targetLanguages || []))
+          (assetTargetLanguages.length > 0
+            ? assetTargetLanguages
+            : templateAssetDraftInfo?.targetLanguages || []
+          )
             .map((lang) => normalizeLanguageCode(lang))
             .filter(Boolean)
         )
@@ -349,7 +363,8 @@ export function useSkillPreviewWorkflow({
           templateName: finalTemplateName,
           sourceLanguage: publishSourceLanguage,
           targetLanguages: publishTargetLanguages,
-          documentMode: publishTargetLanguages.length > 0 ? 'single_or_bilingual' : 'single_language',
+          documentMode:
+            publishTargetLanguages.length > 0 ? 'single_or_bilingual' : 'single_language',
           termAssets: templateTermAssetsDraft || templateAssetDraftInfo?.termAssets || undefined,
         };
         saveParams.templateFieldSpecs = publishFieldSpecs;

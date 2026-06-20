@@ -105,9 +105,7 @@ const TemplateDetailSummaryCard: React.FC<TemplateDetailSummaryCardProps> = ({
             template.description || '-'
           )}
         </Descriptions.Item>
-        <Descriptions.Item label={t('template:createdBy')}>
-          {template.created_by}
-        </Descriptions.Item>
+        <Descriptions.Item label={t('template:createdBy')}>{template.created_by}</Descriptions.Item>
         <Descriptions.Item label={t('template:reviewedBy')}>
           {template.reviewed_by || '-'}
         </Descriptions.Item>

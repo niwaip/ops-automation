@@ -15,7 +15,13 @@ interface PublishTemplateSectionProps {
     parameters?: any[];
   } | null;
   aiGeneratedData: any;
-  previewResult: { success: boolean; message: string; previewUrl?: string; downloadUrl?: string; generatedData?: any } | null;
+  previewResult: {
+    success: boolean;
+    message: string;
+    previewUrl?: string;
+    downloadUrl?: string;
+    generatedData?: any;
+  } | null;
   draftId: string | null;
   saveResult: { success: boolean; message: string } | null;
   verifySaveCollapsed: boolean;
@@ -39,18 +45,16 @@ interface PublishTemplateSectionProps {
   handleSaveTemplateAndGuide: () => void;
 }
 
-const normalizeGeneratedFieldPath = (rawPath: string): string => String(rawPath || '')
-  .replace(/[{}]/g, '')
-  .replace(/^[dct]\./, '')
-  .replace(/\[(?:\d+)?\]/g, '')
-  .replace(/^\.+|\.+$/g, '')
-  .trim();
+const normalizeGeneratedFieldPath = (rawPath: string): string =>
+  String(rawPath || '')
+    .replace(/[{}]/g, '')
+    .replace(/^[dct]\./, '')
+    .replace(/\[(?:\d+)?\]/g, '')
+    .replace(/^\.+|\.+$/g, '')
+    .trim();
 
-const getSectionName = (suggestion: AISuggestion): string => (
-  suggestion.details?.excelAnchor?.sheetName
-  || suggestion.details?.chapter
-  || '未归类章节'
-);
+const getSectionName = (suggestion: AISuggestion): string =>
+  suggestion.details?.excelAnchor?.sheetName || suggestion.details?.chapter || '未归类章节';
 
 const getValueAtPath = (data: unknown, path: string): unknown => {
   if (!path || !data || typeof data !== 'object') {
@@ -60,7 +64,11 @@ const getValueAtPath = (data: unknown, path: string): unknown => {
   const segments = path.split('.').filter(Boolean);
   let current: unknown = data;
   for (const segment of segments) {
-    if (!current || typeof current !== 'object' || !(segment in (current as Record<string, unknown>))) {
+    if (
+      !current ||
+      typeof current !== 'object' ||
+      !(segment in (current as Record<string, unknown>))
+    ) {
       return undefined;
     }
     current = (current as Record<string, unknown>)[segment];
@@ -129,9 +137,9 @@ export const PublishTemplateSection: React.FC<PublishTemplateSectionProps> = ({
 
         const rootKey = normalizedPath.split('.')[0];
         if (
-          rootKey
-          && !addedKeys.has(rootKey)
-          && rootKey in (aiGeneratedData as Record<string, unknown>)
+          rootKey &&
+          !addedKeys.has(rootKey) &&
+          rootKey in (aiGeneratedData as Record<string, unknown>)
         ) {
           sectionData[rootKey] = (aiGeneratedData as Record<string, unknown>)[rootKey];
           addedKeys.add(rootKey);
@@ -144,10 +152,11 @@ export const PublishTemplateSection: React.FC<PublishTemplateSectionProps> = ({
         fieldCount: Object.keys(sectionData).length,
         data: sectionData,
       };
-    })
-      .filter((section) => section.fieldCount > 0);
+    }).filter((section) => section.fieldCount > 0);
   }, [aiGeneratedData, suggestions]);
-  const [collapsedGeneratedSections, setCollapsedGeneratedSections] = useState<Record<string, boolean>>({});
+  const [collapsedGeneratedSections, setCollapsedGeneratedSections] = useState<
+    Record<string, boolean>
+  >({});
 
   useEffect(() => {
     if (generatedDataSectionPreviews.length === 0) {
@@ -155,15 +164,20 @@ export const PublishTemplateSection: React.FC<PublishTemplateSectionProps> = ({
       return;
     }
 
-    setCollapsedGeneratedSections((current) => generatedDataSectionPreviews.reduce((next, section) => {
-      next[section.sectionName] = current[section.sectionName] ?? false;
-      return next;
-    }, {} as Record<string, boolean>));
+    setCollapsedGeneratedSections((current) =>
+      generatedDataSectionPreviews.reduce(
+        (next, section) => {
+          next[section.sectionName] = current[section.sectionName] ?? false;
+          return next;
+        },
+        {} as Record<string, boolean>
+      )
+    );
   }, [generatedDataSectionPreviews]);
 
   return (
     <div className="excel-understanding-card excel-analysis-card">
-      <div 
+      <div
         className="excel-understanding-header"
         onClick={() => setVerifySaveCollapsed((value) => !value)}
       >
@@ -182,7 +196,9 @@ export const PublishTemplateSection: React.FC<PublishTemplateSectionProps> = ({
             <div className="ai-params-section">
               <div className="ai-params-header">
                 <span className="ai-params-title">AI 生成数据</span>
-                <span className="ai-params-hint">可先输入业务描述生成数据，生成后可直接修改下方 JSON，再用当前内容预览。</span>
+                <span className="ai-params-hint">
+                  可先输入业务描述生成数据，生成后可直接修改下方 JSON，再用当前内容预览。
+                </span>
               </div>
               <div className="ai-params-buttons">
                 <label className="checkbox-label excel-analysis-chip">
@@ -203,7 +219,9 @@ export const PublishTemplateSection: React.FC<PublishTemplateSectionProps> = ({
                 <button
                   className="preview-ai-btn"
                   onClick={handlePreviewWithAIParams}
-                  disabled={isPreviewing || isGeneratingParams || !aiSkillGuide || !aiDescription.trim()}
+                  disabled={
+                    isPreviewing || isGeneratingParams || !aiSkillGuide || !aiDescription.trim()
+                  }
                 >
                   {isPreviewing ? '⏳ 预览中...' : '👁️ 预览数据'}
                 </button>
@@ -217,7 +235,9 @@ export const PublishTemplateSection: React.FC<PublishTemplateSectionProps> = ({
               />
 
               {aiGenerateResult && (
-                <div className={`ai-generate-result ${aiGenerateResult.success ? 'success' : 'error'}`}>
+                <div
+                  className={`ai-generate-result ${aiGenerateResult.success ? 'success' : 'error'}`}
+                >
                   {aiGenerateResult.message}
                 </div>
               )}
@@ -228,7 +248,8 @@ export const PublishTemplateSection: React.FC<PublishTemplateSectionProps> = ({
                   {generatedDataSectionPreviews.length > 0 && (
                     <div style={{ display: 'grid', gap: 10, marginBottom: 12 }}>
                       {generatedDataSectionPreviews.map((section) => {
-                        const isCollapsed = collapsedGeneratedSections[section.sectionName] ?? false;
+                        const isCollapsed =
+                          collapsedGeneratedSections[section.sectionName] ?? false;
                         return (
                           <div
                             key={section.sectionName}
@@ -241,10 +262,12 @@ export const PublishTemplateSection: React.FC<PublishTemplateSectionProps> = ({
                           >
                             <button
                               type="button"
-                              onClick={() => setCollapsedGeneratedSections((current) => ({
-                                ...current,
-                                [section.sectionName]: !isCollapsed,
-                              }))}
+                              onClick={() =>
+                                setCollapsedGeneratedSections((current) => ({
+                                  ...current,
+                                  [section.sectionName]: !isCollapsed,
+                                }))
+                              }
                               style={{
                                 width: '100%',
                                 display: 'flex',
@@ -260,7 +283,8 @@ export const PublishTemplateSection: React.FC<PublishTemplateSectionProps> = ({
                             >
                               <span style={{ fontWeight: 600 }}>{section.sectionName}</span>
                               <span className="ai-params-hint">
-                                {section.suggestionCount} 参数 · {section.fieldCount} 字段 · {isCollapsed ? '展开' : '收起'}
+                                {section.suggestionCount} 参数 · {section.fieldCount} 字段 ·{' '}
+                                {isCollapsed ? '展开' : '收起'}
                               </span>
                             </button>
                             {!isCollapsed && (
@@ -278,10 +302,11 @@ export const PublishTemplateSection: React.FC<PublishTemplateSectionProps> = ({
                       完整 JSON
                     </div>
                   )}
-                  <pre className="ai-params-content">{JSON.stringify(aiGeneratedData, null, 2)}</pre>
+                  <pre className="ai-params-content">
+                    {JSON.stringify(aiGeneratedData, null, 2)}
+                  </pre>
                 </div>
               )}
-
             </div>
           )}
 
@@ -290,12 +315,22 @@ export const PublishTemplateSection: React.FC<PublishTemplateSectionProps> = ({
               {previewResult.message}
               <div className="preview-links">
                 {previewInlineSupported && previewResult.previewUrl && (
-                  <a href={`${apiBaseUrl}${previewResult.previewUrl}`} target="_blank" rel="noopener noreferrer" className="preview-link">
+                  <a
+                    href={`${apiBaseUrl}${previewResult.previewUrl}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="preview-link"
+                  >
                     👁️ 打开预览
                   </a>
                 )}
                 {previewResult.downloadUrl && (
-                  <a href={`${apiBaseUrl}${previewResult.downloadUrl}`} target="_blank" rel="noopener noreferrer" className="preview-link download-link">
+                  <a
+                    href={`${apiBaseUrl}${previewResult.downloadUrl}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="preview-link download-link"
+                  >
                     {getDownloadLabel()}
                   </a>
                 )}
@@ -303,7 +338,9 @@ export const PublishTemplateSection: React.FC<PublishTemplateSectionProps> = ({
               {previewResult.generatedData && (
                 <div className="generated-data-preview">
                   <div className="generated-data-header">📊 模拟替换数据</div>
-                  <pre className="generated-data-content">{JSON.stringify(previewResult.generatedData, null, 2)}</pre>
+                  <pre className="generated-data-content">
+                    {JSON.stringify(previewResult.generatedData, null, 2)}
+                  </pre>
                 </div>
               )}
             </div>

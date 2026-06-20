@@ -69,9 +69,7 @@ interface ExecuteStepResultDto {
   isDefault: true,
 })
 export class BrowserStepTool extends BaseTool {
-  constructor(
-    private readonly controlPlaneClient: ControlPlaneClient,
-  ) {
+  constructor(private readonly controlPlaneClient: ControlPlaneClient) {
     super(
       'browser_step',
       '执行标准化的浏览器自动化步骤。支持页面跳转、点击、输入、滚动、截图等操作。',
@@ -101,14 +99,11 @@ export class BrowserStepTool extends BaseTool {
         },
         required: ['action'],
       },
-      { category: 'execution' },
+      { category: 'execution' }
     );
   }
 
-  async execute(
-    params: Record<string, unknown>,
-    context: ExecutionContext,
-  ): Promise<ToolResult> {
+  async execute(params: Record<string, unknown>, context: ExecutionContext): Promise<ToolResult> {
     const runtimeSessionId = params.runtimeSessionId as string;
     const stepId = params.stepId as string;
     const action = params.action as string;
@@ -132,7 +127,9 @@ export class BrowserStepTool extends BaseTool {
       assertion,
     };
 
-    this.logger.debug(`Executing browser step: ${action} for execution ${executionId}, step ${stepId}`);
+    this.logger.debug(
+      `Executing browser step: ${action} for execution ${executionId}, step ${stepId}`
+    );
 
     try {
       // Call browser-worker execute-step endpoint
@@ -145,7 +142,7 @@ export class BrowserStepTool extends BaseTool {
             'Content-Type': 'application/json',
             ...(traceHeaders || {}),
           },
-        },
+        }
       );
 
       const result = response.data;
@@ -179,7 +176,7 @@ export class BrowserStepTool extends BaseTool {
               },
               extraHeaders: traceHeaders,
               timeout: 10000,
-            },
+            }
           );
           this.logger.log(`Takeover triggered for execution ${executionId}`);
           output += `\n\n[自动触发人工接管: ${result.takeoverReason || '未知原因'}]`;
@@ -224,7 +221,9 @@ export class BrowserStepTool extends BaseTool {
       this.logger.error(`Browser step execution failed: ${errorMsg}`);
 
       let errorDetail = errorMsg;
-      const axiosLikeError = error as { response?: { status?: number; data?: unknown } } | undefined;
+      const axiosLikeError = error as
+        | { response?: { status?: number; data?: unknown } }
+        | undefined;
       if (axiosLikeError?.response) {
         errorDetail = `HTTP ${axiosLikeError.response.status}: ${JSON.stringify(axiosLikeError.response.data)}`;
       }

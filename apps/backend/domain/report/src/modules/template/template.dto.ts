@@ -1,4 +1,13 @@
-import { IsString, IsNotEmpty, IsEnum, IsOptional, IsArray, ValidateNested, IsObject, IsBoolean } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsEnum,
+  IsOptional,
+  IsArray,
+  ValidateNested,
+  IsObject,
+  IsBoolean,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import {
   ReportFormat,

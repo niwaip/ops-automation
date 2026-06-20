@@ -44,7 +44,9 @@ export function inferWordTextLanguageHint(text: string): WordCandidateLanguageHi
   return 'unknown';
 }
 
-export function getWordCandidateLanguageHint(candidate: TemplateFieldCandidate): WordCandidateLanguageHint {
+export function getWordCandidateLanguageHint(
+  candidate: TemplateFieldCandidate
+): WordCandidateLanguageHint {
   const anchorSnippet = String(candidate.localAnchorText || candidate.anchorText || '').trim();
   const slotSnippet = String(candidate.parameterSlot || '').trim();
   const paragraphSnippet = String(candidate.segmentText || '').trim();
@@ -74,10 +76,18 @@ function getWordCandidatePositionOrder(candidate: TemplateFieldCandidate): numbe
   return Number.MAX_SAFE_INTEGER;
 }
 
-export function sortWordCandidatesByPosition(candidates: TemplateFieldCandidate[]): TemplateFieldCandidate[] {
+export function sortWordCandidatesByPosition(
+  candidates: TemplateFieldCandidate[]
+): TemplateFieldCandidate[] {
   return [...candidates].sort((left, right) => {
-    const leftParagraph = typeof left.location?.paragraphIndex === 'number' ? left.location.paragraphIndex : Number.MAX_SAFE_INTEGER;
-    const rightParagraph = typeof right.location?.paragraphIndex === 'number' ? right.location.paragraphIndex : Number.MAX_SAFE_INTEGER;
+    const leftParagraph =
+      typeof left.location?.paragraphIndex === 'number'
+        ? left.location.paragraphIndex
+        : Number.MAX_SAFE_INTEGER;
+    const rightParagraph =
+      typeof right.location?.paragraphIndex === 'number'
+        ? right.location.paragraphIndex
+        : Number.MAX_SAFE_INTEGER;
     if (leftParagraph !== rightParagraph) {
       return leftParagraph - rightParagraph;
     }
@@ -94,9 +104,9 @@ export function sortWordCandidatesByPosition(candidates: TemplateFieldCandidate[
 
 function buildWordTableCellKey(candidate: TemplateFieldCandidate): string | undefined {
   if (
-    typeof candidate.location?.tableIndex !== 'number'
-    || typeof candidate.location?.rowIndex !== 'number'
-    || typeof candidate.location?.cellIndex !== 'number'
+    typeof candidate.location?.tableIndex !== 'number' ||
+    typeof candidate.location?.rowIndex !== 'number' ||
+    typeof candidate.location?.cellIndex !== 'number'
   ) {
     return undefined;
   }
@@ -107,7 +117,9 @@ function buildWordTableCellKey(candidate: TemplateFieldCandidate): string | unde
   ].join('|');
 }
 
-function buildWordTableCellBilingualGroups(candidates: TemplateFieldCandidate[]): WordTableCellBilingualGroup[] {
+function buildWordTableCellBilingualGroups(
+  candidates: TemplateFieldCandidate[]
+): WordTableCellBilingualGroup[] {
   const groupsByCell = new Map<string, TemplateFieldCandidate[]>();
   sortWordCandidatesByPosition(candidates).forEach((candidate) => {
     const cellKey = buildWordTableCellKey(candidate);
@@ -127,10 +139,14 @@ function buildWordTableCellBilingualGroups(candidates: TemplateFieldCandidate[])
     }
 
     const zhCandidates = orderedCandidates.filter(
-      (candidate) => (candidate.languageRelation?.currentLanguageHint || getWordCandidateLanguageHint(candidate)) === 'zh'
+      (candidate) =>
+        (candidate.languageRelation?.currentLanguageHint ||
+          getWordCandidateLanguageHint(candidate)) === 'zh'
     );
     const jaCandidates = orderedCandidates.filter(
-      (candidate) => (candidate.languageRelation?.currentLanguageHint || getWordCandidateLanguageHint(candidate)) === 'ja'
+      (candidate) =>
+        (candidate.languageRelation?.currentLanguageHint ||
+          getWordCandidateLanguageHint(candidate)) === 'ja'
     );
     if (zhCandidates.length === 0 || jaCandidates.length === 0) {
       return;
@@ -162,7 +178,10 @@ function attachWordTableCellBilingualRelations(candidateFields: TemplateFieldCan
       if (!leftCandidate || !rightCandidate) {
         continue;
       }
-      if (leftCandidate.languageRelation?.mode !== 'single_language' || rightCandidate.languageRelation?.mode !== 'single_language') {
+      if (
+        leftCandidate.languageRelation?.mode !== 'single_language' ||
+        rightCandidate.languageRelation?.mode !== 'single_language'
+      ) {
         continue;
       }
 
@@ -186,12 +205,15 @@ function attachWordTableCellBilingualRelations(candidateFields: TemplateFieldCan
   });
 }
 
-export function attachWordCandidateLanguageRelations(candidateFields: TemplateFieldCandidate[]): TemplateFieldCandidate[] {
+export function attachWordCandidateLanguageRelations(
+  candidateFields: TemplateFieldCandidate[]
+): TemplateFieldCandidate[] {
   const nextCandidates = candidateFields.map((candidate) => ({
     ...candidate,
     languageRelation: {
       mode: 'single_language' as const,
-      currentLanguageHint: candidate.languageRelation?.currentLanguageHint || getWordCandidateLanguageHint(candidate),
+      currentLanguageHint:
+        candidate.languageRelation?.currentLanguageHint || getWordCandidateLanguageHint(candidate),
     },
   }));
 
@@ -228,13 +250,16 @@ export function attachWordCandidateLanguageRelations(candidateFields: TemplateFi
       .sort((left, right) => left[0] - right[0])
       .map(([paragraphIndex, paragraphCandidates]) => {
         const sortedCandidates = sortWordCandidatesByPosition(paragraphCandidates);
-        const paragraphLanguageHint = sortedCandidates[0]?.languageRelation?.currentLanguageHint
-          || getWordCandidateLanguageHint(sortedCandidates[0]);
+        const paragraphLanguageHint =
+          sortedCandidates[0]?.languageRelation?.currentLanguageHint ||
+          getWordCandidateLanguageHint(sortedCandidates[0]);
         return {
           paragraphIndex,
           candidates: sortedCandidates,
           languageHint: paragraphLanguageHint,
-          sourceBlockId: String(sortedCandidates[0]?.sourceBlockId || `paragraph-${paragraphIndex}`),
+          sourceBlockId: String(
+            sortedCandidates[0]?.sourceBlockId || `paragraph-${paragraphIndex}`
+          ),
         };
       });
 
@@ -247,10 +272,10 @@ export function attachWordCandidateLanguageRelations(candidateFields: TemplateFi
 
       const currentLang = currentGroup.languageHint;
       const nextLang = nextGroup.languageHint;
-      const isBilingualAdjacentPair = (
-        Math.abs(nextGroup.paragraphIndex - currentGroup.paragraphIndex) <= 1
-        && ((currentLang === 'zh' && nextLang === 'ja') || (currentLang === 'ja' && nextLang === 'zh'))
-      );
+      const isBilingualAdjacentPair =
+        Math.abs(nextGroup.paragraphIndex - currentGroup.paragraphIndex) <= 1 &&
+        ((currentLang === 'zh' && nextLang === 'ja') ||
+          (currentLang === 'ja' && nextLang === 'zh'));
 
       if (!isBilingualAdjacentPair) {
         continue;
@@ -261,10 +286,10 @@ export function attachWordCandidateLanguageRelations(candidateFields: TemplateFi
         const currentCandidate = currentGroup.candidates[pairOrdinal];
         const nextCandidate = nextGroup.candidates[pairOrdinal];
         if (
-          !currentCandidate
-          || !nextCandidate
-          || currentCandidate.languageRelation?.mode !== 'single_language'
-          || nextCandidate.languageRelation?.mode !== 'single_language'
+          !currentCandidate ||
+          !nextCandidate ||
+          currentCandidate.languageRelation?.mode !== 'single_language' ||
+          nextCandidate.languageRelation?.mode !== 'single_language'
         ) {
           continue;
         }

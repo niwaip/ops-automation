@@ -6,23 +6,28 @@ import type {
 } from './temporal-workflow.types';
 
 type DurationToTimedeltaCodeFn = (duration: string) => string;
-type BuildExecuteActivityTimeoutLinesFn = (step: WorkflowStep, fallbackStartToCloseTimeout: string) => string[];
+type BuildExecuteActivityTimeoutLinesFn = (
+  step: WorkflowStep,
+  fallbackStartToCloseTimeout: string
+) => string[];
 type PickFirstNonEmptyStringFn = (...values: unknown[]) => string | undefined;
 type BuildPythonJsonLiteralFn = (value: unknown) => string;
 type ToPythonLiteralFn = (value: unknown, indent?: number) => string;
 type ResolveDocumentWorkflowBindingPathsFn = (
   policyBinding: string | undefined,
   renderPath: string | string[] | undefined,
-  fallbackKey: string,
+  fallbackKey: string
 ) => string[];
 type NormalizeWorkflowPolicyRequiredModeFn = (
   currentMode: WorkflowParamRequiredMode | undefined,
-  required: boolean | undefined,
+  required: boolean | undefined
 ) => WorkflowParamRequiredMode;
 
 function resolveWorkflowClassName(workflowDsl: WorkflowDsl): string {
-  return workflowDsl.workflowClassName?.trim()
-    || `${(workflowDsl.name || 'Custom').replace(/\s+/g, '') || 'Custom'}Workflow`;
+  return (
+    workflowDsl.workflowClassName?.trim() ||
+    `${(workflowDsl.name || 'Custom').replace(/\s+/g, '') || 'Custom'}Workflow`
+  );
 }
 
 function resolveWorkflowDisplayName(workflowDsl: WorkflowDsl, workflowClassName: string): string {
@@ -175,7 +180,10 @@ export function buildFixedDocumentRenderWorkflowCode(args: {
   const requestTimeoutSeconds = durationToSeconds(activityTimeout, 300);
   const inputParams = Object.entries(workflowDsl.inputParams || {});
   const workflowTimeoutCode = durationToTimedeltaCode(activityTimeout);
-  const executeActivityTimeoutLines = buildExecuteActivityTimeoutLines(step, activityDef.timeout || '300s');
+  const executeActivityTimeoutLines = buildExecuteActivityTimeoutLines(
+    step,
+    activityDef.timeout || '300s'
+  );
   const carboneStep = Array.isArray(activityDef.config?.steps)
     ? activityDef.config.steps.find((item: Record<string, any>) => item?.type === 'carbone')
     : null;
@@ -186,16 +194,16 @@ export function buildFixedDocumentRenderWorkflowCode(args: {
 
   const templateId = String(carboneStep.config?.templateId || activityDef.config?.templateId || '');
   const skillId = String(
-    carboneStep.config?.skillId
-    || activityDef.config?.skillId
-    || workflowDsl.sourceContext?.sourceTemplate?.skillId
-    || '',
+    carboneStep.config?.skillId ||
+      activityDef.config?.skillId ||
+      workflowDsl.sourceContext?.sourceTemplate?.skillId ||
+      ''
   );
   const outputFormat = String(carboneStep.config?.format || 'docx');
   const outputName = String(carboneStep.config?.outputName || '');
   const sourceLanguage = pickFirstNonEmptyString(
     activityDef.config?.sourceLanguage,
-    carboneStep.config?.sourceLanguage,
+    carboneStep.config?.sourceLanguage
   );
   const targetLanguages = Array.isArray(activityDef.config?.targetLanguages)
     ? activityDef.config.targetLanguages
@@ -203,36 +211,42 @@ export function buildFixedDocumentRenderWorkflowCode(args: {
       ? carboneStep.config.targetLanguages
       : [];
   const workflowInputPolicies = workflowDsl.inputPolicy?.params || {};
-  const runtimeWorkflowInputParams = inputParams.reduce<Record<string, Record<string, any>>>((acc, [key, config]) => {
-    const renderPaths = resolveDocumentWorkflowBindingPaths(
-      workflowInputPolicies?.[key]?.templateBinding,
-      config?.renderPath,
-      key,
-    );
-    acc[key] = {
-      ...(config && typeof config === 'object' ? config : {}),
-      renderPath: renderPaths,
-    };
-    return acc;
-  }, {});
-  const runtimeWorkflowInputParamsLiteral = toPythonLiteral(runtimeWorkflowInputParams, 4);
-  const runtimeWorkflowInputPolicy = (
-    workflowDsl.inputPolicy
-    && typeof workflowDsl.inputPolicy === 'object'
-    && !Array.isArray(workflowDsl.inputPolicy)
-  )
-    ? workflowDsl.inputPolicy
-    : { params: workflowInputPolicies };
-  const runtimeWorkflowInputPolicyLiteral = toPythonLiteral(runtimeWorkflowInputPolicy, 4);
-  const shouldPrepareLocalizedRenderData = (
-    Boolean(sourceLanguage)
-    || targetLanguages.length > 0
-    || inputParams.some(([, config]) => Array.isArray(config?.localizedVariants) && config.localizedVariants.length > 0)
-    || Object.values(runtimeWorkflowInputParams).some((config) => {
-      const paths = Array.isArray(config.renderPath) ? config.renderPath : [];
-      return paths.length > 1 || paths.some((path) => /(?:_cn|_zh|_jp|_ja|_en)$/i.test(String(path)));
-    })
+  const runtimeWorkflowInputParams = inputParams.reduce<Record<string, Record<string, any>>>(
+    (acc, [key, config]) => {
+      const renderPaths = resolveDocumentWorkflowBindingPaths(
+        workflowInputPolicies?.[key]?.templateBinding,
+        config?.renderPath,
+        key
+      );
+      acc[key] = {
+        ...(config && typeof config === 'object' ? config : {}),
+        renderPath: renderPaths,
+      };
+      return acc;
+    },
+    {}
   );
+  const runtimeWorkflowInputParamsLiteral = toPythonLiteral(runtimeWorkflowInputParams, 4);
+  const runtimeWorkflowInputPolicy =
+    workflowDsl.inputPolicy &&
+    typeof workflowDsl.inputPolicy === 'object' &&
+    !Array.isArray(workflowDsl.inputPolicy)
+      ? workflowDsl.inputPolicy
+      : { params: workflowInputPolicies };
+  const runtimeWorkflowInputPolicyLiteral = toPythonLiteral(runtimeWorkflowInputPolicy, 4);
+  const shouldPrepareLocalizedRenderData =
+    Boolean(sourceLanguage) ||
+    targetLanguages.length > 0 ||
+    inputParams.some(
+      ([, config]) =>
+        Array.isArray(config?.localizedVariants) && config.localizedVariants.length > 0
+    ) ||
+    Object.values(runtimeWorkflowInputParams).some((config) => {
+      const paths = Array.isArray(config.renderPath) ? config.renderPath : [];
+      return (
+        paths.length > 1 || paths.some((path) => /(?:_cn|_zh|_jp|_ja|_en)$/i.test(String(path)))
+      );
+    });
   const normalizeLines = inputParams.map(([key]) => {
     return `            ${JSON.stringify(key)}: cls._normalize(params.get(${JSON.stringify(key)})),`;
   });
@@ -240,7 +254,7 @@ export function buildFixedDocumentRenderWorkflowCode(args: {
     .filter(([key, config]) => {
       const requiredMode = normalizeWorkflowPolicyRequiredMode(
         workflowInputPolicies?.[key]?.requiredMode,
-        config?.required,
+        config?.required
       );
       return requiredMode === 'always';
     })
@@ -316,7 +330,9 @@ export function buildFixedDocumentRenderWorkflowCode(args: {
     '            "prepareLocalizedRenderData": self.PREPARE_LOCALIZED_RENDER_DATA,',
     `            "outputFormat": ${JSON.stringify(outputFormat)},`,
     ...(sourceLanguage ? [`            "sourceLanguage": ${JSON.stringify(sourceLanguage)},`] : []),
-    ...(targetLanguages.length > 0 ? [`            "targetLanguages": ${buildPythonJsonLiteral(targetLanguages)},`] : []),
+    ...(targetLanguages.length > 0
+      ? [`            "targetLanguages": ${buildPythonJsonLiteral(targetLanguages)},`]
+      : []),
     ...(outputName ? [`            "outputName": ${JSON.stringify(outputName)},`] : []),
     '        }',
     `        workflow.logger.info(${JSON.stringify(`执行共享文档渲染 Activity: ${activityDef.name}`)})`,

@@ -14,7 +14,10 @@ export class StartReplayRequestDto {
   @IsUUID()
   template_id!: string;
 
-  @ApiProperty({ example: { username: 'test', password: 'secret' }, description: 'Template parameters' })
+  @ApiProperty({
+    example: { username: 'test', password: 'secret' },
+    description: 'Template parameters',
+  })
   @IsObject()
   params!: Record<string, unknown>;
 }
@@ -48,7 +51,7 @@ export class ExecutionStatusResponseDto {
   @ApiProperty({
     example: 'running',
     enum: ['pending', 'running', 'paused', 'completed', 'failed', 'takeover'],
-    description: 'Execution status'
+    description: 'Execution status',
   })
   status!: string;
 
@@ -93,7 +96,11 @@ export class StepLogDto {
   @ApiPropertyOptional({ example: 500, description: 'Duration in milliseconds' })
   duration_ms?: number;
 
-  @ApiProperty({ example: 'success', enum: ['success', 'failed', 'retry', 'takeover'], description: 'Step result' })
+  @ApiProperty({
+    example: 'success',
+    enum: ['success', 'failed', 'retry', 'takeover'],
+    description: 'Step result',
+  })
   result!: string;
 
   @ApiPropertyOptional({ example: 'ElementNotFoundError', description: 'Error class if failed' })

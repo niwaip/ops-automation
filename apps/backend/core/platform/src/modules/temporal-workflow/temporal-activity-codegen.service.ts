@@ -36,16 +36,24 @@ export class ActivityCodegenService {
 
     // 5. 动态心跳指令
     if (heartbeatTimeout) {
-      promptParts.push(`5. 【强制心跳】：当前 Activity 已开启心跳超时检测(${heartbeatTimeout})。你必须在每个 API 请求后或逻辑步骤间调用 \`activity.heartbeat()\` 报告进度。`);
+      promptParts.push(
+        `5. 【强制心跳】：当前 Activity 已开启心跳超时检测(${heartbeatTimeout})。你必须在每个 API 请求后或逻辑步骤间调用 \`activity.heartbeat()\` 报告进度。`
+      );
     } else {
-      promptParts.push('5. 【心跳】：虽然未强制开启心跳，但建议在长耗时步骤间调用 `activity.heartbeat()`。');
+      promptParts.push(
+        '5. 【心跳】：虽然未强制开启心跳，但建议在长耗时步骤间调用 `activity.heartbeat()`。'
+      );
     }
 
     // 6. 动态异常与重试指令
     if (retryPolicy) {
-      promptParts.push(`6. 【重试感知】：当前已配置重试策略（最多 ${retryPolicy.maxRetries} 次）。请在抛出 ApplicationError 时，根据错误性质决定是否重试。例如：网络超时应重试，业务参数错误应设置 non_retryable=True。`);
+      promptParts.push(
+        `6. 【重试感知】：当前已配置重试策略（最多 ${retryPolicy.maxRetries} 次）。请在抛出 ApplicationError 时，根据错误性质决定是否重试。例如：网络超时应重试，业务参数错误应设置 non_retryable=True。`
+      );
     } else {
-      promptParts.push('6. 【异常】：使用 `raise ApplicationError("描述", non_retryable=False)` 抛出业务异常。');
+      promptParts.push(
+        '6. 【异常】：使用 `raise ApplicationError("描述", non_retryable=False)` 抛出业务异常。'
+      );
     }
 
     promptParts.push(
@@ -57,7 +65,7 @@ export class ActivityCodegenService {
       '    - 拼接规则：必须使用环境变量 `CARBONE_EXTERNAL_URL` 作为前缀。',
       `    - 注意：如果 \`CARBONE_EXTERNAL_URL\` 未设置，默认使用 ${getCarboneExternalUrl()}。`,
       '    - 最终返回结果必须包含 `downloadUrl` 字段。',
-      '',
+      ''
     );
 
     // If there's error context, add it to help AI fix the issue
@@ -80,7 +88,7 @@ export class ActivityCodegenService {
       `- 函数名：${config.fn}`,
       `- 描述：${description || '无'}`,
       `- Task Queue：${config.config?.taskQueue || 'SKILL_TASK_QUEUE'}`,
-      `- 超时：${config.timeout || '30s'}`,
+      `- 超时：${config.timeout || '30s'}`
     );
 
     if (heartbeatTimeout) {
@@ -146,7 +154,7 @@ export class ActivityCodegenService {
       const response = await axios.post<{ result: string }>(
         `${aiOrchestratorUrl}/ai/model/call`,
         {
-          modelId: 'default',  // 使用系统默认模型
+          modelId: 'default', // 使用系统默认模型
           prompt,
         },
         { timeout: 120000 }
@@ -161,7 +169,10 @@ export class ActivityCodegenService {
             code = match[1].trim();
           } else {
             // Fallback for weird markdown
-            code = code.replace(/```[a-zA-Z]*\n?/g, '').replace(/```/g, '').trim();
+            code = code
+              .replace(/```[a-zA-Z]*\n?/g, '')
+              .replace(/```/g, '')
+              .trim();
           }
         }
 

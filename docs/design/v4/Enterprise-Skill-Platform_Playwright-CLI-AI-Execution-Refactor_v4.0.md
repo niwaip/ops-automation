@@ -240,7 +240,15 @@ interface BrowserActionStep {
   id: string;
   source: 'ai' | 'manual' | 'imported';
   backend: 'legacy' | 'cli' | 'mcp';
-  action: 'navigate' | 'click' | 'fill' | 'press_key' | 'wait' | 'assert_visible' | 'assert_text' | 'snapshot';
+  action:
+    | 'navigate'
+    | 'click'
+    | 'fill'
+    | 'press_key'
+    | 'wait'
+    | 'assert_visible'
+    | 'assert_text'
+    | 'snapshot';
   status: 'pending' | 'success' | 'error';
 
   runtimeTargetRef?: string;

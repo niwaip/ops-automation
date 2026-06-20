@@ -60,7 +60,7 @@ describe('OpenAICompatibleClient', () => {
             content: '甲方是ABC公司',
           },
         ],
-      }),
+      })
     );
   });
 });

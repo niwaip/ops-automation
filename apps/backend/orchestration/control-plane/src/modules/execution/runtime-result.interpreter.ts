@@ -37,8 +37,8 @@ interface RuntimeResultInterpreterContext {
   runtimeSessionId: string;
   stepId: string;
   emitEvent: (
-    eventType: typeof EXECUTION_EVENT_TYPE[keyof typeof EXECUTION_EVENT_TYPE],
-    payload: Record<string, unknown>,
+    eventType: (typeof EXECUTION_EVENT_TYPE)[keyof typeof EXECUTION_EVENT_TYPE],
+    payload: Record<string, unknown>
   ) => Promise<void>;
   advanceExecutionFlow: () => Promise<void>;
   failExecution: (failureReason: string, failureCode: string) => Promise<void>;
@@ -51,12 +51,12 @@ interface RuntimeResultInterpreterContext {
 export class RuntimeResultInterpreter {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly executionStepService: ExecutionStepService,
+    private readonly executionStepService: ExecutionStepService
   ) {}
 
   async handleBrowserStepResult(
     context: RuntimeResultInterpreterContext,
-    result: RuntimeStepInvokeResult,
+    result: RuntimeStepInvokeResult
   ): Promise<void> {
     if (result.status === 'waiting') {
       const requiredInputs = this.extractRequiredInputs(result.output);
@@ -72,7 +72,7 @@ export class RuntimeResultInterpreter {
       }
       await context.failExecution(
         result.errorMessage || BROWSER_MESSAGES.STEP_WAITING_UNHANDLED,
-        result.errorCode || BROWSER_ERROR_CODES.STEP_WAITING_UNHANDLED,
+        result.errorCode || BROWSER_ERROR_CODES.STEP_WAITING_UNHANDLED
       );
       return;
     }
@@ -84,7 +84,7 @@ export class RuntimeResultInterpreter {
       }
       await context.failExecution(
         result.errorMessage || BROWSER_MESSAGES.STEP_BLOCKED,
-        result.errorCode || BROWSER_ERROR_CODES.STEP_BLOCKED,
+        result.errorCode || BROWSER_ERROR_CODES.STEP_BLOCKED
       );
       return;
     }
@@ -106,7 +106,7 @@ export class RuntimeResultInterpreter {
         snapshotId: result.snapshot?.id,
         errorCode: result.errorCode,
         shouldTakeover: result.requiresTakeover,
-      },
+      }
     );
 
     if (result.status === 'takeover_required' || result.requiresTakeover) {
@@ -123,13 +123,13 @@ export class RuntimeResultInterpreter {
 
     await context.failExecution(
       result.errorMessage || BROWSER_MESSAGES.STEP_FAILED,
-      result.errorCode || BROWSER_ERROR_CODES.STEP_FAILED,
+      result.errorCode || BROWSER_ERROR_CODES.STEP_FAILED
     );
   }
 
   async handleSkillRuntimeResult(
     context: RuntimeResultInterpreterContext,
-    result: RuntimeStepInvokeResult,
+    result: RuntimeStepInvokeResult
   ): Promise<void> {
     if (result.status === 'waiting') {
       const requiredInputs = this.extractRequiredInputs(result.output);
@@ -145,19 +145,21 @@ export class RuntimeResultInterpreter {
       }
       await context.failExecution(
         result.errorMessage || 'Skill runtime entered waiting state without handling',
-        result.errorCode || 'CAPABILITY_RUNTIME_WAITING_UNHANDLED',
+        result.errorCode || 'CAPABILITY_RUNTIME_WAITING_UNHANDLED'
       );
       return;
     }
 
     if (result.status === 'blocked') {
       if (context.enterPendingApproval) {
-        await context.enterPendingApproval(result.errorMessage || 'Skill runtime blocked by runtime policy');
+        await context.enterPendingApproval(
+          result.errorMessage || 'Skill runtime blocked by runtime policy'
+        );
         return;
       }
       await context.failExecution(
         result.errorMessage || 'Skill runtime blocked by runtime policy',
-        result.errorCode || 'CAPABILITY_RUNTIME_BLOCKED',
+        result.errorCode || 'CAPABILITY_RUNTIME_BLOCKED'
       );
       return;
     }
@@ -188,17 +190,19 @@ export class RuntimeResultInterpreter {
         result: output,
         error: result.errorMessage,
         shouldTakeover: Boolean(result.requiresTakeover || result.status === 'takeover_required'),
-      },
+      }
     );
 
     if (result.status === 'takeover_required' || result.requiresTakeover) {
       if (context.takeover) {
-        await context.takeover(result.takeoverReason || result.errorMessage || RECOVERY_MESSAGES.SKILL_TAKEOVER);
+        await context.takeover(
+          result.takeoverReason || result.errorMessage || RECOVERY_MESSAGES.SKILL_TAKEOVER
+        );
         return;
       }
       await context.failExecution(
         result.errorMessage || RECOVERY_MESSAGES.SKILL_TAKEOVER_UNHANDLED,
-        result.errorCode || 'CAPABILITY_RUNTIME_TAKEOVER_UNHANDLED',
+        result.errorCode || 'CAPABILITY_RUNTIME_TAKEOVER_UNHANDLED'
       );
       return;
     }
@@ -211,21 +215,23 @@ export class RuntimeResultInterpreter {
 
     await context.failExecution(
       result.errorMessage || 'Capability runtime execution failed',
-      result.errorCode || 'CAPABILITY_RUNTIME_FAILED',
+      result.errorCode || 'CAPABILITY_RUNTIME_FAILED'
     );
   }
 
   private async persistSkillRuntimeSuccess(
     executionId: string,
     output: Record<string, unknown> | null,
-    usage?: LLMUsage,
+    usage?: LLMUsage
   ): Promise<void> {
     const currentExecution = await this.prisma.execution.findUnique({
       where: { id: executionId },
       select: { normalizedInputJson: true },
     });
 
-    const normalizedInput = currentExecution?.normalizedInputJson as Record<string, unknown> | undefined;
+    const normalizedInput = currentExecution?.normalizedInputJson as
+      | Record<string, unknown>
+      | undefined;
     const currentUsage = normalizedInput?.__usage as unknown as LLMUsage | undefined;
     const totalUsage = this.sumUsage(currentUsage, usage);
 
@@ -244,7 +250,9 @@ export class RuntimeResultInterpreter {
   }
 
   private sumUsage(...usages: (LLMUsage | undefined)[]): LLMUsage | undefined {
-    const validUsages = usages.filter((u): u is LLMUsage => !!u && (u.total_tokens > 0 || u.prompt_tokens > 0));
+    const validUsages = usages.filter(
+      (u): u is LLMUsage => !!u && (u.total_tokens > 0 || u.prompt_tokens > 0)
+    );
     if (validUsages.length === 0) {
       return undefined;
     }
@@ -280,8 +288,6 @@ export class RuntimeResultInterpreter {
   }
 
   private extractRequiredInputs(output?: Record<string, unknown>): unknown[] {
-    return Array.isArray(output?.requiredInputs)
-      ? output.requiredInputs as unknown[]
-      : [];
+    return Array.isArray(output?.requiredInputs) ? (output.requiredInputs as unknown[]) : [];
   }
 }

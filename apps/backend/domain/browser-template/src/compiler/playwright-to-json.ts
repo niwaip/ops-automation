@@ -24,7 +24,11 @@ interface ParsedAction {
 export class PlaywrightCompiler {
   constructor(private readonly templateValidator: TemplateValidator) {}
 
-  compile(script: string, createdBy: string, intent?: string): { template: TemplateJSON; validation: ValidationResult } {
+  compile(
+    script: string,
+    createdBy: string,
+    intent?: string
+  ): { template: TemplateJSON; validation: ValidationResult } {
     if (!script || script.trim() === '') {
       throw new BadRequestException('Script cannot be empty');
     }
@@ -48,9 +52,7 @@ export class PlaywrightCompiler {
     const paramsSchema = this.extractParamsSchema(script);
 
     // Generate description from intent or use default
-    const description = intent
-      ? `AI-整理: ${intent}`
-      : 'Auto-generated from Playwright script';
+    const description = intent ? `AI-整理: ${intent}` : 'Auto-generated from Playwright script';
 
     const template: TemplateJSON = {
       id: uuidv4(),
@@ -178,7 +180,8 @@ export class PlaywrightCompiler {
     }
 
     // page.getByRole('role', {name: 'text'}).action()
-    const getByRoleRegex = /page\.getByRole\(['"]([^'"]+)['"](?:,\s*\{[^}]*name:\s*['"]([^'"]+)['"][^}]*\})?\)\.(\w+)\(\)/g;
+    const getByRoleRegex =
+      /page\.getByRole\(['"]([^'"]+)['"](?:,\s*\{[^}]*name:\s*['"]([^'"]+)['"][^}]*\})?\)\.(\w+)\(\)/g;
     while ((match = getByRoleRegex.exec(normalizedScript)) !== null) {
       const roleValue = match[2] ? `${match[1]}[name="${match[2]}"]` : match[1]!;
       actions.push({
@@ -211,14 +214,22 @@ export class PlaywrightCompiler {
   private parseLocatorString(locatorStr: string): Locator {
     if (locatorStr.startsWith('role=')) return { type: 'role', value: locatorStr.substring(5) };
     if (locatorStr.startsWith('text=')) return { type: 'text', value: locatorStr.substring(5) };
-    if (locatorStr.startsWith('data-testid=')) return { type: 'test-id', value: locatorStr.substring(11) };
-    if (locatorStr.startsWith('//') || locatorStr.startsWith('./')) return { type: 'xpath', value: locatorStr };
-    if (locatorStr.startsWith('#') || locatorStr.startsWith('.') || locatorStr.startsWith('[')) return { type: 'css', value: locatorStr };
+    if (locatorStr.startsWith('data-testid='))
+      return { type: 'test-id', value: locatorStr.substring(11) };
+    if (locatorStr.startsWith('//') || locatorStr.startsWith('./'))
+      return { type: 'xpath', value: locatorStr };
+    if (locatorStr.startsWith('#') || locatorStr.startsWith('.') || locatorStr.startsWith('['))
+      return { type: 'css', value: locatorStr };
     return { type: 'text', value: locatorStr };
   }
 
   private mapPlaywrightMethod(method: string): ActionType {
-    const methodMap: Record<string, ActionType> = { click: 'click', fill: 'fill', check: 'check', selectOption: 'select' };
+    const methodMap: Record<string, ActionType> = {
+      click: 'click',
+      fill: 'fill',
+      check: 'check',
+      selectOption: 'select',
+    };
     return methodMap[method] || 'click';
   }
 

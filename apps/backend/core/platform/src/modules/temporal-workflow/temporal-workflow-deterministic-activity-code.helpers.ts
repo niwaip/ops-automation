@@ -12,7 +12,10 @@ import type { ActivityDsl } from './temporal-workflow.types';
 type NormalizedInputParam = { key: string; value: string; required: boolean };
 
 type NormalizeInputParamsFn = (
-  inputParams: Array<{ key?: string; value?: string; required?: boolean }> | Record<string, string> | undefined,
+  inputParams:
+    | Array<{ key?: string; value?: string; required?: boolean }>
+    | Record<string, string>
+    | undefined
 ) => NormalizedInputParam[];
 
 function durationToSeconds(duration: string | undefined, fallbackSeconds = 300): number {
@@ -229,12 +232,15 @@ export function buildDeterministicBrowserActivityCode(args: {
 
   const requiredParams = extractBrowserActivityPlaceholders(steps);
   const firstGotoStep = steps.find((step) => step.action === 'goto');
-  const configuredInitialUrl = typeof firstGotoStep?.config?.url === 'string'
-    ? firstGotoStep.config.url
-    : '';
-  const sessionLifecycle = activityDef.config?.sessionLifecycle && typeof activityDef.config.sessionLifecycle === 'object'
-    ? activityDef.config.sessionLifecycle as { initializeSession?: boolean; cleanupSession?: boolean }
-    : {};
+  const configuredInitialUrl =
+    typeof firstGotoStep?.config?.url === 'string' ? firstGotoStep.config.url : '';
+  const sessionLifecycle =
+    activityDef.config?.sessionLifecycle && typeof activityDef.config.sessionLifecycle === 'object'
+      ? (activityDef.config.sessionLifecycle as {
+          initializeSession?: boolean;
+          cleanupSession?: boolean;
+        })
+      : {};
   const initializeSession = sessionLifecycle.initializeSession !== false;
   const cleanupSession = sessionLifecycle.cleanupSession !== false;
 
@@ -561,9 +567,9 @@ export function buildDeterministicBrowserActivityCode(args: {
     '            first_error = failed_results[0]',
     '            first_command = str(first_error.get("command") or "unknown")',
     '            first_message = str(first_error.get("message") or "unknown error")',
-    '            failure_message = f"browser-worker 执行失败: {execute_result.get(\'message\') or \'unknown error\'}; first_failed_command={first_command}; detail={first_message}"',
+    "            failure_message = f\"browser-worker 执行失败: {execute_result.get('message') or 'unknown error'}; first_failed_command={first_command}; detail={first_message}\"",
     '        elif not bool(execute_result.get("success")):',
-    '            failure_message = f"browser-worker 执行失败: {execute_result.get(\'message\') or \'unknown error\'}"',
+    "            failure_message = f\"browser-worker 执行失败: {execute_result.get('message') or 'unknown error'}\"",
     '',
     '        if failure_message:',
     '            requires_takeover = _should_require_takeover(first_command, first_message or failure_message)',

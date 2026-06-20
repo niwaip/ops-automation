@@ -41,11 +41,7 @@ export function useExcelIdentifyPanel() {
   const handleSetVisibleExcelPairsCompare = (compare: boolean) => {
     const visiblePairIds = new Set(visibleExcelPairs.map((pair) => pair.id));
     store.setExcelSheetPairs(
-      excelSheetPairs.map((pair) => (
-        visiblePairIds.has(pair.id)
-          ? { ...pair, compare }
-          : pair
-      ))
+      excelSheetPairs.map((pair) => (visiblePairIds.has(pair.id) ? { ...pair, compare } : pair))
     );
     store.addDebugLog('info', compare ? '已全选参考卡片组' : '已全部不选参考卡片组');
   };

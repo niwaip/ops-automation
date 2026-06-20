@@ -30,9 +30,13 @@ export function useWordIdentifyWorkflow({
   selectedTemplateType,
   useMultiStage,
 }: WordIdentifyWorkflowOptions): IdentifyWorkflowResult {
-  const [analysisSummary, setAnalysisSummary] = useState<ReturnType<typeof buildAnalysisSummary> | null>(null);
+  const [analysisSummary, setAnalysisSummary] = useState<ReturnType<
+    typeof buildAnalysisSummary
+  > | null>(null);
   const [stagedSuggestions, setStagedSuggestions] = useState<typeof suggestions>([]);
-  const [collapsedSuggestionGroups, setCollapsedSuggestionGroups] = useState<Record<string, boolean>>({});
+  const [collapsedSuggestionGroups, setCollapsedSuggestionGroups] = useState<
+    Record<string, boolean>
+  >({});
   const [collapsedPairDetails, setCollapsedPairDetails] = useState<Record<string, boolean>>({});
 
   const runAnalyze = async (options?: { commitSuggestions?: boolean }) => {
@@ -44,7 +48,11 @@ export function useWordIdentifyWorkflow({
     setAnalysisError(null, undefined);
     setAnalysisSummary(null);
 
-    addDebugLog('info', '开始 AI 识别', `模板类型: ${selectedTemplateType}，执行器: ${analysisExecutor}`);
+    addDebugLog(
+      'info',
+      '开始 AI 识别',
+      `模板类型: ${selectedTemplateType}，执行器: ${analysisExecutor}`
+    );
 
     try {
       while (retryCount <= maxRetries) {

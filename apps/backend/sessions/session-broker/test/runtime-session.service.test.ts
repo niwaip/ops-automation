@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { RuntimeSessionService } from '../src/modules/runtime-session/runtime-session.service';
 
 describe('RuntimeSessionService', () => {
@@ -52,7 +52,7 @@ describe('RuntimeSessionService', () => {
     const service = new RuntimeSessionService(
       prisma as never,
       allocationService as never,
-      freezeService as never,
+      freezeService as never
     );
 
     const result = await service.create({
@@ -72,14 +72,14 @@ describe('RuntimeSessionService', () => {
     expect(freezeService.syncRuntimeControlState).toHaveBeenCalledWith(
       'runtime-session-1',
       'ready',
-      'AGENT_RUNNING',
+      'AGENT_RUNNING'
     );
     expect(result).toEqual(
       expect.objectContaining({
         id: 'runtime-session-1',
         workerId: 'worker-1',
         state: 'ready',
-      }),
+      })
     );
   });
 
@@ -101,7 +101,7 @@ describe('RuntimeSessionService', () => {
     const service = new RuntimeSessionService(
       prisma as never,
       allocationService as never,
-      freezeService as never,
+      freezeService as never
     );
 
     await expect(
@@ -109,7 +109,7 @@ describe('RuntimeSessionService', () => {
         executionId: 'execution-1',
         runtimeType: 'browser',
         userId: 'user-1',
-      }),
+      })
     ).rejects.toBeInstanceOf(BadRequestException);
 
     expect(prisma.runtimeSession.delete).toHaveBeenCalledWith({
@@ -117,5 +117,31 @@ describe('RuntimeSessionService', () => {
     });
     expect(prisma.runtimeSession.update).not.toHaveBeenCalled();
     expect(freezeService.syncRuntimeControlState).not.toHaveBeenCalled();
+  });
+
+  it('returns not found for non-uuid runtime session ids', async () => {
+    const prisma = {
+      runtimeSession: {
+        findUnique: jest.fn(),
+      },
+    };
+    const allocationService = {
+      allocateWorker: jest.fn(),
+      releaseWorker: jest.fn(),
+    };
+    const freezeService = {
+      syncRuntimeControlState: jest.fn(),
+    };
+
+    const service = new RuntimeSessionService(
+      prisma as never,
+      allocationService as never,
+      freezeService as never
+    );
+
+    await expect(service.getById('recorder-ui-debug-nonuuid-4')).rejects.toBeInstanceOf(
+      NotFoundException
+    );
+    expect(prisma.runtimeSession.findUnique).not.toHaveBeenCalled();
   });
 });

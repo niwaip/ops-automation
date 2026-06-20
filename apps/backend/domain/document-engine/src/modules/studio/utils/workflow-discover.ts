@@ -29,23 +29,14 @@ import {
   extractAnchorPrefix,
   inferRecognitionBlockTitle,
 } from './workflow-parser-format';
-import {
-  inferSectionInfo,
-} from './workflow-similarity';
+import { inferSectionInfo } from './workflow-similarity';
 
 const logger = new Logger('WorkflowDiscover');
 
 export function resolveAssets(termAssets?: WorkflowTermAssets): WorkflowResolvedAssets {
   return {
-    fieldDictionary: [
-      ...(termAssets?.fieldDictionary || []),
-      ...GLOBAL_FIELD_DICTIONARY,
-    ],
-    termbase: [
-      ...(termAssets?.termbase || []),
-      ...TENANT_TERMBASE,
-      ...GLOBAL_TERMBASE,
-    ],
+    fieldDictionary: [...(termAssets?.fieldDictionary || []), ...GLOBAL_FIELD_DICTIONARY],
+    termbase: [...(termAssets?.termbase || []), ...TENANT_TERMBASE, ...GLOBAL_TERMBASE],
     enumMappings: {
       ...GLOBAL_ENUM_MAPPINGS,
       ...(termAssets?.enumMappings || {}),
@@ -70,16 +61,15 @@ export function isAssetActive(status?: string): boolean {
 export function findTermMatch(
   fieldId: string,
   text: string,
-  assets: WorkflowResolvedAssets,
+  assets: WorkflowResolvedAssets
 ): WorkflowTermEntry | undefined {
   const normalized = normalizeLookupText(text);
   const matches = assets.termbase
-    .filter((entry) =>
-      isAssetActive(entry.status)
-      && entry.applicableFieldIds.includes(fieldId)
-    )
+    .filter((entry) => isAssetActive(entry.status) && entry.applicableFieldIds.includes(fieldId))
     .map((entry) => {
-      const normalizedSource = normalizeLookupText(entry.normalizedSourceValue || entry.sourceValue);
+      const normalizedSource = normalizeLookupText(
+        entry.normalizedSourceValue || entry.sourceValue
+      );
       if (!normalizedSource) {
         return undefined;
       }
@@ -107,15 +97,16 @@ export function findTermMatch(
 export function findEnumMatch(
   fieldId: string,
   sourceValue: string,
-  assets: WorkflowResolvedAssets,
+  assets: WorkflowResolvedAssets
 ): WorkflowEnumItem | undefined {
   const items = assets.enumMappings[fieldId] || [];
   const normalized = normalizeLookupText(sourceValue);
   const matches = items
     .filter((item) => isAssetActive(item.status))
-    .filter((item) =>
-      item.aliases.some((alias) => normalizeLookupText(alias) === normalized)
-      || Object.values(item.labels).some((label) => normalizeLookupText(label) === normalized)
+    .filter(
+      (item) =>
+        item.aliases.some((alias) => normalizeLookupText(alias) === normalized) ||
+        Object.values(item.labels).some((label) => normalizeLookupText(label) === normalized)
     );
 
   matches.sort((left, right) => scopePriority(right.scope) - scopePriority(left.scope));
@@ -124,7 +115,7 @@ export function findEnumMatch(
 
 export function matchFieldDictionary(
   text: string,
-  assets: WorkflowResolvedAssets,
+  assets: WorkflowResolvedAssets
 ): WorkflowFieldDictionaryEntry | undefined {
   const normalized = normalizeLookupText(text);
   const matches = assets.fieldDictionary
@@ -133,10 +124,10 @@ export function matchFieldDictionary(
       const matchedAlias = entry.aliases.find((alias) => {
         const normalizedAlias = normalizeLookupText(alias);
         return (
-          normalizedAlias
-          && (normalized === normalizedAlias
-            || normalized.includes(normalizedAlias)
-            || normalizedAlias.includes(normalized))
+          normalizedAlias &&
+          (normalized === normalizedAlias ||
+            normalized.includes(normalizedAlias) ||
+            normalizedAlias.includes(normalized))
         );
       });
       if (!matchedAlias) {
@@ -161,12 +152,14 @@ export function matchFieldDictionary(
 }
 
 export function computeCandidateGroupCompareStatus(
-  candidates: WorkflowFieldCandidate[],
+  candidates: WorkflowFieldCandidate[]
 ): 'aligned' | 'partial' | 'attention' {
   if (candidates.length === 0) {
     return 'attention';
   }
-  const matchedCount = candidates.filter((candidate) => Boolean(safeText(candidate.matchText))).length;
+  const matchedCount = candidates.filter((candidate) =>
+    Boolean(safeText(candidate.matchText))
+  ).length;
   if (matchedCount === 0) {
     return 'attention';
   }
@@ -174,7 +167,7 @@ export function computeCandidateGroupCompareStatus(
 }
 
 export function computeCandidateGroupCompareMode(
-  candidates: WorkflowFieldCandidate[],
+  candidates: WorkflowFieldCandidate[]
 ): 'section_loose_compare' | 'global_probe_fallback' | 'structure_only' {
   if (candidates.some((candidate) => candidate.compareMode === 'section_loose_compare')) {
     return 'section_loose_compare';
@@ -189,16 +182,14 @@ export function computeCandidateGroupCompareScore(candidates: WorkflowFieldCandi
   if (candidates.length === 0) {
     return 0;
   }
-  return Math.max(
-    ...candidates.map((candidate) => Number(candidate.sectionMatchScore || 0)),
-  );
+  return Math.max(...candidates.map((candidate) => Number(candidate.sectionMatchScore || 0)));
 }
 
 export function isCandidateMatchedToBlock(
   candidate: WorkflowFieldCandidate,
   blockId: string,
   templateText: string,
-  sectionTitle: string,
+  sectionTitle: string
 ): boolean {
   if (candidate.sourceBlockId === blockId) {
     return true;
@@ -207,19 +198,23 @@ export function isCandidateMatchedToBlock(
   const normalizedAnchor = normalizeLookupText(candidate.anchorText);
   const normalizedSegment = normalizeLookupText(candidate.segmentText);
   const normalizedSectionTitle = normalizeLookupText(sectionTitle);
-  const normalizedCandidateSection = normalizeLookupText(candidate.sectionTitle || candidate.sectionId);
+  const normalizedCandidateSection = normalizeLookupText(
+    candidate.sectionTitle || candidate.sectionId
+  );
 
   return Boolean(
-    (normalizedAnchor && normalizedTemplateText.includes(normalizedAnchor))
-    || (normalizedSegment && normalizedTemplateText.includes(normalizedSegment))
-    || (normalizedCandidateSection && normalizedSectionTitle && normalizedCandidateSection === normalizedSectionTitle)
+    (normalizedAnchor && normalizedTemplateText.includes(normalizedAnchor)) ||
+    (normalizedSegment && normalizedTemplateText.includes(normalizedSegment)) ||
+    (normalizedCandidateSection &&
+      normalizedSectionTitle &&
+      normalizedCandidateSection === normalizedSectionTitle)
   );
 }
 
 export function extractBlockSampleExcerpt(
   sampleText: string,
   candidates: WorkflowFieldCandidate[],
-  fallbackText: string,
+  fallbackText: string
 ): string {
   const normalizedSampleText = safeText(sampleText);
   if (!normalizedSampleText) {
@@ -245,7 +240,9 @@ export function extractBlockSampleExcerpt(
   return normalizedSampleText.slice(0, 240);
 }
 
-export function buildFallbackRecognitionBlockResult(block: WorkflowRecognitionBlockInput): WorkflowRecognizeBlockResult {
+export function buildFallbackRecognitionBlockResult(
+  block: WorkflowRecognitionBlockInput
+): WorkflowRecognizeBlockResult {
   const suggestionCount = block.fallbackFields.length;
   const fallbackReason = suggestionCount > 0 ? 'rule_based_block_scan' : 'rule_based_empty';
   return {
@@ -264,9 +261,10 @@ export function buildFallbackRecognitionBlockResult(block: WorkflowRecognitionBl
     fallbackReason,
     contextAnalysis: {
       requestSummary: `块 ${block.blockId} (${block.blockType}) 已进入识别队列`,
-      responseSummary: suggestionCount > 0
-        ? `通过回退链路识别到 ${suggestionCount} 个字段`
-        : '当前块未返回字段候选',
+      responseSummary:
+        suggestionCount > 0
+          ? `通过回退链路识别到 ${suggestionCount} 个字段`
+          : '当前块未返回字段候选',
       cacheHit: false,
       fallbackReason,
       retryCount: 0,
@@ -283,15 +281,17 @@ export function buildWorkflowRecognitionPrompt(input: {
   assets: WorkflowResolvedAssets;
   skill?: any;
 }): string {
-  const targetLanguageText = input.targetLanguages.length > 0
-    ? input.targetLanguages.join(', ')
-    : 'single_language';
+  const targetLanguageText =
+    input.targetLanguages.length > 0 ? input.targetLanguages.join(', ') : 'single_language';
   const candidateFieldsJson = JSON.stringify(input.block.candidates.slice(0, 8), null, 2);
-  
+
   const skillParameters = input.skill?.parameters || [];
-  const skillHints = Array.isArray(skillParameters) 
+  const skillHints = Array.isArray(skillParameters)
     ? skillParameters
-        .map((p: any) => `- ${p.name}: ${p.usage || ''} | 类型: ${p.dataType || 'text'} | 提取提示: ${p.extractionHint || ''}`)
+        .map(
+          (p: any) =>
+            `- ${p.name}: ${p.usage || ''} | 类型: ${p.dataType || 'text'} | 提取提示: ${p.extractionHint || ''}`
+        )
         .join('\n')
     : '';
   const skillDescription = input.skill?.templateDescription || '';
@@ -304,29 +304,42 @@ export function buildWorkflowRecognitionPrompt(input: {
   const dictionaryHints = input.assets.fieldDictionary
     .filter((entry) => relatedFieldIds.size > 0 && relatedFieldIds.has(entry.fieldId))
     .slice(0, 10)
-    .map((entry) => `${entry.fieldId}: ${entry.aliases.slice(0, 5).join(' / ')} | ${entry.type} | ${entry.policy}`)
+    .map(
+      (entry) =>
+        `${entry.fieldId}: ${entry.aliases.slice(0, 5).join(' / ')} | ${entry.type} | ${entry.policy}`
+    )
     .join('\n');
   const termHints = input.assets.termbase
     .filter((entry) => entry.applicableFieldIds.some((fieldId) => relatedFieldIds.has(fieldId)))
     .slice(0, 8)
-    .map((entry) => `${entry.termId}: ${entry.sourceValue} => ${Object.entries(entry.translations).map(([lang, value]) => `${lang}:${value}`).join(', ')}`)
+    .map(
+      (entry) =>
+        `${entry.termId}: ${entry.sourceValue} => ${Object.entries(entry.translations)
+          .map(([lang, value]) => `${lang}:${value}`)
+          .join(', ')}`
+    )
     .join('\n');
   const enumHints = Array.from(relatedFieldIds)
     .flatMap((fieldId) =>
-      (input.assets.enumMappings[fieldId] || []).map((item: WorkflowEnumItem) =>
-        `${fieldId}: ${item.code} => ${Object.entries(item.labels).map(([lang, value]) => `${lang}:${value}`).join(', ')}`
+      (input.assets.enumMappings[fieldId] || []).map(
+        (item: WorkflowEnumItem) =>
+          `${fieldId}: ${item.code} => ${Object.entries(item.labels)
+            .map(([lang, value]) => `${lang}:${value}`)
+            .join(', ')}`
       )
     )
     .slice(0, 8)
     .join('\n');
   const sectionCompareHints = input.block.candidates
-    .map((candidate) => [
-      `candidateId=${candidate.candidateId}`,
-      `compareMode=${candidate.compareMode || 'structure_only'}`,
-      `sectionMatchScore=${candidate.sectionMatchScore || 0}`,
-      `fieldIdHint=${candidate.fieldIdHint || 'unknown'}`,
-      `matchText=${safeText(candidate.matchText || candidate.segmentText) || 'none'}`,
-    ].join(' | '))
+    .map((candidate) =>
+      [
+        `candidateId=${candidate.candidateId}`,
+        `compareMode=${candidate.compareMode || 'structure_only'}`,
+        `sectionMatchScore=${candidate.sectionMatchScore || 0}`,
+        `fieldIdHint=${candidate.fieldIdHint || 'unknown'}`,
+        `matchText=${safeText(candidate.matchText || candidate.segmentText) || 'none'}`,
+      ].join(' | ')
+    )
     .filter(Boolean)
     .slice(0, 5)
     .join('\n');
@@ -401,12 +414,13 @@ export function buildRecognitionBlocks(
   templateDocumentIr: WorkflowDocumentIR,
   candidateFields: WorkflowFieldCandidate[],
   fields: WorkflowAnalyzeFieldResult[],
-  sampleText: string,
+  sampleText: string
 ): WorkflowRecognitionBlockInput[] {
   const elements = Array.isArray(templateDocumentIr.elements) ? templateDocumentIr.elements : [];
-  const blockElements = elements.filter((element) =>
-    ['paragraph', 'table', 'cell'].includes(String(element.type || ''))
-    && Boolean(safeText(element.text))
+  const blockElements = elements.filter(
+    (element) =>
+      ['paragraph', 'table', 'cell'].includes(String(element.type || '')) &&
+      Boolean(safeText(element.text))
   );
 
   if (blockElements.length === 0) {
@@ -438,7 +452,9 @@ export function buildRecognitionBlocks(
       isCandidateMatchedToBlock(candidate, element.id, templateText, sectionInfo.sectionTitle)
     );
     const fallbackFields = fields.filter((field) =>
-      relatedCandidates.some((candidate) => candidate.fieldIdHint && candidate.fieldIdHint === field.fieldId)
+      relatedCandidates.some(
+        (candidate) => candidate.fieldIdHint && candidate.fieldIdHint === field.fieldId
+      )
     );
     const compareStatus = computeCandidateGroupCompareStatus(relatedCandidates);
     const compareMode = computeCandidateGroupCompareMode(relatedCandidates);
@@ -461,7 +477,9 @@ export function buildRecognitionBlocks(
   });
 }
 
-export function parseWorkflowRecognitionAiResponse(content: string): Record<string, unknown> | undefined {
+export function parseWorkflowRecognitionAiResponse(
+  content: string
+): Record<string, unknown> | undefined {
   try {
     const parsed = JSON.parse(content);
     return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
@@ -483,7 +501,9 @@ export function parseWorkflowRecognitionAiResponse(content: string): Record<stri
   }
 }
 
-export function normalizeWorkflowRecognitionSuggestions(value: unknown): WorkflowRecognitionAiSuggestion[] {
+export function normalizeWorkflowRecognitionSuggestions(
+  value: unknown
+): WorkflowRecognitionAiSuggestion[] {
   if (!Array.isArray(value)) {
     return [];
   }
@@ -493,14 +513,20 @@ export function normalizeWorkflowRecognitionSuggestions(value: unknown): Workflo
     .map((item) => item as WorkflowRecognitionAiSuggestion);
 }
 
-export function shouldAcceptWorkflowSuggestion(suggestion: WorkflowRecognitionAiSuggestion): boolean {
-  if (suggestion.accepted === false || suggestion.shouldCreateField === false || suggestion.isField === false) {
+export function shouldAcceptWorkflowSuggestion(
+  suggestion: WorkflowRecognitionAiSuggestion
+): boolean {
+  if (
+    suggestion.accepted === false ||
+    suggestion.shouldCreateField === false ||
+    suggestion.isField === false
+  ) {
     return false;
   }
   return Boolean(
-    safeText(suggestion.fieldId)
-    || safeText(suggestion.candidateId)
-    || safeText(suggestion.anchorText)
+    safeText(suggestion.fieldId) ||
+    safeText(suggestion.candidateId) ||
+    safeText(suggestion.anchorText)
   );
 }
 
@@ -570,7 +596,9 @@ export function inferPolicyFromType(fieldType: string): WorkflowTemplateFieldSpe
   return 'llm_translate';
 }
 
-export function normalizeWorkflowPolicy(value: unknown): NonNullable<WorkflowTemplateFieldSpec['policy']> {
+export function normalizeWorkflowPolicy(
+  value: unknown
+): NonNullable<WorkflowTemplateFieldSpec['policy']> {
   if (value === 'dictionary_first' || value === 'enum_mapping' || value === 'format_only') {
     return value;
   }
@@ -603,35 +631,38 @@ export function buildRecognizedFieldFromSuggestion(
   block: WorkflowRecognitionBlockInput,
   sourceLanguage: string,
   targetLanguages: string[],
-  assets: WorkflowResolvedAssets,
+  assets: WorkflowResolvedAssets
 ): WorkflowAnalyzeFieldResult | undefined {
-  const matchedCandidate = block.candidates.find((candidate) =>
-    candidate.candidateId === suggestion.candidateId
-    || (suggestion.fieldId && candidate.fieldIdHint === suggestion.fieldId)
-    || (suggestion.anchorText && normalizeLookupText(candidate.anchorText) === normalizeLookupText(suggestion.anchorText))
+  const matchedCandidate = block.candidates.find(
+    (candidate) =>
+      candidate.candidateId === suggestion.candidateId ||
+      (suggestion.fieldId && candidate.fieldIdHint === suggestion.fieldId) ||
+      (suggestion.anchorText &&
+        normalizeLookupText(candidate.anchorText) === normalizeLookupText(suggestion.anchorText))
   );
   const fieldId = normalizeWorkflowFieldId(
-    suggestion.fieldId
-    || matchedCandidate?.fieldIdHint
-    || matchedCandidate?.anchorText
-    || matchedCandidate?.candidateId
-    || ''
+    suggestion.fieldId ||
+      matchedCandidate?.fieldIdHint ||
+      matchedCandidate?.anchorText ||
+      matchedCandidate?.candidateId ||
+      ''
   );
   if (!fieldId) {
     return undefined;
   }
 
-  const fieldType = safeText(suggestion.fieldType || suggestion.type || matchedCandidate?.fieldTypeHint || 'text');
+  const fieldType = safeText(
+    suggestion.fieldType || suggestion.type || matchedCandidate?.fieldTypeHint || 'text'
+  );
   const policy = normalizeWorkflowPolicy(
-    suggestion.policy
-    || matchedCandidate?.generationPolicyHint
-    || inferPolicyFromType(fieldType)
+    suggestion.policy || matchedCandidate?.generationPolicyHint || inferPolicyFromType(fieldType)
   );
   const riskLevel = suggestion.riskLevel || inferRiskLevelFromType(fieldType);
   const sourceValue = safeText(matchedCandidate?.sampleValue);
-  const termMatch = policy === 'dictionary_first' && sourceValue
-    ? findTermMatch(fieldId, sourceValue, assets)
-    : undefined;
+  const termMatch =
+    policy === 'dictionary_first' && sourceValue
+      ? findTermMatch(fieldId, sourceValue, assets)
+      : undefined;
   const sourceBinding: WorkflowSourceBinding = {
     blockId: block.blockId,
     lang: sourceLanguage,
@@ -649,7 +680,8 @@ export function buildRecognizedFieldFromSuggestion(
     sourceLanguage,
     targetLanguages,
     policy,
-    required: ['high', 'medium'].includes(riskLevel || '') || Boolean(matchedCandidate?.fieldIdHint),
+    required:
+      ['high', 'medium'].includes(riskLevel || '') || Boolean(matchedCandidate?.fieldIdHint),
     riskLevel,
     sourceBindings: [sourceBinding],
     renderConfig: {
@@ -659,21 +691,23 @@ export function buildRecognizedFieldFromSuggestion(
     sample: sourceValue ? { [sourceLanguage]: sourceValue } : undefined,
     termMatch: termMatch
       ? {
-        status: 'matched',
-        termId: termMatch.termId,
-        scope: termMatch.scope,
-      }
+          status: 'matched',
+          termId: termMatch.termId,
+          scope: termMatch.scope,
+        }
       : {
-        status: 'unmatched',
-      },
+          status: 'unmatched',
+        },
     confidence: normalizeConfidence(suggestion.confidence, matchedCandidate?.confidence),
-    needsReview: suggestion.needsReview ?? normalizeConfidence(suggestion.confidence, matchedCandidate?.confidence) < 0.8,
+    needsReview:
+      suggestion.needsReview ??
+      normalizeConfidence(suggestion.confidence, matchedCandidate?.confidence) < 0.8,
   };
 }
 
 export function mergeRecognizedField(
   target: Map<string, WorkflowAnalyzeFieldResult>,
-  field: WorkflowAnalyzeFieldResult,
+  field: WorkflowAnalyzeFieldResult
 ): void {
   const existing = target.get(field.fieldId);
   if (!existing) {
@@ -681,9 +715,10 @@ export function mergeRecognizedField(
     return;
   }
 
-  const shouldReplace = field.confidence > existing.confidence
-    || (existing.needsReview && !field.needsReview)
-    || (existing.termMatch?.status !== 'matched' && field.termMatch?.status === 'matched');
+  const shouldReplace =
+    field.confidence > existing.confidence ||
+    (existing.needsReview && !field.needsReview) ||
+    (existing.termMatch?.status !== 'matched' && field.termMatch?.status === 'matched');
   if (shouldReplace) {
     target.set(field.fieldId, field);
   }
@@ -694,7 +729,7 @@ export function buildAnalyzeFieldResult(
   languageProfile: WorkflowLanguageProfile,
   sourceBinding: WorkflowSourceBinding,
   normalizedSampleText: string,
-  assets: WorkflowResolvedAssets,
+  assets: WorkflowResolvedAssets
 ): WorkflowAnalyzeFieldResult {
   const termMatch = findTermMatch(dictionaryMatch.fieldId, normalizedSampleText, assets);
   const sample = termMatch
@@ -738,7 +773,7 @@ export function discoverFields(
   templateDocumentIr: WorkflowDocumentIR,
   languageProfile: WorkflowLanguageProfile,
   normalizedSampleText: string,
-  assets: WorkflowResolvedAssets,
+  assets: WorkflowResolvedAssets
 ): WorkflowAnalyzeFieldResult[] {
   const candidates = new Map<string, WorkflowAnalyzeFieldResult>();
   const anchors = Array.isArray(templateDocumentIr.anchors) ? templateDocumentIr.anchors : [];
@@ -746,11 +781,9 @@ export function discoverFields(
 
   for (const anchor of anchors) {
     const anchorParagraphText = safeText(anchor.ref?.paragraphText);
-    const anchorContext = [
-      safeText(anchor.text),
-      anchorParagraphText,
-      safeText(anchor.ref?.title),
-    ].filter(Boolean).join(' ');
+    const anchorContext = [safeText(anchor.text), anchorParagraphText, safeText(anchor.ref?.title)]
+      .filter(Boolean)
+      .join(' ');
     const dictionaryMatch = matchFieldDictionary(anchorContext, assets);
     if (!dictionaryMatch) {
       continue;
@@ -759,23 +792,26 @@ export function discoverFields(
     if (existing) {
       continue;
     }
-    const matchedElement = elements.find((element) =>
-      normalizeLookupText(element.text) === normalizeLookupText(anchorParagraphText)
+    const matchedElement = elements.find(
+      (element) => normalizeLookupText(element.text) === normalizeLookupText(anchorParagraphText)
     );
-    candidates.set(dictionaryMatch.fieldId, buildAnalyzeFieldResult(
-      dictionaryMatch,
-      languageProfile,
-      {
-        blockId: matchedElement?.id || String(anchor.id || ''),
-        lang: languageProfile.sourceLanguage,
-        anchor: {
-          prefix: extractAnchorPrefix(anchorParagraphText || anchorContext),
-          suffix: '',
+    candidates.set(
+      dictionaryMatch.fieldId,
+      buildAnalyzeFieldResult(
+        dictionaryMatch,
+        languageProfile,
+        {
+          blockId: matchedElement?.id || String(anchor.id || ''),
+          lang: languageProfile.sourceLanguage,
+          anchor: {
+            prefix: extractAnchorPrefix(anchorParagraphText || anchorContext),
+            suffix: '',
+          },
         },
-      },
-      normalizedSampleText,
-      assets,
-    ));
+        normalizedSampleText,
+        assets
+      )
+    );
   }
 
   // Fallback scan for missing high risk fields
@@ -792,20 +828,23 @@ export function discoverFields(
         );
       });
       if (matchedElement) {
-        candidates.set(dictionaryMatch.fieldId, buildAnalyzeFieldResult(
-          dictionaryMatch,
-          languageProfile,
-          {
-            blockId: matchedElement.id,
-            lang: languageProfile.sourceLanguage,
-            anchor: {
-              prefix: extractAnchorPrefix(safeText(matchedElement.text)),
-              suffix: '',
+        candidates.set(
+          dictionaryMatch.fieldId,
+          buildAnalyzeFieldResult(
+            dictionaryMatch,
+            languageProfile,
+            {
+              blockId: matchedElement.id,
+              lang: languageProfile.sourceLanguage,
+              anchor: {
+                prefix: extractAnchorPrefix(safeText(matchedElement.text)),
+                suffix: '',
+              },
             },
-          },
-          normalizedSampleText,
-          assets,
-        ));
+            normalizedSampleText,
+            assets
+          )
+        );
       }
     }
   }
@@ -815,13 +854,14 @@ export function discoverFields(
 
 export function buildRecognitionBlockResults(
   templateDocumentIr: WorkflowDocumentIR,
-  fields: WorkflowAnalyzeFieldResult[],
+  fields: WorkflowAnalyzeFieldResult[]
 ): WorkflowRecognizeBlockResult[] {
   const elements = Array.isArray(templateDocumentIr.elements) ? templateDocumentIr.elements : [];
   const assets = resolveAssets();
-  const blockCandidates = elements.filter((element) =>
-    ['paragraph', 'table', 'cell'].includes(String(element.type || ''))
-    && Boolean(safeText(element.text))
+  const blockCandidates = elements.filter(
+    (element) =>
+      ['paragraph', 'table', 'cell'].includes(String(element.type || '')) &&
+      Boolean(safeText(element.text))
   );
   const blocks = blockCandidates.map((element) => {
     const sourceExcerpt = safeText(element.text).slice(0, 120);
@@ -843,9 +883,8 @@ export function buildRecognitionBlockResults(
       }
     }
     const fallbackReason = matchedFields.length > 0 ? 'rule_based_block_scan' : undefined;
-    const resultStatus: WorkflowRecognizeBlockResult['resultStatus'] = matchedFields.length > 0
-      ? 'fallback_success'
-      : 'empty';
+    const resultStatus: WorkflowRecognizeBlockResult['resultStatus'] =
+      matchedFields.length > 0 ? 'fallback_success' : 'empty';
 
     return {
       blockId: element.id,
@@ -863,9 +902,10 @@ export function buildRecognitionBlockResults(
       fallbackReason,
       contextAnalysis: {
         requestSummary: `块 ${element.id} (${String(element.type || 'paragraph')}) 已进入识别队列`,
-        responseSummary: matchedFields.length > 0
-          ? `通过回退链路识别到 ${matchedFields.length} 个字段`
-          : '当前块未返回字段候选',
+        responseSummary:
+          matchedFields.length > 0
+            ? `通过回退链路识别到 ${matchedFields.length} 个字段`
+            : '当前块未返回字段候选',
         cacheHit: false,
         fallbackReason,
         retryCount: 0,

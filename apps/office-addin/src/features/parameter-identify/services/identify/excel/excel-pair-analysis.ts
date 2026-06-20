@@ -1,6 +1,10 @@
 import { DocumentIR } from '../../../../../host/adapters/document-ir';
 import { AISuggestion } from '../../../../../app/store';
-import { resolveAnalysisExecutor, AnalysisExecutorKind, StructuredAnalyzeRequest } from '../../analysis-executor';
+import {
+  resolveAnalysisExecutor,
+  AnalysisExecutorKind,
+  StructuredAnalyzeRequest,
+} from '../../analysis-executor';
 import { serializeDocument } from '../common/document-serialize';
 import type { AnalyzeResponse, ExcelGlobalUnderstandingCache } from '../common/identify.types';
 import {
@@ -115,7 +119,12 @@ async function executeExcelPairAttempt<TPairInput>(
 ): Promise<ExcelPairAttemptResult> {
   try {
     const pairResponse = await executor.analyze(
-      options.buildPairPayload(pair, options.documentType, options.templateType, globalUnderstandingSummary)
+      options.buildPairPayload(
+        pair,
+        options.documentType,
+        options.templateType,
+        globalUnderstandingSummary
+      )
     );
     const pairSuggestions = options.normalizePairSuggestions(pair, pairResponse);
     const quality = options.evaluatePairAttempt(
@@ -180,7 +189,10 @@ export async function analyzeExcelPairWorkflow<TPairInput>(
       documentContent: serializeDocument(options.globalDataDocumentIR),
       documentType: options.documentType,
       templateType: options.templateType,
-      context: buildExcelGlobalUnderstandingContext(options.globalDataDocumentIR, options.templateType),
+      context: buildExcelGlobalUnderstandingContext(
+        options.globalDataDocumentIR,
+        options.templateType
+      ),
       analysisStage: 'excel-global-understanding' as const,
     };
 
@@ -198,22 +210,24 @@ export async function analyzeExcelPairWorkflow<TPairInput>(
         ? String(globalResponse.contextAnalysis.rawAiResponse)
         : undefined;
     } catch (error) {
-      globalUnderstandingSummary = '全局真实数据理解阶段未成功调用 AI，后续对照组分析将仅依赖局部差异与规则摘要。';
+      globalUnderstandingSummary =
+        '全局真实数据理解阶段未成功调用 AI，后续对照组分析将仅依赖局部差异与规则摘要。';
       globalUnderstandingError = options.toErrorInfo(error);
     }
   }
 
   const remotePairSuggestionsByIndex = new Map<number, AISuggestion[]>();
-  const retryExecutor = options.executor.supportsThinking && options.thinking !== true
-    ? resolveAnalysisExecutor({
-        apiBaseUrl: options.apiBaseUrl,
-        useMultiStage: options.useMultiStage,
-        requestedKind: options.analysisExecutor,
-        thinking: true,
-        aiOrchestratorBaseUrl: options.aiOrchestratorBaseUrl,
-        aiOrchestratorAuthToken: options.aiOrchestratorAuthToken,
-      })
-    : options.executor;
+  const retryExecutor =
+    options.executor.supportsThinking && options.thinking !== true
+      ? resolveAnalysisExecutor({
+          apiBaseUrl: options.apiBaseUrl,
+          useMultiStage: options.useMultiStage,
+          requestedKind: options.analysisExecutor,
+          thinking: true,
+          aiOrchestratorBaseUrl: options.aiOrchestratorBaseUrl,
+          aiOrchestratorAuthToken: options.aiOrchestratorAuthToken,
+        })
+      : options.executor;
   let retriedPairCount = 0;
 
   for (const pair of options.pairInputs) {
@@ -259,9 +273,10 @@ export async function analyzeExcelPairWorkflow<TPairInput>(
   }
 
   const remotePairSuggestions = Array.from(remotePairSuggestionsByIndex.values()).flat();
-  const finalSuggestions = remotePairSuggestions.length > 0
-    ? options.dedupeRemoteSuggestions(remotePairSuggestions)
-    : options.dedupeHeuristicSuggestions(options.excelHeuristicSuggestions);
+  const finalSuggestions =
+    remotePairSuggestions.length > 0
+      ? options.dedupeRemoteSuggestions(remotePairSuggestions)
+      : options.dedupeHeuristicSuggestions(options.excelHeuristicSuggestions);
   const summary = options.summarizeSuggestionSources(finalSuggestions);
   const succeededPairCount = pairResults.filter((pair) => pair.aiCallSucceeded === true).length;
   const aiCallCompleted = succeededPairCount > 0 || globalUnderstandingUsedAI;
@@ -282,18 +297,17 @@ export async function analyzeExcelPairWorkflow<TPairInput>(
         usedCachedGlobalUnderstanding,
         fallback: aiCallCompleted ? 'excel-heuristic-no-ai-suggestions' : 'excel-heuristic',
         resultSource: 'heuristic',
-        sourceCounts: options.summarizeSuggestionSources(options.excelHeuristicSuggestions).sourceCounts,
+        sourceCounts: options.summarizeSuggestionSources(options.excelHeuristicSuggestions)
+          .sourceCounts,
         pairResults,
-        descriptionOrigin:
-          aiCallCompleted
-            ? 'AI 已完成全局理解或对照组分析，但当前未返回可直接落地的结构化建议，因此结果列表来自 Excel 启发式规则。'
-            : 'Excel 启发式规则生成。典型文案如“模板 sheet 留白、数据 sheet 有值，识别为可参数化字段”来自前端成对 sheet 差异识别，不是 AI 返回。',
-        pipeline:
-          options.excelGlobalUnderstandingCache?.summary
-            ? '本次参数识别复用已缓存的全局文档理解结果，再逐个对照组调用 AI；当前未产出可直接落地的结构化建议，因此展示启发式建议。'
-            : aiCallCompleted
-              ? 'Office API 先读取全部参与分析的真实数据 sheet 做全局理解，再逐个对照组调用 AI；本次 AI 调用已成功完成，但未产出结构化建议，因此当前展示启发式建议。'
-              : 'Office API 先读取全部参与分析的真实数据 sheet 做全局理解，再逐个对照组调用 AI；本次 AI 未成功返回对照组结果，因此回退为启发式建议。',
+        descriptionOrigin: aiCallCompleted
+          ? 'AI 已完成全局理解或对照组分析，但当前未返回可直接落地的结构化建议，因此结果列表来自 Excel 启发式规则。'
+          : 'Excel 启发式规则生成。典型文案如“模板 sheet 留白、数据 sheet 有值，识别为可参数化字段”来自前端成对 sheet 差异识别，不是 AI 返回。',
+        pipeline: options.excelGlobalUnderstandingCache?.summary
+          ? '本次参数识别复用已缓存的全局文档理解结果，再逐个对照组调用 AI；当前未产出可直接落地的结构化建议，因此展示启发式建议。'
+          : aiCallCompleted
+            ? 'Office API 先读取全部参与分析的真实数据 sheet 做全局理解，再逐个对照组调用 AI；本次 AI 调用已成功完成，但未产出结构化建议，因此当前展示启发式建议。'
+            : 'Office API 先读取全部参与分析的真实数据 sheet 做全局理解，再逐个对照组调用 AI；本次 AI 未成功返回对照组结果，因此回退为启发式建议。',
         promptDebugSummary: globalPromptDebugSummary,
         promptRequestText: globalPromptRequestText,
         rawAiResponse: globalRawAiResponse,
@@ -325,10 +339,9 @@ export async function analyzeExcelPairWorkflow<TPairInput>(
         remotePairSuggestions.length > 0
           ? '当前结果优先使用逐对照组 AI 返回；由于本次已产出 AI 建议，启发式结果不再混入最终列表。'
           : '当前建议主要来自 Excel 启发式兜底结果。',
-      pipeline:
-        options.excelGlobalUnderstandingCache?.summary
-          ? '本次参数识别复用已缓存的全局文档理解结果；随后对每个对照组单独传递全局理解、差异摘要和当前业务摘录，循环生成 suggestions。'
-          : 'Office API 先读取全部参与分析的真实数据 sheet，生成整份工作簿的自然语言理解；再对每个对照组单独传递全局理解、差异摘要和当前业务摘录，循环生成 suggestions。',
+      pipeline: options.excelGlobalUnderstandingCache?.summary
+        ? '本次参数识别复用已缓存的全局文档理解结果；随后对每个对照组单独传递全局理解、差异摘要和当前业务摘录，循环生成 suggestions。'
+        : 'Office API 先读取全部参与分析的真实数据 sheet，生成整份工作簿的自然语言理解；再对每个对照组单独传递全局理解、差异摘要和当前业务摘录，循环生成 suggestions。',
       globalUnderstandingSummary,
       promptDebugSummary: globalPromptDebugSummary,
       promptRequestText: globalPromptRequestText,

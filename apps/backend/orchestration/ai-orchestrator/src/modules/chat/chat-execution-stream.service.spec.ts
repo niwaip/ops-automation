@@ -29,7 +29,7 @@ describe('ChatExecutionStreamService', () => {
     const service = new ChatExecutionStreamService(
       controlPlaneClient as unknown as ControlPlaneClient,
       waitingInputService as any,
-      resultNormalizerService as any,
+      resultNormalizerService as any
     );
 
     return {
@@ -64,7 +64,7 @@ describe('ChatExecutionStreamService', () => {
       {
         userId: 'user-1',
         userRoles: ['employee'],
-      },
+      }
     );
 
     expect(waitingInputService.buildControlPlaneRequestOptions).toHaveBeenCalledWith(
@@ -72,7 +72,7 @@ describe('ChatExecutionStreamService', () => {
       {
         userId: 'user-1',
         userRoles: ['employee'],
-      },
+      }
     );
     expect(event).toEqual({
       type: StreamEventType.ERROR,

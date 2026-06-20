@@ -8,26 +8,14 @@ import {
 import { createHash } from 'crypto';
 import { Prisma, TemporalWorkflow } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
-import {
-  TemporalWorkflowAiDraftService,
-} from './temporal-workflow-draft.service';
-import {
-  TemporalWorkflowBrowserDraftService,
-} from './temporal-workflow-browser-draft.service';
-import {
-  TemporalWorkflowCodegenService,
-} from './temporal-workflow-codegen.service';
-import {
-  TemporalWorkflowSessionService,
-} from './temporal-workflow-session.service';
-import {
-  TemporalWorkflowValidationService,
-} from './temporal-workflow-validation.service';
+import { TemporalWorkflowAiDraftService } from './temporal-workflow-draft.service';
+import { TemporalWorkflowBrowserDraftService } from './temporal-workflow-browser-draft.service';
+import { TemporalWorkflowCodegenService } from './temporal-workflow-codegen.service';
+import { TemporalWorkflowSessionService } from './temporal-workflow-session.service';
+import { TemporalWorkflowValidationService } from './temporal-workflow-validation.service';
 import { TemporalWorkflowConfigService } from './temporal-workflow-config.service';
 import { TemporalWorkflowNormalizationService } from './temporal-workflow-normalization.service';
-import {
-  TemporalWorkflowTemplateService,
-} from './temporal-workflow-template.service';
+import { TemporalWorkflowTemplateService } from './temporal-workflow-template.service';
 import {
   toTemporalWorkflowArtifactDto,
   toTemporalWorkflowDto,
@@ -73,7 +61,7 @@ export class TemporalWorkflowService implements OnModuleInit {
     private readonly workflowConfigService: TemporalWorkflowConfigService,
     private readonly workflowNormalizationService: TemporalWorkflowNormalizationService,
     private readonly workflowTemplateService: TemporalWorkflowTemplateService,
-    private readonly workflowSupportService: TemporalWorkflowSupportService,
+    private readonly workflowSupportService: TemporalWorkflowSupportService
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -86,7 +74,7 @@ export class TemporalWorkflowService implements OnModuleInit {
       orderBy: { createdAt: 'desc' },
     });
     const normalizedWorkflows = await Promise.all(
-      workflows.map((workflow) => this.repairWorkflowArtifactMetadataIfNeeded(workflow)),
+      workflows.map((workflow) => this.repairWorkflowArtifactMetadataIfNeeded(workflow))
     );
     return normalizedWorkflows.map((workflow) => toTemporalWorkflowDto(workflow));
   }
@@ -102,12 +90,14 @@ export class TemporalWorkflowService implements OnModuleInit {
 
   async create(data: CreateTemporalWorkflowDTO): Promise<TemporalWorkflowDTO> {
     try {
-      const normalizedActivityDsl = this.workflowNormalizationService.normalizeActivityDsl(data.activityDsl);
+      const normalizedActivityDsl = this.workflowNormalizationService.normalizeActivityDsl(
+        data.activityDsl
+      );
       const normalizedWorkflowDsl = await this.workflowNormalizationService.normalizeWorkflowDsl(
         data.workflowDsl,
         data.name,
         data.taskQueue,
-        normalizedActivityDsl,
+        normalizedActivityDsl
       );
       const created = await this.prisma.temporalWorkflow.create({
         data: {
@@ -118,7 +108,9 @@ export class TemporalWorkflowService implements OnModuleInit {
           isActive: true,
           name: this.workflowNormalizationService.normalizeName(data.name),
           description: this.workflowNormalizationService.normalizeDescription(data.description),
-          taskQueue: this.workflowNormalizationService.normalizeTaskQueue(data.taskQueue || data.workflowDsl?.taskQueue),
+          taskQueue: this.workflowNormalizationService.normalizeTaskQueue(
+            data.taskQueue || data.workflowDsl?.taskQueue
+          ),
           workflowDsl: normalizedWorkflowDsl as any,
           validatedAt: null,
           validationResultJson: Prisma.JsonNull,
@@ -141,9 +133,10 @@ export class TemporalWorkflowService implements OnModuleInit {
 
     try {
       const nextName = data.name !== undefined ? data.name : existing.name;
-      const nextTaskQueue = data.taskQueue !== undefined
-        ? data.taskQueue
-        : parseJson<WorkflowDsl>(existing.workflowDsl)?.taskQueue || existing.taskQueue;
+      const nextTaskQueue =
+        data.taskQueue !== undefined
+          ? data.taskQueue
+          : parseJson<WorkflowDsl>(existing.workflowDsl)?.taskQueue || existing.taskQueue;
       const normalizedActivityDsl = data.activityDsl
         ? this.workflowNormalizationService.normalizeActivityDsl(data.activityDsl)
         : parseJson<ActivityDsl>(existing.activityDsl) || { activities: [] };
@@ -152,20 +145,29 @@ export class TemporalWorkflowService implements OnModuleInit {
             data.workflowDsl,
             nextName,
             nextTaskQueue,
-            normalizedActivityDsl,
+            normalizedActivityDsl
           )
         : undefined;
       const updatePayload: Prisma.TemporalWorkflowUpdateInput = {
-        ...(data.name !== undefined && { name: this.workflowNormalizationService.normalizeName(data.name) }),
-        ...(data.description !== undefined && { description: this.workflowNormalizationService.normalizeDescription(data.description) }),
-        ...(data.taskQueue !== undefined && { taskQueue: this.workflowNormalizationService.normalizeTaskQueue(nextTaskQueue) }),
+        ...(data.name !== undefined && {
+          name: this.workflowNormalizationService.normalizeName(data.name),
+        }),
+        ...(data.description !== undefined && {
+          description: this.workflowNormalizationService.normalizeDescription(data.description),
+        }),
+        ...(data.taskQueue !== undefined && {
+          taskQueue: this.workflowNormalizationService.normalizeTaskQueue(nextTaskQueue),
+        }),
         ...(normalizedWorkflowDsl && { workflowDsl: normalizedWorkflowDsl as any }),
         ...(data.activityDsl && { activityDsl: normalizedActivityDsl as any }),
         ...(data.isActive !== undefined && { isActive: data.isActive }),
         ...(data.generatedCode !== undefined
           ? {
-              artifactHash: data.generatedCode ? this.computeArtifactHash(data.generatedCode) : null,
-              artifactVersion: this.getCurrentArtifactVersion(existing) + (data.generatedCode ? 1 : 0),
+              artifactHash: data.generatedCode
+                ? this.computeArtifactHash(data.generatedCode)
+                : null,
+              artifactVersion:
+                this.getCurrentArtifactVersion(existing) + (data.generatedCode ? 1 : 0),
               generatedCode: data.generatedCode || null,
               validatedAt: null,
               validationResultJson: Prisma.JsonNull,
@@ -206,64 +208,72 @@ export class TemporalWorkflowService implements OnModuleInit {
     return toTemporalWorkflowDto(deployed);
   }
 
-  async generateTemplateWorkflowDraft(data: GenerateTemplateWorkflowDraftDTO): Promise<TemplateWorkflowDraft> {
+  async generateTemplateWorkflowDraft(
+    data: GenerateTemplateWorkflowDraftDTO
+  ): Promise<TemplateWorkflowDraft> {
     return this.workflowTemplateService.generateTemplateWorkflowDraftFromRequest(
       data,
-      this.workflowSupportService.createTemplateSupport(),
+      this.workflowSupportService.createTemplateSupport()
     );
   }
 
   async compileTemplateWorkflowDraft(
-    data: CompileTemplateWorkflowDraftDTO,
+    data: CompileTemplateWorkflowDraftDTO
   ): Promise<TemplateWorkflowDraft> {
     return this.workflowTemplateService.compileTemplateWorkflowDraft(
       data,
-      this.workflowSupportService.createTemplateSupport(),
+      this.workflowSupportService.createTemplateSupport()
     );
   }
 
   async generateBrowserWorkflowDraft(
-    data: GenerateBrowserWorkflowDraftDTO,
+    data: GenerateBrowserWorkflowDraftDTO
   ): Promise<BrowserWorkflowDraft> {
     return this.browserDraftService.generateBrowserWorkflowDraft(
       data,
-      this.workflowSupportService.createBrowserDraftSupport(),
+      this.workflowSupportService.createBrowserDraftSupport()
     );
   }
 
   async generateAiWorkflowDraft(data: GenerateAiWorkflowDraftDTO): Promise<AiWorkflowDraft> {
-    return this.aiDraftService.generateWorkflowDraft(data, this.workflowSupportService.createAiDraftSupport());
+    return this.aiDraftService.generateWorkflowDraft(
+      data,
+      this.workflowSupportService.createAiDraftSupport()
+    );
   }
 
   async refineAiWorkflowDraft(data: RefineAiWorkflowDraftDTO): Promise<AiWorkflowDraft> {
-    return this.aiDraftService.refineWorkflowDraft(data, this.workflowSupportService.createAiDraftSupport());
+    return this.aiDraftService.refineWorkflowDraft(
+      data,
+      this.workflowSupportService.createAiDraftSupport()
+    );
   }
 
   async createAiDraftSession(
     data: GenerateAiWorkflowDraftSessionDTO,
-    userId?: string,
+    userId?: string
   ): Promise<AiWorkflowDraftSession> {
     return this.sessionService.createAiDraftSession(
       data,
       this.workflowSupportService.createSessionSupport(
         (payload) => this.generateAiWorkflowDraft(payload),
-        (payload) => this.refineAiWorkflowDraft(payload),
+        (payload) => this.refineAiWorkflowDraft(payload)
       ),
-      userId,
+      userId
     );
   }
 
   async refineAiDraftSession(
     data: RefineAiWorkflowDraftSessionDTO,
-    userId?: string,
+    userId?: string
   ): Promise<AiWorkflowDraftSession> {
     return this.sessionService.refineAiDraftSession(
       data,
       this.workflowSupportService.createSessionSupport(
         (payload) => this.generateAiWorkflowDraft(payload),
-        (payload) => this.refineAiWorkflowDraft(payload),
+        (payload) => this.refineAiWorkflowDraft(payload)
       ),
-      userId,
+      userId
     );
   }
 
@@ -279,7 +289,10 @@ export class TemporalWorkflowService implements OnModuleInit {
     return this.sessionService.deleteAiDraftSession(sessionId, userId);
   }
 
-  async validate(workflowDsl: WorkflowDsl, activityDsl: ActivityDsl): Promise<TemporalValidationResult> {
+  async validate(
+    workflowDsl: WorkflowDsl,
+    activityDsl: ActivityDsl
+  ): Promise<TemporalValidationResult> {
     return this.workflowSupportService.validateDsl(workflowDsl, activityDsl);
   }
 
@@ -288,12 +301,24 @@ export class TemporalWorkflowService implements OnModuleInit {
     activityDsl: ActivityDsl,
     errorContext?: string,
     forceAiGeneration = false,
-    onProgress?: (log: string) => void,
-  ): Promise<{ success: boolean; code?: string; error?: string; attempts?: number; autoRetried?: boolean; generationMode?: 'deterministic' | 'ai' }> {
-    const enrichedActivityDsl = await this.workflowSupportService.createEnrichedActivityDsl(workflowDsl, activityDsl);
+    onProgress?: (log: string) => void
+  ): Promise<{
+    success: boolean;
+    code?: string;
+    error?: string;
+    attempts?: number;
+    autoRetried?: boolean;
+    generationMode?: 'deterministic' | 'ai';
+  }> {
+    const enrichedActivityDsl = await this.workflowSupportService.createEnrichedActivityDsl(
+      workflowDsl,
+      activityDsl
+    );
 
     if (typeof onProgress === 'function') {
-      onProgress(`[${new Date().toISOString()}] 已解析 ${workflowDsl.steps.length} 个步骤，收集到 ${enrichedActivityDsl.activities.length} 个 Activity 定义`);
+      onProgress(
+        `[${new Date().toISOString()}] 已解析 ${workflowDsl.steps.length} 个步骤，收集到 ${enrichedActivityDsl.activities.length} 个 Activity 定义`
+      );
     }
 
     return this.codegenService.generateWorkflowCode(
@@ -302,7 +327,7 @@ export class TemporalWorkflowService implements OnModuleInit {
       errorContext,
       forceAiGeneration,
       this.workflowSupportService.createCodegenSupport(),
-      onProgress,
+      onProgress
     );
   }
 
@@ -311,9 +336,19 @@ export class TemporalWorkflowService implements OnModuleInit {
     activityDsl: ActivityDsl,
     errorContext: string | undefined,
     forceAiGeneration: boolean | undefined,
-    onLog: (log: string) => void,
-  ): Promise<{ success: boolean; code?: string; error?: string; attempts?: number; autoRetried?: boolean; generationMode?: 'deterministic' | 'ai' }> {
-    const enrichedActivityDsl = await this.workflowSupportService.createEnrichedActivityDsl(workflowDsl, activityDsl);
+    onLog: (log: string) => void
+  ): Promise<{
+    success: boolean;
+    code?: string;
+    error?: string;
+    attempts?: number;
+    autoRetried?: boolean;
+    generationMode?: 'deterministic' | 'ai';
+  }> {
+    const enrichedActivityDsl = await this.workflowSupportService.createEnrichedActivityDsl(
+      workflowDsl,
+      activityDsl
+    );
 
     return this.codegenService.generateWorkflowCodeStreaming(
       workflowDsl,
@@ -321,14 +356,14 @@ export class TemporalWorkflowService implements OnModuleInit {
       errorContext,
       forceAiGeneration,
       this.workflowSupportService.createCodegenSupport(),
-      onLog,
+      onLog
     );
   }
 
   async generateAndSaveWorkflowCode(
     id: string,
     errorContext?: string,
-    forceAiGeneration = false,
+    forceAiGeneration = false
   ): Promise<{
     workflow: TemporalWorkflowDTO;
     generation: {
@@ -354,7 +389,7 @@ export class TemporalWorkflowService implements OnModuleInit {
       workflowDsl,
       activityDsl,
       errorContext,
-      forceAiGeneration,
+      forceAiGeneration
     );
     if (!result.success || !result.code) {
       throw new BadRequestException(result.error || 'Workflow 代码生成失败');
@@ -388,15 +423,13 @@ export class TemporalWorkflowService implements OnModuleInit {
   async validateSavedWorkflowArtifact(
     id: string,
     input?: Record<string, any>,
-    timeout?: string,
+    timeout?: string
   ): Promise<{
     workflow: TemporalWorkflowDTO;
     validation: { success: boolean; logs: string[]; result?: any; error?: string; score: number };
   }> {
     const current = await this.prisma.temporalWorkflow.findUnique({ where: { id } });
-    const existing = current
-      ? await this.repairWorkflowArtifactMetadataIfNeeded(current)
-      : null;
+    const existing = current ? await this.repairWorkflowArtifactMetadataIfNeeded(current) : null;
     if (!existing) {
       throw new NotFoundException(`Temporal Workflow 不存在: ${id}`);
     }
@@ -410,7 +443,7 @@ export class TemporalWorkflowService implements OnModuleInit {
     const workflowClassName = workflowDsl?.workflowClassName?.trim();
     if (!workflowClassName) {
       throw new BadRequestException(
-        `工作流 "${workflow.name}" 缺少 Python 类名 (workflowDsl.workflowClassName)，无法执行真实验证`,
+        `工作流 "${workflow.name}" 缺少 Python 类名 (workflowDsl.workflowClassName)，无法执行真实验证`
       );
     }
 
@@ -419,7 +452,7 @@ export class TemporalWorkflowService implements OnModuleInit {
       workflowClassName,
       input,
       existing.taskQueue,
-      timeout,
+      timeout
     );
 
     const updated = await this.prisma.temporalWorkflow.update({
@@ -437,7 +470,9 @@ export class TemporalWorkflowService implements OnModuleInit {
           workflowClassName,
         } as any,
         validationScore: validation.score,
-        validationStatus: (validation.success ? 'validated' : 'failed') as TemporalWorkflowValidationStatus,
+        validationStatus: (validation.success
+          ? 'validated'
+          : 'failed') as TemporalWorkflowValidationStatus,
       },
     });
 
@@ -449,9 +484,7 @@ export class TemporalWorkflowService implements OnModuleInit {
 
   async getArtifact(id: string): Promise<TemporalWorkflowArtifactDTO> {
     const current = await this.prisma.temporalWorkflow.findUnique({ where: { id } });
-    const workflow = current
-      ? await this.repairWorkflowArtifactMetadataIfNeeded(current)
-      : null;
+    const workflow = current ? await this.repairWorkflowArtifactMetadataIfNeeded(current) : null;
     if (!workflow) {
       throw new NotFoundException(`Temporal Workflow 不存在: ${id}`);
     }
@@ -461,7 +494,7 @@ export class TemporalWorkflowService implements OnModuleInit {
   async optimizeHttpRequestConfig(
     stepConfig: Record<string, any>,
     inputParams: Record<string, any> = {},
-    userRequest?: string,
+    userRequest?: string
   ): Promise<{
     success: boolean;
     optimizedConfig?: Record<string, any>;
@@ -469,12 +502,16 @@ export class TemporalWorkflowService implements OnModuleInit {
     explanation?: string;
     error?: string;
   }> {
-    return this.workflowConfigService.optimizeHttpRequestConfig(stepConfig, inputParams, userRequest);
+    return this.workflowConfigService.optimizeHttpRequestConfig(
+      stepConfig,
+      inputParams,
+      userRequest
+    );
   }
 
   async previewHttpRequestConfig(
     stepConfig: Record<string, any>,
-    inputParams: Record<string, any> = {},
+    inputParams: Record<string, any> = {}
   ): Promise<{
     success: boolean;
     baseConfig?: Record<string, any>;
@@ -490,7 +527,7 @@ export class TemporalWorkflowService implements OnModuleInit {
     fn: string,
     input?: Record<string, any>,
     taskQueue?: string,
-    timeout?: string,
+    timeout?: string
   ): Promise<{ success: boolean; logs: string[]; result?: any; error?: string; score: number }> {
     return this.validationService.validateWorkflowReal(code, fn, input, taskQueue, timeout);
   }
@@ -501,29 +538,40 @@ export class TemporalWorkflowService implements OnModuleInit {
     input: Record<string, any> | undefined,
     taskQueue: string | undefined,
     timeout: string | undefined,
-    onLog: (log: string) => void,
-  ): Promise<{ success: boolean; result?: any; logs?: string[]; traceback?: string; error?: string; score: number }> {
+    onLog: (log: string) => void
+  ): Promise<{
+    success: boolean;
+    result?: any;
+    logs?: string[];
+    traceback?: string;
+    error?: string;
+    score: number;
+  }> {
     return this.validationService.validateWorkflowRealStreaming(
       code,
       fn,
       input,
       taskQueue,
       timeout,
-      onLog,
+      onLog
     );
   }
 
   async generateStructuredTransformConfig(
     sourceSample: Record<string, any> | string,
     userRequest: string,
-    existingConfig?: Record<string, any>,
+    existingConfig?: Record<string, any>
   ): Promise<{
     success: boolean;
     config?: Record<string, any>;
     explanation?: string;
     error?: string;
   }> {
-    return this.workflowConfigService.generateStructuredTransformConfig(sourceSample, userRequest, existingConfig);
+    return this.workflowConfigService.generateStructuredTransformConfig(
+      sourceSample,
+      userRequest,
+      existingConfig
+    );
   }
 
   private async ensureArtifactInfrastructure(): Promise<void> {
@@ -570,7 +618,7 @@ export class TemporalWorkflowService implements OnModuleInit {
   }
 
   private async repairWorkflowArtifactMetadataIfNeeded(
-    workflow: TemporalWorkflow,
+    workflow: TemporalWorkflow
   ): Promise<TemporalWorkflow> {
     const patch = this.buildLegacyArtifactMetadataPatch(workflow);
     if (!patch) {
@@ -584,51 +632,52 @@ export class TemporalWorkflowService implements OnModuleInit {
   }
 
   private buildLegacyArtifactMetadataPatch(
-    workflow: TemporalWorkflow,
+    workflow: TemporalWorkflow
   ): Prisma.TemporalWorkflowUpdateInput | null {
-    const generatedCode = typeof workflow.generatedCode === 'string'
-      ? workflow.generatedCode.trim()
-      : '';
-    const validationResult = parseJson<Record<string, unknown>>(workflow.validationResultJson) || {};
-    const validationSuccess = typeof validationResult.success === 'boolean'
-      ? validationResult.success
-      : undefined;
-    const validationScore = typeof validationResult.score === 'number'
-      ? validationResult.score
-      : undefined;
+    const generatedCode =
+      typeof workflow.generatedCode === 'string' ? workflow.generatedCode.trim() : '';
+    const validationResult =
+      parseJson<Record<string, unknown>>(workflow.validationResultJson) || {};
+    const validationSuccess =
+      typeof validationResult.success === 'boolean' ? validationResult.success : undefined;
+    const validationScore =
+      typeof validationResult.score === 'number' ? validationResult.score : undefined;
     const persistedArtifactVersion = Number((workflow as any).artifactVersion || 0);
     const persistedValidationScore = Number((workflow as any).validationScore || 0);
-    const persistedValidationStatus = typeof (workflow as any).validationStatus === 'string'
-      ? String((workflow as any).validationStatus).trim()
-      : '';
+    const persistedValidationStatus =
+      typeof (workflow as any).validationStatus === 'string'
+        ? String((workflow as any).validationStatus).trim()
+        : '';
     const hasValidatedAt = Boolean((workflow as any).validatedAt);
 
     const derivedArtifactVersion = generatedCode ? Math.max(persistedArtifactVersion, 1) : 0;
-    const derivedArtifactHash = generatedCode
-      ? this.computeArtifactHash(generatedCode)
-      : null;
-    const derivedValidationStatus: TemporalWorkflowValidationStatus = validationSuccess === true
-      || hasValidatedAt
-      ? 'validated'
-      : validationSuccess === false
-        ? 'failed'
-        : generatedCode
-          ? 'generated'
-          : 'draft';
-    const derivedValidationScore = validationScore !== undefined
-      ? validationScore
-      : validationSuccess === true
-        ? 100
-        : generatedCode
-          ? persistedValidationScore
-          : 0;
+    const derivedArtifactHash = generatedCode ? this.computeArtifactHash(generatedCode) : null;
+    const derivedValidationStatus: TemporalWorkflowValidationStatus =
+      validationSuccess === true || hasValidatedAt
+        ? 'validated'
+        : validationSuccess === false
+          ? 'failed'
+          : generatedCode
+            ? 'generated'
+            : 'draft';
+    const derivedValidationScore =
+      validationScore !== undefined
+        ? validationScore
+        : validationSuccess === true
+          ? 100
+          : generatedCode
+            ? persistedValidationScore
+            : 0;
 
     const patch: Prisma.TemporalWorkflowUpdateInput = {};
 
     if (generatedCode && persistedArtifactVersion <= 0) {
       patch.artifactVersion = derivedArtifactVersion as any;
     }
-    if (generatedCode && (!workflow.artifactHash || workflow.artifactHash !== derivedArtifactHash)) {
+    if (
+      generatedCode &&
+      (!workflow.artifactHash || workflow.artifactHash !== derivedArtifactHash)
+    ) {
       patch.artifactHash = derivedArtifactHash as any;
     }
     if (persistedValidationStatus !== derivedValidationStatus) {
@@ -645,7 +694,7 @@ export class TemporalWorkflowService implements OnModuleInit {
   }
 
   private getCurrentArtifactVersion(
-    workflow: { artifactVersion?: number | null } | null | undefined,
+    workflow: { artifactVersion?: number | null } | null | undefined
   ): number {
     return Number(workflow?.artifactVersion || 0);
   }
@@ -653,5 +702,4 @@ export class TemporalWorkflowService implements OnModuleInit {
   private computeArtifactHash(code: string): string {
     return `sha256:${createHash('sha256').update(code).digest('hex')}`;
   }
-
 }

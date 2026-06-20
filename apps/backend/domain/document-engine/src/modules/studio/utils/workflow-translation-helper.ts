@@ -10,16 +10,8 @@ import {
   WorkflowBindingPlan,
   WorkflowBindingPlanBinding,
 } from './workflow-assets';
-import {
-  safeText,
-  escapeRegExp,
-} from './document-xml-parser';
-import {
-  parseAmount,
-  parseDate,
-  formatCurrency,
-  formatDate,
-} from './workflow-parser-format';
+import { safeText, escapeRegExp } from './document-xml-parser';
+import { parseAmount, parseDate, formatCurrency, formatDate } from './workflow-parser-format';
 import {
   normalizeTableListRows,
   resolveTabularRowWidth,
@@ -33,25 +25,21 @@ import {
   resolveAssets,
   resolveTemplateFieldLanguage,
 } from './workflow-discover';
-import {
-  tryParseJsonObject,
-} from './workflow-ai';
+import { tryParseJsonObject } from './workflow-ai';
 
 const logger = new Logger('WorkflowRenderHelper');
 export function buildRenderTranslationCandidate(
   spec: WorkflowTemplateFieldSpec,
   value: Record<string, unknown>,
   sourceLanguage: string,
-  targetLanguages: string[],
+  targetLanguages: string[]
 ): WorkflowRenderTranslationCandidate | undefined {
   if (!isAutoTranslatableTextField(spec)) {
     return undefined;
   }
 
   const sourceText = safeText(
-    readLocalizedFieldValue(value, sourceLanguage)
-    ?? value.source
-    ?? value.value,
+    readLocalizedFieldValue(value, sourceLanguage) ?? value.source ?? value.value
   );
   if (!sourceText || shouldSkipAutomaticTranslationText(sourceText)) {
     return undefined;
@@ -59,7 +47,10 @@ export function buildRenderTranslationCandidate(
 
   const pendingLanguages = Array.from(new Set(targetLanguages))
     .map((lang) => normalizeTranslationLanguage(lang))
-    .filter((lang): lang is string => Boolean(lang) && lang !== normalizeTranslationLanguage(sourceLanguage))
+    .filter(
+      (lang): lang is string =>
+        Boolean(lang) && lang !== normalizeTranslationLanguage(sourceLanguage)
+    )
     .filter((lang) => !safeText(readLocalizedFieldValue(value, lang)));
   if (pendingLanguages.length === 0) {
     return undefined;
@@ -78,7 +69,7 @@ export async function applyBatchRenderTranslations(
   fieldValueMap: Map<string, Record<string, unknown>>,
   sourceTrace: Record<string, Record<string, unknown>>,
   warnings: string[],
-  needsReviewFields: string[],
+  needsReviewFields: string[]
 ): Promise<void> {
   if (candidates.length === 0) {
     return;
@@ -145,7 +136,7 @@ export async function batchTranslateRenderFields(
   batch: Record<string, string>,
   sourceLanguage: string,
   targetLanguage: string,
-  retryCount = 0,
+  retryCount = 0
 ): Promise<Record<string, string>> {
   if (Object.keys(batch).length === 0) {
     return {};
@@ -171,7 +162,7 @@ export async function batchTranslateRenderFields(
     const response = await axios.post<{ response?: string }>(
       `${aiOrchestratorUrl}/ai/models/${aiModelId}/test`,
       { prompt },
-      { timeout: 180000 },
+      { timeout: 180000 }
     );
     const content = String(response.data?.response || '')
       .replace(/```json\s*/gi, '')
@@ -192,7 +183,9 @@ export async function batchTranslateRenderFields(
     if (retryCount < maxRetries) {
       return batchTranslateRenderFields(batch, sourceLanguage, targetLanguage, retryCount + 1);
     }
-    logger.warn(`批量翻译失败 (${sourceLanguage} -> ${targetLanguage}): ${error instanceof Error ? error.message : String(error)}`);
+    logger.warn(
+      `批量翻译失败 (${sourceLanguage} -> ${targetLanguage}): ${error instanceof Error ? error.message : String(error)}`
+    );
     return {};
   }
 }
@@ -204,15 +197,12 @@ export function isAutoTranslatableTextField(spec: WorkflowTemplateFieldSpec): bo
   if (spec.policy === 'enum_mapping') {
     return false;
   }
-  const normalizedType = String(spec.type || '').trim().toLowerCase();
-  return ![
-    'number',
-    'boolean',
-    'date',
-    'currency_amount',
-    'bank_account',
-    'table_row',
-  ].includes(normalizedType);
+  const normalizedType = String(spec.type || '')
+    .trim()
+    .toLowerCase();
+  return !['number', 'boolean', 'date', 'currency_amount', 'bank_account', 'table_row'].includes(
+    normalizedType
+  );
 }
 
 export function shouldSkipAutomaticTranslationText(value: string): boolean {
@@ -238,7 +228,7 @@ export function shouldSkipAutomaticTranslationText(value: string): boolean {
 export function applyLocalizedLanguageAliases(
   value: Record<string, unknown>,
   sourceLanguage: string,
-  targetLanguages: string[],
+  targetLanguages: string[]
 ): void {
   const languages = Array.from(new Set([sourceLanguage, ...targetLanguages]));
   for (const language of languages) {
@@ -249,10 +239,7 @@ export function applyLocalizedLanguageAliases(
   }
 }
 
-export function readLocalizedFieldValue(
-  value: Record<string, unknown>,
-  language: string,
-): unknown {
+export function readLocalizedFieldValue(value: Record<string, unknown>, language: string): unknown {
   for (const candidate of getLanguageAliases(language)) {
     if (value[candidate] !== undefined) {
       return value[candidate];
@@ -264,7 +251,7 @@ export function readLocalizedFieldValue(
 export function setLocalizedValue(
   target: Record<string, unknown>,
   language: string,
-  value: unknown,
+  value: unknown
 ): void {
   for (const candidate of getLanguageAliases(language)) {
     target[candidate] = value;
@@ -286,7 +273,9 @@ export function getLanguageAliases(language: string): string[] {
 }
 
 export function normalizeTranslationLanguage(language: string | undefined): string {
-  const normalized = String(language || '').trim().toLowerCase();
+  const normalized = String(language || '')
+    .trim()
+    .toLowerCase();
   if (normalized === 'cn') return 'zh';
   if (normalized === 'jp') return 'ja';
   return normalized;
@@ -304,4 +293,3 @@ export function getTranslationLanguageName(language: string): string {
       return language || '目标语言';
   }
 }
-

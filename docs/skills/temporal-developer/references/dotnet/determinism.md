@@ -27,18 +27,18 @@ Most non-determinism and side effects should be wrapped in Activities.
 
 ## Safe Builtin Alternatives
 
-| Forbidden | Safe Alternative |
-|-----------|------------------|
-| `DateTime.Now` / `DateTime.UtcNow` | `Workflow.UtcNow` |
-| `Random` | `Workflow.Random` |
-| `Guid.NewGuid()` | `Workflow.NewGuid()` |
-| `Task.Delay` | `Workflow.DelayAsync` |
-| `Thread.Sleep` | `Workflow.DelayAsync` |
-| `Task.Run` | `Workflow.RunTaskAsync` |
-| `Task.WhenAll` | `Workflow.WhenAllAsync` |
-| `Task.WhenAny` | `Workflow.WhenAnyAsync` |
-| `System.Threading.Mutex` | `Temporalio.Workflows.Mutex` |
-| `System.Threading.Semaphore` | `Temporalio.Workflows.Semaphore` |
+| Forbidden                             | Safe Alternative                 |
+| ------------------------------------- | -------------------------------- |
+| `DateTime.Now` / `DateTime.UtcNow`    | `Workflow.UtcNow`                |
+| `Random`                              | `Workflow.Random`                |
+| `Guid.NewGuid()`                      | `Workflow.NewGuid()`             |
+| `Task.Delay`                          | `Workflow.DelayAsync`            |
+| `Thread.Sleep`                        | `Workflow.DelayAsync`            |
+| `Task.Run`                            | `Workflow.RunTaskAsync`          |
+| `Task.WhenAll`                        | `Workflow.WhenAllAsync`          |
+| `Task.WhenAny`                        | `Workflow.WhenAnyAsync`          |
+| `System.Threading.Mutex`              | `Temporalio.Workflows.Mutex`     |
+| `System.Threading.Semaphore`          | `Temporalio.Workflows.Semaphore` |
 | `CancellationTokenSource.CancelAsync` | `CancellationTokenSource.Cancel` |
 
 ## Testing Replay Compatibility

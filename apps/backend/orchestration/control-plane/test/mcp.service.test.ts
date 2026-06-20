@@ -102,7 +102,7 @@ describe('McpService', () => {
       },
       {
         authToken: undefined,
-      },
+      }
     );
     expect(result).toMatchObject({
       structuredContent: {

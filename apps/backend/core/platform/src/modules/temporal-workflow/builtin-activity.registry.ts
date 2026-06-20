@@ -154,7 +154,8 @@ export class BuiltinActivityRegistry {
       },
       generatedCode: FIXED_STRUCTURED_TRANSFORM_ACTIVITY_CODE,
       readonly: true,
-      description: '系统内置固定规则结构化转换 Activity，使用字段映射和文本模板完成提取、映射和格式化，不调用 AI',
+      description:
+        '系统内置固定规则结构化转换 Activity，使用字段映射和文本模板完成提取、映射和格式化，不调用 AI',
     };
     const aiStructuredTransform: BuiltinActivityDefinition = {
       key: AI_STRUCTURED_TRANSFORM_ACTIVITY_KEY,
@@ -180,7 +181,8 @@ export class BuiltinActivityRegistry {
       },
       generatedCode: FIXED_AI_STRUCTURED_TRANSFORM_ACTIVITY_CODE,
       readonly: true,
-      description: '系统内置 AI 结构化转换 Activity，适用于无法用固定字段映射和文本模板表达的提取、归纳与格式化',
+      description:
+        '系统内置 AI 结构化转换 Activity，适用于无法用固定字段映射和文本模板表达的提取、归纳与格式化',
     };
 
     const fileRead: BuiltinActivityDefinition = {
@@ -209,29 +211,34 @@ export class BuiltinActivityRegistry {
           required: ['path'],
           properties: {
             protocol: {
-              type: 'string', title: '存储协议',
+              type: 'string',
+              title: '存储协议',
               enum: ['local', 's3', 'oss', 'minio'],
               enumNames: ['本地文件系统', 'AWS S3', '阿里云 OSS', 'MinIO'],
               default: 'local',
             },
             path: {
-              type: 'string', title: '文件路径',
+              type: 'string',
+              title: '文件路径',
               description: '支持 {{param}} 插值，示例: /data/output/{{filename}}',
             },
             encoding: {
-              type: 'string', title: '文件编码',
+              type: 'string',
+              title: '文件编码',
               enum: ['utf-8', 'gbk', 'base64'],
               enumNames: ['UTF-8', 'GBK', '二进制(Base64)'],
               default: 'utf-8',
             },
             returnMode: {
-              type: 'string', title: '返回格式',
+              type: 'string',
+              title: '返回格式',
               enum: ['text', 'base64', 'json', 'lines'],
               enumNames: ['原始文本', 'Base64 编码', '解析为 JSON', '按行分割为数组'],
               default: 'text',
             },
             maxSizeKb: {
-              type: 'number', title: '最大文件大小(KB)',
+              type: 'number',
+              title: '最大文件大小(KB)',
               description: '超过此大小将报错，默认 10240（10MB）',
               default: 10240,
             },
@@ -273,17 +280,20 @@ export class BuiltinActivityRegistry {
           properties: {
             path: { type: 'string', title: '目标路径', description: '支持 {{param}} 插值' },
             contentSource: {
-              type: 'string', title: '内容来源',
+              type: 'string',
+              title: '内容来源',
               enum: ['input', 'previousStep'],
               enumNames: ['工作流输入参数', '上一步骤结果'],
               default: 'input',
             },
             contentKey: {
-              type: 'string', title: '内容字段路径',
+              type: 'string',
+              title: '内容字段路径',
               description: '内容来源为上一步骤时，填写结果字段路径（如 body.data）',
             },
             writeMode: {
-              type: 'string', title: '写入模式',
+              type: 'string',
+              title: '写入模式',
               enum: ['text', 'base64decode', 'json'],
               enumNames: ['原始文本', 'Base64 解码后写入', 'JSON 序列化写入'],
               default: 'text',
@@ -323,21 +333,27 @@ export class BuiltinActivityRegistry {
           properties: {
             url: { type: 'string', title: 'Webhook URL', description: '支持 {{param}} 插值' },
             method: {
-              type: 'string', title: 'HTTP 方法',
-              enum: ['POST', 'PUT', 'PATCH'], default: 'POST',
+              type: 'string',
+              title: 'HTTP 方法',
+              enum: ['POST', 'PUT', 'PATCH'],
+              default: 'POST',
             },
             headers: {
-              type: 'object', title: '请求头',
+              type: 'object',
+              title: '请求头',
               description: 'Authorization 等敏感头建议从环境变量读取',
               additionalProperties: { type: 'string' },
             },
             payloadTemplate: {
-              type: 'object', title: '消息模板',
+              type: 'object',
+              title: '消息模板',
               description: 'JSON 模板，字符串值支持 {{param}} 插值',
             },
             successCodes: {
-              type: 'array', title: '成功状态码',
-              items: { type: 'number' }, default: [200, 201, 202, 204],
+              type: 'array',
+              title: '成功状态码',
+              items: { type: 'number' },
+              default: [200, 201, 202, 204],
             },
           },
         },
@@ -382,30 +398,39 @@ export class BuiltinActivityRegistry {
           required: ['to', 'subject'],
           properties: {
             provider: {
-              type: 'string', title: '邮件服务商',
+              type: 'string',
+              title: '邮件服务商',
               enum: ['smtp'],
               enumNames: ['自建 SMTP'],
               default: 'smtp',
             },
             to: {
-              type: 'array', title: '收件人',
+              type: 'array',
+              title: '收件人',
               items: { type: 'string' },
               description: '支持 {{param}} 作为整体替换',
             },
             subject: {
-              type: 'string', title: '邮件主题',
+              type: 'string',
+              title: '邮件主题',
               description: '支持 {{param}} 插值',
             },
             bodyType: {
-              type: 'string', title: '正文格式',
-              enum: ['html', 'text'], enumNames: ['HTML', '纯文本'], default: 'html',
+              type: 'string',
+              title: '正文格式',
+              enum: ['html', 'text'],
+              enumNames: ['HTML', '纯文本'],
+              default: 'html',
             },
             bodyTemplate: {
-              type: 'string', title: '正文模板',
+              type: 'string',
+              title: '正文模板',
               description: '支持 {{param}} 插值',
             },
             attachFromPreviousStep: {
-              type: 'boolean', title: '附加上一步结果文件', default: false,
+              type: 'boolean',
+              title: '附加上一步结果文件',
+              default: false,
             },
           },
         },
@@ -442,21 +467,28 @@ export class BuiltinActivityRegistry {
           required: ['contentTemplate'],
           properties: {
             platform: {
-              type: 'string', title: 'IM 平台',
+              type: 'string',
+              title: 'IM 平台',
               enum: ['feishu', 'dingtalk', 'wecom'],
-              enumNames: ['飞书', '钉钉', '企业微信'], default: 'feishu',
+              enumNames: ['飞书', '钉钉', '企业微信'],
+              default: 'feishu',
             },
             webhookUrlEnvKey: {
-              type: 'string', title: 'Webhook URL 环境变量名',
-              description: '推荐：将 Webhook URL 存入环境变量，此处填写变量名（如 FEISHU_NOTIFY_WEBHOOK）',
+              type: 'string',
+              title: 'Webhook URL 环境变量名',
+              description:
+                '推荐：将 Webhook URL 存入环境变量，此处填写变量名（如 FEISHU_NOTIFY_WEBHOOK）',
             },
             msgType: {
-              type: 'string', title: '消息类型',
+              type: 'string',
+              title: '消息类型',
               enum: ['text', 'markdown', 'card'],
-              enumNames: ['纯文本', 'Markdown', '卡片消息'], default: 'text',
+              enumNames: ['纯文本', 'Markdown', '卡片消息'],
+              default: 'text',
             },
             contentTemplate: {
-              type: 'string', title: '消息内容模板',
+              type: 'string',
+              title: '消息内容模板',
               description: '支持 {{param}} 插值，Markdown 格式可使用标题、加粗、列表',
             },
             atAll: { type: 'boolean', title: '@ 所有人', default: false },
@@ -497,12 +529,16 @@ export class BuiltinActivityRegistry {
           type: 'object',
           properties: {
             contentSource: {
-              type: 'string', title: '数据来源',
+              type: 'string',
+              title: '数据来源',
               enum: ['input', 'previousStep'],
-              enumNames: ['工作流输入参数', '上一步骤结果'], default: 'input',
+              enumNames: ['工作流输入参数', '上一步骤结果'],
+              default: 'input',
             },
             delimiter: {
-              type: 'string', title: '分隔符', default: ',',
+              type: 'string',
+              title: '分隔符',
+              default: ',',
               description: '常用: 逗号(,) 制表符(\\t) 分号(;)',
             },
             hasHeader: { type: 'boolean', title: '首行为表头', default: true },
@@ -538,14 +574,17 @@ export class BuiltinActivityRegistry {
           type: 'object',
           properties: {
             fieldMappings: {
-              type: 'object', title: '字段映射',
+              type: 'object',
+              title: '字段映射',
               description: '键为输出字段名，值为 JSONPath ($.field) 或模板字符串 ({{$.field}})',
               additionalProperties: { type: 'string' },
             },
             outputMode: {
-              type: 'string', title: '输出模式',
+              type: 'string',
+              title: '输出模式',
               enum: ['object', 'array', 'value'],
-              enumNames: ['对象（单条）', '数组', '单一值'], default: 'object',
+              enumNames: ['对象（单条）', '数组', '单一值'],
+              default: 'object',
             },
             dropNullFields: { type: 'boolean', title: '丢弃空值字段', default: false },
           },
@@ -580,18 +619,22 @@ export class BuiltinActivityRegistry {
           required: ['template'],
           properties: {
             template: {
-              type: 'string', title: 'Jinja2 模板',
+              type: 'string',
+              title: 'Jinja2 模板',
               description: '支持 {{ variable }}、{% for item in list %}...{% endfor %} 等',
             },
             dataSource: {
-              type: 'string', title: '数据来源',
+              type: 'string',
+              title: '数据来源',
               enum: ['inputParams', 'previousStep', 'merge'],
               enumNames: ['工作流输入参数', '上一步骤结果', '合并两者'],
               default: 'inputParams',
             },
             outputMode: {
-              type: 'string', title: '输出格式',
-              enum: ['text', 'json'], default: 'text',
+              type: 'string',
+              title: '输出格式',
+              enum: ['text', 'json'],
+              default: 'text',
             },
           },
         },
@@ -627,23 +670,33 @@ export class BuiltinActivityRegistry {
           required: ['sql'],
           properties: {
             dbType: {
-              type: 'string', title: '数据库类型',
+              type: 'string',
+              title: '数据库类型',
               enum: ['postgresql', 'mysql', 'sqlite'],
-              enumNames: ['PostgreSQL', 'MySQL', 'SQLite'], default: 'postgresql',
+              enumNames: ['PostgreSQL', 'MySQL', 'SQLite'],
+              default: 'postgresql',
             },
             connectionEnvKey: {
-              type: 'string', title: '连接串环境变量名',
+              type: 'string',
+              title: '连接串环境变量名',
               description: '数据库连接 URL 存储在哪个环境变量中',
               default: 'DB_CONNECTION_URL',
             },
             sql: {
-              type: 'string', title: 'SQL 查询语句',
+              type: 'string',
+              title: 'SQL 查询语句',
               description: '必须是 SELECT 语句，使用 :paramName 作为参数占位符',
             },
             returnMode: {
-              type: 'string', title: '返回模式',
+              type: 'string',
+              title: '返回模式',
               enum: ['rows', 'first', 'value', 'count'],
-              enumNames: ['全部行（数组）', '第一行（对象）', '第一行第一列（标量）', '行数（数字）'],
+              enumNames: [
+                '全部行（数组）',
+                '第一行（对象）',
+                '第一行第一列（标量）',
+                '行数（数字）',
+              ],
               default: 'rows',
             },
             maxRows: { type: 'number', title: '最大返回行数', default: 1000 },
@@ -670,9 +723,22 @@ export class BuiltinActivityRegistry {
           command: '',
           workingDir: '/tmp',
           allowedPrefixes: [
-            'python3', 'python', 'node', 'ffmpeg', 'convert',
-            'pandoc', 'libreoffice', 'pdftotext', 'unzip', 'zip',
-            'tar', 'gzip', 'gunzip', 'wkhtmltopdf', 'echo', 'cat',
+            'python3',
+            'python',
+            'node',
+            'ffmpeg',
+            'convert',
+            'pandoc',
+            'libreoffice',
+            'pdftotext',
+            'unzip',
+            'zip',
+            'tar',
+            'gzip',
+            'gunzip',
+            'wkhtmltopdf',
+            'echo',
+            'cat',
           ],
           envOverrides: {},
           timeoutSeconds: 60,
@@ -685,14 +751,17 @@ export class BuiltinActivityRegistry {
           required: ['command'],
           properties: {
             command: {
-              type: 'string', title: 'Shell 命令',
+              type: 'string',
+              title: 'Shell 命令',
               description: '支持 {{param}} 插值，命令前缀必须在安全白名单内',
             },
             workingDir: { type: 'string', title: '工作目录', default: '/tmp' },
             returnMode: {
-              type: 'string', title: '返回格式',
+              type: 'string',
+              title: '返回格式',
               enum: ['text', 'json', 'lines'],
-              enumNames: ['原始文本', '解析为 JSON', '按行分割'], default: 'text',
+              enumNames: ['原始文本', '解析为 JSON', '按行分割'],
+              default: 'text',
             },
             timeoutSeconds: { type: 'number', title: '超时（秒）', default: 60 },
           },
@@ -723,15 +792,19 @@ export class BuiltinActivityRegistry {
           type: 'object',
           properties: {
             duration: {
-              type: 'string', title: '等待时长',
+              type: 'string',
+              title: '等待时长',
               description: '格式：30s（秒）/ 5m（分钟）/ 2h（小时）/ 1d（天）',
             },
             durationSeconds: {
-              type: 'number', title: '等待秒数',
-              description: '当未填写"等待时长"时使用', default: 60,
+              type: 'number',
+              title: '等待秒数',
+              description: '当未填写"等待时长"时使用',
+              default: 60,
             },
             message: {
-              type: 'string', title: '等待说明',
+              type: 'string',
+              title: '等待说明',
               description: '记录在日志中的等待原因',
             },
           },
@@ -768,15 +841,18 @@ export class BuiltinActivityRegistry {
           required: ['url', 'successCondition'],
           properties: {
             url: {
-              type: 'string', title: '轮询接口 URL',
+              type: 'string',
+              title: '轮询接口 URL',
               description: '支持 {{param}} 插值',
             },
             successCondition: {
-              type: 'string', title: '成功条件',
+              type: 'string',
+              title: '成功条件',
               description: 'JSONPath 表达式，满足时继续后续步骤。示例: $.status == "completed"',
             },
             failureCondition: {
-              type: 'string', title: '失败条件',
+              type: 'string',
+              title: '失败条件',
               description: 'JSONPath 表达式，满足时立即报错。示例: $.status == "failed"',
             },
             intervalSeconds: { type: 'number', title: '轮询间隔（秒）', default: 10 },
@@ -833,11 +909,14 @@ export class BuiltinActivityRegistry {
     if (!normalized) {
       return null;
     }
-    return this.list().find((activity) =>
-      activity.key === normalized
-      || activity.ref === normalized
-      || activity.fn === normalized
-      || activity.name === normalized,
-    ) || null;
+    return (
+      this.list().find(
+        (activity) =>
+          activity.key === normalized ||
+          activity.ref === normalized ||
+          activity.fn === normalized ||
+          activity.name === normalized
+      ) || null
+    );
   }
 }

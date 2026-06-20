@@ -1,5 +1,11 @@
 import axios from 'axios';
-import { ChatMessage, LLMRateLimit, LLMResponse, LLMUsage, OpenAICompatibleConfig } from '../interfaces';
+import {
+  ChatMessage,
+  LLMRateLimit,
+  LLMResponse,
+  LLMUsage,
+  OpenAICompatibleConfig,
+} from '../interfaces';
 import { LLMChatRequest } from './llm-client';
 
 type AxiosLikeError = {
@@ -66,7 +72,10 @@ export class AnthropicMessagesClient {
   async chatCompletion(request: ChatMessage[] | LLMChatRequest): Promise<LLMResponse> {
     try {
       const normalized = this.normalizeRequest(request);
-      const response = await this.client.post<AnthropicMessageResponse>('/messages', normalized.body);
+      const response = await this.client.post<AnthropicMessageResponse>(
+        '/messages',
+        normalized.body
+      );
       const content = (response.data?.content || [])
         .filter((item) => item?.type === 'text' && typeof item.text === 'string')
         .map((item) => item.text)
@@ -81,15 +90,22 @@ export class AnthropicMessagesClient {
       const axiosError = error as AxiosLikeError;
       if (axiosError.message) {
         if (axiosError.code === 'ECONNABORTED' || axiosError.message.includes('timeout')) {
-          throw new Error(`Anthropic 模型响应超时，请稍后重试或使用更简单的命令 (当前超时设置: ${this.timeout / 1000}秒)`);
+          throw new Error(
+            `Anthropic 模型响应超时，请稍后重试或使用更简单的命令 (当前超时设置: ${this.timeout / 1000}秒)`
+          );
         }
-        throw new Error(`Anthropic API Error: ${axiosError.response?.data?.error?.message || axiosError.message}`);
+        throw new Error(
+          `Anthropic API Error: ${axiosError.response?.data?.error?.message || axiosError.message}`
+        );
       }
       throw error;
     }
   }
 
-  async chatCompletionStream(messages: ChatMessage[], _onChunk: (chunk: string) => void): Promise<LLMResponse> {
+  async chatCompletionStream(
+    messages: ChatMessage[],
+    _onChunk: (chunk: string) => void
+  ): Promise<LLMResponse> {
     return this.chatCompletion(messages);
   }
 
@@ -100,7 +116,9 @@ export class AnthropicMessagesClient {
     } catch (error: unknown) {
       const axiosError = error as AxiosLikeError;
       if (axiosError.message) {
-        throw new Error(`Anthropic API Error: ${axiosError.response?.data?.error?.message || axiosError.message}`);
+        throw new Error(
+          `Anthropic API Error: ${axiosError.response?.data?.error?.message || axiosError.message}`
+        );
       }
       throw error;
     }
@@ -154,12 +172,13 @@ export class AnthropicMessagesClient {
           max_tokens: 1200,
           messages: messages.map((message) => ({
             role: message.role === 'system' ? 'user' : message.role,
-            content: typeof message.content === 'string'
-              ? [{ type: 'text', text: message.content }]
-              : (message.content || []).map((block) => ({
-                  type: 'text',
-                  text: block.text || '',
-                })),
+            content:
+              typeof message.content === 'string'
+                ? [{ type: 'text', text: message.content }]
+                : (message.content || []).map((block) => ({
+                    type: 'text',
+                    text: block.text || '',
+                  })),
           })),
         },
       };
@@ -176,12 +195,13 @@ export class AnthropicMessagesClient {
       staticBlocks.push({
         type: 'text',
         text: request.assembly.skillContext,
-        cache_control: request.promptCaching?.enabled === false
-          ? undefined
-          : {
-              type: 'ephemeral',
-              ttl: request.promptCaching?.retention === '1h' ? '1h' : '5m',
-            },
+        cache_control:
+          request.promptCaching?.enabled === false
+            ? undefined
+            : {
+                type: 'ephemeral',
+                ttl: request.promptCaching?.retention === '1h' ? '1h' : '5m',
+              },
       });
     }
 
@@ -201,9 +221,8 @@ export class AnthropicMessagesClient {
             ],
           },
         ],
-        cache_control: request.promptCaching?.mode === 'anthropic_auto'
-          ? { type: 'ephemeral' }
-          : undefined,
+        cache_control:
+          request.promptCaching?.mode === 'anthropic_auto' ? { type: 'ephemeral' } : undefined,
       },
     };
   }

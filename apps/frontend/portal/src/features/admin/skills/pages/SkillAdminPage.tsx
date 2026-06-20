@@ -1,6 +1,29 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Table, Card, Button, Input, Space, Tag, Typography, Modal, message, Form, Select, Descriptions, Tabs, Tooltip, Collapse, Steps, Divider, Badge, Alert, Popconfirm, Progress, Empty } from 'antd';
+import {
+  Table,
+  Card,
+  Button,
+  Input,
+  Space,
+  Tag,
+  Typography,
+  Modal,
+  message,
+  Form,
+  Select,
+  Descriptions,
+  Tabs,
+  Tooltip,
+  Collapse,
+  Steps,
+  Divider,
+  Badge,
+  Alert,
+  Popconfirm,
+  Progress,
+  Empty,
+} from 'antd';
 import {
   SearchOutlined,
   ReloadOutlined,
@@ -52,7 +75,9 @@ type SkillParamFormItem = {
   extractionPrompt?: string;
 };
 
-const schemaToFormParams = (paramsSchema?: SkillConfigDTO['paramsSchema']): SkillParamFormItem[] => {
+const schemaToFormParams = (
+  paramsSchema?: SkillConfigDTO['paramsSchema']
+): SkillParamFormItem[] => {
   if (!paramsSchema?.properties) {
     return [];
   }
@@ -68,13 +93,16 @@ const schemaToFormParams = (paramsSchema?: SkillConfigDTO['paramsSchema']): Skil
 };
 
 const formParamsToSchema = (items: SkillParamFormItem[] = []) => {
-  const properties: Record<string, {
-    type: 'string' | 'number' | 'date' | 'boolean';
-    description: string;
-    required?: boolean;
-    default?: string | number | boolean;
-    extractionPrompt?: string;
-  }> = {};
+  const properties: Record<
+    string,
+    {
+      type: 'string' | 'number' | 'date' | 'boolean';
+      description: string;
+      required?: boolean;
+      default?: string | number | boolean;
+      extractionPrompt?: string;
+    }
+  > = {};
   const required: string[] = [];
 
   items.forEach((item) => {
@@ -90,11 +118,12 @@ const formParamsToSchema = (items: SkillParamFormItem[] = []) => {
     };
 
     if (item.defaultValue !== undefined && item.defaultValue !== '') {
-      properties[item.name].default = item.type === 'number'
-        ? Number(item.defaultValue)
-        : item.type === 'boolean'
-          ? item.defaultValue === 'true'
-          : item.defaultValue;
+      properties[item.name].default =
+        item.type === 'number'
+          ? Number(item.defaultValue)
+          : item.type === 'boolean'
+            ? item.defaultValue === 'true'
+            : item.defaultValue;
     }
 
     if (item.required) {
@@ -123,7 +152,7 @@ const getValidationProgressMeta = (stage: string, isRunning: boolean, pulse: num
     return {
       current: 0,
       percent: isRunning ? Math.min(18, 12 + pulseOffset) : 0,
-      status: isRunning ? 'active' as const : 'normal' as const,
+      status: isRunning ? ('active' as const) : ('normal' as const),
     };
   }
 
@@ -170,7 +199,7 @@ const getValidationProgressMeta = (stage: string, isRunning: boolean, pulse: num
   return {
     current: 0,
     percent: isRunning ? Math.min(24, 14 + pulseOffset) : 0,
-    status: isRunning ? 'active' as const : 'normal' as const,
+    status: isRunning ? ('active' as const) : ('normal' as const),
   };
 };
 
@@ -207,10 +236,12 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
   const permissionUsersQuery = useQuery(
     ['permission-users', permissionModalVisible],
     () => userApi.list({ page: 1 }),
-    { enabled: permissionModalVisible },
+    { enabled: permissionModalVisible }
   );
   const templatesQuery = useQuery(['carbone-templates'], carboneApi.list);
-  const executionFlowTemplatesQuery = useQuery(['flows'], () => executionFlowApi.list({ isActive: true }));
+  const executionFlowTemplatesQuery = useQuery(['flows'], () =>
+    executionFlowApi.list({ isActive: true })
+  );
 
   const permissionsQuery = useQuery(
     ['skill-permissions', selectedSkill?.id],
@@ -340,7 +371,7 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
 
   useEffect(() => {
     if (embedded && initialSkillId && skillsQuery.data?.skills) {
-      const skill = skillsQuery.data.skills.find(s => s.id === initialSkillId);
+      const skill = skillsQuery.data.skills.find((s) => s.id === initialSkillId);
       if (skill) {
         setSelectedSkill(skill);
         // 在内嵌模式下，我们直接展示详情内容，不需要 Modal
@@ -350,10 +381,10 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
 
     const keyword = searchParams.get('q') || '';
     setSearchText(keyword);
-    
+
     const skillId = searchParams.get('id');
     if (skillId && skillsQuery.data?.skills) {
-      const skill = skillsQuery.data.skills.find(s => s.id === skillId);
+      const skill = skillsQuery.data.skills.find((s) => s.id === skillId);
       if (skill) {
         setSelectedSkill(skill);
         setDetailModalVisible(true);
@@ -514,7 +545,7 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
       () => {
         setValidatingSkillId((current) => (current === skill.id ? null : current));
         validationAbortRef.current = null;
-      },
+      }
     );
   };
 
@@ -530,27 +561,28 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
 
     applyAdjustmentMutation.mutate({
       id: selectedSkill.id,
-      generatedSkill: validationResult.details.skillSimulation.generatedSkill as Partial<CreateSkillDTO>,
+      generatedSkill: validationResult.details.skillSimulation
+        .generatedSkill as Partial<CreateSkillDTO>,
     });
   };
 
   // Filter skills by search text
-  const filteredSkills = skillsQuery.data?.skills?.filter(
-    (skill) => {
-      const keyword = searchText.toLowerCase();
-      return (
-        skill.name.toLowerCase().includes(keyword) ||
-        (skill.description || '').toLowerCase().includes(keyword) ||
-        skill.triggerKeywords?.some((triggerKeyword) => triggerKeyword.toLowerCase().includes(keyword)) ||
-        skill.tools?.some((toolName) => toolName.toLowerCase().includes(keyword)) ||
-        skill.effectiveTools?.some((toolName) => toolName.toLowerCase().includes(keyword))
-      );
-    }
-  );
+  const filteredSkills = skillsQuery.data?.skills?.filter((skill) => {
+    const keyword = searchText.toLowerCase();
+    return (
+      skill.name.toLowerCase().includes(keyword) ||
+      (skill.description || '').toLowerCase().includes(keyword) ||
+      skill.triggerKeywords?.some((triggerKeyword) =>
+        triggerKeyword.toLowerCase().includes(keyword)
+      ) ||
+      skill.tools?.some((toolName) => toolName.toLowerCase().includes(keyword)) ||
+      skill.effectiveTools?.some((toolName) => toolName.toLowerCase().includes(keyword))
+    );
+  });
   const validationProgressMeta = getValidationProgressMeta(
     validationResult ? '验证完成' : validationStage,
     Boolean(validatingSkillId),
-    validationPulse,
+    validationPulse
   );
   const validationAnimatedDots = '.'.repeat((validationPulse % 3) + 1);
 
@@ -564,7 +596,11 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
         direction="vertical"
         current={-1}
         items={flow.map((step) => {
-          const typeInfo = STEP_TYPES.find(t => t.value === step.type) || { label: step.type, icon: <SettingOutlined />, color: 'default' };
+          const typeInfo = STEP_TYPES.find((t) => t.value === step.type) || {
+            label: step.type,
+            icon: <SettingOutlined />,
+            color: 'default',
+          };
           return {
             title: (
               <Space>
@@ -574,7 +610,11 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
             ),
             description: (
               <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                {step.content || step.api?.endpoint || step.tool?.name || step.script?.language || '无详情'}
+                {step.content ||
+                  step.api?.endpoint ||
+                  step.tool?.name ||
+                  step.script?.language ||
+                  '无详情'}
               </div>
             ),
             status: 'wait',
@@ -626,14 +666,23 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
       key: 'executionFlow',
       width: 200,
       render: (_, record) => {
-        const hasTemplates = record.executionFlowTemplateIds && record.executionFlowTemplateIds.length > 0;
+        const hasTemplates =
+          record.executionFlowTemplateIds && record.executionFlowTemplateIds.length > 0;
         const hasInline = record.executionFlow && record.executionFlow.length > 0;
-        
+
         if (hasTemplates && hasInline) {
-          return <Tag color="orange" icon={<OrderedListOutlined />}>模板 + 手动追加</Tag>;
+          return (
+            <Tag color="orange" icon={<OrderedListOutlined />}>
+              模板 + 手动追加
+            </Tag>
+          );
         }
         if (hasTemplates) {
-          return <Tag color="processing" icon={<OrderedListOutlined />}>关联模板流程</Tag>;
+          return (
+            <Tag color="processing" icon={<OrderedListOutlined />}>
+              关联模板流程
+            </Tag>
+          );
         }
         if (!hasInline) {
           return <Text type="secondary">默认流程</Text>;
@@ -641,7 +690,12 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
         return (
           <Space wrap>
             {record.executionFlow.map((step, idx) => (
-              <Badge key={idx} count={idx + 1} size="small" style={{ backgroundColor: 'var(--primary-color)' }}>
+              <Badge
+                key={idx}
+                count={idx + 1}
+                size="small"
+                style={{ backgroundColor: 'var(--primary-color)' }}
+              >
                 <Tag style={{ margin: 0 }}>{step.name}</Tag>
               </Badge>
             ))}
@@ -658,7 +712,9 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
         <Tooltip title="AI匹配失败时的回退方案">
           <Space size="small" wrap>
             {keywords?.slice(0, 3).map((kw) => (
-              <Tag key={kw} color="orange">{kw}</Tag>
+              <Tag key={kw} color="orange">
+                {kw}
+              </Tag>
             ))}
             {keywords?.length > 3 && <Tag>+{keywords.length - 3}</Tag>}
           </Space>
@@ -681,9 +737,7 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
       key: 'isActive',
       width: 80,
       render: (isActive: boolean) => (
-        <Tag color={isActive ? 'success' : 'error'}>
-          {isActive ? '启用' : '禁用'}
-        </Tag>
+        <Tag color={isActive ? 'success' : 'error'}>{isActive ? '启用' : '禁用'}</Tag>
       ),
     },
     {
@@ -718,7 +772,13 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
           >
             {t('common:edit')}
           </Button>
-          <Tooltip title={record.isPublished ? '为普通角色分配该公开 Skill 的使用权限' : '只有已公开发布的 Skill 才能分配给普通用户'}>
+          <Tooltip
+            title={
+              record.isPublished
+                ? '为普通角色分配该公开 Skill 的使用权限'
+                : '只有已公开发布的 Skill 才能分配给普通用户'
+            }
+          >
             <Button
               type="link"
               size="small"
@@ -744,7 +804,9 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
               type="link"
               size="small"
               icon={<OrderedListOutlined />}
-              onClick={() => navigate(`/admin/capabilities?releaseId=${record.publishedReleaseId}&mode=view`)}
+              onClick={() =>
+                navigate(`/admin/capabilities?releaseId=${record.publishedReleaseId}&mode=view`)
+              }
             >
               发布溯源
             </Button>
@@ -780,12 +842,7 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
       title: t('common:actions'),
       key: 'actions',
       render: (_, record) => (
-        <Button
-          type="link"
-          size="small"
-          danger
-          onClick={() => handleRevokeRole(record.roleId)}
-        >
+        <Button type="link" size="small" danger onClick={() => handleRevokeRole(record.roleId)}>
           {t('admin:revoke')}
         </Button>
       ),
@@ -795,18 +852,16 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
   // Available roles not yet granted
   const grantedRoleIds = permissionsQuery.data?.permissions?.map((p) => p.roleId) || [];
   const roleNameToRoleIdMap = new Map(
-    (rolesQuery.data?.roles || []).map((role) => [role.name.trim().toLowerCase(), role.id]),
+    (rolesQuery.data?.roles || []).map((role) => [role.name.trim().toLowerCase(), role.id])
   );
-  const availableRoles = rolesQuery.data?.roles?.filter(
-    (r) => !grantedRoleIds.includes(r.id)
-  );
+  const availableRoles = rolesQuery.data?.roles?.filter((r) => !grantedRoleIds.includes(r.id));
   const filteredPermissionUsers = (permissionUsersQuery.data?.users || []).filter((user) => {
     const keyword = permissionUserSearch.trim().toLowerCase();
     if (!keyword) return true;
     return (
-      user.username.toLowerCase().includes(keyword)
-      || (user.email || '').toLowerCase().includes(keyword)
-      || user.role.toLowerCase().includes(keyword)
+      user.username.toLowerCase().includes(keyword) ||
+      (user.email || '').toLowerCase().includes(keyword) ||
+      user.role.toLowerCase().includes(keyword)
     );
   });
 
@@ -821,7 +876,9 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
       <Panel header="基本信息" key="basic">
         <Descriptions bordered={!embedded} size="small" column={embedded ? 1 : 2}>
           <Descriptions.Item label="技能ID">{skill.id}</Descriptions.Item>
-          <Descriptions.Item label="描述" span={embedded ? 1 : 2}>{skill.description}</Descriptions.Item>
+          <Descriptions.Item label="描述" span={embedded ? 1 : 2}>
+            {skill.description}
+          </Descriptions.Item>
           <Descriptions.Item label="公开状态">
             <Tag color={skill.isPublished ? 'success' : 'default'}>
               {skill.isPublished ? '已公开可执行' : '仅系统定义'}
@@ -839,7 +896,9 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
           <Descriptions.Item label="触发关键字" span={embedded ? 1 : 2}>
             <Space wrap>
               {skill.triggerKeywords?.map((kw) => (
-                <Tag key={kw} color="orange">{kw}</Tag>
+                <Tag key={kw} color="orange">
+                  {kw}
+                </Tag>
               ))}
             </Space>
           </Descriptions.Item>
@@ -857,13 +916,13 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
               />
               <div style={{ marginTop: 8 }}>
                 <Text strong>关联模板 ID：</Text>
-                {skill.executionFlowTemplateIds.map(id => (
-                  <Tag key={id} color="blue">{id}</Tag>
+                {skill.executionFlowTemplateIds.map((id) => (
+                  <Tag key={id} color="blue">
+                    {id}
+                  </Tag>
                 ))}
               </div>
-              <div style={{ marginTop: 16 }}>
-                {renderExecutionFlow(skill.executionFlow)}
-              </div>
+              <div style={{ marginTop: 16 }}>{renderExecutionFlow(skill.executionFlow)}</div>
             </Space>
           ) : (
             renderExecutionFlow(skill.executionFlow)
@@ -880,21 +939,32 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
                   <div style={{ marginBottom: 8 }}>
                     <Text strong>必填参数：</Text>
                     {skill.paramsSchema.required.map((param) => (
-                      <Tag key={param} color="red" style={{ marginLeft: 8 }}>{param}</Tag>
+                      <Tag key={param} color="red" style={{ marginLeft: 8 }}>
+                        {param}
+                      </Tag>
                     ))}
                   </div>
                   {Object.entries(skill.paramsSchema.properties).map(([key, value]) => (
-                    <Card key={key} size="small" style={{ marginBottom: 8 }} title={
-                      <Space>
-                        <Text strong>{key}</Text>
-                        <Tag color={value.required ? 'red' : 'default'}>{value.required ? '必填' : '可选'}</Tag>
-                        <Tag color="processing">{value.type}</Tag>
-                      </Space>
-                    }>
+                    <Card
+                      key={key}
+                      size="small"
+                      style={{ marginBottom: 8 }}
+                      title={
+                        <Space>
+                          <Text strong>{key}</Text>
+                          <Tag color={value.required ? 'red' : 'default'}>
+                            {value.required ? '必填' : '可选'}
+                          </Tag>
+                          <Tag color="processing">{value.type}</Tag>
+                        </Space>
+                      }
+                    >
                       <Text>{value.description}</Text>
                       {value.extractionPrompt && (
                         <div style={{ marginTop: 4 }}>
-                          <Text type="secondary" style={{ fontSize: 12 }}>提取提示: {value.extractionPrompt}</Text>
+                          <Text type="secondary" style={{ fontSize: 12 }}>
+                            提取提示: {value.extractionPrompt}
+                          </Text>
                         </div>
                       )}
                     </Card>
@@ -939,7 +1009,11 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
   if (embedded) {
     return (
       <div style={{ padding: 24 }}>
-        {selectedSkill ? renderDetailContent(selectedSkill) : <Empty description="未找到技能详情" />}
+        {selectedSkill ? (
+          renderDetailContent(selectedSkill)
+        ) : (
+          <Empty description="未找到技能详情" />
+        )}
       </div>
     );
   }
@@ -956,8 +1030,12 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
           <Text>• 普通角色权限只能分配给已公开的 Skill；未公开 Skill 仅供管理员设计和维护</Text>
           <Divider style={{ margin: '8px 0' }} />
           <Text strong>匹配机制：</Text>
-          <Text>• <Badge status="success">AI语义匹配</Badge> - 主要方式，自动识别用户意图</Text>
-          <Text>• <Badge status="warning">触发关键字</Badge> - 回退方案。AI服务不可用时使用</Text>
+          <Text>
+            • <Badge status="success">AI语义匹配</Badge> - 主要方式，自动识别用户意图
+          </Text>
+          <Text>
+            • <Badge status="warning">触发关键字</Badge> - 回退方案。AI服务不可用时使用
+          </Text>
         </Space>
       </Card>
 
@@ -990,29 +1068,22 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
             />
             <Button
               icon={<FileTextOutlined />}
-              onClick={() => window.location.href = '/carbone-templates'}
+              onClick={() => (window.location.href = '/carbone-templates')}
             >
               模板管理
             </Button>
             <Button
               icon={<OrderedListOutlined />}
-              onClick={() => window.location.href = '/admin/flows'}
+              onClick={() => (window.location.href = '/admin/flows')}
             >
               流程模板
             </Button>
           </Space>
           <Space>
-            <Button
-              icon={<PlusOutlined />}
-              type="primary"
-              onClick={handleCreate}
-            >
+            <Button icon={<PlusOutlined />} type="primary" onClick={handleCreate}>
               {t('common:create')}
             </Button>
-            <Button
-              icon={<ReloadOutlined />}
-              onClick={() => skillsQuery.refetch()}
-            >
+            <Button icon={<ReloadOutlined />} onClick={() => skillsQuery.refetch()}>
               {t('common:refresh')}
             </Button>
           </Space>
@@ -1051,10 +1122,13 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
                 >
                   删除 Skill
                 </Button>,
-                <Button key="close" onClick={() => {
-                  setDetailModalVisible(false);
-                  setSelectedSkill(null);
-                }}>
+                <Button
+                  key="close"
+                  onClick={() => {
+                    setDetailModalVisible(false);
+                    setSelectedSkill(null);
+                  }}
+                >
                   关闭
                 </Button>,
               ]
@@ -1101,14 +1175,26 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
               验证并优化
             </Button>
           ),
-          <Button key="submit" type="primary" onClick={handleSave} loading={createMutation.isLoading || updateMutation.isLoading}>
+          <Button
+            key="submit"
+            type="primary"
+            onClick={handleSave}
+            loading={createMutation.isLoading || updateMutation.isLoading}
+          >
             确定
-          </Button>
+          </Button>,
         ]}
       >
         <Form form={form} layout="vertical">
           <Collapse defaultActiveKey={[]} ghost>
-            <Panel header={<Text strong style={{ fontSize: 16 }}><InfoCircleOutlined /> 基本信息</Text>} key="basic">
+            <Panel
+              header={
+                <Text strong style={{ fontSize: 16 }}>
+                  <InfoCircleOutlined /> 基本信息
+                </Text>
+              }
+              key="basic"
+            >
               <div style={{ padding: '0 16px' }}>
                 <Form.Item
                   name="name"
@@ -1134,7 +1220,14 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
               </div>
             </Panel>
 
-            <Panel header={<Text strong style={{ fontSize: 16 }}><ThunderboltOutlined /> 执行流程编排</Text>} key="flow">
+            <Panel
+              header={
+                <Text strong style={{ fontSize: 16 }}>
+                  <ThunderboltOutlined /> 执行流程编排
+                </Text>
+              }
+              key="flow"
+            >
               <div style={{ padding: '0 16px' }}>
                 <Form.Item
                   name="executionFlowTemplateIds"
@@ -1153,7 +1246,11 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
                         <Space>
                           <OrderedListOutlined />
                           <Text>{template.name}</Text>
-                          <Badge count={template.steps?.length || 0} showZero style={{ marginLeft: 8 }} />
+                          <Badge
+                            count={template.steps?.length || 0}
+                            showZero
+                            style={{ marginLeft: 8 }}
+                          />
                         </Space>
                       </Option>
                     ))}
@@ -1171,14 +1268,32 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
                           style={{ marginBottom: 12, borderLeft: '4px solid var(--primary-color)' }}
                           title={
                             <Space>
-                              <DragOutlined style={{ cursor: 'grab', color: 'var(--text-light)' }} />
+                              <DragOutlined
+                                style={{ cursor: 'grab', color: 'var(--text-light)' }}
+                              />
                               <Text strong>步骤 {index + 1}</Text>
                             </Space>
                           }
                           extra={
                             <Space>
-                              {index > 0 && <Button type="link" size="small" onClick={() => move(index, index - 1)}>上移</Button>}
-                              {index < fields.length - 1 && <Button type="link" size="small" onClick={() => move(index, index + 1)}>下移</Button>}
+                              {index > 0 && (
+                                <Button
+                                  type="link"
+                                  size="small"
+                                  onClick={() => move(index, index - 1)}
+                                >
+                                  上移
+                                </Button>
+                              )}
+                              {index < fields.length - 1 && (
+                                <Button
+                                  type="link"
+                                  size="small"
+                                  onClick={() => move(index, index + 1)}
+                                >
+                                  下移
+                                </Button>
+                              )}
                               <Popconfirm title="确定删除此步骤吗？" onConfirm={() => remove(name)}>
                                 <Button type="link" danger size="small" icon={<CloseOutlined />} />
                               </Popconfirm>
@@ -1194,9 +1309,12 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
                               style={{ width: 200, marginBottom: 0 }}
                             >
                               <Select placeholder="选择类型">
-                                {STEP_TYPES.map(t => (
+                                {STEP_TYPES.map((t) => (
                                   <Option key={t.value} value={t.value}>
-                                    <Space>{t.icon}{t.label}</Space>
+                                    <Space>
+                                      {t.icon}
+                                      {t.label}
+                                    </Space>
                                   </Option>
                                 ))}
                               </Select>
@@ -1217,19 +1335,41 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
                               const type = form.getFieldValue(['executionFlow', name, 'type']);
                               if (type === 'text') {
                                 return (
-                                  <Form.Item {...restField} name={[name, 'content']} label="提示词内容">
-                                    <Input.TextArea rows={3} placeholder="输入 AI 提示词或指导文本" />
+                                  <Form.Item
+                                    {...restField}
+                                    name={[name, 'content']}
+                                    label="提示词内容"
+                                  >
+                                    <Input.TextArea
+                                      rows={3}
+                                      placeholder="输入 AI 提示词或指导文本"
+                                    />
                                   </Form.Item>
                                 );
                               }
                               if (type === 'api') {
                                 return (
-                                  <div style={{ backgroundColor: 'var(--bg-secondary)', padding: 12, borderRadius: 4 }}>
-                                    <Form.Item {...restField} name={[name, 'api', 'endpoint']} label="API 地址">
+                                  <div
+                                    style={{
+                                      backgroundColor: 'var(--bg-secondary)',
+                                      padding: 12,
+                                      borderRadius: 4,
+                                    }}
+                                  >
+                                    <Form.Item
+                                      {...restField}
+                                      name={[name, 'api', 'endpoint']}
+                                      label="API 地址"
+                                    >
                                       <Input placeholder="https://api.example.com/v1/..." />
                                     </Form.Item>
                                     <div style={{ display: 'flex', gap: 16 }}>
-                                      <Form.Item {...restField} name={[name, 'api', 'method']} label="方法" style={{ width: 120 }}>
+                                      <Form.Item
+                                        {...restField}
+                                        name={[name, 'api', 'method']}
+                                        label="方法"
+                                        style={{ width: 120 }}
+                                      >
                                         <Select defaultValue="GET">
                                           <Option value="GET">GET</Option>
                                           <Option value="POST">POST</Option>
@@ -1237,7 +1377,12 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
                                           <Option value="DELETE">DELETE</Option>
                                         </Select>
                                       </Form.Item>
-                                      <Form.Item {...restField} name={[name, 'api', 'timeout']} label="超时(ms)" style={{ flex: 1 }}>
+                                      <Form.Item
+                                        {...restField}
+                                        name={[name, 'api', 'timeout']}
+                                        label="超时(ms)"
+                                        style={{ flex: 1 }}
+                                      >
                                         <Input type="number" placeholder="30000" />
                                       </Form.Item>
                                     </div>
@@ -1246,23 +1391,45 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
                               }
                               if (type === 'tool') {
                                 return (
-                                  <Form.Item {...restField} name={[name, 'tool', 'name']} label="工具名称">
+                                  <Form.Item
+                                    {...restField}
+                                    name={[name, 'tool', 'name']}
+                                    label="工具名称"
+                                  >
                                     <Input placeholder="例如：skill_match, document_render..." />
                                   </Form.Item>
                                 );
                               }
                               if (type === 'script') {
                                 return (
-                                  <div style={{ backgroundColor: 'var(--bg-secondary)', padding: 12, borderRadius: 4 }}>
-                                    <Form.Item {...restField} name={[name, 'script', 'language']} label="脚本语言">
+                                  <div
+                                    style={{
+                                      backgroundColor: 'var(--bg-secondary)',
+                                      padding: 12,
+                                      borderRadius: 4,
+                                    }}
+                                  >
+                                    <Form.Item
+                                      {...restField}
+                                      name={[name, 'script', 'language']}
+                                      label="脚本语言"
+                                    >
                                       <Select defaultValue="javascript">
                                         <Option value="javascript">JavaScript</Option>
                                         <Option value="python">Python</Option>
                                         <Option value="bash">Bash</Option>
                                       </Select>
                                     </Form.Item>
-                                    <Form.Item {...restField} name={[name, 'script', 'code']} label="代码内容">
-                                      <Input.TextArea rows={5} style={{ fontFamily: 'monospace' }} placeholder="输入脚本代码" />
+                                    <Form.Item
+                                      {...restField}
+                                      name={[name, 'script', 'code']}
+                                      label="代码内容"
+                                    >
+                                      <Input.TextArea
+                                        rows={5}
+                                        style={{ fontFamily: 'monospace' }}
+                                        placeholder="输入脚本代码"
+                                      />
                                     </Form.Item>
                                   </div>
                                 );
@@ -1272,7 +1439,12 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
                           </Form.Item>
                         </Card>
                       ))}
-                      <Button type="dashed" onClick={() => add({ type: 'text', name: '新步骤' })} block icon={<PlusOutlined />}>
+                      <Button
+                        type="dashed"
+                        onClick={() => add({ type: 'text', name: '新步骤' })}
+                        block
+                        icon={<PlusOutlined />}
+                      >
                         添加追加步骤
                       </Button>
                     </div>
@@ -1281,7 +1453,14 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
               </div>
             </Panel>
 
-            <Panel header={<Text strong style={{ fontSize: 16 }}><ApiOutlined /> 参数与配置</Text>} key="params">
+            <Panel
+              header={
+                <Text strong style={{ fontSize: 16 }}>
+                  <ApiOutlined /> 参数与配置
+                </Text>
+              }
+              key="params"
+            >
               <div style={{ padding: '0 16px' }}>
                 <Tabs size="small">
                   <TabPane tab="参数 Schema" key="schema_edit">
@@ -1329,10 +1508,7 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
                       >
                         <Input placeholder="UUID格式（可选）" />
                       </Form.Item>
-                      <Form.Item
-                        name="templateId"
-                        label="内部模板ID"
-                      >
+                      <Form.Item name="templateId" label="内部模板ID">
                         <Input placeholder="自定义内部模板标识" />
                       </Form.Item>
                     </div>
@@ -1437,9 +1613,7 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
                     dataIndex: 'isActive',
                     key: 'isActive',
                     render: (isActive: boolean) => (
-                      <Tag color={isActive ? 'success' : 'error'}>
-                        {isActive ? '启用' : '停用'}
-                      </Tag>
+                      <Tag color={isActive ? 'success' : 'error'}>{isActive ? '启用' : '停用'}</Tag>
                     ),
                   },
                   {
@@ -1449,7 +1623,11 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
                       const normalizedRole = (record.role || '').trim().toLowerCase();
                       const roleId = roleNameToRoleIdMap.get(normalizedRole);
                       const granted = !!roleId && grantedRoleIds.includes(roleId);
-                      return <Tag color={granted ? 'success' : 'default'}>{granted ? '已可用' : '未授权'}</Tag>;
+                      return (
+                        <Tag color={granted ? 'success' : 'default'}>
+                          {granted ? '已可用' : '未授权'}
+                        </Tag>
+                      );
                     },
                   },
                   {
@@ -1461,7 +1639,9 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
                       const granted = !!roleId && grantedRoleIds.includes(roleId);
                       const cannotMapRole = !roleId;
                       return (
-                        <Tooltip title={cannotMapRole ? `未找到角色映射：${record.role}` : undefined}>
+                        <Tooltip
+                          title={cannotMapRole ? `未找到角色映射：${record.role}` : undefined}
+                        >
                           <Button
                             type="primary"
                             size="small"
@@ -1508,7 +1688,9 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
           <div style={{ textAlign: 'center', padding: 32 }}>
             <Space direction="vertical" size="large">
               <RocketOutlined spin style={{ fontSize: 48, color: 'var(--primary-color)' }} />
-              <Text strong style={{ fontSize: 16 }}>正在验证{validationAnimatedDots}</Text>
+              <Text strong style={{ fontSize: 16 }}>
+                正在验证{validationAnimatedDots}
+              </Text>
               <Text type="secondary">当前阶段：{validationStage}</Text>
               <div style={{ width: 520, maxWidth: '100%' }}>
                 <Steps
@@ -1543,7 +1725,15 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
             title={validatingSkillId ? `实时日志 - ${validationStage}` : '执行日志'}
             style={{ marginBottom: validationResult ? 16 : 0 }}
           >
-            <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 240, overflow: 'auto' }}>
+            <pre
+              style={{
+                margin: 0,
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                maxHeight: 240,
+                overflow: 'auto',
+              }}
+            >
               {validationLogs.join('\n')}
             </pre>
           </Card>
@@ -1558,7 +1748,9 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
                   {validationResult.isValid ? (
                     <CheckCircleOutlined style={{ fontSize: 32, color: 'var(--success-color)' }} />
                   ) : (
-                    <ExclamationCircleOutlined style={{ fontSize: 32, color: 'var(--error-color)' }} />
+                    <ExclamationCircleOutlined
+                      style={{ fontSize: 32, color: 'var(--error-color)' }}
+                    />
                   )}
                   <Text strong style={{ fontSize: 18 }}>
                     {validationResult.isValid ? '验证通过' : '验证失败'}
@@ -1575,15 +1767,29 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
               <Card title="配置分析" size="small">
                 <Descriptions size="small" column={2}>
                   <Descriptions.Item label="触发关键词">
-                    <Tag color={validationResult.details.configAnalysis.hasTriggerKeywords ? 'success' : 'error'}>
-                      {validationResult.details.configAnalysis.hasTriggerKeywords ? '已配置' : '缺失'}
+                    <Tag
+                      color={
+                        validationResult.details.configAnalysis.hasTriggerKeywords
+                          ? 'success'
+                          : 'error'
+                      }
+                    >
+                      {validationResult.details.configAnalysis.hasTriggerKeywords
+                        ? '已配置'
+                        : '缺失'}
                     </Tag>
                     <Text type="secondary" style={{ marginLeft: 8 }}>
                       质量: {validationResult.details.configAnalysis.triggerKeywordQuality}
                     </Text>
                   </Descriptions.Item>
                   <Descriptions.Item label="参数Schema">
-                    <Tag color={validationResult.details.configAnalysis.hasParamsSchema ? 'success' : 'error'}>
+                    <Tag
+                      color={
+                        validationResult.details.configAnalysis.hasParamsSchema
+                          ? 'success'
+                          : 'error'
+                      }
+                    >
                       {validationResult.details.configAnalysis.hasParamsSchema ? '已配置' : '缺失'}
                     </Tag>
                     <Text type="secondary" style={{ marginLeft: 8 }}>
@@ -1591,13 +1797,25 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
                     </Text>
                   </Descriptions.Item>
                   <Descriptions.Item label="文档模板">
-                    <Tag color={validationResult.details.configAnalysis.hasTemplate ? 'success' : 'warning'}>
+                    <Tag
+                      color={
+                        validationResult.details.configAnalysis.hasTemplate ? 'success' : 'warning'
+                      }
+                    >
                       {validationResult.details.configAnalysis.hasTemplate ? '已配置' : '未配置'}
                     </Tag>
                   </Descriptions.Item>
                   <Descriptions.Item label="流程模板">
-                    <Tag color={validationResult.details.configAnalysis.hasFlowTemplate ? 'success' : 'warning'}>
-                      {validationResult.details.configAnalysis.hasFlowTemplate ? '已关联' : '未关联'}
+                    <Tag
+                      color={
+                        validationResult.details.configAnalysis.hasFlowTemplate
+                          ? 'success'
+                          : 'warning'
+                      }
+                    >
+                      {validationResult.details.configAnalysis.hasFlowTemplate
+                        ? '已关联'
+                        : '未关联'}
                     </Tag>
                   </Descriptions.Item>
                 </Descriptions>
@@ -1613,13 +1831,24 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
                       {validationResult.details.skillSimulation.simulatedRequest}
                     </Descriptions.Item>
                     <Descriptions.Item label="验证得分">
-                      <Tag color={validationResult.details.skillSimulation.validationScore >= 80 ? 'success' :
-                        validationResult.details.skillSimulation.validationScore >= 60 ? 'warning' : 'error'}>
+                      <Tag
+                        color={
+                          validationResult.details.skillSimulation.validationScore >= 80
+                            ? 'success'
+                            : validationResult.details.skillSimulation.validationScore >= 60
+                              ? 'warning'
+                              : 'error'
+                        }
+                      >
                         {validationResult.details.skillSimulation.validationScore}%
                       </Tag>
                     </Descriptions.Item>
                     <Descriptions.Item label="模拟结果">
-                      <Tag color={validationResult.details.skillSimulation.success ? 'success' : 'error'}>
+                      <Tag
+                        color={
+                          validationResult.details.skillSimulation.success ? 'success' : 'error'
+                        }
+                      >
                         {validationResult.details.skillSimulation.success ? '通过' : '失败'}
                       </Tag>
                     </Descriptions.Item>
@@ -1631,17 +1860,26 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
                     </Descriptions.Item>
                   </Descriptions>
 
-                  {validationResult.details.skillSimulation.log && validationResult.details.skillSimulation.log.length > 0 && (
-                    <>
-                      <Divider style={{ margin: '8px 0' }} />
-                      <Text strong>ReAct 执行日志</Text>
-                      <Card size="small">
-                        <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 240, overflow: 'auto' }}>
-                          {validationResult.details.skillSimulation.log.join('\n')}
-                        </pre>
-                      </Card>
-                    </>
-                  )}
+                  {validationResult.details.skillSimulation.log &&
+                    validationResult.details.skillSimulation.log.length > 0 && (
+                      <>
+                        <Divider style={{ margin: '8px 0' }} />
+                        <Text strong>ReAct 执行日志</Text>
+                        <Card size="small">
+                          <pre
+                            style={{
+                              margin: 0,
+                              whiteSpace: 'pre-wrap',
+                              wordBreak: 'break-word',
+                              maxHeight: 240,
+                              overflow: 'auto',
+                            }}
+                          >
+                            {validationResult.details.skillSimulation.log.join('\n')}
+                          </pre>
+                        </Card>
+                      </>
+                    )}
 
                   {validationResult.details.skillSimulation.generatedSkill && (
                     <>
@@ -1649,7 +1887,11 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
                       <Text strong>标准 Skill 预览</Text>
                       <Card size="small">
                         <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                          {JSON.stringify(validationResult.details.skillSimulation.generatedSkill, null, 2)}
+                          {JSON.stringify(
+                            validationResult.details.skillSimulation.generatedSkill,
+                            null,
+                            2
+                          )}
                         </pre>
                       </Card>
                     </>

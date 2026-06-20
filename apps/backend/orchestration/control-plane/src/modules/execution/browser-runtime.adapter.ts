@@ -3,7 +3,9 @@ import axios from 'axios';
 import { getBrowserWorkerUrl } from '../../config/service-endpoints';
 import {
   buildRuntimeAdapterRouteKey,
+  ArtifactRef,
   RuntimeAdapter,
+  SnapshotRef,
   RuntimeStepInvokeRequest,
   RuntimeStepInvokeResult,
 } from './runtime-adapter.interface';
@@ -40,6 +42,8 @@ interface LegacyBrowserExecuteStepResult {
   takeoverReason?: string;
 }
 
+type JsonRecord = Record<string, unknown>;
+
 interface BrowserSessionPreferencesPayload {
   mode?: 'interactive' | 'agent';
   enableCodegen?: boolean;
@@ -64,16 +68,20 @@ interface BrowserPageAssertionResponse {
 @Injectable()
 export class BrowserRuntimeAdapter implements RuntimeAdapter {
   readonly runtimeType = BROWSER_RUNTIME.TYPE;
-  readonly routeKeys = [buildRuntimeAdapterRouteKey(BROWSER_RUNTIME.TYPE, BROWSER_RUNTIME.CAPABILITY_TYPE)] as const;
+  readonly routeKeys = [
+    buildRuntimeAdapterRouteKey(BROWSER_RUNTIME.TYPE, BROWSER_RUNTIME.CAPABILITY_TYPE),
+  ] as const;
   private readonly browserWorkerUrl = getBrowserWorkerUrl();
 
   supports(request: RuntimeStepInvokeRequest): boolean {
-    return request.runtimeType === BROWSER_RUNTIME.TYPE
-      && request.capabilityType === BROWSER_RUNTIME.CAPABILITY_TYPE;
+    return (
+      request.runtimeType === BROWSER_RUNTIME.TYPE &&
+      request.capabilityType === BROWSER_RUNTIME.CAPABILITY_TYPE
+    );
   }
 
   private resolveSessionPreferences(
-    _request?: RuntimeStepInvokeRequest,
+    _request?: RuntimeStepInvokeRequest
   ): BrowserSessionPreferencesPayload {
     return { ...BROWSER_SESSION_PREFERENCES };
   }
@@ -84,7 +92,7 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
       {
         runtimeSessionId,
         sessionPreferences: this.resolveSessionPreferences(),
-      },
+      }
     );
   }
 
@@ -103,11 +111,13 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
 
     const response = await axios.post<LegacyBrowserExecuteStepResult>(
       `${this.browserWorkerUrl}${BROWSER_WORKER_ENDPOINTS.EXECUTE_STEP}`,
-      payload,
+      payload
     );
 
     const legacyResult = response.data;
     const requiresTakeover = Boolean(legacyResult.shouldTakeover);
+    const artifacts = this.extractArtifacts(legacyResult);
+    const snapshot = this.extractSnapshot(legacyResult, artifacts);
 
     return {
       success: legacyResult.success,
@@ -120,27 +130,15 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
         ...(legacyResult.output || {}),
         pageUrl: legacyResult.pageState?.pageUrl || legacyResult.output?.pageUrl || null,
         pageTitle: legacyResult.pageState?.pageTitle || legacyResult.output?.pageTitle || null,
-        pageFingerprint: legacyResult.pageState?.pageFingerprint || legacyResult.output?.pageFingerprint || null,
+        pageFingerprint:
+          legacyResult.pageState?.pageFingerprint || legacyResult.output?.pageFingerprint || null,
       },
       errorCode: legacyResult.errorCode,
       errorMessage: legacyResult.errorMessage,
       requiresTakeover,
       takeoverReason: legacyResult.takeoverReason,
-      snapshot: legacyResult.snapshotId
-        ? {
-            id: legacyResult.snapshotId,
-            type: 'browser',
-            url: legacyResult.pageState?.pageUrl || undefined,
-            metadata: legacyResult.pageState
-              ? {
-                  pageTitle: legacyResult.pageState.pageTitle || null,
-                  pageFingerprint: legacyResult.pageState.pageFingerprint || null,
-                  readyState: legacyResult.pageState.readyState || null,
-                  observedAt: legacyResult.pageState.observedAt || null,
-                }
-              : undefined,
-          }
-        : null,
+      artifacts,
+      snapshot: snapshot || null,
       rawResult: legacyResult as unknown as Record<string, unknown>,
     };
   }
@@ -154,7 +152,7 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
       {
         runtimeSessionId: input.runtimeSessionId,
         backend: input.backend || BROWSER_RUNTIME.DEFAULT_BACKEND,
-      },
+      }
     );
     return response.data;
   }
@@ -184,8 +182,127 @@ export class BrowserRuntimeAdapter implements RuntimeAdapter {
         readyState: input.readyState,
         selectorExists: input.selectorExists,
         textIncludes: input.textIncludes,
-      },
+      }
     );
     return response.data;
+  }
+
+  private extractArtifacts(
+    legacyResult: LegacyBrowserExecuteStepResult
+  ): ArtifactRef[] | undefined {
+    const output = this.readRecord(legacyResult.output);
+    if (!output) {
+      return undefined;
+    }
+
+    const snapshot = this.readRecord(output.snapshot);
+    const data = this.readRecord(output.data);
+    const pageState = legacyResult.pageState;
+    const command = this.readString(output.command);
+    const screenshotPath = this.readString(snapshot?.path, data?.path);
+    const screenshotBase64 = this.readString(output.screenshot);
+    const mimeType = this.inferArtifactMimeType(screenshotPath, screenshotBase64);
+    const snapshotId = this.readString(snapshot?.id, legacyResult.snapshotId);
+
+    if (!snapshotId && !screenshotPath && !screenshotBase64) {
+      return undefined;
+    }
+
+    const artifact: ArtifactRef = {
+      type: snapshotId ? 'snapshot' : 'browser_artifact',
+      id: snapshotId || undefined,
+      name: command || undefined,
+      mimeType: mimeType || undefined,
+      metadata: {
+        ...(command ? { command } : {}),
+        ...(screenshotPath
+          ? { snapshotPath: screenshotPath, artifactPath: screenshotPath, path: screenshotPath }
+          : {}),
+        ...(screenshotBase64 ? { imageSrc: this.toDataImageUrl(screenshotBase64) } : {}),
+        ...(pageState
+          ? {
+              pageUrl: pageState.pageUrl || null,
+              pageTitle: pageState.pageTitle || null,
+              pageFingerprint: pageState.pageFingerprint || null,
+              readyState: pageState.readyState || null,
+              observedAt: pageState.observedAt || null,
+            }
+          : {}),
+      },
+    };
+
+    return [artifact];
+  }
+
+  private extractSnapshot(
+    legacyResult: LegacyBrowserExecuteStepResult,
+    artifacts?: ArtifactRef[]
+  ): SnapshotRef | undefined {
+    const output = this.readRecord(legacyResult.output);
+    const snapshot = this.readRecord(output?.snapshot);
+    const snapshotId = this.readString(snapshot?.id, legacyResult.snapshotId, artifacts?.[0]?.id);
+    if (!snapshotId) {
+      return undefined;
+    }
+
+    const snapshotPath = this.readString(snapshot?.path, this.readRecord(output?.data)?.path);
+    return {
+      id: snapshotId,
+      type: 'browser',
+      url: legacyResult.pageState?.pageUrl || undefined,
+      metadata: {
+        ...(snapshotPath ? { snapshotPath, artifactPath: snapshotPath, path: snapshotPath } : {}),
+        ...(legacyResult.pageState
+          ? {
+              pageTitle: legacyResult.pageState.pageTitle || null,
+              pageFingerprint: legacyResult.pageState.pageFingerprint || null,
+              readyState: legacyResult.pageState.readyState || null,
+              observedAt: legacyResult.pageState.observedAt || null,
+            }
+          : {}),
+      },
+    };
+  }
+
+  private readRecord(value: unknown): JsonRecord | undefined {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return undefined;
+    }
+    return value as JsonRecord;
+  }
+
+  private readString(...values: unknown[]): string | undefined {
+    for (const value of values) {
+      if (typeof value === 'string' && value.trim()) {
+        return value.trim();
+      }
+    }
+    return undefined;
+  }
+
+  private inferArtifactMimeType(path?: string, screenshotBase64?: string): string | undefined {
+    if (path && /\.png$/i.test(path)) {
+      return 'image/png';
+    }
+    if (path && /\.jpe?g$/i.test(path)) {
+      return 'image/jpeg';
+    }
+    if (path && /\.webp$/i.test(path)) {
+      return 'image/webp';
+    }
+    if (path && /\.gif$/i.test(path)) {
+      return 'image/gif';
+    }
+    if (path && /\.ya?ml$/i.test(path)) {
+      return 'text/yaml';
+    }
+    if (screenshotBase64) {
+      return 'image/png';
+    }
+    return undefined;
+  }
+
+  private toDataImageUrl(value: string): string {
+    return value.startsWith('data:') ? value : `data:image/png;base64,${value}`;
   }
 }

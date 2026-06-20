@@ -61,19 +61,19 @@ describe('TemporalWorkflowSessionService', () => {
     const builtinRegistry = new BuiltinActivityRegistry();
     const workflowNormalizationService = new TemporalWorkflowNormalizationService(
       prisma as any,
-      builtinRegistry,
+      builtinRegistry
     );
     const aiDraftService = new TemporalWorkflowAiDraftService(prisma as any, builtinRegistry);
     const browserDraftService = new TemporalWorkflowBrowserDraftService();
     const codegenService = new TemporalWorkflowCodegenService();
     const sessionService = new TemporalWorkflowSessionService(
       prisma as any,
-      workflowNormalizationService,
+      workflowNormalizationService
     );
     const validationService = new TemporalWorkflowValidationService();
     const activityResolutionService = new TemporalWorkflowActivityResolutionService(
       prisma as any,
-      builtinRegistry,
+      builtinRegistry
     );
     const workflowConfigService = new TemporalWorkflowConfigService();
     const workflowTemplateService = new TemporalWorkflowTemplateService();
@@ -82,7 +82,7 @@ describe('TemporalWorkflowSessionService', () => {
       aiDraftService,
       activityResolutionService,
       workflowConfigService,
-      workflowNormalizationService,
+      workflowNormalizationService
     );
     const service = new TemporalWorkflowService(
       prisma as any,
@@ -94,7 +94,7 @@ describe('TemporalWorkflowSessionService', () => {
       workflowConfigService,
       workflowNormalizationService,
       workflowTemplateService,
-      workflowSupportService,
+      workflowSupportService
     );
 
     return {
@@ -227,10 +227,13 @@ describe('TemporalWorkflowSessionService', () => {
       },
     } as any);
 
-    const session = await service.createAiDraftSession({
-      title: '天气草稿会话',
-      description: '创建一个天气查询工作流',
-    }, 'user-1');
+    const session = await service.createAiDraftSession(
+      {
+        title: '天气草稿会话',
+        description: '创建一个天气查询工作流',
+      },
+      'user-1'
+    );
 
     expect(prisma.chatSession.create).toHaveBeenCalled();
     expect(session.sessionId).toBe('session-1');
@@ -331,86 +334,119 @@ describe('TemporalWorkflowSessionService', () => {
       },
       warnings: [],
     });
-    prisma.chatSession.findUnique
-      .mockResolvedValueOnce(initialSession)
-      .mockResolvedValueOnce({
-        id: 'session-2',
-        userId: 'user-1',
-        title: '天气草稿会话',
-        modelId: 'temporal-workflow-draft',
-        status: 'active',
-        createdAt: now,
-        updatedAt: now,
-        messages: [
-          {
-            id: 'message-1',
-            sessionId: 'session-2',
-            role: 'assistant',
-            content: '已生成初始工作流草稿',
-            metadata: { kind: 'temporal_workflow_draft_result', draft: { name: '天气查询工作流', description: '根据城市查询天气', taskQueue: 'SKILL_TASK_QUEUE', workflowDsl: { name: '天气查询工作流', taskQueue: 'SKILL_TASK_QUEUE', steps: [{ id: 'step_1', name: '查询天气接口', type: 'activity', activityRef: 'builtin:httpRequest', activityName: 'HTTP 请求' }] }, activityDsl: { activities: [{ name: 'HTTP 请求', fn: 'httpRequest', timeout: '30s', handler: 'api', config: {} }] }, warnings: [] } },
-            createdAt: now,
-          },
-          {
-            id: 'message-2',
-            sessionId: 'session-2',
-            role: 'user',
-            content: '请增加结构化输出字段',
-            metadata: { kind: 'temporal_workflow_draft_refine_prompt' },
-            createdAt: now,
-          },
-          {
-            id: 'message-3',
-            sessionId: 'session-2',
-            role: 'assistant',
-            content: '已更新工作流草稿',
-            metadata: {
-              kind: 'temporal_workflow_draft_result',
-              draft: {
+    prisma.chatSession.findUnique.mockResolvedValueOnce(initialSession).mockResolvedValueOnce({
+      id: 'session-2',
+      userId: 'user-1',
+      title: '天气草稿会话',
+      modelId: 'temporal-workflow-draft',
+      status: 'active',
+      createdAt: now,
+      updatedAt: now,
+      messages: [
+        {
+          id: 'message-1',
+          sessionId: 'session-2',
+          role: 'assistant',
+          content: '已生成初始工作流草稿',
+          metadata: {
+            kind: 'temporal_workflow_draft_result',
+            draft: {
+              name: '天气查询工作流',
+              description: '根据城市查询天气',
+              taskQueue: 'SKILL_TASK_QUEUE',
+              workflowDsl: {
                 name: '天气查询工作流',
-                description: '根据城市查询天气并返回结构化结果',
                 taskQueue: 'SKILL_TASK_QUEUE',
-                workflowDsl: {
-                  name: '天气查询工作流',
-                  taskQueue: 'SKILL_TASK_QUEUE',
-                  outputParams: {
-                    result: {
-                      description: '结构化天气结果',
-                      sourceStep: 'step_1',
-                    },
+                steps: [
+                  {
+                    id: 'step_1',
+                    name: '查询天气接口',
+                    type: 'activity',
+                    activityRef: 'builtin:httpRequest',
+                    activityName: 'HTTP 请求',
                   },
-                  steps: [
-                    {
-                      id: 'step_1',
-                      name: '查询天气接口',
-                      type: 'activity',
-                      activityRef: 'builtin:httpRequest',
-                      activityName: 'HTTP 请求',
-                    },
-                  ],
-                },
-                activityDsl: {
-                  activities: [
-                    {
-                      name: 'HTTP 请求',
-                      fn: 'httpRequest',
-                      timeout: '30s',
-                      handler: 'api',
-                      config: {},
-                    },
-                  ],
-                },
-                warnings: [],
+                ],
               },
+              activityDsl: {
+                activities: [
+                  {
+                    name: 'HTTP 请求',
+                    fn: 'httpRequest',
+                    timeout: '30s',
+                    handler: 'api',
+                    config: {},
+                  },
+                ],
+              },
+              warnings: [],
             },
-            createdAt: now,
           },
-        ],
-      });
+          createdAt: now,
+        },
+        {
+          id: 'message-2',
+          sessionId: 'session-2',
+          role: 'user',
+          content: '请增加结构化输出字段',
+          metadata: { kind: 'temporal_workflow_draft_refine_prompt' },
+          createdAt: now,
+        },
+        {
+          id: 'message-3',
+          sessionId: 'session-2',
+          role: 'assistant',
+          content: '已更新工作流草稿',
+          metadata: {
+            kind: 'temporal_workflow_draft_result',
+            draft: {
+              name: '天气查询工作流',
+              description: '根据城市查询天气并返回结构化结果',
+              taskQueue: 'SKILL_TASK_QUEUE',
+              workflowDsl: {
+                name: '天气查询工作流',
+                taskQueue: 'SKILL_TASK_QUEUE',
+                outputParams: {
+                  result: {
+                    description: '结构化天气结果',
+                    sourceStep: 'step_1',
+                  },
+                },
+                steps: [
+                  {
+                    id: 'step_1',
+                    name: '查询天气接口',
+                    type: 'activity',
+                    activityRef: 'builtin:httpRequest',
+                    activityName: 'HTTP 请求',
+                  },
+                ],
+              },
+              activityDsl: {
+                activities: [
+                  {
+                    name: 'HTTP 请求',
+                    fn: 'httpRequest',
+                    timeout: '30s',
+                    handler: 'api',
+                    config: {},
+                  },
+                ],
+              },
+              warnings: [],
+            },
+          },
+          createdAt: now,
+        },
+      ],
+    });
 
-    const session = await service.refineAiDraftSession({
-      sessionId: 'session-2',
-      userPrompt: '请增加结构化输出字段',
-    }, 'user-1');
+    const session = await service.refineAiDraftSession(
+      {
+        sessionId: 'session-2',
+        userPrompt: '请增加结构化输出字段',
+      },
+      'user-1'
+    );
 
     expect(prisma.chatSession.update).toHaveBeenCalled();
     expect(session.currentDraft?.description).toContain('结构化结果');
@@ -460,12 +496,13 @@ describe('TemporalWorkflowSessionService', () => {
     const sessions = await service.listAiDraftSessions('user-1');
 
     expect(sessions).toHaveLength(1);
-    expect(sessions[0]).toEqual(expect.objectContaining({
-      sessionId: 'session-3',
-      currentDraftName: '天气查询工作流',
-      currentDraftDescription: '根据城市查询天气',
-      messageCount: 1,
-    }));
+    expect(sessions[0]).toEqual(
+      expect.objectContaining({
+        sessionId: 'session-3',
+        currentDraftName: '天气查询工作流',
+        currentDraftDescription: '根据城市查询天气',
+        messageCount: 1,
+      })
+    );
   });
-
 });

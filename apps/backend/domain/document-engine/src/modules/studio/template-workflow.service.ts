@@ -214,13 +214,8 @@ import {
   buildAnalyzeFieldResult,
   buildRecognitionBlockResults,
 } from './utils/workflow-discover';
-import {
-  buildCompareCandidates,
-  buildCompareSummary,
-} from './utils/workflow-compare';
-import {
-  buildSimpleWorkflowLanguageProfile,
-} from './utils/workflow-language-profile';
+import { buildCompareCandidates, buildCompareSummary } from './utils/workflow-compare';
+import { buildSimpleWorkflowLanguageProfile } from './utils/workflow-language-profile';
 import {
   resolveFieldValue,
   buildRenderTranslationCandidate,
@@ -231,7 +226,6 @@ import {
   extractFieldValue,
   compileBindingPlan,
 } from './utils/workflow-render-helper';
-
 
 @Injectable()
 export class TemplateWorkflowService {
@@ -252,7 +246,7 @@ export class TemplateWorkflowService {
     sourceLanguage = 'zh',
     targetLanguages: string[] = [],
     termAssets?: WorkflowTermAssets,
-    candidateFields?: WorkflowFieldCandidate[],
+    candidateFields?: WorkflowFieldCandidate[]
   ): Promise<WorkflowUnderstandResult> {
     const assets = this.resolveAssets(termAssets);
     const analyzeResult = this.analyzeTemplate(
@@ -260,42 +254,51 @@ export class TemplateWorkflowService {
       sampleDocument,
       sourceLanguage,
       targetLanguages,
-      termAssets,
+      termAssets
     );
     const effectiveSourceLanguage = analyzeResult.languageProfile.sourceLanguage;
     const effectiveTargetLanguages = analyzeResult.languageProfile.targetLanguages;
-    const compareCandidateBuildResult = candidateFields && candidateFields.length > 0
-      ? undefined
-      : await this.buildCompareCandidates(
-        templateDocumentIr,
-        analyzeResult.fields,
-        sampleDocument,
-        effectiveSourceLanguage,
-        assets,
-      );
-    const compareCandidates = candidateFields && candidateFields.length > 0
-      ? candidateFields
-      : compareCandidateBuildResult?.candidates || [];
+    const compareCandidateBuildResult =
+      candidateFields && candidateFields.length > 0
+        ? undefined
+        : await this.buildCompareCandidates(
+            templateDocumentIr,
+            analyzeResult.fields,
+            sampleDocument,
+            effectiveSourceLanguage,
+            assets
+          );
+    const compareCandidates =
+      candidateFields && candidateFields.length > 0
+        ? candidateFields
+        : compareCandidateBuildResult?.candidates || [];
     const elements = Array.isArray(templateDocumentIr.elements) ? templateDocumentIr.elements : [];
     const paragraphElements = elements.filter((element) => element.type === 'paragraph');
     const tableElements = elements.filter((element) => element.type === 'table');
     const sectionHints = buildFallbackSectionHints(elements);
-    const fallbackTerminologyCandidates = Array.from(new Set(
-      compareCandidates
-        .flatMap((candidate) => [
-          this.safeText(candidate.sampleValue),
-          this.safeText(candidate.anchorText),
-          this.safeText(candidate.sectionTitle),
-        ])
-        .filter((text) => Boolean(text) && text.length <= 40)
-    )).slice(0, 8);
+    const fallbackTerminologyCandidates = Array.from(
+      new Set(
+        compareCandidates
+          .flatMap((candidate) => [
+            this.safeText(candidate.sampleValue),
+            this.safeText(candidate.anchorText),
+            this.safeText(candidate.sectionTitle),
+          ])
+          .filter((text) => Boolean(text) && text.length <= 40)
+      )
+    ).slice(0, 8);
     const fallbackLayoutFeatures = [
       paragraphElements.length > 0 ? `paragraphs:${paragraphElements.length}` : '',
       tableElements.length > 0 ? `tables:${tableElements.length}` : '',
-      effectiveTargetLanguages.length > 0 ? `targets:${effectiveTargetLanguages.join(',')}` : 'single_language',
+      effectiveTargetLanguages.length > 0
+        ? `targets:${effectiveTargetLanguages.join(',')}`
+        : 'single_language',
       sampleDocument?.contentBase64 ? 'sample_attached' : 'template_only',
     ].filter(Boolean);
-    const sampleText = await this.extractSampleTextRich(sampleDocument?.contentBase64, analyzeResult.warnings);
+    const sampleText = await this.extractSampleTextRich(
+      sampleDocument?.contentBase64,
+      analyzeResult.warnings
+    );
     const understandingContext = await this.generateUnderstandingSummaryWithAI({
       templateDocumentIr,
       sampleDocument,
@@ -305,7 +308,9 @@ export class TemplateWorkflowService {
       fallbackSectionHints: sectionHints,
       fallbackTerminologyCandidates,
       fallbackLayoutFeatures,
-      fieldCandidateIds: compareCandidates.map((candidate) => candidate.fieldIdHint || candidate.candidateId),
+      fieldCandidateIds: compareCandidates.map(
+        (candidate) => candidate.fieldIdHint || candidate.candidateId
+      ),
       candidateFields: compareCandidates,
     });
 
@@ -314,16 +319,16 @@ export class TemplateWorkflowService {
       languageProfile: analyzeResult.languageProfile,
       summary: {
         documentTitle:
-          this.safeText(understandingContext.summary.documentTitle)
-          || this.safeText(templateDocumentIr.metadata?.title)
-          || undefined,
+          this.safeText(understandingContext.summary.documentTitle) ||
+          this.safeText(templateDocumentIr.metadata?.title) ||
+          undefined,
         understandingSummaryText:
-          this.safeText(understandingContext.summary.understandingSummaryText)
-          || this.buildFallbackWorkflowUnderstandingSummaryText({
+          this.safeText(understandingContext.summary.understandingSummaryText) ||
+          this.buildFallbackWorkflowUnderstandingSummaryText({
             documentTitle:
-              this.safeText(understandingContext.summary.documentTitle)
-              || this.safeText(templateDocumentIr.metadata?.title)
-              || this.safeText(sampleDocument?.fileName),
+              this.safeText(understandingContext.summary.documentTitle) ||
+              this.safeText(templateDocumentIr.metadata?.title) ||
+              this.safeText(sampleDocument?.fileName),
             sourceLanguage: effectiveSourceLanguage,
             targetLanguages: effectiveTargetLanguages,
             paragraphCount: paragraphElements.length,
@@ -340,14 +345,18 @@ export class TemplateWorkflowService {
         sectionHints: understandingContext.summary.sectionHints,
         sectionSummaries: understandingContext.summary.sectionSummaries,
         terminologyCandidates: understandingContext.summary.terminologyCandidates,
-        fieldCandidateIds: compareCandidates.map((candidate) => candidate.fieldIdHint || candidate.candidateId),
+        fieldCandidateIds: compareCandidates.map(
+          (candidate) => candidate.fieldIdHint || candidate.candidateId
+        ),
         layoutFeatures: understandingContext.summary.layoutFeatures,
       },
-      warnings: Array.from(new Set([
-        ...analyzeResult.warnings,
-        ...(compareCandidateBuildResult?.warnings || []),
-        ...understandingContext.summary.warnings,
-      ])),
+      warnings: Array.from(
+        new Set([
+          ...analyzeResult.warnings,
+          ...(compareCandidateBuildResult?.warnings || []),
+          ...understandingContext.summary.warnings,
+        ])
+      ),
       contextAnalysis: {
         usedAI: understandingContext.usedAI,
         aiServiceUrl: understandingContext.aiServiceUrl,
@@ -363,7 +372,7 @@ export class TemplateWorkflowService {
     sourceLanguage = 'zh',
     targetLanguages: string[] = [],
     termAssets?: WorkflowTermAssets,
-    workflowId?: string,
+    workflowId?: string
   ): Promise<WorkflowCompareResult> {
     const assets = this.resolveAssets(termAssets);
     const analyzeResult = this.analyzeTemplate(
@@ -371,7 +380,7 @@ export class TemplateWorkflowService {
       sampleDocument,
       sourceLanguage,
       targetLanguages,
-      termAssets,
+      termAssets
     );
     const effectiveSourceLanguage = analyzeResult.languageProfile.sourceLanguage;
     const compareCandidateBuildResult = await this.buildCompareCandidates(
@@ -379,12 +388,12 @@ export class TemplateWorkflowService {
       analyzeResult.fields,
       sampleDocument,
       effectiveSourceLanguage,
-      assets,
+      assets
     );
     const compareSummary = this.buildCompareSummary(
       compareCandidateBuildResult.candidates,
       Array.from(new Set([...analyzeResult.warnings, ...compareCandidateBuildResult.warnings])),
-      compareCandidateBuildResult.sectionContexts,
+      compareCandidateBuildResult.sectionContexts
     );
 
     return {
@@ -403,16 +412,20 @@ export class TemplateWorkflowService {
     sampleDocument: { fileName?: string; contentBase64?: string } | undefined,
     sourceLanguage = 'zh',
     targetLanguages: string[] = [],
-    termAssets?: WorkflowTermAssets,
+    termAssets?: WorkflowTermAssets
   ): WorkflowAnalyzeResult {
     const warnings: string[] = [];
-    const languageProfile = this.buildLanguageProfile(templateDocumentIr, sourceLanguage, targetLanguages);
+    const languageProfile = this.buildLanguageProfile(
+      templateDocumentIr,
+      sourceLanguage,
+      targetLanguages
+    );
     const normalizedSampleText = this.extractSampleText(sampleDocument?.contentBase64, warnings);
     const fields = this.discoverFields(
       templateDocumentIr,
       languageProfile,
       normalizedSampleText,
-      this.resolveAssets(termAssets),
+      this.resolveAssets(termAssets)
     );
 
     return {
@@ -431,7 +444,7 @@ export class TemplateWorkflowService {
     termAssets?: WorkflowTermAssets,
     candidateFields?: WorkflowFieldCandidate[],
     prefetchedUnderstanding?: WorkflowUnderstandResult,
-    skill?: any,
+    skill?: any
   ): Promise<WorkflowRecognizeResult> {
     const assets = this.resolveAssets(termAssets);
     const analyzeResult = this.analyzeTemplate(
@@ -439,40 +452,44 @@ export class TemplateWorkflowService {
       sampleDocument,
       sourceLanguage,
       targetLanguages,
-      termAssets,
+      termAssets
     );
     const effectiveSourceLanguage = analyzeResult.languageProfile.sourceLanguage;
     const effectiveTargetLanguages = analyzeResult.languageProfile.targetLanguages;
-    const compareCandidateBuildResult = candidateFields && candidateFields.length > 0
-      ? undefined
-      : await this.buildCompareCandidates(
-        templateDocumentIr,
-        analyzeResult.fields,
-        sampleDocument,
-        effectiveSourceLanguage,
-        assets,
-      );
-    const compareCandidates = candidateFields && candidateFields.length > 0
-      ? candidateFields
-      : compareCandidateBuildResult?.candidates || [];
+    const compareCandidateBuildResult =
+      candidateFields && candidateFields.length > 0
+        ? undefined
+        : await this.buildCompareCandidates(
+            templateDocumentIr,
+            analyzeResult.fields,
+            sampleDocument,
+            effectiveSourceLanguage,
+            assets
+          );
+    const compareCandidates =
+      candidateFields && candidateFields.length > 0
+        ? candidateFields
+        : compareCandidateBuildResult?.candidates || [];
     const shouldAttemptAI = Boolean(sampleDocument?.contentBase64) && compareCandidates.length > 0;
-    const reusedUnderstanding = prefetchedUnderstanding
-      && prefetchedUnderstanding.languageProfile?.sourceLanguage === effectiveSourceLanguage
-      && JSON.stringify(prefetchedUnderstanding.languageProfile?.targetLanguages || []) === JSON.stringify(effectiveTargetLanguages)
-      ? prefetchedUnderstanding
-      : undefined;
-    const understandingResult = reusedUnderstanding || (
-      shouldAttemptAI
+    const reusedUnderstanding =
+      prefetchedUnderstanding &&
+      prefetchedUnderstanding.languageProfile?.sourceLanguage === effectiveSourceLanguage &&
+      JSON.stringify(prefetchedUnderstanding.languageProfile?.targetLanguages || []) ===
+        JSON.stringify(effectiveTargetLanguages)
+        ? prefetchedUnderstanding
+        : undefined;
+    const understandingResult =
+      reusedUnderstanding ||
+      (shouldAttemptAI
         ? await this.understandTemplate(
-        templateDocumentIr,
-        sampleDocument,
-        effectiveSourceLanguage,
-        effectiveTargetLanguages,
-        termAssets,
-        compareCandidates,
-      )
-        : undefined
-    );
+            templateDocumentIr,
+            sampleDocument,
+            effectiveSourceLanguage,
+            effectiveTargetLanguages,
+            termAssets,
+            compareCandidates
+          )
+        : undefined);
     const sampleText = shouldAttemptAI
       ? await this.extractSampleTextRich(sampleDocument?.contentBase64, [])
       : '';
@@ -480,7 +497,7 @@ export class TemplateWorkflowService {
       templateDocumentIr,
       compareCandidates,
       analyzeResult.fields,
-      sampleText,
+      sampleText
     );
     const mergedFields = new Map<string, WorkflowAnalyzeFieldResult>();
     const blockResults: WorkflowRecognizeBlockResult[] = [];
@@ -509,9 +526,10 @@ export class TemplateWorkflowService {
 
       const promptRequestText = this.buildWorkflowRecognitionPrompt({
         block,
-        understandingSummary: understandingResult?.summary.understandingSummaryText
-          || understandingResult?.summary.documentTitle
-          || '暂无整体理解摘要',
+        understandingSummary:
+          understandingResult?.summary.understandingSummaryText ||
+          understandingResult?.summary.documentTitle ||
+          '暂无整体理解摘要',
         sectionSummary: block.sectionTitle,
         sourceLanguage,
         targetLanguages,
@@ -528,7 +546,9 @@ export class TemplateWorkflowService {
         const durationMs = Date.now() - startedAt;
         lastRawAiResponse = rawAiResponse;
         const parsed = this.parseWorkflowRecognitionAiResponse(rawAiResponse);
-        const suggestions = this.normalizeWorkflowRecognitionSuggestions(parsed?.suggestions || parsed?.fields);
+        const suggestions = this.normalizeWorkflowRecognitionSuggestions(
+          parsed?.suggestions || parsed?.fields
+        );
         const aiFields = suggestions
           .filter((suggestion) => this.shouldAcceptWorkflowSuggestion(suggestion))
           .map((suggestion) =>
@@ -537,7 +557,7 @@ export class TemplateWorkflowService {
               block,
               sourceLanguage,
               targetLanguages,
-              assets,
+              assets
             )
           )
           .filter(Boolean) as WorkflowAnalyzeFieldResult[];
@@ -568,7 +588,8 @@ export class TemplateWorkflowService {
           this.mergeRecognizedField(mergedFields, field);
         }
         const warnings = this.normalizeStringArray(parsed?.warnings, 6) || [];
-        const responseSummary = this.safeText(parsed?.summary) || `AI 返回 ${aiFields.length} 个字段建议`;
+        const responseSummary =
+          this.safeText(parsed?.summary) || `AI 返回 ${aiFields.length} 个字段建议`;
         lastResponseSummary = responseSummary;
         blockResults.push({
           blockId: block.blockId,
@@ -579,7 +600,8 @@ export class TemplateWorkflowService {
           suggestionCount: aiFields.length,
           fieldIds: aiFields.map((field) => field.fieldId),
           aiCallSucceeded: true,
-          resultStatus: block.fallbackFields.length > aiFields.length ? 'partial_success' : 'succeeded',
+          resultStatus:
+            block.fallbackFields.length > aiFields.length ? 'partial_success' : 'succeeded',
           warnings,
           retryCount: 0,
           durationMs,
@@ -614,7 +636,10 @@ export class TemplateWorkflowService {
     }
 
     if (blockResults.length === 0) {
-      for (const fallbackBlock of this.buildRecognitionBlockResults(templateDocumentIr, analyzeResult.fields)) {
+      for (const fallbackBlock of this.buildRecognitionBlockResults(
+        templateDocumentIr,
+        analyzeResult.fields
+      )) {
         if (fallbackBlock.resultStatus === 'fallback_success') {
           fallbackBlockIds.push(fallbackBlock.blockId);
         }
@@ -633,23 +658,30 @@ export class TemplateWorkflowService {
 
     const recognizedFields = Array.from(mergedFields.values());
     const recognizedBlockCount = blockResults.filter((block) => block.suggestionCount > 0).length;
-    const fallbackBlockCount = blockResults.filter((block) => block.resultStatus === 'fallback_success').length;
+    const fallbackBlockCount = blockResults.filter(
+      (block) => block.resultStatus === 'fallback_success'
+    ).length;
     const failedBlockCount = blockResults.filter((block) => block.resultStatus === 'failed').length;
     const resultStatus: WorkflowRecognizeContextAnalysis['resultStatus'] = usedAI
-      ? (fallbackBlockCount > 0 ? 'partial_success' : 'succeeded')
-      : (recognizedFields.length > 0 ? 'fallback_success' : 'failed');
+      ? fallbackBlockCount > 0
+        ? 'partial_success'
+        : 'succeeded'
+      : recognizedFields.length > 0
+        ? 'fallback_success'
+        : 'failed';
     const resultSource: WorkflowRecognizeContextAnalysis['resultSource'] = usedAI
-      ? (fallbackBlockCount > 0 ? 'ai+rule_fallback' : 'ai')
+      ? fallbackBlockCount > 0
+        ? 'ai+rule_fallback'
+        : 'ai'
       : 'rule_fallback';
 
     return {
       ...analyzeResult,
       fields: recognizedFields,
       blockResults,
-      warnings: Array.from(new Set([
-        ...analyzeResult.warnings,
-        ...(compareCandidateBuildResult?.warnings || []),
-      ])),
+      warnings: Array.from(
+        new Set([...analyzeResult.warnings, ...(compareCandidateBuildResult?.warnings || [])])
+      ),
       contextAnalysis: {
         requestedAI: shouldAttemptAI,
         usedAI,
@@ -668,9 +700,10 @@ export class TemplateWorkflowService {
           lastRequestSummary: lastRequestSummary || undefined,
         },
         responseTrace: {
-          summary: recognizedFields.length > 0
-            ? `已合并 ${recognizedFields.length} 个字段候选，命中 ${recognizedBlockCount} 个块`
-            : '已完成块级扫描，但当前未返回字段候选',
+          summary:
+            recognizedFields.length > 0
+              ? `已合并 ${recognizedFields.length} 个字段候选，命中 ${recognizedBlockCount} 个块`
+              : '已完成块级扫描，但当前未返回字段候选',
           mergedFieldCount: recognizedFields.length,
           recognizedBlockCount,
           successBlockCount: aiSuccessBlockCount,
@@ -680,11 +713,14 @@ export class TemplateWorkflowService {
         fallbackTrace: {
           usedFallback: fallbackBlockIds.length > 0 || !usedAI,
           reason: usedAI
-            ? (fallbackBlockIds.length > 0 ? '部分块 AI 结果为空或失败，已降级回退' : undefined)
+            ? fallbackBlockIds.length > 0
+              ? '部分块 AI 结果为空或失败，已降级回退'
+              : undefined
             : '当前请求未提供可用于块级 AI 识别的样本文档，已回退到规则链路',
           fallbackBlockCount,
           fallbackLevel: fallbackBlockIds.length > 0 ? 'block' : 'task',
-          fallbackBlockIds: fallbackBlockIds.length > 0 ? Array.from(new Set(fallbackBlockIds)) : undefined,
+          fallbackBlockIds:
+            fallbackBlockIds.length > 0 ? Array.from(new Set(fallbackBlockIds)) : undefined,
         },
         cacheTrace: {
           compareHit: false,
@@ -692,7 +728,8 @@ export class TemplateWorkflowService {
           recognitionHit: false,
         },
         debugArtifacts: {
-          promptRequestText: lastPromptRequestText || understandingResult?.contextAnalysis?.promptRequestText,
+          promptRequestText:
+            lastPromptRequestText || understandingResult?.contextAnalysis?.promptRequestText,
           rawAiResponse: lastRawAiResponse || understandingResult?.contextAnalysis?.rawAiResponse,
         },
       },
@@ -703,19 +740,19 @@ export class TemplateWorkflowService {
     templateDocumentIr: WorkflowDocumentIR,
     candidateFields: WorkflowFieldCandidate[],
     fields: WorkflowAnalyzeFieldResult[],
-    sampleText: string,
+    sampleText: string
   ): WorkflowRecognitionBlockInput[] {
     return buildRecognitionBlocks(templateDocumentIr, candidateFields, fields, sampleText);
   }
 
   private computeCandidateGroupCompareStatus(
-    candidates: WorkflowFieldCandidate[],
+    candidates: WorkflowFieldCandidate[]
   ): 'aligned' | 'partial' | 'attention' {
     return computeCandidateGroupCompareStatus(candidates);
   }
 
   private computeCandidateGroupCompareMode(
-    candidates: WorkflowFieldCandidate[],
+    candidates: WorkflowFieldCandidate[]
   ): 'section_loose_compare' | 'global_probe_fallback' | 'structure_only' {
     return computeCandidateGroupCompareMode(candidates);
   }
@@ -728,7 +765,7 @@ export class TemplateWorkflowService {
     candidate: WorkflowFieldCandidate,
     blockId: string,
     templateText: string,
-    sectionTitle: string,
+    sectionTitle: string
   ): boolean {
     return isCandidateMatchedToBlock(candidate, blockId, templateText, sectionTitle);
   }
@@ -736,12 +773,14 @@ export class TemplateWorkflowService {
   private extractBlockSampleExcerpt(
     sampleText: string,
     candidates: WorkflowFieldCandidate[],
-    fallbackText: string,
+    fallbackText: string
   ): string {
     return extractBlockSampleExcerpt(sampleText, candidates, fallbackText);
   }
 
-  private buildFallbackRecognitionBlockResult(block: WorkflowRecognitionBlockInput): WorkflowRecognizeBlockResult {
+  private buildFallbackRecognitionBlockResult(
+    block: WorkflowRecognitionBlockInput
+  ): WorkflowRecognizeBlockResult {
     return buildFallbackRecognitionBlockResult(block);
   }
 
@@ -761,15 +800,16 @@ export class TemplateWorkflowService {
     const aiOrchestratorUrl = getAiOrchestratorUrl();
     const aiModelId = process.env.AI_MODEL_ID || 'default';
     const maxRetries = 2;
-    const actualPrompt = retryCount > 0
-      ? `${prompt}\n\n【重要】请只返回 JSON 对象，不要 markdown，不要解释文字。`
-      : prompt;
+    const actualPrompt =
+      retryCount > 0
+        ? `${prompt}\n\n【重要】请只返回 JSON 对象，不要 markdown，不要解释文字。`
+        : prompt;
 
     try {
       const response = await axios.post<{ response?: string }>(
         `${aiOrchestratorUrl}/ai/models/${aiModelId}/test`,
         { prompt: actualPrompt },
-        { timeout: 180000 },
+        { timeout: 180000 }
       );
       const content = String(response.data?.response || '')
         .replace(/```json\s*/gi, '')
@@ -797,7 +837,9 @@ export class TemplateWorkflowService {
     return parseWorkflowRecognitionAiResponseUtil(content);
   }
 
-  private normalizeWorkflowRecognitionSuggestions(value: unknown): WorkflowRecognitionAiSuggestion[] {
+  private normalizeWorkflowRecognitionSuggestions(
+    value: unknown
+  ): WorkflowRecognitionAiSuggestion[] {
     return normalizeWorkflowRecognitionSuggestions(value);
   }
 
@@ -810,14 +852,20 @@ export class TemplateWorkflowService {
     block: WorkflowRecognitionBlockInput,
     sourceLanguage: string,
     targetLanguages: string[],
-    assets: WorkflowResolvedAssets,
+    assets: WorkflowResolvedAssets
   ): WorkflowAnalyzeFieldResult | undefined {
-    return buildRecognizedFieldFromSuggestion(suggestion, block, sourceLanguage, targetLanguages, assets);
+    return buildRecognizedFieldFromSuggestion(
+      suggestion,
+      block,
+      sourceLanguage,
+      targetLanguages,
+      assets
+    );
   }
 
   private mergeRecognizedField(
     target: Map<string, WorkflowAnalyzeFieldResult>,
-    field: WorkflowAnalyzeFieldResult,
+    field: WorkflowAnalyzeFieldResult
   ): void {
     mergeRecognizedField(target, field);
   }
@@ -838,7 +886,9 @@ export class TemplateWorkflowService {
     return inferPolicyFromType(fieldType);
   }
 
-  private normalizeWorkflowPolicy(value: unknown): NonNullable<WorkflowTemplateFieldSpec['policy']> {
+  private normalizeWorkflowPolicy(
+    value: unknown
+  ): NonNullable<WorkflowTemplateFieldSpec['policy']> {
     return normalizeWorkflowPolicy(value);
   }
 
@@ -861,14 +911,14 @@ export class TemplateWorkflowService {
     languageProfile: WorkflowLanguageProfile,
     termAssets?: WorkflowTermAssets,
     source = TEMPLATE_ASSET_SOURCE_OFFICE_ADDIN,
-    addinVersion?: string,
+    addinVersion?: string
   ): TemplateAssetManifest {
     const renderPlan = this.compileBindingPlan(
       templateId,
       DEFAULT_RENDER_PLAN_VERSION,
       templateFieldSpecs,
       languageProfile.sourceLanguage,
-      languageProfile.targetLanguages,
+      languageProfile.targetLanguages
     );
 
     return {
@@ -906,7 +956,7 @@ export class TemplateWorkflowService {
     templateMeta: WorkflowSaveMeta | undefined,
     templateFieldSpecs: WorkflowTemplateFieldSpec[],
     saveMode: 'draft_or_publish' | 'draft' | 'publish' | undefined,
-    templateFormat = 'docx', // 新增：支持传入格式
+    templateFormat = 'docx' // 新增：支持传入格式
   ): WorkflowSaveResult {
     const version = 1;
     const carboneBindingPlan = this.compileBindingPlan(
@@ -914,14 +964,22 @@ export class TemplateWorkflowService {
       version,
       templateFieldSpecs,
       templateMeta?.sourceLanguage || 'zh',
-      templateMeta?.targetLanguages || [],
+      templateMeta?.targetLanguages || []
     );
-    const status = saveMode === 'publish' ? 'published' : carboneBindingPlan.bindings.length > 0 ? 'ready' : 'draft';
+    const status =
+      saveMode === 'publish'
+        ? 'published'
+        : carboneBindingPlan.bindings.length > 0
+          ? 'ready'
+          : 'draft';
 
     const languageProfile: WorkflowLanguageProfile = {
       sourceLanguage: templateMeta?.sourceLanguage || 'zh',
       targetLanguages: templateMeta?.targetLanguages || [],
-      documentMode: this.resolveDocumentMode(templateMeta?.targetLanguages, templateMeta?.documentMode),
+      documentMode: this.resolveDocumentMode(
+        templateMeta?.targetLanguages,
+        templateMeta?.documentMode
+      ),
     };
 
     const templateAssetManifest = this.buildTemplateAssetManifest(
@@ -932,7 +990,7 @@ export class TemplateWorkflowService {
       languageProfile,
       templateMeta?.termAssets,
       TEMPLATE_ASSET_SOURCE_OFFICE_ADDIN,
-      templateMeta?.addinVersion,
+      templateMeta?.addinVersion
     );
 
     return {
@@ -954,7 +1012,7 @@ export class TemplateWorkflowService {
     sourceLanguage = 'zh',
     targetLanguages: string[] = [],
     userOverrides?: Record<string, unknown>,
-    termAssets?: WorkflowTermAssets,
+    termAssets?: WorkflowTermAssets
   ): Promise<WorkflowRenderResult> {
     const warnings: string[] = [];
     const missingFields: string[] = [];
@@ -971,7 +1029,7 @@ export class TemplateWorkflowService {
         sourceLanguage,
         targetLanguages,
         userOverrides,
-        assets,
+        assets
       );
       this.applyLocalizedLanguageAliases(fieldResult.value, sourceLanguage, targetLanguages);
       fieldValueMap.set(spec.fieldId, fieldResult.value);
@@ -979,7 +1037,7 @@ export class TemplateWorkflowService {
         spec,
         fieldResult.value,
         sourceLanguage,
-        targetLanguages,
+        targetLanguages
       );
       if (translationCandidate) {
         translationCandidates.push(translationCandidate);
@@ -995,16 +1053,13 @@ export class TemplateWorkflowService {
       fieldValueMap,
       sourceTrace,
       warnings,
-      needsReviewFields,
+      needsReviewFields
     );
 
-    const bindings = carboneBindingPlan?.bindings || this.compileBindingPlan(
-      'ad_hoc',
-      1,
-      templateFieldSpecs,
-      sourceLanguage,
-      targetLanguages,
-    ).bindings;
+    const bindings =
+      carboneBindingPlan?.bindings ||
+      this.compileBindingPlan('ad_hoc', 1, templateFieldSpecs, sourceLanguage, targetLanguages)
+        .bindings;
 
     const data: WorkflowRenderResult['data'] = {};
     for (const binding of bindings) {
@@ -1036,7 +1091,7 @@ export class TemplateWorkflowService {
     templateDocumentIr: WorkflowDocumentIR,
     languageProfile: WorkflowLanguageProfile,
     normalizedSampleText: string,
-    assets: WorkflowResolvedAssets,
+    assets: WorkflowResolvedAssets
   ): WorkflowAnalyzeFieldResult[] {
     return discoverFields(templateDocumentIr, languageProfile, normalizedSampleText, assets);
   }
@@ -1046,14 +1101,20 @@ export class TemplateWorkflowService {
     languageProfile: WorkflowLanguageProfile,
     sourceBinding: WorkflowSourceBinding,
     normalizedSampleText: string,
-    assets: WorkflowResolvedAssets,
+    assets: WorkflowResolvedAssets
   ): WorkflowAnalyzeFieldResult {
-    return buildAnalyzeFieldResult(dictionaryMatch, languageProfile, sourceBinding, normalizedSampleText, assets);
+    return buildAnalyzeFieldResult(
+      dictionaryMatch,
+      languageProfile,
+      sourceBinding,
+      normalizedSampleText,
+      assets
+    );
   }
 
   private buildRecognitionBlockResults(
     templateDocumentIr: WorkflowDocumentIR,
-    fields: WorkflowAnalyzeFieldResult[],
+    fields: WorkflowAnalyzeFieldResult[]
   ): WorkflowRecognizeBlockResult[] {
     return buildRecognitionBlockResults(templateDocumentIr, fields);
   }
@@ -1063,7 +1124,7 @@ export class TemplateWorkflowService {
     fields: WorkflowAnalyzeFieldResult[],
     sampleDocument: { fileName?: string; contentBase64?: string } | undefined,
     sourceLanguage: string,
-    assets: WorkflowResolvedAssets,
+    assets: WorkflowResolvedAssets
   ): Promise<WorkflowCompareCandidateBuildResult> {
     return buildCompareCandidates(
       templateDocumentIr,
@@ -1072,26 +1133,24 @@ export class TemplateWorkflowService {
       sourceLanguage,
       assets,
       this.matchFieldDictionary.bind(this),
-      this.extractFieldValue.bind(this),
+      this.extractFieldValue.bind(this)
     );
   }
 
   private buildCompareSummary(
     candidateFields: WorkflowFieldCandidate[],
     warnings: string[],
-    sectionContexts: WorkflowCompareSectionContext[] = [],
+    sectionContexts: WorkflowCompareSectionContext[] = []
   ): WorkflowCompareResult['compareSummary'] {
     return buildCompareSummary(candidateFields, warnings, sectionContexts);
   }
 
-  private detectTextLanguageHint(
-    text: string,
-  ): 'zh' | 'ja' | 'en' | 'mixed' | 'unknown' {
+  private detectTextLanguageHint(text: string): 'zh' | 'ja' | 'en' | 'mixed' | 'unknown' {
     return detectTextLanguageHint(text);
   }
 
   private isConcreteLanguageHint(
-    hint: 'zh' | 'ja' | 'en' | 'mixed' | 'unknown',
+    hint: 'zh' | 'ja' | 'en' | 'mixed' | 'unknown'
   ): hint is 'zh' | 'ja' | 'en' {
     return isConcreteLanguageHint(hint);
   }
@@ -1099,11 +1158,10 @@ export class TemplateWorkflowService {
   private inferSectionInfo(
     elements: WorkflowDocumentElement[],
     sourceBlockId: string,
-    fallbackText: string,
+    fallbackText: string
   ): { sectionId: string; sectionTitle: string } {
     return inferSectionInfo(elements, sourceBlockId, fallbackText);
   }
-
 
   private getElementFormat(element?: WorkflowDocumentElement): {
     fontSize?: number;
@@ -1126,14 +1184,13 @@ export class TemplateWorkflowService {
     return hasCompareFieldShape(text);
   }
 
-
   private resolveFieldValue(
     spec: WorkflowTemplateFieldSpec,
     userInput: string,
     sourceLanguage: string,
     targetLanguages: string[],
     userOverrides?: Record<string, unknown>,
-    assets?: WorkflowResolvedAssets,
+    assets?: WorkflowResolvedAssets
   ): {
     value: Record<string, unknown>;
     sourceTrace: Record<string, unknown>;
@@ -1141,14 +1198,21 @@ export class TemplateWorkflowService {
     missingFields: string[];
     needsReviewFields: string[];
   } {
-    return resolveFieldValue(spec, userInput, sourceLanguage, targetLanguages, userOverrides, assets);
+    return resolveFieldValue(
+      spec,
+      userInput,
+      sourceLanguage,
+      targetLanguages,
+      userOverrides,
+      assets
+    );
   }
 
   private buildRenderTranslationCandidate(
     spec: WorkflowTemplateFieldSpec,
     value: Record<string, unknown>,
     sourceLanguage: string,
-    targetLanguages: string[],
+    targetLanguages: string[]
   ): WorkflowRenderTranslationCandidate | undefined {
     return buildRenderTranslationCandidate(spec, value, sourceLanguage, targetLanguages);
   }
@@ -1158,15 +1222,21 @@ export class TemplateWorkflowService {
     fieldValueMap: Map<string, Record<string, unknown>>,
     sourceTrace: Record<string, Record<string, unknown>>,
     warnings: string[],
-    needsReviewFields: string[],
+    needsReviewFields: string[]
   ): Promise<void> {
-    return applyBatchRenderTranslations(candidates, fieldValueMap, sourceTrace, warnings, needsReviewFields);
+    return applyBatchRenderTranslations(
+      candidates,
+      fieldValueMap,
+      sourceTrace,
+      warnings,
+      needsReviewFields
+    );
   }
 
   private applyLocalizedLanguageAliases(
     value: Record<string, unknown>,
     sourceLanguage: string,
-    targetLanguages: string[],
+    targetLanguages: string[]
   ): void {
     return applyLocalizedLanguageAliases(value, sourceLanguage, targetLanguages);
   }
@@ -1176,9 +1246,15 @@ export class TemplateWorkflowService {
     version: number,
     templateFieldSpecs: WorkflowTemplateFieldSpec[],
     sourceLanguage = 'zh',
-    targetLanguages: string[] = [],
+    targetLanguages: string[] = []
   ): WorkflowBindingPlan {
-    return compileBindingPlan(templateId, version, templateFieldSpecs, sourceLanguage, targetLanguages);
+    return compileBindingPlan(
+      templateId,
+      version,
+      templateFieldSpecs,
+      sourceLanguage,
+      targetLanguages
+    );
   }
 
   private extractSampleText(contentBase64: string | undefined, warnings: string[]): string {
@@ -1187,7 +1263,7 @@ export class TemplateWorkflowService {
 
   private async extractSampleTextRich(
     contentBase64: string | undefined,
-    warnings: string[],
+    warnings: string[]
   ): Promise<string> {
     return extractSampleTextRich(contentBase64, warnings);
   }
@@ -1218,7 +1294,7 @@ export class TemplateWorkflowService {
   private buildLanguageProfile(
     templateDocumentIr: WorkflowDocumentIR,
     sourceLanguage: string,
-    targetLanguages: string[],
+    targetLanguages: string[]
   ): WorkflowLanguageProfile {
     return buildSimpleWorkflowLanguageProfile(templateDocumentIr, sourceLanguage, targetLanguages);
   }
@@ -1229,12 +1305,10 @@ export class TemplateWorkflowService {
 
   private matchFieldDictionary(
     text: string,
-    assets: WorkflowResolvedAssets,
+    assets: WorkflowResolvedAssets
   ): WorkflowFieldDictionaryEntry | undefined {
     return matchFieldDictionary(text, assets);
   }
-
-
 
   private buildWorkflowUnderstandingPrompt(input: {
     templateDocumentIr: WorkflowDocumentIR;
@@ -1270,20 +1344,20 @@ export class TemplateWorkflowService {
     return buildWorkflowTemplateExcerpt(templateDocumentIr);
   }
 
-
   private async callWorkflowUnderstandingAI(prompt: string, retryCount = 0): Promise<string> {
     const aiOrchestratorUrl = getAiOrchestratorUrl();
     const aiModelId = process.env.AI_MODEL_ID || 'default';
     const maxRetries = 2;
-    const actualPrompt = retryCount > 0
-      ? `${prompt}\n\n【重要】请只返回 JSON 对象，不要 markdown，不要解释文字。`
-      : prompt;
+    const actualPrompt =
+      retryCount > 0
+        ? `${prompt}\n\n【重要】请只返回 JSON 对象，不要 markdown，不要解释文字。`
+        : prompt;
 
     try {
       const response = await axios.post<{ response?: string }>(
         `${aiOrchestratorUrl}/ai/models/${aiModelId}/test`,
         { prompt: actualPrompt },
-        { timeout: 180000 },
+        { timeout: 180000 }
       );
       const content = String(response.data?.response || '')
         .replace(/```json\s*/gi, '')
@@ -1307,7 +1381,9 @@ export class TemplateWorkflowService {
     }
   }
 
-  private parseWorkflowUnderstandingAiResponse(content: string): Record<string, unknown> | undefined {
+  private parseWorkflowUnderstandingAiResponse(
+    content: string
+  ): Record<string, unknown> | undefined {
     return parseWorkflowUnderstandingAiResponse(content);
   }
 
@@ -1323,11 +1399,10 @@ export class TemplateWorkflowService {
     return normalizeStringArray(value, limit);
   }
 
-
   private findTermMatch(
     fieldId: string,
     text: string,
-    assets: WorkflowResolvedAssets,
+    assets: WorkflowResolvedAssets
   ): WorkflowTermEntry | undefined {
     return findTermMatch(fieldId, text, assets);
   }
@@ -1335,7 +1410,7 @@ export class TemplateWorkflowService {
   private findEnumMatch(
     fieldId: string,
     sourceValue: string,
-    assets: WorkflowResolvedAssets,
+    assets: WorkflowResolvedAssets
   ): WorkflowEnumItem | undefined {
     return findEnumMatch(fieldId, sourceValue, assets);
   }
@@ -1371,5 +1446,4 @@ export class TemplateWorkflowService {
   private safeText(value: unknown): string {
     return safeText(value);
   }
-
 }

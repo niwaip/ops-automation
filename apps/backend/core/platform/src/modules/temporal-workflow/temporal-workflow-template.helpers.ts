@@ -30,13 +30,8 @@ export function buildTemplateWorkflowParamSeeds(args: {
   uniqueVariables: UniqueVariables;
   buildWorkflowSemanticHint: BuildWorkflowSemanticHint;
 }): TemplateWorkflowParamSeed[] {
-  const {
-    template,
-    skill,
-    pickFirstNonEmptyString,
-    uniqueVariables,
-    buildWorkflowSemanticHint,
-  } = args;
+  const { template, skill, pickFirstNonEmptyString, uniqueVariables, buildWorkflowSemanticHint } =
+    args;
   const skillParameters = Array.isArray(skill?.parameters) ? skill.parameters : [];
   const paramMap = new Map<string, TemplateWorkflowParamSeed>();
   const manifestBindings = Array.isArray(template.templateAssetManifest?.renderPlan?.bindings)
@@ -48,14 +43,20 @@ export function buildTemplateWorkflowParamSeeds(args: {
   const manifestFieldMap = new Map(
     Array.isArray(template.templateAssetManifest?.templateFieldSpecs)
       ? template.templateAssetManifest.templateFieldSpecs.map((field) => [field.fieldId, field])
-      : [],
+      : []
   );
   const bilingualBaseKeyByVariant = buildBilingualBaseKeyMap([
     ...skillParameterKeys,
     ...manifestBindings.map((binding) => variableToKey(binding.variablePath)).filter(Boolean),
-    ...uniqueVariables(template.variables || []).map((variable) => variableToKey(variable)).filter(Boolean),
+    ...uniqueVariables(template.variables || [])
+      .map((variable) => variableToKey(variable))
+      .filter(Boolean),
   ]);
-  const suggestionMetaByKey = buildTemplateSuggestionMetaMap(template, bilingualBaseKeyByVariant, pickFirstNonEmptyString);
+  const suggestionMetaByKey = buildTemplateSuggestionMetaMap(
+    template,
+    bilingualBaseKeyByVariant,
+    pickFirstNonEmptyString
+  );
   const bindingFieldIdByKey = manifestBindings.reduce<Map<string, string>>((acc, binding) => {
     const bindingKey = variableToKey(binding.variablePath);
     const fieldId = String(binding.fieldId || '').trim();
@@ -64,23 +65,28 @@ export function buildTemplateWorkflowParamSeeds(args: {
     }
     return acc;
   }, new Map());
-  const manifestRenderPathsByKey = manifestBindings.reduce<Map<string, string[]>>((acc, binding) => {
-    const rawBindingKey = normalizeTemplateWorkflowParamKey(
-      normalizeTemplateWorkflowRenderPath(String(binding.variablePath || '')) || '',
-    );
-    const fieldId = normalizeTemplateWorkflowParamKey(String(binding.fieldId || '').trim());
-    const key = fieldId || bilingualBaseKeyByVariant.get(rawBindingKey) || rawBindingKey;
-    const renderPath = normalizeTemplateWorkflowRenderPath(String(binding.variablePath || ''));
-    if (!key || !renderPath) {
+  const manifestRenderPathsByKey = manifestBindings.reduce<Map<string, string[]>>(
+    (acc, binding) => {
+      const rawBindingKey = normalizeTemplateWorkflowParamKey(
+        normalizeTemplateWorkflowRenderPath(String(binding.variablePath || '')) || ''
+      );
+      const fieldId = normalizeTemplateWorkflowParamKey(String(binding.fieldId || '').trim());
+      const key = fieldId || bilingualBaseKeyByVariant.get(rawBindingKey) || rawBindingKey;
+      const renderPath = normalizeTemplateWorkflowRenderPath(String(binding.variablePath || ''));
+      if (!key || !renderPath) {
+        return acc;
+      }
+      const existing = acc.get(key) || [];
+      if (!existing.includes(renderPath)) {
+        acc.set(key, [...existing, renderPath]);
+      }
       return acc;
-    }
-    const existing = acc.get(key) || [];
-    if (!existing.includes(renderPath)) {
-      acc.set(key, [...existing, renderPath]);
-    }
-    return acc;
-  }, new Map());
-  const variableRenderPathsByKey = uniqueVariables(template.variables || []).reduce<Map<string, string[]>>((acc, variable) => {
+    },
+    new Map()
+  );
+  const variableRenderPathsByKey = uniqueVariables(template.variables || []).reduce<
+    Map<string, string[]>
+  >((acc, variable) => {
     const rawVariableKey = normalizeTemplateWorkflowParamKey(variableToKey(variable));
     const key = bilingualBaseKeyByVariant.get(rawVariableKey) || rawVariableKey;
     const renderPath = normalizeTemplateWorkflowRenderPath(variable);
@@ -100,12 +106,14 @@ export function buildTemplateWorkflowParamSeeds(args: {
       return;
     }
     const existing = resolvedRenderPathsByKey.get(normalizedKey) || [];
-    const merged = Array.from(new Set([
-      ...existing,
-      ...renderPaths
-        .map((item) => normalizeTemplateWorkflowRenderPath(item))
-        .filter((item): item is string => Boolean(item)),
-    ]));
+    const merged = Array.from(
+      new Set([
+        ...existing,
+        ...renderPaths
+          .map((item) => normalizeTemplateWorkflowRenderPath(item))
+          .filter((item): item is string => Boolean(item)),
+      ])
+    );
     if (merged.length > 0) {
       resolvedRenderPathsByKey.set(normalizedKey, merged);
     }
@@ -114,23 +122,26 @@ export function buildTemplateWorkflowParamSeeds(args: {
   manifestRenderPathsByKey.forEach((renderPaths, key) => appendRenderPaths(key, renderPaths));
 
   const suggestions = Array.isArray(template.suggestions) ? template.suggestions : [];
-  const suggestionRenderPathsByKey = suggestions.reduce<Map<string, string[]>>((acc, suggestion) => {
-    const rawName = String(suggestion?.suggestedName || '').trim();
-    const renderPath = normalizeTemplateWorkflowRenderPath(rawName);
-    if (!renderPath) {
+  const suggestionRenderPathsByKey = suggestions.reduce<Map<string, string[]>>(
+    (acc, suggestion) => {
+      const rawName = String(suggestion?.suggestedName || '').trim();
+      const renderPath = normalizeTemplateWorkflowRenderPath(rawName);
+      if (!renderPath) {
+        return acc;
+      }
+      const rawKey = normalizeTemplateWorkflowParamKey(variableToKey(rawName));
+      const key = bilingualBaseKeyByVariant.get(rawKey) || rawKey;
+      if (!key) {
+        return acc;
+      }
+      const existing = acc.get(key) || [];
+      if (!existing.includes(renderPath)) {
+        acc.set(key, [...existing, renderPath]);
+      }
       return acc;
-    }
-    const rawKey = normalizeTemplateWorkflowParamKey(variableToKey(rawName));
-    const key = bilingualBaseKeyByVariant.get(rawKey) || rawKey;
-    if (!key) {
-      return acc;
-    }
-    const existing = acc.get(key) || [];
-    if (!existing.includes(renderPath)) {
-      acc.set(key, [...existing, renderPath]);
-    }
-    return acc;
-  }, new Map());
+    },
+    new Map()
+  );
   suggestionRenderPathsByKey.forEach((renderPaths, key) => {
     if (!resolvedRenderPathsByKey.has(key)) {
       appendRenderPaths(key, renderPaths);
@@ -151,7 +162,7 @@ export function buildTemplateWorkflowParamSeeds(args: {
       field?.description,
       parameter?.usage,
       parameter?.displayName,
-      `模板参数 ${key}`,
+      `模板参数 ${key}`
     );
     const displayName = resolveTemplateWorkflowParamLabel(
       suggestionMeta?.displayName,
@@ -159,21 +170,16 @@ export function buildTemplateWorkflowParamSeeds(args: {
       parameter?.displayName,
       parameter?.example,
       field?.description,
-      key,
+      key
     );
 
     const arrayMatch = key.match(/^(.+\[\])\.(.+)$/);
     const existing = paramMap.get(key);
     if (existing) {
       existing.required = existing.required || parameter?.required !== false;
-      existing.displayName = pickFirstNonEmptyString(
-        existing.displayName,
-        displayName,
-      );
-      existing.description = pickFirstNonEmptyString(
-        existing.description,
-        description,
-      ) || existing.description;
+      existing.displayName = pickFirstNonEmptyString(existing.displayName, displayName);
+      existing.description =
+        pickFirstNonEmptyString(existing.description, description) || existing.description;
       existing.groupLabel = pickFirstNonEmptyString(
         existing.groupLabel,
         suggestionMeta?.groupLabel,
@@ -181,11 +187,18 @@ export function buildTemplateWorkflowParamSeeds(args: {
         parameter?.sheetName,
         parameter?.chapter,
         parameter?.section,
-        parameter?.group,
+        parameter?.group
       );
-      existing.localizedVariants = mergeLocalizedVariants(existing.localizedVariants, suggestionMeta?.localizedVariants);
+      existing.localizedVariants = mergeLocalizedVariants(
+        existing.localizedVariants,
+        suggestionMeta?.localizedVariants
+      );
       if (existing.exampleValue === undefined) {
-        existing.exampleValue = normalizeWorkflowExampleValue(parameter?.example, parameter?.dataType, buildWorkflowSemanticHint);
+        existing.exampleValue = normalizeWorkflowExampleValue(
+          parameter?.example,
+          parameter?.dataType,
+          buildWorkflowSemanticHint
+        );
       }
       if (!existing.renderPath) {
         existing.renderPath = normalizeWorkflowInputRenderPath(resolvedRenderPathsByKey.get(key));
@@ -196,8 +209,16 @@ export function buildTemplateWorkflowParamSeeds(args: {
     paramMap.set(key, {
       key,
       required: parameter?.required !== false,
-      type: normalizeWorkflowInputParamType(parameter?.dataType ?? field?.type, key, buildWorkflowSemanticHint),
-      exampleValue: normalizeWorkflowExampleValue(parameter?.example, parameter?.dataType, buildWorkflowSemanticHint),
+      type: normalizeWorkflowInputParamType(
+        parameter?.dataType ?? field?.type,
+        key,
+        buildWorkflowSemanticHint
+      ),
+      exampleValue: normalizeWorkflowExampleValue(
+        parameter?.example,
+        parameter?.dataType,
+        buildWorkflowSemanticHint
+      ),
       description,
       displayName,
       groupLabel: pickFirstNonEmptyString(
@@ -206,7 +227,7 @@ export function buildTemplateWorkflowParamSeeds(args: {
         parameter?.sheetName,
         parameter?.chapter,
         parameter?.section,
-        parameter?.group,
+        parameter?.group
       ),
       localizedVariants: suggestionMeta?.localizedVariants,
       paramKind: arrayMatch ? 'array' : 'scalar',
@@ -224,9 +245,8 @@ export function buildTemplateWorkflowParamSeeds(args: {
     return manifestBindings
       .filter((binding) => {
         const rawKey = variableToKey(binding.variablePath);
-        const key = String(binding.fieldId || '').trim()
-          || bilingualBaseKeyByVariant.get(rawKey)
-          || rawKey;
+        const key =
+          String(binding.fieldId || '').trim() || bilingualBaseKeyByVariant.get(rawKey) || rawKey;
         if (!key || seen.has(key)) {
           return false;
         }
@@ -235,9 +255,8 @@ export function buildTemplateWorkflowParamSeeds(args: {
       })
       .map((binding) => {
         const rawKey = variableToKey(binding.variablePath);
-        const key = String(binding.fieldId || '').trim()
-          || bilingualBaseKeyByVariant.get(rawKey)
-          || rawKey;
+        const key =
+          String(binding.fieldId || '').trim() || bilingualBaseKeyByVariant.get(rawKey) || rawKey;
         const field = manifestFieldMap.get(binding.fieldId);
         const suggestionMeta = suggestionMetaByKey.get(key);
         return {
@@ -247,12 +266,12 @@ export function buildTemplateWorkflowParamSeeds(args: {
           description: resolveTemplateWorkflowParamLabel(
             suggestionMeta?.description,
             field?.description,
-            `模板参数 ${key}`,
+            `模板参数 ${key}`
           ),
           displayName: resolveTemplateWorkflowParamLabel(
             suggestionMeta?.displayName,
             field?.description,
-            key,
+            key
           ),
           localizedVariants: suggestionMeta?.localizedVariants,
           paramKind: 'scalar' as const,
@@ -262,11 +281,10 @@ export function buildTemplateWorkflowParamSeeds(args: {
       });
   }
 
-  const variables = uniqueVariables(template.variables || [])
-    .filter((variable) => {
-      const key = variableToKey(variable);
-      return !key.includes('{#') && !key.includes('{/');
-    });
+  const variables = uniqueVariables(template.variables || []).filter((variable) => {
+    const key = variableToKey(variable);
+    return !key.includes('{#') && !key.includes('{/');
+  });
 
   const seen = new Set<string>();
   return variables.reduce<TemplateWorkflowParamSeed[]>((acc, variable) => {
@@ -283,12 +301,9 @@ export function buildTemplateWorkflowParamSeeds(args: {
       type: 'string' as WorkflowInputParamType,
       description: resolveTemplateWorkflowParamLabel(
         suggestionMeta?.description,
-        `模板参数 ${key}`,
+        `模板参数 ${key}`
       ),
-      displayName: resolveTemplateWorkflowParamLabel(
-        suggestionMeta?.displayName,
-        key,
-      ),
+      displayName: resolveTemplateWorkflowParamLabel(suggestionMeta?.displayName, key),
       localizedVariants: suggestionMeta?.localizedVariants,
       paramKind: 'scalar' as const,
       fieldName: key,
@@ -300,12 +315,14 @@ export function buildTemplateWorkflowParamSeeds(args: {
 
 export function resolveTemplateWorkflowTargetLanguages(
   template: CarboneTemplateMeta,
-  paramSeeds: TemplateWorkflowParamSeed[],
+  paramSeeds: TemplateWorkflowParamSeed[]
 ): string[] {
-  const manifestTargetLanguages = Array.isArray(template.templateAssetManifest?.languageProfile?.targetLanguages)
+  const manifestTargetLanguages = Array.isArray(
+    template.templateAssetManifest?.languageProfile?.targetLanguages
+  )
     ? template.templateAssetManifest.languageProfile.targetLanguages
-      .map((item) => normalizeTemplateWorkflowLanguageCode(item))
-      .filter((item): item is string => item === 'ja' || item === 'en')
+        .map((item) => normalizeTemplateWorkflowLanguageCode(item))
+        .filter((item): item is string => item === 'ja' || item === 'en')
     : [];
   if (manifestTargetLanguages.length > 0) {
     return Array.from(new Set(manifestTargetLanguages));
@@ -364,11 +381,16 @@ export function normalizeTemplateWorkflowRenderPath(path: string | undefined): s
     return carboneBindingMatch[1].trim();
   }
 
-  return trimmed.replace(/^d\./, '').replace(/^data\./, '').trim() || undefined;
+  return (
+    trimmed
+      .replace(/^d\./, '')
+      .replace(/^data\./, '')
+      .trim() || undefined
+  );
 }
 
 export function normalizeWorkflowInputRenderPath(
-  renderPath: string | string[] | undefined,
+  renderPath: string | string[] | undefined
 ): string | string[] | undefined {
   if (typeof renderPath === 'string') {
     const normalized = normalizeTemplateWorkflowRenderPath(renderPath);
@@ -377,11 +399,15 @@ export function normalizeWorkflowInputRenderPath(
   if (!Array.isArray(renderPath)) {
     return undefined;
   }
-  const normalized = Array.from(new Set(
-    renderPath
-      .map((item) => normalizeTemplateWorkflowRenderPath(typeof item === 'string' ? item : undefined))
-      .filter((item): item is string => Boolean(item)),
-  ));
+  const normalized = Array.from(
+    new Set(
+      renderPath
+        .map((item) =>
+          normalizeTemplateWorkflowRenderPath(typeof item === 'string' ? item : undefined)
+        )
+        .filter((item): item is string => Boolean(item))
+    )
+  );
   if (normalized.length === 0) {
     return undefined;
   }
@@ -389,7 +415,7 @@ export function normalizeWorkflowInputRenderPath(
 }
 
 export function resolveSingleWorkflowInputRenderPath(
-  renderPath: string | string[] | undefined,
+  renderPath: string | string[] | undefined
 ): string | undefined {
   const normalized = normalizeWorkflowInputRenderPath(renderPath);
   return typeof normalized === 'string' ? normalized : undefined;
@@ -398,11 +424,12 @@ export function resolveSingleWorkflowInputRenderPath(
 export function resolveDocumentWorkflowBindingPaths(
   templateBinding: unknown,
   renderPath: string | string[] | undefined,
-  fallbackKey: string,
+  fallbackKey: string
 ): string[] {
-  const normalizedTemplateBinding = typeof templateBinding === 'string'
-    ? normalizeTemplateWorkflowRenderPath(templateBinding)
-    : undefined;
+  const normalizedTemplateBinding =
+    typeof templateBinding === 'string'
+      ? normalizeTemplateWorkflowRenderPath(templateBinding)
+      : undefined;
   if (normalizedTemplateBinding) {
     return [normalizedTemplateBinding];
   }
@@ -422,23 +449,29 @@ export function resolveDocumentWorkflowBindingPaths(
 function buildTemplateSuggestionMetaMap(
   template: CarboneTemplateMeta,
   bilingualBaseKeyByVariant: Map<string, string>,
-  pickFirstNonEmptyString: PickFirstNonEmptyString,
-): Map<string, {
-  displayName?: string;
-  description?: string;
-  groupLabel?: string;
-  localizedVariants?: string[];
-}> {
-  const suggestions = Array.isArray(template.suggestions) ? template.suggestions : [];
-  const aggregated = new Map<string, {
+  pickFirstNonEmptyString: PickFirstNonEmptyString
+): Map<
+  string,
+  {
     displayName?: string;
     description?: string;
     groupLabel?: string;
-    localizedVariants: string[];
-    hasBaseVariant: boolean;
-    displayNamePriority: number;
-    descriptionPriority: number;
-  }>();
+    localizedVariants?: string[];
+  }
+> {
+  const suggestions = Array.isArray(template.suggestions) ? template.suggestions : [];
+  const aggregated = new Map<
+    string,
+    {
+      displayName?: string;
+      description?: string;
+      groupLabel?: string;
+      localizedVariants: string[];
+      hasBaseVariant: boolean;
+      displayNamePriority: number;
+      descriptionPriority: number;
+    }
+  >();
 
   suggestions.forEach((suggestion) => {
     const rawKey = normalizeTemplateWorkflowParamKey(String(suggestion?.suggestedName || ''));
@@ -451,11 +484,11 @@ function buildTemplateSuggestionMetaMap(
     const priority = getTemplateWorkflowLanguageVariantPriority(variant);
     const nextDisplayName = resolveTemplateWorkflowParamLabel(
       details.description,
-      suggestion?.originalText,
+      suggestion?.originalText
     );
     const nextDescription = resolveTemplateWorkflowParamLabel(
       details.significance,
-      details.description,
+      details.description
     );
     const existing = aggregated.get(key) || {
       localizedVariants: [],
@@ -476,41 +509,49 @@ function buildTemplateSuggestionMetaMap(
       existing.groupLabel,
       details.chapter,
       details.displayPosition,
-      suggestion?.elementPath,
+      suggestion?.elementPath
     );
     if (variant && !existing.localizedVariants.includes(variant)) {
       existing.localizedVariants.push(variant);
-      existing.localizedVariants.sort((left, right) => (
-        getTemplateWorkflowLanguageVariantPriority(left) - getTemplateWorkflowLanguageVariantPriority(right)
-      ));
+      existing.localizedVariants.sort(
+        (left, right) =>
+          getTemplateWorkflowLanguageVariantPriority(left) -
+          getTemplateWorkflowLanguageVariantPriority(right)
+      );
     } else if (!variant) {
       existing.hasBaseVariant = true;
     }
     aggregated.set(key, existing);
   });
 
-  return new Map(Array.from(aggregated.entries()).map(([key, value]) => [
-    key,
-    {
-      displayName: value.displayName,
-      description: value.description,
-      groupLabel: value.groupLabel,
-      localizedVariants: normalizeLocalizedVariantsForDisplay(
-        value.localizedVariants,
-        value.hasBaseVariant,
-        template.templateAssetManifest?.languageProfile?.sourceLanguage,
-      ),
-    },
-  ]));
+  return new Map(
+    Array.from(aggregated.entries()).map(([key, value]) => [
+      key,
+      {
+        displayName: value.displayName,
+        description: value.description,
+        groupLabel: value.groupLabel,
+        localizedVariants: normalizeLocalizedVariantsForDisplay(
+          value.localizedVariants,
+          value.hasBaseVariant,
+          template.templateAssetManifest?.languageProfile?.sourceLanguage
+        ),
+      },
+    ])
+  );
 }
 
 function extractTemplateWorkflowLanguageVariant(key: string): string | undefined {
-  const match = String(key || '').trim().match(/(?:[_-])(cn|jp|zh|ja|en)$/iu);
+  const match = String(key || '')
+    .trim()
+    .match(/(?:[_-])(cn|jp|zh|ja|en)$/iu);
   return match?.[1]?.toLowerCase();
 }
 
 function getTemplateWorkflowLanguageVariantPriority(variant?: string): number {
-  const normalized = String(variant || '').trim().toLowerCase();
+  const normalized = String(variant || '')
+    .trim()
+    .toLowerCase();
   if (normalized === 'cn' || normalized === 'zh') {
     return 0;
   }
@@ -523,42 +564,66 @@ function getTemplateWorkflowLanguageVariantPriority(variant?: string): number {
   return 3;
 }
 
-function mergeLocalizedVariants(
-  current?: string[],
-  incoming?: string[],
-): string[] | undefined {
+function mergeLocalizedVariants(current?: string[], incoming?: string[]): string[] | undefined {
   const merged = Array.from(new Set([...(current || []), ...(incoming || [])]))
     .filter(Boolean)
-    .sort((left, right) => (
-      getTemplateWorkflowLanguageVariantPriority(left) - getTemplateWorkflowLanguageVariantPriority(right)
-    ));
+    .sort(
+      (left, right) =>
+        getTemplateWorkflowLanguageVariantPriority(left) -
+        getTemplateWorkflowLanguageVariantPriority(right)
+    );
   return merged.length > 0 ? merged : undefined;
 }
 
 function normalizeLocalizedVariantsForDisplay(
   localizedVariants: string[],
   hasBaseVariant: boolean,
-  sourceLanguage?: string,
+  sourceLanguage?: string
 ): string[] | undefined {
-  const normalized = Array.from(new Set((localizedVariants || []).map((item) => String(item || '').trim().toLowerCase()).filter(Boolean)));
-  const normalizedSourceLanguage = normalizeTemplateWorkflowLanguageCode(sourceLanguage)
-    || (hasBaseVariant && normalized.length > 0 ? 'zh' : undefined);
+  const normalized = Array.from(
+    new Set(
+      (localizedVariants || [])
+        .map((item) =>
+          String(item || '')
+            .trim()
+            .toLowerCase()
+        )
+        .filter(Boolean)
+    )
+  );
+  const normalizedSourceLanguage =
+    normalizeTemplateWorkflowLanguageCode(sourceLanguage) ||
+    (hasBaseVariant && normalized.length > 0 ? 'zh' : undefined);
 
-  if (hasBaseVariant && normalizedSourceLanguage && !normalized.includes(normalizedSourceLanguage)) {
+  if (
+    hasBaseVariant &&
+    normalizedSourceLanguage &&
+    !normalized.includes(normalizedSourceLanguage)
+  ) {
     normalized.unshift(normalizedSourceLanguage);
   }
 
-  const merged = Array.from(new Set(normalized))
-    .sort((left, right) => getTemplateWorkflowLanguageVariantPriority(left) - getTemplateWorkflowLanguageVariantPriority(right));
+  const merged = Array.from(new Set(normalized)).sort(
+    (left, right) =>
+      getTemplateWorkflowLanguageVariantPriority(left) -
+      getTemplateWorkflowLanguageVariantPriority(right)
+  );
   return merged.length > 0 ? merged : undefined;
 }
 
 function normalizeTemplateWorkflowLanguageCode(value: unknown): string | undefined {
-  const normalized = String(value || '').trim().toLowerCase();
+  const normalized = String(value || '')
+    .trim()
+    .toLowerCase();
   if (!normalized) {
     return undefined;
   }
-  if (normalized === 'cn' || normalized === 'zh-cn' || normalized === 'zh-hans' || normalized === 'zh-hans-cn') {
+  if (
+    normalized === 'cn' ||
+    normalized === 'zh-cn' ||
+    normalized === 'zh-hans' ||
+    normalized === 'zh-hans-cn'
+  ) {
     return 'zh';
   }
   if (normalized === 'jp' || normalized === 'ja-jp') {
@@ -574,7 +639,7 @@ function normalizeTemplateWorkflowLanguageCode(value: unknown): string | undefin
 }
 
 export function resolveTemplateAssetRenderPlanVersion(
-  templateAssetManifest?: CarboneTemplateMeta['templateAssetManifest'],
+  templateAssetManifest?: CarboneTemplateMeta['templateAssetManifest']
 ): number | undefined {
   if (!templateAssetManifest) {
     return undefined;
@@ -584,16 +649,20 @@ export function resolveTemplateAssetRenderPlanVersion(
 
 export function resolveTemplateAssetFieldCount(
   templateAssetManifest?: CarboneTemplateMeta['templateAssetManifest'],
-  fallbackFieldCount = 0,
+  fallbackFieldCount = 0
 ): number {
   if (!templateAssetManifest) {
     return fallbackFieldCount;
   }
-  return templateAssetManifest.fieldCount || templateAssetManifest.templateFieldSpecs?.length || fallbackFieldCount;
+  return (
+    templateAssetManifest.fieldCount ||
+    templateAssetManifest.templateFieldSpecs?.length ||
+    fallbackFieldCount
+  );
 }
 
 export function resolveTemplateAssetSource(
-  templateAssetManifest?: CarboneTemplateMeta['templateAssetManifest'],
+  templateAssetManifest?: CarboneTemplateMeta['templateAssetManifest']
 ): string {
   return templateAssetManifest?.metadata?.source || 'unknown';
 }
@@ -641,7 +710,9 @@ function normalizeTemplateWorkflowParamLabel(value: unknown): string | undefined
 }
 
 function buildBilingualBaseKeyMap(keys: string[]): Map<string, string> {
-  const normalizedKeys = Array.from(new Set(keys.map((item) => String(item || '').trim()).filter(Boolean)));
+  const normalizedKeys = Array.from(
+    new Set(keys.map((item) => String(item || '').trim()).filter(Boolean))
+  );
   const keySet = new Set(normalizedKeys);
   const map = new Map<string, string>();
   const languageVariants = ['cn', 'jp', 'zh', 'ja', 'en'];
@@ -652,7 +723,9 @@ function buildBilingualBaseKeyMap(keys: string[]): Map<string, string> {
       return;
     }
     const baseKey = match[1];
-    const hasSibling = languageVariants.some((lang) => keySet.has(`${baseKey}_${lang}`) || keySet.has(`${baseKey}-${lang}`));
+    const hasSibling = languageVariants.some(
+      (lang) => keySet.has(`${baseKey}_${lang}`) || keySet.has(`${baseKey}-${lang}`)
+    );
     if (hasSibling) {
       map.set(key, baseKey);
     }
@@ -664,7 +737,7 @@ function buildBilingualBaseKeyMap(keys: string[]): Map<string, string> {
 export function normalizeWorkflowInputParamType(
   dataType: unknown,
   fieldName: string,
-  buildWorkflowSemanticHint: BuildWorkflowSemanticHint,
+  buildWorkflowSemanticHint: BuildWorkflowSemanticHint
 ): WorkflowInputParamType {
   const hint = buildWorkflowSemanticHint(dataType, fieldName);
   if (/\b(number|int|float|double|decimal|amount|price|count|qty|quantity|ratio)\b/.test(hint)) {
@@ -682,7 +755,7 @@ export function normalizeWorkflowInputParamType(
 function normalizeWorkflowExampleValue(
   value: unknown,
   dataType: unknown,
-  buildWorkflowSemanticHint: BuildWorkflowSemanticHint,
+  buildWorkflowSemanticHint: BuildWorkflowSemanticHint
 ): string | number | boolean | undefined {
   if (typeof value === 'string') {
     const trimmed = value.trim();
@@ -709,11 +782,15 @@ function normalizeWorkflowExampleValue(
 }
 
 function variableToKey(variable: string): string {
-  return String(variable || '').replace(/^\{d\./, '').replace(/\}$/, '');
+  return String(variable || '')
+    .replace(/^\{d\./, '')
+    .replace(/\}$/, '');
 }
 
 export function slugFromTemplate(templateId: string): string {
-  return String(templateId || '').replace(/-/g, '').slice(0, 8);
+  return String(templateId || '')
+    .replace(/-/g, '')
+    .slice(0, 8);
 }
 
 export function stripTemplateExtension(fileName: string): string {

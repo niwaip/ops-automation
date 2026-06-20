@@ -1,6 +1,9 @@
 import type { DocumentIR } from '../../../host/adapters/document-ir';
 import type { TemplateCompareResponse, TemplateFieldCandidate } from '../../../api/carbone-api';
-import { deriveWordSectionsFromDocumentIr, type WordDetectedSection } from '../../../host/office/word/chapter';
+import {
+  deriveWordSectionsFromDocumentIr,
+  type WordDetectedSection,
+} from '../../../host/office/word/chapter';
 import { mergeWordCandidatesBySlotForRecognition } from '../../parameter-identify/shared/word-section-recognition';
 
 export type CompareCandidateSection = {
@@ -13,7 +16,9 @@ export type CompareCandidateSection = {
   isAttachment?: boolean;
 };
 
-function toDisplaySection(section: Omit<CompareCandidateSection, 'previewCandidates' | 'hiddenCandidateCount'>): CompareCandidateSection {
+function toDisplaySection(
+  section: Omit<CompareCandidateSection, 'previewCandidates' | 'hiddenCandidateCount'>
+): CompareCandidateSection {
   return {
     ...section,
     previewCandidates: section.candidates,
@@ -23,7 +28,7 @@ function toDisplaySection(section: Omit<CompareCandidateSection, 'previewCandida
 
 export function buildCompareCandidateSections(
   compareResult: TemplateCompareResponse | null,
-  compareDocumentIr: Record<string, any> | null,
+  compareDocumentIr: Record<string, any> | null
 ): CompareCandidateSection[] {
   if (!compareResult) {
     return [];
@@ -50,18 +55,22 @@ export function buildCompareCandidateSections(
 
     compareResult.candidateFields.forEach((candidate) => {
       const paragraphIndex = candidate.location?.paragraphIndex;
-      const matchedChapter = typeof paragraphIndex === 'number'
-        ? detectedSections.find((chapter: WordDetectedSection) =>
-            paragraphIndex >= chapter.startParagraphIndex && paragraphIndex <= chapter.endParagraphIndex
-          )
-        : undefined;
+      const matchedChapter =
+        typeof paragraphIndex === 'number'
+          ? detectedSections.find(
+              (chapter: WordDetectedSection) =>
+                paragraphIndex >= chapter.startParagraphIndex &&
+                paragraphIndex <= chapter.endParagraphIndex
+            )
+          : undefined;
 
       if (matchedChapter) {
         chapterMap.get(matchedChapter.sectionKey)?.candidates.push(candidate);
         return;
       }
 
-      const fallbackKey = candidate.sectionId || candidate.sectionTitle || `__ungrouped__${candidate.sourceBlockId}`;
+      const fallbackKey =
+        candidate.sectionId || candidate.sectionTitle || `__ungrouped__${candidate.sourceBlockId}`;
       const current: CompareCandidateSection = unmatchedSections.get(fallbackKey) || {
         sectionKey: fallbackKey,
         sectionId: candidate.sectionId,
@@ -82,16 +91,20 @@ export function buildCompareCandidateSections(
   const sectionOrder = new Map(
     compareResult.compareSummary.sections.map((section, index) => [section.sectionId, index])
   );
-  const sectionMap = new Map<string, {
-    sectionKey: string;
-    sectionId?: string;
-    sectionTitle: string;
-    candidates: TemplateCompareResponse['candidateFields'];
-    isAttachment?: boolean;
-  }>();
+  const sectionMap = new Map<
+    string,
+    {
+      sectionKey: string;
+      sectionId?: string;
+      sectionTitle: string;
+      candidates: TemplateCompareResponse['candidateFields'];
+      isAttachment?: boolean;
+    }
+  >();
 
   compareResult.candidateFields.forEach((candidate) => {
-    const sectionKey = candidate.sectionId || candidate.sectionTitle || `__ungrouped__${candidate.sourceBlockId}`;
+    const sectionKey =
+      candidate.sectionId || candidate.sectionTitle || `__ungrouped__${candidate.sourceBlockId}`;
     const current = sectionMap.get(sectionKey) || {
       sectionKey,
       sectionId: candidate.sectionId,
@@ -125,7 +138,7 @@ export function buildCompareCandidateSections(
 export function buildSelectedRecognitionSections(
   compareCandidateSections: CompareCandidateSection[],
   selectedCompareSections: Record<string, boolean>,
-  effectiveCompareCandidateFields: TemplateFieldCandidate[],
+  effectiveCompareCandidateFields: TemplateFieldCandidate[]
 ): CompareCandidateSection[] {
   const selectedSections = compareCandidateSections
     .filter((section) => selectedCompareSections[section.sectionKey] ?? true)
@@ -145,13 +158,15 @@ export function buildSelectedRecognitionSections(
     return [];
   }
 
-  return [{
-    sectionKey: 'selected-word-candidates',
-    sectionId: 'selected-word-candidates',
-    sectionTitle: '已选章节',
-    candidates: mergeWordCandidatesBySlotForRecognition(effectiveCompareCandidateFields),
-    isAttachment: false,
-  }];
+  return [
+    {
+      sectionKey: 'selected-word-candidates',
+      sectionId: 'selected-word-candidates',
+      sectionTitle: '已选章节',
+      candidates: mergeWordCandidatesBySlotForRecognition(effectiveCompareCandidateFields),
+      isAttachment: false,
+    },
+  ];
 }
 
 export function buildWordSectionExcerpt(
@@ -169,9 +184,14 @@ export function buildWordSectionExcerpt(
         return false;
       }
       if (detectedSection) {
-        return paragraphIndex >= detectedSection.startParagraphIndex && paragraphIndex <= detectedSection.endParagraphIndex;
+        return (
+          paragraphIndex >= detectedSection.startParagraphIndex &&
+          paragraphIndex <= detectedSection.endParagraphIndex
+        );
       }
-      return section.candidates.some((candidate) => candidate.location?.paragraphIndex === paragraphIndex);
+      return section.candidates.some(
+        (candidate) => candidate.location?.paragraphIndex === paragraphIndex
+      );
     })
     .map((element) => String(element.text || '').trim())
     .filter(Boolean)
@@ -181,11 +201,17 @@ export function buildWordSectionExcerpt(
     return paragraphLines.join('\n');
   }
 
-  return section.candidates
-    .map((candidate) => [candidate.anchorText, candidate.segmentText, candidate.sampleValue].filter(Boolean).join(' | '))
-    .filter(Boolean)
-    .slice(0, 10)
-    .join('\n') || section.sectionTitle;
+  return (
+    section.candidates
+      .map((candidate) =>
+        [candidate.anchorText, candidate.segmentText, candidate.sampleValue]
+          .filter(Boolean)
+          .join(' | ')
+      )
+      .filter(Boolean)
+      .slice(0, 10)
+      .join('\n') || section.sectionTitle
+  );
 }
 
 export function buildWordSectionDocumentIR(
@@ -193,7 +219,9 @@ export function buildWordSectionDocumentIR(
   section: CompareCandidateSection,
   detectedSection?: WordDetectedSection
 ): DocumentIR {
-  const sourceBlockIds = new Set(section.candidates.map((candidate) => candidate.sourceBlockId).filter(Boolean));
+  const sourceBlockIds = new Set(
+    section.candidates.map((candidate) => candidate.sourceBlockId).filter(Boolean)
+  );
   const paragraphIndexes = new Set(
     section.candidates
       .map((candidate) => candidate.location?.paragraphIndex)
@@ -211,7 +239,10 @@ export function buildWordSectionDocumentIR(
         return false;
       }
       if (detectedSection) {
-        return paragraphIndex >= detectedSection.startParagraphIndex && paragraphIndex <= detectedSection.endParagraphIndex;
+        return (
+          paragraphIndex >= detectedSection.startParagraphIndex &&
+          paragraphIndex <= detectedSection.endParagraphIndex
+        );
       }
       return paragraphIndexes.has(paragraphIndex);
     }

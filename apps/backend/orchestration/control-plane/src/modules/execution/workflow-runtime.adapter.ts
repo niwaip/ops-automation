@@ -56,7 +56,7 @@ export class WorkflowRuntimeAdapter implements RuntimeAdapter {
         stepId: request.stepId,
         runtimeType: request.runtimeType,
         input: request.input,
-      },
+      }
     );
 
     const runtimeResult = response.data;

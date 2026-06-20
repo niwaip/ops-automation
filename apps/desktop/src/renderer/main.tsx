@@ -1,7 +1,7 @@
-import ReactDOM from "react-dom/client";
-import { createAuthStore } from "@ops/user-core";
-import { desktopRuntimeConfig } from "./adapters/runtime/runtimeConfig";
-import { ExecutionListExample } from "./examples/execution-list.example";
+import ReactDOM from 'react-dom/client';
+import { createAuthStore } from '@ops/user-core';
+import { desktopRuntimeConfig } from './adapters/runtime/runtimeConfig';
+import { ExecutionListExample } from './examples/execution-list.example';
 
 const authStore = createAuthStore();
 
@@ -16,7 +16,7 @@ function DesktopApp() {
   );
 }
 
-const root = document.getElementById("root");
+const root = document.getElementById('root');
 
 if (root) {
   ReactDOM.createRoot(root).render(<DesktopApp />);

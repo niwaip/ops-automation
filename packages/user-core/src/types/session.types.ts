@@ -1,5 +1,6 @@
-export type SessionState = "IDLE" | "RUNNING" | "HUMAN_CONTROL" | "CLOSED" | "ERROR";
-export type ControlMode = "AGENT_RUNNING" | "HUMAN_CONTROL";
+export type SessionState = 'IDLE' | 'RUNNING' | 'HUMAN_CONTROL' | 'CLOSED' | 'ERROR';
+export type ControlMode = 'AGENT_RUNNING' | 'HUMAN_CONTROL';
+export type SessionBlockingMode = 'confirmation' | 'takeover' | 'forbidden';
 
 export interface WorkerEndpoints {
   novnc?: string;
@@ -19,6 +20,8 @@ export interface Session {
   params?: Record<string, unknown>;
   current_step?: string;
   step_index?: number;
+  blocking_mode?: SessionBlockingMode;
+  blocking_reason?: string;
   created_at: number;
   last_activity: number;
 }
@@ -49,7 +52,7 @@ export interface ContinueSessionRequest {
 
 export interface WorkerPoolStatus {
   available_workers: number;
-  status: "available" | "exhausted";
+  status: 'available' | 'exhausted';
   message: string;
 }
 
@@ -69,5 +72,11 @@ export interface StepResult {
   screenshot?: string;
   text?: string;
   html?: string;
+  confirmation_required?: boolean;
+  confirmation_reason?: string;
+  takeover?: boolean;
+  takeover_reason?: string;
+  replay_forbidden?: boolean;
+  replay_forbidden_reason?: string;
   timestamp: number;
 }

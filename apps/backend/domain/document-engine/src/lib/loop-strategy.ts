@@ -57,11 +57,11 @@ export interface LoopStrategy {
  * 循环范围
  */
 export interface LoopRange {
-  startContainer: string;   // 容器开始标签
-  endContainer: string;     // 容器结束标签
+  startContainer: string; // 容器开始标签
+  endContainer: string; // 容器结束标签
   startPos: number;
   endPos: number;
-  depth: number;            // 嵌套深度
+  depth: number; // 嵌套深度
 }
 
 /**
@@ -123,7 +123,7 @@ export class DocxLoopStrategy implements LoopStrategy {
           endContainer: '</w:tr>',
           startPos: start,
           endPos: end,
-          depth: this.calculateDepth(xml, start)
+          depth: this.calculateDepth(xml, start),
         };
       }
     }
@@ -140,7 +140,7 @@ export class DocxLoopStrategy implements LoopStrategy {
           endContainer: '</w:p>',
           startPos: start,
           endPos: end,
-          depth: this.calculateDepth(xml, start)
+          depth: this.calculateDepth(xml, start),
         };
       }
     }
@@ -160,7 +160,7 @@ export class DocxLoopStrategy implements LoopStrategy {
       errors.push({
         type: 'structural',
         message: '无法确定标记所在的容器',
-        position: startMarker
+        position: startMarker,
       });
       return { valid: false, errors, warnings };
     }
@@ -170,7 +170,7 @@ export class DocxLoopStrategy implements LoopStrategy {
       errors.push({
         type: 'structural',
         message: `循环开始和结束标记不在同类型的容器中: ${startRange.startContainer} vs ${endRange.startContainer}`,
-        position: startMarker
+        position: startMarker,
       });
     }
 
@@ -179,7 +179,7 @@ export class DocxLoopStrategy implements LoopStrategy {
       errors.push({
         type: 'nesting',
         message: `循环开始和结束标记的嵌套深度不一致: ${startRange.depth} vs ${endRange.depth}`,
-        position: startMarker
+        position: startMarker,
       });
     }
 
@@ -196,7 +196,7 @@ export class DocxLoopStrategy implements LoopStrategy {
     return {
       valid: errors.length === 0,
       errors,
-      warnings
+      warnings,
     };
   }
 
@@ -240,7 +240,7 @@ export class XlsxLoopStrategy implements LoopStrategy {
   }
 
   getParagraphTag(): string {
-    return 'c';  // 单元格
+    return 'c'; // 单元格
   }
 
   getCellTag(): string {
@@ -248,7 +248,7 @@ export class XlsxLoopStrategy implements LoopStrategy {
   }
 
   getTextTag(): string {
-    return 'v';  // 值
+    return 'v'; // 值
   }
 
   getLoopContainerPattern(): RegExp {
@@ -269,7 +269,7 @@ export class XlsxLoopStrategy implements LoopStrategy {
           endContainer: '</row>',
           startPos: start,
           endPos: end,
-          depth: 0
+          depth: 0,
         };
       }
     }
@@ -288,7 +288,7 @@ export class XlsxLoopStrategy implements LoopStrategy {
       errors.push({
         type: 'structural',
         message: '无法确定标记所在的行',
-        position: startMarker
+        position: startMarker,
       });
       return { valid: false, errors, warnings };
     }
@@ -310,7 +310,7 @@ export class PptxLoopStrategy implements LoopStrategy {
   }
 
   getRowTag(): string {
-    return 'a:tr';  // 表格行
+    return 'a:tr'; // 表格行
   }
 
   getParagraphTag(): string {
@@ -345,7 +345,7 @@ export class PptxLoopStrategy implements LoopStrategy {
           endContainer: '</a:tr>',
           startPos: start,
           endPos: end,
-          depth: 0
+          depth: 0,
         };
       }
     }
@@ -362,7 +362,7 @@ export class PptxLoopStrategy implements LoopStrategy {
           endContainer: '</p:sp>',
           startPos: start,
           endPos: end,
-          depth: 0
+          depth: 0,
         };
       }
     }
@@ -381,7 +381,7 @@ export class PptxLoopStrategy implements LoopStrategy {
       errors.push({
         type: 'structural',
         message: '无法确定标记所在的容器',
-        position: startMarker
+        position: startMarker,
       });
       return { valid: false, errors, warnings };
     }
@@ -390,7 +390,7 @@ export class PptxLoopStrategy implements LoopStrategy {
       errors.push({
         type: 'structural',
         message: '循环标记跨越不同类型的容器',
-        position: startMarker
+        position: startMarker,
       });
     }
 

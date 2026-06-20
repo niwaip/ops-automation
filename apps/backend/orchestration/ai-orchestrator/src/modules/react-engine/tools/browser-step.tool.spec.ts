@@ -46,7 +46,7 @@ describe('BrowserStepTool', () => {
         action: 'click',
         target: '#submit',
       },
-      baseContext,
+      baseContext
     );
 
     expect(controlPlaneClient.triggerTakeover).toHaveBeenCalledWith(
@@ -62,7 +62,7 @@ describe('BrowserStepTool', () => {
           [TRACE_ID_HEADER]: 'trace-1',
         },
         timeout: 10000,
-      },
+      }
     );
     expect(result.success).toBe(false);
     expect(result.data?.shouldTakeover).toBe(true);

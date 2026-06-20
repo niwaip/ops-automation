@@ -3,24 +3,22 @@ import { PrismaService } from '../prisma/prisma.service';
 import { APPROVAL_STATUS } from './contracts/approval-status';
 import { EXECUTION_EVENT_TYPE } from './contracts/execution-event-type';
 import { EXECUTION_STATUS, ExecutionStatus } from './contracts/execution-status';
-import {
-  CreateExecutionEventOptions,
-} from './execution-event.service';
+import { CreateExecutionEventOptions } from './execution-event.service';
 import { ExecutionInputResolutionService } from './execution-input-resolution.service';
 import { ExecutionStepService } from './execution-step.service';
 
 interface ExecutionFailureHooks {
   emitEvent: (
     executionId: string,
-    eventType: typeof EXECUTION_EVENT_TYPE[keyof typeof EXECUTION_EVENT_TYPE],
+    eventType: (typeof EXECUTION_EVENT_TYPE)[keyof typeof EXECUTION_EVENT_TYPE],
     payload: unknown,
-    options?: CreateExecutionEventOptions,
+    options?: CreateExecutionEventOptions
   ) => Promise<void>;
   updateStatus: (id: string, newStatus: ExecutionStatus) => Promise<void>;
   closeRuntimeSessionQuietly: (
     runtimeSessionId: string,
     executionId: string,
-    reason: string,
+    reason: string
   ) => Promise<void>;
 }
 
@@ -31,7 +29,7 @@ export class ExecutionFailureService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly executionStepService: ExecutionStepService,
-    private readonly executionInputResolutionService: ExecutionInputResolutionService,
+    private readonly executionInputResolutionService: ExecutionInputResolutionService
   ) {}
 
   async failExecutionFromRuntimeStep(
@@ -42,7 +40,7 @@ export class ExecutionFailureService {
       failureCode: string;
       runtimeSessionId?: string;
     },
-    hooks: ExecutionFailureHooks,
+    hooks: ExecutionFailureHooks
   ): Promise<void> {
     await this.prisma.execution.update({
       where: { id: input.executionId },
@@ -55,14 +53,14 @@ export class ExecutionFailureService {
       input.executionId,
       input.stepId,
       'Execution failed before remaining planned steps were executed',
-      hooks,
+      hooks
     );
     await hooks.updateStatus(input.executionId, EXECUTION_STATUS.FAILED);
     if (input.runtimeSessionId) {
       await hooks.closeRuntimeSessionQuietly(
         input.runtimeSessionId,
         input.executionId,
-        'runtime_step_failed',
+        'runtime_step_failed'
       );
     }
   }
@@ -73,7 +71,7 @@ export class ExecutionFailureService {
     stepId: string,
     requiredInputs: unknown[],
     reason: string | undefined,
-    hooks: ExecutionFailureHooks,
+    hooks: ExecutionFailureHooks
   ): Promise<void> {
     const semantic = await this.loadExecutionSemantic(executionId);
     await hooks.updateStatus(executionId, EXECUTION_STATUS.WAITING_INPUT);
@@ -88,14 +86,14 @@ export class ExecutionFailureService {
       {
         runtimeSessionId,
         stepId,
-      },
+      }
     );
   }
 
   async enterPendingApprovalFromRuntimeStep(
     executionId: string,
     reason: string,
-    hooks: Pick<ExecutionFailureHooks, 'updateStatus'>,
+    hooks: Pick<ExecutionFailureHooks, 'updateStatus'>
   ): Promise<void> {
     await this.prisma.execution.update({
       where: { id: executionId },
@@ -105,19 +103,21 @@ export class ExecutionFailureService {
       },
     });
     await hooks.updateStatus(executionId, EXECUTION_STATUS.PENDING_APPROVAL);
-    this.logger.log(`Execution ${executionId} entered pending_approval due to runtime block: ${reason}`);
+    this.logger.log(
+      `Execution ${executionId} entered pending_approval due to runtime block: ${reason}`
+    );
   }
 
   async skipPendingSteps(
     executionId: string,
     currentStepId: string,
     reason: string,
-    hooks: Pick<ExecutionFailureHooks, 'emitEvent'>,
+    hooks: Pick<ExecutionFailureHooks, 'emitEvent'>
   ): Promise<void> {
     const skippedStepIds = await this.executionStepService.skipPendingSteps(
       executionId,
       currentStepId,
-      reason,
+      reason
     );
 
     if (skippedStepIds.length === 0) {
@@ -133,7 +133,7 @@ export class ExecutionFailureService {
       },
       {
         stepId: currentStepId,
-      },
+      }
     );
   }
 
@@ -141,7 +141,7 @@ export class ExecutionFailureService {
     stepId: string,
     executionId: string,
     reason: string,
-    hooks: Pick<ExecutionFailureHooks, 'emitEvent'>,
+    hooks: Pick<ExecutionFailureHooks, 'emitEvent'>
   ): Promise<void> {
     await this.executionStepService.skipSingleStep(stepId, reason);
 
@@ -151,14 +151,14 @@ export class ExecutionFailureService {
       { reason },
       {
         stepId,
-      },
+      }
     );
   }
 
   async enterWaitingInput(
     execution: Record<string, unknown>,
     stepId: string,
-    hooks: Pick<ExecutionFailureHooks, 'emitEvent' | 'updateStatus'>,
+    hooks: Pick<ExecutionFailureHooks, 'emitEvent' | 'updateStatus'>
   ): Promise<void> {
     const missingInputs = this.executionInputResolutionService.getMissingRequiredInputs(execution);
     const semantic = this.extractSemanticFromExecution(execution);
@@ -166,7 +166,7 @@ export class ExecutionFailureService {
     await this.executionStepService.prepareWaitingInputStep(
       execution.id as string,
       stepId,
-      missingInputs,
+      missingInputs
     );
 
     await hooks.updateStatus(execution.id as string, EXECUTION_STATUS.WAITING_INPUT);
@@ -179,12 +179,12 @@ export class ExecutionFailureService {
       },
       {
         stepId,
-      },
+      }
     );
   }
 
   private extractSemanticFromExecution(
-    execution: Record<string, unknown>,
+    execution: Record<string, unknown>
   ): Record<string, unknown> | undefined {
     const normalizedInput = execution.normalizedInputJson as Record<string, unknown> | undefined;
     const semantic = normalizedInput?.semantic;
@@ -195,14 +195,18 @@ export class ExecutionFailureService {
   }
 
   private async loadExecutionSemantic(
-    executionId: string,
+    executionId: string
   ): Promise<Record<string, unknown> | undefined> {
     try {
       const row = await this.prisma.execution.findUnique({
         where: { id: executionId },
         select: { normalizedInputJson: true },
       });
-      if (!row?.normalizedInputJson || typeof row.normalizedInputJson !== 'object' || Array.isArray(row.normalizedInputJson)) {
+      if (
+        !row?.normalizedInputJson ||
+        typeof row.normalizedInputJson !== 'object' ||
+        Array.isArray(row.normalizedInputJson)
+      ) {
         return undefined;
       }
       const semantic = (row.normalizedInputJson as Record<string, unknown>).semantic;

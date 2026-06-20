@@ -13,29 +13,28 @@ export class ExecutionRuntimeSessionService {
     executionId: string;
     runtimeType: string;
   }): Promise<RuntimeSessionSummaryDto> {
-    const response = await axios.post<RuntimeSessionSummaryDto>(`${this.sessionBrokerUrl}/runtime-sessions`, {
-      userId: input.userId,
-      executionId: input.executionId,
-      runtimeType: input.runtimeType,
-    });
+    const response = await axios.post<RuntimeSessionSummaryDto>(
+      `${this.sessionBrokerUrl}/runtime-sessions`,
+      {
+        userId: input.userId,
+        executionId: input.executionId,
+        runtimeType: input.runtimeType,
+      }
+    );
 
     return response.data;
   }
 
-  async closeQuietly(
-    runtimeSessionId: string,
-    executionId: string,
-    reason: string,
-  ): Promise<void> {
+  async closeQuietly(runtimeSessionId: string, executionId: string, reason: string): Promise<void> {
     try {
       await axios.post(`${this.sessionBrokerUrl}/runtime-sessions/${runtimeSessionId}/close`, {});
       this.logger.log(
-        `Runtime session ${runtimeSessionId} closed for execution ${executionId} (${reason})`,
+        `Runtime session ${runtimeSessionId} closed for execution ${executionId} (${reason})`
       );
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.warn(
-        `Failed to close runtime session ${runtimeSessionId} for execution ${executionId} (${reason}): ${errorMessage}`,
+        `Failed to close runtime session ${runtimeSessionId} for execution ${executionId} (${reason}): ${errorMessage}`
       );
     }
   }
@@ -43,18 +42,20 @@ export class ExecutionRuntimeSessionService {
   async freezeQuietly(
     runtimeSessionId: string | null | undefined,
     executionId: string,
-    reason: string,
+    reason: string
   ): Promise<void> {
     if (!runtimeSessionId) {
       return;
     }
 
     try {
-      await axios.post(`${this.sessionBrokerUrl}/runtime-sessions/${runtimeSessionId}/freeze`, { reason });
+      await axios.post(`${this.sessionBrokerUrl}/runtime-sessions/${runtimeSessionId}/freeze`, {
+        reason,
+      });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.warn(
-        `Failed to freeze runtime session ${runtimeSessionId} for execution ${executionId}: ${errorMessage}`,
+        `Failed to freeze runtime session ${runtimeSessionId} for execution ${executionId}: ${errorMessage}`
       );
     }
   }
@@ -62,18 +63,20 @@ export class ExecutionRuntimeSessionService {
   async resumeQuietly(
     runtimeSessionId: string | null | undefined,
     executionId: string,
-    stepId?: string,
+    stepId?: string
   ): Promise<void> {
     if (!runtimeSessionId) {
       return;
     }
 
     try {
-      await axios.post(`${this.sessionBrokerUrl}/runtime-sessions/${runtimeSessionId}/resume`, { stepId });
+      await axios.post(`${this.sessionBrokerUrl}/runtime-sessions/${runtimeSessionId}/resume`, {
+        stepId,
+      });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.warn(
-        `Failed to resume runtime session ${runtimeSessionId} for execution ${executionId}: ${errorMessage}`,
+        `Failed to resume runtime session ${runtimeSessionId} for execution ${executionId}: ${errorMessage}`
       );
     }
   }

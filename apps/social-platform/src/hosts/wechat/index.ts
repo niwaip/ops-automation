@@ -1,5 +1,5 @@
 export const wechatHost = {
-  name: "wechat",
+  name: 'wechat',
   openUrl: (url: string) => {
     void url;
   },

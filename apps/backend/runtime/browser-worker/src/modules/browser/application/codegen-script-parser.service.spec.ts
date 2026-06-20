@@ -4,16 +4,19 @@ describe('CodegenScriptParserService', () => {
   const service = new CodegenScriptParserService();
 
   it('parses goto, role click, text click and keyboard press into browser action steps', () => {
-    const steps = service.parse(`
+    const steps = service.parse(
+      `
       await page.goto('https://example.com/login');
       await page.getByRole('button', { name: '平台登录' }).click();
       await page.getByText('继续执行').click();
       await page.keyboard.press('Enter');
-    `, {
-      backend: 'cli',
-      source: 'manual_takeover',
-      runtimeSessionId: 'runtime-1',
-    });
+    `,
+      {
+        backend: 'cli',
+        source: 'manual_takeover',
+        runtimeSessionId: 'runtime-1',
+      }
+    );
 
     expect(steps).toEqual([
       expect.objectContaining({
@@ -71,15 +74,18 @@ describe('CodegenScriptParserService', () => {
   });
 
   it('parses label, placeholder, testid and role-fill locator forms', () => {
-    const steps = service.parse(`
+    const steps = service.parse(
+      `
       await page.getByLabel('用户名').fill('demo');
       await page.getByPlaceholder('请输入密码').fill('secret');
       await page.getByTestId('submit-login').click();
       await page.getByRole('textbox', { name: '企业编码' }).fill('acme');
-    `, {
-      backend: 'cli',
-      source: 'manual_takeover',
-    });
+    `,
+      {
+        backend: 'cli',
+        source: 'manual_takeover',
+      }
+    );
 
     expect(steps).toEqual([
       expect.objectContaining({
@@ -128,16 +134,19 @@ describe('CodegenScriptParserService', () => {
   });
 
   it('parses hover actions and popup-driven tab switching with page aliases', () => {
-    const steps = service.parse(`
+    const steps = service.parse(
+      `
       const page1Promise = page.waitForEvent('popup');
       await page.getByRole('link', { name: '详情' }).click();
       const page1 = await page1Promise;
       await page1.locator('.row-actions').hover();
       await page1.getByText('继续处理').hover();
-    `, {
-      backend: 'cli',
-      source: 'manual_takeover',
-    });
+    `,
+      {
+        backend: 'cli',
+        source: 'manual_takeover',
+      }
+    );
 
     expect(steps).toEqual([
       expect.objectContaining({

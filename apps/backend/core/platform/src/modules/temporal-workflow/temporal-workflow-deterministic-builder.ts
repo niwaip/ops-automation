@@ -90,7 +90,7 @@ function durationToSeconds(duration: string | undefined, fallbackSeconds = 300):
 }
 
 export function buildDeterministicActivityCodeForWorkflow(
-  activityDef: ActivityDsl['activities'][number],
+  activityDef: ActivityDsl['activities'][number]
 ): string | null {
   if (activityDef.handler === 'browser') {
     return buildDeterministicBrowserActivityCode({ activityDef });
@@ -104,21 +104,17 @@ export function buildDeterministicActivityCodeForWorkflow(
 export function buildDeterministicWorkflowCodeForWorkflow(
   workflowDsl: WorkflowDsl,
   activityDsl: ActivityDsl,
-  deps: DeterministicBuilderDependencies,
+  deps: DeterministicBuilderDependencies
 ): string | null {
-  const {
-    builtinActivityRegistry,
-    workflowConfigService,
-    workflowNormalizationService,
-  } = deps;
+  const { builtinActivityRegistry, workflowConfigService, workflowNormalizationService } = deps;
   const declaredInputKeys = new Set(Object.keys(workflowDsl.inputParams || {}));
   const activitySteps = workflowDsl.steps.filter((step) => step.type === 'activity');
   const isSimpleStaticWorkflow =
-    workflowDsl.steps.length === activitySteps.length
-    && (!workflowDsl.conditionals || workflowDsl.conditionals.length === 0)
-    && (!workflowDsl.signalHandlers || workflowDsl.signalHandlers.length === 0)
-    && (!workflowDsl.queryHandlers || workflowDsl.queryHandlers.length === 0)
-    && !workflowDsl.errorHandling;
+    workflowDsl.steps.length === activitySteps.length &&
+    (!workflowDsl.conditionals || workflowDsl.conditionals.length === 0) &&
+    (!workflowDsl.signalHandlers || workflowDsl.signalHandlers.length === 0) &&
+    (!workflowDsl.queryHandlers || workflowDsl.queryHandlers.length === 0) &&
+    !workflowDsl.errorHandling;
 
   if (!isSimpleStaticWorkflow) {
     return null;
@@ -130,12 +126,14 @@ export function buildDeterministicWorkflowCodeForWorkflow(
   };
 
   const resolveStepActivityDef = (step: WorkflowStep): ActivityDefinition | null => {
-    const stepActivityIdentifier = step?.activityName || extractActivityNameFromRef(step?.activityRef);
+    const stepActivityIdentifier =
+      step?.activityName || extractActivityNameFromRef(step?.activityRef);
     if (!stepActivityIdentifier) {
       return null;
     }
-    const activityDef = activityDsl.activities.find((activity) =>
-      activity.name === stepActivityIdentifier || activity.fn === stepActivityIdentifier,
+    const activityDef = activityDsl.activities.find(
+      (activity) =>
+        activity.name === stepActivityIdentifier || activity.fn === stepActivityIdentifier
     );
     if (!activityDef?.generatedCode) {
       return null;
@@ -148,12 +146,15 @@ export function buildDeterministicWorkflowCodeForWorkflow(
     activityDef: resolveStepActivityDef(step),
   }));
   if (
-    browserActivityPairs.length > 0
-    && browserActivityPairs.every((pair) => pair.activityDef?.handler === 'browser')
+    browserActivityPairs.length > 0 &&
+    browserActivityPairs.every((pair) => pair.activityDef?.handler === 'browser')
   ) {
     return buildFixedBrowserPhaseWorkflowCodeHelper({
       workflowDsl,
-      browserActivityPairs: browserActivityPairs as Array<{ step: WorkflowStep; activityDef: ActivityDefinition }>,
+      browserActivityPairs: browserActivityPairs as Array<{
+        step: WorkflowStep;
+        activityDef: ActivityDefinition;
+      }>,
       durationToTimedeltaCode,
       buildExecuteActivityTimeoutLines,
     });
@@ -163,13 +164,18 @@ export function buildDeterministicWorkflowCodeForWorkflow(
     const [firstStep, secondStep] = activitySteps;
     const firstActivityDef = resolveStepActivityDef(firstStep);
     const secondActivityDef = resolveStepActivityDef(secondStep);
-    const firstBuiltinKey = firstActivityDef ? builtinActivityRegistry.getByFn(firstActivityDef.fn)?.key : null;
-    const secondBuiltinKey = secondActivityDef ? builtinActivityRegistry.getByFn(secondActivityDef.fn)?.key : null;
+    const firstBuiltinKey = firstActivityDef
+      ? builtinActivityRegistry.getByFn(firstActivityDef.fn)?.key
+      : null;
+    const secondBuiltinKey = secondActivityDef
+      ? builtinActivityRegistry.getByFn(secondActivityDef.fn)?.key
+      : null;
     if (
-      firstActivityDef
-      && secondActivityDef
-      && firstBuiltinKey === HTTP_REQUEST_ACTIVITY_KEY
-      && (secondBuiltinKey === STRUCTURED_TRANSFORM_ACTIVITY_KEY || secondBuiltinKey === AI_STRUCTURED_TRANSFORM_ACTIVITY_KEY)
+      firstActivityDef &&
+      secondActivityDef &&
+      firstBuiltinKey === HTTP_REQUEST_ACTIVITY_KEY &&
+      (secondBuiltinKey === STRUCTURED_TRANSFORM_ACTIVITY_KEY ||
+        secondBuiltinKey === AI_STRUCTURED_TRANSFORM_ACTIVITY_KEY)
     ) {
       return buildFixedHttpRequestStructuredTransformWorkflowCodeHelper({
         workflowDsl,
@@ -181,9 +187,13 @@ export function buildDeterministicWorkflowCodeForWorkflow(
           firstStep,
           declaredInputKeys,
           workflowNormalizationService,
-          workflowConfigService,
+          workflowConfigService
         ),
-        transformConfig: getStepStructuredTransformConfig(secondStep, declaredInputKeys, workflowConfigService),
+        transformConfig: getStepStructuredTransformConfig(
+          secondStep,
+          declaredInputKeys,
+          workflowConfigService
+        ),
         durationToTimedeltaCode,
         buildExecuteActivityTimeoutLines,
         toPythonLiteral,
@@ -214,9 +224,8 @@ export function buildDeterministicWorkflowCodeForWorkflow(
       buildPythonJsonLiteral,
       toPythonLiteral,
       resolveDocumentWorkflowBindingPaths,
-      normalizeWorkflowPolicyRequiredMode: (currentMode, required) => (
-        workflowNormalizationService.normalizeWorkflowPolicyRequiredMode(currentMode, required)
-      ),
+      normalizeWorkflowPolicyRequiredMode: (currentMode, required) =>
+        workflowNormalizationService.normalizeWorkflowPolicyRequiredMode(currentMode, required),
     });
   }
   if (builtinKey === HTTP_REQUEST_ACTIVITY_KEY) {
@@ -228,19 +237,26 @@ export function buildDeterministicWorkflowCodeForWorkflow(
         step,
         declaredInputKeys,
         workflowNormalizationService,
-        workflowConfigService,
+        workflowConfigService
       ),
       durationToTimedeltaCode,
       buildExecuteActivityTimeoutLines,
       toPythonLiteral,
     });
   }
-  if (builtinKey === STRUCTURED_TRANSFORM_ACTIVITY_KEY || builtinKey === AI_STRUCTURED_TRANSFORM_ACTIVITY_KEY) {
+  if (
+    builtinKey === STRUCTURED_TRANSFORM_ACTIVITY_KEY ||
+    builtinKey === AI_STRUCTURED_TRANSFORM_ACTIVITY_KEY
+  ) {
     return buildFixedStructuredTransformWorkflowCodeHelper({
       workflowDsl,
       activityDef,
       step,
-      transformConfig: getStepStructuredTransformConfig(step, declaredInputKeys, workflowConfigService),
+      transformConfig: getStepStructuredTransformConfig(
+        step,
+        declaredInputKeys,
+        workflowConfigService
+      ),
       durationToTimedeltaCode,
       buildExecuteActivityTimeoutLines,
       toPythonLiteral,
@@ -267,7 +283,7 @@ export function buildDeterministicWorkflowCodeForWorkflow(
       step,
       stepConfigKey,
       defaultStepConfig,
-      workflowNormalizationService,
+      workflowNormalizationService
     );
     return buildFixedBuiltinWorkflowCodeHelper({
       workflowDsl,
@@ -280,17 +296,27 @@ export function buildDeterministicWorkflowCodeForWorkflow(
     });
   }
 
-
-  const workflowClassName = workflowDsl.workflowClassName?.trim()
-    || `${(workflowDsl.name || 'Custom').replace(/\s+/g, '') || 'Custom'}Workflow`;
-  const workflowDisplayName = workflowDsl.workflowDefnName?.trim() || workflowDsl.name || workflowClassName;
+  const workflowClassName =
+    workflowDsl.workflowClassName?.trim() ||
+    `${(workflowDsl.name || 'Custom').replace(/\s+/g, '') || 'Custom'}Workflow`;
+  const workflowDisplayName =
+    workflowDsl.workflowDefnName?.trim() || workflowDsl.name || workflowClassName;
   const inputParams = Object.entries(workflowDsl.inputParams || {});
-  const workflowTimeoutCode = durationToTimedeltaCode(step.startToCloseTimeout || activityDef.timeout || '60s');
-  const executeActivityTimeoutLines = buildExecuteActivityTimeoutLines(step, activityDef.timeout || '60s');
-  const requestTimeoutSeconds = durationToSeconds(step.startToCloseTimeout || activityDef.timeout, 300);
-  const extraActivityInputLines = activityDef.handler === 'carbone'
-    ? [`            "requestTimeoutSeconds": ${requestTimeoutSeconds},`]
-    : [];
+  const workflowTimeoutCode = durationToTimedeltaCode(
+    step.startToCloseTimeout || activityDef.timeout || '60s'
+  );
+  const executeActivityTimeoutLines = buildExecuteActivityTimeoutLines(
+    step,
+    activityDef.timeout || '60s'
+  );
+  const requestTimeoutSeconds = durationToSeconds(
+    step.startToCloseTimeout || activityDef.timeout,
+    300
+  );
+  const extraActivityInputLines =
+    activityDef.handler === 'carbone'
+      ? [`            "requestTimeoutSeconds": ${requestTimeoutSeconds},`]
+      : [];
 
   const normalizeLines = inputParams.map(([key, config]) => {
     const defaultValue = config?.defaultValue ?? '';
@@ -365,7 +391,7 @@ function normalizeHttpRequestStepConfig(
   step: WorkflowStep,
   declaredInputKeys: Set<string>,
   workflowNormalizationService: TemporalWorkflowNormalizationService,
-  workflowConfigService: TemporalWorkflowConfigService,
+  workflowConfigService: TemporalWorkflowConfigService
 ): Record<string, any> {
   const httpConfig = getStepHttpRequestConfig(step, workflowNormalizationService);
   return workflowConfigService.normalizeHttpRequestConfig(httpConfig, declaredInputKeys);
@@ -373,11 +399,12 @@ function normalizeHttpRequestStepConfig(
 
 function getStepHttpRequestConfig(
   step: WorkflowStep,
-  workflowNormalizationService: TemporalWorkflowNormalizationService,
+  workflowNormalizationService: TemporalWorkflowNormalizationService
 ): Record<string, any> {
-  const rawInput = step?.input && typeof step.input === 'object' && !Array.isArray(step.input)
-    ? step.input as Record<string, any>
-    : {};
+  const rawInput =
+    step?.input && typeof step.input === 'object' && !Array.isArray(step.input)
+      ? (step.input as Record<string, any>)
+      : {};
   const rawConfig = rawInput[HTTP_REQUEST_STEP_CONFIG_KEY];
   if (!rawConfig || typeof rawConfig !== 'object' || Array.isArray(rawConfig)) {
     return {};
@@ -388,30 +415,35 @@ function getStepHttpRequestConfig(
 function getStepStructuredTransformConfig(
   step: WorkflowStep,
   declaredInputKeys: Set<string>,
-  workflowConfigService: TemporalWorkflowConfigService,
+  workflowConfigService: TemporalWorkflowConfigService
 ): Record<string, any> {
-  const rawInput = step?.input && typeof step.input === 'object' && !Array.isArray(step.input)
-    ? step.input as Record<string, any>
-    : {};
+  const rawInput =
+    step?.input && typeof step.input === 'object' && !Array.isArray(step.input)
+      ? (step.input as Record<string, any>)
+      : {};
   const rawConfig = rawInput[STRUCTURED_TRANSFORM_STEP_CONFIG_KEY];
   if (!rawConfig || typeof rawConfig !== 'object' || Array.isArray(rawConfig)) {
     return workflowConfigService.normalizeStructuredTransformConfig({}, declaredInputKeys);
   }
-  return workflowConfigService.normalizeStructuredTransformConfig(rawConfig as Record<string, any>, declaredInputKeys);
+  return workflowConfigService.normalizeStructuredTransformConfig(
+    rawConfig as Record<string, any>,
+    declaredInputKeys
+  );
 }
 
 function getStepBuiltinConfig(
   step: WorkflowStep,
   stepConfigKey: string,
   defaultStepConfig: Record<string, unknown>,
-  workflowNormalizationService: TemporalWorkflowNormalizationService,
+  workflowNormalizationService: TemporalWorkflowNormalizationService
 ): Record<string, unknown> {
   if (!stepConfigKey) {
     return defaultStepConfig;
   }
-  const rawInput = step?.input && typeof step.input === 'object' && !Array.isArray(step.input)
-    ? (step.input as Record<string, unknown>)
-    : {};
+  const rawInput =
+    step?.input && typeof step.input === 'object' && !Array.isArray(step.input)
+      ? (step.input as Record<string, unknown>)
+      : {};
   const rawConfig = rawInput[stepConfigKey];
   if (!rawConfig || typeof rawConfig !== 'object' || Array.isArray(rawConfig)) {
     return defaultStepConfig;
@@ -425,4 +457,3 @@ function getStepBuiltinConfig(
   }
   return defaultStepConfig;
 }
-

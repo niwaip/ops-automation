@@ -1,4 +1,9 @@
-import { Injectable, BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SkillConfigDto, SkillPermissionDTO } from './interfaces';
 import { SkillEnrichmentService } from './skill-enrichment.service';
@@ -13,7 +18,7 @@ function isValidUUID(str: string): boolean {
 export class SkillAccessService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly skillEnrichmentService: SkillEnrichmentService,
+    private readonly skillEnrichmentService: SkillEnrichmentService
   ) {}
 
   async ensureSystemRoles(): Promise<void> {
@@ -90,8 +95,11 @@ export class SkillAccessService {
     const roleIds = userRoles.map((ur: any) => ur.roleId);
     const roleNames = new Set(userRoles.map((ur: any) => ur.role?.name).filter(Boolean));
 
-    const isAdmin = userRoles.some((ur: any) => ur.role.name === 'admin'
-      || (ur.role.permissions as Record<string, boolean>)?.['all_skills'] === true);
+    const isAdmin = userRoles.some(
+      (ur: any) =>
+        ur.role.name === 'admin' ||
+        (ur.role.permissions as Record<string, boolean>)?.['all_skills'] === true
+    );
 
     if (isAdmin) {
       return this.listAllActiveSkills();
@@ -154,8 +162,11 @@ export class SkillAccessService {
       include: { role: true },
     });
 
-    const isAdmin = userRoles.some((ur: any) => ur.role.name === 'admin'
-      || (ur.role.permissions as Record<string, boolean>)?.['all_skills'] === true);
+    const isAdmin = userRoles.some(
+      (ur: any) =>
+        ur.role.name === 'admin' ||
+        (ur.role.permissions as Record<string, boolean>)?.['all_skills'] === true
+    );
     if (isAdmin) {
       return true;
     }
@@ -195,7 +206,11 @@ export class SkillAccessService {
     return !!permission;
   }
 
-  async grantSkillToRole(skillId: string, roleId: string, grantedBy: string): Promise<SkillPermissionDTO> {
+  async grantSkillToRole(
+    skillId: string,
+    roleId: string,
+    grantedBy: string
+  ): Promise<SkillPermissionDTO> {
     if (!isValidUUID(skillId)) {
       throw new ForbiddenException('Invalid skillId format');
     }
@@ -279,6 +294,8 @@ export class SkillAccessService {
       where: { isActive: true },
       orderBy: { createdAt: 'desc' },
     });
-    return this.skillEnrichmentService.enrichSkillsWithPublication(skills, { hideHistoricalPublishedVersions: true });
+    return this.skillEnrichmentService.enrichSkillsWithPublication(skills, {
+      hideHistoricalPublishedVersions: true,
+    });
   }
 }

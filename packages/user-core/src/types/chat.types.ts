@@ -1,13 +1,13 @@
 export enum StreamEventType {
-  THOUGHT = "thought",
-  ACTION = "action",
-  OBSERVATION = "observation",
-  RESULT = "result",
-  WAITING_INPUT = "waiting_input",
-  ERROR = "error",
-  PARAMS_CONFIRM = "params_confirm",
-  FILE_UPLOAD = "file_upload",
-  PENDING_APPROVAL = "pending_approval",
+  THOUGHT = 'thought',
+  ACTION = 'action',
+  OBSERVATION = 'observation',
+  RESULT = 'result',
+  WAITING_INPUT = 'waiting_input',
+  ERROR = 'error',
+  PARAMS_CONFIRM = 'params_confirm',
+  FILE_UPLOAD = 'file_upload',
+  PENDING_APPROVAL = 'pending_approval',
 }
 
 export interface StreamEvent {
@@ -20,14 +20,14 @@ export interface StreamEvent {
 export interface PromptDebugPayload {
   systemPrompt: string;
   userPrompt: string;
-  debugSource?: "planner" | "react-engine";
+  debugSource?: 'planner' | 'react-engine';
   systemPromptSectionKeys?: string[];
   systemPromptSectionSources?: string[];
   userPromptSectionKeys?: string[];
   userPromptSectionSources?: string[];
   modelId?: string;
   llmRequestMessages?: Array<{
-    role: "system" | "user" | "assistant";
+    role: 'system' | 'user' | 'assistant';
     content: string;
   }>;
   llmResponseText?: string;
@@ -40,7 +40,7 @@ export interface PromptDebugLLMCall {
   label: string;
   modelId?: string;
   requestMessages?: Array<{
-    role: "system" | "user" | "assistant";
+    role: 'system' | 'user' | 'assistant';
     content: string;
   }>;
   responseText?: string;
@@ -58,7 +58,7 @@ export interface ChatResultArtifact {
 }
 
 export interface ChatProgressLog {
-  stage: "thought" | "action" | "observation";
+  stage: 'thought' | 'action' | 'observation';
   text: string;
 }
 
@@ -67,9 +67,9 @@ export interface NormalizedChatExecutionResult {
   title?: string;
   summary?: string;
   body?: string;
-  summaryFormat?: "plain_text" | "markdown";
+  summaryFormat?: 'plain_text' | 'markdown';
   detailText?: string;
-  detailFormat?: "plain_text" | "markdown";
+  detailFormat?: 'plain_text' | 'markdown';
   structuredData?: unknown;
   artifacts?: ChatResultArtifact[];
   downloadUrl?: string;
@@ -100,11 +100,11 @@ export interface LLMRateLimit {
 export interface ChatMessage {
   id: string;
   sessionId: string;
-  role: "user" | "assistant" | "system";
+  role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: string;
   metadata?: {
-    mode?: "chat" | "task";
+    mode?: 'chat' | 'task';
     showThinking?: boolean;
     usage?: LLMUsage;
     rateLimit?: LLMRateLimit;
@@ -119,7 +119,7 @@ export interface ChatMessage {
       description?: string;
       missing?: boolean;
     }>;
-    taskStatus?: "waiting_input" | "pending_approval" | "running" | "completed" | "failed";
+    taskStatus?: 'waiting_input' | 'pending_approval' | 'running' | 'completed' | 'failed';
     executionId?: string;
     executionStatus?: string;
     resultType?: string;
@@ -142,7 +142,7 @@ export interface ChatSession {
   id: string;
   title?: string;
   modelId?: string;
-  status: "active" | "archived";
+  status: 'active' | 'archived';
   createdAt: string;
   updatedAt: string;
 }
@@ -164,7 +164,7 @@ export interface ChatRequest {
   modelId?: string;
   files?: UploadedFileDescriptor[];
   config?: {
-    mode?: "chat" | "task";
+    mode?: 'chat' | 'task';
     maxIterations?: number;
     thinking?: boolean;
     webSearch?: boolean;
@@ -179,5 +179,5 @@ export interface AIModel {
     display_name?: string;
     description?: string;
   };
-  status: "active" | "inactive";
+  status: 'active' | 'inactive';
 }

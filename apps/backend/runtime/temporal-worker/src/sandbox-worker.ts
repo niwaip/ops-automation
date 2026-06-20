@@ -98,7 +98,7 @@ class SandboxWorker {
    */
   async executeCodeStreaming(
     request: ExecutionRequest,
-    onLog: (log: string) => void,
+    onLog: (log: string) => void
   ): Promise<{ success: boolean; result?: any; error?: string }> {
     const { code, fn, taskQueue, input = {} } = request;
 
@@ -153,7 +153,7 @@ class SandboxWorker {
     code: string,
     fn: string,
     input: Record<string, any>,
-    onLog: (log: string) => void,
+    onLog: (log: string) => void
   ): Promise<any> {
     return new Promise((resolve, reject) => {
       // Write code to temporary file
@@ -251,7 +251,7 @@ print(json.dumps(result))
     code: string,
     fn: string,
     input: Record<string, any>,
-    onLog: (log: string) => void,
+    onLog: (log: string) => void
   ): Promise<any> {
     return this.executePython(code, fn, input, onLog);
   }
@@ -282,7 +282,9 @@ print(json.dumps(result))
     return new Promise((resolve, reject) => {
       const proc = spawn(cmd, args);
       let output = '';
-      proc.stdout.on('data', (data) => { output += data.toString(); });
+      proc.stdout.on('data', (data) => {
+        output += data.toString();
+      });
       proc.on('close', (code) => {
         if (code === 0) resolve(output);
         else reject(new Error(`Command failed with code ${code}`));
@@ -300,7 +302,7 @@ export async function executeActivityCode(
   code: string,
   fn: string,
   taskQueue: string,
-  input?: Record<string, any>,
+  input?: Record<string, any>
 ): Promise<ExecutionResponse> {
   return sandboxWorker.executeCode({ code, fn, taskQueue, input });
 }
@@ -310,7 +312,7 @@ export async function executeActivityCodeStreaming(
   fn: string,
   taskQueue: string,
   input: Record<string, any> | undefined,
-  onLog: (log: string) => void,
+  onLog: (log: string) => void
 ): Promise<{ success: boolean; result?: any; error?: string }> {
   return sandboxWorker.executeCodeStreaming({ code, fn, taskQueue, input }, onLog);
 }

@@ -93,7 +93,7 @@ export class TemplateRepository {
       elementGroups: unknown;
       ignoredGroups: unknown;
       savedAt: Date;
-    },
+    }
   ): Promise<void> {
     await this.prisma.template.update({
       where: { id },
@@ -129,10 +129,7 @@ export class TemplateRepository {
       // 1. 删除关联的渲染输出
       await this.prisma.renderOutput.deleteMany({
         where: {
-          OR: [
-            { templateId: id },
-            { markedTemplateId: id },
-          ],
+          OR: [{ templateId: id }, { markedTemplateId: id }],
         },
       });
 
@@ -161,18 +158,24 @@ export class TemplateRepository {
     }
   }
 
-  private buildUpsertData(filePath: string, meta: TemplateMetaDocument): Prisma.TemplateUncheckedCreateInput {
+  private buildUpsertData(
+    filePath: string,
+    meta: TemplateMetaDocument
+  ): Prisma.TemplateUncheckedCreateInput {
     const format = this.normalizeFormat(meta.format ?? 'docx');
     const suggestions = Array.isArray(meta.suggestions) ? meta.suggestions : [];
-    const variables = Array.isArray(meta.variables) && meta.variables.length > 0
-      ? meta.variables
-      : this.extractVariablesFromSuggestions(suggestions);
-    const loops = Array.isArray(meta.loops) && meta.loops.length > 0
-      ? meta.loops
-      : this.extractLoops(meta.templateConfig ?? meta.config, suggestions);
+    const variables =
+      Array.isArray(meta.variables) && meta.variables.length > 0
+        ? meta.variables
+        : this.extractVariablesFromSuggestions(suggestions);
+    const loops =
+      Array.isArray(meta.loops) && meta.loops.length > 0
+        ? meta.loops
+        : this.extractLoops(meta.templateConfig ?? meta.config, suggestions);
     const templateConfig = meta.templateConfig ?? meta.config ?? null;
     const createdAt = meta.createdAt ? new Date(meta.createdAt) : new Date();
-    const type = meta.type === 'marked_template' ? TemplateType.marked_template : TemplateType.template;
+    const type =
+      meta.type === 'marked_template' ? TemplateType.marked_template : TemplateType.template;
 
     return {
       type,
@@ -184,14 +187,26 @@ export class TemplateRepository {
       variables,
       loops: loops as Prisma.InputJsonValue,
       markings: (meta.markings ?? Prisma.DbNull) as Prisma.InputJsonValue | Prisma.NullTypes.DbNull,
-      ignoredElements: (meta.ignoredElements ?? Prisma.DbNull) as Prisma.InputJsonValue | Prisma.NullTypes.DbNull,
-      elementGroups: (meta.elementGroups ?? Prisma.DbNull) as Prisma.InputJsonValue | Prisma.NullTypes.DbNull,
-      ignoredGroups: (meta.ignoredGroups ?? Prisma.DbNull) as Prisma.InputJsonValue | Prisma.NullTypes.DbNull,
+      ignoredElements: (meta.ignoredElements ?? Prisma.DbNull) as
+        | Prisma.InputJsonValue
+        | Prisma.NullTypes.DbNull,
+      elementGroups: (meta.elementGroups ?? Prisma.DbNull) as
+        | Prisma.InputJsonValue
+        | Prisma.NullTypes.DbNull,
+      ignoredGroups: (meta.ignoredGroups ?? Prisma.DbNull) as
+        | Prisma.InputJsonValue
+        | Prisma.NullTypes.DbNull,
       markingsSavedAt: meta.savedAt ? new Date(meta.savedAt) : null,
-      templateConfig: (templateConfig ?? Prisma.DbNull) as Prisma.InputJsonValue | Prisma.NullTypes.DbNull,
+      templateConfig: (templateConfig ?? Prisma.DbNull) as
+        | Prisma.InputJsonValue
+        | Prisma.NullTypes.DbNull,
       configSavedAt: meta.configSavedAt ? new Date(meta.configSavedAt) : null,
-      suggestions: (suggestions.length > 0 ? suggestions : Prisma.DbNull) as Prisma.InputJsonValue | Prisma.NullTypes.DbNull,
-      verifyResult: (meta.verifyResult ?? Prisma.DbNull) as Prisma.InputJsonValue | Prisma.NullTypes.DbNull,
+      suggestions: (suggestions.length > 0 ? suggestions : Prisma.DbNull) as
+        | Prisma.InputJsonValue
+        | Prisma.NullTypes.DbNull,
+      verifyResult: (meta.verifyResult ?? Prisma.DbNull) as
+        | Prisma.InputJsonValue
+        | Prisma.NullTypes.DbNull,
       hasValidFile: typeof meta.hasValidFile === 'boolean' ? meta.hasValidFile : null,
       createdAt,
     };
@@ -216,10 +231,16 @@ export class TemplateRepository {
     suggestions?: unknown;
     rawSuggestions?: unknown;
   }): TemplateResponse {
-    const resolvedLoops = Array.isArray(template.loops) && template.loops.length > 0
-      ? template.loops
-      : this.extractLoops(template.templateConfig, Array.isArray(template.suggestions) ? template.suggestions : []);
-    const parameterCount = Array.isArray(template.skill?.parameters) ? template.skill.parameters.length : undefined;
+    const resolvedLoops =
+      Array.isArray(template.loops) && template.loops.length > 0
+        ? template.loops
+        : this.extractLoops(
+            template.templateConfig,
+            Array.isArray(template.suggestions) ? template.suggestions : []
+          );
+    const parameterCount = Array.isArray(template.skill?.parameters)
+      ? template.skill.parameters.length
+      : undefined;
     return {
       id: template.id,
       fileName: template.fileName,
@@ -227,17 +248,31 @@ export class TemplateRepository {
       size: template.size ?? 0,
       variables: template.variables ?? [],
       parameterCount,
-      suggestions: Array.isArray(template.suggestions) ? template.suggestions as any[] : undefined,
-      rawSuggestions: Array.isArray(template.rawSuggestions) ? template.rawSuggestions as any[] : undefined,
+      suggestions: Array.isArray(template.suggestions)
+        ? (template.suggestions as any[])
+        : undefined,
+      rawSuggestions: Array.isArray(template.rawSuggestions)
+        ? (template.rawSuggestions as any[])
+        : undefined,
       loops: resolvedLoops as Array<{ arrayPath: string }>,
-      markings: (Array.isArray(template.markings) ? template.markings : undefined) as TemplateResponse['markings'],
-      ignoredElements: (Array.isArray(template.ignoredElements) ? template.ignoredElements : undefined) as number[] | undefined,
-      elementGroups: this.isRecord(template.elementGroups) ? template.elementGroups as Record<string, number[]> : undefined,
-      ignoredGroups: (Array.isArray(template.ignoredGroups) ? template.ignoredGroups : undefined) as string[] | undefined,
+      markings: (Array.isArray(template.markings)
+        ? template.markings
+        : undefined) as TemplateResponse['markings'],
+      ignoredElements: (Array.isArray(template.ignoredElements)
+        ? template.ignoredElements
+        : undefined) as number[] | undefined,
+      elementGroups: this.isRecord(template.elementGroups)
+        ? (template.elementGroups as Record<string, number[]>)
+        : undefined,
+      ignoredGroups: (Array.isArray(template.ignoredGroups)
+        ? template.ignoredGroups
+        : undefined) as string[] | undefined,
       savedAt: template.markingsSavedAt?.toISOString(),
       templateConfig: template.templateConfig ?? undefined,
       configSavedAt: template.configSavedAt?.toISOString(),
-      verifyResult: this.isRecord(template.verifyResult) ? template.verifyResult as TemplateResponse['verifyResult'] : undefined,
+      verifyResult: this.isRecord(template.verifyResult)
+        ? (template.verifyResult as TemplateResponse['verifyResult'])
+        : undefined,
       skillId: template.skill?.id,
     };
   }
@@ -310,9 +345,10 @@ export class TemplateRepository {
       .filter((item): item is { type?: string; details?: unknown } => this.isRecord(item))
       .map((item) => {
         const details = this.isRecord(item.details) ? item.details : null;
-        const arrayPath = details && typeof details.arrayPath === 'string' && details.arrayPath.trim().length > 0
-          ? details.arrayPath.trim()
-          : null;
+        const arrayPath =
+          details && typeof details.arrayPath === 'string' && details.arrayPath.trim().length > 0
+            ? details.arrayPath.trim()
+            : null;
         return item.type === 'loop' && arrayPath ? { arrayPath } : null;
       })
       .filter((item): item is { arrayPath: string } => Boolean(item));

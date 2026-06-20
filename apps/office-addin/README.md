@@ -40,6 +40,7 @@ npm run build
 ### 当前证书文件
 
 证书位于 `docker/office-addin/certs/` 目录：
+
 - `server.crt` - 当前服务实际使用的服务器证书
 - `server.key` - 服务器私钥
 - `ca.crt` - 仅在你改造成“内部 CA / 开发 CA 签发模式”后才作为根 CA 分发
@@ -107,6 +108,7 @@ powershell -ExecutionPolicy Bypass -File .\office-addin-wizard.ps1 -HostName <OF
 ```
 
 该向导统一处理：
+
 - 证书安装
 - 证书状态确认
 - Word/Excel/PowerPoint 安装
@@ -125,6 +127,7 @@ OFFICE_ADDIN_TLS_HOSTS=localhost,127.0.0.1,192.168.100.143
 ```
 
 服务将启动：
+
 - Office Add-in: `https://<OFFICE_ADDIN_PUBLIC_HOST>:3000`
 - Carbone API (HTTP): `http://<CARBONE_API_PUBLIC_HOST>:3100`
 - Carbone API (HTTPS): `https://<CARBONE_API_PUBLIC_HOST>:3443`
@@ -132,6 +135,7 @@ OFFICE_ADDIN_TLS_HOSTS=localhost,127.0.0.1,192.168.100.143
 ## Sideload 测试
 
 推荐采用“按宿主拆分 manifest”的方式：
+
 - Word 使用 `manifest-word.xml`
 - Excel 使用 `manifest-excel.xml`
 - 两者是独立加载项，`Id` 不同，可同时安装、分别启用，互不影响
@@ -229,12 +233,12 @@ manifest-ppt.xml                  # PowerPoint 加载项清单
         (feature 内部 services 自洽，不跨 feature 直接引用)
 ```
 
-| 层 | 可以 import | 不允许 import |
-|---|---|---|
-| `features/*/` | `shared/`, `host/`, `api/`, `config/` | 其他 `features/*/`（跨 feature 禁止） |
-| `features/*/services/` | `host/`, `api/`, `shared/services/` | React hooks、组件 |
-| `shared/` | `host/`, `api/`, `config/` | `features/**` |
-| `host/` | `api/`（仅类型） | `features/**`, `shared/services/` |
+| 层                     | 可以 import                           | 不允许 import                         |
+| ---------------------- | ------------------------------------- | ------------------------------------- |
+| `features/*/`          | `shared/`, `host/`, `api/`, `config/` | 其他 `features/*/`（跨 feature 禁止） |
+| `features/*/services/` | `host/`, `api/`, `shared/services/`   | React hooks、组件                     |
+| `shared/`              | `host/`, `api/`, `config/`            | `features/**`                         |
+| `host/`                | `api/`（仅类型）                      | `features/**`, `shared/services/`     |
 
 ## 使用流程
 
@@ -247,12 +251,12 @@ manifest-ppt.xml                  # PowerPoint 加载项清单
 7. 配置输出格式
 8. 点击 "生成模板" 完成
 
-
 ## 调试方法
 
 ### 使用调试日志面板
 
 点击 "显示日志" 按钮，可以查看：
+
 - API 调用详情
 - 错误信息和堆栈
 - 连接状态
@@ -261,6 +265,7 @@ manifest-ppt.xml                  # PowerPoint 加载项清单
 ### 查看详细错误信息
 
 点击错误消息可以展开查看详细信息：
+
 - HTTP 状态码
 - 响应数据
 - 可能的解决方案
@@ -268,6 +273,7 @@ manifest-ppt.xml                  # PowerPoint 加载项清单
 ### 常见问题排查
 
 **连接失败**
+
 1. 检查后端服务是否启动
 2. 确认使用 HTTPS URL，并且主机名是实际可访问地址
 3. 确认当前服务使用的证书已安装并受信任
@@ -275,12 +281,14 @@ manifest-ppt.xml                  # PowerPoint 加载项清单
 5. 检查端口是否被占用
 
 **证书问题**
+
 - Office 要求 HTTPS，且 WebView 对证书主机名校验更严格
 - 自签名模式下，直接信任 `server.crt`
 - CA 签发模式下，分发并信任根 CA，服务器返回完整证书链
 - 访问主机名必须出现在证书 SAN 中
 
 **AI 分析失败**
+
 1. 点击 "测试连接" 检查后端状态
 2. 查看调试日志面板的详细信息
 3. 确认文档内容不为空
@@ -295,6 +303,7 @@ docker-compose up -d
 ```
 
 后端 API 地址:
+
 - HTTP: `http://<CARBONE_API_PUBLIC_HOST>:3100`
 - HTTPS: `https://<CARBONE_API_PUBLIC_HOST>:3443`
 

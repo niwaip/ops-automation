@@ -11,8 +11,7 @@ export class JwtSecretGuard implements OnModuleInit {
 
   onModuleInit(): void {
     const secret = String(process.env.JWT_SECRET || '').trim();
-    const isProduction =
-      process.env.NODE_ENV === 'production' || process.env.DOCKER_ENV === 'true';
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.DOCKER_ENV === 'true';
 
     if (!secret || INSECURE_DEFAULTS.has(secret)) {
       const message =
@@ -23,7 +22,7 @@ export class JwtSecretGuard implements OnModuleInit {
         this.logger.error(message);
         throw new Error(
           'FATAL: JWT_SECRET must be set to a secure value in production. ' +
-          'Refusing to start with the default insecure secret.',
+            'Refusing to start with the default insecure secret.'
         );
       }
 

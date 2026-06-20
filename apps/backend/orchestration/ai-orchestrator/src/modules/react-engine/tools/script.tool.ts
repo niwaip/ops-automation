@@ -7,7 +7,8 @@ import { ToolExecutor } from '../tool-executor';
 @Injectable()
 @Tool({
   name: 'script_execute',
-  description: '执行多步串行操作。允许在一轮对话中连续调用多个工具，并将前置步骤的输出结果传递给后续步骤。',
+  description:
+    '执行多步串行操作。允许在一轮对话中连续调用多个工具，并将前置步骤的输出结果传递给后续步骤。',
   parameters: {
     type: 'object',
     properties: {
@@ -23,7 +24,8 @@ import { ToolExecutor } from '../tool-executor';
             },
             params: {
               type: 'object',
-              description: '传递给工具的参数。可以使用 {{stepN.output}} 引用第 N 步的输出（N从0开始）。',
+              description:
+                '传递给工具的参数。可以使用 {{stepN.output}} 引用第 N 步的输出（N从0开始）。',
             },
             comment: {
               type: 'string',
@@ -42,7 +44,7 @@ import { ToolExecutor } from '../tool-executor';
 export class ScriptTool extends BaseTool {
   constructor(
     @Inject(forwardRef(() => ToolExecutor))
-    private readonly toolExecutor: ToolExecutor,
+    private readonly toolExecutor: ToolExecutor
   ) {
     super(
       'script_execute',
@@ -65,14 +67,11 @@ export class ScriptTool extends BaseTool {
         },
         required: ['steps'],
       },
-      { category: 'flow' },
+      { category: 'flow' }
     );
   }
 
-  async execute(
-    params: Record<string, unknown>,
-    context: ExecutionContext,
-  ): Promise<ToolResult> {
+  async execute(params: Record<string, unknown>, context: ExecutionContext): Promise<ToolResult> {
     const steps = params.steps as Array<{ toolName: string; params: Record<string, unknown> }>;
     if (!steps || steps.length === 0) {
       return { success: false, output: '未提供步骤' };
@@ -84,7 +83,7 @@ export class ScriptTool extends BaseTool {
     for (let i = 0; i < steps.length; i++) {
       const step = steps[i];
       if (!step) continue;
-      
+
       // 变量替换：将 {{stepN.output}} 替换为之前的输出
       const resolvedParams = this.resolveVariables(step.params, results);
 
@@ -118,29 +117,41 @@ export class ScriptTool extends BaseTool {
     };
   }
 
-  private resolveVariables(params: Record<string, unknown>, results: any[]): Record<string, unknown> {
+  private resolveVariables(
+    params: Record<string, unknown>,
+    results: any[]
+  ): Record<string, unknown> {
     const jsonStr = JSON.stringify(params);
     const resolvedStr = jsonStr.replace(/\{\{step(\d+)\.output\}\}/g, (match, index) => {
       const idx = parseInt(index, 10);
       if (idx >= 0 && idx < results.length) {
         const result = results[idx];
-        return typeof result.output === 'string' ? result.output : JSON.stringify(result.data || {});
+        return typeof result.output === 'string'
+          ? result.output
+          : JSON.stringify(result.data || {});
       }
       return match;
     });
-    
+
     // 也支持路径引用 {{step0.data.key}}
-    const resolvedStrDeep = resolvedStr.replace(/\{\{step(\d+)\.data\.(.+?)\}\}/g, (match, index, path) => {
-      const idx = parseInt(index, 10);
-      if (idx >= 0 && idx < results.length) {
-        const data = results[idx].data;
-        if (data) {
-          const value = path.split('.').reduce((obj: any, key: string) => obj?.[key], data);
-          return value !== undefined ? (typeof value === 'object' ? JSON.stringify(value) : String(value)) : match;
+    const resolvedStrDeep = resolvedStr.replace(
+      /\{\{step(\d+)\.data\.(.+?)\}\}/g,
+      (match, index, path) => {
+        const idx = parseInt(index, 10);
+        if (idx >= 0 && idx < results.length) {
+          const data = results[idx].data;
+          if (data) {
+            const value = path.split('.').reduce((obj: any, key: string) => obj?.[key], data);
+            return value !== undefined
+              ? typeof value === 'object'
+                ? JSON.stringify(value)
+                : String(value)
+              : match;
+          }
         }
+        return match;
       }
-      return match;
-    });
+    );
 
     try {
       return JSON.parse(resolvedStrDeep);

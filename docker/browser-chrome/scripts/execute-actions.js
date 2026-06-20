@@ -86,7 +86,7 @@ async function executeActions(actions, sessionId) {
           result.message = `Pressed ${key}`;
         } else if (actionType === 'wait') {
           const duration = action.duration || action.value || 1000;
-          await new Promise(r => setTimeout(r, duration));
+          await new Promise((r) => setTimeout(r, duration));
           result.success = true;
           result.message = `Waited ${duration}ms`;
         } else if (actionType === 'scroll') {
@@ -113,7 +113,7 @@ async function executeActions(actions, sessionId) {
             const originalViewport = page.viewportSize();
             await page.setViewportSize({
               width: Math.round(originalViewport.width * scale),
-              height: Math.round(originalViewport.height * scale)
+              height: Math.round(originalViewport.height * scale),
             });
           }
           const screenshotBuffer = await page.screenshot(screenshotOptions);
@@ -138,7 +138,8 @@ async function executeActions(actions, sessionId) {
           result.html = html || '';
         } else if (actionType === 'search' || actionType === 'smart_search') {
           const searchText = action.value || action.text || action.search || '';
-          const selector = action.selector || `[placeholder*="search"], input[type="search"], [role="searchbox"]`;
+          const selector =
+            action.selector || `[placeholder*="search"], input[type="search"], [role="searchbox"]`;
           if (searchText) {
             try {
               await page.fill(selector, searchText, { timeout: 10000 });
@@ -170,7 +171,7 @@ async function executeActions(actions, sessionId) {
             const originalViewport = page.viewportSize();
             await page.setViewportSize({
               width: Math.round(originalViewport.width * scale),
-              height: Math.round(originalViewport.height * scale)
+              height: Math.round(originalViewport.height * scale),
             });
           }
           const screenshotBuffer = await page.screenshot(screenshotOptions);
@@ -200,7 +201,7 @@ async function executeActions(actions, sessionId) {
       results.push(result);
 
       // Small delay between actions
-      await new Promise(r => setTimeout(r, 500));
+      await new Promise((r) => setTimeout(r, 500));
     }
 
     // Keep browser open so user can see the result via noVNC
@@ -242,7 +243,7 @@ async function main() {
   console.log(JSON.stringify(result));
 }
 
-main().catch(e => {
+main().catch((e) => {
   console.error('[FATAL]', e.message);
   process.exit(1);
 });

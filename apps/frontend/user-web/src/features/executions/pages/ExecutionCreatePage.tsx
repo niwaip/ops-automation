@@ -1,4 +1,4 @@
-import { ArrowLeftOutlined } from "@ant-design/icons";
+import { ArrowLeftOutlined } from '@ant-design/icons';
 import {
   App,
   Button,
@@ -11,10 +11,10 @@ import {
   Spin,
   Switch,
   Typography,
-} from "antd";
-import { useEffect, useMemo } from "react";
-import { useMutation, useQuery } from "react-query";
-import { useNavigate, useSearchParams } from "react-router-dom";
+} from 'antd';
+import { useEffect, useMemo } from 'react';
+import { useMutation, useQuery } from 'react-query';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   buildSkillExecutionInputInitialValues,
   isBooleanInputType,
@@ -22,12 +22,12 @@ import {
   isNumericInputType,
   normalizeSkillExecutionInput,
   type SkillParamProperty,
-} from "@ops/user-core";
-import { executionApi, skillApi } from "../../../api";
+} from '@ops/user-core';
+import { executionApi, skillApi } from '../../../api';
 
 const renderFieldInput = (name: string, config: SkillParamProperty) => {
   if (isNumericInputType(config.type)) {
-    return <InputNumber style={{ width: "100%" }} placeholder={`请输入 ${name}`} />;
+    return <InputNumber style={{ width: '100%' }} placeholder={`请输入 ${name}`} />;
   }
   if (isBooleanInputType(config.type)) {
     return <Switch />;
@@ -43,42 +43,43 @@ export function ExecutionCreatePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [form] = Form.useForm();
-  const selectedSkillId = Form.useWatch("skillId", form) as string | undefined;
+  const selectedSkillId = Form.useWatch('skillId', form) as string | undefined;
 
-  const skillsQuery = useQuery(["user-web-published-skills"], () => skillApi.list());
+  const skillsQuery = useQuery(['user-web-published-skills'], () => skillApi.list());
   const publishedSkills = useMemo(
     () => (skillsQuery.data?.skills || []).filter((skill) => skill.isPublished),
-    [skillsQuery.data?.skills],
+    [skillsQuery.data?.skills]
   );
 
   const selectedSkillQuery = useQuery(
-    ["user-web-skill-detail", selectedSkillId],
+    ['user-web-skill-detail', selectedSkillId],
     () => skillApi.getById(selectedSkillId!),
-    { enabled: Boolean(selectedSkillId) },
+    { enabled: Boolean(selectedSkillId) }
   );
 
   const createMutation = useMutation(
-    async (values: { skillId: string; input: Record<string, unknown> }) => executionApi.create(values),
+    async (values: { skillId: string; input: Record<string, unknown> }) =>
+      executionApi.create(values),
     {
       onSuccess: (execution) => {
-        void message.success("执行已创建");
+        void message.success('执行已创建');
         navigate(`/executions/${execution.id}`);
       },
       onError: (error) => {
-        void message.error(error instanceof Error ? error.message : "创建执行失败");
+        void message.error(error instanceof Error ? error.message : '创建执行失败');
       },
-    },
+    }
   );
 
   useEffect(() => {
-    const presetSkillId = searchParams.get("skillId");
-    if (presetSkillId && !form.getFieldValue("skillId")) {
-      form.setFieldValue("skillId", presetSkillId);
+    const presetSkillId = searchParams.get('skillId');
+    if (presetSkillId && !form.getFieldValue('skillId')) {
+      form.setFieldValue('skillId', presetSkillId);
     }
   }, [form, searchParams]);
 
   useEffect(() => {
-    form.setFieldValue("input", buildSkillExecutionInputInitialValues(selectedSkillQuery.data));
+    form.setFieldValue('input', buildSkillExecutionInputInitialValues(selectedSkillQuery.data));
   }, [form, selectedSkillQuery.data]);
 
   const schemaEntries = Object.entries(selectedSkillQuery.data?.paramsSchema?.properties || {});
@@ -89,10 +90,14 @@ export function ExecutionCreatePage() {
   }
 
   return (
-    <Space direction="vertical" size={16} style={{ width: "100%" }}>
+    <Space direction="vertical" size={16} style={{ width: '100%' }}>
       <Space>
-        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate("/executions")}>返回列表</Button>
-        <Typography.Title level={3} style={{ margin: 0 }}>创建执行</Typography.Title>
+        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/executions')}>
+          返回列表
+        </Button>
+        <Typography.Title level={3} style={{ margin: 0 }}>
+          创建执行
+        </Typography.Title>
       </Space>
       <Card>
         <Typography.Paragraph type="secondary">
@@ -105,7 +110,7 @@ export function ExecutionCreatePage() {
           onFinish={(values: { skillId: string; input?: Record<string, unknown> }) => {
             const nextInput = normalizeSkillExecutionInput(
               values.input || {},
-              selectedSkillQuery.data?.paramsSchema?.properties || {},
+              selectedSkillQuery.data?.paramsSchema?.properties || {}
             );
             createMutation.mutate({
               skillId: values.skillId,
@@ -116,7 +121,7 @@ export function ExecutionCreatePage() {
           <Form.Item
             label="技能"
             name="skillId"
-            rules={[{ required: true, message: "请选择技能" }]}
+            rules={[{ required: true, message: '请选择技能' }]}
           >
             <Select
               placeholder="请选择已发布技能"
@@ -133,9 +138,13 @@ export function ExecutionCreatePage() {
             <Form.Item
               key={name}
               label={config.description || name}
-              name={["input", name]}
-              valuePropName={isBooleanInputType(config.type) ? "checked" : "value"}
-              rules={requiredFields.has(name) ? [{ required: true, message: `请填写 ${name}` }] : undefined}
+              name={['input', name]}
+              valuePropName={isBooleanInputType(config.type) ? 'checked' : 'value'}
+              rules={
+                requiredFields.has(name)
+                  ? [{ required: true, message: `请填写 ${name}` }]
+                  : undefined
+              }
               extra={`字段名: ${name} | 类型: ${config.type}`}
             >
               {renderFieldInput(name, config)}
@@ -143,7 +152,7 @@ export function ExecutionCreatePage() {
           ))}
 
           <Space>
-            <Button onClick={() => navigate("/executions")}>取消</Button>
+            <Button onClick={() => navigate('/executions')}>取消</Button>
             <Button type="primary" htmlType="submit" loading={createMutation.isLoading}>
               发起执行
             </Button>

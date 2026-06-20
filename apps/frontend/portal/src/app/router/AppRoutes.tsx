@@ -3,10 +3,7 @@ import MainLayout from '@/app/layouts/MainLayout';
 import { AdminRoute, PrivateRoute } from '@/app/router/guards';
 import { portalPageRoutes, portalRouteEntries } from '@/app/router/routeManifest';
 
-const renderProtectedElement = (
-  element: React.ReactElement,
-  requiresAdmin?: boolean,
-) => {
+const renderProtectedElement = (element: React.ReactElement, requiresAdmin?: boolean) => {
   if (requiresAdmin) {
     return <AdminRoute>{element}</AdminRoute>;
   }
@@ -24,11 +21,11 @@ const AppRoutes: React.FC = () => (
 
     <Route
       path="/"
-      element={(
+      element={
         <PrivateRoute>
           <MainLayout />
         </PrivateRoute>
-      )}
+      }
     >
       {portalRouteEntries.map((entry) => {
         if ('redirectTo' in entry) {

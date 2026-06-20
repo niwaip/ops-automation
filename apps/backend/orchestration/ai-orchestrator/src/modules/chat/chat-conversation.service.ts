@@ -15,13 +15,10 @@ export class ChatConversationService {
   constructor(
     private readonly modelService: ModelService,
     private readonly sessionService: SessionService,
-    private readonly chatMediaService: ChatMediaService,
+    private readonly chatMediaService: ChatMediaService
   ) {}
 
-  async streamChat(
-    body: ChatRequestDTO,
-    emit: (event: StreamEvent) => void,
-  ): Promise<void> {
+  async streamChat(body: ChatRequestDTO, emit: (event: StreamEvent) => void): Promise<void> {
     const modelId = this.resolvePreferredChatModelId(body);
     const sessionId = body.sessionId || 'default';
     const thinkingEnabled = this.isThinkingEnabled(body);
@@ -40,26 +37,33 @@ export class ChatConversationService {
       content: '正在思考...',
     });
 
-    const messageContent = await this.chatMediaService.buildMessageContent(body.message, body.files);
+    const messageContent = await this.chatMediaService.buildMessageContent(
+      body.message,
+      body.files
+    );
     const systemMessage = this.buildChatSystemMessage(
       thinkingEnabled,
-      Boolean(body.files && body.files.length > 0),
+      Boolean(body.files && body.files.length > 0)
     );
     const messages = await this.buildConversationMessages(sessionId, systemMessage, messageContent);
 
     const userMessageForHistory = this.normalizeContentToText(messageContent);
     let fullContent = '';
-    const response = await this.modelService.callModelStreamWithMessages(modelId, messages, (chunk: string) => {
-      fullContent += chunk;
-      emit({
-        type: StreamEventType.OBSERVATION,
-        content: this.getVisibleChatContent(fullContent, thinkingEnabled),
-        data: {
-          mode: 'chat',
-          thinking: thinkingEnabled,
-        },
-      });
-    });
+    const response = await this.modelService.callModelStreamWithMessages(
+      modelId,
+      messages,
+      (chunk: string) => {
+        fullContent += chunk;
+        emit({
+          type: StreamEventType.OBSERVATION,
+          content: this.getVisibleChatContent(fullContent, thinkingEnabled),
+          data: {
+            mode: 'chat',
+            thinking: thinkingEnabled,
+          },
+        });
+      }
+    );
 
     const visibleContent = this.getVisibleChatContent(fullContent || '处理完成', thinkingEnabled);
     const historyAssistantContent = this.modelService.stripThinkingTags(fullContent || '处理完成');
@@ -99,7 +103,7 @@ export class ChatConversationService {
     const messages = await this.buildConversationMessages(
       sessionId,
       this.buildChatSystemMessage(thinkingEnabled, Boolean(body.files?.length)),
-      userContent,
+      userContent
     );
     const response = await client.chatCompletion(messages);
     const visibleContent = this.getVisibleChatContent(response.content, thinkingEnabled);
@@ -108,22 +112,24 @@ export class ChatConversationService {
     await this.persistConversation(
       sessionId,
       this.normalizeContentToText(userContent),
-      historyAssistantContent,
+      historyAssistantContent
     );
 
     return {
       response: visibleContent,
-      events: [{
-        type: StreamEventType.RESULT,
-        content: visibleContent,
-        data: {
-          sessionId,
-          mode: 'chat',
-          thinking: thinkingEnabled,
-          usage: response.usage,
-          rateLimit: response.rateLimit,
+      events: [
+        {
+          type: StreamEventType.RESULT,
+          content: visibleContent,
+          data: {
+            sessionId,
+            mode: 'chat',
+            thinking: thinkingEnabled,
+            usage: response.usage,
+            rateLimit: response.rateLimit,
+          },
         },
-      }],
+      ],
     };
   }
 
@@ -139,7 +145,7 @@ export class ChatConversationService {
   private async buildConversationMessages(
     sessionId: string,
     systemMessage: string,
-    userContent: string | ContentBlock[],
+    userContent: string | ContentBlock[]
   ): Promise<MultimodalChatMessage[]> {
     const chatSession = await this.sessionService.getChatSession(sessionId);
     const historyMessages: MultimodalChatMessage[] = (chatSession?.history || []).map((msg) => ({
@@ -157,7 +163,7 @@ export class ChatConversationService {
   private async persistConversation(
     sessionId: string,
     userContent: string,
-    assistantContent: string,
+    assistantContent: string
   ): Promise<void> {
     await this.sessionService.appendChatMessages(sessionId, [
       {

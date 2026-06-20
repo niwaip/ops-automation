@@ -28,7 +28,7 @@ export class ModelRouterService {
     requestedModelId: string,
     existingActiveModelId?: string,
     attemptedModelIds?: string[],
-    context?: InitialModelRoutingContext,
+    context?: InitialModelRoutingContext
   ): ModelRoutingDecision {
     if (existingActiveModelId) {
       return {
@@ -39,9 +39,8 @@ export class ModelRouterService {
     }
 
     const fallbackChain = this.modelService.getFallbackModelIds(requestedModelId);
-    const preferredModelId = requestedModelId === 'default'
-      ? this.selectTaskAwareInitialModel(context)
-      : undefined;
+    const preferredModelId =
+      requestedModelId === 'default' ? this.selectTaskAwareInitialModel(context) : undefined;
     const modelId = preferredModelId || fallbackChain[0] || requestedModelId;
     return {
       modelId,
@@ -57,7 +56,7 @@ export class ModelRouterService {
   resolveFallbackModel(
     currentModelId: string,
     attemptedModelIds: string[],
-    result?: ToolResult,
+    result?: ToolResult
   ): ModelRoutingDecision | null {
     const strategy = decideModelFallbackStrategy(result);
     const fallbackChain = this.modelService.getFallbackModelIds(currentModelId, strategy);
@@ -74,9 +73,7 @@ export class ModelRouterService {
     };
   }
 
-  private selectTaskAwareInitialModel(
-    context?: InitialModelRoutingContext,
-  ): string | undefined {
+  private selectTaskAwareInitialModel(context?: InitialModelRoutingContext): string | undefined {
     const routingProfile = this.detectTaskRoutingProfile(context);
     const models = this.modelService.listActiveModelsForRouting?.() || [];
     if (models.length === 0) {
@@ -105,23 +102,29 @@ export class ModelRouterService {
     return bestScore > 0 ? bestModelId : undefined;
   }
 
-  private detectTaskRoutingProfile(
-    context?: InitialModelRoutingContext,
-  ): TaskRoutingProfile {
+  private detectTaskRoutingProfile(context?: InitialModelRoutingContext): TaskRoutingProfile {
     if (context?.mode === 'chat') {
       return 'chat';
     }
 
     const matchedExecutionType = this.matchExecutionTypeFromSkills(
       context?.userInput,
-      context?.availableSkills || [],
+      context?.availableSkills || []
     );
-    if (matchedExecutionType === 'document' || matchedExecutionType === 'flow' || matchedExecutionType === 'query') {
+    if (
+      matchedExecutionType === 'document' ||
+      matchedExecutionType === 'flow' ||
+      matchedExecutionType === 'query'
+    ) {
       return matchedExecutionType;
     }
 
     const normalizedInput = (context?.userInput || '').toLowerCase();
-    if (/(代码|coding|coder|debug|调试|测试|test|开发|实现|修复|bug|接口|api|脚本|script)/.test(normalizedInput)) {
+    if (
+      /(代码|coding|coder|debug|调试|测试|test|开发|实现|修复|bug|接口|api|脚本|script)/.test(
+        normalizedInput
+      )
+    ) {
       return 'code';
     }
     if (/(文档|合同|报告|模板|生成pdf|生成 doc|carbone|报表|渲染)/.test(normalizedInput)) {
@@ -139,7 +142,7 @@ export class ModelRouterService {
 
   private matchExecutionTypeFromSkills(
     userInput: string | undefined,
-    skills: AvailableSkillDefinition[],
+    skills: AvailableSkillDefinition[]
   ): 'document' | 'flow' | 'query' | undefined {
     if (!userInput) {
       return skills.length === 1 ? skills[0]?.executionType : undefined;
@@ -147,32 +150,30 @@ export class ModelRouterService {
 
     const normalizedInput = userInput.toLowerCase();
     const matchedSkill = skills.find((skill) => {
-      return skill.triggerKeywords.some((keyword) => normalizedInput.includes(keyword.toLowerCase()));
+      return skill.triggerKeywords.some((keyword) =>
+        normalizedInput.includes(keyword.toLowerCase())
+      );
     });
 
     return matchedSkill?.executionType;
   }
 
-  private scoreModelForProfile(
-    model: AIModelDTO,
-    profile: TaskRoutingProfile,
-  ): number {
+  private scoreModelForProfile(model: AIModelDTO, profile: TaskRoutingProfile): number {
     const tags = this.getModelRoutingTags(model);
-    const score = (
-      (tags.has('default') ? 3 : 0)
-      + (tags.has('global_default') ? 3 : 0)
-      + (tags.has('admin_chat_default') ? (profile === 'chat' ? 8 : 1) : 0)
-      + (tags.has('admin_task_default') ? (profile !== 'chat' ? 8 : 1) : 0)
-      + (tags.has('general_task') ? 2 : 0)
-      + (tags.has(profile) ? 6 : 0)
-      + (tags.has('advanced') ? ((profile === 'code' || profile === 'flow') ? 7 : 2) : 0)
-      + (tags.has('code_preferred') && profile === 'code' ? 8 : 0)
-      + (profile === 'document' && tags.has('multimodal') ? 3 : 0)
-      + ((profile === 'flow' || profile === 'code') && tags.has('code') ? 4 : 0)
-      + ((profile === 'chat' || profile === 'query') && tags.has('chat') ? 3 : 0)
-      + ((profile === 'chat' || profile === 'query') && tags.has('fast') ? 2 : 0)
-      - (profile === 'document' && tags.has('code') ? 1 : 0)
-    );
+    const score =
+      (tags.has('default') ? 3 : 0) +
+      (tags.has('global_default') ? 3 : 0) +
+      (tags.has('admin_chat_default') ? (profile === 'chat' ? 8 : 1) : 0) +
+      (tags.has('admin_task_default') ? (profile !== 'chat' ? 8 : 1) : 0) +
+      (tags.has('general_task') ? 2 : 0) +
+      (tags.has(profile) ? 6 : 0) +
+      (tags.has('advanced') ? (profile === 'code' || profile === 'flow' ? 7 : 2) : 0) +
+      (tags.has('code_preferred') && profile === 'code' ? 8 : 0) +
+      (profile === 'document' && tags.has('multimodal') ? 3 : 0) +
+      ((profile === 'flow' || profile === 'code') && tags.has('code') ? 4 : 0) +
+      ((profile === 'chat' || profile === 'query') && tags.has('chat') ? 3 : 0) +
+      ((profile === 'chat' || profile === 'query') && tags.has('fast') ? 2 : 0) -
+      (profile === 'document' && tags.has('code') ? 1 : 0);
 
     return score;
   }
@@ -188,9 +189,7 @@ export class ModelRouterService {
       }
     });
 
-    const inputModes = Array.isArray(model.config?.input)
-      ? model.config.input
-      : [];
+    const inputModes = Array.isArray(model.config?.input) ? model.config.input : [];
     if (inputModes.some((item) => typeof item === 'string' && item.toLowerCase() === 'image')) {
       tags.add('multimodal');
       tags.add('document');
@@ -223,7 +222,9 @@ export class ModelRouterService {
       model.name,
       typeof model.config?.display_name === 'string' ? model.config.display_name : '',
       typeof model.config?.description === 'string' ? model.config.description : '',
-    ].join(' ').toLowerCase();
+    ]
+      .join(' ')
+      .toLowerCase();
 
     if (/(coder|编程|coding|代码)/.test(descriptor)) {
       tags.add('code');

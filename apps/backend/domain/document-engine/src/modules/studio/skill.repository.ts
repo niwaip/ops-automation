@@ -34,9 +34,14 @@ export class SkillRepository {
     }
   }
 
-  async upsertFromDocument(skillDocument: Record<string, unknown>, explicitTemplateId?: string): Promise<void> {
+  async upsertFromDocument(
+    skillDocument: Record<string, unknown>,
+    explicitTemplateId?: string
+  ): Promise<void> {
     const skillId = typeof skillDocument.id === 'string' ? skillDocument.id : null;
-    const templateId = explicitTemplateId ?? (typeof skillDocument.templateId === 'string' ? skillDocument.templateId : null);
+    const templateId =
+      explicitTemplateId ??
+      (typeof skillDocument.templateId === 'string' ? skillDocument.templateId : null);
 
     if (!skillId || !templateId) {
       return;
@@ -54,14 +59,18 @@ export class SkillRepository {
         id: skillId,
         templateId,
         parameters: parameters as Prisma.InputJsonValue,
-        dataExample: (dataExample ?? Prisma.DbNull) as Prisma.InputJsonValue | Prisma.NullTypes.DbNull,
+        dataExample: (dataExample ?? Prisma.DbNull) as
+          | Prisma.InputJsonValue
+          | Prisma.NullTypes.DbNull,
         rawSkill: skillDocument as Prisma.InputJsonValue,
         ...(createdAt ? { createdAt } : {}),
       },
       update: {
         templateId,
         parameters: parameters as Prisma.InputJsonValue,
-        dataExample: (dataExample ?? Prisma.DbNull) as Prisma.InputJsonValue | Prisma.NullTypes.DbNull,
+        dataExample: (dataExample ?? Prisma.DbNull) as
+          | Prisma.InputJsonValue
+          | Prisma.NullTypes.DbNull,
         rawSkill: skillDocument as Prisma.InputJsonValue,
       },
     });

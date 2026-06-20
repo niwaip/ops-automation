@@ -1,39 +1,55 @@
-import { lazy, Suspense, type ReactNode } from "react";
-import { Spin } from "antd";
-import { BrowserRouter, Navigate, Outlet, Route, Routes } from "react-router-dom";
-import { useStore } from "zustand";
-import { authStore } from "../../adapters/auth/authStore";
-import { UserLayout } from "../layouts/UserLayout";
+import { lazy, Suspense, type ReactNode } from 'react';
+import { Spin } from 'antd';
+import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom';
+import { useStore } from 'zustand';
+import { authStore } from '../../adapters/auth/authStore';
+import { UserLayout } from '../layouts/UserLayout';
 
 const LoginPage = lazy(() =>
-  import("../../features/auth/pages/LoginPage").then((module) => ({ default: module.LoginPage })),
+  import('../../features/auth/pages/LoginPage').then((module) => ({ default: module.LoginPage }))
 );
 const DashboardPage = lazy(() =>
-  import("../../features/dashboard/pages/DashboardPage").then((module) => ({ default: module.DashboardPage })),
+  import('../../features/dashboard/pages/DashboardPage').then((module) => ({
+    default: module.DashboardPage,
+  }))
 );
 const ChatPage = lazy(() =>
-  import("../../features/chat/pages/ChatPage").then((module) => ({ default: module.ChatPage })),
+  import('../../features/chat/pages/ChatPage').then((module) => ({ default: module.ChatPage }))
 );
 const ExecutionListPage = lazy(() =>
-  import("../../features/executions/pages/ExecutionListPage").then((module) => ({ default: module.ExecutionListPage })),
+  import('../../features/executions/pages/ExecutionListPage').then((module) => ({
+    default: module.ExecutionListPage,
+  }))
 );
 const ExecutionCreatePage = lazy(() =>
-  import("../../features/executions/pages/ExecutionCreatePage").then((module) => ({ default: module.ExecutionCreatePage })),
+  import('../../features/executions/pages/ExecutionCreatePage').then((module) => ({
+    default: module.ExecutionCreatePage,
+  }))
 );
 const ExecutionDetailPage = lazy(() =>
-  import("../../features/executions/pages/ExecutionDetailPage").then((module) => ({ default: module.ExecutionDetailPage })),
+  import('../../features/executions/pages/ExecutionDetailPage').then((module) => ({
+    default: module.ExecutionDetailPage,
+  }))
 );
 const NotificationsPage = lazy(() =>
-  import("../../features/notifications/pages/NotificationsPage").then((module) => ({ default: module.NotificationsPage })),
+  import('../../features/notifications/pages/NotificationsPage').then((module) => ({
+    default: module.NotificationsPage,
+  }))
 );
 const ReportListPage = lazy(() =>
-  import("../../features/reports/pages/ReportListPage").then((module) => ({ default: module.ReportListPage })),
+  import('../../features/reports/pages/ReportListPage').then((module) => ({
+    default: module.ReportListPage,
+  }))
 );
 const ReportDetailPage = lazy(() =>
-  import("../../features/reports/pages/ReportDetailPage").then((module) => ({ default: module.ReportDetailPage })),
+  import('../../features/reports/pages/ReportDetailPage').then((module) => ({
+    default: module.ReportDetailPage,
+  }))
 );
 const PublishedSkillListPage = lazy(() =>
-  import("../../features/skills/pages/PublishedSkillListPage").then((module) => ({ default: module.PublishedSkillListPage })),
+  import('../../features/skills/pages/PublishedSkillListPage').then((module) => ({
+    default: module.PublishedSkillListPage,
+  }))
 );
 
 interface PrivateRouteProps {
@@ -45,9 +61,11 @@ function PrivateRoute({ children }: PrivateRouteProps) {
   const accessToken = useStore(authStore, (state) => state.accessToken);
   const refreshToken = useStore(authStore, (state) => state.refreshToken);
 
-  return isAuthenticated && Boolean(accessToken || refreshToken)
-    ? <>{children}</>
-    : <Navigate to="/login" replace />;
+  return isAuthenticated && Boolean(accessToken || refreshToken) ? (
+    <>{children}</>
+  ) : (
+    <Navigate to="/login" replace />
+  );
 }
 
 function ProtectedOutlet() {
@@ -60,7 +78,7 @@ function ProtectedOutlet() {
 
 function RouteFallback() {
   return (
-    <div style={{ minHeight: "40vh", display: "grid", placeItems: "center" }}>
+    <div style={{ minHeight: '40vh', display: 'grid', placeItems: 'center' }}>
       <Spin size="large" />
     </div>
   );

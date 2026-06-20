@@ -1,7 +1,11 @@
 import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { RecorderDebugService } from './recorder-debug.service';
-import type { RecorderDebugChatRequest, RecorderDebugChatResponse } from './recorder-debug.service';
+import type {
+  RecorderDebugChatRequest,
+  RecorderDebugChatResponse,
+  RecorderLoopDraftRequest,
+} from './recorder-debug.service';
 import type {
   ReconcileAfterTakeoverRequest,
   ReconcileAfterTakeoverResponse,
@@ -24,9 +28,24 @@ export class RecorderDebugController {
     return this.service.exportArtifacts(body);
   }
 
+  @Post('loop-draft')
+  @ApiOperation({ summary: 'Create or update recorder loop draft' })
+  async upsertLoopDraft(@Body() body: RecorderLoopDraftRequest) {
+    return this.service.upsertLoopDraft(body);
+  }
+
+  @Post('loop-draft/reset')
+  @ApiOperation({ summary: 'Clear recorder loop draft' })
+  async clearLoopDraft(@Body() body: { sessionId: string }) {
+    await this.service.clearLoopDraft(body.sessionId);
+    return { success: true };
+  }
+
   @Post('reconcile')
   @ApiOperation({ summary: 'Reconcile browser execution after manual takeover' })
-  async reconcile(@Body() body: ReconcileAfterTakeoverRequest): Promise<ReconcileAfterTakeoverResponse> {
+  async reconcile(
+    @Body() body: ReconcileAfterTakeoverRequest
+  ): Promise<ReconcileAfterTakeoverResponse> {
     return this.service.reconcileAfterTakeover(body);
   }
 

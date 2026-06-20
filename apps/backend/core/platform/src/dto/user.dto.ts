@@ -1,13 +1,5 @@
 import { Type } from 'class-transformer';
-import {
-  IsArray,
-  ArrayNotEmpty,
-  IsString,
-  IsOptional,
-  IsInt,
-  Min,
-  IsIn,
-} from 'class-validator';
+import { IsArray, ArrayNotEmpty, IsString, IsOptional, IsInt, Min, IsIn } from 'class-validator';
 
 export class UpdateUserRolesDto {
   @IsArray()

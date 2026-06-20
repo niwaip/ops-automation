@@ -18,12 +18,12 @@ import {
   Tag,
   Typography,
 } from 'antd';
-import { 
-  ArrowLeftOutlined, 
-  LoadingOutlined, 
-  PlayCircleOutlined, 
-  RobotOutlined, 
-  UploadOutlined 
+import {
+  ArrowLeftOutlined,
+  LoadingOutlined,
+  PlayCircleOutlined,
+  RobotOutlined,
+  UploadOutlined,
 } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { useTranslation } from 'react-i18next';
@@ -113,7 +113,7 @@ const renderInputField = (field: SchemaField) => {
 
 const normalizeInputValues = (
   values: Record<string, unknown>,
-  fields: SchemaField[],
+  fields: SchemaField[]
 ): Record<string, unknown> => {
   return fields.reduce<Record<string, unknown>>((acc, field) => {
     const rawValue = values[field.name];
@@ -124,7 +124,10 @@ const normalizeInputValues = (
 
     const normalizedType = field.type.toLowerCase();
 
-    if ((normalizedType === 'object' || normalizedType === 'json') && typeof rawValue === 'string') {
+    if (
+      (normalizedType === 'object' || normalizedType === 'json') &&
+      typeof rawValue === 'string'
+    ) {
       acc[field.name] = JSON.parse(rawValue);
       return acc;
     }
@@ -161,12 +164,12 @@ const ExecutionCreatePage: React.FC = () => {
 
   const publishedSkillsQuery = useQuery(
     ['published-skills-for-execution-create'],
-    capabilityReleaseApi.listReleaseCenter,
+    capabilityReleaseApi.listReleaseCenter
   );
   const authorizedSkillsQuery = useQuery(['authorized-skills-for-execution-create'], skillApi.list);
   const authorizedSkillIds = useMemo(
     () => new Set((authorizedSkillsQuery.data?.skills || []).map((skill) => skill.id)),
-    [authorizedSkillsQuery.data?.skills],
+    [authorizedSkillsQuery.data?.skills]
   );
 
   const skillOptions = useMemo(() => {
@@ -196,10 +199,8 @@ const ExecutionCreatePage: React.FC = () => {
       const shouldReplace =
         !currentItem ||
         nextItem.releaseVersion > currentItem.releaseVersion ||
-        (
-          nextItem.releaseVersion === currentItem.releaseVersion &&
-          new Date(nextItem.updatedAt).getTime() > new Date(currentItem.updatedAt).getTime()
-        );
+        (nextItem.releaseVersion === currentItem.releaseVersion &&
+          new Date(nextItem.updatedAt).getTime() > new Date(currentItem.updatedAt).getTime());
 
       if (shouldReplace) {
         skillMap.set(sourceKey, nextItem);
@@ -213,18 +214,22 @@ const ExecutionCreatePage: React.FC = () => {
 
   const selectedSkillOption = useMemo(
     () => skillOptions.find((skill) => skill.skillId === selectedSkillId),
-    [selectedSkillId, skillOptions],
+    [selectedSkillId, skillOptions]
   );
 
   const selectedSkillQuery = useQuery(
     ['skill-detail-for-execution-create', selectedSkillId],
     () => skillApi.getById(selectedSkillId ?? ''),
-    { enabled: Boolean(selectedSkillId) },
+    { enabled: Boolean(selectedSkillId) }
   );
 
   const selectedSkill: SkillConfigDTO | undefined = selectedSkillQuery.data;
-  const selectedSkillDisplayName = selectedSkillOption?.skillName || selectedSkill?.name || selectedSkillId || '-';
-  const schemaFields = useMemo(() => getSchemaFields(selectedSkill?.paramsSchema), [selectedSkill?.paramsSchema]);
+  const selectedSkillDisplayName =
+    selectedSkillOption?.skillName || selectedSkill?.name || selectedSkillId || '-';
+  const schemaFields = useMemo(
+    () => getSchemaFields(selectedSkill?.paramsSchema),
+    [selectedSkill?.paramsSchema]
+  );
   const formLoadingIndicator = <LoadingOutlined style={{ fontSize: 24 }} spin />;
 
   useEffect(() => {
@@ -256,10 +261,7 @@ const ExecutionCreatePage: React.FC = () => {
   }, [form, schemaFields, selectedSkill]);
 
   const createMutation = useMutation(
-    async (values: {
-      skillId: string;
-      input?: Record<string, unknown>;
-    }) => {
+    async (values: { skillId: string; input?: Record<string, unknown> }) => {
       return executionApi.create({
         skillId: values.skillId,
         input: normalizeInputValues(values.input || {}, schemaFields),
@@ -280,13 +282,10 @@ const ExecutionCreatePage: React.FC = () => {
       onError: (error: Error) => {
         void message.error(`创建执行失败：${error.message}`);
       },
-    },
+    }
   );
 
-  const handleSubmit = (values: {
-    skillId: string;
-    input?: Record<string, unknown>;
-  }) => {
+  const handleSubmit = (values: { skillId: string; input?: Record<string, unknown> }) => {
     try {
       createMutation.mutate(values);
     } catch (error) {
@@ -295,13 +294,17 @@ const ExecutionCreatePage: React.FC = () => {
   };
 
   const applyGeneratedParamsToForm = (params: Record<string, unknown>) => {
-    const currentValues = (form.getFieldValue('input') as Record<string, unknown> | undefined) || {};
+    const currentValues =
+      (form.getFieldValue('input') as Record<string, unknown> | undefined) || {};
     const nextValues: Record<string, unknown> = { ...currentValues };
     schemaFields.forEach((field) => {
       if (params[field.name] !== undefined) {
         const value = params[field.name];
         const normalizedType = field.type.toLowerCase();
-        if ((normalizedType === 'object' || normalizedType === 'json') && typeof value !== 'string') {
+        if (
+          (normalizedType === 'object' || normalizedType === 'json') &&
+          typeof value !== 'string'
+        ) {
           nextValues[field.name] = JSON.stringify(value, null, 2);
         } else {
           nextValues[field.name] = value;
@@ -373,10 +376,7 @@ const ExecutionCreatePage: React.FC = () => {
     }
     setAiGenerating(true);
     try {
-      const templateId =
-        selectedSkill.carboneTemplateId
-        || selectedSkill.templateId
-        || '';
+      const templateId = selectedSkill.carboneTemplateId || selectedSkill.templateId || '';
       const paramsSchema = selectedSkill.paramsSchema;
       const result = await aiApi.recognizeParams({
         template_id: templateId || 'unknown',
@@ -470,14 +470,13 @@ const ExecutionCreatePage: React.FC = () => {
                 />
               </Form.Item>
 
-              <Card
-                size="small"
-                type="inner"
-                title="执行输入参数"
-                style={{ marginBottom: 16 }}
-              >
+              <Card size="small" type="inner" title="执行输入参数" style={{ marginBottom: 16 }}>
                 <Space style={{ marginBottom: 12 }}>
-                  <Button icon={<RobotOutlined />} onClick={handleOpenAiModal} disabled={!selectedSkillId}>
+                  <Button
+                    icon={<RobotOutlined />}
+                    onClick={handleOpenAiModal}
+                    disabled={!selectedSkillId}
+                  >
                     智能识别参数
                   </Button>
                 </Space>
@@ -589,7 +588,11 @@ const ExecutionCreatePage: React.FC = () => {
           )}
         </Card>
 
-        <Space direction="vertical" size="middle" style={{ width: '100%', minHeight: 0, overflowY: 'auto' }}>
+        <Space
+          direction="vertical"
+          size="middle"
+          style={{ width: '100%', minHeight: 0, overflowY: 'auto' }}
+        >
           <Card title="技能信息">
             {selectedSkill ? (
               <Descriptions bordered size="small" column={1}>
@@ -630,7 +633,19 @@ const ExecutionCreatePage: React.FC = () => {
             <Collapse ghost defaultActiveKey={[]}>
               <Panel header="参数 Schema" key="params-schema">
                 {selectedSkill?.paramsSchema ? (
-                  <pre style={{ margin: 0, maxHeight: 360, overflow: 'auto', whiteSpace: 'pre-wrap', background: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--bg-secondary)', padding: 12, borderRadius: 8 }}>
+                  <pre
+                    style={{
+                      margin: 0,
+                      maxHeight: 360,
+                      overflow: 'auto',
+                      whiteSpace: 'pre-wrap',
+                      background: 'var(--bg-secondary)',
+                      color: 'var(--text-primary)',
+                      border: '1px solid var(--bg-secondary)',
+                      padding: 12,
+                      borderRadius: 8,
+                    }}
+                  >
                     {JSON.stringify(selectedSkill.paramsSchema, null, 2)}
                   </pre>
                 ) : (
@@ -662,11 +677,11 @@ const ExecutionCreatePage: React.FC = () => {
                 <UploadOutlined />
               </p>
               <p className="ant-upload-text">拖拽或点击上传文本文件（.txt/.md/.csv/.json）</p>
-              <p className="ant-upload-hint">将读取文件文本用于参数识别；暂不支持直接解析PDF/Word。</p>
+              <p className="ant-upload-hint">
+                将读取文件文本用于参数识别；暂不支持直接解析PDF/Word。
+              </p>
             </Upload.Dragger>
-            {uploadedFileName ? (
-              <Text type="secondary">已选择文件：{uploadedFileName}</Text>
-            ) : null}
+            {uploadedFileName ? <Text type="secondary">已选择文件：{uploadedFileName}</Text> : null}
           </Space>
         </Space>
       </Modal>

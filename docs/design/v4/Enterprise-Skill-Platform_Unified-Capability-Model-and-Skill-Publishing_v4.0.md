@@ -51,12 +51,12 @@
 
 为确保本阶段不偏离目标，以下四项全部满足才允许进入下一阶段。
 
-| 验收项 | Go 条件（必须满足） | No-Go 触发条件 |
-| --- | --- | --- |
-| Bridge 稳定化 | `POST /capabilities/bridge/recorder-export` 在主流程可用；关键错误码（`missing_publish_payload`、`invalid_release_type`、`release_approval_pending`、`release_approval_rejected`、`skill_publish_tool_validation_failed`）均可稳定返回 | 仍依赖文案字符串分支；错误结构不稳定；无回归测试 |
-| `executionFlow` 一致性 | `SkillDraft` 的 `executionFlow` 可写入、可更新、发布时可被正确消费；关键流程有自动化测试覆盖 | 发布前后 `executionFlow` 语义漂移；更新后未进入 `draftPayload` 或发布落地 |
-| Snapshot 元数据 | `browser_recording` 的 source snapshot 至少包含 `goal/paramsSchema/executionFlow/tools/runtimeMetadata/recordingCommands/guidance` | 录制关键信息仅存在临时导出对象，无法在 release 维度追溯 |
-| 发布前验证 | 至少完成静态校验（结构完整性、关键字段约束）；并具备回放验证接入位 | 无校验直接发布；发布失败后无法定位是参数问题还是脚本问题 |
+| 验收项                 | Go 条件（必须满足）                                                                                                                                                                                                                    | No-Go 触发条件                                                            |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Bridge 稳定化          | `POST /capabilities/bridge/recorder-export` 在主流程可用；关键错误码（`missing_publish_payload`、`invalid_release_type`、`release_approval_pending`、`release_approval_rejected`、`skill_publish_tool_validation_failed`）均可稳定返回 | 仍依赖文案字符串分支；错误结构不稳定；无回归测试                          |
+| `executionFlow` 一致性 | `SkillDraft` 的 `executionFlow` 可写入、可更新、发布时可被正确消费；关键流程有自动化测试覆盖                                                                                                                                           | 发布前后 `executionFlow` 语义漂移；更新后未进入 `draftPayload` 或发布落地 |
+| Snapshot 元数据        | `browser_recording` 的 source snapshot 至少包含 `goal/paramsSchema/executionFlow/tools/runtimeMetadata/recordingCommands/guidance`                                                                                                     | 录制关键信息仅存在临时导出对象，无法在 release 维度追溯                   |
+| 发布前验证             | 至少完成静态校验（结构完整性、关键字段约束）；并具备回放验证接入位                                                                                                                                                                     | 无校验直接发布；发布失败后无法定位是参数问题还是脚本问题                  |
 
 建议执行规则：
 
@@ -246,13 +246,13 @@ Skill 发布后不会“进入 ToolCatalog 成为一个工具”，而是：
 
 为了避免实现时对象漂移，建议用下表统一术语。
 
-| 层 | 当前对象 | 过渡对象 | 目标对象 |
-| --- | --- | --- | --- |
-| Intent | `userGoal` / 对话文本 | `publishPayload.name/description` | 正式 Skill 元数据 |
-| Param | `inferSkillParameters()` 结果 | `paramsSchema` | 带验证与提取策略的参数模型 |
-| Behavior | `BrowserCommand[]` | `executionFlow` 中的 `browser_step` | `BrowserActionStep[]` + 标准 DSL |
-| Runtime | `backend` / `runtimeSessionId` / adapter | Runtime metadata | 扩展版 runtime context |
-| Release | 内部 `publishPayload` | `SkillDraftDTO` 桥接 | 正式 Capability Source + Draft + Publish |
+| 层       | 当前对象                                 | 过渡对象                            | 目标对象                                 |
+| -------- | ---------------------------------------- | ----------------------------------- | ---------------------------------------- |
+| Intent   | `userGoal` / 对话文本                    | `publishPayload.name/description`   | 正式 Skill 元数据                        |
+| Param    | `inferSkillParameters()` 结果            | `paramsSchema`                      | 带验证与提取策略的参数模型               |
+| Behavior | `BrowserCommand[]`                       | `executionFlow` 中的 `browser_step` | `BrowserActionStep[]` + 标准 DSL         |
+| Runtime  | `backend` / `runtimeSessionId` / adapter | Runtime metadata                    | 扩展版 runtime context                   |
+| Release  | 内部 `publishPayload`                    | `SkillDraftDTO` 桥接                | 正式 Capability Source + Draft + Publish |
 
 ---
 
@@ -468,31 +468,31 @@ Capability Release 当前已存在：
 
 推荐的直接映射关系如下：
 
-| Recorder 导出字段 | 目标字段 | 说明 |
-| --- | --- | --- |
-| `publishPayload.name` | `SkillDraftDTO.name` | 可直接复用 |
-| `publishPayload.description` | `SkillDraftDTO.description` | 可直接复用 |
-| `publishPayload.triggerKeywords` | `SkillDraftDTO.triggerKeywords` | 可直接复用 |
-| `publishPayload.paramsSchema` | `SkillDraftDTO.paramsSchema` | 可直接复用 |
-| `publishPayload.executionFlowTemplateIds` | `SkillDraftDTO.executionFlowTemplateIds` | 当前通常为空 |
-| `publishPayload.tools` | `SkillDraftDTO.tools` | 进入工具治理链 |
-| `publishPayload.apiEndpoints` | `SkillDraftDTO.apiEndpoints` | 保存 runtime metadata |
-| `publishPayload` 全量 | `SkillDraftDTO.draftPayload` | 作为完整草案事实源 |
+| Recorder 导出字段                         | 目标字段                                 | 说明                  |
+| ----------------------------------------- | ---------------------------------------- | --------------------- |
+| `publishPayload.name`                     | `SkillDraftDTO.name`                     | 可直接复用            |
+| `publishPayload.description`              | `SkillDraftDTO.description`              | 可直接复用            |
+| `publishPayload.triggerKeywords`          | `SkillDraftDTO.triggerKeywords`          | 可直接复用            |
+| `publishPayload.paramsSchema`             | `SkillDraftDTO.paramsSchema`             | 可直接复用            |
+| `publishPayload.executionFlowTemplateIds` | `SkillDraftDTO.executionFlowTemplateIds` | 当前通常为空          |
+| `publishPayload.tools`                    | `SkillDraftDTO.tools`                    | 进入工具治理链        |
+| `publishPayload.apiEndpoints`             | `SkillDraftDTO.apiEndpoints`             | 保存 runtime metadata |
+| `publishPayload` 全量                     | `SkillDraftDTO.draftPayload`             | 作为完整草案事实源    |
 
 #### 6.6.2 Recorder Export -> Capability Source Payload
 
 如果短期走 `execution_flow_template` 兼容方案，建议把以下字段落入 `sourcePayload`：
 
-| Recorder 导出字段 | sourcePayload 字段 |
-| --- | --- |
-| `userGoal` | `goal` |
-| `publishPayload.description` | `description` |
-| `publishPayload.paramsSchema` | `paramsSchema` |
-| `publishPayload.executionFlow` | `executionFlow` |
-| `publishPayload.tools` | `tools` |
-| `publishPayload.apiEndpoints.runtimeMetadata` | `runtimeMetadata` |
-| `commands` | `recordingCommands` |
-| `guidance` | `guidance` |
+| Recorder 导出字段                             | sourcePayload 字段  |
+| --------------------------------------------- | ------------------- |
+| `userGoal`                                    | `goal`              |
+| `publishPayload.description`                  | `description`       |
+| `publishPayload.paramsSchema`                 | `paramsSchema`      |
+| `publishPayload.executionFlow`                | `executionFlow`     |
+| `publishPayload.tools`                        | `tools`             |
+| `publishPayload.apiEndpoints.runtimeMetadata` | `runtimeMetadata`   |
+| `commands`                                    | `recordingCommands` |
+| `guidance`                                    | `guidance`          |
 
 这样后续即使重建 Skill Draft，也仍然能从 source snapshot 恢复足够上下文。
 

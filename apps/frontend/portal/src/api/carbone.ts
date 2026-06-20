@@ -65,7 +65,9 @@ export interface CarboneSkill {
 }
 
 const isDraftDocumentTemplate = (template: CarboneTemplate): boolean => {
-  const fileName = String(template.fileName || '').trim().toLowerCase();
+  const fileName = String(template.fileName || '')
+    .trim()
+    .toLowerCase();
   return fileName.startsWith('draft-');
 };
 
@@ -102,10 +104,13 @@ class CarboneAPI {
   /**
    * 重命名模板
    */
-  async renameTemplate(id: string, newName: string): Promise<{ success: boolean; fileName: string }> {
+  async renameTemplate(
+    id: string,
+    newName: string
+  ): Promise<{ success: boolean; fileName: string }> {
     return apiClient.post<{ success: boolean; fileName: string }>(
       `/carbone/templates/${id}/rename`,
-      { newName },
+      { newName }
     );
   }
 

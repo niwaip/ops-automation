@@ -26,7 +26,7 @@ export interface CapabilityReleaseAssistAccessors {
     actorId: string | undefined,
     success: boolean,
     summary: string,
-    details?: Record<string, unknown>,
+    details?: Record<string, unknown>
   ): Promise<void>;
 }
 
@@ -35,14 +35,14 @@ export class CapabilityReleaseAssistService {
   private readonly logger = new Logger(CapabilityReleaseAssistService.name);
 
   constructor(
-    private readonly capabilityReleaseTemporalSchemaService: CapabilityReleaseTemporalSchemaService,
+    private readonly capabilityReleaseTemporalSchemaService: CapabilityReleaseTemporalSchemaService
   ) {}
 
   async analyzeFailure(
     id: string,
     dto: AnalyzeFailureDTO,
     userId: string | undefined,
-    accessors: CapabilityReleaseAssistAccessors,
+    accessors: CapabilityReleaseAssistAccessors
   ): Promise<AnalyzeFailureResultDTO> {
     const release = await accessors.getReleaseOrThrow(id);
     let logs: string[] = [];
@@ -99,7 +99,7 @@ ${logs.join('\n')}
           modelId: 'default',
           prompt,
         },
-        { timeout: 60000 },
+        { timeout: 60000 }
       );
 
       const content = response.data?.result || '';
@@ -119,7 +119,7 @@ ${logs.join('\n')}
         userId,
         true,
         `AI 失败分析完成: ${result.explanation}`,
-        { recordId: dto.recordId, recordType: dto.recordType },
+        { recordId: dto.recordId, recordType: dto.recordType }
       );
 
       return {
@@ -144,15 +144,17 @@ ${logs.join('\n')}
     id: string,
     dto: SuggestReleaseWizardAssistDTO,
     userId: string | undefined,
-    accessors: CapabilityReleaseAssistAccessors,
+    accessors: CapabilityReleaseAssistAccessors
   ): Promise<SuggestReleaseWizardAssistResultDTO> {
     const release = await accessors.getReleaseOrThrow(id);
     const snapshot = await accessors.getCurrentSnapshotOrThrow(release);
     const environment = dto.environment || 'test';
-    const paramsSchema = this.capabilityReleaseTemporalSchemaService
-      .resolveEffectiveTemporalParamsSchema(snapshot.sourcePayload);
-    const fallbackTestInput = this.capabilityReleaseTemporalSchemaService
-      .buildSuggestedInputFromSchema(paramsSchema);
+    const paramsSchema =
+      this.capabilityReleaseTemporalSchemaService.resolveEffectiveTemporalParamsSchema(
+        snapshot.sourcePayload
+      );
+    const fallbackTestInput =
+      this.capabilityReleaseTemporalSchemaService.buildSuggestedInputFromSchema(paramsSchema);
     const deployConfig = this.resolveDeploymentProfile(snapshot.sourcePayload, environment);
 
     const prompt = `你是企业技能发布向导的 AI 助手。请基于以下能力定义，给出“部署配置建议”和“真实校验测试参数建议”。\n\n能力名称: ${
@@ -160,7 +162,7 @@ ${logs.join('\n')}
     }\n能力类型: ${release.sourceType}\n目标环境: ${environment}\n参数 Schema: ${JSON.stringify(
       paramsSchema,
       null,
-      2,
+      2
     )}\n源定义快照: ${JSON.stringify(snapshot.sourcePayload, null, 2)}\n\n要求：\n1. 返回一个适合演示和校验的 testInput JSON。\n2. 如果有比较合理的 testUserInput，自然语言给一句。\n3. deployConfig 只返回用户本次需要重点关注或覆盖的字段；没有必要覆盖则返回空对象。\n4. explanation 用中文，告诉用户这些参数为什么这样推荐。\n5. 只返回 JSON，不要 Markdown。\n\n返回格式：\n{\n  "explanation": "中文说明",\n  "deployConfig": {},\n  "testInput": {},\n  "testUserInput": "..." \n}`;
 
     try {
@@ -168,7 +170,7 @@ ${logs.join('\n')}
       const response = await axios.post<{ result: string }>(
         `${orchestratorUrl}/ai/model/call`,
         { modelId: 'default', prompt },
-        { timeout: 60000 },
+        { timeout: 60000 }
       );
       const content = response.data?.result || '';
       const jsonMatch = content.match(/\{[\s\S]*\}/);
@@ -199,7 +201,7 @@ ${logs.join('\n')}
         userId,
         true,
         `已生成向导建议 (${environment})`,
-        { environment },
+        { environment }
       );
 
       return result;
@@ -220,7 +222,7 @@ ${logs.join('\n')}
 
   private resolveDeploymentProfile(
     sourcePayload: Record<string, unknown>,
-    environment: string,
+    environment: string
   ): Record<string, unknown> {
     const profiles =
       sourcePayload.deploymentProfiles && typeof sourcePayload.deploymentProfiles === 'object'

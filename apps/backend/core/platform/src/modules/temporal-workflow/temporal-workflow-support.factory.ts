@@ -3,46 +3,32 @@ import {
   normalizeDraftInputParams,
   normalizeDraftOutputParams,
 } from './temporal-workflow-draft.normalizers';
-import {
-  normalizeWorkflowInputRenderPath,
-} from './temporal-workflow-template.helpers';
+import { normalizeWorkflowInputRenderPath } from './temporal-workflow-template.helpers';
 import {
   buildPlaceholderValueFromSchemaHint,
   extractValueByPath,
 } from './temporal-workflow-draft.normalizers';
-import type {
-  TemporalWorkflowActivityResolutionSupport,
-} from './temporal-workflow-activity-resolution.service';
-import type {
-  TemporalWorkflowAiDraftSupport,
-} from './temporal-workflow-draft.service';
-import type {
-  TemporalWorkflowBrowserDraftSupport,
-} from './temporal-workflow-browser-draft.service';
-import type {
-  TemporalWorkflowCodegenSupport,
-} from './temporal-workflow-codegen.service';
-import type {
-  TemporalWorkflowSessionSupport,
-} from './temporal-workflow-session.service';
-import type {
-  TemporalWorkflowTemplateSupport,
-} from './temporal-workflow-template.service';
-import type {
-  ActivityDsl,
-  WorkflowDsl,
-} from './temporal-workflow.types';
+import type { TemporalWorkflowActivityResolutionSupport } from './temporal-workflow-activity-resolution.service';
+import type { TemporalWorkflowAiDraftSupport } from './temporal-workflow-draft.service';
+import type { TemporalWorkflowBrowserDraftSupport } from './temporal-workflow-browser-draft.service';
+import type { TemporalWorkflowCodegenSupport } from './temporal-workflow-codegen.service';
+import type { TemporalWorkflowSessionSupport } from './temporal-workflow-session.service';
+import type { TemporalWorkflowTemplateSupport } from './temporal-workflow-template.service';
+import type { ActivityDsl, WorkflowDsl } from './temporal-workflow.types';
 
 interface AiDraftSupportDependencies {
   fetchReferenceUrlExcerpt: (referenceUrl: string) => Promise<string>;
   sanitizeJsonValue: <T>(value: T) => T;
   parseJsonFromAiContent: (content: string) => Record<string, any>;
   pickFirstNonEmptyString: (...values: unknown[]) => string | undefined;
-  normalizeHttpRequestConfig: (config: Record<string, any>, declaredInputKeys?: Set<string>) => Record<string, any>;
+  normalizeHttpRequestConfig: (
+    config: Record<string, any>,
+    declaredInputKeys?: Set<string>
+  ) => Record<string, any>;
   optimizeHttpRequestConfig: (
     stepConfig: Record<string, any>,
     inputParams?: Record<string, any>,
-    userRequest?: string,
+    userRequest?: string
   ) => Promise<{
     success: boolean;
     optimizedConfig?: Record<string, any>;
@@ -52,7 +38,7 @@ interface AiDraftSupportDependencies {
   }>;
   previewHttpRequestConfig: (
     stepConfig: Record<string, any>,
-    inputParams?: Record<string, any>,
+    inputParams?: Record<string, any>
   ) => Promise<{
     success: boolean;
     baseConfig?: Record<string, any>;
@@ -63,7 +49,7 @@ interface AiDraftSupportDependencies {
   generateStructuredTransformConfig: (
     sourceSample: Record<string, any> | string,
     userRequest: string,
-    existingConfig?: Record<string, any>,
+    existingConfig?: Record<string, any>
   ) => Promise<{
     success: boolean;
     config?: Record<string, any>;
@@ -73,7 +59,7 @@ interface AiDraftSupportDependencies {
   generateAiStructuredTransformDraftConfig: (
     sourceSample: Record<string, any> | string,
     userRequest: string,
-    existingConfig?: Record<string, any>,
+    existingConfig?: Record<string, any>
   ) => Promise<{
     success: boolean;
     config?: Record<string, any>;
@@ -81,7 +67,10 @@ interface AiDraftSupportDependencies {
     explanation?: string;
     error?: string;
   }>;
-  normalizeStructuredTransformConfig: (config: Record<string, any>, placeholderKeys?: Set<string>) => Record<string, any>;
+  normalizeStructuredTransformConfig: (
+    config: Record<string, any>,
+    placeholderKeys?: Set<string>
+  ) => Record<string, any>;
   collectTemplateVariables: (value: unknown, target?: Set<string>) => Set<string>;
   renderHttpTemplateValue: (value: unknown, params: Record<string, any>) => unknown;
   normalizeName: (value: string | undefined | null) => string;
@@ -92,14 +81,16 @@ interface AiDraftSupportDependencies {
     workflowDsl: WorkflowDsl,
     workflowName?: string,
     taskQueue?: string,
-    activityDsl?: ActivityDsl,
+    activityDsl?: ActivityDsl
   ) => Promise<WorkflowDsl>;
   buildWorkflowSemanticHint: (...values: unknown[]) => string;
 }
 
 interface TemplateSupportDependencies {
   getBuiltinDocumentRenderActivity: () => any;
-  buildDefaultWorkflowInputPolicyParams: (inputParams: Record<string, any> | undefined) => Record<string, any>;
+  buildDefaultWorkflowInputPolicyParams: (
+    inputParams: Record<string, any> | undefined
+  ) => Record<string, any>;
   normalizeName: (value: string | undefined | null) => string;
   normalizeDescription: (value: string | undefined | null) => string | null;
   normalizeTaskQueue: (value: string | undefined | null) => string;
@@ -107,7 +98,7 @@ interface TemplateSupportDependencies {
     workflowDsl: WorkflowDsl,
     workflowName?: string,
     taskQueue?: string,
-    activityDsl?: ActivityDsl,
+    activityDsl?: ActivityDsl
   ) => Promise<WorkflowDsl>;
   pickFirstNonEmptyString: (...values: unknown[]) => string | undefined;
   uniqueVariables: (variables: string[]) => string[];
@@ -123,31 +114,25 @@ interface BrowserDraftSupportDependencies {
 }
 
 export function createTemporalWorkflowAiDraftSupport(
-  deps: AiDraftSupportDependencies,
+  deps: AiDraftSupportDependencies
 ): TemporalWorkflowAiDraftSupport {
   return {
     fetchReferenceUrlExcerpt: (referenceUrl) => deps.fetchReferenceUrlExcerpt(referenceUrl),
     sanitizeJsonValue: <T>(value: T) => deps.sanitizeJsonValue(value),
     parseJsonFromAiContent: (content) => deps.parseJsonFromAiContent(content),
     pickFirstNonEmptyString: (...values) => deps.pickFirstNonEmptyString(...values),
-    normalizeHttpRequestConfig: (config, declaredInputKeys) => (
-      deps.normalizeHttpRequestConfig(config, declaredInputKeys)
-    ),
-    optimizeHttpRequestConfig: (stepConfig, inputParams, userRequest) => (
-      deps.optimizeHttpRequestConfig(stepConfig, inputParams, userRequest)
-    ),
-    previewHttpRequestConfig: (stepConfig, inputParams) => (
-      deps.previewHttpRequestConfig(stepConfig, inputParams)
-    ),
-    generateStructuredTransformConfig: (sourceSample, userRequest, existingConfig) => (
-      deps.generateStructuredTransformConfig(sourceSample, userRequest, existingConfig)
-    ),
-    generateAiStructuredTransformDraftConfig: (sourceSample, userRequest, existingConfig) => (
-      deps.generateAiStructuredTransformDraftConfig(sourceSample, userRequest, existingConfig)
-    ),
-    normalizeStructuredTransformConfig: (config, placeholderKeys) => (
-      deps.normalizeStructuredTransformConfig(config, placeholderKeys)
-    ),
+    normalizeHttpRequestConfig: (config, declaredInputKeys) =>
+      deps.normalizeHttpRequestConfig(config, declaredInputKeys),
+    optimizeHttpRequestConfig: (stepConfig, inputParams, userRequest) =>
+      deps.optimizeHttpRequestConfig(stepConfig, inputParams, userRequest),
+    previewHttpRequestConfig: (stepConfig, inputParams) =>
+      deps.previewHttpRequestConfig(stepConfig, inputParams),
+    generateStructuredTransformConfig: (sourceSample, userRequest, existingConfig) =>
+      deps.generateStructuredTransformConfig(sourceSample, userRequest, existingConfig),
+    generateAiStructuredTransformDraftConfig: (sourceSample, userRequest, existingConfig) =>
+      deps.generateAiStructuredTransformDraftConfig(sourceSample, userRequest, existingConfig),
+    normalizeStructuredTransformConfig: (config, placeholderKeys) =>
+      deps.normalizeStructuredTransformConfig(config, placeholderKeys),
     collectTemplateVariables: (value, target) => deps.collectTemplateVariables(value, target),
     extractValueByPath,
     renderHttpTemplateValue: (value, params) => deps.renderHttpTemplateValue(value, params),
@@ -155,26 +140,31 @@ export function createTemporalWorkflowAiDraftSupport(
     normalizeName: (value) => deps.normalizeName(value),
     normalizeDescription: (value) => deps.normalizeDescription(value),
     normalizeTaskQueue: (value) => deps.normalizeTaskQueue(value),
-    normalizeWorkflowClassName: (candidate, workflowName) => (
-      deps.normalizeWorkflowClassName(candidate, workflowName)
-    ),
-    normalizeWorkflowDsl: (workflowDsl, workflowName, taskQueue, activityDsl) => (
-      deps.normalizeWorkflowDsl(workflowDsl, workflowName, taskQueue, activityDsl)
-    ),
-    normalizeDraftInputParams: (inputParams, steps, referenceUrl) => normalizeDraftInputParams({
-      inputParams,
-      steps,
-      referenceUrl,
-      pickFirstNonEmptyString: (...values) => deps.pickFirstNonEmptyString(...values),
-      collectTemplateVariables: (value, target) => deps.collectTemplateVariables(value, target),
-      normalizeWorkflowInputRenderPath,
-      buildWorkflowSemanticHint: (...values) => deps.buildWorkflowSemanticHint(...values),
-    }),
-    normalizeDraftOutputParams: (outputParams) => normalizeDraftOutputParams(
-      outputParams,
-      (...values) => deps.pickFirstNonEmptyString(...values),
-    ),
-    normalizeAiDraftStepInput: (rawInput, activityRef, stepName, workflowIntentText, previousActivityRef) => (
+    normalizeWorkflowClassName: (candidate, workflowName) =>
+      deps.normalizeWorkflowClassName(candidate, workflowName),
+    normalizeWorkflowDsl: (workflowDsl, workflowName, taskQueue, activityDsl) =>
+      deps.normalizeWorkflowDsl(workflowDsl, workflowName, taskQueue, activityDsl),
+    normalizeDraftInputParams: (inputParams, steps, referenceUrl) =>
+      normalizeDraftInputParams({
+        inputParams,
+        steps,
+        referenceUrl,
+        pickFirstNonEmptyString: (...values) => deps.pickFirstNonEmptyString(...values),
+        collectTemplateVariables: (value, target) => deps.collectTemplateVariables(value, target),
+        normalizeWorkflowInputRenderPath,
+        buildWorkflowSemanticHint: (...values) => deps.buildWorkflowSemanticHint(...values),
+      }),
+    normalizeDraftOutputParams: (outputParams) =>
+      normalizeDraftOutputParams(outputParams, (...values) =>
+        deps.pickFirstNonEmptyString(...values)
+      ),
+    normalizeAiDraftStepInput: (
+      rawInput,
+      activityRef,
+      stepName,
+      workflowIntentText,
+      previousActivityRef
+    ) =>
       normalizeAiDraftStepInput({
         rawInput,
         activityRef,
@@ -182,29 +172,25 @@ export function createTemporalWorkflowAiDraftSupport(
         workflowIntentText,
         previousActivityRef,
         sanitizeJsonValue: <T>(value: T) => deps.sanitizeJsonValue(value),
-        normalizeStructuredTransformConfig: (config, placeholderKeys) => (
-          deps.normalizeStructuredTransformConfig(config, placeholderKeys)
-        ),
+        normalizeStructuredTransformConfig: (config, placeholderKeys) =>
+          deps.normalizeStructuredTransformConfig(config, placeholderKeys),
         pickFirstNonEmptyString: (...values) => deps.pickFirstNonEmptyString(...values),
-      })
-    ),
+      }),
   };
 }
 
 export function createTemporalWorkflowTemplateSupport(
-  deps: TemplateSupportDependencies,
+  deps: TemplateSupportDependencies
 ): TemporalWorkflowTemplateSupport {
   return {
     getBuiltinDocumentRenderActivity: () => deps.getBuiltinDocumentRenderActivity(),
-    buildDefaultWorkflowInputPolicyParams: (inputParams) => (
-      deps.buildDefaultWorkflowInputPolicyParams(inputParams)
-    ),
+    buildDefaultWorkflowInputPolicyParams: (inputParams) =>
+      deps.buildDefaultWorkflowInputPolicyParams(inputParams),
     normalizeName: (value) => deps.normalizeName(value),
     normalizeDescription: (value) => deps.normalizeDescription(value),
     normalizeTaskQueue: (value) => deps.normalizeTaskQueue(value),
-    normalizeWorkflowDsl: (workflowDsl, workflowName, taskQueue, activityDsl) => (
-      deps.normalizeWorkflowDsl(workflowDsl, workflowName, taskQueue, activityDsl)
-    ),
+    normalizeWorkflowDsl: (workflowDsl, workflowName, taskQueue, activityDsl) =>
+      deps.normalizeWorkflowDsl(workflowDsl, workflowName, taskQueue, activityDsl),
     pickFirstNonEmptyString: (...values) => deps.pickFirstNonEmptyString(...values),
     uniqueVariables: (variables) => deps.uniqueVariables(variables),
     buildWorkflowSemanticHint: (...values) => deps.buildWorkflowSemanticHint(...values),
@@ -212,7 +198,7 @@ export function createTemporalWorkflowTemplateSupport(
 }
 
 export function createTemporalWorkflowBrowserDraftSupport(
-  deps: BrowserDraftSupportDependencies,
+  deps: BrowserDraftSupportDependencies
 ): TemporalWorkflowBrowserDraftSupport {
   return {
     normalizeName: (value) => deps.normalizeName(value),
@@ -224,18 +210,20 @@ export function createTemporalWorkflowBrowserDraftSupport(
 }
 
 export function createTemporalWorkflowCodegenSupport(
-  buildDeterministicWorkflowCode: (workflowDsl: WorkflowDsl, activityDsl: ActivityDsl) => string | null,
+  buildDeterministicWorkflowCode: (
+    workflowDsl: WorkflowDsl,
+    activityDsl: ActivityDsl
+  ) => string | null
 ): TemporalWorkflowCodegenSupport {
   return {
-    buildDeterministicWorkflowCode: (workflowDsl, activityDsl) => (
-      buildDeterministicWorkflowCode(workflowDsl, activityDsl)
-    ),
+    buildDeterministicWorkflowCode: (workflowDsl, activityDsl) =>
+      buildDeterministicWorkflowCode(workflowDsl, activityDsl),
   };
 }
 
 export function createTemporalWorkflowSessionSupport(
   generateAiWorkflowDraft: TemporalWorkflowSessionSupport['generateAiWorkflowDraft'],
-  refineAiWorkflowDraft: TemporalWorkflowSessionSupport['refineAiWorkflowDraft'],
+  refineAiWorkflowDraft: TemporalWorkflowSessionSupport['refineAiWorkflowDraft']
 ): TemporalWorkflowSessionSupport {
   return {
     generateAiWorkflowDraft: (data) => generateAiWorkflowDraft(data),
@@ -244,7 +232,7 @@ export function createTemporalWorkflowSessionSupport(
 }
 
 export function createTemporalWorkflowActivityResolutionSupport(
-  buildDeterministicActivityCode: TemporalWorkflowActivityResolutionSupport['buildDeterministicActivityCode'],
+  buildDeterministicActivityCode: TemporalWorkflowActivityResolutionSupport['buildDeterministicActivityCode']
 ): TemporalWorkflowActivityResolutionSupport {
   return {
     buildDeterministicActivityCode: (activityDef) => buildDeterministicActivityCode(activityDef),

@@ -1,7 +1,4 @@
-import {
-  EXECUTION_STATUS,
-  ExecutionStatus,
-} from './contracts/execution-status';
+import { EXECUTION_STATUS, ExecutionStatus } from './contracts/execution-status';
 
 export const EXECUTION_STATUS_TRANSITIONS: Record<ExecutionStatus, ExecutionStatus[]> = {
   [EXECUTION_STATUS.DRAFT]: [EXECUTION_STATUS.QUEUED, EXECUTION_STATUS.CANCELLED],
@@ -30,14 +27,8 @@ export const EXECUTION_STATUS_TRANSITIONS: Record<ExecutionStatus, ExecutionStat
     EXECUTION_STATUS.RUNNING,
     EXECUTION_STATUS.CANCELLED,
   ],
-  [EXECUTION_STATUS.HUMAN_CONTROL]: [
-    EXECUTION_STATUS.RUNNING,
-    EXECUTION_STATUS.CANCELLED,
-  ],
-  [EXECUTION_STATUS.PAUSED]: [
-    EXECUTION_STATUS.RUNNING,
-    EXECUTION_STATUS.CANCELLED,
-  ],
+  [EXECUTION_STATUS.HUMAN_CONTROL]: [EXECUTION_STATUS.RUNNING, EXECUTION_STATUS.CANCELLED],
+  [EXECUTION_STATUS.PAUSED]: [EXECUTION_STATUS.RUNNING, EXECUTION_STATUS.CANCELLED],
   [EXECUTION_STATUS.SUCCEEDED]: [],
   [EXECUTION_STATUS.FAILED]: [],
   [EXECUTION_STATUS.CANCELLED]: [],
@@ -46,7 +37,7 @@ export const EXECUTION_STATUS_TRANSITIONS: Record<ExecutionStatus, ExecutionStat
 
 export const canTransitionExecutionStatus = (
   currentStatus: ExecutionStatus,
-  nextStatus: ExecutionStatus,
+  nextStatus: ExecutionStatus
 ): boolean => EXECUTION_STATUS_TRANSITIONS[currentStatus].includes(nextStatus);
 
 export { isTerminalExecutionStatus } from '@ops/contracts';

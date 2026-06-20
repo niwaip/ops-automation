@@ -74,20 +74,19 @@ export interface PortalRedirectDefinition {
 
 export type PortalRouteEntry = PortalRouteDefinition | PortalRedirectDefinition;
 
-const isRouteDefinition = (entry: PortalRouteEntry): entry is PortalRouteDefinition => 'element' in entry;
+const isRouteDefinition = (entry: PortalRouteEntry): entry is PortalRouteDefinition =>
+  'element' in entry;
 
 const redirectTargetByPath = new Map(
   userRoutePolicy.portalRedirectRoutes.map((route) => [
     route.path,
     route.targetPath === route.path ? undefined : route.targetPath,
-  ]),
+  ])
 );
 
 const renderUserWebRedirect = (path: string) => {
   const targetPath = redirectTargetByPath.get(path);
-  return targetPath
-    ? <UserWebRedirectPage targetPath={targetPath} />
-    : <UserWebRedirectPage />;
+  return targetPath ? <UserWebRedirectPage targetPath={targetPath} /> : <UserWebRedirectPage />;
 };
 
 export const portalRouteEntries: PortalRouteEntry[] = [
@@ -153,13 +152,26 @@ export const portalRouteEntries: PortalRouteEntry[] = [
       requiresAdmin: true,
     },
   },
-  { path: '/admin/capability-studio', element: <CapabilityStudioPage />, requiresAdmin: true, activeMenuKey: '/admin/capabilities' },
-  { path: '/admin/capability-builds/:buildId', element: <CapabilityBuildDetailPage />, requiresAdmin: true, activeMenuKey: '/admin/capabilities' },
+  {
+    path: '/admin/capability-studio',
+    element: <CapabilityStudioPage />,
+    requiresAdmin: true,
+    activeMenuKey: '/admin/capabilities',
+  },
+  {
+    path: '/admin/capability-builds/:buildId',
+    element: <CapabilityBuildDetailPage />,
+    requiresAdmin: true,
+    activeMenuKey: '/admin/capabilities',
+  },
   {
     path: '/published-skills',
     element: renderUserWebRedirect('/published-skills'),
   },
-  { path: '/published-skills/:skillId', element: renderUserWebRedirect('/published-skills/:skillId') },
+  {
+    path: '/published-skills/:skillId',
+    element: renderUserWebRedirect('/published-skills/:skillId'),
+  },
   {
     path: '/sessions',
     element: <SessionListPage />,
@@ -194,7 +206,11 @@ export const portalRouteEntries: PortalRouteEntry[] = [
   },
   { path: '/templates/:id', element: <TemplateDetailPage />, activeMenuKey: '/templates' },
   { path: '/recorder', element: <RecorderPage /> },
-  { path: '/recorder-debug/:sessionId', element: <RecorderDebugDetailPage />, activeMenuKey: '/recorder' },
+  {
+    path: '/recorder-debug/:sessionId',
+    element: <RecorderDebugDetailPage />,
+    activeMenuKey: '/recorder',
+  },
   {
     path: '/reports',
     element: <ReportListPage />,
@@ -230,17 +246,52 @@ export const portalRouteEntries: PortalRouteEntry[] = [
       requiresAdmin: true,
       children: [
         { key: '/admin/users', labelKey: 'users', icon: <UserOutlined />, requiresAdmin: true },
-        { key: '/admin/models', labelKey: 'models', icon: <SettingOutlined />, requiresAdmin: true },
-        { key: '/admin/skills', labelKey: 'skills', icon: <ThunderboltOutlined />, requiresAdmin: true },
+        {
+          key: '/admin/models',
+          labelKey: 'models',
+          icon: <SettingOutlined />,
+          requiresAdmin: true,
+        },
+        {
+          key: '/admin/skills',
+          labelKey: 'skills',
+          icon: <ThunderboltOutlined />,
+          requiresAdmin: true,
+        },
         { key: '/admin/tools', label: '系统工具', icon: <ToolOutlined />, requiresAdmin: true },
-        { key: '/admin/prompt-debug', label: 'Prompt 调试', icon: <BugOutlined />, requiresAdmin: true },
+        {
+          key: '/admin/prompt-debug',
+          label: 'Prompt 调试',
+          icon: <BugOutlined />,
+          requiresAdmin: true,
+        },
       ],
     },
   },
-  { path: '/admin/models', element: <AIModelAdminPage />, requiresAdmin: true, activeMenuKey: '/admin/models' },
-  { path: '/admin/skills', element: <SkillAdminPage />, requiresAdmin: true, activeMenuKey: '/admin/skills' },
-  { path: '/admin/tools', element: <SystemToolAdminPage />, requiresAdmin: true, activeMenuKey: '/admin/tools' },
-  { path: '/admin/prompt-debug', element: <PromptDebugPage />, requiresAdmin: true, activeMenuKey: '/admin/prompt-debug' },
+  {
+    path: '/admin/models',
+    element: <AIModelAdminPage />,
+    requiresAdmin: true,
+    activeMenuKey: '/admin/models',
+  },
+  {
+    path: '/admin/skills',
+    element: <SkillAdminPage />,
+    requiresAdmin: true,
+    activeMenuKey: '/admin/skills',
+  },
+  {
+    path: '/admin/tools',
+    element: <SystemToolAdminPage />,
+    requiresAdmin: true,
+    activeMenuKey: '/admin/tools',
+  },
+  {
+    path: '/admin/prompt-debug',
+    element: <PromptDebugPage />,
+    requiresAdmin: true,
+    activeMenuKey: '/admin/prompt-debug',
+  },
   { path: '/report-templates', redirectTo: '/carbone-templates' },
   { path: '/report-templates/new', redirectTo: '/carbone-templates' },
   { path: '/report-templates/:id', redirectTo: '/carbone-templates' },
@@ -277,7 +328,10 @@ export const resolveActiveMenuKey = (pathname: string) => {
 
 export const getDefaultOpenKeys = (pathname: string) => {
   const activeKey = resolveActiveMenuKey(pathname);
-  return activeKey.startsWith('/admin/') && !['/admin/activities', '/admin/temporal', '/admin/capabilities', '/admin/flows'].includes(activeKey)
+  return activeKey.startsWith('/admin/') &&
+    !['/admin/activities', '/admin/temporal', '/admin/capabilities', '/admin/flows'].includes(
+      activeKey
+    )
     ? ['/admin']
     : [];
 };

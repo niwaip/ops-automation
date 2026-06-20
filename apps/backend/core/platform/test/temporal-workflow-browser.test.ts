@@ -61,19 +61,19 @@ describe('TemporalWorkflowBrowserDraftService', () => {
     const builtinRegistry = new BuiltinActivityRegistry();
     const workflowNormalizationService = new TemporalWorkflowNormalizationService(
       prisma as any,
-      builtinRegistry,
+      builtinRegistry
     );
     const aiDraftService = new TemporalWorkflowAiDraftService(prisma as any, builtinRegistry);
     const browserDraftService = new TemporalWorkflowBrowserDraftService();
     const codegenService = new TemporalWorkflowCodegenService();
     const sessionService = new TemporalWorkflowSessionService(
       prisma as any,
-      workflowNormalizationService,
+      workflowNormalizationService
     );
     const validationService = new TemporalWorkflowValidationService();
     const activityResolutionService = new TemporalWorkflowActivityResolutionService(
       prisma as any,
-      builtinRegistry,
+      builtinRegistry
     );
     const workflowConfigService = new TemporalWorkflowConfigService();
     const workflowTemplateService = new TemporalWorkflowTemplateService();
@@ -82,7 +82,7 @@ describe('TemporalWorkflowBrowserDraftService', () => {
       aiDraftService,
       activityResolutionService,
       workflowConfigService,
-      workflowNormalizationService,
+      workflowNormalizationService
     );
     const service = new TemporalWorkflowService(
       prisma as any,
@@ -94,7 +94,7 @@ describe('TemporalWorkflowBrowserDraftService', () => {
       workflowConfigService,
       workflowNormalizationService,
       workflowTemplateService,
-      workflowSupportService,
+      workflowSupportService
     );
 
     return {
@@ -132,24 +132,32 @@ describe('TemporalWorkflowBrowserDraftService', () => {
     });
 
     expect(draft.name).toBe('登录自动化');
-    expect(draft.workflowDsl.sourceContext).toEqual(expect.objectContaining({
-      sourceType: 'browser_template',
-    }));
-    expect(draft.workflowDsl.steps[0]).toEqual(expect.objectContaining({
-      activityRef: expect.stringMatching(/^custom:/),
-    }));
+    expect(draft.workflowDsl.sourceContext).toEqual(
+      expect.objectContaining({
+        sourceType: 'browser_template',
+      })
+    );
+    expect(draft.workflowDsl.steps[0]).toEqual(
+      expect.objectContaining({
+        activityRef: expect.stringMatching(/^custom:/),
+      })
+    );
     expect(draft.workflowDsl.steps).toHaveLength(2);
     expect(draft.workflowDsl.steps).toEqual([
       expect.objectContaining({ name: '1. 页面打开' }),
       expect.objectContaining({ name: '2. 页面迁移' }),
     ]);
     expect(draft.browserTemplate.commandCount).toBe(4);
-    expect(draft.browserTemplate.placeholders).toEqual(expect.arrayContaining(['username', 'password']));
+    expect(draft.browserTemplate.placeholders).toEqual(
+      expect.arrayContaining(['username', 'password'])
+    );
     expect(draft.activityDsl.activities).toHaveLength(2);
-    expect(draft.activityDsl.activities[0]).toEqual(expect.objectContaining({
-      handler: 'browser',
-      name: '1. 页面打开',
-    }));
+    expect(draft.activityDsl.activities[0]).toEqual(
+      expect.objectContaining({
+        handler: 'browser',
+        name: '1. 页面打开',
+      })
+    );
     expect((draft.activityDsl.activities[0].config as any).steps).toHaveLength(4);
     expect((draft.activityDsl.activities[0].config as any).steps[1]).toEqual(
       expect.objectContaining({
@@ -157,7 +165,7 @@ describe('TemporalWorkflowBrowserDraftService', () => {
           action: 'waitForSelector',
           selector: '#username',
         }),
-      }),
+      })
     );
     expect((draft.activityDsl.activities[0].config as any).sessionLifecycle).toEqual({
       initializeSession: true,
@@ -170,7 +178,7 @@ describe('TemporalWorkflowBrowserDraftService', () => {
           action: 'click',
           selector: 'button[type=submit]',
         }),
-      }),
+      })
     );
     expect((draft.activityDsl.activities[1].config as any).sessionLifecycle).toEqual({
       initializeSession: false,
@@ -227,22 +235,24 @@ describe('TemporalWorkflowBrowserDraftService', () => {
     expect(draft.browserTemplate.placeholders).toEqual(expect.arrayContaining(['username']));
     expect(draft.workflowDsl.steps).toHaveLength(2);
     expect(draft.activityDsl.activities).toHaveLength(2);
-    expect(draft.workflowDsl.sourceContext).toEqual(expect.objectContaining({
-      sourceType: 'browser_template',
-      warnings: expect.arrayContaining([
-        expect.stringContaining('executionPlan.commands'),
-      ]),
-    }));
-    expect((draft.activityDsl.activities[0].config as any).steps).toEqual(expect.arrayContaining([
+    expect(draft.workflowDsl.sourceContext).toEqual(
       expect.objectContaining({
-        config: expect.objectContaining({
-          action: 'fill',
-          target: 'e12',
-          locator: expect.objectContaining({ type: 'ref', value: 'e12' }),
-          value: '${username}',
+        sourceType: 'browser_template',
+        warnings: expect.arrayContaining([expect.stringContaining('executionPlan.commands')]),
+      })
+    );
+    expect((draft.activityDsl.activities[0].config as any).steps).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          config: expect.objectContaining({
+            action: 'fill',
+            target: 'e12',
+            locator: expect.objectContaining({ type: 'ref', value: 'e12' }),
+            value: '${username}',
+          }),
         }),
-      }),
-    ]));
+      ])
+    );
     expect((draft.activityDsl.activities[1].config as any).steps).toEqual([
       expect.objectContaining({
         config: expect.objectContaining({
@@ -296,25 +306,25 @@ describe('TemporalWorkflowBrowserDraftService', () => {
 
     expect(draft.browserTemplate.commandCount).toBe(2);
     expect(draft.workflowDsl.steps).toHaveLength(1);
-    expect(draft.workflowDsl.steps).toEqual([
-      expect.objectContaining({ name: '1. 页面打开' }),
-    ]);
-    expect(draft.workflowDsl.sourceContext).toEqual(expect.objectContaining({
-      sourceType: 'browser_template',
-      sourceTemplate: expect.objectContaining({
-        templateId: 'tpl-browser-001',
-      }),
-      warnings: expect.arrayContaining([
-        expect.stringContaining('模板原始步骤'),
-      ]),
-    }));
-    expect(draft.workflowDsl.inputParams).toEqual(expect.objectContaining({
-      username: expect.objectContaining({
-        required: true,
-        defaultValue: 'test',
-        description: '登录用户名',
-      }),
-    }));
+    expect(draft.workflowDsl.steps).toEqual([expect.objectContaining({ name: '1. 页面打开' })]);
+    expect(draft.workflowDsl.sourceContext).toEqual(
+      expect.objectContaining({
+        sourceType: 'browser_template',
+        sourceTemplate: expect.objectContaining({
+          templateId: 'tpl-browser-001',
+        }),
+        warnings: expect.arrayContaining([expect.stringContaining('模板原始步骤')]),
+      })
+    );
+    expect(draft.workflowDsl.inputParams).toEqual(
+      expect.objectContaining({
+        username: expect.objectContaining({
+          required: true,
+          defaultValue: 'test',
+          description: '登录用户名',
+        }),
+      })
+    );
     expect(draft.activityDsl.activities).toHaveLength(1);
     expect((draft.activityDsl.activities[0].config as any).steps).toEqual([
       expect.objectContaining({
@@ -427,7 +437,9 @@ describe('TemporalWorkflowBrowserDraftService', () => {
       expect.objectContaining({ name: '2. 页面迁移' }),
     ]);
     expect(draft.activityDsl.activities).toHaveLength(2);
-    expect((draft.activityDsl.activities[0].config as any).steps.map((step: any) => step.config.action)).toEqual([
+    expect(
+      (draft.activityDsl.activities[0].config as any).steps.map((step: any) => step.config.action)
+    ).toEqual([
       'navigate',
       'wait',
       'screenshot',
@@ -439,11 +451,9 @@ describe('TemporalWorkflowBrowserDraftService', () => {
       'wait',
       'screenshot',
     ]);
-    expect((draft.activityDsl.activities[1].config as any).steps.map((step: any) => step.config.action)).toEqual([
-      'click',
-      'wait',
-      'screenshot',
-    ]);
+    expect(
+      (draft.activityDsl.activities[1].config as any).steps.map((step: any) => step.config.action)
+    ).toEqual(['click', 'wait', 'screenshot']);
   });
 
   it('preserves declared browser template input params when commands do not expose placeholders', async () => {
@@ -485,18 +495,20 @@ describe('TemporalWorkflowBrowserDraftService', () => {
       },
     });
 
-    expect(draft.workflowDsl.inputParams).toEqual(expect.objectContaining({
-      startUrl: expect.objectContaining({
-        required: false,
-        defaultValue: 'http://192.168.100.143:5173/',
-        description: '起始页面地址',
-      }),
-      username: expect.objectContaining({
-        required: true,
-        defaultValue: 'test',
-        description: '登录用户名',
-      }),
-    }));
+    expect(draft.workflowDsl.inputParams).toEqual(
+      expect.objectContaining({
+        startUrl: expect.objectContaining({
+          required: false,
+          defaultValue: 'http://192.168.100.143:5173/',
+          description: '起始页面地址',
+        }),
+        username: expect.objectContaining({
+          required: true,
+          defaultValue: 'test',
+          description: '登录用户名',
+        }),
+      })
+    );
     expect(draft.browserTemplate.placeholders).toEqual([]);
   });
 
@@ -546,11 +558,10 @@ describe('TemporalWorkflowBrowserDraftService', () => {
             config: {},
           },
         ],
-      },
+      }
     );
 
     expect(validation.isValid).toBe(true);
     expect(validation.errors).toEqual([]);
   });
-
 });

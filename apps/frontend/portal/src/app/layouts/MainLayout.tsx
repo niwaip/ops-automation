@@ -11,7 +11,11 @@ import {
   ExportOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
-import { buildNavigationMenuItems, getDefaultNavigationOpenKeys, getSelectedNavigationKey } from '@/app/navigation/menu';
+import {
+  buildNavigationMenuItems,
+  getDefaultNavigationOpenKeys,
+  getSelectedNavigationKey,
+} from '@/app/navigation/menu';
 import { ChatWidget } from '@/features/chat';
 import ExecutionNotificationCenter from '@/features/notifications/ExecutionNotificationCenter';
 import { buildUserWebUrl } from '@/shared/config/runtime';
@@ -26,14 +30,8 @@ const MainLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuthStore();
-  const {
-    language,
-    setLanguage,
-    theme,
-    toggleTheme,
-    sidebarCollapsed,
-    toggleSidebar,
-  } = usePreferencesStore();
+  const { language, setLanguage, theme, toggleTheme, sidebarCollapsed, toggleSidebar } =
+    usePreferencesStore();
   const menuItems = buildNavigationMenuItems(t, user?.role);
 
   const languageMenu: MenuProps = {
@@ -86,7 +84,9 @@ const MainLayout: React.FC = () => {
           left: 0,
           top: 0,
           bottom: 0,
-          boxShadow: sidebarCollapsed ? '4px 0 24px rgba(0,0,0,0.15)' : '4px 0 24px rgba(0,0,0,0.1)',
+          boxShadow: sidebarCollapsed
+            ? '4px 0 24px rgba(0,0,0,0.15)'
+            : '4px 0 24px rgba(0,0,0,0.1)',
           zIndex: 100,
         }}
       >
@@ -117,7 +117,8 @@ const MainLayout: React.FC = () => {
                 width: 36,
                 height: 36,
                 borderRadius: 10,
-                background: 'linear-gradient(135deg, rgba(255,255,255,0.24) 0%, rgba(255,255,255,0.12) 100%)',
+                background:
+                  'linear-gradient(135deg, rgba(255,255,255,0.24) 0%, rgba(255,255,255,0.12) 100%)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -166,7 +167,6 @@ const MainLayout: React.FC = () => {
             padding: '8px 0',
           }}
         />
-
       </Sider>
 
       <Layout
@@ -211,9 +211,7 @@ const MainLayout: React.FC = () => {
               <Tag color="purple" style={{ marginInlineEnd: 0, borderRadius: 999 }}>
                 内部工作台
               </Tag>
-              <Text type="secondary">
-                管理员与内部运营使用，普通用户入口逐步迁往 user-web
-              </Text>
+              <Text type="secondary">管理员与内部运营使用，普通用户入口逐步迁往 user-web</Text>
             </Space>
           </div>
 

@@ -111,9 +111,7 @@ describe('ModelController provider governance', () => {
       success: true,
       response: '{"ok":true}',
     });
-    expect(chatCompletionSpy).toHaveBeenCalledWith([
-      { role: 'user', content: 'ping' },
-    ]);
+    expect(chatCompletionSpy).toHaveBeenCalledWith([{ role: 'user', content: 'ping' }]);
 
     chatCompletionSpy.mockRestore();
   });

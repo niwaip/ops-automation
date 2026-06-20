@@ -78,14 +78,16 @@ const mapPlannerStepAction = (planStep: PlannerPlanStepInput): string => {
 };
 
 const normalizeBrowserPhaseCommands = (
-  planStep: PlannerPlanStepInput,
-): Array<{
-  stepId: string;
-  capabilityType: string;
-  action: string;
-  input: Record<string, unknown>;
-  metadata?: Record<string, unknown>;
-}> | undefined => {
+  planStep: PlannerPlanStepInput
+):
+  | Array<{
+      stepId: string;
+      capabilityType: string;
+      action: string;
+      input: Record<string, unknown>;
+      metadata?: Record<string, unknown>;
+    }>
+  | undefined => {
   if (!Array.isArray(planStep.commands) || planStep.commands.length === 0) {
     return undefined;
   }
@@ -93,9 +95,7 @@ const normalizeBrowserPhaseCommands = (
   return planStep.commands
     .filter(
       (command): command is PlannerBrowserPhaseCommandInput =>
-        Boolean(command)
-        && typeof command.action === 'string'
-        && command.action.trim().length > 0,
+        Boolean(command) && typeof command.action === 'string' && command.action.trim().length > 0
     )
     .map((command, index) => ({
       stepId:
@@ -119,7 +119,7 @@ const normalizeBrowserPhaseCommands = (
 };
 
 const normalizeBrowserPhaseRecoveryPolicy = (
-  planStep: PlannerPlanStepInput,
+  planStep: PlannerPlanStepInput
 ): Record<string, unknown> | undefined => {
   const policy = planStep.recovery_policy;
   if (!policy) {
@@ -150,11 +150,12 @@ interface PhaseMetadata {
   phaseType: string;
 }
 
-const sanitizePhaseKey = (value: string): string => value
-  .trim()
-  .toLowerCase()
-  .replace(/[^a-z0-9]+/g, '_')
-  .replace(/^_+|_+$/g, '') || 'phase';
+const sanitizePhaseKey = (value: string): string =>
+  value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '') || 'phase';
 
 const buildBootstrapPhaseMetadata = (): PhaseMetadata => ({
   phaseKey: 'phase_bootstrap_navigation',
@@ -162,7 +163,10 @@ const buildBootstrapPhaseMetadata = (): PhaseMetadata => ({
   phaseType: 'browser_navigation',
 });
 
-const buildPlannerStepPhaseMetadata = (planStep: PlannerPlanStepInput, index: number): PhaseMetadata => {
+const buildPlannerStepPhaseMetadata = (
+  planStep: PlannerPlanStepInput,
+  index: number
+): PhaseMetadata => {
   if (planStep.phase_key && planStep.phase_name && planStep.phase_type) {
     return {
       phaseKey: planStep.phase_key,
@@ -194,7 +198,7 @@ const buildPlannerStepPhaseMetadata = (planStep: PlannerPlanStepInput, index: nu
 export const buildPlannedExecutionSteps = (
   executionId: string,
   normalizedInput: Record<string, unknown>,
-  planDraft?: PlannerPlanDraftStepInput,
+  planDraft?: PlannerPlanDraftStepInput
 ): {
   steps: Prisma.ExecutionStepCreateManyInput[];
   bootstrapUrl?: string;
@@ -209,8 +213,8 @@ export const buildPlannedExecutionSteps = (
     plannerMode === 'skill'
       ? undefined
       : typeof normalizedInput.url === 'string' && normalizedInput.url.trim()
-      ? normalizedInput.url.trim()
-      : undefined;
+        ? normalizedInput.url.trim()
+        : undefined;
 
   if (bootstrapUrl) {
     const bootstrapPhase = buildBootstrapPhaseMetadata();

@@ -9,7 +9,7 @@ class TestStudioControllerBase extends StudioControllerBase {
       null as any,
       null as any,
       null as any,
-      null as any,
+      null as any
     );
   }
 
@@ -22,10 +22,12 @@ describe('StudioControllerBase.normalizeRenderData', () => {
   it('keeps dotted keys as exact variables instead of forcing nested objects', () => {
     const controller = new TestStudioControllerBase();
 
-    expect(controller.normalize({
-      'contract.partyA': '委托方：',
-      'contract.partyA.name': '甲 方',
-    })).toEqual({
+    expect(
+      controller.normalize({
+        'contract.partyA': '委托方：',
+        'contract.partyA.name': '甲 方',
+      })
+    ).toEqual({
       'contract.partyA': '委托方：',
       'contract.partyA.name': '甲 方',
     });
@@ -34,10 +36,12 @@ describe('StudioControllerBase.normalizeRenderData', () => {
   it('builds loop rows without collapsing dotted child keys into parent objects', () => {
     const controller = new TestStudioControllerBase();
 
-    expect(controller.normalize({
-      'items[].partyA': ['委托方：'],
-      'items[].partyA.name': ['甲 方'],
-    })).toEqual({
+    expect(
+      controller.normalize({
+        'items[].partyA': ['委托方：'],
+        'items[].partyA.name': ['甲 方'],
+      })
+    ).toEqual({
       items: [
         {
           partyA: '委托方：',

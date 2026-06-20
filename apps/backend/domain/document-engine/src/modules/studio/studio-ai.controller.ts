@@ -27,11 +27,7 @@ import { SkillRepository } from './skill.repository';
 import { RenderOutputRepository } from './render-output.repository';
 import { TemplateWorkflowService } from './template-workflow.service';
 import { isStudioSkillDebugEnabled, isStudioVerboseDebugEnabled } from './studio-debug.helper';
-import {
-  AIIdentifyDto,
-  AIVerifyDto,
-  DirectAIIdentifyDto,
-} from './studio.dto';
+import { AIIdentifyDto, AIVerifyDto, DirectAIIdentifyDto } from './studio.dto';
 import { StudioControllerBase } from './studio.controller.base';
 
 @ApiTags('studio')
@@ -47,7 +43,7 @@ export class StudioAiController extends StudioControllerBase {
     templateRepository: TemplateRepository,
     skillRepository: SkillRepository,
     renderOutputRepository: RenderOutputRepository,
-    templateWorkflowService: TemplateWorkflowService,
+    templateWorkflowService: TemplateWorkflowService
   ) {
     super(
       previewService,
@@ -56,7 +52,7 @@ export class StudioAiController extends StudioControllerBase {
       templateRepository,
       skillRepository,
       renderOutputRepository,
-      templateWorkflowService,
+      templateWorkflowService
     );
   }
 
@@ -68,7 +64,7 @@ export class StudioAiController extends StudioControllerBase {
   async aiIdentifyVariablesStream(
     @Param('id') id: string,
     @Body() dto: AIIdentifyDto,
-    @Res() res: Response,
+    @Res() res: Response
   ): Promise<void> {
     const meta = this.getTemplateMeta(id);
     const templatePath = path.join(this.templatesDir, `${id}.${meta.format}`);
@@ -112,7 +108,8 @@ export class StudioAiController extends StudioControllerBase {
       }
 
       // 生成变量建议和循环配置
-      const suggestions = this.aiIdentifierService.generateVariableSuggestions?.(elements, config) || [];
+      const suggestions =
+        this.aiIdentifierService.generateVariableSuggestions?.(elements, config) || [];
       const loops = config.tableLoops || [];
       await this.cacheTemplateSuggestions(id, meta, {
         templateConfig: config,
@@ -120,14 +117,16 @@ export class StudioAiController extends StudioControllerBase {
       });
 
       // 返回最终结果
-      res.write(`data: ${JSON.stringify({
-        done: true,
-        templateConfig: config,
-        suggestions,
-        loops,
-        images: config.imageLoops || [],
-        combinedVariables: config.combinedVariables || [],
-      })}\n\n`);
+      res.write(
+        `data: ${JSON.stringify({
+          done: true,
+          templateConfig: config,
+          suggestions,
+          loops,
+          images: config.imageLoops || [],
+          combinedVariables: config.combinedVariables || [],
+        })}\n\n`
+      );
       res.end();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -187,12 +186,12 @@ export class StudioAiController extends StudioControllerBase {
    * 识别需要填充的空白部分，生成模板变量建议
    */
   @Post('direct-ai-identify')
-  @ApiOperation({ summary: 'Direct AI identify variables from document content (for Office Add-in)' })
+  @ApiOperation({
+    summary: 'Direct AI identify variables from document content (for Office Add-in)',
+  })
   @ApiBody({ type: DirectAIIdentifyDto })
   @ApiResponse({ status: 200, description: 'AI identification result with suggestions' })
-  async directAIIdentify(
-    @Body() dto: DirectAIIdentifyDto
-  ): Promise<AIIdentifyResponse> {
+  async directAIIdentify(@Body() dto: DirectAIIdentifyDto): Promise<AIIdentifyResponse> {
     try {
       let skill = dto.skill;
       if (!skill && dto.skillId) {
@@ -232,12 +231,12 @@ export class StudioAiController extends StudioControllerBase {
    * 支持传入下划线信息，提高空白识别准确度
    */
   @Post('direct-ai-identify-multistage')
-  @ApiOperation({ summary: 'Multi-stage AI identify variables with real-time progress (for Office Add-in)' })
+  @ApiOperation({
+    summary: 'Multi-stage AI identify variables with real-time progress (for Office Add-in)',
+  })
   @ApiBody({ type: DirectAIIdentifyDto })
   @ApiResponse({ status: 200, description: 'AI identification result with suggestions' })
-  async directAIIdentifyMultistage(
-    @Body() dto: DirectAIIdentifyDto
-  ): Promise<AIIdentifyResponse> {
+  async directAIIdentifyMultistage(@Body() dto: DirectAIIdentifyDto): Promise<AIIdentifyResponse> {
     try {
       let skill = dto.skill;
       if (!skill && dto.skillId) {
@@ -260,10 +259,12 @@ export class StudioAiController extends StudioControllerBase {
         // 进度回调 - 用于日志记录
         (progress) => {
           if (this.verboseDebugEnabled) {
-            this.logger.debug(`[MultiStage Progress] ${progress.stageName}: ${progress.progress}% - ${progress.message}`);
+            this.logger.debug(
+              `[MultiStage Progress] ${progress.stageName}: ${progress.progress}% - ${progress.message}`
+            );
           }
         },
-        dto.underlineInfo,    // 下划线信息
+        dto.underlineInfo, // 下划线信息
         dto.paragraphFormats, // 段落格式信息
         skill
       );
@@ -284,8 +285,16 @@ export class StudioAiController extends StudioControllerBase {
   @Get('direct-ai-identify-progress')
   @ApiOperation({ summary: 'Multi-stage AI identify with SSE progress stream' })
   @ApiQuery({ name: 'documentContent', required: true, description: 'Document text content' })
-  @ApiQuery({ name: 'documentType', required: true, description: 'Document type (docx/xlsx/pptx/text)' })
-  @ApiQuery({ name: 'templateType', required: false, description: 'Template type (contract/report/etc)' })
+  @ApiQuery({
+    name: 'documentType',
+    required: true,
+    description: 'Document type (docx/xlsx/pptx/text)',
+  })
+  @ApiQuery({
+    name: 'templateType',
+    required: false,
+    description: 'Template type (contract/report/etc)',
+  })
   @ApiQuery({ name: 'context', required: false, description: 'Context information' })
   @Header('Content-Type', 'text/event-stream')
   @Header('Cache-Control', 'no-cache')
@@ -299,31 +308,37 @@ export class StudioAiController extends StudioControllerBase {
   ): Promise<void> {
     // 发送SSE进度事件
     const sendProgress = (progress: any) => {
-      res.write(`data: ${JSON.stringify({
-        type: 'progress',
-        stage: progress.stage,
-        stageName: progress.stageName,
-        progress: progress.progress,
-        message: progress.message,
-        currentSection: progress.currentSection
-      })}\n\n`);
+      res.write(
+        `data: ${JSON.stringify({
+          type: 'progress',
+          stage: progress.stage,
+          stageName: progress.stageName,
+          progress: progress.progress,
+          message: progress.message,
+          currentSection: progress.currentSection,
+        })}\n\n`
+      );
     };
 
     // 发送最终结果
     const sendResult = (result: AIIdentifyResponse) => {
-      res.write(`data: ${JSON.stringify({
-        type: 'result',
-        data: result
-      })}\n\n`);
+      res.write(
+        `data: ${JSON.stringify({
+          type: 'result',
+          data: result,
+        })}\n\n`
+      );
       res.end();
     };
 
     // 发送错误
     const sendError = (error: string) => {
-      res.write(`data: ${JSON.stringify({
-        type: 'error',
-        message: error
-      })}\n\n`);
+      res.write(
+        `data: ${JSON.stringify({
+          type: 'error',
+          message: error,
+        })}\n\n`
+      );
       res.end();
     };
 
@@ -334,7 +349,7 @@ export class StudioAiController extends StudioControllerBase {
         documentType,
         templateType || 'contract',
         context,
-        sendProgress  // 使用SSE发送进度
+        sendProgress // 使用SSE发送进度
       );
 
       sendResult(result);
@@ -343,7 +358,6 @@ export class StudioAiController extends StudioControllerBase {
       sendError(message);
     }
   }
-
 
   /**
    * AI验证 - 利用模版自动生成验证报告
@@ -428,7 +442,10 @@ export class StudioAiController extends StudioControllerBase {
       const templateBuffer = fs.readFileSync(templatePath);
 
       // 应用模版配置标记
-      const markedBuffer = await this.documentStructureService.applyConfigToDocx(templateBuffer, config);
+      const markedBuffer = await this.documentStructureService.applyConfigToDocx(
+        templateBuffer,
+        config
+      );
       const templateInfo = await this.engine.parseTemplateBuffer(markedBuffer, meta.fileName);
 
       // 使用模版配置生成真实内容
@@ -439,9 +456,15 @@ export class StudioAiController extends StudioControllerBase {
           if (this.verboseDebugEnabled) {
             this.logger.debug('Generating sample data from config...');
           }
-          sampleData = this.engine.generateSampleDataFromConfig(config, config.tableLoops?.[0]?.dataRowCount || 5, true);
+          sampleData = this.engine.generateSampleDataFromConfig(
+            config,
+            config.tableLoops?.[0]?.dataRowCount || 5,
+            true
+          );
           if (this.verboseDebugEnabled) {
-            this.logger.debug(`Generated sampleData keys: ${Object.keys(sampleData || {}).join(',')}`);
+            this.logger.debug(
+              `Generated sampleData keys: ${Object.keys(sampleData || {}).join(',')}`
+            );
           }
         } else {
           // 否则使用模板变量生成
@@ -475,7 +498,7 @@ export class StudioAiController extends StudioControllerBase {
         loops: templateInfo.loops,
         createdAt: new Date().toISOString(),
         templateConfig: config,
-        type: 'marked_template',  // 标记为注入后的模版
+        type: 'marked_template', // 标记为注入后的模版
       };
       fs.writeFileSync(markedMetaPath, JSON.stringify(markedMeta));
       await this.syncTemplateMetaToDb(markedTemplateId, markedMeta, markedTemplatePath);
@@ -497,7 +520,7 @@ export class StudioAiController extends StudioControllerBase {
           markedTemplateUrl: `/studio/download-template/${markedTemplateId}`,
           sampleData: sampleData,
           success: aiResponse.success,
-          verifiedAt: new Date().toISOString()
+          verifiedAt: new Date().toISOString(),
         };
         fs.writeFileSync(originalMetaPath, JSON.stringify(originalMeta, null, 2));
         await this.syncTemplateMetaToDb(id, originalMeta);
@@ -513,7 +536,7 @@ export class StudioAiController extends StudioControllerBase {
       const outputMeta = {
         id: outputId,
         templateId: id,
-        markedTemplateId: markedTemplateId,  // 关联注入后的模版
+        markedTemplateId: markedTemplateId, // 关联注入后的模版
         fileName: `verify_${meta.fileName}`,
         format: meta.format,
         createdAt: new Date().toISOString(),
@@ -530,10 +553,10 @@ export class StudioAiController extends StudioControllerBase {
         report: aiResponse.report,
         downloadUrl: `/studio/download/${outputId}`,
         previewUrl: `/studio/preview-file/${outputId}`,
-        markedTemplateId: markedTemplateId,  // 注入后的模版ID
-        markedTemplateUrl: `/studio/download-template/${markedTemplateId}`,  // 下载注入后模版的URL
+        markedTemplateId: markedTemplateId, // 注入后的模版ID
+        markedTemplateUrl: `/studio/download-template/${markedTemplateId}`, // 下载注入后模版的URL
         sampleData: sampleData,
-        success: aiResponse.success
+        success: aiResponse.success,
       });
 
       res.end();
@@ -629,7 +652,10 @@ export class StudioAiController extends StudioControllerBase {
       const templateBuffer = fs.readFileSync(templatePath);
 
       // 应用模版配置标记
-      const markedBuffer = await this.documentStructureService.applyConfigToDocx(templateBuffer, config);
+      const markedBuffer = await this.documentStructureService.applyConfigToDocx(
+        templateBuffer,
+        config
+      );
       const templateInfo = await this.engine.parseTemplateBuffer(markedBuffer, meta.fileName);
 
       // 使用模版配置生成真实内容
@@ -640,9 +666,15 @@ export class StudioAiController extends StudioControllerBase {
           if (this.verboseDebugEnabled) {
             this.logger.debug('Generating sample data from config...');
           }
-          sampleData = this.engine.generateSampleDataFromConfig(config, config.tableLoops?.[0]?.dataRowCount || 5, true);
+          sampleData = this.engine.generateSampleDataFromConfig(
+            config,
+            config.tableLoops?.[0]?.dataRowCount || 5,
+            true
+          );
           if (this.verboseDebugEnabled) {
-            this.logger.debug(`Generated sampleData keys: ${Object.keys(sampleData || {}).join(',')}`);
+            this.logger.debug(
+              `Generated sampleData keys: ${Object.keys(sampleData || {}).join(',')}`
+            );
           }
         } else {
           // 否则使用模板变量生成
@@ -676,7 +708,7 @@ export class StudioAiController extends StudioControllerBase {
         loops: templateInfo.loops,
         createdAt: new Date().toISOString(),
         templateConfig: config,
-        type: 'marked_template',  // 标记为注入后的模版
+        type: 'marked_template', // 标记为注入后的模版
       };
       fs.writeFileSync(markedMetaPath, JSON.stringify(markedMeta));
       await this.syncTemplateMetaToDb(markedTemplateId, markedMeta, markedTemplatePath);
@@ -698,7 +730,7 @@ export class StudioAiController extends StudioControllerBase {
           markedTemplateUrl: `/studio/download-template/${markedTemplateId}`,
           sampleData: sampleData,
           success: aiResponse.success,
-          verifiedAt: new Date().toISOString()
+          verifiedAt: new Date().toISOString(),
         };
         fs.writeFileSync(originalMetaPath, JSON.stringify(originalMeta, null, 2));
         await this.syncTemplateMetaToDb(id, originalMeta);
@@ -714,7 +746,7 @@ export class StudioAiController extends StudioControllerBase {
       const outputMeta = {
         id: outputId,
         templateId: id,
-        markedTemplateId: markedTemplateId,  // 关联注入后的模版
+        markedTemplateId: markedTemplateId, // 关联注入后的模版
         fileName: `verify_${meta.fileName}`,
         format: meta.format,
         createdAt: new Date().toISOString(),
@@ -731,10 +763,10 @@ export class StudioAiController extends StudioControllerBase {
         report: aiResponse.report,
         downloadUrl: `/studio/download/${outputId}`,
         previewUrl: `/studio/preview-file/${outputId}`,
-        markedTemplateId: markedTemplateId,  // 注入后的模版ID
-        markedTemplateUrl: `/studio/download-template/${markedTemplateId}`,  // 下载注入后模版的URL
+        markedTemplateId: markedTemplateId, // 注入后的模版ID
+        markedTemplateUrl: `/studio/download-template/${markedTemplateId}`, // 下载注入后模版的URL
         sampleData: sampleData,
-        success: aiResponse.success
+        success: aiResponse.success,
       });
 
       res.end();
@@ -773,7 +805,10 @@ export class StudioAiController extends StudioControllerBase {
       // 生成示例数据并渲染文档
       const templateBuffer = fs.readFileSync(templatePath);
       const config = dto.templateConfig || meta.templateConfig || {};
-      const markedBuffer = await this.documentStructureService.applyConfigToDocx(templateBuffer, config);
+      const markedBuffer = await this.documentStructureService.applyConfigToDocx(
+        templateBuffer,
+        config
+      );
       const templateInfo = await this.engine.parseTemplateBuffer(markedBuffer, meta.fileName);
 
       let sampleData = {};
@@ -794,19 +829,22 @@ export class StudioAiController extends StudioControllerBase {
       const outputMetaPath = path.join(this.outputsDir, `${outputId}.json`);
 
       fs.writeFileSync(outputPath, outputBuffer);
-      fs.writeFileSync(outputMetaPath, JSON.stringify({
-        id: outputId,
-        templateId: id,
-        fileName: `verify_${meta.fileName}`,
-        format: meta.format,
-        createdAt: new Date().toISOString(),
-        sampleData: sampleData
-      }));
+      fs.writeFileSync(
+        outputMetaPath,
+        JSON.stringify({
+          id: outputId,
+          templateId: id,
+          fileName: `verify_${meta.fileName}`,
+          format: meta.format,
+          createdAt: new Date().toISOString(),
+          sampleData: sampleData,
+        })
+      );
 
       return {
         ...result,
         downloadUrl: `/studio/download/${outputId}`,
-        previewUrl: `/studio/preview-file/${outputId}`
+        previewUrl: `/studio/preview-file/${outputId}`,
       };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -816,7 +854,6 @@ export class StudioAiController extends StudioControllerBase {
       );
     }
   }
-
 
   /**
    * 生成AI使用指南Skill
@@ -831,19 +868,23 @@ export class StudioAiController extends StudioControllerBase {
         templateId: { type: 'string', description: 'Template ID (optional if using suggestions)' },
         suggestions: { type: 'array', description: 'Applied AI suggestions' },
         templateConfig: { type: 'object', description: 'Template configuration' },
-        templateType: { type: 'string', description: 'Template type: contract, invoice, report, etc.' },
+        templateType: {
+          type: 'string',
+          description: 'Template type: contract, invoice, report, etc.',
+        },
         documentDescription: { type: 'string', description: 'Document usage description' },
       },
     },
   })
   async generateAISkill(
-    @Body() body: {
+    @Body()
+    body: {
       templateId?: string;
       suggestions?: any[];
       templateConfig?: any;
       templateType?: string;
       documentDescription?: string;
-    },
+    }
   ): Promise<{
     success: boolean;
     skill?: any;
@@ -854,22 +895,26 @@ export class StudioAiController extends StudioControllerBase {
       const templateMeta = body.templateId ? this.getTemplateMeta(body.templateId) : undefined;
       const suggestions = this.mergeSkillGuideSuggestions(
         templateMeta?.suggestions,
-        body.suggestions,
+        body.suggestions
       );
       const templateType = body.templateType || 'custom';
       const templateConfig = this.mergeSkillGuideTemplateConfig(
         templateMeta?.templateConfig,
-        body.templateConfig,
+        body.templateConfig
       );
       if (this.skillDebugEnabled) {
         this.logger.debug(
-          `[skill-debug] generate-skill templateId=${body.templateId || 'none'} incomingSuggestions=${Array.isArray(body.suggestions) ? body.suggestions.length : 0} cachedSuggestions=${Array.isArray(templateMeta?.suggestions) ? templateMeta!.suggestions!.length : 0} mergedSuggestions=${suggestions.length} templateType=${templateType}`,
+          `[skill-debug] generate-skill templateId=${body.templateId || 'none'} incomingSuggestions=${Array.isArray(body.suggestions) ? body.suggestions.length : 0} cachedSuggestions=${Array.isArray(templateMeta?.suggestions) ? templateMeta!.suggestions!.length : 0} mergedSuggestions=${suggestions.length} templateType=${templateType}`
         );
         this.logger.debug(
-          `[skill-debug] mergedSuggestionNames=${suggestions
-            .map((suggestion) => String(suggestion?.suggestedName || suggestion?.details?.variableName || '').trim())
-            .filter(Boolean)
-            .join(', ') || 'none'}`,
+          `[skill-debug] mergedSuggestionNames=${
+            suggestions
+              .map((suggestion) =>
+                String(suggestion?.suggestedName || suggestion?.details?.variableName || '').trim()
+              )
+              .filter(Boolean)
+              .join(', ') || 'none'
+          }`
         );
       }
 
@@ -882,7 +927,7 @@ export class StudioAiController extends StudioControllerBase {
       );
       if (this.skillDebugEnabled) {
         this.logger.debug(
-          `[skill-debug] generatedSkillParameters=${Array.isArray(skill?.parameters) ? skill.parameters.length : 0}`,
+          `[skill-debug] generatedSkillParameters=${Array.isArray(skill?.parameters) ? skill.parameters.length : 0}`
         );
       }
 
@@ -930,17 +975,15 @@ export class StudioAiController extends StudioControllerBase {
         templateId: { type: 'string', description: 'Template ID' },
         skillId: { type: 'string', description: 'AI Skill ID' },
         skill: { type: 'object', description: 'AI Skill object (if no skillId)' },
-        simulatedData: { type: 'object', description: 'Simulated data (optional, will generate if not provided)' },
+        simulatedData: {
+          type: 'object',
+          description: 'Simulated data (optional, will generate if not provided)',
+        },
       },
     },
   })
   async previewWithSkill(
-    @Body() body: {
-      templateId?: string;
-      skillId?: string;
-      skill?: any;
-      simulatedData?: any;
-    },
+    @Body() body: { templateId?: string; skillId?: string; skill?: any; simulatedData?: any }
   ): Promise<{
     success: boolean;
     previewUrl?: string;
@@ -960,7 +1003,9 @@ export class StudioAiController extends StudioControllerBase {
 
     try {
       addLog('[步骤1] 开始预览验证流程');
-      addLog(`[步骤1] 请求参数: templateId=${body.templateId}, skillId=${body.skillId}, hasSkill=${!!body.skill}`);
+      addLog(
+        `[步骤1] 请求参数: templateId=${body.templateId}, skillId=${body.skillId}, hasSkill=${!!body.skill}`
+      );
 
       // 获取skill
       let skill = body.skill;
@@ -978,7 +1023,9 @@ export class StudioAiController extends StudioControllerBase {
 
       addLog(`[步骤2] Skill信息: id=${skill.id}, parameters数量=${skill.parameters?.length || 0}`);
       if (skill.parameters) {
-        addLog(`[步骤2] Skill参数列表: ${JSON.stringify(skill.parameters.map((p: any) => ({name: p.name, example: p.example})))}`);
+        addLog(
+          `[步骤2] Skill参数列表: ${JSON.stringify(skill.parameters.map((p: any) => ({ name: p.name, example: p.example })))}`
+        );
       }
 
       // 生成模拟数据（如果没有提供）
@@ -1029,7 +1076,11 @@ export class StudioAiController extends StudioControllerBase {
       // 渲染预览
       addLog('[步骤5] 开始渲染预览...');
       const outputId = uuidv4();
-      const outputBuffer = await this.engine.render(templateBuffer, simulatedData, `preview_${outputId}.${format}`);
+      const outputBuffer = await this.engine.render(
+        templateBuffer,
+        simulatedData,
+        `preview_${outputId}.${format}`
+      );
       addLog(`[步骤5] 渲染完成, 输出大小: ${outputBuffer.length} bytes`);
 
       // 保存输出
@@ -1093,11 +1144,7 @@ export class StudioAiController extends StudioControllerBase {
     },
   })
   async generateParameters(
-    @Body() _body: {
-      description: string;
-      skill?: any;
-      skillId?: string;
-    },
+    @Body() _body: { description: string; skill?: any; skillId?: string }
   ): Promise<never> {
     throw new HttpException(
       {
@@ -1105,10 +1152,9 @@ export class StudioAiController extends StudioControllerBase {
         error:
           'generate-parameters 已下线。请改用统一文档主链路：skill match -> planner -> execution -> waiting_input -> render。',
       },
-      HttpStatus.GONE,
+      HttpStatus.GONE
     );
   }
-
 
   /**
    * 下载AI Skill文件
@@ -1118,7 +1164,7 @@ export class StudioAiController extends StudioControllerBase {
   @Header('Content-Type', 'application/json')
   async downloadSkill(
     @Param('id') id: string,
-    @Res({ passthrough: true }) res: Response,
+    @Res({ passthrough: true }) res: Response
   ): Promise<any> {
     const skill = await this.getSkillWithDbFallback(id);
     if (!skill) {

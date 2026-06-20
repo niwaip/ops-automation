@@ -3,7 +3,13 @@
  * Skill配置管理服务 - 支持权限管控和AI语义匹配
  */
 
-import { Injectable, Logger, OnModuleInit, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleInit,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   SkillConfigDto,
@@ -103,13 +109,13 @@ export class SkillService implements OnModuleInit {
     private readonly skillEnrichmentService: SkillEnrichmentService,
     private readonly skillAccessService: SkillAccessService,
     private readonly skillMatcherService: SkillMatcherService,
-    private readonly skillValidationService: SkillValidationService,
+    private readonly skillValidationService: SkillValidationService
   ) {}
 
   private logStructured(
     level: 'log' | 'warn' | 'error',
     event: string,
-    payload: Record<string, unknown>,
+    payload: Record<string, unknown>
   ): void {
     const message = JSON.stringify({
       event,
@@ -155,11 +161,14 @@ export class SkillService implements OnModuleInit {
             skillName: skill.name,
             triggerKeywordCount: skill.triggerKeywords.length,
             declaredTools: this.skillToolBindingService.normalizeToolNames(skill.tools),
-            flowTools: this.skillToolBindingService.extractToolNamesFromExecutionFlow(skill.executionFlow as any[]),
+            flowTools: this.skillToolBindingService.extractToolNamesFromExecutionFlow(
+              skill.executionFlow as any[]
+            ),
           });
         } else {
-          const shouldSyncParams = !existing.paramsSchema
-            || Object.keys((existing.paramsSchema as any).properties || {}).length === 0;
+          const shouldSyncParams =
+            !existing.paramsSchema ||
+            Object.keys((existing.paramsSchema as any).properties || {}).length === 0;
 
           const existingFlowTemplateIds = (existing.executionFlowTemplateIds as string[]) || [];
 
@@ -168,9 +177,10 @@ export class SkillService implements OnModuleInit {
               where: { id: existing.id },
               data: {
                 paramsSchema: skill.paramsSchema as any,
-                triggerKeywords: (existing.triggerKeywords as any[] || []).length === 0
-                  ? skill.triggerKeywords
-                  : (existing.triggerKeywords as any[]),
+                triggerKeywords:
+                  ((existing.triggerKeywords as any[]) || []).length === 0
+                    ? skill.triggerKeywords
+                    : (existing.triggerKeywords as any[]),
                 executionFlowTemplateIds: existingFlowTemplateIds,
               },
             });
@@ -182,11 +192,15 @@ export class SkillService implements OnModuleInit {
           }
         }
       } catch (error) {
-        const validation = await this.skillToolBindingService.buildSkillToolValidation(skill).catch(() => null);
+        const validation = await this.skillToolBindingService
+          .buildSkillToolValidation(skill)
+          .catch(() => null);
         this.logStructured('error', 'default_skill_ensure_failed', {
           skillName: skill.name,
           declaredTools: this.skillToolBindingService.normalizeToolNames(skill.tools),
-          flowTools: this.skillToolBindingService.extractToolNamesFromExecutionFlow(skill.executionFlow as any[]),
+          flowTools: this.skillToolBindingService.extractToolNamesFromExecutionFlow(
+            skill.executionFlow as any[]
+          ),
           validation: validation
             ? {
                 isValid: validation.isValid,
@@ -211,7 +225,9 @@ export class SkillService implements OnModuleInit {
   private async validateDefaultSkillsStartupConsistency(): Promise<void> {
     for (const skill of DEFAULT_SKILLS) {
       const declaredTools = this.skillToolBindingService.normalizeToolNames(skill.tools);
-      const flowTools = this.skillToolBindingService.extractToolNamesFromExecutionFlow(skill.executionFlow as any[]);
+      const flowTools = this.skillToolBindingService.extractToolNamesFromExecutionFlow(
+        skill.executionFlow as any[]
+      );
       const validation = await this.skillToolBindingService.buildSkillToolValidation(skill);
       const payload = {
         skillName: skill.name,
@@ -272,7 +288,7 @@ export class SkillService implements OnModuleInit {
            updated_at = now()
        WHERE id = $1::uuid`,
       skill.id,
-      JSON.stringify(toolValidation),
+      JSON.stringify(toolValidation)
     );
     await this.skillToolBindingService.syncSkillToolBindings(skill.id, dto);
 
@@ -285,7 +301,9 @@ export class SkillService implements OnModuleInit {
       where: { isActive: true },
       orderBy: { createdAt: 'desc' },
     });
-    return this.skillEnrichmentService.enrichSkillsWithPublication(skills, { hideHistoricalPublishedVersions: true });
+    return this.skillEnrichmentService.enrichSkillsWithPublication(skills, {
+      hideHistoricalPublishedVersions: true,
+    });
   }
 
   async getSkill(id: string): Promise<SkillConfigDto | null> {
@@ -319,13 +337,15 @@ export class SkillService implements OnModuleInit {
         description: dto.description ?? current.description ?? '',
         triggerKeywords: dto.triggerKeywords ?? (current.triggerKeywords as string[]),
         paramsSchema: (dto.paramsSchema ?? current.paramsSchema) as any,
-        executionFlowTemplateIds: dto.executionFlowTemplateIds ?? ((current.executionFlowTemplateIds as string[]) || []),
+        executionFlowTemplateIds:
+          dto.executionFlowTemplateIds ?? ((current.executionFlowTemplateIds as string[]) || []),
         executionFlow: (dto.executionFlow ?? (current.executionFlow as any[]) ?? []) as any,
         tools: dto.tools ?? ((current.tools as string[]) || []),
         apiEndpoints: (dto.apiEndpoints ?? current.apiEndpoints) as any,
       };
 
-      const toolValidation = await this.skillToolBindingService.buildSkillToolValidation(mergedPayload);
+      const toolValidation =
+        await this.skillToolBindingService.buildSkillToolValidation(mergedPayload);
       if (!toolValidation.isValid) {
         throw new BadRequestException({
           message: 'Skill 工具校验失败',
@@ -354,7 +374,7 @@ export class SkillService implements OnModuleInit {
              updated_at = now()
          WHERE id = $1::uuid`,
         id,
-        JSON.stringify(toolValidation),
+        JSON.stringify(toolValidation)
       );
       await this.skillToolBindingService.syncSkillToolBindings(id, mergedPayload);
 
@@ -392,7 +412,7 @@ export class SkillService implements OnModuleInit {
          FROM capability_releases
          WHERE published_skill_id = $1::uuid
            AND archived_at IS NULL`,
-        id,
+        id
       ),
     ]);
 
@@ -406,11 +426,11 @@ export class SkillService implements OnModuleInit {
              config_status = 'archived',
              updated_at = now()
          WHERE id = $1::uuid`,
-        id,
+        id
       );
 
       this.logger.warn(
-        `Skill ${id} has runtime references (executions=${executionCount}, releases=${releaseRefCount}), archived instead of hard delete`,
+        `Skill ${id} has runtime references (executions=${executionCount}, releases=${releaseRefCount}), archived instead of hard delete`
       );
       return true;
     }
@@ -438,7 +458,11 @@ export class SkillService implements OnModuleInit {
     return this.skillAccessService.checkUserSkillPermission(userId, skillId);
   }
 
-  async grantSkillToRole(skillId: string, roleId: string, grantedBy: string): Promise<SkillPermissionDTO> {
+  async grantSkillToRole(
+    skillId: string,
+    roleId: string,
+    grantedBy: string
+  ): Promise<SkillPermissionDTO> {
     return this.skillAccessService.grantSkillToRole(skillId, roleId, grantedBy);
   }
 
@@ -470,7 +494,10 @@ export class SkillService implements OnModuleInit {
     return { bindings, validation };
   }
 
-  async setSkillToolBindings(skillId: string, tools: string[]): Promise<{
+  async setSkillToolBindings(
+    skillId: string,
+    tools: string[]
+  ): Promise<{
     bindings: SkillToolBinding[];
     validation: SkillToolValidationResult;
   }> {
@@ -511,7 +538,7 @@ export class SkillService implements OnModuleInit {
            updated_at = now()
        WHERE id = $1::uuid`,
       skillId,
-      JSON.stringify(validation),
+      JSON.stringify(validation)
     );
     await this.skillToolBindingService.syncSkillToolBindings(skillId, mergedPayload);
 
@@ -542,26 +569,21 @@ export class SkillService implements OnModuleInit {
        WHERE id = $1::uuid`,
       skillId,
       validation.isValid ? 'valid' : 'invalid',
-      JSON.stringify(validation),
+      JSON.stringify(validation)
     );
 
     return validation;
   }
 
   async validateSkillToolsPayload(
-    payload: Pick<CreateSkillDTO, 'tools' | 'executionFlow' | 'executionFlowTemplateIds'>,
+    payload: Pick<CreateSkillDTO, 'tools' | 'executionFlow' | 'executionFlowTemplateIds'>
   ): Promise<SkillToolValidationResult> {
     return this.skillToolBindingService.buildSkillToolValidation(payload);
   }
 
-  async matchSkillWithAI(
-    userInput: string,
-    userId: string,
-  ): Promise<SkillMatchResult | null> {
-    return this.skillMatcherService.matchSkillWithAI(
-      userInput,
-      userId,
-      (id) => this.listSkillsForUser(id),
+  async matchSkillWithAI(userInput: string, userId: string): Promise<SkillMatchResult | null> {
+    return this.skillMatcherService.matchSkillWithAI(userInput, userId, (id) =>
+      this.listSkillsForUser(id)
     );
   }
 
@@ -571,29 +593,31 @@ export class SkillService implements OnModuleInit {
 
   async validateSkill(
     skillId: string,
-    emit?: SkillValidationEmitter,
+    emit?: SkillValidationEmitter
   ): Promise<SkillValidationResult> {
     return this.skillValidationService.validateSkill(skillId, (id) => this.getSkill(id), emit);
   }
 
   async applyGeneratedSkillAdjustment(
     id: string,
-    generatedSkill?: Partial<SkillConfigDto>,
+    generatedSkill?: Partial<SkillConfigDto>
   ): Promise<SkillConfigDto | null> {
     return this.skillValidationService.applyGeneratedSkillAdjustment(
       id,
       generatedSkill,
       (skillId) => this.getSkill(skillId),
-      async (skillId, nextSkill, current) => this.updateSkill(skillId, {
-        name: nextSkill.name || current.name,
-        description: nextSkill.description || current.description,
-        triggerKeywords: nextSkill.triggerKeywords || current.triggerKeywords,
-        paramsSchema: nextSkill.paramsSchema || current.paramsSchema,
-        executionFlowTemplateIds: nextSkill.executionFlowTemplateIds || current.executionFlowTemplateIds,
-        executionFlow: nextSkill.executionFlow || current.executionFlow,
-        tools: nextSkill.tools || current.tools,
-        apiEndpoints: nextSkill.apiEndpoints || current.apiEndpoints,
-      }),
+      async (skillId, nextSkill, current) =>
+        this.updateSkill(skillId, {
+          name: nextSkill.name || current.name,
+          description: nextSkill.description || current.description,
+          triggerKeywords: nextSkill.triggerKeywords || current.triggerKeywords,
+          paramsSchema: nextSkill.paramsSchema || current.paramsSchema,
+          executionFlowTemplateIds:
+            nextSkill.executionFlowTemplateIds || current.executionFlowTemplateIds,
+          executionFlow: nextSkill.executionFlow || current.executionFlow,
+          tools: nextSkill.tools || current.tools,
+          apiEndpoints: nextSkill.apiEndpoints || current.apiEndpoints,
+        })
     );
   }
 }

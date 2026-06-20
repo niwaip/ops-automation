@@ -1,6 +1,4 @@
-import {
-  createSkillApi,
-} from '@ops/user-core';
+import { createSkillApi } from '@ops/user-core';
 import { apiClient } from './client';
 import { ExecutionFlowStep } from './flows';
 import { useAuthStore } from '@/shared/store/authStore';
@@ -13,13 +11,16 @@ export interface ApiEndpoint {
 }
 
 export interface SkillParamsSchema {
-  properties: Record<string, {
-    type: 'string' | 'number' | 'date' | 'boolean';
-    description: string;
-    required?: boolean;
-    default?: string | number | boolean;
-    extractionPrompt?: string;
-  }>;
+  properties: Record<
+    string,
+    {
+      type: 'string' | 'number' | 'date' | 'boolean';
+      description: string;
+      required?: boolean;
+      default?: string | number | boolean;
+      extractionPrompt?: string;
+    }
+  >;
   required: string[];
 }
 
@@ -32,7 +33,7 @@ export interface SkillConfigDTO {
   templateId?: string;
   carboneTemplateId?: string;
   carboneSkillId?: string;
-  executionFlowTemplateIds: string[];  // 关联的多个流程模板ID
+  executionFlowTemplateIds: string[]; // 关联的多个流程模板ID
   executionFlow: ExecutionFlowStep[];
   tools: string[];
   effectiveTools?: string[];
@@ -89,7 +90,7 @@ export interface CreateSkillDTO {
   templateId?: string;
   carboneTemplateId?: string;
   carboneSkillId?: string;
-  executionFlowTemplateIds?: string[];  // 关联的多个流程模板ID
+  executionFlowTemplateIds?: string[]; // 关联的多个流程模板ID
   executionFlow?: ExecutionFlowStep[];
   tools?: string[];
   apiEndpoints?: {
@@ -183,7 +184,7 @@ export const skillApi = {
     return apiClient.post<{ validation: SkillValidationResult }>(
       `/skills/${id}/validate`,
       undefined,
-      { timeout: 180000 },
+      { timeout: 180000 }
     );
   },
 
@@ -191,7 +192,7 @@ export const skillApi = {
     id: string,
     onEvent: (event: SkillValidationStreamEvent) => void,
     onError?: (error: Error) => void,
-    onComplete?: () => void,
+    onComplete?: () => void
   ): (() => void) => {
     const abortController = new AbortController();
     const token = useAuthStore.getState().accessToken;
@@ -257,12 +258,9 @@ export const skillApi = {
 
   applyAdjustment: async (
     id: string,
-    generatedSkill?: Partial<CreateSkillDTO>,
+    generatedSkill?: Partial<CreateSkillDTO>
   ): Promise<SkillConfigDTO> => {
-    return apiClient.post<SkillConfigDTO>(
-      `/skills/${id}/apply-adjustment`,
-      { generatedSkill },
-    );
+    return apiClient.post<SkillConfigDTO>(`/skills/${id}/apply-adjustment`, { generatedSkill });
   },
 
   // Permission management
@@ -271,7 +269,9 @@ export const skillApi = {
   },
 
   grant: async (skillId: string, roleId: string): Promise<{ permission: SkillPermissionDTO }> => {
-    return apiClient.post<{ permission: SkillPermissionDTO }>(`/skills/${skillId}/grant`, { roleId });
+    return apiClient.post<{ permission: SkillPermissionDTO }>(`/skills/${skillId}/grant`, {
+      roleId,
+    });
   },
 
   revoke: async (skillId: string, roleId: string): Promise<{ success: boolean }> => {

@@ -1,10 +1,10 @@
-import { lazy, Suspense, useState } from "react";
-import { CloseOutlined, MessageOutlined } from "@ant-design/icons";
-import { Badge, Button, Skeleton } from "antd";
-import "./UserChatWidget.css";
+import { lazy, Suspense, useState } from 'react';
+import { CloseOutlined, MessageOutlined } from '@ant-design/icons';
+import { Badge, Button, Skeleton } from 'antd';
+import './UserChatWidget.css';
 
 const EmbeddedChatPage = lazy(() =>
-  import("../pages/ChatPage").then((module) => ({ default: module.ChatPage })),
+  import('../pages/ChatPage').then((module) => ({ default: module.ChatPage }))
 );
 
 export function UserChatWidget() {
@@ -36,7 +36,9 @@ export function UserChatWidget() {
                 className="chat-window-close-btn"
               />
             </div>
-            <Suspense fallback={<Skeleton active paragraph={{ rows: 8 }} style={{ padding: 24 }} />}>
+            <Suspense
+              fallback={<Skeleton active paragraph={{ rows: 8 }} style={{ padding: 24 }} />}
+            >
               <EmbeddedChatPage embedded />
             </Suspense>
           </div>

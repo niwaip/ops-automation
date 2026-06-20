@@ -1,8 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import {
-  Prisma,
-  StepResult as PrismaStepResult,
-} from '@prisma/client';
+import { Prisma, StepResult as PrismaStepResult } from '@prisma/client';
 import { StepLogEntry, StepResultType } from '../../interfaces';
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -78,7 +75,7 @@ export class LogService {
       });
 
       this.logger.debug(
-        `Created log entry for step ${entry.step_id} in session ${entry.session_id}`,
+        `Created log entry for step ${entry.step_id} in session ${entry.session_id}`
       );
     } catch (error) {
       this.logger.error('Failed to create log entry:', error);
@@ -103,7 +100,7 @@ export class LogService {
       takeover_reason?: string;
       screenshot_ref?: string;
       trace_ref?: string;
-    },
+    }
   ): Promise<void> {
     try {
       const data: Prisma.StepLogUpdateInput = {};
@@ -184,10 +181,7 @@ export class LogService {
   /**
    * Get step logs by result type
    */
-  async getStepLogsByResult(
-    sessionId: string,
-    result: StepResultType,
-  ): Promise<StepLogEntry[]> {
+  async getStepLogsByResult(sessionId: string, result: StepResultType): Promise<StepLogEntry[]> {
     const logs = await this.getStepLogs(sessionId);
     return logs.filter((log) => log.result === result);
   }

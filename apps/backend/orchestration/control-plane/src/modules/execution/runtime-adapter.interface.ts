@@ -3,7 +3,7 @@ export type RuntimeAdapterRouteKey = `${RuntimeType}:${string}`;
 
 export const buildRuntimeAdapterRouteKey = (
   runtimeType: RuntimeType,
-  capabilityType: string,
+  capabilityType: string
 ): RuntimeAdapterRouteKey => `${runtimeType}:${capabilityType}`;
 
 export interface PolicyContext {

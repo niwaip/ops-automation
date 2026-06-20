@@ -44,10 +44,7 @@ import {
 } from '@ant-design/icons';
 import '@/features/chat/ChatMessage.css';
 import { resolveExecutionNormalizedResult } from '@ops/user-core';
-import {
-  extractExecutionDownloadUrl,
-  summarizeExecutionListResult,
-} from '@ops/user-core';
+import { extractExecutionDownloadUrl, summarizeExecutionListResult } from '@ops/user-core';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
 import {
   executionApi,
@@ -76,7 +73,11 @@ import {
 } from '@/features/executions/lib/artifacts';
 import { hasMeaningfulExecutionResult, tryParseJsonValue } from '@/features/executions/lib/common';
 import { beautifyText } from '@/features/executions/lib/detailView';
-import { normalizeRequiredInputValues, renderRequiredInputField, type RequiredInputField } from '@/features/executions/lib/inputFields';
+import {
+  normalizeRequiredInputValues,
+  renderRequiredInputField,
+  type RequiredInputField,
+} from '@/features/executions/lib/inputFields';
 import {
   buildAiResumeDraft,
   extractExecutionDisplayInput,
@@ -143,7 +144,6 @@ const getExecutionTime = (record: ExecutionDto) => {
   return source ? new Date(source).getTime() : 0;
 };
 
-
 const detailPanelStyle = {
   marginBottom: 12,
   background: 'var(--bg-card)',
@@ -199,7 +199,7 @@ const renderExecutionPayloadContent = (
   options?: {
     emptyText?: string;
     treatSingleResultFieldAsMarkdown?: boolean;
-  },
+  }
 ) => {
   const parsedValue = tryParseJsonValue(value);
   const emptyText = options?.emptyText || '暂无内容。';
@@ -221,23 +221,21 @@ const renderExecutionPayloadContent = (
           lineHeight: '1.6',
         }}
       >
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-          {beautifyText(parsedValue)}
-        </ReactMarkdown>
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>{beautifyText(parsedValue)}</ReactMarkdown>
       </div>
     );
   }
 
-  const resultRecord = (
+  const resultRecord =
     parsedValue && typeof parsedValue === 'object' && !Array.isArray(parsedValue)
-      ? parsedValue as Record<string, unknown>
-      : undefined
-  );
+      ? (parsedValue as Record<string, unknown>)
+      : undefined;
   const resultText = typeof resultRecord?.result === 'string' ? resultRecord.result : undefined;
-  const onlyHasResultField = options?.treatSingleResultFieldAsMarkdown && resultRecord
-    ? Object.keys(resultRecord).length === 1
-      && Object.prototype.hasOwnProperty.call(resultRecord, 'result')
-    : false;
+  const onlyHasResultField =
+    options?.treatSingleResultFieldAsMarkdown && resultRecord
+      ? Object.keys(resultRecord).length === 1 &&
+        Object.prototype.hasOwnProperty.call(resultRecord, 'result')
+      : false;
 
   if (resultText && onlyHasResultField) {
     return (
@@ -252,9 +250,7 @@ const renderExecutionPayloadContent = (
           lineHeight: '1.6',
         }}
       >
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-          {beautifyText(resultText)}
-        </ReactMarkdown>
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>{beautifyText(resultText)}</ReactMarkdown>
       </div>
     );
   }
@@ -280,7 +276,15 @@ const renderExecutionPayloadContent = (
 };
 
 const renderPanelLabel = (title: string, summary?: string) => (
-  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, width: '100%' }}>
+  <div
+    style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+      width: '100%',
+    }}
+  >
     <Text strong>{title}</Text>
     {summary ? <Text type="secondary">{summary}</Text> : null}
   </div>
@@ -299,12 +303,12 @@ type ResumeFormValues = Record<string, ResumeFormValue>;
 
 const toResumeFormValue = (value: unknown): ResumeFormValue => {
   if (
-    value === null
-    || value === undefined
-    || typeof value === 'string'
-    || typeof value === 'number'
-    || typeof value === 'boolean'
-    || Array.isArray(value)
+    value === null ||
+    value === undefined ||
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    typeof value === 'boolean' ||
+    Array.isArray(value)
   ) {
     return value;
   }
@@ -336,7 +340,7 @@ const ExecutionListPage: React.FC = () => {
   const [searchText, setSearchText] = useState('');
   const [clearBeforeDate, setClearBeforeDate] = useState<Dayjs>(() => dayjs().subtract(2, 'day'));
   const [selectedExecutionId, setSelectedExecutionId] = useState<string | undefined>(
-    searchParams.get('executionId') || undefined,
+    searchParams.get('executionId') || undefined
   );
   const theme = usePreferencesStore((state) => state.theme);
   const isDarkTheme = theme === 'dark';
@@ -354,7 +358,9 @@ const ExecutionListPage: React.FC = () => {
   );
 
   const { data: skillsData } = useQuery(['skills-name-map'], () => skillApi.list());
-  const { data: releasesData } = useQuery(['published-skills-name-map'], () => capabilityReleaseApi.listReleaseCenter());
+  const { data: releasesData } = useQuery(['published-skills-name-map'], () =>
+    capabilityReleaseApi.listReleaseCenter()
+  );
 
   const { data: selectedExecution, isLoading: isDetailLoading } = useQuery<ExecutionDto, Error>(
     ['execution', selectedExecutionId],
@@ -399,7 +405,7 @@ const ExecutionListPage: React.FC = () => {
   const selectedExecutionPhases = selectedPhasesData || selectedExecution?.phases || [];
   const sortedSelectedExecutionPhases = useMemo(
     () => [...selectedExecutionPhases].sort(compareExecutionPhases),
-    [selectedExecutionPhases],
+    [selectedExecutionPhases]
   );
   const effectiveSelectedResultJson = useMemo(() => {
     const parsedTopLevelResult = tryParseJsonValue(selectedExecution?.resultJson);
@@ -412,58 +418,75 @@ const ExecutionListPage: React.FC = () => {
     return phaseWithOutput ? tryParseJsonValue(phaseWithOutput.output) : undefined;
   }, [selectedExecution?.resultJson, sortedSelectedExecutionPhases]);
   const selectedBrowserExecutionResult = useMemo(
-    () => extractBrowserExecutionResult(selectedExecution?.resultJson) || extractBrowserExecutionResult(effectiveSelectedResultJson),
-    [effectiveSelectedResultJson, selectedExecution?.resultJson],
+    () =>
+      extractBrowserExecutionResult(selectedExecution?.resultJson) ||
+      extractBrowserExecutionResult(effectiveSelectedResultJson),
+    [effectiveSelectedResultJson, selectedExecution?.resultJson]
   );
-  const selectedExecutionRuntimeSessionId = selectedExecution?.runtimeSessionId || selectedBrowserExecutionResult?.runtimeSessionId;
+  const selectedExecutionRuntimeSessionId =
+    selectedExecution?.runtimeSessionId || selectedBrowserExecutionResult?.runtimeSessionId;
   const isSelectedBrowserExecution = useMemo(
-    () => (
+    () =>
       hasBrowserExecutionEvidence({
         runtimeType: selectedExecution?.runtimeType,
         runtimeSessionId: selectedExecutionRuntimeSessionId,
         browserExecutionResult: selectedBrowserExecutionResult,
         phases: sortedSelectedExecutionPhases,
-      })
-      || sortedSelectedExecutionPhases.some((phase) => isBrowserWorkflowActivity(phase))
-    ),
-    [selectedBrowserExecutionResult, selectedExecution?.runtimeType, selectedExecutionRuntimeSessionId, sortedSelectedExecutionPhases],
+      }) || sortedSelectedExecutionPhases.some((phase) => isBrowserWorkflowActivity(phase)),
+    [
+      selectedBrowserExecutionResult,
+      selectedExecution?.runtimeType,
+      selectedExecutionRuntimeSessionId,
+      sortedSelectedExecutionPhases,
+    ]
   );
   const displaySelectedPhases = useMemo(() => {
-    const activityPhases = sortedSelectedExecutionPhases.filter((phase) => phase.phaseType === 'workflow_activity');
+    const activityPhases = sortedSelectedExecutionPhases.filter(
+      (phase) => phase.phaseType === 'workflow_activity'
+    );
     return activityPhases.length > 0 ? activityPhases : sortedSelectedExecutionPhases;
   }, [sortedSelectedExecutionPhases]);
   const hasSelectedWorkflowActivityPhases = useMemo(
     () => sortedSelectedExecutionPhases.some((phase) => phase.phaseType === 'workflow_activity'),
-    [sortedSelectedExecutionPhases],
+    [sortedSelectedExecutionPhases]
   );
   const isSelectedExecutionActive = Boolean(
-    selectedExecution && EXECUTION_ACTIVE_POLLING_STATUSES.includes(selectedExecution.status),
+    selectedExecution && EXECUTION_ACTIVE_POLLING_STATUSES.includes(selectedExecution.status)
   );
   const shouldShowLegacySteps = sortedSelectedExecutionPhases.length === 0;
   const currentSelectedPhase = useMemo(
-    () => displaySelectedPhases.find((phase) => phase.phaseKey === selectedExecution?.currentPhaseKey)
-      || displaySelectedPhases.find((phase) => phase.status === 'running')
-      || displaySelectedPhases.find((phase) => ['waiting_takeover', 'resumable', 'pending'].includes(phase.status))
-      || displaySelectedPhases[displaySelectedPhases.length - 1],
-    [displaySelectedPhases, selectedExecution?.currentPhaseKey],
+    () =>
+      displaySelectedPhases.find(
+        (phase) => phase.phaseKey === selectedExecution?.currentPhaseKey
+      ) ||
+      displaySelectedPhases.find((phase) => phase.status === 'running') ||
+      displaySelectedPhases.find((phase) =>
+        ['waiting_takeover', 'resumable', 'pending'].includes(phase.status)
+      ) ||
+      displaySelectedPhases[displaySelectedPhases.length - 1],
+    [displaySelectedPhases, selectedExecution?.currentPhaseKey]
   );
   const shouldShowSelectedCurrentPhaseInfo = Boolean(
-    selectedExecution && (
-      selectedExecution.status === 'running'
-      || selectedExecution.status === 'human_control'
-      || selectedExecution.status === 'failed'
-    ),
+    selectedExecution &&
+    (selectedExecution.status === 'running' ||
+      selectedExecution.status === 'human_control' ||
+      selectedExecution.status === 'failed')
   );
   const { data: selectedRuntimeSession } = useQuery(
     ['execution-runtime-session', selectedExecutionRuntimeSessionId],
-    () => runtimeSessionApi.getByIdOrExecutionId(selectedExecutionRuntimeSessionId!, selectedExecution?.id),
+    () =>
+      runtimeSessionApi.getByIdOrExecutionId(
+        selectedExecutionRuntimeSessionId!,
+        selectedExecution?.id
+      ),
     {
       enabled: Boolean(selectedExecutionRuntimeSessionId),
       refetchInterval: (data) => {
         if (isLiveRuntimeSessionState(data?.state)) {
           return 3000;
         }
-        return selectedExecution && EXECUTION_ACTIVE_POLLING_STATUSES.includes(selectedExecution.status)
+        return selectedExecution &&
+          EXECUTION_ACTIVE_POLLING_STATUSES.includes(selectedExecution.status)
           ? 3000
           : false;
       },
@@ -485,19 +508,21 @@ const ExecutionListPage: React.FC = () => {
     ? resolveExecutionNormalizedResult(selectedExecution)
     : undefined;
 
-  const waitingInputStep = selectedExecution?.status === 'waiting_input'
-    ? selectedSteps?.find((step) =>
-      step.id === selectedExecution.currentStepId
-      || (step.type === 'input_collection' && step.status === 'running')
-    )
-    : undefined;
+  const waitingInputStep =
+    selectedExecution?.status === 'waiting_input'
+      ? selectedSteps?.find(
+          (step) =>
+            step.id === selectedExecution.currentStepId ||
+            (step.type === 'input_collection' && step.status === 'running')
+        )
+      : undefined;
 
   const requiredInputs = Array.isArray(waitingInputStep?.inputJson?.requiredInputs)
     ? (waitingInputStep?.inputJson?.requiredInputs as unknown as RequiredInputField[])
     : [];
   const requiredInputGroups = useMemo(
     () => buildWaitingInputDisplayGroups(requiredInputs),
-    [requiredInputs],
+    [requiredInputs]
   );
 
   const skillNameMap = useMemo(() => {
@@ -505,7 +530,10 @@ const ExecutionListPage: React.FC = () => {
     // 优先使用 published 的来源名称
     (releasesData?.releases || []).forEach((release) => {
       if (release.publishedSkillId) {
-        map.set(release.publishedSkillId, release.sourceName || release.sourceId || release.publishedSkillId);
+        map.set(
+          release.publishedSkillId,
+          release.sourceName || release.sourceId || release.publishedSkillId
+        );
       }
     });
     // 兜底使用基础技能名称
@@ -591,7 +619,11 @@ const ExecutionListPage: React.FC = () => {
           ? new Date(selectedExecution.createdAt).getTime()
           : Number.NaN;
 
-        if (selectedExecutionId && Number.isFinite(selectedExecutionCreatedAt) && selectedExecutionCreatedAt < cutoff) {
+        if (
+          selectedExecutionId &&
+          Number.isFinite(selectedExecutionCreatedAt) &&
+          selectedExecutionCreatedAt < cutoff
+        ) {
           const nextSearchParams = new URLSearchParams(searchParams);
           nextSearchParams.delete('executionId');
           setSearchParams(nextSearchParams, { replace: true });
@@ -607,7 +639,7 @@ const ExecutionListPage: React.FC = () => {
         void message.success(
           deletedCount > 0
             ? `已清理 ${beforeDate} 之前的 ${deletedCount} 条执行记录`
-            : `没有找到 ${beforeDate} 之前可清理的执行记录`,
+            : `没有找到 ${beforeDate} 之前可清理的执行记录`
         );
       },
       onError: (error: Error) => {
@@ -647,13 +679,12 @@ const ExecutionListPage: React.FC = () => {
 
     try {
       const values = await resumeForm.validateFields();
-      const payload = normalizeRequiredInputValues(values, requiredInputs, { treatArrayAsJson: true });
+      const payload = normalizeRequiredInputValues(values, requiredInputs, {
+        treatArrayAsJson: true,
+      });
 
       if (openInAi) {
-        openAiTaskMode(
-          buildAiResumeDraft(selectedExecution, payload),
-          selectedExecution.id,
-        );
+        openAiTaskMode(buildAiResumeDraft(selectedExecution, payload), selectedExecution.id);
         void message.success('已切换到 AI 任务模式，待你发送后再继续处理');
         return;
       }
@@ -730,7 +761,13 @@ const ExecutionListPage: React.FC = () => {
       render: (_: unknown, record: ExecutionDto) => (
         <Tag
           color={statusColors[record.status]}
-          style={{ marginInlineEnd: 0, width: 'fit-content', paddingInline: 10, borderRadius: 999, fontWeight: 600 }}
+          style={{
+            marginInlineEnd: 0,
+            width: 'fit-content',
+            paddingInline: 10,
+            borderRadius: 999,
+            fontWeight: 600,
+          }}
         >
           {listStatusLabels[record.status] || statusLabels[record.status]}
         </Tag>
@@ -741,7 +778,7 @@ const ExecutionListPage: React.FC = () => {
       dataIndex: 'riskLevel',
       key: 'riskLevel',
       width: 64,
-      render: (riskLevel?: string) => (
+      render: (riskLevel?: string) =>
         riskLevel ? (
           <span
             style={{
@@ -755,8 +792,9 @@ const ExecutionListPage: React.FC = () => {
           >
             {riskLevel}
           </span>
-        ) : '-'
-      ),
+        ) : (
+          '-'
+        ),
     },
     {
       title: '用户输入',
@@ -849,9 +887,11 @@ const ExecutionListPage: React.FC = () => {
         styles={{ body: { padding: 12 } }}
       >
         <ListSectionHeader
-          title={(
+          title={
             <Space size={16}>
-              <Text strong style={{ fontSize: 16 }}>执行记录列表</Text>
+              <Text strong style={{ fontSize: 16 }}>
+                执行记录列表
+              </Text>
               <Input
                 className="execution-search-input"
                 size="small"
@@ -891,15 +931,17 @@ const ExecutionListPage: React.FC = () => {
                 ))}
               </Select>
             </Space>
-          )}
-          tip={(
+          }
+          tip={
             <Tooltip title="按开始时间倒序展示，可点击任一行查看详情">
               <InfoCircleOutlined style={{ color: 'var(--text-secondary)', fontSize: 14 }} />
             </Tooltip>
-          )}
-          extra={(
+          }
+          extra={
             <Space wrap size={8} style={{ justifyContent: 'flex-end' }}>
-              <Text type="secondary" style={{ fontSize: 13 }}>共 {filteredAndSortedData.length} 条</Text>
+              <Text type="secondary" style={{ fontSize: 13 }}>
+                共 {filteredAndSortedData.length} 条
+              </Text>
               <Button
                 size="middle"
                 icon={<ReloadOutlined />}
@@ -942,7 +984,7 @@ const ExecutionListPage: React.FC = () => {
                 新建执行
               </Button>
             </Space>
-          )}
+          }
         />
         <Table
           columns={columns}
@@ -997,7 +1039,7 @@ const ExecutionListPage: React.FC = () => {
                   key: 'summary',
                   label: renderPanelLabel(
                     '基本信息',
-                    `${getSkillDisplayName(selectedExecution.skillId)} / ${statusLabels[selectedExecution.status]}`,
+                    `${getSkillDisplayName(selectedExecution.skillId)} / ${statusLabels[selectedExecution.status]}`
                   ),
                   style: detailPanelStyle,
                   children: (
@@ -1008,11 +1050,14 @@ const ExecutionListPage: React.FC = () => {
                           {statusLabels[selectedExecution.status]}
                         </Tag>
                       </Descriptions.Item>
-                      <Descriptions.Item label="风险">{selectedExecution.riskLevel || '-'}</Descriptions.Item>
+                      <Descriptions.Item label="风险">
+                        {selectedExecution.riskLevel || '-'}
+                      </Descriptions.Item>
                       <Descriptions.Item label="技能">
                         <Space direction="vertical" size={0}>
                           <Text>{getSkillDisplayName(selectedExecution.skillId)}</Text>
-                          {getSkillDisplayName(selectedExecution.skillId) !== selectedExecution.skillId ? (
+                          {getSkillDisplayName(selectedExecution.skillId) !==
+                          selectedExecution.skillId ? (
                             <Text type="secondary">ID: {selectedExecution.skillId}</Text>
                           ) : null}
                         </Space>
@@ -1024,7 +1069,9 @@ const ExecutionListPage: React.FC = () => {
                         <Descriptions.Item label="当前阶段">
                           <Space direction="vertical" size={0}>
                             <Text>{selectedExecution.currentPhaseKey || '-'}</Text>
-                            <Text type="secondary">{selectedExecution.currentPhaseStatus || '未开始'}</Text>
+                            <Text type="secondary">
+                              {selectedExecution.currentPhaseStatus || '未开始'}
+                            </Text>
                           </Space>
                         </Descriptions.Item>
                       ) : null}
@@ -1038,7 +1085,15 @@ const ExecutionListPage: React.FC = () => {
                               <Button
                                 type="link"
                                 style={{ paddingInline: 0 }}
-                                onClick={() => window.open(replaceLocalhostWithCurrentHost(stableSelectedRuntimeSessionNovncUrl), '_blank', 'noopener,noreferrer')}
+                                onClick={() =>
+                                  window.open(
+                                    replaceLocalhostWithCurrentHost(
+                                      stableSelectedRuntimeSessionNovncUrl
+                                    ),
+                                    '_blank',
+                                    'noopener,noreferrer'
+                                  )
+                                }
                               >
                                 打开实时画面
                               </Button>
@@ -1068,11 +1123,19 @@ const ExecutionListPage: React.FC = () => {
                             type="link"
                             icon={<DownloadOutlined />}
                             style={{ paddingInline: 0 }}
-                            onClick={() => window.open(extractExecutionDownloadUrl(selectedExecution), '_blank', 'noopener,noreferrer')}
+                            onClick={() =>
+                              window.open(
+                                extractExecutionDownloadUrl(selectedExecution),
+                                '_blank',
+                                'noopener,noreferrer'
+                              )
+                            }
                           >
                             下载结果
                           </Button>
-                        ) : '-'}
+                        ) : (
+                          '-'
+                        )}
                       </Descriptions.Item>
                     </Descriptions>
                   ),
@@ -1080,7 +1143,10 @@ const ExecutionListPage: React.FC = () => {
               ]}
             />
 
-            {isSelectedBrowserExecution && stableSelectedRuntimeSessionNovncUrl && (isSelectedExecutionActive || isPreviewRuntimeSessionState(selectedRuntimeSession?.state)) ? (
+            {isSelectedBrowserExecution &&
+            stableSelectedRuntimeSessionNovncUrl &&
+            (isSelectedExecutionActive ||
+              isPreviewRuntimeSessionState(selectedRuntimeSession?.state)) ? (
               <LiveSessionPreviewCard
                 novncUrl={stableSelectedRuntimeSessionNovncUrl}
                 title="实时画面"
@@ -1113,37 +1179,45 @@ const ExecutionListPage: React.FC = () => {
                               ) : null}
                             </Space>
                           ) : null}
-                          {selectedExecutionNormalizedResult.summary || selectedExecutionNormalizedResult.body ? (
+                          {selectedExecutionNormalizedResult.summary ||
+                          selectedExecutionNormalizedResult.body ? (
                             <Text style={{ whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>
-                              {selectedExecutionNormalizedResult.summary || selectedExecutionNormalizedResult.body}
+                              {selectedExecutionNormalizedResult.summary ||
+                                selectedExecutionNormalizedResult.body}
                             </Text>
                           ) : null}
                           {selectedExecutionNormalizedResult.artifacts.length > 0 ? (
                             <Space wrap>
-                              {selectedExecutionNormalizedResult.artifacts.map((artifact, index) => {
-                                const href = replaceLocalhostWithCurrentHost(artifact.downloadUrl || artifact.url);
-                                if (!href) {
-                                  return null;
+                              {selectedExecutionNormalizedResult.artifacts.map(
+                                (artifact, index) => {
+                                  const href = replaceLocalhostWithCurrentHost(
+                                    artifact.downloadUrl || artifact.url
+                                  );
+                                  if (!href) {
+                                    return null;
+                                  }
+                                  return (
+                                    <Button
+                                      key={`${href}-${index}`}
+                                      type="link"
+                                      href={href}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      style={{ paddingInline: 0 }}
+                                    >
+                                      {artifact.label || artifact.name || `结果产物 ${index + 1}`}
+                                    </Button>
+                                  );
                                 }
-                                return (
-                                  <Button
-                                    key={`${href}-${index}`}
-                                    type="link"
-                                    href={href}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    style={{ paddingInline: 0 }}
-                                  >
-                                    {artifact.label || artifact.name || `结果产物 ${index + 1}`}
-                                  </Button>
-                                );
-                              })}
+                              )}
                             </Space>
                           ) : null}
                           {selectedExecutionNormalizedResult.temporalLink ? (
                             <Button
                               type="link"
-                              href={replaceLocalhostWithCurrentHost(selectedExecutionNormalizedResult.temporalLink)}
+                              href={replaceLocalhostWithCurrentHost(
+                                selectedExecutionNormalizedResult.temporalLink
+                              )}
                               target="_blank"
                               rel="noopener noreferrer"
                               style={{ paddingInline: 0, width: 'fit-content' }}
@@ -1152,10 +1226,11 @@ const ExecutionListPage: React.FC = () => {
                             </Button>
                           ) : null}
                           {renderExecutionPayloadContent(
-                            selectedExecutionNormalizedResult.structuredData ?? selectedExecutionNormalizedResult.envelope,
+                            selectedExecutionNormalizedResult.structuredData ??
+                              selectedExecutionNormalizedResult.envelope,
                             {
                               emptyText: '该执行暂无结构化结果。',
-                            },
+                            }
                           )}
                         </Space>
                       ) : (
@@ -1173,7 +1248,12 @@ const ExecutionListPage: React.FC = () => {
             {isSelectedBrowserExecution && displaySelectedPhases.length > 0 ? (
               <Card title="步骤进度">
                 <Steps
-                  current={Math.max(displaySelectedPhases.findIndex((phase) => phase.phaseKey === currentSelectedPhase?.phaseKey), 0)}
+                  current={Math.max(
+                    displaySelectedPhases.findIndex(
+                      (phase) => phase.phaseKey === currentSelectedPhase?.phaseKey
+                    ),
+                    0
+                  )}
                   size="small"
                   responsive
                   style={{ marginBottom: 16 }}
@@ -1193,7 +1273,9 @@ const ExecutionListPage: React.FC = () => {
                             <Text type="secondary">{`尝试: ${phase.attempt}`}</Text>
                             <Text type="secondary">{`步骤数: ${phase.steps?.length || 0}`}</Text>
                           </Space>
-                          {phase.errorMessage ? <Text type="danger">{phase.errorMessage}</Text> : null}
+                          {phase.errorMessage ? (
+                            <Text type="danger">{phase.errorMessage}</Text>
+                          ) : null}
                         </Space>
                       ),
                     };
@@ -1207,7 +1289,11 @@ const ExecutionListPage: React.FC = () => {
                     description={
                       <Space wrap size={[12, 4]}>
                         <Text type="secondary">{`Key: ${currentSelectedPhase.phaseKey}`}</Text>
-                        <Text type="secondary">{formatDateTime(currentSelectedPhase.startedAt || currentSelectedPhase.createdAt)}</Text>
+                        <Text type="secondary">
+                          {formatDateTime(
+                            currentSelectedPhase.startedAt || currentSelectedPhase.createdAt
+                          )}
+                        </Text>
                       </Space>
                     }
                   />
@@ -1222,440 +1308,590 @@ const ExecutionListPage: React.FC = () => {
               phase={currentSelectedPhase}
             />
 
-            {(selectedExecution.status === 'waiting_input' && waitingInputStep) || isSelectedBrowserExecution ? (
+            {(selectedExecution.status === 'waiting_input' && waitingInputStep) ||
+            isSelectedBrowserExecution ? (
               <Collapse
                 ghost
                 expandIconPosition="end"
                 items={[
-                  ...(selectedExecution.status === 'waiting_input' && waitingInputStep ? [{
-                  key: 'resume',
-                  label: renderPanelLabel(
-                    '继续 / 恢复执行',
-                    `待补 ${requiredInputs.length} 个参数`,
-                  ),
-                  style: detailPanelStyle,
-                  children: (
-                    <>
-                      <Alert
-                        type="warning"
-                        showIcon
-                        style={{ marginBottom: 16 }}
-                        message={RECOVERY_COPY.waitingInputTitle}
-                        description={RECOVERY_COPY.waitingInputDesc}
-                      />
-                      <Form form={resumeForm} layout="vertical">
-                        <div
-                          style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-                            gap: 12,
-                            marginBottom: 16,
-                          }}
-                        >
-                          {requiredInputGroups.length > 0 ? requiredInputGroups.map((group) => (
-                            <div
-                              key={group.label}
-                              style={{
-                                padding: 14,
-                                borderRadius: 14,
-                                border: '1px solid var(--bg-secondary)',
-                                background: 'var(--bg-card)',
-                                boxShadow: 'var(--shadow-sm)',
-                              }}
-                            >
-                              <Text strong style={{ display: 'block', marginBottom: 12 }}>
-                                {group.label}
-                              </Text>
-                              <div
-                                style={{
-                                  display: 'grid',
-                                  gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-                                  gap: 12,
-                                }}
-                              >
-                                {group.items.map((field) => (
-                                  <div
-                                    key={field.name}
-                                    style={{
-                                      padding: 14,
-                                      borderRadius: 12,
-                                      border: '1px solid var(--bg-secondary)',
-                                      background: 'var(--bg-primary)',
-                                    }}
-                                  >
-                                    <Space size={[6, 6]} wrap style={{ marginBottom: 8 }}>
-                                      <Text strong>{resolveWaitingInputDisplayLabel(field)}</Text>
-                                      <Tag style={{ marginInlineEnd: 0 }}>{field.type}</Tag>
-                                      <Tag
-                                        color={field.required ? 'error' : 'default'}
-                                        style={{ marginInlineEnd: 0 }}
-                                      >
-                                        {field.required ? '必填' : '可选'}
-                                      </Tag>
-                                      {field.needs_confirmation ? (
-                                        <Tag color="gold" style={{ marginInlineEnd: 0 }}>待确认</Tag>
-                                      ) : null}
-                                    </Space>
-                                    <Text
-                                      type="secondary"
-                                      style={{
-                                        display: 'block',
-                                        fontSize: 12,
-                                        minHeight: 36,
-                                        marginBottom: 10,
-                                      }}
-                                    >
-                                      {field.description || `来源: ${field.source}`}
-                                    </Text>
-                                    <Form.Item
-                                      name={field.name}
-                                      style={{ marginBottom: 8 }}
-                                      rules={[
-                                        {
-                                          required: field.required,
-                                          message: `请输入 ${resolveWaitingInputDisplayLabel(field)}`,
-                                        },
-                                      ]}
-                                      valuePropName={field.type.toLowerCase() === 'boolean' ? 'checked' : 'value'}
-                                    >
-                                      {renderRequiredInputField(field, { treatArrayAsJson: true })}
-                                    </Form.Item>
-                                    <Text type="secondary" style={{ fontSize: 11 }}>
-                                      来源: {field.source}
-                                    </Text>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )) : requiredInputs.map((field) => (
-                            <div
-                              key={field.name}
-                              style={{
-                                padding: 14,
-                                borderRadius: 14,
-                                border: '1px solid var(--bg-secondary)',
-                                background: 'var(--bg-card)',
-                                boxShadow: 'var(--shadow-sm)',
-                              }}
-                            >
-                              <Space size={[6, 6]} wrap style={{ marginBottom: 8 }}>
-                                <Text strong>{resolveWaitingInputDisplayLabel(field)}</Text>
-                                <Tag style={{ marginInlineEnd: 0 }}>{field.type}</Tag>
-                                <Tag
-                                  color={field.required ? 'error' : 'default'}
-                                  style={{ marginInlineEnd: 0 }}
-                                >
-                                  {field.required ? '必填' : '可选'}
-                                </Tag>
-                                {field.needs_confirmation ? (
-                                  <Tag color="gold" style={{ marginInlineEnd: 0 }}>待确认</Tag>
-                                ) : null}
-                              </Space>
-                              <Text
-                                type="secondary"
-                                style={{
-                                  display: 'block',
-                                  fontSize: 12,
-                                  minHeight: 36,
-                                  marginBottom: 10,
-                                }}
-                              >
-                                {field.description || `来源: ${field.source}`}
-                              </Text>
-                              <Form.Item
-                                name={field.name}
-                                style={{ marginBottom: 8 }}
-                                rules={[
-                                  {
-                                    required: field.required,
-                                    message: `请输入 ${resolveWaitingInputDisplayLabel(field)}`,
-                                  },
-                                ]}
-                                valuePropName={field.type.toLowerCase() === 'boolean' ? 'checked' : 'value'}
-                              >
-                                {renderRequiredInputField(field, { treatArrayAsJson: true })}
-                              </Form.Item>
-                              <Text type="secondary" style={{ fontSize: 11 }}>
-                                来源: {field.source}
-                              </Text>
-                            </div>
-                          ))}
-                        </div>
-                        <Space wrap>
-                          <Button
-                            type="primary"
-                            icon={<PlayCircleOutlined />}
-                            loading={submitInputMutation.isLoading}
-                            onClick={() => void handleResumeExecution(false)}
-                          >
-                            {RECOVERY_COPY.waitingInputContinue}
-                          </Button>
-                          <Button
-                            icon={<RobotOutlined />}
-                            loading={submitInputMutation.isLoading}
-                            onClick={() => void handleResumeExecution(true)}
-                          >
-                            {RECOVERY_COPY.waitingInputToAi}
-                          </Button>
-                        </Space>
-                      </Form>
-                    </>
-                  ),
-                }] : []),
-                  ...(isSelectedBrowserExecution ? [{
-                  key: 'phases',
-                  label: renderPanelLabel(
-                    '阶段',
-                    displaySelectedPhases.length > 0
-                      ? `${displaySelectedPhases.length} 个阶段 / ${selectedExecution.currentPhaseKey || '已归档'}`
-                      : '暂无阶段记录',
-                  ),
-                  style: detailPanelStyle,
-                  children: displaySelectedPhases.length > 0 ? (
-                    hasSelectedWorkflowActivityPhases && isSelectedExecutionActive ? (
-                      <Alert
-                        type="info"
-                        showIcon
-                        message="执行进行中"
-                        description="执行中以上方 3 个 Activity 进度为主视图，这里先不展开阶段内部明细；执行完成后再展示截图与补充结果。"
-                      />
-                    ) : (
-                    <Collapse
-                      ghost
-                      expandIconPosition="end"
-                      items={displaySelectedPhases.map((phase: ExecutionPhaseDto) => {
-                        const visiblePhaseSteps = getVisiblePhaseSteps(phase);
-                        const isBrowserActivityPhase = isBrowserWorkflowActivity(phase);
-
-                        return {
-                          key: phase.id,
+                  ...(selectedExecution.status === 'waiting_input' && waitingInputStep
+                    ? [
+                        {
+                          key: 'resume',
                           label: renderPanelLabel(
-                            phase.phaseName || phase.phaseKey,
-                            `${phase.status} / ${formatDateTime(phase.startedAt || phase.createdAt)}`,
+                            '继续 / 恢复执行',
+                            `待补 ${requiredInputs.length} 个参数`
                           ),
-                          style: {
-                            ...detailPanelStyle,
-                            marginBottom: 12,
-                          },
+                          style: detailPanelStyle,
                           children: (
-                            <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                              <Space wrap size={[8, 4]}>
-                                <Tag>{phase.phaseType}</Tag>
-                                <Tag color={getPhaseStatusColor(phase.status)}>{phase.status}</Tag>
-                                <Text type="secondary">{`Key: ${phase.phaseKey}`}</Text>
-                                <Text type="secondary">{`尝试: ${phase.attempt}`}</Text>
-                                {isBrowserActivityPhase && phase.runtimeSessionId ? (
-                                  <Text copyable={{ text: phase.runtimeSessionId }}>{`会话: ${phase.runtimeSessionId}`}</Text>
-                                ) : null}
-                              </Space>
-                              <Space wrap>
-                                {selectedExecution.status !== 'human_control' && (phase.status === 'running' || phase.status === 'failed') ? (
-                                  <Button
-                                    size="small"
-                                    onClick={() => phaseTakeoverMutation.mutate(phase)}
-                                    loading={phaseTakeoverMutation.isLoading}
-                                  >
-                                    接管当前阶段
-                                  </Button>
-                                ) : null}
-                              </Space>
-                              {phase.errorMessage ? (
-                                <Alert
-                                  type="error"
-                                  showIcon
-                                  message={phase.errorCode || '阶段失败'}
-                                  description={phase.errorMessage}
-                                />
-                              ) : null}
-                              {phase.phaseType === 'workflow_activity' ? (
-                                isBrowserActivityPhase ? (
-                                  <Card size="small" title="Activity 结果" styles={{ body: { padding: 12 } }}>
-                                    <Space direction="vertical" size={10} style={{ width: '100%' }}>
-                                      <Space wrap size={[12, 4]}>
-                                        <Text type="secondary">{`步骤数: ${phase.steps?.length || 0}`}</Text>
-                                        <Text type="secondary">{`截图: ${extractWorkflowActivitySnapshotSources(phase).length}`}</Text>
-                                      </Space>
-                                      {extractWorkflowActivitySnapshotSources(phase).length > 0 ? (
-                                        <Image.PreviewGroup>
-                                          <Space wrap size={12}>
-                                            {extractWorkflowActivitySnapshotSources(phase).map((src, index) => (
-                                              <Image
-                                                key={`${phase.id}-snapshot-${index + 1}`}
-                                                src={src}
-                                                alt={`${phase.phaseName || phase.phaseKey}-snapshot-${index + 1}`}
+                            <>
+                              <Alert
+                                type="warning"
+                                showIcon
+                                style={{ marginBottom: 16 }}
+                                message={RECOVERY_COPY.waitingInputTitle}
+                                description={RECOVERY_COPY.waitingInputDesc}
+                              />
+                              <Form form={resumeForm} layout="vertical">
+                                <div
+                                  style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                                    gap: 12,
+                                    marginBottom: 16,
+                                  }}
+                                >
+                                  {requiredInputGroups.length > 0
+                                    ? requiredInputGroups.map((group) => (
+                                        <div
+                                          key={group.label}
+                                          style={{
+                                            padding: 14,
+                                            borderRadius: 14,
+                                            border: '1px solid var(--bg-secondary)',
+                                            background: 'var(--bg-card)',
+                                            boxShadow: 'var(--shadow-sm)',
+                                          }}
+                                        >
+                                          <Text
+                                            strong
+                                            style={{ display: 'block', marginBottom: 12 }}
+                                          >
+                                            {group.label}
+                                          </Text>
+                                          <div
+                                            style={{
+                                              display: 'grid',
+                                              gridTemplateColumns:
+                                                'repeat(auto-fit, minmax(240px, 1fr))',
+                                              gap: 12,
+                                            }}
+                                          >
+                                            {group.items.map((field) => (
+                                              <div
+                                                key={field.name}
                                                 style={{
-                                                  width: 320,
-                                                  maxWidth: '100%',
-                                                  maxHeight: 320,
-                                                  objectFit: 'contain',
-                                                  background: 'var(--bg-secondary)',
-                                                  borderRadius: 8,
+                                                  padding: 14,
+                                                  borderRadius: 12,
                                                   border: '1px solid var(--bg-secondary)',
-                                                  padding: 6,
+                                                  background: 'var(--bg-primary)',
                                                 }}
-                                              />
+                                              >
+                                                <Space
+                                                  size={[6, 6]}
+                                                  wrap
+                                                  style={{ marginBottom: 8 }}
+                                                >
+                                                  <Text strong>
+                                                    {resolveWaitingInputDisplayLabel(field)}
+                                                  </Text>
+                                                  <Tag style={{ marginInlineEnd: 0 }}>
+                                                    {field.type}
+                                                  </Tag>
+                                                  <Tag
+                                                    color={field.required ? 'error' : 'default'}
+                                                    style={{ marginInlineEnd: 0 }}
+                                                  >
+                                                    {field.required ? '必填' : '可选'}
+                                                  </Tag>
+                                                  {field.needs_confirmation ? (
+                                                    <Tag
+                                                      color="gold"
+                                                      style={{ marginInlineEnd: 0 }}
+                                                    >
+                                                      待确认
+                                                    </Tag>
+                                                  ) : null}
+                                                </Space>
+                                                <Text
+                                                  type="secondary"
+                                                  style={{
+                                                    display: 'block',
+                                                    fontSize: 12,
+                                                    minHeight: 36,
+                                                    marginBottom: 10,
+                                                  }}
+                                                >
+                                                  {field.description || `来源: ${field.source}`}
+                                                </Text>
+                                                <Form.Item
+                                                  name={field.name}
+                                                  style={{ marginBottom: 8 }}
+                                                  rules={[
+                                                    {
+                                                      required: field.required,
+                                                      message: `请输入 ${resolveWaitingInputDisplayLabel(field)}`,
+                                                    },
+                                                  ]}
+                                                  valuePropName={
+                                                    field.type.toLowerCase() === 'boolean'
+                                                      ? 'checked'
+                                                      : 'value'
+                                                  }
+                                                >
+                                                  {renderRequiredInputField(field, {
+                                                    treatArrayAsJson: true,
+                                                  })}
+                                                </Form.Item>
+                                                <Text type="secondary" style={{ fontSize: 11 }}>
+                                                  来源: {field.source}
+                                                </Text>
+                                              </div>
                                             ))}
+                                          </div>
+                                        </div>
+                                      ))
+                                    : requiredInputs.map((field) => (
+                                        <div
+                                          key={field.name}
+                                          style={{
+                                            padding: 14,
+                                            borderRadius: 14,
+                                            border: '1px solid var(--bg-secondary)',
+                                            background: 'var(--bg-card)',
+                                            boxShadow: 'var(--shadow-sm)',
+                                          }}
+                                        >
+                                          <Space size={[6, 6]} wrap style={{ marginBottom: 8 }}>
+                                            <Text strong>
+                                              {resolveWaitingInputDisplayLabel(field)}
+                                            </Text>
+                                            <Tag style={{ marginInlineEnd: 0 }}>{field.type}</Tag>
+                                            <Tag
+                                              color={field.required ? 'error' : 'default'}
+                                              style={{ marginInlineEnd: 0 }}
+                                            >
+                                              {field.required ? '必填' : '可选'}
+                                            </Tag>
+                                            {field.needs_confirmation ? (
+                                              <Tag color="gold" style={{ marginInlineEnd: 0 }}>
+                                                待确认
+                                              </Tag>
+                                            ) : null}
                                           </Space>
-                                        </Image.PreviewGroup>
-                                      ) : (
-                                        <Text type="secondary">该 Activity 暂无可展示截图。</Text>
-                                      )}
-                                    </Space>
-                                  </Card>
-                                ) : (
-                                  <Card size="small" title="Activity 输出" styles={{ body: { padding: 12 } }}>
-                                    {renderExecutionPayloadContent(phase.output, {
-                                      emptyText: '该 Activity 暂无输出内容。',
-                                      treatSingleResultFieldAsMarkdown: true,
-                                    })}
-                                  </Card>
-                                )
-                              ) : phase.steps && phase.steps.length > 0 ? (
-                                <Timeline
-                                  items={visiblePhaseSteps.map((step) => {
-                                    const stepUrl = extractPhaseStepUrl(step);
-                                    const stepImageSources = extractPhaseStepImageSources(step, phase.artifacts || []);
-                                    const isWaitStep = step.action === 'wait';
-                                    const isNavigateStep = step.action === 'navigate';
-                                    const isScreenshotStep = step.action === 'screenshot';
+                                          <Text
+                                            type="secondary"
+                                            style={{
+                                              display: 'block',
+                                              fontSize: 12,
+                                              minHeight: 36,
+                                              marginBottom: 10,
+                                            }}
+                                          >
+                                            {field.description || `来源: ${field.source}`}
+                                          </Text>
+                                          <Form.Item
+                                            name={field.name}
+                                            style={{ marginBottom: 8 }}
+                                            rules={[
+                                              {
+                                                required: field.required,
+                                                message: `请输入 ${resolveWaitingInputDisplayLabel(field)}`,
+                                              },
+                                            ]}
+                                            valuePropName={
+                                              field.type.toLowerCase() === 'boolean'
+                                                ? 'checked'
+                                                : 'value'
+                                            }
+                                          >
+                                            {renderRequiredInputField(field, {
+                                              treatArrayAsJson: true,
+                                            })}
+                                          </Form.Item>
+                                          <Text type="secondary" style={{ fontSize: 11 }}>
+                                            来源: {field.source}
+                                          </Text>
+                                        </div>
+                                      ))}
+                                </div>
+                                <Space wrap>
+                                  <Button
+                                    type="primary"
+                                    icon={<PlayCircleOutlined />}
+                                    loading={submitInputMutation.isLoading}
+                                    onClick={() => void handleResumeExecution(false)}
+                                  >
+                                    {RECOVERY_COPY.waitingInputContinue}
+                                  </Button>
+                                  <Button
+                                    icon={<RobotOutlined />}
+                                    loading={submitInputMutation.isLoading}
+                                    onClick={() => void handleResumeExecution(true)}
+                                  >
+                                    {RECOVERY_COPY.waitingInputToAi}
+                                  </Button>
+                                </Space>
+                              </Form>
+                            </>
+                          ),
+                        },
+                      ]
+                    : []),
+                  ...(isSelectedBrowserExecution
+                    ? [
+                        {
+                          key: 'phases',
+                          label: renderPanelLabel(
+                            '阶段',
+                            displaySelectedPhases.length > 0
+                              ? `${displaySelectedPhases.length} 个阶段 / ${selectedExecution.currentPhaseKey || '已归档'}`
+                              : '暂无阶段记录'
+                          ),
+                          style: detailPanelStyle,
+                          children:
+                            displaySelectedPhases.length > 0 ? (
+                              hasSelectedWorkflowActivityPhases && isSelectedExecutionActive ? (
+                                <Alert
+                                  type="info"
+                                  showIcon
+                                  message="执行进行中"
+                                  description="执行中以上方 3 个 Activity 进度为主视图，这里先不展开阶段内部明细；执行完成后再展示截图与补充结果。"
+                                />
+                              ) : (
+                                <Collapse
+                                  ghost
+                                  expandIconPosition="end"
+                                  items={displaySelectedPhases.map((phase: ExecutionPhaseDto) => {
+                                    const visiblePhaseSteps = getVisiblePhaseSteps(phase);
+                                    const isBrowserActivityPhase = isBrowserWorkflowActivity(phase);
 
                                     return {
-                                      color: getPhaseStatusColor(step.status),
+                                      key: phase.id,
+                                      label: renderPanelLabel(
+                                        phase.phaseName || phase.phaseKey,
+                                        `${phase.status} / ${formatDateTime(phase.startedAt || phase.createdAt)}`
+                                      ),
+                                      style: {
+                                        ...detailPanelStyle,
+                                        marginBottom: 12,
+                                      },
                                       children: (
-                                        isWaitStep ? (
-                                          <Space wrap style={{ width: '100%', justifyContent: 'space-between' }}>
-                                            <Space wrap>
-                                              <Text strong>等待</Text>
-                                              <Tag color={getPhaseStatusColor(step.status)}>{step.status}</Tag>
-                                            </Space>
-                                            <Text type="secondary">{formatDateTime(step.startedAt || step.createdAt)}</Text>
+                                        <Space
+                                          direction="vertical"
+                                          size={12}
+                                          style={{ width: '100%' }}
+                                        >
+                                          <Space wrap size={[8, 4]}>
+                                            <Tag>{phase.phaseType}</Tag>
+                                            <Tag color={getPhaseStatusColor(phase.status)}>
+                                              {phase.status}
+                                            </Tag>
+                                            <Text type="secondary">{`Key: ${phase.phaseKey}`}</Text>
+                                            <Text type="secondary">{`尝试: ${phase.attempt}`}</Text>
+                                            {isBrowserActivityPhase && phase.runtimeSessionId ? (
+                                              <Text
+                                                copyable={{ text: phase.runtimeSessionId }}
+                                              >{`会话: ${phase.runtimeSessionId}`}</Text>
+                                            ) : null}
                                           </Space>
-                                        ) : (
-                                          <Card size="small">
-                                            <Space direction="vertical" size={10} style={{ width: '100%' }}>
-                                              <Space wrap style={{ width: '100%', justifyContent: 'space-between' }}>
-                                                <Space wrap>
-                                                  <Text strong>
-                                                    {isNavigateStep ? '打开页面' : isScreenshotStep ? '截图' : step.action || `步骤 ${step.stepIndex + 1}`}
-                                                  </Text>
-                                                  <Tag color={getPhaseStatusColor(step.status)}>{step.status}</Tag>
-                                                </Space>
-                                                <Text type="secondary">{formatDateTime(step.startedAt || step.createdAt)}</Text>
-                                              </Space>
-                                              {isNavigateStep ? (
-                                                <Text copyable={stepUrl ? { text: stepUrl } : undefined}>
-                                                  {stepUrl || '-'}
-                                                </Text>
-                                              ) : null}
-                                              {step.errorMessage ? (
-                                                <Alert
-                                                  type="error"
-                                                  showIcon
-                                                  message="步骤执行失败"
-                                                  description={step.errorMessage}
-                                                />
-                                              ) : null}
-                                              {stepImageSources.length > 0 ? (
-                                                <Image.PreviewGroup>
-                                                  <Space wrap size={12}>
-                                                    {stepImageSources.map((src, index) => (
-                                                      <Image
-                                                        key={`${src}-${index}`}
-                                                        src={src}
-                                                        alt={`${phase.phaseName || phase.phaseKey}-step-${index + 1}`}
-                                                        style={{
-                                                          width: 320,
-                                                          maxWidth: '100%',
-                                                          maxHeight: 320,
-                                                          objectFit: 'contain',
-                                                          background: 'var(--bg-secondary)',
-                                                          borderRadius: 8,
-                                                          border: '1px solid var(--bg-secondary)',
-                                                          padding: 6,
-                                                        }}
-                                                      />
-                                                    ))}
+                                          <Space wrap>
+                                            {selectedExecution.status !== 'human_control' &&
+                                            (phase.status === 'running' ||
+                                              phase.status === 'failed') ? (
+                                              <Button
+                                                size="small"
+                                                onClick={() => phaseTakeoverMutation.mutate(phase)}
+                                                loading={phaseTakeoverMutation.isLoading}
+                                              >
+                                                接管当前阶段
+                                              </Button>
+                                            ) : null}
+                                          </Space>
+                                          {phase.errorMessage ? (
+                                            <Alert
+                                              type="error"
+                                              showIcon
+                                              message={phase.errorCode || '阶段失败'}
+                                              description={phase.errorMessage}
+                                            />
+                                          ) : null}
+                                          {phase.phaseType === 'workflow_activity' ? (
+                                            isBrowserActivityPhase ? (
+                                              <Card
+                                                size="small"
+                                                title="Activity 结果"
+                                                styles={{ body: { padding: 12 } }}
+                                              >
+                                                <Space
+                                                  direction="vertical"
+                                                  size={10}
+                                                  style={{ width: '100%' }}
+                                                >
+                                                  <Space wrap size={[12, 4]}>
+                                                    <Text type="secondary">{`步骤数: ${phase.steps?.length || 0}`}</Text>
+                                                    <Text type="secondary">{`截图: ${extractWorkflowActivitySnapshotSources(phase).length}`}</Text>
                                                   </Space>
-                                                </Image.PreviewGroup>
-                                              ) : null}
-                                            </Space>
-                                          </Card>
-                                        )
+                                                  {extractWorkflowActivitySnapshotSources(phase)
+                                                    .length > 0 ? (
+                                                    <Image.PreviewGroup>
+                                                      <Space wrap size={12}>
+                                                        {extractWorkflowActivitySnapshotSources(
+                                                          phase
+                                                        ).map((src, index) => (
+                                                          <Image
+                                                            key={`${phase.id}-snapshot-${index + 1}`}
+                                                            src={src}
+                                                            alt={`${phase.phaseName || phase.phaseKey}-snapshot-${index + 1}`}
+                                                            style={{
+                                                              width: 320,
+                                                              maxWidth: '100%',
+                                                              maxHeight: 320,
+                                                              objectFit: 'contain',
+                                                              background: 'var(--bg-secondary)',
+                                                              borderRadius: 8,
+                                                              border:
+                                                                '1px solid var(--bg-secondary)',
+                                                              padding: 6,
+                                                            }}
+                                                          />
+                                                        ))}
+                                                      </Space>
+                                                    </Image.PreviewGroup>
+                                                  ) : (
+                                                    <Text type="secondary">
+                                                      该 Activity 暂无可展示截图。
+                                                    </Text>
+                                                  )}
+                                                </Space>
+                                              </Card>
+                                            ) : (
+                                              <Card
+                                                size="small"
+                                                title="Activity 输出"
+                                                styles={{ body: { padding: 12 } }}
+                                              >
+                                                {renderExecutionPayloadContent(phase.output, {
+                                                  emptyText: '该 Activity 暂无输出内容。',
+                                                  treatSingleResultFieldAsMarkdown: true,
+                                                })}
+                                              </Card>
+                                            )
+                                          ) : phase.steps && phase.steps.length > 0 ? (
+                                            <Timeline
+                                              items={visiblePhaseSteps.map((step) => {
+                                                const stepUrl = extractPhaseStepUrl(step);
+                                                const stepImageSources =
+                                                  extractPhaseStepImageSources(
+                                                    step,
+                                                    phase.artifacts || []
+                                                  );
+                                                const isWaitStep = step.action === 'wait';
+                                                const isNavigateStep = step.action === 'navigate';
+                                                const isScreenshotStep =
+                                                  step.action === 'screenshot';
+
+                                                return {
+                                                  color: getPhaseStatusColor(step.status),
+                                                  children: isWaitStep ? (
+                                                    <Space
+                                                      wrap
+                                                      style={{
+                                                        width: '100%',
+                                                        justifyContent: 'space-between',
+                                                      }}
+                                                    >
+                                                      <Space wrap>
+                                                        <Text strong>等待</Text>
+                                                        <Tag
+                                                          color={getPhaseStatusColor(step.status)}
+                                                        >
+                                                          {step.status}
+                                                        </Tag>
+                                                      </Space>
+                                                      <Text type="secondary">
+                                                        {formatDateTime(
+                                                          step.startedAt || step.createdAt
+                                                        )}
+                                                      </Text>
+                                                    </Space>
+                                                  ) : (
+                                                    <Card size="small">
+                                                      <Space
+                                                        direction="vertical"
+                                                        size={10}
+                                                        style={{ width: '100%' }}
+                                                      >
+                                                        <Space
+                                                          wrap
+                                                          style={{
+                                                            width: '100%',
+                                                            justifyContent: 'space-between',
+                                                          }}
+                                                        >
+                                                          <Space wrap>
+                                                            <Text strong>
+                                                              {isNavigateStep
+                                                                ? '打开页面'
+                                                                : isScreenshotStep
+                                                                  ? '截图'
+                                                                  : step.action ||
+                                                                    `步骤 ${step.stepIndex + 1}`}
+                                                            </Text>
+                                                            <Tag
+                                                              color={getPhaseStatusColor(
+                                                                step.status
+                                                              )}
+                                                            >
+                                                              {step.status}
+                                                            </Tag>
+                                                          </Space>
+                                                          <Text type="secondary">
+                                                            {formatDateTime(
+                                                              step.startedAt || step.createdAt
+                                                            )}
+                                                          </Text>
+                                                        </Space>
+                                                        {isNavigateStep ? (
+                                                          <Text
+                                                            copyable={
+                                                              stepUrl
+                                                                ? { text: stepUrl }
+                                                                : undefined
+                                                            }
+                                                          >
+                                                            {stepUrl || '-'}
+                                                          </Text>
+                                                        ) : null}
+                                                        {step.errorMessage ? (
+                                                          <Alert
+                                                            type="error"
+                                                            showIcon
+                                                            message="步骤执行失败"
+                                                            description={step.errorMessage}
+                                                          />
+                                                        ) : null}
+                                                        {stepImageSources.length > 0 ? (
+                                                          <Image.PreviewGroup>
+                                                            <Space wrap size={12}>
+                                                              {stepImageSources.map(
+                                                                (src, index) => (
+                                                                  <Image
+                                                                    key={`${src}-${index}`}
+                                                                    src={src}
+                                                                    alt={`${phase.phaseName || phase.phaseKey}-step-${index + 1}`}
+                                                                    style={{
+                                                                      width: 320,
+                                                                      maxWidth: '100%',
+                                                                      maxHeight: 320,
+                                                                      objectFit: 'contain',
+                                                                      background:
+                                                                        'var(--bg-secondary)',
+                                                                      borderRadius: 8,
+                                                                      border:
+                                                                        '1px solid var(--bg-secondary)',
+                                                                      padding: 6,
+                                                                    }}
+                                                                  />
+                                                                )
+                                                              )}
+                                                            </Space>
+                                                          </Image.PreviewGroup>
+                                                        ) : null}
+                                                      </Space>
+                                                    </Card>
+                                                  ),
+                                                };
+                                              })}
+                                            />
+                                          ) : null}
+                                        </Space>
                                       ),
                                     };
                                   })}
                                 />
-                              ) : null}
-                            </Space>
+                              )
+                            ) : (
+                              <Empty
+                                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                                description="暂无阶段记录"
+                              />
+                            ),
+                        },
+                      ]
+                    : []),
+                  ...(isSelectedBrowserExecution &&
+                  !displaySelectedPhases.length &&
+                  shouldShowLegacySteps
+                    ? [
+                        {
+                          key: 'steps',
+                          label: renderPanelLabel(
+                            '步骤',
+                            summarizeSteps(selectedSteps, isStepsLoading)
                           ),
-                        };
-                      })}
-                    />
-                    )
-                  ) : (
-                    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无阶段记录" />
-                  ),
-                  }] : []),
-                  ...(isSelectedBrowserExecution && !displaySelectedPhases.length && shouldShowLegacySteps ? [{
-                  key: 'steps',
-                  label: renderPanelLabel(
-                    '步骤',
-                    summarizeSteps(selectedSteps, isStepsLoading),
-                  ),
-                  style: { ...detailPanelStyle, marginBottom: 0 },
-                  children: isStepsLoading ? (
-                    <div style={{ display: 'flex', justifyContent: 'center', padding: '24px 0' }}>
-                      <Spin />
-                    </div>
-                  ) : selectedSteps && selectedSteps.length > 0 ? (
-                    <Timeline
-                      items={selectedSteps.map((step) => ({
-                        color: getStepStatusColor(step.status),
-                        children: (
-                          <Card
-                            size="small"
-                            style={{
-                              borderRadius: 12,
-                              border: '1px solid var(--bg-secondary)',
-                              background: 'var(--bg-card)',
-                            }}
-                          >
-                            <Space direction="vertical" size={8} style={{ width: '100%' }}>
-                              <Space style={{ width: '100%', justifyContent: 'space-between' }} wrap>
-                                <Space wrap>
-                                  <Text strong>{`步骤 ${step.stepIndex + 1}`}</Text>
-                                  <Text>{step.name || step.action || step.type || '-'}</Text>
-                                </Space>
-                                <Tag color={getStepStatusColor(step.status)}>{step.status}</Tag>
-                              </Space>
-                              <Space wrap size={[8, 4]}>
-                                <Text type="secondary">{`类型: ${step.type}`}</Text>
-                                {step.action ? <Text type="secondary">{`动作: ${step.action}`}</Text> : null}
-                              </Space>
-                              <Space direction="vertical" size={2}>
-                                <Text type="secondary">{`开始: ${formatDateTime(step.startedAt || step.createdAt)}`}</Text>
-                                <Text type="secondary">{`结束: ${formatDateTime(step.endedAt || undefined)}`}</Text>
-                              </Space>
-                              {step.errorMessage ? (
-                                <Alert
-                                  type="error"
-                                  showIcon
-                                  message="步骤执行失败"
-                                  description={step.errorMessage}
-                                />
-                              ) : null}
-                              {step.outputJson && Object.keys(step.outputJson).length > 0 ? (
-                                <Text type="secondary">{`输出字段: ${Object.keys(step.outputJson).slice(0, 4).join('、')}`}</Text>
-                              ) : null}
-                            </Space>
-                          </Card>
-                        ),
-                      }))}
-                    />
-                  ) : (
-                    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无步骤" />
-                  ),
-                  }] : []),
+                          style: { ...detailPanelStyle, marginBottom: 0 },
+                          children: isStepsLoading ? (
+                            <div
+                              style={{
+                                display: 'flex',
+                                justifyContent: 'center',
+                                padding: '24px 0',
+                              }}
+                            >
+                              <Spin />
+                            </div>
+                          ) : selectedSteps && selectedSteps.length > 0 ? (
+                            <Timeline
+                              items={selectedSteps.map((step) => ({
+                                color: getStepStatusColor(step.status),
+                                children: (
+                                  <Card
+                                    size="small"
+                                    style={{
+                                      borderRadius: 12,
+                                      border: '1px solid var(--bg-secondary)',
+                                      background: 'var(--bg-card)',
+                                    }}
+                                  >
+                                    <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                                      <Space
+                                        style={{ width: '100%', justifyContent: 'space-between' }}
+                                        wrap
+                                      >
+                                        <Space wrap>
+                                          <Text strong>{`步骤 ${step.stepIndex + 1}`}</Text>
+                                          <Text>
+                                            {step.name || step.action || step.type || '-'}
+                                          </Text>
+                                        </Space>
+                                        <Tag color={getStepStatusColor(step.status)}>
+                                          {step.status}
+                                        </Tag>
+                                      </Space>
+                                      <Space wrap size={[8, 4]}>
+                                        <Text type="secondary">{`类型: ${step.type}`}</Text>
+                                        {step.action ? (
+                                          <Text type="secondary">{`动作: ${step.action}`}</Text>
+                                        ) : null}
+                                      </Space>
+                                      <Space direction="vertical" size={2}>
+                                        <Text type="secondary">{`开始: ${formatDateTime(step.startedAt || step.createdAt)}`}</Text>
+                                        <Text type="secondary">{`结束: ${formatDateTime(step.endedAt || undefined)}`}</Text>
+                                      </Space>
+                                      {step.errorMessage ? (
+                                        <Alert
+                                          type="error"
+                                          showIcon
+                                          message="步骤执行失败"
+                                          description={step.errorMessage}
+                                        />
+                                      ) : null}
+                                      {step.outputJson &&
+                                      Object.keys(step.outputJson).length > 0 ? (
+                                        <Text type="secondary">{`输出字段: ${Object.keys(step.outputJson).slice(0, 4).join('、')}`}</Text>
+                                      ) : null}
+                                    </Space>
+                                  </Card>
+                                ),
+                              }))}
+                            />
+                          ) : (
+                            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无步骤" />
+                          ),
+                        },
+                      ]
+                    : []),
                 ]}
               />
             ) : null}

@@ -31,9 +31,9 @@ export interface WorkflowStep {
   // Retry policy for the activity
   retryPolicy?: {
     maxRetries?: number;
-    initialIntervalMs?: number;  // First retry interval in ms
-    backoffCoefficient?: number;  // Exponential backoff multiplier (default 2.0)
-    maxIntervalMs?: number;      // Cap between retries
+    initialIntervalMs?: number; // First retry interval in ms
+    backoffCoefficient?: number; // Exponential backoff multiplier (default 2.0)
+    maxIntervalMs?: number; // Cap between retries
     nonRetryableErrorTypes?: string[]; // Errors that won't be retried
   };
   // For parallel execution
@@ -152,7 +152,7 @@ export interface TemporalWorkflowSourceTemplate {
   format?: string;
   variableCount?: number;
   templateAssetVersion?: string; // 新增：资产版本
-  renderPlanVersion?: number;    // 新增：渲染计划版本
+  renderPlanVersion?: number; // 新增：渲染计划版本
 }
 
 export interface TemporalWorkflowSourceContext {
@@ -162,7 +162,8 @@ export interface TemporalWorkflowSourceContext {
   generatedAt?: string;
   warnings?: string[];
   sourceTemplate?: TemporalWorkflowSourceTemplate | null;
-  templateAssetSummary?: {      // 新增：资产摘要
+  templateAssetSummary?: {
+    // 新增：资产摘要
     assetVersion: string;
     renderPlanVersion: number;
     fieldCount: number;
@@ -298,7 +299,7 @@ export interface TemplateWorkflowDraft {
     format?: string;
     variableCount: number;
     templateAssetVersion?: string; // 新增
-    renderPlanVersion?: number;    // 新增
+    renderPlanVersion?: number; // 新增
   };
 }
 
@@ -426,19 +427,36 @@ export const temporalWorkflowApi = {
     return apiClient.post<TemporalWorkflowDTO>(`/temporal/${id}/deploy`);
   },
 
-  validate: async (workflowDsl: WorkflowDsl, activityDsl: ActivityDsl): Promise<TemporalValidationResult> => {
-    return apiClient.post<TemporalValidationResult>('/temporal/validate', { workflowDsl, activityDsl });
+  validate: async (
+    workflowDsl: WorkflowDsl,
+    activityDsl: ActivityDsl
+  ): Promise<TemporalValidationResult> => {
+    return apiClient.post<TemporalValidationResult>('/temporal/validate', {
+      workflowDsl,
+      activityDsl,
+    });
   },
 
-  generateWorkflowCode: async (workflowDsl: WorkflowDsl, activityDsl: ActivityDsl, errorContext?: string): Promise<WorkflowCodeResult> => {
-    return apiClient.post<WorkflowCodeResult>('/temporal/generate-code', { workflowDsl, activityDsl, errorContext });
+  generateWorkflowCode: async (
+    workflowDsl: WorkflowDsl,
+    activityDsl: ActivityDsl,
+    errorContext?: string
+  ): Promise<WorkflowCodeResult> => {
+    return apiClient.post<WorkflowCodeResult>('/temporal/generate-code', {
+      workflowDsl,
+      activityDsl,
+      errorContext,
+    });
   },
 
   generateAndSave: async (
     id: string,
-    data?: { errorContext?: string; forceAiGeneration?: boolean },
+    data?: { errorContext?: string; forceAiGeneration?: boolean }
   ): Promise<GenerateAndSaveWorkflowCodeResult> => {
-    return apiClient.post<GenerateAndSaveWorkflowCodeResult>(`/temporal/${id}/generate-and-save`, data);
+    return apiClient.post<GenerateAndSaveWorkflowCodeResult>(
+      `/temporal/${id}/generate-and-save`,
+      data
+    );
   },
 
   getArtifact: async (id: string): Promise<TemporalWorkflowArtifactDTO> => {
@@ -450,9 +468,9 @@ export const temporalWorkflowApi = {
     activityDsl: ActivityDsl,
     errorContext: string | undefined,
     forceAiGeneration: boolean | undefined,
-    onEvent: (event: WorkflowCodeStreamEvent) => void,
+    onEvent: (event: WorkflowCodeStreamEvent) => void
   ): Promise<void> => {
-    const token = await ensureFreshAccessToken() || useAuthStore.getState().accessToken;
+    const token = (await ensureFreshAccessToken()) || useAuthStore.getState().accessToken;
     return postSseStream({
       url: '/api/temporal/generate-code/stream',
       payload: { workflowDsl, activityDsl, errorContext, forceAiGeneration },
@@ -462,20 +480,49 @@ export const temporalWorkflowApi = {
     });
   },
 
-  validateWorkflowReal: async (code: string, fn: string, input?: Record<string, any>, taskQueue?: string, timeout?: string): Promise<WorkflowRealValidationResult> => {
-    return apiClient.post<WorkflowRealValidationResult>('/temporal/validate-code', { code, fn, input, taskQueue, timeout });
+  validateWorkflowReal: async (
+    code: string,
+    fn: string,
+    input?: Record<string, any>,
+    taskQueue?: string,
+    timeout?: string
+  ): Promise<WorkflowRealValidationResult> => {
+    return apiClient.post<WorkflowRealValidationResult>('/temporal/validate-code', {
+      code,
+      fn,
+      input,
+      taskQueue,
+      timeout,
+    });
   },
 
   validateSavedArtifact: async (
     id: string,
-    data?: { input?: Record<string, any>; timeout?: string },
+    data?: { input?: Record<string, any>; timeout?: string }
   ): Promise<ValidateSavedArtifactResult> => {
-    return apiClient.post<ValidateSavedArtifactResult>(`/temporal/${id}/validate-saved-artifact`, data);
+    return apiClient.post<ValidateSavedArtifactResult>(
+      `/temporal/${id}/validate-saved-artifact`,
+      data
+    );
   },
 
   // SSE streaming real validation with the workflow test worker
-  validateWorkflowRealStream: async (code: string, fn: string, input: Record<string, any>, taskQueue: string | undefined, onEvent: (event: { type: string; content?: string; result?: any; error?: string; success?: boolean; score?: number }) => void, timeout?: string): Promise<void> => {
-    const token = await ensureFreshAccessToken() || useAuthStore.getState().accessToken;
+  validateWorkflowRealStream: async (
+    code: string,
+    fn: string,
+    input: Record<string, any>,
+    taskQueue: string | undefined,
+    onEvent: (event: {
+      type: string;
+      content?: string;
+      result?: any;
+      error?: string;
+      success?: boolean;
+      score?: number;
+    }) => void,
+    timeout?: string
+  ): Promise<void> => {
+    const token = (await ensureFreshAccessToken()) || useAuthStore.getState().accessToken;
     return postSseStream({
       url: '/api/temporal/validate-code/stream',
       payload: { code, fn, input, taskQueue, timeout },
@@ -485,15 +532,15 @@ export const temporalWorkflowApi = {
     });
   },
 
-  generateTemplateDraft: async (
-    templateId: string,
-  ): Promise<TemplateWorkflowDraft> => {
+  generateTemplateDraft: async (templateId: string): Promise<TemplateWorkflowDraft> => {
     return apiClient.post<TemplateWorkflowDraft>('/temporal/generate-template-draft', {
       templateId,
     });
   },
 
-  compileTemplateDraft: async (data: CompileTemplateWorkflowDraftDTO): Promise<TemplateWorkflowDraft> => {
+  compileTemplateDraft: async (
+    data: CompileTemplateWorkflowDraftDTO
+  ): Promise<TemplateWorkflowDraft> => {
     return apiClient.post<TemplateWorkflowDraft>('/temporal/compile-template-draft', data);
   },
 
@@ -507,7 +554,9 @@ export const temporalWorkflowApi = {
     });
   },
 
-  createAiDraftSession: async (data: GenerateAiWorkflowDraftSessionDTO): Promise<AiWorkflowDraftSession> => {
+  createAiDraftSession: async (
+    data: GenerateAiWorkflowDraftSessionDTO
+  ): Promise<AiWorkflowDraftSession> => {
     return apiClient.post<AiWorkflowDraftSession>('/temporal/draft-sessions', data, {
       timeout: AI_DRAFT_REQUEST_TIMEOUT_MS,
     });
@@ -531,16 +580,23 @@ export const temporalWorkflowApi = {
     });
   },
 
-  refineAiDraftSession: async (sessionId: string, userPrompt: string): Promise<AiWorkflowDraftSession> => {
-    return apiClient.post<AiWorkflowDraftSession>(`/temporal/draft-sessions/${sessionId}/messages`, { userPrompt }, {
-      timeout: AI_DRAFT_REQUEST_TIMEOUT_MS,
-    });
+  refineAiDraftSession: async (
+    sessionId: string,
+    userPrompt: string
+  ): Promise<AiWorkflowDraftSession> => {
+    return apiClient.post<AiWorkflowDraftSession>(
+      `/temporal/draft-sessions/${sessionId}/messages`,
+      { userPrompt },
+      {
+        timeout: AI_DRAFT_REQUEST_TIMEOUT_MS,
+      }
+    );
   },
 
   optimizeHttpRequestConfig: async (
     stepConfig: Record<string, any>,
     inputParams: Record<string, any>,
-    userRequest: string,
+    userRequest: string
   ): Promise<HttpRequestOptimizeResult> => {
     return apiClient.post<HttpRequestOptimizeResult>('/temporal/optimize-http-config', {
       stepConfig,
@@ -551,7 +607,7 @@ export const temporalWorkflowApi = {
 
   previewHttpRequestConfig: async (
     stepConfig: Record<string, any>,
-    inputParams: Record<string, any>,
+    inputParams: Record<string, any>
   ): Promise<HttpRequestPreviewResult> => {
     return apiClient.post<HttpRequestPreviewResult>('/temporal/preview-http-config', {
       stepConfig,
@@ -562,8 +618,13 @@ export const temporalWorkflowApi = {
   generateStructuredTransformConfig: async (
     sourceSample: any,
     userRequest: string,
-    existingConfig?: Record<string, any>,
-  ): Promise<{ success: boolean; config?: Record<string, any>; explanation?: string; error?: string }> => {
+    existingConfig?: Record<string, any>
+  ): Promise<{
+    success: boolean;
+    config?: Record<string, any>;
+    explanation?: string;
+    error?: string;
+  }> => {
     return apiClient.post('/temporal/generate-structured-transform-config', {
       sourceSample,
       userRequest,

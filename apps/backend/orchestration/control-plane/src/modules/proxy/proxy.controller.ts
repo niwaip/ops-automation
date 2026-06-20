@@ -24,7 +24,7 @@ export class ProxyController {
 
   constructor(
     private readonly proxyService: ProxyService,
-    private readonly auditService: AuditService,
+    private readonly auditService: AuditService
   ) {}
 
   // Platform Service Routes
@@ -36,7 +36,7 @@ export class ProxyController {
     @Res() res: Response,
     @Param('path') path: string,
     @Body() body: unknown,
-    @Query() query: Record<string, string>,
+    @Query() query: Record<string, string>
   ) {
     return this.proxyToService(req, res, 'platform', path, body, query);
   }
@@ -50,7 +50,7 @@ export class ProxyController {
     @Res() res: Response,
     @Param('path') path: string,
     @Body() body: unknown,
-    @Query() query: Record<string, string>,
+    @Query() query: Record<string, string>
   ) {
     return this.proxyToService(req, res, 'platform', path, body, query);
   }
@@ -64,7 +64,7 @@ export class ProxyController {
     @Res() res: Response,
     @Param('path') path: string,
     @Body() body: unknown,
-    @Query() query: Record<string, string>,
+    @Query() query: Record<string, string>
   ) {
     return this.proxyToService(req, res, 'browser-template', path, body, query);
   }
@@ -78,7 +78,7 @@ export class ProxyController {
     @Res() res: Response,
     @Param('path') path: string,
     @Body() body: unknown,
-    @Query() query: Record<string, string>,
+    @Query() query: Record<string, string>
   ) {
     return this.proxyToService(req, res, 'session', path, body, query);
   }
@@ -92,7 +92,7 @@ export class ProxyController {
     @Res() res: Response,
     @Param('path') path: string,
     @Body() body: unknown,
-    @Query() query: Record<string, string>,
+    @Query() query: Record<string, string>
   ) {
     return this.proxyToService(req, res, 'ai', path, body, query);
   }
@@ -106,7 +106,7 @@ export class ProxyController {
     @Res() res: Response,
     @Param('path') path: string,
     @Body() body: unknown,
-    @Query() query: Record<string, string>,
+    @Query() query: Record<string, string>
   ) {
     return this.proxyToService(req, res, 'worker', path, body, query);
   }
@@ -117,7 +117,7 @@ export class ProxyController {
     @Req() req: AuthenticatedRequest,
     @Res() res: Response,
     @Body() body: unknown,
-    @Query() query: Record<string, string>,
+    @Query() query: Record<string, string>
   ) {
     return this.proxyToService(req, res, 'auth', '', body, query);
   }
@@ -127,7 +127,7 @@ export class ProxyController {
     @Req() req: AuthenticatedRequest,
     @Res() res: Response,
     @Body() body: unknown,
-    @Query() query: Record<string, string>,
+    @Query() query: Record<string, string>
   ) {
     return this.proxyToService(req, res, 'browser-template', '', body, query);
   }
@@ -137,7 +137,7 @@ export class ProxyController {
     @Req() req: AuthenticatedRequest,
     @Res() res: Response,
     @Body() body: unknown,
-    @Query() query: Record<string, string>,
+    @Query() query: Record<string, string>
   ) {
     return this.proxyToService(req, res, 'session', '', body, query);
   }
@@ -147,7 +147,7 @@ export class ProxyController {
     @Req() req: AuthenticatedRequest,
     @Res() res: Response,
     @Body() body: unknown,
-    @Query() query: Record<string, string>,
+    @Query() query: Record<string, string>
   ) {
     return this.proxyToService(req, res, 'ai', '', body, query);
   }
@@ -157,7 +157,7 @@ export class ProxyController {
     @Req() req: AuthenticatedRequest,
     @Res() res: Response,
     @Body() body: unknown,
-    @Query() query: Record<string, string>,
+    @Query() query: Record<string, string>
   ) {
     return this.proxyToService(req, res, 'worker', '', body, query);
   }
@@ -196,16 +196,20 @@ export class ProxyController {
     serviceName: string,
     path: string,
     body: unknown,
-    query: Record<string, string>,
+    query: Record<string, string>
   ) {
     const startTime = Date.now();
     const method = req.method as 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
     const fullPath = path ? `/${path}` : '';
 
     // Build query string
-    const queryString = Object.keys(query).length > 0
-      ? '?' + Object.entries(query).map(([k, v]) => `${k}=${v}`).join('&')
-      : '';
+    const queryString =
+      Object.keys(query).length > 0
+        ? '?' +
+          Object.entries(query)
+            .map(([k, v]) => `${k}=${v}`)
+            .join('&')
+        : '';
 
     const targetPath = fullPath + queryString;
 
@@ -225,7 +229,7 @@ export class ProxyController {
         method,
         targetPath,
         body,
-        headers,
+        headers
       );
 
       // Log successful API call
@@ -237,7 +241,7 @@ export class ProxyController {
         result.status,
         req.ip || 'unknown',
         durationMs,
-        method !== 'GET' ? body as Record<string, unknown> : undefined,
+        method !== 'GET' ? (body as Record<string, unknown>) : undefined
       );
 
       res.status(result.status).json(result.data);
@@ -252,12 +256,12 @@ export class ProxyController {
         (error as HttpException).getStatus() || HttpStatus.INTERNAL_SERVER_ERROR,
         req.ip || 'unknown',
         durationMs,
-        method !== 'GET' ? body as Record<string, unknown> : undefined,
-        { error: (error as HttpException).message },
+        method !== 'GET' ? (body as Record<string, unknown>) : undefined,
+        { error: (error as HttpException).message }
       );
 
       this.logger.error(
-        `Proxy error: ${serviceName} ${method} ${targetPath} - ${(error as Error).message}`,
+        `Proxy error: ${serviceName} ${method} ${targetPath} - ${(error as Error).message}`
       );
 
       if (error instanceof HttpException) {

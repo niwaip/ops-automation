@@ -74,32 +74,43 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
   private readonly logger = new Logger(PlaywrightCliAdapter.name);
   private readonly sessions = new Map<string, CliSessionState>();
   private readonly profileDir =
-    process.env.PLAYWRIGHT_CLI_PROFILE_DIR?.trim()
-    || path.join(process.cwd(), 'temp', 'playwright-profiles');
+    process.env.PLAYWRIGHT_CLI_PROFILE_DIR?.trim() ||
+    path.join(process.cwd(), 'temp', 'playwright-profiles');
   private readonly artifactDir =
-    process.env.PLAYWRIGHT_CLI_ARTIFACT_DIR?.trim()
-    || path.join(process.cwd(), 'temp', 'playwright-cli-artifacts');
+    process.env.PLAYWRIGHT_CLI_ARTIFACT_DIR?.trim() ||
+    path.join(process.cwd(), 'temp', 'playwright-cli-artifacts');
   private readonly screenshotCompressionThresholdBytes = 350 * 1024;
   private readonly screenshotMaxDimension = 1600;
   private readonly screenshotJpegQuality = 70;
-  private readonly maxHtmlChars = parseInt(process.env.PLAYWRIGHT_CLI_MAX_HTML_CHARS || '120000', 10);
+  private readonly maxHtmlChars = parseInt(
+    process.env.PLAYWRIGHT_CLI_MAX_HTML_CHARS || '120000',
+    10
+  );
   private readonly cliAutoArtifactTimeoutMs = this.readTimeoutMs(
     'PLAYWRIGHT_CLI_AUTO_ARTIFACT_TIMEOUT_MS',
-    8000,
+    8000
   );
-  private readonly cliActionTimeoutMs = this.readTimeoutMs('PLAYWRIGHT_CLI_ACTION_TIMEOUT_MS', 60000);
+  private readonly cliActionTimeoutMs = this.readTimeoutMs(
+    'PLAYWRIGHT_CLI_ACTION_TIMEOUT_MS',
+    60000
+  );
   private readonly cliNavigationTimeoutMs = this.readTimeoutMs(
     'PLAYWRIGHT_CLI_NAVIGATION_TIMEOUT_MS',
-    60000,
+    60000
   );
-  private readonly cliProcessTimeoutMs = this.readTimeoutMs('PLAYWRIGHT_CLI_PROCESS_TIMEOUT_MS', 120000);
+  private readonly cliProcessTimeoutMs = this.readTimeoutMs(
+    'PLAYWRIGHT_CLI_PROCESS_TIMEOUT_MS',
+    120000
+  );
   private readonly cliPageSettleTimeoutMs = this.readTimeoutMs(
     'PLAYWRIGHT_CLI_PAGE_SETTLE_TIMEOUT_MS',
-    8000,
+    8000
   );
   private readonly chromeRemoteDebuggingHost =
     process.env.CHROME_REMOTE_DEBUGGING_HOST || 'browser-chrome';
-  private readonly chromeRemoteDebuggingPort = Number(process.env.CHROME_REMOTE_DEBUGGING_PORT || '9222');
+  private readonly chromeRemoteDebuggingPort = Number(
+    process.env.CHROME_REMOTE_DEBUGGING_PORT || '9222'
+  );
   private cliBinaryPromise?: Promise<CliBinary>;
 
   constructor(private readonly workerService: WorkerService) {}
@@ -136,7 +147,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
 
   async executeCommands(
     commands: MCPCommand[],
-    options?: BrowserExecutionOptions,
+    options?: BrowserExecutionOptions
   ): Promise<{ success: boolean; results: any[]; message?: string }> {
     const sessionId = options?.runtimeSessionId || 'default';
     const includeArtifacts = options?.includeArtifacts !== false;
@@ -146,7 +157,8 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     for (const [index, command] of commands.entries()) {
       try {
         const rawResult = await this.runCliAction(command.tool, command.params || {}, sessionId);
-        const shouldEnrich = includeArtifacts && this.shouldEnrichCommandResult(command.tool, index, totalCommands);
+        const shouldEnrich =
+          includeArtifacts && this.shouldEnrichCommandResult(command.tool, index, totalCommands);
         const enrichedResult = shouldEnrich
           ? await this.enrichResultArtifacts(sessionId, rawResult)
           : rawResult;
@@ -168,18 +180,18 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     const firstFailure = results.find((result) => result?.status === 'error');
     const failureSummary = firstFailure
       ? [
-        String(firstFailure.command || 'unknown'),
-        String(firstFailure.message || 'unknown error'),
-      ].join(': ')
+          String(firstFailure.command || 'unknown'),
+          String(firstFailure.message || 'unknown error'),
+        ].join(': ')
       : '';
     return {
       success,
       results,
       message: success
         ? undefined
-        : (failureSummary
+        : failureSummary
           ? `One or more CLI commands failed. First failure: ${failureSummary}`
-          : 'One or more CLI commands failed'),
+          : 'One or more CLI commands failed',
     };
   }
 
@@ -214,13 +226,16 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
           target: dto.target,
           ...dto.args,
         },
-        sessionId,
+        sessionId
       );
-      const pageState = await this.inspectPageState(sessionId).catch(() => ({
-        runtimeSessionId: sessionId,
-        pageUrl: this.getOrCreateSession(sessionId).lastUrl,
-        observedAt: new Date().toISOString(),
-      } as BrowserPageStateDto));
+      const pageState = await this.inspectPageState(sessionId).catch(
+        () =>
+          ({
+            runtimeSessionId: sessionId,
+            pageUrl: this.getOrCreateSession(sessionId).lastUrl,
+            observedAt: new Date().toISOString(),
+          }) as BrowserPageStateDto
+      );
 
       return {
         success: true,
@@ -289,7 +304,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
 
   async generateLocator(
     targetRef: string,
-    options?: BrowserExecutionOptions,
+    options?: BrowserExecutionOptions
   ): Promise<string | undefined> {
     const sessionId = options?.runtimeSessionId || 'default';
     await this.ensureSessionReady(sessionId);
@@ -302,7 +317,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
   private async runCliAction(
     action: string,
     params: Record<string, unknown>,
-    sessionId: string,
+    sessionId: string
   ): Promise<CliActionResult> {
     await this.ensureDirectories();
     const normalizedParams = await this.resolveRuntimeTargetRefs(action, params, sessionId);
@@ -310,7 +325,10 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     switch (action) {
       case 'goto':
       case 'navigate':
-        return this.handleNavigate(sessionId, this.requireStringParam(normalizedParams, ['target', 'url']));
+        return this.handleNavigate(
+          sessionId,
+          this.requireStringParam(normalizedParams, ['target', 'url'])
+        );
       case 'click':
         return this.handleClick(sessionId, normalizedParams);
       case 'fill':
@@ -340,7 +358,10 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
       case 'snapshot':
         return this.handleSnapshot(sessionId, normalizedParams);
       case 'evaluate':
-        return this.handleEvaluate(sessionId, this.requireStringParam(normalizedParams, ['script']));
+        return this.handleEvaluate(
+          sessionId,
+          this.requireStringParam(normalizedParams, ['script'])
+        );
       case 'wait':
         return this.handleWait(sessionId, normalizedParams);
       case 'scroll':
@@ -349,14 +370,23 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
       case 'get_text':
         return this.handleReadPage(sessionId, normalizedParams);
       case 'search':
-        return this.handleSearch(sessionId, this.requireStringParam(normalizedParams, ['query', 'text']));
+        return this.handleSearch(
+          sessionId,
+          this.requireStringParam(normalizedParams, ['query', 'text'])
+        );
       case 'smart_search':
-        return this.handleSmartSearch(sessionId, this.requireStringParam(normalizedParams, ['query', 'text']));
+        return this.handleSmartSearch(
+          sessionId,
+          this.requireStringParam(normalizedParams, ['query', 'text'])
+        );
       case 'list_search_results':
       case 'inspect_search_results':
         return this.handleListSearchResults(sessionId, normalizedParams);
       case 'click_result':
-        return this.handleClickResult(sessionId, this.requireNumberParam(normalizedParams, ['index']));
+        return this.handleClickResult(
+          sessionId,
+          this.requireNumberParam(normalizedParams, ['index'])
+        );
       case 'switch_latest_tab':
       case 'focus_latest_page':
         return this.handleSwitchLatestTab(sessionId);
@@ -394,10 +424,18 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
 
   private async handleClick(
     sessionId: string,
-    params: Record<string, unknown>,
+    params: Record<string, unknown>
   ): Promise<CliActionResult> {
     const explicitTarget = this.readOptionalStringParam(params, ['target', 'selector']);
     if (explicitTarget) {
+      const positionalClickResult = await this.executePositionalSelectorAction(
+        sessionId,
+        explicitTarget,
+        'click'
+      );
+      if (positionalClickResult) {
+        return positionalClickResult;
+      }
       return this.handleSimpleCommand(sessionId, 'click', [explicitTarget]);
     }
 
@@ -407,7 +445,10 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     }
 
     await this.ensureSessionReady(sessionId);
-    const result = await this.execCli(sessionId, ['run-code', this.buildTextClickScript(sessionId, text)]);
+    const result = await this.execCli(sessionId, [
+      'run-code',
+      this.buildTextClickScript(sessionId, text),
+    ]);
     this.assertNoCliError(result, 'Text click failed');
 
     return {
@@ -463,12 +504,12 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
   private async handleSimpleCommand(
     sessionId: string,
     command: string,
-    args: string[],
+    args: string[]
   ): Promise<CliActionResult> {
     await this.ensureSessionReady(sessionId);
-    const normalizedArgs = args.map((arg, index) => (
+    const normalizedArgs = args.map((arg, index) =>
       index === 0 ? this.normalizeSemanticRoleSelector(arg) : arg
-    ));
+    );
     let result: CliExecResult | undefined;
     try {
       result = await this.execCli(sessionId, [command, ...normalizedArgs]);
@@ -480,13 +521,20 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
           result = await this.execCli(sessionId, [command, ...fallbackArgs]);
           this.assertNoCliError(result, `${command} failed`);
         } catch (fbError) {
-          result = await this.executeIframeFallback(sessionId, command, fallbackArgs).catch(() => undefined);
+          result = await this.executeIframeFallback(sessionId, command, fallbackArgs).catch(
+            () => undefined
+          );
           if (!result) throw fbError;
         }
       } else {
         const errorMessage = error instanceof Error ? error.message : String(error || '');
-        if (/does not match any elements|No element found|Timeout/i.test(errorMessage) || /failed/i.test(errorMessage)) {
-          result = await this.executeIframeFallback(sessionId, command, normalizedArgs).catch(() => undefined);
+        if (
+          /does not match any elements|No element found|Timeout/i.test(errorMessage) ||
+          /failed/i.test(errorMessage)
+        ) {
+          result = await this.executeIframeFallback(sessionId, command, normalizedArgs).catch(
+            () => undefined
+          );
           if (!result) throw error;
         } else {
           throw error;
@@ -505,7 +553,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
   private async executeIframeFallback(
     sessionId: string,
     command: string,
-    args: string[],
+    args: string[]
   ): Promise<CliExecResult> {
     const session = this.getOrCreateSession(sessionId);
     const activePageExpr = session.preferLatestTab
@@ -558,7 +606,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
 
   private async handleTypeText(
     sessionId: string,
-    params: Record<string, unknown>,
+    params: Record<string, unknown>
   ): Promise<CliActionResult> {
     await this.ensureSessionReady(sessionId);
 
@@ -590,7 +638,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
 
   private async handleScreenshot(
     sessionId: string,
-    params: Record<string, unknown>,
+    params: Record<string, unknown>
   ): Promise<CliActionResult> {
     await this.ensureSessionReady(sessionId);
 
@@ -598,13 +646,16 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     const target = this.readOptionalStringParam(params, ['target', 'selector']);
     const fullPage = params.fullPage === true;
     let result = await this.captureScreenshot(sessionId, screenshotPath, { target, fullPage });
-    
+
     try {
       this.assertNoCliError(result, 'Screenshot failed');
     } catch (error: unknown) {
       if (target) {
         const errorMessage = error instanceof Error ? error.message : String(error || '');
-        if (/does not match any elements|No element found|Timeout/i.test(errorMessage) || /failed/i.test(errorMessage)) {
+        if (
+          /does not match any elements|No element found|Timeout/i.test(errorMessage) ||
+          /failed/i.test(errorMessage)
+        ) {
           try {
             result = await this.captureIframeScreenshotFallback(sessionId, screenshotPath, target);
             this.assertNoCliError(result, 'Iframe screenshot failed');
@@ -618,7 +669,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
         throw error;
       }
     }
-    
+
     const screenshotBase64 = await this.readScreenshotAsBase64(screenshotPath);
 
     return {
@@ -638,13 +689,13 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
   private async captureIframeScreenshotFallback(
     sessionId: string,
     screenshotPath: string,
-    target: string,
+    target: string
   ): Promise<CliExecResult> {
     const session = this.getOrCreateSession(sessionId);
     const activePageExpr = session.preferLatestTab
       ? '(page.context().pages().length ? page.context().pages()[page.context().pages().length - 1] : page)'
       : 'page';
-    
+
     const script = `async page => {
       const activePage = ${activePageExpr};
       const frames = activePage.frames();
@@ -667,13 +718,13 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
       });
       return JSON.stringify({ path: ${JSON.stringify(screenshotPath)}, target: ${JSON.stringify(target)}, iframe: true });
     }`;
-    
+
     return this.execCli(sessionId, ['run-code', script]);
   }
 
   private async handleSnapshot(
     sessionId: string,
-    params: Record<string, unknown>,
+    params: Record<string, unknown>
   ): Promise<CliActionResult> {
     await this.ensureSessionReady(sessionId);
 
@@ -808,27 +859,39 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
 
   private async handleWait(
     sessionId: string,
-    params: Record<string, unknown>,
+    params: Record<string, unknown>
   ): Promise<CliActionResult> {
     await this.ensureSessionReady(sessionId);
 
-    const selector = this.normalizeSemanticRoleSelector(
-      this.readOptionalStringParam(params, ['target', 'selector']) || '',
-    ) || undefined;
+    const selector =
+      this.normalizeSemanticRoleSelector(
+        this.readOptionalStringParam(params, ['target', 'selector']) || ''
+      ) || undefined;
     const duration = this.readOptionalNumberParam(params, ['duration']) ?? 1000;
+    const positionalSelector = selector ? this.parseNthMatchSelector(selector) : null;
+    const selectorExpr = positionalSelector
+      ? `activePage.locator(${JSON.stringify(positionalSelector.selector)}).nth(${positionalSelector.index})`
+      : selector
+        ? `activePage.locator(${JSON.stringify(selector)}).first()`
+        : null;
+    const frameSelectorExpr = positionalSelector
+      ? `frame.locator(${JSON.stringify(positionalSelector.selector)}).nth(${positionalSelector.index})`
+      : selector
+        ? `frame.locator(${JSON.stringify(selector)}).first()`
+        : null;
 
-    const script = selector
+    const script = selectorExpr
       ? `async page => {
           const activePage = page;
           let found = false;
           try {
-            await activePage.locator(${JSON.stringify(selector)}).first().waitFor({ timeout: ${duration} });
+            await ${selectorExpr}.waitFor({ timeout: ${duration} });
             found = true;
           } catch (e) {
             for (const frame of activePage.frames()) {
               if (frame === activePage.mainFrame()) continue;
               try {
-                await frame.locator(${JSON.stringify(selector)}).first().waitFor({ timeout: ${duration} });
+                await ${frameSelectorExpr}.waitFor({ timeout: ${duration} });
                 found = true;
                 break;
               } catch (e2) {}
@@ -853,7 +916,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
 
   private async handleScroll(
     sessionId: string,
-    params: Record<string, unknown>,
+    params: Record<string, unknown>
   ): Promise<CliActionResult> {
     await this.ensureSessionReady(sessionId);
 
@@ -866,10 +929,12 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
         script = `async page => { await page.evaluate(() => window.scrollBy(0, -${amount})); return "scrolled-up"; }`;
         break;
       case 'top':
-        script = 'async page => { await page.evaluate(() => window.scrollTo(0, 0)); return "scrolled-top"; }';
+        script =
+          'async page => { await page.evaluate(() => window.scrollTo(0, 0)); return "scrolled-top"; }';
         break;
       case 'bottom':
-        script = 'async page => { await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight)); return "scrolled-bottom"; }';
+        script =
+          'async page => { await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight)); return "scrolled-bottom"; }';
         break;
       default:
         script = `async page => { await page.evaluate(() => window.scrollBy(0, ${amount})); return "scrolled-down"; }`;
@@ -890,13 +955,16 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
 
   private async handleReadPage(
     sessionId: string,
-    params: Record<string, unknown>,
+    params: Record<string, unknown>
   ): Promise<CliActionResult> {
     await this.ensureSessionReady(sessionId);
     const session = this.getOrCreateSession(sessionId);
 
     const selector = this.readOptionalStringParam(params, ['selector', 'target']);
     const maxLength = this.readOptionalNumberParam(params, ['max_length']) ?? 4000;
+    const method =
+      this.readOptionalStringParam(params, ['method']) || (selector ? 'textContent' : 'innerText');
+    const attributeName = this.readOptionalStringParam(params, ['attribute']);
     const activePageExpr = session.preferLatestTab
       ? '(page.context().pages().length ? page.context().pages()[page.context().pages().length - 1] : page)'
       : 'page';
@@ -904,18 +972,47 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     const script = selector
       ? `async page => {
           const activePage = ${activePageExpr};
-          let text = await activePage.evaluate(({ selector, maxLength }) => {
-            const el = document.querySelector(selector);
-            return el ? (el.textContent || '').slice(0, maxLength) : null;
-          }, { selector: ${JSON.stringify(selector)}, maxLength: ${maxLength} });
+          const method = ${JSON.stringify(method)};
+          const attributeName = ${JSON.stringify(attributeName || '')};
+          const maxLength = ${maxLength};
+          const readLocatorValue = async (locator) => {
+            if (method === 'visible') {
+              return String(await locator.isVisible().catch(() => false));
+            }
+            if (method === 'attribute') {
+              if (!attributeName) return '';
+              const attrValue = await locator.getAttribute(attributeName).catch(() => null);
+              return typeof attrValue === 'string' ? attrValue.slice(0, maxLength) : '';
+            }
+            if (method === 'value') {
+              const inputValue = await locator.inputValue().catch(() => null);
+              if (typeof inputValue === 'string') {
+                return inputValue.slice(0, maxLength);
+              }
+              const fallbackValue = await locator.getAttribute('value').catch(() => null);
+              return typeof fallbackValue === 'string' ? fallbackValue.slice(0, maxLength) : '';
+            }
+            if (method === 'innerText') {
+              const innerText = await locator.innerText().catch(() => null);
+              return typeof innerText === 'string' ? innerText.slice(0, maxLength) : '';
+            }
+            const text = await locator.textContent().catch(() => null);
+            return typeof text === 'string' ? text.slice(0, maxLength) : '';
+          };
+          const readLocatorText = async (scope) => {
+            const locator = scope.locator(${JSON.stringify(selector)}).first();
+            const count = await locator.count().catch(() => 0);
+            if (!count) {
+              return null;
+            }
+            return readLocatorValue(locator);
+          };
+          let text = await readLocatorText(activePage);
           
           if (text === null) {
             for (const frame of activePage.frames()) {
               if (frame === activePage.mainFrame()) continue;
-              const frameText = await frame.evaluate(({ selector, maxLength }) => {
-                const el = document.querySelector(selector);
-                return el ? (el.textContent || '').slice(0, maxLength) : null;
-              }, { selector: ${JSON.stringify(selector)}, maxLength: ${maxLength} }).catch(() => null);
+              const frameText = await readLocatorText(frame).catch(() => null);
               if (frameText !== null) {
                 text = frameText;
                 break;
@@ -926,11 +1023,61 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
         }`
       : `async page => {
           const activePage = ${activePageExpr};
-          let text = await activePage.evaluate((maxLength) => document.body ? document.body.innerText.slice(0, maxLength) : '', ${maxLength});
+          let text = await activePage.evaluate(
+            ({ maxLength, method, attributeName }) => {
+              const body = document.body;
+              if (!body) return '';
+              if (method === 'visible') {
+                return 'true';
+              }
+              if (method === 'attribute') {
+                if (!attributeName) return '';
+                return String(body.getAttribute(attributeName) || '').slice(0, maxLength);
+              }
+              if (method === 'value') {
+                return String(body.getAttribute('value') || '').slice(0, maxLength);
+              }
+              if (method === 'textContent') {
+                return String(body.textContent || '').slice(0, maxLength);
+              }
+              return String(body.innerText || '').slice(0, maxLength);
+            },
+            {
+              maxLength: ${maxLength},
+              method: ${JSON.stringify(method)},
+              attributeName: ${JSON.stringify(attributeName || '')},
+            }
+          );
           if (!text || text.length < 100) {
             for (const frame of activePage.frames()) {
               if (frame === activePage.mainFrame()) continue;
-              const frameText = await frame.evaluate((maxLength) => document.body ? document.body.innerText.slice(0, maxLength) : '', ${maxLength}).catch(() => '');
+              const frameText = await frame
+                .evaluate(
+                  ({ maxLength, method, attributeName }) => {
+                    const body = document.body;
+                    if (!body) return '';
+                    if (method === 'visible') {
+                      return 'true';
+                    }
+                    if (method === 'attribute') {
+                      if (!attributeName) return '';
+                      return String(body.getAttribute(attributeName) || '').slice(0, maxLength);
+                    }
+                    if (method === 'value') {
+                      return String(body.getAttribute('value') || '').slice(0, maxLength);
+                    }
+                    if (method === 'textContent') {
+                      return String(body.textContent || '').slice(0, maxLength);
+                    }
+                    return String(body.innerText || '').slice(0, maxLength);
+                  },
+                  {
+                    maxLength: ${maxLength},
+                    method: ${JSON.stringify(method)},
+                    attributeName: ${JSON.stringify(attributeName || '')},
+                  }
+                )
+                .catch(() => '');
               if (frameText && frameText.length > text.length) {
                 text = frameText;
               }
@@ -957,14 +1104,17 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
 
     let fillResult: CliExecResult;
     try {
-      fillResult = await this.execCli(sessionId, ['run-code', this.buildSearchScript(query, false)]);
+      fillResult = await this.execCli(sessionId, [
+        'run-code',
+        this.buildSearchScript(query, false),
+      ]);
       this.assertNoCliError(fillResult, 'Search input detection failed');
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Search input detection failed';
       throw new Error(
         message.includes('No explicit search entry found')
           ? '未识别到明确的搜索入口，请改用“智搜”或指定搜索框'
-          : message,
+          : message
       );
     }
     const submitResult = await this.submitSearch(sessionId, 'Search submit failed');
@@ -986,11 +1136,10 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
       fillResult = await this.execCli(sessionId, ['run-code', this.buildSearchScript(query, true)]);
       this.assertNoCliError(fillResult, 'Smart search input detection failed');
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Smart search input detection failed';
+      const message =
+        error instanceof Error ? error.message : 'Smart search input detection failed';
       throw new Error(
-        message.includes('No searchable input found')
-          ? '当前页面未找到可搜索的输入框'
-          : message,
+        message.includes('No searchable input found') ? '当前页面未找到可搜索的输入框' : message
       );
     }
     const submitResult = await this.submitSearch(sessionId, 'Smart search submit failed');
@@ -1006,7 +1155,10 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
 
   private async submitSearch(sessionId: string, fallbackMessage: string): Promise<CliExecResult> {
     try {
-      const submitResult = await this.execCli(sessionId, ['run-code', this.buildSearchSubmitScript(sessionId)]);
+      const submitResult = await this.execCli(sessionId, [
+        'run-code',
+        this.buildSearchSubmitScript(sessionId),
+      ]);
       this.assertNoCliError(submitResult, fallbackMessage);
       return submitResult;
     } catch {
@@ -1018,12 +1170,15 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
 
   private async handleListSearchResults(
     sessionId: string,
-    params: Record<string, unknown>,
+    params: Record<string, unknown>
   ): Promise<CliActionResult> {
     await this.ensureSessionReady(sessionId);
     const session = this.getOrCreateSession(sessionId);
     const limit = this.readOptionalNumberParam(params, ['limit', 'max']) ?? 8;
-    const result = await this.execCli(sessionId, ['run-code', this.buildListSearchResultsScript(limit)]);
+    const result = await this.execCli(sessionId, [
+      'run-code',
+      this.buildListSearchResultsScript(limit),
+    ]);
     this.assertNoCliError(result, 'List search results failed');
     const meta = this.parseJsonStdout<{
       host?: string;
@@ -1037,7 +1192,12 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     }>(result.stdout);
 
     session.lastSearchResults = (meta?.results || [])
-      .filter((item) => typeof item.rank === 'number' && typeof item.text === 'string' && typeof item.href === 'string')
+      .filter(
+        (item) =>
+          typeof item.rank === 'number' &&
+          typeof item.text === 'string' &&
+          typeof item.href === 'string'
+      )
       .map((item) => ({
         rank: item.rank as number,
         text: item.text as string,
@@ -1690,7 +1850,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
   private async resolveRuntimeTargetRefs(
     action: string,
     params: Record<string, unknown>,
-    sessionId: string,
+    sessionId: string
   ): Promise<Record<string, unknown>> {
     const refKeys = this.getRuntimeTargetRefKeys(action);
     if (!refKeys.length) {
@@ -1755,7 +1915,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
   private buildPlaceholderFallbackArgs(
     command: string,
     args: string[],
-    error: unknown,
+    error: unknown
   ): string[] | undefined {
     if (command !== 'fill' || args.length < 2) {
       return undefined;
@@ -1798,6 +1958,96 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     return `role=${role}[name="${name}"]`;
   }
 
+  private parseNthMatchSelector(
+    target: string
+  ): {
+    selector: string;
+    index: number;
+  } | null {
+    const trimmed = target.trim();
+    const match = trimmed.match(/^:nth-match\((.+),\s*(\d+)\)$/);
+    if (!match?.[1] || !match[2]) {
+      return null;
+    }
+
+    const index = Number(match[2]);
+    if (!Number.isInteger(index) || index <= 0) {
+      return null;
+    }
+
+    return {
+      selector: match[1].trim(),
+      index: index - 1,
+    };
+  }
+
+  private async executePositionalSelectorAction(
+    sessionId: string,
+    target: string,
+    action: 'click'
+  ): Promise<CliActionResult | null> {
+    const positionalSelector = this.parseNthMatchSelector(target);
+    if (!positionalSelector) {
+      return null;
+    }
+
+    await this.ensureSessionReady(sessionId);
+    const session = this.getOrCreateSession(sessionId);
+    const activePageExpr = session.preferLatestTab
+      ? '(page.context().pages().length ? page.context().pages()[page.context().pages().length - 1] : page)'
+      : 'page';
+    const locatorExpr = `scope.locator(${JSON.stringify(positionalSelector.selector)}).nth(${positionalSelector.index})`;
+    const actionCode =
+      action === 'click'
+        ? `await locator.click({ force: true, timeout: 5000 });`
+        : 'return null;';
+    const script = `async page => {
+      const activePage = ${activePageExpr};
+      const runWithin = async (scope, matchedIn) => {
+        const locator = ${locatorExpr};
+        const count = await locator.count().catch(() => 0);
+        if (!count) return null;
+        await locator.scrollIntoViewIfNeeded().catch(() => {});
+        ${actionCode}
+        return JSON.stringify({
+          target: ${JSON.stringify(target)},
+          selector: ${JSON.stringify(positionalSelector.selector)},
+          index: ${positionalSelector.index},
+          matchedIn,
+        });
+      };
+
+      const pageResult = await runWithin(activePage, 'page').catch(() => null);
+      if (pageResult) {
+        return pageResult;
+      }
+
+      for (const frame of activePage.frames()) {
+        if (frame === activePage.mainFrame()) continue;
+        const frameResult = await runWithin(frame, 'iframe').catch(() => null);
+        if (frameResult) {
+          return frameResult;
+        }
+      }
+
+      throw new Error(${JSON.stringify(`Positional selector action failed: ${target}`)});
+    }`;
+
+    const result = await this.execCli(sessionId, ['run-code', script]);
+    this.assertNoCliError(result, `${action} failed`);
+    return {
+      status: 'success',
+      command: action,
+      stdout: result.stdout,
+      stderr: result.stderr,
+      data: {
+        target,
+        selector: positionalSelector.selector,
+        index: positionalSelector.index,
+      },
+    };
+  }
+
   private extractRoleTextboxName(target: string): string | undefined {
     const match = target.match(/^(?:role=)?textbox\[name=(['"]?)(.+?)\1\]$/i);
     return match?.[2]?.trim() || undefined;
@@ -1820,15 +2070,13 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
   }
 
   private buildPlaceholderSelector(placeholder: string): string {
-    const escapedPlaceholder = placeholder
-      .replace(/\\/g, '\\\\')
-      .replace(/"/g, '\\"');
+    const escapedPlaceholder = placeholder.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
     return `input[placeholder="${escapedPlaceholder}"], textarea[placeholder="${escapedPlaceholder}"]`;
   }
 
   private async enrichResultArtifacts(
     sessionId: string,
-    result: CliActionResult,
+    result: CliActionResult
   ): Promise<CliActionResult> {
     const enriched: CliActionResult = { ...result };
 
@@ -1865,9 +2113,11 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     await this.ensureSessionReady(sessionId);
     const session = this.getOrCreateSession(sessionId);
     const script = `async page => {
-      const activePage = ${session.preferLatestTab
-    ? `(page.context().pages().length ? page.context().pages()[page.context().pages().length - 1] : page)`
-    : 'page'};
+      const activePage = ${
+        session.preferLatestTab
+          ? `(page.context().pages().length ? page.context().pages()[page.context().pages().length - 1] : page)`
+          : 'page'
+      };
       return await activePage.evaluate((maxChars) => (
         document.documentElement ? document.documentElement.outerHTML.slice(0, maxChars) : ''
       ), ${this.maxHtmlChars});
@@ -1880,14 +2130,14 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
   private shouldEnrichCommandResult(
     command: string,
     index: number,
-    totalCommands: number,
+    totalCommands: number
   ): boolean {
     if (
-      command === 'wait'
-      || command === 'list_search_results'
-      || command === 'evaluate'
-      || command === 'get_text'
-      || command === 'read_page'
+      command === 'wait' ||
+      command === 'list_search_results' ||
+      command === 'evaluate' ||
+      command === 'get_text' ||
+      command === 'read_page'
     ) {
       return false;
     }
@@ -1900,7 +2150,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
   }
 
   private async captureInlineScreenshot(
-    sessionId: string,
+    sessionId: string
   ): Promise<{ path: string; base64: string }> {
     const attempt = async (): Promise<{ path: string; base64: string }> => {
       const screenshotPath = path.join(this.artifactDir, `${sessionId}-${Date.now()}-auto.png`);
@@ -1915,7 +2165,10 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     try {
       return await attempt();
     } catch {
-      await this.execCli(sessionId, ['run-code', 'async page => { await page.waitForLoadState("domcontentloaded").catch(() => {}); await page.waitForTimeout(250).catch(() => {}); return "ready"; }']);
+      await this.execCli(sessionId, [
+        'run-code',
+        'async page => { await page.waitForLoadState("domcontentloaded").catch(() => {}); await page.waitForTimeout(250).catch(() => {}); return "ready"; }',
+      ]);
       return attempt();
     }
   }
@@ -1969,7 +2222,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
       target?: string;
       fullPage?: boolean;
       timeoutMs?: number;
-    },
+    }
   ): Promise<CliExecResult> {
     const session = this.getOrCreateSession(sessionId);
     const target = options?.target;
@@ -2118,7 +2371,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     dto: AssertBrowserStateDto,
     pageState: BrowserPageStateDto,
     selectorMatched?: boolean,
-    textMatched?: boolean,
+    textMatched?: boolean
   ): boolean {
     if (dto.pageUrl && pageState.pageUrl !== dto.pageUrl) {
       return false;
@@ -2129,7 +2382,10 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     if (dto.pageTitle && pageState.pageTitle !== dto.pageTitle) {
       return false;
     }
-    if (dto.pageTitleIncludes && !String(pageState.pageTitle || '').includes(dto.pageTitleIncludes)) {
+    if (
+      dto.pageTitleIncludes &&
+      !String(pageState.pageTitle || '').includes(dto.pageTitleIncludes)
+    ) {
       return false;
     }
     if (dto.pageFingerprint && pageState.pageFingerprint !== dto.pageFingerprint) {
@@ -2153,7 +2409,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
       dto.pageFingerprint ||
       dto.readyState ||
       dto.selectorExists ||
-      dto.textIncludes,
+      dto.textIncludes
     );
   }
 
@@ -2166,7 +2422,10 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     return process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'development';
   }
 
-  private async attachToRemoteChrome(sessionId: string, initialUrl: string): Promise<CliExecResult> {
+  private async attachToRemoteChrome(
+    sessionId: string,
+    initialUrl: string
+  ): Promise<CliExecResult> {
     const cdpUrl = await this.resolveSessionCdpUrl(sessionId);
     const attachResult = await this.execCli(sessionId, ['attach', `--cdp=${cdpUrl}`]);
 
@@ -2203,7 +2462,10 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
   }
 
   private async resolveRemoteDebuggingHost(): Promise<string> {
-    if (this.chromeRemoteDebuggingHost === 'localhost' || /^\d{1,3}(\.\d{1,3}){3}$/.test(this.chromeRemoteDebuggingHost)) {
+    if (
+      this.chromeRemoteDebuggingHost === 'localhost' ||
+      /^\d{1,3}(\.\d{1,3}){3}$/.test(this.chromeRemoteDebuggingHost)
+    ) {
       return this.chromeRemoteDebuggingHost;
     }
 
@@ -2213,7 +2475,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       this.logger.warn(
-        `Failed to resolve ${this.chromeRemoteDebuggingHost} to IP, falling back to host name: ${errorMessage}`,
+        `Failed to resolve ${this.chromeRemoteDebuggingHost} to IP, falling back to host name: ${errorMessage}`
       );
       return this.chromeRemoteDebuggingHost;
     }
@@ -2251,7 +2513,9 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
       }
     }
 
-    throw new Error('Playwright CLI is not available. Install `@playwright/cli` globally or make `npx playwright-cli` available.');
+    throw new Error(
+      'Playwright CLI is not available. Install `@playwright/cli` globally or make `npx playwright-cli` available.'
+    );
   }
 
   private readTimeoutMs(envName: string, fallbackMs: number): number {
@@ -2290,7 +2554,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
             stdout: stdout?.trim() || '',
             stderr: stderr?.trim() || '',
           });
-        },
+        }
       );
     });
   }
@@ -2303,7 +2567,10 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     return value;
   }
 
-  private readOptionalStringParam(params: Record<string, unknown>, keys: string[]): string | undefined {
+  private readOptionalStringParam(
+    params: Record<string, unknown>,
+    keys: string[]
+  ): string | undefined {
     for (const key of keys) {
       const value = params[key];
       if (typeof value === 'string' && value.trim()) {
@@ -2321,7 +2588,10 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     return value;
   }
 
-  private readOptionalNumberParam(params: Record<string, unknown>, keys: string[]): number | undefined {
+  private readOptionalNumberParam(
+    params: Record<string, unknown>,
+    keys: string[]
+  ): number | undefined {
     for (const key of keys) {
       const value = params[key];
       if (typeof value === 'number' && !Number.isNaN(value)) {
@@ -2346,8 +2616,8 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     const candidates: string[] = [normalized];
     const fencedOrQuoted = normalized;
     if (
-      (fencedOrQuoted.startsWith('"') && fencedOrQuoted.endsWith('"'))
-      || (fencedOrQuoted.startsWith("'") && fencedOrQuoted.endsWith("'"))
+      (fencedOrQuoted.startsWith('"') && fencedOrQuoted.endsWith('"')) ||
+      (fencedOrQuoted.startsWith("'") && fencedOrQuoted.endsWith("'"))
     ) {
       candidates.push(fencedOrQuoted.slice(1, -1));
     }
@@ -2361,8 +2631,8 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
       const resultBody = markdownResult[1].trim();
       candidates.push(resultBody);
       if (
-        (resultBody.startsWith('"') && resultBody.endsWith('"'))
-        || (resultBody.startsWith("'") && resultBody.endsWith("'"))
+        (resultBody.startsWith('"') && resultBody.endsWith('"')) ||
+        (resultBody.startsWith("'") && resultBody.endsWith("'"))
       ) {
         candidates.push(resultBody.slice(1, -1));
       }

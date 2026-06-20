@@ -2,9 +2,8 @@ import { ExecutionInputResolutionService } from '../src/modules/execution/execut
 import { ExecutionPlanNormalizationService } from '../src/modules/execution/execution-plan-normalization.service';
 
 describe('ExecutionPlanNormalizationService', () => {
-  const createService = () => new ExecutionPlanNormalizationService(
-    new ExecutionInputResolutionService(),
-  );
+  const createService = () =>
+    new ExecutionPlanNormalizationService(new ExecutionInputResolutionService());
 
   it('keeps confirmation-required defaults in a blocking state when they come from workflow defaults', () => {
     const service = createService();
@@ -45,56 +44,60 @@ describe('ExecutionPlanNormalizationService', () => {
       },
       {
         loginCredential: 'workflow_default',
-      },
+      }
     );
 
-    expect(result).toEqual(expect.objectContaining({
-      required_inputs: [
-        expect.objectContaining({
-          name: 'loginCredential',
-          value: 'secret-from-policy',
-          source: 'workflow_default',
-          missing: true,
-          needs_confirmation: true,
-        }),
-      ],
-      steps: [
-        expect.objectContaining({
-          kind: 'human_input',
-          description: '补齐必填参数: loginCredential',
-        }),
-      ],
-    }));
+    expect(result).toEqual(
+      expect.objectContaining({
+        required_inputs: [
+          expect.objectContaining({
+            name: 'loginCredential',
+            value: 'secret-from-policy',
+            source: 'workflow_default',
+            missing: true,
+            needs_confirmation: true,
+          }),
+        ],
+        steps: [
+          expect.objectContaining({
+            kind: 'human_input',
+            description: '补齐必填参数: loginCredential',
+          }),
+        ],
+      })
+    );
   });
 
   it('builds runtime default resolution from skill schema and template workflow policy', () => {
     const service = createService();
 
-    expect(service.buildRuntimeDefaultResolution(
-      {
-        paramsSchema: {
-          properties: {
-            username: { type: 'string', default: 'skill-user' },
-            retryCount: { type: 'number', default: 1 },
-          },
-        },
-      },
-      [
+    expect(
+      service.buildRuntimeDefaultResolution(
         {
           paramsSchema: {
             properties: {
-              username: { type: 'string', default: 'template-user' },
-              password: { type: 'string', default: 'schema-secret' },
-            },
-          },
-          inputPolicy: {
-            params: {
-              password: { defaultValue: 'policy-secret' },
+              username: { type: 'string', default: 'skill-user' },
+              retryCount: { type: 'number', default: 1 },
             },
           },
         },
-      ],
-    )).toEqual({
+        [
+          {
+            paramsSchema: {
+              properties: {
+                username: { type: 'string', default: 'template-user' },
+                password: { type: 'string', default: 'schema-secret' },
+              },
+            },
+            inputPolicy: {
+              params: {
+                password: { defaultValue: 'policy-secret' },
+              },
+            },
+          },
+        ]
+      )
+    ).toEqual({
       input: {
         username: 'template-user',
         retryCount: 1,
@@ -111,27 +114,33 @@ describe('ExecutionPlanNormalizationService', () => {
   it('builds planner user input from prompt-like fields and falls back to structured payload', () => {
     const service = createService();
 
-    expect(service.buildPlannerUserInput({
-      skillId: 'skill-1',
-      runtimeType: 'workflow',
-      input: {
-        goal: '  summarize the document  ',
-      },
-    } as any)).toBe('summarize the document');
+    expect(
+      service.buildPlannerUserInput({
+        skillId: 'skill-1',
+        runtimeType: 'workflow',
+        input: {
+          goal: '  summarize the document  ',
+        },
+      } as any)
+    ).toBe('summarize the document');
 
-    expect(service.buildPlannerUserInput({
-      skillId: 'skill-2',
-      runtimeType: 'sandbox',
-      input: {
-        structured: true,
-      },
-    } as any)).toBe(JSON.stringify({
-      skillId: 'skill-2',
-      runtimeType: 'custom',
-      input: {
-        structured: true,
-      },
-    }));
+    expect(
+      service.buildPlannerUserInput({
+        skillId: 'skill-2',
+        runtimeType: 'sandbox',
+        input: {
+          structured: true,
+        },
+      } as any)
+    ).toBe(
+      JSON.stringify({
+        skillId: 'skill-2',
+        runtimeType: 'custom',
+        input: {
+          structured: true,
+        },
+      })
+    );
   });
 
   it('builds normalized input from planner values, runtime defaults, and passthrough fields', () => {
@@ -198,33 +207,35 @@ describe('ExecutionPlanNormalizationService', () => {
       {
         region: 'default',
       },
-      () => 'fallback objective',
+      () => 'fallback objective'
     );
 
-    expect(normalizedInput).toEqual(expect.objectContaining({
-      objective: 'sign in',
-      plannerMode: 'skill',
-      plannerSummary: 'browser login plan',
-      input: {
-        region: 'cn',
-        freeform: 'keep-me',
-        username: 'planner-user',
+    expect(normalizedInput).toEqual(
+      expect.objectContaining({
+        objective: 'sign in',
+        plannerMode: 'skill',
+        plannerSummary: 'browser login plan',
+        input: {
+          region: 'cn',
+          freeform: 'keep-me',
+          username: 'planner-user',
+          url: 'https://example.test/login',
+        },
+        runtimeDefaultSources: {
+          region: 'default',
+        },
         url: 'https://example.test/login',
-      },
-      runtimeDefaultSources: {
-        region: 'default',
-      },
-      url: 'https://example.test/login',
-      promptDebug: {
-        traceId: 'trace-1',
-      },
-      capabilityMatch: {
-        capabilityId: 'skill-1',
-        capabilityName: 'Login Skill',
-        confidence: 0.95,
-        matchReason: 'exact',
-      },
-    }));
+        promptDebug: {
+          traceId: 'trace-1',
+        },
+        capabilityMatch: {
+          capabilityId: 'skill-1',
+          capabilityName: 'Login Skill',
+          confidence: 0.95,
+          matchReason: 'exact',
+        },
+      })
+    );
   });
 
   it('reconciles semantic grouped missing fields and adds uncovered required fields', () => {
@@ -291,140 +302,155 @@ describe('ExecutionPlanNormalizationService', () => {
           source: 'unresolved',
           description: '开票日期',
         },
-      ],
+      ]
     );
 
-    expect(semantic).toEqual(expect.objectContaining({
-      previewReady: false,
-      finalReady: false,
-      summary: '仍缺少 2 个必填参数。',
-      complexity: expect.objectContaining({
-        requiredFields: 3,
-        missingFields: 3,
-      }),
-      groupedMissing: expect.arrayContaining([
-        expect.objectContaining({
-          key: 'company_name',
-          label: '公司名称',
-          missingFieldNames: ['company_name_zh'],
+    expect(semantic).toEqual(
+      expect.objectContaining({
+        previewReady: false,
+        finalReady: false,
+        summary: '仍缺少 2 个必填参数。',
+        complexity: expect.objectContaining({
+          requiredFields: 3,
+          missingFields: 3,
         }),
-        expect.objectContaining({
-          key: 'lineItems',
-          kind: 'array_group',
-          missingFieldNames: ['lineItems[].amount'],
-        }),
-        expect.objectContaining({
-          key: 'invoice_date',
-          kind: 'field',
-          missingFieldNames: ['invoice_date'],
-          description: '请补充 开票日期',
-        }),
-      ]),
-    }));
+        groupedMissing: expect.arrayContaining([
+          expect.objectContaining({
+            key: 'company_name',
+            label: '公司名称',
+            missingFieldNames: ['company_name_zh'],
+          }),
+          expect.objectContaining({
+            key: 'lineItems',
+            kind: 'array_group',
+            missingFieldNames: ['lineItems[].amount'],
+          }),
+          expect.objectContaining({
+            key: 'invoice_date',
+            kind: 'field',
+            missingFieldNames: ['invoice_date'],
+            description: '请补充 开票日期',
+          }),
+        ]),
+      })
+    );
   });
 
   it('maps planner risk levels to execution risk levels', () => {
     const service = createService();
 
     expect(service.mapPlannerRiskLevel(undefined as any)).toBe('L0');
-    expect(service.mapPlannerRiskLevel({
-      risk_summary: {
-        level: 'low',
-      },
-    } as any)).toBe('L0');
-    expect(service.mapPlannerRiskLevel({
-      risk_summary: {
-        level: 'medium',
-      },
-    } as any)).toBe('L1');
-    expect(service.mapPlannerRiskLevel({
-      risk_summary: {
-        level: 'high',
-      },
-    } as any)).toBe('L2');
+    expect(
+      service.mapPlannerRiskLevel({
+        risk_summary: {
+          level: 'low',
+        },
+      } as any)
+    ).toBe('L0');
+    expect(
+      service.mapPlannerRiskLevel({
+        risk_summary: {
+          level: 'medium',
+        },
+      } as any)
+    ).toBe('L1');
+    expect(
+      service.mapPlannerRiskLevel({
+        risk_summary: {
+          level: 'high',
+        },
+      } as any)
+    ).toBe('L2');
   });
 
   it('resolves browser runtime from planner commands or bootstrap url', () => {
     const service = createService();
 
     expect(service.normalizeExecutionRuntimeType('temporal_worker')).toBe('workflow');
-    expect(service.resolveExecutionRuntimeType(
-      'custom',
-      {
-        steps: [
-          {
-            id: 'step-1',
-            title: 'phase',
-            description: 'browser phase',
-            kind: 'tool',
-            status: 'planned',
-            commands: [{ action: 'click' }],
-          },
-        ],
-      } as any,
-      {},
-    )).toBe('browser');
-    expect(service.resolveExecutionRuntimeType(
-      'sandbox',
-      undefined,
-      { url: 'https://example.test' },
-    )).toBe('browser');
-    expect(service.resolveExecutionRuntimeType(
-      'document',
-      undefined,
-      {},
-    )).toBe('document');
+    expect(
+      service.resolveExecutionRuntimeType(
+        'custom',
+        {
+          steps: [
+            {
+              id: 'step-1',
+              title: 'phase',
+              description: 'browser phase',
+              kind: 'tool',
+              status: 'planned',
+              commands: [{ action: 'click' }],
+            },
+          ],
+        } as any,
+        {}
+      )
+    ).toBe('browser');
+    expect(
+      service.resolveExecutionRuntimeType('sandbox', undefined, { url: 'https://example.test' })
+    ).toBe('browser');
+    expect(service.resolveExecutionRuntimeType('document', undefined, {})).toBe('document');
   });
 
   it('builds direct execution plan draft for explicitly selected skills with structured input', () => {
     const service = createService();
 
-    expect(service.shouldSkipPlannerForExplicitStructuredInput({
-      skillId: 'skill-1',
-      input: {
-        'contract.partyA.name_cn': 'Party A',
-      },
-    } as any)).toBe(true);
-    expect(service.shouldSkipPlannerForExplicitStructuredInput({
-      skillId: 'skill-1',
-      input: {
-        prompt: 'summarize this contract',
-      },
-    } as any)).toBe(false);
-
-    expect(service.buildDirectExecutionPlanDraft({
-      skillId: 'skill-1',
-      runtimeType: 'workflow',
-      input: {
-        'contract.partyA.name_cn': 'Party A',
-      },
-    } as any, 'skill-1')).toEqual(expect.objectContaining({
-      plan_id: 'direct-skill-1',
-      planner_mode: 'skill',
-      objective: JSON.stringify({
+    expect(
+      service.shouldSkipPlannerForExplicitStructuredInput({
         skillId: 'skill-1',
-        runtimeType: 'workflow',
         input: {
           'contract.partyA.name_cn': 'Party A',
         },
-      }),
-      skill_match: expect.objectContaining({
-        skill_id: 'skill-1',
-        match_reason: 'explicit_skill_selection',
-      }),
-      steps: [
-        expect.objectContaining({
-          id: 'execute_selected_skill',
-          kind: 'skill',
-          status: 'planned',
+      } as any)
+    ).toBe(true);
+    expect(
+      service.shouldSkipPlannerForExplicitStructuredInput({
+        skillId: 'skill-1',
+        input: {
+          prompt: 'summarize this contract',
+        },
+      } as any)
+    ).toBe(false);
+
+    expect(
+      service.buildDirectExecutionPlanDraft(
+        {
+          skillId: 'skill-1',
+          runtimeType: 'workflow',
+          input: {
+            'contract.partyA.name_cn': 'Party A',
+          },
+        } as any,
+        'skill-1'
+      )
+    ).toEqual(
+      expect.objectContaining({
+        plan_id: 'direct-skill-1',
+        planner_mode: 'skill',
+        objective: JSON.stringify({
+          skillId: 'skill-1',
+          runtimeType: 'workflow',
+          input: {
+            'contract.partyA.name_cn': 'Party A',
+          },
         }),
-      ],
-      required_inputs: [],
-      risk_summary: {
-        level: 'low',
-        requires_human_review: false,
-        items: ['explicit_skill_selected'],
-      },
-    }));
+        skill_match: expect.objectContaining({
+          skill_id: 'skill-1',
+          match_reason: 'explicit_skill_selection',
+        }),
+        steps: [
+          expect.objectContaining({
+            id: 'execute_selected_skill',
+            kind: 'skill',
+            status: 'planned',
+          }),
+        ],
+        required_inputs: [],
+        risk_summary: {
+          level: 'low',
+          requires_human_review: false,
+          items: ['explicit_skill_selected'],
+        },
+      })
+    );
   });
 });

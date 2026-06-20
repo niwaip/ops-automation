@@ -24,7 +24,7 @@ export class HealthService {
 
   async checkSystemHealth(): Promise<SystemHealthResponseDto> {
     const workers = await this.workerService.listWorkers();
-    const healthyWorkers = workers.filter(w => w.status === 'running');
+    const healthyWorkers = workers.filter((w) => w.status === 'running');
 
     return {
       status: 'ok',

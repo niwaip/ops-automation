@@ -17,6 +17,7 @@ OFFICE_ADDIN_TLS_HOSTS=localhost,127.0.0.1,192.168.100.143
 ```
 
 此命令会：
+
 1. 自动识别当前工作区 (Worktree) 并挂载代码
 2. 启动全栈基础设施及 Office Add-in 服务
 3. 确保环境变量及网络配置正确
@@ -51,6 +52,7 @@ powershell -ExecutionPolicy Bypass -File .\office-addin-wizard.ps1 -HostName ${O
    - `7` 深度解析
 
 推荐顺序：
+
 - 首次机器安装优先走 `1 -> 2 -> 6`
 - 菜单 `6` 会连续注册 `manifest-word.xml` 和 `manifest-excel.xml`，并在最后汇总两边注册状态
 - 安装完成后分别打开 Word 和 Excel，在各自宿主里验证加载项是否出现
@@ -60,6 +62,7 @@ powershell -ExecutionPolicy Bypass -File .\office-addin-wizard.ps1 -HostName ${O
 ## 方法二：命令行自动加载
 
 最佳实践：
+
 - Word 和 Excel 使用不同 manifest，分别侧载
 - 两个加载项可以同时存在，因为宿主不同且 `Id` 不同
 - 如果要同时开发两个宿主，请分别执行 Word 和 Excel 的安装步骤，不要混用 manifest
@@ -160,6 +163,7 @@ npm run sideload:word
 **最常见原因：TLS 证书不被信任，或访问主机名不在证书 SAN 中**
 
 **解决方案 (MacOS)：**
+
 ```bash
 # 方法1: 命令行信任
 sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain docker/office-addin/certs/server.crt
@@ -171,12 +175,14 @@ sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keyc
 ```
 
 **解决方案 (Windows)：**
+
 ```powershell
 # 以管理员身份运行 PowerShell
 certutil -addstore "Root" docker\office-addin\certs\server.crt
 ```
 
 **检查清单：**
+
 1. 确保服务已启动: `curl -k https://${OFFICE_ADDIN_PUBLIC_HOST:-localhost}:3000/health`
 2. 确保当前服务使用的证书已信任
 3. 确保 manifest 文件中的 URL 与当前访问主机一致
@@ -185,16 +191,19 @@ certutil -addstore "Root" docker\office-addin\certs\server.crt
 ### Q: 局域网访问时报"不安全连接"？
 
 **原因：**
+
 - 证书只覆盖了 `localhost`
 - 你正在通过局域网 IP 或另一台机器访问 Add-in
 - Office WebView 不接受主机名与证书 SAN 不匹配的 HTTPS 连接
 
 **最佳实践：**
+
 1. 生成覆盖所有开发入口的证书
 2. `manifest`、Taskpane、API 全部使用同一个对外主机
 3. 团队协作时优先使用内部 CA 或 `mkcert`
 
 **示例：**
+
 ```bash
 export OFFICE_ADDIN_TLS_HOSTS=localhost,127.0.0.1,192.168.100.143,addin.dev.local
 ./docker/office-addin/generate-certs.sh
@@ -203,11 +212,13 @@ export OFFICE_ADDIN_TLS_HOSTS=localhost,127.0.0.1,192.168.100.143,addin.dev.loca
 ### Q: 找不到"上传我的加载项"选项？
 
 **可能原因：**
+
 - Office 版本过旧（需要 2016 或更新）
 - 组织策略限制
 - 使用的是 Web 版，需要桌面版
 
 **解决方案：**
+
 - 更新 Office 到最新版本
 - 联系管理员启用开发人员功能
 - 使用 Web 版 Office + 方法二
@@ -215,11 +226,13 @@ export OFFICE_ADDIN_TLS_HOSTS=localhost,127.0.0.1,192.168.100.143,addin.dev.loca
 ### Q: 提示"无法加载加载项"？
 
 **检查清单：**
+
 1. 确保服务已启动: `https://${OFFICE_ADDIN_PUBLIC_HOST:-localhost}:3000`
 2. 确保 TLS 证书已信任
 3. 检查 manifest 文件路径正确
 
 **信任 SSL 证书 (MacOS)：**
+
 ```bash
 sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain docker/office-addin/certs/server.crt
 ```
@@ -227,6 +240,7 @@ sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keyc
 ### Q: 只看到 AppSource 加载项？
 
 **启用开发人员模式：**
+
 1. Word → 文件 → 选项 → 自定义功能区
 2. 勾选"开发工具"
 3. 开发工具选项卡 → 加载项

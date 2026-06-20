@@ -152,7 +152,9 @@ export const WordQuerySection: React.FC<WordQuerySectionProps> = ({
                         <span className="spinner"></span>
                         <span className="loading-text">查询</span>
                       </span>
-                    ) : '查询'}
+                    ) : (
+                      '查询'
+                    )}
                   </button>
                   <button
                     type="button"
@@ -176,7 +178,9 @@ export const WordQuerySection: React.FC<WordQuerySectionProps> = ({
                 <div className="template-type-selector word-compact-selector">
                   <label>类型</label>
                   <div className="word-language-mode-list">
-                    <label className={`word-language-mode ${selectedTemplateType === 'contract' ? 'active' : ''}`}>
+                    <label
+                      className={`word-language-mode ${selectedTemplateType === 'contract' ? 'active' : ''}`}
+                    >
                       <input
                         type="radio"
                         name="word-compare-document-type"
@@ -185,7 +189,9 @@ export const WordQuerySection: React.FC<WordQuerySectionProps> = ({
                       />
                       合同
                     </label>
-                    <label className={`word-language-mode ${selectedTemplateType !== 'contract' ? 'active' : ''}`}>
+                    <label
+                      className={`word-language-mode ${selectedTemplateType !== 'contract' ? 'active' : ''}`}
+                    >
                       <input
                         type="radio"
                         name="word-compare-document-type"
@@ -199,7 +205,9 @@ export const WordQuerySection: React.FC<WordQuerySectionProps> = ({
                 <div className="template-type-selector word-compact-selector">
                   <label>语言</label>
                   <div className="word-language-mode-list">
-                    <label className={`word-language-mode ${effectiveCompareHeadingLanguages.includes('zh') ? 'active' : ''}`}>
+                    <label
+                      className={`word-language-mode ${effectiveCompareHeadingLanguages.includes('zh') ? 'active' : ''}`}
+                    >
                       <input
                         type="checkbox"
                         checked={effectiveCompareHeadingLanguages.includes('zh')}
@@ -207,7 +215,9 @@ export const WordQuerySection: React.FC<WordQuerySectionProps> = ({
                       />
                       中文
                     </label>
-                    <label className={`word-language-mode ${effectiveCompareHeadingLanguages.includes('ja') ? 'active' : ''}`}>
+                    <label
+                      className={`word-language-mode ${effectiveCompareHeadingLanguages.includes('ja') ? 'active' : ''}`}
+                    >
                       <input
                         type="checkbox"
                         checked={effectiveCompareHeadingLanguages.includes('ja')}
@@ -215,7 +225,9 @@ export const WordQuerySection: React.FC<WordQuerySectionProps> = ({
                       />
                       日语
                     </label>
-                    <label className={`word-language-mode ${effectiveCompareHeadingLanguages.includes('en') ? 'active' : ''}`}>
+                    <label
+                      className={`word-language-mode ${effectiveCompareHeadingLanguages.includes('en') ? 'active' : ''}`}
+                    >
                       <input
                         type="checkbox"
                         checked={effectiveCompareHeadingLanguages.includes('en')}
@@ -239,7 +251,8 @@ export const WordQuerySection: React.FC<WordQuerySectionProps> = ({
                     <div>
                       <div className="analysis-source-title">查询摘要</div>
                       <div className="excel-reference-card-group-meta">
-                        本次共生成 {compareResult.compareSummary.candidateCount} 个候选字段，覆盖 {compareResult.compareSummary.sectionCount} 个章节区域。
+                        本次共生成 {compareResult.compareSummary.candidateCount} 个候选字段，覆盖{' '}
+                        {compareResult.compareSummary.sectionCount} 个章节区域。
                       </div>
                     </div>
                     <span className="analysis-source-badge source-ai">查询结果</span>
@@ -247,24 +260,39 @@ export const WordQuerySection: React.FC<WordQuerySectionProps> = ({
                   {!compareSummaryCollapsed && (
                     <>
                       <div className="word-summary-paragraph">
-                        本次共生成 {compareResult.compareSummary.candidateCount} 个候选字段，覆盖 {compareResult.compareSummary.sectionCount} 个章节区域。
+                        本次共生成 {compareResult.compareSummary.candidateCount} 个候选字段，覆盖{' '}
+                        {compareResult.compareSummary.sectionCount} 个章节区域。
                       </div>
                       <div className="word-tag-list word-tag-list-compact">
-                        <span className="word-tag">类型: {getCompareDocumentTypeLabel(selectedTemplateType)}</span>
-                        <span className="word-tag">语言: {getCompareHeadingLanguageSummary(effectiveCompareHeadingLanguages)}</span>
+                        <span className="word-tag">
+                          类型: {getCompareDocumentTypeLabel(selectedTemplateType)}
+                        </span>
+                        <span className="word-tag">
+                          语言: {getCompareHeadingLanguageSummary(effectiveCompareHeadingLanguages)}
+                        </span>
                         {compareCacheStatus && (
-                          <span className={`word-tag ${compareCacheStatus === 'hit' ? 'success' : ''}`}>
+                          <span
+                            className={`word-tag ${compareCacheStatus === 'hit' ? 'success' : ''}`}
+                          >
                             {compareCacheStatus === 'hit' ? '候选缓存命中' : '候选已缓存'}
                           </span>
                         )}
                         {compareCacheUpdatedAt && (
-                          <span className="word-tag">缓存于 {new Date(compareCacheUpdatedAt).toLocaleString()}</span>
+                          <span className="word-tag">
+                            缓存于 {new Date(compareCacheUpdatedAt).toLocaleString()}
+                          </span>
                         )}
                         <span className="word-tag">queryId: {compareResult.compareId}</span>
-                        <span className="word-tag success">候选字段 {compareResult.compareSummary.candidateCount}</span>
-                        <span className="word-tag">章节 {compareResult.compareSummary.sectionCount}</span>
+                        <span className="word-tag success">
+                          候选字段 {compareResult.compareSummary.candidateCount}
+                        </span>
+                        <span className="word-tag">
+                          章节 {compareResult.compareSummary.sectionCount}
+                        </span>
                         {derivedPrimaryChapterCount > 0 && (
-                          <span className="word-tag success">拆分章节 {derivedPrimaryChapterCount}</span>
+                          <span className="word-tag success">
+                            拆分章节 {derivedPrimaryChapterCount}
+                          </span>
                         )}
                       </div>
                     </>
@@ -280,10 +308,15 @@ export const WordQuerySection: React.FC<WordQuerySectionProps> = ({
                       <div className="analysis-source-title">候选章节</div>
                       <div className="excel-reference-card-group-meta">
                         {derivedPrimaryChapterCount > 0 ? '按章节候选参数' : '候选池预览'}
-                        {compareCandidateSections.length > 0 ? ` · 已选章节 ${selectedCompareSectionKeys.length} / ${compareCandidateSections.length}` : ''}
+                        {compareCandidateSections.length > 0
+                          ? ` · 已选章节 ${selectedCompareSectionKeys.length} / ${compareCandidateSections.length}`
+                          : ''}
                       </div>
                     </div>
-                    <div className="excel-understanding-actions" onClick={(event) => event.stopPropagation()}>
+                    <div
+                      className="excel-understanding-actions"
+                      onClick={(event) => event.stopPropagation()}
+                    >
                       {compareCandidateSections.length > 0 && (
                         <>
                           <button
@@ -304,7 +337,9 @@ export const WordQuerySection: React.FC<WordQuerySectionProps> = ({
                             <input
                               type="checkbox"
                               checked={analysisThinkingEnabled}
-                              onChange={(event) => onChangeAnalysisThinkingEnabled(event.target.checked)}
+                              onChange={(event) =>
+                                onChangeAnalysisThinkingEnabled(event.target.checked)
+                              }
                             />
                             <span>think</span>
                           </label>
@@ -314,16 +349,27 @@ export const WordQuerySection: React.FC<WordQuerySectionProps> = ({
                             onClick={onStartRecognition}
                             disabled={recognitionBlocked || isRecognizing || isUnderstanding}
                           >
-                            {isRecognizing ? '生成中...' : recognitionReady ? '重新生成参数' : '生成参数'}
+                            {isRecognizing
+                              ? '生成中...'
+                              : recognitionReady
+                                ? '重新生成参数'
+                                : '生成参数'}
                           </button>
                           <button
                             type="button"
                             className="sheet-action-btn"
                             onClick={onApplyAll}
                             disabled={totalSuggestionCount === 0}
-                            title={pendingSuggestionCount > 0 ? '一键应用全部未应用的参数' : '当前无待应用参数，将重新应用全部参数'}
+                            title={
+                              pendingSuggestionCount > 0
+                                ? '一键应用全部未应用的参数'
+                                : '当前无待应用参数，将重新应用全部参数'
+                            }
                           >
-                            全部应用 {totalSuggestionCount > 0 ? `(${pendingSuggestionCount > 0 ? pendingSuggestionCount : totalSuggestionCount})` : ''}
+                            全部应用{' '}
+                            {totalSuggestionCount > 0
+                              ? `(${pendingSuggestionCount > 0 ? pendingSuggestionCount : totalSuggestionCount})`
+                              : ''}
                           </button>
                         </>
                       )}
@@ -338,10 +384,7 @@ export const WordQuerySection: React.FC<WordQuerySectionProps> = ({
                             key={section.sectionKey}
                             className={`word-compare-section-card ${(selectedCompareSections[section.sectionKey] ?? true) ? '' : 'is-unselected'}`}
                           >
-                            <div
-                              className="word-highlight-card-header"
-                              style={{ gap: 12 }}
-                            >
+                            <div className="word-highlight-card-header" style={{ gap: 12 }}>
                               <div
                                 className="word-highlight-field-title word-compare-section-title-row"
                                 style={{ cursor: 'pointer', flex: 1 }}
@@ -354,28 +397,38 @@ export const WordQuerySection: React.FC<WordQuerySectionProps> = ({
                                   <input
                                     type="checkbox"
                                     checked={selectedCompareSections[section.sectionKey] ?? true}
-                                    onChange={() => onToggleCompareSectionSelection(section.sectionKey)}
+                                    onChange={() =>
+                                      onToggleCompareSectionSelection(section.sectionKey)
+                                    }
                                   />
                                 </label>
                                 <div className="word-compare-section-title-text">
                                   <strong>{section.sectionTitle}</strong>
-                                  <span className="word-compare-section-count">候选 {section.candidates.length}</span>
+                                  <span className="word-compare-section-count">
+                                    候选 {section.candidates.length}
+                                  </span>
                                 </div>
                               </div>
                               <div className="analysis-pair-result-meta">
                                 {section.isAttachment ? '附件 · ' : ''}
-                                {selectedCompareSections[section.sectionKey] ?? true ? '已选 · ' : '未选 · '}
+                                {(selectedCompareSections[section.sectionKey] ?? true)
+                                  ? '已选 · '
+                                  : '未选 · '}
                                 <button
                                   type="button"
                                   className="word-summary-collapse-btn"
                                   onClick={() => onToggleCompareSectionCollapse(section.sectionKey)}
                                 >
-                                  {collapsedCompareSections[section.sectionKey] ?? true ? '展开' : '收起'}
+                                  {(collapsedCompareSections[section.sectionKey] ?? true)
+                                    ? '展开'
+                                    : '收起'}
                                 </button>
                               </div>
                             </div>
-                            {!(collapsedCompareSections[section.sectionKey] ?? true) && renderCompareSectionCandidates(section)}
-                            {(selectedCompareSections[section.sectionKey] ?? true) && renderCompareSectionIdentifyResult(section)}
+                            {!(collapsedCompareSections[section.sectionKey] ?? true) &&
+                              renderCompareSectionCandidates(section)}
+                            {(selectedCompareSections[section.sectionKey] ?? true) &&
+                              renderCompareSectionIdentifyResult(section)}
                           </div>
                         ))}
                       </div>

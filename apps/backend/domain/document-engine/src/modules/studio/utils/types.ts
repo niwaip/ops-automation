@@ -25,7 +25,7 @@ export enum ProcessingStage {
   DOCUMENT_UNDERSTANDING = 'document_understanding',
   SECTION_ANALYSIS = 'section_analysis',
   INTEGRATION = 'integration',
-  COMPLETE = 'complete'
+  COMPLETE = 'complete',
 }
 
 /**
@@ -33,30 +33,30 @@ export enum ProcessingStage {
  */
 export interface ProcessingProgress {
   stage: ProcessingStage;
-  stageName: string;  // 中文阶段名称
-  progress: number;   // 0-100
-  message: string;    // 详细进度消息
-  currentSection?: string;  // 当前处理的章节
+  stageName: string; // 中文阶段名称
+  progress: number; // 0-100
+  message: string; // 详细进度消息
+  currentSection?: string; // 当前处理的章节
 }
 
 /**
  * 文档理解结果
  */
 export interface DocumentUnderstanding {
-  documentType: string;      // 文档类型判断
-  mainPurpose: string;       // 文档主要用途
-  keyEntities?: string[];    // 关键实体（如：甲方、乙方、项目）
-  dataSchema?: string;       // 建议的数据架构描述
+  documentType: string; // 文档类型判断
+  mainPurpose: string; // 文档主要用途
+  keyEntities?: string[]; // 关键实体（如：甲方、乙方、项目）
+  dataSchema?: string; // 建议的数据架构描述
   sections: Array<{
-    name: string;            // 章节名称（如"第一条"、"第二条"）
-    content: string;         // 章节内容摘要
-    purpose: string;         // 章节用途说明
-    needsParameterization: boolean;  // 是否需要参数化
-    estimatedParams: string[];  // 预估可能需要的参数
+    name: string; // 章节名称（如"第一条"、"第二条"）
+    content: string; // 章节内容摘要
+    purpose: string; // 章节用途说明
+    needsParameterization: boolean; // 是否需要参数化
+    estimatedParams: string[]; // 预估可能需要的参数
   }>;
   parties: Array<{
-    role: string;            // 角色（甲方、乙方）
-    fieldsNeeded: string[];  // 需要的字段（名称、地址等）
+    role: string; // 角色（甲方、乙方）
+    fieldsNeeded: string[]; // 需要的字段（名称、地址等）
   }>;
 }
 
@@ -69,10 +69,10 @@ export interface SectionParameterization {
     originalText: string;
     variablePath: string;
     variableName: string;
-    fieldType?: string;      // 字段类型 (text, date, number, amount, etc.)
-    significance: string;    // 字段意义说明
-    usage?: string;          // 【自动填充说明】: 如何识别并获取此内容
-    context: string;         // 原文上下文
+    fieldType?: string; // 字段类型 (text, date, number, amount, etc.)
+    significance: string; // 字段意义说明
+    usage?: string; // 【自动填充说明】: 如何识别并获取此内容
+    context: string; // 原文上下文
     confidence: number;
   }>;
 }
@@ -82,9 +82,9 @@ export interface SectionParameterization {
  * 用于将AI生成的变量路径规范化为标准路径
  */
 export interface PathMappingRule {
-  patterns: string[];      // 匹配模式（支持通配符）
-  standardPath: string;    // 标准路径
-  description: string;     // 描述
+  patterns: string[]; // 匹配模式（支持通配符）
+  standardPath: string; // 标准路径
+  description: string; // 描述
 }
 
 /**
@@ -94,51 +94,90 @@ export interface PathMappingRule {
 export const DEFAULT_PATH_MAPPINGS: PathMappingRule[] = [
   // 执行摘要/总结相关
   {
-    patterns: ['d.executionSummary', 'd.executionsummary', 'd.execution_summary', 'd.summaryText', 'd.summarytext'],
+    patterns: [
+      'd.executionSummary',
+      'd.executionsummary',
+      'd.execution_summary',
+      'd.summaryText',
+      'd.summarytext',
+    ],
     standardPath: 'd.summary',
-    description: '执行摘要/总结内容'
+    description: '执行摘要/总结内容',
   },
   // 分析报告相关
   {
-    patterns: ['d.analysisReport', 'd.analysisreport', 'd.analysis_report', 'd.analysisText', 'd.analysistext', 'd.analysisResult', 'd.analysisresult'],
+    patterns: [
+      'd.analysisReport',
+      'd.analysisreport',
+      'd.analysis_report',
+      'd.analysisText',
+      'd.analysistext',
+      'd.analysisResult',
+      'd.analysisresult',
+    ],
     standardPath: 'd.analysis',
-    description: '分析报告内容'
+    description: '分析报告内容',
   },
   // 日期/时间相关
   {
-    patterns: ['d.generatedDate', 'd.generateddate', 'd.generated_date', 'd.datetime', 'd.timestamp', 'd.createTime', 'd.createtime', 'd.createdAt'],
+    patterns: [
+      'd.generatedDate',
+      'd.generateddate',
+      'd.generated_date',
+      'd.datetime',
+      'd.timestamp',
+      'd.createTime',
+      'd.createtime',
+      'd.createdAt',
+    ],
     standardPath: 'd.date',
-    description: '日期/时间'
+    description: '日期/时间',
   },
   // 标题相关
   {
-    patterns: ['d.docTitle', 'd.doctitle', 'd.doc_title', 'd.reportTitle', 'd.reporttitle', 'd.mainTitle', 'd.maintitle'],
+    patterns: [
+      'd.docTitle',
+      'd.doctitle',
+      'd.doc_title',
+      'd.reportTitle',
+      'd.reporttitle',
+      'd.mainTitle',
+      'd.maintitle',
+    ],
     standardPath: 'd.title',
-    description: '文档标题'
+    description: '文档标题',
   },
   // 内容相关
   {
-    patterns: ['d.mainContent', 'd.maincontent', 'd.main_content', 'd.bodyContent', 'd.bodycontent', 'd.contentText', 'd.contenttext'],
+    patterns: [
+      'd.mainContent',
+      'd.maincontent',
+      'd.main_content',
+      'd.bodyContent',
+      'd.bodycontent',
+      'd.contentText',
+      'd.contenttext',
+    ],
     standardPath: 'd.content',
-    description: '主要内容'
+    description: '主要内容',
   },
   // 描述相关
   {
     patterns: ['d.descriptionText', 'd.descriptiontext', 'd.desc', 'd.detail', 'd.details'],
     standardPath: 'd.description',
-    description: '描述内容'
+    description: '描述内容',
   },
   // 结果相关
   {
     patterns: ['d.resultText', 'd.resulttext', 'd.outcome', 'd.conclusion'],
     standardPath: 'd.result',
-    description: '结果内容'
+    description: '结果内容',
   },
   // 备注相关
   {
     patterns: ['d.noteText', 'd.notetext', 'd.comment', 'd.comments', 'd.remark'],
     standardPath: 'd.notes',
-    description: '备注/注释'
+    description: '备注/注释',
   },
 ];
 
@@ -195,7 +234,7 @@ export interface CombinedVariable {
   stepNumber: number;
   textContent: string;
   imageId: string;
-  imagePath: string;  // 如 d.steps[0].screenshot
+  imagePath: string; // 如 d.steps[0].screenshot
   reason: string;
 }
 
@@ -209,7 +248,7 @@ export interface TableLoop {
   tableIndex: number;
   headerRow: string;
   dataRowCount: number;
-  arrayPath: string;       // 如 d.steps
+  arrayPath: string; // 如 d.steps
   columnMappings: ColumnMapping[];
   reason: string;
   confidence: number;
@@ -217,16 +256,16 @@ export interface TableLoop {
 
 export interface ColumnMapping {
   headerName: string;
-  variablePath: string;    // 如 d.steps[].action
+  variablePath: string; // 如 d.steps[].action
   sampleValue: string;
-  columnIndex?: number;    // 列索引（可选）
+  columnIndex?: number; // 列索引（可选）
 }
 
 export interface ImageLoop {
   imageIndex: number;
   imageId: string;
   altText: string;
-  arrayPath: string;       // 如 d.screenshots
+  arrayPath: string; // 如 d.screenshots
   reason: string;
   confidence: number;
 }
@@ -254,27 +293,26 @@ export interface ContentPattern {
 export interface AIIdentifyResponse {
   templateConfig: TemplateConfig;
   suggestions: VariableMapping[];
-  rawSuggestions?: any[];  // 原始建议数据，用于前端显示更详细的信息
+  rawSuggestions?: any[]; // 原始建议数据，用于前端显示更详细的信息
   loops: TableLoop[];
   images: ImageLoop[];
-  combinedVariables: CombinedVariable[];  // 组合变量（文本+图片）
+  combinedVariables: CombinedVariable[]; // 组合变量（文本+图片）
   analyzedAt: string;
   documentStats: {
     totalElements: number;
     tables: number;
     images: number;
-    stepScreenshots: number;  // 步骤截图组合变量数量
+    stepScreenshots: number; // 步骤截图组合变量数量
     potentialLoops: number;
   };
   contextAnalysis?: {
     detectedTemplateType: string;
     userIntent: string;
-    usedAI?: boolean;  // 是否使用了AI分析
-    aiServiceUrl?: string;  // AI服务地址
-    flowType?: 'quick' | 'multi-stage';  // 处理流程类型：快速流程（有underlineInfo）或多阶段流程
+    usedAI?: boolean; // 是否使用了AI分析
+    aiServiceUrl?: string; // AI服务地址
+    flowType?: 'quick' | 'multi-stage'; // 处理流程类型：快速流程（有underlineInfo）或多阶段流程
   };
 }
-
 
 /**
  * 用户意图
@@ -287,4 +325,3 @@ export interface UserIntent {
   customLoops: string[];
   summary: string;
 }
-

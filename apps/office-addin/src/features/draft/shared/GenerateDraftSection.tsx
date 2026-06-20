@@ -13,7 +13,11 @@ interface GenerateDraftSectionProps {
   draftInfo: { templateType: string; parameterCount: number; savedAt: string } | null;
   templateAssetDraftInfo?: unknown;
   latestBackendDraftInfo: { id: string; fileName: string; savedAt: string } | null;
-  templateAssetNotice: { type: 'success' | 'error' | 'info'; message: string; lines?: string[] } | null;
+  templateAssetNotice: {
+    type: 'success' | 'error' | 'info';
+    message: string;
+    lines?: string[];
+  } | null;
   isGeneratingGuide: boolean;
   isVerifying: boolean;
   isSavingDraft: boolean;
@@ -52,21 +56,21 @@ export const GenerateDraftSection: React.FC<GenerateDraftSectionProps> = ({
 }) => {
   const formattedDraftTime = draftInfo?.savedAt
     ? new Date(draftInfo.savedAt).toLocaleString('zh-CN', {
-      hour12: false,
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
+        hour12: false,
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
     : '';
   const formattedLatestBackendDraftTime = latestBackendDraftInfo?.savedAt
     ? new Date(latestBackendDraftInfo.savedAt).toLocaleString('zh-CN', {
-      hour12: false,
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
+        hour12: false,
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
     : '';
 
   // 移除条件判断，使其始终显示
@@ -76,7 +80,7 @@ export const GenerateDraftSection: React.FC<GenerateDraftSectionProps> = ({
 
   return (
     <div className="excel-understanding-card excel-analysis-card">
-      <div 
+      <div
         className="excel-understanding-header"
         onClick={() => setDraftWorkflowCollapsed((value) => !value)}
       >
@@ -135,7 +139,8 @@ export const GenerateDraftSection: React.FC<GenerateDraftSectionProps> = ({
             <div className="draft-info">
               <span className="draft-badge">最新暂存</span>
               <span className="draft-details">
-                {draftInfo?.templateType || 'unknown'} · {draftInfo?.parameterCount || suggestions.length || 0} 参数
+                {draftInfo?.templateType || 'unknown'} ·{' '}
+                {draftInfo?.parameterCount || suggestions.length || 0} 参数
                 {formattedDraftTime ? ` · ${formattedDraftTime}` : ''}
                 {draftId ? ` · ID: ${draftId.substring(0, 8)}...` : ''}
               </span>
@@ -148,7 +153,9 @@ export const GenerateDraftSection: React.FC<GenerateDraftSectionProps> = ({
               <span className="draft-details">
                 {latestBackendDraftInfo.fileName}
                 {formattedLatestBackendDraftTime ? ` · ${formattedLatestBackendDraftTime}` : ''}
-                {latestBackendDraftInfo.id ? ` · ID: ${latestBackendDraftInfo.id.substring(0, 8)}...` : ''}
+                {latestBackendDraftInfo.id
+                  ? ` · ID: ${latestBackendDraftInfo.id.substring(0, 8)}...`
+                  : ''}
               </span>
             </div>
           )}
@@ -158,7 +165,9 @@ export const GenerateDraftSection: React.FC<GenerateDraftSectionProps> = ({
               <div className="workflow-status-title">{templateAssetNotice.message}</div>
               {templateAssetNotice.lines && templateAssetNotice.lines.length > 0 && (
                 <div className="workflow-status-lines">
-                  {templateAssetNotice.lines.map((line, i) => <div key={i}>{line}</div>)}
+                  {templateAssetNotice.lines.map((line, i) => (
+                    <div key={i}>{line}</div>
+                  ))}
                 </div>
               )}
             </div>

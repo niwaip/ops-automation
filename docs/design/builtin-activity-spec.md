@@ -67,14 +67,14 @@
 
 以下能力和流程必须保持：
 
-| 项目 | 要求 |
-|---|---|
-| AI 模版生成 workflow | 保留，继续作为主入口 |
-| 现有 Workflow DSL 主体结构 | 保留 |
-| custom activity CRUD | 保留 |
-| workflow codegen 总入口 | 继续“deterministic 优先，AI fallback” |
-| `GET /activities/builtin` | 保留 |
-| 现有 handler 枚举 | 不新增新值，继续沿用 `'api' | 'carbone' | 'browser' | 'script'` |
+| 项目                       | 要求                                  |
+| -------------------------- | ------------------------------------- | --------- | --------- | --------- |
+| AI 模版生成 workflow       | 保留，继续作为主入口                  |
+| 现有 Workflow DSL 主体结构 | 保留                                  |
+| custom activity CRUD       | 保留                                  |
+| workflow codegen 总入口    | 继续“deterministic 优先，AI fallback” |
+| `GET /activities/builtin`  | 保留                                  |
+| 现有 handler 枚举          | 不新增新值，继续沿用 `'api'           | 'carbone' | 'browser' | 'script'` |
 
 ### 3.2 本次设计不做的事
 
@@ -92,11 +92,11 @@
 
 本项目后续应明确为三层结构：
 
-| 层级 | 职责 |
-|---|---|
-| `Workflow` | 企业流程编排层，承载流程资产、顺序、条件、等待、调用关系 |
-| `Builtin / Custom Activity` | 能力执行层，承载标准动作与业务动作 |
-| `AI` | 辅助层，负责 workflow 草稿生成、参数补全、校验、诊断、修复建议 |
+| 层级                        | 职责                                                           |
+| --------------------------- | -------------------------------------------------------------- |
+| `Workflow`                  | 企业流程编排层，承载流程资产、顺序、条件、等待、调用关系       |
+| `Builtin / Custom Activity` | 能力执行层，承载标准动作与业务动作                             |
+| `AI`                        | 辅助层，负责 workflow 草稿生成、参数补全、校验、诊断、修复建议 |
 
 ### 4.2 正式产品定位
 
@@ -123,12 +123,12 @@ builtin 是平台内置、只读、可复用、可被 UI、AI、codegen 和治�
 
 本项目 builtin 统一分为四类：
 
-| 分类 | 含义 | 运行方式 |
-|---|---|---|
-| `core activity builtin` | 企业高频、通用、稳定、推荐优先使用 | Activity |
-| `specialized activity builtin` | 特定场景可用，但不是默认首选 | Activity |
-| `restricted activity builtin` | 高风险或高治理成本能力 | Activity |
-| `workflow-native builtin` | 本质属于编排能力，而不是外部动作 | 编译为 Workflow 能力 |
+| 分类                           | 含义                               | 运行方式             |
+| ------------------------------ | ---------------------------------- | -------------------- |
+| `core activity builtin`        | 企业高频、通用、稳定、推荐优先使用 | Activity             |
+| `specialized activity builtin` | 特定场景可用，但不是默认首选       | Activity             |
+| `restricted activity builtin`  | 高风险或高治理成本能力             | Activity             |
+| `workflow-native builtin`      | 本质属于编排能力，而不是外部动作   | 编译为 Workflow 能力 |
 
 ### 5.2 设计原则
 
@@ -157,44 +157,44 @@ builtin 是平台内置、只读、可复用、可被 UI、AI、codegen 和治�
 
 这些能力应继续作为默认首选能力池：
 
-| key | 结论 | 原因 |
-|---|---|---|
-| `documentRender` | 保留 | 企业文档自动化核心能力，边界清晰 |
-| `httpRequest` | 保留 | API 驱动流程的基础能力 |
-| `structuredTransform` | 保留 | 可替代大量临时 AI 逻辑，适合企业规则化场景 |
-| `aiStructuredTransform` | 保留 | 作为规则无法覆盖时的补位能力 |
-| `fileRead` | 保留 | 企业文件型流程常用，但需控制 payload |
-| `fileWrite` | 保留 | 企业文件输出型流程常用，但需强化幂等与路径限制 |
-| `templateRender` | 保留 | 文本、正文、配置、报表模板生成的核心能力 |
-| `webhookNotify` | 保留 | 通用通知和系统回调能力 |
-| `emailSend` | 保留 | 企业最常见输出方式之一 |
+| key                     | 结论 | 原因                                           |
+| ----------------------- | ---- | ---------------------------------------------- |
+| `documentRender`        | 保留 | 企业文档自动化核心能力，边界清晰               |
+| `httpRequest`           | 保留 | API 驱动流程的基础能力                         |
+| `structuredTransform`   | 保留 | 可替代大量临时 AI 逻辑，适合企业规则化场景     |
+| `aiStructuredTransform` | 保留 | 作为规则无法覆盖时的补位能力                   |
+| `fileRead`              | 保留 | 企业文件型流程常用，但需控制 payload           |
+| `fileWrite`             | 保留 | 企业文件输出型流程常用，但需强化幂等与路径限制 |
+| `templateRender`        | 保留 | 文本、正文、配置、报表模板生成的核心能力       |
+| `webhookNotify`         | 保留 | 通用通知和系统回调能力                         |
+| `emailSend`             | 保留 | 企业最常见输出方式之一                         |
 
 #### B. 保留但降为 specialized builtin
 
 这些能力有价值，但不应作为默认主推：
 
-| key | 结论 | 原因 |
-|---|---|---|
-| `imNotify` | 保留但降级 | 本质上是特定渠道通知，很多场景可由 `webhookNotify` 覆盖 |
-| `csvParse` | 保留但降级 | 有价值，但应受行数和 payload 控制，不宜成为默认转换主轴 |
+| key             | 结论       | 原因                                                      |
+| --------------- | ---------- | --------------------------------------------------------- |
+| `imNotify`      | 保留但降级 | 本质上是特定渠道通知，很多场景可由 `webhookNotify` 覆盖   |
+| `csvParse`      | 保留但降级 | 有价值，但应受行数和 payload 控制，不宜成为默认转换主轴   |
 | `jsonTransform` | 保留但降级 | 价值存在，但与 `structuredTransform` 在产品语义上部分重叠 |
 
 #### C. 保留但列为 restricted builtin
 
 这些能力有企业价值，但必须受治理约束：
 
-| key | 结论 | 原因 |
-|---|---|---|
+| key             | 结论       | 原因                             |
+| --------------- | ---------- | -------------------------------- |
 | `databaseQuery` | restricted | 数据权限、SQL 安全、连接治理复杂 |
-| `shellCommand` | restricted | 系统执行风险最高，不适合默认开放 |
+| `shellCommand`  | restricted | 系统执行风险最高，不适合默认开放 |
 
 #### D. 重新定义为 workflow-native builtin
 
 这些能力不应继续被视为普通 Activity：
 
-| key | 结论 | 原因 |
-|---|---|---|
-| `waitDelay` | workflow-native | 官方推荐以 Workflow timer 实现等待 |
+| key              | 结论            | 原因                                       |
+| ---------------- | --------------- | ------------------------------------------ |
+| `waitDelay`      | workflow-native | 官方推荐以 Workflow timer 实现等待         |
 | `conditionCheck` | workflow-native | 本质是轮询编排，建议 Workflow 负责编排节奏 |
 
 ### 6.3 重设计后的 builtin 池
@@ -235,24 +235,24 @@ builtin 是平台内置、只读、可复用、可被 UI、AI、codegen 和治�
 
 后续 builtin 应统一抽象为 `BuiltinCapabilityDefinition`，逻辑字段至少包括：
 
-| 字段 | 说明 |
-|---|---|
-| `key` | 唯一标识 |
-| `ref` | 对外引用，如 `builtin:httpRequest` |
-| `version` | 语义版本 |
-| `name` | 展示名 |
-| `kind` | `activity` / `workflow-native` |
-| `tier` | `core` / `specialized` / `restricted` |
-| `handler` | 仅对 activity builtin 生效 |
-| `timeout` | 默认超时 |
-| `retryPolicy` | 默认重试策略 |
-| `config.stepConfigKey` | DSL 配置注入 key |
-| `config.defaultStepConfig` | 默认配置 |
-| `config.configSchema` | 表单 schema |
-| `generatedCode` | 固定 Activity 模板代码，仅 activity builtin 使用 |
-| `description` | 说明 |
-| `recommendedUseCases` | 推荐场景 |
-| `riskLevel` | `low` / `medium` / `high` |
+| 字段                       | 说明                                             |
+| -------------------------- | ------------------------------------------------ |
+| `key`                      | 唯一标识                                         |
+| `ref`                      | 对外引用，如 `builtin:httpRequest`               |
+| `version`                  | 语义版本                                         |
+| `name`                     | 展示名                                           |
+| `kind`                     | `activity` / `workflow-native`                   |
+| `tier`                     | `core` / `specialized` / `restricted`            |
+| `handler`                  | 仅对 activity builtin 生效                       |
+| `timeout`                  | 默认超时                                         |
+| `retryPolicy`              | 默认重试策略                                     |
+| `config.stepConfigKey`     | DSL 配置注入 key                                 |
+| `config.defaultStepConfig` | 默认配置                                         |
+| `config.configSchema`      | 表单 schema                                      |
+| `generatedCode`            | 固定 Activity 模板代码，仅 activity builtin 使用 |
+| `description`              | 说明                                             |
+| `recommendedUseCases`      | 推荐场景                                         |
+| `riskLevel`                | `low` / `medium` / `high`                        |
 
 ### 7.2 兼容实现策略
 
@@ -267,19 +267,19 @@ builtin 是平台内置、只读、可复用、可被 UI、AI、codegen 和治�
 
 `GET /activities/builtin` 建议统一对外返回如下逻辑字段：
 
-| 字段 | 说明 |
-|---|---|
-| `key` | builtin key |
-| `ref` | builtin ref |
-| `name` | 展示名 |
-| `description` | 简介 |
-| `kind` | `activity` / `workflow-native` |
-| `tier` | `core` / `specialized` / `restricted` |
-| `handler` | activity 执行类型 |
-| `inputSchema` | UI 表单 schema |
-| `defaultConfig` | 默认配置 |
-| `riskLevel` | 风险级别 |
-| `recommendedUseCases` | 推荐使用场景 |
+| 字段                  | 说明                                  |
+| --------------------- | ------------------------------------- |
+| `key`                 | builtin key                           |
+| `ref`                 | builtin ref                           |
+| `name`                | 展示名                                |
+| `description`         | 简介                                  |
+| `kind`                | `activity` / `workflow-native`        |
+| `tier`                | `core` / `specialized` / `restricted` |
+| `handler`             | activity 执行类型                     |
+| `inputSchema`         | UI 表单 schema                        |
+| `defaultConfig`       | 默认配置                              |
+| `riskLevel`           | 风险级别                              |
+| `recommendedUseCases` | 推荐使用场景                          |
 
 ---
 
@@ -311,13 +311,13 @@ builtin 是平台内置、只读、可复用、可被 UI、AI、codegen 和治�
 
 以下 builtin 必须显式考虑幂等性：
 
-| builtin | 幂等性要求 |
-|---|---|
-| `fileWrite` | 路径冲突、覆盖策略、重复写入结果需可控 |
-| `webhookNotify` | 推荐支持幂等键或去重标识 |
-| `emailSend` | 推荐支持 message key / job key 去重 |
-| `documentRender` | 结果文件命名与重复调用结果需可预期 |
-| `shellCommand` | 默认不假设幂等，重试应极为谨慎 |
+| builtin          | 幂等性要求                             |
+| ---------------- | -------------------------------------- |
+| `fileWrite`      | 路径冲突、覆盖策略、重复写入结果需可控 |
+| `webhookNotify`  | 推荐支持幂等键或去重标识               |
+| `emailSend`      | 推荐支持 message key / job key 去重    |
+| `documentRender` | 结果文件命名与重复调用结果需可预期     |
+| `shellCommand`   | 默认不假设幂等，重试应极为谨慎         |
 
 ### 8.4 Payload 与 History 约束
 
@@ -807,12 +807,12 @@ workflow output 的设计应遵循：
 
 建议将 workflow output 拆成四层：
 
-| 层级 | 职责 | 使用方 |
-|---|---|---|
-| `execution` | 执行状态、耗时、执行单标识、调度信息 | control-plane、执行详情页、审计 |
-| `result` | 业务语义结果，如报表、同步、通知、导入导出结果 | 聊天、前端、外部 API |
-| `artifacts` | 文件、链接、文档、附件、下载入口 | 聊天、执行详情页、通知 |
-| `presentation` | 面向渠道的展示提示，如摘要偏好、是否建议 AI 总结 | chat adapter、通知 adapter |
+| 层级           | 职责                                             | 使用方                          |
+| -------------- | ------------------------------------------------ | ------------------------------- |
+| `execution`    | 执行状态、耗时、执行单标识、调度信息             | control-plane、执行详情页、审计 |
+| `result`       | 业务语义结果，如报表、同步、通知、导入导出结果   | 聊天、前端、外部 API            |
+| `artifacts`    | 文件、链接、文档、附件、下载入口                 | 聊天、执行详情页、通知          |
+| `presentation` | 面向渠道的展示提示，如摘要偏好、是否建议 AI 总结 | chat adapter、通知 adapter      |
 
 ### 12.4 标准结果协议
 
@@ -872,13 +872,13 @@ workflow output 的设计应遵循：
 
 用于表达系统级执行结果，推荐字段：
 
-| 字段 | 说明 |
-|---|---|
-| `status` | `success` / `partial_success` / `failed` / `cancelled` |
-| `executionId` | 执行单 ID |
-| `startedAt` | 开始时间 |
-| `finishedAt` | 结束时间 |
-| `durationMs` | 执行耗时 |
+| 字段          | 说明                                                   |
+| ------------- | ------------------------------------------------------ |
+| `status`      | `success` / `partial_success` / `failed` / `cancelled` |
+| `executionId` | 执行单 ID                                              |
+| `startedAt`   | 开始时间                                               |
+| `finishedAt`  | 结束时间                                               |
+| `durationMs`  | 执行耗时                                               |
 
 说明：
 
@@ -888,13 +888,13 @@ workflow output 的设计应遵循：
 
 用于表达本次 workflow 的触发方式，推荐字段：
 
-| 字段 | 说明 |
-|---|---|
-| `type` | `manual` / `schedule` / `api` / `resume` |
-| `scheduleId` | 定时任务标识，可选 |
-| `scheduledAt` | 计划触发时间，可选 |
-| `windowStart` | 本次任务处理的数据窗口起点，可选 |
-| `windowEnd` | 本次任务处理的数据窗口终点，可选 |
+| 字段          | 说明                                     |
+| ------------- | ---------------------------------------- |
+| `type`        | `manual` / `schedule` / `api` / `resume` |
+| `scheduleId`  | 定时任务标识，可选                       |
+| `scheduledAt` | 计划触发时间，可选                       |
+| `windowStart` | 本次任务处理的数据窗口起点，可选         |
+| `windowEnd`   | 本次任务处理的数据窗口终点，可选         |
 
 说明：
 
@@ -904,14 +904,14 @@ workflow output 的设计应遵循：
 
 用于表达业务语义结果，推荐字段：
 
-| 字段 | 说明 |
-|---|---|
-| `resultType` | `report` / `sync` / `document` / `notification` / `import` / `export` / `generic` |
-| `title` | 结果标题 |
-| `summary` | 规则化简述 |
-| `businessData` | 业务结构化数据 |
-| `metrics` | 业务统计信息 |
-| `nextActions` | 可供后续操作的建议动作 |
+| 字段           | 说明                                                                              |
+| -------------- | --------------------------------------------------------------------------------- |
+| `resultType`   | `report` / `sync` / `document` / `notification` / `import` / `export` / `generic` |
+| `title`        | 结果标题                                                                          |
+| `summary`      | 规则化简述                                                                        |
+| `businessData` | 业务结构化数据                                                                    |
+| `metrics`      | 业务统计信息                                                                      |
+| `nextActions`  | 可供后续操作的建议动作                                                            |
 
 说明：
 
@@ -921,13 +921,13 @@ workflow output 的设计应遵循：
 
 用于表达与本次 workflow 相关的文件和外部成果物：
 
-| 字段 | 说明 |
-|---|---|
-| `type` | `file` / `url` / `document` / `attachment` |
-| `name` | 展示名称 |
-| `downloadUrl` | 下载地址 |
-| `path` | 内部文件路径，可选 |
-| `mimeType` | 文件类型，可选 |
+| 字段          | 说明                                       |
+| ------------- | ------------------------------------------ |
+| `type`        | `file` / `url` / `document` / `attachment` |
+| `name`        | 展示名称                                   |
+| `downloadUrl` | 下载地址                                   |
+| `path`        | 内部文件路径，可选                         |
+| `mimeType`    | 文件类型，可选                             |
 
 说明：
 
@@ -937,12 +937,12 @@ workflow output 的设计应遵循：
 
 用于给 chat / notification adapter 提供展示提示：
 
-| 字段 | 说明 |
-|---|---|
-| `preferAiSummary` | 是否建议由 AI 生成自然语言摘要 |
-| `preferStructuredView` | 是否优先展示结构化结果 |
-| `chatSummary` | 可选的规则摘要 |
-| `notificationSummary` | 可选的通知摘要 |
+| 字段                   | 说明                           |
+| ---------------------- | ------------------------------ |
+| `preferAiSummary`      | 是否建议由 AI 生成自然语言摘要 |
+| `preferStructuredView` | 是否优先展示结构化结果         |
+| `chatSummary`          | 可选的规则摘要                 |
+| `notificationSummary`  | 可选的通知摘要                 |
 
 说明：
 
@@ -1090,11 +1090,11 @@ AI 不应做：
 
 ### 12.2 风险分级
 
-| 风险级别 | builtin |
-|---|---|
-| `low` | `httpRequest`、`structuredTransform`、`templateRender`、`waitDelay` |
+| 风险级别 | builtin                                                                                                          |
+| -------- | ---------------------------------------------------------------------------------------------------------------- |
+| `low`    | `httpRequest`、`structuredTransform`、`templateRender`、`waitDelay`                                              |
 | `medium` | `fileRead`、`fileWrite`、`webhookNotify`、`emailSend`、`imNotify`、`csvParse`、`jsonTransform`、`conditionCheck` |
-| `high` | `databaseQuery`、`shellCommand` |
+| `high`   | `databaseQuery`、`shellCommand`                                                                                  |
 
 ### 12.3 AI 介入点
 

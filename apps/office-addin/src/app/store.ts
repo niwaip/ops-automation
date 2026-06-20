@@ -11,12 +11,12 @@ import { getDefaultTemplateFormatForHost } from '../shared/utils/host-storage';
 export interface AISuggestion {
   id: string;
   type: 'variable' | 'loop' | 'format' | 'image' | 'table';
-  elementPath: string;  // 格式化的位置显示，如【甲方名称： _ 乙方】
+  elementPath: string; // 格式化的位置显示，如【甲方名称： _ 乙方】
   suggestedName: string;
   originalText: string;
   confidence: number;
   applied: boolean;
-  context?: string;  // 原文档上下文
+  context?: string; // 原文档上下文
   // 精确位置信息（用于替换和高亮）
   underlineInfo?: {
     paragraphIndex?: number;
@@ -40,12 +40,12 @@ export interface AISuggestion {
     }>;
     slideIndex?: number;
     context?: string;
-    chapter?: string;  // 所在章节信息（用于分组）
-    significance?: string;  // 项目意义说明
-    displayPosition?: string;  // 格式化的位置显示
-    beforeBlank?: string;  // 空白前文本
-    afterBlank?: string;  // 空白后文本
-    fieldType?: string;  // 字段类型（text/date/number等）
+    chapter?: string; // 所在章节信息（用于分组）
+    significance?: string; // 项目意义说明
+    displayPosition?: string; // 格式化的位置显示
+    beforeBlank?: string; // 空白前文本
+    afterBlank?: string; // 空白后文本
+    fieldType?: string; // 字段类型（text/date/number等）
     policy?: string;
     riskLevel?: 'low' | 'medium' | 'high';
     needsReview?: boolean;
@@ -105,7 +105,7 @@ export interface FlowLogEntry {
   timestamp: Date;
   level: 'info' | 'warn' | 'error' | 'debug';
   message: string;
-  details?: string;  // 详细信息，如堆栈、响应数据等
+  details?: string; // 详细信息，如堆栈、响应数据等
 }
 
 export type DebugLogEntry = FlowLogEntry;
@@ -146,7 +146,7 @@ interface AppState {
   isAnalyzing: boolean;
   suggestions: AISuggestion[];
   analysisError: string | null;
-  analysisErrorDetails: string | null;  // 详细错误信息
+  analysisErrorDetails: string | null; // 详细错误信息
   setAnalyzing: (status: boolean) => void;
   setSuggestions: (suggestions: AISuggestion[]) => void;
   setAnalysisError: (error: string | null, details?: string | null) => void;
@@ -155,8 +155,11 @@ interface AppState {
   applySuggestion: (id: string) => void;
   applyAllSuggestions: () => void;
   dismissSuggestion: (id: string) => void;
-  updateSuggestionName: (id: string, newName: string) => void;  // 更新建议名称
-  updateSuggestionDetails: (id: string, details: Partial<NonNullable<AISuggestion['details']>>) => void;
+  updateSuggestionName: (id: string, newName: string) => void; // 更新建议名称
+  updateSuggestionDetails: (
+    id: string,
+    details: Partial<NonNullable<AISuggestion['details']>>
+  ) => void;
 
   // 模板配置
   templateConfig: TemplateConfig;
@@ -222,13 +225,12 @@ export const useAppStore = create<AppState>((set) => ({
   analysisErrorDetails: null,
   setAnalyzing: (status) => set({ isAnalyzing: status }),
   setSuggestions: (suggestions) => set({ suggestions }),
-  setAnalysisError: (error, details) => set({ analysisError: error, analysisErrorDetails: details }),
+  setAnalysisError: (error, details) =>
+    set({ analysisError: error, analysisErrorDetails: details }),
 
   applySuggestion: (id) => {
     set((state) => ({
-      suggestions: state.suggestions.map((s) =>
-        s.id === id ? { ...s, applied: true } : s
-      ),
+      suggestions: state.suggestions.map((s) => (s.id === id ? { ...s, applied: true } : s)),
     }));
   },
 
@@ -374,16 +376,18 @@ export const useAppStore = create<AppState>((set) => ({
       details,
     };
     set((state) => ({
-      flowLogs: [...state.flowLogs.slice(-99), entry],  // 最多保留100条
-      debugLogs: [...state.debugLogs.slice(-99), entry],  // 最多保留100条
+      flowLogs: [...state.flowLogs.slice(-99), entry], // 最多保留100条
+      debugLogs: [...state.debugLogs.slice(-99), entry], // 最多保留100条
     }));
     // 同时输出到控制台
-    const consoleMethod = level === 'error' ? 'error' : level === 'warn' ? 'warn' : level === 'debug' ? 'debug' : 'log';
+    const consoleMethod =
+      level === 'error' ? 'error' : level === 'warn' ? 'warn' : level === 'debug' ? 'debug' : 'log';
     console[consoleMethod](`[${level.toUpperCase()}] ${message}`, details || '');
   },
   clearFlowLogs: () => set({ flowLogs: [], debugLogs: [] }),
   showFlowDiagnosticsPanel: false,
-  setShowFlowDiagnosticsPanel: (show) => set({ showFlowDiagnosticsPanel: show, showDebugPanel: show }),
+  setShowFlowDiagnosticsPanel: (show) =>
+    set({ showFlowDiagnosticsPanel: show, showDebugPanel: show }),
   debugLogs: [],
   addDebugLog: (level, message, details) =>
     useAppStore.getState().addFlowLog(level, message, details),

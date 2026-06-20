@@ -10,11 +10,13 @@ function normalizeCustomActivityRef(value: unknown): string | undefined {
 
 export function resolveCustomActivityRef(
   activity: Partial<ActivityDefinition>,
-  fallbackIndex?: number,
+  fallbackIndex?: number
 ): string {
-  return normalizeCustomActivityRef(activity.activityRef)
-    || normalizeCustomActivityRef(activity.id)
-    || normalizeCustomActivityRef(activity.fn)
-    || normalizeCustomActivityRef(activity.name)
-    || `custom:activity_${fallbackIndex ? fallbackIndex + 1 : 'unknown'}`;
+  return (
+    normalizeCustomActivityRef(activity.activityRef) ||
+    normalizeCustomActivityRef(activity.id) ||
+    normalizeCustomActivityRef(activity.fn) ||
+    normalizeCustomActivityRef(activity.name) ||
+    `custom:activity_${fallbackIndex ? fallbackIndex + 1 : 'unknown'}`
+  );
 }

@@ -28,7 +28,7 @@ export class ApiClient {
     this.baseUrl = SERVICE_CONFIG[service].baseUrl();
     this.defaultHeaders = {
       'Content-Type': 'application/json',
-      'Accept': 'application/json',
+      Accept: 'application/json',
     };
   }
 
@@ -42,10 +42,7 @@ export class ApiClient {
     this.authToken = undefined;
   }
 
-  async request<T>(
-    path: string,
-    options: RequestOptions = {}
-  ): Promise<ApiResponse<T>> {
+  async request<T>(path: string, options: RequestOptions = {}): Promise<ApiResponse<T>> {
     const url = `${this.baseUrl}${path}`;
     const method = options.method || 'GET';
 
@@ -67,7 +64,7 @@ export class ApiClient {
     if (contentType?.includes('application/json')) {
       data = await response.json();
     } else {
-      data = await response.text() as T;
+      data = (await response.text()) as T;
     }
 
     return {

@@ -1,5 +1,11 @@
 import axios from 'axios';
-import { ChatMessage, OpenAICompatibleConfig, LLMResponse, LLMUsage, LLMRateLimit } from '../interfaces';
+import {
+  ChatMessage,
+  OpenAICompatibleConfig,
+  LLMResponse,
+  LLMUsage,
+  LLMRateLimit,
+} from '../interfaces';
 import { LLMChatRequest } from './llm-client';
 
 type AxiosLikeError = {
@@ -81,7 +87,10 @@ export class OpenAICompatibleClient {
       if (normalized.promptCacheKey) {
         data.prompt_cache_key = normalized.promptCacheKey;
       }
-      if (normalized.promptCacheRetention && ['in_memory', '24h'].includes(normalized.promptCacheRetention)) {
+      if (
+        normalized.promptCacheRetention &&
+        ['in_memory', '24h'].includes(normalized.promptCacheRetention)
+      ) {
         data.prompt_cache_retention = normalized.promptCacheRetention;
       }
 
@@ -98,9 +107,13 @@ export class OpenAICompatibleClient {
       if (axiosError.message) {
         // Check for timeout specifically
         if (axiosError.code === 'ECONNABORTED' || axiosError.message.includes('timeout')) {
-          throw new Error(`AI 模型响应超时，请稍后重试或使用更简单的命令 (当前超时设置: ${this.timeout / 1000}秒)`);
+          throw new Error(
+            `AI 模型响应超时，请稍后重试或使用更简单的命令 (当前超时设置: ${this.timeout / 1000}秒)`
+          );
         }
-        throw new Error(`OpenAI API Error: ${axiosError.response?.data?.error?.message || axiosError.message}`);
+        throw new Error(
+          `OpenAI API Error: ${axiosError.response?.data?.error?.message || axiosError.message}`
+        );
       }
       throw error;
     }
@@ -114,7 +127,7 @@ export class OpenAICompatibleClient {
    */
   async chatCompletionStream(
     messages: ChatMessage[],
-    onChunk: (chunk: string) => void,
+    onChunk: (chunk: string) => void
   ): Promise<LLMResponse> {
     try {
       const data: any = {
@@ -139,13 +152,16 @@ export class OpenAICompatibleClient {
       const stream = response.data;
 
       stream.on('data', (chunk: Buffer) => {
-        const lines = chunk.toString().split('\n').filter((line) => line.trim() !== '');
+        const lines = chunk
+          .toString()
+          .split('\n')
+          .filter((line) => line.trim() !== '');
         for (const line of lines) {
           const message = line.replace(/^data: /, '');
           if (message === '[DONE]') continue;
           try {
             const parsed = JSON.parse(message);
-            
+
             // Handle usage in stream
             if (parsed.usage) {
               finalUsage = parsed.usage;
@@ -163,17 +179,21 @@ export class OpenAICompatibleClient {
       });
 
       return new Promise((resolve, reject) => {
-        stream.on('end', () => resolve({
-          content: fullContent,
-          usage: finalUsage,
-          rateLimit,
-        }));
+        stream.on('end', () =>
+          resolve({
+            content: fullContent,
+            usage: finalUsage,
+            rateLimit,
+          })
+        );
         stream.on('error', reject);
       });
     } catch (error: unknown) {
       const axiosError = error as AxiosLikeError;
       if (axiosError.message) {
-        throw new Error(`OpenAI API Stream Error: ${axiosError.response?.data?.error?.message || axiosError.message}`);
+        throw new Error(
+          `OpenAI API Stream Error: ${axiosError.response?.data?.error?.message || axiosError.message}`
+        );
       }
       throw error;
     }
@@ -227,7 +247,9 @@ export class OpenAICompatibleClient {
     } catch (error: unknown) {
       const axiosError = error as AxiosLikeError;
       if (axiosError.message) {
-        throw new Error(`OpenAI API Error: ${axiosError.response?.data?.error?.message || axiosError.message}`);
+        throw new Error(
+          `OpenAI API Error: ${axiosError.response?.data?.error?.message || axiosError.message}`
+        );
       }
       throw error;
     }

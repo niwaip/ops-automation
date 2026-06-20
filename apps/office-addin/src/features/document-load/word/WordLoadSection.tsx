@@ -68,14 +68,18 @@ export const WordLoadSection: React.FC<WordLoadSectionProps> = ({
           currentUploadState={sampleUploadState}
           uploadStatusLabel={uploadStatusLabel}
           uploadStatusTone={uploadStatusTone}
-          uploadActionSlot={(
+          uploadActionSlot={
             <div className="word-understanding-inline-actions">
               <div className="word-understanding-inline-header">
                 <div className="word-understanding-inline-copy">
                   <div className="word-understanding-inline-title">全文理解</div>
-                  <div className="word-understanding-inline-description">{understandingActionHint}</div>
+                  <div className="word-understanding-inline-description">
+                    {understandingActionHint}
+                  </div>
                 </div>
-                <span className={`word-tag ${understandingStatusTone || ''}`}>{understandingStatusLabel}</span>
+                <span className={`word-tag ${understandingStatusTone || ''}`}>
+                  {understandingStatusLabel}
+                </span>
               </div>
               <div className="word-understanding-inline-toolbar">
                 <button
@@ -94,9 +98,11 @@ export const WordLoadSection: React.FC<WordLoadSectionProps> = ({
                   <span className="word-tag">缓存于 {understandingCacheTimeText}</span>
                 )}
               </div>
-              <div className="word-understanding-inline-footnote">{understandingCacheDescription}</div>
+              <div className="word-understanding-inline-footnote">
+                {understandingCacheDescription}
+              </div>
             </div>
-          )}
+          }
           onUploadStateChange={onUploadStateChange}
         />
         {hasDisplayedUnderstandingSummary && (

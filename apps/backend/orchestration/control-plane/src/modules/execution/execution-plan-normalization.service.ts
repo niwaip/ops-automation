@@ -8,7 +8,6 @@ import {
 import { BROWSER_ACTIONS, BROWSER_RUNTIME } from './browser-execution-constants';
 import { ExecutionInputResolutionService } from './execution-input-resolution.service';
 
-
 interface SkillSchemaPropertyLike {
   type?: string;
   default?: unknown;
@@ -101,13 +100,11 @@ interface PlanDraftLike {
 
 @Injectable()
 export class ExecutionPlanNormalizationService {
-  constructor(
-    private readonly executionInputResolutionService: ExecutionInputResolutionService,
-  ) {}
+  constructor(private readonly executionInputResolutionService: ExecutionInputResolutionService) {}
 
   reconcilePlanDraftWithInput(
     planDraft: PlanDraftLike | undefined,
-    input: Record<string, unknown> | undefined,
+    input: Record<string, unknown> | undefined
   ): PlanDraftLike | undefined {
     if (!planDraft || !input) {
       return planDraft;
@@ -116,7 +113,10 @@ export class ExecutionPlanNormalizationService {
       if (!Object.prototype.hasOwnProperty.call(input, item.name)) {
         return acc;
       }
-      const normalizedValue = this.executionInputResolutionService.normalizeSubmittedInputValue(input[item.name], item.type);
+      const normalizedValue = this.executionInputResolutionService.normalizeSubmittedInputValue(
+        input[item.name],
+        item.type
+      );
       if (!this.executionInputResolutionService.hasMeaningfulSubmittedInputValue(normalizedValue)) {
         return acc;
       }
@@ -129,29 +129,47 @@ export class ExecutionPlanNormalizationService {
   applyRuntimeDefaultsToPlanDraft(
     planDraft: PlanDraftLike | undefined,
     runtimeDefaultInput: Record<string, unknown>,
-    runtimeDefaultSources?: Record<string, ExecutionParamSource>,
+    runtimeDefaultSources?: Record<string, ExecutionParamSource>
   ): PlanDraftLike | undefined {
-    return this.reconcilePlanDraftWithResolvedValues(planDraft, runtimeDefaultInput, runtimeDefaultSources || 'default');
+    return this.reconcilePlanDraftWithResolvedValues(
+      planDraft,
+      runtimeDefaultInput,
+      runtimeDefaultSources || 'default'
+    );
   }
 
   buildRuntimeDefaultResolution(
     skillPayload: SkillPayloadLike | undefined,
-    templateSchemas: TemplateSchemaLike[] = [],
+    templateSchemas: TemplateSchemaLike[] = []
   ): RuntimeDefaultResolutionLike {
-    return templateSchemas.reduce<RuntimeDefaultResolutionLike>((acc, templateSchema) => {
-      const properties = templateSchema?.paramsSchema?.properties || {};
-      this.collectDefaultsFromSchemaProperties(acc, properties, 'default');
-      this.collectDefaultsFromWorkflowPolicy(acc, templateSchema?.inputPolicy?.params, properties);
-      return acc;
-    }, [skillPayload].reduce<RuntimeDefaultResolutionLike>((acc, currentSkillPayload) => {
-      this.collectDefaultsFromSchemaProperties(acc, currentSkillPayload?.paramsSchema?.properties || {}, 'default');
-      return acc;
-    }, { input: {}, sources: {} }));
+    return templateSchemas.reduce<RuntimeDefaultResolutionLike>(
+      (acc, templateSchema) => {
+        const properties = templateSchema?.paramsSchema?.properties || {};
+        this.collectDefaultsFromSchemaProperties(acc, properties, 'default');
+        this.collectDefaultsFromWorkflowPolicy(
+          acc,
+          templateSchema?.inputPolicy?.params,
+          properties
+        );
+        return acc;
+      },
+      [skillPayload].reduce<RuntimeDefaultResolutionLike>(
+        (acc, currentSkillPayload) => {
+          this.collectDefaultsFromSchemaProperties(
+            acc,
+            currentSkillPayload?.paramsSchema?.properties || {},
+            'default'
+          );
+          return acc;
+        },
+        { input: {}, sources: {} }
+      )
+    );
   }
 
   reconcilePlanSemantic(
     semantic: Record<string, unknown> | undefined,
-    requiredInputs: ExecutionRequiredInput[],
+    requiredInputs: ExecutionRequiredInput[]
   ): Record<string, unknown> | undefined {
     if (!semantic) {
       return undefined;
@@ -163,7 +181,9 @@ export class ExecutionPlanNormalizationService {
     const groupedMissing = (semanticRecord.groupedMissing || [])
       .map((group) => {
         const groupFieldNames = this.resolveSemanticGroupFieldNames(group, requiredInputs);
-        const currentMissingFieldNames = groupFieldNames.filter((name) => missingFieldNames.has(name));
+        const currentMissingFieldNames = groupFieldNames.filter((name) =>
+          missingFieldNames.has(name)
+        );
         if (currentMissingFieldNames.length === 0) {
           return undefined;
         }
@@ -177,19 +197,27 @@ export class ExecutionPlanNormalizationService {
       .filter((group): group is PlannerSemanticGroupedMissingLike => Boolean(group))
       .reduce<PlannerSemanticGroupedMissingLike[]>((acc, group) => {
         const normalizedGroup = this.normalizeSemanticGroupedMissing(group);
-        const existing = acc.find((item) => item.key === normalizedGroup.key && item.kind === normalizedGroup.kind);
+        const existing = acc.find(
+          (item) => item.key === normalizedGroup.key && item.kind === normalizedGroup.kind
+        );
         if (!existing) {
           acc.push(normalizedGroup);
           return acc;
         }
         existing.blocking = existing.blocking || normalizedGroup.blocking;
         existing.required = existing.required || normalizedGroup.required;
-        existing.fieldNames = Array.from(new Set([...(existing.fieldNames || []), ...(normalizedGroup.fieldNames || [])]));
-        existing.missingFieldNames = Array.from(new Set([
-          ...(existing.missingFieldNames || []),
-          ...(normalizedGroup.missingFieldNames || []),
-        ]));
-        existing.label = this.normalizeSemanticMissingLabel(existing.label || normalizedGroup.label);
+        existing.fieldNames = Array.from(
+          new Set([...(existing.fieldNames || []), ...(normalizedGroup.fieldNames || [])])
+        );
+        existing.missingFieldNames = Array.from(
+          new Set([
+            ...(existing.missingFieldNames || []),
+            ...(normalizedGroup.missingFieldNames || []),
+          ])
+        );
+        existing.label = this.normalizeSemanticMissingLabel(
+          existing.label || normalizedGroup.label
+        );
         existing.description = existing.description || normalizedGroup.description;
         return acc;
       }, []);
@@ -199,10 +227,14 @@ export class ExecutionPlanNormalizationService {
       .filter((item) => !coveredMissingNames.has(item.name))
       .forEach((item) => {
         const normalizedKey = this.normalizeSemanticMissingKey(item.name);
-        const existing = groupedMissing.find((group) => group.key === normalizedKey && group.kind === 'field');
+        const existing = groupedMissing.find(
+          (group) => group.key === normalizedKey && group.kind === 'field'
+        );
         if (existing) {
           existing.fieldNames = Array.from(new Set([...(existing.fieldNames || []), item.name]));
-          existing.missingFieldNames = Array.from(new Set([...(existing.missingFieldNames || []), item.name]));
+          existing.missingFieldNames = Array.from(
+            new Set([...(existing.missingFieldNames || []), item.name])
+          );
           return;
         }
         groupedMissing.push({
@@ -226,7 +258,13 @@ export class ExecutionPlanNormalizationService {
       ...semanticRecord,
       previewReady,
       finalReady,
-      summary: this.buildSemanticSummary(mode, finalReady, previewReady, groupedMissing.length, blockingGroups.length),
+      summary: this.buildSemanticSummary(
+        mode,
+        finalReady,
+        previewReady,
+        groupedMissing.length,
+        blockingGroups.length
+      ),
       groupedMissing,
       complexity: {
         ...semanticRecord.complexity,
@@ -248,7 +286,9 @@ export class ExecutionPlanNormalizationService {
     }
   }
 
-  normalizeExecutionRuntimeType(runtimeType?: string | null): 'browser' | 'document' | 'workflow' | 'custom' {
+  normalizeExecutionRuntimeType(
+    runtimeType?: string | null
+  ): 'browser' | 'document' | 'workflow' | 'custom' {
     const normalized = typeof runtimeType === 'string' ? runtimeType.trim().toLowerCase() : '';
     if (normalized === 'browser') {
       return 'browser';
@@ -268,7 +308,7 @@ export class ExecutionPlanNormalizationService {
   resolveExecutionRuntimeType(
     runtimeType?: string | null,
     planDraft?: PlanDraftLike,
-    normalizedInput?: Record<string, unknown>,
+    normalizedInput?: Record<string, unknown>
   ): 'browser' | 'document' | 'workflow' | 'custom' {
     const normalized = this.normalizeExecutionRuntimeType(runtimeType);
     if (normalized !== 'custom') {
@@ -276,7 +316,7 @@ export class ExecutionPlanNormalizationService {
     }
 
     const hasBrowserPhaseCommands = Boolean(
-      planDraft?.steps?.some((step) => Array.isArray(step.commands) && step.commands.length > 0),
+      planDraft?.steps?.some((step) => Array.isArray(step.commands) && step.commands.length > 0)
     );
     if (hasBrowserPhaseCommands) {
       return BROWSER_RUNTIME.TYPE;
@@ -310,16 +350,17 @@ export class ExecutionPlanNormalizationService {
 
   shouldSkipPlannerForExplicitStructuredInput(dto: CreateExecutionDto): boolean {
     const hasExplicitSkill = Boolean(
-      (typeof dto.skillId === 'string' && dto.skillId.trim())
-      || (typeof dto.capabilityId === 'string' && dto.capabilityId.trim()),
+      (typeof dto.skillId === 'string' && dto.skillId.trim()) ||
+      (typeof dto.capabilityId === 'string' && dto.capabilityId.trim())
     );
     if (!hasExplicitSkill) {
       return false;
     }
 
-    const input = dto.input && typeof dto.input === 'object' && !Array.isArray(dto.input)
-      ? dto.input
-      : undefined;
+    const input =
+      dto.input && typeof dto.input === 'object' && !Array.isArray(dto.input)
+        ? dto.input
+        : undefined;
     if (!input || Object.keys(input).length === 0) {
       return false;
     }
@@ -328,10 +369,7 @@ export class ExecutionPlanNormalizationService {
     return !candidateKeys.some((key) => typeof input[key] === 'string' && input[key].trim());
   }
 
-  buildDirectExecutionPlanDraft(
-    dto: CreateExecutionDto,
-    resolvedSkillId: string,
-  ): PlanDraftLike {
+  buildDirectExecutionPlanDraft(dto: CreateExecutionDto, resolvedSkillId: string): PlanDraftLike {
     return {
       plan_id: `direct-${resolvedSkillId}`,
       planner_mode: 'skill',
@@ -361,21 +399,60 @@ export class ExecutionPlanNormalizationService {
     };
   }
 
+  buildDirectSkillExecutionPlanDraftFromExisting(
+    planDraft: PlanDraftLike,
+    resolvedSkillId: string,
+    options?: {
+      runtimeSourceType?: string;
+    }
+  ): PlanDraftLike {
+    const skillName =
+      this.readNonEmptyString(planDraft.skill_match?.skill_name, resolvedSkillId) || resolvedSkillId;
+
+    return {
+      ...planDraft,
+      planner_mode: 'skill',
+      ...(this.readNonEmptyString(options?.runtimeSourceType)
+        ? {
+            runtime_source_type: this.readNonEmptyString(options?.runtimeSourceType),
+          }
+        : {}),
+      skill_match: {
+        skill_id: resolvedSkillId,
+        skill_name: skillName,
+        confidence:
+          typeof planDraft.skill_match?.confidence === 'number'
+            ? planDraft.skill_match.confidence
+            : 1,
+        match_reason:
+          this.readNonEmptyString(planDraft.skill_match?.match_reason) || 'explicit_skill_selection',
+      },
+      steps: [
+        {
+          id: 'execute_selected_skill',
+          title: skillName,
+          description: `执行技能 ${skillName}。`,
+          kind: 'skill',
+          status: 'planned',
+        },
+      ],
+    };
+  }
+
   buildPlannerResolvedInput(
     planDraft: PlanDraftLike | undefined,
     input?: Record<string, unknown>,
-    runtimeDefaultInput?: Record<string, unknown>,
+    runtimeDefaultInput?: Record<string, unknown>
   ): Record<string, unknown> {
-    const plannerExtractedInput = (planDraft?.required_inputs || []).reduce<Record<string, unknown>>(
-      (acc, item) => {
-        if (!item || item.missing || item.value === undefined || item.value === null) {
-          return acc;
-        }
-        acc[item.name] = item.value;
+    const plannerExtractedInput = (planDraft?.required_inputs || []).reduce<
+      Record<string, unknown>
+    >((acc, item) => {
+      if (!item || item.missing || item.value === undefined || item.value === null) {
         return acc;
-      },
-      {},
-    );
+      }
+      acc[item.name] = item.value;
+      return acc;
+    }, {});
 
     return {
       ...(runtimeDefaultInput || {}),
@@ -388,20 +465,24 @@ export class ExecutionPlanNormalizationService {
     workflowSteps: Record<string, unknown>[],
     browserActivities: Record<string, unknown>[],
     resolvedInput: Record<string, unknown>,
+    templateSteps: Record<string, unknown>[] = []
   ): PlanDraftLike['steps'] {
     const plannerSteps: PlanDraftLike['steps'] = [];
+    let templateStepCursor = 0;
     workflowSteps.forEach((workflowStep, index) => {
-      const activityLabel = this.readNonEmptyString(
-        workflowStep.name,
-        workflowStep.activityName,
-        workflowStep.activityRef,
-      ) || `Activity ${index + 1}`;
-      const activityKey = this.readNonEmptyString(
-        workflowStep.id,
-        workflowStep.activityName,
-        workflowStep.activityRef,
-        activityLabel,
-      ) || `activity_${index + 1}`;
+      const activityLabel =
+        this.readNonEmptyString(
+          workflowStep.name,
+          workflowStep.activityName,
+          workflowStep.activityRef
+        ) || `Activity ${index + 1}`;
+      const activityKey =
+        this.readNonEmptyString(
+          workflowStep.id,
+          workflowStep.activityName,
+          workflowStep.activityRef,
+          activityLabel
+        ) || `activity_${index + 1}`;
       const activityRef = this.readNonEmptyString(workflowStep.activityRef);
       const matchingActivity = browserActivities.find((activity, activityIndex) => {
         const fn = this.readNonEmptyString(activity.fn);
@@ -409,17 +490,29 @@ export class ExecutionPlanNormalizationService {
         if (activityRef && fn && (activityRef === fn || activityRef === `custom:${fn}`)) {
           return true;
         }
-        if (name && (name === activityLabel || name === this.readNonEmptyString(workflowStep.activityName))) {
+        if (
+          name &&
+          (name === activityLabel || name === this.readNonEmptyString(workflowStep.activityName))
+        ) {
           return true;
         }
         return activityIndex === index;
       });
+      const activitySourceSteps = this.readRecordArray(
+        this.readRecord(matchingActivity?.config)?.steps
+      );
+      const enrichedActivity = this.mergeBrowserActivityStepsWithTemplateSteps(
+        activitySourceSteps,
+        templateSteps,
+        templateStepCursor
+      );
       const commands = this.mapBrowserActivityCommands(
-        this.readRecordArray(this.readRecord(matchingActivity?.config)?.steps),
+        enrichedActivity.steps,
         index + 1,
         activityLabel,
-        resolvedInput,
+        resolvedInput
       );
+      templateStepCursor = enrichedActivity.nextTemplateStepCursor;
       if (commands.length === 0) {
         return;
       }
@@ -448,38 +541,51 @@ export class ExecutionPlanNormalizationService {
     planDraft: PlanDraftLike | undefined,
     runtimeDefaultInput: Record<string, unknown> | undefined,
     runtimeDefaultSources: Record<string, ExecutionParamSource> | undefined,
-    objectiveBuilder: (dto: CreateExecutionDto) => string,
+    objectiveBuilder: (dto: CreateExecutionDto) => string
   ): ExecutionNormalizedInputJson {
     const rawInput = dto.input || {};
     const promptDebugCandidate = (rawInput as Record<string, unknown>).__promptDebug;
     const input = { ...rawInput } as Record<string, unknown>;
     delete input.__promptDebug;
 
-    const paramResolution = this.executionInputResolutionService.buildParamResolutionFromRequiredInputs(planDraft?.required_inputs);
+    const paramResolution =
+      this.executionInputResolutionService.buildParamResolutionFromRequiredInputs(
+        planDraft?.required_inputs
+      );
     const trackedKeys = new Set(Object.keys(paramResolution));
     const passthroughInput = this.executionInputResolutionService.omitTrackedInputKeys(
       {
         ...(runtimeDefaultInput || {}),
         ...input,
       },
-      trackedKeys,
+      trackedKeys
     );
-    const plannerExtractedInput = Object.keys(paramResolution).length > 0
-      ? this.executionInputResolutionService.buildFinalInputFromParamResolution(paramResolution)
-      : (planDraft?.required_inputs || []).reduce<Record<string, unknown>>((acc, item) => {
-          if (!item || item.missing || item.needs_confirmation || item.value === undefined || item.value === null) {
+    const plannerExtractedInput =
+      Object.keys(paramResolution).length > 0
+        ? this.executionInputResolutionService.buildFinalInputFromParamResolution(paramResolution)
+        : (planDraft?.required_inputs || []).reduce<Record<string, unknown>>((acc, item) => {
+            if (
+              !item ||
+              item.missing ||
+              item.needs_confirmation ||
+              item.value === undefined ||
+              item.value === null
+            ) {
+              return acc;
+            }
+            acc[item.name] = item.value;
             return acc;
-          }
-          acc[item.name] = item.value;
-          return acc;
-        }, {});
+          }, {});
     const mergedInput = {
       ...passthroughInput,
       ...plannerExtractedInput,
     };
-    const requiredInputs = Object.keys(paramResolution).length > 0
-      ? this.executionInputResolutionService.buildRequiredInputsFromParamResolution(paramResolution)
-      : planDraft?.required_inputs;
+    const requiredInputs =
+      Object.keys(paramResolution).length > 0
+        ? this.executionInputResolutionService.buildRequiredInputsFromParamResolution(
+            paramResolution
+          )
+        : planDraft?.required_inputs;
 
     const normalizedInput: ExecutionNormalizedInputJson = {
       objective: planDraft?.objective || objectiveBuilder(dto),
@@ -508,6 +614,10 @@ export class ExecutionPlanNormalizationService {
       normalizedInput.planSteps = planDraft.steps;
     }
 
+    if (this.readNonEmptyString(planDraft?.runtime_source_type)) {
+      normalizedInput.runtimeSourceType = this.readNonEmptyString(planDraft.runtime_source_type);
+    }
+
     if (planDraft?.risk_summary) {
       normalizedInput.riskSummary = planDraft.risk_summary;
     }
@@ -522,9 +632,9 @@ export class ExecutionPlanNormalizationService {
     }
 
     if (
-      promptDebugCandidate
-      && typeof promptDebugCandidate === 'object'
-      && !Array.isArray(promptDebugCandidate)
+      promptDebugCandidate &&
+      typeof promptDebugCandidate === 'object' &&
+      !Array.isArray(promptDebugCandidate)
     ) {
       normalizedInput.promptDebug = promptDebugCandidate;
     }
@@ -535,14 +645,17 @@ export class ExecutionPlanNormalizationService {
   private reconcilePlanDraftWithResolvedValues(
     planDraft: PlanDraftLike | undefined,
     resolvedInput: Record<string, unknown>,
-    source: ExecutionRequiredInput['source'] | Record<string, ExecutionRequiredInput['source']>,
+    source: ExecutionRequiredInput['source'] | Record<string, ExecutionRequiredInput['source']>
   ): PlanDraftLike | undefined {
     if (!planDraft || Object.keys(resolvedInput || {}).length === 0) {
       return planDraft;
     }
 
     const requiredInputs = planDraft.required_inputs.map((item) => {
-      if (!this.executionInputResolutionService.isBlockingRequiredInput(item) || !Object.prototype.hasOwnProperty.call(resolvedInput, item.name)) {
+      if (
+        !this.executionInputResolutionService.isBlockingRequiredInput(item) ||
+        !Object.prototype.hasOwnProperty.call(resolvedInput, item.name)
+      ) {
         return item;
       }
 
@@ -555,12 +668,12 @@ export class ExecutionPlanNormalizationService {
         return {
           ...item,
           value,
-          source: typeof source === 'string' ? source : (source[item.name] || item.source),
+          source: typeof source === 'string' ? source : source[item.name] || item.source,
           missing: true,
         };
       }
 
-      const resolvedSource = typeof source === 'string' ? source : (source[item.name] || item.source);
+      const resolvedSource = typeof source === 'string' ? source : source[item.name] || item.source;
       return {
         ...item,
         value,
@@ -571,34 +684,39 @@ export class ExecutionPlanNormalizationService {
       };
     });
 
-    const missingRequiredInputs = requiredInputs.filter((item) => item.required && this.executionInputResolutionService.isBlockingRequiredInput(item));
-    const riskItems = missingRequiredInputs.length > 0
-      ? Array.from(new Set([...planDraft.risk_summary.items, 'missing_required_inputs']))
-      : planDraft.risk_summary.items.filter((item) => item !== 'missing_required_inputs');
-    const steps = missingRequiredInputs.length > 0
-      ? planDraft.steps.map((step) => {
-          if (step.kind !== 'human_input') {
-            return step;
-          }
-          return {
-            ...step,
-            description: `补齐必填参数: ${missingRequiredInputs.map((item) => item.name).join(', ')}`,
-          };
-        })
-      : planDraft.steps.filter((step) => step.kind !== 'human_input');
+    const missingRequiredInputs = requiredInputs.filter(
+      (item) => item.required && this.executionInputResolutionService.isBlockingRequiredInput(item)
+    );
+    const riskItems =
+      missingRequiredInputs.length > 0
+        ? Array.from(new Set([...planDraft.risk_summary.items, 'missing_required_inputs']))
+        : planDraft.risk_summary.items.filter((item) => item !== 'missing_required_inputs');
+    const steps =
+      missingRequiredInputs.length > 0
+        ? planDraft.steps.map((step) => {
+            if (step.kind !== 'human_input') {
+              return step;
+            }
+            return {
+              ...step,
+              description: `补齐必填参数: ${missingRequiredInputs.map((item) => item.name).join(', ')}`,
+            };
+          })
+        : planDraft.steps.filter((step) => step.kind !== 'human_input');
 
     return {
       ...planDraft,
-      summary: missingRequiredInputs.length > 0
-        ? `已识别技能 ${planDraft.skill_match?.skill_name || '目标技能'}，但仍缺少 ${missingRequiredInputs.length} 个关键输入。`
-        : planDraft.skill_match
-          ? `已识别技能 ${planDraft.skill_match.skill_name}，可以按计划进入执行。`
-          : planDraft.summary,
+      summary:
+        missingRequiredInputs.length > 0
+          ? `已识别技能 ${planDraft.skill_match?.skill_name || '目标技能'}，但仍缺少 ${missingRequiredInputs.length} 个关键输入。`
+          : planDraft.skill_match
+            ? `已识别技能 ${planDraft.skill_match.skill_name}，可以按计划进入执行。`
+            : planDraft.summary,
       steps,
       required_inputs: requiredInputs,
       semantic: this.reconcilePlanSemantic(
         planDraft.semantic as unknown as Record<string, unknown> | undefined,
-        requiredInputs,
+        requiredInputs
       ) as unknown as PlannerSemanticLike | undefined,
       risk_summary: {
         ...planDraft.risk_summary,
@@ -610,7 +728,7 @@ export class ExecutionPlanNormalizationService {
 
   private resolveSemanticGroupFieldNames(
     group: PlannerSemanticGroupedMissingLike,
-    requiredInputs: ExecutionRequiredInput[],
+    requiredInputs: ExecutionRequiredInput[]
   ): string[] {
     if (group.kind === 'array_group') {
       const groupPrefix = `${group.key}[].`;
@@ -623,7 +741,9 @@ export class ExecutionPlanNormalizationService {
     }
 
     const fieldNames = Array.isArray(group.fieldNames)
-      ? group.fieldNames.filter((name): name is string => typeof name === 'string' && name.trim().length > 0)
+      ? group.fieldNames.filter(
+          (name): name is string => typeof name === 'string' && name.trim().length > 0
+        )
       : [];
     if (fieldNames.length > 0) {
       return Array.from(new Set(fieldNames));
@@ -632,7 +752,9 @@ export class ExecutionPlanNormalizationService {
     return [group.key];
   }
 
-  private normalizeSemanticGroupedMissing(group: PlannerSemanticGroupedMissingLike): PlannerSemanticGroupedMissingLike {
+  private normalizeSemanticGroupedMissing(
+    group: PlannerSemanticGroupedMissingLike
+  ): PlannerSemanticGroupedMissingLike {
     if (group.kind === 'array_group') {
       return group;
     }
@@ -641,9 +763,10 @@ export class ExecutionPlanNormalizationService {
       ...group,
       key: this.normalizeSemanticMissingKey(group.key),
       label: this.normalizeSemanticMissingLabel(group.label),
-      description: typeof group.description === 'string' && group.description.trim()
-        ? group.description
-        : `请补充 ${this.normalizeSemanticMissingLabel(group.label || group.key)}`,
+      description:
+        typeof group.description === 'string' && group.description.trim()
+          ? group.description
+          : `请补充 ${this.normalizeSemanticMissingLabel(group.label || group.key)}`,
     };
   }
 
@@ -653,9 +776,7 @@ export class ExecutionPlanNormalizationService {
       return '';
     }
 
-    return normalized
-      .replace(/[._-](?:zh|ja|cn|jp)$/iu, '')
-      .trim();
+    return normalized.replace(/[._-](?:zh|ja|cn|jp)$/iu, '').trim();
   }
 
   private normalizeSemanticMissingLabel(value: string): string {
@@ -675,7 +796,7 @@ export class ExecutionPlanNormalizationService {
     finalReady: boolean,
     previewReady: boolean,
     groupedMissingCount: number,
-    blockingGroupCount: number,
+    blockingGroupCount: number
   ): string {
     if (mode === 'complex_document') {
       return finalReady
@@ -685,21 +806,20 @@ export class ExecutionPlanNormalizationService {
           : `文档仍缺少 ${blockingGroupCount} 个关键业务组。`;
     }
 
-    return finalReady
-      ? '执行参数已满足要求。'
-      : `仍缺少 ${blockingGroupCount} 个必填参数。`;
+    return finalReady ? '执行参数已满足要求。' : `仍缺少 ${blockingGroupCount} 个必填参数。`;
   }
 
   private extractBootstrapUrl(
     input: Record<string, unknown>,
-    planDraft?: PlanDraftLike,
+    planDraft?: PlanDraftLike
   ): string | undefined {
     if (typeof input.url === 'string' && input.url.trim()) {
       return input.url;
     }
 
     const urlLikeInput = planDraft?.required_inputs.find(
-      (item) => item.name.toLowerCase() === 'url' && typeof item.value === 'string' && item.value.trim(),
+      (item) =>
+        item.name.toLowerCase() === 'url' && typeof item.value === 'string' && item.value.trim()
     );
 
     return typeof urlLikeInput?.value === 'string' ? urlLikeInput.value : undefined;
@@ -708,14 +828,16 @@ export class ExecutionPlanNormalizationService {
   private collectDefaultsFromSchemaProperties(
     resolution: RuntimeDefaultResolutionLike,
     properties: Record<string, SkillSchemaPropertyLike>,
-    source: ExecutionParamSource,
+    source: ExecutionParamSource
   ): void {
     Object.entries(properties || {}).forEach(([name, property]) => {
       const normalizedDefault = this.executionInputResolutionService.normalizeSubmittedInputValue(
         property?.default,
-        String(property?.type || 'string'),
+        String(property?.type || 'string')
       );
-      if (!this.executionInputResolutionService.hasMeaningfulSubmittedInputValue(normalizedDefault)) {
+      if (
+        !this.executionInputResolutionService.hasMeaningfulSubmittedInputValue(normalizedDefault)
+      ) {
         return;
       }
       resolution.input[name] = normalizedDefault;
@@ -726,14 +848,16 @@ export class ExecutionPlanNormalizationService {
   private collectDefaultsFromWorkflowPolicy(
     resolution: RuntimeDefaultResolutionLike,
     policies: Record<string, WorkflowParamPolicySnapshotLike> | undefined,
-    properties: Record<string, SkillSchemaPropertyLike>,
+    properties: Record<string, SkillSchemaPropertyLike>
   ): void {
     Object.entries(policies || {}).forEach(([name, policy]) => {
       const normalizedDefault = this.executionInputResolutionService.normalizeSubmittedInputValue(
         policy?.defaultValue,
-        String(properties[name]?.type || 'string'),
+        String(properties[name]?.type || 'string')
       );
-      if (!this.executionInputResolutionService.hasMeaningfulSubmittedInputValue(normalizedDefault)) {
+      if (
+        !this.executionInputResolutionService.hasMeaningfulSubmittedInputValue(normalizedDefault)
+      ) {
         return;
       }
       resolution.input[name] = normalizedDefault;
@@ -745,68 +869,221 @@ export class ExecutionPlanNormalizationService {
     steps: Record<string, unknown>[],
     activityOrder: number,
     activityName: string,
-    resolvedInput: Record<string, unknown>,
+    resolvedInput: Record<string, unknown>
   ): NonNullable<PlanDraftLike['steps'][number]['commands']> {
     const commands: NonNullable<PlanDraftLike['steps'][number]['commands']> = [];
     steps.forEach((step, index) => {
-      const config = this.readRecord(step.config) || {};
+      const config = {
+        ...step,
+        ...(this.readRecord(step.config) || {}),
+      };
       const normalizedAction = this.normalizeBrowserPhaseCommandAction(
-        this.readNonEmptyString(config.action, step.action),
+        this.readNonEmptyString(config.action, step.action)
       );
       if (!normalizedAction) {
         return;
       }
 
-      const input = this.buildBrowserPhaseCommandInput(
-        normalizedAction,
-        config,
-        resolvedInput,
-      );
+      const input = this.buildBrowserPhaseCommandInput(normalizedAction, config, resolvedInput);
+
+      // #region debug-point A:browser-phase-command-normalization
+      (() => {
+        const suspiciousAction = ['read_value', 'branch'].includes(normalizedAction);
+        const suspiciousShape =
+          typeof step.action === 'string' ||
+          Boolean((step as Record<string, unknown>).locator) ||
+          Boolean((step as Record<string, unknown>).params) ||
+          Boolean((step as Record<string, unknown>).branch) ||
+          typeof (step as Record<string, unknown>).output_var === 'string';
+        if (!suspiciousAction && !suspiciousShape) {
+          return;
+        }
+        const fs = require('node:fs');
+        let u = 'http://127.0.0.1:7777/event';
+        let s = 'gross-margin-review';
+        try {
+          const env = fs.readFileSync('.dbg/gross-margin-review.env', 'utf8');
+          u = env.match(/DEBUG_SERVER_URL=(.+)/)?.[1] || u;
+          s = env.match(/DEBUG_SESSION_ID=(.+)/)?.[1] || s;
+        } catch {}
+        fetch(u, {
+          method: 'POST',
+          body: JSON.stringify({
+            sessionId: s,
+            runId: 'pre-fix',
+            hypothesisId: suspiciousAction ? 'A' : 'B',
+            location: 'execution-plan-normalization.service.ts:765',
+            msg: '[DEBUG] browser phase command normalized',
+            data: {
+              activityName,
+              activityOrder,
+              index: index + 1,
+              rawStepAction: this.readNonEmptyString(step.action, config.action) || null,
+              normalizedAction,
+              rawStepKeys: Object.keys(step),
+              configKeys: Object.keys(config),
+              builtInput: input,
+              rawStep: {
+                step_id: this.readNonEmptyString(step.step_id, step.stepId) || null,
+                action: step.action || null,
+                locator: this.readRecord(step.locator),
+                params: this.readRecord(step.params),
+                branch: this.readRecord(step.branch),
+                output_var:
+                  typeof step.output_var === 'string'
+                    ? step.output_var
+                    : typeof step.outputVar === 'string'
+                      ? step.outputVar
+                      : null,
+              },
+              resolvedInput,
+            },
+            ts: Date.now(),
+          }),
+        }).catch(() => {});
+      })();
+      // #endregion
+
+      const metadata = {
+        stepName: this.readNonEmptyString(step.name) || `${activityName} command ${index + 1}`,
+        activityName,
+        activityOrder,
+        ...(this.buildBrowserPhaseCommandMetadata(normalizedAction, config) || {}),
+      };
 
       commands.push({
         step_id: `${this.sanitizePhaseKeyFragment(activityName)}__command_${String(index + 1).padStart(2, '0')}`,
         capability_type: BROWSER_RUNTIME.CAPABILITY_TYPE,
         action: normalizedAction,
         input,
-        metadata: {
-          stepName: this.readNonEmptyString(step.name) || `${activityName} command ${index + 1}`,
-          activityName,
-          activityOrder,
-        },
+        metadata,
       });
     });
     return commands;
   }
 
+  private mergeBrowserActivityStepsWithTemplateSteps(
+    activitySteps: Record<string, unknown>[],
+    templateSteps: Record<string, unknown>[],
+    templateStepCursor: number
+  ): { steps: Record<string, unknown>[]; nextTemplateStepCursor: number } {
+    if (activitySteps.length === 0 || templateSteps.length === 0) {
+      return {
+        steps: activitySteps,
+        nextTemplateStepCursor: templateStepCursor,
+      };
+    }
+
+    let nextTemplateStepCursor = templateStepCursor;
+    const steps = activitySteps.map((step) => {
+      const sourceAction = this.normalizeBrowserPhaseCommandAction(
+        this.readNonEmptyString(step.action, this.readRecord(step.config)?.action)
+      );
+      if (!sourceAction) {
+        return step;
+      }
+
+      for (let index = nextTemplateStepCursor; index < templateSteps.length; index += 1) {
+        const templateStep = templateSteps[index];
+        const templateAction = this.normalizeBrowserPhaseCommandAction(
+          this.readNonEmptyString(templateStep.action, this.readRecord(templateStep.config)?.action)
+        );
+        if (!templateAction || templateAction !== sourceAction) {
+          continue;
+        }
+
+        nextTemplateStepCursor = index + 1;
+        return {
+          ...step,
+          ...templateStep,
+          config: {
+            ...(this.readRecord(step.config) || {}),
+            ...(this.readRecord(templateStep.config) || {}),
+          },
+        };
+      }
+
+      return step;
+    });
+
+    return {
+      steps,
+      nextTemplateStepCursor,
+    };
+  }
+
   private buildBrowserPhaseCommandInput(
     action: string,
     config: Record<string, unknown>,
-    resolvedInput: Record<string, unknown>,
+    resolvedInput: Record<string, unknown>
   ): Record<string, unknown> {
-    const resolve = (value: unknown): unknown => this.resolveBrowserTemplateValue(value, resolvedInput);
-    const target = this.readNonEmptyString(
-      resolve(config.target),
-      resolve(config.selector),
-      resolve(config.url),
-      resolve(config.text),
+    const resolve = (value: unknown): unknown =>
+      this.resolveBrowserTemplateValue(value, resolvedInput);
+    const params = this.readRecord(config.params) || {};
+    const locatorTarget = this.buildBrowserPhaseLocatorTarget(
+      this.readRecord(config.locator, params.locator),
+      resolvedInput
     );
-    const duration = this.readInteger(resolve(config.duration), resolve(config.timeoutMs));
-    const selector = this.readNonEmptyString(resolve(config.selector), resolve(config.target));
-    const value = this.readNonEmptyString(resolve(config.value), resolve(config.text), resolve(config.query));
-    const text = this.readNonEmptyString(resolve(config.text), resolve(config.value), resolve(config.query));
-    const url = this.readNonEmptyString(resolve(config.url), resolve(config.target));
+    const target = this.readNonEmptyString(
+      locatorTarget,
+      resolve(config.target),
+      resolve(params.target),
+      resolve(config.selector),
+      resolve(params.selector),
+      resolve(config.url),
+      resolve(params.url),
+      resolve(config.text),
+      resolve(params.text),
+      resolve(config.value),
+      resolve(params.value)
+    );
+    const duration = this.readInteger(
+      resolve(config.duration),
+      resolve(params.duration),
+      resolve(config.timeoutMs),
+      resolve(params.timeoutMs)
+    );
+    const selector = this.readNonEmptyString(
+      locatorTarget,
+      resolve(config.selector),
+      resolve(params.selector),
+      resolve(config.target),
+      resolve(params.target)
+    );
+    const value = this.readNonEmptyString(
+      resolve(config.value),
+      resolve(params.value),
+      resolve(config.text),
+      resolve(params.text),
+      resolve(config.query),
+      resolve(params.query)
+    );
+    const text = this.readNonEmptyString(
+      resolve(config.text),
+      resolve(params.text),
+      resolve(config.value),
+      resolve(params.value),
+      resolve(config.query),
+      resolve(params.query)
+    );
+    const url = this.readNonEmptyString(
+      resolve(config.url),
+      resolve(params.url),
+      resolve(config.target),
+      resolve(params.target)
+    );
 
     const args = (() => {
       switch (action) {
         case BROWSER_ACTIONS.GOTO:
         case 'navigate':
           return Object.fromEntries(
-            Object.entries({ url }).filter(([, item]) => item !== undefined),
+            Object.entries({ url }).filter(([, item]) => item !== undefined)
           );
         case 'fill':
         case 'type_text':
           return Object.fromEntries(
-            Object.entries({ selector, value, text }).filter(([, item]) => item !== undefined),
+            Object.entries({ selector, value, text }).filter(([, item]) => item !== undefined)
           );
         case 'click':
         case 'hover':
@@ -815,11 +1092,11 @@ export class ExecutionPlanNormalizationService {
         case 'read_page':
         case 'get_text':
           return Object.fromEntries(
-            Object.entries({ selector }).filter(([, item]) => item !== undefined),
+            Object.entries({ selector }).filter(([, item]) => item !== undefined)
           );
         case 'wait':
           return Object.fromEntries(
-            Object.entries({ duration, selector }).filter(([, item]) => item !== undefined),
+            Object.entries({ duration, selector }).filter(([, item]) => item !== undefined)
           );
         default:
           return Object.fromEntries(
@@ -829,7 +1106,7 @@ export class ExecutionPlanNormalizationService {
               value,
               text,
               url,
-            }).filter(([, item]) => item !== undefined),
+            }).filter(([, item]) => item !== undefined)
           );
       }
     })();
@@ -840,9 +1117,53 @@ export class ExecutionPlanNormalizationService {
     };
   }
 
+  private buildBrowserPhaseCommandMetadata(
+    action: string,
+    config: Record<string, unknown>
+  ): Record<string, unknown> | undefined {
+    const metadata: Record<string, unknown> = {};
+    const outputVar = this.readNonEmptyString(config.outputVar, config.output_var);
+    if (outputVar) {
+      metadata.outputVar = outputVar;
+    }
+
+    if (action === 'branch') {
+      const branch = this.readRecord(config.branch);
+      const conditionFn = this.readNonEmptyString(branch?.conditionFn, branch?.condition_fn);
+      if (conditionFn) {
+        metadata.branch = {
+          conditionFn,
+          onMatch:
+            this.readNonEmptyString(branch?.onMatch, branch?.on_match) === 'stop'
+              ? 'stop'
+              : 'continue',
+          onMismatch:
+            this.readNonEmptyString(branch?.onMismatch, branch?.on_mismatch) === 'takeover'
+              ? 'takeover'
+              : this.readNonEmptyString(branch?.onMismatch, branch?.on_mismatch) === 'continue'
+                ? 'continue'
+                : 'stop',
+          ...(this.readNonEmptyString(branch?.takeoverReason, branch?.takeover_reason)
+            ? {
+                takeoverReason: this.readNonEmptyString(
+                  branch?.takeoverReason,
+                  branch?.takeover_reason
+                ),
+              }
+            : {}),
+          ...(this.readNonEmptyString(branch?.description)
+            ? { description: this.readNonEmptyString(branch?.description) }
+            : {}),
+        };
+      }
+    }
+
+    return Object.keys(metadata).length > 0 ? metadata : undefined;
+  }
+
   private resolveBrowserTemplateValue(
     value: unknown,
-    resolvedInput: Record<string, unknown>,
+    resolvedInput: Record<string, unknown>
   ): unknown {
     if (typeof value === 'string') {
       const resolvePlaceholder = (rawKey: string): string => {
@@ -855,8 +1176,9 @@ export class ExecutionPlanNormalizationService {
         /\{\{\s*([^}]+?)\s*\}\}/g,
         /\{([A-Za-z0-9_.\[\]-]+)\}/g,
       ].reduce(
-        (current, pattern) => current.replace(pattern, (_match, key) => resolvePlaceholder(String(key))),
-        value,
+        (current, pattern) =>
+          current.replace(pattern, (_match, key) => resolvePlaceholder(String(key))),
+        value
       );
     }
     if (Array.isArray(value)) {
@@ -864,7 +1186,10 @@ export class ExecutionPlanNormalizationService {
     }
     if (value && typeof value === 'object') {
       return Object.fromEntries(
-        Object.entries(value).map(([key, item]) => [key, this.resolveBrowserTemplateValue(item, resolvedInput)]),
+        Object.entries(value).map(([key, item]) => [
+          key,
+          this.resolveBrowserTemplateValue(item, resolvedInput),
+        ])
       );
     }
     return value;
@@ -879,6 +1204,8 @@ export class ExecutionPlanNormalizationService {
     switch (normalized) {
       case 'navigate':
         return BROWSER_ACTIONS.GOTO;
+      case 'read_value':
+        return 'get_text';
       case 'waitforselector':
         return BROWSER_ACTIONS.WAIT;
       case 'press':
@@ -891,19 +1218,25 @@ export class ExecutionPlanNormalizationService {
   }
 
   private sanitizePhaseKeyFragment(value: string): string {
-    return value
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '_')
-      .replace(/^_+|_+$/g, '')
-      .slice(0, 40) || 'phase';
+    return (
+      value
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '')
+        .slice(0, 40) || 'phase'
+    );
   }
 
   private readRecordArray(source: unknown, key?: string): Record<string, unknown>[] {
-    const target = key && source && typeof source === 'object' && !Array.isArray(source)
-      ? (source as Record<string, unknown>)[key]
-      : source;
+    const target =
+      key && source && typeof source === 'object' && !Array.isArray(source)
+        ? (source as Record<string, unknown>)[key]
+        : source;
     return Array.isArray(target)
-      ? target.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object' && !Array.isArray(item))
+      ? target.filter(
+          (item): item is Record<string, unknown> =>
+            Boolean(item) && typeof item === 'object' && !Array.isArray(item)
+        )
       : [];
   }
 
@@ -938,5 +1271,36 @@ export class ExecutionPlanNormalizationService {
       }
     }
     return undefined;
+  }
+
+  private buildBrowserPhaseLocatorTarget(
+    locator: Record<string, unknown> | null,
+    resolvedInput: Record<string, unknown>
+  ): string | undefined {
+    if (!locator) {
+      return undefined;
+    }
+    const type = this.readNonEmptyString(locator.type)?.toLowerCase();
+    const rawValue = this.resolveBrowserTemplateValue(locator.value, resolvedInput);
+    const value = this.readNonEmptyString(rawValue);
+    if (!type || !value) {
+      return undefined;
+    }
+
+    switch (type) {
+      case 'css':
+        return value;
+      case 'role':
+        return `role=${value}`;
+      case 'text':
+        return `text=${value}`;
+      case 'testid':
+      case 'data-testid':
+        return `[data-testid="${value}"]`;
+      case 'xpath':
+        return `xpath=${value}`;
+      default:
+        return value;
+    }
   }
 }

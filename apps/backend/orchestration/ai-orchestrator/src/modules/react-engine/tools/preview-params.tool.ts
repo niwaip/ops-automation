@@ -6,10 +6,7 @@
 
 import { Injectable } from '@nestjs/common';
 import axios from 'axios';
-import {
-  getCarboneExternalUrl,
-  getCarboneServiceUrl,
-} from '../../../config/service-endpoints';
+import { getCarboneExternalUrl, getCarboneServiceUrl } from '../../../config/service-endpoints';
 import { BaseTool } from './base.tool';
 import { ToolResult, ExecutionContext } from '../interfaces';
 import { Tool } from '../decorators/tool.decorator';
@@ -25,7 +22,8 @@ type PreviewParamsResponse = {
 @Injectable()
 @Tool({
   name: 'preview_params',
-  description: '使用AI生成的参数预览文档效果。调用preview-with-skill API验证参数是否正确填充到模板中。',
+  description:
+    '使用AI生成的参数预览文档效果。调用preview-with-skill API验证参数是否正确填充到模板中。',
   parameters: {
     type: 'object',
     properties: {
@@ -74,14 +72,11 @@ export class PreviewParamsTool extends BaseTool {
           },
         },
         required: ['templateId', 'data'],
-      },
+      }
     );
   }
 
-  async execute(
-    params: Record<string, unknown>,
-    context: ExecutionContext,
-  ): Promise<ToolResult> {
+  async execute(params: Record<string, unknown>, context: ExecutionContext): Promise<ToolResult> {
     // 优先从params获取，其次从context获取
     let templateId = params.templateId as string | undefined;
     let skillId = params.skillId as string | undefined;
@@ -108,11 +103,14 @@ export class PreviewParamsTool extends BaseTool {
 
     try {
       // 调用Carbone引擎的preview-with-skill API
-      const response = await axios.post<PreviewParamsResponse>(`${getCarboneServiceUrl()}/studio/preview-with-skill`, {
-        templateId,
-        skillId,
-        simulatedData: data,
-      });
+      const response = await axios.post<PreviewParamsResponse>(
+        `${getCarboneServiceUrl()}/studio/preview-with-skill`,
+        {
+          templateId,
+          skillId,
+          simulatedData: data,
+        }
+      );
 
       const previewResult = response.data;
 

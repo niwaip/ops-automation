@@ -22,13 +22,13 @@
 
 ## 技能概述
 
-| 属性 | 值 |
-|------|-----|
-| 名称 | VK-Plan |
-| 依赖 | 无（纯方法论） |
-| 触发 | 用户提出新需求 |
-| 输出 | 功能点清单、任务列表、OpenSpec 规格 |
-| 下一步 | 确认后调用 VK-Execute |
+| 属性   | 值                                  |
+| ------ | ----------------------------------- |
+| 名称   | VK-Plan                             |
+| 依赖   | 无（纯方法论）                      |
+| 触发   | 用户提出新需求                      |
+| 输出   | 功能点清单、任务列表、OpenSpec 规格 |
+| 下一步 | 确认后调用 VK-Execute               |
 
 ---
 
@@ -47,11 +47,13 @@ Agent（EXPLORE）：
 [分析代码库]
 
 我发现：
+
 1. 当前使用 SQLite，数据量约 10 万条
 2. 有 3 个查询没有索引
 3. JOIN 操作较多
 
 优化选项：
+
 - 添加索引（简单，立即见效）
 - 重构查询（中等复杂）
 - 迁移到 PostgreSQL（复杂，长期方案）
@@ -60,6 +62,7 @@ Agent（EXPLORE）：
 ```
 
 **探索输出**：
+
 - 问题分析报告
 - 可选方案对比
 - 建议
@@ -106,10 +109,12 @@ Agent（EXPLORE）：
 代码风格：Black, isort
 
 规则：
+
 - OpenSpec: Given/When/Then 格式
 - 验证: 代码覆盖率 >= 80%
 
 请确认是否使用此配置？
+
 - 确认：继续 VK-Plan
 - 修改：更新 vk-config.yaml
 - 跳过：使用默认配置
@@ -151,6 +156,7 @@ Agent（EXPLORE）：
 ## 需求细化记录
 
 ### 第1次追问：功能目标
+
 Q: 这个功能解决什么问题？
 A: {用户回答}
 
@@ -158,6 +164,7 @@ Q: 用户是谁？使用场景是什么？
 A: {用户回答}
 
 ### 第2次追问：输入输出
+
 Q: 输入是什么？格式要求？
 A: {用户回答}
 
@@ -165,6 +172,7 @@ Q: 输出是什么？格式要求？
 A: {用户回答}
 
 ### 第3次追问：非功能需求
+
 Q: 有什么性能要求？
 A: {用户回答}
 
@@ -177,18 +185,20 @@ A: {用户回答}
 ```markdown
 ## 功能点清单
 
-| ID | 功能点 | 优先级 | 复杂度 | 依赖 | 说明 |
-|----|--------|--------|--------|------|------|
-| F1 | {名称} | P0/P1/P2 | 低/中/高 | - | {描述} |
-| F2 | {名称} | P0 | 中 | F1 | {描述} |
-| ... | ... | ... | ... | ... | ... |
+| ID  | 功能点 | 优先级   | 复杂度   | 依赖 | 说明   |
+| --- | ------ | -------- | -------- | ---- | ------ |
+| F1  | {名称} | P0/P1/P2 | 低/中/高 | -    | {描述} |
+| F2  | {名称} | P0       | 中       | F1   | {描述} |
+| ... | ...    | ...      | ...      | ...  | ...    |
 
 优先级说明：
+
 - P0: 必须实现（核心功能）
 - P1: 应该实现（重要功能）
 - P2: 可以实现（可选功能）
 
 复杂度说明：
+
 - 低: < 2小时
 - 中: 2-4小时
 - 高: > 4小时
@@ -202,13 +212,13 @@ A: {用户回答}
 
 #### ⚠️ 任务粒度规则
 
-| 规则 | 说明 |
-|------|------|
+| 规则       | 说明                                        |
+| ---------- | ------------------------------------------- |
 | 模块级粒度 | 每个任务对应一个完整模块/服务，不是单个函数 |
-| 功能内聚 | 相关功能合并为一个任务，避免过度拆分 |
-| 文件隔离 | 每个任务有独立的文件所有权（整个目录） |
-| 可测试性 | 每个任务有独立的测试用例 |
-| 粒度适中 | 预计工时 4-8 小时，避免小于2小时的微任务 |
+| 功能内聚   | 相关功能合并为一个任务，避免过度拆分        |
+| 文件隔离   | 每个任务有独立的文件所有权（整个目录）      |
+| 可测试性   | 每个任务有独立的测试用例                    |
+| 粒度适中   | 预计工时 4-8 小时，避免小于2小时的微任务    |
 
 #### ❌ 避免过度拆分
 
@@ -240,22 +250,26 @@ A: {用户回答}
 ## 执行批次
 
 ### Batch 0: Foundation
+
 - 任务：基础设施（测试框架、共享库）
 - 执行：先行，必须完成
 - 并行：否
 
 ### Batch 1: Core Features
+
 - 任务：核心功能模块
 - 执行：依赖 Batch 0
 - 并行：是（同时启动多个）
 - 最大并行数：5
 
 ### Batch 2: Integration
+
 - 任务：整合层、端到端测试
 - 执行：依赖 Batch 1
 - 并行：否
 
 ### Batch 3: Release
+
 - 任务：文档、发布准备
 - 执行：依赖 Batch 2
 - 并行：否
@@ -266,16 +280,17 @@ A: {用户回答}
 ```markdown
 ## 任务清单
 
-| Task ID | 任务名 | 阶段 | 文件所有权 | 估计工时 | 依赖 |
-|---------|--------|------|-----------|----------|------|
-| T00 | Foundation-TestHarness | Foundation | lib/common.sh, tests/harness.sh | 1h | - |
-| T01 | Core-SpellWords | Core | bin/spell-words.sh, tests/test-spell-words.sh | 2h | T00 |
-| T02 | Core-SpellLower | Core | bin/spell-lower.sh, tests/test-spell-lower.sh | 2h | T00 |
-| T03 | Core-SpellUnique | Core | bin/spell-unique.sh, tests/test-spell-unique.sh | 2h | T00 |
-| T04 | Integration-FullPipeline | Integration | bin/wp-pipeline.sh, tests/test-int.sh | 3h | T01,T02,T03 |
+| Task ID | 任务名                   | 阶段        | 文件所有权                                      | 估计工时 | 依赖        |
+| ------- | ------------------------ | ----------- | ----------------------------------------------- | -------- | ----------- |
+| T00     | Foundation-TestHarness   | Foundation  | lib/common.sh, tests/harness.sh                 | 1h       | -           |
+| T01     | Core-SpellWords          | Core        | bin/spell-words.sh, tests/test-spell-words.sh   | 2h       | T00         |
+| T02     | Core-SpellLower          | Core        | bin/spell-lower.sh, tests/test-spell-lower.sh   | 2h       | T00         |
+| T03     | Core-SpellUnique         | Core        | bin/spell-unique.sh, tests/test-spell-unique.sh | 2h       | T00         |
+| T04     | Integration-FullPipeline | Integration | bin/wp-pipeline.sh, tests/test-int.sh           | 3h       | T01,T02,T03 |
 ```
 
 **命名规范**：
+
 ```
 格式：[阶段]-[功能名称]
 阶段标识：
@@ -290,20 +305,21 @@ A: {用户回答}
 ```markdown
 ## 文件所有权矩阵
 
-| 文件 | T00 | T01 | T02 | T03 | T04 |
-|------|-----|-----|-----|-----|-----|
-| lib/common.sh | ✍️ | 👁️ | 👁️ | 👁️ | 👁️ |
-| tests/harness.sh | ✍️ | 👁️ | 👁️ | 👁️ | 👁️ |
-| bin/a.sh | 👁️ | ✍️ | ❌ | ❌ | 👁️ |
-| bin/b.sh | 👁️ | ❌ | ✍️ | ❌ | 👁️ |
-| bin/c.sh | 👁️ | ❌ | ❌ | ✍️ | 👁️ |
-| bin/int.sh | 👁️ | ❌ | ❌ | ❌ | ✍️ |
-| tests/test-a.sh | ❌ | ✍️ | ❌ | ❌ | ❌ |
-| tests/test-b.sh | ❌ | ❌ | ✍️ | ❌ | ❌ |
-| tests/test-c.sh | ❌ | ❌ | ❌ | ✍️ | ❌ |
-| tests/test-int.sh | ❌ | ❌ | ❌ | ❌ | ✍️ |
+| 文件              | T00 | T01 | T02 | T03 | T04 |
+| ----------------- | --- | --- | --- | --- | --- |
+| lib/common.sh     | ✍️  | 👁️  | 👁️  | 👁️  | 👁️  |
+| tests/harness.sh  | ✍️  | 👁️  | 👁️  | 👁️  | 👁️  |
+| bin/a.sh          | 👁️  | ✍️  | ❌  | ❌  | 👁️  |
+| bin/b.sh          | 👁️  | ❌  | ✍️  | ❌  | 👁️  |
+| bin/c.sh          | 👁️  | ❌  | ❌  | ✍️  | 👁️  |
+| bin/int.sh        | 👁️  | ❌  | ❌  | ❌  | ✍️  |
+| tests/test-a.sh   | ❌  | ✍️  | ❌  | ❌  | ❌  |
+| tests/test-b.sh   | ❌  | ❌  | ✍️  | ❌  | ❌  |
+| tests/test-c.sh   | ❌  | ❌  | ❌  | ✍️  | ❌  |
+| tests/test-int.sh | ❌  | ❌  | ❌  | ❌  | ✍️  |
 
 图例：
+
 - ✍️ 所有者（可写、可改）
 - 👁️ 只读（可读取，不可修改）
 - ❌ 禁止（不可访问）
@@ -325,15 +341,17 @@ A: {用户回答}
 ## 🎯 TASK INSTRUCTION（执行指令）
 
 **你必须完成以下任务：**
-
 ```
+
 {明确告诉AI要做什么，使用祈使句}
 
 示例：
+
 1. 创建 {模块名称} 模块，包含 {具体内容}
 2. 实现 {功能名称}，满足 {业务需求}
 3. 编写测试用例，验证 {测试目标}
 4. 确保 {约束条件}
+
 ```
 
 ## Execution Order
@@ -344,20 +362,26 @@ A: {用户回答}
 ### READ-ONLY Files
 以下文件可读取但不可修改：
 ```
+
 {文件目录列表，每行一个}
+
 ```
 
 ### OWNED Files
 以下文件本任务完全控制（整个目录）：
 ```
+
 {文件目录列表，每行一个}
+
 ```
 
 ### FORBIDDEN Files
 以下文件不可访问：
 ```
+
 {文件目录列表，每行一个}
-```
+
+````
 
 ## Business Context（业务背景）
 
@@ -379,9 +403,10 @@ interface XXXService {
   update(id: string, data: UpdateDTO): Promise<Result>;
   remove(id: string): Promise<void>;
 }
-```
+````
 
 ### Data Interfaces
+
 {定义数据结构，AI必须创建这些类型}
 
 ```typescript
@@ -393,6 +418,7 @@ interface CreateDTO {
 ```
 
 ### Frontend Interfaces
+
 {定义前端组件接口，AI必须实现}
 
 ```typescript
@@ -448,16 +474,19 @@ interface XXXPageProps {
 **完成后必须通过以下测试场景：**
 
 ### ✅ 成功路径
+
 - **Given** {前置条件}
 - **When** {用户操作}
 - **Then** {预期结果} ← 必须验证此结果
 
 ### ✅ 边界条件
+
 - **Given** {前置条件}
 - **When** {边界操作}
 - **Then** {预期结果} ← 必须验证此结果
 
 ### ✅ 异常处理
+
 - **Given** {前置条件}
 - **When** {异常操作}
 - **Then** {错误处理} ← 必须验证此处理
@@ -487,7 +516,8 @@ interface XXXPageProps {
 - [ ] 代码通过静态检查
 - [ ] 验收命令执行成功
 - [ ] 符合文件所有权规则
-```
+
+````
 
 #### 步骤
 
@@ -545,19 +575,21 @@ interface XXXPageProps {
 ### 关键风险
 - {风险1}: {缓解策略}
 - {风险2}: {缓解策略}
-```
+````
 
 ---
 
 ## 用户确认点
 
 自我确认完成后，向用户展示：
+
 1. 自我确认报告
 2. 任务清单摘要
 3. 执行批次顺序
 4. 预计总工时
 
 请求确认：
+
 ```
 自我确认完成：
 - 共 {N} 个独立任务（模块级粒度）
@@ -596,12 +628,12 @@ interface XXXPageProps {
 
 可在执行前通过配置调整：
 
-| 配置项 | 说明 | 默认值 |
-|--------|------|--------|
-| execution_mode | A/B/C（自动程度） | B |
-| max_parallel | 最大并行任务数 | 5 |
-| skip_phases | 跳过的阶段 | [] |
-| custom_template | 自定义 OpenSpec 模板 | null |
+| 配置项          | 说明                 | 默认值 |
+| --------------- | -------------------- | ------ |
+| execution_mode  | A/B/C（自动程度）    | B      |
+| max_parallel    | 最大并行任务数       | 5      |
+| skip_phases     | 跳过的阶段           | []     |
+| custom_template | 自定义 OpenSpec 模板 | null   |
 
 ---
 
@@ -616,29 +648,34 @@ interface XXXPageProps {
 参考 OpenAI Harness Engineering 方法论：
 
 ### 1. 仓库即记录系统
+
 - 所有规划文档必须提交到 `docs/memory/` 目录
 - 不在仓库里的东西，对智能体不存在
 - 决策、规范、计划都作为版本化工件
 
 ### 2. 地图而非手册
+
 - MEMORY.md 保持 ~60 行
 - 渐进披露：从简洁入口指向详细文档
 - 巨型指令文件的死因：挤占上下文、无法维护、无法验证
 
 ### 3. 智能体可读性
+
 - 选择"无聊"技术（API 稳定、训练集覆盖好）
 - 使用 Given/When/Then 格式（智能体容易理解）
 - 文件所有权明确（减少冲突概率）
 
 ### 4. 约束越严，自主性越强
+
 - 限制解空间让 AI 更可靠
 - 文件所有权矩阵收窄解空间
 - 明确的格式规范减少猜测
 
 ### Ralph 循环原则
-| 信条 | 应用 |
-|------|------|
-| Fresh Context | 每次读取文档，不依赖记忆 |
-| Backpressure | 门控拒绝坏结果，不规定怎么做 |
-| Plan Is Disposable | 计划可重新生成 |
-| Steer With Signals | 加路标，不加脚本 |
+
+| 信条               | 应用                         |
+| ------------------ | ---------------------------- |
+| Fresh Context      | 每次读取文档，不依赖记忆     |
+| Backpressure       | 门控拒绝坏结果，不规定怎么做 |
+| Plan Is Disposable | 计划可重新生成               |
+| Steer With Signals | 加路标，不加脚本             |

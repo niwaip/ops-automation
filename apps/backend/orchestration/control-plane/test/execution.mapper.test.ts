@@ -1,4 +1,7 @@
-import { mapExecutionStepToDto, mapExecutionToDto } from '../src/modules/execution/execution.mapper';
+import {
+  mapExecutionStepToDto,
+  mapExecutionToDto,
+} from '../src/modules/execution/execution.mapper';
 
 describe('execution.mapper', () => {
   it('maps execution record to dto and prefers embedded usage from normalized input', () => {
@@ -69,7 +72,7 @@ describe('execution.mapper', () => {
             resultType: 'generic',
           }),
         }),
-      }),
+      })
     );
     expect(dto.createdBy).toBe('user-1');
     expect(dto.createdByName).toBe('Alice');
@@ -122,7 +125,7 @@ describe('execution.mapper', () => {
             summary: '日报已生成',
           }),
         }),
-      }),
+      })
     );
   });
 
@@ -153,7 +156,7 @@ describe('execution.mapper', () => {
             summary: 'Beijing 天气报告\n\n【今天概览】\n当前天气：Mist',
           }),
         }),
-      }),
+      })
     );
   });
 
@@ -252,19 +255,19 @@ describe('execution.mapper', () => {
         phaseType: 'browser_login',
         status: 'running',
         attempt: 1,
-      }),
+      })
     );
     expect(dto.phases?.[0].artifacts?.[0]).toEqual(
       expect.objectContaining({
         artifactType: 'snapshot',
         snapshotId: 'snapshot-1',
-      }),
+      })
     );
     expect(dto.phases?.[0].takeovers?.[0]).toEqual(
       expect.objectContaining({
         status: 'requested',
         reason: 'Captcha detected',
-      }),
+      })
     );
   });
 

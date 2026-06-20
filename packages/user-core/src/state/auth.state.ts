@@ -1,6 +1,6 @@
-import { createStore, type StoreApi } from "zustand/vanilla";
-import type { UserDto } from "../types/user.types.js";
-import type { StoragePort } from "../ports/storage.port.js";
+import { createStore, type StoreApi } from 'zustand/vanilla';
+import type { UserDto } from '../types/user.types.js';
+import type { StoragePort } from '../ports/storage.port.js';
 
 export interface AuthStateData {
   accessToken: string | null;
@@ -32,10 +32,7 @@ const defaultState: AuthStateData = {
   isAuthenticated: false,
 };
 
-const loadPersistedState = (
-  storageKey: string,
-  storage?: StoragePort,
-): Partial<AuthStateData> => {
+const loadPersistedState = (storageKey: string, storage?: StoragePort): Partial<AuthStateData> => {
   if (!storage) {
     return {};
   }
@@ -47,8 +44,8 @@ const loadPersistedState = (
     }
     const parsed = JSON.parse(raw) as Partial<AuthStateData>;
     return {
-      accessToken: typeof parsed.accessToken === "string" ? parsed.accessToken : null,
-      refreshToken: typeof parsed.refreshToken === "string" ? parsed.refreshToken : null,
+      accessToken: typeof parsed.accessToken === 'string' ? parsed.accessToken : null,
+      refreshToken: typeof parsed.refreshToken === 'string' ? parsed.refreshToken : null,
       user: parsed.user ?? null,
       isAuthenticated: Boolean(parsed.accessToken || parsed.refreshToken),
     };
@@ -60,7 +57,7 @@ const loadPersistedState = (
 const persistState = (
   storageKey: string,
   storage: StoragePort | undefined,
-  state: AuthStateData,
+  state: AuthStateData
 ): void => {
   if (!storage) {
     return;
@@ -73,12 +70,12 @@ const persistState = (
       refreshToken: state.refreshToken,
       user: state.user,
       isAuthenticated: state.isAuthenticated,
-    }),
+    })
   );
 };
 
 export const createAuthStore = (options: CreateAuthStoreOptions = {}): AuthStore => {
-  const storageKey = options.storageKey || "ops-user-auth";
+  const storageKey = options.storageKey || 'ops-user-auth';
   const initialState: AuthStateData = {
     ...defaultState,
     ...loadPersistedState(storageKey, options.storage),

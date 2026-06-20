@@ -72,7 +72,10 @@ export function stripJsonLikeComments(content: string): string {
 
     if (!inString && char === '/' && nextChar === '*') {
       index += 2;
-      while (index < content.length - 1 && !(content[index] === '*' && content[index + 1] === '/')) {
+      while (
+        index < content.length - 1 &&
+        !(content[index] === '*' && content[index + 1] === '/')
+      ) {
         index += 1;
       }
       index += 1;
@@ -190,7 +193,7 @@ export function normalizeJsonLikeText(content: string): string {
   const withoutFences = stripMarkdownCodeFences(String(content || ''))
     .replace(/^\uFEFF/, '')
     .replace(/[\u201C\u201D]/g, '"')
-    .replace(/[\u2018\u2019]/g, '\'');
+    .replace(/[\u2018\u2019]/g, "'");
 
   const withoutComments = stripJsonLikeComments(withoutFences);
   return removeTrailingCommas(withoutComments).trim();

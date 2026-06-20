@@ -129,12 +129,12 @@ export interface ReActState {
  * ReAct执行配置
  */
 export interface ReActConfig {
-  maxIterations: number;  // 默认5
+  maxIterations: number; // 默认5
   modelId: string;
-  timeoutMs?: number;     // 每步超时时间
-  tools: string[];        // 可用工具列表
+  timeoutMs?: number; // 每步超时时间
+  tools: string[]; // 可用工具列表
   mode?: 'chat' | 'task'; // 执行模式：聊天或任务
-  thinking?: boolean;     // 是否显示/保留思维链
+  thinking?: boolean; // 是否显示/保留思维链
   webSearch?: boolean;
 }
 
@@ -215,12 +215,15 @@ export interface ToolDefinition {
   requiredRoles?: string[]; // 新增：执行此工具所需的角色
   parameters: {
     type: 'object';
-    properties: Record<string, {
-      type: 'string' | 'number' | 'boolean' | 'array' | 'object';
-      description: string;
-      required?: boolean;
-      items?: any; // 新增：支持数组项定义
-    }>;
+    properties: Record<
+      string,
+      {
+        type: 'string' | 'number' | 'boolean' | 'array' | 'object';
+        description: string;
+        required?: boolean;
+        items?: any; // 新增：支持数组项定义
+      }
+    >;
     required: string[];
   };
   validateParams: (params: Record<string, unknown>) => { valid: boolean; missing: string[] };
@@ -238,8 +241,8 @@ export interface ToolResult {
   data?: Record<string, unknown>;
   requiresUserInput?: boolean;
   userInputPrompt?: string;
-  nextAction?: string;           // 建议下一步调用的工具
-  nextActionParams?: Record<string, unknown>;  // 下一步工具的参数
+  nextAction?: string; // 建议下一步调用的工具
+  nextActionParams?: Record<string, unknown>; // 下一步工具的参数
   meta?: {
     toolName?: string;
     capabilityChecked?: boolean;
@@ -263,12 +266,12 @@ export interface ToolResult {
 export interface ExecutionContext {
   sessionId: string;
   userId: string;
-  traceId?: string;             // Request trace id for observability
-  executionId?: string;           // Execution ID for step tracking
-  userRoles?: string[];           // 新增：当前用户的角色
-  authToken?: string;             // 新增：当前用户的认证令牌 (Bearer token)
+  traceId?: string; // Request trace id for observability
+  executionId?: string; // Execution ID for step tracking
+  userRoles?: string[]; // 新增：当前用户的角色
+  authToken?: string; // 新增：当前用户的认证令牌 (Bearer token)
   capabilitySnapshot?: CapabilitySnapshot;
-  originalUserInput?: string;     // 初始用户输入，供工具缺省参数兜底
+  originalUserInput?: string; // 初始用户输入，供工具缺省参数兜底
   history: ChatMessage[];
   availableSkills?: AvailableSkillDefinition[];
   allowedToolNames?: string[];
@@ -277,11 +280,11 @@ export interface ExecutionContext {
   currentThought?: string;
   skill?: SkillMatchResult;
   uploadedFiles?: UploadedFile[];
-  collectedParams?: Record<string, unknown>;  // 已收集的参数
-  nextAction?: string;            // 工具返回的下一步动作提示
-  nextActionParams?: Record<string, unknown>;  // 下一步动作的参数
-  currentFlowStep?: number;       // 当前执行流的步骤索引
-  currentStepId?: string;         // 当前执行的步骤ID
+  collectedParams?: Record<string, unknown>; // 已收集的参数
+  nextAction?: string; // 工具返回的下一步动作提示
+  nextActionParams?: Record<string, unknown>; // 下一步动作的参数
+  currentFlowStep?: number; // 当前执行流的步骤索引
+  currentStepId?: string; // 当前执行的步骤ID
   documentContext?: {
     pendingTemplateClarification?: boolean;
     selectedTemplateId?: string;
@@ -344,18 +347,21 @@ export interface SkillRuntimeMetadata {
     activityName?: string;
   }>;
   workflowInputPolicy?: {
-    params: Record<string, {
-      enabled?: boolean;
-      requiredMode?: 'always' | 'conditional' | 'optional' | 'system_required';
-      defaultValue?: unknown;
-      defaultValueResolver?: string;
-      valueSourcePriority?: string[];
-      confirmationThreshold?: number;
-      previewBlocking?: boolean;
-      validationRules?: Array<Record<string, unknown>>;
-      transformRule?: string;
-      templateBinding?: string;
-    }>;
+    params: Record<
+      string,
+      {
+        enabled?: boolean;
+        requiredMode?: 'always' | 'conditional' | 'optional' | 'system_required';
+        defaultValue?: unknown;
+        defaultValueResolver?: string;
+        valueSourcePriority?: string[];
+        confirmationThreshold?: number;
+        previewBlocking?: boolean;
+        validationRules?: Array<Record<string, unknown>>;
+        transformRule?: string;
+        templateBinding?: string;
+      }
+    >;
   };
 }
 
@@ -409,12 +415,12 @@ export interface SkillMatchResult {
   carboneSkillId?: string;
   carboneTemplateId?: string;
   executionFlowTemplateId?: string;
-  executionFlowTemplateIds?: string[];  // 执行流程模板ID列表
-  executionFlow?: string[];     // 预定义的执行流
+  executionFlowTemplateIds?: string[]; // 执行流程模板ID列表
+  executionFlow?: string[]; // 预定义的执行流
   apiEndpoints?: {
     runtimeMetadata?: SkillRuntimeMetadata;
   };
-  matchReason?: string;  // AI语义匹配原因
+  matchReason?: string; // AI语义匹配原因
   goal?: string;
   expectedResult?: string;
   outputParams?: Record<string, unknown>;
@@ -459,7 +465,7 @@ export interface UploadedFile {
   fileName: string;
   mimeType: string;
   size: number;
-  content?: string;  // base64编码的文件内容
+  content?: string; // base64编码的文件内容
   parsedContent?: string;
 }
 
@@ -472,13 +478,13 @@ export interface ChatRequestDTO {
   idempotencyKey?: string;
   sessionId?: string;
   userId?: string;
-  executionId?: string;          // Execution ID for step tracking
-  userRoles?: string[];          // 新增：请求中传入的用户角色
+  executionId?: string; // Execution ID for step tracking
+  userRoles?: string[]; // 新增：请求中传入的用户角色
   modelId?: string;
   files?: UploadedFile[];
   config?: Partial<ReActConfig>;
-  isConfirmed?: boolean;         // 是否已确认执行敏感操作
-  approvedToolNames?: string[];  // 已完成审批并允许放行的工具名
+  isConfirmed?: boolean; // 是否已确认执行敏感操作
+  approvedToolNames?: string[]; // 已完成审批并允许放行的工具名
 }
 
 /**

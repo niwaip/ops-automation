@@ -1,11 +1,7 @@
-import { createAuthStore, type AuthSessionPort, type UserDto } from "@ops/user-core";
-import { notificationStore } from "../notifications/notificationStore";
-import { browserStorage } from "../storage/browserStorage";
-import {
-  redirectToLogin,
-  redirectToSsoLogin,
-  resolveSsoCallbackUrl,
-} from "./navigation";
+import { createAuthStore, type AuthSessionPort, type UserDto } from '@ops/user-core';
+import { notificationStore } from '../notifications/notificationStore';
+import { browserStorage } from '../storage/browserStorage';
+import { redirectToLogin, redirectToSsoLogin, resolveSsoCallbackUrl } from './navigation';
 
 interface SsoCallbackResponse {
   accessToken: string;
@@ -41,19 +37,19 @@ export const authSessionPort: AuthSessionPort = {
   },
   handleCallback: async (code) => {
     const response = await fetch(resolveSsoCallbackUrl(), {
-      method: "POST",
+      method: 'POST',
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify({ code }),
     });
 
     if (!response.ok) {
       const message = await response.text();
-      throw new Error(message || "SSO 登录失败");
+      throw new Error(message || 'SSO 登录失败');
     }
 
-    const payload = await response.json() as SsoCallbackResponse;
+    const payload = (await response.json()) as SsoCallbackResponse;
     authStore.getState().login(payload.accessToken, payload.refreshToken, payload.user);
   },
 };

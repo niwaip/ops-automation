@@ -26,7 +26,7 @@ export class ExcelGenerator {
     template: ReportTemplateDTO,
     stepResults: StepResult[],
     aiAnalysis: AIAnalysisResult[],
-    config?: ReportTemplateConfig,
+    config?: ReportTemplateConfig
   ): Promise<string> {
     this.logger.log(`Generating Excel document for template: ${template.name}`);
 
@@ -74,7 +74,7 @@ export class ExcelGenerator {
     sheet: ExcelJS.Worksheet,
     section: ReportSection,
     stepResults: StepResult[],
-    aiAnalysis: AIAnalysisResult[],
+    aiAnalysis: AIAnalysisResult[]
   ): void {
     sheet.columns = [{ header: section.format?.title || section.name, key: 'content', width: 80 }];
 
@@ -98,13 +98,13 @@ export class ExcelGenerator {
     sheet: ExcelJS.Worksheet,
     section: ReportSection,
     stepResults: StepResult[],
-    aiAnalysis: AIAnalysisResult[],
+    aiAnalysis: AIAnalysisResult[]
   ): void {
     const columns = section.format?.columns || ['Step', 'Action', 'Result', 'Status'];
     const filteredResults = this.filterStepResults(section, stepResults);
 
     // Set columns
-    sheet.columns = columns.map(col => ({
+    sheet.columns = columns.map((col) => ({
       header: col,
       key: col.toLowerCase(),
       width: 20,
@@ -148,7 +148,7 @@ export class ExcelGenerator {
   private async addImageSection(
     sheet: ExcelJS.Worksheet,
     section: ReportSection,
-    stepResults: StepResult[],
+    stepResults: StepResult[]
   ): Promise<void> {
     sheet.columns = [{ header: section.format?.title || section.name, key: 'note', width: 50 }];
     sheet.addRow({ note: 'Screenshots from execution:' });
@@ -190,43 +190,40 @@ export class ExcelGenerator {
   private processSection(
     section: ReportSection,
     stepResults: StepResult[],
-    aiAnalysis: AIAnalysisResult[],
+    aiAnalysis: AIAnalysisResult[]
   ): string {
     if (section.source === 'static' && section.content) {
       return section.content;
     }
 
     if (section.source === 'ai_analysis') {
-      const analysis = aiAnalysis.find(a => a.section_id === section.id);
+      const analysis = aiAnalysis.find((a) => a.section_id === section.id);
       return analysis?.analysis || 'No analysis available';
     }
 
     if (section.source === 'step_result') {
       const filteredResults = this.filterStepResults(section, stepResults);
       return filteredResults
-        .map(r => `Step ${r.step_id}: ${r.text || r.error || 'No content'}`)
+        .map((r) => `Step ${r.step_id}: ${r.text || r.error || 'No content'}`)
         .join('\n');
     }
 
     return '';
   }
 
-  private filterStepResults(
-    section: ReportSection,
-    stepResults: StepResult[],
-  ): StepResult[] {
+  private filterStepResults(section: ReportSection, stepResults: StepResult[]): StepResult[] {
     let results = stepResults;
 
     if (section.step_filter) {
       const filter = section.step_filter;
       if (filter.actions) {
-        results = results.filter(r => filter.actions!.includes(r.action));
+        results = results.filter((r) => filter.actions!.includes(r.action));
       }
       if (filter.success_only) {
-        results = results.filter(r => r.success);
+        results = results.filter((r) => r.success);
       }
       if (filter.step_ids) {
-        results = results.filter(r => filter.step_ids!.includes(r.step_id));
+        results = results.filter((r) => filter.step_ids!.includes(r.step_id));
       }
     }
 
@@ -234,9 +231,10 @@ export class ExcelGenerator {
   }
 
   private getTableRowData(result: StepResult, columns: string[]): string[] {
-    const timestamp = typeof result.timestamp === 'number'
-      ? new Date(result.timestamp).toISOString()
-      : result.timestamp.toISOString();
+    const timestamp =
+      typeof result.timestamp === 'number'
+        ? new Date(result.timestamp).toISOString()
+        : result.timestamp.toISOString();
 
     const dataMap: Record<string, string> = {
       Step: result.step_id,
@@ -247,6 +245,6 @@ export class ExcelGenerator {
       Error: result.error || '',
     };
 
-    return columns.map(col => dataMap[col] || '');
+    return columns.map((col) => dataMap[col] || '');
   }
 }

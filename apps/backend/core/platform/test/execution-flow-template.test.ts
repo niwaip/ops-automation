@@ -95,7 +95,7 @@ describe('ExecutionFlowTemplateService', () => {
       expect.any(String),
       JSON.stringify([]),
       true,
-      '00000000-0000-0000-0000-000000000000',
+      '00000000-0000-0000-0000-000000000000'
     );
     expect(JSON.parse(prisma.$queryRawUnsafe.mock.calls[0][6])).toEqual({
       properties: {
@@ -235,7 +235,7 @@ describe('ExecutionFlowTemplateService', () => {
           },
         },
       }),
-      'flow-1',
+      'flow-1'
     );
     expect(result?.paramsSchema).toEqual({
       properties: {
@@ -260,26 +260,28 @@ describe('ExecutionFlowTemplateService', () => {
   it('rejects inputPolicy keys that are not declared in paramsSchema', async () => {
     const { service } = createService();
 
-    await expect(service.createTemplate({
-      name: '非法流程',
-      paramsSchema: {
-        properties: {
-          contractNo: {
-            type: 'string',
-            description: '合同编号',
+    await expect(
+      service.createTemplate({
+        name: '非法流程',
+        paramsSchema: {
+          properties: {
+            contractNo: {
+              type: 'string',
+              description: '合同编号',
+            },
+          },
+          required: ['contractNo'],
+        },
+        inputPolicy: {
+          params: {
+            unknownField: {
+              requiredMode: 'always',
+            },
           },
         },
-        required: ['contractNo'],
-      },
-      inputPolicy: {
-        params: {
-          unknownField: {
-            requiredMode: 'always',
-          },
-        },
-      },
-      steps: [{ type: 'text', name: '收集参数' }],
-    })).rejects.toThrow('inputPolicy.params 包含未注册参数: unknownField');
+        steps: [{ type: 'text', name: '收集参数' }],
+      })
+    ).rejects.toThrow('inputPolicy.params 包含未注册参数: unknownField');
   });
 
   it('keeps legacy schema strategy fields in generated inputPolicy during migration', async () => {
@@ -379,51 +381,55 @@ describe('ExecutionFlowTemplateService', () => {
   it('rejects illegal strategy fields inside inputPolicy param entries', async () => {
     const { service } = createService();
 
-    await expect(service.createTemplate({
-      name: '非法策略字段流程',
-      paramsSchema: {
-        properties: {
-          contractNo: {
-            type: 'string',
-            description: '合同编号',
+    await expect(
+      service.createTemplate({
+        name: '非法策略字段流程',
+        paramsSchema: {
+          properties: {
+            contractNo: {
+              type: 'string',
+              description: '合同编号',
+            },
+          },
+          required: ['contractNo'],
+        },
+        inputPolicy: {
+          params: {
+            contractNo: {
+              required: true,
+            } as any,
           },
         },
-        required: ['contractNo'],
-      },
-      inputPolicy: {
-        params: {
-          contractNo: {
-            required: true,
-          } as any,
-        },
-      },
-      steps: [{ type: 'text', name: '收集参数' }],
-    })).rejects.toThrow('inputPolicy.params.contractNo 包含非法字段: required');
+        steps: [{ type: 'text', name: '收集参数' }],
+      })
+    ).rejects.toThrow('inputPolicy.params.contractNo 包含非法字段: required');
   });
 
   it('rejects inputPolicy defaultValue that does not match the declared param type', async () => {
     const { service } = createService();
 
-    await expect(service.createTemplate({
-      name: '非法默认值流程',
-      paramsSchema: {
-        properties: {
-          retryCount: {
-            type: 'number',
-            description: '重试次数',
+    await expect(
+      service.createTemplate({
+        name: '非法默认值流程',
+        paramsSchema: {
+          properties: {
+            retryCount: {
+              type: 'number',
+              description: '重试次数',
+            },
+          },
+          required: [],
+        },
+        inputPolicy: {
+          params: {
+            retryCount: {
+              defaultValue: '3',
+            },
           },
         },
-        required: [],
-      },
-      inputPolicy: {
-        params: {
-          retryCount: {
-            defaultValue: '3',
-          },
-        },
-      },
-      steps: [{ type: 'text', name: '收集参数' }],
-    })).rejects.toThrow('inputPolicy.params.retryCount.defaultValue 与参数类型 number 不兼容');
+        steps: [{ type: 'text', name: '收集参数' }],
+      })
+    ).rejects.toThrow('inputPolicy.params.retryCount.defaultValue 与参数类型 number 不兼容');
   });
 
   it('syncs default document flow template to render-resolved endpoint on module init', async () => {
@@ -461,20 +467,24 @@ describe('ExecutionFlowTemplateService', () => {
     await service.onModuleInit();
 
     const insertCalls = prisma.$queryRawUnsafe.mock.calls.filter((call) => {
-      return typeof call[0] === 'string' && call[0].includes('INSERT INTO execution_flow_templates');
+      return (
+        typeof call[0] === 'string' && call[0].includes('INSERT INTO execution_flow_templates')
+      );
     });
     expect(insertCalls).toHaveLength(2);
 
     const createdDocumentFlowSteps = JSON.parse(insertCalls[1][8]);
-    expect(createdDocumentFlowSteps).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        type: 'api',
-        name: '渲染文档',
-        api: expect.objectContaining({
-          endpoint: '/api/carbone/render-resolved',
-          method: 'POST',
+    expect(createdDocumentFlowSteps).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'api',
+          name: '渲染文档',
+          api: expect.objectContaining({
+            endpoint: '/api/carbone/render-resolved',
+            method: 'POST',
+          }),
         }),
-      }),
-    ]));
+      ])
+    );
   });
 });

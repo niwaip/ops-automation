@@ -36,32 +36,25 @@ import { Secure } from '../decorators/security.decorator';
 })
 export class FileParseTool extends BaseTool {
   constructor() {
-    super(
-      'file_parse',
-      '解析上传的文件内容，提取文本信息用于参数提取或上下文补充。',
-      {
-        type: 'object',
-        properties: {
-          fileId: {
-            type: 'string',
-            description: '上传文件的ID',
-            required: true,
-          },
-          parseType: {
-            type: 'string',
-            description: '解析类型：full(全部), extract(提取关键信息)',
-            required: false,
-          },
+    super('file_parse', '解析上传的文件内容，提取文本信息用于参数提取或上下文补充。', {
+      type: 'object',
+      properties: {
+        fileId: {
+          type: 'string',
+          description: '上传文件的ID',
+          required: true,
         },
-        required: ['fileId'],
+        parseType: {
+          type: 'string',
+          description: '解析类型：full(全部), extract(提取关键信息)',
+          required: false,
+        },
       },
-    );
+      required: ['fileId'],
+    });
   }
 
-  async execute(
-    params: Record<string, unknown>,
-    context: ExecutionContext,
-  ): Promise<ToolResult> {
+  async execute(params: Record<string, unknown>, context: ExecutionContext): Promise<ToolResult> {
     const fileId = params.fileId as string;
     const parseType = (params.parseType as string) || 'full';
 

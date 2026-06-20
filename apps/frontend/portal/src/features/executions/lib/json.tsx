@@ -44,9 +44,10 @@ export const renderJsonValue = (value: unknown, path = 'root'): ReactNode => {
         {entries.length > 0 && (
           <div style={{ paddingLeft: 16 }}>
             {entries.map(([key, item], index) => {
-              const fixedLink = key === 'temporalLink' && typeof item === 'string'
-                ? replaceLocalhostWithCurrentHost(item)
-                : undefined;
+              const fixedLink =
+                key === 'temporalLink' && typeof item === 'string'
+                  ? replaceLocalhostWithCurrentHost(item)
+                  : undefined;
 
               return (
                 <div key={`${path}.${key}`}>

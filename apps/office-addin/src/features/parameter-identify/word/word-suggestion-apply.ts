@@ -23,10 +23,14 @@ function extractSuggestionLanguageSuffix(value: string): 'zh' | 'ja' | undefined
   return undefined;
 }
 
-function getSuggestionLanguageHint(suggestion: AISuggestion): 'zh' | 'ja' | 'en' | 'mixed' | 'unknown' {
-  return suggestion.details?.currentLanguageHint
-    || extractSuggestionLanguageSuffix(suggestion.suggestedName)
-    || 'unknown';
+function getSuggestionLanguageHint(
+  suggestion: AISuggestion
+): 'zh' | 'ja' | 'en' | 'mixed' | 'unknown' {
+  return (
+    suggestion.details?.currentLanguageHint ||
+    extractSuggestionLanguageSuffix(suggestion.suggestedName) ||
+    'unknown'
+  );
 }
 
 function stripSuggestionLanguageSuffix(value: string): string {
@@ -73,8 +77,8 @@ function hasBilingualSuggestionPair(items: AISuggestion[]): boolean {
     languagesByPair.set(pairKey, current);
   });
 
-  return Array.from(languagesByPair.values()).some((languages) =>
-    languages.has('zh') && languages.has('ja')
+  return Array.from(languagesByPair.values()).some(
+    (languages) => languages.has('zh') && languages.has('ja')
   );
 }
 
@@ -103,8 +107,14 @@ function sortSuggestionsForMergedApply(items: AISuggestion[]): AISuggestion[] {
     const rightPairKey = buildSuggestionPairKey(right);
     const leftPairIndex = firstIndexByPairKey.get(leftPairKey || '') ?? Number.MAX_SAFE_INTEGER;
     const rightPairIndex = firstIndexByPairKey.get(rightPairKey || '') ?? Number.MAX_SAFE_INTEGER;
-    const leftPairOrdinal = typeof left.details?.pairOrdinal === 'number' ? left.details.pairOrdinal : Number.MAX_SAFE_INTEGER;
-    const rightPairOrdinal = typeof right.details?.pairOrdinal === 'number' ? right.details.pairOrdinal : Number.MAX_SAFE_INTEGER;
+    const leftPairOrdinal =
+      typeof left.details?.pairOrdinal === 'number'
+        ? left.details.pairOrdinal
+        : Number.MAX_SAFE_INTEGER;
+    const rightPairOrdinal =
+      typeof right.details?.pairOrdinal === 'number'
+        ? right.details.pairOrdinal
+        : Number.MAX_SAFE_INTEGER;
 
     if (leftPairKey && rightPairKey && leftPairKey === rightPairKey) {
       return getLanguageOrder(left) - getLanguageOrder(right);
@@ -124,14 +134,17 @@ function sortSuggestionsForMergedApply(items: AISuggestion[]): AISuggestion[] {
 
 function buildMergedSuggestionName(items: AISuggestion[]): string {
   const orderedSuggestions = sortSuggestionsForMergedApply(items);
-  return Array.from(new Set(
-    orderedSuggestions
-      .map((item) => String(item.suggestedName || '').trim())
-      .filter(Boolean)
-  )).join('\n');
+  return Array.from(
+    new Set(
+      orderedSuggestions.map((item) => String(item.suggestedName || '').trim()).filter(Boolean)
+    )
+  ).join('\n');
 }
 
-function shouldMergeSuggestionsForTarget(targetKey: string | undefined, items: AISuggestion[]): boolean {
+function shouldMergeSuggestionsForTarget(
+  targetKey: string | undefined,
+  items: AISuggestion[]
+): boolean {
   if (!targetKey || items.length <= 1) {
     return false;
   }
@@ -202,21 +215,21 @@ function buildSuggestionTargetKey(suggestion: AISuggestion): string | undefined 
     | undefined;
 
   const normalizedSuggestedName = String(suggestion.suggestedName || '').trim();
-  const isWordTableLoopRelated = wordAnchor?.type === 'table-cell' && (
-    suggestion.type === 'loop'
-    || Boolean(String(suggestion.details?.arrayPath || '').trim())
-    || /\{#.+\}.*\{\/.+\}/u.test(normalizedSuggestedName)
-    || /\[[^\]]*\]\./u.test(normalizedSuggestedName.replace(/[{}]/g, ''))
-  );
+  const isWordTableLoopRelated =
+    wordAnchor?.type === 'table-cell' &&
+    (suggestion.type === 'loop' ||
+      Boolean(String(suggestion.details?.arrayPath || '').trim()) ||
+      /\{#.+\}.*\{\/.+\}/u.test(normalizedSuggestedName) ||
+      /\[[^\]]*\]\./u.test(normalizedSuggestedName.replace(/[{}]/g, '')));
 
   if (isWordTableLoopRelated) {
     const loopArrayPath = extractWordLoopArrayPath(suggestion);
     if (
-      suggestion.type !== 'loop'
-      && typeof wordAnchor?.tableIndex === 'number'
-      && typeof wordAnchor?.rowIndex === 'number'
-      && typeof wordAnchor?.cellIndex === 'number'
-      && loopArrayPath
+      suggestion.type !== 'loop' &&
+      typeof wordAnchor?.tableIndex === 'number' &&
+      typeof wordAnchor?.rowIndex === 'number' &&
+      typeof wordAnchor?.cellIndex === 'number' &&
+      loopArrayPath
     ) {
       return `word:table-loop-cell:${wordAnchor.tableIndex}:${wordAnchor.rowIndex}:${wordAnchor.cellIndex}:${loopArrayPath}`;
     }
@@ -228,34 +241,40 @@ function buildSuggestionTargetKey(suggestion: AISuggestion): string | undefined 
   }
 
   if (
-    wordAnchor?.type === 'table-cell'
-    && typeof wordAnchor.tableIndex === 'number'
-    && typeof wordAnchor.rowIndex === 'number'
-    && typeof wordAnchor.cellIndex === 'number'
+    wordAnchor?.type === 'table-cell' &&
+    typeof wordAnchor.tableIndex === 'number' &&
+    typeof wordAnchor.rowIndex === 'number' &&
+    typeof wordAnchor.cellIndex === 'number'
   ) {
     return `word:table-cell:${wordAnchor.tableIndex}:${wordAnchor.rowIndex}:${wordAnchor.cellIndex}`;
   }
 
   if (
-    wordAnchor?.type === 'text-range'
-    && typeof wordAnchor.paragraphIndex === 'number'
-    && typeof wordAnchor.start === 'number'
-    && typeof wordAnchor.end === 'number'
+    wordAnchor?.type === 'text-range' &&
+    typeof wordAnchor.paragraphIndex === 'number' &&
+    typeof wordAnchor.start === 'number' &&
+    typeof wordAnchor.end === 'number'
   ) {
     return `word:text-range:${wordAnchor.paragraphIndex}:${wordAnchor.start}:${wordAnchor.end}`;
   }
 
   const underlineInfo = suggestion.underlineInfo;
   if (
-    typeof underlineInfo?.paragraphIndex === 'number'
-    && typeof underlineInfo?.position?.start === 'number'
-    && typeof underlineInfo?.position?.end === 'number'
+    typeof underlineInfo?.paragraphIndex === 'number' &&
+    typeof underlineInfo?.position?.start === 'number' &&
+    typeof underlineInfo?.position?.end === 'number'
   ) {
     return `word:underline:${underlineInfo.paragraphIndex}:${underlineInfo.position.start}:${underlineInfo.position.end}`;
   }
 
   const excelAnchor = suggestion.details?.excelAnchor as
-    | { type?: string; sheetName?: string; address?: string; tableName?: string; pairIndex?: number }
+    | {
+        type?: string;
+        sheetName?: string;
+        address?: string;
+        tableName?: string;
+        pairIndex?: number;
+      }
     | undefined;
   if (excelAnchor?.type === 'cell' && excelAnchor.sheetName && excelAnchor.address) {
     return `excel:cell:${excelAnchor.sheetName}:${excelAnchor.address}`;
@@ -279,7 +298,7 @@ export function buildBatchApplyItems(items: AISuggestion[]): BatchApplyItem[] {
     targetKey: buildSuggestionTargetKey(suggestion),
   }));
   const groupedIndexes = new Set<number>();
-  const indexedSuggestionsByTarget = new Map<string, Array<typeof indexedItems[number]>>();
+  const indexedSuggestionsByTarget = new Map<string, Array<(typeof indexedItems)[number]>>();
 
   indexedItems.forEach((entry) => {
     if (!entry.targetKey) {
@@ -297,7 +316,7 @@ export function buildBatchApplyItems(items: AISuggestion[]): BatchApplyItem[] {
     }
 
     const targetEntries = entry.targetKey
-      ? (indexedSuggestionsByTarget.get(entry.targetKey) || [])
+      ? indexedSuggestionsByTarget.get(entry.targetKey) || []
       : [];
     const sourceSuggestions = shouldMergeSuggestionsForTarget(
       entry.targetKey,
@@ -313,12 +332,13 @@ export function buildBatchApplyItems(items: AISuggestion[]): BatchApplyItem[] {
     }
 
     result.push({
-      suggestion: sourceSuggestions.length > 1
-        ? {
-            ...entry.suggestion,
-            suggestedName: buildMergedSuggestionName(sourceSuggestions),
-          }
-        : entry.suggestion,
+      suggestion:
+        sourceSuggestions.length > 1
+          ? {
+              ...entry.suggestion,
+              suggestedName: buildMergedSuggestionName(sourceSuggestions),
+            }
+          : entry.suggestion,
       sourceSuggestions,
       targetKey: entry.targetKey,
     });

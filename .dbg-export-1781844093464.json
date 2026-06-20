@@ -1,0 +1,1556 @@
+{
+  "sessionId": "recorder-debug-1781844093464",
+  "runtimeSessionId": "recorder-ui-1781843049237-rqv09k",
+  "exportArtifacts": {
+    "script": "// Auto-generated Playwright script from Recorder Debug Chat\n// backend: cli\n// runtimeSessionId: recorder-ui-1781843049237-rqv09k\n\nconst { chromium } = require(\"playwright\");\n\nconst DEFAULT_WAIT_MS = Number(process.env.DEFAULT_WAIT_MS || 2000);\nconst USERNAME = process.env.USERNAME || \"admin\";\nconst LOGINCREDENTIAL = process.env.LOGINCREDENTIAL || \"admin\";\n\nasync function findSearchInput(page) {\n  const selectors = [\n    'input[type=\"search\"]',\n    'textarea[name=\"q\"]',\n    'input[name=\"q\"]',\n    'input[name=\"wd\"]',\n    'textarea[name=\"wd\"]',\n    '[role=\"searchbox\"]',\n    'input[placeholder*=\"搜索\"]',\n    'input[placeholder*=\"Search\" i]',\n    'textarea[placeholder*=\"搜索\"]',\n    'textarea[placeholder*=\"Search\" i]',\n  ];\n  for (const selector of selectors) {\n    const locator = page.locator(selector).first();\n    if (await locator.count()) {\n      return locator;\n    }\n  }\n  throw new Error(\"No search input found on current page\");\n}\n\nasync function clickSearchResult(page, context, index) {\n  const selectors = [\n    \"#content_left a[href]\",\n    \"#b_results a[href]\",\n    \"main a[href]\",\n    \"a[href]\"\n  ];\n  for (const selector of selectors) {\n    const links = page.locator(selector);\n    const count = await links.count();\n    if (count >= index) {\n      const popupPromise = page.waitForEvent(\"popup\", { timeout: 3000 }).catch(() => null);\n      await links.nth(index - 1).click();\n      const popup = await popupPromise;\n      const nextPage = popup || context.pages().at(-1) || page;\n      await nextPage.waitForLoadState(\"domcontentloaded\").catch(() => {});\n      return nextPage;\n    }\n  }\n  throw new Error(`Search result index out of range: ${index}`);\n}\n\nasync function run() {\n  const browser = await chromium.launch({ headless: false });\n  const context = await browser.newContext();\n  let page = await context.newPage();\n\n  // Step 1: 打开登录页\n  await page.goto(\"http://192.168.100.143/#approvals\");\n  await page.waitForTimeout(DEFAULT_WAIT_MS);\n\n  // Step 2: 填写用户名 admin\n  await page.getByRole('textbox', { name: 'ユーザー名 (Username)' }).first().fill(USERNAME);\n  await page.waitForTimeout(DEFAULT_WAIT_MS);\n\n  // Step 3: 填写密码 admin\n  await page.getByRole('textbox', { name: 'パスワード (Password)' }).first().fill(LOGINCREDENTIAL);\n  await page.waitForTimeout(DEFAULT_WAIT_MS);\n\n  // Step 4: 点击登录按钮(ref=e16,精确匹配,避免文本'登录'误匹配日语'ログイン')\n  await page.locator(\"e16\").first().click();\n  await page.waitForTimeout(DEFAULT_WAIT_MS);\n\n  // Step 5: 点击'保留中'按钮筛选未批准的数据\n  await page.getByRole('button', { name: '保留中' }).first().click();\n  await page.waitForTimeout(DEFAULT_WAIT_MS);\n\n  // Step 6: 点击第一个记录，进入详细页面\n  await page.getByText(\":nth-match([data-ai-action=\\\"detail\\\"], 1)\", { exact: false }).first().click();\n  await page.waitForTimeout(DEFAULT_WAIT_MS);\n\n  // Step 7: 粗利率大于20%时自动点击承认按钮\n  await page.getByTestId('btn-approve').first().click();\n  await page.waitForTimeout(DEFAULT_WAIT_MS);\n\n  // Step 8: 截图确认当前页面状态\n  await page.screenshot({ path: \"artifacts/step-8.png\", fullPage: true });\n  await page.waitForTimeout(DEFAULT_WAIT_MS);\n\n  // Step 9: 点击「一覧に戻る」按钮返回案件列表\n  await page.locator(\"e189\").first().click();\n  await page.waitForTimeout(DEFAULT_WAIT_MS);\n\n  await page.waitForTimeout(5000);\n  await browser.close();\n}\n\nrun().catch((error) => {\n  console.error(error);\n  process.exit(1);\n});",
+    "guidance": "目标: 案件粗利率条件审批\n模板名称: 案件粗利率条件审批\n模板描述: 自动登录审批系统，筛选待审批记录，对粗利率大于20%的案件执行批准操作。依赖登录用户名和登录密码。\n脚本用途: 独立稳定执行录制得到的浏览器步骤\nskill 用途: 给 AI 聊天窗口作为内置能力使用，只收集参数并触发固定脚本\n默认 backend: cli\n默认 runtimeSessionId: recorder-ui-1781843049237-rqv09k\n循环模式: repeat_until\n输出位置: pageState -> 浏览器当前页面（http://192.168.100.143/#approvals）；executionResult -> 脚本标准输出 JSON 和 OUTPUT_FILE 文件；snapshotArtifact -> browser worker 返回结果中的 path/snapshot 字段",
+    "templateSteps": [
+      {
+        "step_id": "step_1",
+        "action": "navigate",
+        "params": {
+          "url": "http://192.168.100.143/#approvals"
+        },
+        "description": "打开登录页"
+      },
+      {
+        "step_id": "step_2",
+        "action": "fill",
+        "locator": {
+          "type": "role",
+          "value": "textbox[name=\"ユーザー名 (Username)\"]"
+        },
+        "params": {
+          "value": "admin"
+        },
+        "description": "填写用户名 admin"
+      },
+      {
+        "step_id": "step_3",
+        "action": "fill",
+        "locator": {
+          "type": "role",
+          "value": "textbox[name=\"パスワード (Password)\"]"
+        },
+        "params": {
+          "value": "admin"
+        },
+        "description": "填写密码 admin"
+      },
+      {
+        "step_id": "step_4",
+        "action": "click",
+        "locator": {
+          "type": "role",
+          "value": "button[name=\"登录\"]"
+        },
+        "description": "点击登录按钮(ref=e16,精确匹配,避免文本'登录'误匹配日语'ログイン')"
+      },
+      {
+        "step_id": "step_5",
+        "action": "click",
+        "locator": {
+          "type": "role",
+          "value": "button[name=\"保留中\"]"
+        },
+        "description": "点击'保留中'按钮筛选未批准的数据"
+      },
+      {
+        "step_id": "step_6",
+        "action": "click",
+        "locator": {
+          "type": "css",
+          "value": ":nth-match(tr:has([data-ai-action=\"detail\"]):has-text(\"保留中\") [data-ai-action=\"detail\"], 1)"
+        },
+        "description": "打开当前第一条待处理案件详情"
+      },
+      {
+        "step_id": "step_7",
+        "action": "read_value",
+        "locator": {
+          "type": "css",
+          "value": "[data-testid=\"gross-margin-value\"]"
+        },
+        "params": {
+          "selector": "[data-testid=\"gross-margin-value\"]",
+          "method": "innerText"
+        },
+        "output_var": "projectGrossRate",
+        "description": "读取条件值：读取页面中的案件粗利率，若大于20%则满足自动化承认条件并继续点击承认按钮，否则人工接管"
+      },
+      {
+        "step_id": "step_8",
+        "action": "branch",
+        "branch": {
+          "condition_fn": "(ctx) => { const value = Number(String(ctx.projectGrossRate || '').replace(/[^0-9.-]+/g, '')); return Number.isFinite(value) && value > 20; }",
+          "on_match": "continue",
+          "on_mismatch": "takeover",
+          "takeover_reason": "案件粗利率不满足自动化条件（需≤20%），需要人工介入审查后决定是否承认",
+          "description": "读取页面中的案件粗利率，若大于20%则满足自动化承认条件并继续点击承认按钮，否则人工接管"
+        },
+        "description": "读取页面中的案件粗利率，若大于20%则满足自动化承认条件并继续点击承认按钮，否则人工接管"
+      },
+      {
+        "step_id": "step_9",
+        "action": "click",
+        "locator": {
+          "type": "role",
+          "value": "button[name=\"承認する (Approve)\"]"
+        },
+        "description": "粗利率大于20%，自动点击承认按钮完成审批"
+      },
+      {
+        "step_id": "step_10",
+        "action": "screenshot",
+        "description": "截图确认当前页面状态"
+      },
+      {
+        "step_id": "step_11",
+        "action": "click",
+        "locator": {
+          "type": "role",
+          "value": "button[name=\"一覧に戻る\"]"
+        },
+        "description": "点击「一覧に戻る」按钮返回案件列表"
+      }
+    ],
+    "loopDraft": {
+      "mode": "repeat_until",
+      "target": {
+        "scope": "current_list",
+        "currentPageUrl": "http://192.168.100.143/#approvals"
+      },
+      "eachIteration": {
+        "capturedFromIndex": 8,
+        "capturedToIndex": 11,
+        "stepIds": [
+          "step_6",
+          "step_7",
+          "step_8",
+          "step_9",
+          "step_10",
+          "step_11"
+        ],
+        "stepCount": 6
+      },
+      "onNoProgress": "takeover",
+      "maxIterations": 100,
+      "updatedAt": "2026-06-19T05:23:02.217Z",
+      "stopWhen": {
+        "read": {
+          "type": "text",
+          "locator": {
+            "type": "css",
+            "value": "tr:has([data-ai-action=\"detail\"]):has-text(\"保留中\")"
+          }
+        },
+        "conditionFn": "!String(value || '').includes(\"保留中\")",
+        "description": "当前列表中已无“保留中”项时结束循环"
+      }
+    },
+    "loopPlanPreview": [
+      {
+        "id": "loop_target",
+        "type": "loop_target",
+        "config": {
+          "scope": "current_list",
+          "currentPageUrl": "http://192.168.100.143/#approvals"
+        }
+      },
+      {
+        "id": "loop_each_iteration",
+        "type": "loop_each_iteration",
+        "config": {
+          "stepIds": [
+            "step_6",
+            "step_7",
+            "step_8",
+            "step_9",
+            "step_10",
+            "step_11"
+          ],
+          "stepCount": 6,
+          "capturedFromIndex": 8,
+          "capturedToIndex": 11
+        }
+      },
+      {
+        "id": "loop_stop_when",
+        "type": "loop_stop_when",
+        "config": {
+          "read": {
+            "type": "text",
+            "locator": {
+              "type": "css",
+              "value": "tr:has([data-ai-action=\"detail\"]):has-text(\"保留中\")"
+            }
+          },
+          "conditionFn": "!String(value || '').includes(\"保留中\")",
+          "description": "当前列表中已无“保留中”项时结束循环"
+        }
+      },
+      {
+        "id": "loop_policy",
+        "type": "loop_policy",
+        "config": {
+          "onNoProgress": "takeover",
+          "maxIterations": 100
+        }
+      }
+    ],
+    "scriptValidation": {
+      "syntaxValid": true,
+      "warnings": [
+        "条件分支与人工接管只在 templateSteps/模板执行链中生效，导出的 Playwright 脚本仍是线性录制脚本"
+      ]
+    },
+    "skillDraft": {
+      "name": "案件粗利率条件审批",
+      "description": "自动登录审批系统，筛选待审批记录，对粗利率大于20%的案件执行批准操作。依赖登录用户名和登录密码。",
+      "invocation": "在 AI 聊天窗口中仅解析参数并调用该 skill，由 skill 内部执行稳定的浏览器步骤。",
+      "parameterOnly": true,
+      "parameters": [
+        {
+          "name": "username",
+          "description": "登录用户名",
+          "required": true,
+          "exampleValue": "admin",
+          "source": "command.1.value"
+        },
+        {
+          "name": "loginCredential",
+          "description": "登录密码",
+          "required": true,
+          "exampleValue": "admin",
+          "source": "command.2.value"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "pageState",
+          "description": "执行完成后的页面状态、页面标题和可见内容",
+          "location": "浏览器当前页面（http://192.168.100.143/#approvals）"
+        },
+        {
+          "name": "executionResult",
+          "description": "每一步浏览器命令的执行结果与错误信息",
+          "location": "脚本标准输出 JSON 和 OUTPUT_FILE 文件"
+        },
+        {
+          "name": "snapshotArtifact",
+          "description": "页面快照或截图产物",
+          "location": "browser worker 返回结果中的 path/snapshot 字段"
+        }
+      ],
+      "usageNotes": [
+        "AI 聊天窗口只负责识别参数并调用该 skill，不直接逐步重放浏览器操作。",
+        "skill 内部通过固定 executionPlan 调用 browser worker，保证执行顺序稳定。",
+        "默认 backend 为 cli，默认 runtimeSessionId 为 recorder-ui-1781843049237-rqv09k。",
+        "当前导出已附带循环草稿与循环结构预览，供后续模板/运行时显式消费。",
+        "如果页面结构变化较大，应重新录制并重新生成脚本与 skill 说明。",
+        "脚本导出说明: 条件分支与人工接管只在 templateSteps/模板执行链中生效，导出的 Playwright 脚本仍是线性录制脚本"
+      ],
+      "usageMarkdown": "# Recorder Built-in Skill\n\n## 目标\n案件粗利率条件审批\n\n## 调用方式\nAI 聊天窗口只解析参数并调用该 skill。\nskill 内部按固定 executionPlan 调用 browser worker。\n\n## 默认运行配置\n- backend: cli\n- runtimeSessionId: recorder-ui-1781843049237-rqv09k\n\n## 参数\n- username: 登录用户名 | 必填 | 示例=admin | 来源=command.1.value\n- loginCredential: 登录密码 | 必填 | 示例=admin | 来源=command.2.value\n\n## 输出\n- pageState: 执行完成后的页面状态、页面标题和可见内容 | 位置=浏览器当前页面（http://192.168.100.143/#approvals）\n- executionResult: 每一步浏览器命令的执行结果与错误信息 | 位置=脚本标准输出 JSON 和 OUTPUT_FILE 文件\n- snapshotArtifact: 页面快照或截图产物 | 位置=browser worker 返回结果中的 path/snapshot 字段\n\n## 约束\n- 不允许聊天窗口自行改写执行步骤。\n- 页面变化较大时需要重新录制并重新生成 skill。",
+      "publishPayload": {
+        "name": "案件粗利率条件审批",
+        "description": "自动登录审批系统，筛选待审批记录，对粗利率大于20%的案件执行批准操作。依赖登录用户名和登录密码。",
+        "triggerKeywords": [
+          "案件粗利率条件审批",
+          "打开页面"
+        ],
+        "paramsSchema": {
+          "properties": {
+            "username": {
+              "type": "string",
+              "description": "登录用户名",
+              "required": true,
+              "default": "admin",
+              "extractionPrompt": "优先从用户输入中提取 username，来源提示: command.1.value"
+            },
+            "loginCredential": {
+              "type": "string",
+              "description": "登录密码",
+              "required": true,
+              "default": "admin",
+              "extractionPrompt": "优先从用户输入中提取 loginCredential，来源提示: command.2.value"
+            }
+          },
+          "required": [
+            "username",
+            "loginCredential"
+          ]
+        },
+        "executionFlowTemplateIds": [],
+        "executionFlow": [
+          {
+            "id": "step_browser_recording_execute",
+            "name": "执行录制脚本",
+            "type": "tool",
+            "tool": {
+              "name": "browser_step"
+            },
+            "config": {
+              "executionMode": "recording_script",
+              "parameterMode": "collected_only",
+              "executionPlan": {
+                "backend": "cli",
+                "runtimeSessionId": "recorder-ui-1781843049237-rqv09k",
+                "commands": [
+                  {
+                    "tool": "navigate",
+                    "params": {
+                      "url": "http://192.168.100.143/#approvals"
+                    },
+                    "description": "打开登录页"
+                  },
+                  {
+                    "tool": "fill",
+                    "params": {
+                      "selector": "input#login-username",
+                      "value": "admin",
+                      "target": "e12"
+                    },
+                    "description": "填写用户名 admin",
+                    "locator": {
+                      "strategy": "role",
+                      "value": "textbox",
+                      "role": "textbox",
+                      "name": "ユーザー名 (Username)",
+                      "expression": "getByRole('textbox', { name: 'ユーザー名 (Username)' })",
+                      "generatedBy": "cli",
+                      "confidence": 0.95
+                    }
+                  },
+                  {
+                    "tool": "fill",
+                    "params": {
+                      "selector": "input#login-password",
+                      "value": "admin",
+                      "target": "e15"
+                    },
+                    "description": "填写密码 admin",
+                    "locator": {
+                      "strategy": "role",
+                      "value": "textbox",
+                      "role": "textbox",
+                      "name": "パスワード (Password)",
+                      "expression": "getByRole('textbox', { name: 'パスワード (Password)' })",
+                      "generatedBy": "cli",
+                      "confidence": 0.95
+                    }
+                  },
+                  {
+                    "tool": "click",
+                    "params": {
+                      "target": "e16"
+                    },
+                    "description": "点击登录按钮(ref=e16,精确匹配,避免文本'登录'误匹配日语'ログイン')",
+                    "locator": {
+                      "strategy": "ref",
+                      "value": "e16",
+                      "generatedBy": "system"
+                    }
+                  },
+                  {
+                    "tool": "click",
+                    "params": {
+                      "target": "e82"
+                    },
+                    "description": "点击'保留中'按钮筛选未批准的数据",
+                    "locator": {
+                      "strategy": "role",
+                      "value": "button",
+                      "role": "button",
+                      "name": "保留中",
+                      "expression": "getByRole('button', { name: '保留中' })",
+                      "generatedBy": "cli",
+                      "confidence": 0.95
+                    }
+                  },
+                  {
+                    "tool": "click",
+                    "params": {
+                      "target": ":nth-match([data-ai-action=\"detail\"], 1)"
+                    },
+                    "description": "点击第一个记录，进入详细页面",
+                    "locator": {
+                      "strategy": "text",
+                      "value": ":nth-match([data-ai-action=\"detail\"], 1)",
+                      "generatedBy": "system",
+                      "confidence": 0.2
+                    }
+                  },
+                  {
+                    "tool": "click",
+                    "params": {
+                      "target": "e222",
+                      "text": "承認する (Approve)"
+                    },
+                    "description": "粗利率大于20%时自动点击承认按钮",
+                    "locator": {
+                      "strategy": "testid",
+                      "value": "btn-approve",
+                      "expression": "getByTestId('btn-approve')",
+                      "generatedBy": "cli",
+                      "confidence": 0.95
+                    }
+                  },
+                  {
+                    "tool": "screenshot",
+                    "params": {},
+                    "description": "截图确认当前页面状态"
+                  },
+                  {
+                    "tool": "click",
+                    "params": {
+                      "target": "e189"
+                    },
+                    "description": "点击「一覧に戻る」按钮返回案件列表",
+                    "locator": {
+                      "strategy": "ref",
+                      "value": "e189",
+                      "generatedBy": "system"
+                    }
+                  }
+                ],
+                "templateSteps": [
+                  {
+                    "step_id": "step_1",
+                    "action": "navigate",
+                    "params": {
+                      "url": "http://192.168.100.143/#approvals"
+                    },
+                    "description": "打开登录页"
+                  },
+                  {
+                    "step_id": "step_2",
+                    "action": "fill",
+                    "locator": {
+                      "type": "role",
+                      "value": "textbox[name=\"ユーザー名 (Username)\"]"
+                    },
+                    "params": {
+                      "value": "admin"
+                    },
+                    "description": "填写用户名 admin"
+                  },
+                  {
+                    "step_id": "step_3",
+                    "action": "fill",
+                    "locator": {
+                      "type": "role",
+                      "value": "textbox[name=\"パスワード (Password)\"]"
+                    },
+                    "params": {
+                      "value": "admin"
+                    },
+                    "description": "填写密码 admin"
+                  },
+                  {
+                    "step_id": "step_4",
+                    "action": "click",
+                    "locator": {
+                      "type": "role",
+                      "value": "button[name=\"登录\"]"
+                    },
+                    "description": "点击登录按钮(ref=e16,精确匹配,避免文本'登录'误匹配日语'ログイン')"
+                  },
+                  {
+                    "step_id": "step_5",
+                    "action": "click",
+                    "locator": {
+                      "type": "role",
+                      "value": "button[name=\"保留中\"]"
+                    },
+                    "description": "点击'保留中'按钮筛选未批准的数据"
+                  },
+                  {
+                    "step_id": "step_6",
+                    "action": "click",
+                    "locator": {
+                      "type": "css",
+                      "value": ":nth-match(tr:has([data-ai-action=\"detail\"]):has-text(\"保留中\") [data-ai-action=\"detail\"], 1)"
+                    },
+                    "description": "打开当前第一条待处理案件详情"
+                  },
+                  {
+                    "step_id": "step_7",
+                    "action": "read_value",
+                    "locator": {
+                      "type": "css",
+                      "value": "[data-testid=\"gross-margin-value\"]"
+                    },
+                    "params": {
+                      "selector": "[data-testid=\"gross-margin-value\"]",
+                      "method": "innerText"
+                    },
+                    "output_var": "projectGrossRate",
+                    "description": "读取条件值：读取页面中的案件粗利率，若大于20%则满足自动化承认条件并继续点击承认按钮，否则人工接管"
+                  },
+                  {
+                    "step_id": "step_8",
+                    "action": "branch",
+                    "branch": {
+                      "condition_fn": "(ctx) => { const value = Number(String(ctx.projectGrossRate || '').replace(/[^0-9.-]+/g, '')); return Number.isFinite(value) && value > 20; }",
+                      "on_match": "continue",
+                      "on_mismatch": "takeover",
+                      "takeover_reason": "案件粗利率不满足自动化条件（需≤20%），需要人工介入审查后决定是否承认",
+                      "description": "读取页面中的案件粗利率，若大于20%则满足自动化承认条件并继续点击承认按钮，否则人工接管"
+                    },
+                    "description": "读取页面中的案件粗利率，若大于20%则满足自动化承认条件并继续点击承认按钮，否则人工接管"
+                  },
+                  {
+                    "step_id": "step_9",
+                    "action": "click",
+                    "locator": {
+                      "type": "role",
+                      "value": "button[name=\"承認する (Approve)\"]"
+                    },
+                    "description": "粗利率大于20%，自动点击承认按钮完成审批"
+                  },
+                  {
+                    "step_id": "step_10",
+                    "action": "screenshot",
+                    "description": "截图确认当前页面状态"
+                  },
+                  {
+                    "step_id": "step_11",
+                    "action": "click",
+                    "locator": {
+                      "type": "role",
+                      "value": "button[name=\"一覧に戻る\"]"
+                    },
+                    "description": "点击「一覧に戻る」按钮返回案件列表"
+                  }
+                ]
+              }
+            }
+          }
+        ],
+        "loopPlanPreview": [
+          {
+            "id": "loop_target",
+            "type": "loop_target",
+            "config": {
+              "scope": "current_list",
+              "currentPageUrl": "http://192.168.100.143/#approvals"
+            }
+          },
+          {
+            "id": "loop_each_iteration",
+            "type": "loop_each_iteration",
+            "config": {
+              "stepIds": [
+                "step_6",
+                "step_7",
+                "step_8",
+                "step_9",
+                "step_10",
+                "step_11"
+              ],
+              "stepCount": 6,
+              "capturedFromIndex": 8,
+              "capturedToIndex": 11
+            }
+          },
+          {
+            "id": "loop_stop_when",
+            "type": "loop_stop_when",
+            "config": {
+              "read": {
+                "type": "text",
+                "locator": {
+                  "type": "css",
+                  "value": "tr:has([data-ai-action=\"detail\"]):has-text(\"保留中\")"
+                }
+              },
+              "conditionFn": "!String(value || '').includes(\"保留中\")",
+              "description": "当前列表中已无“保留中”项时结束循环"
+            }
+          },
+          {
+            "id": "loop_policy",
+            "type": "loop_policy",
+            "config": {
+              "onNoProgress": "takeover",
+              "maxIterations": 100
+            }
+          }
+        ],
+        "tools": [
+          "skill_match",
+          "browser_step"
+        ],
+        "apiEndpoints": {
+          "runtimeMetadata": {
+            "sourceType": "browser_recording",
+            "goal": "案件粗利率条件审批",
+            "expectedResult": "按录制脚本完成浏览器任务，并返回页面状态与执行结果",
+            "outputParams": {
+              "pageState": {
+                "description": "执行完成后的页面状态、页面标题和可见内容",
+                "location": "浏览器当前页面（http://192.168.100.143/#approvals）"
+              },
+              "executionResult": {
+                "description": "每一步浏览器命令的执行结果与错误信息",
+                "location": "脚本标准输出 JSON 和 OUTPUT_FILE 文件"
+              },
+              "snapshotArtifact": {
+                "description": "页面快照或截图产物",
+                "location": "browser worker 返回结果中的 path/snapshot 字段"
+              }
+            },
+            "matchSummary": "该技能用于完成录制得到的浏览器任务: 案件粗利率条件审批",
+            "paramCollectionGuidance": "调用前需要先收集参数: username、loginCredential",
+            "validationRules": "聊天窗口只允许解析参数，不允许改写 executionPlan 中的固定浏览器步骤。",
+            "executionPlanVersion": "browser-recording-ir/v1",
+            "executionPlan": {
+              "executionPlanVersion": "browser-recording-ir/v1",
+              "backend": "cli",
+              "runtimeSessionId": "recorder-ui-1781843049237-rqv09k",
+              "commands": [
+                {
+                  "tool": "navigate",
+                  "params": {
+                    "url": "http://192.168.100.143/#approvals"
+                  },
+                  "description": "打开登录页"
+                },
+                {
+                  "tool": "fill",
+                  "params": {
+                    "selector": "input#login-username",
+                    "value": "admin",
+                    "target": "e12"
+                  },
+                  "description": "填写用户名 admin",
+                  "locator": {
+                    "strategy": "role",
+                    "value": "textbox",
+                    "role": "textbox",
+                    "name": "ユーザー名 (Username)",
+                    "expression": "getByRole('textbox', { name: 'ユーザー名 (Username)' })",
+                    "generatedBy": "cli",
+                    "confidence": 0.95
+                  }
+                },
+                {
+                  "tool": "fill",
+                  "params": {
+                    "selector": "input#login-password",
+                    "value": "admin",
+                    "target": "e15"
+                  },
+                  "description": "填写密码 admin",
+                  "locator": {
+                    "strategy": "role",
+                    "value": "textbox",
+                    "role": "textbox",
+                    "name": "パスワード (Password)",
+                    "expression": "getByRole('textbox', { name: 'パスワード (Password)' })",
+                    "generatedBy": "cli",
+                    "confidence": 0.95
+                  }
+                },
+                {
+                  "tool": "click",
+                  "params": {
+                    "target": "e16"
+                  },
+                  "description": "点击登录按钮(ref=e16,精确匹配,避免文本'登录'误匹配日语'ログイン')",
+                  "locator": {
+                    "strategy": "ref",
+                    "value": "e16",
+                    "generatedBy": "system"
+                  }
+                },
+                {
+                  "tool": "click",
+                  "params": {
+                    "target": "e82"
+                  },
+                  "description": "点击'保留中'按钮筛选未批准的数据",
+                  "locator": {
+                    "strategy": "role",
+                    "value": "button",
+                    "role": "button",
+                    "name": "保留中",
+                    "expression": "getByRole('button', { name: '保留中' })",
+                    "generatedBy": "cli",
+                    "confidence": 0.95
+                  }
+                },
+                {
+                  "tool": "click",
+                  "params": {
+                    "target": ":nth-match([data-ai-action=\"detail\"], 1)"
+                  },
+                  "description": "点击第一个记录，进入详细页面",
+                  "locator": {
+                    "strategy": "text",
+                    "value": ":nth-match([data-ai-action=\"detail\"], 1)",
+                    "generatedBy": "system",
+                    "confidence": 0.2
+                  }
+                },
+                {
+                  "tool": "click",
+                  "params": {
+                    "target": "e222",
+                    "text": "承認する (Approve)"
+                  },
+                  "description": "粗利率大于20%时自动点击承认按钮",
+                  "locator": {
+                    "strategy": "testid",
+                    "value": "btn-approve",
+                    "expression": "getByTestId('btn-approve')",
+                    "generatedBy": "cli",
+                    "confidence": 0.95
+                  }
+                },
+                {
+                  "tool": "screenshot",
+                  "params": {},
+                  "description": "截图确认当前页面状态"
+                },
+                {
+                  "tool": "click",
+                  "params": {
+                    "target": "e189"
+                  },
+                  "description": "点击「一覧に戻る」按钮返回案件列表",
+                  "locator": {
+                    "strategy": "ref",
+                    "value": "e189",
+                    "generatedBy": "system"
+                  }
+                }
+              ],
+              "templateSteps": [
+                {
+                  "step_id": "step_1",
+                  "action": "navigate",
+                  "params": {
+                    "url": "http://192.168.100.143/#approvals"
+                  },
+                  "description": "打开登录页"
+                },
+                {
+                  "step_id": "step_2",
+                  "action": "fill",
+                  "locator": {
+                    "type": "role",
+                    "value": "textbox[name=\"ユーザー名 (Username)\"]"
+                  },
+                  "params": {
+                    "value": "admin"
+                  },
+                  "description": "填写用户名 admin"
+                },
+                {
+                  "step_id": "step_3",
+                  "action": "fill",
+                  "locator": {
+                    "type": "role",
+                    "value": "textbox[name=\"パスワード (Password)\"]"
+                  },
+                  "params": {
+                    "value": "admin"
+                  },
+                  "description": "填写密码 admin"
+                },
+                {
+                  "step_id": "step_4",
+                  "action": "click",
+                  "locator": {
+                    "type": "role",
+                    "value": "button[name=\"登录\"]"
+                  },
+                  "description": "点击登录按钮(ref=e16,精确匹配,避免文本'登录'误匹配日语'ログイン')"
+                },
+                {
+                  "step_id": "step_5",
+                  "action": "click",
+                  "locator": {
+                    "type": "role",
+                    "value": "button[name=\"保留中\"]"
+                  },
+                  "description": "点击'保留中'按钮筛选未批准的数据"
+                },
+                {
+                  "step_id": "step_6",
+                  "action": "click",
+                  "locator": {
+                    "type": "css",
+                    "value": ":nth-match(tr:has([data-ai-action=\"detail\"]):has-text(\"保留中\") [data-ai-action=\"detail\"], 1)"
+                  },
+                  "description": "打开当前第一条待处理案件详情"
+                },
+                {
+                  "step_id": "step_7",
+                  "action": "read_value",
+                  "locator": {
+                    "type": "css",
+                    "value": "[data-testid=\"gross-margin-value\"]"
+                  },
+                  "params": {
+                    "selector": "[data-testid=\"gross-margin-value\"]",
+                    "method": "innerText"
+                  },
+                  "output_var": "projectGrossRate",
+                  "description": "读取条件值：读取页面中的案件粗利率，若大于20%则满足自动化承认条件并继续点击承认按钮，否则人工接管"
+                },
+                {
+                  "step_id": "step_8",
+                  "action": "branch",
+                  "branch": {
+                    "condition_fn": "(ctx) => { const value = Number(String(ctx.projectGrossRate || '').replace(/[^0-9.-]+/g, '')); return Number.isFinite(value) && value > 20; }",
+                    "on_match": "continue",
+                    "on_mismatch": "takeover",
+                    "takeover_reason": "案件粗利率不满足自动化条件（需≤20%），需要人工介入审查后决定是否承认",
+                    "description": "读取页面中的案件粗利率，若大于20%则满足自动化承认条件并继续点击承认按钮，否则人工接管"
+                  },
+                  "description": "读取页面中的案件粗利率，若大于20%则满足自动化承认条件并继续点击承认按钮，否则人工接管"
+                },
+                {
+                  "step_id": "step_9",
+                  "action": "click",
+                  "locator": {
+                    "type": "role",
+                    "value": "button[name=\"承認する (Approve)\"]"
+                  },
+                  "description": "粗利率大于20%，自动点击承认按钮完成审批"
+                },
+                {
+                  "step_id": "step_10",
+                  "action": "screenshot",
+                  "description": "截图确认当前页面状态"
+                },
+                {
+                  "step_id": "step_11",
+                  "action": "click",
+                  "locator": {
+                    "type": "role",
+                    "value": "button[name=\"一覧に戻る\"]"
+                  },
+                  "description": "点击「一覧に戻る」按钮返回案件列表"
+                }
+              ],
+              "loopDraft": {
+                "mode": "repeat_until",
+                "target": {
+                  "scope": "current_list",
+                  "currentPageUrl": "http://192.168.100.143/#approvals"
+                },
+                "eachIteration": {
+                  "capturedFromIndex": 8,
+                  "capturedToIndex": 11,
+                  "stepIds": [
+                    "step_6",
+                    "step_7",
+                    "step_8",
+                    "step_9",
+                    "step_10",
+                    "step_11"
+                  ],
+                  "stepCount": 6
+                },
+                "onNoProgress": "takeover",
+                "maxIterations": 100,
+                "updatedAt": "2026-06-19T05:23:02.217Z",
+                "stopWhen": {
+                  "read": {
+                    "type": "text",
+                    "locator": {
+                      "type": "css",
+                      "value": "tr:has([data-ai-action=\"detail\"]):has-text(\"保留中\")"
+                    }
+                  },
+                  "conditionFn": "!String(value || '').includes(\"保留中\")",
+                  "description": "当前列表中已无“保留中”项时结束循环"
+                }
+              },
+              "parameters": [
+                {
+                  "name": "username",
+                  "description": "登录用户名",
+                  "required": true,
+                  "exampleValue": "admin",
+                  "source": "command.1.value"
+                },
+                {
+                  "name": "loginCredential",
+                  "description": "登录密码",
+                  "required": true,
+                  "exampleValue": "admin",
+                  "source": "command.2.value"
+                }
+              ],
+              "outputs": [
+                {
+                  "name": "pageState",
+                  "description": "执行完成后的页面状态、页面标题和可见内容",
+                  "location": "浏览器当前页面（http://192.168.100.143/#approvals）"
+                },
+                {
+                  "name": "executionResult",
+                  "description": "每一步浏览器命令的执行结果与错误信息",
+                  "location": "脚本标准输出 JSON 和 OUTPUT_FILE 文件"
+                },
+                {
+                  "name": "snapshotArtifact",
+                  "description": "页面快照或截图产物",
+                  "location": "browser worker 返回结果中的 path/snapshot 字段"
+                }
+              ],
+              "runtimeHints": {
+                "sourceType": "browser_recording",
+                "parameterMode": "collected_only",
+                "fixedPlan": true
+              },
+              "executionLimits": {
+                "maxCommandCount": 9,
+                "hasLoop": true
+              },
+              "trace": {
+                "recorderSessionId": "recorder-ui-1781843049237-rqv09k",
+                "exportArtifactId": "5c18515c-903c-46f0-846d-d74854fc1fd8"
+              }
+            },
+            "trace": {
+              "recorderSessionId": "recorder-ui-1781843049237-rqv09k",
+              "exportArtifactId": "5c18515c-903c-46f0-846d-d74854fc1fd8"
+            },
+            "templateSteps": [
+              {
+                "step_id": "step_1",
+                "action": "navigate",
+                "params": {
+                  "url": "http://192.168.100.143/#approvals"
+                },
+                "description": "打开登录页"
+              },
+              {
+                "step_id": "step_2",
+                "action": "fill",
+                "locator": {
+                  "type": "role",
+                  "value": "textbox[name=\"ユーザー名 (Username)\"]"
+                },
+                "params": {
+                  "value": "admin"
+                },
+                "description": "填写用户名 admin"
+              },
+              {
+                "step_id": "step_3",
+                "action": "fill",
+                "locator": {
+                  "type": "role",
+                  "value": "textbox[name=\"パスワード (Password)\"]"
+                },
+                "params": {
+                  "value": "admin"
+                },
+                "description": "填写密码 admin"
+              },
+              {
+                "step_id": "step_4",
+                "action": "click",
+                "locator": {
+                  "type": "role",
+                  "value": "button[name=\"登录\"]"
+                },
+                "description": "点击登录按钮(ref=e16,精确匹配,避免文本'登录'误匹配日语'ログイン')"
+              },
+              {
+                "step_id": "step_5",
+                "action": "click",
+                "locator": {
+                  "type": "role",
+                  "value": "button[name=\"保留中\"]"
+                },
+                "description": "点击'保留中'按钮筛选未批准的数据"
+              },
+              {
+                "step_id": "step_6",
+                "action": "click",
+                "locator": {
+                  "type": "css",
+                  "value": ":nth-match(tr:has([data-ai-action=\"detail\"]):has-text(\"保留中\") [data-ai-action=\"detail\"], 1)"
+                },
+                "description": "打开当前第一条待处理案件详情"
+              },
+              {
+                "step_id": "step_7",
+                "action": "read_value",
+                "locator": {
+                  "type": "css",
+                  "value": "[data-testid=\"gross-margin-value\"]"
+                },
+                "params": {
+                  "selector": "[data-testid=\"gross-margin-value\"]",
+                  "method": "innerText"
+                },
+                "output_var": "projectGrossRate",
+                "description": "读取条件值：读取页面中的案件粗利率，若大于20%则满足自动化承认条件并继续点击承认按钮，否则人工接管"
+              },
+              {
+                "step_id": "step_8",
+                "action": "branch",
+                "branch": {
+                  "condition_fn": "(ctx) => { const value = Number(String(ctx.projectGrossRate || '').replace(/[^0-9.-]+/g, '')); return Number.isFinite(value) && value > 20; }",
+                  "on_match": "continue",
+                  "on_mismatch": "takeover",
+                  "takeover_reason": "案件粗利率不满足自动化条件（需≤20%），需要人工介入审查后决定是否承认",
+                  "description": "读取页面中的案件粗利率，若大于20%则满足自动化承认条件并继续点击承认按钮，否则人工接管"
+                },
+                "description": "读取页面中的案件粗利率，若大于20%则满足自动化承认条件并继续点击承认按钮，否则人工接管"
+              },
+              {
+                "step_id": "step_9",
+                "action": "click",
+                "locator": {
+                  "type": "role",
+                  "value": "button[name=\"承認する (Approve)\"]"
+                },
+                "description": "粗利率大于20%，自动点击承认按钮完成审批"
+              },
+              {
+                "step_id": "step_10",
+                "action": "screenshot",
+                "description": "截图确认当前页面状态"
+              },
+              {
+                "step_id": "step_11",
+                "action": "click",
+                "locator": {
+                  "type": "role",
+                  "value": "button[name=\"一覧に戻る\"]"
+                },
+                "description": "点击「一覧に戻る」按钮返回案件列表"
+              }
+            ],
+            "loopDraft": {
+              "mode": "repeat_until",
+              "target": {
+                "scope": "current_list",
+                "currentPageUrl": "http://192.168.100.143/#approvals"
+              },
+              "eachIteration": {
+                "capturedFromIndex": 8,
+                "capturedToIndex": 11,
+                "stepIds": [
+                  "step_6",
+                  "step_7",
+                  "step_8",
+                  "step_9",
+                  "step_10",
+                  "step_11"
+                ],
+                "stepCount": 6
+              },
+              "onNoProgress": "takeover",
+              "maxIterations": 100,
+              "updatedAt": "2026-06-19T05:23:02.217Z",
+              "stopWhen": {
+                "read": {
+                  "type": "text",
+                  "locator": {
+                    "type": "css",
+                    "value": "tr:has([data-ai-action=\"detail\"]):has-text(\"保留中\")"
+                  }
+                },
+                "conditionFn": "!String(value || '').includes(\"保留中\")",
+                "description": "当前列表中已无“保留中”项时结束循环"
+              }
+            },
+            "loopPlanPreview": [
+              {
+                "id": "loop_target",
+                "type": "loop_target",
+                "config": {
+                  "scope": "current_list",
+                  "currentPageUrl": "http://192.168.100.143/#approvals"
+                }
+              },
+              {
+                "id": "loop_each_iteration",
+                "type": "loop_each_iteration",
+                "config": {
+                  "stepIds": [
+                    "step_6",
+                    "step_7",
+                    "step_8",
+                    "step_9",
+                    "step_10",
+                    "step_11"
+                  ],
+                  "stepCount": 6,
+                  "capturedFromIndex": 8,
+                  "capturedToIndex": 11
+                }
+              },
+              {
+                "id": "loop_stop_when",
+                "type": "loop_stop_when",
+                "config": {
+                  "read": {
+                    "type": "text",
+                    "locator": {
+                      "type": "css",
+                      "value": "tr:has([data-ai-action=\"detail\"]):has-text(\"保留中\")"
+                    }
+                  },
+                  "conditionFn": "!String(value || '').includes(\"保留中\")",
+                  "description": "当前列表中已无“保留中”项时结束循环"
+                }
+              },
+              {
+                "id": "loop_policy",
+                "type": "loop_policy",
+                "config": {
+                  "onNoProgress": "takeover",
+                  "maxIterations": 100
+                }
+              }
+            ],
+            "usageMode": "parameter_only_skill"
+          }
+        }
+      },
+      "executionPlan": {
+        "executionPlanVersion": "browser-recording-ir/v1",
+        "backend": "cli",
+        "runtimeSessionId": "recorder-ui-1781843049237-rqv09k",
+        "commands": [
+          {
+            "tool": "navigate",
+            "params": {
+              "url": "http://192.168.100.143/#approvals"
+            },
+            "description": "打开登录页"
+          },
+          {
+            "tool": "fill",
+            "params": {
+              "selector": "input#login-username",
+              "value": "admin",
+              "target": "e12"
+            },
+            "description": "填写用户名 admin",
+            "locator": {
+              "strategy": "role",
+              "value": "textbox",
+              "role": "textbox",
+              "name": "ユーザー名 (Username)",
+              "expression": "getByRole('textbox', { name: 'ユーザー名 (Username)' })",
+              "generatedBy": "cli",
+              "confidence": 0.95
+            }
+          },
+          {
+            "tool": "fill",
+            "params": {
+              "selector": "input#login-password",
+              "value": "admin",
+              "target": "e15"
+            },
+            "description": "填写密码 admin",
+            "locator": {
+              "strategy": "role",
+              "value": "textbox",
+              "role": "textbox",
+              "name": "パスワード (Password)",
+              "expression": "getByRole('textbox', { name: 'パスワード (Password)' })",
+              "generatedBy": "cli",
+              "confidence": 0.95
+            }
+          },
+          {
+            "tool": "click",
+            "params": {
+              "target": "e16"
+            },
+            "description": "点击登录按钮(ref=e16,精确匹配,避免文本'登录'误匹配日语'ログイン')",
+            "locator": {
+              "strategy": "ref",
+              "value": "e16",
+              "generatedBy": "system"
+            }
+          },
+          {
+            "tool": "click",
+            "params": {
+              "target": "e82"
+            },
+            "description": "点击'保留中'按钮筛选未批准的数据",
+            "locator": {
+              "strategy": "role",
+              "value": "button",
+              "role": "button",
+              "name": "保留中",
+              "expression": "getByRole('button', { name: '保留中' })",
+              "generatedBy": "cli",
+              "confidence": 0.95
+            }
+          },
+          {
+            "tool": "click",
+            "params": {
+              "target": ":nth-match([data-ai-action=\"detail\"], 1)"
+            },
+            "description": "点击第一个记录，进入详细页面",
+            "locator": {
+              "strategy": "text",
+              "value": ":nth-match([data-ai-action=\"detail\"], 1)",
+              "generatedBy": "system",
+              "confidence": 0.2
+            }
+          },
+          {
+            "tool": "click",
+            "params": {
+              "target": "e222",
+              "text": "承認する (Approve)"
+            },
+            "description": "粗利率大于20%时自动点击承认按钮",
+            "locator": {
+              "strategy": "testid",
+              "value": "btn-approve",
+              "expression": "getByTestId('btn-approve')",
+              "generatedBy": "cli",
+              "confidence": 0.95
+            }
+          },
+          {
+            "tool": "screenshot",
+            "params": {},
+            "description": "截图确认当前页面状态"
+          },
+          {
+            "tool": "click",
+            "params": {
+              "target": "e189"
+            },
+            "description": "点击「一覧に戻る」按钮返回案件列表",
+            "locator": {
+              "strategy": "ref",
+              "value": "e189",
+              "generatedBy": "system"
+            }
+          }
+        ],
+        "templateSteps": [
+          {
+            "step_id": "step_1",
+            "action": "navigate",
+            "params": {
+              "url": "http://192.168.100.143/#approvals"
+            },
+            "description": "打开登录页"
+          },
+          {
+            "step_id": "step_2",
+            "action": "fill",
+            "locator": {
+              "type": "role",
+              "value": "textbox[name=\"ユーザー名 (Username)\"]"
+            },
+            "params": {
+              "value": "admin"
+            },
+            "description": "填写用户名 admin"
+          },
+          {
+            "step_id": "step_3",
+            "action": "fill",
+            "locator": {
+              "type": "role",
+              "value": "textbox[name=\"パスワード (Password)\"]"
+            },
+            "params": {
+              "value": "admin"
+            },
+            "description": "填写密码 admin"
+          },
+          {
+            "step_id": "step_4",
+            "action": "click",
+            "locator": {
+              "type": "role",
+              "value": "button[name=\"登录\"]"
+            },
+            "description": "点击登录按钮(ref=e16,精确匹配,避免文本'登录'误匹配日语'ログイン')"
+          },
+          {
+            "step_id": "step_5",
+            "action": "click",
+            "locator": {
+              "type": "role",
+              "value": "button[name=\"保留中\"]"
+            },
+            "description": "点击'保留中'按钮筛选未批准的数据"
+          },
+          {
+            "step_id": "step_6",
+            "action": "click",
+            "locator": {
+              "type": "css",
+              "value": ":nth-match(tr:has([data-ai-action=\"detail\"]):has-text(\"保留中\") [data-ai-action=\"detail\"], 1)"
+            },
+            "description": "打开当前第一条待处理案件详情"
+          },
+          {
+            "step_id": "step_7",
+            "action": "read_value",
+            "locator": {
+              "type": "css",
+              "value": "[data-testid=\"gross-margin-value\"]"
+            },
+            "params": {
+              "selector": "[data-testid=\"gross-margin-value\"]",
+              "method": "innerText"
+            },
+            "output_var": "projectGrossRate",
+            "description": "读取条件值：读取页面中的案件粗利率，若大于20%则满足自动化承认条件并继续点击承认按钮，否则人工接管"
+          },
+          {
+            "step_id": "step_8",
+            "action": "branch",
+            "branch": {
+              "condition_fn": "(ctx) => { const value = Number(String(ctx.projectGrossRate || '').replace(/[^0-9.-]+/g, '')); return Number.isFinite(value) && value > 20; }",
+              "on_match": "continue",
+              "on_mismatch": "takeover",
+              "takeover_reason": "案件粗利率不满足自动化条件（需≤20%），需要人工介入审查后决定是否承认",
+              "description": "读取页面中的案件粗利率，若大于20%则满足自动化承认条件并继续点击承认按钮，否则人工接管"
+            },
+            "description": "读取页面中的案件粗利率，若大于20%则满足自动化承认条件并继续点击承认按钮，否则人工接管"
+          },
+          {
+            "step_id": "step_9",
+            "action": "click",
+            "locator": {
+              "type": "role",
+              "value": "button[name=\"承認する (Approve)\"]"
+            },
+            "description": "粗利率大于20%，自动点击承认按钮完成审批"
+          },
+          {
+            "step_id": "step_10",
+            "action": "screenshot",
+            "description": "截图确认当前页面状态"
+          },
+          {
+            "step_id": "step_11",
+            "action": "click",
+            "locator": {
+              "type": "role",
+              "value": "button[name=\"一覧に戻る\"]"
+            },
+            "description": "点击「一覧に戻る」按钮返回案件列表"
+          }
+        ],
+        "loopDraft": {
+          "mode": "repeat_until",
+          "target": {
+            "scope": "current_list",
+            "currentPageUrl": "http://192.168.100.143/#approvals"
+          },
+          "eachIteration": {
+            "capturedFromIndex": 8,
+            "capturedToIndex": 11,
+            "stepIds": [
+              "step_6",
+              "step_7",
+              "step_8",
+              "step_9",
+              "step_10",
+              "step_11"
+            ],
+            "stepCount": 6
+          },
+          "onNoProgress": "takeover",
+          "maxIterations": 100,
+          "updatedAt": "2026-06-19T05:23:02.217Z",
+          "stopWhen": {
+            "read": {
+              "type": "text",
+              "locator": {
+                "type": "css",
+                "value": "tr:has([data-ai-action=\"detail\"]):has-text(\"保留中\")"
+              }
+            },
+            "conditionFn": "!String(value || '').includes(\"保留中\")",
+            "description": "当前列表中已无“保留中”项时结束循环"
+          }
+        },
+        "parameters": [
+          {
+            "name": "username",
+            "description": "登录用户名",
+            "required": true,
+            "exampleValue": "admin",
+            "source": "command.1.value"
+          },
+          {
+            "name": "loginCredential",
+            "description": "登录密码",
+            "required": true,
+            "exampleValue": "admin",
+            "source": "command.2.value"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "pageState",
+            "description": "执行完成后的页面状态、页面标题和可见内容",
+            "location": "浏览器当前页面（http://192.168.100.143/#approvals）"
+          },
+          {
+            "name": "executionResult",
+            "description": "每一步浏览器命令的执行结果与错误信息",
+            "location": "脚本标准输出 JSON 和 OUTPUT_FILE 文件"
+          },
+          {
+            "name": "snapshotArtifact",
+            "description": "页面快照或截图产物",
+            "location": "browser worker 返回结果中的 path/snapshot 字段"
+          }
+        ],
+        "runtimeHints": {
+          "sourceType": "browser_recording",
+          "parameterMode": "collected_only",
+          "fixedPlan": true
+        },
+        "executionLimits": {
+          "maxCommandCount": 9,
+          "hasLoop": true
+        },
+        "trace": {
+          "recorderSessionId": "recorder-ui-1781843049237-rqv09k",
+          "exportArtifactId": "5c18515c-903c-46f0-846d-d74854fc1fd8"
+        }
+      },
+      "commands": [
+        {
+          "tool": "navigate",
+          "params": {
+            "url": "http://192.168.100.143/#approvals"
+          },
+          "description": "打开登录页"
+        },
+        {
+          "tool": "fill",
+          "params": {
+            "selector": "input#login-username",
+            "value": "admin",
+            "target": "e12"
+          },
+          "description": "填写用户名 admin",
+          "locator": {
+            "strategy": "role",
+            "value": "textbox",
+            "role": "textbox",
+            "name": "ユーザー名 (Username)",
+            "expression": "getByRole('textbox', { name: 'ユーザー名 (Username)' })",
+            "generatedBy": "cli",
+            "confidence": 0.95
+          }
+        },
+        {
+          "tool": "fill",
+          "params": {
+            "selector": "input#login-password",
+            "value": "admin",
+            "target": "e15"
+          },
+          "description": "填写密码 admin",
+          "locator": {
+            "strategy": "role",
+            "value": "textbox",
+            "role": "textbox",
+            "name": "パスワード (Password)",
+            "expression": "getByRole('textbox', { name: 'パスワード (Password)' })",
+            "generatedBy": "cli",
+            "confidence": 0.95
+          }
+        },
+        {
+          "tool": "click",
+          "params": {
+            "target": "e16"
+          },
+          "description": "点击登录按钮(ref=e16,精确匹配,避免文本'登录'误匹配日语'ログイン')",
+          "locator": {
+            "strategy": "ref",
+            "value": "e16",
+            "generatedBy": "system"
+          }
+        },
+        {
+          "tool": "click",
+          "params": {
+            "target": "e82"
+          },
+          "description": "点击'保留中'按钮筛选未批准的数据",
+          "locator": {
+            "strategy": "role",
+            "value": "button",
+            "role": "button",
+            "name": "保留中",
+            "expression": "getByRole('button', { name: '保留中' })",
+            "generatedBy": "cli",
+            "confidence": 0.95
+          }
+        },
+        {
+          "tool": "click",
+          "params": {
+            "target": ":nth-match([data-ai-action=\"detail\"], 1)"
+          },
+          "description": "点击第一个记录，进入详细页面",
+          "locator": {
+            "strategy": "text",
+            "value": ":nth-match([data-ai-action=\"detail\"], 1)",
+            "generatedBy": "system",
+            "confidence": 0.2
+          }
+        },
+        {
+          "tool": "click",
+          "params": {
+            "target": "e222",
+            "text": "承認する (Approve)"
+          },
+          "description": "粗利率大于20%时自动点击承认按钮",
+          "locator": {
+            "strategy": "testid",
+            "value": "btn-approve",
+            "expression": "getByTestId('btn-approve')",
+            "generatedBy": "cli",
+            "confidence": 0.95
+          }
+        },
+        {
+          "tool": "screenshot",
+          "params": {},
+          "description": "截图确认当前页面状态"
+        },
+        {
+          "tool": "click",
+          "params": {
+            "target": "e189"
+          },
+          "description": "点击「一覧に戻る」按钮返回案件列表",
+          "locator": {
+            "strategy": "ref",
+            "value": "e189",
+            "generatedBy": "system"
+          }
+        }
+      ]
+    }
+  },
+  "currentPageUrl": "http://192.168.100.143/#approvals"
+}

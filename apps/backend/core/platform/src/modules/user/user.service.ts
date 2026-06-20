@@ -74,7 +74,7 @@ export class UserService {
   async updateRoles(
     userId: string,
     updateDto: UpdateUserRolesDto,
-    adminId: string,
+    adminId: string
   ): Promise<UserDto> {
     // Verify user exists
     const user = await this.prisma.user.findUnique({
@@ -91,14 +91,10 @@ export class UserService {
     });
 
     const existingRoleNames = roles.map((r) => r.name);
-    const missingRoles = updateDto.roles.filter(
-      (r) => !existingRoleNames.includes(r),
-    );
+    const missingRoles = updateDto.roles.filter((r) => !existingRoleNames.includes(r));
 
     if (missingRoles.length > 0) {
-      throw new BadRequestException(
-        `Roles not found: ${missingRoles.join(', ')}`,
-      );
+      throw new BadRequestException(`Roles not found: ${missingRoles.join(', ')}`);
     }
 
     // Delete existing user roles

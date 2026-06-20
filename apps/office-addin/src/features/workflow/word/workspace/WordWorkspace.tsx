@@ -4,7 +4,7 @@ import { FlowLogPanel } from '../../../../debug';
 import { WordWorkflowPanel } from '../WordWorkflowPanel';
 
 export const WordWorkspace: React.FC = () => (
-  <main className='content-area'>
+  <main className="content-area">
     <ErrorBoundary>
       <WordWorkflowPanel />
     </ErrorBoundary>

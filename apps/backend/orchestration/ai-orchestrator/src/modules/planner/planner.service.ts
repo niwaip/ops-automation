@@ -32,11 +32,7 @@ type SkillCacheEntry<T> = {
   value: T;
 };
 
-type WorkflowParamRequiredMode =
-  | 'always'
-  | 'conditional'
-  | 'optional'
-  | 'system_required';
+type WorkflowParamRequiredMode = 'always' | 'conditional' | 'optional' | 'system_required';
 
 type WorkflowParamPolicySnapshot = {
   enabled?: boolean;
@@ -57,12 +53,21 @@ export interface PlannerMatchPhaseResult {
   hasVisibleSkills: boolean;
 }
 
-const DOCUMENT_SEMANTIC_ENABLED = (process.env.DOCUMENT_SEMANTIC_SUBAGENT_ENABLED || 'true').toLowerCase() !== 'false';
+const DOCUMENT_SEMANTIC_ENABLED =
+  (process.env.DOCUMENT_SEMANTIC_SUBAGENT_ENABLED || 'true').toLowerCase() !== 'false';
 const DOCUMENT_COMPLEX_PARAM_THRESHOLD = Number(process.env.DOCUMENT_SEMANTIC_PARAM_THRESHOLD || 8);
-const DOCUMENT_COMPLEX_MISSING_THRESHOLD = Number(process.env.DOCUMENT_SEMANTIC_MISSING_THRESHOLD || 4);
-const DOCUMENT_COMPLEX_ARRAY_GROUP_THRESHOLD = Number(process.env.DOCUMENT_SEMANTIC_ARRAY_GROUP_THRESHOLD || 2);
-const RECOGNIZED_FIELD_LOW_CONFIDENCE_THRESHOLD = Number(process.env.PARAM_FIELD_LOW_CONFIDENCE_THRESHOLD || 0.7);
-const RECOGNITION_RESULT_LOW_CONFIDENCE_THRESHOLD = Number(process.env.PARAM_RESULT_LOW_CONFIDENCE_THRESHOLD || 0.45);
+const DOCUMENT_COMPLEX_MISSING_THRESHOLD = Number(
+  process.env.DOCUMENT_SEMANTIC_MISSING_THRESHOLD || 4
+);
+const DOCUMENT_COMPLEX_ARRAY_GROUP_THRESHOLD = Number(
+  process.env.DOCUMENT_SEMANTIC_ARRAY_GROUP_THRESHOLD || 2
+);
+const RECOGNIZED_FIELD_LOW_CONFIDENCE_THRESHOLD = Number(
+  process.env.PARAM_FIELD_LOW_CONFIDENCE_THRESHOLD || 0.7
+);
+const RECOGNITION_RESULT_LOW_CONFIDENCE_THRESHOLD = Number(
+  process.env.PARAM_RESULT_LOW_CONFIDENCE_THRESHOLD || 0.45
+);
 const PLANNER_SKILL_CACHE_TTL_MS = Number(process.env.PLANNER_SKILL_CACHE_TTL_MS || 60_000);
 const BUSINESS_GROUP_LABELS: Record<string, string> = {
   items: '标的清单',
@@ -74,12 +79,18 @@ const BUSINESS_GROUP_LABELS: Record<string, string> = {
 export class PlannerService {
   private readonly logger = new Logger(PlannerService.name);
   private readonly authServiceUrl = getAuthServiceUrl();
-  private readonly availableSkillsCache = new Map<string, SkillCacheEntry<AvailableSkillDefinition[]>>();
-  private readonly skillByIdCache = new Map<string, SkillCacheEntry<AvailableSkillDefinition | null>>();
+  private readonly availableSkillsCache = new Map<
+    string,
+    SkillCacheEntry<AvailableSkillDefinition[]>
+  >();
+  private readonly skillByIdCache = new Map<
+    string,
+    SkillCacheEntry<AvailableSkillDefinition | null>
+  >();
 
   constructor(
     private readonly recognizerService: RecognizerService,
-    private readonly modelService: ModelService,
+    private readonly modelService: ModelService
   ) {}
 
   async generatePlan(input: {
@@ -102,17 +113,22 @@ export class PlannerService {
     traceId?: string;
   }): Promise<PlannerMatchPhaseResult> {
     const objective = input.request.user_input.trim();
-    const targetSkillId = typeof input.request.context?.target_skill_id === 'string'
-      ? input.request.context.target_skill_id.trim()
-      : '';
-    const availableSkills = await this.loadAvailableSkills(input.authToken, input.traceId, targetSkillId || undefined);
+    const targetSkillId =
+      typeof input.request.context?.target_skill_id === 'string'
+        ? input.request.context.target_skill_id.trim()
+        : '';
+    const availableSkills = await this.loadAvailableSkills(
+      input.authToken,
+      input.traceId,
+      targetSkillId || undefined
+    );
     const matchedSkill = await this.matchSkill(
       objective,
       input.userId || input.request.user_id,
       input.authToken,
       input.traceId,
       availableSkills,
-      input.request.context,
+      input.request.context
     );
 
     return {
@@ -171,11 +187,11 @@ export class PlannerService {
     const mergedRecognized = this.mergeRecognizedWithCollectedContext(
       recognized,
       matchedSkill.paramsSchema,
-      input.context,
+      input.context
     );
     const enrichedRecognized = await this.applyBilingualCompletionToRecognized(
       mergedRecognized,
-      matchedSkill.paramsSchema,
+      matchedSkill.paramsSchema
     );
 
     // 累积消耗
@@ -184,7 +200,7 @@ export class PlannerService {
 
     const semanticContext = this.buildDocumentSemanticContext(
       matchedSkill,
-      this.buildRequiredInputs(matchedSkill, enrichedRecognized, workflowParamPolicies),
+      this.buildRequiredInputs(matchedSkill, enrichedRecognized, workflowParamPolicies)
     );
     const requiredInputs = semanticContext.requiredInputs;
     const executionSnapshot = this.buildExecutionSnapshot(requiredInputs, semanticContext.semantic);
@@ -192,9 +208,10 @@ export class PlannerService {
     const missingInputs = requiredInputs.filter((item) => item.missing);
     // Missing required inputs should be handled by waiting_input, not approval.
     const requiresHumanReview = false;
-    const baseSummary = missingInputs.length > 0
-      ? `已识别技能 ${matchedSkill.skillName}，但仍缺少 ${missingInputs.length} 个关键输入。`
-      : `已识别技能 ${matchedSkill.skillName}，可以按计划进入执行。`;
+    const baseSummary =
+      missingInputs.length > 0
+        ? `已识别技能 ${matchedSkill.skillName}，但仍缺少 ${missingInputs.length} 个关键输入。`
+        : `已识别技能 ${matchedSkill.skillName}，可以按计划进入执行。`;
     const summary = semanticContext.semantic?.summary
       ? `${baseSummary} ${semanticContext.semantic.summary}`
       : baseSummary;
@@ -223,10 +240,7 @@ export class PlannerService {
             ...(matchedSkill.debug?.llmCalls || []),
             ...(recognized.debug?.llmCalls || []),
           ],
-          notes: [
-            ...(matchedSkill.debug?.notes || []),
-            ...(mergedRecognized.debug?.notes || []),
-          ],
+          notes: [...(matchedSkill.debug?.notes || []), ...(mergedRecognized.debug?.notes || [])],
           semanticDebug: semanticContext.debug,
         },
         execution_snapshot: executionSnapshot,
@@ -237,14 +251,16 @@ export class PlannerService {
   private async loadAvailableSkills(
     authToken?: string,
     traceId?: string,
-    targetSkillId?: string,
+    targetSkillId?: string
   ): Promise<AvailableSkillDefinition[]> {
     if (targetSkillId) {
       const skill = await this.loadSkillById(targetSkillId, authToken, traceId);
       if (skill) {
         return [skill];
       }
-      this.logger.warn(`Target skill ${targetSkillId} could not be loaded directly, falling back to full skill list`);
+      this.logger.warn(
+        `Target skill ${targetSkillId} could not be loaded directly, falling back to full skill list`
+      );
     }
 
     const cacheKey = this.buildAuthCacheKey(authToken);
@@ -255,7 +271,9 @@ export class PlannerService {
 
     try {
       const headers = this.buildRequestHeaders(authToken, traceId);
-      const response = await axios.get<SkillListResponse>(`${this.authServiceUrl}/skills`, { headers });
+      const response = await axios.get<SkillListResponse>(`${this.authServiceUrl}/skills`, {
+        headers,
+      });
 
       const rawSkills = Array.isArray(response.data.skills) ? response.data.skills : [];
       const normalizedSkills = rawSkills
@@ -263,7 +281,11 @@ export class PlannerService {
         .filter((item) => item.skillId && item.skillName);
       this.setCacheValue(this.availableSkillsCache, cacheKey, normalizedSkills);
       normalizedSkills.forEach((skill) => {
-        this.setCacheValue(this.skillByIdCache, this.buildSkillCacheKey(cacheKey, skill.skillId), skill);
+        this.setCacheValue(
+          this.skillByIdCache,
+          this.buildSkillCacheKey(cacheKey, skill.skillId),
+          skill
+        );
       });
       return normalizedSkills;
     } catch (error) {
@@ -276,7 +298,7 @@ export class PlannerService {
   private async loadSkillById(
     skillId: string,
     authToken?: string,
-    traceId?: string,
+    traceId?: string
   ): Promise<AvailableSkillDefinition | null> {
     const trimmedSkillId = skillId.trim();
     if (!trimmedSkillId) {
@@ -286,7 +308,7 @@ export class PlannerService {
     const authCacheKey = this.buildAuthCacheKey(authToken);
     const cachedSkill = this.getCacheValue(
       this.skillByIdCache,
-      this.buildSkillCacheKey(authCacheKey, trimmedSkillId),
+      this.buildSkillCacheKey(authCacheKey, trimmedSkillId)
     );
     if (cachedSkill !== undefined) {
       return cachedSkill;
@@ -296,14 +318,14 @@ export class PlannerService {
     try {
       const response = await axios.get<Record<string, unknown>>(
         `${this.authServiceUrl}/skills/${trimmedSkillId}`,
-        { headers },
+        { headers }
       );
       const mappedSkill = this.mapRawSkillDefinition(response.data);
       if (!mappedSkill.skillId || !mappedSkill.skillName) {
         this.setCacheValue(
           this.skillByIdCache,
           this.buildSkillCacheKey(authCacheKey, trimmedSkillId),
-          null,
+          null
         );
         return null;
       }
@@ -311,7 +333,7 @@ export class PlannerService {
       this.setCacheValue(
         this.skillByIdCache,
         this.buildSkillCacheKey(authCacheKey, trimmedSkillId),
-        mappedSkill,
+        mappedSkill
       );
       return mappedSkill;
     } catch (error) {
@@ -322,17 +344,19 @@ export class PlannerService {
   }
 
   private mapRawSkillDefinition(item: Record<string, unknown>): AvailableSkillDefinition {
-    const apiEndpoints = (typeof item.apiEndpoints === 'object' && item.apiEndpoints)
-      ? item.apiEndpoints as AvailableSkillDefinition['apiEndpoints']
-      : undefined;
-    const runtimeMetadata = (apiEndpoints?.runtimeMetadata && typeof apiEndpoints.runtimeMetadata === 'object')
-      ? apiEndpoints.runtimeMetadata as Record<string, unknown>
-      : undefined;
+    const apiEndpoints =
+      typeof item.apiEndpoints === 'object' && item.apiEndpoints
+        ? (item.apiEndpoints as AvailableSkillDefinition['apiEndpoints'])
+        : undefined;
+    const runtimeMetadata =
+      apiEndpoints?.runtimeMetadata && typeof apiEndpoints.runtimeMetadata === 'object'
+        ? (apiEndpoints.runtimeMetadata as Record<string, unknown>)
+        : undefined;
     const sourceTemplate = apiEndpoints?.runtimeMetadata?.sourceTemplate;
     const sourceType = apiEndpoints?.runtimeMetadata?.sourceType;
     const executionType = this.resolveExecutionType(
       typeof item.executionType === 'string' ? item.executionType : undefined,
-      sourceType,
+      sourceType
     );
 
     return {
@@ -342,9 +366,12 @@ export class PlannerService {
       triggerKeywords: Array.isArray(item.triggerKeywords) ? item.triggerKeywords.map(String) : [],
       paramsSchema: this.hydrateParamsSchemaRenderPaths(
         this.normalizeParamsSchema(
-          (item.paramsSchema as AvailableSkillDefinition['paramsSchema']) || { properties: {}, required: [] },
+          (item.paramsSchema as AvailableSkillDefinition['paramsSchema']) || {
+            properties: {},
+            required: [],
+          }
         ),
-        runtimeMetadata,
+        runtimeMetadata
       ),
       executionType,
       templateId:
@@ -365,28 +392,37 @@ export class PlannerService {
           : typeof sourceTemplate?.skillId === 'string'
             ? sourceTemplate.skillId
             : undefined,
-      executionFlowTemplateIds: Array.isArray(item.executionFlowTemplateIds) ? item.executionFlowTemplateIds.map(String) : [],
+      executionFlowTemplateIds: Array.isArray(item.executionFlowTemplateIds)
+        ? item.executionFlowTemplateIds.map(String)
+        : [],
       executionFlow: this.normalizeExecutionFlow(
         Array.isArray(item.executionFlow)
           ? item.executionFlow
-              .map((step) => (step && typeof step === 'object'
-                ? String((step as Record<string, unknown>).name || (step as Record<string, unknown>).type || '')
-                : String(step || '')))
+              .map((step) =>
+                step && typeof step === 'object'
+                  ? String(
+                      (step as Record<string, unknown>).name ||
+                        (step as Record<string, unknown>).type ||
+                        ''
+                    )
+                  : String(step || '')
+              )
               .filter(Boolean)
           : [],
-        sourceType,
+        sourceType
       ),
       apiEndpoints,
       goal: typeof item.goal === 'string' ? item.goal : undefined,
       expectedResult: typeof item.expectedResult === 'string' ? item.expectedResult : undefined,
-      outputParams: typeof item.outputParams === 'object' && item.outputParams
-        ? item.outputParams as Record<string, unknown>
-        : undefined,
+      outputParams:
+        typeof item.outputParams === 'object' && item.outputParams
+          ? (item.outputParams as Record<string, unknown>)
+          : undefined,
     };
   }
 
   private normalizeParamsSchema(
-    schema?: Partial<AvailableSkillDefinition['paramsSchema']>,
+    schema?: Partial<AvailableSkillDefinition['paramsSchema']>
   ): AvailableSkillDefinition['paramsSchema'] {
     const properties = Object.fromEntries(
       Object.entries(schema?.properties || {}).map(([name, value]) => {
@@ -394,32 +430,44 @@ export class PlannerService {
         return [
           name,
           {
-            type: (property.type || 'string') as AvailableSkillDefinition['paramsSchema']['properties'][string]['type'],
+            type: (property.type ||
+              'string') as AvailableSkillDefinition['paramsSchema']['properties'][string]['type'],
             description: property.description || name,
             required: Boolean(property.required),
             ...(property.default !== undefined ? { default: property.default } : {}),
-            ...(property.extractionPrompt !== undefined ? { extractionPrompt: property.extractionPrompt } : {}),
-            ...(typeof property.semanticRole === 'string' ? { semanticRole: property.semanticRole } : {}),
-            ...(Array.isArray(property.extractionHints) ? { extractionHints: property.extractionHints } : {}),
-            ...(typeof property.displayName === 'string' ? { displayName: property.displayName } : {}),
+            ...(property.extractionPrompt !== undefined
+              ? { extractionPrompt: property.extractionPrompt }
+              : {}),
+            ...(typeof property.semanticRole === 'string'
+              ? { semanticRole: property.semanticRole }
+              : {}),
+            ...(Array.isArray(property.extractionHints)
+              ? { extractionHints: property.extractionHints }
+              : {}),
+            ...(typeof property.displayName === 'string'
+              ? { displayName: property.displayName }
+              : {}),
             ...(typeof property.groupLabel === 'string' ? { groupLabel: property.groupLabel } : {}),
-            ...(
-              typeof property.renderPath === 'string'
-              || (Array.isArray(property.renderPath) && property.renderPath.every((item) => typeof item === 'string'))
-                ? { renderPath: property.renderPath }
-                : {}
-            ),
-            ...(typeof property.previewBlocking === 'boolean' ? { previewBlocking: property.previewBlocking } : {}),
+            ...(typeof property.renderPath === 'string' ||
+            (Array.isArray(property.renderPath) &&
+              property.renderPath.every((item) => typeof item === 'string'))
+              ? { renderPath: property.renderPath }
+              : {}),
+            ...(typeof property.previewBlocking === 'boolean'
+              ? { previewBlocking: property.previewBlocking }
+              : {}),
             ...(typeof property.confirmationThreshold === 'number'
               ? { confirmationThreshold: property.confirmationThreshold }
               : {}),
           },
         ];
-      }),
+      })
     );
 
     const required = Array.isArray(schema?.required)
-      ? schema.required.filter((item): item is string => typeof item === 'string' && item.length > 0)
+      ? schema.required.filter(
+          (item): item is string => typeof item === 'string' && item.length > 0
+        )
       : [];
 
     required.forEach((name) => {
@@ -436,7 +484,7 @@ export class PlannerService {
 
   private hydrateParamsSchemaRenderPaths(
     schema: AvailableSkillDefinition['paramsSchema'],
-    runtimeMetadata?: Record<string, unknown>,
+    runtimeMetadata?: Record<string, unknown>
   ): AvailableSkillDefinition['paramsSchema'] {
     const mappingIndex = this.buildRuntimeMappingIndex(runtimeMetadata);
     if (mappingIndex.size === 0) {
@@ -447,11 +495,14 @@ export class PlannerService {
     const nextProperties = Object.fromEntries(
       Object.entries(schema.properties || {}).map(([name, property]) => {
         const existingRenderPath = property.renderPath;
-        const alreadyHasRenderPath = typeof existingRenderPath === 'string'
-          ? existingRenderPath.trim().length > 0
-          : Array.isArray(existingRenderPath)
-            ? existingRenderPath.some((item) => typeof item === 'string' && item.trim().length > 0)
-            : false;
+        const alreadyHasRenderPath =
+          typeof existingRenderPath === 'string'
+            ? existingRenderPath.trim().length > 0
+            : Array.isArray(existingRenderPath)
+              ? existingRenderPath.some(
+                  (item) => typeof item === 'string' && item.trim().length > 0
+                )
+              : false;
         if (alreadyHasRenderPath) {
           return [name, property];
         }
@@ -469,7 +520,7 @@ export class PlannerService {
             renderPath: renderPaths.length === 1 ? renderPaths[0] : renderPaths,
           },
         ];
-      }),
+      })
     ) as AvailableSkillDefinition['paramsSchema']['properties'];
 
     if (!changed) {
@@ -483,7 +534,7 @@ export class PlannerService {
   }
 
   private buildRuntimeMappingIndex(
-    runtimeMetadata?: Record<string, unknown>,
+    runtimeMetadata?: Record<string, unknown>
   ): Map<string, string[]> {
     const mappingIndex = new Map<string, string[]>();
     const mappingHints = Array.isArray(runtimeMetadata?.mappingHints)
@@ -495,11 +546,9 @@ export class PlannerService {
         return;
       }
 
-      const parameterName = typeof hint.parameter === 'string'
-        ? hint.parameter.trim()
-        : '';
+      const parameterName = typeof hint.parameter === 'string' ? hint.parameter.trim() : '';
       const renderPath = this.normalizeRuntimeMappingPath(
-        typeof hint.path === 'string' ? hint.path : undefined,
+        typeof hint.path === 'string' ? hint.path : undefined
       );
       if (!parameterName || !renderPath) {
         return;
@@ -516,7 +565,7 @@ export class PlannerService {
 
   private resolveRuntimeRenderPathsForParam(
     paramName: string,
-    mappingIndex: Map<string, string[]>,
+    mappingIndex: Map<string, string[]>
   ): string[] {
     const directMatch = mappingIndex.get(paramName);
     if (directMatch?.length) {
@@ -546,11 +595,11 @@ export class PlannerService {
 
   private normalizeExecutionFlow(
     executionFlow: string[] | undefined,
-    sourceType?: string,
+    sourceType?: string
   ): string[] {
     // Drop historical bypass step names and keep only the unified document runtime path.
-    const normalized = (executionFlow || []).filter((step) =>
-      step && !['document_intake', 'generate_parameters'].includes(step),
+    const normalized = (executionFlow || []).filter(
+      (step) => step && !['document_intake', 'generate_parameters'].includes(step)
     );
 
     if (normalized.length > 0) {
@@ -566,19 +615,18 @@ export class PlannerService {
     authToken: string | undefined,
     traceId: string | undefined,
     availableSkills: AvailableSkillDefinition[],
-    context?: Record<string, unknown>,
+    context?: Record<string, unknown>
   ): Promise<SkillMatchResult | null> {
-    const targetSkillId = typeof context?.target_skill_id === 'string'
-      ? context.target_skill_id.trim()
-      : '';
+    const targetSkillId =
+      typeof context?.target_skill_id === 'string' ? context.target_skill_id.trim() : '';
     if (targetSkillId) {
       const targetedSkill = availableSkills.find((skill) => skill.skillId === targetSkillId);
       if (targetedSkill) {
         return {
           skillId: targetedSkill.skillId,
           skillName: targetedSkill.skillName,
-          matchedKeywords: targetedSkill.triggerKeywords.filter((keyword) =>
-            keyword && userInput.toLowerCase().includes(keyword.toLowerCase()),
+          matchedKeywords: targetedSkill.triggerKeywords.filter(
+            (keyword) => keyword && userInput.toLowerCase().includes(keyword.toLowerCase())
           ),
           confidence: 1,
           collectedParams: {},
@@ -613,12 +661,15 @@ export class PlannerService {
               ...(authToken ? { Authorization: authToken } : {}),
               ...(traceId ? { [TRACE_ID_HEADER]: traceId } : {}),
             },
-          },
+          }
         );
 
         const matchedSkill = this.hydrateMatchedSkill(response.data.match, availableSkills);
         if (matchedSkill?.confidence && matchedSkill.confidence > 0) {
-          if (matchedSkill.apiEndpoints?.runtimeMetadata?.sourceType === 'document' && (!matchedSkill.executionFlow || matchedSkill.executionFlow.length === 0)) {
+          if (
+            matchedSkill.apiEndpoints?.runtimeMetadata?.sourceType === 'document' &&
+            (!matchedSkill.executionFlow || matchedSkill.executionFlow.length === 0)
+          ) {
             matchedSkill.executionFlow = ['document_render'];
           }
           return matchedSkill;
@@ -634,15 +685,15 @@ export class PlannerService {
 
   private fallbackSkillMatch(
     userInput: string,
-    availableSkills: AvailableSkillDefinition[],
+    availableSkills: AvailableSkillDefinition[]
   ): SkillMatchResult | null {
     const normalizedInput = userInput.toLowerCase();
     let bestScore = 0;
     let bestSkill: AvailableSkillDefinition | undefined;
 
     for (const skill of availableSkills) {
-      const keywordHits = skill.triggerKeywords.filter((keyword) =>
-        keyword && normalizedInput.includes(keyword.toLowerCase()),
+      const keywordHits = skill.triggerKeywords.filter(
+        (keyword) => keyword && normalizedInput.includes(keyword.toLowerCase())
       );
       const descriptionHit = skill.description
         ? normalizedInput.includes(skill.description.toLowerCase())
@@ -661,8 +712,8 @@ export class PlannerService {
     return {
       skillId: bestSkill.skillId,
       skillName: bestSkill.skillName,
-      matchedKeywords: bestSkill.triggerKeywords.filter((keyword) =>
-        keyword && normalizedInput.includes(keyword.toLowerCase()),
+      matchedKeywords: bestSkill.triggerKeywords.filter(
+        (keyword) => keyword && normalizedInput.includes(keyword.toLowerCase())
       ),
       confidence: Math.min(0.9, 0.4 + bestScore * 0.1),
       collectedParams: {},
@@ -705,7 +756,9 @@ export class PlannerService {
         if (!result.completion_tokens_details) {
           result.completion_tokens_details = { reasoning_tokens: 0 };
         }
-        result.completion_tokens_details.reasoning_tokens = (result.completion_tokens_details.reasoning_tokens || 0) + usage.completion_tokens_details.reasoning_tokens;
+        result.completion_tokens_details.reasoning_tokens =
+          (result.completion_tokens_details.reasoning_tokens || 0) +
+          usage.completion_tokens_details.reasoning_tokens;
       }
     }
 
@@ -760,163 +813,180 @@ export class PlannerService {
   private buildRequiredInputs(
     matchedSkill: SkillMatchResult,
     recognized: RecognizeParamsResponseDTO,
-    workflowParamPolicies?: Record<string, WorkflowParamPolicySnapshot>,
+    workflowParamPolicies?: Record<string, WorkflowParamPolicySnapshot>
   ): RequiredInputDTO[] {
     const recognizedParams = recognized.params || {};
     const uncertainFields = new Set(recognized.uncertain_fields || []);
     const fieldConfidences = recognized.field_confidences || {};
-    const overallLowConfidence = (recognized.confidence || 0) < RECOGNITION_RESULT_LOW_CONFIDENCE_THRESHOLD;
-    const allowSchemaStrategyFallback = !this.hasWorkflowPolicyStrategySource(workflowParamPolicies);
+    const overallLowConfidence =
+      (recognized.confidence || 0) < RECOGNITION_RESULT_LOW_CONFIDENCE_THRESHOLD;
+    const allowSchemaStrategyFallback =
+      !this.hasWorkflowPolicyStrategySource(workflowParamPolicies);
     const arrayGroupTargetCounts = this.buildArrayGroupTargetCounts(
       matchedSkill.paramsSchema?.properties || {},
-      recognizedParams,
+      recognizedParams
     );
 
-    return Object.entries(matchedSkill.paramsSchema?.properties || {}).reduce<RequiredInputDTO[]>((acc, [name, schema]) => {
-      const schemaMeta = schema as unknown as Record<string, unknown>;
-      const workflowPolicy = workflowParamPolicies?.[name];
-      if (workflowPolicy?.enabled === false) {
-        return acc;
-      }
-      const requiredMode = this.resolveWorkflowRequiredMode(
-        workflowPolicy,
-        Boolean(schema.required || matchedSkill.paramsSchema.required?.includes(name)),
-        allowSchemaStrategyFallback,
-      );
-      const required = requiredMode === 'always' || requiredMode === 'system_required';
-      const rawHasValue = Object.prototype.hasOwnProperty.call(recognizedParams, name);
-      const rawValue = rawHasValue ? recognizedParams[name] : undefined;
-      const normalizedRawValue = rawHasValue ? this.normalizeMeaningfulInputValue(rawValue) : undefined;
-      const hasValue = this.hasMeaningfulRequiredInputValue(normalizedRawValue);
-      const normalizedWorkflowDefaultValue = !required && workflowPolicy?.defaultValue !== undefined
-        ? this.normalizeOptionalDefaultValue(workflowPolicy.defaultValue)
-        : undefined;
-      const normalizedSchemaDefaultValue = allowSchemaStrategyFallback && !required && normalizedWorkflowDefaultValue === undefined
-        ? this.normalizeOptionalDefaultValue(schema.default)
-        : undefined;
-      const normalizedDefaultValue = normalizedWorkflowDefaultValue !== undefined
-        ? normalizedWorkflowDefaultValue
-        : normalizedSchemaDefaultValue;
-      const canUseDefault = !required && !hasValue && normalizedDefaultValue !== undefined;
-      const value = hasValue ? normalizedRawValue : canUseDefault ? normalizedDefaultValue : undefined;
-      const arrayGroupKey = this.extractArrayGroupKey(name, schema.type);
-      const groupTargetCount = arrayGroupKey ? (arrayGroupTargetCounts[arrayGroupKey] || 0) : 0;
-      const valueItemCount = this.countMeaningfulRequiredInputItems(value);
-      const hasPartialArrayGroupValue = Boolean(
-        required
-        && arrayGroupKey
-        && groupTargetCount > 1
-        && valueItemCount > 0
-        && valueItemCount < groupTargetCount,
-      );
-      const fieldConfidence = typeof fieldConfidences[name] === 'number'
-        ? Math.max(0, Math.min(1, fieldConfidences[name] as number))
-        : undefined;
-      const confirmationThreshold = typeof workflowPolicy?.confirmationThreshold === 'number'
-        && Number.isFinite(workflowPolicy.confirmationThreshold)
-        ? Math.max(0, Math.min(1, workflowPolicy.confirmationThreshold))
-        : allowSchemaStrategyFallback
-          && typeof schemaMeta.confirmationThreshold === 'number'
-          && Number.isFinite(schemaMeta.confirmationThreshold)
-          ? Math.max(0, Math.min(1, schemaMeta.confirmationThreshold))
-          : RECOGNIZED_FIELD_LOW_CONFIDENCE_THRESHOLD;
-      const previewBlocking = typeof workflowPolicy?.previewBlocking === 'boolean'
-        ? workflowPolicy.previewBlocking
-        : allowSchemaStrategyFallback && typeof schemaMeta.previewBlocking === 'boolean'
-          ? Boolean(schemaMeta.previewBlocking)
-        : undefined;
-      const shouldBlockOnConfirmation = required || previewBlocking === true;
-      const needsConfidenceConfirmation = hasValue && shouldBlockOnConfirmation && (
-        uncertainFields.has(name)
-        || (fieldConfidence !== undefined && fieldConfidence < confirmationThreshold)
-        || (fieldConfidence === undefined && required && overallLowConfidence)
-      );
-      const needsPartialGroupConfirmation = hasPartialArrayGroupValue && shouldBlockOnConfirmation;
-      const needsConfirmation = needsConfidenceConfirmation || needsPartialGroupConfirmation;
-      const isValueMissing = !this.hasMeaningfulRequiredInputValue(value);
-      const isBlockingMissing = (required && isValueMissing) || needsConfirmation;
-      const missingReason = isBlockingMissing && needsConfidenceConfirmation
-        ? fieldConfidence === undefined && overallLowConfidence
-          ? 'overall_low_confidence' as const
-          : 'low_confidence' as const
-        : isBlockingMissing && needsPartialGroupConfirmation
-          ? 'partial_group' as const
-        : isBlockingMissing && required && isValueMissing
-          ? 'missing' as const
+    return Object.entries(matchedSkill.paramsSchema?.properties || {}).reduce<RequiredInputDTO[]>(
+      (acc, [name, schema]) => {
+        const schemaMeta = schema as unknown as Record<string, unknown>;
+        const workflowPolicy = workflowParamPolicies?.[name];
+        if (workflowPolicy?.enabled === false) {
+          return acc;
+        }
+        const requiredMode = this.resolveWorkflowRequiredMode(
+          workflowPolicy,
+          Boolean(schema.required || matchedSkill.paramsSchema.required?.includes(name)),
+          allowSchemaStrategyFallback
+        );
+        const required = requiredMode === 'always' || requiredMode === 'system_required';
+        const rawHasValue = Object.prototype.hasOwnProperty.call(recognizedParams, name);
+        const rawValue = rawHasValue ? recognizedParams[name] : undefined;
+        const normalizedRawValue = rawHasValue
+          ? this.normalizeMeaningfulInputValue(rawValue)
           : undefined;
-      const description = this.decorateRequiredInputDescription(
-        this.decorateArrayGroupCompletenessDescription(
-          schema.description,
-          valueItemCount,
-          groupTargetCount,
-          hasPartialArrayGroupValue,
-        ),
-        value,
-        missingReason,
-        fieldConfidence,
-      );
-      const displayName = this.resolveRequiredInputDisplayName(
-        name,
-        typeof schemaMeta.displayName === 'string' ? schemaMeta.displayName : undefined,
-        schema.description,
-      );
+        const hasValue = this.hasMeaningfulRequiredInputValue(normalizedRawValue);
+        const normalizedWorkflowDefaultValue =
+          !required && workflowPolicy?.defaultValue !== undefined
+            ? this.normalizeOptionalDefaultValue(workflowPolicy.defaultValue)
+            : undefined;
+        const normalizedSchemaDefaultValue =
+          allowSchemaStrategyFallback && !required && normalizedWorkflowDefaultValue === undefined
+            ? this.normalizeOptionalDefaultValue(schema.default)
+            : undefined;
+        const normalizedDefaultValue =
+          normalizedWorkflowDefaultValue !== undefined
+            ? normalizedWorkflowDefaultValue
+            : normalizedSchemaDefaultValue;
+        const canUseDefault = !required && !hasValue && normalizedDefaultValue !== undefined;
+        const value = hasValue
+          ? normalizedRawValue
+          : canUseDefault
+            ? normalizedDefaultValue
+            : undefined;
+        const arrayGroupKey = this.extractArrayGroupKey(name, schema.type);
+        const groupTargetCount = arrayGroupKey ? arrayGroupTargetCounts[arrayGroupKey] || 0 : 0;
+        const valueItemCount = this.countMeaningfulRequiredInputItems(value);
+        const hasPartialArrayGroupValue = Boolean(
+          required &&
+          arrayGroupKey &&
+          groupTargetCount > 1 &&
+          valueItemCount > 0 &&
+          valueItemCount < groupTargetCount
+        );
+        const fieldConfidence =
+          typeof fieldConfidences[name] === 'number'
+            ? Math.max(0, Math.min(1, fieldConfidences[name] as number))
+            : undefined;
+        const confirmationThreshold =
+          typeof workflowPolicy?.confirmationThreshold === 'number' &&
+          Number.isFinite(workflowPolicy.confirmationThreshold)
+            ? Math.max(0, Math.min(1, workflowPolicy.confirmationThreshold))
+            : allowSchemaStrategyFallback &&
+                typeof schemaMeta.confirmationThreshold === 'number' &&
+                Number.isFinite(schemaMeta.confirmationThreshold)
+              ? Math.max(0, Math.min(1, schemaMeta.confirmationThreshold))
+              : RECOGNIZED_FIELD_LOW_CONFIDENCE_THRESHOLD;
+        const previewBlocking =
+          typeof workflowPolicy?.previewBlocking === 'boolean'
+            ? workflowPolicy.previewBlocking
+            : allowSchemaStrategyFallback && typeof schemaMeta.previewBlocking === 'boolean'
+              ? Boolean(schemaMeta.previewBlocking)
+              : undefined;
+        const shouldBlockOnConfirmation = required || previewBlocking === true;
+        const needsConfidenceConfirmation =
+          hasValue &&
+          shouldBlockOnConfirmation &&
+          (uncertainFields.has(name) ||
+            (fieldConfidence !== undefined && fieldConfidence < confirmationThreshold) ||
+            (fieldConfidence === undefined && required && overallLowConfidence));
+        const needsPartialGroupConfirmation =
+          hasPartialArrayGroupValue && shouldBlockOnConfirmation;
+        const needsConfirmation = needsConfidenceConfirmation || needsPartialGroupConfirmation;
+        const isValueMissing = !this.hasMeaningfulRequiredInputValue(value);
+        const isBlockingMissing = (required && isValueMissing) || needsConfirmation;
+        const missingReason =
+          isBlockingMissing && needsConfidenceConfirmation
+            ? fieldConfidence === undefined && overallLowConfidence
+              ? ('overall_low_confidence' as const)
+              : ('low_confidence' as const)
+            : isBlockingMissing && needsPartialGroupConfirmation
+              ? ('partial_group' as const)
+              : isBlockingMissing && required && isValueMissing
+                ? ('missing' as const)
+                : undefined;
+        const description = this.decorateRequiredInputDescription(
+          this.decorateArrayGroupCompletenessDescription(
+            schema.description,
+            valueItemCount,
+            groupTargetCount,
+            hasPartialArrayGroupValue
+          ),
+          value,
+          missingReason,
+          fieldConfidence
+        );
+        const displayName = this.resolveRequiredInputDisplayName(
+          name,
+          typeof schemaMeta.displayName === 'string' ? schemaMeta.displayName : undefined,
+          schema.description
+        );
 
-      acc.push({
-        name,
-        type: schema.type,
-        description,
-        ...(displayName
-          ? { display_name: displayName }
-          : {}),
-        ...(typeof schemaMeta.groupLabel === 'string'
-          ? { group_label: String(schemaMeta.groupLabel) }
-          : {}),
-        ...(() => {
-          if (typeof schemaMeta.renderPath === 'string' && schemaMeta.renderPath.trim()) {
-            return { render_path: schemaMeta.renderPath.trim() };
-          }
-          if (Array.isArray(schemaMeta.renderPath)) {
-            const renderPaths = schemaMeta.renderPath
-              .filter((item): item is string => typeof item === 'string')
-              .map((item) => item.trim())
-              .filter((item) => item.length > 0);
-            if (renderPaths.length > 0) {
-              return { render_path: renderPaths };
+        acc.push({
+          name,
+          type: schema.type,
+          description,
+          ...(displayName ? { display_name: displayName } : {}),
+          ...(typeof schemaMeta.groupLabel === 'string'
+            ? { group_label: String(schemaMeta.groupLabel) }
+            : {}),
+          ...(() => {
+            if (typeof schemaMeta.renderPath === 'string' && schemaMeta.renderPath.trim()) {
+              return { render_path: schemaMeta.renderPath.trim() };
             }
-          }
-          return {};
-        })(),
-        ...(typeof workflowPolicy?.templateBinding === 'string'
-          ? { template_binding: workflowPolicy.templateBinding.trim() }
-          : {}),
-        required,
-        required_mode: requiredMode,
-        value,
-        missing: isBlockingMissing,
-        source: hasValue
-          ? 'user_input'
-          : canUseDefault && value !== undefined
-            ? normalizedWorkflowDefaultValue !== undefined
-              ? 'workflow_default'
-              : 'default'
-            : 'unresolved',
-        ...(Array.isArray(workflowPolicy?.valueSourcePriority) && workflowPolicy.valueSourcePriority.length > 0
-          ? { source_priority: workflowPolicy.valueSourcePriority }
-          : {}),
-        confidence: fieldConfidence,
-        needs_confirmation: needsConfirmation,
-        confirmation_threshold: confirmationThreshold,
-        ...(typeof previewBlocking === 'boolean'
-          ? { preview_blocking: previewBlocking }
-          : {}),
-        ...(missingReason ? { missing_reason: missingReason } : {}),
-      });
-      return acc;
-    }, []);
+            if (Array.isArray(schemaMeta.renderPath)) {
+              const renderPaths = schemaMeta.renderPath
+                .filter((item): item is string => typeof item === 'string')
+                .map((item) => item.trim())
+                .filter((item) => item.length > 0);
+              if (renderPaths.length > 0) {
+                return { render_path: renderPaths };
+              }
+            }
+            return {};
+          })(),
+          ...(typeof workflowPolicy?.templateBinding === 'string'
+            ? { template_binding: workflowPolicy.templateBinding.trim() }
+            : {}),
+          required,
+          required_mode: requiredMode,
+          value,
+          missing: isBlockingMissing,
+          source: hasValue
+            ? 'user_input'
+            : canUseDefault && value !== undefined
+              ? normalizedWorkflowDefaultValue !== undefined
+                ? 'workflow_default'
+                : 'default'
+              : 'unresolved',
+          ...(Array.isArray(workflowPolicy?.valueSourcePriority) &&
+          workflowPolicy.valueSourcePriority.length > 0
+            ? { source_priority: workflowPolicy.valueSourcePriority }
+            : {}),
+          confidence: fieldConfidence,
+          needs_confirmation: needsConfirmation,
+          confirmation_threshold: confirmationThreshold,
+          ...(typeof previewBlocking === 'boolean' ? { preview_blocking: previewBlocking } : {}),
+          ...(missingReason ? { missing_reason: missingReason } : {}),
+        });
+        return acc;
+      },
+      []
+    );
   }
 
   private resolveWorkflowParamPolicies(
-    matchedSkill: SkillMatchResult,
+    matchedSkill: SkillMatchResult
   ): Record<string, WorkflowParamPolicySnapshot> | undefined {
     const workflowInputPolicy = matchedSkill.apiEndpoints?.runtimeMetadata?.workflowInputPolicy;
     if (!workflowInputPolicy || typeof workflowInputPolicy !== 'object') {
@@ -932,10 +1002,15 @@ export class PlannerService {
   private resolveWorkflowRequiredMode(
     workflowPolicy: WorkflowParamPolicySnapshot | undefined,
     schemaRequired: boolean,
-    allowSchemaStrategyFallback: boolean,
+    allowSchemaStrategyFallback: boolean
   ): WorkflowParamRequiredMode {
     const mode = workflowPolicy?.requiredMode;
-    if (mode === 'always' || mode === 'conditional' || mode === 'optional' || mode === 'system_required') {
+    if (
+      mode === 'always' ||
+      mode === 'conditional' ||
+      mode === 'optional' ||
+      mode === 'system_required'
+    ) {
       return mode;
     }
     if (!allowSchemaStrategyFallback) {
@@ -945,16 +1020,26 @@ export class PlannerService {
   }
 
   private hasWorkflowPolicyStrategySource(
-    workflowParamPolicies?: Record<string, WorkflowParamPolicySnapshot>,
+    workflowParamPolicies?: Record<string, WorkflowParamPolicySnapshot>
   ): boolean {
     return Boolean(workflowParamPolicies && Object.keys(workflowParamPolicies).length > 0);
   }
 
-  private identifyBilingualPairs(
-    schema: SkillMatchResult['paramsSchema'],
-  ): Array<{ base: string; aKey: string; bKey: string; aLang: 'zh' | 'ja' | 'en'; bLang: 'zh' | 'ja' | 'en' }> {
+  private identifyBilingualPairs(schema: SkillMatchResult['paramsSchema']): Array<{
+    base: string;
+    aKey: string;
+    bKey: string;
+    aLang: 'zh' | 'ja' | 'en';
+    bLang: 'zh' | 'ja' | 'en';
+  }> {
     const keys = Object.keys(schema.properties || {});
-    const pairs: Array<{ base: string; aKey: string; bKey: string; aLang: 'zh' | 'ja' | 'en'; bLang: 'zh' | 'ja' | 'en' }> = [];
+    const pairs: Array<{
+      base: string;
+      aKey: string;
+      bKey: string;
+      aLang: 'zh' | 'ja' | 'en';
+      bLang: 'zh' | 'ja' | 'en';
+    }> = [];
     const patterns: Array<{ aSuffix: string; aLang: 'zh'; bSuffix: string; bLang: 'ja' | 'en' }> = [
       { aSuffix: '_cn', aLang: 'zh', bSuffix: '_jp', bLang: 'ja' },
       { aSuffix: '_cn', aLang: 'zh', bSuffix: '_en', bLang: 'en' },
@@ -987,7 +1072,7 @@ export class PlannerService {
 
   private async applyBilingualCompletionToRecognized(
     recognized: RecognizeParamsResponseDTO,
-    schema: SkillMatchResult['paramsSchema'],
+    schema: SkillMatchResult['paramsSchema']
   ): Promise<RecognizeParamsResponseDTO> {
     const bilingualPairs = this.identifyBilingualPairs(schema);
     if (bilingualPairs.length === 0) {
@@ -995,14 +1080,16 @@ export class PlannerService {
     }
 
     const params: Record<string, unknown> = { ...(recognized.params || {}) };
-    const fieldConfidences: Record<string, number> = { ...(recognized.field_confidences || {}) } as Record<string, number>;
+    const fieldConfidences: Record<string, number> = {
+      ...(recognized.field_confidences || {}),
+    } as Record<string, number>;
     const translateBatches: Record<string, Record<string, string>> = {};
 
     const enqueueTranslate = (
       sourceLang: 'zh' | 'ja' | 'en',
       targetLang: 'zh' | 'ja' | 'en',
       targetKey: string,
-      value: string,
+      value: string
     ) => {
       const batchKey = `${sourceLang}::${targetLang}`;
       if (!translateBatches[batchKey]) {
@@ -1022,15 +1109,31 @@ export class PlannerService {
       if (normalizedA !== undefined && normalizedB === undefined) {
         if (prop?.type !== 'string') {
           params[pair.bKey] = normalizedA;
-          if (typeof fieldConfidences[pair.aKey] === 'number' && typeof fieldConfidences[pair.bKey] !== 'number') {
-            fieldConfidences[pair.bKey] = Math.max(0, Math.min(1, fieldConfidences[pair.aKey] as number));
+          if (
+            typeof fieldConfidences[pair.aKey] === 'number' &&
+            typeof fieldConfidences[pair.bKey] !== 'number'
+          ) {
+            fieldConfidences[pair.bKey] = Math.max(
+              0,
+              Math.min(1, fieldConfidences[pair.aKey] as number)
+            );
           }
           continue;
         }
-        if (typeof normalizedA === 'string' && normalizedA.trim() && !isPlaceholderTextValue(normalizedA)) {
+        if (
+          typeof normalizedA === 'string' &&
+          normalizedA.trim() &&
+          !isPlaceholderTextValue(normalizedA)
+        ) {
           enqueueTranslate(pair.aLang, pair.bLang, pair.bKey, normalizedA.trim());
-          if (typeof fieldConfidences[pair.aKey] === 'number' && typeof fieldConfidences[pair.bKey] !== 'number') {
-            fieldConfidences[pair.bKey] = Math.max(0.8, Math.min(0.95, fieldConfidences[pair.aKey] as number));
+          if (
+            typeof fieldConfidences[pair.aKey] === 'number' &&
+            typeof fieldConfidences[pair.bKey] !== 'number'
+          ) {
+            fieldConfidences[pair.bKey] = Math.max(
+              0.8,
+              Math.min(0.95, fieldConfidences[pair.aKey] as number)
+            );
           }
         }
         continue;
@@ -1039,22 +1142,41 @@ export class PlannerService {
       if (normalizedB !== undefined && normalizedA === undefined) {
         if (prop?.type !== 'string') {
           params[pair.aKey] = normalizedB;
-          if (typeof fieldConfidences[pair.bKey] === 'number' && typeof fieldConfidences[pair.aKey] !== 'number') {
-            fieldConfidences[pair.aKey] = Math.max(0, Math.min(1, fieldConfidences[pair.bKey] as number));
+          if (
+            typeof fieldConfidences[pair.bKey] === 'number' &&
+            typeof fieldConfidences[pair.aKey] !== 'number'
+          ) {
+            fieldConfidences[pair.aKey] = Math.max(
+              0,
+              Math.min(1, fieldConfidences[pair.bKey] as number)
+            );
           }
           continue;
         }
-        if (typeof normalizedB === 'string' && normalizedB.trim() && !isPlaceholderTextValue(normalizedB)) {
+        if (
+          typeof normalizedB === 'string' &&
+          normalizedB.trim() &&
+          !isPlaceholderTextValue(normalizedB)
+        ) {
           enqueueTranslate(pair.bLang, pair.aLang, pair.aKey, normalizedB.trim());
-          if (typeof fieldConfidences[pair.bKey] === 'number' && typeof fieldConfidences[pair.aKey] !== 'number') {
-            fieldConfidences[pair.aKey] = Math.max(0.8, Math.min(0.95, fieldConfidences[pair.bKey] as number));
+          if (
+            typeof fieldConfidences[pair.bKey] === 'number' &&
+            typeof fieldConfidences[pair.aKey] !== 'number'
+          ) {
+            fieldConfidences[pair.aKey] = Math.max(
+              0.8,
+              Math.min(0.95, fieldConfidences[pair.bKey] as number)
+            );
           }
         }
       }
     }
 
     for (const [batchKey, batch] of Object.entries(translateBatches)) {
-      const [sourceLang, targetLang] = batchKey.split('::') as ['zh' | 'ja' | 'en', 'zh' | 'ja' | 'en'];
+      const [sourceLang, targetLang] = batchKey.split('::') as [
+        'zh' | 'ja' | 'en',
+        'zh' | 'ja' | 'en',
+      ];
       if (Object.keys(batch).length === 0) continue;
       const translated = await this.batchTranslate(batch, sourceLang, targetLang);
       Object.assign(params, translated);
@@ -1065,9 +1187,8 @@ export class PlannerService {
       }
     }
 
-    const nextFieldConfidences = Object.keys(fieldConfidences).length > 0
-      ? fieldConfidences
-      : recognized.field_confidences;
+    const nextFieldConfidences =
+      Object.keys(fieldConfidences).length > 0 ? fieldConfidences : recognized.field_confidences;
 
     return {
       ...recognized,
@@ -1079,7 +1200,7 @@ export class PlannerService {
   private async batchTranslate(
     data: Record<string, string>,
     sourceLang: 'zh' | 'ja' | 'en',
-    targetLang: 'zh' | 'ja' | 'en',
+    targetLang: 'zh' | 'ja' | 'en'
   ): Promise<Record<string, string>> {
     const langNameMap: Record<'zh' | 'ja' | 'en', string> = {
       zh: '中文',
@@ -1105,14 +1226,16 @@ ${JSON.stringify(data, null, 2)}`;
       }
       return { ...data };
     } catch (error) {
-      this.logger.warn(`Planner bilingual translation failed: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.warn(
+        `Planner bilingual translation failed: ${error instanceof Error ? error.message : String(error)}`
+      );
       return { ...data };
     }
   }
 
   private buildArrayGroupTargetCounts(
     properties: Record<string, { type: string }>,
-    recognizedParams: Record<string, unknown>,
+    recognizedParams: Record<string, unknown>
   ): Record<string, number> {
     return Object.entries(properties).reduce<Record<string, number>>((acc, [name, schema]) => {
       const groupKey = this.extractArrayGroupKey(name, schema.type);
@@ -1139,7 +1262,9 @@ ${JSON.stringify(data, null, 2)}`;
       return value.some((item) => this.hasMeaningfulRequiredInputValue(item));
     }
     if (typeof value === 'object') {
-      return Object.values(value as Record<string, unknown>).some((item) => this.hasMeaningfulRequiredInputValue(item));
+      return Object.values(value as Record<string, unknown>).some((item) =>
+        this.hasMeaningfulRequiredInputValue(item)
+      );
     }
     return true;
   }
@@ -1185,7 +1310,7 @@ ${JSON.stringify(data, null, 2)}`;
     description: string | undefined,
     currentCount: number,
     targetCount: number,
-    incomplete: boolean,
+    incomplete: boolean
   ): string | undefined {
     const base = String(description || '').trim();
     if (!incomplete) {
@@ -1198,7 +1323,7 @@ ${JSON.stringify(data, null, 2)}`;
   private resolveRequiredInputDisplayName(
     name: string,
     displayName?: string,
-    description?: string,
+    description?: string
   ): string | undefined {
     const resolved = resolveFriendlyInputDisplayName({
       name,
@@ -1212,7 +1337,7 @@ ${JSON.stringify(data, null, 2)}`;
     description: string | undefined,
     value: unknown,
     missingReason: RequiredInputDTO['missing_reason'],
-    confidence?: number,
+    confidence?: number
   ): string | undefined {
     const base = String(description || '').trim();
     if (!missingReason || missingReason === 'missing') {
@@ -1220,26 +1345,26 @@ ${JSON.stringify(data, null, 2)}`;
     }
 
     const preview = this.summarizeInputValue(value);
-    const confidenceText = typeof confidence === 'number'
-      ? `，当前识别置信度 ${(confidence * 100).toFixed(0)}%`
-      : '';
-    const reason = missingReason === 'overall_low_confidence'
-      ? `已识别候选值“${preview}”，但本轮整体识别置信度偏低${confidenceText}，请确认或改写`
-      : missingReason === 'partial_group'
-        ? `已识别候选值“${preview}”，但同组数组条数尚未对齐，请确认已识别内容并补齐缺失项`
-        : `已识别候选值“${preview}”，但该字段置信度偏低${confidenceText}，请确认或改写`;
+    const confidenceText =
+      typeof confidence === 'number' ? `，当前识别置信度 ${(confidence * 100).toFixed(0)}%` : '';
+    const reason =
+      missingReason === 'overall_low_confidence'
+        ? `已识别候选值“${preview}”，但本轮整体识别置信度偏低${confidenceText}，请确认或改写`
+        : missingReason === 'partial_group'
+          ? `已识别候选值“${preview}”，但同组数组条数尚未对齐，请确认已识别内容并补齐缺失项`
+          : `已识别候选值“${preview}”，但该字段置信度偏低${confidenceText}，请确认或改写`;
     return base ? `${base}；${reason}` : reason;
   }
 
   private summarizeInputValue(value: unknown): string {
     if (Array.isArray(value)) {
-      const normalized = value
-        .map((item) => String(item ?? '').trim())
-        .filter(Boolean);
+      const normalized = value.map((item) => String(item ?? '').trim()).filter(Boolean);
       if (normalized.length === 0) {
         return '空';
       }
-      return normalized.length === 1 ? normalized[0]! : `${normalized[0]} 等 ${normalized.length} 项`;
+      return normalized.length === 1
+        ? normalized[0]!
+        : `${normalized[0]} 等 ${normalized.length} 项`;
     }
 
     const text = String(value ?? '').trim();
@@ -1251,7 +1376,7 @@ ${JSON.stringify(data, null, 2)}`;
 
   private buildDocumentSemanticContext(
     matchedSkill: SkillMatchResult,
-    requiredInputs: RequiredInputDTO[],
+    requiredInputs: RequiredInputDTO[]
   ): {
     requiredInputs: RequiredInputDTO[];
     semantic?: PlanSemanticDTO;
@@ -1271,7 +1396,8 @@ ${JSON.stringify(data, null, 2)}`;
 
     const cleanedRequiredInputs = this.cleanRequiredInputs(requiredInputs);
     const complexity = this.analyzeDocumentComplexity(cleanedRequiredInputs);
-    const shouldUseSemanticBypass = DOCUMENT_SEMANTIC_ENABLED && complexity.category === 'complex_document';
+    const shouldUseSemanticBypass =
+      DOCUMENT_SEMANTIC_ENABLED && complexity.category === 'complex_document';
     const semantic = DOCUMENT_SEMANTIC_ENABLED
       ? this.buildPlanSemantic(cleanedRequiredInputs, complexity, shouldUseSemanticBypass)
       : undefined;
@@ -1297,26 +1423,31 @@ ${JSON.stringify(data, null, 2)}`;
 
     const schemaProperties = matchedSkill.paramsSchema?.properties || {};
     const hasTemplateLoopMarkers = Object.entries(schemaProperties).some(([name, schema]) => {
-      const description = schema && typeof schema === 'object'
-        ? String((schema as unknown as { description?: unknown }).description || '')
-        : '';
+      const description =
+        schema && typeof schema === 'object'
+          ? String((schema as unknown as { description?: unknown }).description || '')
+          : '';
       return [name, description].some((value) => /\{#.+\}|\{\/.+\}/.test(value));
     });
 
-    return matchedSkill.apiEndpoints?.runtimeMetadata?.sourceType === 'document'
-      || matchedSkill.executionFlow?.includes('document_render')
-      || Boolean(matchedSkill.carboneTemplateId)
-      || Boolean(matchedSkill.executionFlowTemplateIds?.length)
-      || hasTemplateLoopMarkers;
+    return (
+      matchedSkill.apiEndpoints?.runtimeMetadata?.sourceType === 'document' ||
+      matchedSkill.executionFlow?.includes('document_render') ||
+      Boolean(matchedSkill.carboneTemplateId) ||
+      Boolean(matchedSkill.executionFlowTemplateIds?.length) ||
+      hasTemplateLoopMarkers
+    );
   }
 
-  private analyzeDocumentComplexity(requiredInputs: RequiredInputDTO[]): PlanSemanticDTO['complexity'] {
+  private analyzeDocumentComplexity(
+    requiredInputs: RequiredInputDTO[]
+  ): PlanSemanticDTO['complexity'] {
     const requiredFields = requiredInputs.filter((item) => item.required).length;
     const missingFields = requiredInputs.filter((item) => item.required && item.missing).length;
     const arrayGroups = new Set(
       requiredInputs
         .map((item) => this.extractArrayGroupKey(item.name, item.type))
-        .filter((item): item is string => Boolean(item)),
+        .filter((item): item is string => Boolean(item))
     ).size;
     const reasonCodes: string[] = [];
 
@@ -1368,7 +1499,11 @@ ${JSON.stringify(data, null, 2)}`;
 
   private isTechnicalNoiseField(item: RequiredInputDTO): boolean {
     const normalizedName = item.name.toLowerCase();
-    if (normalizedName.includes('__') || normalizedName.includes('loop') || normalizedName.includes('foreach')) {
+    if (
+      normalizedName.includes('__') ||
+      normalizedName.includes('loop') ||
+      normalizedName.includes('foreach')
+    ) {
       return true;
     }
 
@@ -1398,7 +1533,7 @@ ${JSON.stringify(data, null, 2)}`;
   private buildPlanSemantic(
     requiredInputs: RequiredInputDTO[],
     complexity: PlanSemanticDTO['complexity'],
-    shouldUseSemanticBypass: boolean,
+    shouldUseSemanticBypass: boolean
   ): PlanSemanticDTO {
     const groupedMissing = this.buildGroupedMissing(requiredInputs);
     const blockingGroups = groupedMissing.filter((item) => item.blocking);
@@ -1412,7 +1547,13 @@ ${JSON.stringify(data, null, 2)}`;
       previewReady,
       finalReady,
       fallbackToFieldLevel: !shouldUseSemanticBypass,
-      summary: this.buildSemanticSummary(mode, finalReady, previewReady, groupedMissing.length, blockingGroups.length),
+      summary: this.buildSemanticSummary(
+        mode,
+        finalReady,
+        previewReady,
+        groupedMissing.length,
+        blockingGroups.length
+      ),
       groupedMissing,
       complexity,
     };
@@ -1423,7 +1564,7 @@ ${JSON.stringify(data, null, 2)}`;
     finalReady: boolean,
     previewReady: boolean,
     groupedMissingCount: number,
-    blockingGroupCount: number,
+    blockingGroupCount: number
   ): string {
     if (mode === 'complex_document') {
       return finalReady
@@ -1433,9 +1574,7 @@ ${JSON.stringify(data, null, 2)}`;
           : `文档仍缺少 ${blockingGroupCount} 个关键业务组。`;
     }
 
-    return finalReady
-      ? '执行参数已满足要求。'
-      : `仍缺少 ${blockingGroupCount} 个必填参数。`;
+    return finalReady ? '执行参数已满足要求。' : `仍缺少 ${blockingGroupCount} 个必填参数。`;
   }
 
   private buildGroupedMissing(requiredInputs: RequiredInputDTO[]): SemanticGroupedMissingDTO[] {
@@ -1446,7 +1585,7 @@ ${JSON.stringify(data, null, 2)}`;
       const arrayGroupKey = this.extractArrayGroupKey(item.name, item.type);
       const key = arrayGroupKey || this.normalizeSemanticMissingKey(item.name);
       const existing = groups.get(key);
-      const kind = arrayGroupKey ? 'array_group' as const : 'field' as const;
+      const kind = arrayGroupKey ? ('array_group' as const) : ('field' as const);
       const label = arrayGroupKey
         ? this.normalizeSemanticMissingLabel(this.resolveBusinessGroupLabel(arrayGroupKey, item))
         : this.normalizeSemanticMissingLabel(item.display_name || item.description || item.name);
@@ -1469,9 +1608,10 @@ ${JSON.stringify(data, null, 2)}`;
         required: true,
         fieldNames: [item.name],
         missingFieldNames: [item.name],
-        description: kind === 'array_group'
-          ? `请按业务组补充 ${label}`
-          : item.description || `请补充 ${label}`,
+        description:
+          kind === 'array_group'
+            ? `请按业务组补充 ${label}`
+            : item.description || `请补充 ${label}`,
       });
     });
 
@@ -1484,9 +1624,7 @@ ${JSON.stringify(data, null, 2)}`;
       return '';
     }
 
-    return normalized
-      .replace(/[._-](?:zh|ja|cn|jp)$/iu, '')
-      .trim();
+    return normalized.replace(/[._-](?:zh|ja|cn|jp)$/iu, '').trim();
   }
 
   private normalizeSemanticMissingLabel(value: string): string {
@@ -1497,7 +1635,10 @@ ${JSON.stringify(data, null, 2)}`;
 
     return normalized
       .replace(/\s*[（(](?:中文|日文|日语|中文格式|日文格式|日语格式|zh|ja|cn|jp)[）)]\s*$/iu, '')
-      .replace(/(.*?)(?:中文|日文|日语)(名称|姓名|地址|电话|联系电话|传真号码|邮政编码|签字人|项目名称|服务名称|日期|期限|地点|金额|费率|费用|编号|信息|场所|份数)$/u, '$1$2')
+      .replace(
+        /(.*?)(?:中文|日文|日语)(名称|姓名|地址|电话|联系电话|传真号码|邮政编码|签字人|项目名称|服务名称|日期|期限|地点|金额|费率|费用|编号|信息|场所|份数)$/u,
+        '$1$2'
+      )
       .replace(/[._-](?:zh|ja|cn|jp)$/iu, '')
       .trim();
   }
@@ -1517,7 +1658,7 @@ ${JSON.stringify(data, null, 2)}`;
 
   private hydrateMatchedSkill(
     matchedSkill: SkillMatchResult | null | undefined,
-    availableSkills: AvailableSkillDefinition[],
+    availableSkills: AvailableSkillDefinition[]
   ): SkillMatchResult | null {
     if (!matchedSkill) {
       return null;
@@ -1529,15 +1670,16 @@ ${JSON.stringify(data, null, 2)}`;
     }
 
     const resolvedApiEndpoints = matchedSkill.apiEndpoints || sourceSkill.apiEndpoints;
-    const normalizedParamsSchema = Object.keys(matchedSkill.paramsSchema?.properties || {}).length > 0
-      ? this.normalizeParamsSchema(matchedSkill.paramsSchema)
-      : sourceSkill.paramsSchema;
+    const normalizedParamsSchema =
+      Object.keys(matchedSkill.paramsSchema?.properties || {}).length > 0
+        ? this.normalizeParamsSchema(matchedSkill.paramsSchema)
+        : sourceSkill.paramsSchema;
 
     return {
       ...matchedSkill,
       paramsSchema: this.hydrateParamsSchemaRenderPaths(
         normalizedParamsSchema,
-        (resolvedApiEndpoints?.runtimeMetadata || {}) as Record<string, unknown>,
+        (resolvedApiEndpoints?.runtimeMetadata || {}) as Record<string, unknown>
       ),
       templateId: matchedSkill.templateId || sourceSkill.templateId,
       carboneSkillId: matchedSkill.carboneSkillId || sourceSkill.carboneSkillId,
@@ -1547,10 +1689,9 @@ ${JSON.stringify(data, null, 2)}`;
         : sourceSkill.executionFlowTemplateIds,
       executionType: matchedSkill.executionType || sourceSkill.executionType,
       executionFlow: this.normalizeExecutionFlow(
-        matchedSkill.executionFlow?.length
-          ? matchedSkill.executionFlow
-          : sourceSkill.executionFlow,
-        matchedSkill.apiEndpoints?.runtimeMetadata?.sourceType || sourceSkill.apiEndpoints?.runtimeMetadata?.sourceType,
+        matchedSkill.executionFlow?.length ? matchedSkill.executionFlow : sourceSkill.executionFlow,
+        matchedSkill.apiEndpoints?.runtimeMetadata?.sourceType ||
+          sourceSkill.apiEndpoints?.runtimeMetadata?.sourceType
       ),
       apiEndpoints: resolvedApiEndpoints,
       goal: matchedSkill.goal || sourceSkill.goal,
@@ -1561,7 +1702,7 @@ ${JSON.stringify(data, null, 2)}`;
 
   private resolveExecutionType(
     executionType?: string,
-    sourceType?: string,
+    sourceType?: string
   ): AvailableSkillDefinition['executionType'] {
     if (executionType === 'document' || executionType === 'flow' || executionType === 'query') {
       return executionType;
@@ -1574,7 +1715,7 @@ ${JSON.stringify(data, null, 2)}`;
 
   private buildRecognizerParamsSchema(
     schema: SkillMatchResult['paramsSchema'],
-    context?: Record<string, unknown>,
+    context?: Record<string, unknown>
   ): NonNullable<RecognizeParamsDTO['params_schema']> {
     const allProperties = schema?.properties || {};
     const allRequired = Array.isArray(schema?.required) ? schema.required : [];
@@ -1596,7 +1737,11 @@ ${JSON.stringify(data, null, 2)}`;
       }
       return acc;
     }, {});
-    const narrowedRequired = this.resolveRecognizerRequiredFieldsForContext(allRequired, narrowedFieldNames, context);
+    const narrowedRequired = this.resolveRecognizerRequiredFieldsForContext(
+      allRequired,
+      narrowedFieldNames,
+      context
+    );
 
     return {
       properties: this.buildRecognizerParamsSchemaProperties(narrowedProperties),
@@ -1605,22 +1750,24 @@ ${JSON.stringify(data, null, 2)}`;
   }
 
   private buildRecognizerParamsSchemaProperties(
-    properties: NonNullable<AvailableSkillDefinition['paramsSchema']>['properties'],
+    properties: NonNullable<AvailableSkillDefinition['paramsSchema']>['properties']
   ): NonNullable<RecognizeParamsDTO['params_schema']>['properties'] {
     return Object.fromEntries(
       Object.entries(properties).map(([name, schema]) => {
         const { required: _required, default: _schemaDefault, ...rest } = schema;
-        const recognizerProperty: NonNullable<RecognizeParamsDTO['params_schema']>['properties'][string] = {
+        const recognizerProperty: NonNullable<
+          RecognizeParamsDTO['params_schema']
+        >['properties'][string] = {
           ...rest,
         };
         return [name, recognizerProperty];
-      }),
+      })
     );
   }
 
   private resolveRecognizerFieldNamesForContext(
     properties: NonNullable<AvailableSkillDefinition['paramsSchema']>['properties'],
-    context?: Record<string, unknown>,
+    context?: Record<string, unknown>
   ): string[] {
     if (!context || context.mode !== 'waiting_input_resume') {
       return [];
@@ -1628,16 +1775,18 @@ ${JSON.stringify(data, null, 2)}`;
 
     const schemaKeys = new Set(Object.keys(properties));
     const missingInputs = Array.isArray(context.missing_inputs)
-      ? context.missing_inputs.filter((item): item is string => typeof item === 'string' && schemaKeys.has(item))
+      ? context.missing_inputs.filter(
+          (item): item is string => typeof item === 'string' && schemaKeys.has(item)
+        )
       : [];
-    const alreadyCollectedKeys = (
-      typeof context.already_collected === 'object'
-      && context.already_collected
-      && !Array.isArray(context.already_collected)
-    )
-      ? Object.keys(context.already_collected as Record<string, unknown>)
-          .filter((key) => schemaKeys.has(key))
-      : [];
+    const alreadyCollectedKeys =
+      typeof context.already_collected === 'object' &&
+      context.already_collected &&
+      !Array.isArray(context.already_collected)
+        ? Object.keys(context.already_collected as Record<string, unknown>).filter((key) =>
+            schemaKeys.has(key)
+          )
+        : [];
 
     return Array.from(new Set([...missingInputs, ...alreadyCollectedKeys]));
   }
@@ -1645,7 +1794,7 @@ ${JSON.stringify(data, null, 2)}`;
   private resolveRecognizerRequiredFieldsForContext(
     allRequired: string[],
     narrowedFieldNames: string[],
-    context?: Record<string, unknown>,
+    context?: Record<string, unknown>
   ): string[] {
     if (!context || context.mode !== 'waiting_input_resume') {
       return allRequired;
@@ -1662,7 +1811,7 @@ ${JSON.stringify(data, null, 2)}`;
   private mergeRecognizedWithCollectedContext(
     recognized: RecognizeParamsResponseDTO,
     schema: SkillMatchResult['paramsSchema'],
-    context?: Record<string, unknown>,
+    context?: Record<string, unknown>
   ): RecognizeParamsResponseDTO {
     const collectedParams = this.extractCollectedParamsFromContext(context, schema);
     if (Object.keys(collectedParams).length === 0) {
@@ -1677,22 +1826,22 @@ ${JSON.stringify(data, null, 2)}`;
     };
 
     const mergedFieldConfidences: Record<string, number> = {
-      ...Object.fromEntries(
-        Object.keys(collectedParams).map((key) => [key, 1]),
-      ),
+      ...Object.fromEntries(Object.keys(collectedParams).map((key) => [key, 1])),
       ...(recognized.field_confidences || {}),
     };
 
-    const mergedUncertainFields = (recognized.uncertain_fields || []).filter((field) => (
-      !Object.prototype.hasOwnProperty.call(collectedParams, field) || recognizedKeys.has(field)
-    ));
+    const mergedUncertainFields = (recognized.uncertain_fields || []).filter(
+      (field) =>
+        !Object.prototype.hasOwnProperty.call(collectedParams, field) || recognizedKeys.has(field)
+    );
 
     return {
       ...recognized,
       params: mergedParams,
-      field_confidences: Object.keys(mergedFieldConfidences).length > 0
-        ? mergedFieldConfidences
-        : recognized.field_confidences,
+      field_confidences:
+        Object.keys(mergedFieldConfidences).length > 0
+          ? mergedFieldConfidences
+          : recognized.field_confidences,
       uncertain_fields: mergedUncertainFields,
       debug: {
         llmCalls: recognized.debug?.llmCalls,
@@ -1706,19 +1855,18 @@ ${JSON.stringify(data, null, 2)}`;
 
   private extractCollectedParamsFromContext(
     context: Record<string, unknown> | undefined,
-    schema: SkillMatchResult['paramsSchema'],
+    schema: SkillMatchResult['paramsSchema']
   ): Record<string, unknown> {
     if (!context || context.mode !== 'waiting_input_resume') {
       return {};
     }
 
-    const alreadyCollected = (
-      typeof context.already_collected === 'object'
-      && context.already_collected
-      && !Array.isArray(context.already_collected)
-    )
-      ? context.already_collected as Record<string, unknown>
-      : undefined;
+    const alreadyCollected =
+      typeof context.already_collected === 'object' &&
+      context.already_collected &&
+      !Array.isArray(context.already_collected)
+        ? (context.already_collected as Record<string, unknown>)
+        : undefined;
     if (!alreadyCollected) {
       return {};
     }
@@ -1728,7 +1876,7 @@ ${JSON.stringify(data, null, 2)}`;
       Object.entries(alreadyCollected)
         .filter(([key]) => Boolean(schemaProperties[key]))
         .map(([key, value]) => [key, this.normalizeMeaningfulInputValue(value)] as const)
-        .filter(([, value]) => value !== undefined),
+        .filter(([, value]) => value !== undefined)
     );
   }
 
@@ -1741,7 +1889,7 @@ ${JSON.stringify(data, null, 2)}`;
 
   private buildExecutionSnapshot(
     requiredInputs: RequiredInputDTO[],
-    semantic?: PlanSemanticDTO,
+    semantic?: PlanSemanticDTO
   ): Record<string, unknown> {
     const input = requiredInputs.reduce<Record<string, unknown>>((acc, item) => {
       if (!this.isExecutionInputSafe(item)) {
@@ -1758,7 +1906,9 @@ ${JSON.stringify(data, null, 2)}`;
         source: item.source,
         required: item.required,
         requiredMode: item.required_mode || (item.required ? 'always' : 'optional'),
-        ...(Array.isArray(item.source_priority) ? { valueSourcePriority: item.source_priority } : {}),
+        ...(Array.isArray(item.source_priority)
+          ? { valueSourcePriority: item.source_priority }
+          : {}),
         missing: item.missing,
         needsConfirmation: item.needs_confirmation === true,
         confirmed: !item.missing && item.needs_confirmation !== true,
@@ -1772,7 +1922,9 @@ ${JSON.stringify(data, null, 2)}`;
         ...(item.group_label ? { group_label: item.group_label } : {}),
         ...(item.render_path ? { render_path: item.render_path } : {}),
         ...(item.template_binding ? { template_binding: item.template_binding } : {}),
-        ...(typeof item.preview_blocking === 'boolean' ? { preview_blocking: item.preview_blocking } : {}),
+        ...(typeof item.preview_blocking === 'boolean'
+          ? { preview_blocking: item.preview_blocking }
+          : {}),
       };
       return acc;
     }, {});
@@ -1788,9 +1940,11 @@ ${JSON.stringify(data, null, 2)}`;
   }
 
   private isExecutionInputSafe(item: RequiredInputDTO): boolean {
-    return !item.missing
-      && item.needs_confirmation !== true
-      && this.hasMeaningfulRequiredInputValue(item.value);
+    return (
+      !item.missing &&
+      item.needs_confirmation !== true &&
+      this.hasMeaningfulRequiredInputValue(item.value)
+    );
   }
 
   private buildAuthCacheKey(authToken?: string): string {
@@ -1802,10 +1956,7 @@ ${JSON.stringify(data, null, 2)}`;
     return `${authCacheKey}:skill:${skillId}`;
   }
 
-  private getCacheValue<T>(
-    cache: Map<string, SkillCacheEntry<T>>,
-    key: string,
-  ): T | undefined {
+  private getCacheValue<T>(cache: Map<string, SkillCacheEntry<T>>, key: string): T | undefined {
     const entry = cache.get(key);
     if (!entry) {
       return undefined;
@@ -1817,11 +1968,7 @@ ${JSON.stringify(data, null, 2)}`;
     return entry.value;
   }
 
-  private setCacheValue<T>(
-    cache: Map<string, SkillCacheEntry<T>>,
-    key: string,
-    value: T,
-  ): void {
+  private setCacheValue<T>(cache: Map<string, SkillCacheEntry<T>>, key: string, value: T): void {
     cache.set(key, {
       value,
       expiresAt: Date.now() + PLANNER_SKILL_CACHE_TTL_MS,
@@ -1845,7 +1992,7 @@ ${JSON.stringify(data, null, 2)}`;
 
   private buildPlanSteps(
     matchedSkill: SkillMatchResult,
-    requiredInputs: RequiredInputDTO[],
+    requiredInputs: RequiredInputDTO[]
   ): PlanStepDTO[] {
     const steps: PlanStepDTO[] = [];
     const missingRequiredInputs = requiredInputs.filter((item) => item.missing);

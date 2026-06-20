@@ -1,7 +1,4 @@
-import {
-  WorkflowDocumentElement,
-  WorkflowCandidateLanguageRelation,
-} from './workflow-assets';
+import { WorkflowDocumentElement, WorkflowCandidateLanguageRelation } from './workflow-assets';
 
 import {
   safeText,
@@ -19,7 +16,7 @@ import {
 export function inferSectionInfo(
   elements: WorkflowDocumentElement[],
   sourceBlockId: string,
-  fallbackText: string,
+  fallbackText: string
 ): { sectionId: string; sectionTitle: string } {
   const currentIndex = elements.findIndex((element) => element.id === sourceBlockId);
   const fallbackTitle = inferRecognitionBlockTitle(safeText(fallbackText), 'section');
@@ -50,7 +47,6 @@ export function inferSectionInfo(
   };
 }
 
-
 export function splitSampleTextIntoChunks(sampleText: string): string[] {
   const normalizedSampleText = safeText(sampleText);
   if (!normalizedSampleText) {
@@ -70,7 +66,10 @@ export function splitSampleTextIntoChunks(sampleText: string): string[] {
 
   const lineWindows: string[] = [];
   for (let index = 0; index < lines.length; index += 1) {
-    const window = lines.slice(index, index + 4).join('\n').trim();
+    const window = lines
+      .slice(index, index + 4)
+      .join('\n')
+      .trim();
     if (window) {
       lineWindows.push(window);
     }
@@ -117,8 +116,8 @@ export function splitTemplateTextIntoCompareSegments(templateText: string): stri
       .filter(Boolean);
     const compareSentences = splitSentences.filter((item) => hasCompareFieldShape(item));
     const compareLabelCount = extractCompareLabels(segment).length;
-    const hasMultipleCompareUnits = compareLabelCount >= 2
-      || (segment.match(/[_＿]{2,}|\(\s*\)|（\s*）/gu) || []).length >= 2;
+    const hasMultipleCompareUnits =
+      compareLabelCount >= 2 || (segment.match(/[_＿]{2,}|\(\s*\)|（\s*）/gu) || []).length >= 2;
 
     if (hasMultipleCompareUnits || compareSentences.length <= 1) {
       return [segment];
@@ -134,7 +133,7 @@ export function buildTextCompareInputs(
   elements: WorkflowDocumentElement[],
   sectionId: string,
   templateText: string,
-  languageRelation?: WorkflowCandidateLanguageRelation,
+  languageRelation?: WorkflowCandidateLanguageRelation
 ): Array<{
   compareSegment: string;
   anchorText?: string;
@@ -154,31 +153,27 @@ export function buildTextCompareInputs(
     const comparePeerText = hasMultipleLabels ? bilingualPeerText : '';
     return {
       compareSegment,
-      anchorText: labels[0] || extractAnchorPrefix(compareSegment.replace(/^[\s_＿\-—.·]+/u, '').trim()),
-      probeTexts: [
-        ...labels,
-        ...comparePeerLabels,
-        compareSegment,
-        comparePeerText,
-      ].filter((value): value is string => Boolean(safeText(value))),
-      dictionaryText: hasMultipleLabels ? '' : (labels[0] || compareSegment),
+      anchorText:
+        labels[0] || extractAnchorPrefix(compareSegment.replace(/^[\s_＿\-—.·]+/u, '').trim()),
+      probeTexts: [...labels, ...comparePeerLabels, compareSegment, comparePeerText].filter(
+        (value): value is string => Boolean(safeText(value))
+      ),
+      dictionaryText: hasMultipleLabels ? '' : labels[0] || compareSegment,
     };
   });
 }
 
 export function findBestSectionSampleChunk(
   sampleChunks: string[],
-  probes: Array<string | undefined>,
+  probes: Array<string | undefined>
 ): { chunk: string; score: number } {
   if (sampleChunks.length === 0) {
     return { chunk: '', score: 0 };
   }
 
-  const effectiveProbes = Array.from(new Set(
-    probes
-      .map((probe) => safeText(probe))
-      .filter((probe) => probe.length >= 2)
-  ));
+  const effectiveProbes = Array.from(
+    new Set(probes.map((probe) => safeText(probe)).filter((probe) => probe.length >= 2))
+  );
   if (effectiveProbes.length === 0) {
     return { chunk: '', score: 0 };
   }
@@ -199,7 +194,11 @@ export function findBestSectionSampleChunk(
   };
 }
 
-export function findDirectCompareMatch(sampleText: string, templateText: string, anchorText: string): string {
+export function findDirectCompareMatch(
+  sampleText: string,
+  templateText: string,
+  anchorText: string
+): string {
   const normalizedSampleText = safeText(sampleText);
   if (!normalizedSampleText) {
     return '';
@@ -224,8 +223,10 @@ export function findDirectCompareMatch(sampleText: string, templateText: string,
     const alignedLine = lines.find((line) => {
       const normalizedLine = normalizeLookupText(line);
       return (
-        (!placeholderMatcher.prefix || normalizedLine.includes(normalizeLookupText(placeholderMatcher.prefix)))
-        && (!placeholderMatcher.suffix || normalizedLine.includes(normalizeLookupText(placeholderMatcher.suffix)))
+        (!placeholderMatcher.prefix ||
+          normalizedLine.includes(normalizeLookupText(placeholderMatcher.prefix))) &&
+        (!placeholderMatcher.suffix ||
+          normalizedLine.includes(normalizeLookupText(placeholderMatcher.suffix)))
       );
     });
     if (alignedLine) {
@@ -242,17 +243,19 @@ export function extractCompareLabels(text: string): string[] {
     return [];
   }
 
-  return Array.from(new Set(
-    Array.from(normalizedText.matchAll(/([^，,。；;\n\t]{1,24}[:：])/gu))
-      .map((match) => safeText(match[1]))
-      .filter((label) => Boolean(label) && !hasBlankPlaceholder(label))
-  )).slice(0, 6);
+  return Array.from(
+    new Set(
+      Array.from(normalizedText.matchAll(/([^，,。；;\n\t]{1,24}[:：])/gu))
+        .map((match) => safeText(match[1]))
+        .filter((label) => Boolean(label) && !hasBlankPlaceholder(label))
+    )
+  ).slice(0, 6);
 }
 
 export function findAdjacentBilingualPeerText(
   elements: WorkflowDocumentElement[],
   sectionId: string,
-  languageRelation?: WorkflowCandidateLanguageRelation,
+  languageRelation?: WorkflowCandidateLanguageRelation
 ): string {
   if (languageRelation?.mode !== 'adjacent_bilingual_block' || !languageRelation.peerBlockId) {
     return '';
@@ -263,7 +266,11 @@ export function findAdjacentBilingualPeerText(
     return '';
   }
 
-  const peerSectionId = inferSectionInfo(elements, peerElement.id, safeText(peerElement.text)).sectionId;
+  const peerSectionId = inferSectionInfo(
+    elements,
+    peerElement.id,
+    safeText(peerElement.text)
+  ).sectionId;
   if (peerSectionId !== sectionId) {
     return '';
   }
@@ -271,27 +278,32 @@ export function findAdjacentBilingualPeerText(
   return safeText(peerElement.text);
 }
 
-export function extractLooseCandidateContext(sampleText: string, probes: Array<string | undefined>): string {
+export function extractLooseCandidateContext(
+  sampleText: string,
+  probes: Array<string | undefined>
+): string {
   const normalizedSampleText = safeText(sampleText);
   if (!normalizedSampleText) {
     return '';
   }
 
-  const effectiveProbes = Array.from(new Set(
-    probes
-      .map((probe) => safeText(probe))
-      .filter((probe) => probe.length >= 2)
-      .flatMap((probe) => {
-        const variants = [probe];
-        if (probe.length > 24) {
-          variants.push(probe.slice(0, 24));
-        }
-        if (probe.length > 12) {
-          variants.push(probe.slice(0, 12));
-        }
-        return variants;
-      })
-  ));
+  const effectiveProbes = Array.from(
+    new Set(
+      probes
+        .map((probe) => safeText(probe))
+        .filter((probe) => probe.length >= 2)
+        .flatMap((probe) => {
+          const variants = [probe];
+          if (probe.length > 24) {
+            variants.push(probe.slice(0, 24));
+          }
+          if (probe.length > 12) {
+            variants.push(probe.slice(0, 12));
+          }
+          return variants;
+        })
+    )
+  );
   if (effectiveProbes.length === 0) {
     return '';
   }
@@ -417,7 +429,9 @@ export function shouldKeepCompareCandidateUnnamed(text: string): boolean {
   if (extractCompareLabels(normalizedText).length >= 2) {
     return true;
   }
-  return hasBlankPlaceholder(normalizedText)
-    && !/[:：]/u.test(normalizedText)
-    && normalizedText.length >= 24;
+  return (
+    hasBlankPlaceholder(normalizedText) &&
+    !/[:：]/u.test(normalizedText) &&
+    normalizedText.length >= 24
+  );
 }

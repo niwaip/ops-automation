@@ -10,6 +10,7 @@ export type ModelProvider =
   | 'alibaba-bailian'
   | 'deepseek'
   | 'minimax'
+  | 'bigmodel'
   | 'siliconflow';
 
 export type ModelCapabilityTier = 'standard' | 'advanced';

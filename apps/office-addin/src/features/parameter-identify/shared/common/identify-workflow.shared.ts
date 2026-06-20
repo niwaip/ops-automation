@@ -10,15 +10,20 @@ export function buildCollapsedSuggestionGroups(
 ): Record<string, boolean> {
   const nextCollapsed: Record<string, boolean> = {};
   suggestions.forEach((suggestion) => {
-    const groupName = hostKind === 'excel'
-      ? suggestion.details?.excelAnchor?.sheetName || suggestion.details?.chapter || '未归属 Sheet'
-      : suggestion.details?.chapter || '正文';
+    const groupName =
+      hostKind === 'excel'
+        ? suggestion.details?.excelAnchor?.sheetName ||
+          suggestion.details?.chapter ||
+          '未归属 Sheet'
+        : suggestion.details?.chapter || '正文';
     nextCollapsed[groupName] = true;
   });
   return nextCollapsed;
 }
 
-export function buildCollapsedPairDetails(summary: AnalysisSummary | null): Record<string, boolean> {
+export function buildCollapsedPairDetails(
+  summary: AnalysisSummary | null
+): Record<string, boolean> {
   const nextCollapsedPairs: Record<string, boolean> = {};
   summary?.pairResults.forEach((pair) => {
     nextCollapsedPairs[pair.pairIndex] = true;
@@ -26,11 +31,21 @@ export function buildCollapsedPairDetails(summary: AnalysisSummary | null): Reco
   return nextCollapsedPairs;
 }
 
-export function shouldRetryIdentify(summary: AnalysisSummary, suggestions: AISuggestion[]): boolean {
-  return Boolean(summary.salvagedMalformedJson) || suggestions.some((suggestion) => {
-    const normalizedName = String(suggestion.suggestedName || '').replace(/[{}]/g, '').trim();
-    return suggestion.confidence < 0.8 || LOW_QUALITY_SUGGESTION_NAME_PATTERN.test(normalizedName);
-  });
+export function shouldRetryIdentify(
+  summary: AnalysisSummary,
+  suggestions: AISuggestion[]
+): boolean {
+  return (
+    Boolean(summary.salvagedMalformedJson) ||
+    suggestions.some((suggestion) => {
+      const normalizedName = String(suggestion.suggestedName || '')
+        .replace(/[{}]/g, '')
+        .trim();
+      return (
+        suggestion.confidence < 0.8 || LOW_QUALITY_SUGGESTION_NAME_PATTERN.test(normalizedName)
+      );
+    })
+  );
 }
 
 export function buildIdentifyDebugDetails(
@@ -70,11 +85,14 @@ export function formatIdentifyError(error: any): {
   const responseData = error?.response?.data;
   const requestMethod = String(error?.config?.method || 'post').toUpperCase();
   const requestUrl = error?.config?.url || '';
-  const backendMessage = typeof responseData === 'string'
-    ? responseData
-    : responseData?.message || responseData?.error || '';
+  const backendMessage =
+    typeof responseData === 'string'
+      ? responseData
+      : responseData?.message || responseData?.error || '';
   const serializedResponse = responseData
-    ? (typeof responseData === 'string' ? responseData : JSON.stringify(responseData, null, 2))
+    ? typeof responseData === 'string'
+      ? responseData
+      : JSON.stringify(responseData, null, 2)
     : '';
 
   return {

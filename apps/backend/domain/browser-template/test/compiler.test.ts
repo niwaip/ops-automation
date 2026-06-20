@@ -87,7 +87,7 @@ describe('PlaywrightCompiler', () => {
       const result = compiler.compile(script, 'test-user');
 
       expect(result.template.steps).toBeDefined();
-      const clickSteps = result.template.steps.filter(s => s.action === 'click');
+      const clickSteps = result.template.steps.filter((s) => s.action === 'click');
       expect(clickSteps.length).toBe(2);
 
       // Check locators use 'role' type
@@ -137,7 +137,9 @@ describe('PlaywrightCompiler', () => {
     });
 
     it('should throw error for script with no valid actions', () => {
-      expect(() => compiler.compile('// just comments', 'test-user')).toThrow('No valid actions found in script');
+      expect(() => compiler.compile('// just comments', 'test-user')).toThrow(
+        'No valid actions found in script'
+      );
     });
   });
 });
@@ -212,23 +214,33 @@ describe('LocatorValidator', () => {
 
   describe('isLocatorCompliant', () => {
     it('should return true for role locator', () => {
-      expect(validator.isLocatorCompliant({ type: 'role' as LocatorType, value: 'btn' })).toBe(true);
+      expect(validator.isLocatorCompliant({ type: 'role' as LocatorType, value: 'btn' })).toBe(
+        true
+      );
     });
 
     it('should return true for text locator', () => {
-      expect(validator.isLocatorCompliant({ type: 'text' as LocatorType, value: 'text' })).toBe(true);
+      expect(validator.isLocatorCompliant({ type: 'text' as LocatorType, value: 'text' })).toBe(
+        true
+      );
     });
 
     it('should return true for test-id locator', () => {
-      expect(validator.isLocatorCompliant({ type: 'test-id' as LocatorType, value: 'id' })).toBe(true);
+      expect(validator.isLocatorCompliant({ type: 'test-id' as LocatorType, value: 'id' })).toBe(
+        true
+      );
     });
 
     it('should return false for css locator', () => {
-      expect(validator.isLocatorCompliant({ type: 'css' as LocatorType, value: '#btn' })).toBe(false);
+      expect(validator.isLocatorCompliant({ type: 'css' as LocatorType, value: '#btn' })).toBe(
+        false
+      );
     });
 
     it('should return false for xpath locator', () => {
-      expect(validator.isLocatorCompliant({ type: 'xpath' as LocatorType, value: '//btn' })).toBe(false);
+      expect(validator.isLocatorCompliant({ type: 'xpath' as LocatorType, value: '//btn' })).toBe(
+        false
+      );
     });
   });
 });
@@ -249,7 +261,11 @@ describe('TemplateValidator', () => {
     status: 'DRAFT',
     params_schema: { type: 'object', properties: {}, required: [] },
     steps: [
-      { step_id: 'step_1', action: 'click', locator: { type: 'role' as LocatorType, value: 'button' } },
+      {
+        step_id: 'step_1',
+        action: 'click',
+        locator: { type: 'role' as LocatorType, value: 'button' },
+      },
     ],
     metadata: {
       created_by: 'test-user',
@@ -273,7 +289,9 @@ describe('TemplateValidator', () => {
 
       expect(result.valid).toBe(false);
       expect(result.errors.length).toBeGreaterThan(0);
-      expect(result.errors.some(e => e.includes('password') || e.includes('Forbidden'))).toBe(true);
+      expect(result.errors.some((e) => e.includes('password') || e.includes('Forbidden'))).toBe(
+        true
+      );
     });
 
     it('should return error for passwd parameter', () => {
@@ -289,7 +307,7 @@ describe('TemplateValidator', () => {
       const result = validator.validate(template);
 
       expect(result.valid).toBe(false);
-      expect(result.errors.some(e => e.includes('passwd'))).toBe(true);
+      expect(result.errors.some((e) => e.includes('passwd'))).toBe(true);
     });
 
     it('should return error for api_key parameter', () => {
@@ -305,30 +323,42 @@ describe('TemplateValidator', () => {
       const result = validator.validate(template);
 
       expect(result.valid).toBe(false);
-      expect(result.errors.some(e => e.includes('api_key'))).toBe(true);
+      expect(result.errors.some((e) => e.includes('api_key'))).toBe(true);
     });
 
     it('should validate step_id format', () => {
       const template = createValidTemplate();
       template.steps = [
-        { step_id: 'invalid-step-id', action: 'click', locator: { type: 'role' as LocatorType, value: 'button' } },
+        {
+          step_id: 'invalid-step-id',
+          action: 'click',
+          locator: { type: 'role' as LocatorType, value: 'button' },
+        },
       ];
 
       const result = validator.validate(template);
 
-      expect(result.errors.some(e => e.includes('Step ID') && e.includes('format'))).toBe(true);
+      expect(result.errors.some((e) => e.includes('Step ID') && e.includes('format'))).toBe(true);
     });
 
     it('should detect duplicate step IDs', () => {
       const template = createValidTemplate();
       template.steps = [
-        { step_id: 'step_1', action: 'click', locator: { type: 'role' as LocatorType, value: 'button' } },
-        { step_id: 'step_1', action: 'fill', locator: { type: 'text' as LocatorType, value: 'input' } },
+        {
+          step_id: 'step_1',
+          action: 'click',
+          locator: { type: 'role' as LocatorType, value: 'button' },
+        },
+        {
+          step_id: 'step_1',
+          action: 'fill',
+          locator: { type: 'text' as LocatorType, value: 'input' },
+        },
       ];
 
       const result = validator.validate(template);
 
-      expect(result.errors.some(e => e.includes('Duplicate'))).toBe(true);
+      expect(result.errors.some((e) => e.includes('Duplicate'))).toBe(true);
     });
 
     it('should return warning for empty steps', () => {
@@ -337,7 +367,7 @@ describe('TemplateValidator', () => {
 
       const result = validator.validate(template);
 
-      expect(result.warnings.some(w => w.includes('no steps'))).toBe(true);
+      expect(result.warnings.some((w) => w.includes('no steps'))).toBe(true);
     });
 
     it('should return error for PUBLISHED template with no steps', () => {
@@ -348,7 +378,7 @@ describe('TemplateValidator', () => {
       const result = validator.validate(template);
 
       expect(result.valid).toBe(false);
-      expect(result.errors.some(e => e.includes('PUBLISHED') && e.includes('step'))).toBe(true);
+      expect(result.errors.some((e) => e.includes('PUBLISHED') && e.includes('step'))).toBe(true);
     });
 
     it('should validate required fields', () => {
@@ -358,7 +388,7 @@ describe('TemplateValidator', () => {
       const result = validator.validate(template);
 
       expect(result.valid).toBe(false);
-      expect(result.errors.some(e => e.includes('name') && e.includes('required'))).toBe(true);
+      expect(result.errors.some((e) => e.includes('name') && e.includes('required'))).toBe(true);
     });
 
     it('should pass for valid template', () => {

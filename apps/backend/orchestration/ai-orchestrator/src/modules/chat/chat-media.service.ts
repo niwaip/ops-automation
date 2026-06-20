@@ -11,18 +11,21 @@ import type {
 @Injectable()
 export class ChatMediaService {
   private readonly logger = new Logger(ChatMediaService.name);
-  private readonly fileStore = new Map<string, {
-    fileName: string;
-    mimeType: string;
-    size: number;
-    content: string;
-  }>();
+  private readonly fileStore = new Map<
+    string,
+    {
+      fileName: string;
+      mimeType: string;
+      size: number;
+      content: string;
+    }
+  >();
 
   constructor(private readonly modelService: ModelService) {}
 
   async buildMessageContent(
     message: string,
-    files?: ChatUploadedFileDTO[],
+    files?: ChatUploadedFileDTO[]
   ): Promise<string | ContentBlock[]> {
     if (!files?.length) {
       return message;
@@ -97,7 +100,7 @@ export class ChatMediaService {
 
   async transcribeAudio(
     file: Express.Multer.File,
-    modelId: string,
+    modelId: string
   ): Promise<ChatAudioTranscriptionResponseDTO> {
     this.logger.log(`transcribeAudio called with modelId: ${modelId}`);
     if (!file) {
@@ -113,7 +116,10 @@ export class ChatMediaService {
         actualModelId = preferredModel.id;
         this.logger.log(`Resolved actualModelId to preferred model: ${actualModelId}`);
       } else {
-        throw new HttpException('No default audio transcription model found', HttpStatus.BAD_REQUEST);
+        throw new HttpException(
+          'No default audio transcription model found',
+          HttpStatus.BAD_REQUEST
+        );
       }
     }
 
@@ -136,7 +142,9 @@ export class ChatMediaService {
     formData.append('file', blob, file.originalname);
     formData.append('model', model.name);
 
-    this.logger.log(`Transcribing audio with URL: ${baseURL}/audio/transcriptions and model: ${model.name}`);
+    this.logger.log(
+      `Transcribing audio with URL: ${baseURL}/audio/transcriptions and model: ${model.name}`
+    );
     try {
       const response = await axios.post(`${baseURL}/audio/transcriptions`, formData, {
         headers: {
@@ -156,7 +164,9 @@ export class ChatMediaService {
       } else if (response.data?.data && typeof response.data.data.text === 'string') {
         text = response.data.data.text;
       } else {
-        this.logger.warn(`Unexpected transcription response format: ${JSON.stringify(response.data)}`);
+        this.logger.warn(
+          `Unexpected transcription response format: ${JSON.stringify(response.data)}`
+        );
         text = JSON.stringify(response.data);
       }
 
@@ -164,8 +174,10 @@ export class ChatMediaService {
     } catch (error: any) {
       this.logger.error(`Audio transcription failed: ${error.message}`, error.response?.data);
       throw new HttpException(
-        error.response?.data?.error?.message || error.response?.data?.message || 'Audio transcription failed',
-        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+        error.response?.data?.error?.message ||
+          error.response?.data?.message ||
+          'Audio transcription failed',
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
   }

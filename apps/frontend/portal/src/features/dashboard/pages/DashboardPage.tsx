@@ -28,9 +28,10 @@ const summarizeText = (value?: string, maxLength = 38) => {
 
 const summarizeExecutionInput = (execution: ExecutionDto) => {
   const prompt = typeof execution.input?.prompt === 'string' ? execution.input.prompt : undefined;
-  const objective = typeof execution.normalizedInput?.objective === 'string'
-    ? execution.normalizedInput.objective
-    : undefined;
+  const objective =
+    typeof execution.normalizedInput?.objective === 'string'
+      ? execution.normalizedInput.objective
+      : undefined;
   const summary = summarizeText(prompt || objective, 42);
 
   if (summary) {
@@ -57,19 +58,18 @@ const DashboardPage: React.FC = () => {
     () => executionApi.list({ page: 1, pageSize: recentExecutionPageSize })
   );
   const skillsQuery = useQuery(['dashboard-skills-name-map'], () => skillApi.list());
-  const releasesQuery = useQuery(['dashboard-published-skills-name-map'], () => capabilityReleaseApi.listReleaseCenter());
+  const releasesQuery = useQuery(['dashboard-published-skills-name-map'], () =>
+    capabilityReleaseApi.listReleaseCenter()
+  );
 
-  const executionsTotalQuery = useQuery(
-    ['dashboard-executions-total'],
-    () => executionApi.list({ page: 1, pageSize: 1 })
+  const executionsTotalQuery = useQuery(['dashboard-executions-total'], () =>
+    executionApi.list({ page: 1, pageSize: 1 })
   );
-  const runningExecutionsQuery = useQuery(
-    ['dashboard-executions-running'],
-    () => executionApi.list({ page: 1, pageSize: 1, status: 'running' })
+  const runningExecutionsQuery = useQuery(['dashboard-executions-running'], () =>
+    executionApi.list({ page: 1, pageSize: 1, status: 'running' })
   );
-  const pendingApprovalExecutionsQuery = useQuery(
-    ['dashboard-executions-pending-approval'],
-    () => executionApi.list({ page: 1, pageSize: 1, status: 'pending_approval' })
+  const pendingApprovalExecutionsQuery = useQuery(['dashboard-executions-pending-approval'], () =>
+    executionApi.list({ page: 1, pageSize: 1, status: 'pending_approval' })
   );
   const templatesStatsQuery = useQuery(['templates-stats'], () => templateApi.list());
 
@@ -92,7 +92,10 @@ const DashboardPage: React.FC = () => {
     const map = new Map<string, string>();
     (releasesQuery.data?.releases || []).forEach((release) => {
       if (release.publishedSkillId) {
-        map.set(release.publishedSkillId, release.sourceName || release.sourceId || release.publishedSkillId);
+        map.set(
+          release.publishedSkillId,
+          release.sourceName || release.sourceId || release.publishedSkillId
+        );
       }
     });
     (skillsQuery.data?.skills || []).forEach((skill) => {
@@ -225,7 +228,9 @@ const DashboardPage: React.FC = () => {
       <Card
         title={
           <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{t('recentExecutions')}</span>
+            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+              {t('recentExecutions')}
+            </span>
             <Space>
               <Button
                 icon={<ReloadOutlined />}

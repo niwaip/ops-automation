@@ -2,7 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ExecutionFlowTemplateService } from '../execution-flow/execution-flow-template.service';
-import { CreateSkillDTO, SkillToolBinding, SkillToolValidationMessage, SkillToolValidationResult } from './interfaces';
+import {
+  CreateSkillDTO,
+  SkillToolBinding,
+  SkillToolValidationMessage,
+  SkillToolValidationResult,
+} from './interfaces';
 import { ToolCatalogService } from './tool-catalog.service';
 
 const UUID_REGEX = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
@@ -16,11 +21,13 @@ export class SkillToolBindingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly executionFlowService: ExecutionFlowTemplateService,
-    private readonly toolCatalogService: ToolCatalogService,
+    private readonly toolCatalogService: ToolCatalogService
   ) {}
 
   normalizeToolNames(toolNames?: string[]): string[] {
-    return Array.from(new Set((toolNames || []).map((item) => String(item || '').trim()).filter(Boolean)));
+    return Array.from(
+      new Set((toolNames || []).map((item) => String(item || '').trim()).filter(Boolean))
+    );
   }
 
   extractToolNamesFromExecutionFlow(executionFlow?: Array<Record<string, any>>): string[] {
@@ -70,22 +77,28 @@ export class SkillToolBindingService {
   }
 
   async buildSkillToolValidation(
-    payload: Pick<CreateSkillDTO, 'tools' | 'executionFlow' | 'executionFlowTemplateIds'>,
+    payload: Pick<CreateSkillDTO, 'tools' | 'executionFlow' | 'executionFlowTemplateIds'>
   ): Promise<SkillToolValidationResult> {
     const declaredTools = this.normalizeToolNames(payload.tools);
     const inferredFromFlow = this.extractToolNamesFromExecutionFlow(payload.executionFlow as any[]);
-    const inferredFromTemplates = await this.inferToolNamesFromTemplates(payload.executionFlowTemplateIds);
+    const inferredFromTemplates = await this.inferToolNamesFromTemplates(
+      payload.executionFlowTemplateIds
+    );
     const inferredTools = this.normalizeToolNames([...inferredFromFlow, ...inferredFromTemplates]);
     const effectiveTools = this.normalizeToolNames([...declaredTools, ...inferredTools]);
 
     const catalogMap = await this.toolCatalogService.getCatalogItemsByNames(effectiveTools);
     const missingTools = effectiveTools.filter((toolName) => !catalogMap.has(toolName));
-    const disabledTools = effectiveTools.filter((toolName) => catalogMap.get(toolName)?.status !== 'active');
+    const disabledTools = effectiveTools.filter(
+      (toolName) => catalogMap.get(toolName)?.status !== 'active'
+    );
     const forbiddenSkillTools = declaredTools.filter((toolName) => {
       const tool = catalogMap.get(toolName);
       return tool ? !tool.allowSkillBinding : false;
     });
-    const undeclaredFlowTools = inferredTools.filter((toolName) => !declaredTools.includes(toolName));
+    const undeclaredFlowTools = inferredTools.filter(
+      (toolName) => !declaredTools.includes(toolName)
+    );
 
     const messages: SkillToolValidationMessage[] = [];
     missingTools.forEach((toolName) => {
@@ -136,11 +149,13 @@ export class SkillToolBindingService {
 
   async syncSkillToolBindings(
     skillId: string,
-    payload: Pick<CreateSkillDTO, 'tools' | 'executionFlow' | 'executionFlowTemplateIds'>,
+    payload: Pick<CreateSkillDTO, 'tools' | 'executionFlow' | 'executionFlowTemplateIds'>
   ): Promise<void> {
     const declaredTools = this.normalizeToolNames(payload.tools);
     const inferredFromFlow = this.extractToolNamesFromExecutionFlow(payload.executionFlow as any[]);
-    const inferredFromTemplates = await this.inferToolNamesFromTemplates(payload.executionFlowTemplateIds);
+    const inferredFromTemplates = await this.inferToolNamesFromTemplates(
+      payload.executionFlowTemplateIds
+    );
 
     const bindingRows = [
       ...declaredTools.map((toolName) => ({ toolName, bindingSource: 'declared' })),
@@ -154,7 +169,7 @@ export class SkillToolBindingService {
 
     await this.prisma.$executeRawUnsafe(
       `DELETE FROM skill_tool_bindings WHERE skill_id = $1::uuid`,
-      skillId,
+      skillId
     );
 
     for (const row of bindingRows) {
@@ -167,7 +182,7 @@ export class SkillToolBindingService {
         randomUUID(),
         skillId,
         row.toolName,
-        row.bindingSource,
+        row.bindingSource
       );
     }
   }
@@ -183,7 +198,7 @@ export class SkillToolBindingService {
        FROM skill_tool_bindings
        WHERE skill_id = ANY($1::uuid[])
        ORDER BY tool_name ASC`,
-      uniqueSkillIds,
+      uniqueSkillIds
     );
 
     const map = new Map<string, SkillToolBinding[]>();

@@ -1,5 +1,5 @@
 export const genericHost = {
-  name: "generic",
+  name: 'generic',
   openUrl: (url: string) => {
     void url;
   },

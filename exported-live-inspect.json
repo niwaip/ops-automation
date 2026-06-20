@@ -1,0 +1,109 @@
+{
+  "sessionId": "recorder-debug-1781863866583",
+  "runtimeSessionId": "recorder-debug-1781863866583",
+  "exportedTemplateStepCount": 8,
+  "exportedHasLoopDraft": true,
+  "exportedHasBranchStep": true,
+  "usedFallbackTemplate": false,
+  "templateSteps": [
+    {
+      "step_id": "step_1",
+      "action": "navigate",
+      "params": {
+        "url": "${startUrl}"
+      },
+      "description": "打开登录页"
+    },
+    {
+      "step_id": "step_2",
+      "action": "wait",
+      "params": {
+        "ms": 1500
+      },
+      "description": "短暂等待，给网络/服务器恢复留出时间"
+    },
+    {
+      "step_id": "step_3",
+      "action": "click",
+      "locator": {
+        "type": "role",
+        "value": "button[name=\"Reload\"]"
+      },
+      "description": "在错误页点击 Reload，重试打开 http://192.168.100.143/?skip_mfa=true#approvals"
+    },
+    {
+      "step_id": "step_4",
+      "action": "click",
+      "locator": {
+        "type": "role",
+        "value": "button[name=\"Reload\"]"
+      },
+      "description": "点击 Reload 按钮重新加载目标页面"
+    },
+    {
+      "step_id": "step_5",
+      "action": "read_value",
+      "locator": {
+        "type": "css",
+        "value": "body"
+      },
+      "params": {
+        "selector": "body",
+        "method": "innerText",
+        "max_length": 12000
+      },
+      "output_var": "grossMarginRaw",
+      "description": "读取条件值：[条件分歧] 根据【案件粗利率（毛利率）】生成分歧条件，大于20% 就直接执行，否则就人工介入。"
+    },
+    {
+      "step_id": "step_6",
+      "action": "branch",
+      "branch": {
+        "condition_fn": "(ctx) => String(ctx.grossMarginRaw || '').trim().length > 0",
+        "on_match": "continue",
+        "on_mismatch": "takeover",
+        "takeover_reason": "[条件分歧] 根据【案件粗利率（毛利率）】生成分歧条件，大于20% 就直接执行，否则就人工介入。未满足，需要人工接管",
+        "description": "[条件分歧] 根据【案件粗利率（毛利率）】生成分歧条件，大于20% 就直接执行，否则就人工介入。"
+      },
+      "description": "[条件分歧] 根据【案件粗利率（毛利率）】生成分歧条件，大于20% 就直接执行，否则就人工介入。"
+    },
+    {
+      "step_id": "step_7",
+      "action": "wait",
+      "params": {
+        "time": 3
+      },
+      "description": "等待页面加载完成"
+    },
+    {
+      "step_id": "step_8",
+      "action": "snapshot",
+      "description": "查看页面结构，确认\"保留中\"元素"
+    }
+  ],
+  "loopDraft": {
+    "mode": "repeat_until",
+    "target": {
+      "scope": "current_list",
+      "currentPageUrl": "http://192.168.100.143/#approvals",
+      "match": {
+        "field": "status",
+        "operator": "contains",
+        "value": "保留中"
+      }
+    },
+    "eachIteration": {
+      "capturedFromIndex": 2,
+      "capturedToIndex": 4,
+      "stepIds": [
+        "recorded_step_3",
+        "recorded_step_4",
+        "recorded_step_5"
+      ],
+      "stepCount": 3
+    },
+    "onNoProgress": "stop",
+    "maxIterations": 10,
+    "updatedAt": "2026-06-19T10:14:40.035Z"
+  }
+}

@@ -16,12 +16,12 @@ const CONTEXT_PREFIX_PATTERNS = [
   /^模板里(?:的)?/u,
 ];
 
-const CONTEXT_SUFFIX_PATTERNS = [
-  /占位符$/u,
-];
+const CONTEXT_SUFFIX_PATTERNS = [/占位符$/u];
 
 const stripFriendlyInputLabelBoilerplate = (label: string): string => {
-  let normalized = String(label || '').replace(/\s+/g, ' ').trim();
+  let normalized = String(label || '')
+    .replace(/\s+/g, ' ')
+    .trim();
   if (!normalized) {
     return '';
   }
@@ -38,20 +38,27 @@ const stripFriendlyInputLabelBoilerplate = (label: string): string => {
     normalized = normalized.replace(pattern, '').trim();
   });
 
-  return normalized || String(label || '').replace(/\s+/g, ' ').trim();
+  return (
+    normalized ||
+    String(label || '')
+      .replace(/\s+/g, ' ')
+      .trim()
+  );
 };
 
 export const deriveFriendlyInputLabel = (
   description?: string,
-  maxLength = 32,
+  maxLength = 32
 ): string | undefined => {
-  const normalized = String(description || '').replace(/\s+/g, ' ').trim();
+  const normalized = String(description || '')
+    .replace(/\s+/g, ' ')
+    .trim();
   if (!normalized) {
     return undefined;
   }
 
   const concise = stripFriendlyInputLabelBoilerplate(
-    normalized.split(/[，,；;。:：]/)[0]?.trim() || '',
+    normalized.split(/[，,；;。:：]/)[0]?.trim() || ''
   );
   if (!concise) {
     return undefined;

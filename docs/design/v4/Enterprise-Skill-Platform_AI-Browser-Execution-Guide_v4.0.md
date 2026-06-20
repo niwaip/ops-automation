@@ -187,9 +187,7 @@ AI 不负责：
         { "ref": "e21", "placeholder": "请输入用户名" },
         { "ref": "e32", "placeholder": "请输入密码" }
       ],
-      "buttons": [
-        { "ref": "e53", "role": "button", "name": "登 录" }
-      ]
+      "buttons": [{ "ref": "e53", "role": "button", "name": "登 录" }]
     }
   },
   "history": [],
@@ -285,7 +283,7 @@ AI 的输出应是结构化步骤，而不是自由文本。
 推荐输出：
 
 ```ts
-page.getByRole('button', { name: '提交' })
+page.getByRole('button', { name: '提交' });
 ```
 
 ### 8.2 `label`
@@ -297,7 +295,7 @@ page.getByRole('button', { name: '提交' })
 推荐输出：
 
 ```ts
-page.getByLabel('密码')
+page.getByLabel('密码');
 ```
 
 ### 8.3 `placeholder`
@@ -309,7 +307,7 @@ page.getByLabel('密码')
 推荐输出：
 
 ```ts
-page.getByPlaceholder('请输入用户名')
+page.getByPlaceholder('请输入用户名');
 ```
 
 ### 8.4 `testid`
@@ -322,7 +320,7 @@ page.getByPlaceholder('请输入用户名')
 推荐输出：
 
 ```ts
-page.getByTestId('submit')
+page.getByTestId('submit');
 ```
 
 ### 8.5 `text`

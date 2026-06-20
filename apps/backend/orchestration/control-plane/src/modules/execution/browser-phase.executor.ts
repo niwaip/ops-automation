@@ -16,7 +16,11 @@ import {
   TraceContext,
 } from './runtime-adapter.interface';
 import { RECOVERY_ACTIONS, RECOVERY_MESSAGES } from './recovery-constants';
-import { BROWSER_ACTIONS, BROWSER_ERROR_CODES, BROWSER_RUNTIME } from './browser-execution-constants';
+import {
+  BROWSER_ACTIONS,
+  BROWSER_ERROR_CODES,
+  BROWSER_RUNTIME,
+} from './browser-execution-constants';
 
 export interface BrowserPhaseCommand {
   stepId: string;
@@ -50,22 +54,29 @@ export class BrowserPhaseExecutor {
     private readonly browserPhaseRecoveryPlanner: BrowserPhaseRecoveryPlanner,
     private readonly browserRuntimeAdapter: BrowserRuntimeAdapter,
     private readonly executionPhaseService: ExecutionPhaseService,
-    private readonly runtimeExecutionOrchestrator: RuntimeExecutionOrchestrator,
+    private readonly runtimeExecutionOrchestrator: RuntimeExecutionOrchestrator
   ) {}
 
   async execute(request: BrowserPhaseExecuteRequest): Promise<RuntimePhaseInvokeResult> {
     let phaseCommands = [...request.commands];
 
     // Check for existing human intervention or recovery patch
-    const existingPhase = await this.executionPhaseService.getByExecutionIdAndPhaseKey(request.executionId, request.phaseKey);
+    const existingPhase = await this.executionPhaseService.getByExecutionIdAndPhaseKey(
+      request.executionId,
+      request.phaseKey
+    );
     const existingDecision = existingPhase?.recovery_decision_json as any;
     if (existingDecision?.patch) {
       phaseCommands = this.applyRecoveryPatch(phaseCommands, existingDecision.patch);
     }
 
     const precheckMatched = await this.isCheckMatched(request.precheck, request.runtimeSessionId);
-    if (precheckMatched || (phaseCommands.length === 0 && existingDecision?.patch?.type === 'resolve_by_human')) {
-      const isHumanResolved = phaseCommands.length === 0 && existingDecision?.patch?.type === 'resolve_by_human';
+    if (
+      precheckMatched ||
+      (phaseCommands.length === 0 && existingDecision?.patch?.type === 'resolve_by_human')
+    ) {
+      const isHumanResolved =
+        phaseCommands.length === 0 && existingDecision?.patch?.type === 'resolve_by_human';
       await this.executionPhaseService.markRunning(request.executionId, request.phaseKey, {
         phaseName: request.phaseName,
         phaseType: request.phaseType,
@@ -97,7 +108,9 @@ export class BrowserPhaseExecutor {
 
     const maxAttempts = Math.max(
       1,
-      (request.recoveryPolicy?.maxAutoRetries || 0) + 1 + (request.recoveryPolicy?.allowAiRecovery ? 1 : 0),
+      (request.recoveryPolicy?.maxAutoRetries || 0) +
+        1 +
+        (request.recoveryPolicy?.allowAiRecovery ? 1 : 0)
     );
     let attempt = 1;
 
@@ -130,28 +143,29 @@ export class BrowserPhaseExecutor {
       const postcheckedResult = await this.applyPostcheck(
         phaseResult,
         request.postcheck,
-        request.runtimeSessionId,
+        request.runtimeSessionId
       );
-      if (postcheckedResult.success) {
+      const enrichedResult = await this.capturePhaseScreenshotIfPossible(
+        request,
+        postcheckedResult
+      );
+      if (enrichedResult.success) {
         await this.executionPhaseService.markCompleted(request.executionId, request.phaseKey, {
           phaseName: request.phaseName,
           phaseType: request.phaseType,
           attempt,
           runtimeSessionId: request.runtimeSessionId,
-          output: postcheckedResult.output || { stepResults: postcheckedResult.stepResults },
+          output: enrichedResult.output || { stepResults: enrichedResult.stepResults },
           postcheck: request.postcheck || null,
         });
         await this.persistPhaseSteps(
           request.executionId,
           request.phaseKey,
-          postcheckedResult,
+          enrichedResult,
+          phaseCommands
         );
-        await this.persistPhaseArtifacts(
-          request.executionId,
-          request.phaseKey,
-          postcheckedResult,
-        );
-        return postcheckedResult;
+        await this.persistPhaseArtifacts(request.executionId, request.phaseKey, enrichedResult);
+        return enrichedResult;
       }
 
       const recoveryDecision = await this.browserPhaseRecoveryPlanner.plan({
@@ -161,7 +175,7 @@ export class BrowserPhaseExecutor {
         phaseType: request.phaseType,
         attempt,
         commands: phaseCommands,
-        result: postcheckedResult,
+        result: enrichedResult,
         policy: request.recoveryPolicy,
       });
       if (recoveryDecision.action === RECOVERY_ACTIONS.RETRY_SAME_PHASE && attempt < maxAttempts) {
@@ -176,32 +190,36 @@ export class BrowserPhaseExecutor {
       }
 
       if (recoveryDecision.action === RECOVERY_ACTIONS.TAKEOVER_REQUIRED) {
-        await this.executionPhaseService.markWaitingTakeover(request.executionId, request.phaseKey, {
-          phaseName: request.phaseName,
-          phaseType: request.phaseType,
-          attempt,
-          runtimeSessionId: request.runtimeSessionId,
-          output: postcheckedResult.output || { stepResults: postcheckedResult.stepResults },
-          postcheck: request.postcheck || null,
-          recoveryDecision: this.serializeRecoveryDecision(recoveryDecision),
-          errorCode: postcheckedResult.errorCode || BROWSER_ERROR_CODES.PHASE_TAKEOVER_REQUIRED,
-          errorMessage: postcheckedResult.takeoverReason || postcheckedResult.errorMessage || recoveryDecision.reason,
-        });
+        await this.executionPhaseService.markWaitingTakeover(
+          request.executionId,
+          request.phaseKey,
+          {
+            phaseName: request.phaseName,
+            phaseType: request.phaseType,
+            attempt,
+            runtimeSessionId: request.runtimeSessionId,
+            output: enrichedResult.output || { stepResults: enrichedResult.stepResults },
+            postcheck: request.postcheck || null,
+            recoveryDecision: this.serializeRecoveryDecision(recoveryDecision),
+            errorCode: enrichedResult.errorCode || BROWSER_ERROR_CODES.PHASE_TAKEOVER_REQUIRED,
+            errorMessage:
+              enrichedResult.takeoverReason ||
+              enrichedResult.errorMessage ||
+              recoveryDecision.reason,
+          }
+        );
         await this.persistPhaseSteps(
           request.executionId,
           request.phaseKey,
-          postcheckedResult,
+          enrichedResult,
+          phaseCommands
         );
-        await this.persistPhaseArtifacts(
-          request.executionId,
-          request.phaseKey,
-          postcheckedResult,
-        );
+        await this.persistPhaseArtifacts(request.executionId, request.phaseKey, enrichedResult);
         return {
-          ...postcheckedResult,
+          ...enrichedResult,
           status: 'takeover_required',
           requiresTakeover: true,
-          takeoverReason: postcheckedResult.takeoverReason || recoveryDecision.reason,
+          takeoverReason: enrichedResult.takeoverReason || recoveryDecision.reason,
         };
       }
 
@@ -210,24 +228,24 @@ export class BrowserPhaseExecutor {
         phaseType: request.phaseType,
         attempt,
         runtimeSessionId: request.runtimeSessionId,
-        output: postcheckedResult.output || { stepResults: postcheckedResult.stepResults },
+        output: enrichedResult.output || { stepResults: enrichedResult.stepResults },
         postcheck: request.postcheck || null,
         recoveryDecision: this.serializeRecoveryDecision(recoveryDecision),
-        errorCode: postcheckedResult.errorCode || BROWSER_ERROR_CODES.PHASE_EXECUTION_FAILED,
-        errorMessage: postcheckedResult.errorMessage || recoveryDecision.reason || RECOVERY_MESSAGES.BROWSER_FAILED,
+        errorCode: enrichedResult.errorCode || BROWSER_ERROR_CODES.PHASE_EXECUTION_FAILED,
+        errorMessage:
+          enrichedResult.errorMessage ||
+          recoveryDecision.reason ||
+          RECOVERY_MESSAGES.BROWSER_FAILED,
       });
       await this.persistPhaseSteps(
         request.executionId,
         request.phaseKey,
-        postcheckedResult,
+        enrichedResult,
+        phaseCommands
       );
-      await this.persistPhaseArtifacts(
-        request.executionId,
-        request.phaseKey,
-        postcheckedResult,
-      );
+      await this.persistPhaseArtifacts(request.executionId, request.phaseKey, enrichedResult);
 
-      return postcheckedResult;
+      return enrichedResult;
     }
 
     return {
@@ -241,7 +259,7 @@ export class BrowserPhaseExecutor {
 
   private buildStepRequests(
     request: BrowserPhaseExecuteRequest,
-    commands: BrowserPhaseCommand[],
+    commands: BrowserPhaseCommand[]
   ): RuntimeStepInvokeRequest[] {
     return commands.map((command, index) => ({
       requestId: `${request.executionId}:${request.phaseKey}:${index + 1}`,
@@ -269,6 +287,7 @@ export class BrowserPhaseExecutor {
     executionId: string,
     phaseKey: string,
     result: RuntimePhaseInvokeResult,
+    commands: BrowserPhaseCommand[]
   ): Promise<void> {
     const stepResults = Array.isArray(result.stepResults) ? result.stepResults : [];
     if (stepResults.length === 0) {
@@ -278,26 +297,31 @@ export class BrowserPhaseExecutor {
     await this.executionPhaseService.replaceSteps(
       executionId,
       phaseKey,
-      stepResults.map((step, index) => ({
-        stepIndex: index + 1,
-        stepId: step.rawResult?.stepId as string || null,
-        action: step.rawResult?.action as string || 'unknown',
-        status: step.status,
-        input: step.rawResult?.input as Record<string, unknown> || null,
-        output: step.output || step.rawResult?.output as Record<string, unknown> || null,
-        errorMessage: step.errorMessage || null,
-        errorCode: step.errorCode || null,
-        snapshotId: step.snapshot?.id || null,
-        startedAt: step.metrics?.durationMs ? new Date(Date.now() - step.metrics.durationMs) : null,
-        endedAt: new Date(),
-      })),
+      stepResults.map((step, index) => {
+        const command = commands[index];
+        return {
+          stepIndex: index + 1,
+          stepId: (step.rawResult?.stepId as string) || command?.stepId || null,
+          action: (step.rawResult?.action as string) || command?.action || 'unknown',
+          status: step.status,
+          input: (step.rawResult?.input as Record<string, unknown>) || command?.input || null,
+          output: step.output || (step.rawResult?.output as Record<string, unknown>) || null,
+          errorMessage: step.errorMessage || null,
+          errorCode: step.errorCode || null,
+          snapshotId: step.snapshot?.id || null,
+          startedAt: step.metrics?.durationMs
+            ? new Date(Date.now() - step.metrics.durationMs)
+            : null,
+          endedAt: new Date(),
+        };
+      })
     );
   }
 
   private async persistPhaseArtifacts(
     executionId: string,
     phaseKey: string,
-    result: RuntimePhaseInvokeResult,
+    result: RuntimePhaseInvokeResult
   ): Promise<void> {
     const artifacts = Array.isArray(result.artifacts) ? result.artifacts : [];
     await this.executionPhaseService.replaceArtifacts(
@@ -309,13 +333,13 @@ export class BrowserPhaseExecutor {
         pageUrl: artifact.pageUrl || null,
         pageFingerprint: artifact.pageFingerprint || null,
         payload: artifact.payload || null,
-      })),
+      }))
     );
   }
 
   private applyRecoveryPatch(
     commands: BrowserPhaseCommand[],
-    patch: BrowserPhaseRecoveryPatch,
+    patch: BrowserPhaseRecoveryPatch
   ): BrowserPhaseCommand[] {
     if (patch.type === 'replace_selector') {
       return commands.map((command) => {
@@ -388,23 +412,23 @@ export class BrowserPhaseExecutor {
     }
 
     if (patch.type === 'resolve_by_human') {
-      const nextCommands: BrowserPhaseCommand[] = [];
-      let foundFailed = false;
-      for (const command of commands) {
-        if (command.stepId === patch.failedStepId) {
-          foundFailed = true;
-          // Skip the failed step if resumeFromStepId is provided and it matches a later step
-          if (!patch.resumeFromStepId || patch.resumeFromStepId === patch.failedStepId) {
-            continue;
-          }
-        }
-        if (foundFailed && patch.resumeFromStepId && command.stepId !== patch.resumeFromStepId && nextCommands.length === 0) {
-          // Skip steps between failed and resume point
-          continue;
-        }
-        nextCommands.push(command);
+      const failedIndex = commands.findIndex((command) => command.stepId === patch.failedStepId);
+      if (failedIndex < 0) {
+        return commands;
       }
-      return nextCommands;
+
+      if (!patch.resumeFromStepId || patch.resumeFromStepId === patch.failedStepId) {
+        return commands.filter((_, index) => index !== failedIndex);
+      }
+
+      const resumeIndex = commands.findIndex(
+        (command, index) => index > failedIndex && command.stepId === patch.resumeFromStepId
+      );
+      if (resumeIndex < 0) {
+        return commands.filter((_, index) => index !== failedIndex);
+      }
+
+      return commands.filter((_, index) => index < failedIndex || index >= resumeIndex);
     }
 
     return commands;
@@ -412,7 +436,7 @@ export class BrowserPhaseExecutor {
 
   private async isCheckMatched(
     check?: Record<string, unknown>,
-    runtimeSessionId?: string | null,
+    runtimeSessionId?: string | null
   ): Promise<boolean> {
     if (!check) {
       return false;
@@ -433,7 +457,9 @@ export class BrowserPhaseExecutor {
         pageUrl: this.readStringValue(check.pageUrl || check.page_url),
         pageUrlIncludes: this.readStringValue(check.pageUrlIncludes || check.page_url_includes),
         pageTitle: this.readStringValue(check.pageTitle || check.page_title),
-        pageTitleIncludes: this.readStringValue(check.pageTitleIncludes || check.page_title_includes),
+        pageTitleIncludes: this.readStringValue(
+          check.pageTitleIncludes || check.page_title_includes
+        ),
         pageFingerprint: this.readStringValue(check.pageFingerprint || check.page_fingerprint),
         readyState: this.readStringValue(check.readyState || check.ready_state),
         selectorExists: this.readStringValue(check.selectorExists || check.selector_exists),
@@ -454,7 +480,7 @@ export class BrowserPhaseExecutor {
   private async applyPostcheck(
     result: RuntimePhaseInvokeResult,
     postcheck?: Record<string, unknown>,
-    runtimeSessionId?: string | null,
+    runtimeSessionId?: string | null
   ): Promise<RuntimePhaseInvokeResult> {
     if (!result.success || !postcheck) {
       return result;
@@ -473,6 +499,61 @@ export class BrowserPhaseExecutor {
       };
     }
     return result;
+  }
+
+  private async capturePhaseScreenshotIfPossible(
+    request: BrowserPhaseExecuteRequest,
+    result: RuntimePhaseInvokeResult
+  ): Promise<RuntimePhaseInvokeResult> {
+    if (!request.runtimeSessionId) {
+      return result;
+    }
+
+    try {
+      const screenshotResult = await this.browserRuntimeAdapter.invokeStep({
+        requestId: `${request.executionId}:${request.phaseKey}:phase-screenshot`,
+        executionId: request.executionId,
+        stepId: `${request.phaseKey}__phase_screenshot`,
+        runtimeType: request.runtimeType || BROWSER_RUNTIME.TYPE,
+        runtimeSessionId: request.runtimeSessionId,
+        skillId: request.skillId || null,
+        publishedSkillId: request.publishedSkillId || null,
+        capabilityType: BROWSER_RUNTIME.CAPABILITY_TYPE,
+        action: BROWSER_ACTIONS.SCREENSHOT,
+        input: {
+          args: {},
+        },
+        policyContext: request.policyContext,
+        traceContext: request.traceContext,
+        metadata: {
+          phaseKey: request.phaseKey,
+          phaseName: request.phaseName,
+          phaseType: request.phaseType,
+          diagnostic: 'phase_capture',
+        },
+      });
+
+      if (!screenshotResult.success) {
+        return result;
+      }
+
+      return {
+        ...result,
+        snapshotId: result.snapshotId || screenshotResult.snapshot?.id || null,
+        artifacts: [
+          ...(Array.isArray(result.artifacts) ? result.artifacts : []),
+          ...(screenshotResult.artifacts || []).map((artifact) => ({
+            artifactType: artifact.type,
+            snapshotId: artifact.id || null,
+            pageUrl: artifact.url || null,
+            pageFingerprint: null,
+            payload: artifact.metadata || null,
+          })),
+        ],
+      };
+    } catch {
+      return result;
+    }
   }
 
   private requiresPageStateCheck(check: Record<string, unknown>): boolean {
@@ -515,7 +596,7 @@ export class BrowserPhaseExecutor {
       pageUrl?: string;
       pageFingerprint?: string;
       readyState?: string;
-    },
+    }
   ): boolean {
     const expectedPageUrl = this.readStringValue(check.pageUrl || check.page_url);
     if (expectedPageUrl && pageState.pageUrl !== expectedPageUrl) {
@@ -523,14 +604,17 @@ export class BrowserPhaseExecutor {
     }
 
     const expectedPageUrlIncludes = this.readStringValue(
-      check.pageUrlIncludes || check.page_url_includes,
+      check.pageUrlIncludes || check.page_url_includes
     );
-    if (expectedPageUrlIncludes && !String(pageState.pageUrl || '').includes(expectedPageUrlIncludes)) {
+    if (
+      expectedPageUrlIncludes &&
+      !String(pageState.pageUrl || '').includes(expectedPageUrlIncludes)
+    ) {
       return false;
     }
 
     const expectedPageFingerprint = this.readStringValue(
-      check.pageFingerprint || check.page_fingerprint,
+      check.pageFingerprint || check.page_fingerprint
     );
     if (expectedPageFingerprint && pageState.pageFingerprint !== expectedPageFingerprint) {
       return false;
@@ -542,10 +626,7 @@ export class BrowserPhaseExecutor {
     }
 
     return Boolean(
-      expectedPageUrl ||
-      expectedPageUrlIncludes ||
-      expectedPageFingerprint ||
-      expectedReadyState,
+      expectedPageUrl || expectedPageUrlIncludes || expectedPageFingerprint || expectedReadyState
     );
   }
 
@@ -554,7 +635,7 @@ export class BrowserPhaseExecutor {
   }
 
   private serializeRecoveryDecision(
-    decision: BrowserPhaseRecoveryDecision,
+    decision: BrowserPhaseRecoveryDecision
   ): Record<string, unknown> {
     return {
       action: decision.action,

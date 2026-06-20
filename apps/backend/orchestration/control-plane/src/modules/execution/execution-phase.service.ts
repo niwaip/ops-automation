@@ -65,9 +65,7 @@ interface UpsertExecutionPhaseStepInput {
 export class ExecutionPhaseService {
   private readonly logger = new Logger(ExecutionPhaseService.name);
 
-  constructor(
-    private readonly prisma: PrismaService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async createOrUpdatePhase(input: UpsertExecutionPhaseInput): Promise<void> {
     await this.prisma.$executeRawUnsafe(
@@ -119,7 +117,7 @@ export class ExecutionPhaseService {
           output_json = EXCLUDED.output_json,
           precheck_json = EXCLUDED.precheck_json,
           postcheck_json = EXCLUDED.postcheck_json,
-          recovery_decision_json = EXCLUDED.recovery_decision_json,
+          recovery_decision_json = COALESCE(EXCLUDED.recovery_decision_json, execution_phases.recovery_decision_json),
           error_code = EXCLUDED.error_code,
           error_message = EXCLUDED.error_message,
           started_at = EXCLUDED.started_at,
@@ -141,20 +139,23 @@ export class ExecutionPhaseService {
       input.errorCode || null,
       input.errorMessage || null,
       input.startedAt || null,
-      input.completedAt || null,
+      input.completedAt || null
     );
 
     await this.syncExecutionPhaseSummary(
       input.executionId,
       input.phaseKey,
-      input.status || 'pending',
+      input.status || 'pending'
     );
   }
 
   async markRunning(
     executionId: string,
     phaseKey: string,
-    updates: Pick<UpsertExecutionPhaseInput, 'phaseName' | 'phaseType' | 'attempt' | 'runtimeSessionId' | 'input' | 'precheck'>,
+    updates: Pick<
+      UpsertExecutionPhaseInput,
+      'phaseName' | 'phaseType' | 'attempt' | 'runtimeSessionId' | 'input' | 'precheck'
+    >
   ): Promise<void> {
     await this.createOrUpdatePhase({
       executionId,
@@ -176,7 +177,10 @@ export class ExecutionPhaseService {
   async markCompleted(
     executionId: string,
     phaseKey: string,
-    updates: Pick<UpsertExecutionPhaseInput, 'phaseName' | 'phaseType' | 'attempt' | 'runtimeSessionId' | 'output' | 'postcheck'>,
+    updates: Pick<
+      UpsertExecutionPhaseInput,
+      'phaseName' | 'phaseType' | 'attempt' | 'runtimeSessionId' | 'output' | 'postcheck'
+    >
   ): Promise<void> {
     await this.createOrUpdatePhase({
       executionId,
@@ -199,8 +203,16 @@ export class ExecutionPhaseService {
     phaseKey: string,
     updates: Pick<
       UpsertExecutionPhaseInput,
-      'phaseName' | 'phaseType' | 'attempt' | 'runtimeSessionId' | 'output' | 'postcheck' | 'recoveryDecision' | 'errorCode' | 'errorMessage'
-    >,
+      | 'phaseName'
+      | 'phaseType'
+      | 'attempt'
+      | 'runtimeSessionId'
+      | 'output'
+      | 'postcheck'
+      | 'recoveryDecision'
+      | 'errorCode'
+      | 'errorMessage'
+    >
   ): Promise<void> {
     await this.createOrUpdatePhase({
       executionId,
@@ -224,8 +236,16 @@ export class ExecutionPhaseService {
     phaseKey: string,
     updates: Pick<
       UpsertExecutionPhaseInput,
-      'phaseName' | 'phaseType' | 'attempt' | 'runtimeSessionId' | 'output' | 'postcheck' | 'recoveryDecision' | 'errorCode' | 'errorMessage'
-    >,
+      | 'phaseName'
+      | 'phaseType'
+      | 'attempt'
+      | 'runtimeSessionId'
+      | 'output'
+      | 'postcheck'
+      | 'recoveryDecision'
+      | 'errorCode'
+      | 'errorMessage'
+    >
   ): Promise<void> {
     await this.createOrUpdatePhase({
       executionId,
@@ -249,8 +269,16 @@ export class ExecutionPhaseService {
     phaseKey: string,
     updates: Pick<
       UpsertExecutionPhaseInput,
-      'phaseName' | 'phaseType' | 'attempt' | 'runtimeSessionId' | 'output' | 'postcheck' | 'recoveryDecision' | 'errorCode' | 'errorMessage'
-    >,
+      | 'phaseName'
+      | 'phaseType'
+      | 'attempt'
+      | 'runtimeSessionId'
+      | 'output'
+      | 'postcheck'
+      | 'recoveryDecision'
+      | 'errorCode'
+      | 'errorMessage'
+    >
   ): Promise<void> {
     await this.createOrUpdatePhase({
       executionId,
@@ -269,7 +297,10 @@ export class ExecutionPhaseService {
     });
   }
 
-  async getByExecutionIdAndPhaseKey(executionId: string, phaseKey: string): Promise<RawRecord | null> {
+  async getByExecutionIdAndPhaseKey(
+    executionId: string,
+    phaseKey: string
+  ): Promise<RawRecord | null> {
     try {
       const rows = await this.prisma.$queryRawUnsafe<RawRecord[]>(
         `
@@ -299,7 +330,7 @@ export class ExecutionPhaseService {
           LIMIT 1
         `,
         executionId,
-        phaseKey,
+        phaseKey
       );
 
       return Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
@@ -335,7 +366,7 @@ export class ExecutionPhaseService {
       input.phaseId,
       input.runtimeSessionId || null,
       input.reason || null,
-      input.requestedBy || null,
+      input.requestedBy || null
     );
 
     await this.updateExecutionTakeoverStatus(input.executionId, 'requested');
@@ -344,7 +375,7 @@ export class ExecutionPhaseService {
   async replaceSteps(
     executionId: string,
     phaseKey: string,
-    steps: UpsertExecutionPhaseStepInput[],
+    steps: UpsertExecutionPhaseStepInput[]
   ): Promise<void> {
     try {
       const phase = await this.getByExecutionIdAndPhaseKey(executionId, phaseKey);
@@ -359,7 +390,7 @@ export class ExecutionPhaseService {
             DELETE FROM execution_phase_steps
             WHERE phase_id = $1::uuid
           `,
-          phaseId,
+          phaseId
         );
 
         for (const step of steps) {
@@ -405,7 +436,7 @@ export class ExecutionPhaseService {
             step.errorCode || null,
             step.snapshotId || null,
             step.startedAt || null,
-            step.endedAt || null,
+            step.endedAt || null
           );
         }
       });
@@ -420,7 +451,7 @@ export class ExecutionPhaseService {
   async replaceArtifacts(
     executionId: string,
     phaseKey: string,
-    artifacts: UpsertExecutionPhaseArtifactInput[],
+    artifacts: UpsertExecutionPhaseArtifactInput[]
   ): Promise<void> {
     try {
       const phase = await this.getByExecutionIdAndPhaseKey(executionId, phaseKey);
@@ -434,7 +465,7 @@ export class ExecutionPhaseService {
           DELETE FROM execution_phase_artifacts
           WHERE phase_id = $1::uuid
         `,
-        phaseId,
+        phaseId
       );
 
       for (const artifact of artifacts) {
@@ -462,7 +493,7 @@ export class ExecutionPhaseService {
           artifact.snapshotId || null,
           artifact.pageUrl || null,
           artifact.pageFingerprint || null,
-          this.toJsonString(artifact.payload),
+          this.toJsonString(artifact.payload)
         );
       }
     } catch (error) {
@@ -496,12 +527,12 @@ export class ExecutionPhaseService {
       input.phaseId,
       input.status || 'resolved',
       input.resolvedBy || null,
-      input.resolutionNote || null,
+      input.resolutionNote || null
     );
 
     await this.updateExecutionTakeoverStatus(
       input.executionId,
-      input.status === 'resolved' ? 'resolved' : input.status || 'resolved',
+      input.status === 'resolved' ? 'resolved' : input.status || 'resolved'
     );
   }
 
@@ -533,7 +564,7 @@ export class ExecutionPhaseService {
           WHERE ep.execution_id = $1::uuid
           ORDER BY ep.created_at ASC
         `,
-        executionId,
+        executionId
       );
 
       if (!Array.isArray(phases) || phases.length === 0) {
@@ -563,7 +594,7 @@ export class ExecutionPhaseService {
             takeovers,
             steps,
           };
-        }),
+        })
       );
 
       return withArtifactsAndTakeovers;
@@ -599,7 +630,7 @@ export class ExecutionPhaseService {
           WHERE eps.phase_id = $1::uuid
           ORDER BY eps.step_index ASC
         `,
-        phaseId,
+        phaseId
       );
     } catch (error) {
       if (this.isMissingPhaseTableError(error)) {
@@ -626,7 +657,7 @@ export class ExecutionPhaseService {
           WHERE epa.phase_id = $1::uuid
           ORDER BY epa.created_at ASC
         `,
-        phaseId,
+        phaseId
       );
     } catch (error) {
       if (this.isMissingPhaseTableError(error)) {
@@ -656,7 +687,7 @@ export class ExecutionPhaseService {
           WHERE et.phase_id = $1::uuid
           ORDER BY et.created_at ASC
         `,
-        phaseId,
+        phaseId
       );
     } catch (error) {
       if (this.isMissingPhaseTableError(error)) {
@@ -668,8 +699,9 @@ export class ExecutionPhaseService {
 
   private isMissingPhaseTableError(error: unknown): boolean {
     const message = error instanceof Error ? error.message : String(error || '');
-    const isMissing = /execution_phases|execution_phase_artifacts|execution_takeovers/i.test(message)
-      && /does not exist|doesn't exist|no such table|relation/i.test(message);
+    const isMissing =
+      /execution_phases|execution_phase_artifacts|execution_takeovers/i.test(message) &&
+      /does not exist|doesn't exist|no such table|relation/i.test(message);
 
     if (isMissing) {
       this.logger.debug('Execution phase tables are not available yet, returning empty phase list');
@@ -681,7 +713,7 @@ export class ExecutionPhaseService {
   private async syncExecutionPhaseSummary(
     executionId: string,
     phaseKey: string,
-    phaseStatus: string,
+    phaseStatus: string
   ): Promise<void> {
     await this.prisma.$executeRawUnsafe(
       `
@@ -702,7 +734,7 @@ export class ExecutionPhaseService {
       `,
       executionId,
       phaseKey,
-      phaseStatus,
+      phaseStatus
     );
   }
 
@@ -714,7 +746,10 @@ export class ExecutionPhaseService {
     return JSON.stringify(value);
   }
 
-  private async updateExecutionTakeoverStatus(executionId: string, takeoverStatus: string | null): Promise<void> {
+  private async updateExecutionTakeoverStatus(
+    executionId: string,
+    takeoverStatus: string | null
+  ): Promise<void> {
     await this.prisma.$executeRawUnsafe(
       `
         UPDATE executions
@@ -724,7 +759,7 @@ export class ExecutionPhaseService {
         WHERE id = $1::uuid
       `,
       executionId,
-      takeoverStatus,
+      takeoverStatus
     );
   }
 }

@@ -42,9 +42,9 @@ export class ExecutionInputResolutionService {
       submittedUsage?: ExecutionUsageSummary;
       reconcileSemantic?: (
         semantic: Record<string, unknown> | undefined,
-        requiredInputs: ExecutionRequiredInput[],
+        requiredInputs: ExecutionRequiredInput[]
       ) => Record<string, unknown> | undefined;
-    } = {},
+    } = {}
   ): SubmitInputResolutionResult {
     const submittedKeys = Object.keys(options.input || {});
     if (submittedKeys.length === 0) {
@@ -58,19 +58,23 @@ export class ExecutionInputResolutionService {
     }
 
     const normalizedSubmittedInput = Object.fromEntries(
-      context.missingInputs.map((item) => [item.name, this.normalizeSubmittedInputValue(options.input?.[item.name], item.type)]),
+      context.missingInputs.map((item) => [
+        item.name,
+        this.normalizeSubmittedInputValue(options.input?.[item.name], item.type),
+      ])
     );
 
     const updatedParamResolution = this.reconcileParamResolutionWithSubmittedInput(
       context.currentParamResolution,
       context.requiredInputs,
       normalizedSubmittedInput,
-      submittedKeys,
+      submittedKeys
     );
-    const updatedRequiredInputs = this.buildRequiredInputsFromParamResolution(updatedParamResolution);
+    const updatedRequiredInputs =
+      this.buildRequiredInputsFromParamResolution(updatedParamResolution);
     const mergedSubmittedInput = this.buildFinalInputFromParamResolution(updatedParamResolution);
     const remainingMissingInputs = updatedRequiredInputs.filter(
-      (item) => item.required && this.isBlockingRequiredInput(item),
+      (item) => item.required && this.isBlockingRequiredInput(item)
     );
     const canResumeExecution = remainingMissingInputs.length === 0;
     const totalUsage = this.sumUsage(options.currentUsage, options.submittedUsage);
@@ -80,13 +84,13 @@ export class ExecutionInputResolutionService {
         : {};
     const passthroughInput = this.omitTrackedInputKeys(
       normalizedInputData,
-      new Set(Object.keys(updatedParamResolution)),
+      new Set(Object.keys(updatedParamResolution))
     );
     const currentSemantic =
-      context.normalized.semantic
-      && typeof context.normalized.semantic === 'object'
-      && !Array.isArray(context.normalized.semantic)
-        ? context.normalized.semantic as Record<string, unknown>
+      context.normalized.semantic &&
+      typeof context.normalized.semantic === 'object' &&
+      !Array.isArray(context.normalized.semantic)
+        ? (context.normalized.semantic as Record<string, unknown>)
         : undefined;
     const updatedSemantic = options.reconcileSemantic?.(currentSemantic, updatedRequiredInputs);
     const updatedNormalized = {
@@ -128,7 +132,9 @@ export class ExecutionInputResolutionService {
       return value.some((item) => this.hasMeaningfulSubmittedInputValue(item));
     }
     if (typeof value === 'object') {
-      return Object.values(value as Record<string, unknown>).some((item) => this.hasMeaningfulSubmittedInputValue(item));
+      return Object.values(value as Record<string, unknown>).some((item) =>
+        this.hasMeaningfulSubmittedInputValue(item)
+      );
     }
     return true;
   }
@@ -170,98 +176,114 @@ export class ExecutionInputResolutionService {
     const paramResolution = normalizedInput?.paramResolution;
     if (paramResolution && typeof paramResolution === 'object' && !Array.isArray(paramResolution)) {
       return this.buildRequiredInputsFromParamResolution(
-        paramResolution as Record<string, ExecutionParamResolutionEntry>,
+        paramResolution as Record<string, ExecutionParamResolutionEntry>
       );
     }
     const requiredInputs = Array.isArray(normalizedInput?.requiredInputs)
-      ? normalizedInput.requiredInputs as ExecutionRequiredInput[]
+      ? (normalizedInput.requiredInputs as ExecutionRequiredInput[])
       : [];
 
     return requiredInputs;
   }
 
-  getParamResolution(execution: Record<string, unknown>): Record<string, ExecutionParamResolutionEntry> {
-    const normalizedInput = execution.normalizedInputJson as ExecutionNormalizedInputJson | undefined;
+  getParamResolution(
+    execution: Record<string, unknown>
+  ): Record<string, ExecutionParamResolutionEntry> {
+    const normalizedInput = execution.normalizedInputJson as
+      | ExecutionNormalizedInputJson
+      | undefined;
     const paramResolution = normalizedInput?.paramResolution;
     if (paramResolution && typeof paramResolution === 'object' && !Array.isArray(paramResolution)) {
       return this.normalizeParamResolutionEntries(
-        paramResolution as Record<string, ExecutionParamResolutionEntry>,
+        paramResolution as Record<string, ExecutionParamResolutionEntry>
       );
     }
     return this.buildParamResolutionFromRequiredInputs(this.getRequiredInputs(execution));
   }
 
   buildParamResolutionFromRequiredInputs(
-    requiredInputs?: ExecutionRequiredInput[],
+    requiredInputs?: ExecutionRequiredInput[]
   ): Record<string, ExecutionParamResolutionEntry> {
-    return (requiredInputs || []).reduce<Record<string, ExecutionParamResolutionEntry>>((acc, item) => {
-      if (!item?.name) {
-        return acc;
-      }
+    return (requiredInputs || []).reduce<Record<string, ExecutionParamResolutionEntry>>(
+      (acc, item) => {
+        if (!item?.name) {
+          return acc;
+        }
 
-      const requiredMode: ExecutionParamRequiredMode = item.required_mode || (item.required ? 'always' : 'optional');
-      acc[item.name] = {
-        type: item.type || 'string',
-        required: Boolean(item.required),
-        value: item.value,
-        source: item.source || 'unresolved',
-        requiredMode,
-        ...(Array.isArray(item.source_priority) ? { valueSourcePriority: item.source_priority } : {}),
-        missing: item.missing === true,
-        needsConfirmation: item.needs_confirmation === true,
-        confirmed: item.source === 'user_input' ? true : undefined,
-        final: item.missing !== true && item.needs_confirmation !== true,
-        ...(item.description ? { description: item.description } : {}),
-        ...(item.display_name ? { display_name: item.display_name } : {}),
-        ...(item.group_label ? { group_label: item.group_label } : {}),
-        ...(item.render_path ? { render_path: item.render_path } : {}),
-        ...(item.template_binding ? { template_binding: item.template_binding } : {}),
-        ...(typeof item.confidence === 'number' ? { confidence: item.confidence } : {}),
-        ...(typeof item.confirmation_threshold === 'number'
-          ? { confirmation_threshold: item.confirmation_threshold }
-          : {}),
-        ...(item.missing_reason ? { missing_reason: item.missing_reason } : {}),
-        ...(typeof item.preview_blocking === 'boolean'
-          ? { preview_blocking: item.preview_blocking }
-          : {}),
-      };
-      return acc;
-    }, {});
+        const requiredMode: ExecutionParamRequiredMode =
+          item.required_mode || (item.required ? 'always' : 'optional');
+        acc[item.name] = {
+          type: item.type || 'string',
+          required: Boolean(item.required),
+          value: item.value,
+          source: item.source || 'unresolved',
+          requiredMode,
+          ...(Array.isArray(item.source_priority)
+            ? { valueSourcePriority: item.source_priority }
+            : {}),
+          missing: item.missing === true,
+          needsConfirmation: item.needs_confirmation === true,
+          confirmed: item.source === 'user_input' ? true : undefined,
+          final: item.missing !== true && item.needs_confirmation !== true,
+          ...(item.description ? { description: item.description } : {}),
+          ...(item.display_name ? { display_name: item.display_name } : {}),
+          ...(item.group_label ? { group_label: item.group_label } : {}),
+          ...(item.render_path ? { render_path: item.render_path } : {}),
+          ...(item.template_binding ? { template_binding: item.template_binding } : {}),
+          ...(typeof item.confidence === 'number' ? { confidence: item.confidence } : {}),
+          ...(typeof item.confirmation_threshold === 'number'
+            ? { confirmation_threshold: item.confirmation_threshold }
+            : {}),
+          ...(item.missing_reason ? { missing_reason: item.missing_reason } : {}),
+          ...(typeof item.preview_blocking === 'boolean'
+            ? { preview_blocking: item.preview_blocking }
+            : {}),
+        };
+        return acc;
+      },
+      {}
+    );
   }
 
   buildRequiredInputsFromParamResolution(
-    paramResolution: Record<string, ExecutionParamResolutionEntry>,
+    paramResolution: Record<string, ExecutionParamResolutionEntry>
   ): ExecutionRequiredInput[] {
-    return Object.entries(this.normalizeParamResolutionEntries(paramResolution)).map(([name, entry]) => ({
-      name,
-      type: entry.type || 'string',
-      ...(entry.description ? { description: entry.description } : {}),
-      ...(entry.display_name ? { display_name: entry.display_name } : {}),
-      ...(entry.group_label ? { group_label: entry.group_label } : {}),
-      ...(entry.render_path ? { render_path: entry.render_path } : {}),
-      ...(entry.template_binding ? { template_binding: entry.template_binding } : {}),
-      required: entry.required === true,
-      required_mode: entry.requiredMode,
-      ...(entry.value !== undefined ? { value: entry.value } : {}),
-      missing: entry.missing === true,
-      source: entry.source || 'unresolved',
-      ...(Array.isArray(entry.valueSourcePriority) ? { source_priority: entry.valueSourcePriority } : {}),
-      ...(typeof entry.confidence === 'number' ? { confidence: entry.confidence } : {}),
-      needs_confirmation: entry.needsConfirmation === true,
-      ...(typeof entry.confirmation_threshold === 'number'
-        ? { confirmation_threshold: entry.confirmation_threshold }
-        : {}),
-      ...(entry.missing_reason ? { missing_reason: entry.missing_reason } : {}),
-      ...(typeof entry.preview_blocking === 'boolean'
-        ? { preview_blocking: entry.preview_blocking }
-        : {}),
-    }));
+    return Object.entries(this.normalizeParamResolutionEntries(paramResolution)).map(
+      ([name, entry]) => ({
+        name,
+        type: entry.type || 'string',
+        ...(entry.description ? { description: entry.description } : {}),
+        ...(entry.display_name ? { display_name: entry.display_name } : {}),
+        ...(entry.group_label ? { group_label: entry.group_label } : {}),
+        ...(entry.render_path ? { render_path: entry.render_path } : {}),
+        ...(entry.template_binding ? { template_binding: entry.template_binding } : {}),
+        required: entry.required === true,
+        required_mode: entry.requiredMode,
+        ...(entry.value !== undefined ? { value: entry.value } : {}),
+        missing: entry.missing === true,
+        source: entry.source || 'unresolved',
+        ...(Array.isArray(entry.valueSourcePriority)
+          ? { source_priority: entry.valueSourcePriority }
+          : {}),
+        ...(typeof entry.confidence === 'number' ? { confidence: entry.confidence } : {}),
+        needs_confirmation: entry.needsConfirmation === true,
+        ...(typeof entry.confirmation_threshold === 'number'
+          ? { confirmation_threshold: entry.confirmation_threshold }
+          : {}),
+        ...(entry.missing_reason ? { missing_reason: entry.missing_reason } : {}),
+        ...(typeof entry.preview_blocking === 'boolean'
+          ? { preview_blocking: entry.preview_blocking }
+          : {}),
+      })
+    );
   }
 
   buildFinalInputFromParamResolution(
-    paramResolution: Record<string, ExecutionParamResolutionEntry>,
+    paramResolution: Record<string, ExecutionParamResolutionEntry>
   ): Record<string, unknown> {
-    return Object.entries(this.normalizeParamResolutionEntries(paramResolution)).reduce<Record<string, unknown>>((acc, [name, entry]) => {
+    return Object.entries(this.normalizeParamResolutionEntries(paramResolution)).reduce<
+      Record<string, unknown>
+    >((acc, [name, entry]) => {
       if (entry.final !== true || entry.value === undefined || entry.value === null) {
         return acc;
       }
@@ -272,22 +294,21 @@ export class ExecutionInputResolutionService {
 
   omitTrackedInputKeys(
     input: Record<string, unknown>,
-    trackedKeys: Set<string>,
+    trackedKeys: Set<string>
   ): Record<string, unknown> {
-    return Object.fromEntries(
-      Object.entries(input).filter(([name]) => !trackedKeys.has(name)),
-    );
+    return Object.fromEntries(Object.entries(input).filter(([name]) => !trackedKeys.has(name)));
   }
 
   reconcileParamResolutionWithSubmittedInput(
     currentParamResolution: Record<string, ExecutionParamResolutionEntry>,
     requiredInputs: ExecutionRequiredInput[],
     normalizedSubmittedInput: Record<string, unknown>,
-    submittedKeys: string[],
+    submittedKeys: string[]
   ): Record<string, ExecutionParamResolutionEntry> {
-    const baseParamResolution = Object.keys(currentParamResolution).length > 0
-      ? currentParamResolution
-      : this.buildParamResolutionFromRequiredInputs(requiredInputs);
+    const baseParamResolution =
+      Object.keys(currentParamResolution).length > 0
+        ? currentParamResolution
+        : this.buildParamResolutionFromRequiredInputs(requiredInputs);
 
     return Object.fromEntries(
       Object.entries(baseParamResolution).map(([name, entry]) => {
@@ -297,29 +318,35 @@ export class ExecutionInputResolutionService {
 
         const normalizedValue = normalizedSubmittedInput[name];
         if (!this.hasMeaningfulSubmittedInputValue(normalizedValue)) {
-          return [name, {
-            ...entry,
-            value: undefined,
-            source: 'unresolved' as const,
-            missing: true,
-            needsConfirmation: false,
-            confirmed: false,
-            final: false,
-            missing_reason: undefined,
-          }];
+          return [
+            name,
+            {
+              ...entry,
+              value: undefined,
+              source: 'unresolved' as const,
+              missing: true,
+              needsConfirmation: false,
+              confirmed: false,
+              final: false,
+              missing_reason: undefined,
+            },
+          ];
         }
 
-        return [name, {
-          ...entry,
-          value: normalizedValue,
-          source: 'user_input' as const,
-          missing: false,
-          needsConfirmation: false,
-          confirmed: true,
-          final: true,
-          missing_reason: undefined,
-        }];
-      }),
+        return [
+          name,
+          {
+            ...entry,
+            value: normalizedValue,
+            source: 'user_input' as const,
+            missing: false,
+            needsConfirmation: false,
+            confirmed: true,
+            final: true,
+            missing_reason: undefined,
+          },
+        ];
+      })
     );
   }
 
@@ -331,15 +358,18 @@ export class ExecutionInputResolutionService {
   }
 
   private normalizeParamResolutionEntries(
-    paramResolution: Record<string, ExecutionParamResolutionEntry>,
+    paramResolution: Record<string, ExecutionParamResolutionEntry>
   ): Record<string, ExecutionParamResolutionEntry> {
     return Object.fromEntries(
-      Object.entries(paramResolution).map(([name, entry]) => [name, this.normalizeParamResolutionEntry(entry)]),
+      Object.entries(paramResolution).map(([name, entry]) => [
+        name,
+        this.normalizeParamResolutionEntry(entry),
+      ])
     );
   }
 
   private normalizeParamResolutionEntry(
-    entry: ExecutionParamResolutionEntry,
+    entry: ExecutionParamResolutionEntry
   ): ExecutionParamResolutionEntry {
     const rawEntry = entry as ExecutionParamResolutionEntry & Record<string, unknown>;
 
@@ -357,13 +387,14 @@ export class ExecutionInputResolutionService {
       ...(rawEntry.preview_blocking === undefined && typeof rawEntry.previewBlocking === 'boolean'
         ? { preview_blocking: rawEntry.previewBlocking }
         : {}),
-      ...(rawEntry.confirmation_threshold === undefined && typeof rawEntry.confirmationThreshold === 'number'
+      ...(rawEntry.confirmation_threshold === undefined &&
+      typeof rawEntry.confirmationThreshold === 'number'
         ? { confirmation_threshold: rawEntry.confirmationThreshold }
         : {}),
-      ...(rawEntry.render_path === undefined && (
-        typeof rawEntry.renderPath === 'string'
-        || (Array.isArray(rawEntry.renderPath) && rawEntry.renderPath.every((item) => typeof item === 'string'))
-      )
+      ...(rawEntry.render_path === undefined &&
+      (typeof rawEntry.renderPath === 'string' ||
+        (Array.isArray(rawEntry.renderPath) &&
+          rawEntry.renderPath.every((item) => typeof item === 'string')))
         ? { render_path: rawEntry.renderPath as string | string[] }
         : {}),
       ...(rawEntry.template_binding === undefined && typeof rawEntry.templateBinding === 'string'
@@ -445,7 +476,9 @@ export class ExecutionInputResolutionService {
   private sumUsage(
     ...usages: (ExecutionUsageSummary | undefined)[]
   ): ExecutionUsageSummary | undefined {
-    const validUsages = usages.filter((u): u is ExecutionUsageSummary => !!u && (u.total_tokens > 0 || u.prompt_tokens > 0));
+    const validUsages = usages.filter(
+      (u): u is ExecutionUsageSummary => !!u && (u.total_tokens > 0 || u.prompt_tokens > 0)
+    );
     if (validUsages.length === 0) {
       return undefined;
     }

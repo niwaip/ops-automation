@@ -32,7 +32,7 @@ export class ToolExecutor implements OnModuleInit {
 
   constructor(
     private readonly discoveryService?: DiscoveryService,
-    private readonly reflector: Reflector = new Reflector(),
+    private readonly reflector: Reflector = new Reflector()
   ) {}
 
   async onModuleInit() {
@@ -55,10 +55,7 @@ export class ToolExecutor implements OnModuleInit {
       const { instance } = wrapper;
       if (!instance || typeof instance !== 'object') return;
 
-      const metadata = this.reflector.get<ToolOptions>(
-        TOOL_METADATA_KEY,
-        instance.constructor,
-      );
+      const metadata = this.reflector.get<ToolOptions>(TOOL_METADATA_KEY, instance.constructor);
 
       if (metadata) {
         let tool = instance as ToolDefinition;
@@ -66,7 +63,7 @@ export class ToolExecutor implements OnModuleInit {
         // 应用 SecurityPolicy
         const securityPolicy = this.reflector.get<SecurityPolicy>(
           TOOL_SECURITY_KEY,
-          instance.constructor,
+          instance.constructor
         );
         if (securityPolicy) {
           this.logger.debug(`Applying security policy to tool ${metadata.name}`);
@@ -78,7 +75,9 @@ export class ToolExecutor implements OnModuleInit {
       }
     });
 
-    this.logger.log(`Automatically discovered and registered ${registeredCount} tools via decorators`);
+    this.logger.log(
+      `Automatically discovered and registered ${registeredCount} tools via decorators`
+    );
   }
 
   /**
@@ -87,13 +86,21 @@ export class ToolExecutor implements OnModuleInit {
   private wrapWithSecurityPolicy(tool: ToolDefinition, policy: SecurityPolicy): ToolDefinition {
     const originalExecute = tool.execute.bind(tool);
 
-    tool.execute = async (params: Record<string, unknown>, context: ExecutionContext): Promise<ToolResult> => {
+    tool.execute = async (
+      params: Record<string, unknown>,
+      context: ExecutionContext
+    ): Promise<ToolResult> => {
       // 1. 路径安全检查
       if (policy.validatePath) {
         for (const [key, value] of Object.entries(params)) {
-          if (typeof value === 'string' && (key.toLowerCase().includes('path') || key.toLowerCase().includes('file'))) {
+          if (
+            typeof value === 'string' &&
+            (key.toLowerCase().includes('path') || key.toLowerCase().includes('file'))
+          ) {
             if (value.includes('..') || value.startsWith('/') || value.includes('~')) {
-              this.logger.warn(`Security Block: Path traversal attempt in tool ${tool.name}, parameter ${key}: ${value}`);
+              this.logger.warn(
+                `Security Block: Path traversal attempt in tool ${tool.name}, parameter ${key}: ${value}`
+              );
               return {
                 success: false,
                 output: `安全阻断：参数 ${key} 包含非法路径字符 (.. 或 绝对路径)。只允许相对当前工作目录的路径。`,
@@ -107,8 +114,17 @@ export class ToolExecutor implements OnModuleInit {
       // 2. 命令注入检查
       if (policy.validateCommand) {
         const command = params.command as string | undefined;
-        if (command && (command.includes(';') || command.includes('&') || command.includes('|') || command.includes('`') || command.includes('$'))) {
-          this.logger.warn(`Security Block: Command injection attempt in tool ${tool.name}: ${command}`);
+        if (
+          command &&
+          (command.includes(';') ||
+            command.includes('&') ||
+            command.includes('|') ||
+            command.includes('`') ||
+            command.includes('$'))
+        ) {
+          this.logger.warn(
+            `Security Block: Command injection attempt in tool ${tool.name}: ${command}`
+          );
           return {
             success: false,
             output: '安全阻断：检测到潜在的命令注入风险字符。',
@@ -121,7 +137,9 @@ export class ToolExecutor implements OnModuleInit {
       if (policy.maxContentLength) {
         for (const [key, value] of Object.entries(params)) {
           if (typeof value === 'string' && value.length > policy.maxContentLength) {
-            this.logger.warn(`Security Block: Content too long in tool ${tool.name}, parameter ${key}`);
+            this.logger.warn(
+              `Security Block: Content too long in tool ${tool.name}, parameter ${key}`
+            );
             return {
               success: false,
               output: `安全阻断：参数 ${key} 内容过长 (限制 ${policy.maxContentLength} 字符)。`,
@@ -141,7 +159,10 @@ export class ToolExecutor implements OnModuleInit {
   /**
    * 动态加载流程模板并包装为工具 (Flow as a Tool)
    */
-  async loadDynamicFlowTools(force = false, traceId?: string): Promise<{
+  async loadDynamicFlowTools(
+    force = false,
+    traceId?: string
+  ): Promise<{
     refreshed: boolean;
     loadedAt: number;
     dynamicFlowToolCount: number;
@@ -199,10 +220,13 @@ export class ToolExecutor implements OnModuleInit {
           validateParams: () => ({ valid: true, missing: [] }),
           execute: async (params, context) => {
             const flowExecutor = this.getTool('flow_execute') as FlowExecuteTool;
-            return flowExecutor.execute({
-              templateId: template.id,
-              params: params.params || context.collectedParams || {},
-            }, context);
+            return flowExecutor.execute(
+              {
+                templateId: template.id,
+                params: params.params || context.collectedParams || {},
+              },
+              context
+            );
           },
         };
 
@@ -220,7 +244,9 @@ export class ToolExecutor implements OnModuleInit {
 
       this.isFlowsLoaded = true;
       this.lastDynamicFlowLoadAt = Date.now();
-      this.logger.log(`${tracePrefix}Registered ${templates.length} dynamic flow templates, ${this.dynamicFlowToolNames.size} aliases`);
+      this.logger.log(
+        `${tracePrefix}Registered ${templates.length} dynamic flow templates, ${this.dynamicFlowToolNames.size} aliases`
+      );
       return {
         refreshed: true,
         loadedAt: this.lastDynamicFlowLoadAt,
@@ -276,9 +302,9 @@ export class ToolExecutor implements OnModuleInit {
    */
   getAllTools(userRoles?: string[]): ToolDefinition[] {
     const allTools = Array.from(this.tools.values());
-    
+
     // 如果没有传入角色信息，默认显示所有非限制工具
-    return allTools.filter(tool => {
+    return allTools.filter((tool) => {
       if (tool instanceof BaseTool) {
         return tool.isAuthorized(userRoles);
       }
@@ -303,16 +329,15 @@ export class ToolExecutor implements OnModuleInit {
       }) as ToolDefinition[];
   }
 
-  private bindSkillContext(
-    params: Record<string, unknown>,
-    context: ExecutionContext,
-  ): void {
+  private bindSkillContext(params: Record<string, unknown>, context: ExecutionContext): void {
     const requestedSkillId = typeof params.skillId === 'string' ? params.skillId : undefined;
     if (!requestedSkillId || context.skill?.skillId === requestedSkillId) {
       return;
     }
 
-    const availableSkill = context.availableSkills?.find((item) => item.skillId === requestedSkillId);
+    const availableSkill = context.availableSkills?.find(
+      (item) => item.skillId === requestedSkillId
+    );
     if (!availableSkill) {
       return;
     }
@@ -337,7 +362,8 @@ export class ToolExecutor implements OnModuleInit {
       outputParams: availableSkill.outputParams,
       matchReason: 'selected_from_available_skills',
     };
-    context.selectedSkillToolNames = availableSkill.effectiveTools || context.selectedSkillToolNames;
+    context.selectedSkillToolNames =
+      availableSkill.effectiveTools || context.selectedSkillToolNames;
   }
 
   private isToolVisibleInSnapshot(toolName: string, context: ExecutionContext): boolean {
@@ -357,7 +383,7 @@ export class ToolExecutor implements OnModuleInit {
 
   private buildToolResult(
     toolName: string,
-    partial: Omit<ToolResult, 'meta'> & { meta?: ToolResult['meta'] },
+    partial: Omit<ToolResult, 'meta'> & { meta?: ToolResult['meta'] }
   ): ToolResult {
     return {
       ...partial,
@@ -371,13 +397,13 @@ export class ToolExecutor implements OnModuleInit {
 
   private isToolAllowedInSelectedSkill(toolName: string, context: ExecutionContext): boolean {
     const selectedSkillId =
-      context.skill?.skillId
-      || context.documentContext?.selectedSkillId
-      || context.capabilitySnapshot?.selectedSkillId;
+      context.skill?.skillId ||
+      context.documentContext?.selectedSkillId ||
+      context.capabilitySnapshot?.selectedSkillId;
     const selectedSkillToolNames =
-      context.selectedSkillToolNames
-      || context.capabilitySnapshot?.skillScopedToolNames
-      || context.availableSkills?.find((item) => item.skillId === selectedSkillId)?.effectiveTools;
+      context.selectedSkillToolNames ||
+      context.capabilitySnapshot?.skillScopedToolNames ||
+      context.availableSkills?.find((item) => item.skillId === selectedSkillId)?.effectiveTools;
 
     if (!selectedSkillId || !selectedSkillToolNames || selectedSkillToolNames.length === 0) {
       return true;
@@ -392,12 +418,16 @@ export class ToolExecutor implements OnModuleInit {
   async executeTool(
     toolName: string,
     params: Record<string, unknown>,
-    context: ExecutionContext,
+    context: ExecutionContext
   ): Promise<ToolResult> {
     const tracePrefix = context.traceId ? `[${context.traceId}] ` : '';
-    this.logger.debug(`${tracePrefix}Allowed tools for current run: ${JSON.stringify(context.allowedToolNames || [])}`);
+    this.logger.debug(
+      `${tracePrefix}Allowed tools for current run: ${JSON.stringify(context.allowedToolNames || [])}`
+    );
     if (context.allowedToolNames && !context.allowedToolNames.includes(toolName)) {
-      this.logger.warn(`${tracePrefix}Tool NOT ALLOWED in current run: ${toolName}. This is a protocol violation.`);
+      this.logger.warn(
+        `${tracePrefix}Tool NOT ALLOWED in current run: ${toolName}. This is a protocol violation.`
+      );
       return this.buildToolResult(toolName, {
         success: false,
         output: `工具 "${toolName}" 不在当前任务允许列表中 (白名单约束)。请检查是否应使用技能(skillId)执行。`,
@@ -440,20 +470,20 @@ export class ToolExecutor implements OnModuleInit {
         data: {
           error: 'tool_not_bound_to_skill',
           selectedSkillId:
-            context.skill?.skillId
-            || context.documentContext?.selectedSkillId
-            || context.capabilitySnapshot?.selectedSkillId,
+            context.skill?.skillId ||
+            context.documentContext?.selectedSkillId ||
+            context.capabilitySnapshot?.selectedSkillId,
           allowedTools:
-            context.selectedSkillToolNames
-            || context.capabilitySnapshot?.skillScopedToolNames
-            || [],
+            context.selectedSkillToolNames ||
+            context.capabilitySnapshot?.skillScopedToolNames ||
+            [],
         },
       });
     }
 
     const requiresApproval = Boolean(
-      context.capabilitySnapshot?.policies.requireApprovalToolNames?.includes(toolName)
-      || capabilityVisibleTool?.requiresApproval,
+      context.capabilitySnapshot?.policies.requireApprovalToolNames?.includes(toolName) ||
+      capabilityVisibleTool?.requiresApproval
     );
     if (requiresApproval && !this.hasApprovalForTool(toolName, context)) {
       this.logger.warn(`${tracePrefix}Tool requires approval before execution: ${toolName}`);
@@ -487,7 +517,9 @@ export class ToolExecutor implements OnModuleInit {
 
     // 权限二次校验（防御性编程）
     if (tool instanceof BaseTool && !tool.isAuthorized(context.userRoles)) {
-      this.logger.warn(`${tracePrefix}Unauthorized tool access: user=${context.userId}, tool=${toolName}`);
+      this.logger.warn(
+        `${tracePrefix}Unauthorized tool access: user=${context.userId}, tool=${toolName}`
+      );
       return this.buildToolResult(toolName, {
         success: false,
         output: `抱歉，您没有权限执行 "${tool.description.split(':')[0]}" 相关的操作。`,
@@ -521,7 +553,9 @@ export class ToolExecutor implements OnModuleInit {
     if (toolName === 'flow_execute') {
       const incomingSkillId = typeof params.skillId === 'string' ? params.skillId : undefined;
       const matchedSkillId = context.skill?.skillId;
-      const hasAvailableSkills = Boolean(context.availableSkills && context.availableSkills.length > 0);
+      const hasAvailableSkills = Boolean(
+        context.availableSkills && context.availableSkills.length > 0
+      );
       const isTaskConstrainedRun =
         hasAvailableSkills &&
         Array.isArray(context.allowedToolNames) &&
@@ -553,7 +587,9 @@ export class ToolExecutor implements OnModuleInit {
     // 验证参数
     const validation = tool.validateParams(params);
     if (!validation.valid) {
-      this.logger.debug(`${tracePrefix}Tool ${toolName} missing params: ${validation.missing.join(', ')}`);
+      this.logger.debug(
+        `${tracePrefix}Tool ${toolName} missing params: ${validation.missing.join(', ')}`
+      );
       return this.buildToolResult(toolName, {
         success: false,
         output: `参数不完整，缺少: ${validation.missing.join(', ')}`,
@@ -566,7 +602,9 @@ export class ToolExecutor implements OnModuleInit {
     }
 
     try {
-      this.logger.debug(`${tracePrefix}Executing tool: ${toolName} with params: ${JSON.stringify(params)}`);
+      this.logger.debug(
+        `${tracePrefix}Executing tool: ${toolName} with params: ${JSON.stringify(params)}`
+      );
       const result = await tool.execute(params, context);
       this.logger.debug(`${tracePrefix}Tool ${toolName} result: success=${result.success}`);
 
@@ -592,7 +630,7 @@ export class ToolExecutor implements OnModuleInit {
     toolName: string,
     params: Record<string, unknown>,
     context: ExecutionContext,
-    iteration: number,
+    iteration: number
   ): Promise<StreamEvent> {
     const result = await this.executeTool(toolName, params, context);
     const resultData = result.data as Record<string, unknown> | undefined;

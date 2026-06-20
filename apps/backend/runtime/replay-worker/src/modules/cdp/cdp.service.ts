@@ -99,7 +99,7 @@ export class CdpService implements OnModuleDestroy {
     action: StepAction,
     locator?: Locator,
     params?: StepActionParams,
-    timeoutMs?: number,
+    timeoutMs?: number
   ): Promise<StepResult> {
     const startTime = Date.now();
     const timeout = timeoutMs ?? DEFAULT_STEP_TIMEOUT_MS;
@@ -310,7 +310,11 @@ export class CdpService implements OnModuleDestroy {
     };
   }
 
-  private async executeFill(locator: Locator | undefined, value: string | undefined, timeout: number): Promise<StepResult> {
+  private async executeFill(
+    locator: Locator | undefined,
+    value: string | undefined,
+    timeout: number
+  ): Promise<StepResult> {
     if (!locator) {
       throw new Error('Fill action requires a locator');
     }
@@ -347,7 +351,10 @@ export class CdpService implements OnModuleDestroy {
     };
   }
 
-  private async executeWait(params: StepActionParams | undefined, timeout: number): Promise<StepResult> {
+  private async executeWait(
+    params: StepActionParams | undefined,
+    timeout: number
+  ): Promise<StepResult> {
     if (!this.page) {
       throw new Error('Page not available');
     }
@@ -372,7 +379,11 @@ export class CdpService implements OnModuleDestroy {
     };
   }
 
-  private async executeSelect(locator: Locator | undefined, value: string | undefined, timeout: number): Promise<StepResult> {
+  private async executeSelect(
+    locator: Locator | undefined,
+    value: string | undefined,
+    timeout: number
+  ): Promise<StepResult> {
     if (!locator) {
       throw new Error('Select action requires a locator');
     }
@@ -391,7 +402,11 @@ export class CdpService implements OnModuleDestroy {
     };
   }
 
-  private async executeCheck(locator: Locator | undefined, checked: boolean, timeout: number): Promise<StepResult> {
+  private async executeCheck(
+    locator: Locator | undefined,
+    checked: boolean,
+    timeout: number
+  ): Promise<StepResult> {
     if (!locator) {
       throw new Error('Check action requires a locator');
     }
@@ -425,7 +440,7 @@ export class CdpService implements OnModuleDestroy {
   private async executeAssertion(
     locator: Locator | undefined,
     _params: StepActionParams | undefined,
-    _timeout: number,
+    _timeout: number
   ): Promise<StepResult> {
     if (!this.page) {
       throw new Error('Page not available');

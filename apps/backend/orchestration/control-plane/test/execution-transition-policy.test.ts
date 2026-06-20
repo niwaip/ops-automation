@@ -14,17 +14,17 @@ describe('execution-transition-policy', () => {
       EXECUTION_STATUS.CANCELLED,
     ]);
     expect(EXECUTION_STATUS_TRANSITIONS[EXECUTION_STATUS.RUNNING]).toContain(
-      EXECUTION_STATUS.HUMAN_CONTROL,
+      EXECUTION_STATUS.HUMAN_CONTROL
     );
   });
 
   it('checks whether a transition is allowed', () => {
     expect(
-      canTransitionExecutionStatus(EXECUTION_STATUS.PENDING_APPROVAL, EXECUTION_STATUS.QUEUED),
+      canTransitionExecutionStatus(EXECUTION_STATUS.PENDING_APPROVAL, EXECUTION_STATUS.QUEUED)
     ).toBe(true);
-    expect(
-      canTransitionExecutionStatus(EXECUTION_STATUS.SUCCEEDED, EXECUTION_STATUS.RUNNING),
-    ).toBe(false);
+    expect(canTransitionExecutionStatus(EXECUTION_STATUS.SUCCEEDED, EXECUTION_STATUS.RUNNING)).toBe(
+      false
+    );
   });
 
   it('recognizes terminal execution states', () => {

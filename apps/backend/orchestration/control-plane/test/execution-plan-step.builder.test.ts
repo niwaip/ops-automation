@@ -22,7 +22,7 @@ describe('execution-plan-step.builder', () => {
             status: 'planned',
           },
         ],
-      },
+      }
     );
 
     expect(result.bootstrapUrl).toBe('https://example.com');
@@ -81,7 +81,7 @@ describe('execution-plan-step.builder', () => {
             status: 'planned',
           },
         ],
-      },
+      }
     );
 
     expect(result.bootstrapUrl).toBeUndefined();
@@ -104,7 +104,7 @@ describe('execution-plan-step.builder', () => {
     const result = buildPlannedExecutionSteps(
       'execution-3',
       { url: '  https://example.com/path  ' },
-      undefined,
+      undefined
     );
 
     expect(result.bootstrapUrl).toBe('https://example.com/path');
@@ -119,11 +119,7 @@ describe('execution-plan-step.builder', () => {
   });
 
   it('does not create any planned steps when bootstrap url is blank and planner steps are absent', () => {
-    const result = buildPlannedExecutionSteps(
-      'execution-4',
-      { url: '   ' },
-      undefined,
-    );
+    const result = buildPlannedExecutionSteps('execution-4', { url: '   ' }, undefined);
 
     expect(result.bootstrapUrl).toBeUndefined();
     expect(result.steps).toEqual([]);
@@ -146,7 +142,7 @@ describe('execution-plan-step.builder', () => {
             status: 'planned',
           },
         ],
-      },
+      }
     );
 
     expect(result.bootstrapUrl).toBeUndefined();
@@ -178,7 +174,7 @@ describe('execution-plan-step.builder', () => {
             status: 'planned',
           },
         ],
-      },
+      }
     );
 
     expect(bootstrapUrl).toBe('https://example.com/login');
@@ -188,21 +184,21 @@ describe('execution-plan-step.builder', () => {
         phaseKey: 'phase_bootstrap_navigation',
         phaseName: 'Open target page',
         phaseType: 'browser_navigation',
-      }),
+      })
     );
     expect(steps[1].targetJson).toEqual(
       expect.objectContaining({
         phaseKey: 'phase_01_login_skill',
         phaseName: '登录并进入主页',
         phaseType: 'system_skill',
-      }),
+      })
     );
     expect(steps[1].inputJson).toEqual(
       expect.objectContaining({
         phaseKey: 'phase_01_login_skill',
         phaseName: '登录并进入主页',
         phaseType: 'system_skill',
-      }),
+      })
     );
   });
 
@@ -258,7 +254,7 @@ describe('execution-plan-step.builder', () => {
             },
           },
         ],
-      },
+      }
     );
 
     expect(steps).toHaveLength(1);
@@ -314,7 +310,7 @@ describe('execution-plan-step.builder', () => {
             },
           },
         ],
-      }),
+      })
     );
   });
 });

@@ -2,11 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { WordGenerator } from './word.generator';
 import { ExcelGenerator } from './excel.generator';
 import { PDFGenerator } from './pdf.generator';
-import {
-  ReportTemplateDTO,
-  AIAnalysisResult,
-  StepResult,
-} from '../../interfaces';
+import { ReportTemplateDTO, AIAnalysisResult, StepResult } from '../../interfaces';
 
 @Injectable()
 export class GeneratorService {
@@ -15,13 +11,13 @@ export class GeneratorService {
   constructor(
     private readonly wordGenerator: WordGenerator,
     private readonly excelGenerator: ExcelGenerator,
-    private readonly pdfGenerator: PDFGenerator,
+    private readonly pdfGenerator: PDFGenerator
   ) {}
 
   async generate(
     template: ReportTemplateDTO,
     stepResults: StepResult[],
-    aiAnalysis: AIAnalysisResult[],
+    aiAnalysis: AIAnalysisResult[]
   ): Promise<string> {
     this.logger.log(`Generating report for template ${template.id} in format ${template.format}`);
 

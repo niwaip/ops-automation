@@ -20,19 +20,19 @@ import type {
 
 interface ExecutionStepExecutorHooks {
   extractStepPhaseMetadata: (
-    step?: Record<string, unknown> | null,
+    step?: Record<string, unknown> | null
   ) => ExecutionStepPhaseMetadata | undefined;
   markPhaseRunningForStep: (
     executionId: string,
     runtimeSessionId: string,
     phaseMetadata?: ExecutionStepPhaseMetadata,
-    step?: Record<string, unknown> | null,
+    step?: Record<string, unknown> | null
   ) => Promise<void>;
   emitEvent: (
     executionId: string,
-    eventType: typeof EXECUTION_EVENT_TYPE[keyof typeof EXECUTION_EVENT_TYPE],
+    eventType: (typeof EXECUTION_EVENT_TYPE)[keyof typeof EXECUTION_EVENT_TYPE],
     payload: unknown,
-    options?: CreateExecutionEventOptions,
+    options?: CreateExecutionEventOptions
   ) => Promise<void>;
   handleBrowserStepResult: (
     executionId: string,
@@ -40,48 +40,41 @@ interface ExecutionStepExecutorHooks {
     stepId: string,
     result: RuntimeStepInvokeResult,
     phaseMetadata?: ExecutionStepPhaseMetadata,
-    step?: Record<string, unknown> | null,
+    step?: Record<string, unknown> | null
   ) => Promise<void>;
   extractStepBrowserPhaseConfig: (
-    step?: Record<string, unknown> | null,
+    step?: Record<string, unknown> | null
   ) => ExecutionStepBrowserPhaseConfig | undefined;
-  skipSingleStep: (
-    stepId: string,
-    executionId: string,
-    reason: string,
-  ) => Promise<void>;
-  advanceExecutionFlow: (
-    executionId: string,
-    runtimeSessionId: string,
-  ) => Promise<void>;
-  buildBrowserPhasePolicyContext: (
-    execution: Record<string, unknown>,
-  ) => {
-    riskLevel?: 'L0' | 'L1' | 'L2' | 'L3';
-    requiresApproval?: boolean;
-  } | undefined;
-  buildBrowserPhaseTraceContext: (
-    execution: Record<string, unknown>,
-  ) => {
-    userId?: string;
-    actorType?: 'system';
-    sourceService?: string;
-  } | undefined;
+  skipSingleStep: (stepId: string, executionId: string, reason: string) => Promise<void>;
+  advanceExecutionFlow: (executionId: string, runtimeSessionId: string) => Promise<void>;
+  buildBrowserPhasePolicyContext: (execution: Record<string, unknown>) =>
+    | {
+        riskLevel?: 'L0' | 'L1' | 'L2' | 'L3';
+        requiresApproval?: boolean;
+      }
+    | undefined;
+  buildBrowserPhaseTraceContext: (execution: Record<string, unknown>) =>
+    | {
+        userId?: string;
+        actorType?: 'system';
+        sourceService?: string;
+      }
+    | undefined;
   extractBrowserPhaseInput: (
-    step?: Record<string, unknown> | null,
+    step?: Record<string, unknown> | null
   ) => Record<string, unknown> | undefined;
   handleBrowserPhaseStepResult: (
     executionId: string,
     runtimeSessionId: string,
     stepId: string,
-    result: RuntimePhaseInvokeResult,
+    result: RuntimePhaseInvokeResult
   ) => Promise<void>;
   initializeWorkflowActivityPhasesForSkillExecution: (
     executionId: string,
     runtimeSessionId: string,
     capabilityId: string,
     phaseMetadata?: ExecutionStepPhaseMetadata,
-    step?: Record<string, unknown> | null,
+    step?: Record<string, unknown> | null
   ) => Promise<void>;
   handleSystemSkillStepResult: (
     executionId: string,
@@ -90,7 +83,7 @@ interface ExecutionStepExecutorHooks {
     result: RuntimeStepInvokeResult,
     capabilityId: string,
     phaseMetadata?: ExecutionStepPhaseMetadata,
-    step?: Record<string, unknown> | null,
+    step?: Record<string, unknown> | null
   ) => Promise<void>;
 }
 
@@ -102,7 +95,7 @@ export class ExecutionStepExecutorService {
     private readonly executionStepService: ExecutionStepService,
     private readonly runtimeExecutionOrchestrator: RuntimeExecutionOrchestrator,
     private readonly runtimeStepRequestFactory: RuntimeStepRequestFactory,
-    private readonly browserPhaseExecutor?: BrowserPhaseExecutor,
+    private readonly browserPhaseExecutor?: BrowserPhaseExecutor
   ) {}
 
   async executeBrowserGotoStep(
@@ -110,11 +103,13 @@ export class ExecutionStepExecutorService {
     runtimeSessionId: string,
     stepId: string,
     url: string,
-    hooks: ExecutionStepExecutorHooks,
+    hooks: ExecutionStepExecutorHooks
   ): Promise<void> {
     const executionId = execution.id as string;
     const step = await this.executionStepService.getById(stepId);
-    const phaseMetadata = hooks.extractStepPhaseMetadata(step as Record<string, unknown> | null | undefined);
+    const phaseMetadata = hooks.extractStepPhaseMetadata(
+      step as Record<string, unknown> | null | undefined
+    );
 
     await this.executionStepService.setCurrentStep(executionId, stepId);
     await hooks.markPhaseRunningForStep(executionId, runtimeSessionId, phaseMetadata, step);
@@ -126,7 +121,7 @@ export class ExecutionStepExecutorService {
       {
         runtimeSessionId,
         stepId,
-      },
+      }
     );
 
     await this.executionStepService.startStep(stepId, {
@@ -142,7 +137,7 @@ export class ExecutionStepExecutorService {
         url,
         executionMode: BROWSER_RUNTIME.EXECUTION_MODE_PLANNED_STEP,
         phaseMetadata,
-      }),
+      })
     );
 
     await hooks.handleBrowserStepResult(
@@ -151,7 +146,7 @@ export class ExecutionStepExecutorService {
       stepId,
       result,
       phaseMetadata,
-      step as Record<string, unknown> | null | undefined,
+      step as Record<string, unknown> | null | undefined
     );
   }
 
@@ -159,12 +154,16 @@ export class ExecutionStepExecutorService {
     execution: Record<string, unknown>,
     runtimeSessionId: string,
     stepId: string,
-    hooks: ExecutionStepExecutorHooks,
+    hooks: ExecutionStepExecutorHooks
   ): Promise<void> {
     const executionId = execution.id as string;
     const step = await this.executionStepService.getById(stepId);
-    const phaseMetadata = hooks.extractStepPhaseMetadata(step as Record<string, unknown> | null | undefined);
-    const browserPhaseConfig = hooks.extractStepBrowserPhaseConfig(step as Record<string, unknown> | null | undefined);
+    const phaseMetadata = hooks.extractStepPhaseMetadata(
+      step as Record<string, unknown> | null | undefined
+    );
+    const browserPhaseConfig = hooks.extractStepBrowserPhaseConfig(
+      step as Record<string, unknown> | null | undefined
+    );
 
     if (!phaseMetadata) {
       await hooks.skipSingleStep(stepId, executionId, BROWSER_MESSAGES.PHASE_MISSING_METADATA);
@@ -198,7 +197,7 @@ export class ExecutionStepExecutorService {
       {
         runtimeSessionId,
         stepId,
-      },
+      }
     );
     await this.executionStepService.startStep(stepId);
 
@@ -245,24 +244,35 @@ export class ExecutionStepExecutorService {
     execution: Record<string, unknown>,
     runtimeSessionId: string,
     stepId: string,
-    hooks: ExecutionStepExecutorHooks,
+    hooks: ExecutionStepExecutorHooks
   ): Promise<void> {
     const executionId = execution.id as string;
     const step = await this.executionStepService.getById(stepId);
-    const phaseMetadata = hooks.extractStepPhaseMetadata(step as Record<string, unknown> | null | undefined);
+    const phaseMetadata = hooks.extractStepPhaseMetadata(
+      step as Record<string, unknown> | null | undefined
+    );
     this.logger.log(`Executing system skill step ${stepId} for execution ${executionId}`);
 
     const capabilityId = this.runtimeStepRequestFactory.resolveExecutionCapabilityId(execution);
     if (!capabilityId) {
-      this.logger.error(`Skill execution step ${stepId} is missing capability identifier for execution ${executionId}`);
-      await hooks.skipSingleStep(stepId, executionId, 'Skill execution step is missing capability identifier');
+      this.logger.error(
+        `Skill execution step ${stepId} is missing capability identifier for execution ${executionId}`
+      );
+      await hooks.skipSingleStep(
+        stepId,
+        executionId,
+        'Skill execution step is missing capability identifier'
+      );
       await hooks.advanceExecutionFlow(executionId, runtimeSessionId);
       return;
     }
 
-    const capabilityVersion = this.runtimeStepRequestFactory.resolveExecutionCapabilityVersion(execution);
+    const capabilityVersion =
+      this.runtimeStepRequestFactory.resolveExecutionCapabilityVersion(execution);
     const input = this.runtimeStepRequestFactory.resolveExecutionInput(execution);
-    this.logger.log(`Calling auth runtime for capability ${capabilityId} (version: ${capabilityVersion || 'latest'}) with input: ${JSON.stringify(input)}`);
+    this.logger.log(
+      `Calling auth runtime for capability ${capabilityId} (version: ${capabilityVersion || 'latest'}) with input: ${JSON.stringify(input)}`
+    );
 
     await this.executionStepService.setCurrentStep(executionId, stepId);
     await hooks.markPhaseRunningForStep(executionId, runtimeSessionId, phaseMetadata, step);
@@ -271,7 +281,7 @@ export class ExecutionStepExecutorService {
       runtimeSessionId,
       capabilityId,
       phaseMetadata,
-      step as Record<string, unknown> | null | undefined,
+      step as Record<string, unknown> | null | undefined
     );
 
     await hooks.emitEvent(executionId, EXECUTION_EVENT_TYPE.STEP_STARTED, {
@@ -311,7 +321,7 @@ export class ExecutionStepExecutorService {
         result,
         capabilityId,
         phaseMetadata,
-        step as Record<string, unknown> | null | undefined,
+        step as Record<string, unknown> | null | undefined
       );
     } catch (error) {
       const message =
@@ -344,7 +354,7 @@ export class ExecutionStepExecutorService {
         },
         capabilityId,
         phaseMetadata,
-        step as Record<string, unknown> | null | undefined,
+        step as Record<string, unknown> | null | undefined
       );
     }
   }

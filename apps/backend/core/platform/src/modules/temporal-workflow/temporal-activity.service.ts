@@ -1,6 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { Activity } from '@prisma/client';
-import { ActivityFormData, ActivityValidationResult, GenerateCodeResult, BuiltinActivityDTO } from './temporal-activity.types';
+import {
+  ActivityFormData,
+  ActivityValidationResult,
+  GenerateCodeResult,
+  BuiltinActivityDTO,
+} from './temporal-activity.types';
 import { ActivityCrudService } from './temporal-activity-crud.service';
 import { ActivityValidationService } from './temporal-activity-validation.service';
 import { ActivityCodegenService } from './temporal-activity-codegen.service';
@@ -12,7 +17,7 @@ export class ActivityService {
     private readonly crud: ActivityCrudService,
     private readonly validation: ActivityValidationService,
     private readonly codegen: ActivityCodegenService,
-    private readonly execution: ActivityExecutionService,
+    private readonly execution: ActivityExecutionService
   ) {}
 
   listBuiltin(): BuiltinActivityDTO[] {
@@ -55,7 +60,12 @@ export class ActivityService {
     return this.codegen.generateCode(config, errorContext);
   }
 
-  async executeCode(code: string, fn: string, taskQueue: string, input?: Record<string, any>): Promise<{
+  async executeCode(
+    code: string,
+    fn: string,
+    taskQueue: string,
+    input?: Record<string, any>
+  ): Promise<{
     success: boolean;
     result?: any;
     error?: string;
@@ -67,7 +77,7 @@ export class ActivityService {
     code: string,
     fn: string,
     taskQueue: string,
-    input?: Record<string, any>,
+    input?: Record<string, any>
   ): Promise<{
     success: boolean;
     result?: any;
@@ -82,7 +92,7 @@ export class ActivityService {
     taskQueue: string,
     input: Record<string, any> | undefined,
     onLog: (log: string) => void,
-    options: any = {},
+    options: any = {}
   ): Promise<any> {
     return this.execution.executeCodeStreaming(code, fn, taskQueue, input, onLog, options);
   }

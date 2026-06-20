@@ -23,10 +23,12 @@ export interface GenerateRenderDataWithSkillResult {
 export class StudioSkillRenderDataService {
   constructor(
     private readonly templateRepository: TemplateRepository,
-    private readonly skillRepository: SkillRepository,
+    private readonly skillRepository: SkillRepository
   ) {}
 
-  async generate(input: GenerateRenderDataWithSkillInput): Promise<GenerateRenderDataWithSkillResult> {
+  async generate(
+    input: GenerateRenderDataWithSkillInput
+  ): Promise<GenerateRenderDataWithSkillResult> {
     const debugLogs: string[] = [];
     const addLog = (message: string) => {
       debugLogs.push(message);
@@ -54,7 +56,9 @@ export class StudioSkillRenderDataService {
       addLog('使用调用方提供的 simulatedData 生成标准数据');
     }
 
-    const normalizedData = this.normalizeRenderData((generatedData || {}) as Record<string, unknown>);
+    const normalizedData = this.normalizeRenderData(
+      (generatedData || {}) as Record<string, unknown>
+    );
     addLog(`标准数据已归一化，顶层键: ${Object.keys(normalizedData).join(', ')}`);
 
     return {
@@ -135,7 +139,10 @@ export class StudioSkillRenderDataService {
     }
   }
 
-  private mergeObjects(target: Record<string, any>, source: Record<string, any>): Record<string, any> {
+  private mergeObjects(
+    target: Record<string, any>,
+    source: Record<string, any>
+  ): Record<string, any> {
     for (const [key, value] of Object.entries(source)) {
       if (this.isPlainObject(value) && this.isPlainObject(target[key])) {
         this.mergeObjects(target[key], value);
@@ -149,7 +156,9 @@ export class StudioSkillRenderDataService {
 
   private normalizeRenderValue(value: unknown): unknown {
     if (Array.isArray(value)) {
-      return value.map((item) => (this.isPlainObject(item) ? this.normalizeRenderData(item) : item));
+      return value.map((item) =>
+        this.isPlainObject(item) ? this.normalizeRenderData(item) : item
+      );
     }
     if (this.isPlainObject(value)) {
       return this.normalizeRenderData(value);
@@ -170,7 +179,9 @@ export class StudioSkillRenderDataService {
       if (key.includes('[]')) {
         const [rawPrefix, rawSuffix] = key.split('[]', 2);
         const prefix = rawPrefix.replace(/\.$/, '').trim();
-        const suffix = String(rawSuffix || '').replace(/^\./, '').trim();
+        const suffix = String(rawSuffix || '')
+          .replace(/^\./, '')
+          .trim();
         if (prefix && suffix) {
           const entry = arrayGroups.get(prefix) || {};
           entry[suffix] = this.normalizeRenderValue(value);
@@ -214,7 +225,7 @@ export class StudioSkillRenderDataService {
       for (let i = 0; i < maxLen; i += 1) {
         const row: Record<string, unknown> = {};
         for (const [fieldPath, raw] of fieldEntries) {
-          const valueAtIndex = Array.isArray(raw) ? raw[i] : (i === 0 ? raw : undefined);
+          const valueAtIndex = Array.isArray(raw) ? raw[i] : i === 0 ? raw : undefined;
           if (valueAtIndex === undefined) {
             continue;
           }
@@ -333,10 +344,11 @@ export class StudioSkillRenderDataService {
 
     for (const variable of variables) {
       const rawExampleValue =
-        variable.example ?? this.generateExampleValue(variable.dataType || variable.fieldType, variable.name);
+        variable.example ??
+        this.generateExampleValue(variable.dataType || variable.fieldType, variable.name);
       const exampleValue = this.coerceSkillExampleValue(
         rawExampleValue,
-        variable.dataType || variable.fieldType,
+        variable.dataType || variable.fieldType
       );
 
       let varPath = String(variable.name || '');
@@ -354,10 +366,12 @@ export class StudioSkillRenderDataService {
     return data;
   }
 
-  private resolveTemplateId(templateId: string | undefined, skill: Record<string, unknown>): string | undefined {
-    const requestedTemplateId = typeof templateId === 'string' && templateId.trim()
-      ? templateId.trim()
-      : undefined;
+  private resolveTemplateId(
+    templateId: string | undefined,
+    skill: Record<string, unknown>
+  ): string | undefined {
+    const requestedTemplateId =
+      typeof templateId === 'string' && templateId.trim() ? templateId.trim() : undefined;
     if (requestedTemplateId) {
       return requestedTemplateId;
     }
@@ -370,14 +384,13 @@ export class StudioSkillRenderDataService {
   private resolveRenderSkillId(
     templateId: string | undefined,
     skill: Record<string, unknown>,
-    addLog: (message: string) => void,
+    addLog: (message: string) => void
   ): string | undefined {
-    const skillId = typeof skill.id === 'string' && skill.id.trim()
-      ? skill.id.trim()
-      : undefined;
-    const skillTemplateId = typeof skill.templateId === 'string' && skill.templateId.trim()
-      ? skill.templateId.trim()
-      : undefined;
+    const skillId = typeof skill.id === 'string' && skill.id.trim() ? skill.id.trim() : undefined;
+    const skillTemplateId =
+      typeof skill.templateId === 'string' && skill.templateId.trim()
+        ? skill.templateId.trim()
+        : undefined;
 
     if (!skillId) {
       return undefined;
@@ -387,13 +400,15 @@ export class StudioSkillRenderDataService {
       return skillId;
     }
 
-    addLog(`skill.templateId=${skillTemplateId} 与请求 templateId=${templateId} 不一致，render-resolved 将仅使用 templateId`);
+    addLog(
+      `skill.templateId=${skillTemplateId} 与请求 templateId=${templateId} 不一致，render-resolved 将仅使用 templateId`
+    );
     return undefined;
   }
 
   private async resolveSkill(
     input: GenerateRenderDataWithSkillInput,
-    addLog: (message: string) => void,
+    addLog: (message: string) => void
   ): Promise<Record<string, unknown> | null> {
     if (this.isPlainObject(input.skill)) {
       addLog('使用请求中直接提供的 skill');
@@ -410,13 +425,14 @@ export class StudioSkillRenderDataService {
 
     if (typeof input.templateId === 'string' && input.templateId.trim()) {
       const meta = await this.getTemplateMetaWithDbFallback(input.templateId.trim());
-      const metaSkillId = typeof meta?.skillId === 'string' && meta.skillId.trim()
-        ? meta.skillId.trim()
-        : undefined;
+      const metaSkillId =
+        typeof meta?.skillId === 'string' && meta.skillId.trim() ? meta.skillId.trim() : undefined;
       if (metaSkillId) {
         const loadedByTemplateMeta = await this.getSkillWithDbFallback(metaSkillId);
         if (loadedByTemplateMeta) {
-          addLog(`通过 templateId=${input.templateId.trim()} 关联的 skillId=${metaSkillId} 加载 skill`);
+          addLog(
+            `通过 templateId=${input.templateId.trim()} 关联的 skillId=${metaSkillId} 加载 skill`
+          );
           return loadedByTemplateMeta;
         }
       }

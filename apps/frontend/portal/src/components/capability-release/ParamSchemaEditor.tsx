@@ -1,5 +1,16 @@
 import React from 'react';
-import { Alert, Button, Card, DatePicker, Input, InputNumber, Select, Space, Switch, Typography } from 'antd';
+import {
+  Alert,
+  Button,
+  Card,
+  DatePicker,
+  Input,
+  InputNumber,
+  Select,
+  Space,
+  Switch,
+  Typography,
+} from 'antd';
 import { DeleteOutlined, DownOutlined, PlusOutlined, UpOutlined } from '@ant-design/icons';
 
 const { Text } = Typography;
@@ -35,14 +46,16 @@ const previewStyle: React.CSSProperties = {
 
 const renderDefaultValueInput = (
   field: ParamSchemaFieldDraft,
-  onChangeField: ParamSchemaEditorProps['onChangeField'],
+  onChangeField: ParamSchemaEditorProps['onChangeField']
 ) => {
   if (field.type === 'boolean') {
     return (
       <Space>
         <Switch
           checked={field.defaultValue === 'true'}
-          onChange={(checked) => onChangeField(field.id, { defaultValue: checked ? 'true' : 'false' })}
+          onChange={(checked) =>
+            onChangeField(field.id, { defaultValue: checked ? 'true' : 'false' })
+          }
         />
         <Text type="secondary">默认值布尔开关</Text>
       </Space>
@@ -53,7 +66,11 @@ const renderDefaultValueInput = (
     return (
       <TextArea
         rows={3}
-        placeholder={field.type === 'array' ? '默认值 JSON，例如 ["a", "b"]' : '默认值 JSON，例如 {"city":"shanghai"}'}
+        placeholder={
+          field.type === 'array'
+            ? '默认值 JSON，例如 ["a", "b"]'
+            : '默认值 JSON，例如 {"city":"shanghai"}'
+        }
         value={field.defaultValue}
         onChange={(event) => onChangeField(field.id, { defaultValue: event.target.value })}
         spellCheck={false}
@@ -69,7 +86,9 @@ const renderDefaultValueInput = (
         style={{ width: '100%' }}
         placeholder="默认值，例如 10"
         value={parsed !== null && !Number.isNaN(parsed) ? parsed : null}
-        onChange={(value) => onChangeField(field.id, { defaultValue: value === null ? '' : String(value) })}
+        onChange={(value) =>
+          onChangeField(field.id, { defaultValue: value === null ? '' : String(value) })
+        }
       />
     );
   }
@@ -193,7 +212,9 @@ const ParamSchemaEditor: React.FC<ParamSchemaEditorProps> = ({
                   rows={2}
                   placeholder="提取提示 extractionPrompt，可选"
                   value={field.extractionPrompt}
-                  onChange={(event) => onChangeField(field.id, { extractionPrompt: event.target.value })}
+                  onChange={(event) =>
+                    onChangeField(field.id, { extractionPrompt: event.target.value })
+                  }
                 />
                 <Space>
                   <Switch

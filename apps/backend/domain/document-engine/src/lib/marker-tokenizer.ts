@@ -6,30 +6,30 @@
 
 export enum TokenType {
   // 结构标记
-  MARKER_START = 'MARKER_START',       // {
-  MARKER_END = 'MARKER_END',           // }
-  LOOP_START = 'LOOP_START',           // {#
-  LOOP_END = 'LOOP_END',               // {/
+  MARKER_START = 'MARKER_START', // {
+  MARKER_END = 'MARKER_END', // }
+  LOOP_START = 'LOOP_START', // {#
+  LOOP_END = 'LOOP_END', // {/
 
   // 路径元素
-  CONTEXT_PREFIX = 'CONTEXT_PREFIX',   // d. c. t.
-  IDENTIFIER = 'IDENTIFIER',           // name, items
-  DOT = 'DOT',                         // .
-  ARRAY_INDEX = 'ARRAY_INDEX',         // [i], [i+1], [0]
+  CONTEXT_PREFIX = 'CONTEXT_PREFIX', // d. c. t.
+  IDENTIFIER = 'IDENTIFIER', // name, items
+  DOT = 'DOT', // .
+  ARRAY_INDEX = 'ARRAY_INDEX', // [i], [i+1], [0]
 
   // 格式化器
-  COLON = 'COLON',                     // :
-  FORMATTER_NAME = 'FORMATTER_NAME',   // formatNumber
-  LPAREN = 'LPAREN',                   // (
-  RPAREN = 'RPAREN',                   // )
-  COMMA = 'COMMA',                     // ,
-  STRING = 'STRING',                   // "value", 'value'
-  NUMBER = 'NUMBER',                   // 123, 3.14
+  COLON = 'COLON', // :
+  FORMATTER_NAME = 'FORMATTER_NAME', // formatNumber
+  LPAREN = 'LPAREN', // (
+  RPAREN = 'RPAREN', // )
+  COMMA = 'COMMA', // ,
+  STRING = 'STRING', // "value", 'value'
+  NUMBER = 'NUMBER', // 123, 3.14
 
   // 其他
-  TEXT = 'TEXT',                       // 纯文本
+  TEXT = 'TEXT', // 纯文本
   EOF = 'EOF',
-  ERROR = 'ERROR'
+  ERROR = 'ERROR',
 }
 
 export interface Token {
@@ -60,7 +60,7 @@ export class MarkerTokenizer {
       currentChar: null,
       inMarker: false,
       braceDepth: 0,
-      parenDepth: 0
+      parenDepth: 0,
     };
     this.input = '';
     this.tokens = [];
@@ -77,7 +77,7 @@ export class MarkerTokenizer {
       currentChar: input[0] || null,
       inMarker: false,
       braceDepth: 0,
-      parenDepth: 0
+      parenDepth: 0,
     };
 
     while (this.state.currentChar !== null) {
@@ -87,7 +87,7 @@ export class MarkerTokenizer {
     this.tokens.push({
       type: TokenType.EOF,
       value: '',
-      position: { start: this.state.position, end: this.state.position }
+      position: { start: this.state.position, end: this.state.position },
     });
 
     return this.tokens;
@@ -362,7 +362,7 @@ export class MarkerTokenizer {
     this.tokens.push({
       type,
       value,
-      position: { start, end }
+      position: { start, end },
     });
   }
 
@@ -447,7 +447,7 @@ export class MarkerParser {
       context: contextToken?.value[0] || 'd',
       path: identifierToken?.value || '',
       formatters: [],
-      arrayPath: identifierToken?.value || ''
+      arrayPath: identifierToken?.value || '',
     };
   }
 
@@ -495,7 +495,7 @@ export class MarkerParser {
       context: contextToken.value[0],
       path: path.join('.'),
       arrayIndex,
-      formatters
+      formatters,
     };
   }
 
@@ -531,7 +531,7 @@ export class MarkerParser {
 
     return {
       name: nameToken.value,
-      args
+      args,
     };
   }
 
@@ -567,10 +567,10 @@ export class MarkerParser {
  */
 export interface ParsedMarker {
   type: 'variable' | 'loopStart' | 'loopEnd';
-  context: string;           // d, c, t
-  path: string;              // items.name
-  arrayIndex?: string;       // [i], [i+1]
-  arrayPath?: string;        // items
+  context: string; // d, c, t
+  path: string; // items.name
+  arrayIndex?: string; // [i], [i+1]
+  arrayPath?: string; // items
   formatters: FormatterInfo[];
 }
 

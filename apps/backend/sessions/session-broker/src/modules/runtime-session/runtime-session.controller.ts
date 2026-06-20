@@ -39,7 +39,9 @@ export class RuntimeSessionController {
   @Get()
   @ApiOperation({ summary: 'List runtime sessions' })
   @ApiResponse({ status: 200, description: 'List of runtime sessions' })
-  async list(@Query() dto: ListRuntimeSessionsDto): Promise<{ data: RuntimeSessionDto[]; total: number; page: number; pageSize: number }> {
+  async list(
+    @Query() dto: ListRuntimeSessionsDto
+  ): Promise<{ data: RuntimeSessionDto[]; total: number; page: number; pageSize: number }> {
     return this.runtimeSessionService.list(dto);
   }
 
@@ -59,7 +61,7 @@ export class RuntimeSessionController {
   @ApiResponse({ status: 404, description: 'Runtime session not found' })
   async freeze(
     @Param('id') id: string,
-    @Body() dto: FreezeRuntimeSessionDto,
+    @Body() dto: FreezeRuntimeSessionDto
   ): Promise<RuntimeSessionDto> {
     this.logger.log(`Freezing runtime session ${id}: ${dto.reason}`);
     return this.runtimeSessionService.freeze(id, dto);
@@ -73,7 +75,7 @@ export class RuntimeSessionController {
   @ApiResponse({ status: 404, description: 'Runtime session not found' })
   async resume(
     @Param('id') id: string,
-    @Body() dto: ResumeRuntimeSessionDto,
+    @Body() dto: ResumeRuntimeSessionDto
   ): Promise<RuntimeSessionDto> {
     this.logger.log(`Resuming runtime session ${id}`);
     return this.runtimeSessionService.resume(id, dto);
@@ -87,7 +89,7 @@ export class RuntimeSessionController {
   @ApiResponse({ status: 404, description: 'Runtime session not found' })
   async close(
     @Param('id') id: string,
-    @Body() dto: CloseRuntimeSessionDto,
+    @Body() dto: CloseRuntimeSessionDto
   ): Promise<RuntimeSessionDto> {
     this.logger.log(`Closing runtime session ${id}`);
     return this.runtimeSessionService.close(id);

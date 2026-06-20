@@ -4,7 +4,8 @@ describe('RuntimeExecutionOrchestrator.executePhase', () => {
   it('executes all step requests and returns completed result when all succeed', async () => {
     const adapter = {
       initializeSession: jest.fn().mockResolvedValue(undefined),
-      invokeStep: jest.fn()
+      invokeStep: jest
+        .fn()
         .mockResolvedValueOnce({
           success: true,
           status: 'completed',
@@ -87,7 +88,8 @@ describe('RuntimeExecutionOrchestrator.executePhase', () => {
   it('stops on first failed step and returns failed step metadata', async () => {
     const adapter = {
       initializeSession: jest.fn().mockResolvedValue(undefined),
-      invokeStep: jest.fn()
+      invokeStep: jest
+        .fn()
         .mockResolvedValueOnce({
           success: true,
           status: 'completed',
@@ -166,7 +168,8 @@ describe('RuntimeExecutionOrchestrator.executePhase', () => {
     const adapter = {
       routeKeys: ['browser:browser.step'] as const,
       initializeSession: jest.fn().mockResolvedValue(undefined),
-      invokeStep: jest.fn()
+      invokeStep: jest
+        .fn()
         .mockResolvedValueOnce({
           success: true,
           status: 'completed',

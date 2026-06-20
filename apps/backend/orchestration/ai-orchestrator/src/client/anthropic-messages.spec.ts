@@ -45,7 +45,7 @@ describe('AnthropicMessagesClient', () => {
             cache_control: { type: 'ephemeral', ttl: '1h' },
           },
         ],
-      }),
+      })
     );
   });
 
@@ -66,8 +66,8 @@ describe('AnthropicMessagesClient', () => {
       },
     });
 
-    await expect(client.chatCompletion([
-      { role: 'user', content: 'hello' },
-    ])).rejects.toThrow('Anthropic API Error: invalid request payload');
+    await expect(client.chatCompletion([{ role: 'user', content: 'hello' }])).rejects.toThrow(
+      'Anthropic API Error: invalid request payload'
+    );
   });
 });

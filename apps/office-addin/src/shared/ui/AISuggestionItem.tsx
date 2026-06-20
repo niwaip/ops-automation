@@ -61,18 +61,18 @@ export const AISuggestionItem: React.FC<{
       return `Word 内容控件 #${wordAnchor.contentControlId}`;
     }
     if (
-      wordAnchor?.type === 'table-cell'
-      && typeof wordAnchor.tableIndex === 'number'
-      && typeof wordAnchor.rowIndex === 'number'
-      && typeof wordAnchor.cellIndex === 'number'
+      wordAnchor?.type === 'table-cell' &&
+      typeof wordAnchor.tableIndex === 'number' &&
+      typeof wordAnchor.rowIndex === 'number' &&
+      typeof wordAnchor.cellIndex === 'number'
     ) {
       return `Word 表格 T${wordAnchor.tableIndex} R${wordAnchor.rowIndex} C${wordAnchor.cellIndex}`;
     }
     if (
-      wordAnchor?.type === 'text-range'
-      && typeof wordAnchor.paragraphIndex === 'number'
-      && typeof wordAnchor.start === 'number'
-      && typeof wordAnchor.end === 'number'
+      wordAnchor?.type === 'text-range' &&
+      typeof wordAnchor.paragraphIndex === 'number' &&
+      typeof wordAnchor.start === 'number' &&
+      typeof wordAnchor.end === 'number'
     ) {
       return `Word 段落 #${wordAnchor.paragraphIndex} 锚点 ${wordAnchor.start}-${wordAnchor.end}`;
     }
@@ -89,8 +89,7 @@ export const AISuggestionItem: React.FC<{
   };
 
   const hasPreciseAnchor = Boolean(
-    suggestion.details?.wordAnchor
-    || suggestion.details?.excelAnchor
+    suggestion.details?.wordAnchor || suggestion.details?.excelAnchor
   );
 
   // 处理编辑确认
@@ -140,7 +139,8 @@ export const AISuggestionItem: React.FC<{
     'ai+heuristic': 'AI+启发式',
   };
   const descriptionSummary = suggestion.details?.description?.trim() || '';
-  const sampleValue = suggestion.details?.sampleValue?.trim() || suggestion.originalText?.trim() || '';
+  const sampleValue =
+    suggestion.details?.sampleValue?.trim() || suggestion.originalText?.trim() || '';
   const summaryValue = sampleValue || '暂无样本值';
   const riskLevel = suggestion.details?.riskLevel || 'low';
   const riskLabelMap: Record<'low' | 'medium' | 'high', string> = {
@@ -149,11 +149,8 @@ export const AISuggestionItem: React.FC<{
     high: '高风险',
   };
   const needsReview = suggestion.details?.needsReview === true;
-  const confidenceLevel = suggestion.confidence >= 0.9
-    ? 'high'
-    : suggestion.confidence >= 0.75
-      ? 'medium'
-      : 'low';
+  const confidenceLevel =
+    suggestion.confidence >= 0.9 ? 'high' : suggestion.confidence >= 0.75 ? 'medium' : 'low';
   const badgeStyleMap = {
     base: {
       fontSize: '12px',
@@ -182,8 +179,12 @@ export const AISuggestionItem: React.FC<{
 
   // 检查是否包含无意义的命名（如 field, value, unknown 等）
   const hasMalformedName = useMemo(() => {
-    const normalizedName = String(suggestion.suggestedName || '').replace(/[{}]/g, '').trim();
-    return /^(?:d\.)?(?:[A-Za-z_][A-Za-z0-9_]*\[\]\.)?(field\d*|textValue|textField\d*|value\d*|var\d*|param\d*|undefined|null|unknown)$/i.test(normalizedName);
+    const normalizedName = String(suggestion.suggestedName || '')
+      .replace(/[{}]/g, '')
+      .trim();
+    return /^(?:d\.)?(?:[A-Za-z_][A-Za-z0-9_]*\[\]\.)?(field\d*|textValue|textField\d*|value\d*|var\d*|param\d*|undefined|null|unknown)$/i.test(
+      normalizedName
+    );
   }, [suggestion.suggestedName]);
 
   return (
@@ -252,11 +253,25 @@ export const AISuggestionItem: React.FC<{
 
       {expanded && (
         <div className="suggestion-details">
-          <div className="suggestion-meta-row" style={{ marginBottom: '12px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-            <span className={`suggestion-source-badge source-${suggestion.details?.source || 'heuristic'}`}>
+          <div
+            className="suggestion-meta-row"
+            style={{ marginBottom: '12px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}
+          >
+            <span
+              className={`suggestion-source-badge source-${suggestion.details?.source || 'heuristic'}`}
+            >
               来源: {sourceLabelMap[suggestion.details?.source || 'heuristic'] || '未知'}
             </span>
-            <span className="suggestion-field-type" style={{ fontSize: '12px', color: '#64748b', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>
+            <span
+              className="suggestion-field-type"
+              style={{
+                fontSize: '12px',
+                color: '#64748b',
+                background: '#f1f5f9',
+                padding: '2px 6px',
+                borderRadius: '4px',
+              }}
+            >
               类型: {suggestion.details?.fieldType || 'text'}
             </span>
             <span style={{ ...badgeStyleMap.base, ...badgeStyleMap.risk[riskLevel] }}>
@@ -265,7 +280,12 @@ export const AISuggestionItem: React.FC<{
             <span style={{ ...badgeStyleMap.base, ...badgeStyleMap.confidence[confidenceLevel] }}>
               置信度: {Math.round(suggestion.confidence * 100)}%
             </span>
-            <span style={{ ...badgeStyleMap.base, ...(needsReview ? badgeStyleMap.review.pending : badgeStyleMap.review.ready) }}>
+            <span
+              style={{
+                ...badgeStyleMap.base,
+                ...(needsReview ? badgeStyleMap.review.pending : badgeStyleMap.review.ready),
+              }}
+            >
               状态: {needsReview ? '待人工确认' : '可继续应用'}
             </span>
             {suggestion.details?.policy && (
@@ -274,10 +294,16 @@ export const AISuggestionItem: React.FC<{
               </span>
             )}
             {suggestion.details?.termMatchStatus && (
-              <span style={{ ...badgeStyleMap.base, ...(suggestion.details.termMatchStatus === 'matched'
-                ? { background: '#ecfeff', color: '#0f766e' }
-                : badgeStyleMap.neutral) }}>
-                术语: {suggestion.details.termMatchStatus === 'matched'
+              <span
+                style={{
+                  ...badgeStyleMap.base,
+                  ...(suggestion.details.termMatchStatus === 'matched'
+                    ? { background: '#ecfeff', color: '#0f766e' }
+                    : badgeStyleMap.neutral),
+                }}
+              >
+                术语:{' '}
+                {suggestion.details.termMatchStatus === 'matched'
                   ? `已命中${suggestion.details.termMatchTermId ? ` (${suggestion.details.termMatchTermId})` : ''}`
                   : '未命中'}
               </span>
@@ -291,11 +317,16 @@ export const AISuggestionItem: React.FC<{
             </div>
             <div className="suggestion-detail-item">
               <span className="suggestion-detail-label">字段类型</span>
-              <span className="suggestion-detail-value">{suggestion.details?.fieldType || 'text'}</span>
+              <span className="suggestion-detail-value">
+                {suggestion.details?.fieldType || 'text'}
+              </span>
             </div>
             <div className="suggestion-detail-item">
               <span className="suggestion-detail-label">定位状态</span>
-              <span className="suggestion-detail-value" style={{ color: hasPreciseAnchor ? '#166534' : '#b45309' }}>
+              <span
+                className="suggestion-detail-value"
+                style={{ color: hasPreciseAnchor ? '#166534' : '#b45309' }}
+              >
                 {hasPreciseAnchor ? '已绑定精确锚点' : '仅能使用弱定位'}
               </span>
             </div>
@@ -313,7 +344,9 @@ export const AISuggestionItem: React.FC<{
                 <span className="suggestion-detail-value">
                   {suggestion.details.excelAnchor.type === 'cell'
                     ? suggestion.details.excelAnchor.address
-                    : suggestion.details.excelAnchor.tableName || suggestion.details.excelAnchor.startAddress || '区域'}
+                    : suggestion.details.excelAnchor.tableName ||
+                      suggestion.details.excelAnchor.startAddress ||
+                      '区域'}
                 </span>
               </div>
             )}
@@ -345,7 +378,10 @@ export const AISuggestionItem: React.FC<{
             {suggestion.confidence < 0.75 ? ' 当前置信度偏低，建议结合原文位置再次确认。' : ''}
           </div>
 
-          <div className="suggestion-actions" style={{ marginTop: '16px', display: 'flex', gap: '8px' }}>
+          <div
+            className="suggestion-actions"
+            style={{ marginTop: '16px', display: 'flex', gap: '8px' }}
+          >
             {!isEditing ? (
               <>
                 <button className="dismiss-btn" onClick={enterEditMode}>
@@ -356,10 +392,14 @@ export const AISuggestionItem: React.FC<{
                     ✅ 应用
                   </button>
                 ) : (
-                  <button 
-                    className="apply-btn" 
-                    onClick={onApply} 
-                    style={{ backgroundColor: '#f3f4f6', color: '#4b5563', border: '1px solid #d1d5db' }}
+                  <button
+                    className="apply-btn"
+                    onClick={onApply}
+                    style={{
+                      backgroundColor: '#f3f4f6',
+                      color: '#4b5563',
+                      border: '1px solid #d1d5db',
+                    }}
                     title="重新将此参数写入到 Excel 中"
                   >
                     🔄 重新应用

@@ -33,7 +33,7 @@ export type {
   RenderPlan,
   TemplateAssetManifest,
   TemplateAssetExportPayload,
-  TemplateAssetImportPayload
+  TemplateAssetImportPayload,
 } from './carbone/types';
 let currentBaseUrl = officeAddinRuntimeConfig.apiBaseUrl;
 const getBaseUrl = () => currentBaseUrl;

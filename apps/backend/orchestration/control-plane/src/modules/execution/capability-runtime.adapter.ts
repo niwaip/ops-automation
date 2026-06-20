@@ -74,19 +74,18 @@ export class CapabilityRuntimeAdapter implements RuntimeAdapter {
         stepId: request.stepId,
         runtimeSessionId: request.runtimeSessionId || undefined,
         phaseKey:
-          typeof request.metadata?.phaseKey === 'string'
-            ? request.metadata.phaseKey
-            : undefined,
+          typeof request.metadata?.phaseKey === 'string' ? request.metadata.phaseKey : undefined,
         input: request.input,
         metadata: request.metadata,
-      },
+      }
     );
 
     const runtimeResult = response.data;
     const output = runtimeResult.output || runtimeResult.result || undefined;
     const artifacts = this.extractArtifacts(runtimeResult);
     const snapshot = this.extractSnapshot(artifacts);
-    const requiresTakeover = runtimeResult.requiresTakeover === true || runtimeResult.status === 'takeover_required';
+    const requiresTakeover =
+      runtimeResult.requiresTakeover === true || runtimeResult.status === 'takeover_required';
     const status = requiresTakeover
       ? 'takeover_required'
       : runtimeResult.status === 'waiting'
@@ -112,7 +111,9 @@ export class CapabilityRuntimeAdapter implements RuntimeAdapter {
     };
   }
 
-  private extractArtifacts(runtimeResult: CapabilityRuntimeExecuteResult): ArtifactRef[] | undefined {
+  private extractArtifacts(
+    runtimeResult: CapabilityRuntimeExecuteResult
+  ): ArtifactRef[] | undefined {
     const output = runtimeResult.output || runtimeResult.result;
     if (!output || typeof output !== 'object') {
       return undefined;
@@ -134,9 +135,12 @@ export class CapabilityRuntimeAdapter implements RuntimeAdapter {
         : [];
 
       runtimeArtifacts.forEach((artifact, index) => {
-        const snapshotId = typeof artifact.snapshot?.id === 'string' ? artifact.snapshot.id : undefined;
-        const snapshotPath = typeof artifact.snapshot?.path === 'string' ? artifact.snapshot.path : undefined;
-        const artifactPath = typeof artifact.artifact?.path === 'string' ? artifact.artifact.path : undefined;
+        const snapshotId =
+          typeof artifact.snapshot?.id === 'string' ? artifact.snapshot.id : undefined;
+        const snapshotPath =
+          typeof artifact.snapshot?.path === 'string' ? artifact.snapshot.path : undefined;
+        const artifactPath =
+          typeof artifact.artifact?.path === 'string' ? artifact.artifact.path : undefined;
         const command = typeof artifact.command === 'string' ? artifact.command : undefined;
         const status = typeof artifact.status === 'string' ? artifact.status : undefined;
 

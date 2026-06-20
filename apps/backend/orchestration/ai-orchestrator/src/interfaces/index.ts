@@ -11,14 +11,14 @@ export interface ContentBlock {
     ttl?: '5m' | '1h';
   };
   image_url?: {
-    url: string;  // 可以是URL或base64 data URI
+    url: string; // 可以是URL或base64 data URI
     detail?: 'low' | 'high' | 'auto';
   };
 }
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
-  content: string | ContentBlock[];  // 支持纯文本或多模态内容
+  content: string | ContentBlock[]; // 支持纯文本或多模态内容
 }
 
 export interface OpenAICompatibleConfig {
@@ -74,9 +74,9 @@ export interface LLMResponse {
  * Model Pricing Configuration
  */
 export interface ModelPricing {
-  input_price_per_1k: number;  // Price per 1,000 input tokens
+  input_price_per_1k: number; // Price per 1,000 input tokens
   output_price_per_1k: number; // Price per 1,000 output tokens
-  currency: string;            // e.g., 'CNY', 'USD'
+  currency: string; // e.g., 'CNY', 'USD'
 }
 
 export type ModelCapabilityTier = 'standard' | 'advanced';
@@ -208,18 +208,21 @@ export interface RecognizeParamsDTO {
   guide_context?: DocumentGuideContext;
   // 允许直接传入 params_schema，避免需要预先注册模版
   params_schema?: {
-    properties: Record<string, {
-      type: string;
-      description?: string;
-      extractionPrompt?: string;
-      default?: string | number | boolean;
-      semanticRole?: string;
-      extractionHints?: string[];
-      displayName?: string;
-      groupLabel?: string;
-      previewBlocking?: boolean;
-      confirmationThreshold?: number;
-    }>;
+    properties: Record<
+      string,
+      {
+        type: string;
+        description?: string;
+        extractionPrompt?: string;
+        default?: string | number | boolean;
+        semanticRole?: string;
+        extractionHints?: string[];
+        displayName?: string;
+        groupLabel?: string;
+        previewBlocking?: boolean;
+        confirmationThreshold?: number;
+      }
+    >;
     required?: string[];
   };
 }

@@ -13,11 +13,7 @@ import {
   Typography,
   theme as antdTheme,
 } from 'antd';
-import {
-  ArrowLeftOutlined,
-  LinkOutlined,
-  ReloadOutlined,
-} from '@ant-design/icons';
+import { ArrowLeftOutlined, LinkOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useQuery } from 'react-query';
 import { apiClient } from '@/shared/api/http/client';
 
@@ -64,9 +60,65 @@ interface BrowserExecuteResponse {
   executedCommands?: MCPCommand[];
 }
 
+interface RecorderLoopDraft {
+  mode: 'repeat_until';
+  target: {
+    scope: 'current_list' | 'current_table' | 'current_cards';
+    regionId?: string;
+    currentPageUrl?: string;
+    match?: {
+      field?: string;
+      operator?: 'equals' | 'contains' | 'lt' | 'gt';
+      value?: string | number | boolean;
+    };
+  };
+  sampleRow?: {
+    rowKey?: string;
+    entityType?: string;
+    entityId?: string;
+    semanticPath?: string[];
+  };
+  eachIteration?: {
+    capturedFromIndex?: number;
+    capturedToIndex?: number;
+    stepIds: string[];
+    stepCount: number;
+  };
+  stopWhen?: {
+    read:
+      | { type: 'count' | 'text'; locator: { type: string; value: string } }
+      | { type: 'page_signal'; key: string };
+    conditionFn: string;
+    description: string;
+  };
+  onNoProgress?: 'takeover' | 'stop';
+  maxIterations?: number;
+  updatedAt?: string;
+}
+
+interface RecorderLoopState {
+  rawTokens: string[];
+  loopTargetScope?: 'current_list' | 'current_table' | 'current_cards';
+  hasLoopStart: boolean;
+  hasLoopEnd: boolean;
+  hasConditionalBranch: boolean;
+  manualInterventionLabels: string[];
+  pendingLoopCaptureStartCommandIndex?: number;
+  isLoopCaptureActive: boolean;
+}
+
 interface RecorderDebugExportArtifacts {
   script?: string;
   guidance?: string;
+  templateSteps?: Array<{
+    step_id: string;
+    action: string;
+    locator?: { type: string; value: string; fallback?: { type: string; value: string } };
+    params?: Record<string, string | number>;
+    output_var?: string;
+    branch?: Record<string, unknown>;
+    description?: string;
+  }>;
   skillDraft?: {
     name?: string;
     description?: string;
@@ -104,6 +156,8 @@ interface RecorderDebugTurn {
   execution?: BrowserExecuteResponse;
   observation?: RecorderDebugObservation;
   exportArtifacts?: RecorderDebugExportArtifacts;
+  loopDraft?: RecorderLoopDraft;
+  loopState?: RecorderLoopState;
 }
 
 interface RecorderDebugSession {
@@ -113,6 +167,8 @@ interface RecorderDebugSession {
   browserInitialized: boolean;
   currentPageUrl?: string;
   lastObservation?: RecorderDebugObservation;
+  loopDraft?: RecorderLoopDraft;
+  pendingLoopCaptureStartCommandIndex?: number;
   history: RecorderDebugTurn[];
   executedCommands: MCPCommand[];
   createdAt: string;
@@ -143,6 +199,12 @@ const backendLabelMap: Record<RecorderDebugBackend, string> = {
   cli: 'Playwright CLI',
   'chrome-devtools': 'Chrome DevTools CLI',
   mcp: 'MCP',
+};
+
+const loopScopeLabelMap: Record<'current_list' | 'current_table' | 'current_cards', string> = {
+  current_list: '当前列表',
+  current_table: '当前表格',
+  current_cards: '当前卡片区',
 };
 
 const CodeBlock: React.FC<{ value: unknown }> = ({ value }) => {
@@ -186,7 +248,10 @@ const ObservationSummaryCard: React.FC<{
           <div style={{ marginTop: 8 }}>
             <Space wrap>
               {observation.suggestedParameters.map((parameter) => (
-                <Tag key={`${parameter.name}-${parameter.label}`} color={parameter.required ? 'processing' : 'default'}>
+                <Tag
+                  key={`${parameter.name}-${parameter.label}`}
+                  color={parameter.required ? 'processing' : 'default'}
+                >
                   {parameter.name}
                 </Tag>
               ))}
@@ -200,12 +265,22 @@ const ObservationSummaryCard: React.FC<{
           {
             key: 'inputs',
             label: `输入项 (${observation.inputs.length})`,
-            children: observation.inputs.length > 0 ? <CodeBlock value={observation.inputs} /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无输入项" />,
+            children:
+              observation.inputs.length > 0 ? (
+                <CodeBlock value={observation.inputs} />
+              ) : (
+                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无输入项" />
+              ),
           },
           {
             key: 'buttons',
             label: `按钮/链接入口 (${observation.buttons.length})`,
-            children: observation.buttons.length > 0 ? <CodeBlock value={observation.buttons} /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无按钮" />,
+            children:
+              observation.buttons.length > 0 ? (
+                <CodeBlock value={observation.buttons} />
+              ) : (
+                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无按钮" />
+              ),
           },
           {
             key: 'outline',
@@ -222,7 +297,11 @@ const ObservationSummaryCard: React.FC<{
           {
             key: 'text',
             label: '页面文本摘录',
-            children: observation.text ? <CodeBlock value={observation.text} /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无文本" />,
+            children: observation.text ? (
+              <CodeBlock value={observation.text} />
+            ) : (
+              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无文本" />
+            ),
           },
         ]}
       />
@@ -240,14 +319,16 @@ const RecorderDebugDetailPage: React.FC = () => {
     {
       enabled: Boolean(sessionId),
       refetchInterval: 5000,
-    },
+    }
   );
 
   const session = sessionQuery.data;
 
   if (sessionQuery.isLoading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 360 }}>
+      <div
+        style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 360 }}
+      >
         <Spin size="large" />
       </div>
     );
@@ -297,7 +378,7 @@ const RecorderDebugDetailPage: React.FC = () => {
       </Space>
 
       <Card
-        title={(
+        title={
           <Space wrap>
             <Title level={4} style={{ margin: 0 }}>
               Recorder Debug 详情
@@ -307,22 +388,59 @@ const RecorderDebugDetailPage: React.FC = () => {
               {session.browserInitialized ? 'Browser Ready' : 'Browser Not Ready'}
             </Tag>
           </Space>
-        )}
+        }
       >
         <Descriptions bordered column={1} size="small">
           <Descriptions.Item label="会话 ID">{session.sessionId}</Descriptions.Item>
           <Descriptions.Item label="运行时会话 ID">{session.runtimeSessionId}</Descriptions.Item>
-          <Descriptions.Item label="当前页面 URL">{session.currentPageUrl || '-'}</Descriptions.Item>
-          <Descriptions.Item label="执行命令数">{session.executedCommands.length}</Descriptions.Item>
+          <Descriptions.Item label="当前页面 URL">
+            {session.currentPageUrl || '-'}
+          </Descriptions.Item>
+          <Descriptions.Item label="执行命令数">
+            {session.executedCommands.length}
+          </Descriptions.Item>
+          <Descriptions.Item label="循环录制状态">
+            {typeof session.pendingLoopCaptureStartCommandIndex === 'number'
+              ? `录制中（起始命令索引 ${session.pendingLoopCaptureStartCommandIndex}）`
+              : '未录制中'}
+          </Descriptions.Item>
           <Descriptions.Item label="对话轮次数">{session.history.length}</Descriptions.Item>
-          <Descriptions.Item label="创建时间">{formatTimestamp(session.createdAt)}</Descriptions.Item>
-          <Descriptions.Item label="更新时间">{formatTimestamp(session.updatedAt)}</Descriptions.Item>
+          <Descriptions.Item label="创建时间">
+            {formatTimestamp(session.createdAt)}
+          </Descriptions.Item>
+          <Descriptions.Item label="更新时间">
+            {formatTimestamp(session.updatedAt)}
+          </Descriptions.Item>
         </Descriptions>
       </Card>
 
       {session.lastObservation ? (
         <ObservationSummaryCard title="最近页面观察" observation={session.lastObservation} />
       ) : null}
+
+      <Card title="循环录制草稿">
+        {session.loopDraft ? (
+          <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+            <Descriptions size="small" column={1} bordered>
+              <Descriptions.Item label="循环对象">
+                {loopScopeLabelMap[session.loopDraft.target.scope] || session.loopDraft.target.scope}
+              </Descriptions.Item>
+              <Descriptions.Item label="循环页面">
+                {session.loopDraft.target.currentPageUrl || '-'}
+              </Descriptions.Item>
+              <Descriptions.Item label="单轮步骤数">
+                {session.loopDraft.eachIteration?.stepCount ?? '-'}
+              </Descriptions.Item>
+              <Descriptions.Item label="停止条件">
+                {session.loopDraft.stopWhen?.description || '-'}
+              </Descriptions.Item>
+            </Descriptions>
+            <CodeBlock value={session.loopDraft} />
+          </Space>
+        ) : (
+          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前会话暂无循环草稿" />
+        )}
+      </Card>
 
       <Card title="已执行命令">
         {session.executedCommands.length > 0 ? (
@@ -372,16 +490,32 @@ const RecorderDebugDetailPage: React.FC = () => {
                 });
               }
 
+              if (turn.loopState) {
+                collapseItems.push({
+                  key: `loop-state-${index}`,
+                  label: '循环状态',
+                  children: <CodeBlock value={turn.loopState} />,
+                });
+              }
+
+              if (turn.loopDraft) {
+                collapseItems.push({
+                  key: `loop-draft-${index}`,
+                  label: '循环草稿快照',
+                  children: <CodeBlock value={turn.loopDraft} />,
+                });
+              }
+
               return (
                 <Card
                   key={`${turn.timestamp}-${index}`}
                   size="small"
-                  title={(
+                  title={
                     <Space wrap>
                       <Tag color={roleColorMap[turn.role] || 'default'}>{turn.role}</Tag>
                       <Text type="secondary">{formatTimestamp(turn.timestamp)}</Text>
                     </Space>
-                  )}
+                  }
                 >
                   <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                     <Paragraph style={{ marginBottom: 0, whiteSpace: 'pre-wrap' }}>

@@ -8,12 +8,7 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiParam,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { ExecutorService } from './modules/executor';
 import { CdpService } from './modules/cdp';
 import { LogService } from './modules/log';
@@ -38,7 +33,7 @@ export class ReplayController {
     private readonly executorService: ExecutorService,
     private readonly cdpService: CdpService,
     private readonly logService: LogService,
-    private readonly aiService: AiService,
+    private readonly aiService: AiService
   ) {}
 
   /**
@@ -56,11 +51,9 @@ export class ReplayController {
     status: HttpStatus.BAD_REQUEST,
     description: 'Invalid request or session not available',
   })
-  async startReplay(
-    @Body() request: StartReplayRequestDto,
-  ): Promise<StartReplayResponseDto> {
+  async startReplay(@Body() request: StartReplayRequestDto): Promise<StartReplayResponseDto> {
     this.logger.log(
-      `Starting replay for session ${request.session_id} with template ${request.template_id}`,
+      `Starting replay for session ${request.session_id} with template ${request.template_id}`
     );
 
     // Get CDP URL from session (would normally call Session Broker)
@@ -71,7 +64,7 @@ export class ReplayController {
         request.session_id,
         request.template_id,
         request.params,
-        cdpUrl,
+        cdpUrl
       );
 
       return {
@@ -99,9 +92,7 @@ export class ReplayController {
     status: HttpStatus.NOT_FOUND,
     description: 'Session not found',
   })
-  async stopReplay(
-    @Body() request: StopReplayRequestDto,
-  ): Promise<StopReplayResponseDto> {
+  async stopReplay(@Body() request: StopReplayRequestDto): Promise<StopReplayResponseDto> {
     this.logger.log(`Stopping replay for session ${request.session_id}`);
 
     const success = await this.executorService.stopExecution(request.session_id);
@@ -132,7 +123,7 @@ export class ReplayController {
     description: 'Execution not found',
   })
   async getExecutionStatus(
-    @Param('execution_id') executionId: string,
+    @Param('execution_id') executionId: string
   ): Promise<ExecutionStatusResponseDto> {
     const execution = this.executorService.getExecutionStatus(executionId);
 
@@ -165,9 +156,7 @@ export class ReplayController {
     description: 'Step logs',
     type: [StepLogDto],
   })
-  async getStepLogs(
-    @Param('session_id') sessionId: string,
-  ): Promise<StepLogDto[]> {
+  async getStepLogs(@Param('session_id') sessionId: string): Promise<StepLogDto[]> {
     const logs = await this.logService.getStepLogs(sessionId);
     return logs.map((log) => ({
       id: log.id,
@@ -233,9 +222,7 @@ export class ReplayController {
     status: HttpStatus.OK,
     description: 'Execution summary',
   })
-  async getExecutionSummary(
-    @Param('session_id') sessionId: string,
-  ): Promise<{
+  async getExecutionSummary(@Param('session_id') sessionId: string): Promise<{
     total_steps: number;
     successful_steps: number;
     failed_steps: number;

@@ -10,12 +10,12 @@
 
 项目目前存在三套数据访问层并存的情况：
 
-| 服务 | 当前方案 | 风险 |
-|---|---|---|
+| 服务                      | 当前方案                      | 风险                             |
+| ------------------------- | ----------------------------- | -------------------------------- |
 | `domain/browser-template` | TypeORM + `synchronize: true` | 无迁移记录，可静默修改生产表结构 |
-| `domain/report` | TypeORM + `synchronize: true` | 同上 |
-| `runtime/replay-engine` | 裸 `pg.Pool` + 手写 SQL | 无类型安全，维护成本高 |
-| `core/*`（4 个服务） | Prisma | — |
+| `domain/report`           | TypeORM + `synchronize: true` | 同上                             |
+| `runtime/replay-engine`   | 裸 `pg.Pool` + 手写 SQL       | 无类型安全，维护成本高           |
+| `core/*`（4 个服务）      | Prisma                        | —                                |
 
 **目标：** 将三个非 Prisma 服务迁移到 Prisma，统一 ORM 工具链，建立正式迁移记录，消除 `synchronize: true` 的隐患。
 
@@ -45,10 +45,16 @@ apps/backend/core/platform/
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   constructor() {
-    super({ log: process.env.NODE_ENV === 'development' ? ['query', 'info', 'warn', 'error'] : ['error'] });
+    super({
+      log: process.env.NODE_ENV === 'development' ? ['query', 'info', 'warn', 'error'] : ['error'],
+    });
   }
-  async onModuleInit() { await this.$connect(); }
-  async onModuleDestroy() { await this.$disconnect(); }
+  async onModuleInit() {
+    await this.$connect();
+  }
+  async onModuleDestroy() {
+    await this.$disconnect();
+  }
 }
 ```
 
@@ -95,12 +101,12 @@ npx prisma migrate diff --from-schema-datasource --to-schema-datamodel prisma/sc
 
 虽然跨服务 schema ownership 不在本文档实施范围内，但迁移前至少需要产出一张最小清单：
 
-| 表名 | 当前 owner 服务 | 本次是否新增 Prisma 定义 | 备注 |
-|---|---|---|---|
-| `templates` | `browser-template` | 是 | 本次迁移 |
-| `report_templates` | `report` | 是 | 本次迁移 |
-| `reports` | `report` | 是 | 本次迁移 |
-| `step_logs` | `replay-engine` | 是 | 本次迁移 |
+| 表名               | 当前 owner 服务    | 本次是否新增 Prisma 定义 | 备注     |
+| ------------------ | ------------------ | ------------------------ | -------- |
+| `templates`        | `browser-template` | 是                       | 本次迁移 |
+| `report_templates` | `report`           | 是                       | 本次迁移 |
+| `reports`          | `report`           | 是                       | 本次迁移 |
+| `step_logs`        | `replay-engine`    | 是                       | 本次迁移 |
 
 要求：本次新增的 3 个 Prisma 服务只能为自己真实拥有的表定义 schema，不得顺手复制其他共享表定义。
 
@@ -178,10 +184,12 @@ npx prisma migrate diff --from-schema-datasource --to-schema-datamodel prisma/sc
 ### 4. 模块改动
 
 **`app.module.ts`：**
+
 - 移除 `TypeOrmModule.forRoot(...)`
 - 导入 `PrismaModule`
 
 **`template.module.ts`：**
+
 - 移除 `TypeOrmModule.forFeature([TemplateEntity])`
 - 导入 `PrismaModule`
 
@@ -189,14 +197,14 @@ npx prisma migrate diff --from-schema-datasource --to-schema-datamodel prisma/sc
 
 TypeORM → Prisma 调用映射：
 
-| TypeORM | Prisma |
-|---|---|
-| `repository.findOne({ where: { id } })` | `prisma.template.findUnique({ where: { id } })` |
+| TypeORM                                                                           | Prisma                                                                                    |
+| --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `repository.findOne({ where: { id } })`                                           | `prisma.template.findUnique({ where: { id } })`                                           |
 | `repository.findOne({ where: { name, version }, order: { created_at: 'DESC' } })` | `prisma.template.findFirst({ where: { name, version }, orderBy: { createdAt: 'desc' } })` |
-| `repository.create({...})` + `repository.save(entity)` | `prisma.template.create({ data: { ...dto } })` |
-| `repository.save(existingEntity)` (update) | `prisma.template.update({ where: { id }, data: { ...fields } })` |
-| `repository.remove(entity)` | `prisma.template.delete({ where: { id } })` |
-| `createQueryBuilder().getManyAndCount()` | `prisma.$transaction([findMany({...}), count({...})])` |
+| `repository.create({...})` + `repository.save(entity)`                            | `prisma.template.create({ data: { ...dto } })`                                            |
+| `repository.save(existingEntity)` (update)                                        | `prisma.template.update({ where: { id }, data: { ...fields } })`                          |
+| `repository.remove(entity)`                                                       | `prisma.template.delete({ where: { id } })`                                               |
+| `createQueryBuilder().getManyAndCount()`                                          | `prisma.$transaction([findMany({...}), count({...})])`                                    |
 
 > 注意：`create()` 时不再需要手动 `uuidv4()`，Prisma schema 的 `@default(uuid())` 自动生成主键。
 
@@ -312,12 +320,12 @@ model StepLog {
 
 `DatabaseService` 的 SQL 方法 → Prisma 等价：
 
-| 原方法 | Prisma 替代 |
-|---|---|
-| `insertStepLog(entry)` | `prisma.stepLog.create({ data: entry })` |
-| `updateStepLog(id, updates)` | `prisma.stepLog.update({ where: { id }, data: updates })` |
-| `getStepLogs(sessionId)` | `prisma.stepLog.findMany({ where: { sessionId }, orderBy: { stepIndex: 'asc' } })` |
-| `createExecutionRecord(...)` | **直接删除**（placeholder，无需替代） |
+| 原方法                       | Prisma 替代                                                                        |
+| ---------------------------- | ---------------------------------------------------------------------------------- |
+| `insertStepLog(entry)`       | `prisma.stepLog.create({ data: entry })`                                           |
+| `updateStepLog(id, updates)` | `prisma.stepLog.update({ where: { id }, data: updates })`                          |
+| `getStepLogs(sessionId)`     | `prisma.stepLog.findMany({ where: { sessionId }, orderBy: { stepIndex: 'asc' } })` |
+| `createExecutionRecord(...)` | **直接删除**（placeholder，无需替代）                                              |
 
 ### 4. 删除 `sessions` 写入前的确认条件
 
@@ -372,6 +380,7 @@ pnpm dev
 - 对有历史数据的环境至少做一次真实 CRUD / 查询回归
 
 功能验证：
+
 - browser-template：模板 CRUD、状态流转（DRAFT → REVIEW → PUBLISHED → DEPRECATED）
 - report：报告模板 CRUD、报告生成与状态更新
 - replay-engine：step_log 写入与查询，确认 sessions 不再被写入（由 session-broker 管理）

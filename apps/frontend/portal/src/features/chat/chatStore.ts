@@ -24,14 +24,14 @@ const isPromptDebugRecord = (value: unknown): value is PromptDebugRecord => {
 
   const record = value as Record<string, unknown>;
   return (
-    typeof record.id === 'string'
-    && typeof record.messageId === 'string'
-    && typeof record.sourceEventType === 'string'
-    && typeof record.createdAt === 'string'
-    && typeof record.updatedAt === 'string'
-    && !!record.promptDebug
-    && typeof record.promptDebug === 'object'
-    && !Array.isArray(record.promptDebug)
+    typeof record.id === 'string' &&
+    typeof record.messageId === 'string' &&
+    typeof record.sourceEventType === 'string' &&
+    typeof record.createdAt === 'string' &&
+    typeof record.updatedAt === 'string' &&
+    !!record.promptDebug &&
+    typeof record.promptDebug === 'object' &&
+    !Array.isArray(record.promptDebug)
   );
 };
 
@@ -109,7 +109,10 @@ interface ChatActions {
   addMessage: (message: ChatMessage) => void;
   updateLastMessage: (content: string) => void;
   updateMessageById: (messageId: string, content: string, isStreaming?: boolean) => void;
-  updateMessageMetadataById: (messageId: string, metadata: Partial<NonNullable<ChatMessage['metadata']>>) => void;
+  updateMessageMetadataById: (
+    messageId: string,
+    metadata: Partial<NonNullable<ChatMessage['metadata']>>
+  ) => void;
   upsertPromptDebugRecord: (record: {
     messageId: string;
     sessionId?: string;
@@ -149,7 +152,10 @@ interface ChatActions {
   setAvailableModels: (models: AIModel[]) => void;
 
   // Skill参数确认
-  setPendingParamsConfirm: (params: Record<string, unknown> | null, skillName: string | null) => void;
+  setPendingParamsConfirm: (
+    params: Record<string, unknown> | null,
+    skillName: string | null
+  ) => void;
   confirmParams: () => void;
 }
 
@@ -165,7 +171,7 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
   streamingEvents: [],
   draftMessage: '',
   draftExecutionId: null,
-  chatMode: 'chat',  // 默认普通聊天模式
+  chatMode: 'chat', // 默认普通聊天模式
   enableThinking: true,
   enableWebSearch: false,
   uploadedFiles: [],

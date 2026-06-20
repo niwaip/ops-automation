@@ -8,7 +8,7 @@ import { ActivityFormData, BuiltinActivityDTO } from './temporal-activity.types'
 export class ActivityCrudService {
   constructor(
     private prisma: PrismaService,
-    private readonly builtinActivityRegistry: BuiltinActivityRegistry,
+    private readonly builtinActivityRegistry: BuiltinActivityRegistry
   ) {}
 
   listBuiltin(): BuiltinActivityDTO[] {

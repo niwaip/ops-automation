@@ -40,7 +40,7 @@ describe('CarboneEngine', () => {
         fileName: 'test.docx',
         size: 1000,
         variables: ['d.name', 'd.age'],
-        loops: []
+        loops: [],
       };
       const data = { name: 'John', age: 30 };
       const result = engine.validateData(templateInfo, data);
@@ -55,7 +55,7 @@ describe('CarboneEngine', () => {
         fileName: 'test.docx',
         size: 1000,
         variables: ['d.name', 'd.age', 'd.email'],
-        loops: []
+        loops: [],
       };
       const data = { name: 'John' };
       const result = engine.validateData(templateInfo, data);

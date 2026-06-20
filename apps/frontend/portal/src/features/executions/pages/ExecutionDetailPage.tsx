@@ -6,23 +6,31 @@
 
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Descriptions, Tag, Button, Space, Typography, Spin, Alert, Table, Steps, Form, Timeline, Image, Carousel, message } from 'antd';
+import {
+  Card,
+  Descriptions,
+  Tag,
+  Button,
+  Space,
+  Typography,
+  Spin,
+  Alert,
+  Table,
+  Steps,
+  Form,
+  Timeline,
+  Image,
+  Carousel,
+  Empty,
+  message,
+} from 'antd';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import '@/features/chat/ChatMessage.css';
 import { resolveExecutionNormalizedResult } from '@ops/user-core';
-import {
-  ArrowLeftOutlined,
-  WarningOutlined,
-  ThunderboltOutlined,
-} from '@ant-design/icons';
+import { ArrowLeftOutlined, WarningOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
-import {
-  executionApi,
- ExecutionDto,
-  ExecutionPhaseDto,
-  ExecutionStepDto,
-} from '@/api/execution';
+import { executionApi, ExecutionDto, ExecutionPhaseDto, ExecutionStepDto } from '@/api/execution';
 import { runtimeSessionApi } from '@/api/runtimeSession';
 import { skillApi } from '@/api/skill';
 import { capabilityReleaseApi } from '@/api/capabilities';
@@ -30,13 +38,20 @@ import SemanticOverviewCard from '@/features/executions/components/SemanticOverv
 import TimelineNodeCard from '@/features/executions/components/TimelineNodeCard';
 import {
   buildBrowserOutputDisplay,
+  hasBrowserAuditEvidence,
   extractBrowserExecutionResult,
   hasBrowserExecutionEvidence,
 } from '@/features/executions/lib/browser';
-import { asRecord, hasMeaningfulExecutionResult, tryParseJsonValue } from '@/features/executions/lib/common';
 import {
+  asRecord,
+  hasMeaningfulExecutionResult,
+  tryParseJsonValue,
+} from '@/features/executions/lib/common';
+import {
+  extractPhaseStepUrl,
   extractPhaseStepImageSources,
   extractWorkflowActivitySnapshotSources,
+  getVisiblePhaseSteps,
 } from '@/features/executions/lib/artifacts';
 import {
   beautifyText,
@@ -49,7 +64,11 @@ import {
   stepStatusLabels,
   stepTypeLabels,
 } from '@/features/executions/lib/detailView';
-import { normalizeRequiredInputValues, renderRequiredInputField, type RequiredInputField } from '@/features/executions/lib/inputFields';
+import {
+  normalizeRequiredInputValues,
+  renderRequiredInputField,
+  type RequiredInputField,
+} from '@/features/executions/lib/inputFields';
 import { renderJsonValue } from '@/features/executions/lib/json';
 import { extractExecutionDisplayInput } from '@/features/executions/lib/listHelpers';
 import {
@@ -97,14 +116,10 @@ const getRecoveryPatchSummary = (patch: unknown, isEnglish: boolean): string | u
   const note = typeof record.note === 'string' ? record.note : undefined;
 
   if (type === 'append_wait') {
-    return isEnglish
-      ? `Append wait ${durationMs ?? 0}ms`
-      : `追加等待 ${durationMs ?? 0}ms`;
+    return isEnglish ? `Append wait ${durationMs ?? 0}ms` : `追加等待 ${durationMs ?? 0}ms`;
   }
   if (type === 'replace_selector') {
-    return isEnglish
-      ? `Replace selector: ${selector || '-'}`
-      : `替换选择器: ${selector || '-'}`;
+    return isEnglish ? `Replace selector: ${selector || '-'}` : `替换选择器: ${selector || '-'}`;
   }
   if (type === 'resolve_by_human') {
     return isEnglish
@@ -160,7 +175,7 @@ const isBrowserWorkflowActivity = (phase: ExecutionPhaseDto): boolean => {
 const renderExecutionPayloadContent = (
   value: unknown,
   emptyText: string,
-  treatSingleResultFieldAsMarkdown = false,
+  treatSingleResultFieldAsMarkdown = false
 ) => {
   const parsedValue = tryParseJsonValue(value);
 
@@ -182,19 +197,18 @@ const renderExecutionPayloadContent = (
           lineHeight: '1.6',
         }}
       >
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-          {beautifyText(parsedValue)}
-        </ReactMarkdown>
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>{beautifyText(parsedValue)}</ReactMarkdown>
       </div>
     );
   }
 
   const resultObj = asRecord(parsedValue);
   const resultText = typeof resultObj?.result === 'string' ? resultObj.result : undefined;
-  const onlyHasResultField = treatSingleResultFieldAsMarkdown && resultObj
-    ? Object.keys(resultObj).length === 1
-      && Object.prototype.hasOwnProperty.call(resultObj, 'result')
-    : false;
+  const onlyHasResultField =
+    treatSingleResultFieldAsMarkdown && resultObj
+      ? Object.keys(resultObj).length === 1 &&
+        Object.prototype.hasOwnProperty.call(resultObj, 'result')
+      : false;
 
   if (resultText && onlyHasResultField) {
     return (
@@ -210,19 +224,33 @@ const renderExecutionPayloadContent = (
           lineHeight: '1.6',
         }}
       >
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-          {beautifyText(resultText)}
-        </ReactMarkdown>
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>{beautifyText(resultText)}</ReactMarkdown>
       </div>
     );
   }
 
   return (
-    <pre style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--bg-secondary)', padding: 12, borderRadius: 8, overflow: 'auto', marginTop: 8, lineHeight: '1.6', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+    <pre
+      style={{
+        background: 'var(--bg-secondary)',
+        color: 'var(--text-primary)',
+        border: '1px solid var(--bg-secondary)',
+        padding: 12,
+        borderRadius: 8,
+        overflow: 'auto',
+        marginTop: 8,
+        lineHeight: '1.6',
+        whiteSpace: 'pre-wrap',
+        wordBreak: 'break-word',
+      }}
+    >
       {renderJsonValue(parsedValue)}
     </pre>
   );
 };
+
+const formatDateTime = (value?: string | null): string =>
+  value ? new Date(value).toLocaleString() : '-';
 
 const ExecutionDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -240,16 +268,22 @@ const ExecutionDetailPage: React.FC = () => {
     details: isEnglish ? 'Execution Details' : '执行详情',
     idLabel: isEnglish ? 'ID' : '执行单 ID',
     takeoverRequired: isEnglish ? 'Human Takeover Required' : '需要人工接管',
-    takeoverDescDefault: isEnglish ? 'The execution requires human intervention.' : '该执行需要人工介入处理。',
+    takeoverDescDefault: isEnglish
+      ? 'The execution requires human intervention.'
+      : '该执行需要人工介入处理。',
     approvalRequired: isEnglish ? 'Approval Required' : '需要审批',
     approvalWaiting: isEnglish ? 'Execution is waiting for approval' : '执行正在等待审批',
     approvalStatusPrefix: isEnglish ? 'Current approval status:' : '当前审批状态：',
-    approvalDescDefault: isEnglish ? 'Review the execution details and decide whether it can continue.' : '请先查看执行详情，再决定是否允许继续执行。',
+    approvalDescDefault: isEnglish
+      ? 'Review the execution details and decide whether it can continue.'
+      : '请先查看执行详情，再决定是否允许继续执行。',
     approveAndContinue: isEnglish ? 'Approve And Continue' : '批准并继续执行',
     rejectExecution: isEnglish ? 'Reject Execution' : '拒绝执行',
     missingInputRequired: isEnglish ? 'Missing Input Required' : '需要补充输入',
     waitingInput: isEnglish ? 'Execution is waiting for additional input' : '执行正在等待补充输入',
-    waitingInputDesc: isEnglish ? 'Fill in the missing parameters below to resume execution.' : '请填写下面缺失的参数后恢复执行。',
+    waitingInputDesc: isEnglish
+      ? 'Fill in the missing parameters below to resume execution.'
+      : '请填写下面缺失的参数后恢复执行。',
     invalidJson: isEnglish ? 'Invalid JSON input' : 'JSON 输入格式无效',
     submitAndResume: isEnglish ? 'Submit And Resume' : '提交并恢复执行',
     reset: isEnglish ? 'Reset' : '重置',
@@ -297,6 +331,24 @@ const ExecutionDetailPage: React.FC = () => {
     browserStepCount: isEnglish ? 'Step Count' : '步骤数',
     browserFailedStep: isEnglish ? 'Failed Step' : '失败步骤',
     browserFailedAction: isEnglish ? 'Failed Action' : '失败动作',
+    browserAuditEvidence: isEnglish ? 'Audit & Takeover Evidence' : '审计与接管证据',
+    browserExecutionPlanVersion: isEnglish ? 'Plan Version' : '计划版本',
+    browserDegradedMode: isEnglish ? 'Degraded Mode' : '退化模式',
+    browserDegradeReason: isEnglish ? 'Degrade Reason' : '退化原因',
+    browserCurrentStepId: isEnglish ? 'Current Step ID' : '当前步骤 ID',
+    browserCurrentLoopIteration: isEnglish ? 'Loop Iteration' : '循环轮次',
+    browserCurrentRiskLevel: isEnglish ? 'Current Risk' : '当前风险',
+    browserRiskReason: isEnglish ? 'Risk Reason' : '风险原因',
+    browserTakeoverReason: isEnglish ? 'Takeover Reason' : '接管原因',
+    browserLastReadValue: isEnglish ? 'Last Read Value' : '最近读取值',
+    browserLastBranchDecision: isEnglish ? 'Last Branch Decision' : '最近分支判断',
+    browserTraceability: isEnglish ? 'Traceability' : '链路追踪',
+    browserRecorderSessionId: isEnglish ? 'Recorder Session' : '录制会话',
+    browserExportArtifactId: isEnglish ? 'Export Artifact' : '导出产物',
+    browserReleaseId: isEnglish ? 'Release ID' : '发布版本',
+    browserSkillDraftId: isEnglish ? 'Skill Draft' : '技能草稿',
+    browserPublishedSkillId: isEnglish ? 'Published Skill' : '已发布技能',
+    browserRuntimeExecutionId: isEnglish ? 'Runtime Execution' : '运行时执行 ID',
     browserNoOutput: isEnglish ? 'No structured output' : '暂无结构化输出',
     phaseTimeline: isEnglish ? 'Phase Timeline' : '阶段时间线',
     currentPhase: isEnglish ? 'Current Phase' : '当前阶段',
@@ -304,7 +356,9 @@ const ExecutionDetailPage: React.FC = () => {
     activityProgress: isEnglish ? 'Activity Progress' : 'Activity 进度',
     activityKey: isEnglish ? 'Activity Key' : 'Activity Key',
     activityRetryOrResume: isEnglish ? 'Retry / Resume' : '重试 / 继续',
-    activityTakeoverHint: isEnglish ? 'Take over this activity before retrying' : '如需重试该 Activity，请先接管后继续',
+    activityTakeoverHint: isEnglish
+      ? 'Take over this activity before retrying'
+      : '如需重试该 Activity，请先接管后继续',
     phaseType: isEnglish ? 'Phase Type' : '阶段类型',
     phaseAttempt: isEnglish ? 'Attempt' : '尝试次数',
     phaseRuntimeSession: isEnglish ? 'Phase Session' : '阶段会话',
@@ -342,21 +396,28 @@ const ExecutionDetailPage: React.FC = () => {
     phaseStepStatus: isEnglish ? 'Status' : '状态',
     phaseStepSnapshot: isEnglish ? 'Snapshot' : '快照',
     phaseStepDuration: isEnglish ? 'Duration' : '耗时',
+    executionResult: isEnglish ? 'Execution Result' : '执行结果',
+    humanReview: isEnglish ? 'Human Review' : '人工审查',
+    reviewDecision: isEnglish ? 'Review Decision' : '审查结论',
+    reviewPhase: isEnglish ? 'Review Phase' : '审查阶段',
+    reviewedAt: isEnglish ? 'Reviewed At' : '审查时间',
+    reviewContext: isEnglish ? 'Review Context' : '审查背景',
+    reviewed: isEnglish ? 'Reviewed' : '已审查',
   };
   const statusLabels = isEnglish ? EXECUTION_STATUS_LABELS_EN : EXECUTION_STATUS_LABELS_ZH;
 
   // Fetch execution details
-  const { data: execution, isLoading: isLoadingExecution, error: errorExecution } = useQuery<ExecutionDto, Error>(
-    ['execution', id],
-    () => executionApi.getById(id!),
-    {
-      enabled: !!id,
-      refetchInterval: (data) => {
-        if (!data) return false;
-        return EXECUTION_ACTIVE_POLLING_STATUSES.includes(data.status) ? 3000 : false;
-      },
-    }
-  );
+  const {
+    data: execution,
+    isLoading: isLoadingExecution,
+    error: errorExecution,
+  } = useQuery<ExecutionDto, Error>(['execution', id], () => executionApi.getById(id!), {
+    enabled: !!id,
+    refetchInterval: (data) => {
+      if (!data) return false;
+      return EXECUTION_ACTIVE_POLLING_STATUSES.includes(data.status) ? 3000 : false;
+    },
+  });
 
   // Fetch execution steps
   const { data: steps } = useQuery<ExecutionStepDto[], Error>(
@@ -383,10 +444,11 @@ const ExecutionDetailPage: React.FC = () => {
     }
   );
 
-  const { data: skillsData } = useQuery(['execution-detail-skills-name-map'], () => skillApi.list());
-  const { data: releasesData } = useQuery(
-    ['execution-detail-published-skills-name-map'],
-    () => capabilityReleaseApi.listReleaseCenter(),
+  const { data: skillsData } = useQuery(['execution-detail-skills-name-map'], () =>
+    skillApi.list()
+  );
+  const { data: releasesData } = useQuery(['execution-detail-published-skills-name-map'], () =>
+    capabilityReleaseApi.listReleaseCenter()
   );
 
   const skillNameMap = React.useMemo(() => {
@@ -395,7 +457,7 @@ const ExecutionDetailPage: React.FC = () => {
       if (release.publishedSkillId) {
         map.set(
           release.publishedSkillId,
-          release.sourceName || release.sourceId || release.publishedSkillId,
+          release.sourceName || release.sourceId || release.publishedSkillId
         );
       }
     });
@@ -414,19 +476,21 @@ const ExecutionDetailPage: React.FC = () => {
     return skillNameMap.get(skillId) || skillId;
   };
 
-  const waitingInputStep = execution?.status === 'waiting_input'
-    ? steps?.find((step) =>
-      step.id === execution.currentStepId ||
-      (step.type === 'input_collection' && step.status === 'running')
-    )
-    : undefined;
+  const waitingInputStep =
+    execution?.status === 'waiting_input'
+      ? steps?.find(
+          (step) =>
+            step.id === execution.currentStepId ||
+            (step.type === 'input_collection' && step.status === 'running')
+        )
+      : undefined;
 
   const requiredInputs = Array.isArray(waitingInputStep?.inputJson?.requiredInputs)
     ? (waitingInputStep.inputJson.requiredInputs as unknown as RequiredInputField[])
     : [];
   const requiredInputGroups = React.useMemo(
     () => buildWaitingInputDisplayGroups(requiredInputs),
-    [requiredInputs],
+    [requiredInputs]
   );
   const semantic = execution?.semantic;
   const parsedResult = asRecord(tryParseJsonValue(execution?.resultJson));
@@ -435,22 +499,23 @@ const ExecutionDetailPage: React.FC = () => {
   const executionPhases = phasesData || execution?.phases || [];
   const sortedExecutionPhases = React.useMemo(
     () => [...executionPhases].sort(compareExecutionPhases),
-    [executionPhases],
+    [executionPhases]
   );
-  const isExecutionActive = Boolean(execution && EXECUTION_ACTIVE_POLLING_STATUSES.includes(execution.status));
+  const isExecutionActive = Boolean(
+    execution && EXECUTION_ACTIVE_POLLING_STATUSES.includes(execution.status)
+  );
   const workflowActivityPhases = React.useMemo(
-    () => sortedExecutionPhases
-      .filter((phase) => phase.phaseType === 'workflow_activity')
-      .sort(compareExecutionPhases),
-    [sortedExecutionPhases],
+    () =>
+      sortedExecutionPhases
+        .filter((phase) => phase.phaseType === 'workflow_activity')
+        .sort(compareExecutionPhases),
+    [sortedExecutionPhases]
   );
-  const displayActivityPhases = React.useMemo(
-    () => {
-      const basePhases = workflowActivityPhases.length > 0 ? workflowActivityPhases : sortedExecutionPhases;
-      return [...basePhases].sort(compareExecutionPhases);
-    },
-    [sortedExecutionPhases, workflowActivityPhases],
-  );
+  const displayActivityPhases = React.useMemo(() => {
+    const basePhases =
+      workflowActivityPhases.length > 0 ? workflowActivityPhases : sortedExecutionPhases;
+    return [...basePhases].sort(compareExecutionPhases);
+  }, [sortedExecutionPhases, workflowActivityPhases]);
   const effectiveResultJson = React.useMemo(() => {
     if (hasMeaningfulExecutionResult(parsedResult)) {
       return parsedResult;
@@ -462,50 +527,58 @@ const ExecutionDetailPage: React.FC = () => {
   }, [parsedResult, sortedExecutionPhases]);
   const effectiveBrowserExecutionResult = React.useMemo(
     () => browserExecutionResult || extractBrowserExecutionResult(effectiveResultJson),
-    [browserExecutionResult, effectiveResultJson],
+    [browserExecutionResult, effectiveResultJson]
   );
   const resultPreviewValue = normalizedResult?.structuredData ?? normalizedResult?.envelope;
-  const primaryResultText = normalizedResult?.detailText || normalizedResult?.summary || normalizedResult?.body;
-  const shouldRenderPrimaryAsMarkdown = normalizedResult?.detailFormat === 'markdown' || normalizedResult?.summaryFormat === 'markdown';
+  const primaryResultText =
+    normalizedResult?.detailText || normalizedResult?.summary || normalizedResult?.body;
+  const shouldRenderPrimaryAsMarkdown =
+    normalizedResult?.detailFormat === 'markdown' || normalizedResult?.summaryFormat === 'markdown';
   const shouldShowStructuredResult = Boolean(
-    resultPreviewValue !== undefined
-    && resultPreviewValue !== null
-    && (
-      normalizedResult?.envelope?.presentation?.preferStructuredView
-      || normalizedResult?.structuredData !== undefined
-      || !primaryResultText
-    ),
+    resultPreviewValue !== undefined &&
+    resultPreviewValue !== null &&
+    (normalizedResult?.envelope?.presentation?.preferStructuredView ||
+      normalizedResult?.structuredData !== undefined ||
+      !primaryResultText)
   );
   const phaseRuntimeSessionId = React.useMemo(
-    () => [...sortedExecutionPhases]
-      .reverse()
-      .find((phase) => typeof phase.runtimeSessionId === 'string' && phase.runtimeSessionId.trim().length > 0)
-      ?.runtimeSessionId,
-    [sortedExecutionPhases],
+    () =>
+      [...sortedExecutionPhases]
+        .reverse()
+        .find(
+          (phase) =>
+            typeof phase.runtimeSessionId === 'string' && phase.runtimeSessionId.trim().length > 0
+        )?.runtimeSessionId,
+    [sortedExecutionPhases]
   );
   const executionRuntimeSessionId =
-    execution?.runtimeSessionId || effectiveBrowserExecutionResult?.runtimeSessionId || phaseRuntimeSessionId;
+    execution?.runtimeSessionId ||
+    effectiveBrowserExecutionResult?.runtimeSessionId ||
+    phaseRuntimeSessionId;
   const isBrowserExecution = React.useMemo(
-    () => (
+    () =>
       hasBrowserExecutionEvidence({
         runtimeType: execution?.runtimeType,
         runtimeSessionId: executionRuntimeSessionId,
         browserExecutionResult: effectiveBrowserExecutionResult,
         phases: sortedExecutionPhases,
-      })
-      || sortedExecutionPhases.some((phase) => isBrowserWorkflowActivity(phase))
-    ),
-    [effectiveBrowserExecutionResult, execution?.runtimeType, executionRuntimeSessionId, sortedExecutionPhases],
+      }) || sortedExecutionPhases.some((phase) => isBrowserWorkflowActivity(phase)),
+    [
+      effectiveBrowserExecutionResult,
+      execution?.runtimeType,
+      executionRuntimeSessionId,
+      sortedExecutionPhases,
+    ]
   );
-  const displayRuntimeType = isBrowserExecution ? 'browser' : (execution?.runtimeType || '-');
+  const displayRuntimeType = isBrowserExecution ? 'browser' : execution?.runtimeType || '-';
   const hasWorkflowActivityPhases = workflowActivityPhases.length > 0;
   const shouldShowLegacySteps = React.useMemo(
     () => sortedExecutionPhases.length === 0,
-    [sortedExecutionPhases],
+    [sortedExecutionPhases]
   );
-  const semanticOverviewCard: React.ReactNode = semantic
-    ? <SemanticOverviewCard semantic={semantic} text={text} />
-    : null;
+  const semanticOverviewCard: React.ReactNode = semantic ? (
+    <SemanticOverviewCard semantic={semantic} text={text} />
+  ) : null;
   const { data: runtimeSession } = useQuery(
     ['execution-runtime-session', executionRuntimeSessionId],
     () => runtimeSessionApi.getByIdOrExecutionId(executionRuntimeSessionId!, execution?.id),
@@ -515,7 +588,9 @@ const ExecutionDetailPage: React.FC = () => {
         if (isLiveRuntimeSessionState(data?.state)) {
           return 3000;
         }
-        return execution && EXECUTION_ACTIVE_POLLING_STATUSES.includes(execution.status) ? 3000 : false;
+        return execution && EXECUTION_ACTIVE_POLLING_STATUSES.includes(execution.status)
+          ? 3000
+          : false;
       },
     }
   );
@@ -526,28 +601,95 @@ const ExecutionDetailPage: React.FC = () => {
       lastKnownRuntimeSessionNovncUrlRef.current = runtimeSessionNovncUrl;
     }
   }, [runtimeSessionNovncUrl]);
-  const stableRuntimeSessionNovncUrl = runtimeSessionNovncUrl || lastKnownRuntimeSessionNovncUrlRef.current;
+  const stableRuntimeSessionNovncUrl =
+    runtimeSessionNovncUrl || lastKnownRuntimeSessionNovncUrlRef.current;
   const executionInput = execution ? extractExecutionDisplayInput(execution) : undefined;
   const currentPhase = React.useMemo(
-    () => displayActivityPhases.find((phase) => phase.phaseKey === execution?.currentPhaseKey)
-      || displayActivityPhases.find((phase) => phase.status === 'running')
-      || displayActivityPhases.find((phase) => ['waiting_takeover', 'resumable', 'pending'].includes(phase.status))
-      || displayActivityPhases[displayActivityPhases.length - 1],
-    [execution?.currentPhaseKey, displayActivityPhases],
+    () =>
+      displayActivityPhases.find((phase) => phase.phaseKey === execution?.currentPhaseKey) ||
+      displayActivityPhases.find((phase) => phase.status === 'running') ||
+      displayActivityPhases.find((phase) =>
+        ['waiting_takeover', 'resumable', 'pending'].includes(phase.status)
+      ) ||
+      displayActivityPhases[displayActivityPhases.length - 1],
+    [execution?.currentPhaseKey, displayActivityPhases]
   );
+  const latestPhaseWithReview = React.useMemo(
+    () =>
+      [...sortedExecutionPhases].reverse().find((phase) => {
+        const recoveryDecision = asRecord(tryParseJsonValue(phase.recoveryDecision));
+        return (phase.takeovers?.length || 0) > 0 || Boolean(recoveryDecision);
+      }),
+    [sortedExecutionPhases]
+  );
+  const takeoverFocusPhase = React.useMemo(() => {
+    if (currentPhase) {
+      const currentRecoveryDecision = asRecord(tryParseJsonValue(currentPhase.recoveryDecision));
+      if ((currentPhase.takeovers?.length || 0) > 0 || currentRecoveryDecision) {
+        return currentPhase;
+      }
+    }
+    return latestPhaseWithReview;
+  }, [currentPhase, latestPhaseWithReview]);
+  const latestExecutionReview = React.useMemo(() => {
+    const entries = sortedExecutionPhases.flatMap((phase) => {
+      const recoveryDecision = asRecord(tryParseJsonValue(phase.recoveryDecision));
+      const recoveryComment =
+        typeof recoveryDecision?.comment === 'string' && recoveryDecision.comment.trim()
+          ? recoveryDecision.comment.trim()
+          : undefined;
+      const takeoverEntries = (phase.takeovers || []).map((takeover) => ({
+        phaseKey: phase.phaseKey,
+        phaseName: phase.phaseName,
+        note: takeover.resolutionNote || recoveryComment,
+        reason: takeover.reason || phase.errorMessage,
+        createdAt: takeover.createdAt,
+        resolvedAt: takeover.resolvedAt,
+        status: takeover.status,
+      }));
+
+      if (takeoverEntries.length > 0) {
+        return takeoverEntries;
+      }
+
+      if (!recoveryComment) {
+        return [];
+      }
+
+      return [
+        {
+          phaseKey: phase.phaseKey,
+          phaseName: phase.phaseName,
+          note: recoveryComment,
+          reason: phase.errorMessage,
+          createdAt: phase.createdAt,
+          resolvedAt: phase.completedAt || phase.updatedAt,
+          status: phase.status,
+        },
+      ];
+    });
+
+    const meaningfulEntries = entries.filter((entry) => entry.note || entry.reason);
+    meaningfulEntries.sort((left, right) => {
+      const leftTime = new Date(left.resolvedAt || left.createdAt || 0).getTime();
+      const rightTime = new Date(right.resolvedAt || right.createdAt || 0).getTime();
+      return leftTime - rightTime;
+    });
+    return meaningfulEntries[meaningfulEntries.length - 1];
+  }, [sortedExecutionPhases]);
   const shouldShowCurrentPhaseInfo = Boolean(
-    execution && (
-      execution.status === 'running'
-      || execution.status === 'human_control'
-      || execution.status === 'failed'
-    ),
+    execution &&
+    (execution.status === 'running' ||
+      execution.status === 'human_control' ||
+      execution.status === 'failed')
   );
 
   const submitInputMutation = useMutation(
-    (values: Record<string, unknown>) => executionApi.submitInput(id!, {
-      stepId: waitingInputStep!.id,
-      input: values,
-    }),
+    (values: Record<string, unknown>) =>
+      executionApi.submitInput(id!, {
+        stepId: waitingInputStep!.id,
+        input: values,
+      }),
     {
       onSuccess: () => {
         void message.success(text.inputSubmitted);
@@ -560,37 +702,33 @@ const ExecutionDetailPage: React.FC = () => {
     }
   );
 
-  const approveMutation = useMutation(
-    () => executionApi.approve(id!),
-    {
-      onSuccess: () => {
-        void message.success(text.executionApproved);
-        void queryClient.invalidateQueries(['execution', id]);
-        void queryClient.invalidateQueries(['execution-steps', id]);
-      },
-      onError: (error: Error) => {
-        void message.error(`${text.approveFailed}: ${error.message}`);
-      },
-    }
-  );
+  const approveMutation = useMutation(() => executionApi.approve(id!), {
+    onSuccess: () => {
+      void message.success(text.executionApproved);
+      void queryClient.invalidateQueries(['execution', id]);
+      void queryClient.invalidateQueries(['execution-steps', id]);
+    },
+    onError: (error: Error) => {
+      void message.error(`${text.approveFailed}: ${error.message}`);
+    },
+  });
 
-  const rejectMutation = useMutation(
-    () => executionApi.reject(id!),
-    {
-      onSuccess: () => {
-        void message.success(text.executionRejected);
-        void queryClient.invalidateQueries(['execution', id]);
-        void queryClient.invalidateQueries(['execution-steps', id]);
-      },
-      onError: (error: Error) => {
-        void message.error(`${text.rejectFailed}: ${error.message}`);
-      },
-    }
-  );
+  const rejectMutation = useMutation(() => executionApi.reject(id!), {
+    onSuccess: () => {
+      void message.success(text.executionRejected);
+      void queryClient.invalidateQueries(['execution', id]);
+      void queryClient.invalidateQueries(['execution-steps', id]);
+    },
+    onError: (error: Error) => {
+      void message.error(`${text.rejectFailed}: ${error.message}`);
+    },
+  });
 
   if (isLoadingExecution) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+      <div
+        style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+      >
         <Spin size="large" tip={text.loading} />
       </div>
     );
@@ -604,11 +742,7 @@ const ExecutionDetailPage: React.FC = () => {
           message={text.loadFailed}
           description={errorExecution?.message || text.notFound}
           showIcon
-          action={
-            <Button onClick={() => navigate('/executions')}>
-              {text.backToExecutions}
-            </Button>
-          }
+          action={<Button onClick={() => navigate('/executions')}>{text.backToExecutions}</Button>}
         />
       </div>
     );
@@ -616,7 +750,7 @@ const ExecutionDetailPage: React.FC = () => {
 
   const getCurrentStepIndex = () => {
     if (!steps || !execution.currentStepId) return -1;
-    return steps.findIndex(s => s.id === execution.currentStepId);
+    return steps.findIndex((s) => s.id === execution.currentStepId);
   };
 
   const handleSubmitInput = (values: Record<string, unknown>) => {
@@ -650,7 +784,9 @@ const ExecutionDetailPage: React.FC = () => {
       key: 'status',
       width: 120,
       render: (status: string) => (
-        <Space>{stepStatusIcons[status]} {stepStatusLabels[status]?.[isEnglish ? 'en' : 'zh'] || status}</Space>
+        <Space>
+          {stepStatusIcons[status]} {stepStatusLabels[status]?.[isEnglish ? 'en' : 'zh'] || status}
+        </Space>
       ),
     },
     {
@@ -664,21 +800,21 @@ const ExecutionDetailPage: React.FC = () => {
       title: text.error,
       dataIndex: 'errorMessage',
       key: 'errorMessage',
-      render: (error?: string) => error ? <Text type="danger">{error}</Text> : '-',
+      render: (error?: string) => (error ? <Text type="danger">{error}</Text> : '-'),
     },
     {
       title: text.duration,
       key: 'duration',
       render: (_: unknown, record: ExecutionStepDto) => {
         if (record.startedAt && record.endedAt) {
-          const duration = new Date(record.endedAt).getTime() - new Date(record.startedAt).getTime();
+          const duration =
+            new Date(record.endedAt).getTime() - new Date(record.startedAt).getTime();
           return `${(duration / 1000).toFixed(1)}s`;
         }
         return '-';
       },
     },
   ];
-
 
   const browserTimelineItems = effectiveBrowserExecutionResult
     ? [
@@ -687,22 +823,42 @@ const ExecutionDetailPage: React.FC = () => {
           children: (
             <TimelineNodeCard
               title={text.browserRuntimeInfo}
-              subtitle={execution.endedAt ? new Date(execution.endedAt).toLocaleString() : undefined}
+              subtitle={
+                execution.endedAt ? new Date(execution.endedAt).toLocaleString() : undefined
+              }
               color="gray"
               preview={renderSummaryChips([
-                { label: text.browserBackend, value: effectiveBrowserExecutionResult.backend || '-', color: 'blue' },
-                { label: text.browserStepCount, value: effectiveBrowserExecutionResult.stepResults.length, color: 'processing' },
-                { label: text.status, value: statusLabels[execution.status], color: statusColors[execution.status] },
+                {
+                  label: text.browserBackend,
+                  value: effectiveBrowserExecutionResult.backend || '-',
+                  color: 'blue',
+                },
+                {
+                  label: text.browserStepCount,
+                  value: effectiveBrowserExecutionResult.stepResults.length,
+                  color: 'processing',
+                },
+                {
+                  label: text.status,
+                  value: statusLabels[execution.status],
+                  color: statusColors[execution.status],
+                },
               ])}
               details={renderTimelineDetails([
-                { label: text.browserRuntimeSessionId, value: effectiveBrowserExecutionResult.runtimeSessionId || '-' },
-                { label: 'Runtime', value: {
-                  backend: effectiveBrowserExecutionResult.backend,
-                  runtimeSessionId: effectiveBrowserExecutionResult.runtimeSessionId,
-                  stepCount: effectiveBrowserExecutionResult.stepResults.length,
-                  failedStep: effectiveBrowserExecutionResult.failedStep,
-                  failedAction: effectiveBrowserExecutionResult.failedAction,
-                } },
+                {
+                  label: text.browserRuntimeSessionId,
+                  value: effectiveBrowserExecutionResult.runtimeSessionId || '-',
+                },
+                {
+                  label: 'Runtime',
+                  value: {
+                    backend: effectiveBrowserExecutionResult.backend,
+                    runtimeSessionId: effectiveBrowserExecutionResult.runtimeSessionId,
+                    stepCount: effectiveBrowserExecutionResult.stepResults.length,
+                    failedStep: effectiveBrowserExecutionResult.failedStep,
+                    failedAction: effectiveBrowserExecutionResult.failedAction,
+                  },
+                },
               ])}
             />
           ),
@@ -711,18 +867,19 @@ const ExecutionDetailPage: React.FC = () => {
           const outputDisplay = buildBrowserOutputDisplay(stepResult.output || null);
           const waitSeconds = resolveBrowserWaitSeconds(stepResult, stepResult.output || null);
           const isWaitStep = stepResult.action === 'wait';
-          const imageSources = outputDisplay.imageSources.length > 0
-            ? outputDisplay.imageSources
-            : outputDisplay.imageSrc
-              ? [outputDisplay.imageSrc]
-              : [];
+          const imageSources =
+            outputDisplay.imageSources.length > 0
+              ? outputDisplay.imageSources
+              : outputDisplay.imageSrc
+                ? [outputDisplay.imageSrc]
+                : [];
 
           return {
             color: getBrowserStepColor(
               stepResult,
               index,
               effectiveBrowserExecutionResult.stepResults.length,
-              Boolean(effectiveBrowserExecutionResult.failedStep),
+              Boolean(effectiveBrowserExecutionResult.failedStep)
             ),
             children: (
               <TimelineNodeCard
@@ -739,13 +896,17 @@ const ExecutionDetailPage: React.FC = () => {
                   stepResult,
                   index,
                   effectiveBrowserExecutionResult.stepResults.length,
-                  Boolean(effectiveBrowserExecutionResult.failedStep),
+                  Boolean(effectiveBrowserExecutionResult.failedStep)
                 )}
                 preview={
                   <Space direction="vertical" size={10} style={{ width: '100%' }}>
                     {isWaitStep ? (
                       renderSummaryChips([
-                        { label: '等待', value: waitSeconds ? `${waitSeconds} 秒` : '-', color: 'processing' },
+                        {
+                          label: '等待',
+                          value: waitSeconds ? `${waitSeconds} 秒` : '-',
+                          color: 'processing',
+                        },
                         {
                           label: 'status',
                           value: outputDisplay.status || '-',
@@ -755,9 +916,21 @@ const ExecutionDetailPage: React.FC = () => {
                     ) : (
                       <>
                         {renderSummaryChips([
-                          { label: text.action, value: stepResult.action || '-', color: 'processing' },
-                          { label: text.browserTarget, value: stepResult.target || '-', color: 'blue' },
-                          { label: text.browserSnapshotId, value: stepResult.snapshotId || '-', color: 'default' },
+                          {
+                            label: text.action,
+                            value: stepResult.action || '-',
+                            color: 'processing',
+                          },
+                          {
+                            label: text.browserTarget,
+                            value: stepResult.target || '-',
+                            color: 'blue',
+                          },
+                          {
+                            label: text.browserSnapshotId,
+                            value: stepResult.snapshotId || '-',
+                            color: 'default',
+                          },
                           {
                             label: 'status',
                             value: outputDisplay.status || '-',
@@ -835,14 +1008,20 @@ const ExecutionDetailPage: React.FC = () => {
                   </Space>
                 }
                 details={renderTimelineDetails([
-                  { label: 'Step', value: {
-                    stepId: stepResult.stepId,
-                    name: stepResult.name,
-                    action: stepResult.action,
-                    target: stepResult.target,
-                    snapshotId: stepResult.snapshotId,
-                  } },
-                  { label: text.browserStepOutput, value: outputDisplay.details || text.browserNoOutput },
+                  {
+                    label: 'Step',
+                    value: {
+                      stepId: stepResult.stepId,
+                      name: stepResult.name,
+                      action: stepResult.action,
+                      target: stepResult.target,
+                      snapshotId: stepResult.snapshotId,
+                    },
+                  },
+                  {
+                    label: text.browserStepOutput,
+                    value: outputDisplay.details || text.browserNoOutput,
+                  },
                 ])}
               />
             ),
@@ -850,148 +1029,488 @@ const ExecutionDetailPage: React.FC = () => {
         }),
       ]
     : [];
+  const browserAuditEvidenceCard: React.ReactNode =
+    isBrowserExecution &&
+    effectiveBrowserExecutionResult &&
+    hasBrowserAuditEvidence(effectiveBrowserExecutionResult) ? (
+      <Card title={text.browserAuditEvidence} style={{ marginBottom: 16 }}>
+        <Space direction="vertical" size={16} style={{ width: '100%' }}>
+          <Descriptions column={2} size="small">
+            <Descriptions.Item label={text.browserExecutionPlanVersion}>
+              {effectiveBrowserExecutionResult.executionPlanVersion || '-'}
+            </Descriptions.Item>
+            <Descriptions.Item label={text.browserDegradedMode}>
+              <Tag color={effectiveBrowserExecutionResult.degradedMode ? 'orange' : 'green'}>
+                {effectiveBrowserExecutionResult.degradedMode ? text.yes : text.no}
+              </Tag>
+            </Descriptions.Item>
+            <Descriptions.Item label={text.browserDegradeReason} span={2}>
+              {effectiveBrowserExecutionResult.degradeReason || '-'}
+            </Descriptions.Item>
+            <Descriptions.Item label={text.browserCurrentStepId}>
+              {effectiveBrowserExecutionResult.runtimeEvidence?.currentStepId || '-'}
+            </Descriptions.Item>
+            <Descriptions.Item label={text.browserCurrentLoopIteration}>
+              {effectiveBrowserExecutionResult.runtimeEvidence?.currentLoopIteration ?? '-'}
+            </Descriptions.Item>
+            <Descriptions.Item label={text.browserCurrentRiskLevel}>
+              {effectiveBrowserExecutionResult.runtimeEvidence?.currentRiskLevel || '-'}
+            </Descriptions.Item>
+            <Descriptions.Item label={text.browserRiskReason}>
+              {effectiveBrowserExecutionResult.runtimeEvidence?.riskReason || '-'}
+            </Descriptions.Item>
+            <Descriptions.Item label={text.browserTakeoverReason} span={2}>
+              {effectiveBrowserExecutionResult.runtimeEvidence?.takeoverReason ||
+                execution.takeoverReason ||
+                '-'}
+            </Descriptions.Item>
+          </Descriptions>
+
+          {effectiveBrowserExecutionResult.runtimeEvidence?.lastReadValue ? (
+            <div>
+              <Text strong>{text.browserLastReadValue}</Text>
+              <pre
+                style={{
+                  background: 'var(--bg-secondary)',
+                  color: 'var(--text-primary)',
+                  border: '1px solid var(--bg-secondary)',
+                  padding: 12,
+                  borderRadius: 8,
+                  overflow: 'auto',
+                  marginTop: 8,
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                }}
+              >
+                {renderJsonValue(effectiveBrowserExecutionResult.runtimeEvidence.lastReadValue)}
+              </pre>
+            </div>
+          ) : null}
+
+          {effectiveBrowserExecutionResult.runtimeEvidence?.lastBranchDecision ? (
+            <div>
+              <Text strong>{text.browserLastBranchDecision}</Text>
+              <pre
+                style={{
+                  background: 'var(--bg-secondary)',
+                  color: 'var(--text-primary)',
+                  border: '1px solid var(--bg-secondary)',
+                  padding: 12,
+                  borderRadius: 8,
+                  overflow: 'auto',
+                  marginTop: 8,
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                }}
+              >
+                {renderJsonValue(
+                  effectiveBrowserExecutionResult.runtimeEvidence.lastBranchDecision
+                )}
+              </pre>
+            </div>
+          ) : null}
+
+          {effectiveBrowserExecutionResult.trace?.recorderSessionId ||
+          effectiveBrowserExecutionResult.trace?.exportArtifactId ||
+          effectiveBrowserExecutionResult.trace?.releaseId ||
+          effectiveBrowserExecutionResult.trace?.skillDraftId ||
+          effectiveBrowserExecutionResult.trace?.publishedSkillId ||
+          effectiveBrowserExecutionResult.trace?.runtimeExecutionId ? (
+            <Descriptions column={2} size="small" title={text.browserTraceability}>
+              <Descriptions.Item label={text.browserRecorderSessionId}>
+                {effectiveBrowserExecutionResult.trace?.recorderSessionId || '-'}
+              </Descriptions.Item>
+              <Descriptions.Item label={text.browserExportArtifactId}>
+                {effectiveBrowserExecutionResult.trace?.exportArtifactId || '-'}
+              </Descriptions.Item>
+              <Descriptions.Item label={text.browserReleaseId}>
+                {effectiveBrowserExecutionResult.trace?.releaseId || '-'}
+              </Descriptions.Item>
+              <Descriptions.Item label={text.browserSkillDraftId}>
+                {effectiveBrowserExecutionResult.trace?.skillDraftId || '-'}
+              </Descriptions.Item>
+              <Descriptions.Item label={text.browserPublishedSkillId}>
+                {effectiveBrowserExecutionResult.trace?.publishedSkillId ||
+                  execution.skillId ||
+                  '-'}
+              </Descriptions.Item>
+              <Descriptions.Item label={text.browserRuntimeExecutionId}>
+                {effectiveBrowserExecutionResult.trace?.runtimeExecutionId || '-'}
+              </Descriptions.Item>
+            </Descriptions>
+          ) : null}
+        </Space>
+      </Card>
+    ) : null;
   const executionInfoRecord = asRecord(tryParseJsonValue(execution.resultJson));
   const executionInfoTemporalLink = fixLocalhostLink(
-    normalizedResult?.temporalLink || (typeof executionInfoRecord?.temporalLink === 'string' ? executionInfoRecord.temporalLink : undefined),
+    normalizedResult?.temporalLink ||
+      (typeof executionInfoRecord?.temporalLink === 'string'
+        ? executionInfoRecord.temporalLink
+        : undefined)
   );
 
-  const activityProgressCard: React.ReactNode = isBrowserExecution && displayActivityPhases.length > 0 ? (
-    <Card title={text.stepsProgress} style={{ marginBottom: 16 }}>
-      <Steps
-        current={Math.max(displayActivityPhases.findIndex((phase) => phase.phaseKey === currentPhase?.phaseKey), 0)}
-        size="small"
-        responsive
-        style={{ marginBottom: 16 }}
-        items={displayActivityPhases.map((phase, index) => {
-          const isCurrentActivity = currentPhase?.phaseKey === phase.phaseKey;
-          return {
-            title: phase.phaseName || phase.phaseKey || `${text.step} ${index + 1}`,
-            status: getPhaseStepStatus(phase.status),
-            description: (
-              <Space direction="vertical" size={4}>
-                <Space wrap size={[8, 4]}>
-                  <Tag color={getPhaseStatusColor(phase.status)}>
-                    {getPhaseStatusLabel(phase.status, isEnglish)}
-                  </Tag>
-                  <Tag>{phase.phaseType}</Tag>
-                  {isCurrentActivity ? <Tag color="processing">{text.currentActivity}</Tag> : null}
-                </Space>
-                <Space wrap size={[12, 0]}>
-                  <Text type="secondary">{`${text.phaseAttempt}: ${phase.attempt}`}</Text>
-                  <Text type="secondary">{`${text.phaseSteps}: ${phase.steps?.length || 0}`}</Text>
-                </Space>
-                {phase.errorMessage ? <Text type="danger">{phase.errorMessage}</Text> : null}
-              </Space>
-            ),
-          };
-        })}
-      />
-      {shouldShowCurrentPhaseInfo && currentPhase ? (
-        <Alert
-          type="info"
-          showIcon
-          message={`${text.currentPhase}: ${currentPhase.phaseName || currentPhase.phaseKey}`}
-          description={
-            <Space wrap size={[12, 4]}>
-              <Text type="secondary">{`${text.activityKey}: ${currentPhase.phaseKey}`}</Text>
-              <Text type="secondary">
-                {new Date(currentPhase.startedAt || currentPhase.createdAt).toLocaleString()}
-              </Text>
-            </Space>
-          }
-        />
-      ) : null}
-    </Card>
-  ) : null;
-  const currentPhaseRecoveryDecision = asRecord(tryParseJsonValue(currentPhase?.recoveryDecision));
-  const currentPhaseTakeovers = currentPhase?.takeovers || [];
-  const latestTakeoverRecord = currentPhaseTakeovers.length > 0
-    ? currentPhaseTakeovers[currentPhaseTakeovers.length - 1]
-    : undefined;
-  const takeoverRecoveryCard: React.ReactNode = currentPhase && (currentPhaseTakeovers.length > 0 || currentPhaseRecoveryDecision) ? (
-    <Card title={isEnglish ? 'Takeover Recovery' : '接管恢复信息'} style={{ marginBottom: 16 }}>
-      <Space direction="vertical" size={16} style={{ width: '100%' }}>
-        <Descriptions column={2} size="small">
-          <Descriptions.Item label={text.currentPhase}>
-            {currentPhase.phaseName || currentPhase.phaseKey}
-          </Descriptions.Item>
-          <Descriptions.Item label={text.status}>
-            <Tag color={getPhaseStatusColor(currentPhase.status)}>
-              {getPhaseStatusLabel(currentPhase.status, isEnglish)}
-            </Tag>
-          </Descriptions.Item>
-          <Descriptions.Item label={isEnglish ? 'Latest Takeover' : '最近接管'}>
-            {latestTakeoverRecord ? (
-              <Space wrap size={[8, 4]}>
-                <Tag color={latestTakeoverRecord.status === 'resolved' ? 'green' : latestTakeoverRecord.status === 'requested' ? 'orange' : 'default'}>
-                  {latestTakeoverRecord.status}
-                </Tag>
-                <Text type="secondary">
-                  {new Date(latestTakeoverRecord.createdAt).toLocaleString()}
-                </Text>
-              </Space>
-            ) : '-'}
-          </Descriptions.Item>
-          <Descriptions.Item label={isEnglish ? 'Recovery Patch' : '恢复补丁'}>
-            {getRecoveryPatchSummary(currentPhaseRecoveryDecision?.patch, isEnglish) || '-'}
-          </Descriptions.Item>
-          <Descriptions.Item label={text.failureReason} span={2}>
-            {latestTakeoverRecord?.reason || currentPhase.errorMessage || '-'}
-          </Descriptions.Item>
-          <Descriptions.Item label={isEnglish ? 'Resolution Note' : '处理说明'} span={2}>
-            {latestTakeoverRecord?.resolutionNote
-              || (typeof currentPhaseRecoveryDecision?.comment === 'string' ? currentPhaseRecoveryDecision.comment : '-')}
-          </Descriptions.Item>
-        </Descriptions>
-
-        {currentPhaseTakeovers.length > 0 ? (
-          <Timeline
-            items={currentPhaseTakeovers.map((takeover) => ({
-              color: takeover.status === 'resolved' ? 'green' : takeover.status === 'requested' ? 'orange' : 'gray',
-              children: (
-                <Space direction="vertical" size={4} style={{ width: '100%' }}>
+  const activityProgressCard: React.ReactNode =
+    isBrowserExecution && displayActivityPhases.length > 0 ? (
+      <Card title={text.stepsProgress} style={{ marginBottom: 16 }}>
+        <Steps
+          current={Math.max(
+            displayActivityPhases.findIndex((phase) => phase.phaseKey === currentPhase?.phaseKey),
+            0
+          )}
+          size="small"
+          responsive
+          style={{ marginBottom: 16 }}
+          items={displayActivityPhases.map((phase, index) => {
+            const isCurrentActivity = currentPhase?.phaseKey === phase.phaseKey;
+            return {
+              title: phase.phaseName || phase.phaseKey || `${text.step} ${index + 1}`,
+              status: getPhaseStepStatus(phase.status),
+              description: (
+                <Space direction="vertical" size={4}>
                   <Space wrap size={[8, 4]}>
-                    <Tag color={takeover.status === 'resolved' ? 'green' : takeover.status === 'requested' ? 'orange' : 'default'}>
-                      {takeover.status}
+                    <Tag color={getPhaseStatusColor(phase.status)}>
+                      {getPhaseStatusLabel(phase.status, isEnglish)}
                     </Tag>
-                    <Text>{new Date(takeover.createdAt).toLocaleString()}</Text>
-                    {takeover.resolvedAt ? (
-                      <Text type="secondary">
-                        {`${isEnglish ? 'Resolved at' : '完成于'} ${new Date(takeover.resolvedAt).toLocaleString()}`}
-                      </Text>
+                    <Tag>{phase.phaseType}</Tag>
+                    {isCurrentActivity ? (
+                      <Tag color="processing">{text.currentActivity}</Tag>
                     ) : null}
                   </Space>
-                  {takeover.reason ? <Text>{takeover.reason}</Text> : null}
-                  {(takeover.requestedBy || takeover.resolvedBy) ? (
-                    <Space wrap size={[12, 4]}>
-                      {takeover.requestedBy ? (
-                        <Text type="secondary">{`${isEnglish ? 'Requested by' : '发起人'}: ${takeover.requestedBy}`}</Text>
-                      ) : null}
-                      {takeover.resolvedBy ? (
-                        <Text type="secondary">{`${isEnglish ? 'Resolved by' : '处理人'}: ${takeover.resolvedBy}`}</Text>
-                      ) : null}
-                    </Space>
-                  ) : null}
-                  {takeover.resolutionNote ? (
-                    <Text type="secondary">{takeover.resolutionNote}</Text>
-                  ) : null}
+                  <Space wrap size={[12, 0]}>
+                    <Text type="secondary">{`${text.phaseAttempt}: ${phase.attempt}`}</Text>
+                    <Text type="secondary">{`${text.phaseSteps}: ${phase.steps?.length || 0}`}</Text>
+                  </Space>
+                  {phase.errorMessage ? <Text type="danger">{phase.errorMessage}</Text> : null}
                 </Space>
               ),
-            }))}
+            };
+          })}
+        />
+        {shouldShowCurrentPhaseInfo && currentPhase ? (
+          <Alert
+            type="info"
+            showIcon
+            message={`${text.currentPhase}: ${currentPhase.phaseName || currentPhase.phaseKey}`}
+            description={
+              <Space wrap size={[12, 4]}>
+                <Text type="secondary">{`${text.activityKey}: ${currentPhase.phaseKey}`}</Text>
+                <Text type="secondary">
+                  {new Date(currentPhase.startedAt || currentPhase.createdAt).toLocaleString()}
+                </Text>
+              </Space>
+            }
           />
         ) : null}
+      </Card>
+    ) : null;
+  const takeoverFocusRecoveryDecision = asRecord(
+    tryParseJsonValue(takeoverFocusPhase?.recoveryDecision)
+  );
+  const takeoverFocusTakeovers = takeoverFocusPhase?.takeovers || [];
+  const latestTakeoverRecord =
+    takeoverFocusTakeovers.length > 0
+      ? takeoverFocusTakeovers[takeoverFocusTakeovers.length - 1]
+      : undefined;
+  const executionReviewResultCard: React.ReactNode =
+    execution && latestExecutionReview ? (
+      <Card title={text.executionResult} style={{ marginBottom: 16 }}>
+        <Descriptions column={2} size="small">
+          <Descriptions.Item label={text.status}>
+            <Tag color={statusColors[execution.status] || 'default'}>
+              {statusLabels[execution.status] || execution.status}
+            </Tag>
+          </Descriptions.Item>
+          <Descriptions.Item label={text.humanReview}>
+            <Tag color="blue">{text.reviewed}</Tag>
+          </Descriptions.Item>
+          <Descriptions.Item label={text.reviewDecision} span={2}>
+            <Text strong>{latestExecutionReview.note || '-'}</Text>
+          </Descriptions.Item>
+          <Descriptions.Item label={text.reviewPhase}>
+            {latestExecutionReview.phaseName || latestExecutionReview.phaseKey || '-'}
+          </Descriptions.Item>
+          <Descriptions.Item label={text.reviewedAt}>
+            {formatDateTime(latestExecutionReview.resolvedAt || latestExecutionReview.createdAt)}
+          </Descriptions.Item>
+          {latestExecutionReview.reason ? (
+            <Descriptions.Item label={text.reviewContext} span={2}>
+              {latestExecutionReview.reason}
+            </Descriptions.Item>
+          ) : null}
+        </Descriptions>
+      </Card>
+    ) : null;
+  const takeoverRecoveryCard: React.ReactNode =
+    takeoverFocusPhase && (takeoverFocusTakeovers.length > 0 || takeoverFocusRecoveryDecision) ? (
+      <Card title={isEnglish ? 'Takeover Recovery' : '接管恢复信息'} style={{ marginBottom: 16 }}>
+        <Space direction="vertical" size={16} style={{ width: '100%' }}>
+          <Descriptions column={2} size="small">
+            <Descriptions.Item label={text.reviewPhase}>
+              {takeoverFocusPhase.phaseName || takeoverFocusPhase.phaseKey}
+            </Descriptions.Item>
+            <Descriptions.Item label={text.status}>
+              <Tag color={getPhaseStatusColor(takeoverFocusPhase.status)}>
+                {getPhaseStatusLabel(takeoverFocusPhase.status, isEnglish)}
+              </Tag>
+            </Descriptions.Item>
+            <Descriptions.Item label={isEnglish ? 'Latest Takeover' : '最近接管'}>
+              {latestTakeoverRecord ? (
+                <Space wrap size={[8, 4]}>
+                  <Tag
+                    color={
+                      latestTakeoverRecord.status === 'resolved'
+                        ? 'green'
+                        : latestTakeoverRecord.status === 'requested'
+                          ? 'orange'
+                          : 'default'
+                    }
+                  >
+                    {latestTakeoverRecord.status}
+                  </Tag>
+                  <Text type="secondary">
+                    {new Date(latestTakeoverRecord.createdAt).toLocaleString()}
+                  </Text>
+                </Space>
+              ) : (
+                '-'
+              )}
+            </Descriptions.Item>
+            <Descriptions.Item label={isEnglish ? 'Recovery Patch' : '恢复补丁'}>
+              {getRecoveryPatchSummary(takeoverFocusRecoveryDecision?.patch, isEnglish) || '-'}
+            </Descriptions.Item>
+            <Descriptions.Item label={text.failureReason} span={2}>
+              {latestTakeoverRecord?.reason || takeoverFocusPhase.errorMessage || '-'}
+            </Descriptions.Item>
+            <Descriptions.Item label={isEnglish ? 'Resolution Note' : '处理说明'} span={2}>
+              {latestTakeoverRecord?.resolutionNote ||
+                (typeof takeoverFocusRecoveryDecision?.comment === 'string'
+                  ? takeoverFocusRecoveryDecision.comment
+                  : '-')}
+            </Descriptions.Item>
+          </Descriptions>
 
-        {currentPhaseRecoveryDecision ? (
-          <div>
-            <Text strong>{isEnglish ? 'Recovery Decision Payload' : '恢复决策详情'}</Text>
-            <pre style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--bg-secondary)', padding: 12, borderRadius: 8, overflow: 'auto', marginTop: 8, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-              {renderJsonValue(currentPhaseRecoveryDecision)}
-            </pre>
-          </div>
-        ) : null}
-      </Space>
-    </Card>
-  ) : null;
+          {takeoverFocusTakeovers.length > 0 ? (
+            <Timeline
+              items={takeoverFocusTakeovers.map((takeover) => ({
+                color:
+                  takeover.status === 'resolved'
+                    ? 'green'
+                    : takeover.status === 'requested'
+                      ? 'orange'
+                      : 'gray',
+                children: (
+                  <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                    <Space wrap size={[8, 4]}>
+                      <Tag
+                        color={
+                          takeover.status === 'resolved'
+                            ? 'green'
+                            : takeover.status === 'requested'
+                              ? 'orange'
+                              : 'default'
+                        }
+                      >
+                        {takeover.status}
+                      </Tag>
+                      <Text>{new Date(takeover.createdAt).toLocaleString()}</Text>
+                      {takeover.resolvedAt ? (
+                        <Text type="secondary">
+                          {`${isEnglish ? 'Resolved at' : '完成于'} ${new Date(takeover.resolvedAt).toLocaleString()}`}
+                        </Text>
+                      ) : null}
+                    </Space>
+                    {takeover.reason ? <Text>{takeover.reason}</Text> : null}
+                    {takeover.requestedBy || takeover.resolvedBy ? (
+                      <Space wrap size={[12, 4]}>
+                        {takeover.requestedBy ? (
+                          <Text type="secondary">{`${isEnglish ? 'Requested by' : '发起人'}: ${takeover.requestedBy}`}</Text>
+                        ) : null}
+                        {takeover.resolvedBy ? (
+                          <Text type="secondary">{`${isEnglish ? 'Resolved by' : '处理人'}: ${takeover.resolvedBy}`}</Text>
+                        ) : null}
+                      </Space>
+                    ) : null}
+                    {takeover.resolutionNote ? (
+                      <Text type="secondary">{takeover.resolutionNote}</Text>
+                    ) : null}
+                  </Space>
+                ),
+              }))}
+            />
+          ) : null}
+
+          {takeoverFocusRecoveryDecision ? (
+            <div>
+              <Text strong>{isEnglish ? 'Recovery Decision Payload' : '恢复决策详情'}</Text>
+              <pre
+                style={{
+                  background: 'var(--bg-secondary)',
+                  color: 'var(--text-primary)',
+                  border: '1px solid var(--bg-secondary)',
+                  padding: 12,
+                  borderRadius: 8,
+                  overflow: 'auto',
+                  marginTop: 8,
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                }}
+              >
+                {renderJsonValue(takeoverFocusRecoveryDecision)}
+              </pre>
+            </div>
+          ) : null}
+        </Space>
+      </Card>
+    ) : null;
+  const phaseDetailsCard: React.ReactNode =
+    isBrowserExecution && displayActivityPhases.length > 0 ? (
+      <Card title={text.phaseTimeline} style={{ marginBottom: 16 }}>
+        <Timeline
+          items={displayActivityPhases.map((phase) => {
+            const visiblePhaseSteps = getVisiblePhaseSteps(phase);
+            const phaseSnapshotSources = extractWorkflowActivitySnapshotSources(phase);
+            return {
+              color: getPhaseStatusColor(phase.status),
+              children: (
+                <Card size="small">
+                  <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                    <Space wrap style={{ width: '100%', justifyContent: 'space-between' }}>
+                      <Space wrap>
+                        <Text strong>{phase.phaseName || phase.phaseKey}</Text>
+                        <Tag color={getPhaseStatusColor(phase.status)}>
+                          {getPhaseStatusLabel(phase.status, isEnglish)}
+                        </Tag>
+                        <Tag>{phase.phaseType}</Tag>
+                      </Space>
+                      <Text type="secondary">
+                        {formatDateTime(phase.startedAt || phase.createdAt)}
+                      </Text>
+                    </Space>
+
+                    <Space wrap size={[12, 4]}>
+                      <Text type="secondary">{`${text.phaseAttempt}: ${phase.attempt}`}</Text>
+                      <Text type="secondary">{`${text.phaseSteps}: ${phase.steps?.length || 0}`}</Text>
+                      <Text type="secondary">{`${text.phaseArtifactCount}: ${phase.artifacts?.length || 0}`}</Text>
+                    </Space>
+
+                    {phase.errorMessage ? (
+                      <Alert
+                        type="error"
+                        showIcon
+                        message={phase.errorCode || text.phaseActionFailed}
+                        description={phase.errorMessage}
+                      />
+                    ) : null}
+
+                    {phaseSnapshotSources.length > 0 ? (
+                      <div>
+                        <Text strong>{text.phaseArtifacts}</Text>
+                        <div style={{ marginTop: 8 }}>
+                          <Image.PreviewGroup>
+                            <Space wrap size={12}>
+                              {phaseSnapshotSources.map((src, index) => (
+                                <Image
+                                  key={`${phase.id}-snapshot-${index + 1}`}
+                                  src={src}
+                                  alt={`${phase.phaseName || phase.phaseKey}-snapshot-${index + 1}`}
+                                  style={{
+                                    width: 320,
+                                    maxWidth: '100%',
+                                    maxHeight: 320,
+                                    objectFit: 'contain',
+                                    background: 'var(--bg-secondary)',
+                                    borderRadius: 8,
+                                    border: '1px solid var(--bg-secondary)',
+                                    padding: 6,
+                                  }}
+                                />
+                              ))}
+                            </Space>
+                          </Image.PreviewGroup>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {visiblePhaseSteps.length > 0 ? (
+                      <Timeline
+                        items={visiblePhaseSteps.map((step) => {
+                          const stepImageSources = extractPhaseStepImageSources(
+                            step,
+                            phase.artifacts || []
+                          );
+                          const stepUrl = extractPhaseStepUrl(step);
+                          return {
+                            color: getPhaseStatusColor(step.status),
+                            children: (
+                              <Card size="small" styles={{ body: { padding: 12 } }}>
+                                <Space direction="vertical" size={10} style={{ width: '100%' }}>
+                                  <Space
+                                    wrap
+                                    style={{ width: '100%', justifyContent: 'space-between' }}
+                                  >
+                                    <Space wrap>
+                                      <Text strong>{`${text.step} ${step.stepIndex}`}</Text>
+                                      <Text>{step.action || '-'}</Text>
+                                      <Tag color={getPhaseStatusColor(step.status)}>
+                                        {step.status}
+                                      </Tag>
+                                    </Space>
+                                    <Text type="secondary">
+                                      {formatDateTime(step.startedAt || step.createdAt)}
+                                    </Text>
+                                  </Space>
+                                  {stepUrl ? (
+                                    <Text copyable={{ text: stepUrl }}>{stepUrl}</Text>
+                                  ) : null}
+                                  {step.errorMessage ? (
+                                    <Alert
+                                      type="error"
+                                      showIcon
+                                      message={text.phaseActionFailed}
+                                      description={step.errorMessage}
+                                    />
+                                  ) : null}
+                                  {stepImageSources.length > 0 ? (
+                                    <Image.PreviewGroup>
+                                      <Space wrap size={12}>
+                                        {stepImageSources.map((src, index) => (
+                                          <Image
+                                            key={`${src}-${index}`}
+                                            src={src}
+                                            alt={`${phase.phaseName || phase.phaseKey}-step-${index + 1}`}
+                                            style={{
+                                              width: 320,
+                                              maxWidth: '100%',
+                                              maxHeight: 320,
+                                              objectFit: 'contain',
+                                              background: 'var(--bg-secondary)',
+                                              borderRadius: 8,
+                                              border: '1px solid var(--bg-secondary)',
+                                              padding: 6,
+                                            }}
+                                          />
+                                        ))}
+                                      </Space>
+                                    </Image.PreviewGroup>
+                                  ) : null}
+                                </Space>
+                              </Card>
+                            ),
+                          };
+                        })}
+                      />
+                    ) : (
+                      <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={text.phaseNoData} />
+                    )}
+                  </Space>
+                </Card>
+              ),
+            };
+          })}
+        />
+      </Card>
+    ) : null;
 
   return (
     <div style={{ padding: 24 }}>
@@ -1003,7 +1522,9 @@ const ExecutionDetailPage: React.FC = () => {
           </Button>
         </Space>
         <Title level={2}>{text.details}</Title>
-        <Text type="secondary">{text.idLabel}: {execution.id}</Text>
+        <Text type="secondary">
+          {text.idLabel}: {execution.id}
+        </Text>
       </div>
 
       {/* Takeover Alert */}
@@ -1039,10 +1560,18 @@ const ExecutionDetailPage: React.FC = () => {
             }
           />
           <Space>
-            <Button type="primary" loading={approveMutation.isLoading} onClick={() => approveMutation.mutate()}>
+            <Button
+              type="primary"
+              loading={approveMutation.isLoading}
+              onClick={() => approveMutation.mutate()}
+            >
               {text.approveAndContinue}
             </Button>
-            <Button danger loading={rejectMutation.isLoading} onClick={() => rejectMutation.mutate()}>
+            <Button
+              danger
+              loading={rejectMutation.isLoading}
+              onClick={() => rejectMutation.mutate()}
+            >
               {text.rejectExecution}
             </Button>
           </Space>
@@ -1074,7 +1603,9 @@ const ExecutionDetailPage: React.FC = () => {
             }, {})}
             onFinish={(values: Record<string, unknown>) => {
               try {
-                handleSubmitInput(normalizeRequiredInputValues(values, requiredInputs, { treatArrayAsJson: true }));
+                handleSubmitInput(
+                  normalizeRequiredInputValues(values, requiredInputs, { treatArrayAsJson: true })
+                );
               } catch (error) {
                 void message.error(error instanceof Error ? error.message : text.invalidJson);
               }
@@ -1101,7 +1632,9 @@ const ExecutionDetailPage: React.FC = () => {
                               message: `${text.provideField} ${resolveWaitingInputDisplayLabel(field)}`,
                             },
                           ]}
-                          valuePropName={field.type.toLowerCase() === 'boolean' ? 'checked' : 'value'}
+                          valuePropName={
+                            field.type.toLowerCase() === 'boolean' ? 'checked' : 'value'
+                          }
                         >
                           {renderRequiredInputField(field, {
                             jsonPlaceholder: text.enterJsonString,
@@ -1110,7 +1643,9 @@ const ExecutionDetailPage: React.FC = () => {
                           })}
                         </Form.Item>
                         {field.needs_confirmation ? (
-                          <Tag color="gold" style={{ marginBottom: 12 }}>待确认</Tag>
+                          <Tag color="gold" style={{ marginBottom: 12 }}>
+                            待确认
+                          </Tag>
                         ) : null}
                       </React.Fragment>
                     ))}
@@ -1139,7 +1674,9 @@ const ExecutionDetailPage: React.FC = () => {
                     })}
                   </Form.Item>
                   {field.needs_confirmation ? (
-                    <Tag color="gold" style={{ marginBottom: 12 }}>待确认</Tag>
+                    <Tag color="gold" style={{ marginBottom: 12 }}>
+                      待确认
+                    </Tag>
                   ) : null}
                 </React.Fragment>
               ))
@@ -1148,9 +1685,7 @@ const ExecutionDetailPage: React.FC = () => {
               <Button type="primary" htmlType="submit" loading={submitInputMutation.isLoading}>
                 {text.submitAndResume}
               </Button>
-              <Button onClick={() => form.resetFields()}>
-                {text.reset}
-              </Button>
+              <Button onClick={() => form.resetFields()}>{text.reset}</Button>
             </Space>
           </Form>
         </Card>
@@ -1180,7 +1715,13 @@ const ExecutionDetailPage: React.FC = () => {
                   <Button
                     type="link"
                     style={{ paddingInline: 0 }}
-                    onClick={() => window.open(fixLocalhostLink(stableRuntimeSessionNovncUrl), '_blank', 'noopener,noreferrer')}
+                    onClick={() =>
+                      window.open(
+                        fixLocalhostLink(stableRuntimeSessionNovncUrl),
+                        '_blank',
+                        'noopener,noreferrer'
+                      )
+                    }
                   >
                     {isEnglish ? 'Open Live View' : '打开实时画面'}
                   </Button>
@@ -1192,7 +1733,9 @@ const ExecutionDetailPage: React.FC = () => {
           </Descriptions.Item>
           <Descriptions.Item label={text.runtimeType}>{displayRuntimeType}</Descriptions.Item>
           <Descriptions.Item label={text.riskLevel}>{execution.riskLevel}</Descriptions.Item>
-          <Descriptions.Item label={text.approvalStatus}>{execution.approvalStatus || '-'}</Descriptions.Item>
+          <Descriptions.Item label={text.approvalStatus}>
+            {execution.approvalStatus || '-'}
+          </Descriptions.Item>
           <Descriptions.Item label={text.createdAt}>
             {new Date(execution.createdAt).toLocaleString()}
           </Descriptions.Item>
@@ -1229,7 +1772,9 @@ const ExecutionDetailPage: React.FC = () => {
         </Descriptions>
       </Card>
 
-      {isBrowserExecution && stableRuntimeSessionNovncUrl && (isExecutionActive || isPreviewRuntimeSessionState(runtimeSession?.state)) ? (
+      {isBrowserExecution &&
+      stableRuntimeSessionNovncUrl &&
+      (isExecutionActive || isPreviewRuntimeSessionState(runtimeSession?.state)) ? (
         <div style={{ marginBottom: 16 }}>
           <LiveSessionPreviewCard
             novncUrl={stableRuntimeSessionNovncUrl}
@@ -1247,9 +1792,15 @@ const ExecutionDetailPage: React.FC = () => {
         phase={currentPhase}
       />
 
+      {executionReviewResultCard}
+
       {takeoverRecoveryCard}
 
+      {browserAuditEvidenceCard}
+
       {activityProgressCard}
+
+      {phaseDetailsCard}
 
       {React.isValidElement(semanticOverviewCard) ? semanticOverviewCard : null}
 
@@ -1316,19 +1867,28 @@ const ExecutionDetailPage: React.FC = () => {
                     {isEnglish ? 'Open Temporal Execution' : '打开 Temporal 执行链路'}
                   </Button>
                 ) : null}
-                {shouldShowStructuredResult ? renderExecutionPayloadContent(
-                  resultPreviewValue,
-                  isEnglish ? 'No structured result' : '暂无结构化结果',
-                ) : null}
+                {shouldShowStructuredResult
+                  ? renderExecutionPayloadContent(
+                      resultPreviewValue,
+                      isEnglish ? 'No structured result' : '暂无结构化结果'
+                    )
+                  : null}
               </Space>
             ) : (
-              renderExecutionPayloadContent(effectiveResultJson, isEnglish ? 'No result output' : '暂无结果输出', true)
+              renderExecutionPayloadContent(
+                effectiveResultJson,
+                isEnglish ? 'No result output' : '暂无结果输出',
+                true
+              )
             )}
           </div>
         </Card>
       ) : null}
 
-      {isBrowserExecution && effectiveBrowserExecutionResult && !isExecutionActive && !hasWorkflowActivityPhases ? (
+      {isBrowserExecution &&
+      effectiveBrowserExecutionResult &&
+      !isExecutionActive &&
+      !hasWorkflowActivityPhases ? (
         <Card title={text.browserExecutionResult} style={{ marginBottom: 16 }}>
           {effectiveBrowserExecutionResult.runtimeSessionId ? (
             <div style={{ marginBottom: 12 }}>
@@ -1341,7 +1901,11 @@ const ExecutionDetailPage: React.FC = () => {
         </Card>
       ) : null}
 
-      {isBrowserExecution && !displayActivityPhases.length && shouldShowLegacySteps && steps && steps.length > 0 ? (
+      {isBrowserExecution &&
+      !displayActivityPhases.length &&
+      shouldShowLegacySteps &&
+      steps &&
+      steps.length > 0 ? (
         <Card title={text.stepsProgress} style={{ marginBottom: 16 }}>
           <Steps
             current={getCurrentStepIndex()}
@@ -1360,22 +1924,24 @@ const ExecutionDetailPage: React.FC = () => {
       {isBrowserExecution ? (
         <Card title={text.stepsDetails}>
           {!displayActivityPhases.length && shouldShowLegacySteps && steps && steps.length > 0 ? (
-          <Table
-            columns={stepColumns}
-            dataSource={steps}
-            rowKey="id"
-            pagination={false}
-            size="small"
-          />
+            <Table
+              columns={stepColumns}
+              dataSource={steps}
+              rowKey="id"
+              pagination={false}
+              size="small"
+            />
           ) : (
-          <Alert
-            type="info"
-            showIcon
-            message={isEnglish ? 'Phase-driven execution view' : '当前执行已切换为阶段视图'}
-            description={isEnglish
-              ? 'This execution is driven by phases and activity steps. Legacy execution steps are hidden to avoid showing stale error records.'
-              : '该执行当前以阶段与 Activity 步骤为主视图，已隐藏旧版顶层步骤，避免继续显示恢复前的历史错误。'}
-          />
+            <Alert
+              type="info"
+              showIcon
+              message={isEnglish ? 'Phase-driven execution view' : '当前执行已切换为阶段视图'}
+              description={
+                isEnglish
+                  ? 'This execution is driven by phases and activity steps. Legacy execution steps are hidden to avoid showing stale error records.'
+                  : '该执行当前以阶段与 Activity 步骤为主视图，已隐藏旧版顶层步骤，避免继续显示恢复前的历史错误。'
+              }
+            />
           )}
         </Card>
       ) : null}

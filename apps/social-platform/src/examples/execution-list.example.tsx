@@ -1,4 +1,4 @@
-import { sortExecutionsByRecent, type ExecutionDto } from "@ops/user-core";
+import { sortExecutionsByRecent, type ExecutionDto } from '@ops/user-core';
 
 const sampleExecutions: ExecutionDto[] = [];
 

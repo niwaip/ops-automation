@@ -141,7 +141,9 @@ export class ExecutionStepService {
       data: {
         status: EXECUTION_STEP_STATUS.RUNNING,
         startedAt: new Date(),
-        ...(input.targetJson !== undefined ? { targetJson: this.asJsonValue(input.targetJson) } : {}),
+        ...(input.targetJson !== undefined
+          ? { targetJson: this.asJsonValue(input.targetJson) }
+          : {}),
         ...(input.inputJson !== undefined ? { inputJson: this.asJsonValue(input.inputJson) } : {}),
       },
     });
@@ -204,7 +206,9 @@ export class ExecutionStepService {
               }),
             }
           : {}),
-        ...(input.outputJson !== undefined ? { outputJson: this.asJsonValue(input.outputJson) } : {}),
+        ...(input.outputJson !== undefined
+          ? { outputJson: this.asJsonValue(input.outputJson) }
+          : {}),
         errorCode: input.errorCode,
         errorMessage: input.errorMessage,
         endedAt: null,
@@ -212,7 +216,11 @@ export class ExecutionStepService {
     });
   }
 
-  async skipPendingSteps(executionId: string, currentStepId: string, reason: string): Promise<string[]> {
+  async skipPendingSteps(
+    executionId: string,
+    currentStepId: string,
+    reason: string
+  ): Promise<string[]> {
     const pendingSteps = await this.prisma.executionStep.findMany({
       where: {
         executionId,
@@ -268,7 +276,7 @@ export class ExecutionStepService {
   async prepareWaitingInputStep(
     executionId: string,
     stepId: string,
-    requiredInputs: unknown[],
+    requiredInputs: unknown[]
   ): Promise<void> {
     await this.setCurrentStep(executionId, stepId);
 

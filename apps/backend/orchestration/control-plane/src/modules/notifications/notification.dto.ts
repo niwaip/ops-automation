@@ -3,10 +3,10 @@ import { Transform, Type } from 'class-transformer';
 import { IsBoolean, IsIn, IsInt, IsOptional, IsString, Min } from 'class-validator';
 
 export const NOTIFICATION_SOURCE_VALUES = ['execution', 'report'] as const;
-export type NotificationSource = typeof NOTIFICATION_SOURCE_VALUES[number];
+export type NotificationSource = (typeof NOTIFICATION_SOURCE_VALUES)[number];
 
 export const NOTIFICATION_SEVERITY_VALUES = ['success', 'error', 'warning', 'info'] as const;
-export type NotificationSeverity = typeof NOTIFICATION_SEVERITY_VALUES[number];
+export type NotificationSeverity = (typeof NOTIFICATION_SEVERITY_VALUES)[number];
 
 export const NOTIFICATION_CATEGORY_VALUES = [
   'completed',
@@ -17,22 +17,34 @@ export const NOTIFICATION_CATEGORY_VALUES = [
   'human_control',
   'status_update',
 ] as const;
-export type NotificationCategory = typeof NOTIFICATION_CATEGORY_VALUES[number];
+export type NotificationCategory = (typeof NOTIFICATION_CATEGORY_VALUES)[number];
 
 export class NotificationListQueryDto {
-  @ApiProperty({ required: false, enum: NOTIFICATION_SOURCE_VALUES, description: 'Optional notification source filter' })
+  @ApiProperty({
+    required: false,
+    enum: NOTIFICATION_SOURCE_VALUES,
+    description: 'Optional notification source filter',
+  })
   @IsOptional()
   @IsIn(NOTIFICATION_SOURCE_VALUES)
   source?: NotificationSource;
 
-  @ApiProperty({ required: false, default: 20, description: 'Maximum number of notifications to return' })
+  @ApiProperty({
+    required: false,
+    default: 20,
+    description: 'Maximum number of notifications to return',
+  })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
   limit?: number;
 
-  @ApiProperty({ required: false, default: false, description: 'Only return notifications requiring action' })
+  @ApiProperty({
+    required: false,
+    default: false,
+    description: 'Only return notifications requiring action',
+  })
   @IsOptional()
   @Transform(({ value }) => value === true || value === 'true')
   @IsBoolean()

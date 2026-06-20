@@ -20,18 +20,22 @@ export class ChatExecutionStreamService {
   constructor(
     private readonly controlPlaneClient: ControlPlaneClient,
     private readonly waitingInputService: ChatWaitingInputService,
-    private readonly resultNormalizerService: ChatResultNormalizerService,
+    private readonly resultNormalizerService: ChatResultNormalizerService
   ) {}
 
   async *observeExecution(
     executionId: string,
     authToken?: string,
-    user?: ChatUserContext,
+    user?: ChatUserContext
   ): AsyncGenerator<StreamEvent> {
     this.logger.log(`Starting to observe execution ${executionId} via control-plane stream`);
 
     try {
-      const immediateStateEvent = await this.buildLatestExecutionStateEvent(executionId, authToken, user);
+      const immediateStateEvent = await this.buildLatestExecutionStateEvent(
+        executionId,
+        authToken,
+        user
+      );
       if (immediateStateEvent) {
         yield immediateStateEvent;
         return;
@@ -39,7 +43,7 @@ export class ChatExecutionStreamService {
 
       const stream = await this.controlPlaneClient.streamExecutionEvents(
         executionId,
-        this.waitingInputService.buildControlPlaneRequestOptions(authToken, user),
+        this.waitingInputService.buildControlPlaneRequestOptions(authToken, user)
       );
       let buffer = '';
 
@@ -66,12 +70,14 @@ export class ChatExecutionStreamService {
                 executionId,
                 event.payload.newStatus,
                 authToken,
-                user,
+                user
               );
               if (terminalEvent) {
                 yield terminalEvent;
               }
-              this.logger.log(`Execution ${executionId} reached terminal state: ${event.payload.newStatus}`);
+              this.logger.log(
+                `Execution ${executionId} reached terminal state: ${event.payload.newStatus}`
+              );
               return;
             }
 
@@ -101,7 +107,7 @@ export class ChatExecutionStreamService {
   async buildLatestExecutionStateEvent(
     executionId: string,
     authToken?: string,
-    user?: ChatUserContext,
+    user?: ChatUserContext
   ): Promise<StreamEvent | null> {
     try {
       const execution = await this.controlPlaneClient.getExecution<{
@@ -129,7 +135,11 @@ export class ChatExecutionStreamService {
       }
 
       if (status === CONTROL_PLANE_EXECUTION_STATUS.WAITING_INPUT) {
-        const waitingInputDetails = await this.waitingInputService.loadWaitingInputDetails(executionId, authToken, user);
+        const waitingInputDetails = await this.waitingInputService.loadWaitingInputDetails(
+          executionId,
+          authToken,
+          user
+        );
         const missingInputs = waitingInputDetails.missingInputs;
         const semantic = this.waitingInputService.extractExecutionSemantic(execution);
         return {
@@ -167,7 +177,7 @@ export class ChatExecutionStreamService {
       return null;
     } catch (error) {
       this.logger.warn(
-        `Failed to load latest execution state for ${executionId}: ${error instanceof Error ? error.message : 'unknown'}`,
+        `Failed to load latest execution state for ${executionId}: ${error instanceof Error ? error.message : 'unknown'}`
       );
       return null;
     }
@@ -180,7 +190,7 @@ export class ChatExecutionStreamService {
       | typeof CONTROL_PLANE_EXECUTION_STATUS.FAILED
       | typeof CONTROL_PLANE_EXECUTION_STATUS.CANCELLED,
     authToken?: string,
-    user?: ChatUserContext,
+    user?: ChatUserContext
   ): Promise<StreamEvent | null> {
     try {
       const execution = await this.controlPlaneClient.getExecution<{
@@ -257,7 +267,7 @@ export class ChatExecutionStreamService {
       };
     } catch (error) {
       this.logger.warn(
-        `Failed to load execution detail for terminal event ${executionId}: ${error instanceof Error ? error.message : 'unknown'}`,
+        `Failed to load execution detail for terminal event ${executionId}: ${error instanceof Error ? error.message : 'unknown'}`
       );
       return this.fallbackTerminalExecutionEvent(executionId, status);
     }
@@ -268,7 +278,7 @@ export class ChatExecutionStreamService {
     status:
       | typeof CONTROL_PLANE_EXECUTION_STATUS.SUCCEEDED
       | typeof CONTROL_PLANE_EXECUTION_STATUS.FAILED
-      | typeof CONTROL_PLANE_EXECUTION_STATUS.CANCELLED,
+      | typeof CONTROL_PLANE_EXECUTION_STATUS.CANCELLED
   ): StreamEvent {
     if (status === CONTROL_PLANE_EXECUTION_STATUS.SUCCEEDED) {
       return {
@@ -302,9 +312,12 @@ export class ChatExecutionStreamService {
           const missingInputs = Array.isArray(payload.requiredInputs)
             ? payload.requiredInputs.filter((item: any) => item?.missing)
             : [];
-          const semantic = payload.semantic && typeof payload.semantic === 'object' && !Array.isArray(payload.semantic)
-            ? payload.semantic as WaitingInputSemantic
-            : undefined;
+          const semantic =
+            payload.semantic &&
+            typeof payload.semantic === 'object' &&
+            !Array.isArray(payload.semantic)
+              ? (payload.semantic as WaitingInputSemantic)
+              : undefined;
           return {
             type: StreamEventType.WAITING_INPUT,
             content: this.waitingInputService.formatWaitingInputMessage({
@@ -384,9 +397,12 @@ export class ChatExecutionStreamService {
         const missingInputs = Array.isArray(payload.requiredInputs)
           ? payload.requiredInputs.filter((item: any) => item?.missing)
           : [];
-        const semantic = payload.semantic && typeof payload.semantic === 'object' && !Array.isArray(payload.semantic)
-          ? payload.semantic as WaitingInputSemantic
-          : undefined;
+        const semantic =
+          payload.semantic &&
+          typeof payload.semantic === 'object' &&
+          !Array.isArray(payload.semantic)
+            ? (payload.semantic as WaitingInputSemantic)
+            : undefined;
         return {
           type: StreamEventType.WAITING_INPUT,
           content: this.waitingInputService.formatWaitingInputMessage({
@@ -419,7 +435,7 @@ export class ChatExecutionStreamService {
       detailText?: string;
       summary?: string;
       body?: string;
-    },
+    }
   ): string {
     const structured = this.asRecord(rawResult);
     const status = this.readString(structured?.status);
@@ -430,7 +446,7 @@ export class ChatExecutionStreamService {
     const detailText = this.firstNonEmptyString(
       normalizedResult.detailText,
       normalizedResult.summary,
-      normalizedResult.body,
+      normalizedResult.body
     );
 
     const parts: string[] = [];
@@ -489,5 +505,4 @@ export class ChatExecutionStreamService {
     }
     return value.replace(/`/g, '').trim();
   }
-
 }

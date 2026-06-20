@@ -86,7 +86,7 @@ describe('TakeoverOrchestratorService', () => {
         recorderService as any,
         parser as any,
         registry as any,
-        workerService as any,
+        workerService as any
       ),
       browserSessionService,
       browserCommandService,
@@ -115,16 +115,21 @@ describe('TakeoverOrchestratorService', () => {
       startUrl: 'https://example.com/login',
       reuseExistingPage: true,
     });
-    expect(registry.patch).toHaveBeenCalledWith('runtime-1', expect.objectContaining({
-      controlMode: 'HUMAN_CONTROL',
-      takeoverStatus: 'recording',
-      activeTakeoverSessionId: 'tk-1',
-    }));
-    expect(result).toEqual(expect.objectContaining({
-      success: true,
-      takeoverSessionId: 'tk-1',
-      status: 'recording',
-    }));
+    expect(registry.patch).toHaveBeenCalledWith(
+      'runtime-1',
+      expect.objectContaining({
+        controlMode: 'HUMAN_CONTROL',
+        takeoverStatus: 'recording',
+        activeTakeoverSessionId: 'tk-1',
+      })
+    );
+    expect(result).toEqual(
+      expect.objectContaining({
+        success: true,
+        takeoverSessionId: 'tk-1',
+        status: 'recording',
+      })
+    );
   });
 
   it('stopTakeover parses patch steps and captures observation', async () => {
@@ -147,20 +152,25 @@ describe('TakeoverOrchestratorService', () => {
         backend: 'cli',
         source: 'manual_takeover',
         runtimeSessionId: 'runtime-1',
-      }),
+      })
     );
-    expect(registry.patch).toHaveBeenCalledWith('runtime-1', expect.objectContaining({
-      takeoverStatus: 'ready_to_resume',
-    }));
-    expect(result).toEqual(expect.objectContaining({
-      success: true,
-      status: 'ready_to_resume',
-      observation: expect.objectContaining({
-        currentPageUrl: 'https://example.com/dashboard',
-        title: '控制台',
-        text: '欢迎回来',
-      }),
-    }));
+    expect(registry.patch).toHaveBeenCalledWith(
+      'runtime-1',
+      expect.objectContaining({
+        takeoverStatus: 'ready_to_resume',
+      })
+    );
+    expect(result).toEqual(
+      expect.objectContaining({
+        success: true,
+        status: 'ready_to_resume',
+        observation: expect.objectContaining({
+          currentPageUrl: 'https://example.com/dashboard',
+          title: '控制台',
+          text: '欢迎回来',
+        }),
+      })
+    );
   });
 
   it('resumeTakeover resumes session and executes resume commands', async () => {
@@ -185,22 +195,25 @@ describe('TakeoverOrchestratorService', () => {
       backend: 'cli',
     });
     expect(browserCommandService.executeCommands).toHaveBeenCalledWith(
-      [
-        { tool: 'click', params: { text: '平台登录' }, description: '点击平台登录' },
-      ],
+      [{ tool: 'click', params: { text: '平台登录' }, description: '点击平台登录' }],
       expect.objectContaining({
         runtimeSessionId: 'runtime-1',
         backend: 'cli',
         includeSteps: true,
-      }),
+      })
     );
-    expect(registry.patch).toHaveBeenCalledWith('runtime-1', expect.objectContaining({
-      controlMode: 'AGENT_RUNNING',
-      takeoverStatus: 'resuming',
-    }));
-    expect(result).toEqual(expect.objectContaining({
-      success: true,
-      status: 'completed',
-    }));
+    expect(registry.patch).toHaveBeenCalledWith(
+      'runtime-1',
+      expect.objectContaining({
+        controlMode: 'AGENT_RUNNING',
+        takeoverStatus: 'resuming',
+      })
+    );
+    expect(result).toEqual(
+      expect.objectContaining({
+        success: true,
+        status: 'completed',
+      })
+    );
   });
 });

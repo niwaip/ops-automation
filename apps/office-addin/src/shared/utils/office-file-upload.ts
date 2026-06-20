@@ -78,20 +78,21 @@ function readUint16LE(bytes: Uint8Array, offset: number): number {
 
 function readUint32LE(bytes: Uint8Array, offset: number): number {
   return (
-    bytes[offset]
-    | (bytes[offset + 1] << 8)
-    | (bytes[offset + 2] << 16)
-    | (bytes[offset + 3] << 24)
-  ) >>> 0;
+    (bytes[offset] |
+      (bytes[offset + 1] << 8) |
+      (bytes[offset + 2] << 16) |
+      (bytes[offset + 3] << 24)) >>>
+    0
+  );
 }
 
 function findEndOfCentralDirectory(bytes: Uint8Array): number {
   for (let offset = bytes.length - 22; offset >= Math.max(0, bytes.length - 65557); offset -= 1) {
     if (
-      bytes[offset] === 0x50
-      && bytes[offset + 1] === 0x4b
-      && bytes[offset + 2] === 0x05
-      && bytes[offset + 3] === 0x06
+      bytes[offset] === 0x50 &&
+      bytes[offset + 1] === 0x4b &&
+      bytes[offset + 2] === 0x05 &&
+      bytes[offset + 3] === 0x06
     ) {
       return offset;
     }
@@ -99,7 +100,10 @@ function findEndOfCentralDirectory(bytes: Uint8Array): number {
   return -1;
 }
 
-async function inflateZipEntry(compressed: Uint8Array, compressionMethod: number): Promise<Uint8Array> {
+async function inflateZipEntry(
+  compressed: Uint8Array,
+  compressionMethod: number
+): Promise<Uint8Array> {
   if (compressionMethod === 0) {
     return compressed;
   }
@@ -116,7 +120,9 @@ async function inflateZipEntry(compressed: Uint8Array, compressionMethod: number
     compressed.byteOffset,
     compressed.byteOffset + compressed.byteLength
   ) as ArrayBuffer;
-  const stream = new Blob([exactBuffer]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+  const stream = new Blob([exactBuffer])
+    .stream()
+    .pipeThrough(new DecompressionStream('deflate-raw'));
   const buffer = await new Response(stream).arrayBuffer();
   return new Uint8Array(buffer);
 }
@@ -134,10 +140,10 @@ async function extractZipEntryText(bytes: Uint8Array, entryPath: string): Promis
   let cursor = centralDirectoryOffset;
   for (let index = 0; index < totalEntries; index += 1) {
     if (
-      bytes[cursor] !== 0x50
-      || bytes[cursor + 1] !== 0x4b
-      || bytes[cursor + 2] !== 0x01
-      || bytes[cursor + 3] !== 0x02
+      bytes[cursor] !== 0x50 ||
+      bytes[cursor + 1] !== 0x4b ||
+      bytes[cursor + 2] !== 0x01 ||
+      bytes[cursor + 3] !== 0x02
     ) {
       break;
     }
@@ -152,10 +158,10 @@ async function extractZipEntryText(bytes: Uint8Array, entryPath: string): Promis
 
     if (fileName === entryPath) {
       if (
-        bytes[localHeaderOffset] !== 0x50
-        || bytes[localHeaderOffset + 1] !== 0x4b
-        || bytes[localHeaderOffset + 2] !== 0x03
-        || bytes[localHeaderOffset + 3] !== 0x04
+        bytes[localHeaderOffset] !== 0x50 ||
+        bytes[localHeaderOffset + 1] !== 0x4b ||
+        bytes[localHeaderOffset + 2] !== 0x03 ||
+        bytes[localHeaderOffset + 3] !== 0x04
       ) {
         throw new Error('ZIP local header 无效');
       }

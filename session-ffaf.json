@@ -1,0 +1,20 @@
+{
+  "id": "ffaf62de-e389-4628-9bc2-1d92f09482c9",
+  "user_id": "22c69f5f-9779-4f3a-a86d-54448a2f1382",
+  "state": "ERROR",
+  "control_mode": "AGENT_RUNNING",
+  "frozen": false,
+  "worker_ref": "4a67fd14-e005-4515-84cb-a33967d351b3",
+  "endpoints": {
+    "cdp": "ws://192.168.100.143:40002",
+    "novnc": "http://192.168.100.143:39002/vnc.html"
+  },
+  "template_id": "c5565469-613a-404e-b249-e43d264bc039",
+  "params": {
+    "startUrl": "http://192.168.100.143/?skip_mfa=true#approvals"
+  },
+  "current_step": "step_1",
+  "step_index": 0,
+  "created_at": 1781863717948,
+  "last_activity": 1781863725562
+}

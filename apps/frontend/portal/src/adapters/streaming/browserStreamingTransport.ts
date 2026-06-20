@@ -2,11 +2,10 @@ import type {
   PostSseStreamRequest,
   StreamEventPayload,
   StreamingTransportPort,
-} from "@ops/user-core";
+} from '@ops/user-core';
 
-const isStreamEventPayload = (
-  value: Record<string, unknown>,
-): value is StreamEventPayload => typeof value.type === "string";
+const isStreamEventPayload = (value: Record<string, unknown>): value is StreamEventPayload =>
+  typeof value.type === 'string';
 
 export const browserStreamingTransport: StreamingTransportPort = {
   postSseStream({
@@ -19,7 +18,7 @@ export const browserStreamingTransport: StreamingTransportPort = {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       let processedLength = 0;
-      let lineBuffer = "";
+      let lineBuffer = '';
       let hasDoneEvent = false;
 
       const processChunk = (chunk: string) => {
@@ -28,11 +27,11 @@ export const browserStreamingTransport: StreamingTransportPort = {
         }
 
         lineBuffer += chunk;
-        const lines = lineBuffer.split("\n");
-        lineBuffer = lines.pop() || "";
+        const lines = lineBuffer.split('\n');
+        lineBuffer = lines.pop() || '';
 
         for (const line of lines) {
-          if (!line.startsWith("data: ")) {
+          if (!line.startsWith('data: ')) {
             continue;
           }
           try {
@@ -40,7 +39,7 @@ export const browserStreamingTransport: StreamingTransportPort = {
             if (!isStreamEventPayload(data)) {
               continue;
             }
-            if (data.type === "done") {
+            if (data.type === 'done') {
               hasDoneEvent = true;
             }
             onEvent(data);
@@ -50,9 +49,9 @@ export const browserStreamingTransport: StreamingTransportPort = {
         }
       };
 
-      xhr.open("POST", url);
-      xhr.setRequestHeader("Content-Type", "application/json");
-      xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+      xhr.open('POST', url);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
 
       xhr.onprogress = () => {
         const newChunk = xhr.responseText.slice(processedLength);
@@ -65,11 +64,11 @@ export const browserStreamingTransport: StreamingTransportPort = {
         processChunk(newChunk);
 
         const trailingLine = lineBuffer.trim();
-        if (trailingLine.startsWith("data: ")) {
+        if (trailingLine.startsWith('data: ')) {
           try {
             const data = JSON.parse(trailingLine.slice(6)) as Record<string, unknown>;
             if (isStreamEventPayload(data)) {
-              if (data.type === "done") {
+              if (data.type === 'done') {
                 hasDoneEvent = true;
               }
               onEvent(data);
@@ -83,18 +82,18 @@ export const browserStreamingTransport: StreamingTransportPort = {
           if (!requireDoneEvent || hasDoneEvent) {
             resolve();
           } else {
-            reject(new Error("SSE stream ended without done event"));
+            reject(new Error('SSE stream ended without done event'));
           }
           return;
         }
 
         if (xhr.status === 401) {
-          reject(new Error("登录状态已失效，请重新登录后再试"));
+          reject(new Error('登录状态已失效，请重新登录后再试'));
           return;
         }
 
         if (xhr.status === 403) {
-          reject(new Error("当前账号无权执行该操作"));
+          reject(new Error('当前账号无权执行该操作'));
           return;
         }
 
@@ -102,7 +101,7 @@ export const browserStreamingTransport: StreamingTransportPort = {
         reject(new Error(responseText || `HTTP ${xhr.status}: ${xhr.statusText}`));
       };
 
-      xhr.onerror = () => reject(new Error("Network error"));
+      xhr.onerror = () => reject(new Error('Network error'));
       xhr.send(JSON.stringify(payload));
     });
   },

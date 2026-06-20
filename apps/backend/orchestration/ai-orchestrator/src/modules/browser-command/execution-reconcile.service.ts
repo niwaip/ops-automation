@@ -71,9 +71,7 @@ export class ExecutionReconcileService {
 
   constructor(private readonly modelService: ModelService) {}
 
-  async reconcile(
-    input: ReconcileAfterTakeoverRequest,
-  ): Promise<ReconcileAfterTakeoverResponse> {
+  async reconcile(input: ReconcileAfterTakeoverRequest): Promise<ReconcileAfterTakeoverResponse> {
     const fallback = this.buildHeuristicResponse(input);
     const modelBacked = await this.tryModelDecision(input);
     if (!modelBacked) {
@@ -124,7 +122,7 @@ export class ExecutionReconcileService {
   }
 
   private async tryModelDecision(
-    input: ReconcileAfterTakeoverRequest,
+    input: ReconcileAfterTakeoverRequest
   ): Promise<HeuristicDecision | null> {
     const preferredModel = this.modelService.getPreferredDefaultModel({
       mode: 'task',
@@ -137,13 +135,13 @@ export class ExecutionReconcileService {
     try {
       const response = await this.modelService.callModel(
         preferredModel.id,
-        this.buildResumePrompt(input),
+        this.buildResumePrompt(input)
       );
       const parsed = this.parseModelResponse(response.content);
       return parsed;
     } catch (error) {
       this.logger.warn(
-        `Failed to reconcile takeover with model: ${error instanceof Error ? error.message : 'unknown error'}`,
+        `Failed to reconcile takeover with model: ${error instanceof Error ? error.message : 'unknown error'}`
       );
       return null;
     }
@@ -172,14 +170,14 @@ export class ExecutionReconcileService {
       };
     } catch (error) {
       this.logger.warn(
-        `Failed to parse reconcile model response: ${error instanceof Error ? error.message : 'unknown error'}`,
+        `Failed to parse reconcile model response: ${error instanceof Error ? error.message : 'unknown error'}`
       );
       return null;
     }
   }
 
   private buildHeuristicResponse(
-    input: ReconcileAfterTakeoverRequest,
+    input: ReconcileAfterTakeoverRequest
   ): ReconcileAfterTakeoverResponse {
     const decision = this.decideStrategy(input);
     return {
@@ -194,7 +192,8 @@ export class ExecutionReconcileService {
     if (this.shouldReplanFromCurrentState(input)) {
       return {
         strategy: 'replan_from_current_state',
-        explanation: '人工接管后页面状态已经明显变化，继续沿用原计划风险较高，建议基于当前页面重新规划后续命令。',
+        explanation:
+          '人工接管后页面状态已经明显变化，继续沿用原计划风险较高，建议基于当前页面重新规划后续命令。',
         confidence: 0.9,
       };
     }
@@ -209,7 +208,8 @@ export class ExecutionReconcileService {
 
     return {
       strategy: 'insert_patch_steps',
-      explanation: '人工补录更像是在补充前置条件，建议先执行 patch steps，再重试失败命令并继续原计划。',
+      explanation:
+        '人工补录更像是在补充前置条件，建议先执行 patch steps，再重试失败命令并继续原计划。',
       confidence: 0.76,
     };
   }
@@ -231,13 +231,15 @@ export class ExecutionReconcileService {
 
     const currentUrl = input.observation.currentPageUrl?.trim();
     const urlChanged = Boolean(
-      currentUrl
-      && originalNavigateUrls.length > 0
-      && originalNavigateUrls.every((url) => url !== currentUrl),
+      currentUrl &&
+      originalNavigateUrls.length > 0 &&
+      originalNavigateUrls.every((url) => url !== currentUrl)
     );
 
-    const hasProgressSignals = /(dashboard|console|workspace|overview|home|欢迎|控制台|工作台|概览|首页)/i
-      .test(observationSignals);
+    const hasProgressSignals =
+      /(dashboard|console|workspace|overview|home|欢迎|控制台|工作台|概览|首页)/i.test(
+        observationSignals
+      );
     const patchNavigated = input.patchSteps.some((step) => step.action === 'navigate');
     const loginContext = this.isLoginContext(input);
 
@@ -249,35 +251,29 @@ export class ExecutionReconcileService {
       return false;
     }
 
-    return input.patchSteps.some((step) => this.areActionsEquivalent(step.action, input.failedCommand!.tool));
+    return input.patchSteps.some((step) =>
+      this.areActionsEquivalent(step.action, input.failedCommand!.tool)
+    );
   }
 
   private buildResumeCommands(
     input: ReconcileAfterTakeoverRequest,
-    strategy: ResumeStrategy,
+    strategy: ResumeStrategy
   ): BrowserCommand[] {
     const patchCommands = input.patchSteps
       .map((step) => this.mapPatchStepToCommand(step))
       .filter((command): command is BrowserCommand => Boolean(command));
     const failedIndex = this.findFailedCommandIndex(input);
-    const failedAndRemaining = failedIndex >= 0
-      ? input.originalCommands.slice(failedIndex)
-      : [...input.originalCommands];
-    const remainingAfterFailed = failedIndex >= 0
-      ? input.originalCommands.slice(failedIndex + 1)
-      : [];
+    const failedAndRemaining =
+      failedIndex >= 0 ? input.originalCommands.slice(failedIndex) : [...input.originalCommands];
+    const remainingAfterFailed =
+      failedIndex >= 0 ? input.originalCommands.slice(failedIndex + 1) : [];
 
     switch (strategy) {
       case 'replace_failed_step':
-        return this.deduplicateCommands([
-          ...patchCommands,
-          ...remainingAfterFailed,
-        ]);
+        return this.deduplicateCommands([...patchCommands, ...remainingAfterFailed]);
       case 'insert_patch_steps':
-        return this.deduplicateCommands([
-          ...patchCommands,
-          ...failedAndRemaining,
-        ]);
+        return this.deduplicateCommands([...patchCommands, ...failedAndRemaining]);
       case 'replan_from_current_state':
         return this.buildReplanCommands(input);
       default:
@@ -316,7 +312,9 @@ export class ExecutionReconcileService {
       return -1;
     }
 
-    return input.originalCommands.findIndex((command) => this.isSameCommand(command, input.failedCommand!));
+    return input.originalCommands.findIndex((command) =>
+      this.isSameCommand(command, input.failedCommand!)
+    );
   }
 
   private isSameCommand(left: BrowserCommand, right: BrowserCommand): boolean {
@@ -453,7 +451,9 @@ export class ExecutionReconcileService {
     return params;
   }
 
-  private normalizeLocatorType(stepLocator?: BrowserActionStep['locator']): BrowserActionLocatorType | undefined {
+  private normalizeLocatorType(
+    stepLocator?: BrowserActionStep['locator']
+  ): BrowserActionLocatorType | undefined {
     if (!stepLocator) {
       return undefined;
     }
@@ -463,11 +463,13 @@ export class ExecutionReconcileService {
     if (stepLocator.strategy === 'css') {
       return 'selector';
     }
-    if (stepLocator.strategy === 'role'
-      || stepLocator.strategy === 'text'
-      || stepLocator.strategy === 'label'
-      || stepLocator.strategy === 'placeholder'
-      || stepLocator.strategy === 'testid') {
+    if (
+      stepLocator.strategy === 'role' ||
+      stepLocator.strategy === 'text' ||
+      stepLocator.strategy === 'label' ||
+      stepLocator.strategy === 'placeholder' ||
+      stepLocator.strategy === 'testid'
+    ) {
       return stepLocator.strategy;
     }
     return undefined;
@@ -515,15 +517,19 @@ export class ExecutionReconcileService {
       return true;
     }
 
-    return (left === 'press' && right === 'press_key')
-      || (left === 'press_key' && right === 'press')
-      || (left === 'type_text' && right === 'fill')
-      || (left === 'fill' && right === 'type_text');
+    return (
+      (left === 'press' && right === 'press_key') ||
+      (left === 'press_key' && right === 'press') ||
+      (left === 'type_text' && right === 'fill') ||
+      (left === 'fill' && right === 'type_text')
+    );
   }
 
   private isValidStrategy(value: unknown): value is ResumeStrategy {
-    return value === 'replace_failed_step'
-      || value === 'insert_patch_steps'
-      || value === 'replan_from_current_state';
+    return (
+      value === 'replace_failed_step' ||
+      value === 'insert_patch_steps' ||
+      value === 'replan_from_current_state'
+    );
   }
 }

@@ -61,21 +61,25 @@ describe('WorkerService', () => {
       user_id: 'runtime-smoke-check',
     });
 
-    expect(createContainer).toHaveBeenCalledWith(expect.not.objectContaining({
-      ExposedPorts: undefined,
-    }));
-    expect(createContainer).toHaveBeenCalledWith(expect.objectContaining({
-      ExposedPorts: {
-        '8080/tcp': {},
-        '9222/tcp': {},
-      },
-      HostConfig: expect.objectContaining({
-        PortBindings: {
-          '8080/tcp': [{ HostPort: '39000' }],
-          '9222/tcp': [{ HostPort: '40000' }],
+    expect(createContainer).toHaveBeenCalledWith(
+      expect.not.objectContaining({
+        ExposedPorts: undefined,
+      })
+    );
+    expect(createContainer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ExposedPorts: {
+          '8080/tcp': {},
+          '9222/tcp': {},
         },
-      }),
-    }));
+        HostConfig: expect.objectContaining({
+          PortBindings: {
+            '8080/tcp': [{ HostPort: '39000' }],
+            '9222/tcp': [{ HostPort: '40000' }],
+          },
+        }),
+      })
+    );
     expect(result).toEqual({
       worker_id: expect.any(String),
       endpoints: {
@@ -90,14 +94,18 @@ describe('WorkerService', () => {
 
     const container = {
       start: jest.fn().mockResolvedValue(undefined),
-      inspect: jest.fn().mockResolvedValue(createInspect({
-        '8080/tcp': [{ HostPort: '55054' }],
-        '9222/tcp': [{ HostPort: '55053' }],
-      })),
+      inspect: jest.fn().mockResolvedValue(
+        createInspect({
+          '8080/tcp': [{ HostPort: '55054' }],
+          '9222/tcp': [{ HostPort: '55053' }],
+        })
+      ),
       remove: jest.fn().mockResolvedValue(undefined),
     };
     createContainer
-      .mockRejectedValueOnce(new Error('failed to bind host port 0.0.0.0:55049/tcp: address already in use'))
+      .mockRejectedValueOnce(
+        new Error('failed to bind host port 0.0.0.0:55049/tcp: address already in use')
+      )
       .mockResolvedValueOnce(container);
 
     const result = await service.createWorker({
@@ -105,22 +113,28 @@ describe('WorkerService', () => {
     });
 
     expect(createContainer).toHaveBeenCalledTimes(2);
-    expect(createContainer).toHaveBeenNthCalledWith(1, expect.objectContaining({
-      HostConfig: expect.objectContaining({
-        PortBindings: {
-          '8080/tcp': [{ HostPort: '39000' }],
-          '9222/tcp': [{ HostPort: '40000' }],
-        },
-      }),
-    }));
-    expect(createContainer).toHaveBeenNthCalledWith(2, expect.objectContaining({
-      HostConfig: expect.objectContaining({
-        PortBindings: {
-          '8080/tcp': [{ HostPort: '39001' }],
-          '9222/tcp': [{ HostPort: '40001' }],
-        },
-      }),
-    }));
+    expect(createContainer).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        HostConfig: expect.objectContaining({
+          PortBindings: {
+            '8080/tcp': [{ HostPort: '39000' }],
+            '9222/tcp': [{ HostPort: '40000' }],
+          },
+        }),
+      })
+    );
+    expect(createContainer).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        HostConfig: expect.objectContaining({
+          PortBindings: {
+            '8080/tcp': [{ HostPort: '39001' }],
+            '9222/tcp': [{ HostPort: '40001' }],
+          },
+        }),
+      })
+    );
     expect(result).toEqual({
       worker_id: expect.any(String),
       endpoints: {

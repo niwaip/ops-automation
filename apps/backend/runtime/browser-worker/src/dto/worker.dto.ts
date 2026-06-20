@@ -2,16 +2,27 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsString, IsOptional, IsBoolean, IsObject, IsEnum } from 'class-validator';
 
 export class WorkerEndpointsDto {
-  @ApiProperty({ example: 'http://localhost:8080', description: 'noVNC endpoint URL', required: false })
+  @ApiProperty({
+    example: 'http://localhost:8080',
+    description: 'noVNC endpoint URL',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   novnc?: string;
 
-  @ApiProperty({ example: 'http://localhost:9222', description: 'Chrome DevTools Protocol endpoint URL' })
+  @ApiProperty({
+    example: 'http://localhost:9222',
+    description: 'Chrome DevTools Protocol endpoint URL',
+  })
   @IsString()
   cdp!: string;
 
-  @ApiProperty({ example: 'vnc://localhost:5900', description: 'VNC endpoint URL', required: false })
+  @ApiProperty({
+    example: 'vnc://localhost:5900',
+    description: 'VNC endpoint URL',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   vnc?: string;
@@ -27,17 +38,29 @@ export class CreateWorkerRequestDto {
   @IsString()
   user_id!: string;
 
-  @ApiProperty({ example: '/profiles/user-123/chrome', description: 'Chrome profile path', required: false })
+  @ApiProperty({
+    example: '/profiles/user-123/chrome',
+    description: 'Chrome profile path',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   profile_path?: string;
 
-  @ApiProperty({ example: 'https://example.com', description: 'Initial URL to navigate to', required: false })
+  @ApiProperty({
+    example: 'https://example.com',
+    description: 'Initial URL to navigate to',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   initial_url?: string;
 
-  @ApiProperty({ example: 'runtime-session-123', description: 'Runtime session ID to bind this worker to', required: false })
+  @ApiProperty({
+    example: 'runtime-session-123',
+    description: 'Runtime session ID to bind this worker to',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   runtime_session_id?: string;
@@ -93,7 +116,11 @@ export class WorkerStatusDto {
   @IsString()
   user_id!: string;
 
-  @ApiProperty({ example: 'running', enum: ['starting', 'running', 'stopping', 'stopped', 'error'], description: 'Worker status' })
+  @ApiProperty({
+    example: 'running',
+    enum: ['starting', 'running', 'stopping', 'stopped', 'error'],
+    description: 'Worker status',
+  })
   @IsString()
   status!: string;
 
@@ -188,7 +215,10 @@ export class BrowserPageStateDto {
   @IsString()
   pageTitle?: string;
 
-  @ApiProperty({ description: 'Lightweight page fingerprint for phase reconciliation', required: false })
+  @ApiProperty({
+    description: 'Lightweight page fingerprint for phase reconciliation',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   pageFingerprint?: string;
@@ -213,7 +243,12 @@ export class ExecuteStepDto {
   @IsString()
   runtimeSessionId!: string;
 
-  @ApiProperty({ description: 'Browser execution backend', enum: BrowserExecutionBackendDto, required: false, default: BrowserExecutionBackendDto.CLI })
+  @ApiProperty({
+    description: 'Browser execution backend',
+    enum: BrowserExecutionBackendDto,
+    required: false,
+    default: BrowserExecutionBackendDto.CLI,
+  })
   @IsOptional()
   @IsEnum(BrowserExecutionBackendDto)
   backend?: BrowserExecutionBackendDto;
@@ -283,7 +318,11 @@ export class ExecuteStepResultDto {
   @IsObject()
   output?: Record<string, unknown>;
 
-  @ApiProperty({ description: 'Captured browser page state after step execution', required: false, type: BrowserPageStateDto })
+  @ApiProperty({
+    description: 'Captured browser page state after step execution',
+    required: false,
+    type: BrowserPageStateDto,
+  })
   @IsOptional()
   @IsObject()
   pageState?: BrowserPageStateDto;
@@ -313,7 +352,12 @@ export class InspectBrowserStateDto {
   @IsString()
   runtimeSessionId!: string;
 
-  @ApiProperty({ description: 'Browser execution backend', enum: BrowserExecutionBackendDto, required: false, default: BrowserExecutionBackendDto.CLI })
+  @ApiProperty({
+    description: 'Browser execution backend',
+    enum: BrowserExecutionBackendDto,
+    required: false,
+    default: BrowserExecutionBackendDto.CLI,
+  })
   @IsOptional()
   @IsEnum(BrowserExecutionBackendDto)
   backend?: BrowserExecutionBackendDto;
@@ -324,7 +368,12 @@ export class AssertBrowserStateDto {
   @IsString()
   runtimeSessionId!: string;
 
-  @ApiProperty({ description: 'Browser execution backend', enum: BrowserExecutionBackendDto, required: false, default: BrowserExecutionBackendDto.CLI })
+  @ApiProperty({
+    description: 'Browser execution backend',
+    enum: BrowserExecutionBackendDto,
+    required: false,
+    default: BrowserExecutionBackendDto.CLI,
+  })
   @IsOptional()
   @IsEnum(BrowserExecutionBackendDto)
   backend?: BrowserExecutionBackendDto;
@@ -390,7 +439,12 @@ export class FreezeBrowserSessionDto {
   @IsString()
   runtimeSessionId!: string;
 
-  @ApiProperty({ description: 'Browser execution backend', enum: BrowserExecutionBackendDto, required: false, default: BrowserExecutionBackendDto.CLI })
+  @ApiProperty({
+    description: 'Browser execution backend',
+    enum: BrowserExecutionBackendDto,
+    required: false,
+    default: BrowserExecutionBackendDto.CLI,
+  })
   @IsOptional()
   @IsEnum(BrowserExecutionBackendDto)
   backend?: BrowserExecutionBackendDto;
@@ -406,7 +460,12 @@ export class ResumeBrowserSessionDto {
   @IsString()
   runtimeSessionId!: string;
 
-  @ApiProperty({ description: 'Browser execution backend', enum: BrowserExecutionBackendDto, required: false, default: BrowserExecutionBackendDto.CLI })
+  @ApiProperty({
+    description: 'Browser execution backend',
+    enum: BrowserExecutionBackendDto,
+    required: false,
+    default: BrowserExecutionBackendDto.CLI,
+  })
   @IsOptional()
   @IsEnum(BrowserExecutionBackendDto)
   backend?: BrowserExecutionBackendDto;

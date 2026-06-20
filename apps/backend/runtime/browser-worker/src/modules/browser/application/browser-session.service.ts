@@ -13,7 +13,11 @@ import { ChromeDevtoolsCliAdapter } from '../adapters/chrome-devtools-cli.adapte
 import { PlaywrightCliAdapter } from '../adapters/playwright-cli.adapter';
 import { BrowserSessionRegistry } from '../infrastructure/browser-session.registry';
 import { WorkerService } from '../../worker/worker.service';
-import { BrowserEndpoints, BrowserRuntimeSessionState, BrowserSessionPreferences } from '../domain/browser.types';
+import {
+  BrowserEndpoints,
+  BrowserRuntimeSessionState,
+  BrowserSessionPreferences,
+} from '../domain/browser.types';
 
 @Injectable()
 export class BrowserSessionService {
@@ -24,7 +28,7 @@ export class BrowserSessionService {
     private readonly workerService: WorkerService,
     private readonly sessionRegistry: BrowserSessionRegistry,
     private readonly playwrightCliAdapter: PlaywrightCliAdapter,
-    private readonly chromeDevtoolsCliAdapter: ChromeDevtoolsCliAdapter,
+    private readonly chromeDevtoolsCliAdapter: ChromeDevtoolsCliAdapter
   ) {
     this.adapters = new Map<BrowserExecutionBackend, BrowserExecutionAdapter>([
       ['cli', this.playwrightCliAdapter],
@@ -53,12 +57,14 @@ export class BrowserSessionService {
       if (worker?.endpoints) {
         endpoints = worker.endpoints;
       }
-      this.sessionRegistry.upsert(this.buildSessionState({
-        runtimeSessionId: options.runtimeSessionId,
-        backend,
-        status: 'ready',
-        endpoints,
-      }));
+      this.sessionRegistry.upsert(
+        this.buildSessionState({
+          runtimeSessionId: options.runtimeSessionId,
+          backend,
+          status: 'ready',
+          endpoints,
+        })
+      );
     }
 
     return {

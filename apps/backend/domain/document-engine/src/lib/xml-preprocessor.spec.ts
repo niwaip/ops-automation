@@ -34,7 +34,8 @@ describe('XmlPreprocessor', () => {
     });
 
     it('should handle nested split markers in loops', () => {
-      const xml = '<w:t>{#d.</w:t><w:t>items}</w:t><w:t>{d.items[i]</w:t><w:t>.name}</w:t><w:t>{/d.</w:t><w:t>items}</w:t>';
+      const xml =
+        '<w:t>{#d.</w:t><w:t>items}</w:t><w:t>{d.items[i]</w:t><w:t>.name}</w:t><w:t>{/d.</w:t><w:t>items}</w:t>';
       const result = preprocessor.flatten(xml);
 
       // Flattening merges all adjacent nodes
@@ -83,7 +84,7 @@ describe('XmlPreprocessor', () => {
       const issues = preprocessor.detectIssues(xml);
 
       expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.type === 'unbalanced_braces')).toBe(true);
+      expect(issues.some((i) => i.type === 'unbalanced_braces')).toBe(true);
     });
 
     it('should return empty issues for valid XML', () => {
@@ -91,7 +92,7 @@ describe('XmlPreprocessor', () => {
       const issues = preprocessor.detectIssues(xml);
 
       // Should have no issues (equal braces)
-      expect(issues.filter(i => i.type === 'unbalanced_braces')).toHaveLength(0);
+      expect(issues.filter((i) => i.type === 'unbalanced_braces')).toHaveLength(0);
     });
   });
 

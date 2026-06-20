@@ -1,5 +1,8 @@
 import { TemplateFieldCandidate } from '../../../api/carbone-api';
-import { extractWordParamName, resolveWordHeaderFieldKey } from '../../../host/office/word/parameter';
+import {
+  extractWordParamName,
+  resolveWordHeaderFieldKey,
+} from '../../../host/office/word/parameter';
 
 export type WordRecognitionBatchOptions = {
   retryLoopIds: string[];
@@ -18,7 +21,9 @@ function normalizeCompareLookupText(value: unknown): string {
     .trim();
 }
 
-function getWordCandidateLanguageHint(candidate: TemplateFieldCandidate): 'zh' | 'ja' | 'en' | 'mixed' | 'unknown' {
+function getWordCandidateLanguageHint(
+  candidate: TemplateFieldCandidate
+): 'zh' | 'ja' | 'en' | 'mixed' | 'unknown' {
   const explicitHint = candidate.languageRelation?.currentLanguageHint;
   if (explicitHint) {
     return explicitHint;
@@ -34,9 +39,7 @@ function getWordCandidateLanguageHint(candidate: TemplateFieldCandidate): 'zh' |
     .map((value) => String(value || ''))
     .join(' ');
 
-  const normalizedText = combinedText
-    .replace(/[_＿\-\s0-9:：/\\()[\]{}]+/gu, '')
-    .trim();
+  const normalizedText = combinedText.replace(/[_＿\-\s0-9:：/\\()[\]{}]+/gu, '').trim();
   if (!normalizedText) {
     return 'unknown';
   }
@@ -59,17 +62,24 @@ function getWordCandidateLanguageHint(candidate: TemplateFieldCandidate): 'zh' |
   return 'unknown';
 }
 
-function sortWordCandidatesByPosition(candidates: TemplateFieldCandidate[]): TemplateFieldCandidate[] {
+function sortWordCandidatesByPosition(
+  candidates: TemplateFieldCandidate[]
+): TemplateFieldCandidate[] {
   return [...candidates].sort((left, right) => {
     const leftLocation = left.location || {};
     const rightLocation = right.location || {};
     return (
-      (Number(leftLocation.tableIndex ?? Number.MAX_SAFE_INTEGER) - Number(rightLocation.tableIndex ?? Number.MAX_SAFE_INTEGER))
-      || (Number(leftLocation.rowIndex ?? Number.MAX_SAFE_INTEGER) - Number(rightLocation.rowIndex ?? Number.MAX_SAFE_INTEGER))
-      || (Number(leftLocation.cellIndex ?? Number.MAX_SAFE_INTEGER) - Number(rightLocation.cellIndex ?? Number.MAX_SAFE_INTEGER))
-      || (Number(leftLocation.paragraphIndex ?? Number.MAX_SAFE_INTEGER) - Number(rightLocation.paragraphIndex ?? Number.MAX_SAFE_INTEGER))
-      || (Number(leftLocation.anchorStart ?? Number.MAX_SAFE_INTEGER) - Number(rightLocation.anchorStart ?? Number.MAX_SAFE_INTEGER))
-      || left.candidateId.localeCompare(right.candidateId)
+      Number(leftLocation.tableIndex ?? Number.MAX_SAFE_INTEGER) -
+        Number(rightLocation.tableIndex ?? Number.MAX_SAFE_INTEGER) ||
+      Number(leftLocation.rowIndex ?? Number.MAX_SAFE_INTEGER) -
+        Number(rightLocation.rowIndex ?? Number.MAX_SAFE_INTEGER) ||
+      Number(leftLocation.cellIndex ?? Number.MAX_SAFE_INTEGER) -
+        Number(rightLocation.cellIndex ?? Number.MAX_SAFE_INTEGER) ||
+      Number(leftLocation.paragraphIndex ?? Number.MAX_SAFE_INTEGER) -
+        Number(rightLocation.paragraphIndex ?? Number.MAX_SAFE_INTEGER) ||
+      Number(leftLocation.anchorStart ?? Number.MAX_SAFE_INTEGER) -
+        Number(rightLocation.anchorStart ?? Number.MAX_SAFE_INTEGER) ||
+      left.candidateId.localeCompare(right.candidateId)
     );
   });
 }
@@ -84,17 +94,17 @@ function buildWordCandidateSlotMergeKey(candidate: TemplateFieldCandidate): stri
   }
 
   if (
-    typeof candidate.location?.tableIndex === 'number'
-    && typeof candidate.location?.rowIndex === 'number'
-    && typeof candidate.location?.cellIndex === 'number'
+    typeof candidate.location?.tableIndex === 'number' &&
+    typeof candidate.location?.rowIndex === 'number' &&
+    typeof candidate.location?.cellIndex === 'number'
   ) {
     return `table-cell|${candidate.location.tableIndex}|${candidate.location.rowIndex}|${candidate.location.cellIndex}`;
   }
 
   if (
-    typeof candidate.location?.paragraphIndex === 'number'
-    && typeof candidate.location?.anchorStart === 'number'
-    && typeof candidate.location?.anchorEnd === 'number'
+    typeof candidate.location?.paragraphIndex === 'number' &&
+    typeof candidate.location?.anchorStart === 'number' &&
+    typeof candidate.location?.anchorEnd === 'number'
   ) {
     return [
       'text-range',
@@ -109,7 +119,7 @@ function buildWordCandidateSlotMergeKey(candidate: TemplateFieldCandidate): stri
 }
 
 function isPairedWordLanguageRelationMode(
-  mode?: 'single_language' | 'adjacent_bilingual_block' | 'same_block_mixed_language' | 'unknown',
+  mode?: 'single_language' | 'adjacent_bilingual_block' | 'same_block_mixed_language' | 'unknown'
 ): boolean {
   return mode === 'adjacent_bilingual_block' || mode === 'same_block_mixed_language';
 }
@@ -122,9 +132,11 @@ function isBilingualWordCandidateSet(slotCandidates: TemplateFieldCandidate[]): 
   const candidateIds = new Set(slotCandidates.map((candidate) => candidate.candidateId));
   const hasExplicitPeerPair = slotCandidates.some((candidate) => {
     const peerCandidateId = String(candidate.languageRelation?.peerCandidateId || '').trim();
-    return isPairedWordLanguageRelationMode(candidate.languageRelation?.mode)
-      && Boolean(peerCandidateId)
-      && candidateIds.has(peerCandidateId);
+    return (
+      isPairedWordLanguageRelationMode(candidate.languageRelation?.mode) &&
+      Boolean(peerCandidateId) &&
+      candidateIds.has(peerCandidateId)
+    );
   });
   if (hasExplicitPeerPair) {
     return true;
@@ -132,8 +144,14 @@ function isBilingualWordCandidateSet(slotCandidates: TemplateFieldCandidate[]): 
 
   const concreteLanguages = new Set(
     slotCandidates
-      .map((candidate) => candidate.languageRelation?.currentLanguageHint || getWordCandidateLanguageHint(candidate))
-      .filter((language): language is 'zh' | 'ja' | 'en' => language === 'zh' || language === 'ja' || language === 'en')
+      .map(
+        (candidate) =>
+          candidate.languageRelation?.currentLanguageHint || getWordCandidateLanguageHint(candidate)
+      )
+      .filter(
+        (language): language is 'zh' | 'ja' | 'en' =>
+          language === 'zh' || language === 'ja' || language === 'en'
+      )
   );
   return concreteLanguages.has('zh') && concreteLanguages.has('ja');
 }
@@ -149,7 +167,11 @@ function shouldMergeWordCandidatesInSameSlot(slotCandidates: TemplateFieldCandid
 
   const distinctLabels = new Set(
     slotCandidates
-      .map((candidate) => normalizeCompareLookupText(getWordCandidateSlotMergeLabel(candidate) || candidate.anchorText || ''))
+      .map((candidate) =>
+        normalizeCompareLookupText(
+          getWordCandidateSlotMergeLabel(candidate) || candidate.anchorText || ''
+        )
+      )
       .filter(Boolean)
   );
 
@@ -157,13 +179,16 @@ function shouldMergeWordCandidatesInSameSlot(slotCandidates: TemplateFieldCandid
   return distinctLabels.size >= 2;
 }
 
-function pickPrimaryWordSlotCandidate(slotCandidates: TemplateFieldCandidate[]): TemplateFieldCandidate {
+function pickPrimaryWordSlotCandidate(
+  slotCandidates: TemplateFieldCandidate[]
+): TemplateFieldCandidate {
   const getScore = (candidate: TemplateFieldCandidate): number => {
     const anchorText = candidate.localAnchorText || candidate.anchorText || '';
     const anchorLabel = getWordCandidateSlotMergeLabel(candidate);
-    const headerFieldKey = resolveWordHeaderFieldKey(anchorText)
-      || resolveWordHeaderFieldKey(anchorLabel);
-    const languageHint = candidate.languageRelation?.currentLanguageHint || getWordCandidateLanguageHint(candidate);
+    const headerFieldKey =
+      resolveWordHeaderFieldKey(anchorText) || resolveWordHeaderFieldKey(anchorLabel);
+    const languageHint =
+      candidate.languageRelation?.currentLanguageHint || getWordCandidateLanguageHint(candidate);
 
     let score = 0;
     if (headerFieldKey) {
@@ -191,7 +216,8 @@ function pickPrimaryWordSlotCandidate(slotCandidates: TemplateFieldCandidate[]):
       return scoreDiff;
     }
 
-    const labelLengthDiff = getWordCandidateSlotMergeLabel(right).length - getWordCandidateSlotMergeLabel(left).length;
+    const labelLengthDiff =
+      getWordCandidateSlotMergeLabel(right).length - getWordCandidateSlotMergeLabel(left).length;
     if (labelLengthDiff !== 0) {
       return labelLengthDiff;
     }
@@ -200,7 +226,9 @@ function pickPrimaryWordSlotCandidate(slotCandidates: TemplateFieldCandidate[]):
   })[0];
 }
 
-export function mergeWordCandidatesBySlotForRecognition(candidates: TemplateFieldCandidate[]): TemplateFieldCandidate[] {
+export function mergeWordCandidatesBySlotForRecognition(
+  candidates: TemplateFieldCandidate[]
+): TemplateFieldCandidate[] {
   if (candidates.length <= 1) {
     return candidates;
   }
@@ -229,7 +257,7 @@ export function mergeWordCandidatesBySlotForRecognition(candidates: TemplateFiel
 }
 
 export function buildWordSectionBilingualPairsForRecognition(
-  candidates: TemplateFieldCandidate[],
+  candidates: TemplateFieldCandidate[]
 ): Array<{
   pairKey: string;
   candidates: [TemplateFieldCandidate, TemplateFieldCandidate];
@@ -239,7 +267,9 @@ export function buildWordSectionBilingualPairsForRecognition(
     pairKey: string;
     candidates: [TemplateFieldCandidate, TemplateFieldCandidate];
   }> = [];
-  const candidateById = new Map(candidates.map((candidate) => [candidate.candidateId, candidate] as const));
+  const candidateById = new Map(
+    candidates.map((candidate) => [candidate.candidateId, candidate] as const)
+  );
 
   candidates.forEach((candidate) => {
     const peerCandidateId = String(candidate.languageRelation?.peerCandidateId || '').trim();
@@ -257,7 +287,10 @@ export function buildWordSectionBilingualPairsForRecognition(
     }
 
     seenPairKeys.add(pairKey);
-    const orderedCandidates = sortWordCandidatesByPosition([candidate, peerCandidate]) as [TemplateFieldCandidate, TemplateFieldCandidate];
+    const orderedCandidates = sortWordCandidatesByPosition([candidate, peerCandidate]) as [
+      TemplateFieldCandidate,
+      TemplateFieldCandidate,
+    ];
     pairs.push({
       pairKey,
       candidates: orderedCandidates,
@@ -280,7 +313,7 @@ function tryAddBatchCandidate(
   candidateId: string,
   batch: TemplateFieldCandidate[],
   batchCandidateIds: Set<string>,
-  options: WordRecognitionBatchOptions,
+  options: WordRecognitionBatchOptions
 ): TemplateFieldCandidate | undefined {
   if (!candidateId || options.acceptedIds.has(candidateId) || batchCandidateIds.has(candidateId)) {
     return undefined;
@@ -301,7 +334,7 @@ function tryAddPeerCandidate(
   batch: TemplateFieldCandidate[],
   batchCandidateIds: Set<string>,
   options: WordRecognitionBatchOptions,
-  sourceQueues: string[][],
+  sourceQueues: string[][]
 ): void {
   if (batch.length >= 6) {
     return;
@@ -321,15 +354,14 @@ function tryAddPeerCandidate(
 }
 
 export function takeWordRecognitionBatchForRecognition(
-  options: WordRecognitionBatchOptions,
+  options: WordRecognitionBatchOptions
 ): TemplateFieldCandidate[] {
   const batch: TemplateFieldCandidate[] = [];
   const batchCandidateIds = new Set<string>();
-  const sourceQueues = (
+  const sourceQueues =
     options.retryLoopIds.length > 0 || options.unsentLoopIds.length > 0
       ? [options.retryLoopIds, options.unsentLoopIds]
-      : [options.retryNormalIds, options.unsentNormalIds]
-  );
+      : [options.retryNormalIds, options.unsentNormalIds];
 
   sourceQueues.forEach((queue) => {
     while (batch.length < 6 && queue.length > 0) {

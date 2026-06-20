@@ -108,9 +108,7 @@ describe('AuthService', () => {
       prisma.user.findUnique.mockResolvedValue(mockUser);
       jest.spyOn(bcrypt, 'compare').mockResolvedValue(false as never);
 
-      await expect(service.login(loginDto)).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
     });
 
     it('should throw UnauthorizedException when user not found', async () => {
@@ -121,9 +119,7 @@ describe('AuthService', () => {
 
       prisma.user.findUnique.mockResolvedValue(null);
 
-      await expect(service.login(loginDto)).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
     });
 
     it('should throw UnauthorizedException when user is inactive', async () => {
@@ -137,9 +133,7 @@ describe('AuthService', () => {
         isActive: false,
       });
 
-      await expect(service.login(loginDto)).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
     });
 
     it('should throw UnauthorizedException when password hash is malformed', async () => {
@@ -153,9 +147,7 @@ describe('AuthService', () => {
         passwordHash: '' as unknown as string,
       });
 
-      await expect(service.login(loginDto)).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
     });
 
     it('should still login when lastLoginAt update fails', async () => {
@@ -189,10 +181,12 @@ describe('AuthService', () => {
       jest.spyOn(bcrypt, 'hash').mockResolvedValue('hashed-password' as never);
       prisma.role.findUnique.mockResolvedValue({ id: 'role-1', name: 'employee' });
       prisma.userRole.upsert.mockResolvedValue({});
-      prisma.$transaction.mockImplementation(async (callback: (tx: MockPrismaService) => Promise<unknown>) => {
-        prisma.user.create.mockResolvedValue(mockUser);
-        return callback(prisma);
-      });
+      prisma.$transaction.mockImplementation(
+        async (callback: (tx: MockPrismaService) => Promise<unknown>) => {
+          prisma.user.create.mockResolvedValue(mockUser);
+          return callback(prisma);
+        }
+      );
 
       const result = await service.register(registerDto);
 
@@ -208,9 +202,7 @@ describe('AuthService', () => {
 
       prisma.user.findUnique.mockResolvedValue(mockUser);
 
-      await expect(service.register(registerDto)).rejects.toThrow(
-        ConflictException,
-      );
+      await expect(service.register(registerDto)).rejects.toThrow(ConflictException);
     });
 
     it('should throw ConflictException when email exists', async () => {
@@ -224,9 +216,7 @@ describe('AuthService', () => {
       prisma.user.findUnique.mockResolvedValueOnce(null);
       prisma.user.findUnique.mockResolvedValueOnce(mockUser);
 
-      await expect(service.register(registerDto)).rejects.toThrow(
-        ConflictException,
-      );
+      await expect(service.register(registerDto)).rejects.toThrow(ConflictException);
     });
   });
 
@@ -259,9 +249,7 @@ describe('AuthService', () => {
     it('should throw UnauthorizedException when user not found', async () => {
       prisma.user.findUnique.mockResolvedValue(null);
 
-      await expect(service.me('nonexistent-id')).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(service.me('nonexistent-id')).rejects.toThrow(UnauthorizedException);
     });
   });
 });

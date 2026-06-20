@@ -1,5 +1,22 @@
 import React, { useMemo, useState } from 'react';
-import { Table, Card, Button, Input, Space, Tag, Typography, Modal, message, Form, Select, Divider, Alert, Tooltip, Checkbox, List } from 'antd';
+import {
+  Table,
+  Card,
+  Button,
+  Input,
+  Space,
+  Tag,
+  Typography,
+  Modal,
+  message,
+  Form,
+  Select,
+  Divider,
+  Alert,
+  Tooltip,
+  Checkbox,
+  List,
+} from 'antd';
 import {
   SearchOutlined,
   PlusOutlined,
@@ -15,7 +32,15 @@ import {
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { aiModelApi, AIModel, AIModelConfig, AIProviderConfig, AIProviderSummary, ModelCapabilityTier, ModelProvider } from '@/api/ai';
+import {
+  aiModelApi,
+  AIModel,
+  AIModelConfig,
+  AIProviderConfig,
+  AIProviderSummary,
+  ModelCapabilityTier,
+  ModelProvider,
+} from '@/api/ai';
 import type { ColumnsType } from 'antd/es/table';
 
 const { Title, Text } = Typography;
@@ -25,23 +50,25 @@ const { Option } = Select;
 const PROVIDER_NAMES: Record<string, string> = {
   'alibaba-coding': '阿里云 Coding',
   'alibaba-bailian': '阿里云百炼',
-  'openai': 'OpenAI',
-  'anthropic': 'Anthropic',
-  'azure': 'Azure OpenAI',
-  'deepseek': 'DeepSeek',
-  'minimax': 'MiniMax',
-  'siliconflow': 'SiliconFlow',
-  'local': '本地模型',
+  openai: 'OpenAI',
+  anthropic: 'Anthropic',
+  azure: 'Azure OpenAI',
+  deepseek: 'DeepSeek',
+  minimax: 'MiniMax',
+  bigmodel: '智谱 BigModel',
+  siliconflow: 'SiliconFlow',
+  local: '本地模型',
 };
 
 // Recommended endpoints for common providers
 const PRESET_ENDPOINTS: Record<string, string> = {
   'alibaba-coding': 'https://coding.dashscope.aliyuncs.com/v1',
   'alibaba-bailian': 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-  'openai': 'https://api.openai.com/v1',
-  'deepseek': 'https://api.deepseek.com/v1',
-  'minimax': 'https://api.minimax.chat/v1',
-  'siliconflow': 'https://api.siliconflow.cn/v1',
+  openai: 'https://api.openai.com/v1',
+  deepseek: 'https://api.deepseek.com/v1',
+  minimax: 'https://api.minimax.chat/v1',
+  bigmodel: 'https://open.bigmodel.cn/api/paas/v4',
+  siliconflow: 'https://api.siliconflow.cn/v1',
 };
 
 const DEFAULT_SCOPE_OPTIONS = [
@@ -69,9 +96,11 @@ const scopeTagMeta: Record<string, { label: string; color: string }> = {
 
 function mapConfigToFormValues(config?: AIModelConfig) {
   const safeConfig = config || {};
-  const defaultScopes = DEFAULT_SCOPE_OPTIONS
-    .map((item) => item.value)
-    .filter((scope) => safeConfig.default_scope?.[scope as keyof NonNullable<AIModelConfig['default_scope']>] === true);
+  const defaultScopes = DEFAULT_SCOPE_OPTIONS.map((item) => item.value).filter(
+    (scope) =>
+      safeConfig.default_scope?.[scope as keyof NonNullable<AIModelConfig['default_scope']>] ===
+      true
+  );
 
   return {
     display_name: safeConfig.display_name,
@@ -88,13 +117,23 @@ function buildConfigFromValues(values: Record<string, unknown>): AIModelConfig {
     ? values.defaultScopes.filter((item): item is string => typeof item === 'string')
     : [];
   const routingTags = Array.isArray(values.routing_tags)
-    ? values.routing_tags.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+    ? values.routing_tags.filter(
+        (item): item is string => typeof item === 'string' && item.trim().length > 0
+      )
     : [];
 
   return {
-    display_name: typeof values.display_name === 'string' && values.display_name.trim() ? values.display_name.trim() : undefined,
-    description: typeof values.description === 'string' && values.description.trim() ? values.description.trim() : undefined,
-    capability_tier: (values.capability_tier === 'advanced' ? 'advanced' : 'standard') as ModelCapabilityTier,
+    display_name:
+      typeof values.display_name === 'string' && values.display_name.trim()
+        ? values.display_name.trim()
+        : undefined,
+    description:
+      typeof values.description === 'string' && values.description.trim()
+        ? values.description.trim()
+        : undefined,
+    capability_tier: (values.capability_tier === 'advanced'
+      ? 'advanced'
+      : 'standard') as ModelCapabilityTier,
     routing_tags: routingTags,
     default_scope: {
       global: defaultScopes.includes('global'),
@@ -140,14 +179,19 @@ const AIModelAdminPage: React.FC = () => {
 
   const modelsQuery = useQuery(['ai-models'], () => aiModelApi.listForAdmin());
   const providersQuery = useQuery(['ai-model-providers'], () => aiModelApi.listProviders());
-  const providerConfigsQuery = useQuery(['ai-provider-configs'], () => aiModelApi.listProviderConfigs());
+  const providerConfigsQuery = useQuery(['ai-provider-configs'], () =>
+    aiModelApi.listProviderConfigs()
+  );
   const [providerForm] = Form.useForm();
   const selectedCreateProviderConfigId = Form.useWatch('providerConfigId', createForm);
   const selectedEditProviderConfigId = Form.useWatch('providerConfigId', editForm);
 
   // Get available models for selected provider
   const providerConfigMap = new Map(
-    (providerConfigsQuery.data?.providers || []).map((providerConfig) => [providerConfig.id, providerConfig])
+    (providerConfigsQuery.data?.providers || []).map((providerConfig) => [
+      providerConfig.id,
+      providerConfig,
+    ])
   );
   const selectedCreateProviderConfig = selectedCreateProviderConfigId
     ? providerConfigMap.get(selectedCreateProviderConfigId)
@@ -281,8 +325,13 @@ const AIModelAdminPage: React.FC = () => {
   });
 
   const updateProviderMutation = useMutation(
-    ({ id, data }: { id: string; data: { provider?: ModelProvider; api_endpoint?: string; api_key?: string } }) =>
-      aiModelApi.updateProviderConfig(id, data),
+    ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: { provider?: ModelProvider; api_endpoint?: string; api_key?: string };
+    }) => aiModelApi.updateProviderConfig(id, data),
     {
       onSuccess: () => {
         message.success('Provider 已更新');
@@ -324,7 +373,7 @@ const AIModelAdminPage: React.FC = () => {
 
   const loadModelsForProvider = async (
     providerConfigId: string,
-    target: 'create' | 'edit' | 'switch',
+    target: 'create' | 'edit' | 'switch'
   ) => {
     const providerConfig = providerConfigMap.get(providerConfigId);
     if (!providerConfig) {
@@ -501,10 +550,14 @@ const AIModelAdminPage: React.FC = () => {
       return;
     }
 
-    const matchedProviderConfig = (providerConfigsQuery.data?.providers || []).find((providerConfig) => {
-      return providerConfig.provider === providerSummary.provider
-        && providerConfig.api_endpoint === providerSummary.api_endpoint;
-    });
+    const matchedProviderConfig = (providerConfigsQuery.data?.providers || []).find(
+      (providerConfig) => {
+        return (
+          providerConfig.provider === providerSummary.provider &&
+          providerConfig.api_endpoint === providerSummary.api_endpoint
+        );
+      }
+    );
     createForm.resetFields();
     createForm.setFieldsValue({
       providerConfigId: matchedProviderConfig?.id,
@@ -582,7 +635,9 @@ const AIModelAdminPage: React.FC = () => {
       const key = model.providerConfigId || 'unlinked';
       if (!groups.has(key)) {
         groups.set(key, {
-          providerConfig: model.providerConfigId ? providerConfigMap.get(model.providerConfigId) : undefined,
+          providerConfig: model.providerConfigId
+            ? providerConfigMap.get(model.providerConfigId)
+            : undefined,
           models: [],
         });
       }
@@ -606,22 +661,23 @@ const AIModelAdminPage: React.FC = () => {
   const providerGovernanceItems = (providerConfigsQuery.data?.providers || [])
     .map((providerConfig) => ({
       providerConfig,
-      summary: providerSummaryMap.get(getProviderIdentity(providerConfig.provider, providerConfig.api_endpoint)),
+      summary: providerSummaryMap.get(
+        getProviderIdentity(providerConfig.provider, providerConfig.api_endpoint)
+      ),
     }))
     .sort((left, right) => {
-      if ((left.providerConfig.hasCredential || false) !== (right.providerConfig.hasCredential || false)) {
+      if (
+        (left.providerConfig.hasCredential || false) !==
+        (right.providerConfig.hasCredential || false)
+      ) {
         return left.providerConfig.hasCredential ? -1 : 1;
       }
       return left.providerConfig.provider.localeCompare(right.providerConfig.provider);
     });
 
-  const canReuseProviderCredential = Boolean(
-    selectedCreateProviderConfig?.hasCredential,
-  );
+  const canReuseProviderCredential = Boolean(selectedCreateProviderConfig?.hasCredential);
 
-  const canSwitchModel = Boolean(
-    editingModel?.providerConfigId || editingModel?.provider,
-  );
+  const canSwitchModel = Boolean(editingModel?.providerConfigId || editingModel?.provider);
 
   const columns: ColumnsType<AIModel> = [
     {
@@ -635,9 +691,7 @@ const AIModelAdminPage: React.FC = () => {
             <Text strong>{record.config?.display_name || name}</Text>
             {record.config?.capability_tier === 'advanced' && <Tag color="gold">高级</Tag>}
           </Space>
-          {record.config?.display_name && (
-            <Text type="secondary">{name}</Text>
-          )}
+          {record.config?.display_name && <Text type="secondary">{name}</Text>}
           {record.config?.description ? (
             <Text type="secondary">{record.config.description}</Text>
           ) : null}
@@ -662,26 +716,32 @@ const AIModelAdminPage: React.FC = () => {
       width: 320,
       render: (_, record) => (
         <Space size={[0, 8]} wrap>
-          {DEFAULT_SCOPE_OPTIONS
-            .map((item) => item.value)
-            .filter((scope) => record.config?.default_scope?.[scope as keyof NonNullable<AIModel['config']['default_scope']>] === true)
+          {DEFAULT_SCOPE_OPTIONS.map((item) => item.value)
+            .filter(
+              (scope) =>
+                record.config?.default_scope?.[
+                  scope as keyof NonNullable<AIModel['config']['default_scope']>
+                ] === true
+            )
             .map((scope) => (
               <Tag key={scope} color={scopeTagMeta[scope].color}>
                 {scopeTagMeta[scope].label}
               </Tag>
             ))}
           {record.config?.routing_preferences?.prefer_for_code === true && (
-            <Tag color="cyan" icon={<ThunderboltOutlined />}>代码优先</Tag>
+            <Tag color="cyan" icon={<ThunderboltOutlined />}>
+              代码优先
+            </Tag>
           )}
           {(record.config?.routing_tags || []).map((tag) => (
             <Tag key={tag}>{tag}</Tag>
           ))}
-          {!record.config?.default_scope?.global
-            && !record.config?.default_scope?.admin_chat
-            && !record.config?.default_scope?.admin_task
-            && !record.config?.default_scope?.audio_transcription
-            && record.config?.routing_preferences?.prefer_for_code !== true
-            && (!record.config?.routing_tags || record.config.routing_tags.length === 0) && (
+          {!record.config?.default_scope?.global &&
+            !record.config?.default_scope?.admin_chat &&
+            !record.config?.default_scope?.admin_task &&
+            !record.config?.default_scope?.audio_transcription &&
+            record.config?.routing_preferences?.prefer_for_code !== true &&
+            (!record.config?.routing_tags || record.config.routing_tags.length === 0) && (
               <Text type="secondary">常规模型</Text>
             )}
         </Space>
@@ -715,18 +775,10 @@ const AIModelAdminPage: React.FC = () => {
             />
           </Tooltip>
           <Tooltip title={t('common:edit')}>
-            <Button
-              size="small"
-              icon={<EditOutlined />}
-              onClick={() => handleEdit(record)}
-            />
+            <Button size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)} />
           </Tooltip>
           <Tooltip title={t('admin:testModel')}>
-            <Button
-              size="small"
-              icon={<ExperimentOutlined />}
-              onClick={() => handleTest(record)}
-            />
+            <Button size="small" icon={<ExperimentOutlined />} onClick={() => handleTest(record)} />
           </Tooltip>
           {record.status === 'active' ? (
             <Tooltip title={t('admin:disableModel')}>
@@ -760,7 +812,18 @@ const AIModelAdminPage: React.FC = () => {
     },
   ];
 
-  const providerOptions: ModelProvider[] = ['alibaba-coding', 'alibaba-bailian', 'openai', 'anthropic', 'azure', 'deepseek', 'minimax', 'siliconflow', 'local'];
+  const providerOptions: ModelProvider[] = [
+    'alibaba-coding',
+    'alibaba-bailian',
+    'openai',
+    'anthropic',
+    'azure',
+    'deepseek',
+    'minimax',
+    'bigmodel',
+    'siliconflow',
+    'local',
+  ];
 
   const renderProviderSummary = (providerConfig: AIProviderConfig, summary?: AIProviderSummary) => (
     <Space direction="vertical" size={4} style={{ width: '100%' }}>
@@ -780,7 +843,9 @@ const AIModelAdminPage: React.FC = () => {
             {scopeTagMeta[scope].label}
           </Tag>
         ))}
-        {(!summary || summary.defaultScopes.length === 0) && <Text type="secondary">未配置默认策略</Text>}
+        {(!summary || summary.defaultScopes.length === 0) && (
+          <Text type="secondary">未配置默认策略</Text>
+        )}
       </Space>
     </Space>
   );
@@ -792,7 +857,7 @@ const AIModelAdminPage: React.FC = () => {
       <Card
         title="Provider 视图"
         style={{ marginTop: 16 }}
-        extra={(
+        extra={
           <Space>
             <Button
               icon={<ReloadOutlined />}
@@ -803,15 +868,11 @@ const AIModelAdminPage: React.FC = () => {
             >
               刷新 Provider
             </Button>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={openCreateProviderModal}
-            >
+            <Button type="primary" icon={<PlusOutlined />} onClick={openCreateProviderModal}>
               新建 Provider
             </Button>
           </Space>
-        )}
+        }
       >
         <List
           dataSource={providerGovernanceItems}
@@ -821,17 +882,27 @@ const AIModelAdminPage: React.FC = () => {
             <List.Item
               style={{
                 cursor: 'pointer',
-                background: providerFilter === providerConfig.provider ? 'rgba(99, 102, 241, 0.14)' : 'transparent',
+                background:
+                  providerFilter === providerConfig.provider
+                    ? 'rgba(99, 102, 241, 0.14)'
+                    : 'transparent',
                 borderRadius: 8,
                 paddingInline: 12,
               }}
-              onClick={() => setProviderFilter((current) => current === providerConfig.provider ? null : providerConfig.provider)}
+              onClick={() =>
+                setProviderFilter((current) =>
+                  current === providerConfig.provider ? null : providerConfig.provider
+                )
+              }
               actions={[
                 <Button
                   key="health"
                   type="link"
                   icon={<ThunderboltOutlined />}
-                  loading={checkProviderHealthMutation.isLoading && checkProviderHealthMutation.variables === providerConfig.id}
+                  loading={
+                    checkProviderHealthMutation.isLoading &&
+                    checkProviderHealthMutation.variables === providerConfig.id
+                  }
                   onClick={(event) => {
                     event.stopPropagation();
                     checkProviderHealthMutation.mutate(providerConfig.id);
@@ -856,16 +927,18 @@ const AIModelAdminPage: React.FC = () => {
                   icon={<PlusOutlined />}
                   onClick={(event) => {
                     event.stopPropagation();
-                    openCreateModal(summary || {
-                      id: providerConfig.id,
-                      provider: providerConfig.provider,
-                      api_endpoint: providerConfig.api_endpoint,
-                      modelCount: 0,
-                      activeModelCount: 0,
-                      hasCredential: providerConfig.hasCredential || false,
-                      advancedModelCount: 0,
-                      defaultScopes: [],
-                    });
+                    openCreateModal(
+                      summary || {
+                        id: providerConfig.id,
+                        provider: providerConfig.provider,
+                        api_endpoint: providerConfig.api_endpoint,
+                        modelCount: 0,
+                        activeModelCount: 0,
+                        hasCredential: providerConfig.hasCredential || false,
+                        advancedModelCount: 0,
+                        defaultScopes: [],
+                      }
+                    );
                   }}
                 >
                   追加模型
@@ -891,27 +964,16 @@ const AIModelAdminPage: React.FC = () => {
               allowClear
             />
             {providerFilter && (
-              <Tag
-                closable
-                color="blue"
-                onClose={() => setProviderFilter(null)}
-              >
+              <Tag closable color="blue" onClose={() => setProviderFilter(null)}>
                 当前 Provider: {PROVIDER_NAMES[providerFilter] || providerFilter}
               </Tag>
             )}
           </Space>
           <Space>
-            <Button
-              icon={<ReloadOutlined />}
-              onClick={() => modelsQuery.refetch()}
-            >
+            <Button icon={<ReloadOutlined />} onClick={() => modelsQuery.refetch()}>
               {t('common:refresh')}
             </Button>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => openCreateModal()}
-            >
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => openCreateModal()}>
               {t('admin:createModel')}
             </Button>
           </Space>
@@ -922,19 +984,25 @@ const AIModelAdminPage: React.FC = () => {
         ) : (
           groupedModels.map(({ providerConfig, models }) => (
             <div key={providerConfig?.id || 'unlinked'} style={{ marginBottom: 24 }}>
-              <div style={{
-                background: 'var(--bg-secondary)',
-                padding: '8px 16px',
-                borderLeft: '4px solid var(--primary-color)',
-                marginBottom: 8,
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                borderRadius: '0 4px 4px 0',
-                color: 'var(--text-primary)',
-              }}>
+              <div
+                style={{
+                  background: 'var(--bg-secondary)',
+                  padding: '8px 16px',
+                  borderLeft: '4px solid var(--primary-color)',
+                  marginBottom: 8,
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  borderRadius: '0 4px 4px 0',
+                  color: 'var(--text-primary)',
+                }}
+              >
                 <Space>
-                  <Text strong>{providerConfig ? getProviderConfigLabel(providerConfig) : '未绑定 Provider (旧版)'}</Text>
+                  <Text strong>
+                    {providerConfig
+                      ? getProviderConfigLabel(providerConfig)
+                      : '未绑定 Provider (旧版)'}
+                  </Text>
                   <Tag color="blue">{models.length} 个模型</Tag>
                 </Space>
               </div>
@@ -963,20 +1031,20 @@ const AIModelAdminPage: React.FC = () => {
         <Alert
           type="info"
           showIcon
-          message={editingProvider
-            ? '修改 Provider 的 endpoint 或凭据后，关联模型会复用最新 Provider 配置'
-            : '建议先配置 Provider，再从 Provider 卡片中追加模型'}
+          message={
+            editingProvider
+              ? '修改 Provider 的 endpoint 或凭据后，关联模型会复用最新 Provider 配置'
+              : '建议先配置 Provider，再从 Provider 卡片中追加模型'
+          }
           style={{ marginBottom: 16 }}
         />
         <Form form={providerForm} layout="vertical">
-          <Form.Item
-            name="provider"
-            label="Provider"
-            rules={[{ required: true }]}
-          >
+          <Form.Item name="provider" label="Provider" rules={[{ required: true }]}>
             <Select onChange={handleProviderConfigProviderChange}>
               {providerOptions.map((p) => (
-                <Option key={p} value={p}>{PROVIDER_NAMES[p] || p}</Option>
+                <Option key={p} value={p}>
+                  {PROVIDER_NAMES[p] || p}
+                </Option>
               ))}
             </Select>
           </Form.Item>
@@ -984,20 +1052,32 @@ const AIModelAdminPage: React.FC = () => {
             name="api_endpoint"
             label="Endpoint"
             rules={[{ required: true }]}
-            extra={providerFormProvider && PRESET_ENDPOINTS[providerFormProvider]
-              ? `已自动填入推荐 Endpoint，也可以按网关策略改成自定义地址`
-              : undefined}
+            extra={
+              providerFormProvider && PRESET_ENDPOINTS[providerFormProvider]
+                ? `已自动填入推荐 Endpoint，也可以按网关策略改成自定义地址`
+                : undefined
+            }
           >
             <Input
-              prefix={providerFormProvider && PRESET_ENDPOINTS[providerFormProvider] ? <LockOutlined /> : null}
+              prefix={
+                providerFormProvider && PRESET_ENDPOINTS[providerFormProvider] ? (
+                  <LockOutlined />
+                ) : null
+              }
             />
           </Form.Item>
           <Form.Item
             name="apiKey"
             label="API Key"
-            extra={editingProvider ? '留空表示保持当前 Provider 凭据不变' : '建议先配置 Provider 凭据，后续追加模型可直接复用'}
+            extra={
+              editingProvider
+                ? '留空表示保持当前 Provider 凭据不变'
+                : '建议先配置 Provider 凭据，后续追加模型可直接复用'
+            }
           >
-            <Input.Password placeholder={editingProvider ? '不修改则留空' : '输入 Provider API Key'} />
+            <Input.Password
+              placeholder={editingProvider ? '不修改则留空' : '输入 Provider API Key'}
+            />
           </Form.Item>
         </Form>
       </Modal>
@@ -1013,17 +1093,15 @@ const AIModelAdminPage: React.FC = () => {
         <Alert
           type="info"
           showIcon
-          message={canReuseProviderCredential
-            ? '当前 Provider 配置已存在可复用凭据，追加模型时 API Key 可留空'
-            : '请先选择 Provider 配置；若该配置尚未保存凭据，可在本次创建时补充 API Key'}
+          message={
+            canReuseProviderCredential
+              ? '当前 Provider 配置已存在可复用凭据，追加模型时 API Key 可留空'
+              : '请先选择 Provider 配置；若该配置尚未保存凭据，可在本次创建时补充 API Key'
+          }
           style={{ marginBottom: 16 }}
         />
         <Form form={createForm} layout="vertical">
-          <Form.Item
-            name="providerConfigId"
-            label="Provider 配置"
-            rules={[{ required: true }]}
-          >
+          <Form.Item name="providerConfigId" label="Provider 配置" rules={[{ required: true }]}>
             <Select
               placeholder="选择已配置的 Provider"
               onChange={handleCreateProviderConfigChange}
@@ -1032,14 +1110,14 @@ const AIModelAdminPage: React.FC = () => {
                 label: getProviderConfigLabel(providerConfig),
               }))}
               notFoundContent="请先在上方创建 Provider"
-            >
-            </Select>
+            ></Select>
           </Form.Item>
           {selectedCreateProviderConfig && (
             <Form.Item label="已绑定 Provider">
               <Space direction="vertical" size={4}>
                 <Tag color="blue">
-                  {PROVIDER_NAMES[selectedCreateProviderConfig.provider] || selectedCreateProviderConfig.provider}
+                  {PROVIDER_NAMES[selectedCreateProviderConfig.provider] ||
+                    selectedCreateProviderConfig.provider}
                 </Tag>
                 <Text type="secondary">{selectedCreateProviderConfig.api_endpoint}</Text>
                 {!selectedCreateProviderConfig.hasCredential && (
@@ -1049,13 +1127,18 @@ const AIModelAdminPage: React.FC = () => {
             </Form.Item>
           )}
 
-          {(!providerConfigsQuery.data?.providers || providerConfigsQuery.data.providers.length === 0) && (
+          {(!providerConfigsQuery.data?.providers ||
+            providerConfigsQuery.data.providers.length === 0) && (
             <Alert
               type="warning"
               showIcon
               message="还没有可用的 Provider 配置，请先在上方新建 Provider"
               style={{ marginBottom: 16 }}
-              action={<Button size="small" type="primary" onClick={openCreateProviderModal}>新建 Provider</Button>}
+              action={
+                <Button size="small" type="primary" onClick={openCreateProviderModal}>
+                  新建 Provider
+                </Button>
+              }
             />
           )}
 
@@ -1070,7 +1153,10 @@ const AIModelAdminPage: React.FC = () => {
                       message.warning('请先选择 Provider 配置');
                     }
                   }}
-                  loading={loadProviderModelsMutation.isLoading && selectedCreateProviderConfigId === loadProviderModelsMutation.variables}
+                  loading={
+                    loadProviderModelsMutation.isLoading &&
+                    selectedCreateProviderConfigId === loadProviderModelsMutation.variables
+                  }
                 >
                   加载模型名列表
                 </Button>
@@ -1093,38 +1179,28 @@ const AIModelAdminPage: React.FC = () => {
             </Space>
           </Form.Item>
 
-          <Form.Item
-            name="name"
-            label={t('admin:modelName')}
-            rules={[{ required: true }]}
-          >
+          <Form.Item name="name" label={t('admin:modelName')} rules={[{ required: true }]}>
             <Input placeholder="输入模型名称，或从已加载列表中选择" />
           </Form.Item>
           <Form.Item
             name="apiKey"
             label={t('admin:modelApiKey')}
             rules={canReuseProviderCredential ? [] : [{ required: true }]}
-            extra={canReuseProviderCredential ? '留空将复用当前 Provider 配置中的 API Key' : undefined}
+            extra={
+              canReuseProviderCredential ? '留空将复用当前 Provider 配置中的 API Key' : undefined
+            }
           >
-            <Input.Password placeholder={canReuseProviderCredential ? '可留空，复用已有 API Key' : '输入 API Key'} />
+            <Input.Password
+              placeholder={canReuseProviderCredential ? '可留空，复用已有 API Key' : '输入 API Key'}
+            />
           </Form.Item>
-          <Form.Item
-            name="display_name"
-            label="显示名称"
-          >
+          <Form.Item name="display_name" label="显示名称">
             <Input placeholder="例如：SiliconFlow 高级代码模型" />
           </Form.Item>
-          <Form.Item
-            name="description"
-            label="模型说明"
-          >
+          <Form.Item name="description" label="模型说明">
             <Input.TextArea rows={2} placeholder="用于说明模型定位，例如高级代码生成模型" />
           </Form.Item>
-          <Form.Item
-            name="capability_tier"
-            label="能力层级"
-            initialValue="standard"
-          >
+          <Form.Item name="capability_tier" label="能力层级" initialValue="standard">
             <Select
               options={[
                 { label: '标准模型', value: 'standard' },
@@ -1132,10 +1208,7 @@ const AIModelAdminPage: React.FC = () => {
               ]}
             />
           </Form.Item>
-          <Form.Item
-            name="defaultScopes"
-            label="默认策略"
-          >
+          <Form.Item name="defaultScopes" label="默认策略">
             <Select
               mode="multiple"
               allowClear
@@ -1143,10 +1216,7 @@ const AIModelAdminPage: React.FC = () => {
               placeholder="可同时设置多个默认策略"
             />
           </Form.Item>
-          <Form.Item
-            name="routing_tags"
-            label="路由标签"
-          >
+          <Form.Item name="routing_tags" label="路由标签">
             <Select
               mode="multiple"
               allowClear
@@ -1154,10 +1224,7 @@ const AIModelAdminPage: React.FC = () => {
               placeholder="可选：聊天 / 代码 / 文档 / 流程 / 查询 / 多模态"
             />
           </Form.Item>
-          <Form.Item
-            name="prefer_for_code"
-            valuePropName="checked"
-          >
+          <Form.Item name="prefer_for_code" valuePropName="checked">
             <Checkbox>代码生成优先使用该模型</Checkbox>
           </Form.Item>
           <Divider />
@@ -1166,7 +1233,9 @@ const AIModelAdminPage: React.FC = () => {
             icon={<ExperimentOutlined />}
             onClick={() => {
               const values = createForm.getFieldsValue();
-              const providerConfig = values.providerConfigId ? providerConfigMap.get(values.providerConfigId) : undefined;
+              const providerConfig = values.providerConfigId
+                ? providerConfigMap.get(values.providerConfigId)
+                : undefined;
               if (providerConfig && values.apiKey && values.name) {
                 testConfigMutation.mutate({
                   endpoint: providerConfig.api_endpoint,
@@ -1174,7 +1243,9 @@ const AIModelAdminPage: React.FC = () => {
                   modelName: values.name,
                 });
               } else if (providerConfig?.hasCredential && values.name) {
-                message.warning('当前走的是已保存 Provider 凭据，请先保存模型后再测试，或临时输入 API Key 测试');
+                message.warning(
+                  '当前走的是已保存 Provider 凭据，请先保存模型后再测试，或临时输入 API Key 测试'
+                );
               } else {
                 message.warning('请先填写 Provider 配置、模型名称和 API Key');
               }
@@ -1204,11 +1275,7 @@ const AIModelAdminPage: React.FC = () => {
           style={{ marginBottom: 16 }}
         />
         <Form form={editForm} layout="vertical">
-          <Form.Item
-            name="providerConfigId"
-            label="Provider 配置"
-            rules={[{ required: true }]}
-          >
+          <Form.Item name="providerConfigId" label="Provider 配置" rules={[{ required: true }]}>
             <Select
               placeholder="选择 Provider 配置"
               onChange={handleEditProviderConfigChange}
@@ -1216,14 +1283,14 @@ const AIModelAdminPage: React.FC = () => {
                 value: providerConfig.id,
                 label: getProviderConfigLabel(providerConfig),
               }))}
-            >
-            </Select>
+            ></Select>
           </Form.Item>
           {selectedEditProviderConfig && (
             <Form.Item label="当前绑定">
               <Space direction="vertical" size={4}>
                 <Tag color="blue">
-                  {PROVIDER_NAMES[selectedEditProviderConfig.provider] || selectedEditProviderConfig.provider}
+                  {PROVIDER_NAMES[selectedEditProviderConfig.provider] ||
+                    selectedEditProviderConfig.provider}
                 </Tag>
                 <Text type="secondary">{selectedEditProviderConfig.api_endpoint}</Text>
               </Space>
@@ -1241,7 +1308,10 @@ const AIModelAdminPage: React.FC = () => {
                       message.warning('请先选择 Provider 配置');
                     }
                   }}
-                  loading={loadProviderModelsMutation.isLoading && selectedEditProviderConfigId === loadProviderModelsMutation.variables}
+                  loading={
+                    loadProviderModelsMutation.isLoading &&
+                    selectedEditProviderConfigId === loadProviderModelsMutation.variables
+                  }
                 >
                   加载模型名列表
                 </Button>
@@ -1264,37 +1334,34 @@ const AIModelAdminPage: React.FC = () => {
             </Space>
           </Form.Item>
 
-          <Form.Item
-            name="name"
-            label={t('admin:modelName')}
-            rules={[{ required: true }]}
-          >
+          <Form.Item name="name" label={t('admin:modelName')} rules={[{ required: true }]}>
             <Input placeholder="输入模型名称，或从已加载列表中选择" />
           </Form.Item>
 
           <Form.Item
             name="apiKey"
             label={t('admin:modelApiKey')}
-            extra={selectedEditProviderConfig?.hasCredential ? '留空将复用当前 provider 已配置的 API Key' : '若 Provider 未配置凭据，建议在此输入 API Key'}
+            extra={
+              selectedEditProviderConfig?.hasCredential
+                ? '留空将复用当前 provider 已配置的 API Key'
+                : '若 Provider 未配置凭据，建议在此输入 API Key'
+            }
           >
-            <Input.Password placeholder={selectedEditProviderConfig?.hasCredential ? '可留空，复用已有 API Key' : '输入 API Key'} />
+            <Input.Password
+              placeholder={
+                selectedEditProviderConfig?.hasCredential
+                  ? '可留空，复用已有 API Key'
+                  : '输入 API Key'
+              }
+            />
           </Form.Item>
-          <Form.Item
-            name="display_name"
-            label="显示名称"
-          >
+          <Form.Item name="display_name" label="显示名称">
             <Input placeholder="例如：SiliconFlow 高级代码模型" />
           </Form.Item>
-          <Form.Item
-            name="description"
-            label="模型说明"
-          >
+          <Form.Item name="description" label="模型说明">
             <Input.TextArea rows={2} placeholder="用于说明模型定位，例如高级代码生成模型" />
           </Form.Item>
-          <Form.Item
-            name="capability_tier"
-            label="能力层级"
-          >
+          <Form.Item name="capability_tier" label="能力层级">
             <Select
               options={[
                 { label: '标准模型', value: 'standard' },
@@ -1302,10 +1369,7 @@ const AIModelAdminPage: React.FC = () => {
               ]}
             />
           </Form.Item>
-          <Form.Item
-            name="defaultScopes"
-            label="默认策略"
-          >
+          <Form.Item name="defaultScopes" label="默认策略">
             <Select
               mode="multiple"
               allowClear
@@ -1313,10 +1377,7 @@ const AIModelAdminPage: React.FC = () => {
               placeholder="可同时设置多个默认策略"
             />
           </Form.Item>
-          <Form.Item
-            name="routing_tags"
-            label="路由标签"
-          >
+          <Form.Item name="routing_tags" label="路由标签">
             <Select
               mode="multiple"
               allowClear
@@ -1324,10 +1385,7 @@ const AIModelAdminPage: React.FC = () => {
               placeholder="可选：聊天 / 代码 / 文档 / 流程 / 查询 / 多模态"
             />
           </Form.Item>
-          <Form.Item
-            name="prefer_for_code"
-            valuePropName="checked"
-          >
+          <Form.Item name="prefer_for_code" valuePropName="checked">
             <Checkbox>代码生成优先使用该模型</Checkbox>
           </Form.Item>
           <Divider />
@@ -1336,12 +1394,14 @@ const AIModelAdminPage: React.FC = () => {
             icon={<ExperimentOutlined />}
             onClick={() => {
               const values = editForm.getFieldsValue();
-              const providerConfig = values.providerConfigId ? providerConfigMap.get(values.providerConfigId) : undefined;
-              
+              const providerConfig = values.providerConfigId
+                ? providerConfigMap.get(values.providerConfigId)
+                : undefined;
+
               if (
-                editingModel?.hasApiKey 
-                && !values.apiKey 
-                && editingModel.providerConfigId === values.providerConfigId
+                editingModel?.hasApiKey &&
+                !values.apiKey &&
+                editingModel.providerConfigId === values.providerConfigId
               ) {
                 testConfigWithStoredKeyMutation.mutate(editingModel.id);
               } else if (providerConfig && values.apiKey && values.name) {
@@ -1401,7 +1461,10 @@ const AIModelAdminPage: React.FC = () => {
                       message.warning('当前模型未绑定 Provider 配置，无法加载模型列表');
                     }
                   }}
-                  loading={loadProviderModelsMutation.isLoading && editingModel?.providerConfigId === loadProviderModelsMutation.variables}
+                  loading={
+                    loadProviderModelsMutation.isLoading &&
+                    editingModel?.providerConfigId === loadProviderModelsMutation.variables
+                  }
                   disabled={!canSwitchModel}
                 >
                   加载模型名列表
@@ -1423,8 +1486,7 @@ const AIModelAdminPage: React.FC = () => {
                 label: model,
               }))}
               notFoundContent="暂无已加载模型，请先点击上方按钮"
-            >
-            </Select>
+            ></Select>
           </Form.Item>
           <Alert
             type="info"

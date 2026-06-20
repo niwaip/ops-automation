@@ -33,7 +33,8 @@ const DEFAULT_FLOW_TEMPLATES: CreateExecutionFlowTemplateDTO[] = [
           type: 'string',
           description: '查询关键词或关键参数',
           required: true,
-          extractionPrompt: '从用户请求中识别本次查询所需的核心关键词；如果用户未提供，请礼貌询问。',
+          extractionPrompt:
+            '从用户请求中识别本次查询所需的核心关键词；如果用户未提供，请礼貌询问。',
         },
         endpoint: {
           type: 'string',
@@ -187,7 +188,12 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
     ]);
 
     // Convert BigInt to Number for JSON serialization
-    return { templates: templates.map(t => this.mapTemplateToDTO(t)).filter((t): t is ExecutionFlowTemplateDTO => t !== null), total: Number(total[0]?.count || 0) };
+    return {
+      templates: templates
+        .map((t) => this.mapTemplateToDTO(t))
+        .filter((t): t is ExecutionFlowTemplateDTO => t !== null),
+      total: Number(total[0]?.count || 0),
+    };
   }
 
   private buildWhereClause(where: any): string {
@@ -238,8 +244,14 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
       ...step,
       id: step.id || randomUUID(),
     }));
-    const normalizedInputPolicy = this.normalizeWorkflowInputPolicy(data.inputPolicy, data.paramsSchema);
-    const persistedParamsSchema = this.serializeTemplateParamsSchema(data.paramsSchema, normalizedInputPolicy);
+    const normalizedInputPolicy = this.normalizeWorkflowInputPolicy(
+      data.inputPolicy,
+      data.paramsSchema
+    );
+    const persistedParamsSchema = this.serializeTemplateParamsSchema(
+      data.paramsSchema,
+      normalizedInputPolicy
+    );
 
     const result = await this.prisma.$queryRawUnsafe<any[]>(
       `INSERT INTO execution_flow_templates (id, name, description, goal, expected_result, params_schema, category, steps, execution_flow_keys, is_public, created_by)
@@ -293,7 +305,10 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
   /**
    * 更新模板
    */
-  async updateTemplate(id: string, data: UpdateExecutionFlowTemplateDTO): Promise<ExecutionFlowTemplateDTO | null> {
+  async updateTemplate(
+    id: string,
+    data: UpdateExecutionFlowTemplateDTO
+  ): Promise<ExecutionFlowTemplateDTO | null> {
     // Check if template exists
     const existing = await this.getTemplate(id);
     if (!existing) {
@@ -339,14 +354,23 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
       updates.push(`params_schema = $${paramIndex}::jsonb`);
       const normalizedInputPolicy = this.normalizeWorkflowInputPolicy(
         data.inputPolicy !== undefined ? data.inputPolicy : existing.inputPolicy,
-        data.paramsSchema,
+        data.paramsSchema
       );
-      values.push(JSON.stringify(this.serializeTemplateParamsSchema(data.paramsSchema, normalizedInputPolicy)));
+      values.push(
+        JSON.stringify(this.serializeTemplateParamsSchema(data.paramsSchema, normalizedInputPolicy))
+      );
       paramIndex++;
     } else if (data.inputPolicy !== undefined) {
       updates.push(`params_schema = $${paramIndex}::jsonb`);
-      const normalizedInputPolicy = this.normalizeWorkflowInputPolicy(data.inputPolicy, existing.paramsSchema);
-      values.push(JSON.stringify(this.serializeTemplateParamsSchema(existing.paramsSchema, normalizedInputPolicy)));
+      const normalizedInputPolicy = this.normalizeWorkflowInputPolicy(
+        data.inputPolicy,
+        existing.paramsSchema
+      );
+      values.push(
+        JSON.stringify(
+          this.serializeTemplateParamsSchema(existing.paramsSchema, normalizedInputPolicy)
+        )
+      );
       paramIndex++;
     }
     if (data.category !== undefined) {
@@ -408,7 +432,7 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
   }
 
   private stripWorkflowInputPolicyFromParamsSchema(
-    paramsSchema: Record<string, unknown> | undefined,
+    paramsSchema: Record<string, unknown> | undefined
   ): Record<string, unknown> {
     if (!paramsSchema) {
       return {};
@@ -419,7 +443,7 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
   }
 
   private extractWorkflowInputPolicy(
-    paramsSchema: Record<string, unknown> | undefined,
+    paramsSchema: Record<string, unknown> | undefined
   ): WorkflowInputPolicy | undefined {
     if (!paramsSchema) {
       return undefined;
@@ -438,7 +462,7 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
 
   private serializeTemplateParamsSchema(
     paramsSchema: Record<string, unknown> | undefined,
-    inputPolicy: WorkflowInputPolicy | undefined,
+    inputPolicy: WorkflowInputPolicy | undefined
   ): Record<string, unknown> {
     const schema = this.asRecord(paramsSchema) || {};
     if (!inputPolicy || Object.keys(inputPolicy.params || {}).length === 0) {
@@ -453,7 +477,7 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
 
   private normalizeWorkflowInputPolicy(
     inputPolicy: WorkflowInputPolicy | undefined,
-    paramsSchema?: Record<string, unknown>,
+    paramsSchema?: Record<string, unknown>
   ): WorkflowInputPolicy | undefined {
     const explicitPolicies = this.extractWorkflowInputPolicyParams(inputPolicy, paramsSchema);
     const defaultPolicies = this.buildDefaultWorkflowInputPolicyParams(paramsSchema);
@@ -465,7 +489,9 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
     if (allowedKeys.size > 0) {
       const invalidKeys = Object.keys(explicitPolicies).filter((key) => !allowedKeys.has(key));
       if (invalidKeys.length > 0) {
-        throw new BadRequestException(`inputPolicy.params 包含未注册参数: ${invalidKeys.join(', ')}`);
+        throw new BadRequestException(
+          `inputPolicy.params 包含未注册参数: ${invalidKeys.join(', ')}`
+        );
       }
     }
 
@@ -490,40 +516,46 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
   }
 
   private buildDefaultWorkflowInputPolicyParams(
-    paramsSchema?: Record<string, unknown>,
+    paramsSchema?: Record<string, unknown>
   ): Record<string, WorkflowParamPolicy> {
     const schemaProperties = this.extractParamsSchemaProperties(paramsSchema);
     const requiredKeys = new Set(this.extractRequiredParamsSchemaKeys(paramsSchema));
 
-    return Object.entries(schemaProperties).reduce<Record<string, WorkflowParamPolicy>>((acc, [key, definition]) => {
-      const property = this.asRecord(definition);
-      if (!property) {
+    return Object.entries(schemaProperties).reduce<Record<string, WorkflowParamPolicy>>(
+      (acc, [key, definition]) => {
+        const property = this.asRecord(definition);
+        if (!property) {
+          return acc;
+        }
+
+        const policy: WorkflowParamPolicy = {
+          enabled: true,
+          requiredMode: requiredKeys.has(key) || property.required === true ? 'always' : 'optional',
+        };
+
+        if (property.default !== undefined) {
+          policy.defaultValue = property.default;
+        }
+        if (typeof property.previewBlocking === 'boolean') {
+          policy.previewBlocking = property.previewBlocking;
+        }
+        if (
+          typeof property.confirmationThreshold === 'number' &&
+          Number.isFinite(property.confirmationThreshold)
+        ) {
+          policy.confirmationThreshold = Math.max(0, Math.min(1, property.confirmationThreshold));
+        }
+
+        acc[key] = policy;
         return acc;
-      }
-
-      const policy: WorkflowParamPolicy = {
-        enabled: true,
-        requiredMode: requiredKeys.has(key) || property.required === true ? 'always' : 'optional',
-      };
-
-      if (property.default !== undefined) {
-        policy.defaultValue = property.default;
-      }
-      if (typeof property.previewBlocking === 'boolean') {
-        policy.previewBlocking = property.previewBlocking;
-      }
-      if (typeof property.confirmationThreshold === 'number' && Number.isFinite(property.confirmationThreshold)) {
-        policy.confirmationThreshold = Math.max(0, Math.min(1, property.confirmationThreshold));
-      }
-
-      acc[key] = policy;
-      return acc;
-    }, {});
+      },
+      {}
+    );
   }
 
   private extractWorkflowInputPolicyParams(
     inputPolicy: WorkflowInputPolicy | Record<string, unknown> | undefined,
-    paramsSchema?: Record<string, unknown>,
+    paramsSchema?: Record<string, unknown>
   ): Record<string, WorkflowParamPolicy> {
     if (!inputPolicy || typeof inputPolicy !== 'object' || Array.isArray(inputPolicy)) {
       return {};
@@ -532,24 +564,31 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
     const rawParams = this.asRecord((inputPolicy as Record<string, unknown>).params) || inputPolicy;
     const schemaProperties = this.extractParamsSchemaProperties(paramsSchema);
 
-    return Object.entries(rawParams).reduce<Record<string, WorkflowParamPolicy>>((acc, [key, value]) => {
-      const trimmedKey = String(key || '').trim();
-      if (!trimmedKey) {
-        return acc;
-      }
+    return Object.entries(rawParams).reduce<Record<string, WorkflowParamPolicy>>(
+      (acc, [key, value]) => {
+        const trimmedKey = String(key || '').trim();
+        if (!trimmedKey) {
+          return acc;
+        }
 
-      const normalizedPolicy = this.normalizeWorkflowParamPolicy(value, trimmedKey, schemaProperties[trimmedKey]);
-      if (normalizedPolicy) {
-        acc[trimmedKey] = normalizedPolicy;
-      }
-      return acc;
-    }, {});
+        const normalizedPolicy = this.normalizeWorkflowParamPolicy(
+          value,
+          trimmedKey,
+          schemaProperties[trimmedKey]
+        );
+        if (normalizedPolicy) {
+          acc[trimmedKey] = normalizedPolicy;
+        }
+        return acc;
+      },
+      {}
+    );
   }
 
   private normalizeWorkflowParamPolicy(
     value: unknown,
     paramName?: string,
-    schemaDefinition?: unknown,
+    schemaDefinition?: unknown
   ): WorkflowParamPolicy | undefined {
     const rawPolicy = this.asRecord(value);
     if (!rawPolicy) {
@@ -571,7 +610,7 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
     const invalidPolicyKeys = Object.keys(rawPolicy).filter((key) => !allowedPolicyKeys.has(key));
     if (invalidPolicyKeys.length > 0) {
       throw new BadRequestException(
-        `inputPolicy.params.${paramName || '*'} 包含非法字段: ${invalidPolicyKeys.join(', ')}`,
+        `inputPolicy.params.${paramName || '*'} 包含非法字段: ${invalidPolicyKeys.join(', ')}`
       );
     }
 
@@ -586,66 +625,100 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
     if (typeof rawPolicy.enabled === 'boolean') {
       normalizedPolicy.enabled = rawPolicy.enabled;
     } else if (rawPolicy.enabled !== undefined) {
-      throw new BadRequestException(`inputPolicy.params.${paramName || '*'}.enabled 必须是 boolean`);
+      throw new BadRequestException(
+        `inputPolicy.params.${paramName || '*'}.enabled 必须是 boolean`
+      );
     }
     if (
-      typeof rawPolicy.requiredMode === 'string'
-      && allowedRequiredModes.has(rawPolicy.requiredMode as WorkflowParamRequiredMode)
+      typeof rawPolicy.requiredMode === 'string' &&
+      allowedRequiredModes.has(rawPolicy.requiredMode as WorkflowParamRequiredMode)
     ) {
       normalizedPolicy.requiredMode = rawPolicy.requiredMode as WorkflowParamRequiredMode;
     } else if (rawPolicy.requiredMode !== undefined) {
       throw new BadRequestException(
-        `inputPolicy.params.${paramName || '*'}.requiredMode 非法: ${String(rawPolicy.requiredMode)}`,
+        `inputPolicy.params.${paramName || '*'}.requiredMode 非法: ${String(rawPolicy.requiredMode)}`
       );
     }
     if (rawPolicy.defaultValue !== undefined) {
-      this.assertWorkflowPolicyDefaultValueCompatible(paramName, rawPolicy.defaultValue, schemaDefinition);
+      this.assertWorkflowPolicyDefaultValueCompatible(
+        paramName,
+        rawPolicy.defaultValue,
+        schemaDefinition
+      );
       normalizedPolicy.defaultValue = rawPolicy.defaultValue;
     }
-    if (typeof rawPolicy.defaultValueResolver === 'string' && rawPolicy.defaultValueResolver.trim()) {
+    if (
+      typeof rawPolicy.defaultValueResolver === 'string' &&
+      rawPolicy.defaultValueResolver.trim()
+    ) {
       normalizedPolicy.defaultValueResolver = rawPolicy.defaultValueResolver.trim();
     } else if (rawPolicy.defaultValueResolver !== undefined) {
-      throw new BadRequestException(`inputPolicy.params.${paramName || '*'}.defaultValueResolver 必须是非空字符串`);
+      throw new BadRequestException(
+        `inputPolicy.params.${paramName || '*'}.defaultValueResolver 必须是非空字符串`
+      );
     }
     if (Array.isArray(rawPolicy.valueSourcePriority)) {
-      const valueSourcePriority = Array.from(new Set(rawPolicy.valueSourcePriority
-        .map((item) => String(item || '').trim())
-        .filter((item) => item.length > 0)));
+      const valueSourcePriority = Array.from(
+        new Set(
+          rawPolicy.valueSourcePriority
+            .map((item) => String(item || '').trim())
+            .filter((item) => item.length > 0)
+        )
+      );
       if (valueSourcePriority.length > 0) {
         normalizedPolicy.valueSourcePriority = valueSourcePriority;
       }
     } else if (rawPolicy.valueSourcePriority !== undefined) {
-      throw new BadRequestException(`inputPolicy.params.${paramName || '*'}.valueSourcePriority 必须是字符串数组`);
+      throw new BadRequestException(
+        `inputPolicy.params.${paramName || '*'}.valueSourcePriority 必须是字符串数组`
+      );
     }
-    if (typeof rawPolicy.confirmationThreshold === 'number' && Number.isFinite(rawPolicy.confirmationThreshold)) {
-      normalizedPolicy.confirmationThreshold = Math.max(0, Math.min(1, rawPolicy.confirmationThreshold));
+    if (
+      typeof rawPolicy.confirmationThreshold === 'number' &&
+      Number.isFinite(rawPolicy.confirmationThreshold)
+    ) {
+      normalizedPolicy.confirmationThreshold = Math.max(
+        0,
+        Math.min(1, rawPolicy.confirmationThreshold)
+      );
     } else if (rawPolicy.confirmationThreshold !== undefined) {
-      throw new BadRequestException(`inputPolicy.params.${paramName || '*'}.confirmationThreshold 必须是数字`);
+      throw new BadRequestException(
+        `inputPolicy.params.${paramName || '*'}.confirmationThreshold 必须是数字`
+      );
     }
     if (typeof rawPolicy.previewBlocking === 'boolean') {
       normalizedPolicy.previewBlocking = rawPolicy.previewBlocking;
     } else if (rawPolicy.previewBlocking !== undefined) {
-      throw new BadRequestException(`inputPolicy.params.${paramName || '*'}.previewBlocking 必须是 boolean`);
+      throw new BadRequestException(
+        `inputPolicy.params.${paramName || '*'}.previewBlocking 必须是 boolean`
+      );
     }
     if (Array.isArray(rawPolicy.validationRules)) {
-      const validationRules = rawPolicy.validationRules.filter((item): item is Record<string, unknown> => (
-        Boolean(item) && typeof item === 'object' && !Array.isArray(item)
-      ));
+      const validationRules = rawPolicy.validationRules.filter(
+        (item): item is Record<string, unknown> =>
+          Boolean(item) && typeof item === 'object' && !Array.isArray(item)
+      );
       if (validationRules.length > 0) {
         normalizedPolicy.validationRules = validationRules;
       }
     } else if (rawPolicy.validationRules !== undefined) {
-      throw new BadRequestException(`inputPolicy.params.${paramName || '*'}.validationRules 必须是对象数组`);
+      throw new BadRequestException(
+        `inputPolicy.params.${paramName || '*'}.validationRules 必须是对象数组`
+      );
     }
     if (typeof rawPolicy.transformRule === 'string' && rawPolicy.transformRule.trim()) {
       normalizedPolicy.transformRule = rawPolicy.transformRule.trim();
     } else if (rawPolicy.transformRule !== undefined) {
-      throw new BadRequestException(`inputPolicy.params.${paramName || '*'}.transformRule 必须是非空字符串`);
+      throw new BadRequestException(
+        `inputPolicy.params.${paramName || '*'}.transformRule 必须是非空字符串`
+      );
     }
     if (typeof rawPolicy.templateBinding === 'string' && rawPolicy.templateBinding.trim()) {
       normalizedPolicy.templateBinding = rawPolicy.templateBinding.trim();
     } else if (rawPolicy.templateBinding !== undefined) {
-      throw new BadRequestException(`inputPolicy.params.${paramName || '*'}.templateBinding 必须是非空字符串`);
+      throw new BadRequestException(
+        `inputPolicy.params.${paramName || '*'}.templateBinding 必须是非空字符串`
+      );
     }
 
     return Object.keys(normalizedPolicy).length > 0 ? normalizedPolicy : undefined;
@@ -654,7 +727,7 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
   private assertWorkflowPolicyDefaultValueCompatible(
     paramName: string | undefined,
     defaultValue: unknown,
-    schemaDefinition?: unknown,
+    schemaDefinition?: unknown
   ): void {
     const property = this.asRecord(schemaDefinition);
     const expectedType = typeof property?.type === 'string' ? property.type.trim() : '';
@@ -662,43 +735,38 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
       return;
     }
 
-    const compatible = expectedType === 'string' || expectedType === 'date'
-      ? typeof defaultValue === 'string'
-      : expectedType === 'number'
-        ? typeof defaultValue === 'number' && Number.isFinite(defaultValue)
-        : expectedType === 'boolean'
-          ? typeof defaultValue === 'boolean'
-          : true;
+    const compatible =
+      expectedType === 'string' || expectedType === 'date'
+        ? typeof defaultValue === 'string'
+        : expectedType === 'number'
+          ? typeof defaultValue === 'number' && Number.isFinite(defaultValue)
+          : expectedType === 'boolean'
+            ? typeof defaultValue === 'boolean'
+            : true;
 
     if (!compatible) {
       throw new BadRequestException(
-        `inputPolicy.params.${paramName || '*'}.defaultValue 与参数类型 ${expectedType} 不兼容`,
+        `inputPolicy.params.${paramName || '*'}.defaultValue 与参数类型 ${expectedType} 不兼容`
       );
     }
   }
 
   private extractParamsSchemaProperties(
-    paramsSchema?: Record<string, unknown>,
+    paramsSchema?: Record<string, unknown>
   ): Record<string, unknown> {
     const schema = this.asRecord(paramsSchema);
     const properties = this.asRecord(schema?.properties);
     return properties || {};
   }
 
-  private extractRequiredParamsSchemaKeys(
-    paramsSchema?: Record<string, unknown>,
-  ): string[] {
+  private extractRequiredParamsSchemaKeys(paramsSchema?: Record<string, unknown>): string[] {
     const schema = this.asRecord(paramsSchema);
     return Array.isArray(schema?.required)
-      ? schema.required
-        .map((item) => String(item || '').trim())
-        .filter((item) => item.length > 0)
+      ? schema.required.map((item) => String(item || '').trim()).filter((item) => item.length > 0)
       : [];
   }
 
-  private extractDeclaredParamsSchemaKeys(
-    paramsSchema?: Record<string, unknown>,
-  ): string[] {
+  private extractDeclaredParamsSchemaKeys(paramsSchema?: Record<string, unknown>): string[] {
     return Object.keys(this.extractParamsSchemaProperties(paramsSchema));
   }
 
@@ -734,7 +802,7 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
     aiServiceUrl?: string,
     testParams?: Record<string, unknown>,
     enableExecutionTest?: boolean,
-    testUserInput?: string,
+    testUserInput?: string
   ): Promise<ValidationResult> {
     const template = await this.getTemplate(id);
     if (!template) {
@@ -780,7 +848,7 @@ export class ExecutionFlowTemplateService implements OnModuleInit {
     // 2. AI 驱动的深度逻辑审计
     try {
       const orchestratorUrl = aiServiceUrl || getAiOrchestratorUrl();
-      
+
       const auditPrompt = `你是一个高级系统架构师和 AI Agent 专家。请审计以下“执行流程模板 (Execution Flow Template)”，并验证它作为一个“宏工具”时，是否只封装了一个清晰、原子、可确定执行的能力。
 
 流程名称: ${template.name}
@@ -829,12 +897,16 @@ ${template.paramsSchema ? `参数定义: ${JSON.stringify(template.paramsSchema,
 }
 `;
 
-      const aiResponse = await axios.post(`${orchestratorUrl}/ai/chat/stream`, {
-        message: auditPrompt,
-        sessionId: `audit-${id}-${randomUUID()}`,
-        modelId: 'default',  // 使用系统默认模型
-        config: { mode: 'chat', maxIterations: 5 }  // 使用chat模式，更稳定的AI响应
-      }, { responseType: 'stream', timeout: 120000 });
+      const aiResponse = await axios.post(
+        `${orchestratorUrl}/ai/chat/stream`,
+        {
+          message: auditPrompt,
+          sessionId: `audit-${id}-${randomUUID()}`,
+          modelId: 'default', // 使用系统默认模型
+          config: { mode: 'chat', maxIterations: 5 }, // 使用chat模式，更稳定的AI响应
+        },
+        { responseType: 'stream', timeout: 120000 }
+      );
 
       let fullContent = '';
       let aiErrorReceived = '';
@@ -869,20 +941,26 @@ ${template.paramsSchema ? `参数定义: ${JSON.stringify(template.paramsSchema,
         validationResult.score = Math.min(validationResult.score || 100, aiAudit.score);
         validationResult.suggestions.push(...(aiAudit.suggestions || []));
         validationResult.warnings?.push(...(aiAudit.issues || []));
-        
+
         if (validationResult.details) {
           validationResult.details.aiCritique = aiAudit.critique;
           validationResult.details.autoAdjustment = aiAudit.improvedFlow;
         }
 
         if (aiAudit.improvedFlow) {
-          validationResult.suggestions.push('AI 已生成自动优化建议，您可以点击“应用建议”一键修复流程。');
+          validationResult.suggestions.push(
+            'AI 已生成自动优化建议，您可以点击“应用建议”一键修复流程。'
+          );
         }
       }
-
     } catch (aiError) {
-      this.logger.error('AI Audit failed, falling back to static validation only:', aiError.message);
-      validationResult.warnings?.push(`AI 深度审计不可用 (错误: ${aiError.message})，仅执行静态检查。`);
+      this.logger.error(
+        'AI Audit failed, falling back to static validation only:',
+        aiError.message
+      );
+      validationResult.warnings?.push(
+        `AI 深度审计不可用 (错误: ${aiError.message})，仅执行静态检查。`
+      );
     }
 
     // 2.5 真实执行测试（可选）- 通过 ReAct 引擎以“Skill 整体能力”进行验证
@@ -912,16 +990,20 @@ ${template.paramsSchema ? `参数定义: ${JSON.stringify(template.paramsSchema,
           '4. 最终生成一个“标准 Skill 定义”，供外部 AI 调用。',
         ].join('\n');
 
-        const execResponse = await axios.post(`${orchestratorUrl}/ai/chat/stream`, {
-          message: executionPrompt,
-          sessionId: `skill-test-${id}-${randomUUID()}`,
-          modelId: 'default',
-          config: {
-            mode: 'task',
-            maxIterations: Math.max(Math.min(steps.length + 5, 10), 6),
-            tools: ['flow_execute'],
+        const execResponse = await axios.post(
+          `${orchestratorUrl}/ai/chat/stream`,
+          {
+            message: executionPrompt,
+            sessionId: `skill-test-${id}-${randomUUID()}`,
+            modelId: 'default',
+            config: {
+              mode: 'task',
+              maxIterations: Math.max(Math.min(steps.length + 5, 10), 6),
+              tools: ['flow_execute'],
+            },
           },
-        }, { responseType: 'stream', timeout: 180000 });
+          { responseType: 'stream', timeout: 180000 }
+        );
 
         // 收集执行过程
         const executionLog: string[] = [];
@@ -940,13 +1022,15 @@ ${template.paramsSchema ? `参数定义: ${JSON.stringify(template.paramsSchema,
                   executionLog.push(`[Thought] ${data.content}`);
                   iterations = data.iteration || iterations;
                 } else if (data.type === 'action') {
-                  executionLog.push(`[Action] ${data.content} ${JSON.stringify(data.data?.actionInput || {})}`);
+                  executionLog.push(
+                    `[Action] ${data.content} ${JSON.stringify(data.data?.actionInput || {})}`
+                  );
                 } else if (data.type === 'observation') {
                   executionLog.push(`[Observation] ${data.content?.slice(0, 500)}...`);
                 } else if (data.type === 'result') {
                   executionResult = data.content;
                   executionLog.push(`[Result] ${executionResult}`);
-                  
+
                   // 尝试从结果中提取生成的 Skill
                   const jsonMatch = executionResult.match(/\{[\s\S]*\}/);
                   if (jsonMatch) {
@@ -982,14 +1066,18 @@ ${template.paramsSchema ? `参数定义: ${JSON.stringify(template.paramsSchema,
             };
           }
         } else if (executionResult) {
-          validationResult.suggestions.push(`Skill 整体验证通过: 流程逻辑闭环，共 ${iterations} 次迭代`);
+          validationResult.suggestions.push(
+            `Skill 整体验证通过: 流程逻辑闭环，共 ${iterations} 次迭代`
+          );
           if (generatedSkill) {
-            validationResult.suggestions.push('已成功生成标准 Skill 定义，您可以点击“发布技能”将其同步到技能库。');
+            validationResult.suggestions.push(
+              '已成功生成标准 Skill 定义，您可以点击“发布技能”将其同步到技能库。'
+            );
             if (validationResult.details) {
               (validationResult.details as any).generatedSkill = generatedSkill;
             }
           }
-          
+
           if (validationResult.details) {
             validationResult.details.executionTest = {
               success: true,
@@ -1001,7 +1089,6 @@ ${template.paramsSchema ? `参数定义: ${JSON.stringify(template.paramsSchema,
         } else {
           validationResult.warnings?.push('执行测试未返回有效结论');
         }
-
       } catch (execError) {
         this.logger.error('Execution test failed:', execError.message);
         validationResult.warnings?.push(`执行测试异常: ${execError.message}`);
@@ -1015,7 +1102,9 @@ ${template.paramsSchema ? `参数定义: ${JSON.stringify(template.paramsSchema,
       id
     );
 
-    this.logger.log(`Validated template ${id}: score=${validationResult.score}, ai_integrated=true`);
+    this.logger.log(
+      `Validated template ${id}: score=${validationResult.score}, ai_integrated=true`
+    );
     return validationResult;
   }
 
@@ -1032,7 +1121,9 @@ ${template.paramsSchema ? `参数定义: ${JSON.stringify(template.paramsSchema,
       limit || 10
     );
 
-    return templates.map(t => this.mapTemplateToDTO(t)).filter(Boolean) as ExecutionFlowTemplateDTO[];
+    return templates
+      .map((t) => this.mapTemplateToDTO(t))
+      .filter(Boolean) as ExecutionFlowTemplateDTO[];
   }
 
   /**
@@ -1050,14 +1141,18 @@ ${template.paramsSchema ? `参数定义: ${JSON.stringify(template.paramsSchema,
       key,
       label: value.label,
       color: value.color,
-      count: Number(counts.find(c => c.category === key)?.count || 0),
+      count: Number(counts.find((c) => c.category === key)?.count || 0),
     }));
   }
 
   /**
    * 复制模板（创建副本）
    */
-  async cloneTemplate(id: string, newName: string, createdBy?: string): Promise<ExecutionFlowTemplateDTO> {
+  async cloneTemplate(
+    id: string,
+    newName: string,
+    createdBy?: string
+  ): Promise<ExecutionFlowTemplateDTO> {
     const original = await this.getTemplate(id);
     if (!original) {
       throw new Error('Template not found');
@@ -1083,17 +1178,21 @@ ${template.paramsSchema ? `参数定义: ${JSON.stringify(template.paramsSchema,
       throw new Error('Template not found');
     }
 
-    return JSON.stringify({
-      version: '1.0',
-      exportedAt: new Date().toISOString(),
-      template: {
-        name: template.name,
-        description: template.description || undefined,
-        category: template.category,
-        steps: template.steps,
-        executionFlowKeys: template.executionFlowKeys,
+    return JSON.stringify(
+      {
+        version: '1.0',
+        exportedAt: new Date().toISOString(),
+        template: {
+          name: template.name,
+          description: template.description || undefined,
+          category: template.category,
+          steps: template.steps,
+          executionFlowKeys: template.executionFlowKeys,
+        },
       },
-    }, null, 2);
+      null,
+      2
+    );
   }
 
   /**
@@ -1143,7 +1242,8 @@ ${template.paramsSchema ? `参数定义: ${JSON.stringify(template.paramsSchema,
     const improvedParamsSchema = autoAdjustment.paramsSchema || autoAdjustment['参数定义'];
     const improvedGoal = autoAdjustment.goal || autoAdjustment['流程目标'];
     const improvedExpectedResult = autoAdjustment.expectedResult || autoAdjustment['预期结果'];
-    const improvedExecutionFlowKeys = autoAdjustment.executionFlowKeys || autoAdjustment['触发关键词'];
+    const improvedExecutionFlowKeys =
+      autoAdjustment.executionFlowKeys || autoAdjustment['触发关键词'];
 
     // 验证步骤是数组
     if (!Array.isArray(improvedSteps)) {

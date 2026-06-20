@@ -4,9 +4,12 @@ module.exports = {
   testMatch: ['<rootDir>/integration/**/*.test.ts'],
   moduleFileExtensions: ['ts', 'js', 'json'],
   transform: {
-    '^.+\\.ts$': ['ts-jest', {
-      tsconfig: 'tsconfig.json',
-    }],
+    '^.+\\.ts$': [
+      'ts-jest',
+      {
+        tsconfig: 'tsconfig.json',
+      },
+    ],
   },
   testEnvironment: 'node',
   setupFilesAfterEnv: ['<rootDir>/integration/setup.ts'],
@@ -14,9 +17,7 @@ module.exports = {
   globalTeardown: '<rootDir>/integration/helpers/global-teardown.ts',
   testTimeout: 60000,
   coverageDirectory: '<rootDir>/../coverage/integration',
-  collectCoverageFrom: [
-    '<rootDir>/integration/**/*.ts',
-  ],
+  collectCoverageFrom: ['<rootDir>/integration/**/*.ts'],
   coverageThreshold: {
     global: {
       branches: 80,

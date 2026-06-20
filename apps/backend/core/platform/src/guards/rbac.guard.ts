@@ -1,16 +1,7 @@
-import {
-  Injectable,
-  CanActivate,
-  ExecutionContext,
-  ForbiddenException,
-} from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PrismaService } from '../prisma/prisma.service';
-import {
-  IS_PUBLIC_KEY,
-  REQUIRED_PERMISSIONS_KEY,
-  SKIP_RBAC_KEY,
-} from './jwt-auth.guard';
+import { IS_PUBLIC_KEY, REQUIRED_PERMISSIONS_KEY, SKIP_RBAC_KEY } from './jwt-auth.guard';
 
 /**
  * Permission model based on four roles
@@ -32,7 +23,7 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
 export class RbacGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
-    private readonly prisma: PrismaService,
+    private readonly prisma: PrismaService
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -78,7 +69,7 @@ export class RbacGuard implements CanActivate {
     // Get required permissions from decorator
     const requiredPermissions = this.reflector.getAllAndOverride<string[]>(
       REQUIRED_PERMISSIONS_KEY,
-      [context.getHandler(), context.getClass()],
+      [context.getHandler(), context.getClass()]
     );
 
     if (!requiredPermissions || requiredPermissions.length === 0) {
@@ -105,8 +96,7 @@ export class RbacGuard implements CanActivate {
     }
 
     const orgHeader = request.headers['x-org-id'];
-    const requestedOrgId =
-      typeof orgHeader === 'string' ? orgHeader : user.activeOrgId;
+    const requestedOrgId = typeof orgHeader === 'string' ? orgHeader : user.activeOrgId;
 
     if (requestedOrgId) {
       const membership = await this.prisma.orgMembership.findFirst({
@@ -137,10 +127,7 @@ export class RbacGuard implements CanActivate {
       };
 
       for (const binding of membership.roleBindings) {
-        const rolePermissions = binding.role.permissions as Record<
-          string,
-          boolean
-        >;
+        const rolePermissions = binding.role.permissions as Record<string, boolean>;
         for (const perm of Object.keys(rolePermissions)) {
           if (rolePermissions[perm]) {
             userPermissions.add(perm);
@@ -158,7 +145,7 @@ export class RbacGuard implements CanActivate {
 
     if (!hasAllPermissions) {
       throw new ForbiddenException(
-        `Missing required permissions: ${requiredPermissions.join(', ')}`,
+        `Missing required permissions: ${requiredPermissions.join(', ')}`
       );
     }
 

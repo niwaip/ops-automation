@@ -1,6 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import { useAppStore } from '../../../app/store';
-import { getOfficeUploadConfig, isValidOfficeUpload, readFileAsBase64 } from '../../../shared/utils/office-file-upload';
+import {
+  getOfficeUploadConfig,
+  isValidOfficeUpload,
+  readFileAsBase64,
+} from '../../../shared/utils/office-file-upload';
 
 const UPLOAD_RENDER_LOOP_DEBUG_URL = 'http://127.0.0.1:7777/event';
 
@@ -8,7 +12,7 @@ const reportUploadRenderLoop = (
   hypothesisId: 'D' | 'E',
   location: string,
   msg: string,
-  data: Record<string, unknown>,
+  data: Record<string, unknown>
 ) => {
   void fetch(UPLOAD_RENDER_LOOP_DEBUG_URL, {
     method: 'POST',
@@ -52,7 +56,10 @@ export const SampleDocumentUploadPanel: React.FC<SampleDocumentUploadPanelProps>
   const [isUploading, setIsUploading] = useState(false);
 
   const uploadConfig = useMemo(
-    () => getOfficeUploadConfig(officeType === 'excel' ? 'excel' : officeType === 'ppt' ? 'ppt' : 'word'),
+    () =>
+      getOfficeUploadConfig(
+        officeType === 'excel' ? 'excel' : officeType === 'ppt' ? 'ppt' : 'word'
+      ),
     [officeType]
   );
 
@@ -65,10 +72,15 @@ export const SampleDocumentUploadPanel: React.FC<SampleDocumentUploadPanelProps>
     const file = event.target.files?.[0];
     if (!file) return;
 
-    reportUploadRenderLoop('D', 'SampleDocumentUploadPanel:handleFileUpload:start', 'upload handler started', {
-      fileName: file.name,
-      fileSize: file.size,
-    });
+    reportUploadRenderLoop(
+      'D',
+      'SampleDocumentUploadPanel:handleFileUpload:start',
+      'upload handler started',
+      {
+        fileName: file.name,
+        fileSize: file.size,
+      }
+    );
 
     setIsUploading(true);
 
@@ -87,15 +99,25 @@ export const SampleDocumentUploadPanel: React.FC<SampleDocumentUploadPanelProps>
         revision: Date.now(),
       });
 
-      reportUploadRenderLoop('D', 'SampleDocumentUploadPanel:handleFileUpload:success', 'upload handler completed', {
-        fileName: file.name,
-        fileSize: file.size,
-        base64Length: base64.length,
-      });
+      reportUploadRenderLoop(
+        'D',
+        'SampleDocumentUploadPanel:handleFileUpload:success',
+        'upload handler completed',
+        {
+          fileName: file.name,
+          fileSize: file.size,
+          base64Length: base64.length,
+        }
+      );
     } catch (error: any) {
-      reportUploadRenderLoop('E', 'SampleDocumentUploadPanel:handleFileUpload:error', 'upload handler failed', {
-        message: error?.message || 'unknown-error',
-      });
+      reportUploadRenderLoop(
+        'E',
+        'SampleDocumentUploadPanel:handleFileUpload:error',
+        'upload handler failed',
+        {
+          message: error?.message || 'unknown-error',
+        }
+      );
       onUploadStateChange?.({ uploaded: false, revision: Date.now() });
     } finally {
       setIsUploading(false);
@@ -119,7 +141,9 @@ export const SampleDocumentUploadPanel: React.FC<SampleDocumentUploadPanelProps>
                   : '上传参考示例文件'}
             </span>
             {uploadStatusLabel && (
-              <span className={`template-upload-trigger-status ${uploadStatusTone === 'success' ? 'is-success' : ''}`}>
+              <span
+                className={`template-upload-trigger-status ${uploadStatusTone === 'success' ? 'is-success' : ''}`}
+              >
                 {uploadStatusLabel}
               </span>
             )}
@@ -140,11 +164,7 @@ export const SampleDocumentUploadPanel: React.FC<SampleDocumentUploadPanelProps>
           accept={uploadConfig.accept}
           onChange={handleFileUpload}
         />
-        {uploadActionSlot && (
-          <div className="template-upload-inline-slot">
-            {uploadActionSlot}
-          </div>
-        )}
+        {uploadActionSlot && <div className="template-upload-inline-slot">{uploadActionSlot}</div>}
       </div>
     </div>
   );

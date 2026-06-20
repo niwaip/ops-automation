@@ -1,5 +1,9 @@
 import type { TemplateCompareResponse, TemplateFieldCandidate } from '../../../api/carbone-api';
-import type { WordCompareCandidateDisplayGroup, WordCompareDisplayLanguage, WordLoopDisplayPair } from './query.types';
+import type {
+  WordCompareCandidateDisplayGroup,
+  WordCompareDisplayLanguage,
+  WordLoopDisplayPair,
+} from './query.types';
 
 type CompareCandidateSectionLike = {
   sectionKey: string;
@@ -39,9 +43,9 @@ type DisplayBuilderDeps = {
 
 function buildWordTableCellKey(candidate: TemplateFieldCandidate): string | undefined {
   if (
-    typeof candidate.location?.tableIndex !== 'number'
-    || typeof candidate.location?.rowIndex !== 'number'
-    || typeof candidate.location?.cellIndex !== 'number'
+    typeof candidate.location?.tableIndex !== 'number' ||
+    typeof candidate.location?.rowIndex !== 'number' ||
+    typeof candidate.location?.cellIndex !== 'number'
   ) {
     return undefined;
   }
@@ -75,10 +79,14 @@ function buildWordTableCellBilingualGroups(
     }
 
     const zhCandidates = orderedCandidates.filter(
-      (candidate) => (candidate.languageRelation?.currentLanguageHint || deps.getWordCandidateLanguageHint(candidate)) === 'zh'
+      (candidate) =>
+        (candidate.languageRelation?.currentLanguageHint ||
+          deps.getWordCandidateLanguageHint(candidate)) === 'zh'
     );
     const jaCandidates = orderedCandidates.filter(
-      (candidate) => (candidate.languageRelation?.currentLanguageHint || deps.getWordCandidateLanguageHint(candidate)) === 'ja'
+      (candidate) =>
+        (candidate.languageRelation?.currentLanguageHint ||
+          deps.getWordCandidateLanguageHint(candidate)) === 'ja'
     );
     if (zhCandidates.length === 0 || jaCandidates.length === 0) {
       return;
@@ -120,8 +128,9 @@ export function buildWordSectionParagraphGroups(
     .sort((left, right) => left[0] - right[0])
     .map(([paragraphIndex, paragraphCandidates]) => {
       const sortedCandidates = deps.sortWordCandidatesByPosition(paragraphCandidates);
-      const paragraphLanguageHint = sortedCandidates[0]?.languageRelation?.currentLanguageHint
-        || deps.getWordCandidateLanguageHint(sortedCandidates[0]);
+      const paragraphLanguageHint =
+        sortedCandidates[0]?.languageRelation?.currentLanguageHint ||
+        deps.getWordCandidateLanguageHint(sortedCandidates[0]);
       return {
         paragraphIndex,
         candidates: sortedCandidates,
@@ -139,11 +148,12 @@ export function isWordAdjacentBilingualParagraphGroup(
   right: {
     paragraphIndex: number;
     languageHint: WordCompareDisplayLanguage;
-  },
+  }
 ): boolean {
   return (
-    Math.abs(right.paragraphIndex - left.paragraphIndex) <= 1
-    && ((left.languageHint === 'zh' && right.languageHint === 'ja') || (left.languageHint === 'ja' && right.languageHint === 'zh'))
+    Math.abs(right.paragraphIndex - left.paragraphIndex) <= 1 &&
+    ((left.languageHint === 'zh' && right.languageHint === 'ja') ||
+      (left.languageHint === 'ja' && right.languageHint === 'zh'))
   );
 }
 
@@ -153,7 +163,11 @@ function inferWordLoopDisplayLanguage(
   deps: Pick<DisplayBuilderDeps, 'getWordCandidateLanguageHint'>
 ): WordCompareDisplayLanguage {
   const explicitHints = candidates
-    .map((candidate) => candidate.languageRelation?.currentLanguageHint || deps.getWordCandidateLanguageHint(candidate))
+    .map(
+      (candidate) =>
+        candidate.languageRelation?.currentLanguageHint ||
+        deps.getWordCandidateLanguageHint(candidate)
+    )
     .filter((hint): hint is WordCompareDisplayLanguage => Boolean(hint) && hint !== 'unknown');
 
   if (explicitHints.length > 0) {
@@ -192,8 +206,12 @@ function buildWordLoopDisplayPairs(
       if (orderedCandidates.length >= 2) {
         const firstCandidate = orderedCandidates[0];
         const secondCandidate = orderedCandidates[1];
-        const firstLanguage = firstCandidate ? inferWordLoopDisplayLanguage([firstCandidate], 'zh', deps) : 'unknown';
-        const secondLanguage = secondCandidate ? inferWordLoopDisplayLanguage([secondCandidate], 'ja', deps) : 'unknown';
+        const firstLanguage = firstCandidate
+          ? inferWordLoopDisplayLanguage([firstCandidate], 'zh', deps)
+          : 'unknown';
+        const secondLanguage = secondCandidate
+          ? inferWordLoopDisplayLanguage([secondCandidate], 'ja', deps)
+          : 'unknown';
 
         if (firstLanguage === 'ja' && secondLanguage === 'zh') {
           orderedCandidates[0] = secondCandidate;
@@ -225,20 +243,26 @@ export function buildWordCompareCandidateDisplayGroups(
   section: CompareCandidateSectionLike,
   deps: DisplayBuilderDeps
 ): WordCompareCandidateDisplayGroup[] {
-  const previewCandidates = Array.isArray(section.previewCandidates) && section.previewCandidates.length > 0
-    ? section.previewCandidates
-    : section.candidates;
+  const previewCandidates =
+    Array.isArray(section.previewCandidates) && section.previewCandidates.length > 0
+      ? section.previewCandidates
+      : section.candidates;
 
-  const loopCandidates = previewCandidates.filter((candidate) => deps.isWordLoopCompareCandidate(candidate));
-  const nonLoopCandidates = previewCandidates.filter((candidate) => !deps.isWordLoopCompareCandidate(candidate));
+  const loopCandidates = previewCandidates.filter((candidate) =>
+    deps.isWordLoopCompareCandidate(candidate)
+  );
+  const nonLoopCandidates = previewCandidates.filter(
+    (candidate) => !deps.isWordLoopCompareCandidate(candidate)
+  );
   const groups: WordCompareCandidateDisplayGroup[] = [];
 
   if (loopCandidates.length > 0) {
     const loopGroups = new Map<string, TemplateFieldCandidate[]>();
     loopCandidates.forEach((candidate) => {
-      const key = typeof candidate.location?.tableIndex === 'number'
-        ? `loop-table:${candidate.location.tableIndex}`
-        : `loop-source:${candidate.sourceBlockId || candidate.candidateId}`;
+      const key =
+        typeof candidate.location?.tableIndex === 'number'
+          ? `loop-table:${candidate.location.tableIndex}`
+          : `loop-source:${candidate.sourceBlockId || candidate.candidateId}`;
       const current = loopGroups.get(key) || [];
       current.push(candidate);
       loopGroups.set(key, current);
@@ -275,7 +299,9 @@ export function buildWordCompareCandidateDisplayGroups(
     });
   });
 
-  const remainingNonLoopCandidates = nonLoopCandidates.filter((candidate) => !usedNonLoopCandidateIds.has(candidate.candidateId));
+  const remainingNonLoopCandidates = nonLoopCandidates.filter(
+    (candidate) => !usedNonLoopCandidateIds.has(candidate.candidateId)
+  );
   if (remainingNonLoopCandidates.length === 0) {
     return groups;
   }
@@ -297,12 +323,19 @@ export function buildWordCompareCandidateDisplayGroups(
   for (let index = 0; index < paragraphGroups.length; index += 1) {
     const currentGroup = paragraphGroups[index];
     const nextGroup = paragraphGroups[index + 1];
-    if (currentGroup && nextGroup && isWordAdjacentBilingualParagraphGroup(currentGroup, nextGroup)) {
-      const orderedGroups = currentGroup.languageHint === 'zh'
-        ? [currentGroup, nextGroup]
-        : [nextGroup, currentGroup];
-      orderedGroups[0].candidates.forEach((candidate) => handledCandidateIds.add(candidate.candidateId));
-      orderedGroups[1].candidates.forEach((candidate) => handledCandidateIds.add(candidate.candidateId));
+    if (
+      currentGroup &&
+      nextGroup &&
+      isWordAdjacentBilingualParagraphGroup(currentGroup, nextGroup)
+    ) {
+      const orderedGroups =
+        currentGroup.languageHint === 'zh' ? [currentGroup, nextGroup] : [nextGroup, currentGroup];
+      orderedGroups[0].candidates.forEach((candidate) =>
+        handledCandidateIds.add(candidate.candidateId)
+      );
+      orderedGroups[1].candidates.forEach((candidate) =>
+        handledCandidateIds.add(candidate.candidateId)
+      );
       groups.push({
         key: `sentence-pair:${orderedGroups[0].paragraphIndex}|${orderedGroups[1].paragraphIndex}`,
         type: 'sentence_pair',
@@ -316,7 +349,9 @@ export function buildWordCompareCandidateDisplayGroups(
     }
 
     if (currentGroup) {
-      currentGroup.candidates.forEach((candidate) => handledCandidateIds.add(candidate.candidateId));
+      currentGroup.candidates.forEach((candidate) =>
+        handledCandidateIds.add(candidate.candidateId)
+      );
       groups.push({
         key: `sentence-single:${currentGroup.paragraphIndex}`,
         type: 'single_sentence',

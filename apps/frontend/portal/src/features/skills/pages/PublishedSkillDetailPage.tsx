@@ -1,15 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import {
-  Button,
-  Card,
-  Drawer,
-  Input,
-  Space,
-  Table,
-  Tag,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, Card, Drawer, Input, Space, Table, Tag, Tooltip, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
   InfoCircleOutlined,
@@ -58,21 +48,23 @@ const PublishedSkillDetailPage: React.FC = () => {
     setDrawerVisible(true);
   };
 
-  const publishedSkillItems = useMemo(() => (
-    skills
-      .filter((skill) => skill.isPublished)
-      .map((skill) => ({
-        skillId: skill.id,
-        skillName: skill.name,
-        skillDescription: skill.description,
-        publishedSourceType: skill.publishedSourceType,
-        publishedReleaseId: skill.publishedReleaseId,
-        publishedReleaseVersion: skill.publishedReleaseVersion,
-        publishedReleaseStatus: skill.publishedReleaseStatus,
-        publishedDeploymentStatus: skill.publishedDeploymentStatus,
-        skill,
-      }))
-  ), [skills]);
+  const publishedSkillItems = useMemo(
+    () =>
+      skills
+        .filter((skill) => skill.isPublished)
+        .map((skill) => ({
+          skillId: skill.id,
+          skillName: skill.name,
+          skillDescription: skill.description,
+          publishedSourceType: skill.publishedSourceType,
+          publishedReleaseId: skill.publishedReleaseId,
+          publishedReleaseVersion: skill.publishedReleaseVersion,
+          publishedReleaseStatus: skill.publishedReleaseStatus,
+          publishedDeploymentStatus: skill.publishedDeploymentStatus,
+          skill,
+        })),
+    [skills]
+  );
 
   const filteredItems = useMemo(() => {
     const keyword = searchText.trim().toLowerCase();
@@ -80,21 +72,35 @@ const PublishedSkillDetailPage: React.FC = () => {
       return publishedSkillItems;
     }
 
-    return publishedSkillItems.filter((item) => (
-      item.skillId.toLowerCase().includes(keyword)
-      || item.skillName.toLowerCase().includes(keyword)
-      || item.skillDescription.toLowerCase().includes(keyword)
-      || String(item.publishedReleaseStatus || '').toLowerCase().includes(keyword)
-      || String(item.publishedDeploymentStatus || '').toLowerCase().includes(keyword)
-      || String(item.publishedSourceType || '').toLowerCase().includes(keyword)
-    ));
+    return publishedSkillItems.filter(
+      (item) =>
+        item.skillId.toLowerCase().includes(keyword) ||
+        item.skillName.toLowerCase().includes(keyword) ||
+        item.skillDescription.toLowerCase().includes(keyword) ||
+        String(item.publishedReleaseStatus || '')
+          .toLowerCase()
+          .includes(keyword) ||
+        String(item.publishedDeploymentStatus || '')
+          .toLowerCase()
+          .includes(keyword) ||
+        String(item.publishedSourceType || '')
+          .toLowerCase()
+          .includes(keyword)
+    );
   }, [publishedSkillItems, searchText]);
 
   const stats = {
     total: publishedSkillItems.length,
-    deployed: publishedSkillItems.filter((item) => item.publishedDeploymentStatus === 'deployed' || item.publishedDeploymentStatus === 'succeeded').length,
-    temporal: publishedSkillItems.filter((item) => item.publishedSourceType === 'temporal_workflow').length,
-    template: publishedSkillItems.filter((item) => item.publishedSourceType === 'execution_flow_template').length,
+    deployed: publishedSkillItems.filter(
+      (item) =>
+        item.publishedDeploymentStatus === 'deployed' ||
+        item.publishedDeploymentStatus === 'succeeded'
+    ).length,
+    temporal: publishedSkillItems.filter((item) => item.publishedSourceType === 'temporal_workflow')
+      .length,
+    template: publishedSkillItems.filter(
+      (item) => item.publishedSourceType === 'execution_flow_template'
+    ).length,
   };
 
   const skillOverviewStats = [
@@ -162,7 +168,10 @@ const PublishedSkillDetailPage: React.FC = () => {
       width: 120,
       align: 'center',
       render: (_, record) => (
-        <Tag color={statusColor(record.publishedReleaseStatus || undefined)} style={{ marginRight: 0 }}>
+        <Tag
+          color={statusColor(record.publishedReleaseStatus || undefined)}
+          style={{ marginRight: 0 }}
+        >
           {record.publishedReleaseStatus || 'published'}
         </Tag>
       ),
@@ -181,11 +190,7 @@ const PublishedSkillDetailPage: React.FC = () => {
           >
             发起执行
           </Button>
-          <Button
-            type="link"
-            size="small"
-            onClick={() => handleOpenDetail(record.skillId)}
-          >
+          <Button type="link" size="small" onClick={() => handleOpenDetail(record.skillId)}>
             详情
           </Button>
         </Space>
@@ -212,13 +217,26 @@ const PublishedSkillDetailPage: React.FC = () => {
           <Card
             key={item.key}
             size="small"
-            style={{ borderRadius: 14, border: '1px solid var(--bg-secondary)', boxShadow: 'var(--shadow-md)' }}
+            style={{
+              borderRadius: 14,
+              border: '1px solid var(--bg-secondary)',
+              boxShadow: 'var(--shadow-md)',
+            }}
             styles={{ body: { padding: '12px 16px' } }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+              }}
+            >
               <Space size={10} align="center">
                 <span style={{ display: 'inline-flex', fontSize: 16 }}>{item.icon}</span>
-                <Text type="secondary" style={{ fontSize: 13 }}>{item.label}</Text>
+                <Text type="secondary" style={{ fontSize: 13 }}>
+                  {item.label}
+                </Text>
               </Space>
               <Text style={{ fontSize: 24, fontWeight: 700, color: item.color, lineHeight: 1 }}>
                 {item.value}
@@ -228,11 +246,19 @@ const PublishedSkillDetailPage: React.FC = () => {
         ))}
       </div>
 
-      <Card style={{ borderRadius: 16, border: '1px solid var(--bg-secondary)', boxShadow: 'var(--shadow-md)' }}>
+      <Card
+        style={{
+          borderRadius: 16,
+          border: '1px solid var(--bg-secondary)',
+          boxShadow: 'var(--shadow-md)',
+        }}
+      >
         <ListSectionHeader
-          title={(
+          title={
             <Space wrap size={12}>
-              <Text strong style={{ fontSize: 16 }}>公开 Skills 列表</Text>
+              <Text strong style={{ fontSize: 16 }}>
+                公开 Skills 列表
+              </Text>
               <Input
                 size="large"
                 placeholder="搜索 Skill / 说明 / 状态 / 类型"
@@ -249,11 +275,13 @@ const PublishedSkillDetailPage: React.FC = () => {
                 }}
               />
               <Tooltip title="这里展示已公开发布、可被执行的 Skill 对象，可查看其 Release 溯源与最新部署状态。">
-                <InfoCircleOutlined style={{ color: 'var(--text-secondary)', fontSize: 14, cursor: 'help' }} />
+                <InfoCircleOutlined
+                  style={{ color: 'var(--text-secondary)', fontSize: 14, cursor: 'help' }}
+                />
               </Tooltip>
             </Space>
-          )}
-          extra={(
+          }
+          extra={
             <Space wrap size={12}>
               <Text type="secondary">当前显示 {filteredItems.length} 条</Text>
               <Button
@@ -268,27 +296,29 @@ const PublishedSkillDetailPage: React.FC = () => {
                 刷新
               </Button>
             </Space>
-          )}
+          }
         />
         <Table
           rowKey="skillId"
           columns={columns}
           dataSource={filteredItems}
           loading={releasesQuery.isLoading || skillsQuery.isLoading}
-          pagination={{ pageSize: 10, showSizeChanger: true, showTotal: (total) => `共 ${total} 条` }}
+          pagination={{
+            pageSize: 10,
+            showSizeChanger: true,
+            showTotal: (total) => `共 ${total} 条`,
+          }}
         />
       </Card>
 
       <Drawer
-        title={(
+        title={
           <Space>
             <RocketOutlined style={{ color: 'var(--primary-color)' }} />
             <span>技能配置详情</span>
-            {selectedSkillForDrawer && (
-              <Tag color="blue">{selectedSkillForDrawer.name}</Tag>
-            )}
+            {selectedSkillForDrawer && <Tag color="blue">{selectedSkillForDrawer.name}</Tag>}
           </Space>
-        )}
+        }
         placement="right"
         width={800}
         onClose={() => {
@@ -297,12 +327,16 @@ const PublishedSkillDetailPage: React.FC = () => {
         }}
         open={drawerVisible}
         styles={{ body: { padding: 0 } }}
-        extra={(
+        extra={
           <Space>
             {selectedSkillForDrawer?.publishedReleaseId && (
               <Button
                 icon={<InfoCircleOutlined />}
-                onClick={() => navigate(`/admin/capabilities?releaseId=${selectedSkillForDrawer.publishedReleaseId}&mode=view`)}
+                onClick={() =>
+                  navigate(
+                    `/admin/capabilities?releaseId=${selectedSkillForDrawer.publishedReleaseId}&mode=view`
+                  )
+                }
               >
                 发布溯源
               </Button>
@@ -315,7 +349,7 @@ const PublishedSkillDetailPage: React.FC = () => {
               立即执行
             </Button>
           </Space>
-        )}
+        }
       >
         {selectedSkillId && (
           <div className="skill-drawer-content">

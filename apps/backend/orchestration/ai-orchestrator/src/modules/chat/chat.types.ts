@@ -50,12 +50,15 @@ export type ChatSkillSchema = {
   name?: string;
   description?: string;
   paramsSchema?: {
-    properties?: Record<string, {
-      type: string;
-      description?: string;
-      extractionPrompt?: string;
-      default?: string | number | boolean;
-    }>;
+    properties?: Record<
+      string,
+      {
+        type: string;
+        description?: string;
+        extractionPrompt?: string;
+        default?: string | number | boolean;
+      }
+    >;
     required?: string[];
   };
   guideContext?: import('../../interfaces').DocumentGuideContext;

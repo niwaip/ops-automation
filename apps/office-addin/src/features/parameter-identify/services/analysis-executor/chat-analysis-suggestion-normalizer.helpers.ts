@@ -15,13 +15,16 @@ function containsCjk(value: string): boolean {
 }
 
 function sanitizeArrayPath(value: string): string {
-  return value.replace(/[{}]/g, '').replace(/(\[(?:i)?\])+$/g, '').trim();
+  return value
+    .replace(/[{}]/g, '')
+    .replace(/(\[(?:i)?\])+$/g, '')
+    .trim();
 }
 
 function extractVariableArrayPath(value: string): string {
   const normalized = value.replace(/[{}]/g, '').trim();
   const match = normalized.match(
-    /^(d\.[A-Za-z_][A-Za-z0-9_.]*)\[(?:i)?\]\.[A-Za-z_][A-Za-z0-9_]*$/,
+    /^(d\.[A-Za-z_][A-Za-z0-9_.]*)\[(?:i)?\]\.[A-Za-z_][A-Za-z0-9_]*$/
   );
   return match?.[1] || '';
 }
@@ -53,7 +56,7 @@ function normalizeVariableMarker(value: string, fallbackPath = 'd.textValue'): s
 
 function inferSuggestionType(
   record: Record<string, unknown>,
-  details: Record<string, unknown>,
+  details: Record<string, unknown>
 ): AISuggestion['type'] {
   const rawType = normalizeTextValue(record.type)?.toLowerCase();
   const fieldType = normalizeTextValue(details.fieldType)?.toLowerCase();
@@ -68,7 +71,7 @@ function inferSuggestionType(
 
 function buildDefaultDescription(
   request: StructuredAnalyzeRequest,
-  suggestionType: AISuggestion['type'],
+  suggestionType: AISuggestion['type']
 ): string {
   if (request.analysisStage === 'excel-pair-analysis') {
     return suggestionType === 'loop'
@@ -108,7 +111,7 @@ function buildFallbackChapterFromLabel(request: StructuredAnalyzeRequest): strin
 
 function buildDetailedFallbackDescription(
   label: string,
-  suggestionType: AISuggestion['type'],
+  suggestionType: AISuggestion['type']
 ): string {
   const normalizedLabel = label.trim();
   if (!normalizedLabel) {
@@ -122,7 +125,7 @@ function buildDetailedFallbackDescription(
 function buildDetailedFallbackSignificance(
   label: string,
   request: StructuredAnalyzeRequest,
-  suggestionType: AISuggestion['type'],
+  suggestionType: AISuggestion['type']
 ): string {
   const normalizedLabel = label.trim();
   if (!normalizedLabel) {
@@ -140,7 +143,7 @@ function buildRuleBasedDescription(
   fieldType: string | undefined,
   mappingRule: string | undefined,
   remark: string | undefined,
-  suggestionType: AISuggestion['type'],
+  suggestionType: AISuggestion['type']
 ): string {
   const normalizedLabel = label.trim();
   if (remark) {
@@ -163,7 +166,7 @@ function buildRuleBasedSignificance(
   remark: string | undefined,
   validation: string | undefined,
   request: StructuredAnalyzeRequest,
-  suggestionType: AISuggestion['type'],
+  suggestionType: AISuggestion['type']
 ): string {
   const normalizedLabel = label.trim();
   const segments = [
@@ -190,7 +193,7 @@ function buildRuleBasedSignificance(
 function buildExcelFallbackDescription(
   label: string,
   variablePath: string,
-  suggestionType: AISuggestion['type'],
+  suggestionType: AISuggestion['type']
 ): string {
   const normalizedLabel = label.trim();
   if (normalizedLabel) {
@@ -208,7 +211,7 @@ function buildExcelFallbackSignificance(
   variablePath: string,
   fieldType: string,
   suggestionType: AISuggestion['type'],
-  request: StructuredAnalyzeRequest,
+  request: StructuredAnalyzeRequest
 ): string {
   const normalizedLabel = label.trim();
   if (suggestionType === 'loop') {
@@ -245,7 +248,7 @@ function toAsciiIdentifier(value: string): string {
   const [first, ...rest] = tokens;
   const normalizedFirst = first.toLowerCase();
   const normalizedRest = rest.map(
-    (token) => token.charAt(0).toUpperCase() + token.slice(1).toLowerCase(),
+    (token) => token.charAt(0).toUpperCase() + token.slice(1).toLowerCase()
   );
   const combined = [normalizedFirst, ...normalizedRest].join('');
   return /^[A-Za-z_]/.test(combined) ? combined : `v${combined}`;
@@ -264,7 +267,7 @@ function buildFallbackSuggestedNameWithArrayPath(
   label: string,
   arrayPath: string,
   index: number,
-  suggestionType: AISuggestion['type'],
+  suggestionType: AISuggestion['type']
 ): string {
   const sanitizedArrayPath = sanitizeArrayPath(arrayPath);
   const semanticIdentifier = inferSemanticIdentifier(label, suggestionType);
@@ -285,22 +288,22 @@ function buildFallbackSuggestedNameWithArrayPath(
 
 export function normalizeChatSuggestions(
   value: unknown,
-  request: StructuredAnalyzeRequest,
+  request: StructuredAnalyzeRequest
 ): AISuggestion[] {
   if (!Array.isArray(value)) {
     return [];
   }
 
   const wordSectionCandidateMap = new Map(
-    (request.wordSectionCandidates || []).map((candidate) => [candidate.candidateId, candidate]),
+    (request.wordSectionCandidates || []).map((candidate) => [candidate.candidateId, candidate])
   );
 
   return value
     .map((item, index) => {
       const record = (item && typeof item === 'object' ? item : {}) as Record<string, unknown>;
-      const details = (record.details && typeof record.details === 'object'
-        ? record.details
-        : {}) as Record<string, unknown>;
+      const details = (
+        record.details && typeof record.details === 'object' ? record.details : {}
+      ) as Record<string, unknown>;
       const suggestionType = inferSuggestionType(record, details);
       const fallbackLabel =
         getRecordString(record, ['label', 'fieldName', '字段']) ||
@@ -333,19 +336,22 @@ export function normalizeChatSuggestions(
             fallbackLabel,
             arrayPath || '',
             index,
-            suggestionType,
+            suggestionType
           ) || 'd.textValue';
       }
 
       const normalizedLoopArrayPath = sanitizeArrayPath(
         containsCjk(arrayPath || rawSuggestedName || '')
           ? fallbackSuggestedName
-          : arrayPath || rawSuggestedName || fallbackSuggestedName || 'd.rows',
+          : arrayPath || rawSuggestedName || fallbackSuggestedName || 'd.rows'
       );
       const normalizedSuggestedName =
         suggestionType === 'loop'
           ? normalizeLoopMarker(normalizedLoopArrayPath)
-          : normalizeVariableMarker(rawSuggestedName || fallbackSuggestedName, fallbackSuggestedName);
+          : normalizeVariableMarker(
+              rawSuggestedName || fallbackSuggestedName,
+              fallbackSuggestedName
+            );
 
       const normalizedVariableArrayPath = isAiProvidedValidSuggestedName
         ? extractVariableArrayPath(rawSuggestedName)
@@ -414,15 +420,13 @@ export function normalizeChatSuggestions(
               fieldType,
               fallbackMappingRule,
               fallbackRemark,
-              suggestionType,
+              suggestionType
             ) ||
             buildDefaultDescription(request, suggestionType),
           formatter: normalizeTextValue(details.formatter),
           loopType: details.loopType === 'implicit' ? 'implicit' : 'explicit',
           arrayPath:
-            suggestionType === 'loop'
-              ? normalizedLoopArrayPath
-              : normalizedVariableArrayPath,
+            suggestionType === 'loop' ? normalizedLoopArrayPath : normalizedVariableArrayPath,
           tableName: normalizeTextValue(details.tableName),
           context,
           chapter,
@@ -434,7 +438,7 @@ export function normalizeChatSuggestions(
                   variablePath,
                   fieldType,
                   suggestionType,
-                  request,
+                  request
                 )
               : buildDetailedFallbackSignificance(fallbackLabel, request, suggestionType)) ||
             buildRuleBasedSignificance(
@@ -443,7 +447,7 @@ export function normalizeChatSuggestions(
               fallbackRemark,
               fallbackValidation,
               request,
-              suggestionType,
+              suggestionType
             ) ||
             (request.analysisStage === 'excel-pair-analysis'
               ? `来自 ${request.pairLabel || '当前对照组'} 的 AI 分析结果`
@@ -457,5 +461,7 @@ export function normalizeChatSuggestions(
         },
       } satisfies AISuggestion;
     })
-    .filter((suggestion) => suggestion.suggestedName || suggestion.originalText || suggestion.elementPath);
+    .filter(
+      (suggestion) => suggestion.suggestedName || suggestion.originalText || suggestion.elementPath
+    );
 }

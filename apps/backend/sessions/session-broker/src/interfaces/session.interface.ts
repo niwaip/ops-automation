@@ -1,6 +1,7 @@
 // Session State Types
 export type SessionState = 'IDLE' | 'RUNNING' | 'HUMAN_CONTROL' | 'CLOSED' | 'ERROR';
 export type ControlMode = 'AGENT_RUNNING' | 'HUMAN_CONTROL';
+export type SessionBlockingMode = 'confirmation' | 'takeover' | 'forbidden';
 
 // Worker Endpoints
 export interface WorkerEndpoints {
@@ -22,6 +23,8 @@ export interface Session {
   params?: Record<string, unknown>;
   current_step?: string;
   step_index?: number;
+  blocking_mode?: SessionBlockingMode;
+  blocking_reason?: string;
   created_at: number;
   last_activity: number;
 }

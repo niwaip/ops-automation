@@ -27,7 +27,9 @@ export interface ExcelCellInfo {
   formula: string;
 }
 
-type ExcelColumnMapping = NonNullable<NonNullable<AISuggestion['details']>['columnMappings']>[number];
+type ExcelColumnMapping = NonNullable<
+  NonNullable<AISuggestion['details']>['columnMappings']
+>[number];
 type ExcelTableAnchor = {
   type: 'table';
   sheetName: string;
@@ -83,7 +85,12 @@ function mapExcelSheetFieldGroup(sheetName: string): string {
   return asciiName || 'sheet';
 }
 
-function buildExcelFieldName(label: string, sheetName: string, rowIndex: number, colIndex: number): string {
+function buildExcelFieldName(
+  label: string,
+  sheetName: string,
+  rowIndex: number,
+  colIndex: number
+): string {
   const sheetSegment = mapExcelSheetFieldGroup(sheetName);
   const fieldSegment = buildAsciiIdentifier(label, `fieldR${rowIndex + 1}C${colIndex + 1}`);
   return `d.${sheetSegment}.${fieldSegment}`;
@@ -151,11 +158,19 @@ function inferExcelFieldType(value: string, formula: string): string {
   return 'text';
 }
 
-export function inferExcelFieldTypeWithLabel(value: string, formula: string, _label: string): string {
+export function inferExcelFieldTypeWithLabel(
+  value: string,
+  formula: string,
+  _label: string
+): string {
   return inferExcelFieldType(value, formula);
 }
 
-export function buildExcelExtractionHint(label: string, variablePath: string, fieldType: string): string {
+export function buildExcelExtractionHint(
+  label: string,
+  variablePath: string,
+  fieldType: string
+): string {
   const normalizedLabel = normalizeExcelText(label);
 
   if (fieldType === 'date') {
@@ -186,14 +201,14 @@ export function extractExcelSheets(documentIR: DocumentIR): ExcelSheetInfo[] {
       pairIndex: Number(element.hostData?.pairIndex ?? -1),
       sheetRole: (element.hostData?.sheetRole as 'mock' | 'data') || 'mock',
       tables: Array.isArray(element.hostData?.tables)
-        ? ((element.hostData?.tables as Array<Record<string, unknown>>)
+        ? (element.hostData?.tables as Array<Record<string, unknown>>)
             .map((table) => ({
               name: String(table.name || ''),
               address: String(table.address || ''),
               headerAddress: String(table.headerAddress || ''),
               dataBodyAddress: String(table.dataBodyAddress || ''),
             }))
-            .filter((table) => table.name))
+            .filter((table) => table.name)
         : [],
     }))
     .filter((sheet) => sheet.pairIndex >= 0 && sheet.sheetIndex >= 0);
@@ -232,7 +247,9 @@ export function buildExcelHeuristicSuggestions(
 
   const sheets = extractExcelSheets(documentIR);
   const cells = extractExcelCells(documentIR);
-  const pairIndexes = Array.from(new Set(sheets.map((sheet) => sheet.pairIndex))).sort((a, b) => a - b);
+  const pairIndexes = Array.from(new Set(sheets.map((sheet) => sheet.pairIndex))).sort(
+    (a, b) => a - b
+  );
   const suggestions: AISuggestion[] = [];
   const seenKeys = new Set<string>();
 
@@ -246,12 +263,14 @@ export function buildExcelHeuristicSuggestions(
       continue;
     }
 
-    const isLoopSheet = pairSheets.some((sheet) => sheet.tables.length > 0)
-      || /明细|交付|付款|detail|delivery|payment/i.test(pairLabel);
+    const isLoopSheet =
+      pairSheets.some((sheet) => sheet.tables.length > 0) ||
+      /明细|交付|付款|detail|delivery|payment/i.test(pairLabel);
 
     if (isLoopSheet) {
       const targetTable = mockSheet?.tables[0] || dataSheet?.tables[0];
-      const tableName = targetTable?.name || dataSheet?.name || mockSheet?.name || `pair_${pairIndex}`;
+      const tableName =
+        targetTable?.name || dataSheet?.name || mockSheet?.name || `pair_${pairIndex}`;
       const arrayPath = buildExcelArrayPath(dataSheet?.name || mockSheet?.name || '');
       const loopAnchor: ExcelTableAnchor = {
         type: 'table',
@@ -262,7 +281,11 @@ export function buildExcelHeuristicSuggestions(
         startAddress: stripSheetPrefix(targetTable?.headerAddress || targetTable?.address || ''),
         endAddress: stripSheetPrefix(targetTable?.dataBodyAddress || targetTable?.address || ''),
       };
-      const loopColumnMappings = helpers.buildExcelColumnMappingsForTable(documentIR, loopAnchor, arrayPath);
+      const loopColumnMappings = helpers.buildExcelColumnMappingsForTable(
+        documentIR,
+        loopAnchor,
+        arrayPath
+      );
       const loopKey = `loop:${arrayPath}:${pairIndex}`;
 
       if (!seenKeys.has(loopKey)) {
@@ -295,10 +318,18 @@ export function buildExcelHeuristicSuggestions(
       continue;
     }
 
-    const mockCells = cells.filter((cell) => cell.pairIndex === pairIndex && cell.sheetRole === 'mock');
-    const dataCells = cells.filter((cell) => cell.pairIndex === pairIndex && cell.sheetRole === 'data');
-    const mockCellMap = new Map(mockCells.map((cell) => [`${cell.rowIndex}:${cell.colIndex}`, cell]));
-    const dataCellMap = new Map(dataCells.map((cell) => [`${cell.rowIndex}:${cell.colIndex}`, cell]));
+    const mockCells = cells.filter(
+      (cell) => cell.pairIndex === pairIndex && cell.sheetRole === 'mock'
+    );
+    const dataCells = cells.filter(
+      (cell) => cell.pairIndex === pairIndex && cell.sheetRole === 'data'
+    );
+    const mockCellMap = new Map(
+      mockCells.map((cell) => [`${cell.rowIndex}:${cell.colIndex}`, cell])
+    );
+    const dataCellMap = new Map(
+      dataCells.map((cell) => [`${cell.rowIndex}:${cell.colIndex}`, cell])
+    );
 
     for (const dataCell of dataCells) {
       const dataText = normalizeExcelText(dataCell.text);
@@ -313,7 +344,12 @@ export function buildExcelHeuristicSuggestions(
       }
 
       const label = findExcelLabel(dataCell.rowIndex, dataCell.colIndex, dataCellMap, mockCellMap);
-      const variablePath = buildExcelFieldName(label, dataCell.sheetName, dataCell.rowIndex, dataCell.colIndex);
+      const variablePath = buildExcelFieldName(
+        label,
+        dataCell.sheetName,
+        dataCell.rowIndex,
+        dataCell.colIndex
+      );
       const suggestionKey = `var:${variablePath}:${pairIndex}:${dataCell.rowIndex}:${dataCell.colIndex}`;
       if (seenKeys.has(suggestionKey)) {
         continue;
@@ -322,7 +358,11 @@ export function buildExcelHeuristicSuggestions(
       const address = toCellAddress(dataCell.rowIndex, dataCell.colIndex);
       const targetSheet = mockSheet?.name || dataCell.sheetName;
       const targetSheetIndex = mockSheet?.sheetIndex ?? dataCell.sheetIndex;
-      const inferredFieldType = inferExcelFieldTypeWithLabel(dataText, dataCell.formula, label || '');
+      const inferredFieldType = inferExcelFieldTypeWithLabel(
+        dataText,
+        dataCell.formula,
+        label || ''
+      );
       suggestions.push({
         id: `excel-var-${pairIndex}-${dataCell.rowIndex}-${dataCell.colIndex}`,
         type: 'variable',
@@ -331,7 +371,9 @@ export function buildExcelHeuristicSuggestions(
         originalText: dataText,
         confidence: label ? 0.88 : 0.72,
         applied: false,
-        context: label ? `${pairLabel} | 标签: ${label}` : `Excel 成对 sheet 差异识别: ${pairLabel}`,
+        context: label
+          ? `${pairLabel} | 标签: ${label}`
+          : `Excel 成对 sheet 差异识别: ${pairLabel}`,
         details: {
           source: 'heuristic',
           description: buildExcelHeuristicDescription(label, variablePath),

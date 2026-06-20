@@ -59,14 +59,9 @@ import {
   scoreLooseTextMatch,
 } from './workflow-similarity';
 
-import {
-  extractSampleTextRich,
-} from './workflow-xml-text';
+import { extractSampleTextRich } from './workflow-xml-text';
 
-import {
-  normalizeConfidence,
-  findTermMatch,
-} from './workflow-discover';
+import { normalizeConfidence, findTermMatch } from './workflow-discover';
 
 export function getCompareSectionPriority(status: 'aligned' | 'partial' | 'attention'): number {
   switch (status) {
@@ -82,22 +77,26 @@ export function getCompareSectionPriority(status: 'aligned' | 'partial' | 'atten
 
 export function buildCompareSectionContexts(
   elements: WorkflowDocumentElement[],
-  sampleText: string,
+  sampleText: string
 ): WorkflowCompareSectionContext[] {
-  const blockElements = elements.filter((element) =>
-    ['paragraph', 'table', 'cell'].includes(String(element.type || '')) &&
-    Boolean(safeText(element.text))
+  const blockElements = elements.filter(
+    (element) =>
+      ['paragraph', 'table', 'cell'].includes(String(element.type || '')) &&
+      Boolean(safeText(element.text))
   );
   if (blockElements.length === 0) {
     return [];
   }
 
-  const sectionMap = new Map<string, {
-    sectionId: string;
-    sectionTitle: string;
-    templateSegments: string[];
-    anchorTexts: string[];
-  }>();
+  const sectionMap = new Map<
+    string,
+    {
+      sectionId: string;
+      sectionTitle: string;
+      templateSegments: string[];
+      anchorTexts: string[];
+    }
+  >();
 
   for (const element of blockElements) {
     const templateText = safeText(element.text);
@@ -108,12 +107,14 @@ export function buildCompareSectionContexts(
       templateSegments: [],
       anchorTexts: [],
     };
-    if (templateText && current.templateSegments.length < 6 && shouldIncludeSectionCompareProbe(templateText)) {
+    if (
+      templateText &&
+      current.templateSegments.length < 6 &&
+      shouldIncludeSectionCompareProbe(templateText)
+    ) {
       current.templateSegments.push(templateText);
     }
-    const anchorText = extractAnchorPrefix(
-      templateText.replace(/^[\s_＿\-—.·]+/u, '').trim()
-    );
+    const anchorText = extractAnchorPrefix(templateText.replace(/^[\s_＿\-—.·]+/u, '').trim());
     if (anchorText && current.anchorTexts.length < 4 && !current.anchorTexts.includes(anchorText)) {
       current.anchorTexts.push(anchorText);
     }
@@ -151,9 +152,12 @@ export function buildCompareSectionContexts(
       sampleText: bestChunk,
       samplePreview,
       sampleMatchScore: bestScore,
-      compareMode: bestScore >= 8
-        ? 'section_loose_compare'
-        : (sampleChunksList.length > 0 ? 'global_probe_fallback' : 'structure_only'),
+      compareMode:
+        bestScore >= 8
+          ? 'section_loose_compare'
+          : sampleChunksList.length > 0
+            ? 'global_probe_fallback'
+            : 'structure_only',
     };
   });
 }
@@ -161,23 +165,28 @@ export function buildCompareSectionContexts(
 export function buildCompareSummary(
   candidateFields: WorkflowFieldCandidate[],
   warnings: string[],
-  sectionContexts: WorkflowCompareSectionContext[] = [],
+  sectionContexts: WorkflowCompareSectionContext[] = []
 ): WorkflowCompareResult['compareSummary'] {
-  const sectionMap = new Map<string, {
-    sectionId: string;
-    sectionTitle: string;
-    candidateCount: number;
-    matchedCandidateCount: number;
-    unmatchedCandidateCount: number;
-    highConfidenceCandidateCount: number;
-    compareStatus: 'aligned' | 'partial' | 'attention';
-    compareMode: 'section_loose_compare' | 'global_probe_fallback' | 'structure_only';
-    looseMatchScore: number;
-    topAnchors: string[];
-    samplePreview?: string;
-  }>();
+  const sectionMap = new Map<
+    string,
+    {
+      sectionId: string;
+      sectionTitle: string;
+      candidateCount: number;
+      matchedCandidateCount: number;
+      unmatchedCandidateCount: number;
+      highConfidenceCandidateCount: number;
+      compareStatus: 'aligned' | 'partial' | 'attention';
+      compareMode: 'section_loose_compare' | 'global_probe_fallback' | 'structure_only';
+      looseMatchScore: number;
+      topAnchors: string[];
+      samplePreview?: string;
+    }
+  >();
   const sectionContextMap = new Map(sectionContexts.map((section) => [section.sectionId, section]));
-  const sectionOrderMap = new Map(sectionContexts.map((section, index) => [section.sectionId, index]));
+  const sectionOrderMap = new Map(
+    sectionContexts.map((section, index) => [section.sectionId, index])
+  );
 
   for (const sectionContext of sectionContexts) {
     sectionMap.set(sectionContext.sectionId, {
@@ -196,8 +205,12 @@ export function buildCompareSummary(
   }
 
   for (const candidate of candidateFields) {
-    const sectionId = safeText(candidate.sectionId || candidate.sectionTitle || candidate.sourceBlockId);
-    const sectionTitle = safeText(candidate.sectionTitle || candidate.sectionId || candidate.sourceBlockId);
+    const sectionId = safeText(
+      candidate.sectionId || candidate.sectionTitle || candidate.sourceBlockId
+    );
+    const sectionTitle = safeText(
+      candidate.sectionTitle || candidate.sectionId || candidate.sourceBlockId
+    );
     if (!sectionId || !sectionTitle) {
       continue;
     }
@@ -229,38 +242,52 @@ export function buildCompareSummary(
     if (anchorText && !current.topAnchors.includes(anchorText) && current.topAnchors.length < 3) {
       current.topAnchors.push(anchorText);
     }
-    current.unmatchedCandidateCount = Math.max(0, current.candidateCount - current.matchedCandidateCount);
-    current.compareStatus = current.matchedCandidateCount === 0
-      ? 'attention'
-      : (current.unmatchedCandidateCount === 0 ? 'aligned' : 'partial');
+    current.unmatchedCandidateCount = Math.max(
+      0,
+      current.candidateCount - current.matchedCandidateCount
+    );
+    current.compareStatus =
+      current.matchedCandidateCount === 0
+        ? 'attention'
+        : current.unmatchedCandidateCount === 0
+          ? 'aligned'
+          : 'partial';
     sectionMap.set(sectionId, current);
   }
 
   const sections = Array.from(sectionMap.values())
-    .sort((left, right) => (
-      (sectionOrderMap.get(left.sectionId) ?? Number.MAX_SAFE_INTEGER)
-        - (sectionOrderMap.get(right.sectionId) ?? Number.MAX_SAFE_INTEGER)
-      || getCompareSectionPriority(right.compareStatus) - getCompareSectionPriority(left.compareStatus)
-      || right.looseMatchScore - left.looseMatchScore
-      || right.candidateCount - left.candidateCount
-      || right.matchedCandidateCount - left.matchedCandidateCount
-      || left.sectionTitle.localeCompare(right.sectionTitle, 'zh-Hans-CN')
-    ))
+    .sort(
+      (left, right) =>
+        (sectionOrderMap.get(left.sectionId) ?? Number.MAX_SAFE_INTEGER) -
+          (sectionOrderMap.get(right.sectionId) ?? Number.MAX_SAFE_INTEGER) ||
+        getCompareSectionPriority(right.compareStatus) -
+          getCompareSectionPriority(left.compareStatus) ||
+        right.looseMatchScore - left.looseMatchScore ||
+        right.candidateCount - left.candidateCount ||
+        right.matchedCandidateCount - left.matchedCandidateCount ||
+        left.sectionTitle.localeCompare(right.sectionTitle, 'zh-Hans-CN')
+    )
     .slice(0, 8);
 
   return {
     candidateCount: candidateFields.length,
     sectionCount: sectionMap.size,
     sections,
-    warnings: Array.from(new Set([
-      ...warnings,
-      ...sections
-        .filter((section) => section.candidateCount === 0 && section.looseMatchScore >= 8)
-        .slice(0, 3)
-        .map((section) => `章节 ${section.sectionTitle} 已命中样本文本，但当前未形成候选字段，请人工关注。`),
-      ...(sections.length > 0 && sections.every((section) => section.compareStatus === 'attention')
-        ? ['当前模板对比未形成明确章节命中，后续识别将更多依赖 AI 与规则回退。']
-        : []),
-    ])),
+    warnings: Array.from(
+      new Set([
+        ...warnings,
+        ...sections
+          .filter((section) => section.candidateCount === 0 && section.looseMatchScore >= 8)
+          .slice(0, 3)
+          .map(
+            (section) =>
+              `章节 ${section.sectionTitle} 已命中样本文本，但当前未形成候选字段，请人工关注。`
+          ),
+        ...(sections.length > 0 &&
+        sections.every((section) => section.compareStatus === 'attention')
+          ? ['当前模板对比未形成明确章节命中，后续识别将更多依赖 AI 与规则回退。']
+          : []),
+      ])
+    ),
   };
 }

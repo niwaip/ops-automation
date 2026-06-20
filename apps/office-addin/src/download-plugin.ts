@@ -30,43 +30,41 @@ export function wizardPagePlugin() {
   return {
     name: 'wizard-page',
     configureServer(server: ViteDevServer) {
-      server.middlewares.use((
-        req: IncomingMessage & { url?: string },
-        res: ServerResponse,
-        next: MiddlewareNext,
-      ) => {
-        const url = req.url || '';
+      server.middlewares.use(
+        (req: IncomingMessage & { url?: string }, res: ServerResponse, next: MiddlewareNext) => {
+          const url = req.url || '';
 
-        const manifestName = url.replace(/^\//, '');
-        if (manifestFiles.has(manifestName)) {
-          res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-          res.end(renderManifest(manifestName));
-          return;
+          const manifestName = url.replace(/^\//, '');
+          if (manifestFiles.has(manifestName)) {
+            res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+            res.end(renderManifest(manifestName));
+            return;
+          }
+
+          if (url === '/server.crt') {
+            res.setHeader('Content-Type', 'application/x-x509-ca-cert');
+            res.setHeader('Content-Disposition', 'attachment; filename="server.crt"');
+            res.end(fs.readFileSync(path.join(certsPath, 'server.crt')));
+            return;
+          }
+
+          if (url === '/download' || url === '/download.html') {
+            res.statusCode = 302;
+            res.setHeader('Location', '/wizard');
+            res.end();
+            return;
+          }
+
+          if (url === '/wizard' || url === '/wizard.html') {
+            res.setHeader('Content-Type', 'text/html; charset=utf-8');
+            res.end(getWizardPageHtml());
+            return;
+          }
+
+          next();
         }
-
-        if (url === '/server.crt') {
-          res.setHeader('Content-Type', 'application/x-x509-ca-cert');
-          res.setHeader('Content-Disposition', 'attachment; filename="server.crt"');
-          res.end(fs.readFileSync(path.join(certsPath, 'server.crt')));
-          return;
-        }
-
-        if (url === '/download' || url === '/download.html') {
-          res.statusCode = 302;
-          res.setHeader('Location', '/wizard');
-          res.end();
-          return;
-        }
-
-        if (url === '/wizard' || url === '/wizard.html') {
-          res.setHeader('Content-Type', 'text/html; charset=utf-8');
-          res.end(getWizardPageHtml());
-          return;
-        }
-
-        next();
-      });
-    }
+      );
+    },
   };
 }
 

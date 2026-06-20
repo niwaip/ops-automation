@@ -23,7 +23,7 @@ export function extractSampleText(contentBase64: string | undefined, warnings: s
 
 export async function extractSampleTextRich(
   contentBase64: string | undefined,
-  warnings: string[],
+  warnings: string[]
 ): Promise<string> {
   if (!contentBase64) {
     return '';

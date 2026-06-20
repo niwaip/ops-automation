@@ -14,7 +14,10 @@ export function buildWordWorkflowPanelView(args: {
   recognitionReady: boolean;
   followup: Parameters<typeof buildWordRecognitionFollowupProps>[0];
   loadSection: Parameters<typeof buildWordLoadSectionProps>[0];
-  querySection: Omit<Parameters<typeof buildWordQuerySectionProps>[0], 'stepStatus' | 'followupProps'>;
+  querySection: Omit<
+    Parameters<typeof buildWordQuerySectionProps>[0],
+    'stepStatus' | 'followupProps'
+  >;
   debugPanel: Parameters<typeof buildWordWorkflowDebugPanelProps>[0];
 }) {
   const stepStatus = buildWordWorkflowStepStatus({

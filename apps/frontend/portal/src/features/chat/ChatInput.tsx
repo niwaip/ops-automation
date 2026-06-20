@@ -5,7 +5,15 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Input, Button, Upload, Tag, Switch, Select, message as antdMessage } from 'antd';
-import { SendOutlined, PaperClipOutlined, StopOutlined, PlusOutlined, MessageOutlined, RobotOutlined, AudioOutlined } from '@ant-design/icons';
+import {
+  SendOutlined,
+  PaperClipOutlined,
+  StopOutlined,
+  PlusOutlined,
+  MessageOutlined,
+  RobotOutlined,
+  AudioOutlined,
+} from '@ant-design/icons';
 import type { TextAreaRef } from 'antd/es/input/TextArea';
 import type { RcFile } from 'antd/es/upload';
 import type { UploadedFile, AIModel } from './types';
@@ -32,7 +40,9 @@ const SPEECH_LANGUAGE_OPTIONS = [
 ];
 
 const normalizeSpeechLanguage = (value?: string | null): string => {
-  const normalized = String(value || '').trim().toLowerCase();
+  const normalized = String(value || '')
+    .trim()
+    .toLowerCase();
   if (normalized.startsWith('zh')) {
     return 'zh-CN';
   }
@@ -225,9 +235,9 @@ const ChatInput: React.FC<ChatInputProps> = ({
         setIsListening(false);
         setIsTranscribing(true);
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        
+
         // 释放麦克风资源
-        stream.getTracks().forEach(track => track.stop());
+        stream.getTracks().forEach((track) => track.stop());
 
         try {
           const text = await transcribeAudio(audioBlob, 'default');
@@ -235,7 +245,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
             void antdMessage.warning('未识别到语音内容，请重试并靠近麦克风。');
             return;
           }
-          setMessage(prev => mergeSpeechText(prev, text));
+          setMessage((prev) => mergeSpeechText(prev, text));
         } catch (error: unknown) {
           void antdMessage.error(error instanceof Error ? error.message : '语音识别失败');
         } finally {
@@ -382,7 +392,13 @@ const ChatInput: React.FC<ChatInputProps> = ({
             loading={isTranscribing}
             onClick={() => void handleSpeechToggle()}
             disabled={disabled || uploading || (!speechSupported && !isTranscribing)}
-            title={speechSupported ? (isListening ? '停止语音输入' : '开始语音输入') : '当前浏览器不支持语音输入'}
+            title={
+              speechSupported
+                ? isListening
+                  ? '停止语音输入'
+                  : '开始语音输入'
+                : '当前浏览器不支持语音输入'
+            }
             className={`chat-input-voice-btn ${isListening ? 'chat-input-voice-btn-active' : ''} ${isTranscribing ? 'transcribing' : ''}`}
           />
 
@@ -404,7 +420,6 @@ const ChatInput: React.FC<ChatInputProps> = ({
           )}
         </div>
       </div>
-
     </div>
   );
 };

@@ -22,10 +22,11 @@ export function normalizeBrowserActivitySteps(steps: unknown): Array<{
     const stepIndexLabel = `${index + 1}. 浏览器操作`;
     const emptyConfig: Record<string, unknown> = {};
     const normalizedConfig: Record<string, unknown> = {};
-    const rawStep = step && typeof step === 'object' ? step as Record<string, unknown> : null;
-    const config = rawStep?.config && typeof rawStep.config === 'object'
-      ? rawStep.config as Record<string, unknown>
-      : emptyConfig;
+    const rawStep = step && typeof step === 'object' ? (step as Record<string, unknown>) : null;
+    const config =
+      rawStep?.config && typeof rawStep.config === 'object'
+        ? (rawStep.config as Record<string, unknown>)
+        : emptyConfig;
     const action = String(config.action || '').trim();
     if (!action) {
       return null;
@@ -43,15 +44,19 @@ export function normalizeBrowserActivitySteps(steps: unknown): Array<{
     };
   });
 
-  return normalized.filter((step): step is {
-    name: string;
-    action: string;
-    config: Record<string, unknown>;
-  } => step !== null);
+  return normalized.filter(
+    (
+      step
+    ): step is {
+      name: string;
+      action: string;
+      config: Record<string, unknown>;
+    } => step !== null
+  );
 }
 
 export function buildBrowserWorkflowActivityPhases(
-  steps: BrowserWorkflowActivityStep[],
+  steps: BrowserWorkflowActivityStep[]
 ): BrowserWorkflowActivityPhase[] {
   if (steps.length === 0) {
     return [];
@@ -72,17 +77,14 @@ export function buildBrowserWorkflowActivityPhases(
       return;
     }
 
-    const normalizedPhaseType = phaseType === 'open' ? 'open' : phaseType === 'transition' ? 'transition' : 'process';
-    const shouldStartNewGroup = !currentGroup
-      || (
-        currentGroup.phaseType !== normalizedPhaseType
-        && !(currentGroup.phaseType === 'open' && normalizedPhaseType === 'process')
-      )
-      || (
-        normalizedPhaseType === 'open'
-        && currentGroup.steps.length > 0
-      )
-      || normalizedPhaseType === 'transition';
+    const normalizedPhaseType =
+      phaseType === 'open' ? 'open' : phaseType === 'transition' ? 'transition' : 'process';
+    const shouldStartNewGroup =
+      !currentGroup ||
+      (currentGroup.phaseType !== normalizedPhaseType &&
+        !(currentGroup.phaseType === 'open' && normalizedPhaseType === 'process')) ||
+      (normalizedPhaseType === 'open' && currentGroup.steps.length > 0) ||
+      normalizedPhaseType === 'transition';
 
     if (shouldStartNewGroup) {
       if (currentGroup) {
@@ -140,30 +142,34 @@ export function buildBrowserWorkflowActivityPhases(
 }
 
 function enrichBrowserWorkflowPhaseGroups(
-  groups: BrowserWorkflowActivityPhaseGroup[],
+  groups: BrowserWorkflowActivityPhaseGroup[]
 ): BrowserWorkflowActivityPhaseGroup[] {
   return groups.map((group, index) => {
     if (group.phaseType !== 'open') {
       return group;
     }
-    if (group.steps.some((step) => String(step.config?.action || '').trim().toLowerCase() === 'waitforselector')) {
+    if (
+      group.steps.some(
+        (step) =>
+          String(step.config?.action || '')
+            .trim()
+            .toLowerCase() === 'waitforselector'
+      )
+    ) {
       return {
         phaseType: group.phaseType,
         steps: deduplicateBrowserReadyCheckSteps(group.steps),
       };
     }
 
-    const readyCheckPlacement = buildOpenPhaseReadyCheckStep(
-      group,
-      groups[index + 1],
-    );
+    const readyCheckPlacement = buildOpenPhaseReadyCheckStep(group, groups[index + 1]);
     if (!readyCheckPlacement) {
       return group;
     }
 
     const { step: readyCheckStep, insertAt } = readyCheckPlacement;
     const hasEquivalentReadyCheck = group.steps.some((step) =>
-      isSameBrowserReadyCheckStep(step, readyCheckStep),
+      isSameBrowserReadyCheckStep(step, readyCheckStep)
     );
     if (hasEquivalentReadyCheck) {
       return {
@@ -185,13 +191,14 @@ function enrichBrowserWorkflowPhaseGroups(
 
 function buildOpenPhaseReadyCheckStep(
   currentGroup: BrowserWorkflowActivityPhaseGroup,
-  nextGroup: BrowserWorkflowActivityPhaseGroup | undefined,
+  nextGroup: BrowserWorkflowActivityPhaseGroup | undefined
 ): { step: BrowserWorkflowActivityStep; insertAt: number } | null {
   const currentGroupReadyCheck = findBrowserReadyCheckInsertionPoint(currentGroup);
   if (currentGroupReadyCheck?.alreadyExists) {
     return null;
   }
-  const selector = currentGroupReadyCheck?.selector || extractBrowserReadySelectorFromGroup(nextGroup);
+  const selector =
+    currentGroupReadyCheck?.selector || extractBrowserReadySelectorFromGroup(nextGroup);
   if (!selector) {
     return null;
   }
@@ -214,12 +221,25 @@ function buildOpenPhaseReadyCheckStep(
 }
 
 function findBrowserReadyCheckInsertionPoint(
-  group: BrowserWorkflowActivityPhaseGroup,
+  group: BrowserWorkflowActivityPhaseGroup
 ): { selector: string; insertAt: number; alreadyExists?: boolean } | null {
   for (let index = 0; index < group.steps.length; index += 1) {
     const step = group.steps[index];
-    const action = String(step.config?.action || '').trim().toLowerCase();
-    if (!['fill', 'type', 'type_text', 'click', 'hover', 'press', 'press_key', 'waitforselector'].includes(action)) {
+    const action = String(step.config?.action || '')
+      .trim()
+      .toLowerCase();
+    if (
+      ![
+        'fill',
+        'type',
+        'type_text',
+        'click',
+        'hover',
+        'press',
+        'press_key',
+        'waitforselector',
+      ].includes(action)
+    ) {
       continue;
     }
 
@@ -239,11 +259,13 @@ function findBrowserReadyCheckInsertionPoint(
 }
 
 function deduplicateBrowserReadyCheckSteps(
-  steps: BrowserWorkflowActivityStep[],
+  steps: BrowserWorkflowActivityStep[]
 ): BrowserWorkflowActivityStep[] {
   const seenSelectors = new Set<string>();
   return steps.filter((step) => {
-    const action = String(step.config?.action || '').trim().toLowerCase();
+    const action = String(step.config?.action || '')
+      .trim()
+      .toLowerCase();
     if (action !== 'waitforselector') {
       return true;
     }
@@ -261,15 +283,28 @@ function deduplicateBrowserReadyCheckSteps(
 }
 
 function extractBrowserReadySelectorFromGroup(
-  group: BrowserWorkflowActivityPhaseGroup | undefined,
+  group: BrowserWorkflowActivityPhaseGroup | undefined
 ): string | null {
   if (!group) {
     return null;
   }
 
   for (const step of group.steps) {
-    const action = String(step.config?.action || '').trim().toLowerCase();
-    if (!['fill', 'type', 'type_text', 'click', 'hover', 'press', 'press_key', 'waitforselector'].includes(action)) {
+    const action = String(step.config?.action || '')
+      .trim()
+      .toLowerCase();
+    if (
+      ![
+        'fill',
+        'type',
+        'type_text',
+        'click',
+        'hover',
+        'press',
+        'press_key',
+        'waitforselector',
+      ].includes(action)
+    ) {
       continue;
     }
 
@@ -283,7 +318,7 @@ function extractBrowserReadySelectorFromGroup(
 }
 
 function extractBrowserReadySelectorFromConfig(
-  config: Record<string, unknown> | undefined,
+  config: Record<string, unknown> | undefined
 ): string | null {
   if (!config) {
     return null;
@@ -320,7 +355,9 @@ function buildBrowserReadySelectorFromLocator(locator: unknown): string | null {
   }
 
   const locatorRecord = locator as Record<string, unknown>;
-  const locatorType = String(locatorRecord.type || '').trim().toLowerCase();
+  const locatorType = String(locatorRecord.type || '')
+    .trim()
+    .toLowerCase();
   const locatorValue = String(locatorRecord.value || '').trim();
   if (!locatorValue) {
     return null;
@@ -351,41 +388,54 @@ function isBrowserRuntimeRefSelector(value: string): boolean {
 
 function isSameBrowserReadyCheckStep(
   left: BrowserWorkflowActivityStep,
-  right: BrowserWorkflowActivityStep,
+  right: BrowserWorkflowActivityStep
 ): boolean {
-  return String(left.config?.action || '').trim().toLowerCase() === String(right.config?.action || '').trim().toLowerCase()
-    && String(left.config?.selector || '').trim() === String(right.config?.selector || '').trim();
+  return (
+    String(left.config?.action || '')
+      .trim()
+      .toLowerCase() ===
+      String(right.config?.action || '')
+        .trim()
+        .toLowerCase() &&
+    String(left.config?.selector || '').trim() === String(right.config?.selector || '').trim()
+  );
 }
 
 function classifyBrowserWorkflowPhaseType(
-  action: string,
+  action: string
 ): 'open' | 'transition' | 'process' | 'observe' {
-  const normalized = String(action || '').trim().toLowerCase();
+  const normalized = String(action || '')
+    .trim()
+    .toLowerCase();
   if (!normalized) {
     return 'process';
   }
-  if ([
-    'wait',
-    'waitfortimeout',
-    'waitforselector',
-    'screenshot',
-    'snapshot',
-    'read_page',
-    'get_text',
-  ].includes(normalized)) {
+  if (
+    [
+      'wait',
+      'waitfortimeout',
+      'waitforselector',
+      'screenshot',
+      'snapshot',
+      'read_page',
+      'get_text',
+    ].includes(normalized)
+  ) {
     return 'observe';
   }
   if (['goto', 'navigate'].includes(normalized)) {
     return 'open';
   }
-  if ([
-    'click',
-    'search',
-    'smart_search',
-    'click_result',
-    'switch_latest_tab',
-    'focus_latest_page',
-  ].includes(normalized)) {
+  if (
+    [
+      'click',
+      'search',
+      'smart_search',
+      'click_result',
+      'switch_latest_tab',
+      'focus_latest_page',
+    ].includes(normalized)
+  ) {
     return 'transition';
   }
   return 'process';
@@ -393,7 +443,7 @@ function classifyBrowserWorkflowPhaseType(
 
 function buildBrowserWorkflowPhaseName(
   phaseType: 'open' | 'transition' | 'process',
-  index: number,
+  index: number
 ): string {
   switch (phaseType) {
     case 'open':
@@ -406,16 +456,15 @@ function buildBrowserWorkflowPhaseName(
   }
 }
 
-export function extractBrowserActivityPlaceholders(steps: Array<{
-  config: Record<string, unknown>;
-}>): string[] {
+export function extractBrowserActivityPlaceholders(
+  steps: Array<{
+    config: Record<string, unknown>;
+  }>
+): string[] {
   const keys = new Set<string>();
   const visit = (value: unknown) => {
     if (typeof value === 'string') {
-      const matches = [
-        ...value.matchAll(/\{([^{}]+)\}/g),
-        ...value.matchAll(/\$\{([^{}]+)\}/g),
-      ];
+      const matches = [...value.matchAll(/\{([^{}]+)\}/g), ...value.matchAll(/\$\{([^{}]+)\}/g)];
       matches.forEach((match) => {
         const key = String(match[1] || '').trim();
         if (key) {
@@ -438,13 +487,11 @@ export function extractBrowserActivityPlaceholders(steps: Array<{
 }
 
 export function buildBrowserActivityStepsFromDraftCommands(
-  commands: BrowserDraftCommandInput[],
+  commands: BrowserDraftCommandInput[]
 ): BrowserWorkflowActivityStep[] {
   return commands.map((command, index) => {
     const action = String(command.tool || '').trim();
-    const params = command.params && typeof command.params === 'object'
-      ? command.params
-      : {};
+    const params = command.params && typeof command.params === 'object' ? command.params : {};
     const config: Record<string, unknown> = {
       action,
     };
@@ -471,10 +518,12 @@ export function buildBrowserActivityStepsFromDraftCommands(
 }
 
 export function buildBrowserActivityStepsFromTemplateSteps(
-  steps: BrowserTemplateStepInput[],
+  steps: BrowserTemplateStepInput[]
 ): BrowserWorkflowActivityStep[] {
   const pickFirst = (...values: unknown[]): unknown => {
-    const found = values.find((item) => item !== undefined && item !== null && String(item).trim() !== '');
+    const found = values.find(
+      (item) => item !== undefined && item !== null && String(item).trim() !== ''
+    );
     return found === undefined ? undefined : found;
   };
 
@@ -498,7 +547,7 @@ export function buildBrowserActivityStepsFromTemplateSteps(
       params.href,
       normalizedAction.includes('goto') || normalizedAction.includes('navigate')
         ? pickFirst(params.target, params.value)
-        : undefined,
+        : undefined
     );
     if (url !== undefined) {
       config.url = String(url);
@@ -517,7 +566,7 @@ export function buildBrowserActivityStepsFromTemplateSteps(
       params.keyword,
       params.content,
       params.input,
-      params.searchQuery,
+      params.searchQuery
     );
     if (textValue !== undefined) {
       config.value = String(textValue);
@@ -528,7 +577,7 @@ export function buildBrowserActivityStepsFromTemplateSteps(
     const keyValue = pickFirst(
       params.key,
       params.code,
-      normalizedAction.includes('press') ? params.value : undefined,
+      normalizedAction.includes('press') ? params.value : undefined
     );
     if (keyValue !== undefined) {
       config.key = String(keyValue);
@@ -540,14 +589,22 @@ export function buildBrowserActivityStepsFromTemplateSteps(
       config.index = Number.isFinite(num) ? num : 1;
     }
 
-    const timeoutValue = pickFirst(step?.wait?.value, step?.wait?.timeout, params.duration, params.timeoutMs, params.timeout);
+    const timeoutValue = pickFirst(
+      step?.wait?.value,
+      step?.wait?.timeout,
+      params.duration,
+      params.timeoutMs,
+      params.timeout
+    );
     if (timeoutValue !== undefined) {
       const num = Number(timeoutValue);
       config.timeoutMs = Number.isFinite(num) ? num : timeoutValue;
       config.duration = Number.isFinite(num) ? num : timeoutValue;
     }
 
-    const stepInputParams = extractBrowserActivityPlaceholders([{ config }]).reduce<Record<string, string>>((acc, key) => {
+    const stepInputParams = extractBrowserActivityPlaceholders([{ config }]).reduce<
+      Record<string, string>
+    >((acc, key) => {
       acc[key] = '';
       return acc;
     }, {});
@@ -575,17 +632,22 @@ function normalizeBrowserTemplateStepSelector(step: BrowserTemplateStepInput): s
 
 export function buildBrowserInputParamsFromTemplateSource(
   steps: BrowserTemplateStepInput[],
-  paramsSchema?: BrowserTemplateParamsSchema,
+  paramsSchema?: BrowserTemplateParamsSchema
 ): Record<string, WorkflowInputParamDefinition> {
-  const properties = paramsSchema?.properties && typeof paramsSchema.properties === 'object'
-    ? paramsSchema.properties
-    : {};
+  const properties =
+    paramsSchema?.properties && typeof paramsSchema.properties === 'object'
+      ? paramsSchema.properties
+      : {};
   const requiredList = Array.isArray(paramsSchema?.required)
     ? paramsSchema.required.map((item) => String(item))
     : [];
-  const declaredInputParams = Object.entries(properties).reduce<Record<string, WorkflowInputParamDefinition>>((acc, [key, propertySchema]) => {
+  const declaredInputParams = Object.entries(properties).reduce<
+    Record<string, WorkflowInputParamDefinition>
+  >((acc, [key, propertySchema]) => {
     const propertyType = String(propertySchema?.type || 'string').toLowerCase();
-    const normalizedType = (['string', 'number', 'boolean', 'date'].includes(propertyType) ? propertyType : 'string') as WorkflowInputParamDefinition['type'];
+    const normalizedType = (
+      ['string', 'number', 'boolean', 'date'].includes(propertyType) ? propertyType : 'string'
+    ) as WorkflowInputParamDefinition['type'];
     const defaultValue = propertySchema?.default;
     const requiredFromSchema = propertySchema?.required === true || requiredList.includes(key);
     acc[key] = {
@@ -594,9 +656,12 @@ export function buildBrowserInputParamsFromTemplateSource(
       description: String(propertySchema?.description || `模板参数 ${key}`),
       source: 'declared',
       type: normalizedType,
-      exampleValue: typeof defaultValue === 'string' || typeof defaultValue === 'number' || typeof defaultValue === 'boolean'
-        ? defaultValue
-        : undefined,
+      exampleValue:
+        typeof defaultValue === 'string' ||
+        typeof defaultValue === 'number' ||
+        typeof defaultValue === 'boolean'
+          ? defaultValue
+          : undefined,
     };
     return acc;
   }, {});
@@ -625,7 +690,10 @@ export function buildBrowserInputParamsFromTemplateSource(
       };
     }
 
-    if (!inferredInputParams.username && /(用户名|账号|账户|user\s*name|username|account|email|邮箱|手机号|mobile)/i.test(hint)) {
+    if (
+      !inferredInputParams.username &&
+      /(用户名|账号|账户|user\s*name|username|account|email|邮箱|手机号|mobile)/i.test(hint)
+    ) {
       inferredInputParams.username = {
         description: '登录用户名',
         required: true,
@@ -636,7 +704,10 @@ export function buildBrowserInputParamsFromTemplateSource(
       };
     }
 
-    if (!inferredInputParams.loginCredential && /(密码|password|passwd|passcode|pin|secret)/i.test(hint)) {
+    if (
+      !inferredInputParams.loginCredential &&
+      /(密码|password|passwd|passcode|pin|secret)/i.test(hint)
+    ) {
       inferredInputParams.loginCredential = {
         description: '登录密码',
         required: true,
@@ -652,17 +723,20 @@ export function buildBrowserInputParamsFromTemplateSource(
 }
 
 function normalizeBrowserDraftLocator(
-  locator?: BrowserDraftCommandInput['locator'],
+  locator?: BrowserDraftCommandInput['locator']
 ): { type: string; value: string } | undefined {
   if (!locator?.value) {
     return undefined;
   }
 
-  const strategy = String(locator.strategy || '').trim().toLowerCase();
+  const strategy = String(locator.strategy || '')
+    .trim()
+    .toLowerCase();
   const locatorType = strategy === 'testid' ? 'test-id' : strategy;
-  const locatorValue = locator.role && locator.name
-    ? `${locator.role}[name="${locator.name}"]`
-    : String(locator.value);
+  const locatorValue =
+    locator.role && locator.name
+      ? `${locator.role}[name="${locator.name}"]`
+      : String(locator.value);
 
   if (!locatorType || !locatorValue.trim()) {
     return undefined;
@@ -688,11 +762,17 @@ export function parseBrowserScriptCommands(script: string): BrowserScriptCommand
       return;
     }
 
-    const locatorClickMatch = line.match(/\.locator\(\s*(['"`])((?:\\.|(?!\1).)+)\1\s*\)(?:\.first\(\))?\.click\(/);
+    const locatorClickMatch = line.match(
+      /\.locator\(\s*(['"`])((?:\\.|(?!\1).)+)\1\s*\)(?:\.first\(\))?\.click\(/
+    );
     if (locatorClickMatch) {
       const locatorValue = locatorClickMatch[2]!;
       if (/^e\d+$/i.test(locatorValue)) {
-        commands.push({ action: 'click', target: locatorValue, locator: { type: 'ref', value: locatorValue } });
+        commands.push({
+          action: 'click',
+          target: locatorValue,
+          locator: { type: 'ref', value: locatorValue },
+        });
       } else {
         commands.push({ action: 'click', selector: locatorValue });
       }
@@ -705,7 +785,9 @@ export function parseBrowserScriptCommands(script: string): BrowserScriptCommand
       return;
     }
 
-    const locatorFillMatch = line.match(/\.locator\(\s*(['"`])((?:\\.|(?!\1).)+)\1\s*\)(?:\.first\(\))?\.fill\(\s*(['"`])((?:\\.|(?!\3).)+)\3/);
+    const locatorFillMatch = line.match(
+      /\.locator\(\s*(['"`])((?:\\.|(?!\1).)+)\1\s*\)(?:\.first\(\))?\.fill\(\s*(['"`])((?:\\.|(?!\3).)+)\3/
+    );
     if (locatorFillMatch) {
       const locatorValue = locatorFillMatch[2]!;
       if (/^e\d+$/i.test(locatorValue)) {
@@ -721,13 +803,17 @@ export function parseBrowserScriptCommands(script: string): BrowserScriptCommand
       return;
     }
 
-    const fillMatch = line.match(/\.fill\(\s*(['"`])((?:\\.|(?!\1).)+)\1\s*,\s*(['"`])((?:\\.|(?!\3).)+)\3/);
+    const fillMatch = line.match(
+      /\.fill\(\s*(['"`])((?:\\.|(?!\1).)+)\1\s*,\s*(['"`])((?:\\.|(?!\3).)+)\3/
+    );
     if (fillMatch) {
       commands.push({ action: 'fill', selector: fillMatch[2], value: fillMatch[4] || '' });
       return;
     }
 
-    const locatorPressMatch = line.match(/\.locator\(\s*(['"`])((?:\\.|(?!\1).)+)\1\s*\)(?:\.first\(\))?\.press\(\s*(['"`])((?:\\.|(?!\3).)+)\3/);
+    const locatorPressMatch = line.match(
+      /\.locator\(\s*(['"`])((?:\\.|(?!\1).)+)\1\s*\)(?:\.first\(\))?\.press\(\s*(['"`])((?:\\.|(?!\3).)+)\3/
+    );
     if (locatorPressMatch) {
       const locatorValue = locatorPressMatch[2]!;
       if (/^e\d+$/i.test(locatorValue)) {
@@ -743,28 +829,40 @@ export function parseBrowserScriptCommands(script: string): BrowserScriptCommand
       return;
     }
 
-    const getByRoleFillMatch = line.match(/page\.getByRole\(\s*(['"`])([^'"`]+)\1\s*,\s*\{\s*name:\s*(['"`])((?:\\.|(?!\3).)+)\3\s*\}\s*\)(?:\.first\(\))?\.fill\(\s*([^)]*?)\s*\)/);
+    const getByRoleFillMatch = line.match(
+      /page\.getByRole\(\s*(['"`])([^'"`]+)\1\s*,\s*\{\s*name:\s*(['"`])((?:\\.|(?!\3).)+)\3\s*\}\s*\)(?:\.first\(\))?\.fill\(\s*([^)]*?)\s*\)/
+    );
     if (getByRoleFillMatch) {
       commands.push({
         action: 'fill',
         selector: `role=${getByRoleFillMatch[2]}[name="${getByRoleFillMatch[4]}"]`,
-        locator: { type: 'role', value: `${getByRoleFillMatch[2]}[name="${getByRoleFillMatch[4]}"]` },
+        locator: {
+          type: 'role',
+          value: `${getByRoleFillMatch[2]}[name="${getByRoleFillMatch[4]}"]`,
+        },
         value: getByRoleFillMatch[5]?.trim().replace(/^['"`]|['"`]$/g, '') || '',
       });
       return;
     }
 
-    const getByRoleClickMatch = line.match(/page\.getByRole\(\s*(['"`])([^'"`]+)\1\s*,\s*\{\s*name:\s*(['"`])((?:\\.|(?!\3).)+)\3\s*\}\s*\)(?:\.first\(\))?\.click\(\s*\)/);
+    const getByRoleClickMatch = line.match(
+      /page\.getByRole\(\s*(['"`])([^'"`]+)\1\s*,\s*\{\s*name:\s*(['"`])((?:\\.|(?!\3).)+)\3\s*\}\s*\)(?:\.first\(\))?\.click\(\s*\)/
+    );
     if (getByRoleClickMatch) {
       commands.push({
         action: 'click',
         selector: `role=${getByRoleClickMatch[2]}[name="${getByRoleClickMatch[4]}"]`,
-        locator: { type: 'role', value: `${getByRoleClickMatch[2]}[name="${getByRoleClickMatch[4]}"]` },
+        locator: {
+          type: 'role',
+          value: `${getByRoleClickMatch[2]}[name="${getByRoleClickMatch[4]}"]`,
+        },
       });
       return;
     }
 
-    const getByTextClickMatch = line.match(/page\.getByText\(\s*(['"`])((?:\\.|(?!\1).)+)\1(?:,\s*\{[^}]*\})?\s*\)(?:\.first\(\))?\.click\(\s*\)/);
+    const getByTextClickMatch = line.match(
+      /page\.getByText\(\s*(['"`])((?:\\.|(?!\1).)+)\1(?:,\s*\{[^}]*\})?\s*\)(?:\.first\(\))?\.click\(\s*\)/
+    );
     if (getByTextClickMatch) {
       commands.push({
         action: 'click',
@@ -774,7 +872,9 @@ export function parseBrowserScriptCommands(script: string): BrowserScriptCommand
       return;
     }
 
-    const pressMatch = line.match(/\.press\(\s*(['"`])((?:\\.|(?!\1).)+)\1\s*,\s*(['"`])((?:\\.|(?!\3).)+)\3/);
+    const pressMatch = line.match(
+      /\.press\(\s*(['"`])((?:\\.|(?!\1).)+)\1\s*,\s*(['"`])((?:\\.|(?!\3).)+)\3/
+    );
     if (pressMatch) {
       commands.push({ action: 'press', selector: pressMatch[2], value: pressMatch[4] });
       return;
@@ -804,14 +904,12 @@ export function extractScriptPlaceholders(script: string): string[] {
     ...scriptStr.matchAll(/\{([^{}]+)\}/g),
     ...scriptStr.matchAll(/\$\{([^{}]+)\}/g),
   ];
-  const keys = matches
-    .map((match) => String(match[1] || '').trim())
-    .filter(Boolean);
+  const keys = matches.map((match) => String(match[1] || '').trim()).filter(Boolean);
   return Array.from(new Set(keys));
 }
 
 function inferBrowserTemplateTimeoutFromSteps(
-  steps: Array<{ config: Record<string, unknown> }>,
+  steps: Array<{ config: Record<string, unknown> }>
 ): string {
   const waitMs = steps.reduce((acc, step) => {
     const config = step.config || {};
@@ -822,7 +920,7 @@ function inferBrowserTemplateTimeoutFromSteps(
     const duration = Number(config.timeoutMs ?? config.duration ?? 0);
     return acc + (Number.isFinite(duration) ? duration : 0);
   }, 0);
-  const estimatedSeconds = Math.ceil((waitMs / 1000) + steps.length * 8);
+  const estimatedSeconds = Math.ceil(waitMs / 1000 + steps.length * 8);
   const timeoutSeconds = Math.min(Math.max(estimatedSeconds, 60), 900);
   return `${timeoutSeconds}s`;
 }

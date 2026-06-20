@@ -1,5 +1,5 @@
-import { createNotificationStore, type NotificationStoreState } from "@ops/user-core";
-import { useStore } from "zustand";
+import { createNotificationStore, type NotificationStoreState } from '@ops/user-core';
+import { useStore } from 'zustand';
 
 export const notificationStore = createNotificationStore();
 

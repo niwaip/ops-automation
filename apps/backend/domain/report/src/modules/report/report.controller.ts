@@ -1,13 +1,4 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Param,
-  HttpException,
-  HttpStatus,
-  Res,
-} from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, HttpException, HttpStatus, Res } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Response } from 'express';
 import { ReportService } from './report.service';
@@ -102,7 +93,9 @@ export class ReportController {
   @Get(':id/status')
   @ApiOperation({ summary: 'Get report generation status' })
   @ApiResponse({ status: 200, description: 'Returns report status' })
-  async getStatus(@Param('id') id: string): Promise<{ id: string; status: string; error?: string }> {
+  async getStatus(
+    @Param('id') id: string
+  ): Promise<{ id: string; status: string; error?: string }> {
     const report = await this.reportService.findOne(id);
     return {
       id: report.id,

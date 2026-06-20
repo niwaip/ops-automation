@@ -47,7 +47,7 @@ describe('CapabilityReleaseService', () => {
       {
         generateSkillDraft: jest.fn(),
       } as any, // capabilityReleaseSkillDraftService
-      {} as any, // capabilityReleaseTemporalSchemaService
+      {} as any // capabilityReleaseTemporalSchemaService
     );
 
     return { service, prisma, skillService, toolCatalogService, activityService };
@@ -68,12 +68,12 @@ describe('CapabilityReleaseService', () => {
     expect(prisma.$executeRawUnsafe).toHaveBeenNthCalledWith(
       1,
       expect.stringContaining('UPDATE capability_releases'),
-      'release-1',
+      'release-1'
     );
     expect(prisma.$executeRawUnsafe).toHaveBeenNthCalledWith(
       2,
       expect.stringContaining('UPDATE skill_configs'),
-      'skill-1',
+      'skill-1'
     );
     expect((service as any).insertAuditEvent).toHaveBeenCalledWith(
       'release-1',
@@ -81,14 +81,14 @@ describe('CapabilityReleaseService', () => {
       'user-1',
       true,
       '归档 Release 时停用已发布 Skill: skill-1',
-      { publishedSkillId: 'skill-1' },
+      { publishedSkillId: 'skill-1' }
     );
     expect((service as any).insertAuditEvent).toHaveBeenCalledWith(
       'release-1',
       'release_archived',
       'user-1',
       true,
-      '归档 Capability',
+      '归档 Capability'
     );
   });
 });

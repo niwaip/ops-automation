@@ -5,13 +5,7 @@ import { LogService } from '../log';
 import { RetryService } from '../retry';
 import { AiService } from '../ai-interaction';
 import { TakeoverService } from '../takeover';
-import {
-  TemplateStep,
-  TemplateInfo,
-  ExecutionState,
-  StepResult,
-  Locator,
-} from '../../interfaces';
+import { TemplateStep, TemplateInfo, ExecutionState, StepResult, Locator } from '../../interfaces';
 import { getBrowserTemplateServiceUrl } from '../../config/service-endpoints';
 
 /**
@@ -34,7 +28,7 @@ export class ExecutorService {
     private readonly logService: LogService,
     retryService: RetryService,
     private readonly aiService: AiService,
-    private readonly takeoverService: TakeoverService,
+    private readonly takeoverService: TakeoverService
   ) {
     // RetryService is injected for future use
     void retryService;
@@ -47,7 +41,7 @@ export class ExecutorService {
     sessionId: string,
     templateId: string,
     params: Record<string, unknown>,
-    cdpUrl: string,
+    cdpUrl: string
   ): Promise<string> {
     const executionId = uuidv4();
 
@@ -136,7 +130,9 @@ export class ExecutorService {
 
         // Check if execution is paused or stopped
         if (execution.status !== 'running') {
-          this.logger.log(`Execution ${executionId}: Stopped at step ${i} with status ${execution.status}`);
+          this.logger.log(
+            `Execution ${executionId}: Stopped at step ${i} with status ${execution.status}`
+          );
           return;
         }
 
@@ -176,7 +172,7 @@ export class ExecutorService {
   private async executeStepWithRetry(
     execution: ExecutionState,
     step: TemplateStep,
-    stepIndex: number,
+    stepIndex: number
   ): Promise<StepResult> {
     const startTime = new Date();
     const logId = uuidv4();
@@ -208,7 +204,7 @@ export class ExecutorService {
         step.action,
         step.locator,
         this.buildActionParams(step),
-        step.wait?.type === 'timeout' ? (step.wait.value as number) : DEFAULT_STEP_TIMEOUT_MS,
+        step.wait?.type === 'timeout' ? (step.wait.value as number) : DEFAULT_STEP_TIMEOUT_MS
       );
       lastResult = result;
 
@@ -216,12 +212,13 @@ export class ExecutorService {
       if (step.assertions && result.success) {
         const assertionResults = await this.cdpService.runAssertions(
           step.assertions,
-          DEFAULT_STEP_TIMEOUT_MS,
+          DEFAULT_STEP_TIMEOUT_MS
         );
         const allPassed = assertionResults.every((a) => a.passed);
         result.success = allPassed;
         if (!allPassed) {
-          result.error_message = 'Assertion failed: ' + assertionResults.find((a) => !a.passed)?.type;
+          result.error_message =
+            'Assertion failed: ' + assertionResults.find((a) => !a.passed)?.type;
         }
       }
 
@@ -239,7 +236,7 @@ export class ExecutorService {
       // Step failed
       retryCount++;
       this.logger.warn(
-        `Execution ${execution.execution_id}: Step ${stepIndex} failed, retry ${retryCount}/${maxRetries}`,
+        `Execution ${execution.execution_id}: Step ${stepIndex} failed, retry ${retryCount}/${maxRetries}`
       );
 
       if (retryCount <= maxRetries) {
@@ -309,12 +306,12 @@ export class ExecutorService {
     execution: ExecutionState,
     step: TemplateStep,
     result: StepResult,
-    stepIndex: number,
+    stepIndex: number
   ): Promise<void> {
     const onFail = step.on_fail ?? 'stop';
 
     this.logger.warn(
-      `Execution ${execution.execution_id}: Step ${stepIndex} failed with on_fail=${onFail}`,
+      `Execution ${execution.execution_id}: Step ${stepIndex} failed with on_fail=${onFail}`
     );
 
     if (onFail === 'skip') {
@@ -416,7 +413,7 @@ export class ExecutorService {
         return null;
       }
 
-      const template = await response.json() as TemplateInfo;
+      const template = (await response.json()) as TemplateInfo;
       this.templateCache.set(templateId, template);
       return template;
     } catch (error) {

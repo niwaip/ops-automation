@@ -28,7 +28,7 @@ export interface CapabilityReleaseDeploymentAccessors {
     release: CapabilityReleaseDTO,
     snapshot: CapabilitySourceSnapshotDTO,
     buildId: string | undefined,
-    userId?: string,
+    userId?: string
   ): Promise<CapabilityBuildDTO>;
   resolveWorkflowFnOrThrow(payload: Record<string, unknown>): string;
   insertAuditEvent(
@@ -37,7 +37,7 @@ export interface CapabilityReleaseDeploymentAccessors {
     actorId: string | undefined,
     success: boolean,
     summary: string,
-    details?: Record<string, unknown>,
+    details?: Record<string, unknown>
   ): Promise<void>;
 }
 
@@ -47,14 +47,14 @@ export class CapabilityReleaseDeploymentService {
     private readonly prisma: PrismaService,
     private readonly temporalWorkflowService: TemporalWorkflowService,
     private readonly skillService: SkillService,
-    private readonly capabilityReleaseDeploymentSmokeService: CapabilityReleaseDeploymentSmokeService,
+    private readonly capabilityReleaseDeploymentSmokeService: CapabilityReleaseDeploymentSmokeService
   ) {}
 
   async deploy(
     id: string,
     dto: DeployCapabilityReleaseDTO,
     userId: string | undefined,
-    accessors: CapabilityReleaseDeploymentAccessors,
+    accessors: CapabilityReleaseDeploymentAccessors
   ): Promise<{ release: CapabilityReleaseDTO; deployment: DeploymentRecordDTO }> {
     const release = await accessors.getReleaseOrThrow(id);
     if (release.status === 'deploying') {
@@ -73,9 +73,9 @@ export class CapabilityReleaseDeploymentService {
     const runtimeType: CapabilityDeploymentRuntimeType =
       release.sourceType === 'temporal_workflow' ? 'temporal_worker' : 'flow_runtime';
     const strategy =
-      dto.strategy
-      || (typeof deploymentProfile.strategy === 'string' ? deploymentProfile.strategy : undefined)
-      || 'rolling_restart';
+      dto.strategy ||
+      (typeof deploymentProfile.strategy === 'string' ? deploymentProfile.strategy : undefined) ||
+      'rolling_restart';
     let preResolvedTemporalBuild: CapabilityBuildDTO | null = null;
 
     if (release.sourceType === 'temporal_workflow') {
@@ -84,7 +84,7 @@ export class CapabilityReleaseDeploymentService {
           release,
           snapshot,
           undefined,
-          userId,
+          userId
         );
       } catch (error) {
         const message = error instanceof Error ? error.message : '当前 Release 缺少可执行代码';
@@ -109,8 +109,14 @@ export class CapabilityReleaseDeploymentService {
       environment,
       runtimeType,
       strategy,
-      JSON.stringify({ environment, strategy, deploymentProfile, configOverrides, effectiveConfig }),
-      userId || null,
+      JSON.stringify({
+        environment,
+        strategy,
+        deploymentProfile,
+        configOverrides,
+        effectiveConfig,
+      }),
+      userId || null
     );
 
     await this.prisma.$executeRawUnsafe(
@@ -121,10 +127,16 @@ export class CapabilityReleaseDeploymentService {
            updated_at = now()
        WHERE id = $1::uuid`,
       id,
-      deploymentId,
+      deploymentId
     );
 
-    await accessors.insertAuditEvent(id, 'deployment_started', userId, true, `开始部署到 ${environment}`);
+    await accessors.insertAuditEvent(
+      id,
+      'deployment_started',
+      userId,
+      true,
+      `开始部署到 ${environment}`
+    );
 
     try {
       const logs: string[] = [];
@@ -137,10 +149,18 @@ export class CapabilityReleaseDeploymentService {
 
       if (release.sourceType === 'temporal_workflow') {
         const build =
-          preResolvedTemporalBuild
-          || await accessors.resolveTemporalExecutableBuildOrThrow(release, snapshot, undefined, userId);
+          preResolvedTemporalBuild ||
+          (await accessors.resolveTemporalExecutableBuildOrThrow(
+            release,
+            snapshot,
+            undefined,
+            userId
+          ));
         deploymentBuild = build;
-        const workflowArtifactRef = this.resolveWorkflowArtifactRef(snapshot.sourcePayload, release.sourceId || snapshot.sourceId || null);
+        const workflowArtifactRef = this.resolveWorkflowArtifactRef(
+          snapshot.sourcePayload,
+          release.sourceId || snapshot.sourceId || null
+        );
         if (!workflowArtifactRef?.workflowId) {
           throw new Error('当前 Release 未绑定 Workflow artifact，无法部署');
         }
@@ -165,12 +185,15 @@ export class CapabilityReleaseDeploymentService {
         }
         logs.push(`Worker reload requested: ${workerReloadRequested ? 'yes' : 'no'}`);
 
-        const deployedWorkflowRef = await this.temporalWorkflowService.deploy(workflowArtifactRef.workflowId) as any;
+        const deployedWorkflowRef = (await this.temporalWorkflowService.deploy(
+          workflowArtifactRef.workflowId
+        )) as any;
         logs.push('Workflow artifact resolved and deployed');
         logs.push(`Temporal workflow deployed: ${deployedWorkflowRef.id}`);
         logs.push(`Task queue: ${deployedWorkflowRef.taskQueue}`);
         artifactUri = `temporal-workflow://${deployedWorkflowRef.id}`;
-        artifactHash = workflowArtifactRef.artifactHash || this.extractArtifactHashFromBuild(build) || null;
+        artifactHash =
+          workflowArtifactRef.artifactHash || this.extractArtifactHashFromBuild(build) || null;
         workerVersion = workflowArtifactRef.artifactVersion
           ? `artifact:${workflowArtifactRef.artifactVersion}`
           : artifactHash;
@@ -188,13 +211,14 @@ export class CapabilityReleaseDeploymentService {
           workerReloadRequested,
         };
       } else {
-        deploymentBuild = await this.capabilityReleaseDeploymentSmokeService.resolveBuildForDeployment(
-          release,
-          snapshot,
-          undefined,
-          userId,
-          accessors,
-        );
+        deploymentBuild =
+          await this.capabilityReleaseDeploymentSmokeService.resolveBuildForDeployment(
+            release,
+            snapshot,
+            undefined,
+            userId,
+            accessors
+          );
         const templateId = this.resolveExecutionTemplateIdForRuntime(release, snapshot);
         logs.push(`Environment: ${environment}`);
         logs.push(`Strategy: ${strategy}`);
@@ -230,15 +254,16 @@ export class CapabilityReleaseDeploymentService {
 
       if (deploymentBuild) {
         logs.push(`[Smoke] 开始执行部署后验证 (${environment})`);
-        const smokeResult = await this.capabilityReleaseDeploymentSmokeService.runPostDeploySmokeTest(
-          release,
-          snapshot,
-          deploymentBuild,
-          deploymentId,
-          environment,
-          userId,
-          accessors,
-        );
+        const smokeResult =
+          await this.capabilityReleaseDeploymentSmokeService.runPostDeploySmokeTest(
+            release,
+            snapshot,
+            deploymentBuild,
+            deploymentId,
+            environment,
+            userId,
+            accessors
+          );
         smokeValidationId = smokeResult.validationId;
         logs.push(...smokeResult.logs.map((item) => `[Smoke] ${item}`));
         if (!smokeResult.success) {
@@ -259,9 +284,15 @@ export class CapabilityReleaseDeploymentService {
         artifactHash,
         workerVersion,
         smokeValidationId,
-        null,
+        null
       );
-      await accessors.insertAuditEvent(id, 'deployment_succeeded', userId, true, `部署成功 (${environment})`);
+      await accessors.insertAuditEvent(
+        id,
+        'deployment_succeeded',
+        userId,
+        true,
+        `部署成功 (${environment})`
+      );
 
       return {
         release: await accessors.getReleaseOrThrow(id),
@@ -281,16 +312,22 @@ export class CapabilityReleaseDeploymentService {
         null,
         null,
         null,
-        null,
+        null
       );
-      await accessors.insertAuditEvent(id, 'deployment_failed', userId, false, `部署失败: ${message}`);
+      await accessors.insertAuditEvent(
+        id,
+        'deployment_failed',
+        userId,
+        false,
+        `部署失败: ${message}`
+      );
       throw new BadRequestException(message);
     }
   }
 
   async getDeployments(
     id: string,
-    accessors: CapabilityReleaseDeploymentAccessors,
+    accessors: CapabilityReleaseDeploymentAccessors
   ): Promise<DeploymentRecordDTO[]> {
     await accessors.getReleaseOrThrow(id);
     const rows = await this.prisma.$queryRawUnsafe<any[]>(
@@ -298,7 +335,7 @@ export class CapabilityReleaseDeploymentService {
        FROM deployment_records
        WHERE release_id = $1::uuid
        ORDER BY created_at DESC`,
-      id,
+      id
     );
     return rows.map((row) => mapCapabilityDeployment(row));
   }
@@ -307,10 +344,18 @@ export class CapabilityReleaseDeploymentService {
     id: string,
     dto: RollbackCapabilityReleaseDTO,
     userId: string | undefined,
-    accessors: CapabilityReleaseDeploymentAccessors,
-  ): Promise<{ release: CapabilityReleaseDTO; deployment: DeploymentRecordDTO; targetReleaseId: string }> {
+    accessors: CapabilityReleaseDeploymentAccessors
+  ): Promise<{
+    release: CapabilityReleaseDTO;
+    deployment: DeploymentRecordDTO;
+    targetReleaseId: string;
+  }> {
     const release = await accessors.getReleaseOrThrow(id);
-    const targetRelease = await this.getRollbackTargetOrThrow(release, dto.targetReleaseId, accessors);
+    const targetRelease = await this.getRollbackTargetOrThrow(
+      release,
+      dto.targetReleaseId,
+      accessors
+    );
     const deploymentId = randomUUID();
     const runtimeType: CapabilityDeploymentRuntimeType =
       release.sourceType === 'temporal_workflow' ? 'temporal_worker' : 'flow_runtime';
@@ -331,7 +376,7 @@ export class CapabilityReleaseDeploymentService {
       runtimeType,
       JSON.stringify({ targetReleaseId: targetRelease.id, reason: dto.reason || null }),
       targetRelease.id,
-      userId || null,
+      userId || null
     );
 
     await this.prisma.$executeRawUnsafe(
@@ -342,7 +387,7 @@ export class CapabilityReleaseDeploymentService {
            updated_at = now()
        WHERE id = $1::uuid`,
       id,
-      deploymentId,
+      deploymentId
     );
 
     await accessors.insertAuditEvent(
@@ -351,7 +396,7 @@ export class CapabilityReleaseDeploymentService {
       userId,
       true,
       `开始回滚到 Release ${targetRelease.id}`,
-      { targetReleaseId: targetRelease.id, reason: dto.reason || null },
+      { targetReleaseId: targetRelease.id, reason: dto.reason || null }
     );
 
     try {
@@ -364,13 +409,13 @@ export class CapabilityReleaseDeploymentService {
         if (release.publishedSkillId) {
           const updated = await this.skillService.updateSkill(
             release.publishedSkillId,
-            targetDraft.draftPayload as any,
+            targetDraft.draftPayload as any
           );
           restoredSkillId = updated?.id || release.publishedSkillId;
         } else if (targetRelease.publishedSkillId) {
           const updated = await this.skillService.updateSkill(
             targetRelease.publishedSkillId,
-            targetDraft.draftPayload as any,
+            targetDraft.draftPayload as any
           );
           restoredSkillId = updated?.id || targetRelease.publishedSkillId;
         } else {
@@ -386,11 +431,11 @@ export class CapabilityReleaseDeploymentService {
           targetRelease,
           targetSnapshot,
           undefined,
-          userId,
+          userId
         );
         const workflowArtifactRef = this.resolveWorkflowArtifactRef(
           targetSnapshot.sourcePayload,
-          targetRelease.sourceId || targetSnapshot.sourceId || null,
+          targetRelease.sourceId || targetSnapshot.sourceId || null
         );
         if (!workflowArtifactRef?.workflowId) {
           throw new Error('目标 Release 缺少可回滚的 Workflow artifact');
@@ -421,7 +466,7 @@ export class CapabilityReleaseDeploymentService {
          WHERE id = $1::uuid`,
         id,
         restoredSkillId,
-        targetRelease.id,
+        targetRelease.id
       );
 
       await this.finishDeployment(
@@ -436,7 +481,7 @@ export class CapabilityReleaseDeploymentService {
         restoredSkillId,
         targetRelease.latestSuccessfulBuildId || null,
         null,
-        targetRelease.id,
+        targetRelease.id
       );
       await accessors.insertAuditEvent(
         id,
@@ -444,7 +489,7 @@ export class CapabilityReleaseDeploymentService {
         userId,
         true,
         `已回滚到 Release ${targetRelease.id}`,
-        { targetReleaseId: targetRelease.id, restoredSkillId },
+        { targetReleaseId: targetRelease.id, restoredSkillId }
       );
 
       return {
@@ -466,9 +511,15 @@ export class CapabilityReleaseDeploymentService {
         null,
         null,
         null,
-        targetRelease.id,
+        targetRelease.id
       );
-      await accessors.insertAuditEvent(id, 'rollback_failed', userId, false, `回滚失败: ${message}`);
+      await accessors.insertAuditEvent(
+        id,
+        'rollback_failed',
+        userId,
+        false,
+        `回滚失败: ${message}`
+      );
       throw new BadRequestException(message);
     }
   }
@@ -485,7 +536,7 @@ export class CapabilityReleaseDeploymentService {
     artifactHash: string | null,
     workerVersion: string | null,
     smokeValidationId: string | null,
-    rollbackTargetReleaseId: string | null,
+    rollbackTargetReleaseId: string | null
   ): Promise<void> {
     await this.prisma.$executeRawUnsafe(
       `UPDATE deployment_records
@@ -509,7 +560,7 @@ export class CapabilityReleaseDeploymentService {
       deploymentStatus,
       success,
       smokeValidationId,
-      rollbackTargetReleaseId,
+      rollbackTargetReleaseId
     );
 
     await this.prisma.$executeRawUnsafe(
@@ -526,13 +577,13 @@ export class CapabilityReleaseDeploymentService {
         : deploymentStatus === 'rolled_back'
           ? 'rolled_back'
           : 'failed',
-      deploymentId,
+      deploymentId
     );
   }
 
   private resolveExecutionTemplateIdForRuntime(
     release: CapabilityReleaseDTO,
-    snapshot: CapabilitySourceSnapshotDTO,
+    snapshot: CapabilitySourceSnapshotDTO
   ): string | null {
     if (release.sourceType === 'temporal_workflow') {
       return null;
@@ -561,7 +612,7 @@ export class CapabilityReleaseDeploymentService {
 
   private resolveWorkflowArtifactRef(
     sourcePayload: Record<string, unknown>,
-    fallbackWorkflowId?: string | null,
+    fallbackWorkflowId?: string | null
   ): { workflowId: string; artifactVersion?: number | null; artifactHash?: string | null } | null {
     const directRef = sourcePayload.workflowArtifactRef;
     if (directRef && typeof directRef === 'object') {
@@ -570,24 +621,28 @@ export class CapabilityReleaseDeploymentService {
       if (workflowId) {
         return {
           workflowId,
-          artifactVersion: typeof record.artifactVersion === 'number' ? record.artifactVersion : null,
+          artifactVersion:
+            typeof record.artifactVersion === 'number' ? record.artifactVersion : null,
           artifactHash: typeof record.artifactHash === 'string' ? record.artifactHash : null,
         };
       }
     }
 
-    const workflowId = typeof sourcePayload.id === 'string' && sourcePayload.id.trim()
-      ? sourcePayload.id.trim()
-      : typeof fallbackWorkflowId === 'string' && fallbackWorkflowId.trim()
-        ? fallbackWorkflowId.trim()
-        : '';
+    const workflowId =
+      typeof sourcePayload.id === 'string' && sourcePayload.id.trim()
+        ? sourcePayload.id.trim()
+        : typeof fallbackWorkflowId === 'string' && fallbackWorkflowId.trim()
+          ? fallbackWorkflowId.trim()
+          : '';
     if (!workflowId) {
       return null;
     }
     return {
       workflowId,
-      artifactVersion: typeof sourcePayload.artifactVersion === 'number' ? sourcePayload.artifactVersion : null,
-      artifactHash: typeof sourcePayload.artifactHash === 'string' ? sourcePayload.artifactHash : null,
+      artifactVersion:
+        typeof sourcePayload.artifactVersion === 'number' ? sourcePayload.artifactVersion : null,
+      artifactHash:
+        typeof sourcePayload.artifactHash === 'string' ? sourcePayload.artifactHash : null,
     };
   }
 
@@ -597,14 +652,14 @@ export class CapabilityReleaseDeploymentService {
       return null;
     }
     return typeof (workflowArtifactRef as Record<string, unknown>).artifactHash === 'string'
-      ? (workflowArtifactRef as Record<string, unknown>).artifactHash as string
+      ? ((workflowArtifactRef as Record<string, unknown>).artifactHash as string)
       : null;
   }
 
   private async getRollbackTargetOrThrow(
     release: CapabilityReleaseDTO,
     targetReleaseId: string | undefined,
-    accessors: CapabilityReleaseDeploymentAccessors,
+    accessors: CapabilityReleaseDeploymentAccessors
   ): Promise<CapabilityReleaseDTO> {
     if (targetReleaseId) {
       const target = await accessors.getReleaseOrThrow(targetReleaseId);
@@ -640,7 +695,7 @@ export class CapabilityReleaseDeploymentService {
       release.id,
       release.sourceType,
       release.sourceId || null,
-      release.sourceName || null,
+      release.sourceName || null
     );
 
     if (!rows[0]) {
@@ -655,7 +710,7 @@ export class CapabilityReleaseDeploymentService {
 
   private resolveDeploymentProfile(
     sourcePayload: Record<string, unknown>,
-    environment: string,
+    environment: string
   ): Record<string, unknown> {
     const profiles =
       sourcePayload.deploymentProfiles && typeof sourcePayload.deploymentProfiles === 'object'

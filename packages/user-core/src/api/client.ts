@@ -4,9 +4,9 @@ import axios, {
   type AxiosInstance,
   type AxiosRequestConfig,
   type InternalAxiosRequestConfig,
-} from "axios";
-import type { AuthSessionPort } from "../ports/auth-session.port.js";
-import type { RuntimeConfigPort } from "../ports/runtime.port.js";
+} from 'axios';
+import type { AuthSessionPort } from '../ports/auth-session.port.js';
+import type { RuntimeConfigPort } from '../ports/runtime.port.js';
 
 type RetryableAxiosRequestConfig = InternalAxiosRequestConfig & {
   _retry?: boolean;
@@ -24,20 +24,20 @@ export class ApiClient {
 
   constructor(
     runtimeConfig: RuntimeConfigPort,
-    private readonly auth?: AuthSessionPort,
+    private readonly auth?: AuthSessionPort
   ) {
     this.client = axios.create({
       baseURL: runtimeConfig.apiBaseUrl,
       timeout: 120000,
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
       },
     });
     this.refreshClient = axios.create({
       baseURL: runtimeConfig.apiBaseUrl,
       timeout: 120000,
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
       },
     });
     this.setupInterceptors();
@@ -76,7 +76,7 @@ export class ApiClient {
 
     if (!this.refreshPromise) {
       this.refreshPromise = this.refreshClient
-        .post<{ accessToken: string; refreshToken: string }>("/auth/refresh", { refreshToken })
+        .post<{ accessToken: string; refreshToken: string }>('/auth/refresh', { refreshToken })
         .then((response) => {
           this.auth?.setTokens(response.data.accessToken, response.data.refreshToken);
           return response.data.accessToken;
@@ -110,23 +110,22 @@ export class ApiClient {
 
   private decodeJwtExpiry(token: string): number | null {
     try {
-      const payload = token.split(".")[1];
+      const payload = token.split('.')[1];
       if (!payload) {
         return null;
       }
-      const normalizedPayload = payload.replace(/-/g, "+").replace(/_/g, "/");
-      const decoder = typeof globalThis.atob === "function"
-        ? globalThis.atob.bind(globalThis)
-        : undefined;
+      const normalizedPayload = payload.replace(/-/g, '+').replace(/_/g, '/');
+      const decoder =
+        typeof globalThis.atob === 'function' ? globalThis.atob.bind(globalThis) : undefined;
       if (!decoder) {
         return null;
       }
       const decoded: unknown = JSON.parse(decoder(normalizedPayload));
       if (
-        typeof decoded === "object"
-        && decoded !== null
-        && "exp" in decoded
-        && typeof decoded.exp === "number"
+        typeof decoded === 'object' &&
+        decoded !== null &&
+        'exp' in decoded &&
+        typeof decoded.exp === 'number'
       ) {
         return decoded.exp * 1000;
       }
@@ -143,12 +142,12 @@ export class ApiClient {
         const token = await this.ensureFreshAccessToken();
         if (token) {
           const headers = new AxiosHeaders(config.headers);
-          headers.set("Authorization", `Bearer ${token}`);
+          headers.set('Authorization', `Bearer ${token}`);
           config.headers = headers;
         }
         return config;
       },
-      (error: AxiosError) => Promise.reject(error),
+      (error: AxiosError) => Promise.reject(error)
     );
 
     this.client.interceptors.response.use(
@@ -156,46 +155,49 @@ export class ApiClient {
       async (error: AxiosError) => {
         const originalRequest = error.config as RetryableAxiosRequestConfig | undefined;
         if (
-          error.response?.status === 401
-          && originalRequest
-          && !originalRequest._retry
-          && !originalRequest.url?.includes("/auth/login")
-          && !originalRequest.url?.includes("/auth/refresh")
+          error.response?.status === 401 &&
+          originalRequest &&
+          !originalRequest._retry &&
+          !originalRequest.url?.includes('/auth/login') &&
+          !originalRequest.url?.includes('/auth/refresh')
         ) {
           originalRequest._retry = true;
           const accessToken = await this.refreshAccessToken();
           if (accessToken) {
             const headers = new AxiosHeaders(originalRequest.headers);
-            headers.set("Authorization", `Bearer ${accessToken}`);
+            headers.set('Authorization', `Bearer ${accessToken}`);
             originalRequest.headers = headers;
             return this.client(originalRequest);
           }
         }
 
         return Promise.reject(normalizeAxiosError(error));
-      },
+      }
     );
   }
 }
 
 const normalizeAxiosError = (error: AxiosError): Error => {
   const responseData = error.response?.data;
-  if (!responseData || typeof responseData !== "object") {
+  if (!responseData || typeof responseData !== 'object') {
     return error;
   }
 
   const data = responseData as Record<string, unknown>;
-  const message = typeof data.message === "string" && data.message.trim()
-    ? data.message.trim()
-    : Array.isArray(data.message)
-      ? data.message.find((item): item is string => typeof item === "string" && item.trim().length > 0)?.trim() || error.message
-      : typeof data.error === "string" && data.error.trim()
-        ? data.error.trim()
-        : error.message;
+  const message =
+    typeof data.message === 'string' && data.message.trim()
+      ? data.message.trim()
+      : Array.isArray(data.message)
+        ? data.message
+            .find((item): item is string => typeof item === 'string' && item.trim().length > 0)
+            ?.trim() || error.message
+        : typeof data.error === 'string' && data.error.trim()
+          ? data.error.trim()
+          : error.message;
   return new Error(message);
 };
 
 export const createApiClient = (
   runtimeConfig: RuntimeConfigPort,
-  auth?: AuthSessionPort,
+  auth?: AuthSessionPort
 ): ApiClient => new ApiClient(runtimeConfig, auth);

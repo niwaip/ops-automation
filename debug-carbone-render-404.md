@@ -1,14 +1,17 @@
 # [OPEN] carbone-render-404
 
 ## Symptoms
+
 - Chat/task result shows: `Carbone 渲染失败: HTTP Error 404: Not Found`
 - Execution status: `failed`
 - Execution ID: `ef25c8fc-d23f-4814-8e45-a16bcacc7a17`
 
 ## Expected
+
 - Carbone template render succeeds and returns generated document output instead of 404.
 
 ## Initial Hypotheses
+
 1. Requested Carbone template ID does not exist in the target Carbone service, so render/download endpoint returns 404.
 2. Backend is calling the wrong Carbone base URL or wrong route, causing a valid request to hit a non-existent endpoint.
 3. Template workflow uses a stale or malformed `templateId` / `reportId`, so only this execution path fails while service stays healthy.
@@ -16,12 +19,14 @@
 5. Render succeeds upstream but a follow-up asset/download fetch path is wrong, and the surfaced 404 is from the second hop rather than the initial render call.
 
 ## Evidence Plan
+
 - Locate the execution path for Carbone rendering.
 - Inspect runtime logs around execution `ef25c8fc-d23f-4814-8e45-a16bcacc7a17`.
 - Add minimal instrumentation only if existing logs are insufficient.
 - Compare failing request path, template ID, and target service endpoint.
 
 ## Evidence Collected
+
 - Execution `ef25c8fc-d23f-4814-8e45-a16bcacc7a17` failed in step `Execute skill`.
 - Runtime step log shows two POST attempts to:
   - `http://carbone-engine:3009/studio/render-resolved`
@@ -45,6 +50,7 @@
   - target `.docx` and `.json` both missing
 
 ## Hypothesis Status
+
 1. Template ID does not exist in service: Rejected. DB metadata and host asset exist.
 2. Wrong route/base URL: Rejected. Same endpoint succeeds after runtime recovery.
 3. Wrong or stale templateId/reportId in this execution: Rejected. Validation snapshot used the same IDs successfully.
@@ -52,10 +58,12 @@
 5. Follow-up download hop failed instead of initial render: Rejected. Initial render endpoint itself returned `Template file not found`.
 
 ## Minimal Fix
+
 - Restarted `carbone-engine` with the compose file that actually owns the service:
   - `./docker/start-smart.sh docker-compose.carbone.yml up -d carbone-engine`
 
 ## Post-Fix Verification
+
 - Inside container after restart:
   - `/app/templates` exists
   - target `.docx` and `.json` are visible
@@ -64,5 +72,6 @@
   - body contains `downloadUrl`, `fileName`, `format`
 
 ## Current Conclusion
+
 - Root cause is runtime mount/state drift in `carbone-engine`, not workflow code or chat UI.
 - The execution failed because `document-engine` could not see `/app/templates/<templateId>.docx` inside the running container.

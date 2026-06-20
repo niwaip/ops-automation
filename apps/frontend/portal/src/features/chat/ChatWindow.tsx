@@ -24,13 +24,18 @@ import type {
   StreamEvent,
 } from './types';
 import { StreamEventType } from './types';
-import { toExecutionNotification, RELEVANT_EXECUTION_STATUSES } from '@/shared/notifications/executionNotifications';
+import {
+  toExecutionNotification,
+  RELEVANT_EXECUTION_STATUSES,
+} from '@/shared/notifications/executionNotifications';
 import { useNotificationStore } from '@/shared/store/notificationStore';
 import { v4 as uuidv4 } from 'uuid';
 import './ChatWindow.css';
 
 type ChatTaskStatus = NonNullable<NonNullable<ChatMessageItem['metadata']>['taskStatus']>;
-type MissingInputItem = NonNullable<NonNullable<ChatMessageItem['metadata']>['missingInputs']>[number];
+type MissingInputItem = NonNullable<
+  NonNullable<ChatMessageItem['metadata']>['missingInputs']
+>[number];
 
 const EXECUTION_STATUSES: ReadonlySet<ExecutionStatus> = new Set([
   'draft',
@@ -61,21 +66,18 @@ const asRecord = (value: unknown): Record<string, unknown> | undefined => {
   return value as Record<string, unknown>;
 };
 
-const asString = (value: unknown): string | undefined => (
-  typeof value === 'string' ? value : undefined
-);
+const asString = (value: unknown): string | undefined =>
+  typeof value === 'string' ? value : undefined;
 
-const asExecutionStatus = (value: unknown): ExecutionStatus | undefined => (
+const asExecutionStatus = (value: unknown): ExecutionStatus | undefined =>
   typeof value === 'string' && EXECUTION_STATUSES.has(value as ExecutionStatus)
-    ? value as ExecutionStatus
-    : undefined
-);
+    ? (value as ExecutionStatus)
+    : undefined;
 
-const asApprovalStatus = (value: unknown): ApprovalStatus | undefined => (
+const asApprovalStatus = (value: unknown): ApprovalStatus | undefined =>
   typeof value === 'string' && APPROVAL_STATUSES.has(value as ApprovalStatus)
-    ? value as ApprovalStatus
-    : undefined
-);
+    ? (value as ApprovalStatus)
+    : undefined;
 
 const asPromptDebugPayload = (value: unknown): PromptDebugPayload | undefined => {
   const record = asRecord(value);
@@ -84,17 +86,17 @@ const asPromptDebugPayload = (value: unknown): PromptDebugPayload | undefined =>
   }
 
   return typeof record.systemPrompt === 'string' && typeof record.userPrompt === 'string'
-    ? value as PromptDebugPayload
+    ? (value as PromptDebugPayload)
     : undefined;
 };
 
 const asUsage = (value: unknown): LLMUsage | undefined => {
   const record = asRecord(value);
   if (
-    !record
-    || typeof record.prompt_tokens !== 'number'
-    || typeof record.completion_tokens !== 'number'
-    || typeof record.total_tokens !== 'number'
+    !record ||
+    typeof record.prompt_tokens !== 'number' ||
+    typeof record.completion_tokens !== 'number' ||
+    typeof record.total_tokens !== 'number'
   ) {
     return undefined;
   }
@@ -104,12 +106,11 @@ const asUsage = (value: unknown): LLMUsage | undefined => {
 
 const asRateLimit = (value: unknown): LLMRateLimit | undefined => {
   const record = asRecord(value);
-  return record ? value as LLMRateLimit : undefined;
+  return record ? (value as LLMRateLimit) : undefined;
 };
 
-const asMode = (value: unknown): 'chat' | 'task' | undefined => (
-  value === 'chat' || value === 'task' ? value : undefined
-);
+const asMode = (value: unknown): 'chat' | 'task' | undefined =>
+  value === 'chat' || value === 'task' ? value : undefined;
 
 const compactText = (value: string, maxLength = 120): string => {
   const normalized = value.replace(/\s+/g, ' ').trim();
@@ -150,7 +151,7 @@ const asMissingInputs = (value: unknown): MissingInputItem[] | undefined => {
 
 const buildTaskProgressLog = (
   event: StreamEvent,
-  data: Record<string, unknown>,
+  data: Record<string, unknown>
 ): ChatProgressLog | undefined => {
   if (event.type === StreamEventType.THOUGHT) {
     const text = compactText(event.content.replace(/[🚀📥]/g, '').trim(), 100);
@@ -235,7 +236,7 @@ const ChatWindow: React.FC = () => {
 
   const resolveTaskStatus = (
     eventType: StreamEventType,
-    status?: string,
+    status?: string
   ): 'waiting_input' | 'pending_approval' | 'running' | 'completed' | 'failed' => {
     if (eventType === StreamEventType.ERROR) {
       return 'failed';
@@ -319,19 +320,18 @@ const ChatWindow: React.FC = () => {
         finalSummary: '',
         progressLogs: [],
         errorMessage: '',
-          promptDebug: undefined,
+        promptDebug: undefined,
       },
     };
     addMessage(assistantMessage);
 
     // 只有等待补充输入的场景，才延续上一次执行单
-    const lastAssistantMessage = [...messages].reverse().find(m => m.role === 'assistant');
-    const executionId = draftExecutionId
-      || (
-        lastAssistantMessage?.metadata?.taskStatus === 'waiting_input'
-          ? lastAssistantMessage.metadata.executionId
-          : undefined
-      );
+    const lastAssistantMessage = [...messages].reverse().find((m) => m.role === 'assistant');
+    const executionId =
+      draftExecutionId ||
+      (lastAssistantMessage?.metadata?.taskStatus === 'waiting_input'
+        ? lastAssistantMessage.metadata.executionId
+        : undefined);
 
     startAssistantStream(assistantMessageId, {
       message: content,
@@ -377,7 +377,7 @@ const ChatWindow: React.FC = () => {
     const syncPromptDebug = (
       event: StreamEvent,
       taskStatus: ChatTaskStatus | undefined,
-      sourceEventType: StreamEventType,
+      sourceEventType: StreamEventType
     ) => {
       const data = event.data ?? {};
       const promptDebug = asPromptDebugPayload(data.promptDebug);
@@ -400,17 +400,12 @@ const ChatWindow: React.FC = () => {
       (event) => {
         addStreamEvent(event);
         const data = event.data ?? {};
-        const progressLog = request.config?.mode === 'task'
-          ? buildTaskProgressLog(event, data)
-          : undefined;
+        const progressLog =
+          request.config?.mode === 'task' ? buildTaskProgressLog(event, data) : undefined;
 
         const executionId = asString(data.executionId);
         const executionStatus = asExecutionStatus(data.status);
-        if (
-          executionId
-          && executionStatus
-          && RELEVANT_EXECUTION_STATUSES.has(executionStatus)
-        ) {
+        if (executionId && executionStatus && RELEVANT_EXECUTION_STATUSES.has(executionStatus)) {
           const notification = toExecutionNotification({
             id: executionId,
             skillId: asString(data.skillId) ?? '',
@@ -419,7 +414,9 @@ const ChatWindow: React.FC = () => {
             failureReason: executionStatus === 'failed' ? event.content : undefined,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-            endedAt: ['succeeded', 'failed', 'cancelled'].includes(executionStatus) ? new Date().toISOString() : undefined,
+            endedAt: ['succeeded', 'failed', 'cancelled'].includes(executionStatus)
+              ? new Date().toISOString()
+              : undefined,
           } satisfies ExecutionDto);
 
           if (notification) {
@@ -461,7 +458,11 @@ const ChatWindow: React.FC = () => {
             promptDebug: asPromptDebugPayload(data.promptDebug),
           });
           syncPromptDebug(event, 'running', StreamEventType.ACTION);
-        } else if (event.type === StreamEventType.OBSERVATION && data.hasBusinessResult !== true && !asString(data.downloadUrl)) {
+        } else if (
+          event.type === StreamEventType.OBSERVATION &&
+          data.hasBusinessResult !== true &&
+          !asString(data.downloadUrl)
+        ) {
           if (isChatRequest) {
             accumulatedContent = event.content;
           } else if (showThinking && !progressLog) {
@@ -482,7 +483,8 @@ const ChatWindow: React.FC = () => {
           event.type === StreamEventType.RESULT ||
           event.type === StreamEventType.WAITING_INPUT ||
           event.type === StreamEventType.PENDING_APPROVAL ||
-          (event.type === StreamEventType.OBSERVATION && (data.hasBusinessResult === true || Boolean(asString(data.downloadUrl))))
+          (event.type === StreamEventType.OBSERVATION &&
+            (data.hasBusinessResult === true || Boolean(asString(data.downloadUrl))))
         ) {
           const hasBusinessResult = data.hasBusinessResult === true;
           const missingInputs = asMissingInputs(data.missingInputs);
@@ -522,11 +524,16 @@ const ChatWindow: React.FC = () => {
               taskStatus: nextTaskStatus,
               executionId,
               executionStatus,
-              finalResult: event.type === StreamEventType.RESULT && hasBusinessResult ? event.content : '',
-              finalResultData: event.type === StreamEventType.RESULT ? (data.result ?? data) : undefined,
+              finalResult:
+                event.type === StreamEventType.RESULT && hasBusinessResult ? event.content : '',
+              finalResultData:
+                event.type === StreamEventType.RESULT ? (data.result ?? data) : undefined,
               usage: asUsage(data.usage),
               rateLimit: asRateLimit(data.rateLimit),
-              finalSummary: event.type === StreamEventType.WAITING_INPUT || !hasBusinessResult ? event.content : '',
+              finalSummary:
+                event.type === StreamEventType.WAITING_INPUT || !hasBusinessResult
+                  ? event.content
+                  : '',
               downloadUrl: downloadUrl || undefined,
               hasBusinessResult,
               missingInputs,
@@ -555,7 +562,7 @@ const ChatWindow: React.FC = () => {
           const skill = asRecord(data.skill);
           setPendingParamsConfirm(
             asRecord(data.params) ?? null,
-            asString(skill?.skillName) ?? null,
+            asString(skill?.skillName) ?? null
           );
           syncPromptDebug(event, 'running', StreamEventType.PARAMS_CONFIRM);
         }

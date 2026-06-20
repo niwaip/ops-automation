@@ -16,32 +16,28 @@ function normalizeBindingPath(path: string): string {
   return normalized;
 }
 
-function resolveBindingPaths(
-  fieldName: string,
-  rawConfig: unknown,
-): string[] {
+function resolveBindingPaths(fieldName: string, rawConfig: unknown): string[] {
   if (!isRecord(rawConfig)) {
     return [];
   }
 
   const renderPath = rawConfig.renderPath;
   const templateBinding = rawConfig.templateBinding;
-  const rawPaths = typeof templateBinding === 'string' && templateBinding.trim()
-    ? [templateBinding.trim()]
-    : typeof renderPath === 'string' && renderPath.trim()
-      ? [renderPath.trim()]
-      : Array.isArray(renderPath)
-        ? renderPath
-            .filter((item): item is string => typeof item === 'string')
-            .map((item) => item.trim())
-            .filter((item) => item.length > 0)
-        : [];
+  const rawPaths =
+    typeof templateBinding === 'string' && templateBinding.trim()
+      ? [templateBinding.trim()]
+      : typeof renderPath === 'string' && renderPath.trim()
+        ? [renderPath.trim()]
+        : Array.isArray(renderPath)
+          ? renderPath
+              .filter((item): item is string => typeof item === 'string')
+              .map((item) => item.trim())
+              .filter((item) => item.length > 0)
+          : [];
 
-  const normalized = Array.from(new Set(
-    rawPaths
-      .map((path) => normalizeBindingPath(path))
-      .filter((path) => path.length > 0),
-  ));
+  const normalized = Array.from(
+    new Set(rawPaths.map((path) => normalizeBindingPath(path)).filter((path) => path.length > 0))
+  );
 
   return normalized.length > 0 ? normalized : [fieldName];
 }
@@ -70,9 +66,7 @@ function resolveLocalizedBindingValue(path: string, value: unknown): unknown {
     return value;
   }
 
-  const localeCandidates = locale === 'cn'
-    ? ['cn', 'zh']
-    : ['jp', 'ja'];
+  const localeCandidates = locale === 'cn' ? ['cn', 'zh'] : ['jp', 'ja'];
 
   for (const candidate of localeCandidates) {
     if (value[candidate] !== undefined && value[candidate] !== null) {
@@ -120,7 +114,10 @@ function setNestedValue(target: Record<string, unknown>, path: string, value: un
   current[segments[segments.length - 1]] = value;
 }
 
-function ensureArrayPath(target: Record<string, unknown>, path: string): Array<Record<string, unknown>> {
+function ensureArrayPath(
+  target: Record<string, unknown>,
+  path: string
+): Array<Record<string, unknown>> {
   const segments = String(path || '')
     .split('.')
     .map((segment) => segment.trim())
@@ -178,7 +175,7 @@ function setBoundValue(target: Record<string, unknown>, path: string, value: unk
 
 export function applyDirectRenderPaths(
   inputData: Record<string, unknown>,
-  workflowInputParams?: Record<string, unknown>,
+  workflowInputParams?: Record<string, unknown>
 ): Record<string, unknown> {
   if (!workflowInputParams || !isRecord(workflowInputParams)) {
     return { ...(inputData || {}) };

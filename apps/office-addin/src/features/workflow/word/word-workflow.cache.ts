@@ -101,7 +101,10 @@ type WordCompareCacheKeyPayload = {
   headingLanguages: string[];
 };
 
-const WORD_UNDERSTANDING_CACHE_STORAGE_KEY = getHostScopedStorageKey('word', 'understanding-cache:v5');
+const WORD_UNDERSTANDING_CACHE_STORAGE_KEY = getHostScopedStorageKey(
+  'word',
+  'understanding-cache:v5'
+);
 const WORD_COMPARE_CACHE_STORAGE_KEY = getHostScopedStorageKey('word', 'compare-cache:v1');
 const WORD_RECOGNITION_CACHE_STORAGE_KEY = getHostScopedStorageKey('word', 'recognition-cache:v1');
 const WORD_UNDERSTANDING_CACHE_MAX_ENTRIES = 3;
@@ -211,9 +214,10 @@ function writeCacheMapToStorage<T extends { cacheKey: string; updatedAt: number 
   maxEntries: number
 ): void {
   const nextCache = limitCacheEntries(cache, maxEntries, preferredKey);
-  const preferredOnlyCache = preferredKey && nextCache[preferredKey]
-    ? { [preferredKey]: nextCache[preferredKey] }
-    : undefined;
+  const preferredOnlyCache =
+    preferredKey && nextCache[preferredKey]
+      ? { [preferredKey]: nextCache[preferredKey] }
+      : undefined;
 
   try {
     localStorage.setItem(storageKey, JSON.stringify(nextCache));
@@ -244,78 +248,88 @@ function writeCacheMapToStorage<T extends { cacheKey: string; updatedAt: number 
   }
 }
 
-function sanitizeWordRecognitionResultForStorage(result: WordRecognitionSnapshot): WordRecognitionSnapshot {
+function sanitizeWordRecognitionResultForStorage(
+  result: WordRecognitionSnapshot
+): WordRecognitionSnapshot {
   return {
     suggestions: Array.isArray(result.suggestions) ? result.suggestions : [],
-    sectionGenerationResults: (Array.isArray(result.sectionGenerationResults) ? result.sectionGenerationResults : [])
-      .map((section) => ({
-        ...section,
-        excerpt: trimCacheString(section.excerpt, WORD_RECOGNITION_CACHE_MAX_EXCERPT_LENGTH),
-        promptDebugSummary: trimCacheString(section.promptDebugSummary, WORD_RECOGNITION_CACHE_MAX_PROMPT_SUMMARY_LENGTH),
-        promptRequestText: undefined,
-        rawAiResponse: undefined,
-        qualityIssues: Array.isArray(section.qualityIssues)
-          ? section.qualityIssues.slice(0, WORD_RECOGNITION_CACHE_MAX_QUALITY_ISSUES)
-          : undefined,
-        error: section.error
-          ? {
-              message: trimCacheString(section.error.message, WORD_RECOGNITION_CACHE_MAX_ERROR_TEXT_LENGTH),
-              reason: trimCacheString(section.error.reason, WORD_RECOGNITION_CACHE_MAX_ERROR_TEXT_LENGTH),
-              url: trimCacheString(section.error.url, WORD_RECOGNITION_CACHE_MAX_ERROR_TEXT_LENGTH),
-              status: section.error.status,
-            }
-          : undefined,
-      })),
+    sectionGenerationResults: (Array.isArray(result.sectionGenerationResults)
+      ? result.sectionGenerationResults
+      : []
+    ).map((section) => ({
+      ...section,
+      excerpt: trimCacheString(section.excerpt, WORD_RECOGNITION_CACHE_MAX_EXCERPT_LENGTH),
+      promptDebugSummary: trimCacheString(
+        section.promptDebugSummary,
+        WORD_RECOGNITION_CACHE_MAX_PROMPT_SUMMARY_LENGTH
+      ),
+      promptRequestText: undefined,
+      rawAiResponse: undefined,
+      qualityIssues: Array.isArray(section.qualityIssues)
+        ? section.qualityIssues.slice(0, WORD_RECOGNITION_CACHE_MAX_QUALITY_ISSUES)
+        : undefined,
+      error: section.error
+        ? {
+            message: trimCacheString(
+              section.error.message,
+              WORD_RECOGNITION_CACHE_MAX_ERROR_TEXT_LENGTH
+            ),
+            reason: trimCacheString(
+              section.error.reason,
+              WORD_RECOGNITION_CACHE_MAX_ERROR_TEXT_LENGTH
+            ),
+            url: trimCacheString(section.error.url, WORD_RECOGNITION_CACHE_MAX_ERROR_TEXT_LENGTH),
+            status: section.error.status,
+          }
+        : undefined,
+    })),
     collapsedSections: result.collapsedSections,
   };
 }
 
 export function isWordCompareCacheCompatible(entry: WordCompareCacheEntry | undefined): boolean {
   return Boolean(
-    entry
-    && typeof entry.cacheKey === 'string'
-    && Array.isArray(entry.result?.candidateFields)
-    && entry.result?.compareSummary
-    && (
-      entry.result?.recognitionSnapshot === undefined
-      || (
-        Array.isArray(entry.result.recognitionSnapshot?.suggestions)
-        && Array.isArray(entry.result.recognitionSnapshot?.sectionGenerationResults)
-      )
-    )
-    && typeof entry.updatedAt === 'number'
+    entry &&
+    typeof entry.cacheKey === 'string' &&
+    Array.isArray(entry.result?.candidateFields) &&
+    entry.result?.compareSummary &&
+    (entry.result?.recognitionSnapshot === undefined ||
+      (Array.isArray(entry.result.recognitionSnapshot?.suggestions) &&
+        Array.isArray(entry.result.recognitionSnapshot?.sectionGenerationResults))) &&
+    typeof entry.updatedAt === 'number'
   );
 }
 
-export function isWordRecognitionCacheCompatible(entry: WordRecognitionCacheEntry | undefined): boolean {
+export function isWordRecognitionCacheCompatible(
+  entry: WordRecognitionCacheEntry | undefined
+): boolean {
   return Boolean(
-    entry
-    && typeof entry.cacheKey === 'string'
-    && Array.isArray(entry.result?.suggestions)
-    && Array.isArray(entry.result?.sectionGenerationResults)
-    && (
-      entry.result?.collapsedSections === undefined
-      || (
-        entry.result?.collapsedSections
-        && typeof entry.result.collapsedSections === 'object'
-        && !Array.isArray(entry.result.collapsedSections)
-      )
-    )
-    && typeof entry.updatedAt === 'number'
+    entry &&
+    typeof entry.cacheKey === 'string' &&
+    Array.isArray(entry.result?.suggestions) &&
+    Array.isArray(entry.result?.sectionGenerationResults) &&
+    (entry.result?.collapsedSections === undefined ||
+      (entry.result?.collapsedSections &&
+        typeof entry.result.collapsedSections === 'object' &&
+        !Array.isArray(entry.result.collapsedSections))) &&
+    typeof entry.updatedAt === 'number'
   );
 }
 
-export function isWordUnderstandingCacheCompatible(entry: WordUnderstandingCacheEntry | undefined): boolean {
+export function isWordUnderstandingCacheCompatible(
+  entry: WordUnderstandingCacheEntry | undefined
+): boolean {
   if (!entry?.result?.summary) {
     return false;
   }
 
   const summaryText = String(entry.result.summary.understandingSummaryText || '').trim();
   const promptRequestText = String(entry.result.contextAnalysis?.promptRequestText || '').trim();
-  const isNewPromptStyle = promptRequestText.includes('【系统提示词】')
-    && promptRequestText.includes('你是文档理解助手')
-    && promptRequestText.includes('## 文档类型与用途')
-    && !promptRequestText.includes('必须返回 JSON 对象');
+  const isNewPromptStyle =
+    promptRequestText.includes('【系统提示词】') &&
+    promptRequestText.includes('你是文档理解助手') &&
+    promptRequestText.includes('## 文档类型与用途') &&
+    !promptRequestText.includes('必须返回 JSON 对象');
 
   return Boolean(summaryText) && Boolean(promptRequestText) && isNewPromptStyle;
 }
@@ -338,7 +352,9 @@ export function saveWordCompareCacheEntry(entry: WordCompareCacheEntry): void {
     result: entry.result.recognitionSnapshot
       ? {
           ...entry.result,
-          recognitionSnapshot: sanitizeWordRecognitionResultForStorage(entry.result.recognitionSnapshot),
+          recognitionSnapshot: sanitizeWordRecognitionResultForStorage(
+            entry.result.recognitionSnapshot
+          ),
         }
       : entry.result,
   };
@@ -370,7 +386,12 @@ export function removeWordCompareCacheEntry(cacheKey: string): void {
     return;
   }
   delete cache[cacheKey];
-  writeCacheMapToStorage(WORD_COMPARE_CACHE_STORAGE_KEY, cache, undefined, WORD_COMPARE_CACHE_MAX_ENTRIES);
+  writeCacheMapToStorage(
+    WORD_COMPARE_CACHE_STORAGE_KEY,
+    cache,
+    undefined,
+    WORD_COMPARE_CACHE_MAX_ENTRIES
+  );
 }
 
 export function removeWordUnderstandingCacheEntry(cacheKey: string): void {
@@ -379,7 +400,12 @@ export function removeWordUnderstandingCacheEntry(cacheKey: string): void {
     return;
   }
   delete cache[cacheKey];
-  writeCacheMapToStorage(WORD_UNDERSTANDING_CACHE_STORAGE_KEY, cache, undefined, WORD_UNDERSTANDING_CACHE_MAX_ENTRIES);
+  writeCacheMapToStorage(
+    WORD_UNDERSTANDING_CACHE_STORAGE_KEY,
+    cache,
+    undefined,
+    WORD_UNDERSTANDING_CACHE_MAX_ENTRIES
+  );
 }
 
 export function removeWordRecognitionCacheEntry(cacheKey: string): void {
@@ -388,7 +414,12 @@ export function removeWordRecognitionCacheEntry(cacheKey: string): void {
     return;
   }
   delete cache[cacheKey];
-  writeCacheMapToStorage(WORD_RECOGNITION_CACHE_STORAGE_KEY, cache, undefined, WORD_RECOGNITION_CACHE_MAX_ENTRIES);
+  writeCacheMapToStorage(
+    WORD_RECOGNITION_CACHE_STORAGE_KEY,
+    cache,
+    undefined,
+    WORD_RECOGNITION_CACHE_MAX_ENTRIES
+  );
 }
 
 export function mergeWordRecognitionResultWithAppliedCache(
@@ -406,16 +437,19 @@ export function mergeWordRecognitionResultWithAppliedCache(
     : [];
   const currentSectionKeys = new Set(currentSectionResults.map((section) => section.sectionKey));
   const cachedSuggestionsById = new Map(
-    (Array.isArray(cachedEntry.result.suggestions) ? cachedEntry.result.suggestions : [])
-      .map((suggestion) => [suggestion.id, suggestion] as const)
+    (Array.isArray(cachedEntry.result.suggestions) ? cachedEntry.result.suggestions : []).map(
+      (suggestion) => [suggestion.id, suggestion] as const
+    )
   );
   const cachedSuggestionSectionMap = new Map<string, string>();
-  (Array.isArray(cachedEntry.result.sectionGenerationResults) ? cachedEntry.result.sectionGenerationResults : [])
-    .forEach((section) => {
-      section.suggestionIds.forEach((suggestionId) => {
-        cachedSuggestionSectionMap.set(suggestionId, section.sectionKey);
-      });
+  (Array.isArray(cachedEntry.result.sectionGenerationResults)
+    ? cachedEntry.result.sectionGenerationResults
+    : []
+  ).forEach((section) => {
+    section.suggestionIds.forEach((suggestionId) => {
+      cachedSuggestionSectionMap.set(suggestionId, section.sectionKey);
     });
+  });
   const mergedSuggestions = dedupeSuggestions([
     ...currentSuggestions,
     ...Array.from(cachedSuggestionsById.values()).filter((suggestion) => {
@@ -427,23 +461,37 @@ export function mergeWordRecognitionResultWithAppliedCache(
     mergedSuggestions.map((suggestion) => [suggestion.id, suggestion] as const)
   );
   const sectionResultMap = new Map<string, WordSectionGenerationResult>(
-    (Array.isArray(cachedEntry.result.sectionGenerationResults) ? cachedEntry.result.sectionGenerationResults : [])
+    (Array.isArray(cachedEntry.result.sectionGenerationResults)
+      ? cachedEntry.result.sectionGenerationResults
+      : []
+    )
       .filter((section) => !currentSectionKeys.has(section.sectionKey))
-      .map((section) => [
-        section.sectionKey,
-        {
-          ...section,
-          suggestionIds: section.suggestionIds.filter((suggestionId) => mergedSuggestionsById.has(suggestionId)),
-          suggestionCount: section.suggestionIds.filter((suggestionId) => mergedSuggestionsById.has(suggestionId)).length,
-        } as WordSectionGenerationResult,
-      ] as const)
+      .map(
+        (section) =>
+          [
+            section.sectionKey,
+            {
+              ...section,
+              suggestionIds: section.suggestionIds.filter((suggestionId) =>
+                mergedSuggestionsById.has(suggestionId)
+              ),
+              suggestionCount: section.suggestionIds.filter((suggestionId) =>
+                mergedSuggestionsById.has(suggestionId)
+              ).length,
+            } as WordSectionGenerationResult,
+          ] as const
+      )
   );
 
   currentSectionResults.forEach((section) => {
     sectionResultMap.set(section.sectionKey, {
       ...section,
-      suggestionIds: section.suggestionIds.filter((suggestionId) => mergedSuggestionsById.has(suggestionId)),
-      suggestionCount: section.suggestionIds.filter((suggestionId) => mergedSuggestionsById.has(suggestionId)).length,
+      suggestionIds: section.suggestionIds.filter((suggestionId) =>
+        mergedSuggestionsById.has(suggestionId)
+      ),
+      suggestionCount: section.suggestionIds.filter((suggestionId) =>
+        mergedSuggestionsById.has(suggestionId)
+      ).length,
     });
   });
 
@@ -462,19 +510,18 @@ function buildWordUnderstandingCachePayload(
   sampleUploadState: SampleUploadStateLike,
   sourceLanguage: string,
   targetLanguages: string[],
-  compareSignature: string,
+  compareSignature: string
 ): WordUnderstandingCacheKeyPayload {
   const elements = Array.isArray(templateDocumentIr?.elements) ? templateDocumentIr.elements : [];
-  const stats = templateDocumentIr?.stats && typeof templateDocumentIr.stats === 'object'
-    ? templateDocumentIr.stats
-    : {};
-  const structurePreview = elements
-    .slice(0, 24)
-    .map((element: Record<string, unknown>) => ({
-      id: String(element.id || ''),
-      type: String(element.type || ''),
-      text: normalizeCacheText(element.text).slice(0, 48),
-    }));
+  const stats =
+    templateDocumentIr?.stats && typeof templateDocumentIr.stats === 'object'
+      ? templateDocumentIr.stats
+      : {};
+  const structurePreview = elements.slice(0, 24).map((element: Record<string, unknown>) => ({
+    id: String(element.id || ''),
+    type: String(element.type || ''),
+    text: normalizeCacheText(element.text).slice(0, 48),
+  }));
   const sampleSignature = sampleUploadState.fileBase64
     ? {
         fileName: sampleUploadState.fileName || '',
@@ -506,19 +553,18 @@ function buildWordCompareCachePayload(
   templateDocumentIr: Record<string, any>,
   sampleUploadState: SampleUploadStateLike,
   templateType: string,
-  headingLanguages: string[],
+  headingLanguages: string[]
 ): WordCompareCacheKeyPayload {
   const elements = Array.isArray(templateDocumentIr?.elements) ? templateDocumentIr.elements : [];
-  const stats = templateDocumentIr?.stats && typeof templateDocumentIr.stats === 'object'
-    ? templateDocumentIr.stats
-    : {};
-  const structurePreview = elements
-    .slice(0, 24)
-    .map((element: Record<string, unknown>) => ({
-      id: String(element.id || ''),
-      type: String(element.type || ''),
-      text: normalizeCacheText(element.text).slice(0, 48),
-    }));
+  const stats =
+    templateDocumentIr?.stats && typeof templateDocumentIr.stats === 'object'
+      ? templateDocumentIr.stats
+      : {};
+  const structurePreview = elements.slice(0, 24).map((element: Record<string, unknown>) => ({
+    id: String(element.id || ''),
+    type: String(element.type || ''),
+    text: normalizeCacheText(element.text).slice(0, 48),
+  }));
   const sampleSignature = sampleUploadState.fileBase64
     ? {
         fileName: sampleUploadState.fileName || '',
@@ -548,15 +594,17 @@ export function buildWordUnderstandingCacheKey(
   sampleUploadState: SampleUploadStateLike,
   sourceLanguage: string,
   targetLanguages: string[],
-  compareSignature: string,
+  compareSignature: string
 ): string {
-  return JSON.stringify(buildWordUnderstandingCachePayload(
-    templateDocumentIr,
-    sampleUploadState,
-    sourceLanguage,
-    targetLanguages,
-    compareSignature,
-  ));
+  return JSON.stringify(
+    buildWordUnderstandingCachePayload(
+      templateDocumentIr,
+      sampleUploadState,
+      sourceLanguage,
+      targetLanguages,
+      compareSignature
+    )
+  );
 }
 
 export function buildWordRecognitionCacheKey(
@@ -564,14 +612,14 @@ export function buildWordRecognitionCacheKey(
   sampleUploadState: SampleUploadStateLike,
   sourceLanguage: string,
   targetLanguages: string[],
-  compareSignature: string,
+  compareSignature: string
 ): string {
   return buildWordUnderstandingCacheKey(
     templateDocumentIr,
     sampleUploadState,
     sourceLanguage,
     targetLanguages,
-    compareSignature,
+    compareSignature
   );
 }
 
@@ -579,14 +627,16 @@ export function buildWordCompareCacheKey(
   templateDocumentIr: Record<string, any>,
   sampleUploadState: SampleUploadStateLike,
   templateType: string,
-  headingLanguages: string[],
+  headingLanguages: string[]
 ): string {
-  return JSON.stringify(buildWordCompareCachePayload(
-    templateDocumentIr,
-    sampleUploadState,
-    templateType,
-    headingLanguages,
-  ));
+  return JSON.stringify(
+    buildWordCompareCachePayload(
+      templateDocumentIr,
+      sampleUploadState,
+      templateType,
+      headingLanguages
+    )
+  );
 }
 
 function parseWordUnderstandingCacheKey(cacheKey: string): WordUnderstandingCacheKeyPayload | null {
@@ -609,7 +659,7 @@ export function findLatestMatchingWordUnderstandingCacheEntry(options: {
     options.sampleUploadState,
     options.sourceLanguage,
     options.targetLanguages,
-    '',
+    ''
   );
   const { compareSignature: _ignoredCompareSignature, ...expectedMatcher } = basePayload;
   const expectedMatcherKey = JSON.stringify(expectedMatcher);

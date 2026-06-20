@@ -39,11 +39,14 @@ export function getCompareDocumentTypeLabel(templateType: string): string {
 export function normalizeCompareHeadingLanguages(
   languages: CompareHeadingLanguageSelection[]
 ): CompareHeadingLanguageSelection[] {
-  const normalized = Array.from(new Set(
-    languages.filter((language): language is CompareHeadingLanguageSelection =>
-      language === 'zh' || language === 'ja' || language === 'en'
+  const normalized = Array.from(
+    new Set(
+      languages.filter(
+        (language): language is CompareHeadingLanguageSelection =>
+          language === 'zh' || language === 'ja' || language === 'en'
+      )
     )
-  ));
+  );
 
   return normalized.length > 0 ? normalized : ['zh'];
 }

@@ -15,7 +15,9 @@ export class BrowserCommandController {
   @Post('parse-command')
   @ApiOperation({ summary: 'Parse natural language to browser commands' })
   @ApiResponse({ status: 200, description: 'Returns parsed browser commands' })
-  async parseCommand(@Body() body: ParseBrowserCommandRequest): Promise<ParseBrowserCommandResponse> {
+  async parseCommand(
+    @Body() body: ParseBrowserCommandRequest
+  ): Promise<ParseBrowserCommandResponse> {
     return this.browserCommandService.parseCommand(body);
   }
 

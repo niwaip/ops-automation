@@ -19,7 +19,7 @@ export class CapabilityReleaseDeploymentSmokeService {
     private readonly temporalWorkflowService: TemporalWorkflowService,
     private readonly executionFlowTemplateService: ExecutionFlowTemplateService,
     private readonly capabilityReleaseBrowserRecordingService: CapabilityReleaseBrowserRecordingService,
-    private readonly capabilityReleaseTemporalSchemaService: CapabilityReleaseTemporalSchemaService,
+    private readonly capabilityReleaseTemporalSchemaService: CapabilityReleaseTemporalSchemaService
   ) {}
 
   async resolveBuildForDeployment(
@@ -27,7 +27,7 @@ export class CapabilityReleaseDeploymentSmokeService {
     snapshot: CapabilitySourceSnapshotDTO,
     buildId: string | undefined,
     userId: string | undefined,
-    accessors: CapabilityReleaseDeploymentAccessors,
+    accessors: CapabilityReleaseDeploymentAccessors
   ): Promise<CapabilityBuildDTO> {
     if (release.sourceType === 'temporal_workflow') {
       return accessors.resolveTemporalExecutableBuildOrThrow(release, snapshot, buildId, userId);
@@ -54,7 +54,7 @@ export class CapabilityReleaseDeploymentSmokeService {
       snapshot.id,
       JSON.stringify(snapshot.sourcePayload),
       JSON.stringify(snapshot.sourcePayload),
-      userId || null,
+      userId || null
     );
 
     await this.prisma.$executeRawUnsafe(
@@ -62,7 +62,7 @@ export class CapabilityReleaseDeploymentSmokeService {
        SET current_build_id = $2::uuid, latest_successful_build_id = $2::uuid, updated_at = now()
        WHERE id = $1::uuid`,
       release.id,
-      syntheticBuildId,
+      syntheticBuildId
     );
 
     return accessors.getBuildOrThrow(syntheticBuildId);
@@ -75,7 +75,7 @@ export class CapabilityReleaseDeploymentSmokeService {
     deploymentId: string,
     environment: string,
     userId: string | undefined,
-    accessors: CapabilityReleaseDeploymentAccessors,
+    accessors: CapabilityReleaseDeploymentAccessors
   ): Promise<{
     validationId: string;
     success: boolean;
@@ -88,7 +88,7 @@ export class CapabilityReleaseDeploymentSmokeService {
       release.id,
       build.id,
       { deploymentId, environment },
-      userId,
+      userId
     );
 
     try {
@@ -97,8 +97,11 @@ export class CapabilityReleaseDeploymentSmokeService {
       let logs: string[] = [];
       let resultSnapshot: Record<string, unknown> | null = null;
       let errorSummary: string | null = null;
-      const smokeInput = this.capabilityReleaseTemporalSchemaService
-        .buildSmokeTestInput(release, snapshot, environment);
+      const smokeInput = this.capabilityReleaseTemporalSchemaService.buildSmokeTestInput(
+        release,
+        snapshot,
+        environment
+      );
       const templateId = this.resolveExecutionTemplateIdForRuntime(release, snapshot);
 
       if (release.sourceType === 'temporal_workflow') {
@@ -109,7 +112,7 @@ export class CapabilityReleaseDeploymentSmokeService {
         const result = await this.temporalWorkflowService.validateWorkflowReal(
           build.generatedCode,
           fn,
-          smokeInput,
+          smokeInput
         );
         success = result.success;
         score = result.score;
@@ -141,7 +144,7 @@ export class CapabilityReleaseDeploymentSmokeService {
           undefined,
           smokeInput,
           true,
-          `smoke test for ${environment}`,
+          `smoke test for ${environment}`
         );
         success = validation.isValid;
         score = validation.score || 0;
@@ -164,7 +167,7 @@ export class CapabilityReleaseDeploymentSmokeService {
         score,
         logs,
         resultSnapshot,
-        errorSummary,
+        errorSummary
       );
 
       await accessors.insertAuditEvent(
@@ -175,7 +178,7 @@ export class CapabilityReleaseDeploymentSmokeService {
         success
           ? `部署后 smoke test 通过 (${environment})`
           : `部署后 smoke test 失败: ${errorSummary || '未知错误'}`,
-        { deploymentId, environment, validationId },
+        { deploymentId, environment, validationId }
       );
 
       return {
@@ -195,7 +198,7 @@ export class CapabilityReleaseDeploymentSmokeService {
         0,
         [`[Error] ${message}`],
         { deploymentId, environment, error: message },
-        message,
+        message
       );
       await accessors.insertAuditEvent(
         release.id,
@@ -203,7 +206,7 @@ export class CapabilityReleaseDeploymentSmokeService {
         userId,
         false,
         `部署后 smoke test 失败: ${message}`,
-        { deploymentId, environment, validationId },
+        { deploymentId, environment, validationId }
       );
       return {
         validationId,
@@ -220,7 +223,7 @@ export class CapabilityReleaseDeploymentSmokeService {
     releaseId: string,
     buildId: string,
     input: Record<string, unknown> | undefined,
-    userId?: string,
+    userId?: string
   ): Promise<string> {
     const validationId = randomUUID();
     await this.prisma.$executeRawUnsafe(
@@ -235,7 +238,7 @@ export class CapabilityReleaseDeploymentSmokeService {
       releaseId,
       buildId,
       JSON.stringify(input || null),
-      userId || null,
+      userId || null
     );
     return validationId;
   }
@@ -247,7 +250,7 @@ export class CapabilityReleaseDeploymentSmokeService {
     score: number,
     logs: string[],
     resultSnapshot: Record<string, unknown> | null,
-    errorSummary: string | null,
+    errorSummary: string | null
   ): Promise<void> {
     await this.prisma.$executeRawUnsafe(
       `UPDATE capability_validations
@@ -263,7 +266,7 @@ export class CapabilityReleaseDeploymentSmokeService {
       JSON.stringify(logs),
       score,
       success,
-      errorSummary,
+      errorSummary
     );
 
     await this.prisma.$executeRawUnsafe(
@@ -274,13 +277,13 @@ export class CapabilityReleaseDeploymentSmokeService {
        WHERE id = $1::uuid`,
       releaseId,
       validationId,
-      success,
+      success
     );
   }
 
   private resolveExecutionTemplateIdForRuntime(
     release: CapabilityReleaseDTO,
-    snapshot: CapabilitySourceSnapshotDTO,
+    snapshot: CapabilitySourceSnapshotDTO
   ): string | null {
     if (release.sourceType === 'temporal_workflow') {
       return null;

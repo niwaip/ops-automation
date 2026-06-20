@@ -25,27 +25,32 @@ function normalizeWordSuggestionPathForQualityCheck(value: string): string {
 }
 
 function isGenericWordSuggestedName(value: string): boolean {
-  return /^(?:d\.)?(?:[A-Za-z_][A-Za-z0-9_]*\[\]\.)?(field\d*|textValue|textField\d*|value\d*|var\d*|param\d*|undefined|null|unknown)$/i
-    .test(normalizeWordSuggestionPathForQualityCheck(value));
+  return /^(?:d\.)?(?:[A-Za-z_][A-Za-z0-9_]*\[\]\.)?(field\d*|textValue|textField\d*|value\d*|var\d*|param\d*|undefined|null|unknown)$/i.test(
+    normalizeWordSuggestionPathForQualityCheck(value)
+  );
 }
 
 function isValidWordSuggestedPath(value: string): boolean {
   const normalized = normalizeWordSuggestionPathForQualityCheck(value);
-  return Boolean(normalized)
-    && /^[A-Za-z_][A-Za-z0-9_[\].]*$/.test(normalized)
-    && !/[^\x00-\x7F]/.test(normalized);
+  return (
+    Boolean(normalized) &&
+    /^[A-Za-z_][A-Za-z0-9_[\].]*$/.test(normalized) &&
+    !/[^\x00-\x7F]/.test(normalized)
+  );
 }
 
 export function buildAcceptedWordSuggestionSummaries(
   suggestions: AISuggestion[]
 ): WordSectionPromptAcceptedSuggestion[] {
-  return suggestions.map((suggestion) => ({
-    candidateId: String(suggestion.details?.candidateId || ''),
-    suggestedName: suggestion.suggestedName,
-    type: suggestion.type,
-    fieldType: suggestion.details?.fieldType,
-    confidence: suggestion.confidence,
-  })).filter((item) => item.candidateId && item.suggestedName);
+  return suggestions
+    .map((suggestion) => ({
+      candidateId: String(suggestion.details?.candidateId || ''),
+      suggestedName: suggestion.suggestedName,
+      type: suggestion.type,
+      fieldType: suggestion.details?.fieldType,
+      confidence: suggestion.confidence,
+    }))
+    .filter((item) => item.candidateId && item.suggestedName);
 }
 
 export function isWordSuggestionHighQuality(
@@ -129,7 +134,9 @@ export function buildWordSectionSuggestionDisplayGroups(
     }));
   }
 
-  const candidateById = new Map(section.candidates.map((candidate) => [candidate.candidateId, candidate] as const));
+  const candidateById = new Map(
+    section.candidates.map((candidate) => [candidate.candidateId, candidate] as const)
+  );
   const pairCandidateLookup = new Map<string, string>();
   buildWordSectionBilingualPairsForRecognition(section.candidates).forEach((pair) => {
     const [left, right] = pair.candidates;
@@ -155,13 +162,21 @@ export function buildWordSectionSuggestionDisplayGroups(
 
     const candidateId = suggestion.details?.candidateId;
     const peerCandidateId = candidateId ? pairCandidateLookup.get(candidateId) : undefined;
-    const peerSuggestion = peerCandidateId ? suggestionByCandidateId.get(peerCandidateId) : undefined;
+    const peerSuggestion = peerCandidateId
+      ? suggestionByCandidateId.get(peerCandidateId)
+      : undefined;
 
     if (peerSuggestion && !seenSuggestionIds.has(peerSuggestion.id)) {
-      const orderedSuggestions = sortWordPairedSuggestions([suggestion, peerSuggestion], candidateById);
+      const orderedSuggestions = sortWordPairedSuggestions(
+        [suggestion, peerSuggestion],
+        candidateById
+      );
       orderedSuggestions.forEach((item) => seenSuggestionIds.add(item.id));
       groups.push({
-        key: `pair:${orderedSuggestions.map((item) => item.id).sort().join('|')}`,
+        key: `pair:${orderedSuggestions
+          .map((item) => item.id)
+          .sort()
+          .join('|')}`,
         type: 'pair',
         suggestions: orderedSuggestions,
         pairPath: stripWordBilingualSuggestedNameSuffix(orderedSuggestions[0]?.suggestedName || ''),
@@ -170,18 +185,25 @@ export function buildWordSectionSuggestionDisplayGroups(
     }
 
     const basePath = stripWordBilingualSuggestedNameSuffix(suggestion.suggestedName);
-    const fallbackPeer = suggestions.find((candidateSuggestion) =>
-      candidateSuggestion.id !== suggestion.id
-      && !seenSuggestionIds.has(candidateSuggestion.id)
-      && /_(cn|jp)$/i.test(String(candidateSuggestion.suggestedName || '').replace(/[{}]/g, ''))
-      && stripWordBilingualSuggestedNameSuffix(candidateSuggestion.suggestedName) === basePath
+    const fallbackPeer = suggestions.find(
+      (candidateSuggestion) =>
+        candidateSuggestion.id !== suggestion.id &&
+        !seenSuggestionIds.has(candidateSuggestion.id) &&
+        /_(cn|jp)$/i.test(String(candidateSuggestion.suggestedName || '').replace(/[{}]/g, '')) &&
+        stripWordBilingualSuggestedNameSuffix(candidateSuggestion.suggestedName) === basePath
     );
 
     if (fallbackPeer) {
-      const orderedSuggestions = sortWordPairedSuggestions([suggestion, fallbackPeer], candidateById);
+      const orderedSuggestions = sortWordPairedSuggestions(
+        [suggestion, fallbackPeer],
+        candidateById
+      );
       orderedSuggestions.forEach((item) => seenSuggestionIds.add(item.id));
       groups.push({
-        key: `pair:${orderedSuggestions.map((item) => item.id).sort().join('|')}`,
+        key: `pair:${orderedSuggestions
+          .map((item) => item.id)
+          .sort()
+          .join('|')}`,
         type: 'pair',
         suggestions: orderedSuggestions,
         pairPath: basePath,
@@ -225,14 +247,16 @@ export function hydrateWordSectionSuggestions(
 }
 
 function extractSuggestionFieldLeaf(suggestedName: string): string {
-  return String(suggestedName || '')
-    .replace(/[{}]/g, '')
-    .replace(/^d\./, '')
-    .replace(/\[(?:\d+)?\]/g, '')
-    .split('.')
-    .map((segment) => segment.replace(/[^A-Za-z0-9_]/g, '').toLowerCase())
-    .filter(Boolean)
-    .pop() || '';
+  return (
+    String(suggestedName || '')
+      .replace(/[{}]/g, '')
+      .replace(/^d\./, '')
+      .replace(/\[(?:\d+)?\]/g, '')
+      .split('.')
+      .map((segment) => segment.replace(/[^A-Za-z0-9_]/g, '').toLowerCase())
+      .filter(Boolean)
+      .pop() || ''
+  );
 }
 
 function extractSuggestionPathTokens(suggestedName: string): string[] {
@@ -255,7 +279,7 @@ function splitWordIdentifierTokens(value: string): string[] {
 
 function buildWordAnchorFromCompareCandidate(
   candidate: TemplateFieldCandidate,
-  paragraphTextByIndex: Map<number, string>,
+  paragraphTextByIndex: Map<number, string>
 ): NonNullable<AISuggestion['details']>['wordAnchor'] | undefined {
   const location = candidate.location;
   if (!location) {
@@ -270,9 +294,9 @@ function buildWordAnchorFromCompareCandidate(
   }
 
   if (
-    typeof location.tableIndex === 'number'
-    && typeof location.rowIndex === 'number'
-    && typeof location.cellIndex === 'number'
+    typeof location.tableIndex === 'number' &&
+    typeof location.rowIndex === 'number' &&
+    typeof location.cellIndex === 'number'
   ) {
     return {
       type: 'table-cell',
@@ -283,9 +307,9 @@ function buildWordAnchorFromCompareCandidate(
   }
 
   if (
-    typeof location.paragraphIndex === 'number'
-    && typeof location.anchorStart === 'number'
-    && typeof location.anchorEnd === 'number'
+    typeof location.paragraphIndex === 'number' &&
+    typeof location.anchorStart === 'number' &&
+    typeof location.anchorEnd === 'number'
   ) {
     return {
       type: 'text-range',
@@ -300,7 +324,9 @@ function buildWordAnchorFromCompareCandidate(
 }
 
 function safeCompareText(value: unknown): string {
-  return String(value || '').replace(/\s+/g, ' ').trim();
+  return String(value || '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function normalizeCompareLookupText(value: unknown): string {
@@ -312,7 +338,7 @@ function normalizeCompareLookupText(value: unknown): string {
 
 function scoreCompareCandidateForSuggestion(
   suggestion: AISuggestion,
-  candidate: TemplateFieldCandidate,
+  candidate: TemplateFieldCandidate
 ): number {
   const candidateHints = inferWordCandidateHints(candidate);
   const candidateTexts = [
@@ -365,18 +391,24 @@ function scoreCompareCandidateForSuggestion(
     score += 80;
   }
 
-  const suggestionPathTokens = extractSuggestionPathTokens(suggestion.suggestedName)
-    .flatMap((token) => splitWordIdentifierTokens(token));
-  const candidateFieldTokens = splitWordIdentifierTokens(candidate.fieldIdHint || candidateHints.fieldIdHint || '');
+  const suggestionPathTokens = extractSuggestionPathTokens(suggestion.suggestedName).flatMap(
+    (token) => splitWordIdentifierTokens(token)
+  );
+  const candidateFieldTokens = splitWordIdentifierTokens(
+    candidate.fieldIdHint || candidateHints.fieldIdHint || ''
+  );
   if (suggestionPathTokens.length > 0 && candidateFieldTokens.length > 0) {
-    const overlapCount = candidateFieldTokens.filter((token) => suggestionPathTokens.includes(token)).length;
+    const overlapCount = candidateFieldTokens.filter((token) =>
+      suggestionPathTokens.includes(token)
+    ).length;
     score += Math.min(40, overlapCount * 18);
   }
 
   if (
-    candidate.sectionTitle
-    && suggestion.details?.chapter
-    && normalizeCompareLookupText(candidate.sectionTitle) === normalizeCompareLookupText(suggestion.details.chapter)
+    candidate.sectionTitle &&
+    suggestion.details?.chapter &&
+    normalizeCompareLookupText(candidate.sectionTitle) ===
+      normalizeCompareLookupText(suggestion.details.chapter)
   ) {
     score += 12;
   }
@@ -387,7 +419,7 @@ function scoreCompareCandidateForSuggestion(
 function attachCompareCandidateAnchors(
   documentIr: DocumentIR,
   section: CompareCandidateSectionLike,
-  suggestions: AISuggestion[],
+  suggestions: AISuggestion[]
 ): AISuggestion[] {
   if (section.candidates.length === 0 || suggestions.length === 0) {
     return suggestions;
@@ -399,7 +431,9 @@ function attachCompareCandidateAnchors(
       .map((element) => [Number(element.hostData?.index), String(element.text || '')] as const)
       .filter(([index]) => Number.isFinite(index))
   );
-  const candidateById = new Map(section.candidates.map((candidate) => [candidate.candidateId, candidate] as const));
+  const candidateById = new Map(
+    section.candidates.map((candidate) => [candidate.candidateId, candidate] as const)
+  );
   const unusedCandidateIndexes = new Set(section.candidates.map((_, index) => index));
 
   return suggestions.map((suggestion, suggestionIndex) => {
@@ -407,23 +441,28 @@ function attachCompareCandidateAnchors(
     if (explicitCandidateId) {
       const matchedCandidate = candidateById.get(explicitCandidateId);
       if (matchedCandidate) {
-        const wordAnchor = buildWordAnchorFromCompareCandidate(matchedCandidate, paragraphTextByIndex);
+        const wordAnchor = buildWordAnchorFromCompareCandidate(
+          matchedCandidate,
+          paragraphTextByIndex
+        );
         if (wordAnchor) {
-          const matchedCandidateIndex = section.candidates.findIndex((candidate) => candidate.candidateId === explicitCandidateId);
+          const matchedCandidateIndex = section.candidates.findIndex(
+            (candidate) => candidate.candidateId === explicitCandidateId
+          );
           if (matchedCandidateIndex >= 0) {
             unusedCandidateIndexes.delete(matchedCandidateIndex);
           }
           return {
             ...suggestion,
-            underlineInfo: suggestion.underlineInfo || (
-              wordAnchor.type === 'text-range'
+            underlineInfo:
+              suggestion.underlineInfo ||
+              (wordAnchor.type === 'text-range'
                 ? {
                     paragraphIndex: wordAnchor.paragraphIndex,
                     position: { start: wordAnchor.start || 0, end: wordAnchor.end || 0 },
                     paragraphText: wordAnchor.paragraphText,
                   }
-                : undefined
-            ),
+                : undefined),
             details: {
               ...suggestion.details,
               candidateId: explicitCandidateId,
@@ -453,7 +492,11 @@ function attachCompareCandidateAnchors(
       }
     });
 
-    if (matchedScore <= 0 && section.candidates.length === suggestions.length && unusedCandidateIndexes.has(suggestionIndex)) {
+    if (
+      matchedScore <= 0 &&
+      section.candidates.length === suggestions.length &&
+      unusedCandidateIndexes.has(suggestionIndex)
+    ) {
       matchedCandidateIndex = suggestionIndex;
     }
 
@@ -471,15 +514,15 @@ function attachCompareCandidateAnchors(
 
     return {
       ...suggestion,
-      underlineInfo: suggestion.underlineInfo || (
-        wordAnchor.type === 'text-range'
+      underlineInfo:
+        suggestion.underlineInfo ||
+        (wordAnchor.type === 'text-range'
           ? {
               paragraphIndex: wordAnchor.paragraphIndex,
               position: { start: wordAnchor.start || 0, end: wordAnchor.end || 0 },
               paragraphText: wordAnchor.paragraphText,
             }
-          : undefined
-      ),
+          : undefined),
       details: {
         ...suggestion.details,
         candidateId: suggestion.details?.candidateId || matchedCandidate.candidateId,
@@ -502,7 +545,9 @@ export function dedupeWordSectionSuggestions(suggestions: AISuggestion[]): AISug
       suggestion.elementPath,
       suggestion.originalText,
       suggestion.details?.chapter,
-    ].map((value) => String(value || '')).join('|');
+    ]
+      .map((value) => String(value || ''))
+      .join('|');
     const existing = deduped.get(key);
     if (!existing || suggestion.confidence > existing.confidence) {
       deduped.set(key, suggestion);

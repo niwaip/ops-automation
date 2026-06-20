@@ -1,4 +1,7 @@
-import { ExecutionEventService, ExecutionStreamEventPayload } from '../src/modules/execution/execution-event.service';
+import {
+  ExecutionEventService,
+  ExecutionStreamEventPayload,
+} from '../src/modules/execution/execution-event.service';
 import { EXECUTION_EVENT_TYPE } from '../src/modules/execution';
 import { ExecutionService } from '../src/modules/execution/execution.service';
 
@@ -10,12 +13,16 @@ describe('ExecutionService event stream', () => {
 
     const mockedEventService = {
       createEvent: jest.fn(
-        async (executionId: string, eventType: string, payload: any): Promise<ExecutionStreamEventPayload> => ({
+        async (
+          executionId: string,
+          eventType: string,
+          payload: any
+        ): Promise<ExecutionStreamEventPayload> => ({
           executionId,
           eventType: eventType as any,
           payload,
           timestamp: new Date().toISOString(),
-        }),
+        })
       ),
     } as unknown as ExecutionEventService;
 
@@ -26,8 +33,12 @@ describe('ExecutionService event stream', () => {
       received.push(event);
     });
 
-    await (service as any).createEvent('execution-2', EXECUTION_EVENT_TYPE.EXECUTION_CREATED, { ok: false });
-    await (service as any).createEvent('execution-1', EXECUTION_EVENT_TYPE.EXECUTION_CREATED, { ok: true });
+    await (service as any).createEvent('execution-2', EXECUTION_EVENT_TYPE.EXECUTION_CREATED, {
+      ok: false,
+    });
+    await (service as any).createEvent('execution-1', EXECUTION_EVENT_TYPE.EXECUTION_CREATED, {
+      ok: true,
+    });
 
     sub.unsubscribe();
 

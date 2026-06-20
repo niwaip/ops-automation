@@ -36,10 +36,7 @@ import {
 import { buildDecisionContextPromptSummary } from './decision-context-summary';
 import { ContextWindowManager } from './context-window-manager';
 import { ModelRouterService } from './model-router.service';
-import {
-  attachErrorCategory,
-  decideRecoveryAction,
-} from './error-recovery-policy';
+import { attachErrorCategory, decideRecoveryAction } from './error-recovery-policy';
 import { LLMResponse } from '../../interfaces';
 import { PromptDebugSettingsService } from '../debug-settings/prompt-debug-settings.service';
 import { CONTROL_PLANE_EXECUTION_STATUS } from '../../client/control-plane.contracts';
@@ -48,9 +45,18 @@ import { CONTROL_PLANE_EXECUTION_STATUS } from '../../client/control-plane.contr
  * 默认配置
  */
 const DEFAULT_CONFIG: ReActConfig = {
-  maxIterations: Number(process.env.REACT_MAX_ITERATIONS || 10),  // 增加到10次，支持更复杂的多步骤流程
+  maxIterations: Number(process.env.REACT_MAX_ITERATIONS || 10), // 增加到10次，支持更复杂的多步骤流程
   modelId: 'default',
-  tools: ['skill_match', 'preview_params', 'document_render', 'param_collect', 'user_ask', 'file_parse', 'api_call', 'flow_execute'],
+  tools: [
+    'skill_match',
+    'preview_params',
+    'document_render',
+    'param_collect',
+    'user_ask',
+    'file_parse',
+    'api_call',
+    'flow_execute',
+  ],
   mode: 'task',
 };
 
@@ -68,7 +74,7 @@ export class ReActEngineService {
     private readonly sessionService: SessionService,
     private readonly capabilityResolver: CapabilityResolver,
     private readonly modelRouterService: ModelRouterService,
-    private readonly promptDebugSettingsService: PromptDebugSettingsService = new PromptDebugSettingsService(),
+    private readonly promptDebugSettingsService: PromptDebugSettingsService = new PromptDebugSettingsService()
   ) {}
 
   private tracePrefix(context: ExecutionContext): string {
@@ -77,7 +83,7 @@ export class ReActEngineService {
 
   private mergeApprovedToolNames(
     existing: string[] | undefined,
-    incoming: string[] | undefined,
+    incoming: string[] | undefined
   ): string[] | undefined {
     const merged = Array.from(new Set([...(existing || []), ...(incoming || [])].filter(Boolean)));
     return merged.length > 0 ? merged : undefined;
@@ -91,15 +97,9 @@ export class ReActEngineService {
     return typeof toolName === 'string' && toolName.trim().length > 0 ? toolName : undefined;
   }
 
-  private canResumeApprovedAction(
-    request: ChatRequestDTO,
-    state: ReActState,
-  ): boolean {
+  private canResumeApprovedAction(request: ChatRequestDTO, state: ReActState): boolean {
     const pendingToolName = this.getPendingApprovalToolName(state);
-    return Boolean(
-      pendingToolName
-      && request.approvedToolNames?.includes(pendingToolName),
-    );
+    return Boolean(pendingToolName && request.approvedToolNames?.includes(pendingToolName));
   }
 
   private buildPersistedContext(context: ExecutionContext): Partial<ExecutionContext> {
@@ -118,13 +118,12 @@ export class ReActEngineService {
     };
   }
 
-  private appendReActTrace(
-    messages: ChatMessage[],
-    state: ReActState,
-  ): ChatMessage[] {
+  private appendReActTrace(messages: ChatMessage[], state: ReActState): ChatMessage[] {
     const decisionContext = this.buildDecisionContextPayload(state);
     const routingMeta = decisionContext.routing;
-    const observationRecord = this.contextWindowManager.buildObservationRecord(state.observation || '');
+    const observationRecord = this.contextWindowManager.buildObservationRecord(
+      state.observation || ''
+    );
     const nextMessages = [
       ...messages,
       {
@@ -163,7 +162,7 @@ export class ReActEngineService {
     messages: ChatMessage[],
     response: string,
     protocolError: string,
-    state: ReActState,
+    state: ReActState
   ): ChatMessage[] {
     const decisionContext = this.buildDecisionContextPayload(state);
     const routingMeta = decisionContext.routing;
@@ -214,10 +213,7 @@ export class ReActEngineService {
     };
   }
 
-  private resetRetryState(
-    state: ReActState,
-    target: 'same_action' | 'model_inference',
-  ): void {
+  private resetRetryState(state: ReActState, target: 'same_action' | 'model_inference'): void {
     state.retryState = {
       ...(state.retryState || {}),
       [target === 'same_action' ? 'sameAction' : 'modelInference']: 0,
@@ -242,7 +238,7 @@ export class ReActEngineService {
   private setPromptAssemblyMeta(
     state: ReActState,
     systemSections: Array<{ key: string; source: string }>,
-    userSections: Array<{ key: string; source: string }>,
+    userSections: Array<{ key: string; source: string }>
   ): void {
     state.promptAssembly = {
       systemPromptSectionKeys: systemSections.map((section) => section.key),
@@ -266,13 +262,15 @@ export class ReActEngineService {
   }
 
   private canExposePromptDebug(context: ExecutionContext): boolean {
-    return this.promptDebugSettingsService.isPromptDebugEnabled()
-      && Boolean(context.userRoles?.includes('admin'));
+    return (
+      this.promptDebugSettingsService.isPromptDebugEnabled() &&
+      Boolean(context.userRoles?.includes('admin'))
+    );
   }
 
   private buildPromptDebugPayload(
     state: ReActState,
-    context: ExecutionContext,
+    context: ExecutionContext
   ): PromptDebugPayload | undefined {
     if (!this.canExposePromptDebug(context)) {
       return undefined;
@@ -295,12 +293,11 @@ export class ReActEngineService {
       action?: string;
       params?: Record<string, unknown>;
       message?: string;
-    } = {},
+    } = {}
   ): boolean {
     const retryKey = target === 'same_action' ? 'sameAction' : 'modelInference';
-    const maxRetries = target === 'same_action'
-      ? MAX_SAME_ACTION_RETRIES
-      : MAX_MODEL_INFERENCE_RETRIES;
+    const maxRetries =
+      target === 'same_action' ? MAX_SAME_ACTION_RETRIES : MAX_MODEL_INFERENCE_RETRIES;
     const currentRetries = state.retryState?.[retryKey] || 0;
     if (currentRetries >= maxRetries) {
       return false;
@@ -326,7 +323,7 @@ export class ReActEngineService {
   private async ensureActiveModelId(
     state: ReActState,
     config: ReActConfig,
-    context: ExecutionContext,
+    context: ExecutionContext
   ): Promise<void> {
     const routingDecision = this.modelRouterService.resolveInitialModel(
       config.modelId,
@@ -337,7 +334,7 @@ export class ReActEngineService {
         userInput: context.originalUserInput,
         userRoles: context.userRoles,
         availableSkills: context.availableSkills,
-      },
+      }
     );
     state.retryState = {
       ...(state.retryState || {}),
@@ -346,19 +343,21 @@ export class ReActEngineService {
       routingReason: routingDecision.reason,
     };
     config.modelId = routingDecision.modelId;
-    this.logger.debug(`Model routing initialized: ${routingDecision.reason} -> ${routingDecision.modelId}`);
+    this.logger.debug(
+      `Model routing initialized: ${routingDecision.reason} -> ${routingDecision.modelId}`
+    );
   }
 
   private async switchToFallbackModel(
     state: ReActState,
     config: ReActConfig,
-    context: ExecutionContext,
+    context: ExecutionContext
   ): Promise<boolean> {
     const activeModelId = state.retryState?.activeModelId || config.modelId;
     const routingDecision = this.modelRouterService.resolveFallbackModel(
       activeModelId,
       state.retryState?.attemptedModelIds || [],
-      state.lastToolResult,
+      state.lastToolResult
     );
     if (!routingDecision) {
       return false;
@@ -374,7 +373,9 @@ export class ReActEngineService {
     config.modelId = routingDecision.modelId;
     state.isWaitingForUserInput = false;
     state.observation = `当前模型恢复失败，已按 ${routingDecision.reason} 策略切换到后备模型 ${routingDecision.modelId} 继续执行。`;
-    this.logger.warn(`${this.tracePrefix(context)}Model fallback selected: ${routingDecision.reason} -> ${routingDecision.modelId}`);
+    this.logger.warn(
+      `${this.tracePrefix(context)}Model fallback selected: ${routingDecision.reason} -> ${routingDecision.modelId}`
+    );
 
     return true;
   }
@@ -382,10 +383,7 @@ export class ReActEngineService {
   /**
    * 执行ReAct循环（流式输出）
    */
-  async *execute(
-    request: ChatRequestDTO,
-    context: ExecutionContext,
-  ): AsyncGenerator<StreamEvent> {
+  async *execute(request: ChatRequestDTO, context: ExecutionContext): AsyncGenerator<StreamEvent> {
     const config: ReActConfig = {
       ...DEFAULT_CONFIG,
       ...request.config,
@@ -401,7 +399,7 @@ export class ReActEngineService {
     }
     context.approvedToolNames = this.mergeApprovedToolNames(
       context.approvedToolNames,
-      request.approvedToolNames,
+      request.approvedToolNames
     );
     if (request.message?.trim()) {
       context.originalUserInput = request.message.trim();
@@ -410,7 +408,9 @@ export class ReActEngineService {
     // 绑定 executionId 到 context
     if (request.executionId) {
       context.executionId = request.executionId;
-      this.logger.log(`${this.tracePrefix(context)}Bound executionId ${request.executionId} to context`);
+      this.logger.log(
+        `${this.tracePrefix(context)}Bound executionId ${request.executionId} to context`
+      );
     }
 
     // 尝试从Session中恢复
@@ -418,23 +418,34 @@ export class ReActEngineService {
     if (savedSession) {
       const canResumeApprovedAction = this.canResumeApprovedAction(request, savedSession.state);
       // 已进入等待用户输入状态时，若本次没有新输入，则直接返回等待事件，避免重复执行工具
-      if (savedSession.state.isWaitingForUserInput && !request.message?.trim() && !canResumeApprovedAction) {
-        this.logger.debug(`${this.tracePrefix(context)}Session ${context.sessionId} is waiting for user input`);
+      if (
+        savedSession.state.isWaitingForUserInput &&
+        !request.message?.trim() &&
+        !canResumeApprovedAction
+      ) {
+        this.logger.debug(
+          `${this.tracePrefix(context)}Session ${context.sessionId} is waiting for user input`
+        );
         yield this.createWaitingEvent(savedSession.state);
         return;
       }
 
-      const shouldStartNewRun = savedSession.state.isFinished
-        || savedSession.state.iteration >= savedSession.state.maxIterations;
+      const shouldStartNewRun =
+        savedSession.state.isFinished ||
+        savedSession.state.iteration >= savedSession.state.maxIterations;
 
       if (shouldStartNewRun) {
-        this.logger.log(`${this.tracePrefix(context)}Resetting finished session ${context.sessionId} for a new task run`);
+        this.logger.log(
+          `${this.tracePrefix(context)}Resetting finished session ${context.sessionId} for a new task run`
+        );
         await this.sessionService.deleteSession(context.sessionId);
         // 不要从旧session恢复context，让skill_match重新匹配
         state = this.createInitialState(config.maxIterations);
         messages = savedSession.history;
       } else {
-        this.logger.log(`${this.tracePrefix(context)}Resuming session ${context.sessionId} at iteration ${savedSession.state.iteration}`);
+        this.logger.log(
+          `${this.tracePrefix(context)}Resuming session ${context.sessionId} at iteration ${savedSession.state.iteration}`
+        );
         state = savedSession.state;
         messages = savedSession.history;
         // 收到新输入后解除等待状态，继续后续步骤
@@ -447,20 +458,22 @@ export class ReActEngineService {
         }
         context.approvedToolNames = this.mergeApprovedToolNames(
           context.approvedToolNames,
-          request.approvedToolNames,
+          request.approvedToolNames
         );
         if (canResumeApprovedAction && state.action) {
           context.nextAction = state.action;
           context.nextActionParams = state.actionInput || {};
-          this.logger.log(`${this.tracePrefix(context)}Resuming approved action ${state.action} for session ${context.sessionId}`);
+          this.logger.log(
+            `${this.tracePrefix(context)}Resuming approved action ${state.action} for session ${context.sessionId}`
+          );
         }
       }
-      
+
       // 如果 Session 中没存角色（旧数据），优先使用当前请求带的角色
       if (request.userRoles) {
         context.userRoles = request.userRoles;
       }
-      
+
       // 如果新请求带了消息，作为新用户输入加入历史
       if (request.message) {
         messages.push({
@@ -482,7 +495,7 @@ export class ReActEngineService {
         });
       }
     }
-    
+
     // 加载动态流程工具
     await this.toolExecutor.loadDynamicFlowTools(false, context.traceId);
 
@@ -504,9 +517,10 @@ export class ReActEngineService {
       expectedResult: skill.runtimeHints?.expectedResult,
       outputParams: skill.runtimeHints?.outputParams,
       executionType: skill.executionType,
-      effectiveTools: capabilitySnapshot.selectedSkillId === skill.skillId
-        ? (capabilitySnapshot.skillScopedToolNames || [])
-        : undefined,
+      effectiveTools:
+        capabilitySnapshot.selectedSkillId === skill.skillId
+          ? capabilitySnapshot.skillScopedToolNames || []
+          : undefined,
     }));
     context.allowedToolNames = capabilitySnapshot.visibleTools.map((tool) => tool.name);
     context.selectedSkillToolNames = capabilitySnapshot.skillScopedToolNames || [];
@@ -521,14 +535,16 @@ export class ReActEngineService {
       state.actionInput = {};
       state.isWaitingForUserInput = false;
 
-      this.logger.debug(`${this.tracePrefix(context)}ReAct iteration ${state.iteration}/${state.maxIterations}`);
+      this.logger.debug(
+        `${this.tracePrefix(context)}ReAct iteration ${state.iteration}/${state.maxIterations}`
+      );
 
       // 1. 检查是否有工具返回的nextAction提示，如果有则跳过AI决策直接执行
       if (context.nextAction) {
         state.action = context.nextAction;
         state.actionInput = context.nextActionParams || {};
         state.thought = `根据工具返回的提示，执行下一步: ${context.nextAction}`;
-        context.nextAction = undefined;  // 清除提示
+        context.nextAction = undefined; // 清除提示
         context.nextActionParams = undefined;
 
         // 发送thought事件
@@ -573,22 +589,24 @@ export class ReActEngineService {
           yield this.createWaitingEvent(state);
           break;
         }
-        continue;  // 继续下一轮
+        continue; // 继续下一轮
       }
 
       // 1.5 检查预编译执行流 (Fast-track)
       if (
-        config.mode !== 'task'
-        && context.skill?.executionFlow
-        && context.currentFlowStep !== undefined
-        && context.currentFlowStep < context.skill.executionFlow.length
+        config.mode !== 'task' &&
+        context.skill?.executionFlow &&
+        context.currentFlowStep !== undefined &&
+        context.currentFlowStep < context.skill.executionFlow.length
       ) {
         const flowTool = context.skill.executionFlow[context.currentFlowStep];
         if (!flowTool) {
           context.currentFlowStep++;
           continue;
         }
-        this.logger.debug(`${this.tracePrefix(context)}Fast-track: executing flow step ${context.currentFlowStep + 1}/${context.skill.executionFlow.length} - ${flowTool}`);
+        this.logger.debug(
+          `${this.tracePrefix(context)}Fast-track: executing flow step ${context.currentFlowStep + 1}/${context.skill.executionFlow.length} - ${flowTool}`
+        );
 
         state.action = flowTool;
         state.thought = `[自动执行] 进入预编译流程步骤 ${context.currentFlowStep + 1}: ${flowTool}`;
@@ -597,7 +615,7 @@ export class ReActEngineService {
         if (flowTool === 'document_render') {
           state.actionInput = {
             templateId: context.skill.carboneTemplateId,
-            data: context.collectedParams || {}
+            data: context.collectedParams || {},
           };
         } else {
           state.actionInput = context.collectedParams || {};
@@ -698,9 +716,10 @@ export class ReActEngineService {
         // 检查动作是否需要确认
         const tool = this.toolExecutor.getTool(state.action);
         const requiresConfirmation = Boolean(
-          tool?.requiresConfirmation
-          || context.capabilitySnapshot?.policies.requireConfirmToolNames.includes(state.action)
-          || context.capabilitySnapshot?.visibleTools.find((item) => item.name === state.action)?.requiresConfirmation,
+          tool?.requiresConfirmation ||
+          context.capabilitySnapshot?.policies.requireConfirmToolNames.includes(state.action) ||
+          context.capabilitySnapshot?.visibleTools.find((item) => item.name === state.action)
+            ?.requiresConfirmation
         );
         if (requiresConfirmation && !request.isConfirmed) {
           yield {
@@ -790,7 +809,7 @@ export class ReActEngineService {
     context: ExecutionContext,
     messages: ChatMessage[],
     tools: ToolDefinition[],
-    config: ReActConfig,
+    config: ReActConfig
   ): AsyncGenerator<StreamEvent> {
     // 构建提示词
     const systemSections = buildSystemPromptSections(
@@ -798,19 +817,22 @@ export class ReActEngineService {
       context.skill,
       context.availableSkills || [],
       config.mode || 'task',
-      context.capabilitySnapshot,
+      context.capabilitySnapshot
     );
     const systemPrompt = renderPromptSections(systemSections);
-    
+
     // 提取最初的用户输入
-    const originalUserMessage = messages.find(m => m.role === 'user' && !m.metadata?.isReAct);
+    const originalUserMessage = messages.find((m) => m.role === 'user' && !m.metadata?.isReAct);
     let userInput = '';
     if (originalUserMessage?.content) {
       if (typeof originalUserMessage.content === 'string') {
         userInput = originalUserMessage.content;
       } else if (Array.isArray(originalUserMessage.content as unknown)) {
         // 从多模态内容中提取文本部分
-        const contentArray = originalUserMessage.content as unknown as Array<{ type: string; text?: string }>;
+        const contentArray = originalUserMessage.content as unknown as Array<{
+          type: string;
+          text?: string;
+        }>;
         const textBlocks = contentArray.filter((b) => b.type === 'text');
         userInput = textBlocks.map((b) => b.text || '').join('\n');
       }
@@ -821,41 +843,41 @@ export class ReActEngineService {
       messages,
       context.uploadedFiles?.map((f) => f.fileName),
       state.contextSummary,
-      this.buildDecisionContextSummary(state),
+      this.buildDecisionContextSummary(state)
     );
     const userPrompt = renderPromptSections(userSections);
     this.setPromptAssemblyMeta(state, systemSections, userSections);
     state.promptDebug = this.canExposePromptDebug(context)
       ? {
-        debugSource: 'react-engine',
-        systemPrompt,
-        userPrompt,
-        systemPromptSectionKeys: systemSections.map((section) => section.key),
-        systemPromptSectionSources: systemSections.map((section) => section.source),
-        userPromptSectionKeys: userSections.map((section) => section.key),
-        userPromptSectionSources: userSections.map((section) => section.source),
-        modelId: config.modelId,
-        llmRequestMessages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-        llmCalls: [
-          {
-            stage: 'react-engine',
-            label: 'ReAct 推理',
-            modelId: config.modelId,
-            requestMessages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: userPrompt },
-            ],
-          },
-        ],
-      }
+          debugSource: 'react-engine',
+          systemPrompt,
+          userPrompt,
+          systemPromptSectionKeys: systemSections.map((section) => section.key),
+          systemPromptSectionSources: systemSections.map((section) => section.source),
+          userPromptSectionKeys: userSections.map((section) => section.key),
+          userPromptSectionSources: userSections.map((section) => section.source),
+          modelId: config.modelId,
+          llmRequestMessages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+          llmCalls: [
+            {
+              stage: 'react-engine',
+              label: 'ReAct 推理',
+              modelId: config.modelId,
+              requestMessages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userPrompt },
+              ],
+            },
+          ],
+        }
       : undefined;
     this.logger.debug(
-      `${this.tracePrefix(context)}Prompt assembly: `
-      + `system=${state.promptAssembly?.systemPromptSectionKeys?.join(',') || 'none'} `
-      + `user=${state.promptAssembly?.userPromptSectionKeys?.join(',') || 'none'}`,
+      `${this.tracePrefix(context)}Prompt assembly: ` +
+        `system=${state.promptAssembly?.systemPromptSectionKeys?.join(',') || 'none'} ` +
+        `user=${state.promptAssembly?.userPromptSectionKeys?.join(',') || 'none'}`
     );
 
     // 调用AI模型（流式）
@@ -994,7 +1016,12 @@ export class ReActEngineService {
           },
         };
 
-        messages = this.appendProtocolViolationTrace(messages, response.content, protocolError, state);
+        messages = this.appendProtocolViolationTrace(
+          messages,
+          response.content,
+          protocolError,
+          state
+        );
 
         yield {
           type: StreamEventType.ERROR,
@@ -1055,7 +1082,7 @@ export class ReActEngineService {
    */
   private async *executeAction(
     state: ReActState,
-    context: ExecutionContext,
+    context: ExecutionContext
   ): AsyncGenerator<StreamEvent> {
     const toolName = state.action;
     const params = state.actionInput;
@@ -1065,7 +1092,7 @@ export class ReActEngineService {
       toolName,
       params,
       context,
-      state.iteration,
+      state.iteration
     );
 
     state.observation = event.content;
@@ -1086,9 +1113,8 @@ export class ReActEngineService {
       };
       event.data.promptAssembly = this.buildPromptAssemblyPayload(state);
       event.data.decisionContext = this.buildDecisionContextPayload(state);
-      event.data.errorCategory = typeof innerData?.errorCategory === 'string'
-        ? innerData.errorCategory
-        : undefined;
+      event.data.errorCategory =
+        typeof innerData?.errorCategory === 'string' ? innerData.errorCategory : undefined;
       event.data.routing = this.buildRoutingMeta(state);
     }
 
@@ -1146,9 +1172,10 @@ export class ReActEngineService {
     // 检查是否任务完成（如document_render返回taskComplete）
     if (innerData?.taskComplete && !state.isWaitingForUserInput) {
       state.isFinished = true;
-      state.finalAnswer = typeof innerData.finalAnswer === 'string' && innerData.finalAnswer.trim()
-        ? innerData.finalAnswer
-        : event.content;
+      state.finalAnswer =
+        typeof innerData.finalAnswer === 'string' && innerData.finalAnswer.trim()
+          ? innerData.finalAnswer
+          : event.content;
       state.finalResultData = innerData as Record<string, unknown>;
     }
 
@@ -1183,11 +1210,7 @@ export class ReActEngineService {
     yield event;
 
     if (!event.data?.requiresUserInput) {
-      buildObservationPrompt(
-        state.observation,
-        state.iteration,
-        state.maxIterations,
-      );
+      buildObservationPrompt(state.observation, state.iteration, state.maxIterations);
     }
   }
 
@@ -1269,7 +1292,7 @@ export class ReActEngineService {
     userReply: string,
     previousState: ReActState,
     context: ExecutionContext,
-    config: ReActConfig,
+    config: ReActConfig
   ): AsyncGenerator<StreamEvent> {
     // 重置状态
     previousState.isFinished = false;
@@ -1283,7 +1306,7 @@ export class ReActEngineService {
         userId: context.userId,
         config,
       },
-      context,
+      context
     );
   }
 
@@ -1294,7 +1317,7 @@ export class ReActEngineService {
     state: ReActState,
     modelId: string,
     response: LLMResponse,
-    type: 'reasoning' | 'auxiliary' = 'reasoning',
+    type: 'reasoning' | 'auxiliary' = 'reasoning'
   ): Promise<void> {
     if (!state.usage) {
       state.usage = {
@@ -1333,7 +1356,9 @@ export class ReActEngineService {
         if (!state.usage.completion_tokens_details) {
           state.usage.completion_tokens_details = { reasoning_tokens: 0 };
         }
-        state.usage.completion_tokens_details.reasoning_tokens = (state.usage.completion_tokens_details.reasoning_tokens || 0) + usage.completion_tokens_details.reasoning_tokens;
+        state.usage.completion_tokens_details.reasoning_tokens =
+          (state.usage.completion_tokens_details.reasoning_tokens || 0) +
+          usage.completion_tokens_details.reasoning_tokens;
       }
 
       state.usage.totalCost += cost;
@@ -1354,8 +1379,8 @@ export class ReActEngineService {
     state.usage.calls.push(callDetail);
 
     this.logger.debug(
-      `${this.tracePrefix({ sessionId: '' } as any)}LLM Call Recorded: `
-      + `model=${modelId} tokens=${usage?.total_tokens || 0} cost=${cost.toFixed(6)}${currency}`,
+      `${this.tracePrefix({ sessionId: '' } as any)}LLM Call Recorded: ` +
+        `model=${modelId} tokens=${usage?.total_tokens || 0} cost=${cost.toFixed(6)}${currency}`
     );
   }
 
@@ -1375,16 +1400,12 @@ export class ReActEngineService {
     };
   }
 
-
   /**
    * Create initial execution steps for an Execution
    */
-  async createExecutionSteps(
-    executionId: string,
-    _skill: SkillMatchResult,
-  ): Promise<void> {
+  async createExecutionSteps(executionId: string, _skill: SkillMatchResult): Promise<void> {
     this.logger.warn(
-      `Execution step creation has been delegated to control-plane in v3; skipping local step creation for execution ${executionId}`,
+      `Execution step creation has been delegated to control-plane in v3; skipping local step creation for execution ${executionId}`
     );
   }
 
@@ -1399,15 +1420,15 @@ export class ReActEngineService {
       errorMessage?: string;
       errorCode?: string;
       snapshotId?: string;
-    },
+    }
   ): Promise<void> {
     if (!context.executionId || !context.currentStepId) {
       return;
     }
 
     this.logger.warn(
-      `${this.tracePrefix(context)}Step status writes are delegated to control-plane in v3; `
-      + `skipping local update for ${context.currentStepId} -> ${status}`,
+      `${this.tracePrefix(context)}Step status writes are delegated to control-plane in v3; ` +
+        `skipping local update for ${context.currentStepId} -> ${status}`
     );
   }
 
@@ -1422,15 +1443,15 @@ export class ReActEngineService {
       | typeof CONTROL_PLANE_EXECUTION_STATUS.CANCELLED
       | typeof CONTROL_PLANE_EXECUTION_STATUS.HUMAN_CONTROL,
     _result?: Record<string, unknown>,
-    _failureReason?: string,
+    _failureReason?: string
   ): Promise<void> {
     if (!context.executionId) {
       return;
     }
 
     this.logger.warn(
-      `${this.tracePrefix(context)}Execution finalization is delegated to control-plane in v3; `
-      + `skipping local finalize for ${context.executionId} -> ${status}`,
+      `${this.tracePrefix(context)}Execution finalization is delegated to control-plane in v3; ` +
+        `skipping local finalize for ${context.executionId} -> ${status}`
     );
   }
 }

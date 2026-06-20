@@ -157,7 +157,11 @@ export async function parentWorkflow(orders: Order[]): Promise<string[]> {
 ### Child Workflow Options
 
 ```typescript
-import { executeChild, ParentClosePolicy, ChildWorkflowCancellationType } from '@temporalio/workflow';
+import {
+  executeChild,
+  ParentClosePolicy,
+  ChildWorkflowCancellationType,
+} from '@temporalio/workflow';
 
 const result = await executeChild(childWorkflow, {
   args: [input],
@@ -194,9 +198,7 @@ export async function coordinatorWorkflow(targetWorkflowId: string): Promise<voi
 
 ```typescript
 export async function parallelWorkflow(items: string[]): Promise<string[]> {
-  return await Promise.all(
-    items.map((item) => processItem(item))
-  );
+  return await Promise.all(items.map((item) => processItem(item)));
 }
 ```
 

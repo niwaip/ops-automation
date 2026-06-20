@@ -1,4 +1,8 @@
-import type { TemplateCompareResponse, TemplateFieldCandidate, TemplateUnderstandResponse } from '../../../api/carbone-api';
+import type {
+  TemplateCompareResponse,
+  TemplateFieldCandidate,
+  TemplateUnderstandResponse,
+} from '../../../api/carbone-api';
 import type { AISuggestion } from '../../../app/store';
 import type { DocumentIR } from '../../../host/adapters/document-ir';
 import type { AnalysisExecutorKind } from '../services/index';
@@ -71,7 +75,11 @@ export interface CreateWordIdentifyRecognitionControllerOptions {
   wordSectionRecognitionBatchSize: number;
   wordSectionRecognitionMaxRounds: number;
   setAnalysisError: (message: string | null, details?: string) => void;
-  addDebugLog: (level: 'info' | 'debug' | 'warn' | 'error', message: string, details?: string) => void;
+  addDebugLog: (
+    level: 'info' | 'debug' | 'warn' | 'error',
+    message: string,
+    details?: string
+  ) => void;
   setIsUnderstanding: (value: boolean) => void;
   setUnderstandingResult: (result: TemplateUnderstandResponse | null) => void;
   setUnderstandingRevision: (revision: number) => void;
@@ -121,12 +129,30 @@ export interface CreateWordIdentifyRecognitionControllerOptions {
     cachedEntry?: any
   ) => RecognitionResultLike;
   persistCompareCacheRecognitionSnapshot: (result: RecognitionResultLike) => void;
-  buildWordSectionExcerpt: (templateDocumentIr: DocumentIR, section: CompareCandidateSectionLike, detectedSection?: any) => string;
-  buildWordSectionDocumentIR: (templateDocumentIr: DocumentIR, section: CompareCandidateSectionLike, detectedSection?: any) => DocumentIR;
-  buildWordSectionDocumentContent: (templateDocumentIr: DocumentIR, section: CompareCandidateSectionLike, detectedSection?: any) => string;
+  buildWordSectionExcerpt: (
+    templateDocumentIr: DocumentIR,
+    section: CompareCandidateSectionLike,
+    detectedSection?: any
+  ) => string;
+  buildWordSectionDocumentIR: (
+    templateDocumentIr: DocumentIR,
+    section: CompareCandidateSectionLike,
+    detectedSection?: any
+  ) => DocumentIR;
+  buildWordSectionDocumentContent: (
+    templateDocumentIr: DocumentIR,
+    section: CompareCandidateSectionLike,
+    detectedSection?: any
+  ) => string;
   buildWordSectionPromptBilingualGroups: (section: CompareCandidateSectionLike) => any[];
-  buildWordSectionCandidateList: (templateDocumentIr: DocumentIR, section: CompareCandidateSectionLike) => string;
-  buildWordSectionBilingualPairList: (templateDocumentIr: DocumentIR, section: CompareCandidateSectionLike) => string;
+  buildWordSectionCandidateList: (
+    templateDocumentIr: DocumentIR,
+    section: CompareCandidateSectionLike
+  ) => string;
+  buildWordSectionBilingualPairList: (
+    templateDocumentIr: DocumentIR,
+    section: CompareCandidateSectionLike
+  ) => string;
   takeWordRecognitionBatch: (args: {
     retryLoopIds: string[];
     unsentLoopIds: string[];
@@ -135,9 +161,18 @@ export interface CreateWordIdentifyRecognitionControllerOptions {
     candidateById: Map<string, TemplateFieldCandidate>;
     acceptedIds: Set<string>;
   }) => TemplateFieldCandidate[];
-  buildWordSectionSubset: (section: CompareCandidateSectionLike, candidates: TemplateFieldCandidate[]) => CompareCandidateSectionLike;
-  buildWordSectionPromptCandidates: (templateDocumentIr: DocumentIR, section: CompareCandidateSectionLike) => any[];
-  filterWordPromptBilingualGroupsByCandidates: (groups: any[], candidates: TemplateFieldCandidate[]) => any[];
+  buildWordSectionSubset: (
+    section: CompareCandidateSectionLike,
+    candidates: TemplateFieldCandidate[]
+  ) => CompareCandidateSectionLike;
+  buildWordSectionPromptCandidates: (
+    templateDocumentIr: DocumentIR,
+    section: CompareCandidateSectionLike
+  ) => any[];
+  filterWordPromptBilingualGroupsByCandidates: (
+    groups: any[],
+    candidates: TemplateFieldCandidate[]
+  ) => any[];
   buildAcceptedWordSuggestionSummaries: (suggestions: AISuggestion[]) => any[];
   hydrateWordSectionSuggestions: (
     templateDocumentIr: DocumentIR,
@@ -146,8 +181,14 @@ export interface CreateWordIdentifyRecognitionControllerOptions {
     suggestions: AISuggestion[]
   ) => AISuggestion[];
   buildPromptTraceDebugText: (promptRequestText?: string, rawAiResponse?: string) => string;
-  selectBestWordSuggestionForCandidate: (suggestions: AISuggestion[], candidateId: string) => AISuggestion | undefined;
-  isWordSuggestionHighQuality: (suggestion: AISuggestion | undefined, candidateId: string) => boolean;
+  selectBestWordSuggestionForCandidate: (
+    suggestions: AISuggestion[],
+    candidateId: string
+  ) => AISuggestion | undefined;
+  isWordSuggestionHighQuality: (
+    suggestion: AISuggestion | undefined,
+    candidateId: string
+  ) => boolean;
   appendUniqueCandidateIds: (targetQueue: string[], candidateIds: string[]) => void;
   isWordLoopCompareCandidate: (candidate: TemplateFieldCandidate) => boolean;
   dedupeWordSectionSuggestions: (suggestions: AISuggestion[]) => AISuggestion[];

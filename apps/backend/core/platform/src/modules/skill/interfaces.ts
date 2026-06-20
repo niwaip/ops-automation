@@ -41,11 +41,7 @@ export interface SkillRuntimeMetadata {
   workflowInputPolicy?: WorkflowInputPolicy;
 }
 
-export type WorkflowParamRequiredMode =
-  | 'always'
-  | 'conditional'
-  | 'optional'
-  | 'system_required';
+export type WorkflowParamRequiredMode = 'always' | 'conditional' | 'optional' | 'system_required';
 
 export interface WorkflowParamPolicy {
   enabled?: boolean;
@@ -126,24 +122,27 @@ export interface SkillToolValidationResult {
  * 参数Schema定义
  */
 export interface ParamsSchema {
-  properties: Record<string, {
-    type: 'string' | 'number' | 'date' | 'boolean';
-    description: string;
-    /** @deprecated 过渡兼容字段；模板级必填策略应迁移到 workflowInputPolicy.params.requiredMode */
-    required?: boolean;
-    /** @deprecated 过渡兼容字段；模板级默认值应迁移到 workflowInputPolicy.params.defaultValue */
-    default?: string | number | boolean;
-    extractionPrompt?: string;
-    semanticRole?: string;
-    extractionHints?: string[];
-    displayName?: string;
-    groupLabel?: string;
-    renderPath?: string | string[];
-    /** @deprecated 过渡兼容字段；预览阻断策略应迁移到 workflowInputPolicy.params.previewBlocking */
-    previewBlocking?: boolean;
-    /** @deprecated 过渡兼容字段；确认阈值应迁移到 workflowInputPolicy.params.confirmationThreshold */
-    confirmationThreshold?: number;
-  }>;
+  properties: Record<
+    string,
+    {
+      type: 'string' | 'number' | 'date' | 'boolean';
+      description: string;
+      /** @deprecated 过渡兼容字段；模板级必填策略应迁移到 workflowInputPolicy.params.requiredMode */
+      required?: boolean;
+      /** @deprecated 过渡兼容字段；模板级默认值应迁移到 workflowInputPolicy.params.defaultValue */
+      default?: string | number | boolean;
+      extractionPrompt?: string;
+      semanticRole?: string;
+      extractionHints?: string[];
+      displayName?: string;
+      groupLabel?: string;
+      renderPath?: string | string[];
+      /** @deprecated 过渡兼容字段；预览阻断策略应迁移到 workflowInputPolicy.params.previewBlocking */
+      previewBlocking?: boolean;
+      /** @deprecated 过渡兼容字段；确认阈值应迁移到 workflowInputPolicy.params.confirmationThreshold */
+      confirmationThreshold?: number;
+    }
+  >;
   /** @deprecated 过渡兼容字段；模板级 required 列表应迁移到 workflowInputPolicy.params.requiredMode */
   required: string[];
 }
@@ -156,7 +155,7 @@ export interface CreateSkillDTO {
   description: string;
   triggerKeywords: string[];
   paramsSchema: ParamsSchema;
-  executionFlowTemplateIds?: string[];  // 关联的多个流程模板ID
+  executionFlowTemplateIds?: string[]; // 关联的多个流程模板ID
   executionFlow?: Array<Record<string, unknown>>; // 手动编排/追加的步骤
   tools?: string[];
   apiEndpoints?: {
@@ -173,7 +172,7 @@ export interface SkillConfigDto {
   description: string;
   triggerKeywords: string[];
   paramsSchema: ParamsSchema;
-  executionFlowTemplateIds: string[];  // 关联的多个流程模板ID
+  executionFlowTemplateIds: string[]; // 关联的多个流程模板ID
   executionFlow: Array<Record<string, unknown>>;
   tools: string[];
   effectiveTools?: string[];
@@ -206,7 +205,7 @@ export interface SkillMatchResult {
   collectedParams: Record<string, unknown>;
   missingParams: string[];
   paramsSchema: ParamsSchema;
-  executionFlowTemplateIds?: string[];  // 关联的多个流程模板ID
+  executionFlowTemplateIds?: string[]; // 关联的多个流程模板ID
   apiEndpoints?: {
     runtimeMetadata?: SkillRuntimeMetadata;
   };
@@ -242,7 +241,7 @@ export interface SkillPermissionDTO {
   roleId: string;
   roleName: string;
   grantedAt: Date;
-  grantedBy: string | null;  // 数据库返回 null，使用 null 类型
+  grantedBy: string | null; // 数据库返回 null，使用 null 类型
 }
 
 /**
@@ -289,8 +288,8 @@ export interface SkillValidationResult {
       summary: string;
       issues: string[];
       suggestions: string[];
-      log?: string[];           // 执行日志
-      iterations?: number;      // 执行迭代次数
+      log?: string[]; // 执行日志
+      iterations?: number; // 执行迭代次数
       generatedSkill?: Partial<SkillConfigDto>;
     };
   };

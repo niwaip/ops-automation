@@ -1,12 +1,4 @@
-import {
-  Controller,
-  Post,
-  Get,
-  Body,
-  Request,
-  Query,
-  Param,
-} from '@nestjs/common';
+import { Controller, Post, Get, Body, Request, Query, Param } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import {
   LoginDto,
@@ -46,10 +38,7 @@ export class AuthController {
   }
 
   @Post('switch-org')
-  async switchOrg(
-    @Body() dto: SwitchOrgDto,
-    @Request() req: { user: { id: string } },
-  ) {
+  async switchOrg(@Body() dto: SwitchOrgDto, @Request() req: { user: { id: string } }) {
     return this.authService.switchActiveOrganization(req.user.id, dto.orgId);
   }
 
@@ -61,19 +50,13 @@ export class AuthController {
 
   @Public()
   @Get('sso/:provider/start')
-  async ssoStart(
-    @Param('provider') provider: string,
-    @Query() query: SsoStartQueryDto,
-  ) {
+  async ssoStart(@Param('provider') provider: string, @Query() query: SsoStartQueryDto) {
     return this.authService.buildSsoStartUrl(provider, query);
   }
 
   @Public()
   @Post('sso/:provider/callback')
-  async ssoCallback(
-    @Param('provider') provider: string,
-    @Body() callback: SsoCallbackDto,
-  ) {
+  async ssoCallback(@Param('provider') provider: string, @Body() callback: SsoCallbackDto) {
     return this.authService.handleSsoCallback(provider, callback);
   }
 }

@@ -1,13 +1,4 @@
-import {
-  Controller,
-  Get,
-  Put,
-  Param,
-  Body,
-  Query,
-  UseGuards,
-  Request,
-} from '@nestjs/common';
+import { Controller, Get, Put, Param, Body, Query, UseGuards, Request } from '@nestjs/common';
 import { UserService } from './user.service';
 import { UpdateUserRolesDto, UserQueryDto } from '../../dto';
 import { RequireAdmin, SkipRbac } from '../../decorators';
@@ -37,7 +28,7 @@ export class UserController {
   async updateRoles(
     @Param('id') id: string,
     @Body() updateDto: UpdateUserRolesDto,
-    @Request() req: { user: { id: string } },
+    @Request() req: { user: { id: string } }
   ) {
     return this.userService.updateRoles(id, updateDto, req.user.id);
   }

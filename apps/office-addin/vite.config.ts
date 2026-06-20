@@ -9,16 +9,14 @@ const isDocker = fs.existsSync('/.dockerenv') || process.env.DOCKER === 'true';
 
 // 根据环境选择证书路径
 const certsPath = isDocker
-  ? '/app/certs'  // Docker 容器内路径
+  ? '/app/certs' // Docker 容器内路径
   : path.resolve(__dirname, '../../docker/office-addin/certs');
 
-const addinPublicHost = process.env.VITE_HOST_IP
-  || process.env.HOST_IP
-  || 'localhost';
+const addinPublicHost = process.env.VITE_HOST_IP || process.env.HOST_IP || 'localhost';
 const aiOrchestratorProxyTarget =
-  process.env.VITE_AI_ORCHESTRATOR_PROXY_TARGET
-  || process.env.VITE_AI_ORCHESTRATOR_TARGET
-  || `http://${addinPublicHost}:3007`;
+  process.env.VITE_AI_ORCHESTRATOR_PROXY_TARGET ||
+  process.env.VITE_AI_ORCHESTRATOR_TARGET ||
+  `http://${addinPublicHost}:3007`;
 
 type HealthRequest = IncomingMessage & { url?: string };
 type HealthServer = {
@@ -38,10 +36,10 @@ export default {
           res.setHeader('Content-Type', 'application/json');
           res.end(JSON.stringify({ status: 'ok', timestamp: new Date().toISOString() }));
         });
-      }
+      },
     },
     // 添加向导页面 /wizard
-    wizardPagePlugin()
+    wizardPagePlugin(),
   ],
   publicDir: 'public',
   server: {
@@ -63,6 +61,6 @@ export default {
   },
   build: {
     outDir: 'dist',
-    sourcemap: true
-  }
+    sourcemap: true,
+  },
 };

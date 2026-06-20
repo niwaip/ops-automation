@@ -28,7 +28,7 @@ export class ChatWaitingInputService {
     private readonly controlPlaneClient: ControlPlaneClient,
     private readonly modelService: ModelService,
     private readonly recognizerService: RecognizerService,
-    private readonly plannerService: PlannerService,
+    private readonly plannerService: PlannerService
   ) {}
 
   buildControlPlaneRequestOptions(authToken?: string, user?: ChatUserContext) {
@@ -41,25 +41,28 @@ export class ChatWaitingInputService {
   async loadWaitingInputDetails(
     executionId: string,
     authToken?: string,
-    user?: ChatUserContext,
+    user?: ChatUserContext
   ): Promise<WaitingInputDetails> {
     try {
       const steps = await this.controlPlaneClient.getExecutionSteps<any[]>(
         executionId,
-        this.buildControlPlaneRequestOptions(authToken, user),
+        this.buildControlPlaneRequestOptions(authToken, user)
       );
       const waitingStep = Array.isArray(steps)
         ? steps.find(
-          (step: any) =>
-            step?.status === CONTROL_PLANE_EXECUTION_STATUS.WAITING_INPUT
-            || step?.type === 'input_collection',
-        )
+            (step: any) =>
+              step?.status === CONTROL_PLANE_EXECUTION_STATUS.WAITING_INPUT ||
+              step?.type === 'input_collection'
+          )
         : undefined;
       const requiredInputs = Array.isArray(waitingStep?.inputJson?.requiredInputs)
         ? waitingStep.inputJson.requiredInputs
         : [];
       const missingInputs = requiredInputs
-        .filter((item: any) => item?.missing === true && typeof item?.name === 'string' && item.name.trim())
+        .filter(
+          (item: any) =>
+            item?.missing === true && typeof item?.name === 'string' && item.name.trim()
+        )
         .map((item: any) => ({
           name: String(item.name).trim(),
           type: typeof item.type === 'string' ? item.type : undefined,
@@ -83,7 +86,7 @@ export class ChatWaitingInputService {
       };
     } catch (error) {
       this.logger.warn(
-        `Failed to load waiting_input details for ${executionId}: ${error instanceof Error ? error.message : 'unknown'}`,
+        `Failed to load waiting_input details for ${executionId}: ${error instanceof Error ? error.message : 'unknown'}`
       );
       return {
         waitingStepId: undefined,
@@ -107,7 +110,11 @@ export class ChatWaitingInputService {
     const normalizedInput = record.normalizedInput;
     if (normalizedInput && typeof normalizedInput === 'object' && !Array.isArray(normalizedInput)) {
       const embeddedSemantic = (normalizedInput as Record<string, unknown>).semantic;
-      if (embeddedSemantic && typeof embeddedSemantic === 'object' && !Array.isArray(embeddedSemantic)) {
+      if (
+        embeddedSemantic &&
+        typeof embeddedSemantic === 'object' &&
+        !Array.isArray(embeddedSemantic)
+      ) {
         return embeddedSemantic as WaitingInputSemantic;
       }
     }
@@ -125,16 +132,19 @@ export class ChatWaitingInputService {
     const groupedMissing = Array.isArray(input.semantic?.groupedMissing)
       ? this.dedupeWaitingInputGroups(input.semantic.groupedMissing)
       : [];
-    const groupedInputs = input.missingInputs.reduce<Map<string, WaitingInputItem[]>>((acc, item) => {
-      const label = typeof item.group_label === 'string' ? item.group_label.trim() : '';
-      if (!label) {
+    const groupedInputs = input.missingInputs.reduce<Map<string, WaitingInputItem[]>>(
+      (acc, item) => {
+        const label = typeof item.group_label === 'string' ? item.group_label.trim() : '';
+        if (!label) {
+          return acc;
+        }
+        const existing = acc.get(label) || [];
+        existing.push(item);
+        acc.set(label, existing);
         return acc;
-      }
-      const existing = acc.get(label) || [];
-      existing.push(item);
-      acc.set(label, existing);
-      return acc;
-    }, new Map());
+      },
+      new Map()
+    );
 
     if (input.semantic?.summary) {
       lines.push(input.semantic.summary);
@@ -151,14 +161,16 @@ export class ChatWaitingInputService {
       });
     } else if (input.missingInputs.length > 0) {
       lines.push(
-        `${groupedMissing.length > 0 ? '字段兜底' : '缺少参数'}：${this.dedupeWaitingInputLabels(input.missingInputs).join('、')}`,
+        `${groupedMissing.length > 0 ? '字段兜底' : '缺少参数'}：${this.dedupeWaitingInputLabels(input.missingInputs).join('、')}`
       );
     } else if (groupedMissing.length === 0) {
       lines.push('请继续补充必要参数。');
     }
 
     if (input.semantic) {
-      lines.push(`可预览：${input.semantic.previewReady ? '是' : '否'}；可正式生成：${input.semantic.finalReady ? '是' : '否'}`);
+      lines.push(
+        `可预览：${input.semantic.previewReady ? '是' : '否'}；可正式生成：${input.semantic.finalReady ? '是' : '否'}`
+      );
     }
 
     if (input.executionId) {
@@ -176,13 +188,15 @@ export class ChatWaitingInputService {
   }): string {
     const lines = ['已提交补充信息。'];
     const resolvedFieldNames = this.formatFieldNameList(
-      input.resolvedFieldNames.map((item) => this.normalizeWaitingInputSemanticLabel(item)),
+      input.resolvedFieldNames.map((item) => this.normalizeWaitingInputSemanticLabel(item))
     );
-    const resolvedCount = Array.from(new Set(
-      input.resolvedFieldNames
-        .map((item) => this.normalizeWaitingInputSemanticLabel(item))
-        .filter(Boolean),
-    )).length;
+    const resolvedCount = Array.from(
+      new Set(
+        input.resolvedFieldNames
+          .map((item) => this.normalizeWaitingInputSemanticLabel(item))
+          .filter(Boolean)
+      )
+    ).length;
     if (resolvedCount > 0) {
       lines.push(`本次识别到 ${resolvedCount} 个字段：${resolvedFieldNames}`);
     }
@@ -196,7 +210,9 @@ export class ChatWaitingInputService {
 
     if (input.remainingMissingInputs.length > 0) {
       const remainingMissingLabels = this.dedupeWaitingInputLabels(input.remainingMissingInputs);
-      lines.push(`仍缺少 ${remainingMissingLabels.length} 个字段：${this.formatFieldNameList(remainingMissingLabels)}`);
+      lines.push(
+        `仍缺少 ${remainingMissingLabels.length} 个字段：${this.formatFieldNameList(remainingMissingLabels)}`
+      );
       lines.push('已保留当前执行单，请继续补充剩余信息。');
     } else {
       lines.push('当前缺失字段已补齐，任务将继续执行。');
@@ -218,7 +234,7 @@ export class ChatWaitingInputService {
     authToken?: string,
     originalObjective?: string,
     userId?: string,
-    modelId?: string,
+    modelId?: string
   ): Promise<WaitingInputPayload> {
     if (missingInputs.length === 0) {
       throw new Error('当前执行单没有可补充的缺失参数。');
@@ -230,8 +246,10 @@ export class ChatWaitingInputService {
 
     if (parsedObject) {
       const parsedParams =
-        parsedObject.params && typeof parsedObject.params === 'object' && !Array.isArray(parsedObject.params)
-          ? parsedObject.params as Record<string, unknown>
+        parsedObject.params &&
+        typeof parsedObject.params === 'object' &&
+        !Array.isArray(parsedObject.params)
+          ? (parsedObject.params as Record<string, unknown>)
           : parsedObject;
       const allowedKeys = new Set(missingInputs.map((item) => item.name));
       const filteredEntries = Object.entries(parsedParams).filter(([key]) => allowedKeys.has(key));
@@ -242,7 +260,7 @@ export class ChatWaitingInputService {
           allRequiredInputs,
           skill?.paramsSchema,
           message,
-          modelId,
+          modelId
         );
         return {
           input: expanded.input,
@@ -265,7 +283,7 @@ export class ChatWaitingInputService {
         allRequiredInputs
           .filter((item) => item.missing !== true)
           .filter((item) => item.value !== undefined && item.value !== null)
-          .map((item) => [item.name, item.value] as const),
+          .map((item) => [item.name, item.value] as const)
       );
 
       const recognized = await this.recognizerService.recognizeParams({
@@ -283,11 +301,12 @@ export class ChatWaitingInputService {
         },
       });
 
-      const recognizedEntries = Object.entries(recognized?.params || {}).filter(([, value]) => (
-        value !== undefined &&
-        value !== null &&
-        !(typeof value === 'string' && value.trim() === '')
-      ));
+      const recognizedEntries = Object.entries(recognized?.params || {}).filter(
+        ([, value]) =>
+          value !== undefined &&
+          value !== null &&
+          !(typeof value === 'string' && value.trim() === '')
+      );
 
       if (recognizedEntries.length > 0) {
         const expanded = await this.expandWaitingInputBilingualPayload(
@@ -296,7 +315,7 @@ export class ChatWaitingInputService {
           allRequiredInputs,
           skill?.paramsSchema,
           message,
-          modelId,
+          modelId
         );
         return {
           input: expanded.input,
@@ -328,11 +347,12 @@ export class ChatWaitingInputService {
           .filter((item) => allowedKeys.has(item.name))
           .filter((item) => !item.missing)
           .map((item) => [item.name, item.value] as const)
-          .filter(([, value]) => (
-            value !== undefined &&
-            value !== null &&
-            !(typeof value === 'string' && value.trim() === '')
-          ));
+          .filter(
+            ([, value]) =>
+              value !== undefined &&
+              value !== null &&
+              !(typeof value === 'string' && value.trim() === '')
+          );
 
         if (plannedResolvedEntries.length > 0) {
           const expanded = await this.expandWaitingInputBilingualPayload(
@@ -341,7 +361,7 @@ export class ChatWaitingInputService {
             allRequiredInputs,
             skill?.paramsSchema,
             message,
-            modelId,
+            modelId
           );
           return {
             input: expanded.input,
@@ -350,7 +370,7 @@ export class ChatWaitingInputService {
         }
       } catch (error) {
         this.logger.warn(
-          `Planner-based waiting_input extraction failed: ${error instanceof Error ? error.message : 'unknown'}`,
+          `Planner-based waiting_input extraction failed: ${error instanceof Error ? error.message : 'unknown'}`
         );
       }
     }
@@ -363,7 +383,7 @@ export class ChatWaitingInputService {
         allRequiredInputs,
         skill?.paramsSchema,
         message,
-        modelId,
+        modelId
       );
       return {
         input: expanded.input,
@@ -394,11 +414,13 @@ export class ChatWaitingInputService {
     return resolveFriendlyInputDisplayName(input);
   }
 
-  private dedupeWaitingInputLabels(inputs: Array<{
-    name: string;
-    description?: string;
-    display_name?: string;
-  }>): string[] {
+  private dedupeWaitingInputLabels(
+    inputs: Array<{
+      name: string;
+      description?: string;
+      display_name?: string;
+    }>
+  ): string[] {
     const labels: string[] = [];
     const seen = new Set<string>();
 
@@ -415,7 +437,9 @@ export class ChatWaitingInputService {
     return labels;
   }
 
-  private dedupeWaitingInputGroups(groups: WaitingInputSemanticGroup[]): WaitingInputSemanticGroup[] {
+  private dedupeWaitingInputGroups(
+    groups: WaitingInputSemanticGroup[]
+  ): WaitingInputSemanticGroup[] {
     const deduped: WaitingInputSemanticGroup[] = [];
     const seen = new Set<string>();
 
@@ -465,7 +489,10 @@ export class ChatWaitingInputService {
     if (!text) {
       return [];
     }
-    const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    const lines = text
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
     const pairs: Array<{ key: string; value: string }> = [];
 
     for (const line of lines) {
@@ -486,7 +513,7 @@ export class ChatWaitingInputService {
 
   private resolveWaitingInputLabeledPayload(
     message: string,
-    missingInputs: Array<{ name: string; description?: string; display_name?: string }>,
+    missingInputs: Array<{ name: string; description?: string; display_name?: string }>
   ): Record<string, unknown> {
     const pairs = this.extractWaitingInputKeyValuePairs(message);
     if (pairs.length === 0) {
@@ -494,11 +521,7 @@ export class ChatWaitingInputService {
     }
 
     const missingCandidates = missingInputs.map((item) => {
-      const labelCandidates = [
-        item.display_name,
-        item.description,
-        item.name,
-      ]
+      const labelCandidates = [item.display_name, item.description, item.name]
         .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
         .map((value) => this.normalizeWaitingInputMatchKey(value))
         .filter(Boolean);
@@ -521,10 +544,13 @@ export class ChatWaitingInputService {
         continue;
       }
 
-      const matched = missingCandidates.find((candidate) => (
-        !usedNames.has(candidate.name)
-        && candidate.labels.some((label) => label === key || label.includes(key) || key.includes(label))
-      ));
+      const matched = missingCandidates.find(
+        (candidate) =>
+          !usedNames.has(candidate.name) &&
+          candidate.labels.some(
+            (label) => label === key || label.includes(key) || key.includes(label)
+          )
+      );
       if (!matched) {
         continue;
       }
@@ -538,7 +564,7 @@ export class ChatWaitingInputService {
 
   private buildWaitingInputFollowupHint(
     missingInputs: Array<{ name: string; description?: string; display_name?: string }>,
-    semantic?: WaitingInputSemantic,
+    semantic?: WaitingInputSemantic
   ): string {
     const groupedMissing = Array.isArray(semantic?.groupedMissing)
       ? this.dedupeWaitingInputGroups(semantic.groupedMissing)
@@ -552,9 +578,7 @@ export class ChatWaitingInputService {
   }
 
   private formatFieldNameList(fieldNames: string[], limit = 12): string {
-    const normalized = fieldNames
-      .map((item) => String(item || '').trim())
-      .filter(Boolean);
+    const normalized = fieldNames.map((item) => String(item || '').trim()).filter(Boolean);
     if (normalized.length === 0) {
       return '无';
     }
@@ -574,7 +598,7 @@ export class ChatWaitingInputService {
       try {
         const parsed = JSON.parse(value);
         return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-          ? parsed as Record<string, unknown>
+          ? (parsed as Record<string, unknown>)
           : null;
       } catch {
         return null;
@@ -642,18 +666,24 @@ export class ChatWaitingInputService {
     return null;
   }
 
-  private async loadSkillSchema(skillId: string, authToken?: string): Promise<ChatSkillSchema | null> {
+  private async loadSkillSchema(
+    skillId: string,
+    authToken?: string
+  ): Promise<ChatSkillSchema | null> {
     try {
       const response = await axios.get<{
         name?: string;
         description?: string;
         paramsSchema?: {
-          properties?: Record<string, {
-            type: string;
-            description?: string;
-            extractionPrompt?: string;
-            default?: string | number | boolean;
-          }>;
+          properties?: Record<
+            string,
+            {
+              type: string;
+              description?: string;
+              extractionPrompt?: string;
+              default?: string | number | boolean;
+            }
+          >;
           required?: string[];
         };
         apiEndpoints?: {
@@ -669,9 +699,9 @@ export class ChatWaitingInputService {
         ...response.data,
         guideContext: buildDocumentGuideContext({
           enabled:
-            response.data.apiEndpoints?.runtimeMetadata?.sourceType === 'document'
-            || response.data.apiEndpoints?.runtimeMetadata?.sourceType === 'execution_flow_template'
-            || Boolean(response.data.apiEndpoints?.runtimeMetadata?.sourceTemplate?.templateId),
+            response.data.apiEndpoints?.runtimeMetadata?.sourceType === 'document' ||
+            response.data.apiEndpoints?.runtimeMetadata?.sourceType === 'execution_flow_template' ||
+            Boolean(response.data.apiEndpoints?.runtimeMetadata?.sourceTemplate?.templateId),
           skillName: response.data.name,
           description: response.data.description,
           goal: response.data.goal,
@@ -683,7 +713,7 @@ export class ChatWaitingInputService {
       };
     } catch (error) {
       this.logger.warn(
-        `Failed to load skill schema for ${skillId}: ${error instanceof Error ? error.message : 'unknown'}`,
+        `Failed to load skill schema for ${skillId}: ${error instanceof Error ? error.message : 'unknown'}`
       );
       return null;
     }
@@ -692,21 +722,29 @@ export class ChatWaitingInputService {
   private buildSchemaForMissingInputs(
     missingInputs: Array<{ name: string }>,
     skillSchema?: {
-      properties?: Record<string, {
-        type: string;
-        description?: string;
-        extractionPrompt?: string;
-        default?: string | number | boolean;
-      }>;
+      properties?: Record<
+        string,
+        {
+          type: string;
+          description?: string;
+          extractionPrompt?: string;
+          default?: string | number | boolean;
+        }
+      >;
       required?: string[];
-    },
+    }
   ) {
-    const properties = missingInputs.reduce<Record<string, {
-      type: string;
-      description?: string;
-      extractionPrompt?: string;
-      default?: string | number | boolean;
-    }>>((acc, item) => {
+    const properties = missingInputs.reduce<
+      Record<
+        string,
+        {
+          type: string;
+          description?: string;
+          extractionPrompt?: string;
+          default?: string | number | boolean;
+        }
+      >
+    >((acc, item) => {
       const schema = skillSchema?.properties?.[item.name];
       acc[item.name] = schema || {
         type: 'string',
@@ -741,8 +779,9 @@ export class ChatWaitingInputService {
       return value.some((item) => this.hasMeaningfulWaitingInputValue(item));
     }
     if (typeof value === 'object') {
-      return Object.values(value as Record<string, unknown>)
-        .some((item) => this.hasMeaningfulWaitingInputValue(item));
+      return Object.values(value as Record<string, unknown>).some((item) =>
+        this.hasMeaningfulWaitingInputValue(item)
+      );
     }
     return true;
   }
@@ -751,16 +790,17 @@ export class ChatWaitingInputService {
     return /[\u3040-\u30ff\uff66-\uff9f]/u.test(text);
   }
 
-  private buildWaitingInputBilingualPairs(
-    skillSchema?: {
-      properties?: Record<string, {
+  private buildWaitingInputBilingualPairs(skillSchema?: {
+    properties?: Record<
+      string,
+      {
         type: string;
         description?: string;
         extractionPrompt?: string;
         default?: string | number | boolean;
-      }>;
-    },
-  ): Array<{
+      }
+    >;
+  }): Array<{
     leftKey: string;
     rightKey: string;
     leftLang: 'zh' | 'ja';
@@ -794,7 +834,9 @@ export class ChatWaitingInputService {
           rightKey,
           leftLang,
           rightLang,
-          type: String(properties[key]?.type || properties[rightKey]?.type || 'string').toLowerCase(),
+          type: String(
+            properties[key]?.type || properties[rightKey]?.type || 'string'
+          ).toLowerCase(),
         });
       }
     });
@@ -806,7 +848,7 @@ export class ChatWaitingInputService {
     data: Record<string, string>,
     sourceLang: 'zh' | 'ja',
     targetLang: 'zh' | 'ja',
-    modelId?: string,
+    modelId?: string
   ): Promise<{ values: Record<string, string>; usage?: LLMUsage }> {
     if (Object.keys(data).length === 0) {
       return { values: {} };
@@ -827,7 +869,7 @@ ${JSON.stringify(data, null, 2)}`;
       const response = await this.modelService.callModel(
         this.resolvePreferredTaskModelId(modelId),
         prompt,
-        'auxiliary',
+        'auxiliary'
       );
       const cleaned = response.content.replace(/```json|```/g, '').trim();
       const parsed = JSON.parse(cleaned);
@@ -845,16 +887,19 @@ ${JSON.stringify(data, null, 2)}`;
     missingInputs: Array<{ name: string; type?: string }>,
     allRequiredInputs: WaitingInputRequiredItem[] = [],
     skillSchema?: {
-      properties?: Record<string, {
-        type: string;
-        description?: string;
-        extractionPrompt?: string;
-        default?: string | number | boolean;
-      }>;
+      properties?: Record<
+        string,
+        {
+          type: string;
+          description?: string;
+          extractionPrompt?: string;
+          default?: string | number | boolean;
+        }
+      >;
       required?: string[];
     },
     message?: string,
-    modelId?: string,
+    modelId?: string
   ): Promise<WaitingInputPayload> {
     const pairs = this.buildWaitingInputBilingualPairs(skillSchema);
     if (pairs.length === 0) {
@@ -866,7 +911,7 @@ ${JSON.stringify(data, null, 2)}`;
     const existingValueMap = new Map(
       allRequiredInputs
         .filter((item) => this.hasMeaningfulWaitingInputValue(item.value))
-        .map((item) => [item.name, item.value] as const),
+        .map((item) => [item.name, item.value] as const)
     );
     const preferZhAsSource = !this.containsJapaneseScript(String(message || ''));
     const zhToJa: Record<string, string> = {};
@@ -879,22 +924,24 @@ ${JSON.stringify(data, null, 2)}`;
       const hasRightValue = this.hasMeaningfulWaitingInputValue(rightValue);
       const normalizedLeftValue = typeof leftValue === 'string' ? leftValue.trim() : leftValue;
       const normalizedRightValue = typeof rightValue === 'string' ? rightValue.trim() : rightValue;
-      const targetRightMissing = missingKeySet.has(pair.rightKey)
-        && !this.hasMeaningfulWaitingInputValue(existingValueMap.get(pair.rightKey));
-      const targetLeftMissing = missingKeySet.has(pair.leftKey)
-        && !this.hasMeaningfulWaitingInputValue(existingValueMap.get(pair.leftKey));
+      const targetRightMissing =
+        missingKeySet.has(pair.rightKey) &&
+        !this.hasMeaningfulWaitingInputValue(existingValueMap.get(pair.rightKey));
+      const targetLeftMissing =
+        missingKeySet.has(pair.leftKey) &&
+        !this.hasMeaningfulWaitingInputValue(existingValueMap.get(pair.leftKey));
 
       if (
-        pair.type !== 'number'
-        && pair.type !== 'integer'
-        && pair.type !== 'boolean'
-        && pair.type !== 'date'
-        && typeof normalizedLeftValue === 'string'
-        && typeof normalizedRightValue === 'string'
-        && normalizedLeftValue
-        && normalizedLeftValue === normalizedRightValue
-        && targetLeftMissing
-        && targetRightMissing
+        pair.type !== 'number' &&
+        pair.type !== 'integer' &&
+        pair.type !== 'boolean' &&
+        pair.type !== 'date' &&
+        typeof normalizedLeftValue === 'string' &&
+        typeof normalizedRightValue === 'string' &&
+        normalizedLeftValue &&
+        normalizedLeftValue === normalizedRightValue &&
+        targetLeftMissing &&
+        targetRightMissing
       ) {
         if (preferZhAsSource) {
           zhToJa[pair.rightKey] = normalizedLeftValue;
@@ -905,7 +952,12 @@ ${JSON.stringify(data, null, 2)}`;
       }
 
       if (hasLeftValue && !hasRightValue && targetRightMissing) {
-        if (pair.type === 'number' || pair.type === 'integer' || pair.type === 'boolean' || pair.type === 'date') {
+        if (
+          pair.type === 'number' ||
+          pair.type === 'integer' ||
+          pair.type === 'boolean' ||
+          pair.type === 'date'
+        ) {
           expandedInput[pair.rightKey] = leftValue;
         } else if (typeof leftValue === 'string' && leftValue.trim()) {
           if (pair.leftLang === 'zh' && pair.rightLang === 'ja') {
@@ -917,7 +969,12 @@ ${JSON.stringify(data, null, 2)}`;
       }
 
       if (hasRightValue && !hasLeftValue && targetLeftMissing) {
-        if (pair.type === 'number' || pair.type === 'integer' || pair.type === 'boolean' || pair.type === 'date') {
+        if (
+          pair.type === 'number' ||
+          pair.type === 'integer' ||
+          pair.type === 'boolean' ||
+          pair.type === 'date'
+        ) {
           expandedInput[pair.leftKey] = rightValue;
         } else if (typeof rightValue === 'string' && rightValue.trim()) {
           if (pair.rightLang === 'zh' && pair.leftLang === 'ja') {
@@ -961,8 +1018,8 @@ ${JSON.stringify(data, null, 2)}`;
           total.completion_tokens_details = { reasoning_tokens: 0 };
         }
         total.completion_tokens_details.reasoning_tokens =
-          (total.completion_tokens_details.reasoning_tokens || 0)
-          + usage.completion_tokens_details.reasoning_tokens;
+          (total.completion_tokens_details.reasoning_tokens || 0) +
+          usage.completion_tokens_details.reasoning_tokens;
       }
     }
 

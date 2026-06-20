@@ -785,19 +785,19 @@
 
 页面字段与接口字段关系建议如下：
 
-| 页面字段 | API 字段 | 用途 |
-| --- | --- | --- |
-| 工具名称 | `name` | 唯一标识，跳转详情 |
-| 展示名称 | `displayName` | 列表主显示文案 |
-| 类别 | `category` | 列表展示与筛选 |
-| 运行类型 | `runtimeType` | 列表展示与筛选 |
-| 状态 | `status` | 列表展示与快速启停 |
-| 风险等级 | `riskLevel` | 风险识别 |
-| 可绑定 Skill | `allowSkillBinding` | 列表展示与快速切换 |
-| Prompt 暴露策略 | `promptExposure` | 列表展示 |
-| 需确认 | `defaultRequiresConfirmation` | 策略展示 |
-| 需审批 | `defaultRequiresApproval` | 策略展示 |
-| 最后更新时间 | `updatedAt` | 排查变更 |
+| 页面字段        | API 字段                      | 用途               |
+| --------------- | ----------------------------- | ------------------ |
+| 工具名称        | `name`                        | 唯一标识，跳转详情 |
+| 展示名称        | `displayName`                 | 列表主显示文案     |
+| 类别            | `category`                    | 列表展示与筛选     |
+| 运行类型        | `runtimeType`                 | 列表展示与筛选     |
+| 状态            | `status`                      | 列表展示与快速启停 |
+| 风险等级        | `riskLevel`                   | 风险识别           |
+| 可绑定 Skill    | `allowSkillBinding`           | 列表展示与快速切换 |
+| Prompt 暴露策略 | `promptExposure`              | 列表展示           |
+| 需确认          | `defaultRequiresConfirmation` | 策略展示           |
+| 需审批          | `defaultRequiresApproval`     | 策略展示           |
+| 最后更新时间    | `updatedAt`                   | 排查变更           |
 
 #### 详情页字段映射
 

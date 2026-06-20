@@ -11,10 +11,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { TemplateService } from './template.service';
-import {
-  CreateReportTemplateDTO,
-  UpdateReportTemplateDTO,
-} from './template.dto';
+import { CreateReportTemplateDTO, UpdateReportTemplateDTO } from './template.dto';
 import { ReportTemplateDTO } from '../../interfaces';
 
 @ApiTags('Report Templates')
@@ -51,7 +48,7 @@ export class TemplateController {
   @ApiResponse({ status: 404, description: 'Template not found' })
   async update(
     @Param('id') id: string,
-    @Body() dto: UpdateReportTemplateDTO,
+    @Body() dto: UpdateReportTemplateDTO
   ): Promise<ReportTemplateDTO> {
     return this.templateService.update(id, dto);
   }

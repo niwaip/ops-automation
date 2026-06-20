@@ -15,13 +15,11 @@ const asRecord = (value: unknown): Record<string, unknown> | undefined => {
   return value as Record<string, unknown>;
 };
 
-const asString = (value: unknown): string | undefined => (
-  typeof value === 'string' && value.trim().length > 0 ? value : undefined
-);
+const asString = (value: unknown): string | undefined =>
+  typeof value === 'string' && value.trim().length > 0 ? value : undefined;
 
-const firstNonEmptyString = (...values: Array<string | undefined>): string | undefined => (
-  values.find((value): value is string => typeof value === 'string' && value.trim().length > 0)
-);
+const firstNonEmptyString = (...values: Array<string | undefined>): string | undefined =>
+  values.find((value): value is string => typeof value === 'string' && value.trim().length > 0);
 
 const tryParseJsonString = (value: unknown): unknown => {
   if (typeof value !== 'string') {
@@ -41,7 +39,7 @@ const tryParseJsonString = (value: unknown): unknown => {
 };
 
 const mapExecutionStatus = (
-  status?: ExecutionStatus | null,
+  status?: ExecutionStatus | null
 ): WorkflowResultExecution['status'] | undefined => {
   switch (status) {
     case 'succeeded':
@@ -72,10 +70,7 @@ const readStringField = (value: unknown, fields: string[]): string | undefined =
   return undefined;
 };
 
-const readRecordField = (
-  value: unknown,
-  fields: string[],
-): Record<string, unknown> | undefined => {
+const readRecordField = (value: unknown, fields: string[]): Record<string, unknown> | undefined => {
   const record = asRecord(value);
   if (!record) {
     return undefined;
@@ -141,7 +136,7 @@ const pickLegacyBusinessData = (rawResult: unknown): unknown => {
           'title',
           'name',
         ].includes(key);
-      }),
+      })
     );
 
     return Object.keys(remainingRecord).length > 0 ? remainingRecord : undefined;
@@ -183,7 +178,7 @@ const pickLegacyBusinessData = (rawResult: unknown): unknown => {
         'title',
         'name',
       ].includes(key);
-    }),
+    })
   );
 
   return Object.keys(filteredRecord).length > 0 ? filteredRecord : undefined;
@@ -218,16 +213,13 @@ const collectLegacyArtifacts = (value: unknown): WorkflowResultArtifact[] => {
     const record = current as Record<string, unknown>;
     const downloadUrl = firstNonEmptyString(
       asString(record.downloadUrl),
-      asString(record.download_url),
+      asString(record.download_url)
     );
-    const url = firstNonEmptyString(
-      asString(record.url),
-      asString(record.fileUrl),
-    );
+    const url = firstNonEmptyString(asString(record.url), asString(record.fileUrl));
     const name = firstNonEmptyString(
       asString(record.name),
       asString(record.fileName),
-      asString(record.label),
+      asString(record.label)
     );
 
     if (downloadUrl || url) {
@@ -263,25 +255,17 @@ const normalizeArtifacts = (value: WorkflowResultArtifact[]): WorkflowResultArti
     }
 
     const artifact: WorkflowResultArtifact = {
-      type: asString(record.type) || (firstNonEmptyString(
-        asString(record.downloadUrl),
-        asString(record.url),
-      ) ? 'file' : 'artifact'),
-      name: firstNonEmptyString(
-        asString(record.name),
-        asString(record.label),
-      ),
-      label: firstNonEmptyString(
-        asString(record.label),
-        asString(record.name),
-      ),
+      type:
+        asString(record.type) ||
+        (firstNonEmptyString(asString(record.downloadUrl), asString(record.url))
+          ? 'file'
+          : 'artifact'),
+      name: firstNonEmptyString(asString(record.name), asString(record.label)),
+      label: firstNonEmptyString(asString(record.label), asString(record.name)),
       downloadUrl: asString(record.downloadUrl),
       url: asString(record.url),
       path: asString(record.path),
-      mimeType: firstNonEmptyString(
-        asString(record.mimeType),
-        asString(record.mime_type),
-      ),
+      mimeType: firstNonEmptyString(asString(record.mimeType), asString(record.mime_type)),
     };
 
     const dedupeKey = `${artifact.type}|${artifact.downloadUrl || artifact.url || artifact.path || ''}|${artifact.name || ''}`;
@@ -296,11 +280,10 @@ const normalizeArtifacts = (value: WorkflowResultArtifact[]): WorkflowResultArti
   return artifacts;
 };
 
-const pickArtifactUrl = (artifacts: WorkflowResultArtifact[]): string | undefined => (
+const pickArtifactUrl = (artifacts: WorkflowResultArtifact[]): string | undefined =>
   artifacts
     .map((item) => firstNonEmptyString(item.downloadUrl, item.url))
-    .find((item): item is string => Boolean(item))
-);
+    .find((item): item is string => Boolean(item));
 
 const extractTemporalLink = (value: unknown): string | undefined => {
   const queue: unknown[] = [value];
@@ -330,7 +313,7 @@ const extractTemporalLink = (value: unknown): string | undefined => {
     const record = current as Record<string, unknown>;
     const directUrl = firstNonEmptyString(
       asString(record.temporalLink),
-      asString(record.temporal_link),
+      asString(record.temporal_link)
     );
     if (directUrl) {
       return directUrl;
@@ -352,11 +335,11 @@ const isEnvelope = (value: unknown): value is WorkflowResultEnvelope => {
     return false;
   }
   return Boolean(
-    asRecord(record.execution)
-    || asRecord(record.trigger)
-    || asRecord(record.presentation)
-    || Array.isArray(record.artifacts)
-    || asRecord(record.result),
+    asRecord(record.execution) ||
+    asRecord(record.trigger) ||
+    asRecord(record.presentation) ||
+    Array.isArray(record.artifacts) ||
+    asRecord(record.result)
   );
 };
 
@@ -365,7 +348,7 @@ const buildEnvelope = (
   context?: {
     executionId?: string;
     status?: WorkflowResultExecution['status'];
-  },
+  }
 ): WorkflowResultEnvelope => {
   if (isEnvelope(rawResult)) {
     return rawResult;
@@ -382,7 +365,7 @@ const buildEnvelope = (
     result: {
       resultType: firstNonEmptyString(
         readStringField(rawResult, ['resultType', 'type']),
-        businessData ? 'generic' : undefined,
+        businessData ? 'generic' : undefined
       ),
       title: readStringField(rawResult, ['title', 'name']),
       summary: readStringField(rawResult, [
@@ -402,28 +385,30 @@ const buildEnvelope = (
     artifacts: collectLegacyArtifacts(rawResult),
     presentation: {
       preferAiSummary: Boolean(
-        businessData
-        && !readStringField(rawResult, [
+        businessData &&
+        !readStringField(rawResult, [
           'chatSummary',
           'finalAnswer',
           'formatted_output',
           'summary',
           'message',
           'result',
-        ]),
+        ])
       ),
       preferStructuredView: false,
       chatSummary: readStringField(rawResult, ['chatSummary']),
       notificationSummary: readStringField(rawResult, ['notificationSummary', 'chatSummary']),
       summaryFormat:
-        readStringField(rawResult, ['summaryFormat']) === 'markdown'
-          ? 'markdown'
-          : 'plain_text',
-      detailText: readStringField(rawResult, ['detailText', 'formatted_output', 'result', 'text', 'content']),
+        readStringField(rawResult, ['summaryFormat']) === 'markdown' ? 'markdown' : 'plain_text',
+      detailText: readStringField(rawResult, [
+        'detailText',
+        'formatted_output',
+        'result',
+        'text',
+        'content',
+      ]),
       detailFormat:
-        readStringField(rawResult, ['detailFormat']) === 'markdown'
-          ? 'markdown'
-          : 'plain_text',
+        readStringField(rawResult, ['detailFormat']) === 'markdown' ? 'markdown' : 'plain_text',
     },
   };
 };
@@ -433,7 +418,7 @@ export const normalizeExecutionResult = (
   context?: {
     executionId?: string;
     status?: WorkflowResultExecution['status'];
-  },
+  }
 ): NormalizedExecutionResult => {
   const envelope = buildEnvelope(rawResult, context);
   const artifacts = normalizeArtifacts([
@@ -442,7 +427,7 @@ export const normalizeExecutionResult = (
   ]);
   const title = firstNonEmptyString(
     envelope.result?.title,
-    readStringField(rawResult, ['title', 'name']),
+    readStringField(rawResult, ['title', 'name'])
   );
   const summary = firstNonEmptyString(
     envelope.presentation?.chatSummary,
@@ -454,29 +439,27 @@ export const normalizeExecutionResult = (
       'summary',
       'message',
       'result',
-    ]),
+    ])
   );
   const body = firstNonEmptyString(
     envelope.presentation?.chatSummary,
     envelope.result?.summary,
     readStringField(rawResult, ['result', 'text', 'content']),
-    typeof rawResult === 'string' ? rawResult : undefined,
+    typeof rawResult === 'string' ? rawResult : undefined
   );
   const summaryFormat = envelope.presentation?.summaryFormat || 'plain_text';
-  const detailText = firstNonEmptyString(
-    envelope.presentation?.detailText,
-    body,
-  );
+  const detailText = firstNonEmptyString(envelope.presentation?.detailText, body);
   const detailFormat = envelope.presentation?.detailFormat || summaryFormat || 'plain_text';
-  const structuredData = envelope.result?.businessData !== undefined
-    ? envelope.result.businessData
-    : pickLegacyBusinessData(rawResult);
+  const structuredData =
+    envelope.result?.businessData !== undefined
+      ? envelope.result.businessData
+      : pickLegacyBusinessData(rawResult);
   const hasBusinessResult = Boolean(
-    summary
-    || body
-    || title
-    || artifacts.length > 0
-    || (structuredData !== undefined && structuredData !== null),
+    summary ||
+    body ||
+    title ||
+    artifacts.length > 0 ||
+    (structuredData !== undefined && structuredData !== null)
   );
 
   return {
@@ -506,7 +489,7 @@ export const normalizeExecutionResult = (
 };
 
 export const resolveExecutionNormalizedResult = (
-  execution?: Pick<ExecutionDto, 'id' | 'status' | 'normalizedResult' | 'resultJson' | 'result'>,
+  execution?: Pick<ExecutionDto, 'id' | 'status' | 'normalizedResult' | 'resultJson' | 'result'>
 ): NormalizedExecutionResult | null => {
   if (!execution) {
     return null;

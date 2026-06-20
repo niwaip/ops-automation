@@ -33,44 +33,48 @@ describe('buildWorkflowRuntimeCompatConfig', () => {
     });
 
     expect(config).toBeTruthy();
-    expect(config?.templateFieldSpecs).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        fieldId: 'contract.signingDate',
-        type: 'date',
-        policy: 'format_only',
-      }),
-      expect.objectContaining({
-        fieldId: 'payment.firstDays',
-        type: 'number',
-        policy: 'format_only',
-      }),
-    ]));
+    expect(config?.templateFieldSpecs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          fieldId: 'contract.signingDate',
+          type: 'date',
+          policy: 'format_only',
+        }),
+        expect.objectContaining({
+          fieldId: 'payment.firstDays',
+          type: 'number',
+          policy: 'format_only',
+        }),
+      ])
+    );
 
-    expect(config?.carboneBindingPlan.bindings).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        fieldId: 'contract.signingDate',
-        variablePath: 'contract.signingDate_cn',
-        valueSelector: 'contract.signingDate.zh',
-        transform: 'date_format',
-      }),
-      expect.objectContaining({
-        fieldId: 'contract.signingDate',
-        variablePath: 'contract.signingDate_jp',
-        valueSelector: 'contract.signingDate.ja',
-        transform: 'date_format',
-      }),
-      expect.objectContaining({
-        fieldId: 'payment.firstDays',
-        variablePath: 'payment.firstDays',
-        valueSelector: 'payment.firstDays.zh',
-        transform: 'identity',
-      }),
-      expect.objectContaining({
-        fieldId: 'payment.firstDays',
-        variablePath: 'payment.firstDays_jp',
-        valueSelector: 'payment.firstDays.ja',
-        transform: 'identity',
-      }),
-    ]));
+    expect(config?.carboneBindingPlan.bindings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          fieldId: 'contract.signingDate',
+          variablePath: 'contract.signingDate_cn',
+          valueSelector: 'contract.signingDate.zh',
+          transform: 'date_format',
+        }),
+        expect.objectContaining({
+          fieldId: 'contract.signingDate',
+          variablePath: 'contract.signingDate_jp',
+          valueSelector: 'contract.signingDate.ja',
+          transform: 'date_format',
+        }),
+        expect.objectContaining({
+          fieldId: 'payment.firstDays',
+          variablePath: 'payment.firstDays',
+          valueSelector: 'payment.firstDays.zh',
+          transform: 'identity',
+        }),
+        expect.objectContaining({
+          fieldId: 'payment.firstDays',
+          variablePath: 'payment.firstDays_jp',
+          valueSelector: 'payment.firstDays.ja',
+          transform: 'identity',
+        }),
+      ])
+    );
   });
 });

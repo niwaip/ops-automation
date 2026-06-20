@@ -1,19 +1,13 @@
-import {
-  WorkflowDocumentIR,
-  WorkflowLanguageProfile,
-} from './workflow-assets';
+import { WorkflowDocumentIR, WorkflowLanguageProfile } from './workflow-assets';
 
-import {
-  detectTextLanguageHint,
-  safeText,
-} from './workflow-parser-format';
+import { detectTextLanguageHint, safeText } from './workflow-parser-format';
 
 type SupportedWorkflowLanguage = 'zh' | 'ja' | 'en';
 
 const SUPPORTED_WORKFLOW_LANGUAGES: SupportedWorkflowLanguage[] = ['zh', 'ja', 'en'];
 
 export function normalizeWorkflowLanguage(
-  language: string | undefined,
+  language: string | undefined
 ): SupportedWorkflowLanguage | undefined {
   const normalized = safeText(language).toLowerCase();
   switch (normalized) {
@@ -37,7 +31,7 @@ export function normalizeWorkflowLanguage(
 }
 
 export function collectDocumentLanguages(
-  templateDocumentIr: WorkflowDocumentIR,
+  templateDocumentIr: WorkflowDocumentIR
 ): Set<SupportedWorkflowLanguage> {
   const detectedLanguages = new Set<SupportedWorkflowLanguage>();
   const elements = Array.isArray(templateDocumentIr.elements) ? templateDocumentIr.elements : [];
@@ -58,7 +52,7 @@ export function collectDocumentLanguages(
 
 export function isSimpleDocumentBilingualPair(
   leftLanguage: string | undefined,
-  rightLanguage: string | undefined,
+  rightLanguage: string | undefined
 ): boolean {
   const left = normalizeWorkflowLanguage(leftLanguage);
   const right = normalizeWorkflowLanguage(rightLanguage);
@@ -67,15 +61,15 @@ export function isSimpleDocumentBilingualPair(
   }
 
   return (
-    (left === 'zh' && (right === 'ja' || right === 'en'))
-    || (right === 'zh' && (left === 'ja' || left === 'en'))
+    (left === 'zh' && (right === 'ja' || right === 'en')) ||
+    (right === 'zh' && (left === 'ja' || left === 'en'))
   );
 }
 
 export function resolveSimpleTargetLanguages(
   sourceLanguage: string,
   targetLanguages: string[],
-  detectedLanguages: Set<SupportedWorkflowLanguage>,
+  detectedLanguages: Set<SupportedWorkflowLanguage>
 ): SupportedWorkflowLanguage[] {
   const normalizedSourceLanguage = normalizeWorkflowLanguage(sourceLanguage) || 'zh';
   const requestedLanguages = new Set(
@@ -85,20 +79,20 @@ export function resolveSimpleTargetLanguages(
   );
 
   if (
-    normalizedSourceLanguage !== 'ja'
-    && (detectedLanguages.has('ja') || requestedLanguages.has('ja'))
+    normalizedSourceLanguage !== 'ja' &&
+    (detectedLanguages.has('ja') || requestedLanguages.has('ja'))
   ) {
     return ['ja'];
   }
   if (
-    normalizedSourceLanguage !== 'en'
-    && (detectedLanguages.has('en') || requestedLanguages.has('en'))
+    normalizedSourceLanguage !== 'en' &&
+    (detectedLanguages.has('en') || requestedLanguages.has('en'))
   ) {
     return ['en'];
   }
   if (
-    normalizedSourceLanguage !== 'zh'
-    && (detectedLanguages.has('zh') || requestedLanguages.has('zh'))
+    normalizedSourceLanguage !== 'zh' &&
+    (detectedLanguages.has('zh') || requestedLanguages.has('zh'))
   ) {
     return ['zh'];
   }
@@ -109,14 +103,14 @@ export function resolveSimpleTargetLanguages(
 export function buildSimpleWorkflowLanguageProfile(
   templateDocumentIr: WorkflowDocumentIR,
   sourceLanguage: string,
-  targetLanguages: string[],
+  targetLanguages: string[]
 ): WorkflowLanguageProfile {
   const normalizedSourceLanguage = normalizeWorkflowLanguage(sourceLanguage) || 'zh';
   const detectedLanguages = collectDocumentLanguages(templateDocumentIr);
   const resolvedTargetLanguages = resolveSimpleTargetLanguages(
     normalizedSourceLanguage,
     targetLanguages,
-    detectedLanguages,
+    detectedLanguages
   );
 
   return {
@@ -126,7 +120,4 @@ export function buildSimpleWorkflowLanguageProfile(
   };
 }
 
-export {
-  SUPPORTED_WORKFLOW_LANGUAGES,
-  SupportedWorkflowLanguage,
-};
+export { SUPPORTED_WORKFLOW_LANGUAGES, SupportedWorkflowLanguage };

@@ -15,9 +15,9 @@ interface ExecutionApprovalHooks {
   getExecutionDto: (id: string, requester?: RequestUserContext) => Promise<ExecutionDto>;
   emitEvent: (
     executionId: string,
-    eventType: typeof EXECUTION_EVENT_TYPE[keyof typeof EXECUTION_EVENT_TYPE],
+    eventType: (typeof EXECUTION_EVENT_TYPE)[keyof typeof EXECUTION_EVENT_TYPE],
     payload: unknown,
-    options?: CreateExecutionEventOptions,
+    options?: CreateExecutionEventOptions
   ) => Promise<void>;
   updateStatus: (id: string, newStatus: ExecutionStatus) => Promise<void>;
   startExecution: (executionId: string) => Promise<void>;
@@ -34,7 +34,7 @@ export class ExecutionApprovalService {
     userId: string,
     dto: ApprovalDecisionDto,
     hooks: ExecutionApprovalHooks,
-    requester?: RequestUserContext,
+    requester?: RequestUserContext
   ): Promise<ExecutionDto> {
     const execution = await this.prisma.execution.findUnique({
       where: { id },
@@ -47,7 +47,9 @@ export class ExecutionApprovalService {
     this.ensureExecutionPermission(execution.createdBy, requester || { id: userId });
 
     if (execution.status !== EXECUTION_STATUS.PENDING_APPROVAL) {
-      throw new BadRequestException(`Execution ${id} is not in ${EXECUTION_STATUS.PENDING_APPROVAL} status`);
+      throw new BadRequestException(
+        `Execution ${id} is not in ${EXECUTION_STATUS.PENDING_APPROVAL} status`
+      );
     }
 
     await this.prisma.execution.update({
@@ -77,7 +79,7 @@ export class ExecutionApprovalService {
     userId: string,
     dto: ApprovalDecisionDto,
     hooks: ExecutionApprovalHooks,
-    requester?: RequestUserContext,
+    requester?: RequestUserContext
   ): Promise<ExecutionDto> {
     const execution = await this.prisma.execution.findUnique({
       where: { id },
@@ -90,7 +92,9 @@ export class ExecutionApprovalService {
     this.ensureExecutionPermission(execution.createdBy, requester || { id: userId });
 
     if (execution.status !== EXECUTION_STATUS.PENDING_APPROVAL) {
-      throw new BadRequestException(`Execution ${id} is not in ${EXECUTION_STATUS.PENDING_APPROVAL} status`);
+      throw new BadRequestException(
+        `Execution ${id} is not in ${EXECUTION_STATUS.PENDING_APPROVAL} status`
+      );
     }
 
     await this.prisma.execution.update({
@@ -114,7 +118,7 @@ export class ExecutionApprovalService {
 
   private ensureExecutionPermission(
     executionOwnerId: string,
-    requester?: RequestUserContext,
+    requester?: RequestUserContext
   ): void {
     if (!requester?.id) {
       return;

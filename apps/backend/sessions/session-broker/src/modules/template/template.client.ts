@@ -6,6 +6,21 @@ export interface TemplateStep {
   action: string;
   params?: Record<string, unknown>;
   on_fail?: string;
+  execution_policy?:
+    | 'auto_execute'
+    | 'require_confirmation'
+    | 'require_takeover'
+    | 'forbid_in_replay';
+  locator?: { type: string; value: string; fallback?: { type: string; value: string } };
+  output_var?: string;
+  description?: string;
+  branch?: {
+    condition_fn: string;
+    on_match: 'continue' | 'stop';
+    on_mismatch: 'continue' | 'stop' | 'takeover';
+    takeover_reason?: string;
+    description?: string;
+  };
 }
 
 export interface TemplateParamSchemaProperty {
@@ -41,7 +56,7 @@ export class TemplateClient {
         this.logger.error(`Failed to fetch template ${templateId}: ${response.status}`);
         return null;
       }
-      return await response.json() as Template;
+      return (await response.json()) as Template;
     } catch (error) {
       this.logger.error(`Error fetching template ${templateId}:`, error);
       return null;

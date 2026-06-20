@@ -37,36 +37,36 @@ describe('AI Identify API (e2e)', () => {
       underlineType: 'single',
       paragraphText: '甲方：______',
       paragraphIndex: 0,
-      position: { start: 3, end: 9 }
+      position: { start: 3, end: 9 },
     },
     {
       text: '______',
       underlineType: 'single',
       paragraphText: '地址：______',
       paragraphIndex: 1,
-      position: { start: 3, end: 9 }
+      position: { start: 3, end: 9 },
     },
     {
       text: '______',
       underlineType: 'single',
       paragraphText: '法定代表人：______',
       paragraphIndex: 2,
-      position: { start: 8, end: 14 }
+      position: { start: 8, end: 14 },
     },
     {
       text: '______',
       underlineType: 'single',
       paragraphText: '乙方：______',
       paragraphIndex: 3,
-      position: { start: 3, end: 9 }
+      position: { start: 3, end: 9 },
     },
     {
       text: '______',
       underlineType: 'single',
       paragraphText: '地址：______',
       paragraphIndex: 4,
-      position: { start: 3, end: 9 }
-    }
+      position: { start: 3, end: 9 },
+    },
   ];
 
   beforeAll(async () => {
@@ -92,7 +92,7 @@ describe('AI Identify API (e2e)', () => {
           documentContent: mockContractContent,
           documentType: 'docx',
           templateType: 'contract',
-          context: '这是一份合同模板，需要识别空白填充部分'
+          context: '这是一份合同模板，需要识别空白填充部分',
         })
         .expect(200);
 
@@ -110,7 +110,7 @@ describe('AI Identify API (e2e)', () => {
           documentContent: mockContractContent,
           documentType: 'docx',
           templateType: 'contract',
-          underlineInfo: mockUnderlineInfo
+          underlineInfo: mockUnderlineInfo,
         })
         .expect(200);
 
@@ -123,7 +123,7 @@ describe('AI Identify API (e2e)', () => {
         .post('/studio/direct-ai-identify')
         .send({
           documentType: 'docx',
-          templateType: 'contract'
+          templateType: 'contract',
         })
         .expect(400);
     });
@@ -133,7 +133,7 @@ describe('AI Identify API (e2e)', () => {
         .post('/studio/direct-ai-identify')
         .send({
           documentContent: 'some content',
-          templateType: 'contract'
+          templateType: 'contract',
         })
         .expect(400);
     });
@@ -147,7 +147,7 @@ describe('AI Identify API (e2e)', () => {
           .send({
             documentContent: mockContractContent,
             documentType: 'docx',
-            templateType
+            templateType,
           })
           .expect(200);
 
@@ -164,7 +164,7 @@ describe('AI Identify API (e2e)', () => {
           .send({
             documentContent: mockContractContent,
             documentType,
-            templateType: 'contract'
+            templateType: 'contract',
           })
           .expect(200);
 
@@ -179,13 +179,15 @@ describe('AI Identify API (e2e)', () => {
           documentContent: '甲方：______',
           documentType: 'docx',
           templateType: 'contract',
-          underlineInfo: [{
-            text: '______',
-            underlineType: 'single',
-            paragraphText: '甲方：______',
-            paragraphIndex: 0,
-            position: { start: 3, end: 9 }
-          }]
+          underlineInfo: [
+            {
+              text: '______',
+              underlineType: 'single',
+              paragraphText: '甲方：______',
+              paragraphIndex: 0,
+              position: { start: 3, end: 9 },
+            },
+          ],
         })
         .expect(200);
 
@@ -208,7 +210,7 @@ describe('AI Identify API (e2e)', () => {
           documentContent: mockContractContent,
           documentType: 'docx',
           templateType: 'contract',
-          underlineInfo: mockUnderlineInfo
+          underlineInfo: mockUnderlineInfo,
         })
         .expect(200);
 
@@ -225,7 +227,7 @@ describe('AI Identify API (e2e)', () => {
           documentContent: mockContractContent,
           documentType: 'docx',
           templateType: 'contract',
-          underlineInfo: []
+          underlineInfo: [],
         })
         .expect(200);
 
@@ -239,7 +241,7 @@ describe('AI Identify API (e2e)', () => {
         .send({
           documentContent: mockContractContent,
           documentType: 'docx',
-          templateType: 'contract'
+          templateType: 'contract',
         })
         .expect(200);
 
@@ -255,9 +257,9 @@ describe('AI Identify API (e2e)', () => {
           format: {
             fontSize: 12,
             isBold: false,
-            alignment: 'left'
-          }
-        }
+            alignment: 'left',
+          },
+        },
       ];
 
       const response = await request(app.getHttpServer())
@@ -267,7 +269,7 @@ describe('AI Identify API (e2e)', () => {
           documentType: 'docx',
           templateType: 'contract',
           underlineInfo: mockUnderlineInfo,
-          paragraphFormats
+          paragraphFormats,
         })
         .expect(200);
 
@@ -281,7 +283,7 @@ describe('AI Identify API (e2e)', () => {
           documentContent: mockContractContent,
           documentType: 'docx',
           templateType: 'contract',
-          underlineInfo: mockUnderlineInfo
+          underlineInfo: mockUnderlineInfo,
         })
         .expect(200);
 
@@ -318,7 +320,7 @@ describe('AI Identify API (e2e)', () => {
           documentContent: '甲方：______',
           documentType: 'docx',
           templateType: 'contract',
-          context: '测试合同'
+          context: '测试合同',
         })
         .expect(200);
 
@@ -331,7 +333,7 @@ describe('AI Identify API (e2e)', () => {
         .get('/studio/direct-ai-identify-progress')
         .query({
           documentType: 'docx',
-          templateType: 'contract'
+          templateType: 'contract',
         })
         .expect(400);
     });
@@ -345,7 +347,7 @@ describe('AI Identify API (e2e)', () => {
       const response = await request(app.getHttpServer())
         .post('/studio/validate-content')
         .send({
-          template: '{d.name} {d.date:formatD(YYYY-MM-DD)} {d.total:formatNumber}'
+          template: '{d.name} {d.date:formatD(YYYY-MM-DD)} {d.total:formatNumber}',
         })
         .expect(200);
 
@@ -360,7 +362,7 @@ describe('AI Identify API (e2e)', () => {
       const response = await request(app.getHttpServer())
         .post('/studio/validate-content')
         .send({
-          template: '{d.} {invalid} {d.name::}'
+          template: '{d.} {invalid} {d.name::}',
         })
         .expect(200);
 
@@ -372,7 +374,7 @@ describe('AI Identify API (e2e)', () => {
       const response = await request(app.getHttpServer())
         .post('/studio/validate-content')
         .send({
-          template: '{#d.items} {d.items[i].name} {/d.items}'
+          template: '{#d.items} {d.items[i].name} {/d.items}',
         })
         .expect(200);
 
@@ -384,7 +386,7 @@ describe('AI Identify API (e2e)', () => {
       const response = await request(app.getHttpServer())
         .post('/studio/validate-content')
         .send({
-          template: '{#d.items} {d.items[i].name}' // 缺少{/d.items}
+          template: '{#d.items} {d.items[i].name}', // 缺少{/d.items}
         })
         .expect(200);
 
@@ -399,9 +401,7 @@ describe('AI Identify API (e2e)', () => {
     it('should generate preview from document content', async () => {
       const templateConfig = {
         templateType: 'contract',
-        variableMappings: [
-          { path: '{d.partyA.name}', sampleValue: '测试甲方公司' }
-        ]
+        variableMappings: [{ path: '{d.partyA.name}', sampleValue: '测试甲方公司' }],
       };
 
       const response = await request(app.getHttpServer())
@@ -409,7 +409,7 @@ describe('AI Identify API (e2e)', () => {
         .send({
           documentContent: '甲方：______',
           templateConfig,
-          format: 'docx'
+          format: 'docx',
         })
         .expect(200);
 
@@ -423,7 +423,7 @@ describe('AI Identify API (e2e)', () => {
         .send({
           documentContent: '甲方：______',
           templateConfig: { templateType: 'contract' },
-          format: 'docx'
+          format: 'docx',
         })
         .expect(200);
 
@@ -436,9 +436,7 @@ describe('AI Identify API (e2e)', () => {
   // ============================================
   describe('/studio/template-types (GET)', () => {
     it('should return available template types', async () => {
-      const response = await request(app.getHttpServer())
-        .get('/studio/template-types')
-        .expect(200);
+      const response = await request(app.getHttpServer()).get('/studio/template-types').expect(200);
 
       expect(Array.isArray(response.body)).toBe(true);
       expect(response.body.length).toBeGreaterThan(0);
@@ -463,7 +461,7 @@ describe('AI Identify API (e2e)', () => {
           documentContent: mockContractContent,
           documentType: 'docx',
           templateType: 'contract',
-          underlineInfo: mockUnderlineInfo
+          underlineInfo: mockUnderlineInfo,
         })
         .expect(200);
 
@@ -473,7 +471,7 @@ describe('AI Identify API (e2e)', () => {
       const validateRes = await request(app.getHttpServer())
         .post('/studio/validate-content')
         .send({
-          template: identifyRes.body.suggestions.map((s: any) => s.suggestedName).join(' ')
+          template: identifyRes.body.suggestions.map((s: any) => s.suggestedName).join(' '),
         })
         .expect(200);
 
@@ -485,7 +483,7 @@ describe('AI Identify API (e2e)', () => {
         .send({
           documentContent: mockContractContent,
           templateConfig: identifyRes.body.templateConfig,
-          format: 'docx'
+          format: 'docx',
         })
         .expect(200);
 
@@ -498,7 +496,7 @@ describe('AI Identify API (e2e)', () => {
         .send({
           documentContent: '',
           documentType: 'docx',
-          templateType: 'contract'
+          templateType: 'contract',
         })
         .expect(200);
 
@@ -512,7 +510,7 @@ describe('AI Identify API (e2e)', () => {
         .send({
           documentContent: '这是一份已完成的合同，所有内容都已填写。无需参数化处理。',
           documentType: 'docx',
-          templateType: 'contract'
+          templateType: 'contract',
         })
         .expect(200);
 
@@ -532,7 +530,7 @@ describe('AI Identify API (e2e)', () => {
         underlineType: 'single',
         paragraphText: '甲方：______',
         paragraphIndex: 0,
-        position: { start: 3, end: 9 }
+        position: { start: 3, end: 9 },
       });
 
       // 设置较长超时
@@ -543,7 +541,7 @@ describe('AI Identify API (e2e)', () => {
           documentContent: largeContent,
           documentType: 'docx',
           templateType: 'contract',
-          underlineInfo: largeUnderlineInfo
+          underlineInfo: largeUnderlineInfo,
         });
 
       expect(response.status).toBe(200);
@@ -559,7 +557,7 @@ describe('AI Identify API (e2e)', () => {
           documentContent: '甲方：______',
           documentType: 'docx',
           templateType: 'contract',
-          underlineInfo: mockUnderlineInfo.slice(0, 1)
+          underlineInfo: mockUnderlineInfo.slice(0, 1),
         })
         .expect(200);
 

@@ -43,9 +43,8 @@ const UserAdminPage: React.FC = () => {
   const [form] = Form.useForm();
   const [createForm] = Form.useForm();
 
-  const usersQuery = useQuery(
-    ['users', { page, role: roleFilter }],
-    () => userApi.list({ page, role: roleFilter })
+  const usersQuery = useQuery(['users', { page, role: roleFilter }], () =>
+    userApi.list({ page, role: roleFilter })
   );
 
   const activateMutation = useMutation(userApi.activate, {
@@ -155,7 +154,11 @@ const UserAdminPage: React.FC = () => {
           admin: 'red',
           agent: 'green',
         };
-        return <Tag color={colorMap[role]}>{t(`auth:role${role.charAt(0).toUpperCase() + role.slice(1)}`)}</Tag>;
+        return (
+          <Tag color={colorMap[role]}>
+            {t(`auth:role${role.charAt(0).toUpperCase() + role.slice(1)}`)}
+          </Tag>
+        );
       },
     },
     {
@@ -218,8 +221,7 @@ const UserAdminPage: React.FC = () => {
     const keyword = searchText.trim().toLowerCase();
     if (!keyword) return true;
     return (
-      u.username.toLowerCase().includes(keyword) ||
-      (u.email || '').toLowerCase().includes(keyword)
+      u.username.toLowerCase().includes(keyword) || (u.email || '').toLowerCase().includes(keyword)
     );
   });
 
@@ -260,10 +262,7 @@ const UserAdminPage: React.FC = () => {
             >
               创建用户
             </Button>
-            <Button
-              icon={<ReloadOutlined />}
-              onClick={() => usersQuery.refetch()}
-            >
+            <Button icon={<ReloadOutlined />} onClick={() => usersQuery.refetch()}>
               {t('common:refresh')}
             </Button>
           </Space>

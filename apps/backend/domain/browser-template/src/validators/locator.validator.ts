@@ -18,7 +18,9 @@ export class LocatorValidator {
     // Check locator type is valid
     const validTypes: LocatorType[] = ['role', 'text', 'test-id', 'css', 'xpath', 'ref'];
     if (!validTypes.includes(locator.type)) {
-      errors.push(`Invalid locator type "${locator.type}". Must be one of: ${validTypes.join(', ')}`);
+      errors.push(
+        `Invalid locator type "${locator.type}". Must be one of: ${validTypes.join(', ')}`
+      );
     }
 
     // Check locator value is not empty
@@ -36,8 +38,8 @@ export class LocatorValidator {
     // Validate fallback locator if present
     if (locator.fallback) {
       const fallbackResult = this.validateLocator(locator.fallback);
-      errors.push(...fallbackResult.errors.map(e => `Fallback locator: ${e}`));
-      warnings.push(...fallbackResult.warnings.map(w => `Fallback locator: ${w}`));
+      errors.push(...fallbackResult.errors.map((e) => `Fallback locator: ${e}`));
+      warnings.push(...fallbackResult.warnings.map((w) => `Fallback locator: ${w}`));
     }
 
     return { errors, warnings };
@@ -68,8 +70,8 @@ export class LocatorValidator {
 
     if (step.locator) {
       const result = this.validateLocator(step.locator);
-      errors.push(...result.errors.map(e => `Step "${step.step_id}": ${e}`));
-      warnings.push(...result.warnings.map(w => `Step "${step.step_id}": ${w}`));
+      errors.push(...result.errors.map((e) => `Step "${step.step_id}": ${e}`));
+      warnings.push(...result.warnings.map((w) => `Step "${step.step_id}": ${w}`));
     }
 
     // Check assertions for locators
@@ -77,8 +79,8 @@ export class LocatorValidator {
       for (const assertion of step.assertions) {
         if (assertion.locator) {
           const result = this.validateLocator(assertion.locator);
-          errors.push(...result.errors.map(e => `Step "${step.step_id}" assertion: ${e}`));
-          warnings.push(...result.warnings.map(w => `Step "${step.step_id}" assertion: ${w}`));
+          errors.push(...result.errors.map((e) => `Step "${step.step_id}" assertion: ${e}`));
+          warnings.push(...result.warnings.map((w) => `Step "${step.step_id}" assertion: ${w}`));
         }
       }
     }

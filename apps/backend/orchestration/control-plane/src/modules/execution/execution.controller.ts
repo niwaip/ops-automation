@@ -42,7 +42,10 @@ export class ExecutionController {
   @Post()
   @ApiOperation({ summary: 'Create a new execution' })
   @ApiResponse({ status: 201, description: 'Execution created successfully', type: ExecutionDto })
-  async create(@Body() dto: CreateExecutionDto, @Req() req: AuthenticatedRequest): Promise<ExecutionDto> {
+  async create(
+    @Body() dto: CreateExecutionDto,
+    @Req() req: AuthenticatedRequest
+  ): Promise<ExecutionDto> {
     const userId = req.user?.id || 'anonymous';
     this.logger.log(`Creating execution for user ${userId}, skill ${dto.skillId}`);
     return this.executionService.create(userId, dto, {
@@ -55,7 +58,7 @@ export class ExecutionController {
   @ApiResponse({ status: 200, description: 'List of executions' })
   async list(
     @Query() dto: ListExecutionsDto,
-    @Req() req: AuthenticatedRequest,
+    @Req() req: AuthenticatedRequest
   ): Promise<{ data: ExecutionDto[]; total: number; page: number; pageSize: number }> {
     return this.executionService.list(dto, req.user);
   }
@@ -72,15 +75,26 @@ export class ExecutionController {
   @ApiOperation({ summary: 'Get execution steps' })
   @ApiResponse({ status: 200, description: 'List of execution steps' })
   @ApiResponse({ status: 404, description: 'Execution not found' })
-  async getSteps(@Param('id') id: string, @Req() req: AuthenticatedRequest): Promise<ExecutionStepDto[]> {
+  async getSteps(
+    @Param('id') id: string,
+    @Req() req: AuthenticatedRequest
+  ): Promise<ExecutionStepDto[]> {
     return this.executionService.getSteps(id, req.user);
   }
 
   @Get(':id/phases')
   @ApiOperation({ summary: 'Get execution phases' })
-  @ApiResponse({ status: 200, description: 'List of execution phases', type: ExecutionPhaseDto, isArray: true })
+  @ApiResponse({
+    status: 200,
+    description: 'List of execution phases',
+    type: ExecutionPhaseDto,
+    isArray: true,
+  })
   @ApiResponse({ status: 404, description: 'Execution not found' })
-  async getPhases(@Param('id') id: string, @Req() req: AuthenticatedRequest): Promise<ExecutionPhaseDto[]> {
+  async getPhases(
+    @Param('id') id: string,
+    @Req() req: AuthenticatedRequest
+  ): Promise<ExecutionPhaseDto[]> {
     return this.executionService.getPhases(id, req.user);
   }
 
@@ -90,7 +104,7 @@ export class ExecutionController {
   async updateWorkflowActivityProgress(
     @Param('id') id: string,
     @Body() dto: UpdateWorkflowActivityProgressDto,
-    @Req() req: AuthenticatedRequest,
+    @Req() req: AuthenticatedRequest
   ): Promise<{ ok: true }> {
     await this.executionService.updateWorkflowActivityProgress(id, dto, req.user);
     return { ok: true };
@@ -99,12 +113,16 @@ export class ExecutionController {
   @Post(':id/phases/:phaseKey/takeover')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Request human takeover for a phase' })
-  @ApiResponse({ status: 200, description: 'Phase entered waiting_takeover and execution entered human_control', type: ExecutionDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Phase entered waiting_takeover and execution entered human_control',
+    type: ExecutionDto,
+  })
   async takeoverPhase(
     @Param('id') id: string,
     @Param('phaseKey') phaseKey: string,
     @Body() dto: TakeoverExecutionDto,
-    @Req() req: AuthenticatedRequest,
+    @Req() req: AuthenticatedRequest
   ): Promise<ExecutionDto> {
     const userId = req.user?.id || 'anonymous';
     return this.executionService.takeoverPhase(id, phaseKey, userId, dto, req.user);
@@ -118,7 +136,7 @@ export class ExecutionController {
     @Param('id') id: string,
     @Param('phaseKey') phaseKey: string,
     @Body() dto: ReconcilePhaseTakeoverDto,
-    @Req() req: AuthenticatedRequest,
+    @Req() req: AuthenticatedRequest
   ): Promise<ExecutionDto> {
     const userId = req.user?.id || 'anonymous';
     return this.executionService.reconcilePhaseTakeover(id, phaseKey, userId, dto, req.user);
@@ -127,12 +145,16 @@ export class ExecutionController {
   @Post(':id/phases/:phaseKey/resume')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Resume execution from a takeover phase' })
-  @ApiResponse({ status: 200, description: 'Execution resumed from phase takeover', type: ExecutionDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Execution resumed from phase takeover',
+    type: ExecutionDto,
+  })
   async resumePhaseTakeover(
     @Param('id') id: string,
     @Param('phaseKey') phaseKey: string,
     @Body() dto: ResumeExecutionDto,
-    @Req() req: AuthenticatedRequest,
+    @Req() req: AuthenticatedRequest
   ): Promise<ExecutionDto> {
     const userId = req.user?.id || 'anonymous';
     return this.executionService.resumePhaseTakeover(id, phaseKey, userId, dto, req.user);
@@ -147,7 +169,7 @@ export class ExecutionController {
   async takeover(
     @Param('id') id: string,
     @Body() dto: TakeoverExecutionDto,
-    @Req() req: AuthenticatedRequest,
+    @Req() req: AuthenticatedRequest
   ): Promise<ExecutionDto> {
     const userId = req.user?.id || 'anonymous';
     this.logger.log(`Takeover requested for execution ${id} by user ${userId}`);
@@ -163,7 +185,7 @@ export class ExecutionController {
   async resume(
     @Param('id') id: string,
     @Body() dto: ResumeExecutionDto,
-    @Req() req: AuthenticatedRequest,
+    @Req() req: AuthenticatedRequest
   ): Promise<ExecutionDto> {
     const userId = req.user?.id || 'anonymous';
     this.logger.log(`Resume requested for execution ${id} by user ${userId}`);
@@ -172,10 +194,7 @@ export class ExecutionController {
 
   @Get(':id/events/stream')
   @ApiOperation({ summary: 'Stream execution events (SSE)' })
-  async streamEvents(
-    @Param('id') id: string,
-    @Res() res: any,
-  ): Promise<void> {
+  async streamEvents(@Param('id') id: string, @Res() res: any): Promise<void> {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
@@ -199,7 +218,7 @@ export class ExecutionController {
   async releaseHumanControl(
     @Param('id') id: string,
     @Body() dto: ReleaseHumanControlDto,
-    @Req() req: AuthenticatedRequest,
+    @Req() req: AuthenticatedRequest
   ): Promise<ExecutionDto> {
     const userId = req.user?.id || 'anonymous';
     this.logger.log(`Release human control requested for execution ${id} by user ${userId}`);
@@ -215,7 +234,7 @@ export class ExecutionController {
   async approve(
     @Param('id') id: string,
     @Body() dto: ApprovalDecisionDto,
-    @Req() req: AuthenticatedRequest,
+    @Req() req: AuthenticatedRequest
   ): Promise<ExecutionDto> {
     const userId = req.user?.id || 'anonymous';
     this.logger.log(`Approval requested for execution ${id} by user ${userId}`);
@@ -231,7 +250,7 @@ export class ExecutionController {
   async reject(
     @Param('id') id: string,
     @Body() dto: ApprovalDecisionDto,
-    @Req() req: AuthenticatedRequest,
+    @Req() req: AuthenticatedRequest
   ): Promise<ExecutionDto> {
     const userId = req.user?.id || 'anonymous';
     this.logger.log(`Rejection requested for execution ${id} by user ${userId}`);
@@ -244,10 +263,7 @@ export class ExecutionController {
   @ApiResponse({ status: 200, description: 'Execution cancelled', type: ExecutionDto })
   @ApiResponse({ status: 400, description: 'Cannot cancel from current status' })
   @ApiResponse({ status: 404, description: 'Execution not found' })
-  async cancel(
-    @Param('id') id: string,
-    @Req() req: AuthenticatedRequest,
-  ): Promise<ExecutionDto> {
+  async cancel(@Param('id') id: string, @Req() req: AuthenticatedRequest): Promise<ExecutionDto> {
     const userId = req.user?.id || 'anonymous';
     this.logger.log(`Cancel requested for execution ${id} by user ${userId}`);
     return this.executionService.cancel(id, userId, req.user);
@@ -256,13 +272,20 @@ export class ExecutionController {
   @Post(':id/submit-input')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Submit missing input and resume execution from waiting_input' })
-  @ApiResponse({ status: 200, description: 'Input submitted and execution resumed', type: ExecutionDto })
-  @ApiResponse({ status: 400, description: 'Execution is not in waiting_input status or invalid step ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Input submitted and execution resumed',
+    type: ExecutionDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Execution is not in waiting_input status or invalid step ID',
+  })
   @ApiResponse({ status: 404, description: 'Execution not found' })
   async submitInput(
     @Param('id') id: string,
     @Body() dto: SubmitInputDto,
-    @Req() req: AuthenticatedRequest,
+    @Req() req: AuthenticatedRequest
   ): Promise<ExecutionDto> {
     const userId = req.user?.id || 'anonymous';
     this.logger.log(`Input submission requested for execution ${id} by user ${userId}`);
@@ -275,7 +298,7 @@ export class ExecutionController {
   @ApiResponse({ status: 200, description: 'Executions deleted successfully' })
   async cleanupBeforeDate(
     @Body() dto: CleanupExecutionsBeforeDateDto,
-    @Req() req: AuthenticatedRequest,
+    @Req() req: AuthenticatedRequest
   ): Promise<{ success: boolean; deletedCount: number; beforeDate: string }> {
     const userId = req.user?.id || 'anonymous';
     this.logger.log(`Cleanup requested before ${dto.beforeDate} by user ${userId}`);
@@ -289,7 +312,7 @@ export class ExecutionController {
   @ApiResponse({ status: 404, description: 'Execution not found' })
   async delete(
     @Param('id') id: string,
-    @Req() req: AuthenticatedRequest,
+    @Req() req: AuthenticatedRequest
   ): Promise<{ success: boolean }> {
     const userId = req.user?.id || 'anonymous';
     this.logger.log(`Delete requested for execution ${id} by user ${userId}`);

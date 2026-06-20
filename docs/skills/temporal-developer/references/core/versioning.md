@@ -138,13 +138,13 @@ Worker v2.0 (Build ID: def456)
 
 ## Choosing an Approach
 
-| Scenario | Recommended Approach |
-|----------|---------------------|
-| Small change, few running workflows | Patching API |
-| Major rewrite | Workflow Type Versioning |
-| Many short workflows, frequent deploys | Worker Versioning (PINNED) |
+| Scenario                               | Recommended Approach                        |
+| -------------------------------------- | ------------------------------------------- |
+| Small change, few running workflows    | Patching API                                |
+| Major rewrite                          | Workflow Type Versioning                    |
+| Many short workflows, frequent deploys | Worker Versioning (PINNED)                  |
 | Long-running workflows needing updates | Worker Versioning (AUTO_UPGRADE) + Patching |
-| Quick fix, can wait for completion | Wait for workflows to complete |
+| Quick fix, can wait for completion     | Wait for workflows to complete              |
 
 ## Best Practices
 

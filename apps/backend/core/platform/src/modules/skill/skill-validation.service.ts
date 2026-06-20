@@ -19,7 +19,7 @@ export class SkillValidationService {
   async validateSkill(
     skillId: string,
     loadSkill: (skillId: string) => Promise<SkillConfigDto | null>,
-    emit?: SkillValidationEmitter,
+    emit?: SkillValidationEmitter
   ): Promise<SkillValidationResult> {
     const skill = await loadSkill(skillId);
     if (!skill) {
@@ -52,7 +52,8 @@ export class SkillValidationService {
     };
 
     result.details!.configAnalysis.hasTriggerKeywords = skill.triggerKeywords.length > 0;
-    result.details!.configAnalysis.hasParamsSchema = Object.keys(skill.paramsSchema.properties).length > 0;
+    result.details!.configAnalysis.hasParamsSchema =
+      Object.keys(skill.paramsSchema.properties).length > 0;
     result.details!.configAnalysis.hasTemplate = !!skill.apiEndpoints?.runtimeMetadata?.sourceType;
     result.details!.configAnalysis.hasFlowTemplate = skill.executionFlowTemplateIds.length > 0;
 
@@ -73,7 +74,7 @@ export class SkillValidationService {
       result.details!.configAnalysis.paramsSchemaCompleteness = 'incomplete';
     } else {
       const hasAllDescriptions = requiredParams.every(
-        param => skill.paramsSchema.properties[param]?.description
+        (param) => skill.paramsSchema.properties[param]?.description
       );
       if (!hasAllDescriptions) {
         result.warnings.push('部分必填参数缺少描述，建议添加描述以提高AI参数提取准确度');
@@ -137,7 +138,11 @@ export class SkillValidationService {
     id: string,
     generatedSkill: Partial<SkillConfigDto> | undefined,
     loadSkill: (skillId: string) => Promise<SkillConfigDto | null>,
-    saveAdjustment: (skillId: string, generatedSkill: Partial<SkillConfigDto>, current: SkillConfigDto) => Promise<SkillConfigDto | null>,
+    saveAdjustment: (
+      skillId: string,
+      generatedSkill: Partial<SkillConfigDto>,
+      current: SkillConfigDto
+    ) => Promise<SkillConfigDto | null>
   ): Promise<SkillConfigDto | null> {
     const current = await loadSkill(id);
     if (!current) {
@@ -153,7 +158,7 @@ export class SkillValidationService {
 
   private async simulateSkillWithReactAI(
     skill: SkillConfigDto,
-    emit?: SkillValidationEmitter,
+    emit?: SkillValidationEmitter
   ): Promise<{
     success: boolean;
     validationScore: number;
@@ -173,10 +178,17 @@ export class SkillValidationService {
         content: '真实模拟执行完成，开始 AI 审计',
         data: { stage: 'audit' },
       });
-      const auditResult = await this.auditSkillWithAI(skill, simulatedRequest, executionTrace, emit);
+      const auditResult = await this.auditSkillWithAI(
+        skill,
+        simulatedRequest,
+        executionTrace,
+        emit
+      );
 
       const issues = Array.isArray(auditResult?.issues) ? auditResult.issues.map(String) : [];
-      const suggestions = Array.isArray(auditResult?.suggestions) ? auditResult.suggestions.map(String) : [];
+      const suggestions = Array.isArray(auditResult?.suggestions)
+        ? auditResult.suggestions.map(String)
+        : [];
 
       if (!executionTrace.usedReactFlowExecute) {
         issues.unshift('真实模拟执行阶段未实际调用 flow_execute');
@@ -211,7 +223,7 @@ export class SkillValidationService {
   private async executeSkillValidationFlow(
     skill: SkillConfigDto,
     simulatedRequest: string,
-    emit?: SkillValidationEmitter,
+    emit?: SkillValidationEmitter
   ): Promise<{
     usedReactFlowExecute: boolean;
     result: string;
@@ -248,17 +260,21 @@ export class SkillValidationService {
       '3. finalAnswer 只保留执行结论和最终输出，不要生成额外 JSON。',
     ].join('\n\n');
 
-    const response = await axios.post(`${aiOrchestratorUrl}/ai/chat/stream`, {
-      message: executionPrompt,
-      userId: 'skill-validator',
-      sessionId: `skill-exec-${skill.id}-${randomUUID()}`,
-      modelId: 'default',
-      config: {
-        mode: 'task',
-        maxIterations: 8,
-        tools: ['flow_execute'],
+    const response = await axios.post(
+      `${aiOrchestratorUrl}/ai/chat/stream`,
+      {
+        message: executionPrompt,
+        userId: 'skill-validator',
+        sessionId: `skill-exec-${skill.id}-${randomUUID()}`,
+        modelId: 'default',
+        config: {
+          mode: 'task',
+          maxIterations: 8,
+          tools: ['flow_execute'],
+        },
       },
-    }, { responseType: 'stream', timeout: 120000 });
+      { responseType: 'stream', timeout: 120000 }
+    );
 
     const executionLog: string[] = [];
     let result = '';
@@ -334,7 +350,7 @@ export class SkillValidationService {
       log: string[];
       iterations: number;
     },
-    emit?: SkillValidationEmitter,
+    emit?: SkillValidationEmitter
   ): Promise<Record<string, any>> {
     const aiOrchestratorUrl = getAiOrchestratorUrl();
     emit?.({
@@ -356,29 +372,37 @@ export class SkillValidationService {
       `执行日志：${JSON.stringify(executionTrace.log, null, 2)}`,
       `执行结果：${executionTrace.result}`,
       '请严格输出 JSON，不要输出其他文字：',
-      JSON.stringify({
-        success: true,
-        validationScore: 90,
-        summary: '一句话总结该 Skill 是否可用',
-        issues: ['问题1'],
-        suggestions: ['建议1'],
-        generatedSkill: {
-          name: skill.name,
-          description: skill.description,
-          triggerKeywords: skill.triggerKeywords,
-          paramsSchema: skill.paramsSchema,
-          executionFlowTemplateIds: skill.executionFlowTemplateIds,
-          executionFlow: skill.executionFlow,
+      JSON.stringify(
+        {
+          success: true,
+          validationScore: 90,
+          summary: '一句话总结该 Skill 是否可用',
+          issues: ['问题1'],
+          suggestions: ['建议1'],
+          generatedSkill: {
+            name: skill.name,
+            description: skill.description,
+            triggerKeywords: skill.triggerKeywords,
+            paramsSchema: skill.paramsSchema,
+            executionFlowTemplateIds: skill.executionFlowTemplateIds,
+            executionFlow: skill.executionFlow,
+          },
         },
-      }, null, 2),
+        null,
+        2
+      ),
     ].join('\n\n');
 
-    const aiResponse = await axios.post(`${aiOrchestratorUrl}/ai/chat/stream`, {
-      message: auditPrompt,
-      sessionId: `skill-audit-${skill.id}-${randomUUID()}`,
-      modelId: 'default',
-      config: { mode: 'chat', maxIterations: 5 },
-    }, { responseType: 'stream', timeout: 120000 });
+    const aiResponse = await axios.post(
+      `${aiOrchestratorUrl}/ai/chat/stream`,
+      {
+        message: auditPrompt,
+        sessionId: `skill-audit-${skill.id}-${randomUUID()}`,
+        modelId: 'default',
+        config: { mode: 'chat', maxIterations: 5 },
+      },
+      { responseType: 'stream', timeout: 120000 }
+    );
 
     let fullContent = '';
     let aiErrorReceived = '';
@@ -426,9 +450,7 @@ export class SkillValidationService {
       return `请帮我执行“${skill.name}”`;
     }
 
-    const sampleArgs = requiredParams
-      .map((param) => `${param}为示例值`)
-      .join('，');
+    const sampleArgs = requiredParams.map((param) => `${param}为示例值`).join('，');
 
     return `请帮我执行“${skill.name}”，${sampleArgs}`;
   }

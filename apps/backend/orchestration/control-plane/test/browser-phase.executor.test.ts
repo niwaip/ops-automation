@@ -37,7 +37,7 @@ describe('BrowserPhaseExecutor', () => {
       browserPhaseRecoveryPlanner as never,
       browserRuntimeAdapter as never,
       executionPhaseService as never,
-      runtimeExecutionOrchestrator as never,
+      runtimeExecutionOrchestrator as never
     );
 
     const result = await executor.execute({
@@ -65,7 +65,7 @@ describe('BrowserPhaseExecutor', () => {
     expect(executionPhaseService.replaceArtifacts).toHaveBeenCalledWith(
       'execution-1',
       'phase_login',
-      [],
+      []
     );
     expect(browserPhaseRecoveryPlanner.plan).not.toHaveBeenCalled();
     expect(result.success).toBe(true);
@@ -96,7 +96,7 @@ describe('BrowserPhaseExecutor', () => {
       browserPhaseRecoveryPlanner as never,
       browserRuntimeAdapter as never,
       executionPhaseService as never,
-      runtimeExecutionOrchestrator as never,
+      runtimeExecutionOrchestrator as never
     );
 
     const result = await executor.execute({
@@ -119,9 +119,7 @@ describe('BrowserPhaseExecutor', () => {
 
   it('retries the same phase when runtime execution fails with a retryable error', async () => {
     const browserPhaseRecoveryPlanner = {
-      plan: jest
-        .fn()
-        .mockReturnValueOnce({ action: 'retry_same_phase', reason: 'retry once' }),
+      plan: jest.fn().mockReturnValueOnce({ action: 'retry_same_phase', reason: 'retry once' }),
     };
     const browserRuntimeAdapter = {
       inspectState: jest.fn(),
@@ -159,7 +157,7 @@ describe('BrowserPhaseExecutor', () => {
       browserPhaseRecoveryPlanner as never,
       browserRuntimeAdapter as never,
       executionPhaseService as never,
-      runtimeExecutionOrchestrator as never,
+      runtimeExecutionOrchestrator as never
     );
 
     const result = await executor.execute({
@@ -223,7 +221,7 @@ describe('BrowserPhaseExecutor', () => {
       browserPhaseRecoveryPlanner as never,
       browserRuntimeAdapter as never,
       executionPhaseService as never,
-      runtimeExecutionOrchestrator as never,
+      runtimeExecutionOrchestrator as never
     );
 
     const result = await executor.execute({
@@ -250,7 +248,7 @@ describe('BrowserPhaseExecutor', () => {
     expect(executionPhaseService.replaceArtifacts).toHaveBeenCalledWith(
       'execution-1',
       'phase_login',
-      [],
+      []
     );
     expect(result.status).toBe('takeover_required');
     expect(result.requiresTakeover).toBe(true);
@@ -305,7 +303,7 @@ describe('BrowserPhaseExecutor', () => {
       browserPhaseRecoveryPlanner as never,
       browserRuntimeAdapter as never,
       executionPhaseService as never,
-      runtimeExecutionOrchestrator as never,
+      runtimeExecutionOrchestrator as never
     );
 
     const result = await executor.execute({
@@ -367,7 +365,7 @@ describe('BrowserPhaseExecutor', () => {
       browserPhaseRecoveryPlanner as never,
       browserRuntimeAdapter as never,
       executionPhaseService as never,
-      runtimeExecutionOrchestrator as never,
+      runtimeExecutionOrchestrator as never
     );
 
     const result = await executor.execute({
@@ -392,7 +390,7 @@ describe('BrowserPhaseExecutor', () => {
     expect(executionPhaseService.replaceArtifacts).toHaveBeenCalledWith(
       'execution-1',
       'phase_login',
-      [],
+      []
     );
     expect(result.success).toBe(false);
   });
@@ -430,7 +428,7 @@ describe('BrowserPhaseExecutor', () => {
       browserPhaseRecoveryPlanner as never,
       browserRuntimeAdapter as never,
       executionPhaseService as never,
-      runtimeExecutionOrchestrator as never,
+      runtimeExecutionOrchestrator as never
     );
 
     const result = await executor.execute({
@@ -456,7 +454,7 @@ describe('BrowserPhaseExecutor', () => {
     expect(executionPhaseService.replaceArtifacts).toHaveBeenCalledWith(
       'execution-1',
       'phase_submit',
-      [],
+      []
     );
     expect(result.success).toBe(false);
     expect(result.errorCode).toBe('PHASE_POSTCHECK_FAILED');
@@ -494,7 +492,7 @@ describe('BrowserPhaseExecutor', () => {
       browserPhaseRecoveryPlanner as never,
       browserRuntimeAdapter as never,
       executionPhaseService as never,
-      runtimeExecutionOrchestrator as never,
+      runtimeExecutionOrchestrator as never
     );
 
     const result = await executor.execute({
@@ -553,7 +551,7 @@ describe('BrowserPhaseExecutor', () => {
       browserPhaseRecoveryPlanner as never,
       browserRuntimeAdapter as never,
       executionPhaseService as never,
-      runtimeExecutionOrchestrator as never,
+      runtimeExecutionOrchestrator as never
     );
 
     const result = await executor.execute({

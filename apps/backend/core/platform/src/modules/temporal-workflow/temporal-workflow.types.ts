@@ -111,11 +111,7 @@ export interface WorkflowInputParamDefinition {
   renderPath?: string | string[];
 }
 
-export type WorkflowParamRequiredMode =
-  | 'always'
-  | 'conditional'
-  | 'optional'
-  | 'system_required';
+export type WorkflowParamRequiredMode = 'always' | 'conditional' | 'optional' | 'system_required';
 
 export interface WorkflowParamPolicy {
   enabled?: boolean;
@@ -483,12 +479,15 @@ export interface BrowserTemplateStepInput {
 
 export interface BrowserTemplateParamsSchema {
   type?: string;
-  properties?: Record<string, {
-    type?: string;
-    description?: string;
-    default?: unknown;
-    required?: boolean;
-  }>;
+  properties?: Record<
+    string,
+    {
+      type?: string;
+      description?: string;
+      default?: unknown;
+      required?: boolean;
+    }
+  >;
   required?: string[];
 }
 

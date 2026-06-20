@@ -1,6 +1,6 @@
 ---
-name: "template-workflow-bootstrap"
-description: "Creates Activity and Temporal Workflow from a Carbone template ID. Invoke when initializing or repairing template-based document workflows."
+name: 'template-workflow-bootstrap'
+description: 'Creates Activity and Temporal Workflow from a Carbone template ID. Invoke when initializing or repairing template-based document workflows.'
 ---
 
 # Template Workflow Bootstrap

@@ -14,7 +14,9 @@ export class BrowserPhaseRecoveryService {
 
   constructor(private readonly modelService: ModelService) {}
 
-  async planRecovery(dto: PlanBrowserPhaseRecoveryDTO): Promise<PlanBrowserPhaseRecoveryResponseDTO> {
+  async planRecovery(
+    dto: PlanBrowserPhaseRecoveryDTO
+  ): Promise<PlanBrowserPhaseRecoveryResponseDTO> {
     const runtime = await this.resolveModelRuntime(dto.modelId);
     if (!runtime) {
       return this.fallbackDecision(dto);
@@ -29,13 +31,15 @@ export class BrowserPhaseRecoveryService {
       const parsed = this.parseRecoveryResponse(response.content, dto);
       return parsed || this.fallbackDecision(dto);
     } catch (error) {
-      this.logger.warn(`Browser phase recovery planning failed: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.warn(
+        `Browser phase recovery planning failed: ${error instanceof Error ? error.message : String(error)}`
+      );
       return this.fallbackDecision(dto);
     }
   }
 
   private async resolveModelRuntime(
-    requestedModelId?: string,
+    requestedModelId?: string
   ): Promise<{ modelId: string; client: LLMClient } | null> {
     if (requestedModelId) {
       const resolvedModelId = await this.modelService.resolveModelId(requestedModelId);
@@ -74,15 +78,19 @@ export class BrowserPhaseRecoveryService {
       '{"action":"retry_with_patch"|"takeover_required"|"abort","reason":"string","patch":{"type":"replace_selector"|"append_wait","failed_step_id":"string","selector":"string?","duration_ms":"number?","note":"string?"}|null}',
     ].join('\n');
 
-    const userPrompt = JSON.stringify({
-      execution_id: dto.execution_id,
-      phase_key: dto.phase_key,
-      phase_name: dto.phase_name,
-      phase_type: dto.phase_type,
-      attempt: dto.attempt,
-      failed_result: dto.result,
-      commands: dto.commands,
-    }, null, 2);
+    const userPrompt = JSON.stringify(
+      {
+        execution_id: dto.execution_id,
+        phase_key: dto.phase_key,
+        phase_name: dto.phase_name,
+        phase_type: dto.phase_type,
+        attempt: dto.attempt,
+        failed_result: dto.result,
+        commands: dto.commands,
+      },
+      null,
+      2
+    );
 
     return [
       { role: 'system', content: systemPrompt },
@@ -92,7 +100,7 @@ export class BrowserPhaseRecoveryService {
 
   private parseRecoveryResponse(
     content: string,
-    dto: PlanBrowserPhaseRecoveryDTO,
+    dto: PlanBrowserPhaseRecoveryDTO
   ): PlanBrowserPhaseRecoveryResponseDTO | null {
     try {
       const jsonCandidate = this.extractJsonCandidate(content);
@@ -101,9 +109,10 @@ export class BrowserPhaseRecoveryService {
       }
       const parsed = JSON.parse(jsonCandidate) as Record<string, unknown>;
       const action = parsed.action;
-      const reason = typeof parsed.reason === 'string' && parsed.reason.trim()
-        ? parsed.reason.trim()
-        : (dto.result.error_message || 'Browser phase recovery planning failed');
+      const reason =
+        typeof parsed.reason === 'string' && parsed.reason.trim()
+          ? parsed.reason.trim()
+          : dto.result.error_message || 'Browser phase recovery planning failed';
       if (action !== 'retry_with_patch' && action !== 'takeover_required' && action !== 'abort') {
         return null;
       }
@@ -142,7 +151,7 @@ export class BrowserPhaseRecoveryService {
 
   private normalizePatch(
     value: unknown,
-    dto: PlanBrowserPhaseRecoveryDTO,
+    dto: PlanBrowserPhaseRecoveryDTO
   ): BrowserPhaseRecoveryPatchDTO | null {
     if (!value || typeof value !== 'object' || Array.isArray(value)) {
       return null;
@@ -150,9 +159,10 @@ export class BrowserPhaseRecoveryService {
 
     const raw = value as Record<string, unknown>;
     const type = raw.type;
-    const failedStepId = typeof raw.failed_step_id === 'string' && raw.failed_step_id.trim()
-      ? raw.failed_step_id.trim()
-      : dto.result.failed_step_id;
+    const failedStepId =
+      typeof raw.failed_step_id === 'string' && raw.failed_step_id.trim()
+        ? raw.failed_step_id.trim()
+        : dto.result.failed_step_id;
 
     if (!failedStepId || !dto.commands.some((command) => command.step_id === failedStepId)) {
       return null;
@@ -172,9 +182,10 @@ export class BrowserPhaseRecoveryService {
     }
 
     if (type === 'append_wait') {
-      const durationMs = typeof raw.duration_ms === 'number' && Number.isFinite(raw.duration_ms)
-        ? Math.max(100, Math.min(10000, Math.round(raw.duration_ms)))
-        : 1000;
+      const durationMs =
+        typeof raw.duration_ms === 'number' && Number.isFinite(raw.duration_ms)
+          ? Math.max(100, Math.min(10000, Math.round(raw.duration_ms)))
+          : 1000;
       return {
         type,
         failed_step_id: failedStepId,
@@ -187,16 +198,25 @@ export class BrowserPhaseRecoveryService {
   }
 
   private fallbackDecision(dto: PlanBrowserPhaseRecoveryDTO): PlanBrowserPhaseRecoveryResponseDTO {
-    const errorText = `${dto.result.error_code || ''} ${dto.result.error_message || ''} ${dto.result.takeover_reason || ''}`.toLowerCase();
-    if (/(captcha|mfa|verification|human verify|human verification|二次验证|验证码)/i.test(errorText)) {
+    const errorText =
+      `${dto.result.error_code || ''} ${dto.result.error_message || ''} ${dto.result.takeover_reason || ''}`.toLowerCase();
+    if (
+      /(captcha|mfa|verification|human verify|human verification|二次验证|验证码)/i.test(errorText)
+    ) {
       return {
         action: 'takeover_required',
-        reason: dto.result.takeover_reason || dto.result.error_message || 'Human verification is required',
+        reason:
+          dto.result.takeover_reason ||
+          dto.result.error_message ||
+          'Human verification is required',
         patch: null,
       };
     }
 
-    if (/(timeout|timed out|wait|element not found|selector|locator)/i.test(errorText) && dto.result.failed_step_id) {
+    if (
+      /(timeout|timed out|wait|element not found|selector|locator)/i.test(errorText) &&
+      dto.result.failed_step_id
+    ) {
       return {
         action: 'retry_with_patch',
         reason: dto.result.error_message || 'Retry failed step with a short wait',

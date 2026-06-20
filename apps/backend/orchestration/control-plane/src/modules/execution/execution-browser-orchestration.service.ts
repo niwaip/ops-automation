@@ -2,9 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { EXECUTION_EVENT_TYPE } from './contracts/execution-event-type';
-import {
-  CreateExecutionEventOptions,
-} from './execution-event.service';
+import { CreateExecutionEventOptions } from './execution-event.service';
 import { ExecutionFailureService } from './execution-failure.service';
 import { ExecutionPhaseSyncService } from './execution-phase-sync.service';
 import { ExecutionStepService } from './execution-step.service';
@@ -39,60 +37,49 @@ export interface ExecutionStepBrowserPhaseConfig {
 interface ExecutionBrowserFailureHooks {
   emitEvent: (
     executionId: string,
-    eventType: typeof EXECUTION_EVENT_TYPE[keyof typeof EXECUTION_EVENT_TYPE],
+    eventType: (typeof EXECUTION_EVENT_TYPE)[keyof typeof EXECUTION_EVENT_TYPE],
     payload: unknown,
-    options?: CreateExecutionEventOptions,
+    options?: CreateExecutionEventOptions
   ) => Promise<void>;
   updateStatus: (id: string, newStatus: string) => Promise<void>;
   closeRuntimeSessionQuietly: (
     runtimeSessionId: string,
     executionId: string,
-    reason: string,
+    reason: string
   ) => Promise<void>;
 }
 
 interface ExecutionBrowserOrchestrationHooks {
   emitEvent: (
     executionId: string,
-    eventType: typeof EXECUTION_EVENT_TYPE[keyof typeof EXECUTION_EVENT_TYPE],
+    eventType: (typeof EXECUTION_EVENT_TYPE)[keyof typeof EXECUTION_EVENT_TYPE],
     payload: unknown,
-    options?: CreateExecutionEventOptions,
+    options?: CreateExecutionEventOptions
   ) => Promise<void>;
-  advanceExecutionFlow: (
-    executionId: string,
-    runtimeSessionId: string,
-  ) => Promise<void>;
+  advanceExecutionFlow: (executionId: string, runtimeSessionId: string) => Promise<void>;
   enterRuntimeWaitingInput: (
     executionId: string,
     runtimeSessionId: string,
     stepId: string,
     requiredInputs: unknown[],
-    reason?: string,
+    reason?: string
   ) => Promise<void>;
-  enterPendingApprovalFromRuntimeStep: (
-    executionId: string,
-    reason: string,
-  ) => Promise<void>;
-  failExecutionFromRuntimeStep: (
-    input: {
-      executionId: string;
-      stepId: string;
-      failureReason: string;
-      failureCode: string;
-      runtimeSessionId?: string;
-    },
-  ) => Promise<void>;
+  enterPendingApprovalFromRuntimeStep: (executionId: string, reason: string) => Promise<void>;
+  failExecutionFromRuntimeStep: (input: {
+    executionId: string;
+    stepId: string;
+    failureReason: string;
+    failureCode: string;
+    runtimeSessionId?: string;
+  }) => Promise<void>;
   syncPhaseAfterStepResult: (
     executionId: string,
     runtimeSessionId: string,
     result: RuntimeStepInvokeResult,
     phaseMetadata?: ExecutionStepPhaseMetadata,
-    step?: Record<string, unknown> | null,
+    step?: Record<string, unknown> | null
   ) => Promise<void>;
-  takeover: (
-    executionId: string,
-    reason: string,
-  ) => Promise<void>;
+  takeover: (executionId: string, reason: string) => Promise<void>;
   failureHooks: ExecutionBrowserFailureHooks;
 }
 
@@ -107,13 +94,13 @@ export class ExecutionBrowserOrchestrationService {
     private readonly executionFailureService: ExecutionFailureService,
     private readonly runtimeExecutionOrchestrator: RuntimeExecutionOrchestrator,
     private readonly runtimeResultInterpreter: RuntimeResultInterpreter,
-    private readonly runtimeStepRequestFactory: RuntimeStepRequestFactory,
+    private readonly runtimeStepRequestFactory: RuntimeStepRequestFactory
   ) {}
 
   async bootstrapBrowserExecution(
     execution: Record<string, unknown>,
     runtimeSessionId: string,
-    hooks: ExecutionBrowserOrchestrationHooks,
+    hooks: ExecutionBrowserOrchestrationHooks
   ): Promise<void> {
     if (execution.runtimeType !== BROWSER_RUNTIME.TYPE) {
       await hooks.advanceExecutionFlow(execution.id as string, runtimeSessionId);
@@ -129,19 +116,22 @@ export class ExecutionBrowserOrchestrationService {
 
     if (plannerMode === 'skill') {
       this.logger.log(
-        `Execution ${String(execution.id)} uses plannerMode=skill; skipping runtime bootstrap goto step`,
+        `Execution ${String(execution.id)} uses plannerMode=skill; skipping runtime bootstrap goto step`
       );
       await hooks.advanceExecutionFlow(execution.id as string, runtimeSessionId);
       return;
     }
 
-    const url = typeof normalizedInput?.url === 'string'
-      ? normalizedInput.url
-      : typeof input?.url === 'string'
-        ? input.url
-        : undefined;
+    const url =
+      typeof normalizedInput?.url === 'string'
+        ? normalizedInput.url
+        : typeof input?.url === 'string'
+          ? input.url
+          : undefined;
     if (!url) {
-      this.logger.warn(`Execution ${String(execution.id)} has no browser bootstrap url; skipping auto step`);
+      this.logger.warn(
+        `Execution ${String(execution.id)} has no browser bootstrap url; skipping auto step`
+      );
       await hooks.advanceExecutionFlow(execution.id as string, runtimeSessionId);
       return;
     }
@@ -185,7 +175,7 @@ export class ExecutionBrowserOrchestrationService {
         runtimeSessionId,
         url,
         executionMode: 'bootstrap',
-      }),
+      })
     );
 
     await this.handleBrowserStepResult(
@@ -193,7 +183,7 @@ export class ExecutionBrowserOrchestrationService {
       runtimeSessionId,
       step.id,
       result,
-      hooks,
+      hooks
     );
   }
 
@@ -204,7 +194,7 @@ export class ExecutionBrowserOrchestrationService {
     result: RuntimeStepInvokeResult,
     hooks: ExecutionBrowserOrchestrationHooks,
     phaseMetadata?: ExecutionStepPhaseMetadata,
-    step?: Record<string, unknown> | null,
+    step?: Record<string, unknown> | null
   ): Promise<void> {
     await this.runtimeResultInterpreter.handleBrowserStepResult(
       {
@@ -217,31 +207,34 @@ export class ExecutionBrowserOrchestrationService {
             stepId,
           }),
         advanceExecutionFlow: () => hooks.advanceExecutionFlow(executionId, runtimeSessionId),
-        failExecution: (failureReason, failureCode) => hooks.failExecutionFromRuntimeStep({
-          executionId,
-          stepId,
-          failureReason,
-          failureCode,
-          runtimeSessionId,
-        }),
-        enterWaitingInput: (requiredInputs, reason) => hooks.enterRuntimeWaitingInput(
-          executionId,
-          runtimeSessionId,
-          stepId,
-          requiredInputs,
-          reason,
-        ),
-        enterPendingApproval: (reason) => hooks.enterPendingApprovalFromRuntimeStep(executionId, reason),
+        failExecution: (failureReason, failureCode) =>
+          hooks.failExecutionFromRuntimeStep({
+            executionId,
+            stepId,
+            failureReason,
+            failureCode,
+            runtimeSessionId,
+          }),
+        enterWaitingInput: (requiredInputs, reason) =>
+          hooks.enterRuntimeWaitingInput(
+            executionId,
+            runtimeSessionId,
+            stepId,
+            requiredInputs,
+            reason
+          ),
+        enterPendingApproval: (reason) =>
+          hooks.enterPendingApprovalFromRuntimeStep(executionId, reason),
         takeover: (reason) => hooks.takeover(executionId, reason).then(() => undefined),
       },
-      result,
+      result
     );
     await hooks.syncPhaseAfterStepResult(
       executionId,
       runtimeSessionId,
       result,
       phaseMetadata,
-      step,
+      step
     );
   }
 
@@ -250,7 +243,7 @@ export class ExecutionBrowserOrchestrationService {
     runtimeSessionId: string,
     stepId: string,
     result: RuntimePhaseInvokeResult,
-    hooks: ExecutionBrowserOrchestrationHooks,
+    hooks: ExecutionBrowserOrchestrationHooks
   ): Promise<void> {
     const phaseOutput = {
       status: result.status,
@@ -280,7 +273,7 @@ export class ExecutionBrowserOrchestrationService {
         runtimeSessionId,
         stepId,
         requiredInputs,
-        result.errorMessage,
+        result.errorMessage
       );
       return;
     }
@@ -288,7 +281,7 @@ export class ExecutionBrowserOrchestrationService {
     if (result.status === 'blocked') {
       await hooks.enterPendingApprovalFromRuntimeStep(
         executionId,
-        result.errorMessage || BROWSER_MESSAGES.PHASE_BLOCKED,
+        result.errorMessage || BROWSER_MESSAGES.PHASE_BLOCKED
       );
       return;
     }
@@ -319,13 +312,13 @@ export class ExecutionBrowserOrchestrationService {
       {
         runtimeSessionId,
         stepId,
-      },
+      }
     );
 
     if (result.status === 'takeover_required' || result.requiresTakeover) {
       await hooks.takeover(
         executionId,
-        result.takeoverReason || result.errorMessage || RECOVERY_MESSAGES.BROWSER_PHASE_TAKEOVER,
+        result.takeoverReason || result.errorMessage || RECOVERY_MESSAGES.BROWSER_PHASE_TAKEOVER
       );
       return;
     }
@@ -336,19 +329,17 @@ export class ExecutionBrowserOrchestrationService {
       return;
     }
 
-    await hooks.failExecutionFromRuntimeStep(
-      {
-        executionId,
-        stepId,
-        failureReason: result.errorMessage || RECOVERY_MESSAGES.BROWSER_FAILED,
-        failureCode: result.errorCode || BROWSER_ERROR_CODES.PHASE_RUNTIME_FAILED,
-        runtimeSessionId,
-      },
-    );
+    await hooks.failExecutionFromRuntimeStep({
+      executionId,
+      stepId,
+      failureReason: result.errorMessage || RECOVERY_MESSAGES.BROWSER_FAILED,
+      failureCode: result.errorCode || BROWSER_ERROR_CODES.PHASE_RUNTIME_FAILED,
+      runtimeSessionId,
+    });
   }
 
   extractStepBrowserPhaseConfig(
-    step?: Record<string, unknown> | null,
+    step?: Record<string, unknown> | null
   ): ExecutionStepBrowserPhaseConfig | undefined {
     if (!step) {
       return undefined;
@@ -358,7 +349,7 @@ export class ExecutionBrowserOrchestrationService {
     const inputJson = this.readJsonRecord(step.inputJson);
     const commands = this.extractBrowserPhaseCommands(
       targetJson?.commands || inputJson?.commands,
-      typeof step.id === 'string' ? step.id : 'browser_phase_step',
+      typeof step.id === 'string' ? step.id : 'browser_phase_step'
     );
 
     if (commands.length === 0) {
@@ -370,36 +361,37 @@ export class ExecutionBrowserOrchestrationService {
       precheck: this.extractBrowserPhaseCheck(targetJson?.precheck || inputJson?.precheck),
       postcheck: this.extractBrowserPhaseCheck(targetJson?.postcheck || inputJson?.postcheck),
       recoveryPolicy: this.extractBrowserPhaseRecoveryPolicy(
-        targetJson?.recoveryPolicy
-          || targetJson?.recovery_policy
-          || inputJson?.recoveryPolicy
-          || inputJson?.recovery_policy,
+        targetJson?.recoveryPolicy ||
+          targetJson?.recovery_policy ||
+          inputJson?.recoveryPolicy ||
+          inputJson?.recovery_policy
       ),
     };
   }
 
   extractBrowserPhaseInput(
-    step?: Record<string, unknown> | null,
+    step?: Record<string, unknown> | null
   ): Record<string, unknown> | undefined {
     const inputJson = this.readJsonRecord(step?.inputJson);
     if (!inputJson) {
       return undefined;
     }
 
-    const { commands, precheck, postcheck, recoveryPolicy, recovery_policy, ...phaseInput } = inputJson;
+    const { commands, precheck, postcheck, recoveryPolicy, recovery_policy, ...phaseInput } =
+      inputJson;
     return phaseInput;
   }
 
-  buildBrowserPhasePolicyContext(
-    execution: Record<string, unknown>,
-  ): {
-    riskLevel?: 'L0' | 'L1' | 'L2' | 'L3';
-    requiresApproval?: boolean;
-  } | undefined {
+  buildBrowserPhasePolicyContext(execution: Record<string, unknown>):
+    | {
+        riskLevel?: 'L0' | 'L1' | 'L2' | 'L3';
+        requiresApproval?: boolean;
+      }
+    | undefined {
     const riskLevel =
-      typeof execution.riskLevel === 'string'
-      && ['L0', 'L1', 'L2', 'L3'].includes(execution.riskLevel)
-        ? execution.riskLevel as 'L0' | 'L1' | 'L2' | 'L3'
+      typeof execution.riskLevel === 'string' &&
+      ['L0', 'L1', 'L2', 'L3'].includes(execution.riskLevel)
+        ? (execution.riskLevel as 'L0' | 'L1' | 'L2' | 'L3')
         : undefined;
     const requiresApproval =
       typeof execution.requiresApproval === 'boolean' ? execution.requiresApproval : undefined;
@@ -414,13 +406,13 @@ export class ExecutionBrowserOrchestrationService {
     };
   }
 
-  buildBrowserPhaseTraceContext(
-    execution: Record<string, unknown>,
-  ): {
-    userId?: string;
-    actorType?: 'system';
-    sourceService?: string;
-  } | undefined {
+  buildBrowserPhaseTraceContext(execution: Record<string, unknown>):
+    | {
+        userId?: string;
+        actorType?: 'system';
+        sourceService?: string;
+      }
+    | undefined {
     const userId =
       typeof execution.createdBy === 'string' && execution.createdBy.trim().length > 0
         ? execution.createdBy
@@ -437,7 +429,7 @@ export class ExecutionBrowserOrchestrationService {
   }
 
   extractStepPhaseMetadata(
-    step?: Record<string, unknown> | null,
+    step?: Record<string, unknown> | null
   ): ExecutionStepPhaseMetadata | undefined {
     if (!step) {
       return undefined;
@@ -445,33 +437,36 @@ export class ExecutionBrowserOrchestrationService {
 
     const targetJson = step.targetJson as Record<string, unknown> | undefined;
     const inputJson = step.inputJson as Record<string, unknown> | undefined;
-    const phaseKey = typeof targetJson?.phaseKey === 'string'
-      ? targetJson.phaseKey
-      : typeof targetJson?.phase_key === 'string'
-        ? targetJson.phase_key
-        : typeof inputJson?.phaseKey === 'string'
-          ? inputJson.phaseKey
-          : typeof inputJson?.phase_key === 'string'
-            ? inputJson.phase_key
-            : undefined;
-    const phaseName = typeof targetJson?.phaseName === 'string'
-      ? targetJson.phaseName
-      : typeof targetJson?.phase_name === 'string'
-        ? targetJson.phase_name
-        : typeof inputJson?.phaseName === 'string'
-          ? inputJson.phaseName
-          : typeof inputJson?.phase_name === 'string'
-            ? inputJson.phase_name
-            : undefined;
-    const phaseType = typeof targetJson?.phaseType === 'string'
-      ? targetJson.phaseType
-      : typeof targetJson?.phase_type === 'string'
-        ? targetJson.phase_type
-        : typeof inputJson?.phaseType === 'string'
-          ? inputJson.phaseType
-          : typeof inputJson?.phase_type === 'string'
-            ? inputJson.phase_type
-            : undefined;
+    const phaseKey =
+      typeof targetJson?.phaseKey === 'string'
+        ? targetJson.phaseKey
+        : typeof targetJson?.phase_key === 'string'
+          ? targetJson.phase_key
+          : typeof inputJson?.phaseKey === 'string'
+            ? inputJson.phaseKey
+            : typeof inputJson?.phase_key === 'string'
+              ? inputJson.phase_key
+              : undefined;
+    const phaseName =
+      typeof targetJson?.phaseName === 'string'
+        ? targetJson.phaseName
+        : typeof targetJson?.phase_name === 'string'
+          ? targetJson.phase_name
+          : typeof inputJson?.phaseName === 'string'
+            ? inputJson.phaseName
+            : typeof inputJson?.phase_name === 'string'
+              ? inputJson.phase_name
+              : undefined;
+    const phaseType =
+      typeof targetJson?.phaseType === 'string'
+        ? targetJson.phaseType
+        : typeof targetJson?.phase_type === 'string'
+          ? targetJson.phase_type
+          : typeof inputJson?.phaseType === 'string'
+            ? inputJson.phaseType
+            : typeof inputJson?.phase_type === 'string'
+              ? inputJson.phase_type
+              : undefined;
 
     if (!phaseKey || !phaseName || !phaseType) {
       return undefined;
@@ -482,7 +477,7 @@ export class ExecutionBrowserOrchestrationService {
 
   extractStepUrl(
     step: Record<string, unknown>,
-    execution: Record<string, unknown>,
+    execution: Record<string, unknown>
   ): string | undefined {
     const target = step.targetJson as Record<string, unknown> | undefined;
     const input = step.inputJson as Record<string, unknown> | undefined;
@@ -513,11 +508,11 @@ export class ExecutionBrowserOrchestrationService {
     return value
       .filter(
         (command): command is Record<string, unknown> =>
-          Boolean(command)
-          && typeof command === 'object'
-          && !Array.isArray(command)
-          && typeof command.action === 'string'
-          && command.action.trim().length > 0,
+          Boolean(command) &&
+          typeof command === 'object' &&
+          !Array.isArray(command) &&
+          typeof command.action === 'string' &&
+          command.action.trim().length > 0
       )
       .map((command, index) => ({
         stepId:
@@ -529,7 +524,8 @@ export class ExecutionBrowserOrchestrationService {
         capabilityType:
           typeof command.capabilityType === 'string' && command.capabilityType.trim().length > 0
             ? command.capabilityType.trim().replace(/_/g, '.')
-            : typeof command.capability_type === 'string' && command.capability_type.trim().length > 0
+            : typeof command.capability_type === 'string' &&
+                command.capability_type.trim().length > 0
               ? command.capability_type.trim().replace(/_/g, '.')
               : BROWSER_RUNTIME.CAPABILITY_TYPE,
         action: (command.action as string).trim(),
@@ -544,7 +540,7 @@ export class ExecutionBrowserOrchestrationService {
   }
 
   private extractBrowserPhaseRecoveryPolicy(
-    value: unknown,
+    value: unknown
   ): BrowserPhaseRecoveryPolicy | undefined {
     const record = this.readJsonRecord(value);
     if (!record) {
@@ -589,14 +585,14 @@ export class ExecutionBrowserOrchestrationService {
 
   private readJsonRecord(value: unknown): Record<string, unknown> | undefined {
     return value && typeof value === 'object' && !Array.isArray(value)
-      ? value as Record<string, unknown>
+      ? (value as Record<string, unknown>)
       : undefined;
   }
 
   private async persistBrowserPhaseSuccess(
     executionId: string,
     runtimeSessionId: string,
-    phaseOutput: Record<string, unknown>,
+    phaseOutput: Record<string, unknown>
   ): Promise<void> {
     const canReadExecution = typeof this.prisma?.execution?.findUnique === 'function';
     const canUpdateExecution = typeof this.prisma?.execution?.update === 'function';

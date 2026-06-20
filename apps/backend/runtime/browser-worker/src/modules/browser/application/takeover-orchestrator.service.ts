@@ -28,7 +28,7 @@ export class TakeoverOrchestratorService {
     private readonly recorderService: RecorderService,
     private readonly parser: CodegenScriptParserService,
     private readonly registry: BrowserSessionRegistry,
-    private readonly workerService: WorkerService,
+    private readonly workerService: WorkerService
   ) {}
 
   async startTakeover(input: StartTakeoverRequest): Promise<StartTakeoverResponse> {
@@ -88,7 +88,10 @@ export class TakeoverOrchestratorService {
   }
 
   async stopTakeover(input: StopTakeoverRequest): Promise<StopTakeoverResponse> {
-    const takeoverSession = this.getRequiredTakeoverSession(input.runtimeSessionId, input.takeoverSessionId);
+    const takeoverSession = this.getRequiredTakeoverSession(
+      input.runtimeSessionId,
+      input.takeoverSessionId
+    );
     const stopped = await this.recorderService.stopTakeoverRecording(input.runtimeSessionId);
     const patchSteps = this.parser.parse(stopped.rawScript, {
       backend: takeoverSession.backend,
@@ -97,7 +100,7 @@ export class TakeoverOrchestratorService {
     });
     const observation = await this.captureObservation(
       input.runtimeSessionId,
-      takeoverSession.backend as BrowserExecutionBackend,
+      takeoverSession.backend as BrowserExecutionBackend
     );
     const patchScript = {
       rawScript: stopped.rawScript,
@@ -190,7 +193,7 @@ export class TakeoverOrchestratorService {
 
   private getRequiredTakeoverSession(
     runtimeSessionId: string,
-    takeoverSessionId: string,
+    takeoverSessionId: string
   ): TakeoverSessionState {
     const session = this.takeoverSessions.get(runtimeSessionId);
     if (!session || session.takeoverSessionId !== takeoverSessionId) {
@@ -201,7 +204,7 @@ export class TakeoverOrchestratorService {
 
   private async captureObservation(
     runtimeSessionId: string,
-    backend: BrowserExecutionBackend,
+    backend: BrowserExecutionBackend
   ): Promise<ObservationSnapshot> {
     const pageState = await this.browserCommandService.inspectState({
       runtimeSessionId,
@@ -210,22 +213,26 @@ export class TakeoverOrchestratorService {
     const execution = await this.browserCommandService.executeCommands(
       [
         { tool: 'snapshot', params: {}, description: 'Capture page snapshot after takeover' },
-        { tool: 'get_text', params: { max_length: 4000 }, description: 'Read visible page text after takeover' },
+        {
+          tool: 'get_text',
+          params: { max_length: 4000 },
+          description: 'Read visible page text after takeover',
+        },
       ] satisfies MCPCommand[],
       {
         runtimeSessionId,
         backend,
         includeArtifacts: true,
         includeSteps: false,
-      },
+      }
     );
 
     const snapshotResult = execution.results.find((item) => item?.command === 'snapshot') as
       | { snapshot?: { path?: string }; data?: { path?: string } }
       | undefined;
-    const textResult = execution.results.find((item) => item?.command === 'get_text' || item?.command === 'read_page') as
-      | { data?: { text?: string }; text?: string }
-      | undefined;
+    const textResult = execution.results.find(
+      (item) => item?.command === 'get_text' || item?.command === 'read_page'
+    ) as { data?: { text?: string }; text?: string } | undefined;
 
     return {
       currentPageUrl: pageState.pageUrl,
@@ -237,7 +244,7 @@ export class TakeoverOrchestratorService {
   }
 
   private toBackendDto(
-    backend: BrowserExecutionBackend | 'cli' | 'chrome-devtools',
+    backend: BrowserExecutionBackend | 'cli' | 'chrome-devtools'
   ): BrowserExecutionBackendDto {
     return backend === 'chrome-devtools'
       ? BrowserExecutionBackendDto.CHROME_DEVTOOLS

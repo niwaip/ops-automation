@@ -16,7 +16,7 @@ describe('RuntimeResultInterpreter', () => {
 
     const interpreter = new RuntimeResultInterpreter(
       prisma as never,
-      executionStepService as never,
+      executionStepService as never
     );
 
     return { interpreter, prisma, executionStepService };
@@ -46,7 +46,7 @@ describe('RuntimeResultInterpreter', () => {
         requiresTakeover: true,
         takeoverReason: 'captcha_required',
         snapshot: { id: 'snapshot-1' },
-      },
+      }
     );
 
     expect(executionStepService.finishBrowserStep).toHaveBeenCalledWith('step-1', {
@@ -120,7 +120,7 @@ describe('RuntimeResultInterpreter', () => {
             },
           },
         },
-      },
+      }
     );
 
     expect(executionStepService.finishSystemSkillStep).toHaveBeenCalledWith('step-2', {
@@ -187,7 +187,7 @@ describe('RuntimeResultInterpreter', () => {
         output: {
           requiredInputs: [{ name: 'url', type: 'string' }],
         },
-      },
+      }
     );
 
     expect(executionStepService.markStepWaiting).toHaveBeenCalledWith('step-waiting', {
@@ -200,7 +200,7 @@ describe('RuntimeResultInterpreter', () => {
     });
     expect(enterWaitingInput).toHaveBeenCalledWith(
       [{ name: 'url', type: 'string' }],
-      'missing fields',
+      'missing fields'
     );
     expect(emitEvent).not.toHaveBeenCalled();
     expect(advanceExecutionFlow).not.toHaveBeenCalled();
@@ -229,7 +229,7 @@ describe('RuntimeResultInterpreter', () => {
         status: 'blocked',
         errorCode: 'EXECUTION_APPROVAL_REQUIRED',
         errorMessage: 'approval required by policy',
-      },
+      }
     );
 
     expect(enterPendingApproval).toHaveBeenCalledWith('approval required by policy');
@@ -266,7 +266,7 @@ describe('RuntimeResultInterpreter', () => {
           publishedSkillId: 'published-2',
           logs: [],
         },
-      },
+      }
     );
 
     expect(executionStepService.finishSystemSkillStep).toHaveBeenCalledWith('step-3', {
@@ -326,7 +326,7 @@ describe('RuntimeResultInterpreter', () => {
           publishedSkillId: 'published-4',
           logs: ['takeover'],
         },
-      },
+      }
     );
 
     expect(executionStepService.finishSystemSkillStep).toHaveBeenCalledWith('step-4', {

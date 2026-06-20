@@ -96,7 +96,7 @@ describe('ModelService', () => {
       const result = await service.listModels();
       expect(result.length).toBe(1);
       expect(result[0].name).toBe('gpt-4-active');
-      expect(result.every(m => m.status === 'active')).toBe(true);
+      expect(result.every((m) => m.status === 'active')).toBe(true);
     });
   });
 

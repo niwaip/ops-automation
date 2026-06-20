@@ -26,11 +26,13 @@ const validTransitions: Record<RuntimeSessionState, RuntimeSessionState[]> = {
 @Injectable()
 export class RuntimeSessionService {
   private readonly logger = new Logger(RuntimeSessionService.name);
+  private readonly uuidPattern =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly allocationService: AllocationService,
-    private readonly freezeService: FreezeService,
+    private readonly freezeService: FreezeService
   ) {}
 
   async create(dto: CreateRuntimeSessionDto): Promise<RuntimeSessionDto> {
@@ -77,7 +79,7 @@ export class RuntimeSessionService {
     await this.freezeService.syncRuntimeControlState(
       updatedRuntimeSession.id,
       updatedRuntimeSession.state,
-      runtimeSession.controlMode as 'AGENT_RUNNING' | 'HUMAN_CONTROL',
+      runtimeSession.controlMode as 'AGENT_RUNNING' | 'HUMAN_CONTROL'
     );
 
     this.logger.log(`RuntimeSession created: ${updatedRuntimeSession.id}, worker=${workerId}`);
@@ -86,6 +88,30 @@ export class RuntimeSessionService {
   }
 
   async getById(id: string): Promise<RuntimeSessionDto> {
+    // #region debug-point D:runtime-session-get-by-id
+    (() => {
+      fetch('http://192.168.100.143:7777/event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: 'approval-test-no-approve',
+          runId: 'pre-fix',
+          hypothesisId: 'D',
+          location: 'runtime-session.service.ts:89',
+          msg: '[DEBUG] runtimeSession getById called',
+          data: {
+            id,
+            isUuid:
+              /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id),
+          },
+          ts: Date.now(),
+        }),
+      }).catch(() => {});
+    })();
+    // #endregion
+    if (!this.uuidPattern.test(id)) {
+      throw new NotFoundException(`RuntimeSession ${id} not found`);
+    }
     const runtimeSession = await this.prisma.runtimeSession.findUnique({
       where: { id },
     });
@@ -198,7 +224,9 @@ export class RuntimeSessionService {
     return this.toDto(updated);
   }
 
-  async list(dto: ListRuntimeSessionsDto): Promise<{ data: RuntimeSessionDto[]; total: number; page: number; pageSize: number }> {
+  async list(
+    dto: ListRuntimeSessionsDto
+  ): Promise<{ data: RuntimeSessionDto[]; total: number; page: number; pageSize: number }> {
     const page = dto.page || 1;
     const pageSize = dto.pageSize || 10;
     const skip = (page - 1) * pageSize;

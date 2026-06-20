@@ -23,7 +23,12 @@ export interface BrowserPhaseRecoveryPatch {
 }
 
 export interface BrowserPhaseRecoveryDecision {
-  action: 'retry_same_phase' | 'retry_with_patch' | 'takeover_required' | 'resolved_by_human' | 'abort';
+  action:
+    | 'retry_same_phase'
+    | 'retry_with_patch'
+    | 'takeover_required'
+    | 'resolved_by_human'
+    | 'abort';
   reason: string;
   patch?: BrowserPhaseRecoveryPatch | null;
 }
@@ -50,10 +55,16 @@ export class BrowserPhaseRecoveryPlanner {
     const allowHumanTakeover = policy.allowHumanTakeover !== false;
     const shouldFallbackToHumanTakeover = policy.allowHumanTakeover === true;
 
-    if ((input.result.status === 'takeover_required' || input.result.requiresTakeover) && allowHumanTakeover) {
+    if (
+      (input.result.status === 'takeover_required' || input.result.requiresTakeover) &&
+      allowHumanTakeover
+    ) {
       return {
         action: RECOVERY_ACTIONS.TAKEOVER_REQUIRED,
-        reason: input.result.takeoverReason || input.result.errorMessage || RECOVERY_MESSAGES.PHASE_TAKEOVER,
+        reason:
+          input.result.takeoverReason ||
+          input.result.errorMessage ||
+          RECOVERY_MESSAGES.PHASE_TAKEOVER,
       };
     }
 
@@ -74,7 +85,10 @@ export class BrowserPhaseRecoveryPlanner {
     if (shouldFallbackToHumanTakeover) {
       return {
         action: RECOVERY_ACTIONS.TAKEOVER_REQUIRED,
-        reason: input.result.takeoverReason || input.result.errorMessage || RECOVERY_MESSAGES.PHASE_TAKEOVER,
+        reason:
+          input.result.takeoverReason ||
+          input.result.errorMessage ||
+          RECOVERY_MESSAGES.PHASE_TAKEOVER,
       };
     }
 
@@ -85,7 +99,7 @@ export class BrowserPhaseRecoveryPlanner {
   }
 
   private async planWithAi(
-    input: PlanBrowserPhaseRecoveryInput,
+    input: PlanBrowserPhaseRecoveryInput
   ): Promise<BrowserPhaseRecoveryDecision | null> {
     try {
       const response = await axios.post<{
@@ -98,41 +112,39 @@ export class BrowserPhaseRecoveryPlanner {
           duration_ms?: number;
           note?: string;
         } | null;
-      }>(
-        `${this.aiOrchestratorUrl}/ai/browser-phase-recovery/plan`,
-        {
-          execution_id: input.executionId,
-          phase_key: input.phaseKey,
-          phase_name: input.phaseName,
-          phase_type: input.phaseType,
-          attempt: input.attempt,
-          modelId: input.policy?.modelId,
-          commands: input.commands.map((command) => ({
-            step_id: command.stepId,
-            action: command.action,
-            capability_type: command.capabilityType,
-            input: command.input,
-            metadata: command.metadata || undefined,
-          })),
-          result: {
-            failed_step_id: input.result.failedStepId,
-            failed_action: input.result.failedAction,
-            error_code: input.result.errorCode,
-            error_message: input.result.errorMessage,
-            retryable: input.result.retryable,
-            takeover_reason: input.result.takeoverReason,
-          },
+      }>(`${this.aiOrchestratorUrl}/ai/browser-phase-recovery/plan`, {
+        execution_id: input.executionId,
+        phase_key: input.phaseKey,
+        phase_name: input.phaseName,
+        phase_type: input.phaseType,
+        attempt: input.attempt,
+        modelId: input.policy?.modelId,
+        commands: input.commands.map((command) => ({
+          step_id: command.stepId,
+          action: command.action,
+          capability_type: command.capabilityType,
+          input: command.input,
+          metadata: command.metadata || undefined,
+        })),
+        result: {
+          failed_step_id: input.result.failedStepId,
+          failed_action: input.result.failedAction,
+          error_code: input.result.errorCode,
+          error_message: input.result.errorMessage,
+          retryable: input.result.retryable,
+          takeover_reason: input.result.takeoverReason,
         },
-      );
+      });
 
       const action = response.data?.action;
-      const reason = typeof response.data?.reason === 'string' && response.data.reason.trim()
-        ? response.data.reason.trim()
-        : (input.result.errorMessage || RECOVERY_MESSAGES.AI_RECOVERY_FAILED);
+      const reason =
+        typeof response.data?.reason === 'string' && response.data.reason.trim()
+          ? response.data.reason.trim()
+          : input.result.errorMessage || RECOVERY_MESSAGES.AI_RECOVERY_FAILED;
       if (
-        action !== RECOVERY_ACTIONS.RETRY_WITH_PATCH
-        && action !== RECOVERY_ACTIONS.TAKEOVER_REQUIRED
-        && action !== RECOVERY_ACTIONS.ABORT
+        action !== RECOVERY_ACTIONS.RETRY_WITH_PATCH &&
+        action !== RECOVERY_ACTIONS.TAKEOVER_REQUIRED &&
+        action !== RECOVERY_ACTIONS.ABORT
       ) {
         return null;
       }
@@ -152,22 +164,31 @@ export class BrowserPhaseRecoveryPlanner {
         patch,
       };
     } catch (error) {
-      this.logger.warn(`Failed to plan browser phase recovery with AI: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.warn(
+        `Failed to plan browser phase recovery with AI: ${error instanceof Error ? error.message : String(error)}`
+      );
       return null;
     }
   }
 
   private normalizePatch(
-    patch: {
-      type?: string;
-      failed_step_id?: string;
-      selector?: string;
-      duration_ms?: number;
-      note?: string;
-    } | null | undefined,
-    commands: BrowserPhaseCommand[],
+    patch:
+      | {
+          type?: string;
+          failed_step_id?: string;
+          selector?: string;
+          duration_ms?: number;
+          note?: string;
+        }
+      | null
+      | undefined,
+    commands: BrowserPhaseCommand[]
   ): BrowserPhaseRecoveryPatch | null {
-    if (!patch || !patch.failed_step_id || !commands.some((command) => command.stepId === patch.failed_step_id)) {
+    if (
+      !patch ||
+      !patch.failed_step_id ||
+      !commands.some((command) => command.stepId === patch.failed_step_id)
+    ) {
       return null;
     }
     if (patch.type === 'replace_selector') {
@@ -186,9 +207,10 @@ export class BrowserPhaseRecoveryPlanner {
       return {
         type: 'append_wait',
         failedStepId: patch.failed_step_id,
-        durationMs: typeof patch.duration_ms === 'number' && Number.isFinite(patch.duration_ms)
-          ? Math.max(100, Math.min(10000, Math.round(patch.duration_ms)))
-          : 1000,
+        durationMs:
+          typeof patch.duration_ms === 'number' && Number.isFinite(patch.duration_ms)
+            ? Math.max(100, Math.min(10000, Math.round(patch.duration_ms)))
+            : 1000,
         note: typeof patch.note === 'string' ? patch.note : undefined,
       };
     }

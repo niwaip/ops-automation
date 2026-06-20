@@ -10,7 +10,11 @@ export class WorkerController {
 
   @Post()
   @ApiOperation({ summary: 'Create a new browser worker' })
-  @ApiResponse({ status: 201, description: 'Worker created successfully', type: CreateWorkerResponseDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Worker created successfully',
+    type: CreateWorkerResponseDto,
+  })
   @ApiResponse({ status: 400, description: 'Invalid request' })
   @ApiResponse({ status: 500, description: 'Failed to create worker' })
   async createWorker(@Body() request: CreateWorkerRequestDto): Promise<CreateWorkerResponseDto> {

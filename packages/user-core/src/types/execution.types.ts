@@ -3,17 +3,12 @@ import type {
   ExecutionSemantic,
   ExecutionStatus,
   ExecutionStepStatus,
-} from "@ops/contracts";
+} from '@ops/contracts';
 
-export type {
-  ApprovalStatus,
-  ExecutionSemantic,
-  ExecutionStatus,
-  ExecutionStepStatus,
-};
+export type { ApprovalStatus, ExecutionSemantic, ExecutionStatus, ExecutionStepStatus };
 
 export interface WorkflowResultExecution {
-  status?: "success" | "partial_success" | "failed" | "cancelled";
+  status?: 'success' | 'partial_success' | 'failed' | 'cancelled';
   executionId?: string;
   startedAt?: string;
   finishedAt?: string;
@@ -21,7 +16,7 @@ export interface WorkflowResultExecution {
 }
 
 export interface WorkflowResultTrigger {
-  type?: "manual" | "schedule" | "api" | "resume";
+  type?: 'manual' | 'schedule' | 'api' | 'resume';
   scheduleId?: string;
   scheduledAt?: string;
   windowStart?: string;
@@ -44,7 +39,7 @@ export interface WorkflowResultArtifact {
   mimeType?: string;
 }
 
-export type WorkflowResultTextFormat = "plain_text" | "markdown";
+export type WorkflowResultTextFormat = 'plain_text' | 'markdown';
 
 export interface WorkflowResultPresentation {
   preferAiSummary?: boolean;
@@ -96,7 +91,7 @@ export interface ExecutionDto {
   skillId: string;
   status: ExecutionStatus;
   runtimeType?: string;
-  riskLevel?: "L0" | "L1" | "L2" | "L3";
+  riskLevel?: 'L0' | 'L1' | 'L2' | 'L3';
   currentStepId?: string;
   runtimeSessionId?: string;
   currentPhaseKey?: string;

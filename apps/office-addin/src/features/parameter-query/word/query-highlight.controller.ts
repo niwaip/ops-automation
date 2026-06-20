@@ -8,7 +8,11 @@ interface CreateWordQueryHighlightControllerOptions {
   setIsHighlightingCandidates: (value: boolean) => void;
   setIsClearingHighlights: (value: boolean) => void;
   setCompareHighlightSummary: (summary: string | null) => void;
-  addDebugLog: (level: 'info' | 'debug' | 'warn' | 'error', message: string, details?: string) => void;
+  addDebugLog: (
+    level: 'info' | 'debug' | 'warn' | 'error',
+    message: string,
+    details?: string
+  ) => void;
   getCandidateDisplayName: (candidate: TemplateFieldCandidate) => string;
 }
 
@@ -23,17 +27,17 @@ async function highlightCompareCandidate(candidate: TemplateFieldCandidate): Pro
   }
 
   if (
-    typeof location.tableIndex === 'number'
-    && typeof location.rowIndex === 'number'
-    && typeof location.cellIndex === 'number'
+    typeof location.tableIndex === 'number' &&
+    typeof location.rowIndex === 'number' &&
+    typeof location.cellIndex === 'number'
   ) {
     return WordAPI.highlightTableCell(location.tableIndex, location.rowIndex, location.cellIndex);
   }
 
   if (
-    typeof location.paragraphIndex === 'number'
-    && typeof location.anchorStart === 'number'
-    && typeof location.anchorEnd === 'number'
+    typeof location.paragraphIndex === 'number' &&
+    typeof location.anchorStart === 'number' &&
+    typeof location.anchorEnd === 'number'
   ) {
     return WordAPI.highlightUnderlineByPosition(
       location.paragraphIndex,
@@ -43,7 +47,9 @@ async function highlightCompareCandidate(candidate: TemplateFieldCandidate): Pro
     );
   }
 
-  const fallbackText = String(candidate.anchorText || candidate.sampleValue || candidate.matchText || '').trim();
+  const fallbackText = String(
+    candidate.anchorText || candidate.sampleValue || candidate.matchText || ''
+  ).trim();
   if (!fallbackText) {
     return false;
   }
@@ -52,15 +58,18 @@ async function highlightCompareCandidate(candidate: TemplateFieldCandidate): Pro
   return highlightCount > 0;
 }
 
-export function createWordQueryHighlightController(options: CreateWordQueryHighlightControllerOptions) {
+export function createWordQueryHighlightController(
+  options: CreateWordQueryHighlightControllerOptions
+) {
   const handleHighlightCompareCandidates = async () => {
     if (!options.compareResult) {
       return;
     }
 
-    const candidates = options.effectiveCompareCandidateFields.length > 0
-      ? options.effectiveCompareCandidateFields
-      : options.compareResult.candidateFields;
+    const candidates =
+      options.effectiveCompareCandidateFields.length > 0
+        ? options.effectiveCompareCandidateFields
+        : options.compareResult.candidateFields;
 
     if (candidates.length === 0) {
       options.setCompareHighlightSummary('当前没有可高亮的候选参数。');
@@ -82,9 +91,10 @@ export function createWordQueryHighlightController(options: CreateWordQueryHighl
         }
       }
 
-      const summary = highlightedCount > 0
-        ? `已高亮 ${highlightedCount} / ${candidates.length} 个候选位置，可直接回到文档核对。`
-        : '本次未能定位到可高亮的位置，请检查候选锚点或文档内容是否已变化。';
+      const summary =
+        highlightedCount > 0
+          ? `已高亮 ${highlightedCount} / ${candidates.length} 个候选位置，可直接回到文档核对。`
+          : '本次未能定位到可高亮的位置，请检查候选锚点或文档内容是否已变化。';
       options.setCompareHighlightSummary(summary);
       options.addDebugLog(
         'info',
@@ -92,9 +102,12 @@ export function createWordQueryHighlightController(options: CreateWordQueryHighl
         [
           `候选总数: ${candidates.length}`,
           `高亮成功: ${highlightedCount}`,
-          ...candidates.slice(0, 20).map((candidate, index) =>
-            `${index + 1}. ${options.getCandidateDisplayName(candidate)} | ${candidate.anchorText || '无锚点'}`
-          ),
+          ...candidates
+            .slice(0, 20)
+            .map(
+              (candidate, index) =>
+                `${index + 1}. ${options.getCandidateDisplayName(candidate)} | ${candidate.anchorText || '无锚点'}`
+            ),
         ].join('\n')
       );
     } catch (error: any) {

@@ -149,7 +149,10 @@ src/
 该文件只暴露对外允许使用的正式 API，例如：
 
 ```ts
-export { analyzeDocumentWithAI, analyzeExcelWorkbookUnderstanding } from './suggestion/suggestion.service';
+export {
+  analyzeDocumentWithAI,
+  analyzeExcelWorkbookUnderstanding,
+} from './suggestion/suggestion.service';
 export { enrichWordSuggestionAnchors } from './identify/word/word-anchor-enricher';
 export { resolveAnalysisExecutor } from './analysis-executor';
 export type { AnalysisExecutorKind, StructuredAnalyzeRequest } from './analysis-executor';
@@ -401,14 +404,14 @@ shared/services
   -> host / api / shared
 ```
 
-| 层 | 可以 import | 不可以 import |
-|---|---|---|
-| `app/` | 任意 | — |
-| `features/*/` | 本 feature 内模块、其他 feature 的 `services` 正式入口、`shared/`、`host/`、`api/`、`config/` | 其他 feature 的内部实现文件 |
-| `features/*/services/` | 本 feature 内服务实现、`shared/`、`host/`、`api/` | 其他 feature 的内部实现文件 |
-| `shared/services/` | `host/`、`api/`、`shared/utils/` | 任意 `features/**` |
-| `shared/ui/` | `shared/utils/` | `features/**`、`shared/services/` |
-| `host/` | `api/`（仅类型） | `features/**`、`shared/services/` |
+| 层                     | 可以 import                                                                                   | 不可以 import                     |
+| ---------------------- | --------------------------------------------------------------------------------------------- | --------------------------------- |
+| `app/`                 | 任意                                                                                          | —                                 |
+| `features/*/`          | 本 feature 内模块、其他 feature 的 `services` 正式入口、`shared/`、`host/`、`api/`、`config/` | 其他 feature 的内部实现文件       |
+| `features/*/services/` | 本 feature 内服务实现、`shared/`、`host/`、`api/`                                             | 其他 feature 的内部实现文件       |
+| `shared/services/`     | `host/`、`api/`、`shared/utils/`                                                              | 任意 `features/**`                |
+| `shared/ui/`           | `shared/utils/`                                                                               | `features/**`、`shared/services/` |
+| `host/`                | `api/`（仅类型）                                                                              | `features/**`、`shared/services/` |
 
 ### 禁止事项
 

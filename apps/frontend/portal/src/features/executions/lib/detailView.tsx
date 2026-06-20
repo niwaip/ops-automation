@@ -36,7 +36,7 @@ const formatWaitSeconds = (durationMs: number | undefined): string | undefined =
 
 export const resolveBrowserWaitSeconds = (
   stepResult: BrowserExecutionStepResult,
-  output: Record<string, unknown> | null | undefined,
+  output: Record<string, unknown> | null | undefined
 ): string | undefined => {
   if (stepResult.action !== 'wait') {
     return undefined;
@@ -48,9 +48,11 @@ export const resolveBrowserWaitSeconds = (
 };
 
 export const renderSummaryChips = (
-  items: Array<{ label: string; value: ReactNode; color?: string }>,
+  items: Array<{ label: string; value: ReactNode; color?: string }>
 ) => {
-  const visibleItems = items.filter((item) => item.value !== undefined && item.value !== null && item.value !== '');
+  const visibleItems = items.filter(
+    (item) => item.value !== undefined && item.value !== null && item.value !== ''
+  );
   if (!visibleItems.length) {
     return null;
   }
@@ -85,9 +87,7 @@ export const renderSummaryChips = (
   );
 };
 
-export const renderTimelineDetails = (
-  sections: Array<{ label: string; value: unknown }>,
-) => {
+export const renderTimelineDetails = (sections: Array<{ label: string; value: unknown }>) => {
   const visibleSections = sections.filter((section) => {
     if (section.value === undefined || section.value === null) {
       return false;
@@ -113,8 +113,18 @@ export const renderTimelineDetails = (
       {visibleSections.map((section) => (
         <div key={section.label}>
           <Text strong>{section.label}</Text>
-          <pre style={{ margin: '8px 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 320, overflow: 'auto' }}>
-            {typeof section.value === 'string' ? section.value : JSON.stringify(section.value, null, 2)}
+          <pre
+            style={{
+              margin: '8px 0 0',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              maxHeight: 320,
+              overflow: 'auto',
+            }}
+          >
+            {typeof section.value === 'string'
+              ? section.value
+              : JSON.stringify(section.value, null, 2)}
           </pre>
         </div>
       ))}
@@ -152,7 +162,7 @@ export const getBrowserStepColor = (
   _stepResult: BrowserExecutionStepResult,
   index: number,
   stepCount: number,
-  hasFailure: boolean,
+  hasFailure: boolean
 ) => {
   if (hasFailure && index === stepCount - 1) {
     return 'red' as const;

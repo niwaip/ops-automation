@@ -2,10 +2,16 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsString, IsOptional, IsObject, IsUUID } from 'class-validator';
 
 export class WorkerEndpointsDto {
-  @ApiPropertyOptional({ example: 'http://10.0.0.5:8080/vnc.html', description: 'noVNC endpoint URL' })
+  @ApiPropertyOptional({
+    example: 'http://10.0.0.5:8080/vnc.html',
+    description: 'noVNC endpoint URL',
+  })
   novnc?: string;
 
-  @ApiProperty({ example: 'ws://10.0.0.5:9222', description: 'Chrome DevTools Protocol endpoint URL' })
+  @ApiProperty({
+    example: 'ws://10.0.0.5:9222',
+    description: 'Chrome DevTools Protocol endpoint URL',
+  })
   cdp!: string;
 
   @ApiPropertyOptional({ example: 'vnc://10.0.0.5:5900', description: 'VNC endpoint URL' })
@@ -22,14 +28,14 @@ export class SessionDto {
   @ApiProperty({
     example: 'RUNNING',
     enum: ['IDLE', 'RUNNING', 'HUMAN_CONTROL', 'CLOSED', 'ERROR'],
-    description: 'Session state'
+    description: 'Session state',
   })
   state!: string;
 
   @ApiProperty({
     example: 'AGENT_RUNNING',
     enum: ['AGENT_RUNNING', 'HUMAN_CONTROL'],
-    description: 'Control mode'
+    description: 'Control mode',
   })
   control_mode!: string;
 
@@ -42,7 +48,10 @@ export class SessionDto {
   @ApiPropertyOptional({ type: WorkerEndpointsDto, description: 'Worker endpoints' })
   endpoints?: WorkerEndpointsDto;
 
-  @ApiPropertyOptional({ example: '550e8400-e29b-41d4-a716-446655440002', description: 'Template ID' })
+  @ApiPropertyOptional({
+    example: '550e8400-e29b-41d4-a716-446655440002',
+    description: 'Template ID',
+  })
   template_id?: string;
 
   @ApiPropertyOptional({ example: { username: 'test' }, description: 'Session parameters' })
@@ -53,6 +62,19 @@ export class SessionDto {
 
   @ApiPropertyOptional({ example: 2, description: 'Current step index' })
   step_index?: number;
+
+  @ApiPropertyOptional({
+    example: 'confirmation',
+    enum: ['confirmation', 'takeover', 'forbidden'],
+    description: 'Why the session is currently blocked, if any',
+  })
+  blocking_mode?: string;
+
+  @ApiPropertyOptional({
+    example: '步骤策略要求人工确认后执行',
+    description: 'Blocking reason for confirmation/takeover/forbidden states',
+  })
+  blocking_reason?: string;
 
   @ApiProperty({ example: 1712345678, description: 'Creation timestamp (Unix)' })
   created_at!: number;
@@ -66,7 +88,10 @@ export class CreateSessionRequestDto {
   @IsUUID()
   user_id!: string;
 
-  @ApiPropertyOptional({ example: '550e8400-e29b-41d4-a716-446655440002', description: 'Template ID' })
+  @ApiPropertyOptional({
+    example: '550e8400-e29b-41d4-a716-446655440002',
+    description: 'Template ID',
+  })
   @IsOptional()
   @IsUUID()
   template_id?: string;

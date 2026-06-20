@@ -39,10 +39,7 @@ describe('CapabilityReleaseSkillDraftService', () => {
     };
 
     const temporalSchemaService = new CapabilityReleaseTemporalSchemaService();
-    const service = new CapabilityReleaseSkillDraftService(
-      prisma as any,
-      temporalSchemaService,
-    );
+    const service = new CapabilityReleaseSkillDraftService(prisma as any, temporalSchemaService);
 
     return { service, prisma, skillService, toolCatalogService, activityService };
   };
@@ -73,9 +70,7 @@ describe('CapabilityReleaseSkillDraftService', () => {
           executionFlowKeys: ['技术服务合同'],
           apiEndpoints: {
             runtimeMetadata: {
-              mappingHints: [
-                { parameter: 'contract.partyA', path: '{d.contract.partyA_cn}' },
-              ],
+              mappingHints: [{ parameter: 'contract.partyA', path: '{d.contract.partyA_cn}' }],
               workflowInputPolicy: {
                 params: {
                   'contract.partyA': {
@@ -96,15 +91,13 @@ describe('CapabilityReleaseSkillDraftService', () => {
       },
       {
         id: 'validation-1',
-      },
+      }
     );
 
     expect(payload.apiEndpoints.runtimeMetadata).toEqual(
       expect.objectContaining({
         sourceType: 'execution_flow_template',
-        mappingHints: [
-          { parameter: 'contract.partyA', path: '{d.contract.partyA_cn}' },
-        ],
+        mappingHints: [{ parameter: 'contract.partyA', path: '{d.contract.partyA_cn}' }],
         workflowInputPolicy: {
           params: {
             'contract.partyA': {
@@ -119,7 +112,7 @@ describe('CapabilityReleaseSkillDraftService', () => {
             partyA_cn: '上海链合智能科技有限公司',
           },
         },
-      }),
+      })
     );
   });
 
@@ -151,9 +144,7 @@ describe('CapabilityReleaseSkillDraftService', () => {
           workflowSteps: [{ id: 'step-1', name: 'render' }],
           apiEndpoints: {
             runtimeMetadata: {
-              mappingHints: [
-                { parameter: 'contract.partyA', path: '{d.contract.partyA_cn}' },
-              ],
+              mappingHints: [{ parameter: 'contract.partyA', path: '{d.contract.partyA_cn}' }],
               workflowInputPolicy: {
                 params: {
                   'contract.partyA': {
@@ -168,15 +159,13 @@ describe('CapabilityReleaseSkillDraftService', () => {
       },
       {
         id: 'validation-2',
-      },
+      }
     );
 
     expect(payload.apiEndpoints.runtimeMetadata).toEqual(
       expect.objectContaining({
         sourceType: 'temporal_workflow',
-        mappingHints: [
-          { parameter: 'contract.partyA', path: '{d.contract.partyA_cn}' },
-        ],
+        mappingHints: [{ parameter: 'contract.partyA', path: '{d.contract.partyA_cn}' }],
         workflowInputPolicy: {
           params: {
             'contract.partyA': {
@@ -185,7 +174,7 @@ describe('CapabilityReleaseSkillDraftService', () => {
             },
           },
         },
-      }),
+      })
     );
     expect(payload.executionFlowTemplateIds).toEqual(['wf-tech-service']);
   });
@@ -245,19 +234,21 @@ describe('CapabilityReleaseSkillDraftService', () => {
       },
       {
         id: 'validation-3',
-      },
+      }
     );
 
-    expect(payload.paramsSchema).toEqual(expect.objectContaining({
-      properties: expect.objectContaining({
-        'contract.partyA': expect.objectContaining({
-          renderPath: ['contract.partyA_cn', 'contract.partyA_jp'],
+    expect(payload.paramsSchema).toEqual(
+      expect.objectContaining({
+        properties: expect.objectContaining({
+          'contract.partyA': expect.objectContaining({
+            renderPath: ['contract.partyA_cn', 'contract.partyA_jp'],
+          }),
+          'payment.bankAccount': expect.objectContaining({
+            renderPath: 'payment.bankAccount_cn',
+          }),
         }),
-        'payment.bankAccount': expect.objectContaining({
-          renderPath: 'payment.bankAccount_cn',
-        }),
-      }),
-    }));
+      })
+    );
     expect(payload.apiEndpoints.runtimeMetadata).toEqual(
       expect.objectContaining({
         sourceType: 'temporal_workflow',
@@ -273,7 +264,7 @@ describe('CapabilityReleaseSkillDraftService', () => {
             },
           },
         },
-      }),
+      })
     );
   });
 
@@ -322,14 +313,16 @@ describe('CapabilityReleaseSkillDraftService', () => {
     });
 
     expect(schema.required).toEqual(['contract.signingDate']);
-    expect(schema.properties).toEqual(expect.objectContaining({
-      'contract.partyA': expect.objectContaining({
-        required: false,
-      }),
-      'contract.signingDate': expect.objectContaining({
-        required: true,
-      }),
-    }));
+    expect(schema.properties).toEqual(
+      expect.objectContaining({
+        'contract.partyA': expect.objectContaining({
+          required: false,
+        }),
+        'contract.signingDate': expect.objectContaining({
+          required: true,
+        }),
+      })
+    );
   });
 
   it('falls back to concise description labels when declared displayName is still machine-like', () => {
@@ -365,7 +358,8 @@ describe('CapabilityReleaseSkillDraftService', () => {
     const { service, prisma } = createService();
 
     prisma.$executeRawUnsafe.mockResolvedValue(undefined);
-    jest.spyOn(service as any, 'getReleaseOrThrow')
+    jest
+      .spyOn(service as any, 'getReleaseOrThrow')
       .mockResolvedValueOnce({
         id: 'release-temporal-1',
         sourceType: 'temporal_workflow',
@@ -450,14 +444,16 @@ describe('CapabilityReleaseSkillDraftService', () => {
 
     const insertedParamsSchema = JSON.parse(prisma.$executeRawUnsafe.mock.calls[0][9]);
     expect(insertedParamsSchema.required).toEqual(['contract.signingDate']);
-    expect(insertedParamsSchema.properties).toEqual(expect.objectContaining({
-      'contract.partyA': expect.objectContaining({
-        required: false,
-      }),
-      'contract.signingDate': expect.objectContaining({
-        required: true,
-      }),
-    }));
+    expect(insertedParamsSchema.properties).toEqual(
+      expect.objectContaining({
+        'contract.partyA': expect.objectContaining({
+          required: false,
+        }),
+        'contract.signingDate': expect.objectContaining({
+          required: true,
+        }),
+      })
+    );
     expect(result).toEqual({
       release: expect.objectContaining({
         id: 'release-temporal-1',
@@ -471,5 +467,4 @@ describe('CapabilityReleaseSkillDraftService', () => {
       }),
     });
   });
-
 });

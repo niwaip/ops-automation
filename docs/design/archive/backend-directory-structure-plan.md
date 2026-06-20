@@ -513,7 +513,7 @@ apps/backend/core/platform/src/modules/capability-release
 ```yaml
 packages:
   - 'apps/*'
-  - 'apps/*/*'   # 最多识别 apps/backend/core 这一层
+  - 'apps/*/*' # 最多识别 apps/backend/core 这一层
   - 'tests/*'
   - 'packages/*'
 ```
@@ -526,7 +526,7 @@ packages:
 packages:
   - 'apps/*'
   - 'apps/*/*'
-  - 'apps/*/*/*'   # 新增，覆盖三级路径
+  - 'apps/*/*/*' # 新增，覆盖三级路径
   - 'tests/*'
   - 'packages/*'
 ```
@@ -539,13 +539,13 @@ packages:
 
 **问题**：以下 5 个 Compose 文件硬编码了旧的服务目录路径，迁移后容器将无法找到挂载目录，直接导致服务启动失败：
 
-| 文件 | 引用的旧路径 |
-|---|---|
-| [docker-compose.base.yml](file:///Users/chain/Documents/MyProject/ops-automation/docker/compose/docker-compose.base.yml) | `core/platform`、`core/session-broker`、`core/control-plane`、`core/ai-orchestrator` |
-| [docker-compose.full.yml](file:///Users/chain/Documents/MyProject/ops-automation/docker/compose/docker-compose.full.yml) | 同上，另含 `domain/carbone-engine`、`runtime/temporal-sandbox-agent` |
-| [docker-compose.core.yml](file:///Users/chain/Documents/MyProject/ops-automation/docker/compose/docker-compose.core.yml) | `core/platform`、`core/control-plane`、`core/session-broker` |
-| [docker-compose.carbone.yml](file:///Users/chain/Documents/MyProject/ops-automation/docker/compose/docker-compose.carbone.yml) | `domain/carbone-engine` |
-| [docker-compose.runtime.yml](file:///Users/chain/Documents/MyProject/ops-automation/docker/compose/docker-compose.runtime.yml) | `runtime/browser-worker`、`domain/carbone-engine`、`runtime/temporal-sandbox-agent` |
+| 文件                                                                                                                           | 引用的旧路径                                                                         |
+| ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| [docker-compose.base.yml](file:///Users/chain/Documents/MyProject/ops-automation/docker/compose/docker-compose.base.yml)       | `core/platform`、`core/session-broker`、`core/control-plane`、`core/ai-orchestrator` |
+| [docker-compose.full.yml](file:///Users/chain/Documents/MyProject/ops-automation/docker/compose/docker-compose.full.yml)       | 同上，另含 `domain/carbone-engine`、`runtime/temporal-sandbox-agent`                 |
+| [docker-compose.core.yml](file:///Users/chain/Documents/MyProject/ops-automation/docker/compose/docker-compose.core.yml)       | `core/platform`、`core/control-plane`、`core/session-broker`                         |
+| [docker-compose.carbone.yml](file:///Users/chain/Documents/MyProject/ops-automation/docker/compose/docker-compose.carbone.yml) | `domain/carbone-engine`                                                              |
+| [docker-compose.runtime.yml](file:///Users/chain/Documents/MyProject/ops-automation/docker/compose/docker-compose.runtime.yml) | `runtime/browser-worker`、`domain/carbone-engine`、`runtime/temporal-sandbox-agent`  |
 
 **修复方案**：每次迁移一个服务时，同步更新对应 Compose 文件中的 volume 挂载路径，迁移完成后立即通过 `./docker/start-smart.sh` 验证服务能否正常启动。
 
@@ -602,13 +602,13 @@ COPY apps/backend/runtime/temporal-sandbox-agent/*.py /app/
 
 ### 整体风险评级
 
-| 前置条件 | 严重度 | 不修复的后果 |
-|---|---|---|
-| pnpm workspace glob | 高 | 所有迁移后的包失效，workspace 依赖断裂 |
-| Docker Compose volume 路径 | 高 | 容器启动直接失败 |
-| `start-dev.sh` 路径 | 中 | 开发启动工具失效 |
-| `Dockerfile` COPY 路径 | 中 | 镜像构建失败（重命名时触发）|
-| CI 脚本路径 | 中 | CI 流水线失效，且当前已确认存在失效路径 |
+| 前置条件                   | 严重度 | 不修复的后果                            |
+| -------------------------- | ------ | --------------------------------------- |
+| pnpm workspace glob        | 高     | 所有迁移后的包失效，workspace 依赖断裂  |
+| Docker Compose volume 路径 | 高     | 容器启动直接失败                        |
+| `start-dev.sh` 路径        | 中     | 开发启动工具失效                        |
+| `Dockerfile` COPY 路径     | 中     | 镜像构建失败（重命名时触发）            |
+| CI 脚本路径                | 中     | CI 流水线失效，且当前已确认存在失效路径 |
 
 **当前结论**：当前指南和代码方向基本一致，但执行条件还没有完全对齐。在上述五项前置条件全部修正之前，不建议进行任何物理目录迁移。
 

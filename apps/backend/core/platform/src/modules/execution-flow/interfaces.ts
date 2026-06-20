@@ -20,12 +20,12 @@ export type ExecutionFlowStepType = 'text' | 'api' | 'tool' | 'script' | 'llm' |
  */
 export interface ExecutionFlowStep {
   id?: string;
-  type: ExecutionFlowStepType | string;  // 支持扩展类型
+  type: ExecutionFlowStepType | string; // 支持扩展类型
   name: string;
   content?: string;
   expectedOutput?: string;
-  condition?: string;  // 执行条件，如 "step_xxx.status == 'success'"
-  inputMapping?: Record<string, string>;  // 输入变量映射，如 {"city": "{{flow_input.city}}"}
+  condition?: string; // 执行条件，如 "step_xxx.status == 'success'"
+  inputMapping?: Record<string, string>; // 输入变量映射，如 {"city": "{{flow_input.city}}"}
   retryPolicy?: {
     maxRetries?: number;
     backoff?: number;
@@ -59,14 +59,15 @@ export interface ValidationResult {
   validatedBy: string;
   details?: {
     stepAnalysis: StepAnalysis[];
-    aiCritique?: string;        // AI 深度审计详情
-    autoAdjustment?: any;      // AI 建议的自动优化流程
-    executionTest?: {          // 真实执行测试结果
+    aiCritique?: string; // AI 深度审计详情
+    autoAdjustment?: any; // AI 建议的自动优化流程
+    executionTest?: {
+      // 真实执行测试结果
       success: boolean;
       result?: string;
       error?: string;
-      log: string[];           // 执行日志
-      iterations: number;      // 执行迭代次数
+      log: string[]; // 执行日志
+      iterations: number; // 执行迭代次数
     };
   };
 }
@@ -82,11 +83,7 @@ export interface StepAnalysis {
   suggestion?: string;
 }
 
-export type WorkflowParamRequiredMode =
-  | 'always'
-  | 'conditional'
-  | 'optional'
-  | 'system_required';
+export type WorkflowParamRequiredMode = 'always' | 'conditional' | 'optional' | 'system_required';
 
 export interface WorkflowParamPolicy {
   enabled?: boolean;
@@ -112,9 +109,9 @@ export interface ExecutionFlowTemplateDTO {
   id: string;
   name: string;
   description?: string;
-  goal?: string;             // 流程目标 - 指导AI验证和宏工具生成
-  expectedResult?: string;   // 预期结果 - 指导AI验证
-  paramsSchema?: Record<string, any>;  // 参数定义 - 可选，指导AI验证参数完整性
+  goal?: string; // 流程目标 - 指导AI验证和宏工具生成
+  expectedResult?: string; // 预期结果 - 指导AI验证
+  paramsSchema?: Record<string, any>; // 参数定义 - 可选，指导AI验证参数完整性
   inputPolicy?: WorkflowInputPolicy;
   category: string;
   steps: ExecutionFlowStep[];
@@ -134,9 +131,9 @@ export interface ExecutionFlowTemplateDTO {
 export interface CreateExecutionFlowTemplateDTO {
   name: string;
   description?: string;
-  goal?: string;             // 流程目标
-  expectedResult?: string;   // 预期结果
-  paramsSchema?: Record<string, any>;  // 参数定义
+  goal?: string; // 流程目标
+  expectedResult?: string; // 预期结果
+  paramsSchema?: Record<string, any>; // 参数定义
   inputPolicy?: WorkflowInputPolicy;
   category?: string;
   steps: ExecutionFlowStep[];

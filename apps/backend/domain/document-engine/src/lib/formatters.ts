@@ -29,7 +29,7 @@ export class FormatterPipeline {
         return str.charAt(0).toUpperCase() + str.slice(1);
       },
       ucWords: (v: string) => {
-        return String(v).replace(/\b\w/g, c => c.toUpperCase());
+        return String(v).replace(/\b\w/g, (c) => c.toUpperCase());
       },
       truncate: (v: string, length: number = 100) => {
         const str = String(v);
@@ -107,23 +107,23 @@ export class FormatterPipeline {
       },
 
       // ===== 条件格式化器 =====
-      show: (v: any, content: string = '') => v ? content : '',
-      hide: (v: any, content: string = '') => v ? '' : content,
-      showBegin: (v: any) => v ? '' : '\uFFFE', // 隐藏开始标记
+      show: (v: any, content: string = '') => (v ? content : ''),
+      hide: (v: any, content: string = '') => (v ? '' : content),
+      showBegin: (v: any) => (v ? '' : '\uFFFE'), // 隐藏开始标记
       showEnd: () => '\uFFFF', // 隐藏结束标记
-      hideBegin: (v: any) => v ? '\uFFFE' : '',
+      hideBegin: (v: any) => (v ? '\uFFFE' : ''),
       hideEnd: () => '\uFFFF',
-      if: (v: any, trueVal: string, falseVal: string = '') => v ? trueVal : falseVal,
-      ifEmpty: (v: any, defaultVal: string) => v ? String(v) : defaultVal,
+      if: (v: any, trueVal: string, falseVal: string = '') => (v ? trueVal : falseVal),
+      ifEmpty: (v: any, defaultVal: string) => (v ? String(v) : defaultVal),
       empty: (v: any) => !v,
       notEmpty: (v: any) => Boolean(v),
 
       // ===== 数组格式化器 =====
-      arrayLen: (v: any[]) => Array.isArray(v) ? v.length : 0,
-      arrayFirst: (v: any[]) => Array.isArray(v) && v.length > 0 ? v[0] : undefined,
-      arrayLast: (v: any[]) => Array.isArray(v) && v.length > 0 ? v[v.length - 1] : undefined,
-      arrayJoin: (v: any[], separator: string = ',') => Array.isArray(v) ? v.join(separator) : '',
-      arrayUnique: (v: any[]) => Array.isArray(v) ? [...new Set(v)] : [],
+      arrayLen: (v: any[]) => (Array.isArray(v) ? v.length : 0),
+      arrayFirst: (v: any[]) => (Array.isArray(v) && v.length > 0 ? v[0] : undefined),
+      arrayLast: (v: any[]) => (Array.isArray(v) && v.length > 0 ? v[v.length - 1] : undefined),
+      arrayJoin: (v: any[], separator: string = ',') => (Array.isArray(v) ? v.join(separator) : ''),
+      arrayUnique: (v: any[]) => (Array.isArray(v) ? [...new Set(v)] : []),
       arraySort: (v: any[], order: string = 'asc') => {
         if (!Array.isArray(v)) return [];
         const sorted = [...v].sort();
@@ -137,15 +137,17 @@ export class FormatterPipeline {
       toJSON: (v: any) => JSON.stringify(v),
 
       // ===== 数学运算 =====
-      sum: (v: number[]) => Array.isArray(v) ? v.reduce((a, b) => a + b, 0) : 0,
-      avg: (v: number[]) => Array.isArray(v) && v.length > 0 ? v.reduce((a, b) => a + b, 0) / v.length : 0,
-      min: (v: number[]) => Array.isArray(v) && v.length > 0 ? Math.min(...v) : undefined,
-      max: (v: number[]) => Array.isArray(v) && v.length > 0 ? Math.max(...v) : undefined,
+      sum: (v: number[]) => (Array.isArray(v) ? v.reduce((a, b) => a + b, 0) : 0),
+      avg: (v: number[]) =>
+        Array.isArray(v) && v.length > 0 ? v.reduce((a, b) => a + b, 0) / v.length : 0,
+      min: (v: number[]) => (Array.isArray(v) && v.length > 0 ? Math.min(...v) : undefined),
+      max: (v: number[]) => (Array.isArray(v) && v.length > 0 ? Math.max(...v) : undefined),
 
       // ===== 文本处理 =====
       concat: (v: string, suffix: string) => String(v) + suffix,
       prepend: (v: string, prefix: string) => prefix + String(v),
-      replace: (v: string, search: string, replace: string) => String(v).replace(new RegExp(search, 'g'), replace),
+      replace: (v: string, search: string, replace: string) =>
+        String(v).replace(new RegExp(search, 'g'), replace),
       padLeft: (v: string, length: number, char: string = ' ') => String(v).padStart(length, char),
       padRight: (v: string, length: number, char: string = ' ') => String(v).padEnd(length, char),
     };
@@ -166,7 +168,7 @@ export class FormatterPipeline {
     if (useGrouping) {
       return num.toLocaleString('en-US', {
         minimumFractionDigits: decimalPlaces,
-        maximumFractionDigits: decimalPlaces
+        maximumFractionDigits: decimalPlaces,
       });
     }
 
@@ -181,14 +183,16 @@ export class FormatterPipeline {
     const formatters: { name: string; params: string[] }[] = [];
 
     // 分割格式化器链
-    const parts = formatterString.split(':').filter(p => p.trim());
+    const parts = formatterString.split(':').filter((p) => p.trim());
 
     for (const part of parts) {
       const match = part.match(/^([a-zA-Z]+)(?:\(([^)]*)\))?$/);
       if (match) {
         const name = match[1];
         const paramsStr = match[2] || '';
-        const params = paramsStr ? paramsStr.split(',').map(p => p.trim().replace(/^'|'$|^"|"$/g, '')) : [];
+        const params = paramsStr
+          ? paramsStr.split(',').map((p) => p.trim().replace(/^'|'$|^"|"$/g, ''))
+          : [];
         formatters.push({ name, params });
       }
     }

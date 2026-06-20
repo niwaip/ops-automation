@@ -27,11 +27,7 @@ import { SkillRepository } from './skill.repository';
 import { RenderOutputRepository } from './render-output.repository';
 import { RenderResponse } from './studio.types';
 import { TemplateWorkflowService } from './template-workflow.service';
-import {
-  PreviewDto,
-  RenderResolvedDto,
-  ValidateDto,
-} from './studio.dto';
+import { PreviewDto, RenderResolvedDto, ValidateDto } from './studio.dto';
 import { StudioControllerBase } from './studio.controller.base';
 import { applyDirectRenderPaths } from './utils/direct-render-path.helper';
 
@@ -71,7 +67,7 @@ export class StudioRenderController extends StudioControllerBase {
     templateRepository: TemplateRepository,
     skillRepository: SkillRepository,
     renderOutputRepository: RenderOutputRepository,
-    templateWorkflowService: TemplateWorkflowService,
+    templateWorkflowService: TemplateWorkflowService
   ) {
     super(
       previewService,
@@ -80,7 +76,7 @@ export class StudioRenderController extends StudioControllerBase {
       templateRepository,
       skillRepository,
       renderOutputRepository,
-      templateWorkflowService,
+      templateWorkflowService
     );
   }
 
@@ -127,20 +123,21 @@ export class StudioRenderController extends StudioControllerBase {
     skillId?: string;
     publishedSkillId?: string;
   }> {
-    const requestedTemplateId = typeof input.templateId === 'string' && input.templateId.trim()
-      ? input.templateId.trim()
-      : undefined;
-    const requestedSkillId = typeof input.skillId === 'string' && input.skillId.trim()
-      ? input.skillId.trim()
-      : undefined;
-    const publishedSkillId = typeof input.publishedSkillId === 'string' && input.publishedSkillId.trim()
-      ? input.publishedSkillId.trim()
-      : undefined;
+    const requestedTemplateId =
+      typeof input.templateId === 'string' && input.templateId.trim()
+        ? input.templateId.trim()
+        : undefined;
+    const requestedSkillId =
+      typeof input.skillId === 'string' && input.skillId.trim() ? input.skillId.trim() : undefined;
+    const publishedSkillId =
+      typeof input.publishedSkillId === 'string' && input.publishedSkillId.trim()
+        ? input.publishedSkillId.trim()
+        : undefined;
 
     if (!requestedTemplateId && !requestedSkillId) {
       throw new HttpException(
         'Missing render target: require templateId or skillId',
-        HttpStatus.BAD_REQUEST,
+        HttpStatus.BAD_REQUEST
       );
     }
 
@@ -162,20 +159,21 @@ export class StudioRenderController extends StudioControllerBase {
       throw new HttpException(`Skill not found: ${requestedSkillId}`, HttpStatus.NOT_FOUND);
     }
 
-    const resolvedTemplateId = typeof skillMeta.templateId === 'string' && skillMeta.templateId.trim()
-      ? skillMeta.templateId.trim()
-      : undefined;
+    const resolvedTemplateId =
+      typeof skillMeta.templateId === 'string' && skillMeta.templateId.trim()
+        ? skillMeta.templateId.trim()
+        : undefined;
     if (!resolvedTemplateId) {
       throw new HttpException(
         `Skill ${requestedSkillId} is not bound to a template`,
-        HttpStatus.BAD_REQUEST,
+        HttpStatus.BAD_REQUEST
       );
     }
 
     if (requestedTemplateId && requestedTemplateId !== resolvedTemplateId) {
       throw new HttpException(
         `Skill ${requestedSkillId} resolves to template ${resolvedTemplateId}, but received templateId ${requestedTemplateId}`,
-        HttpStatus.BAD_REQUEST,
+        HttpStatus.BAD_REQUEST
       );
     }
 
@@ -212,13 +210,10 @@ export class StudioRenderController extends StudioControllerBase {
       const sourceLanguage = input.sourceLanguage || workflow.sourceLanguage || 'zh';
       const targetLanguages = Array.isArray(input.targetLanguages)
         ? input.targetLanguages
-        : (workflow.targetLanguages || []);
+        : workflow.targetLanguages || [];
 
       if (input.prepareLocalizedRenderData === true) {
-        renderInputData = applyDirectRenderPaths(
-          input.data || {},
-          input.workflowInputParams,
-        );
+        renderInputData = applyDirectRenderPaths(input.data || {}, input.workflowInputParams);
       }
 
       const normalizedData = this.normalizeRenderData(renderInputData);
@@ -238,14 +233,17 @@ export class StudioRenderController extends StudioControllerBase {
 
       const templateBuffer = fs.readFileSync(templatePath);
       const config = meta.templateConfig || {};
-      const markedBuffer = await this.documentStructureService.applyConfigToDocx(templateBuffer, config);
+      const markedBuffer = await this.documentStructureService.applyConfigToDocx(
+        templateBuffer,
+        config
+      );
       const outputBuffer = await this.engine.render(markedBuffer, normalizedData, meta.fileName);
 
       const outputId = uuidv4();
       const outputFormat = input.outputFormat || meta.format;
       const outputFileName = this.generateOutputFileName(
         input.outputName || meta.fileName,
-        outputFormat,
+        outputFormat
       );
       const outputPath = path.join(this.outputsDir, `${outputId}.${outputFormat}`);
       fs.writeFileSync(outputPath, outputBuffer);
@@ -272,7 +270,7 @@ export class StudioRenderController extends StudioControllerBase {
       return {
         downloadUrl: `/studio/download/${outputId}`,
         fileName: outputFileName,
-        format: outputFormat
+        format: outputFormat,
       };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -280,7 +278,7 @@ export class StudioRenderController extends StudioControllerBase {
       // #region debug-point B:render-resolved-error
       this.logger.error(
         `render-resolved failed for template=${input.templateId}: ${message}`,
-        stack,
+        stack
       );
       this.debugReport('B', 'render-resolved failed', {
         templateId: input.templateId,
@@ -289,16 +287,18 @@ export class StudioRenderController extends StudioControllerBase {
         sourceLanguage: input.sourceLanguage || null,
         targetLanguages: Array.isArray(input.targetLanguages) ? input.targetLanguages : [],
         prepareLocalizedRenderData: input.prepareLocalizedRenderData === true,
-        inputKeyCount: input.data && typeof input.data === 'object' ? Object.keys(input.data).length : 0,
-        inputKeysSample: input.data && typeof input.data === 'object'
-          ? Object.keys(input.data).slice(0, 15)
-          : [],
-        workflowInputParamKeys: input.workflowInputParams && typeof input.workflowInputParams === 'object'
-          ? Object.keys(input.workflowInputParams).slice(0, 15)
-          : [],
-        workflowInputPolicyKeys: input.workflowInputPolicy && typeof input.workflowInputPolicy === 'object'
-          ? Object.keys(input.workflowInputPolicy).slice(0, 15)
-          : [],
+        inputKeyCount:
+          input.data && typeof input.data === 'object' ? Object.keys(input.data).length : 0,
+        inputKeysSample:
+          input.data && typeof input.data === 'object' ? Object.keys(input.data).slice(0, 15) : [],
+        workflowInputParamKeys:
+          input.workflowInputParams && typeof input.workflowInputParams === 'object'
+            ? Object.keys(input.workflowInputParams).slice(0, 15)
+            : [],
+        workflowInputPolicyKeys:
+          input.workflowInputPolicy && typeof input.workflowInputPolicy === 'object'
+            ? Object.keys(input.workflowInputPolicy).slice(0, 15)
+            : [],
         errorName: error instanceof Error ? error.name : typeof error,
         errorMessage: message,
       });
@@ -318,7 +318,7 @@ export class StudioRenderController extends StudioControllerBase {
   @ApiBody({ type: PreviewDto })
   async previewTemplate(
     @Body() dto: PreviewDto,
-    @Res({ passthrough: true }) res: Response,
+    @Res({ passthrough: true }) res: Response
   ): Promise<{ preview: StreamableFile; sampleData: any }> {
     const meta = this.getTemplateMeta(dto.templateId);
     const templatePath = path.join(this.templatesDir, `${dto.templateId}.${meta.format}`);
@@ -330,7 +330,7 @@ export class StudioRenderController extends StudioControllerBase {
     try {
       const templateBuffer = fs.readFileSync(templatePath);
       const result = await this.engine.preview(templateBuffer, meta.fileName, {
-        maxRows: dto.maxRows || 3
+        maxRows: dto.maxRows || 3,
       });
 
       res.setHeader('Content-Type', this.getContentType(meta.format));
@@ -338,7 +338,7 @@ export class StudioRenderController extends StudioControllerBase {
 
       return {
         preview: new StreamableFile(result.buffer),
-        sampleData: result.sampleData
+        sampleData: result.sampleData,
       };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -362,9 +362,7 @@ export class StudioRenderController extends StudioControllerBase {
       },
     },
   })
-  async validateTemplateContent(
-    @Body() body: { template: string },
-  ): Promise<{
+  async validateTemplateContent(@Body() body: { template: string }): Promise<{
     valid: boolean;
     errors: string[];
     warnings: string[];
@@ -422,11 +420,7 @@ export class StudioRenderController extends StudioControllerBase {
     },
   })
   async previewTemplateContent(
-    @Body() body: {
-      documentContent: string;
-      templateConfig?: any;
-      format?: string;
-    },
+    @Body() body: { documentContent: string; templateConfig?: any; format?: string }
   ): Promise<{
     success: boolean;
     previewUrl?: string;
@@ -468,14 +462,17 @@ export class StudioRenderController extends StudioControllerBase {
 
       // 保存临时元数据
       const metaPath = path.join(this.templatesDir, `${tempId}.json`);
-      fs.writeFileSync(metaPath, JSON.stringify({
-        id: tempId,
-        format,
-        fileName: `preview_${tempId}.${format}`,
-        config,
-        isTemp: true,
-        createdAt: new Date().toISOString(),
-      }));
+      fs.writeFileSync(
+        metaPath,
+        JSON.stringify({
+          id: tempId,
+          format,
+          fileName: `preview_${tempId}.${format}`,
+          config,
+          isTemp: true,
+          createdAt: new Date().toISOString(),
+        })
+      );
 
       // 渲染预览
       const fileName = `preview_${tempId}.${format}`;
@@ -524,13 +521,19 @@ export class StudioRenderController extends StudioControllerBase {
     let templatePath = path.join(this.templatesDir, `${dto.templateId}.${meta.format}`);
     let templateBuffer: Buffer = fs.readFileSync(templatePath);
     let config = meta.templateConfig || {};
-    let markedTemplateId = verifyResult?.markedTemplateId || (meta as any).markedTemplateId || (dto.data as any)?.markedTemplateId;
+    let markedTemplateId =
+      verifyResult?.markedTemplateId ||
+      (meta as any).markedTemplateId ||
+      (dto.data as any)?.markedTemplateId;
 
     if (markedTemplateId) {
       const markedMetaPath = path.join(this.templatesDir, `${markedTemplateId}.json`);
       if (fs.existsSync(markedMetaPath)) {
         const markedMeta = JSON.parse(fs.readFileSync(markedMetaPath, 'utf-8'));
-        const markedTemplatePath = path.join(this.templatesDir, `${markedTemplateId}.${meta.format}`);
+        const markedTemplatePath = path.join(
+          this.templatesDir,
+          `${markedTemplateId}.${meta.format}`
+        );
         if (fs.existsSync(markedTemplatePath)) {
           templateBuffer = fs.readFileSync(markedTemplatePath);
           templatePath = markedTemplatePath;
@@ -543,7 +546,9 @@ export class StudioRenderController extends StudioControllerBase {
       if (config && Object.keys(config).length > 0) {
         // 确保配置路径规范化
         const normalizedConfig = this.aiIdentifierService.normalizeTemplateConfig(config);
-        templateBuffer = Buffer.from(await this.documentStructureService.applyConfigToDocx(templateBuffer, normalizedConfig));
+        templateBuffer = Buffer.from(
+          await this.documentStructureService.applyConfigToDocx(templateBuffer, normalizedConfig)
+        );
         // 更新config引用，以便后续生成数据使用规范化后的路径
         config = normalizedConfig;
       }
@@ -586,14 +591,14 @@ export class StudioRenderController extends StudioControllerBase {
         downloadUrl: `/studio/download/${outputId}`,
         fileName: `validate_${meta.fileName}`,
         sampleData: sampleData,
-        markedTemplateId: markedTemplateId
+        markedTemplateId: markedTemplateId,
       };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       return {
         valid: false,
         missing: [],
-        sampleData: sampleData
+        sampleData: sampleData,
       };
     }
   }
@@ -616,12 +621,13 @@ export class StudioRenderController extends StudioControllerBase {
     },
   })
   async generateTemplate(
-    @Body() body: {
+    @Body()
+    body: {
       documentContent: string;
       suggestions: any[];
       templateConfig?: any;
       format?: string;
-    },
+    }
   ): Promise<{
     success: boolean;
     generatedTemplate?: string;
@@ -657,7 +663,9 @@ export class StudioRenderController extends StudioControllerBase {
       let templateBuffer: Buffer;
       let isValidDocx = true;
 
-      this.logger.debug(`generateTemplate received documentContent length: ${body.documentContent.length}`);
+      this.logger.debug(
+        `generateTemplate received documentContent length: ${body.documentContent.length}`
+      );
       this.logger.debug(`documentContent prefix: ${body.documentContent.substring(0, 20)}`);
 
       if (body.documentContent.startsWith('base64:')) {
@@ -740,7 +748,7 @@ export class StudioRenderController extends StudioControllerBase {
   @Header('Content-Type', 'application/octet-stream')
   async downloadDocument(
     @Param('id') id: string,
-    @Res({ passthrough: true }) res: Response,
+    @Res({ passthrough: true }) res: Response
   ): Promise<StreamableFile> {
     const metaPath = path.join(this.outputsDir, `${id}.json`);
 
@@ -772,7 +780,7 @@ export class StudioRenderController extends StudioControllerBase {
   @Header('Content-Type', 'application/octet-stream')
   async downloadTemplate(
     @Param('id') id: string,
-    @Res({ passthrough: true }) res: Response,
+    @Res({ passthrough: true }) res: Response
   ): Promise<StreamableFile> {
     const metaPath = path.join(this.templatesDir, `${id}.json`);
 
@@ -796,7 +804,6 @@ export class StudioRenderController extends StudioControllerBase {
     return new StreamableFile(file);
   }
 
-
   /**
    * 获取模板HTML预览（用于前端iframe显示）
    */
@@ -814,7 +821,7 @@ export class StudioRenderController extends StudioControllerBase {
       const result = await this.previewService.generatePreview(templatePath, meta.format);
       return {
         html: result.html,
-        format: result.format
+        format: result.format,
       };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -824,7 +831,6 @@ export class StudioRenderController extends StudioControllerBase {
       );
     }
   }
-
 
   /**
    * 预览渲染文件（用于popup）

@@ -32,10 +32,7 @@ import {
   WorkflowTemplateFieldSpec,
   TemplateWorkflowService,
 } from './template-workflow.service';
-import {
-  SaveMarkingsDto,
-  SaveTemplateConfigDto,
-} from './studio.dto';
+import { SaveMarkingsDto, SaveTemplateConfigDto } from './studio.dto';
 import { StudioControllerBase } from './studio.controller.base';
 import { TemplateResponse } from './studio.types';
 
@@ -49,7 +46,7 @@ export class StudioTemplateController extends StudioControllerBase {
     templateRepository: TemplateRepository,
     skillRepository: SkillRepository,
     renderOutputRepository: RenderOutputRepository,
-    templateWorkflowService: TemplateWorkflowService,
+    templateWorkflowService: TemplateWorkflowService
   ) {
     super(
       previewService,
@@ -58,7 +55,7 @@ export class StudioTemplateController extends StudioControllerBase {
       templateRepository,
       skillRepository,
       renderOutputRepository,
-      templateWorkflowService,
+      templateWorkflowService
     );
   }
 
@@ -113,10 +110,12 @@ export class StudioTemplateController extends StudioControllerBase {
 
       return { success: true };
     } catch (error: unknown) {
-      this.logger.error(`Failed to delete template ${id}: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.error(
+        `Failed to delete template ${id}: ${error instanceof Error ? error.message : String(error)}`
+      );
       throw new HttpException(
         `Failed to delete template: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        HttpStatus.INTERNAL_SERVER_ERROR,
+        HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
   }
@@ -137,7 +136,7 @@ export class StudioTemplateController extends StudioControllerBase {
   })
   async renameTemplate(
     @Param('id') id: string,
-    @Body() body: { newName: string },
+    @Body() body: { newName: string }
   ): Promise<{ success: boolean; fileName: string }> {
     const meta = this.getTemplateMeta(id);
     const metaPath = path.join(this.templatesDir, `${id}.json`);
@@ -197,7 +196,7 @@ export class StudioTemplateController extends StudioControllerBase {
           return {
             content: htmlContent,
             format: meta.format,
-            type: 'html'
+            type: 'html',
           };
         default:
           throw new HttpException('Unsupported format', HttpStatus.BAD_REQUEST);
@@ -213,7 +212,7 @@ export class StudioTemplateController extends StudioControllerBase {
       return {
         content,
         format: meta.format,
-        type: 'xml'
+        type: 'xml',
       };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -223,7 +222,6 @@ export class StudioTemplateController extends StudioControllerBase {
       );
     }
   }
-
 
   /**
    * 保存模板标记配置
@@ -245,7 +243,7 @@ export class StudioTemplateController extends StudioControllerBase {
       ignoredElements: dto.ignoredElements || [],
       elementGroups: dto.elementGroups || {},
       ignoredGroups: dto.ignoredGroups || [],
-      savedAt: new Date().toISOString()
+      savedAt: new Date().toISOString(),
     };
 
     fs.writeFileSync(metaPath, JSON.stringify(updatedMeta, null, 2));
@@ -253,7 +251,7 @@ export class StudioTemplateController extends StudioControllerBase {
 
     return {
       success: true,
-      savedAt: updatedMeta.savedAt
+      savedAt: updatedMeta.savedAt,
     };
   }
 
@@ -275,7 +273,7 @@ export class StudioTemplateController extends StudioControllerBase {
       ignoredElements: meta.ignoredElements || [],
       elementGroups: meta.elementGroups || {},
       ignoredGroups: meta.ignoredGroups || [],
-      savedAt: meta.savedAt
+      savedAt: meta.savedAt,
     };
   }
 
@@ -298,7 +296,7 @@ export class StudioTemplateController extends StudioControllerBase {
       templateConfig: dto.templateConfig,
       suggestions: Array.isArray(dto.suggestions) ? dto.suggestions : meta.suggestions,
       rawSuggestions: Array.isArray(dto.rawSuggestions) ? dto.rawSuggestions : meta.rawSuggestions,
-      configSavedAt: new Date().toISOString()
+      configSavedAt: new Date().toISOString(),
     };
 
     fs.writeFileSync(metaPath, JSON.stringify(updatedMeta, null, 2));
@@ -307,7 +305,7 @@ export class StudioTemplateController extends StudioControllerBase {
 
     return {
       success: true,
-      savedAt: updatedMeta.configSavedAt
+      savedAt: updatedMeta.configSavedAt,
     };
   }
 
@@ -345,7 +343,10 @@ export class StudioTemplateController extends StudioControllerBase {
     }
 
     if (meta.format !== 'docx') {
-      throw new HttpException('Structure parsing is only supported for DOCX files', HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        'Structure parsing is only supported for DOCX files',
+        HttpStatus.BAD_REQUEST
+      );
     }
 
     try {
@@ -360,7 +361,6 @@ export class StudioTemplateController extends StudioControllerBase {
     }
   }
 
-
   /**
    * 保存完整模板（包含模板文件和AI Skill）
    */
@@ -370,12 +370,18 @@ export class StudioTemplateController extends StudioControllerBase {
     schema: {
       type: 'object',
       properties: {
-        templateId: { type: 'string', description: 'Existing template ID (optional, reuse from preview)' },
+        templateId: {
+          type: 'string',
+          description: 'Existing template ID (optional, reuse from preview)',
+        },
         documentContent: { type: 'string', description: 'Document content (base64)' },
         suggestions: { type: 'array', description: 'Applied suggestions' },
         templateConfig: { type: 'object', description: 'Template configuration' },
         templateMeta: { type: 'object', description: 'Template asset metadata' },
-        templateDocumentIr: { type: 'object', description: 'Template document IR for persisted asset metadata' },
+        templateDocumentIr: {
+          type: 'object',
+          description: 'Template document IR for persisted asset metadata',
+        },
         templateFieldSpecs: { type: 'array', description: 'Template asset field specs' },
         skill: { type: 'object', description: 'AI Skill guide' },
         skillId: { type: 'string', description: 'Existing skill ID to associate' },
@@ -385,9 +391,10 @@ export class StudioTemplateController extends StudioControllerBase {
     },
   })
   async saveTemplateFull(
-    @Body() body: {
-      templateId?: string;  // 支持复用已有的模版ID
-      documentContent?: string;  // 如果使用已有模版ID，可以不传
+    @Body()
+    body: {
+      templateId?: string; // 支持复用已有的模版ID
+      documentContent?: string; // 如果使用已有模版ID，可以不传
       suggestions?: any[];
       templateConfig?: any;
       templateMeta?: WorkflowSaveMeta;
@@ -397,7 +404,7 @@ export class StudioTemplateController extends StudioControllerBase {
       skillId?: string;
       format?: string;
       templateName?: string;
-    },
+    }
   ): Promise<{
     success: boolean;
     templateId?: string;
@@ -430,7 +437,9 @@ export class StudioTemplateController extends StudioControllerBase {
       }
 
       const templateName = body.templateName || `template_${templateId}`;
-      const normalizedTemplateFileName = templateName.toLowerCase().endsWith(`.${format.toLowerCase()}`)
+      const normalizedTemplateFileName = templateName
+        .toLowerCase()
+        .endsWith(`.${format.toLowerCase()}`)
         ? templateName
         : `${templateName}.${format}`;
 
@@ -476,16 +485,20 @@ export class StudioTemplateController extends StudioControllerBase {
       }
 
       const normalizedTemplateMeta = this.isPlainObject(body.templateMeta)
-        ? {
+        ? ({
             ...body.templateMeta,
             templateName: normalizedTemplateFileName,
-          } as WorkflowSaveMeta
+          } as WorkflowSaveMeta)
         : undefined;
       const normalizedTemplateFieldSpecs = Array.isArray(body.templateFieldSpecs)
-        ? body.templateFieldSpecs.filter((field): field is WorkflowTemplateFieldSpec => this.isPlainObject(field))
+        ? body.templateFieldSpecs.filter((field): field is WorkflowTemplateFieldSpec =>
+            this.isPlainObject(field)
+          )
         : [];
       const hasTemplateAssetPayload = normalizedTemplateFieldSpecs.length > 0;
-      const hasValidFile = existingMeta?.hasValidFile ?? fs.existsSync(path.join(this.templatesDir, `${templateId}.${format}`));
+      const hasValidFile =
+        existingMeta?.hasValidFile ??
+        fs.existsSync(path.join(this.templatesDir, `${templateId}.${format}`));
 
       let nextMeta: Record<string, any>;
       if (hasTemplateAssetPayload) {
@@ -494,7 +507,7 @@ export class StudioTemplateController extends StudioControllerBase {
           normalizedTemplateMeta,
           normalizedTemplateFieldSpecs,
           'publish',
-          format,
+          format
         );
 
         nextMeta = {
@@ -511,7 +524,7 @@ export class StudioTemplateController extends StudioControllerBase {
               format,
               fileName: normalizedTemplateFileName,
               hasValidFile,
-            },
+            }
           ),
           config: templateConfig,
           suggestions: body.suggestions || [],

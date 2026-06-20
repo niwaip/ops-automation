@@ -153,10 +153,7 @@ export const ExcelIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
         />
       )}
 
-      <button
-        className="debug-toggle-btn"
-        onClick={() => setShowDebugPanel(!showDebugPanel)}
-      >
+      <button className="debug-toggle-btn" onClick={() => setShowDebugPanel(!showDebugPanel)}>
         {showDebugPanel ? '隐藏日志' : '显示日志'}
       </button>
 

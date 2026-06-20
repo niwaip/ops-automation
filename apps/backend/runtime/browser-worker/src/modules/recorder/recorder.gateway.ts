@@ -36,7 +36,7 @@ export class RecorderGateway implements OnGatewayConnection, OnGatewayDisconnect
 
   constructor(
     private readonly recorderService: RecorderService,
-    private eventEmitter: EventEmitter2,
+    private eventEmitter: EventEmitter2
   ) {}
 
   onModuleInit() {

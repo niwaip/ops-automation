@@ -30,7 +30,7 @@ const reportUploadRenderLoop = (
   hypothesisId: 'A' | 'B' | 'C' | 'D' | 'E',
   location: string,
   msg: string,
-  data: Record<string, unknown>,
+  data: Record<string, unknown>
 ) => {
   void fetch(UPLOAD_RENDER_LOOP_DEBUG_URL, {
     method: 'POST',
@@ -56,7 +56,7 @@ function areStringListsEqual(left: string[], right: string[]): boolean {
 
 function areBooleanMapsEqual(
   left: Record<string, boolean>,
-  right: Record<string, boolean>,
+  right: Record<string, boolean>
 ): boolean {
   const leftKeys = Object.keys(left);
   const rightKeys = Object.keys(right);
@@ -103,14 +103,23 @@ export function useWordWorkflowPanelEffects(options: UseWordWorkflowPanelEffects
   const cacheProbeTokenRef = useRef(0);
 
   useEffect(() => {
-    reportUploadRenderLoop('A', 'WordTemplateWorkflowPanel:compare-sections-effect', 'compare section effect fired', {
-      sectionCount: options.compareCandidateSections.length,
-      sectionKeys: options.compareCandidateSections.map((section) => section.sectionKey),
-    });
+    reportUploadRenderLoop(
+      'A',
+      'WordTemplateWorkflowPanel:compare-sections-effect',
+      'compare section effect fired',
+      {
+        sectionCount: options.compareCandidateSections.length,
+        sectionKeys: options.compareCandidateSections.map((section) => section.sectionKey),
+      }
+    );
 
     if (options.compareCandidateSections.length === 0) {
-      options.setCollapsedCompareSections((current) => (Object.keys(current).length === 0 ? current : {}));
-      options.setSelectedCompareSections((current) => (Object.keys(current).length === 0 ? current : {}));
+      options.setCollapsedCompareSections((current) =>
+        Object.keys(current).length === 0 ? current : {}
+      );
+      options.setSelectedCompareSections((current) =>
+        Object.keys(current).length === 0 ? current : {}
+      );
       return;
     }
 
@@ -135,13 +144,20 @@ export function useWordWorkflowPanelEffects(options: UseWordWorkflowPanelEffects
   ]);
 
   useEffect(() => {
-    reportUploadRenderLoop('B', 'WordTemplateWorkflowPanel:recognition-sections-effect', 'recognition section effect fired', {
-      sectionCount: options.sectionGenerationResults.length,
-      sectionKeys: options.sectionGenerationResults.map((section) => section.sectionKey),
-    });
+    reportUploadRenderLoop(
+      'B',
+      'WordTemplateWorkflowPanel:recognition-sections-effect',
+      'recognition section effect fired',
+      {
+        sectionCount: options.sectionGenerationResults.length,
+        sectionKeys: options.sectionGenerationResults.map((section) => section.sectionKey),
+      }
+    );
 
     if (options.sectionGenerationResults.length === 0) {
-      options.setCollapsedRecognitionSections((current) => (Object.keys(current).length === 0 ? current : {}));
+      options.setCollapsedRecognitionSections((current) =>
+        Object.keys(current).length === 0 ? current : {}
+      );
       return;
     }
 
@@ -152,20 +168,24 @@ export function useWordWorkflowPanelEffects(options: UseWordWorkflowPanelEffects
       });
       return areBooleanMapsEqual(current, nextState) ? current : nextState;
     });
-  }, [
-    options.sectionGenerationResults,
-    options.setCollapsedRecognitionSections,
-  ]);
+  }, [options.sectionGenerationResults, options.setCollapsedRecognitionSections]);
 
   useEffect(() => {
-    const nextTargetLanguages = options.effectiveCompareHeadingLanguages.filter((language) => language !== 'zh');
+    const nextTargetLanguages = options.effectiveCompareHeadingLanguages.filter(
+      (language) => language !== 'zh'
+    );
 
-    reportUploadRenderLoop('C', 'WordTemplateWorkflowPanel:language-sync-effect', 'language sync effect fired', {
-      effectiveCompareHeadingLanguages: options.effectiveCompareHeadingLanguages,
-      workflowSourceLanguage: options.workflowSourceLanguage,
-      workflowTargetLanguages: options.workflowTargetLanguages,
-      nextTargetLanguages,
-    });
+    reportUploadRenderLoop(
+      'C',
+      'WordTemplateWorkflowPanel:language-sync-effect',
+      'language sync effect fired',
+      {
+        effectiveCompareHeadingLanguages: options.effectiveCompareHeadingLanguages,
+        workflowSourceLanguage: options.workflowSourceLanguage,
+        workflowTargetLanguages: options.workflowTargetLanguages,
+        nextTargetLanguages,
+      }
+    );
 
     if (options.workflowSourceLanguage !== 'zh') {
       options.setWorkflowSourceLanguage('zh');
@@ -182,13 +202,18 @@ export function useWordWorkflowPanelEffects(options: UseWordWorkflowPanelEffects
   ]);
 
   useEffect(() => {
-    reportUploadRenderLoop('D', 'WordTemplateWorkflowPanel:compare-cache-effect', 'compare cache probe effect fired', {
-      uploaded: options.sampleUploadState.uploaded,
-      hasFileBase64: Boolean(options.sampleUploadState.fileBase64),
-      revision: options.sampleUploadState.revision,
-      selectedTemplateType: options.selectedTemplateType,
-      effectiveCompareHeadingLanguages: options.effectiveCompareHeadingLanguages,
-    });
+    reportUploadRenderLoop(
+      'D',
+      'WordTemplateWorkflowPanel:compare-cache-effect',
+      'compare cache probe effect fired',
+      {
+        uploaded: options.sampleUploadState.uploaded,
+        hasFileBase64: Boolean(options.sampleUploadState.fileBase64),
+        revision: options.sampleUploadState.revision,
+        selectedTemplateType: options.selectedTemplateType,
+        effectiveCompareHeadingLanguages: options.effectiveCompareHeadingLanguages,
+      }
+    );
 
     if (!options.sampleUploadState.uploaded || !options.sampleUploadState.fileBase64) {
       options.setCompareDocumentIr(null);
@@ -201,25 +226,33 @@ export function useWordWorkflowPanelEffects(options: UseWordWorkflowPanelEffects
     const currentProbeToken = compareCacheProbeTokenRef.current + 1;
     compareCacheProbeTokenRef.current = currentProbeToken;
 
-    void options.hostAdapter.extractDocument()
-      .then(() => probeWordCompareCache({
-        hostAdapter: options.hostAdapter,
-        sampleUploadState: options.sampleUploadState,
-        selectedTemplateType: options.selectedTemplateType,
-        effectiveCompareHeadingLanguages: options.effectiveCompareHeadingLanguages,
-        buildWordCompareCacheKey,
-        loadWordCompareCache,
-      }))
+    void options.hostAdapter
+      .extractDocument()
+      .then(() =>
+        probeWordCompareCache({
+          hostAdapter: options.hostAdapter,
+          sampleUploadState: options.sampleUploadState,
+          selectedTemplateType: options.selectedTemplateType,
+          effectiveCompareHeadingLanguages: options.effectiveCompareHeadingLanguages,
+          buildWordCompareCacheKey,
+          loadWordCompareCache,
+        })
+      )
       .then(({ documentIr, compareCacheKey, hasStoredCompareEntry, cachedCompareEntry }) => {
         if (compareCacheProbeTokenRef.current !== currentProbeToken) {
           return;
         }
 
-        reportUploadRenderLoop('D', 'WordTemplateWorkflowPanel:compare-cache-effect-result', 'compare cache probe resolved', {
-          hasStoredCompareEntry,
-          hasCachedCompareEntry: Boolean(cachedCompareEntry),
-          paragraphCount: documentIr?.paragraphs?.length || 0,
-        });
+        reportUploadRenderLoop(
+          'D',
+          'WordTemplateWorkflowPanel:compare-cache-effect-result',
+          'compare cache probe resolved',
+          {
+            hasStoredCompareEntry,
+            hasCachedCompareEntry: Boolean(cachedCompareEntry),
+            paragraphCount: documentIr?.paragraphs?.length || 0,
+          }
+        );
 
         options.setCompareDocumentIr(documentIr);
         if (cachedCompareEntry) {
@@ -231,9 +264,13 @@ export function useWordWorkflowPanelEffects(options: UseWordWorkflowPanelEffects
           };
           options.setCompareResult(cachedResult);
           if (cachedCompareEntry.result.recognitionSnapshot) {
-            options.setSectionGenerationResults(cachedCompareEntry.result.recognitionSnapshot.sectionGenerationResults);
+            options.setSectionGenerationResults(
+              cachedCompareEntry.result.recognitionSnapshot.sectionGenerationResults
+            );
             options.setSuggestions(cachedCompareEntry.result.recognitionSnapshot.suggestions);
-            options.setCollapsedRecognitionSections(cachedCompareEntry.result.recognitionSnapshot.collapsedSections || {});
+            options.setCollapsedRecognitionSections(
+              cachedCompareEntry.result.recognitionSnapshot.collapsedSections || {}
+            );
             options.setRecognitionResult(null);
             options.setRecognitionRevision(options.sampleUploadState.revision);
             options.setRecognitionLanguageSignature(options.languageSignature);
@@ -256,9 +293,14 @@ export function useWordWorkflowPanelEffects(options: UseWordWorkflowPanelEffects
           return;
         }
 
-        reportUploadRenderLoop('D', 'WordTemplateWorkflowPanel:compare-cache-effect-error', 'compare cache probe failed', {
-          revision: options.sampleUploadState.revision,
-        });
+        reportUploadRenderLoop(
+          'D',
+          'WordTemplateWorkflowPanel:compare-cache-effect-error',
+          'compare cache probe failed',
+          {
+            revision: options.sampleUploadState.revision,
+          }
+        );
         options.setCompareCacheStatus(null);
         options.setCompareCacheUpdatedAt(null);
       });
@@ -284,13 +326,18 @@ export function useWordWorkflowPanelEffects(options: UseWordWorkflowPanelEffects
   ]);
 
   useEffect(() => {
-    reportUploadRenderLoop('E', 'WordTemplateWorkflowPanel:upload-cache-effect', 'upload cache detect effect fired', {
-      uploaded: options.sampleUploadState.uploaded,
-      hasFileBase64: Boolean(options.sampleUploadState.fileBase64),
-      revision: options.sampleUploadState.revision,
-      workflowSourceLanguage: options.workflowSourceLanguage,
-      workflowTargetLanguages: options.workflowTargetLanguages,
-    });
+    reportUploadRenderLoop(
+      'E',
+      'WordTemplateWorkflowPanel:upload-cache-effect',
+      'upload cache detect effect fired',
+      {
+        uploaded: options.sampleUploadState.uploaded,
+        hasFileBase64: Boolean(options.sampleUploadState.fileBase64),
+        revision: options.sampleUploadState.revision,
+        workflowSourceLanguage: options.workflowSourceLanguage,
+        workflowTargetLanguages: options.workflowTargetLanguages,
+      }
+    );
 
     if (!options.sampleUploadState.uploaded || !options.sampleUploadState.fileBase64) {
       options.setDetectedUploadCacheStatus(null);
@@ -314,10 +361,15 @@ export function useWordWorkflowPanelEffects(options: UseWordWorkflowPanelEffects
           return;
         }
 
-        reportUploadRenderLoop('E', 'WordTemplateWorkflowPanel:upload-cache-effect-result', 'upload cache detect resolved', {
-          hasMatchedEntry: Boolean(matchedEntry),
-          updatedAt: matchedEntry?.updatedAt || null,
-        });
+        reportUploadRenderLoop(
+          'E',
+          'WordTemplateWorkflowPanel:upload-cache-effect-result',
+          'upload cache detect resolved',
+          {
+            hasMatchedEntry: Boolean(matchedEntry),
+            updatedAt: matchedEntry?.updatedAt || null,
+          }
+        );
 
         if (matchedEntry) {
           options.setDetectedUploadCacheStatus('available');
@@ -334,9 +386,14 @@ export function useWordWorkflowPanelEffects(options: UseWordWorkflowPanelEffects
           return;
         }
 
-        reportUploadRenderLoop('E', 'WordTemplateWorkflowPanel:upload-cache-effect-error', 'upload cache detect failed', {
-          revision: options.sampleUploadState.revision,
-        });
+        reportUploadRenderLoop(
+          'E',
+          'WordTemplateWorkflowPanel:upload-cache-effect-error',
+          'upload cache detect failed',
+          {
+            revision: options.sampleUploadState.revision,
+          }
+        );
         options.setDetectedUploadCacheStatus('none');
         options.setDetectedUploadCacheUpdatedAt(null);
         options.setDetectedUploadCacheResult(null);

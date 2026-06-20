@@ -30,13 +30,8 @@ const resolveApiUrl = (endpoint: string): string => {
   return endpoint;
 };
 
-const getValueByPath = (
-  source: Record<string, unknown>,
-  path: string,
-): unknown => {
-  const normalizedPath = path.startsWith('flow_input.')
-    ? path.slice('flow_input.'.length)
-    : path;
+const getValueByPath = (source: Record<string, unknown>, path: string): unknown => {
+  const normalizedPath = path.startsWith('flow_input.') ? path.slice('flow_input.'.length) : path;
   return normalizedPath.split('.').reduce<unknown>((current, segment) => {
     if (!current || typeof current !== 'object') {
       return undefined;
@@ -47,7 +42,7 @@ const getValueByPath = (
 
 const resolveEndpointTemplate = (
   template: string,
-  execParams: Record<string, unknown>,
+  execParams: Record<string, unknown>
 ): { endpoint: string; usedKeys: Set<string> } => {
   const usedKeys = new Set<string>();
   let endpoint = template;
@@ -79,12 +74,12 @@ const resolveEndpointTemplate = (
 
 const buildGetParams = (
   execParams: Record<string, unknown>,
-  usedKeys: Set<string>,
+  usedKeys: Set<string>
 ): Record<string, unknown> | undefined => {
   const remainingParams = Object.fromEntries(
     Object.entries(execParams).filter(([key, value]) => {
       return !usedKeys.has(key) && value !== undefined && value !== null;
-    }),
+    })
   );
   return Object.keys(remainingParams).length > 0 ? remainingParams : undefined;
 };
@@ -116,8 +111,9 @@ const extractDownloadUrl = (value: unknown): string | undefined => {
     }
 
     const record = current as Record<string, unknown>;
-    const directUrl = [record.downloadUrl, record.download_url, record.url]
-      .find((item): item is string => typeof item === 'string' && item.trim().length > 0);
+    const directUrl = [record.downloadUrl, record.download_url, record.url].find(
+      (item): item is string => typeof item === 'string' && item.trim().length > 0
+    );
     if (directUrl) {
       return directUrl;
     }
@@ -139,7 +135,9 @@ const formatRuntimeSummary = (skillName: string, runtimeData: Record<string, unk
     ? runtimeData.logs.filter((item): item is string => typeof item === 'string')
     : [];
   const workflowSteps = Array.isArray(runtimeData.workflowSteps)
-    ? runtimeData.workflowSteps.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
+    ? runtimeData.workflowSteps.filter(
+        (item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object'
+      )
     : [];
   const downloadUrl = extractDownloadUrl(runtimeData);
 
@@ -157,13 +155,16 @@ const formatRuntimeSummary = (skillName: string, runtimeData: Record<string, unk
   if (workflowSteps.length > 0) {
     lines.push('');
     lines.push('Workflow 步骤:');
-    lines.push(...workflowSteps.map((step) => {
-      const stepId = typeof step.id === 'string' ? step.id : 'unknown_step';
-      const stepName = typeof step.name === 'string' ? step.name : stepId;
-      const stepType = typeof step.type === 'string' ? step.type : 'unknown';
-      const activityName = typeof step.activityName === 'string' ? ` -> ${step.activityName}` : '';
-      return `- ${stepId}: ${stepName} (${stepType}${activityName})`;
-    }));
+    lines.push(
+      ...workflowSteps.map((step) => {
+        const stepId = typeof step.id === 'string' ? step.id : 'unknown_step';
+        const stepName = typeof step.name === 'string' ? step.name : stepId;
+        const stepType = typeof step.type === 'string' ? step.type : 'unknown';
+        const activityName =
+          typeof step.activityName === 'string' ? ` -> ${step.activityName}` : '';
+        return `- ${stepId}: ${stepName} (${stepType}${activityName})`;
+      })
+    );
   }
 
   if (logs.length > 0) {
@@ -181,7 +182,7 @@ const normalizeFlowToolNameFromTemplateId = (templateId: string): string => {
 
 const isSkillVisibleInSnapshot = (
   skillId: string | undefined,
-  context: ExecutionContext,
+  context: ExecutionContext
 ): boolean => {
   if (!skillId || !context.capabilitySnapshot) {
     return true;
@@ -192,7 +193,7 @@ const isSkillVisibleInSnapshot = (
 
 const isTemplateVisibleInSnapshot = (
   templateId: string | undefined,
-  context: ExecutionContext,
+  context: ExecutionContext
 ): boolean => {
   if (!templateId || !context.capabilitySnapshot) {
     return true;
@@ -200,8 +201,7 @@ const isTemplateVisibleInSnapshot = (
 
   const visibleBySkillBinding = context.capabilitySnapshot.visibleSkills.some((skill) => {
     return Boolean(
-      skill.executionFlowTemplateIds?.includes(templateId)
-      || skill.carboneTemplateId === templateId,
+      skill.executionFlowTemplateIds?.includes(templateId) || skill.carboneTemplateId === templateId
     );
   });
   if (visibleBySkillBinding) {
@@ -209,8 +209,8 @@ const isTemplateVisibleInSnapshot = (
   }
 
   const visibleByCurrentSkill = Boolean(
-    context.skill?.executionFlowTemplateIds?.includes(templateId)
-    || context.skill?.carboneTemplateId === templateId,
+    context.skill?.executionFlowTemplateIds?.includes(templateId) ||
+    context.skill?.carboneTemplateId === templateId
   );
   if (visibleByCurrentSkill) {
     return true;
@@ -222,27 +222,31 @@ const isTemplateVisibleInSnapshot = (
 
 const getSelectedSkillId = (
   explicitSkillId: string | undefined,
-  context: ExecutionContext,
+  context: ExecutionContext
 ): string | undefined => {
-  return explicitSkillId
-    || context.skill?.skillId
-    || context.documentContext?.selectedSkillId
-    || context.capabilitySnapshot?.selectedSkillId;
+  return (
+    explicitSkillId ||
+    context.skill?.skillId ||
+    context.documentContext?.selectedSkillId ||
+    context.capabilitySnapshot?.selectedSkillId
+  );
 };
 
 const getSelectedSkillToolNames = (
   selectedSkillId: string | undefined,
-  context: ExecutionContext,
+  context: ExecutionContext
 ): string[] | undefined => {
-  return context.selectedSkillToolNames
-    || context.capabilitySnapshot?.skillScopedToolNames
-    || context.availableSkills?.find((item) => item.skillId === selectedSkillId)?.effectiveTools;
+  return (
+    context.selectedSkillToolNames ||
+    context.capabilitySnapshot?.skillScopedToolNames ||
+    context.availableSkills?.find((item) => item.skillId === selectedSkillId)?.effectiveTools
+  );
 };
 
 const isToolAllowedInSkillScope = (
   toolName: string,
   selectedSkillId: string | undefined,
-  context: ExecutionContext,
+  context: ExecutionContext
 ): boolean => {
   const scopedTools = getSelectedSkillToolNames(selectedSkillId, context);
   if (!selectedSkillId || !scopedTools || scopedTools.length === 0) {
@@ -251,17 +255,11 @@ const isToolAllowedInSkillScope = (
   return scopedTools.includes(toolName);
 };
 
-const getCapabilityVisibleTool = (
-  toolName: string,
-  context: ExecutionContext,
-) => {
+const getCapabilityVisibleTool = (toolName: string, context: ExecutionContext) => {
   return context.capabilitySnapshot?.visibleTools.find((tool) => tool.name === toolName);
 };
 
-const hasApprovalForTool = (
-  toolName: string,
-  context: ExecutionContext,
-): boolean => {
+const hasApprovalForTool = (toolName: string, context: ExecutionContext): boolean => {
   return Boolean(context.approvedToolNames?.includes(toolName));
 };
 
@@ -271,7 +269,7 @@ const buildApprovalRejection = (
   stepId: string,
   templateId: string | undefined,
   selectedSkillId: string | undefined,
-  context: ExecutionContext,
+  context: ExecutionContext
 ): ToolResult => ({
   success: false,
   output: `步骤"${stepName}" 需要调用工具 "${toolName}"，但该工具当前需要审批后才能执行。`,
@@ -338,14 +336,11 @@ export class FlowExecuteTool extends BaseTool {
         },
         required: ['templateId'],
       },
-      { category: 'flow' },
+      { category: 'flow' }
     );
   }
 
-  async execute(
-    params: Record<string, unknown>,
-    context: ExecutionContext,
-  ): Promise<ToolResult> {
+  async execute(params: Record<string, unknown>, context: ExecutionContext): Promise<ToolResult> {
     type FlowStep = {
       id?: string;
       type: 'text' | 'api' | 'tool' | 'script';
@@ -375,7 +370,7 @@ export class FlowExecuteTool extends BaseTool {
     const templateId = params.templateId as string;
     const skillId = params.skillId as string;
     const stepIndex = (params.stepIndex as number) || 0;
-    const execParams = params.params as Record<string, unknown> || {};
+    const execParams = (params.params as Record<string, unknown>) || {};
     const resolvedSelectedSkillId = getSelectedSkillId(skillId, context);
 
     if (!templateId && !skillId) {
@@ -432,8 +427,12 @@ export class FlowExecuteTool extends BaseTool {
       // 1. 获取流程步骤定义
       const authUrl = getAuthServiceUrl();
       let template: FlowTemplate;
-      const loadSkillExecution = async (resolvedSkillId: string): Promise<{ template?: FlowTemplate; result?: ToolResult }> => {
-        const response = await axios.get(`${authUrl}/skills/${resolvedSkillId}`, { headers: traceHeaders });
+      const loadSkillExecution = async (
+        resolvedSkillId: string
+      ): Promise<{ template?: FlowTemplate; result?: ToolResult }> => {
+        const response = await axios.get(`${authUrl}/skills/${resolvedSkillId}`, {
+          headers: traceHeaders,
+        });
         const skill = response.data as {
           name: string;
           executionFlow: FlowStep[];
@@ -446,13 +445,13 @@ export class FlowExecuteTool extends BaseTool {
         };
 
         if (
-          (!skill.executionFlow || skill.executionFlow.length === 0)
-          && skill.apiEndpoints?.runtimeMetadata?.sourceType === 'temporal_workflow'
+          (!skill.executionFlow || skill.executionFlow.length === 0) &&
+          skill.apiEndpoints?.runtimeMetadata?.sourceType === 'temporal_workflow'
         ) {
           const runtimeResponse = await axios.post(
             `${authUrl}/capabilities/runtime/skills/${resolvedSkillId}/execute`,
             { input: execParams },
-            { headers: traceHeaders },
+            { headers: traceHeaders }
           );
           const runtimeData = runtimeResponse.data as Record<string, unknown>;
           const downloadUrl = extractDownloadUrl(runtimeData);
@@ -467,7 +466,9 @@ export class FlowExecuteTool extends BaseTool {
               output: runtimeData.success
                 ? formatRuntimeSummary(skill.name, runtimeSummaryData)
                 : `Temporal Workflow 执行失败: ${String(runtimeData.error || '未知错误')}`,
-              code: runtimeData.success ? 'temporal_workflow_completed' : 'temporal_workflow_failed',
+              code: runtimeData.success
+                ? 'temporal_workflow_completed'
+                : 'temporal_workflow_failed',
               severity: runtimeData.success ? 'info' : 'error',
               data: {
                 runtime: 'temporal_workflow',
@@ -507,7 +508,7 @@ export class FlowExecuteTool extends BaseTool {
         } catch (fetchError: any) {
           if (fetchError.response?.status === 404 && context.skill?.skillId) {
             this.logger.warn(
-              `Template ${templateId} not found, falling back to matched skill ${context.skill.skillId}`,
+              `Template ${templateId} not found, falling back to matched skill ${context.skill.skillId}`
             );
             const fallback = await loadSkillExecution(context.skill.skillId);
             if (fallback.result) {
@@ -521,7 +522,11 @@ export class FlowExecuteTool extends BaseTool {
               output: `无法加载流程模板 (ID: ${templateId})，请确认模板是否存在。错误: ${fetchError.message}`,
               code: 'template_fetch_failed',
               severity: 'error',
-              data: { error: 'template_fetch_failed', templateId, status: fetchError.response?.status },
+              data: {
+                error: 'template_fetch_failed',
+                templateId,
+                status: fetchError.response?.status,
+              },
               meta: {
                 toolName: this.name,
                 capabilityChecked: Boolean(context.capabilitySnapshot),
@@ -640,11 +645,9 @@ export class FlowExecuteTool extends BaseTool {
           }
 
           if (
-            (
-              context.capabilitySnapshot?.policies.requireApprovalToolNames?.includes('api_call')
-              || getCapabilityVisibleTool('api_call', context)?.requiresApproval
-            )
-            && !hasApprovalForTool('api_call', context)
+            (context.capabilitySnapshot?.policies.requireApprovalToolNames?.includes('api_call') ||
+              getCapabilityVisibleTool('api_call', context)?.requiresApproval) &&
+            !hasApprovalForTool('api_call', context)
           ) {
             return buildApprovalRejection(
               'api_call',
@@ -652,7 +655,7 @@ export class FlowExecuteTool extends BaseTool {
               currentStep.id || `step_${stepIndex}`,
               templateId,
               resolvedSelectedSkillId,
-              context,
+              context
             );
           }
 
@@ -677,7 +680,7 @@ export class FlowExecuteTool extends BaseTool {
           // 支持 {city}、{{city}}、{{flow_input.city}} 三种变量格式
           const { endpoint: resolvedEndpoint, usedKeys } = resolveEndpointTemplate(
             currentStep.api.endpoint,
-            execParams,
+            execParams
           );
           const endpoint = resolveApiUrl(resolvedEndpoint);
 
@@ -689,8 +692,12 @@ export class FlowExecuteTool extends BaseTool {
                 ...(currentStep.api.headers || {}),
                 ...(traceHeaders || {}),
               },
-              data: currentStep.api.method === 'GET' ? undefined : { ...currentStep.api.body, ...execParams },
-              params: currentStep.api.method === 'GET' ? buildGetParams(execParams, usedKeys) : undefined,
+              data:
+                currentStep.api.method === 'GET'
+                  ? undefined
+                  : { ...currentStep.api.body, ...execParams },
+              params:
+                currentStep.api.method === 'GET' ? buildGetParams(execParams, usedKeys) : undefined,
               timeout: currentStep.api.timeout || Number(process.env.FLOW_API_TIMEOUT_MS || 30000),
             });
 
@@ -766,11 +773,11 @@ export class FlowExecuteTool extends BaseTool {
           }
 
           if (
-            (
-              context.capabilitySnapshot?.policies.requireApprovalToolNames?.includes(currentStep.tool.name)
-              || getCapabilityVisibleTool(currentStep.tool.name, context)?.requiresApproval
-            )
-            && !hasApprovalForTool(currentStep.tool.name, context)
+            (context.capabilitySnapshot?.policies.requireApprovalToolNames?.includes(
+              currentStep.tool.name
+            ) ||
+              getCapabilityVisibleTool(currentStep.tool.name, context)?.requiresApproval) &&
+            !hasApprovalForTool(currentStep.tool.name, context)
           ) {
             return buildApprovalRejection(
               currentStep.tool.name,
@@ -778,7 +785,7 @@ export class FlowExecuteTool extends BaseTool {
               currentStep.id || `step_${stepIndex}`,
               templateId,
               resolvedSelectedSkillId,
-              context,
+              context
             );
           }
 

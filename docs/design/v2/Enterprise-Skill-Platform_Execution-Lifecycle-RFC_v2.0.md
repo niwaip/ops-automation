@@ -355,15 +355,15 @@
 
 为避免当前仓库“多个服务各写一套状态”的问题，MVP 阶段建议按下表收口状态写权限。
 
-| 对象 | 字段 | 允许主写服务 | 其他服务行为 |
-| --- | --- | --- | --- |
-| `Execution` | `status` | `skill-control-plane` | 通过命令或事件请求变更，不直接写主状态 |
-| `Execution` | `approval_state` | `skill-control-plane` | `policy-service` 只返回治理决策 |
-| `Execution` | `normalized_goal_json` | `skill-orchestrator` | 由 control-plane 接收后落库 |
-| `Execution` | `result_summary_json` | `execution-engine` | 由 control-plane 接收后落库 |
-| `ExecutionStep` | 全量 step 记录 | `execution-engine` | 其他服务只读 |
-| `RuntimeSession` | `state` | `runtime-manager` | `execution-engine` 请求 freeze/resume/close |
-| `RuntimeSession` | `health_status` | `runtime-manager` | `browser-runtime` 上报健康信息 |
+| 对象             | 字段                   | 允许主写服务          | 其他服务行为                                |
+| ---------------- | ---------------------- | --------------------- | ------------------------------------------- |
+| `Execution`      | `status`               | `skill-control-plane` | 通过命令或事件请求变更，不直接写主状态      |
+| `Execution`      | `approval_state`       | `skill-control-plane` | `policy-service` 只返回治理决策             |
+| `Execution`      | `normalized_goal_json` | `skill-orchestrator`  | 由 control-plane 接收后落库                 |
+| `Execution`      | `result_summary_json`  | `execution-engine`    | 由 control-plane 接收后落库                 |
+| `ExecutionStep`  | 全量 step 记录         | `execution-engine`    | 其他服务只读                                |
+| `RuntimeSession` | `state`                | `runtime-manager`     | `execution-engine` 请求 freeze/resume/close |
+| `RuntimeSession` | `health_status`        | `runtime-manager`     | `browser-runtime` 上报健康信息              |
 
 补充规则：
 

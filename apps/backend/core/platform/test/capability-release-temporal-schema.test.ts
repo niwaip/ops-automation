@@ -80,9 +80,18 @@ describe('CapabilityReleaseTemporalSchemaService', () => {
     expect(schema).toEqual({
       properties: expect.objectContaining({
         'info.currency': expect.objectContaining({ type: 'string', displayName: '合同金额币种' }),
-        installationCondition: expect.objectContaining({ type: 'string', displayName: '设备安装条件和乙方配合义务' }),
-        'info.warrantyPeriod': expect.objectContaining({ type: 'number', displayName: '质保期月数' }),
-        'info.includeInstall': expect.objectContaining({ type: 'string', displayName: '是否包含安装服务' }),
+        installationCondition: expect.objectContaining({
+          type: 'string',
+          displayName: '设备安装条件和乙方配合义务',
+        }),
+        'info.warrantyPeriod': expect.objectContaining({
+          type: 'number',
+          displayName: '质保期月数',
+        }),
+        'info.includeInstall': expect.objectContaining({
+          type: 'string',
+          displayName: '是否包含安装服务',
+        }),
       }),
       required: expect.arrayContaining([
         'info.currency',
@@ -149,15 +158,17 @@ describe('CapabilityReleaseTemporalSchemaService', () => {
           },
         },
       },
-      'staging',
+      'staging'
     );
 
-    expect(smokeInput).toEqual(expect.objectContaining({
-      startUrl: 'http://192.168.100.143:5173/',
-      username: 'test',
-      smokeTest: true,
-      environment: 'staging',
-    }));
+    expect(smokeInput).toEqual(
+      expect.objectContaining({
+        startUrl: 'http://192.168.100.143:5173/',
+        username: 'test',
+        smokeTest: true,
+        environment: 'staging',
+      })
+    );
   });
 
   it('prefers fixed source-level test input when building deploy smoke input', () => {
@@ -182,7 +193,7 @@ describe('CapabilityReleaseTemporalSchemaService', () => {
           },
         },
       },
-      'staging',
+      'staging'
     );
 
     expect(smokeInput).toEqual({
@@ -221,7 +232,7 @@ describe('CapabilityReleaseTemporalSchemaService', () => {
           },
         },
       },
-      'staging',
+      'staging'
     );
 
     expect(smokeInput).toEqual({
@@ -259,14 +270,12 @@ describe('CapabilityReleaseTemporalSchemaService', () => {
     });
 
     expect(schema.properties.notes).toEqual(
-      expect.not.objectContaining({ default: expect.anything() }),
+      expect.not.objectContaining({ default: expect.anything() })
     );
     expect(schema.properties.paymentStages).toEqual(
-      expect.not.objectContaining({ default: expect.anything() }),
+      expect.not.objectContaining({ default: expect.anything() })
     );
-    expect(schema.properties.timeout).toEqual(
-      expect.objectContaining({ default: 30 }),
-    );
+    expect(schema.properties.timeout).toEqual(expect.objectContaining({ default: 30 }));
   });
 
   it('keeps L1 presentation metadata in published temporal params schema without leaking policy fields', () => {
@@ -303,12 +312,12 @@ describe('CapabilityReleaseTemporalSchemaService', () => {
     expect(schema.properties['paymentSchedule[].amount']).toEqual(
       expect.not.objectContaining({
         previewBlocking: expect.anything(),
-      }),
+      })
     );
     expect(schema.properties['paymentSchedule[].amount']).toEqual(
       expect.not.objectContaining({
         confirmationThreshold: expect.anything(),
-      }),
+      })
     );
   });
 
@@ -521,5 +530,4 @@ describe('CapabilityReleaseTemporalSchemaService', () => {
       required: ['contract.signingDate'],
     });
   });
-
 });

@@ -5,23 +5,34 @@ import {
 } from './identify-recognition.execution';
 import type { CreateWordIdentifyRecognitionControllerOptions } from './identify-recognition.types';
 
-export function createWordIdentifyRecognitionController(options: CreateWordIdentifyRecognitionControllerOptions) {
-  const ensureUnderstandingForRecognition = async (
-    ensureOptions?: { forceRefresh?: boolean }
-  ): Promise<TemplateUnderstandResponse | null> => {
+export function createWordIdentifyRecognitionController(
+  options: CreateWordIdentifyRecognitionControllerOptions
+) {
+  const ensureUnderstandingForRecognition = async (ensureOptions?: {
+    forceRefresh?: boolean;
+  }): Promise<TemplateUnderstandResponse | null> => {
     if (!options.sampleUploadState.fileBase64) {
       options.setAnalysisError('请先上传参考示例文件', '参考示例文件 base64 内容为空');
       return null;
     }
-    if (options.compareResult && options.compareCandidateSections.length > 0 && options.effectiveCompareCandidateFields.length === 0) {
-      options.setAnalysisError('请至少勾选一个章节', '当前已生成章节候选，但没有勾选任何章节，无法基于章节候选生成参数');
+    if (
+      options.compareResult &&
+      options.compareCandidateSections.length > 0 &&
+      options.effectiveCompareCandidateFields.length === 0
+    ) {
+      options.setAnalysisError(
+        '请至少勾选一个章节',
+        '当前已生成章节候选，但没有勾选任何章节，无法基于章节候选生成参数'
+      );
       return null;
     }
 
     options.setIsUnderstanding(true);
     try {
       carboneAPI.setBaseUrl(options.apiBaseUrl);
-      const workflowRequest = await options.buildWorkflowRequest({ useSelectedCompareCandidates: true });
+      const workflowRequest = await options.buildWorkflowRequest({
+        useSelectedCompareCandidates: true,
+      });
       const forceRefresh = Boolean(ensureOptions?.forceRefresh);
       const cachedEntry = options.loadWordUnderstandingCache()[workflowRequest.cacheKey];
       if (!forceRefresh && options.isWordUnderstandingCacheCompatible(cachedEntry)) {
@@ -39,7 +50,10 @@ export function createWordIdentifyRecognitionController(options: CreateWordIdent
             `语言配置: ${options.workflowSourceLanguage} -> ${options.workflowTargetLanguages.join(', ') || '单语言'}`,
             `章节选择: ${options.selectedCompareSectionKeys.length || options.compareCandidateSections.length || 0}`,
             '',
-            options.buildUnderstandingDebugText(cachedEntry.result, cachedEntry.result.summary.understandingSummaryText || ''),
+            options.buildUnderstandingDebugText(
+              cachedEntry.result,
+              cachedEntry.result.summary.understandingSummaryText || ''
+            ),
           ].join('\n')
         );
         return cachedEntry.result;
@@ -101,8 +115,15 @@ export function createWordIdentifyRecognitionController(options: CreateWordIdent
       return;
     }
 
-    if (options.compareResult && options.compareCandidateSections.length > 0 && options.effectiveCompareCandidateFields.length === 0) {
-      options.setAnalysisError('请至少勾选一个章节', '当前已生成章节候选，但没有勾选任何章节，无法生成参数');
+    if (
+      options.compareResult &&
+      options.compareCandidateSections.length > 0 &&
+      options.effectiveCompareCandidateFields.length === 0
+    ) {
+      options.setAnalysisError(
+        '请至少勾选一个章节',
+        '当前已生成章节候选，但没有勾选任何章节，无法生成参数'
+      );
       return;
     }
 
@@ -133,7 +154,9 @@ export function createWordIdentifyRecognitionController(options: CreateWordIdent
     } catch (error: any) {
       options.setAnalysisError(
         error?.message || '参数识别失败',
-        error?.stack || error?.response?.data ? JSON.stringify(error.response?.data, null, 2) : undefined
+        error?.stack || error?.response?.data
+          ? JSON.stringify(error.response?.data, null, 2)
+          : undefined
       );
       return;
     } finally {

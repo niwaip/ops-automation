@@ -58,9 +58,7 @@ describe('JwtAuthGuard', () => {
       }),
     } as unknown as ExecutionContext;
 
-    await expect(guard.canActivate(mockContext)).rejects.toThrow(
-      UnauthorizedException,
-    );
+    await expect(guard.canActivate(mockContext)).rejects.toThrow(UnauthorizedException);
   });
 
   it('should allow internal service authentication headers', async () => {
@@ -143,8 +141,6 @@ describe('JwtAuthGuard', () => {
       }),
     } as unknown as ExecutionContext;
 
-    await expect(guard.canActivate(mockContext)).rejects.toThrow(
-      UnauthorizedException,
-    );
+    await expect(guard.canActivate(mockContext)).rejects.toThrow(UnauthorizedException);
   });
 });

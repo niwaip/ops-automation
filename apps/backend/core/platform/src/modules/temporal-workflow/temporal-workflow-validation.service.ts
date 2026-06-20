@@ -11,7 +11,7 @@ export class TemporalWorkflowValidationService {
     fn: string,
     input?: Record<string, any>,
     taskQueue?: string,
-    timeout?: string,
+    timeout?: string
   ): Promise<{ success: boolean; logs: string[]; result?: any; error?: string; score: number }> {
     const logs: string[] = [];
 
@@ -28,16 +28,20 @@ export class TemporalWorkflowValidationService {
         validationInput.workflowId = workflowId;
       }
 
-      const response = await axios.post<any>(`${validationAgentUrl}/validate-workflow`, {
-        code,
-        fn_name: fn,
-        workflow_id: workflowId,
-        input_data: validationInput,
-        task_queue: taskQueue,
-        timeout,
-      }, {
-        timeout: Number(process.env.WORKFLOW_VALIDATION_TIMEOUT_MS || 300000),
-      });
+      const response = await axios.post<any>(
+        `${validationAgentUrl}/validate-workflow`,
+        {
+          code,
+          fn_name: fn,
+          workflow_id: workflowId,
+          input_data: validationInput,
+          task_queue: taskQueue,
+          timeout,
+        },
+        {
+          timeout: Number(process.env.WORKFLOW_VALIDATION_TIMEOUT_MS || 300000),
+        }
+      );
 
       logs.push(`Workflow validation response: ${JSON.stringify(response.data)}`);
 
@@ -76,8 +80,15 @@ export class TemporalWorkflowValidationService {
     input: Record<string, any> | undefined,
     taskQueue: string | undefined,
     timeout: string | undefined,
-    onLog: (log: string) => void,
-  ): Promise<{ success: boolean; result?: any; logs?: string[]; traceback?: string; error?: string; score: number }> {
+    onLog: (log: string) => void
+  ): Promise<{
+    success: boolean;
+    result?: any;
+    logs?: string[];
+    traceback?: string;
+    error?: string;
+    score: number;
+  }> {
     const validationAgentUrl = this.getWorkflowValidationAgentUrl();
     const workflowId = `workflow-validate-${Date.now()}`;
     const validationInput = {
@@ -137,17 +148,21 @@ export class TemporalWorkflowValidationService {
         timeout: timeout || null,
       });
       // #endregion
-      const response = await axios.post(`${validationAgentUrl}/validate-workflow/stream`, {
-        code,
-        fn_name: fn,
-        workflow_id: workflowId,
-        input_data: validationInput,
-        task_queue: taskQueue,
-        timeout,
-      }, {
-        responseType: 'stream',
-        timeout: Number(process.env.WORKFLOW_VALIDATION_TIMEOUT_MS || 300000),
-      });
+      const response = await axios.post(
+        `${validationAgentUrl}/validate-workflow/stream`,
+        {
+          code,
+          fn_name: fn,
+          workflow_id: workflowId,
+          input_data: validationInput,
+          task_queue: taskQueue,
+          timeout,
+        },
+        {
+          responseType: 'stream',
+          timeout: Number(process.env.WORKFLOW_VALIDATION_TIMEOUT_MS || 300000),
+        }
+      );
       // #region debug-point A:after-agent-stream-response
       debugReport('A', '[DEBUG] validateWorkflowRealStreaming received axios stream response', {
         workflowId,
@@ -195,7 +210,9 @@ export class TemporalWorkflowValidationService {
                 return;
               }
             } catch (parseError: any) {
-              this.logger.warn(`Failed to parse validation stream event: ${parseError?.message || parseError}`);
+              this.logger.warn(
+                `Failed to parse validation stream event: ${parseError?.message || parseError}`
+              );
             }
           }
         };
@@ -235,7 +252,9 @@ export class TemporalWorkflowValidationService {
 
       const finalResult = finalEvent.result;
       if (resultSuccess) {
-        pushLog(`[${new Date().toISOString()}] 执行成功，返回结果: ${JSON.stringify(finalResult, null, 2)}`);
+        pushLog(
+          `[${new Date().toISOString()}] 执行成功，返回结果: ${JSON.stringify(finalResult, null, 2)}`
+        );
       }
 
       return {
@@ -255,7 +274,10 @@ export class TemporalWorkflowValidationService {
         errorCode: error?.code || null,
         errorType: error?.constructor?.name || null,
         responseStatus: error?.response?.status || null,
-        responseData: typeof error?.response?.data === 'string' ? error.response.data.slice(0, 1000) : error?.response?.data || null,
+        responseData:
+          typeof error?.response?.data === 'string'
+            ? error.response.data.slice(0, 1000)
+            : error?.response?.data || null,
         stack: error?.stack || null,
       });
       // #endregion

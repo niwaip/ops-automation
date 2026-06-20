@@ -10,9 +10,7 @@ import {
 @ApiTags('browser-takeover')
 @Controller('browser/takeover')
 export class TakeoverController {
-  constructor(
-    private readonly takeoverOrchestrator: TakeoverOrchestratorService,
-  ) {}
+  constructor(private readonly takeoverOrchestrator: TakeoverOrchestratorService) {}
 
   @Post('start')
   @ApiOperation({ summary: 'Start manual takeover recording for a runtime browser session' })

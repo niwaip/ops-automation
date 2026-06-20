@@ -26,7 +26,7 @@ const identity = (state: PreferencesStoreState): PreferencesStoreState => state;
 function usePreferencesStoreImpl(): PreferencesStoreState;
 function usePreferencesStoreImpl<T>(selector: (state: PreferencesStoreState) => T): T;
 function usePreferencesStoreImpl<T>(
-  selector?: (state: PreferencesStoreState) => T,
+  selector?: (state: PreferencesStoreState) => T
 ): PreferencesStoreState | T {
   return useStore(preferencesStore, (selector ?? identity) as (state: PreferencesStoreState) => T);
 }

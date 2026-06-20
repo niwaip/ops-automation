@@ -6,12 +6,17 @@ import type {
 } from './temporal-workflow.types';
 
 type DurationToTimedeltaCodeFn = (duration: string) => string;
-type BuildExecuteActivityTimeoutLinesFn = (step: WorkflowStep, fallbackStartToCloseTimeout: string) => string[];
+type BuildExecuteActivityTimeoutLinesFn = (
+  step: WorkflowStep,
+  fallbackStartToCloseTimeout: string
+) => string[];
 type ToPythonLiteralFn = (value: unknown, indent?: number) => string;
 
 function resolveWorkflowClassName(workflowDsl: WorkflowDsl): string {
-  return workflowDsl.workflowClassName?.trim()
-    || `${(workflowDsl.name || 'Custom').replace(/\s+/g, '') || 'Custom'}Workflow`;
+  return (
+    workflowDsl.workflowClassName?.trim() ||
+    `${(workflowDsl.name || 'Custom').replace(/\s+/g, '') || 'Custom'}Workflow`
+  );
 }
 
 function resolveWorkflowDisplayName(workflowDsl: WorkflowDsl, workflowClassName: string): string {
@@ -161,7 +166,10 @@ export function buildFixedBrowserPhaseWorkflowCode(args: {
     durationToTimedeltaCode,
     buildExecuteActivityTimeoutLines,
   } = args;
-  if (browserActivityPairs.length === 0 || browserActivityPairs.some((pair) => !pair.activityDef.generatedCode)) {
+  if (
+    browserActivityPairs.length === 0 ||
+    browserActivityPairs.some((pair) => !pair.activityDef.generatedCode)
+  ) {
     return null;
   }
 
@@ -169,9 +177,9 @@ export function buildFixedBrowserPhaseWorkflowCode(args: {
   const workflowDisplayName = resolveWorkflowDisplayName(workflowDsl, workflowClassName);
   const inputParams = Object.entries(workflowDsl.inputParams || {});
   const workflowTimeoutCode = durationToTimedeltaCode(
-    browserActivityPairs[0]?.step.startToCloseTimeout
-    || browserActivityPairs[0]?.activityDef.timeout
-    || '60s',
+    browserActivityPairs[0]?.step.startToCloseTimeout ||
+      browserActivityPairs[0]?.activityDef.timeout ||
+      '60s'
   );
   const normalizeLines = inputParams.map(([key, config]) => {
     const defaultValue = config?.defaultValue ?? '';
@@ -189,7 +197,10 @@ export function buildFixedBrowserPhaseWorkflowCode(args: {
   });
 
   const phaseExecutionLines = browserActivityPairs.flatMap(({ step, activityDef }) => {
-    const executeActivityTimeoutLines = buildExecuteActivityTimeoutLines(step, activityDef.timeout || '60s');
+    const executeActivityTimeoutLines = buildExecuteActivityTimeoutLines(
+      step,
+      activityDef.timeout || '60s'
+    );
     return [
       `        workflow.logger.info(${JSON.stringify(`执行浏览器 Phase Activity: ${activityDef.name}`)})`,
       '        phase_result = await workflow.execute_activity(',
@@ -326,19 +337,22 @@ export function buildFixedHttpRequestWorkflowCode(args: {
   } = args;
   const workflowClassName = resolveWorkflowClassName(workflowDsl);
   const workflowDisplayName = resolveWorkflowDisplayName(workflowDsl, workflowClassName);
-  const workflowTimeoutCode = durationToTimedeltaCode(step.startToCloseTimeout || activityDef.timeout || '30s');
-  const executeActivityTimeoutLines = buildExecuteActivityTimeoutLines(step, activityDef.timeout || '30s');
+  const workflowTimeoutCode = durationToTimedeltaCode(
+    step.startToCloseTimeout || activityDef.timeout || '30s'
+  );
+  const executeActivityTimeoutLines = buildExecuteActivityTimeoutLines(
+    step,
+    activityDef.timeout || '30s'
+  );
   const urlTemplate = String(normalizedHttpConfig.urlTemplate || '').trim();
   if (!urlTemplate) {
     return null;
   }
 
   const inputParams = Object.entries(workflowDsl.inputParams || {});
-  const requiredParamNames = Array.from(new Set(
-    inputParams
-      .filter(([, config]) => Boolean(config?.required))
-      .map(([key]) => key),
-  ));
+  const requiredParamNames = Array.from(
+    new Set(inputParams.filter(([, config]) => Boolean(config?.required)).map(([key]) => key))
+  );
   const httpConfigExpression = toPythonLiteral(normalizedHttpConfig, 4);
   const workflowResultSupportLines = buildWorkflowResultSupportLines({
     resultType: 'generic',
@@ -487,19 +501,26 @@ export function buildFixedStructuredTransformWorkflowCode(args: {
   } = args;
   const workflowClassName = resolveWorkflowClassName(workflowDsl);
   const workflowDisplayName = resolveWorkflowDisplayName(workflowDsl, workflowClassName);
-  const workflowTimeoutCode = durationToTimedeltaCode(step.startToCloseTimeout || activityDef.timeout || '90s');
-  const executeActivityTimeoutLines = buildExecuteActivityTimeoutLines(step, activityDef.timeout || '90s');
+  const workflowTimeoutCode = durationToTimedeltaCode(
+    step.startToCloseTimeout || activityDef.timeout || '90s'
+  );
+  const executeActivityTimeoutLines = buildExecuteActivityTimeoutLines(
+    step,
+    activityDef.timeout || '90s'
+  );
   const contentTemplate = String(transformConfig.contentTemplate || '').trim();
   const instructionTemplate = String(transformConfig.instructionTemplate || '').trim();
   if (!contentTemplate || !instructionTemplate) {
     return null;
   }
 
-  const requiredParamNames = Array.from(new Set(
-    Object.entries(workflowDsl.inputParams || {})
-      .filter(([, config]) => Boolean(config?.required))
-      .map(([key]) => key),
-  ));
+  const requiredParamNames = Array.from(
+    new Set(
+      Object.entries(workflowDsl.inputParams || {})
+        .filter(([, config]) => Boolean(config?.required))
+        .map(([key]) => key)
+    )
+  );
   const transformConfigExpression = toPythonLiteral(transformConfig, 4);
   const workflowResultSupportLines = buildWorkflowResultSupportLines({
     resultType: 'generic',
@@ -632,16 +653,24 @@ export function buildFixedHttpRequestStructuredTransformWorkflowCode(args: {
     const defaultValue = config?.defaultValue ?? '';
     return `        ${JSON.stringify(key)}: cls._normalize(params.get(${JSON.stringify(key)}, ${JSON.stringify(String(defaultValue))})),`;
   });
-  const requiredParamNames = Array.from(new Set(
-    Object.entries(workflowDsl.inputParams || {})
-      .filter(([, config]) => Boolean(config?.required))
-      .map(([key]) => key),
-  ));
+  const requiredParamNames = Array.from(
+    new Set(
+      Object.entries(workflowDsl.inputParams || {})
+        .filter(([, config]) => Boolean(config?.required))
+        .map(([key]) => key)
+    )
+  );
 
   const httpConfigExpression = toPythonLiteral(normalizedHttpConfig, 4);
   const transformConfigExpression = toPythonLiteral(normalizedTransformConfig, 4);
-  const httpExecuteActivityTimeoutLines = buildExecuteActivityTimeoutLines(httpStep, httpActivityDef.timeout || '30s');
-  const transformExecuteActivityTimeoutLines = buildExecuteActivityTimeoutLines(transformStep, transformActivityDef.timeout || '90s');
+  const httpExecuteActivityTimeoutLines = buildExecuteActivityTimeoutLines(
+    httpStep,
+    httpActivityDef.timeout || '30s'
+  );
+  const transformExecuteActivityTimeoutLines = buildExecuteActivityTimeoutLines(
+    transformStep,
+    transformActivityDef.timeout || '90s'
+  );
   const workflowResultSupportLines = buildWorkflowResultSupportLines({
     resultType: 'generic',
     title: workflowDisplayName,
@@ -859,15 +888,18 @@ export function buildFixedBuiltinWorkflowCode(args: {
   } = args;
   const workflowClassName = resolveWorkflowClassName(workflowDsl);
   const workflowDisplayName = resolveWorkflowDisplayName(workflowDsl, workflowClassName);
-  const workflowTimeoutCode = durationToTimedeltaCode(step.startToCloseTimeout || activityDef.timeout || '60s');
-  const executeActivityTimeoutLines = buildExecuteActivityTimeoutLines(step, activityDef.timeout || '60s');
+  const workflowTimeoutCode = durationToTimedeltaCode(
+    step.startToCloseTimeout || activityDef.timeout || '60s'
+  );
+  const executeActivityTimeoutLines = buildExecuteActivityTimeoutLines(
+    step,
+    activityDef.timeout || '60s'
+  );
 
   const inputParams = Object.entries(workflowDsl.inputParams || {});
-  const requiredParamNames = Array.from(new Set(
-    inputParams
-      .filter(([, config]) => Boolean(config?.required))
-      .map(([key]) => key),
-  ));
+  const requiredParamNames = Array.from(
+    new Set(inputParams.filter(([, config]) => Boolean(config?.required)).map(([key]) => key))
+  );
   const configExpression = toPythonLiteral(normalizedConfig, 4);
   const workflowResultSupportLines = buildWorkflowResultSupportLines({
     resultType: resolveWorkflowResultType(activityDef.fn),
@@ -892,7 +924,7 @@ export function buildFixedBuiltinWorkflowCode(args: {
         '                    duration_seconds = val * 86400',
         '                else:',
         '                    duration_seconds = val',
-        '        workflow.logger.info(f"等待 {duration_seconds} 秒: {activity_input.get(\'message\') or \'\'}")',
+        "        workflow.logger.info(f\"等待 {duration_seconds} 秒: {activity_input.get('message') or ''}\")",
         '        await workflow.sleep(timedelta(seconds=duration_seconds))',
         '        result = {"status": "success", "durationSeconds": duration_seconds}',
       ]

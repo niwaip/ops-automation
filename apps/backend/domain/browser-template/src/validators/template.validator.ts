@@ -62,15 +62,96 @@ export class TemplateValidator {
           'list_search_results',
           'click_result',
           'switch_latest_tab',
+          'read_value',
+          'branch',
+          'takeover_gate',
         ];
         if (!validActions.includes(step.action)) {
           errors.push(`Step "${step.step_id}" has invalid action "${step.action}"`);
         }
 
         // Locator validation for actions that require locators
-        const locatorRequiredActions = ['click', 'fill', 'select', 'check'];
+        const locatorRequiredActions = ['click', 'fill', 'select', 'check', 'read_value'];
         if (locatorRequiredActions.includes(step.action) && !step.locator) {
           errors.push(`Step "${step.step_id}" with action "${step.action}" requires a locator`);
+        }
+
+        if (step.action === 'read_value') {
+          if (!step.output_var || step.output_var.trim() === '') {
+            errors.push(`Step "${step.step_id}" with action "read_value" requires output_var`);
+          }
+
+          const method = step.params?.method;
+          if (
+            method !== undefined &&
+            !['innerText', 'textContent', 'value', 'attribute', 'visible'].includes(
+              String(method)
+            )
+          ) {
+            errors.push(
+              `Step "${step.step_id}" with action "read_value" has invalid params.method "${String(method)}"`
+            );
+          }
+
+          if (
+            step.params?.method === 'attribute' &&
+            (!step.params?.attribute || String(step.params.attribute).trim() === '')
+          ) {
+            errors.push(
+              `Step "${step.step_id}" with action "read_value" requires params.attribute when method is "attribute"`
+            );
+          }
+        }
+
+        if (step.action === 'branch') {
+          if (!step.branch) {
+            errors.push(`Step "${step.step_id}" with action "branch" requires branch config`);
+          } else {
+            if (!step.branch.condition_fn || step.branch.condition_fn.trim() === '') {
+              errors.push(`Step "${step.step_id}" branch config requires condition_fn`);
+            }
+
+            if (!['continue', 'stop'].includes(step.branch.on_match)) {
+              errors.push(
+                `Step "${step.step_id}" branch config has invalid on_match "${String(step.branch.on_match)}"`
+              );
+            }
+
+            if (!['continue', 'stop', 'takeover'].includes(step.branch.on_mismatch)) {
+              errors.push(
+                `Step "${step.step_id}" branch config has invalid on_mismatch "${String(step.branch.on_mismatch)}"`
+              );
+            }
+
+            if (step.branch.on_mismatch === 'takeover' && !step.branch.takeover_reason?.trim()) {
+              warnings.push(
+                `Step "${step.step_id}" branch config should provide takeover_reason when on_mismatch is "takeover"`
+              );
+            }
+          }
+        }
+
+        if (step.action === 'takeover_gate') {
+          const takeoverReason = step.params?.takeover_reason ?? step.params?.reason;
+          if (takeoverReason !== undefined && String(takeoverReason).trim() === '') {
+            errors.push(
+              `Step "${step.step_id}" with action "takeover_gate" has an empty takeover reason`
+            );
+          }
+        }
+
+        if (
+          step.execution_policy &&
+          ![
+            'auto_execute',
+            'require_confirmation',
+            'require_takeover',
+            'forbid_in_replay',
+          ].includes(step.execution_policy)
+        ) {
+          errors.push(
+            `Step "${step.step_id}" has invalid execution_policy "${String(step.execution_policy)}"`
+          );
         }
 
         // Validate locators
@@ -84,8 +165,10 @@ export class TemplateValidator {
     if (template.params_schema && template.params_schema.properties) {
       for (const paramName of Object.keys(template.params_schema.properties)) {
         const lowerParamName = paramName.toLowerCase();
-        if (FORBIDDEN_PARAM_NAMES.some(forbidden => lowerParamName.includes(forbidden))) {
-          errors.push(`Forbidden parameter name "${paramName}" detected. Templates cannot contain password/secret parameters.`);
+        if (FORBIDDEN_PARAM_NAMES.some((forbidden) => lowerParamName.includes(forbidden))) {
+          errors.push(
+            `Forbidden parameter name "${paramName}" detected. Templates cannot contain password/secret parameters.`
+          );
         }
       }
 
@@ -103,7 +186,7 @@ export class TemplateValidator {
 
     // 5. Validate step uniqueness
     if (template.steps) {
-      const stepIds = template.steps.map(s => s.step_id);
+      const stepIds = template.steps.map((s) => s.step_id);
       const duplicates = stepIds.filter((id, index) => stepIds.indexOf(id) !== index);
       if (duplicates.length > 0) {
         errors.push(`Duplicate step IDs found: ${duplicates.join(', ')}`);
@@ -113,9 +196,11 @@ export class TemplateValidator {
     // 6. Validate idempotency keys uniqueness
     if (template.steps) {
       const idempotencyKeys = template.steps
-        .filter(s => s.idempotency_key)
-        .map(s => s.idempotency_key!);
-      const duplicateKeys = idempotencyKeys.filter((key, index) => idempotencyKeys.indexOf(key) !== index);
+        .filter((s) => s.idempotency_key)
+        .map((s) => s.idempotency_key!);
+      const duplicateKeys = idempotencyKeys.filter(
+        (key, index) => idempotencyKeys.indexOf(key) !== index
+      );
       if (duplicateKeys.length > 0) {
         errors.push(`Duplicate idempotency_keys found: ${duplicateKeys.join(', ')}`);
       }
@@ -150,7 +235,7 @@ export class TemplateValidator {
     if (template.params_schema?.properties) {
       for (const paramName of Object.keys(template.params_schema.properties)) {
         const lowerParamName = paramName.toLowerCase();
-        if (FORBIDDEN_PARAM_NAMES.some(forbidden => lowerParamName.includes(forbidden))) {
+        if (FORBIDDEN_PARAM_NAMES.some((forbidden) => lowerParamName.includes(forbidden))) {
           errors.push(`Forbidden parameter "${paramName}" in compiled template`);
         }
       }

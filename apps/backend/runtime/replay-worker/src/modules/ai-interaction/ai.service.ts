@@ -1,8 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import {
-  DecideFailureRequest,
-  DecideFailureResponse,
-} from '../../interfaces';
+import { DecideFailureRequest, DecideFailureResponse } from '../../interfaces';
 import { getAiOrchestratorUrl } from '../../config/service-endpoints';
 
 interface DeciderResponse {
@@ -71,7 +68,7 @@ export class AiService {
         throw new Error(`AI Orchestrator returned ${response.status}`);
       }
 
-      const data = await response.json() as DeciderResponse;
+      const data = (await response.json()) as DeciderResponse;
 
       // Validate response
       if (!['takeover', 'retry', 'skip'].includes(data.decision)) {
@@ -79,7 +76,7 @@ export class AiService {
       }
 
       this.logger.log(
-        `AI decision for ${request.session_id}/${request.step_id}: ${data.decision} (${data.reason})`,
+        `AI decision for ${request.session_id}/${request.step_id}: ${data.decision} (${data.reason})`
       );
 
       return {
@@ -109,10 +106,7 @@ export class AiService {
       'unexpected_ui',
     ];
 
-    const skipErrors = [
-      'optional',
-      'non_critical',
-    ];
+    const skipErrors = ['optional', 'non_critical'];
 
     const errorLower = request.error_message.toLowerCase();
 
@@ -143,7 +137,7 @@ export class AiService {
   async recognizeParams(
     templateId: string,
     userInput: string,
-    context?: Record<string, unknown>,
+    context?: Record<string, unknown>
   ): Promise<RecognizeResponse> {
     try {
       const response = await fetch(`${this.aiOrchestratorUrl}/ai/recognize`, {
@@ -162,7 +156,7 @@ export class AiService {
         throw new Error(`AI Orchestrator returned ${response.status}`);
       }
 
-      return await response.json() as RecognizeResponse;
+      return (await response.json()) as RecognizeResponse;
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
       this.logger.error(`Failed to call AI recognize: ${err.message}`);

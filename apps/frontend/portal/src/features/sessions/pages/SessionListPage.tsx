@@ -1,6 +1,22 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Table, Card, Button, Input, Space, Tag, Select, Modal, message, Form, Drawer, Descriptions, Timeline, Typography, Collapse } from 'antd';
+import {
+  Table,
+  Card,
+  Button,
+  Input,
+  Space,
+  Tag,
+  Select,
+  Modal,
+  message,
+  Form,
+  Drawer,
+  Descriptions,
+  Timeline,
+  Typography,
+  Collapse,
+} from 'antd';
 import {
   SearchOutlined,
   PlusOutlined,
@@ -26,15 +42,19 @@ type SessionRow = Session & {
   username?: string;
 };
 
-const isNonEmptyString = (value: unknown): value is string => typeof value === 'string' && value.length > 0;
+const isNonEmptyString = (value: unknown): value is string =>
+  typeof value === 'string' && value.length > 0;
 
-const isUuidLike = (value: string): boolean => (
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || '').trim())
-);
+const isUuidLike = (value: string): boolean =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    String(value || '').trim()
+  );
 
 const cleanInlineValue = (value?: string): string => (value || '').replace(/`/g, '').trim();
 
-const parseCliHtmlSummary = (rawHtml?: string): {
+const parseCliHtmlSummary = (
+  rawHtml?: string
+): {
   result?: unknown;
   code?: string;
   pageUrl?: string;
@@ -108,13 +128,18 @@ const SessionListPage: React.FC = () => {
   const sessionsQuery = useQuery(
     ['sessions', { page, pageSize, status: statusFilter, search: searchText }],
     async () => {
-      const listResult = await sessionApi.list({ page, pageSize, status: statusFilter, search: searchText });
+      const listResult = await sessionApi.list({
+        page,
+        pageSize,
+        status: statusFilter,
+        search: searchText,
+      });
       const sessions = listResult.sessions || [];
 
       const [templateNameMap, userNameMap] = await Promise.all([
         (async () => {
           const templateIds = Array.from(
-            new Set(sessions.map((session) => session.template_id).filter(Boolean) as string[]),
+            new Set(sessions.map((session) => session.template_id).filter(Boolean) as string[])
           );
           if (templateIds.length === 0) {
             return new Map<string, string>();
@@ -128,14 +153,14 @@ const SessionListPage: React.FC = () => {
               } catch {
                 return [templateId, '-'] as const;
               }
-            }),
+            })
           );
 
           return new Map<string, string>(templatePairs);
         })(),
         (async () => {
           const userIds = Array.from(
-            new Set(sessions.map((session) => session.user_id).filter(isNonEmptyString)),
+            new Set(sessions.map((session) => session.user_id).filter(isNonEmptyString))
           );
           if (userIds.length === 0) {
             return new Map<string, string>();
@@ -152,7 +177,7 @@ const SessionListPage: React.FC = () => {
               } catch {
                 return [userId, userId] as const;
               }
-            }),
+            })
           );
 
           return new Map<string, string>(userPairs);
@@ -177,14 +202,12 @@ const SessionListPage: React.FC = () => {
     () => sessionApi.getStepResults(selectedSession!.id),
     {
       enabled: dialogDrawerVisible && !!selectedSession?.id,
-    },
+    }
   );
 
-  const templatesQuery = useQuery(
-    ['reportTemplates'],
-    () => reportApi.getTemplates(),
-    { enabled: reportModalVisible }
-  );
+  const templatesQuery = useQuery(['reportTemplates'], () => reportApi.getTemplates(), {
+    enabled: reportModalVisible,
+  });
 
   const deleteMutation = useMutation(sessionApi.delete, {
     onSuccess: () => {
@@ -257,7 +280,11 @@ const SessionListPage: React.FC = () => {
       ) : isScreenshotStep ? (
         step.screenshot ? (
           <img
-            src={step.screenshot.startsWith('data:') ? step.screenshot : `data:image/png;base64,${step.screenshot}`}
+            src={
+              step.screenshot.startsWith('data:')
+                ? step.screenshot
+                : `data:image/png;base64,${step.screenshot}`
+            }
             alt={`step-${step.step_index}-screenshot`}
             style={{ width: '100%', borderRadius: 8, border: '1px solid var(--bg-secondary)' }}
           />
@@ -271,9 +298,17 @@ const SessionListPage: React.FC = () => {
               <Text strong>截图</Text>
               <div style={{ marginTop: 6 }}>
                 <img
-                  src={step.screenshot.startsWith('data:') ? step.screenshot : `data:image/png;base64,${step.screenshot}`}
+                  src={
+                    step.screenshot.startsWith('data:')
+                      ? step.screenshot
+                      : `data:image/png;base64,${step.screenshot}`
+                  }
                   alt={`step-${step.step_index}-screenshot`}
-                  style={{ width: '100%', borderRadius: 8, border: '1px solid var(--bg-secondary)' }}
+                  style={{
+                    width: '100%',
+                    borderRadius: 8,
+                    border: '1px solid var(--bg-secondary)',
+                  }}
                 />
               </div>
             </div>
@@ -281,7 +316,9 @@ const SessionListPage: React.FC = () => {
           {step.text ? (
             <div>
               <Text strong>文本输出</Text>
-              <div style={{ marginTop: 6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{step.text}</div>
+              <div style={{ marginTop: 6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                {step.text}
+              </div>
             </div>
           ) : null}
           {parsedHtml.result !== undefined ? (
@@ -369,7 +406,7 @@ const SessionListPage: React.FC = () => {
           <Space direction="vertical" size={8} style={{ width: '100%' }}>
             <Text strong>{`${step.step_index}. ${step.action}`}</Text>
             <Text type={hasError ? 'danger' : 'secondary'}>
-              {hasError ? (step.error || step.message || '执行失败') : '执行成功'}
+              {hasError ? step.error || step.message || '执行失败' : '执行成功'}
             </Text>
             {textPreview ? <Text type="secondary">{textPreview}</Text> : null}
             {detailNode}
@@ -391,9 +428,7 @@ const SessionListPage: React.FC = () => {
       title: t('session:sessionStatus'),
       dataIndex: 'state',
       key: 'state',
-      render: (state: SessionState) => (
-        <Tag color={getStateColor(state)}>{state}</Tag>
-      ),
+      render: (state: SessionState) => <Tag color={getStateColor(state)}>{state}</Tag>,
     },
     {
       title: t('session:owner'),
@@ -407,7 +442,7 @@ const SessionListPage: React.FC = () => {
       title: t('session:startTime'),
       dataIndex: 'created_at',
       key: 'created_at',
-      render: (createdAt: number) => createdAt ? new Date(createdAt).toLocaleString() : '-',
+      render: (createdAt: number) => (createdAt ? new Date(createdAt).toLocaleString() : '-'),
     },
     {
       title: t('common:actions'),
@@ -480,10 +515,7 @@ const SessionListPage: React.FC = () => {
             </Select>
           </Space>
           <Space size={12}>
-            <Button
-              icon={<ReloadOutlined />}
-              onClick={() => void sessionsQuery.refetch()}
-            >
+            <Button icon={<ReloadOutlined />} onClick={() => void sessionsQuery.refetch()}>
               {t('common:refresh')}
             </Button>
             <Button
@@ -525,13 +557,19 @@ const SessionListPage: React.FC = () => {
         {selectedSession ? (
           <Space direction="vertical" size={16} style={{ width: '100%' }}>
             <Descriptions column={1} size="small" bordered>
-              <Descriptions.Item label="模板名称">{selectedSession.template_name || '-'}</Descriptions.Item>
-              <Descriptions.Item label="所属用户">{selectedSession.username || '-'}</Descriptions.Item>
+              <Descriptions.Item label="模板名称">
+                {selectedSession.template_name || '-'}
+              </Descriptions.Item>
+              <Descriptions.Item label="所属用户">
+                {selectedSession.username || '-'}
+              </Descriptions.Item>
               <Descriptions.Item label="会话状态">
                 <Tag color={getStateColor(selectedSession.state)}>{selectedSession.state}</Tag>
               </Descriptions.Item>
               <Descriptions.Item label="开始时间">
-                {selectedSession.created_at ? new Date(selectedSession.created_at).toLocaleString() : '-'}
+                {selectedSession.created_at
+                  ? new Date(selectedSession.created_at).toLocaleString()
+                  : '-'}
               </Descriptions.Item>
             </Descriptions>
 
@@ -569,7 +607,15 @@ const SessionListPage: React.FC = () => {
               {templatesQuery.data?.templates?.map((template: ReportTemplate) => (
                 <Option key={template.id} value={template.id}>
                   <Space>
-                    <Tag color={template.format === 'word' ? 'blue' : template.format === 'pdf' ? 'red' : 'green'}>
+                    <Tag
+                      color={
+                        template.format === 'word'
+                          ? 'blue'
+                          : template.format === 'pdf'
+                            ? 'red'
+                            : 'green'
+                      }
+                    >
                       {template.format.toUpperCase()}
                     </Tag>
                     {template.name}

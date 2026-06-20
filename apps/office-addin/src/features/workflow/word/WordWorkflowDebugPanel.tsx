@@ -23,10 +23,7 @@ export function WordWorkflowDebugPanel(props: WordWorkflowDebugPanelProps) {
 
   return (
     <>
-      <button
-        className="debug-toggle-btn"
-        onClick={onToggleDebugPanel}
-      >
+      <button className="debug-toggle-btn" onClick={onToggleDebugPanel}>
         {showDebugPanel ? '隐藏日志' : '显示日志'}
       </button>
 
@@ -55,9 +52,7 @@ export function WordWorkflowDebugPanel(props: WordWorkflowDebugPanelProps) {
             <div className="word-error-log-card latest">
               <div className="word-error-log-title">当前错误</div>
               <div className="word-error-log-message">{analysisError}</div>
-              <pre className="word-error-log-pre">
-                {analysisErrorDetails || analysisError}
-              </pre>
+              <pre className="word-error-log-pre">{analysisErrorDetails || analysisError}</pre>
             </div>
           )}
           {recentErrorLogs.length > 0 && (
@@ -69,9 +64,7 @@ export function WordWorkflowDebugPanel(props: WordWorkflowDebugPanelProps) {
                     <span>{new Date(log.timestamp).toLocaleTimeString()}</span>
                   </div>
                   <div className="word-error-log-message">{log.message}</div>
-                  {log.details && (
-                    <pre className="word-error-log-pre">{log.details}</pre>
-                  )}
+                  {log.details && <pre className="word-error-log-pre">{log.details}</pre>}
                 </div>
               ))}
             </div>

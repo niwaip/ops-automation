@@ -47,7 +47,7 @@ describe('RuntimeAdapterRegistry', () => {
       browserAdapter as never,
       capabilityAdapter as never,
       documentAdapter as never,
-      workflowAdapter as never,
+      workflowAdapter as never
     );
 
     const resolved = registry.resolve(baseRequest);
@@ -86,7 +86,7 @@ describe('RuntimeAdapterRegistry', () => {
       browserAdapter as never,
       capabilityAdapter as never,
       documentAdapter as never,
-      workflowAdapter as never,
+      workflowAdapter as never
     );
 
     const resolved = registry.resolve(baseRequest);
@@ -125,7 +125,7 @@ describe('RuntimeAdapterRegistry', () => {
       browserAdapter as never,
       capabilityAdapter as never,
       documentAdapter as never,
-      workflowAdapter as never,
+      workflowAdapter as never
     );
 
     try {
@@ -133,7 +133,10 @@ describe('RuntimeAdapterRegistry', () => {
       throw new Error('expected resolve() to throw');
     } catch (error) {
       expect(error).toBeInstanceOf(ServiceUnavailableException);
-      const response = (error as ServiceUnavailableException).getResponse() as Record<string, unknown>;
+      const response = (error as ServiceUnavailableException).getResponse() as Record<
+        string,
+        unknown
+      >;
       expect(response).toMatchObject({
         code: 'RUNTIME_UNAVAILABLE',
         runtimeType: 'browser',
@@ -173,7 +176,7 @@ describe('RuntimeAdapterRegistry', () => {
       browserAdapter as never,
       capabilityAdapter as never,
       documentAdapter as never,
-      workflowAdapter as never,
+      workflowAdapter as never
     );
 
     const request: RuntimeStepInvokeRequest = {

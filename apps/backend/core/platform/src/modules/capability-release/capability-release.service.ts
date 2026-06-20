@@ -85,7 +85,7 @@ export class CapabilityReleaseService implements OnModuleInit {
     private readonly capabilityReleaseRuntimeService: CapabilityReleaseRuntimeService,
     private readonly capabilityReleaseSkillDraftService: CapabilityReleaseSkillDraftService,
     private readonly capabilityReleaseTemporalSchemaService: CapabilityReleaseTemporalSchemaService,
-    private readonly temporalWorkflowService: TemporalWorkflowService,
+    private readonly temporalWorkflowService: TemporalWorkflowService
   ) {}
 
   async onModuleInit() {
@@ -127,47 +127,47 @@ export class CapabilityReleaseService implements OnModuleInit {
          FROM capability_source_snapshots
          WHERE release_id = $1::uuid
          ORDER BY snapshot_version DESC`,
-        id,
+        id
       ),
       this.prisma.$queryRawUnsafe<any[]>(
         `SELECT *
          FROM capability_builds
          WHERE release_id = $1::uuid
          ORDER BY created_at DESC`,
-        id,
+        id
       ),
       this.prisma.$queryRawUnsafe<any[]>(
         `SELECT *
          FROM capability_validations
          WHERE release_id = $1::uuid
          ORDER BY created_at DESC`,
-        id,
+        id
       ),
       this.prisma.$queryRawUnsafe<any[]>(
         `SELECT *
          FROM skill_drafts
          WHERE release_id = $1::uuid
          ORDER BY updated_at DESC`,
-        id,
+        id
       ),
       this.prisma.$queryRawUnsafe<any[]>(
         `SELECT *
          FROM deployment_records
          WHERE release_id = $1::uuid
          ORDER BY created_at DESC`,
-        id,
+        id
       ),
       this.prisma.$queryRawUnsafe<any[]>(
         `SELECT *
          FROM release_audit_events
          WHERE release_id = $1::uuid
          ORDER BY created_at DESC`,
-        id,
+        id
       ),
     ]);
 
     const currentSourceSnapshot = snapshots.find(
-      (snapshot) => snapshot.id === release.currentSourceSnapshotId,
+      (snapshot) => snapshot.id === release.currentSourceSnapshotId
     );
     const currentSkillDraft = drafts.find((draft) => draft.id === release.currentSkillDraftId);
 
@@ -188,9 +188,9 @@ export class CapabilityReleaseService implements OnModuleInit {
   async getPublishedCapabilityDetail(id: string): Promise<CapabilityReleaseDetailDTO> {
     const release = await this.getReleaseOrThrow(id);
     const isVisible =
-      Boolean(release.publishedSkillId)
-      || ['published', 'deployed', 'rolled_back'].includes(release.status)
-      || ['running', 'succeeded', 'deployed', 'rolled_back'].includes(release.deploymentStatus);
+      Boolean(release.publishedSkillId) ||
+      ['published', 'deployed', 'rolled_back'].includes(release.status) ||
+      ['running', 'succeeded', 'deployed', 'rolled_back'].includes(release.deploymentStatus);
 
     if (!isVisible) {
       throw new NotFoundException('该 Release 尚未进入发布中心');
@@ -199,7 +199,10 @@ export class CapabilityReleaseService implements OnModuleInit {
     return this.getCapabilityDetail(id);
   }
 
-  async archiveCapability(id: string, userId?: string): Promise<{ success: true; archivedId: string }> {
+  async archiveCapability(
+    id: string,
+    userId?: string
+  ): Promise<{ success: true; archivedId: string }> {
     const release = await this.getReleaseOrThrow(id);
 
     await this.prisma.$executeRawUnsafe(
@@ -208,7 +211,7 @@ export class CapabilityReleaseService implements OnModuleInit {
            archived_at = now(),
            updated_at = now()
        WHERE id = $1::uuid`,
-      id,
+      id
     );
 
     if (release.publishedSkillId) {
@@ -217,7 +220,7 @@ export class CapabilityReleaseService implements OnModuleInit {
          SET is_active = false,
              updated_at = now()
          WHERE id = $1::uuid`,
-        release.publishedSkillId,
+        release.publishedSkillId
       );
       await this.insertAuditEvent(
         id,
@@ -225,7 +228,7 @@ export class CapabilityReleaseService implements OnModuleInit {
         userId,
         true,
         `归档 Release 时停用已发布 Skill: ${release.publishedSkillId}`,
-        { publishedSkillId: release.publishedSkillId },
+        { publishedSkillId: release.publishedSkillId }
       );
     }
 
@@ -235,17 +238,17 @@ export class CapabilityReleaseService implements OnModuleInit {
 
   async executeCapabilityRuntime(
     dto: ExecuteCapabilityRuntimeDTO,
-    userId?: string,
+    userId?: string
   ): Promise<ExecuteCapabilityRuntimeResultDTO> {
     return this.capabilityReleaseRuntimeService.executeCapabilityRuntime(
       dto,
       userId,
-      this.getRuntimeAccessors(),
+      this.getRuntimeAccessors()
     );
   }
 
   async getPublishedSkillRuntimeContext(
-    skillId: string,
+    skillId: string
   ): Promise<CapabilityPublishedSkillRuntimeContext> {
     return this.capabilityReleaseRuntimeService.getPublishedSkillRuntimeContext(skillId);
   }
@@ -254,25 +257,30 @@ export class CapabilityReleaseService implements OnModuleInit {
     skillId: string,
     input: Record<string, unknown> | undefined,
     userId?: string,
-    options?: CapabilityReleaseRuntimeExecutionOptions,
+    options?: CapabilityReleaseRuntimeExecutionOptions
   ): Promise<ExecuteCapabilityRuntimeResultDTO> {
     return this.capabilityReleaseRuntimeService.executePublishedSkill(
       skillId,
       input,
       userId,
       options,
-      this.getRuntimeAccessors(),
+      this.getRuntimeAccessors()
     );
   }
 
   async createCapability(
     dto: CreateCapabilityReleaseDTO,
-    userId?: string,
+    userId?: string
   ): Promise<CapabilityReleaseDetailDTO> {
     const releaseId = randomUUID();
     const normalizedSourceId = this.resolveReleaseSourceId(dto);
     const sourcePayload = dto.sourcePayload
-      ? this.mergeWorkflowArtifactRefIntoPayload(dto.sourcePayload, dto.sourceType, normalizedSourceId, dto.workflowArtifactRef)
+      ? this.mergeWorkflowArtifactRefIntoPayload(
+          dto.sourcePayload,
+          dto.sourceType,
+          normalizedSourceId,
+          dto.workflowArtifactRef
+        )
       : normalizedSourceId
         ? await this.loadSourcePayload(dto.sourceType, normalizedSourceId)
         : {};
@@ -289,7 +297,7 @@ export class CapabilityReleaseService implements OnModuleInit {
       dto.sourceType,
       normalizedSourceId,
       sourceName,
-      userId || null,
+      userId || null
     );
 
     if (Object.keys(sourcePayload).length > 0) {
@@ -298,14 +306,14 @@ export class CapabilityReleaseService implements OnModuleInit {
         dto.sourceType,
         normalizedSourceId,
         sourcePayload,
-        userId,
+        userId
       );
       await this.prisma.$executeRawUnsafe(
         `UPDATE capability_releases
          SET current_source_snapshot_id = $2::uuid, updated_at = now()
          WHERE id = $1::uuid`,
         releaseId,
-        snapshot.id,
+        snapshot.id
       );
     }
 
@@ -315,33 +323,33 @@ export class CapabilityReleaseService implements OnModuleInit {
 
   async bridgeRecorderExport(
     dto: BridgeRecorderExportDTO,
-    userId?: string,
+    userId?: string
   ): Promise<BridgeRecorderExportResultDTO> {
     return this.capabilityReleasePublishService.bridgeRecorderExport(
       dto,
       userId,
-      this.getPublishAccessors(),
+      this.getPublishAccessors()
     );
   }
 
   async updateSource(
     id: string,
     dto: UpdateCapabilitySourceDTO,
-    userId?: string,
+    userId?: string
   ): Promise<CapabilityReleaseDetailDTO> {
     const release = await this.getReleaseOrThrow(id);
     const sourcePayload = this.mergeWorkflowArtifactRefIntoPayload(
       dto.sourcePayload,
       release.sourceType,
       release.sourceId || null,
-      dto.workflowArtifactRef,
+      dto.workflowArtifactRef
     );
     const snapshot = await this.createSourceSnapshot(
       id,
       release.sourceType,
       release.sourceId || null,
       sourcePayload,
-      userId,
+      userId
     );
 
     await this.prisma.$executeRawUnsafe(
@@ -353,7 +361,7 @@ export class CapabilityReleaseService implements OnModuleInit {
        WHERE id = $1::uuid`,
       id,
       dto.sourceName || this.extractSourceName(sourcePayload) || release.sourceName || null,
-      snapshot.id,
+      snapshot.id
     );
 
     await this.insertAuditEvent(id, 'source_updated', userId, true, '更新源定义快照');
@@ -363,13 +371,13 @@ export class CapabilityReleaseService implements OnModuleInit {
   async build(
     id: string,
     dto: CreateCapabilityBuildDTO,
-    userId?: string,
+    userId?: string
   ): Promise<{ release: CapabilityReleaseDTO; build: CapabilityBuildDTO }> {
     return this.capabilityReleaseBuildValidationService.build(
       id,
       dto,
       userId,
-      this.getBuildValidationAccessors(),
+      this.getBuildValidationAccessors()
     );
   }
 
@@ -377,27 +385,27 @@ export class CapabilityReleaseService implements OnModuleInit {
     id: string,
     dto: CreateCapabilityBuildDTO,
     userId: string | undefined,
-    onEvent: (event: string, payload: Record<string, unknown>) => void,
+    onEvent: (event: string, payload: Record<string, unknown>) => void
   ): Promise<void> {
     return this.capabilityReleaseBuildValidationService.buildStream(
       id,
       dto,
       userId,
       onEvent,
-      this.getBuildValidationAccessors(),
+      this.getBuildValidationAccessors()
     );
   }
 
   async validateStatic(
     id: string,
     dto: ValidateCapabilityDTO,
-    userId?: string,
+    userId?: string
   ): Promise<{ release: CapabilityReleaseDTO; validation: CapabilityValidationDTO }> {
     return this.capabilityReleaseBuildValidationService.validateStatic(
       id,
       dto,
       userId,
-      this.getBuildValidationAccessors(),
+      this.getBuildValidationAccessors()
     );
   }
 
@@ -405,14 +413,14 @@ export class CapabilityReleaseService implements OnModuleInit {
     id: string,
     dto: ValidateCapabilityDTO,
     userId?: string,
-    authToken?: string,
+    authToken?: string
   ): Promise<{ release: CapabilityReleaseDTO; validation: CapabilityValidationDTO }> {
     return this.capabilityReleaseBuildValidationService.validateSandbox(
       id,
       dto,
       userId,
       authToken,
-      this.getBuildValidationAccessors(),
+      this.getBuildValidationAccessors()
     );
   }
 
@@ -421,27 +429,27 @@ export class CapabilityReleaseService implements OnModuleInit {
     dto: ValidateCapabilityDTO,
     userId: string | undefined,
     _authToken: string | undefined,
-    onEvent: (event: string, payload: Record<string, unknown>) => void,
+    onEvent: (event: string, payload: Record<string, unknown>) => void
   ): Promise<void> {
     return this.capabilityReleaseBuildValidationService.validateSandboxStream(
       id,
       dto,
       userId,
       onEvent,
-      this.getBuildValidationAccessors(),
+      this.getBuildValidationAccessors()
     );
   }
 
   async generateSkillDraft(
     id: string,
     dto: GenerateSkillDraftDTO,
-    userId?: string,
+    userId?: string
   ): Promise<{ release: CapabilityReleaseDTO; skillDraft: SkillDraftDTO }> {
     return this.capabilityReleaseBuildValidationService.generateSkillDraft(
       id,
       dto,
       userId,
-      this.getBuildValidationAccessors(),
+      this.getBuildValidationAccessors()
     );
   }
 
@@ -456,59 +464,59 @@ export class CapabilityReleaseService implements OnModuleInit {
   async updateSkillDraft(
     id: string,
     dto: UpdateSkillDraftDTO,
-    userId?: string,
+    userId?: string
   ): Promise<SkillDraftDTO> {
     return this.capabilityReleasePublishService.updateSkillDraft(
       id,
       dto,
       userId,
-      this.getPublishAccessors(),
+      this.getPublishAccessors()
     );
   }
 
   async approveRelease(
     id: string,
     dto: ApproveCapabilityReleaseDTO,
-    userId?: string,
+    userId?: string
   ): Promise<CapabilityReleaseDetailDTO> {
     return this.capabilityReleasePublishService.approveRelease(
       id,
       dto,
       userId,
-      this.getPublishAccessors(),
+      this.getPublishAccessors()
     );
   }
 
   async publishSkill(
     id: string,
     dto: PublishSkillDraftDTO,
-    userId?: string,
+    userId?: string
   ): Promise<{ release: CapabilityReleaseDTO; publishedSkillId: string }> {
     return this.capabilityReleasePublishService.publishSkill(
       id,
       dto,
       userId,
-      this.getPublishAccessors(),
+      this.getPublishAccessors()
     );
   }
 
   async deploy(
     id: string,
     dto: DeployCapabilityReleaseDTO,
-    userId?: string,
+    userId?: string
   ): Promise<{ release: CapabilityReleaseDTO; deployment: DeploymentRecordDTO }> {
     return this.capabilityReleaseDeploymentService.deploy(
       id,
       dto,
       userId,
-      this.getDeploymentAccessors(),
+      this.getDeploymentAccessors()
     );
   }
 
   async getDeployments(id: string): Promise<DeploymentRecordDTO[]> {
     return this.capabilityReleaseDeploymentService.getDeployments(
       id,
-      this.getDeploymentAccessors(),
+      this.getDeploymentAccessors()
     );
   }
 
@@ -519,7 +527,7 @@ export class CapabilityReleaseService implements OnModuleInit {
        FROM release_audit_events
        WHERE release_id = $1::uuid
        ORDER BY created_at DESC`,
-      id,
+      id
     );
     return rows.map((row) => mapCapabilityAuditEvent(row));
   }
@@ -527,39 +535,43 @@ export class CapabilityReleaseService implements OnModuleInit {
   async rollback(
     id: string,
     dto: RollbackCapabilityReleaseDTO,
-    userId?: string,
-  ): Promise<{ release: CapabilityReleaseDTO; deployment: DeploymentRecordDTO; targetReleaseId: string }> {
+    userId?: string
+  ): Promise<{
+    release: CapabilityReleaseDTO;
+    deployment: DeploymentRecordDTO;
+    targetReleaseId: string;
+  }> {
     return this.capabilityReleaseDeploymentService.rollback(
       id,
       dto,
       userId,
-      this.getDeploymentAccessors(),
+      this.getDeploymentAccessors()
     );
   }
 
   async analyzeFailure(
     id: string,
     dto: AnalyzeFailureDTO,
-    userId?: string,
+    userId?: string
   ): Promise<AnalyzeFailureResultDTO> {
     return this.capabilityReleaseAssistService.analyzeFailure(
       id,
       dto,
       userId,
-      this.getAssistAccessors(),
+      this.getAssistAccessors()
     );
   }
 
   async suggestWizardAssist(
     id: string,
     dto: SuggestReleaseWizardAssistDTO,
-    userId?: string,
+    userId?: string
   ): Promise<SuggestReleaseWizardAssistResultDTO> {
     return this.capabilityReleaseAssistService.suggestWizardAssist(
       id,
       dto,
       userId,
-      this.getAssistAccessors(),
+      this.getAssistAccessors()
     );
   }
 
@@ -717,7 +729,7 @@ export class CapabilityReleaseService implements OnModuleInit {
        WHERE id = $1::uuid
          AND archived_at IS NULL
        LIMIT 1`,
-      id,
+      id
     );
     if (!rows[0]) {
       throw new NotFoundException('Capability 不存在');
@@ -726,14 +738,14 @@ export class CapabilityReleaseService implements OnModuleInit {
   }
 
   private async getCurrentSnapshotOrThrow(
-    release: CapabilityReleaseDTO,
+    release: CapabilityReleaseDTO
   ): Promise<CapabilitySourceSnapshotDTO> {
     if (!release.currentSourceSnapshotId) {
       throw new NotFoundException('当前 Release 没有源定义快照');
     }
     const rows = await this.prisma.$queryRawUnsafe<any[]>(
       `SELECT * FROM capability_source_snapshots WHERE id = $1::uuid LIMIT 1`,
-      release.currentSourceSnapshotId,
+      release.currentSourceSnapshotId
     );
     if (!rows[0]) {
       throw new NotFoundException('源定义快照不存在');
@@ -744,7 +756,7 @@ export class CapabilityReleaseService implements OnModuleInit {
   private async getBuildOrThrow(id: string): Promise<CapabilityBuildDTO> {
     const rows = await this.prisma.$queryRawUnsafe<any[]>(
       `SELECT * FROM capability_builds WHERE id = $1::uuid LIMIT 1`,
-      id,
+      id
     );
     if (!rows[0]) {
       throw new NotFoundException('构建记录不存在');
@@ -755,7 +767,7 @@ export class CapabilityReleaseService implements OnModuleInit {
   private async getValidationOrThrow(id: string): Promise<CapabilityValidationDTO> {
     const rows = await this.prisma.$queryRawUnsafe<any[]>(
       `SELECT * FROM capability_validations WHERE id = $1::uuid LIMIT 1`,
-      id,
+      id
     );
     if (!rows[0]) {
       throw new NotFoundException('验证记录不存在');
@@ -766,7 +778,7 @@ export class CapabilityReleaseService implements OnModuleInit {
   private async getDeploymentOrThrow(id: string): Promise<DeploymentRecordDTO> {
     const rows = await this.prisma.$queryRawUnsafe<any[]>(
       `SELECT * FROM deployment_records WHERE id = $1::uuid LIMIT 1`,
-      id,
+      id
     );
     if (!rows[0]) {
       throw new NotFoundException('部署记录不存在');
@@ -777,7 +789,7 @@ export class CapabilityReleaseService implements OnModuleInit {
   private async getSkillDraftOrThrow(id: string): Promise<SkillDraftDTO> {
     const rows = await this.prisma.$queryRawUnsafe<any[]>(
       `SELECT * FROM skill_drafts WHERE id = $1::uuid LIMIT 1`,
-      id,
+      id
     );
     if (!rows[0]) {
       throw new NotFoundException('Skill 草案不存在');
@@ -786,7 +798,7 @@ export class CapabilityReleaseService implements OnModuleInit {
   }
 
   private async getLatestSuccessfulValidationOrThrow(
-    releaseId: string,
+    releaseId: string
   ): Promise<CapabilityValidationDTO> {
     const rows = await this.prisma.$queryRawUnsafe<any[]>(
       `SELECT *
@@ -794,7 +806,7 @@ export class CapabilityReleaseService implements OnModuleInit {
        WHERE release_id = $1::uuid AND success = true
        ORDER BY created_at DESC
        LIMIT 1`,
-      releaseId,
+      releaseId
     );
     if (!rows[0]) {
       throw new NotFoundException('当前 Release 没有通过的验证记录');
@@ -803,7 +815,7 @@ export class CapabilityReleaseService implements OnModuleInit {
   }
 
   private async getLatestSuccessfulCodeBuild(
-    releaseId: string,
+    releaseId: string
   ): Promise<CapabilityBuildDTO | null> {
     const rows = await this.prisma.$queryRawUnsafe<any[]>(
       `SELECT *
@@ -814,7 +826,7 @@ export class CapabilityReleaseService implements OnModuleInit {
          AND length(trim(generated_code)) > 0
        ORDER BY created_at DESC
        LIMIT 1`,
-      releaseId,
+      releaseId
     );
     return rows[0] ? mapCapabilityBuild(rows[0]) : null;
   }
@@ -823,7 +835,7 @@ export class CapabilityReleaseService implements OnModuleInit {
     release: CapabilityReleaseDTO,
     snapshot: CapabilitySourceSnapshotDTO,
     buildId: string | undefined,
-    userId?: string,
+    userId?: string
   ): Promise<CapabilityBuildDTO> {
     const artifact = await this.getTemporalWorkflowArtifactOrThrow(release, snapshot);
 
@@ -850,14 +862,14 @@ export class CapabilityReleaseService implements OnModuleInit {
     sourceType: string,
     sourceId: string | null,
     sourcePayload: Record<string, unknown>,
-    userId?: string,
+    userId?: string
   ): Promise<CapabilitySourceSnapshotDTO> {
     const snapshotId = randomUUID();
     const versionRows = await this.prisma.$queryRawUnsafe<{ max_version: number | null }[]>(
       `SELECT COALESCE(MAX(snapshot_version), 0) AS max_version
        FROM capability_source_snapshots
        WHERE release_id = $1::uuid`,
-      releaseId,
+      releaseId
     );
     const snapshotVersion = Number(versionRows[0]?.max_version || 0) + 1;
 
@@ -874,7 +886,7 @@ export class CapabilityReleaseService implements OnModuleInit {
       sourceId,
       JSON.stringify(sourcePayload),
       this.extractSourceName(sourcePayload) || 'source snapshot',
-      userId || null,
+      userId || null
     );
 
     return this.getSourceSnapshot(snapshotId);
@@ -883,7 +895,7 @@ export class CapabilityReleaseService implements OnModuleInit {
   private async getSourceSnapshot(id: string): Promise<CapabilitySourceSnapshotDTO> {
     const rows = await this.prisma.$queryRawUnsafe<any[]>(
       `SELECT * FROM capability_source_snapshots WHERE id = $1::uuid LIMIT 1`,
-      id,
+      id
     );
     if (!rows[0]) {
       throw new NotFoundException('源定义快照不存在');
@@ -897,7 +909,7 @@ export class CapabilityReleaseService implements OnModuleInit {
     actorId: string | undefined,
     success: boolean,
     summary: string,
-    details?: Record<string, unknown>,
+    details?: Record<string, unknown>
   ): Promise<void> {
     await this.prisma.$executeRawUnsafe(
       `INSERT INTO release_audit_events (
@@ -911,16 +923,18 @@ export class CapabilityReleaseService implements OnModuleInit {
       actorId || null,
       success,
       summary,
-      JSON.stringify(details || null),
+      JSON.stringify(details || null)
     );
   }
 
   private async loadSourcePayload(
     sourceType: string,
-    sourceId: string,
+    sourceId: string
   ): Promise<Record<string, unknown>> {
     if (sourceType === 'browser_recording') {
-      throw new BadRequestException('browser_recording 类型不支持通过 sourceId 自动加载，请直接提供 sourcePayload');
+      throw new BadRequestException(
+        'browser_recording 类型不支持通过 sourceId 自动加载，请直接提供 sourcePayload'
+      );
     }
 
     if (sourceType === 'temporal_workflow') {
@@ -941,13 +955,15 @@ export class CapabilityReleaseService implements OnModuleInit {
          FROM temporal_workflows
          WHERE id = $1::uuid
          LIMIT 1`,
-        sourceId,
+        sourceId
       );
       if (!rows[0]) {
         throw new NotFoundException('Temporal Workflow 不存在');
       }
-      const workflowDsl = parseCapabilityReleaseJson<Record<string, unknown>>(rows[0].workflowDsl) || {};
-      const activityDsl = parseCapabilityReleaseJson<Record<string, unknown>>(rows[0].activityDsl) || {};
+      const workflowDsl =
+        parseCapabilityReleaseJson<Record<string, unknown>>(rows[0].workflowDsl) || {};
+      const activityDsl =
+        parseCapabilityReleaseJson<Record<string, unknown>>(rows[0].activityDsl) || {};
 
       return {
         artifactHash: rows[0].artifactHash || null,
@@ -968,18 +984,28 @@ export class CapabilityReleaseService implements OnModuleInit {
           artifactHash: rows[0].artifactHash || null,
         },
         activityDsl,
-        goal: this.capabilityReleaseTemporalSchemaService
-          .extractTemporalGoal(workflowDsl, rows[0].description),
-        expectedResult: this.capabilityReleaseTemporalSchemaService
-          .extractTemporalExpectedResult(workflowDsl),
-        paramsSchema: this.capabilityReleaseTemporalSchemaService
-          .buildTemporalParamsSchema(workflowDsl, activityDsl),
-        executionFlowKeys: this.capabilityReleaseSkillDraftService
-          .buildTemporalExecutionFlowKeys(rows[0].name, workflowDsl, activityDsl),
+        goal: this.capabilityReleaseTemporalSchemaService.extractTemporalGoal(
+          workflowDsl,
+          rows[0].description
+        ),
+        expectedResult:
+          this.capabilityReleaseTemporalSchemaService.extractTemporalExpectedResult(workflowDsl),
+        paramsSchema: this.capabilityReleaseTemporalSchemaService.buildTemporalParamsSchema(
+          workflowDsl,
+          activityDsl
+        ),
+        executionFlowKeys: this.capabilityReleaseSkillDraftService.buildTemporalExecutionFlowKeys(
+          rows[0].name,
+          workflowDsl,
+          activityDsl
+        ),
         outputParams: parseCapabilityReleaseJson(workflowDsl.outputParams) || {},
-        workflowSteps: this.capabilityReleaseSkillDraftService.buildTemporalWorkflowSteps(workflowDsl),
-        sourceTemplate: this.capabilityReleaseTemporalSchemaService
-          .extractTemporalSourceTemplate(workflowDsl, activityDsl),
+        workflowSteps:
+          this.capabilityReleaseSkillDraftService.buildTemporalWorkflowSteps(workflowDsl),
+        sourceTemplate: this.capabilityReleaseTemporalSchemaService.extractTemporalSourceTemplate(
+          workflowDsl,
+          activityDsl
+        ),
       };
     }
 
@@ -989,7 +1015,7 @@ export class CapabilityReleaseService implements OnModuleInit {
        FROM execution_flow_templates
        WHERE id = $1::uuid
        LIMIT 1`,
-      sourceId,
+      sourceId
     );
     if (!rows[0]) {
       throw new NotFoundException('执行流程模板不存在');
@@ -1023,34 +1049,25 @@ export class CapabilityReleaseService implements OnModuleInit {
     return typeof name === 'string' && name.trim() ? name.trim() : null;
   }
 
-  private resolveReleaseSourceId(
-    dto: CreateCapabilityReleaseDTO,
-  ): string | null {
+  private resolveReleaseSourceId(dto: CreateCapabilityReleaseDTO): string | null {
     if (dto.sourceType !== 'temporal_workflow') {
       return dto.sourceId || null;
     }
-    return (
-      dto.sourceId
-      || dto.workflowId
-      || dto.workflowArtifactRef?.workflowId
-      || null
-    );
+    return dto.sourceId || dto.workflowId || dto.workflowArtifactRef?.workflowId || null;
   }
 
   private mergeWorkflowArtifactRefIntoPayload(
     sourcePayload: Record<string, unknown>,
     sourceType: string,
     sourceId: string | null,
-    explicitRef?: WorkflowArtifactRefDTO,
+    explicitRef?: WorkflowArtifactRefDTO
   ): Record<string, unknown> {
     if (sourceType !== 'temporal_workflow') {
       return sourcePayload;
     }
 
     const payloadRef = this.extractWorkflowArtifactRef(sourcePayload, sourceId);
-    const mergedRef = explicitRef?.workflowId
-      ? explicitRef
-      : payloadRef;
+    const mergedRef = explicitRef?.workflowId ? explicitRef : payloadRef;
 
     return {
       ...sourcePayload,
@@ -1060,17 +1077,20 @@ export class CapabilityReleaseService implements OnModuleInit {
 
   private extractWorkflowArtifactRef(
     payload: Record<string, unknown>,
-    fallbackWorkflowId?: string | null,
+    fallbackWorkflowId?: string | null
   ): WorkflowArtifactRefDTO | null {
     const directRef = payload.workflowArtifactRef;
     if (directRef && typeof directRef === 'object') {
-      const workflowId = typeof (directRef as Record<string, unknown>).workflowId === 'string'
-        ? ((directRef as Record<string, unknown>).workflowId as string).trim()
-        : '';
+      const workflowId =
+        typeof (directRef as Record<string, unknown>).workflowId === 'string'
+          ? ((directRef as Record<string, unknown>).workflowId as string).trim()
+          : '';
       if (workflowId) {
         return {
           workflowId,
-          artifactVersion: this.asNullableNumber((directRef as Record<string, unknown>).artifactVersion),
+          artifactVersion: this.asNullableNumber(
+            (directRef as Record<string, unknown>).artifactVersion
+          ),
           artifactHash: this.asNullableString((directRef as Record<string, unknown>).artifactHash),
         };
       }
@@ -1091,7 +1111,7 @@ export class CapabilityReleaseService implements OnModuleInit {
 
   private async getTemporalWorkflowArtifactOrThrow(
     release: CapabilityReleaseDTO,
-    snapshot: CapabilitySourceSnapshotDTO,
+    snapshot: CapabilitySourceSnapshotDTO
   ): Promise<{
     workflowId: string;
     workflowName: string;
@@ -1101,38 +1121,45 @@ export class CapabilityReleaseService implements OnModuleInit {
   }> {
     const workflowArtifactRef = this.extractWorkflowArtifactRef(
       snapshot.sourcePayload,
-      release.sourceId || snapshot.sourceId || null,
+      release.sourceId || snapshot.sourceId || null
     );
 
     if (!workflowArtifactRef?.workflowId) {
-      throw new BadRequestException('当前 Release 未绑定 Workflow artifact，请先重新同步 Workflow 并完成工件绑定');
+      throw new BadRequestException(
+        '当前 Release 未绑定 Workflow artifact，请先重新同步 Workflow 并完成工件绑定'
+      );
     }
 
     const artifact = await this.temporalWorkflowService.getArtifact(workflowArtifactRef.workflowId);
-    const generatedCode = typeof artifact.generatedCode === 'string' ? artifact.generatedCode.trim() : '';
+    const generatedCode =
+      typeof artifact.generatedCode === 'string' ? artifact.generatedCode.trim() : '';
     if (!generatedCode) {
       throw new BadRequestException(
-        `关联的 Workflow 尚未保存可执行代码: ${artifact.workflowName || workflowArtifactRef.workflowId}`,
+        `关联的 Workflow 尚未保存可执行代码: ${artifact.workflowName || workflowArtifactRef.workflowId}`
       );
     }
     if (artifact.validationStatus !== 'validated') {
       throw new BadRequestException(
-        `关联的 Workflow artifact 尚未通过验证: ${artifact.workflowName || workflowArtifactRef.workflowId}`,
+        `关联的 Workflow artifact 尚未通过验证: ${artifact.workflowName || workflowArtifactRef.workflowId}`
       );
     }
     if (
-      workflowArtifactRef.artifactVersion !== undefined
-      && workflowArtifactRef.artifactVersion !== null
-      && Number(workflowArtifactRef.artifactVersion) !== Number(artifact.artifactVersion || 0)
+      workflowArtifactRef.artifactVersion !== undefined &&
+      workflowArtifactRef.artifactVersion !== null &&
+      Number(workflowArtifactRef.artifactVersion) !== Number(artifact.artifactVersion || 0)
     ) {
-      throw new BadRequestException('当前 Release 绑定的 Workflow artifact 版本已过期，请重新绑定最新已验证工件');
+      throw new BadRequestException(
+        '当前 Release 绑定的 Workflow artifact 版本已过期，请重新绑定最新已验证工件'
+      );
     }
     if (
-      workflowArtifactRef.artifactHash
-      && artifact.artifactHash
-      && workflowArtifactRef.artifactHash !== artifact.artifactHash
+      workflowArtifactRef.artifactHash &&
+      artifact.artifactHash &&
+      workflowArtifactRef.artifactHash !== artifact.artifactHash
     ) {
-      throw new BadRequestException('当前 Release 绑定的 Workflow artifact 哈希已变化，请重新绑定最新工件');
+      throw new BadRequestException(
+        '当前 Release 绑定的 Workflow artifact 哈希已变化，请重新绑定最新工件'
+      );
     }
 
     return {
@@ -1152,7 +1179,7 @@ export class CapabilityReleaseService implements OnModuleInit {
       artifactVersion?: number | null;
       artifactHash?: string | null;
       generatedCode: string;
-    },
+    }
   ): CapabilityBuildDTO {
     if (build.generatedCode?.trim()) {
       return build;
@@ -1174,7 +1201,7 @@ export class CapabilityReleaseService implements OnModuleInit {
       artifactHash?: string | null;
       generatedCode: string;
     },
-    userId?: string,
+    userId?: string
   ): Promise<CapabilityBuildDTO> {
     const buildId = randomUUID();
     const logs = [
@@ -1205,7 +1232,7 @@ export class CapabilityReleaseService implements OnModuleInit {
       }),
       JSON.stringify(logs),
       `自动绑定 Workflow artifact ${artifact.workflowId}`,
-      userId || null,
+      userId || null
     );
 
     await this.prisma.$executeRawUnsafe(
@@ -1215,7 +1242,7 @@ export class CapabilityReleaseService implements OnModuleInit {
            updated_at = now()
        WHERE id = $1::uuid`,
       release.id,
-      buildId,
+      buildId
     );
 
     const build = await this.getBuildOrThrow(buildId);
@@ -1242,13 +1269,11 @@ export class CapabilityReleaseService implements OnModuleInit {
         ? (payload.workflowDsl as Record<string, unknown>)
         : {};
     const workflowClassName =
-      typeof workflowDsl.workflowClassName === 'string'
-        ? workflowDsl.workflowClassName.trim()
-        : '';
+      typeof workflowDsl.workflowClassName === 'string' ? workflowDsl.workflowClassName.trim() : '';
     if (!workflowClassName) {
       const workflowName = String(payload.name || '未命名工作流');
       throw new BadRequestException(
-        `工作流 "${workflowName}" 缺少 Python 类名 (workflowDsl.workflowClassName)。请在工作流编辑页面的“高级配置”中设置类名，点击 AI 生成代码并保存，然后重新同步到 Release。`,
+        `工作流 "${workflowName}" 缺少 Python 类名 (workflowDsl.workflowClassName)。请在工作流编辑页面的“高级配置”中设置类名，点击 AI 生成代码并保存，然后重新同步到 Release。`
       );
     }
     return workflowClassName;
@@ -1261,7 +1286,14 @@ export class CapabilityReleaseService implements OnModuleInit {
         this.resolveTemporalExecutableBuildOrThrow(release, snapshot, buildId, userId),
       resolveWorkflowFnOrThrow: (payload) => this.resolveWorkflowFnOrThrow(payload),
       insertAuditEvent: (releaseId, eventType, actorId, success, summary, details) =>
-        this.insertAuditEvent(releaseId, eventType, actorId, success, summary, details || undefined),
+        this.insertAuditEvent(
+          releaseId,
+          eventType,
+          actorId,
+          success,
+          summary,
+          details || undefined
+        ),
     };
   }
 
@@ -1272,12 +1304,20 @@ export class CapabilityReleaseService implements OnModuleInit {
       getBuildOrThrow: (id) => this.getBuildOrThrow(id),
       getValidationOrThrow: (id) => this.getValidationOrThrow(id),
       getSkillDraftOrThrow: (id) => this.getSkillDraftOrThrow(id),
-      getLatestSuccessfulValidationOrThrow: (releaseId) => this.getLatestSuccessfulValidationOrThrow(releaseId),
+      getLatestSuccessfulValidationOrThrow: (releaseId) =>
+        this.getLatestSuccessfulValidationOrThrow(releaseId),
       resolveTemporalExecutableBuildOrThrow: (release, snapshot, buildId, userId) =>
         this.resolveTemporalExecutableBuildOrThrow(release, snapshot, buildId, userId),
       resolveWorkflowFnOrThrow: (payload) => this.resolveWorkflowFnOrThrow(payload),
       insertAuditEvent: (releaseId, eventType, actorId, success, summary, details) =>
-        this.insertAuditEvent(releaseId, eventType, actorId, success, summary, details || undefined),
+        this.insertAuditEvent(
+          releaseId,
+          eventType,
+          actorId,
+          success,
+          summary,
+          details || undefined
+        ),
     };
   }
 
@@ -1290,7 +1330,14 @@ export class CapabilityReleaseService implements OnModuleInit {
       createCapability: (dto, userId) => this.createCapability(dto, userId),
       updateSource: (id, dto, userId) => this.updateSource(id, dto, userId),
       insertAuditEvent: (releaseId, eventType, actorId, success, summary, details) =>
-        this.insertAuditEvent(releaseId, eventType, actorId, success, summary, details || undefined),
+        this.insertAuditEvent(
+          releaseId,
+          eventType,
+          actorId,
+          success,
+          summary,
+          details || undefined
+        ),
     };
   }
 
@@ -1305,7 +1352,14 @@ export class CapabilityReleaseService implements OnModuleInit {
         this.resolveTemporalExecutableBuildOrThrow(release, snapshot, buildId, userId),
       resolveWorkflowFnOrThrow: (payload) => this.resolveWorkflowFnOrThrow(payload),
       insertAuditEvent: (releaseId, eventType, actorId, success, summary, details) =>
-        this.insertAuditEvent(releaseId, eventType, actorId, success, summary, details || undefined),
+        this.insertAuditEvent(
+          releaseId,
+          eventType,
+          actorId,
+          success,
+          summary,
+          details || undefined
+        ),
     };
   }
 
@@ -1317,7 +1371,14 @@ export class CapabilityReleaseService implements OnModuleInit {
       getValidationOrThrow: (id) => this.getValidationOrThrow(id),
       getDeploymentOrThrow: (id) => this.getDeploymentOrThrow(id),
       insertAuditEvent: (releaseId, eventType, actorId, success, summary, details) =>
-        this.insertAuditEvent(releaseId, eventType, actorId, success, summary, details || undefined),
+        this.insertAuditEvent(
+          releaseId,
+          eventType,
+          actorId,
+          success,
+          summary,
+          details || undefined
+        ),
     };
   }
 }

@@ -4,9 +4,7 @@ const isContainerRuntime = (): boolean =>
   process.env.DOCKER_ENV === 'true' || process.env.NODE_ENV === 'production';
 
 export const getPublicHost = (): string =>
-  process.env.HOST_IP?.trim()
-  || process.env.EXTERNAL_HOST?.trim()
-  || 'localhost';
+  process.env.HOST_IP?.trim() || process.env.EXTERNAL_HOST?.trim() || 'localhost';
 
 export const getSessionBrokerUrl = (): string => {
   const configured = process.env.SESSION_BROKER_URL?.trim();

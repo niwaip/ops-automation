@@ -1,13 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  HttpException,
-  HttpStatus,
-  Param,
-  Post,
-  Req,
-} from '@nestjs/common';
+import { Body, Controller, Get, HttpException, HttpStatus, Param, Post, Req } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { getOrCreateTraceId } from '../../common/trace.util';
@@ -26,6 +17,11 @@ import type {
   RecognizeParamsResponseDTO,
 } from '../../interfaces';
 import { AgentService } from '../agent/agent.service';
+import {
+  AnalyzeBranchConditionDto,
+  AnalyzeBranchConditionResponseDto,
+} from '../branch-analysis/branch-analysis.dto';
+import { BranchAnalysisService } from '../branch-analysis/branch-analysis.service';
 import { BrowserPhaseRecoveryService } from '../browser-phase-recovery/browser-phase-recovery.service';
 import { DeciderService } from '../decider/decider.service';
 import { ModelService } from '../model/model.service';
@@ -39,11 +35,12 @@ export class OrchestrationController {
   constructor(
     private readonly modelService: ModelService,
     private readonly agentService: AgentService,
+    private readonly branchAnalysisService: BranchAnalysisService,
     private readonly recognizerService: RecognizerService,
     private readonly deciderService: DeciderService,
     private readonly plannerService: PlannerService,
     private readonly browserPhaseRecoveryService: BrowserPhaseRecoveryService,
-    private readonly toolExecutor: ToolExecutor,
+    private readonly toolExecutor: ToolExecutor
   ) {}
 
   @Post('agents')
@@ -100,7 +97,7 @@ export class OrchestrationController {
   @ApiResponse({ status: 200, description: 'Returns a structured plan draft' })
   async generatePlan(
     @Body() body: GeneratePlanDTO,
-    @Req() req: Request & { traceId?: string },
+    @Req() req: Request & { traceId?: string }
   ): Promise<PlanDraftDTO> {
     const traceId = getOrCreateTraceId(req.traceId);
     return this.plannerService.generatePlan({
@@ -115,9 +112,18 @@ export class OrchestrationController {
   @ApiOperation({ summary: 'Plan a constrained browser phase recovery patch' })
   @ApiResponse({ status: 200, description: 'Returns a browser phase recovery decision' })
   async planBrowserPhaseRecovery(
-    @Body() body: PlanBrowserPhaseRecoveryDTO,
+    @Body() body: PlanBrowserPhaseRecoveryDTO
   ): Promise<PlanBrowserPhaseRecoveryResponseDTO> {
     return this.browserPhaseRecoveryService.planRecovery(body);
+  }
+
+  @Post('analyze-branch-condition')
+  @ApiOperation({ summary: 'Analyze current browser page and generate a branch step spec' })
+  @ApiResponse({ status: 200, description: 'Returns a structured browser branch step spec' })
+  async analyzeBranchCondition(
+    @Body() body: AnalyzeBranchConditionDto
+  ): Promise<AnalyzeBranchConditionResponseDto> {
+    return this.branchAnalysisService.analyzeBranchCondition(body);
   }
 
   @Post('tools/refresh')

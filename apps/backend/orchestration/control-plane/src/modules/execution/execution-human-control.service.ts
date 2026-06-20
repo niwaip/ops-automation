@@ -3,7 +3,10 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EXECUTION_STATUS, ExecutionStatus } from './contracts/execution-status';
 import { EXECUTION_STEP_STATUS } from './contracts/execution-step-status';
 import { EXECUTION_EVENT_TYPE } from './contracts/execution-event-type';
-import { canTransitionExecutionStatus, isTerminalExecutionStatus } from './execution-transition-policy';
+import {
+  canTransitionExecutionStatus,
+  isTerminalExecutionStatus,
+} from './execution-transition-policy';
 import { ExecutionPhaseService } from './execution-phase.service';
 import { ExecutionStepService } from './execution-step.service';
 import { CreateExecutionEventOptions } from './execution-event.service';
@@ -29,6 +32,7 @@ interface ExecutionPhaseRecord {
   runtime_session_id?: string | null;
   input_json?: Record<string, unknown> | null;
   output_json?: Record<string, unknown> | null;
+  recovery_decision_json?: Record<string, unknown> | null;
   postcheck_json?: Record<string, unknown> | null;
   error_code?: string | null;
   error_message?: string | null;
@@ -44,20 +48,20 @@ interface ExecutionHumanControlHooks {
   getExecutionDto: (id: string, requester?: RequestUserContext) => Promise<ExecutionDto>;
   emitEvent: (
     executionId: string,
-    eventType: typeof EXECUTION_EVENT_TYPE[keyof typeof EXECUTION_EVENT_TYPE],
+    eventType: (typeof EXECUTION_EVENT_TYPE)[keyof typeof EXECUTION_EVENT_TYPE],
     payload: unknown,
-    options?: CreateExecutionEventOptions,
+    options?: CreateExecutionEventOptions
   ) => Promise<void>;
   updateStatus: (id: string, newStatus: ExecutionStatus) => Promise<void>;
   freezeRuntimeSessionQuietly: (
     runtimeSessionId: string | null | undefined,
     executionId: string,
-    reason: string,
+    reason: string
   ) => Promise<void>;
   resumeRuntimeSessionQuietly: (
     runtimeSessionId: string | null | undefined,
     executionId: string,
-    stepId?: string,
+    stepId?: string
   ) => Promise<void>;
   advanceExecutionFlow: (executionId: string, runtimeSessionId: string) => Promise<void>;
 }
@@ -69,7 +73,7 @@ export class ExecutionHumanControlService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly executionPhaseService: ExecutionPhaseService,
-    private readonly executionStepService: ExecutionStepService,
+    private readonly executionStepService: ExecutionStepService
   ) {}
 
   async takeover(
@@ -77,18 +81,23 @@ export class ExecutionHumanControlService {
     userId: string,
     dto: TakeoverExecutionDto,
     hooks: ExecutionHumanControlHooks,
-    requester?: RequestUserContext,
+    requester?: RequestUserContext
   ): Promise<ExecutionDto> {
     const execution = await this.getExecutionOrThrow(id);
     this.ensureExecutionPermission(execution.createdBy, requester || { id: userId });
 
-    if (!canTransitionExecutionStatus(execution.status as ExecutionStatus, EXECUTION_STATUS.HUMAN_CONTROL)) {
+    if (
+      !canTransitionExecutionStatus(
+        execution.status as ExecutionStatus,
+        EXECUTION_STATUS.HUMAN_CONTROL
+      )
+    ) {
       throw new BadRequestException(`Cannot takeover from status ${execution.status}`);
     }
 
     const currentPhase = await this.getCurrentPhaseRecord(
       id,
-      (execution as unknown as Record<string, unknown>).currentPhaseKey as string | null | undefined,
+      (execution as unknown as Record<string, unknown>).currentPhaseKey as string | null | undefined
     );
     await this.enterHumanControl(id, dto.reason, hooks, currentPhase?.runtime_session_id);
 
@@ -128,18 +137,20 @@ export class ExecutionHumanControlService {
     userId: string,
     dto: ResumeExecutionDto,
     hooks: ExecutionHumanControlHooks,
-    requester?: RequestUserContext,
+    requester?: RequestUserContext
   ): Promise<ExecutionDto> {
     const execution = await this.getExecutionOrThrow(id);
     this.ensureExecutionPermission(execution.createdBy, requester || { id: userId });
 
     if (execution.status !== EXECUTION_STATUS.HUMAN_CONTROL) {
-      throw new BadRequestException(`Execution ${id} is not in ${EXECUTION_STATUS.HUMAN_CONTROL} status`);
+      throw new BadRequestException(
+        `Execution ${id} is not in ${EXECUTION_STATUS.HUMAN_CONTROL} status`
+      );
     }
 
     const currentPhase = await this.getCurrentPhaseRecord(
       id,
-      (execution as unknown as Record<string, unknown>).currentPhaseKey as string | null | undefined,
+      (execution as unknown as Record<string, unknown>).currentPhaseKey as string | null | undefined
     );
     if (currentPhase?.id) {
       await this.resolvePhaseTakeoverAndMarkRunning(id, currentPhase, userId);
@@ -149,7 +160,7 @@ export class ExecutionHumanControlService {
       id,
       hooks,
       dto.stepId,
-      currentPhase?.runtime_session_id,
+      currentPhase?.runtime_session_id
     );
     await hooks.emitEvent(id, EXECUTION_EVENT_TYPE.EXECUTION_RESUMED, {
       userId,
@@ -172,13 +183,15 @@ export class ExecutionHumanControlService {
     userId: string,
     dto: TakeoverExecutionDto,
     hooks: ExecutionHumanControlHooks,
-    requester?: RequestUserContext,
+    requester?: RequestUserContext
   ): Promise<ExecutionDto> {
     const execution = await this.getExecutionOrThrow(executionId);
     this.ensureExecutionPermission(execution.createdBy, requester || { id: userId });
 
     if (isTerminalExecutionStatus(execution.status as ExecutionStatus)) {
-      throw new BadRequestException(`Cannot takeover phase from terminal execution status ${execution.status}`);
+      throw new BadRequestException(
+        `Cannot takeover phase from terminal execution status ${execution.status}`
+      );
     }
 
     const phase = await this.requirePhaseRecord(executionId, phaseKey);
@@ -220,13 +233,15 @@ export class ExecutionHumanControlService {
     userId: string,
     dto: ReconcilePhaseTakeoverDto,
     hooks: ExecutionHumanControlHooks,
-    requester?: RequestUserContext,
+    requester?: RequestUserContext
   ): Promise<ExecutionDto> {
     const execution = await this.getExecutionOrThrow(executionId);
     this.ensureExecutionPermission(execution.createdBy, requester || { id: userId });
 
     if (execution.status !== EXECUTION_STATUS.HUMAN_CONTROL) {
-      throw new BadRequestException(`Execution ${executionId} is not in ${EXECUTION_STATUS.HUMAN_CONTROL} status`);
+      throw new BadRequestException(
+        `Execution ${executionId} is not in ${EXECUTION_STATUS.HUMAN_CONTROL} status`
+      );
     }
 
     const phase = await this.requirePhaseRecord(executionId, phaseKey);
@@ -262,13 +277,15 @@ export class ExecutionHumanControlService {
     userId: string,
     dto: ResumeExecutionDto,
     hooks: ExecutionHumanControlHooks,
-    requester?: RequestUserContext,
+    requester?: RequestUserContext
   ): Promise<ExecutionDto> {
     const execution = await this.getExecutionOrThrow(executionId);
     this.ensureExecutionPermission(execution.createdBy, requester || { id: userId });
 
     if (execution.status !== EXECUTION_STATUS.HUMAN_CONTROL) {
-      throw new BadRequestException(`Execution ${executionId} is not in ${EXECUTION_STATUS.HUMAN_CONTROL} status`);
+      throw new BadRequestException(
+        `Execution ${executionId} is not in ${EXECUTION_STATUS.HUMAN_CONTROL} status`
+      );
     }
 
     const phase = await this.requirePhaseRecord(executionId, phaseKey);
@@ -277,7 +294,7 @@ export class ExecutionHumanControlService {
       executionId,
       hooks,
       dto.stepId,
-      phase.runtime_session_id,
+      phase.runtime_session_id
     );
     await hooks.emitEvent(executionId, EXECUTION_EVENT_TYPE.EXECUTION_RESUMED, {
       userId,
@@ -307,7 +324,7 @@ export class ExecutionHumanControlService {
 
   private async resolveExecutionRuntimeSessionId(
     executionId: string,
-    preferredRuntimeSessionId?: string | null,
+    preferredRuntimeSessionId?: string | null
   ): Promise<string | null> {
     if (preferredRuntimeSessionId) {
       return preferredRuntimeSessionId;
@@ -321,18 +338,21 @@ export class ExecutionHumanControlService {
 
   private async getCurrentPhaseRecord(
     executionId: string,
-    phaseKey?: string | null,
+    phaseKey?: string | null
   ): Promise<ExecutionPhaseRecord | null> {
     if (!phaseKey) {
       return null;
     }
 
-    return this.executionPhaseService.getByExecutionIdAndPhaseKey(executionId, phaseKey) as unknown as Promise<ExecutionPhaseRecord | null>;
+    return this.executionPhaseService.getByExecutionIdAndPhaseKey(
+      executionId,
+      phaseKey
+    ) as unknown as Promise<ExecutionPhaseRecord | null>;
   }
 
   private async requirePhaseRecord(
     executionId: string,
-    phaseKey: string,
+    phaseKey: string
   ): Promise<ExecutionPhaseRecord> {
     const phase = await this.getCurrentPhaseRecord(executionId, phaseKey);
     if (!phase?.id) {
@@ -345,7 +365,7 @@ export class ExecutionHumanControlService {
     executionId: string,
     reason: string,
     hooks: ExecutionHumanControlHooks,
-    preferredRuntimeSessionId?: string | null,
+    preferredRuntimeSessionId?: string | null
   ): Promise<string | null> {
     await this.prisma.execution.update({
       where: { id: executionId },
@@ -356,7 +376,10 @@ export class ExecutionHumanControlService {
       },
     });
 
-    const runtimeSessionId = await this.resolveExecutionRuntimeSessionId(executionId, preferredRuntimeSessionId);
+    const runtimeSessionId = await this.resolveExecutionRuntimeSessionId(
+      executionId,
+      preferredRuntimeSessionId
+    );
     await hooks.freezeRuntimeSessionQuietly(runtimeSessionId, executionId, reason);
     return runtimeSessionId;
   }
@@ -365,7 +388,7 @@ export class ExecutionHumanControlService {
     executionId: string,
     hooks: ExecutionHumanControlHooks,
     stepId?: string,
-    preferredRuntimeSessionId?: string | null,
+    preferredRuntimeSessionId?: string | null
   ): Promise<string | null> {
     await hooks.updateStatus(executionId, EXECUTION_STATUS.RUNNING);
     await this.prisma.execution.update({
@@ -376,7 +399,10 @@ export class ExecutionHumanControlService {
       },
     });
 
-    const runtimeSessionId = await this.resolveExecutionRuntimeSessionId(executionId, preferredRuntimeSessionId);
+    const runtimeSessionId = await this.resolveExecutionRuntimeSessionId(
+      executionId,
+      preferredRuntimeSessionId
+    );
     await hooks.resumeRuntimeSessionQuietly(runtimeSessionId, executionId, stepId);
     return runtimeSessionId;
   }
@@ -385,7 +411,7 @@ export class ExecutionHumanControlService {
     executionId: string,
     phase: ExecutionPhaseRecord,
     userId: string,
-    resolutionNote?: string,
+    resolutionNote?: string
   ): Promise<void> {
     const execution = await this.prisma.execution.findUnique({
       where: { id: executionId },
@@ -393,11 +419,13 @@ export class ExecutionHumanControlService {
     });
     if (execution?.currentStepId) {
       const currentStep = await this.executionStepService.getById(execution.currentStepId);
-      const currentStepPhase = this.extractStepPhaseMetadata(currentStep as Record<string, unknown> | null | undefined);
+      const currentStepPhase = this.extractStepPhaseMetadata(
+        currentStep as Record<string, unknown> | null | undefined
+      );
       if (
-        currentStep
-        && currentStep.status === EXECUTION_STEP_STATUS.FAILED
-        && currentStepPhase?.phaseKey === phase.phase_key
+        currentStep &&
+        currentStep.status === EXECUTION_STEP_STATUS.FAILED &&
+        currentStepPhase?.phaseKey === phase.phase_key
       ) {
         await this.executionStepService.requeueFailedStep(currentStep.id);
       }
@@ -410,18 +438,27 @@ export class ExecutionHumanControlService {
       resolutionNote: resolutionNote || null,
       status: 'resolved',
     });
-    await this.executionPhaseService.markRunning(executionId, phase.phase_key!, {
+    await this.executionPhaseService.createOrUpdatePhase({
+      executionId,
+      phaseKey: phase.phase_key!,
       phaseName: phase.phase_name || phase.phase_key!,
       phaseType: phase.phase_type || 'workflow_execution',
+      status: 'running',
       attempt: phase.attempt || 1,
       runtimeSessionId: phase.runtime_session_id || null,
       input: phase.input_json || null,
-      precheck: null,
+      output: phase.output_json || null,
+      postcheck: phase.postcheck_json || null,
+      recoveryDecision: phase.recovery_decision_json || null,
+      startedAt: new Date(),
+      completedAt: null,
+      errorCode: null,
+      errorMessage: null,
     });
   }
 
   private extractStepPhaseMetadata(
-    step?: Record<string, unknown> | null,
+    step?: Record<string, unknown> | null
   ): ExecutionStepPhaseMetadata | undefined {
     if (!step) {
       return undefined;
@@ -429,33 +466,36 @@ export class ExecutionHumanControlService {
 
     const targetJson = this.readJsonRecord(step.targetJson);
     const inputJson = this.readJsonRecord(step.inputJson);
-    const phaseKey = typeof targetJson?.phaseKey === 'string'
-      ? targetJson.phaseKey
-      : typeof targetJson?.phase_key === 'string'
-        ? targetJson.phase_key
-        : typeof inputJson?.phaseKey === 'string'
-          ? inputJson.phaseKey
-          : typeof inputJson?.phase_key === 'string'
-            ? inputJson.phase_key
-            : undefined;
-    const phaseName = typeof targetJson?.phaseName === 'string'
-      ? targetJson.phaseName
-      : typeof targetJson?.phase_name === 'string'
-        ? targetJson.phase_name
-        : typeof inputJson?.phaseName === 'string'
-          ? inputJson.phaseName
-          : typeof inputJson?.phase_name === 'string'
-            ? inputJson.phase_name
-            : undefined;
-    const phaseType = typeof targetJson?.phaseType === 'string'
-      ? targetJson.phaseType
-      : typeof targetJson?.phase_type === 'string'
-        ? targetJson.phase_type
-        : typeof inputJson?.phaseType === 'string'
-          ? inputJson.phaseType
-          : typeof inputJson?.phase_type === 'string'
-            ? inputJson.phase_type
-            : undefined;
+    const phaseKey =
+      typeof targetJson?.phaseKey === 'string'
+        ? targetJson.phaseKey
+        : typeof targetJson?.phase_key === 'string'
+          ? targetJson.phase_key
+          : typeof inputJson?.phaseKey === 'string'
+            ? inputJson.phaseKey
+            : typeof inputJson?.phase_key === 'string'
+              ? inputJson.phase_key
+              : undefined;
+    const phaseName =
+      typeof targetJson?.phaseName === 'string'
+        ? targetJson.phaseName
+        : typeof targetJson?.phase_name === 'string'
+          ? targetJson.phase_name
+          : typeof inputJson?.phaseName === 'string'
+            ? inputJson.phaseName
+            : typeof inputJson?.phase_name === 'string'
+              ? inputJson.phase_name
+              : undefined;
+    const phaseType =
+      typeof targetJson?.phaseType === 'string'
+        ? targetJson.phaseType
+        : typeof targetJson?.phase_type === 'string'
+          ? targetJson.phase_type
+          : typeof inputJson?.phaseType === 'string'
+            ? inputJson.phaseType
+            : typeof inputJson?.phase_type === 'string'
+              ? inputJson.phase_type
+              : undefined;
 
     if (!phaseKey || !phaseName || !phaseType) {
       return undefined;
@@ -466,13 +506,13 @@ export class ExecutionHumanControlService {
 
   private readJsonRecord(value: unknown): Record<string, unknown> | undefined {
     return value && typeof value === 'object' && !Array.isArray(value)
-      ? value as Record<string, unknown>
+      ? (value as Record<string, unknown>)
       : undefined;
   }
 
   private ensureExecutionPermission(
     executionOwnerId: string,
-    requester?: RequestUserContext,
+    requester?: RequestUserContext
   ): void {
     if (!requester?.id) {
       return;
@@ -498,7 +538,7 @@ export class ExecutionHumanControlService {
   private runAdvanceExecutionFlow(
     executionId: string,
     runtimeSessionId: string,
-    hooks: ExecutionHumanControlHooks,
+    hooks: ExecutionHumanControlHooks
   ): void {
     hooks.advanceExecutionFlow(executionId, runtimeSessionId).catch((err) => {
       const message = err instanceof Error ? err.message : String(err);

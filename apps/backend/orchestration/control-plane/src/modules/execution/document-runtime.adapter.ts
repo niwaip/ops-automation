@@ -58,7 +58,7 @@ export class DocumentRuntimeAdapter implements RuntimeAdapter {
         stepId: request.stepId,
         runtimeType: request.runtimeType,
         input: request.input,
-      },
+      }
     );
 
     const runtimeResult = response.data;
@@ -78,13 +78,13 @@ export class DocumentRuntimeAdapter implements RuntimeAdapter {
 
   private buildArtifacts(
     output: Record<string, unknown> | undefined,
-    explicitDownloadUrl?: string | null,
+    explicitDownloadUrl?: string | null
   ): ArtifactRef[] | undefined {
     const downloadUrl = this.pickFirstString(
       explicitDownloadUrl,
       output?.downloadUrl,
       output?.download_url,
-      output?.url,
+      output?.url
     );
     if (!downloadUrl) {
       return undefined;

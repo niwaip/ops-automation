@@ -5,10 +5,7 @@
 
 import { Injectable } from '@nestjs/common';
 import axios from 'axios';
-import {
-  getCarboneExternalUrl,
-  getCarboneServiceUrl,
-} from '../../../config/service-endpoints';
+import { getCarboneExternalUrl, getCarboneServiceUrl } from '../../../config/service-endpoints';
 import { BaseTool } from './base.tool';
 import { ToolResult, ExecutionContext } from '../interfaces';
 import { Tool } from '../decorators/tool.decorator';
@@ -39,17 +36,17 @@ const looksLikeParameterIssue = (value: string | undefined): boolean => {
 
   const normalized = value.toLowerCase();
   return (
-    normalized.includes('参数')
-    || normalized.includes('missing')
-    || normalized.includes('invalid')
-    || normalized.includes('validation')
-    || normalized.includes('required')
+    normalized.includes('参数') ||
+    normalized.includes('missing') ||
+    normalized.includes('invalid') ||
+    normalized.includes('validation') ||
+    normalized.includes('required')
   );
 };
 
 const isTemplateVisibleInSnapshot = (
   templateId: string | undefined,
-  context: ExecutionContext,
+  context: ExecutionContext
 ): boolean => {
   if (!templateId || !context.capabilitySnapshot) {
     return true;
@@ -57,19 +54,19 @@ const isTemplateVisibleInSnapshot = (
 
   return context.capabilitySnapshot.visibleSkills.some((skill) => {
     return Boolean(
-      skill.carboneTemplateId === templateId
-      || skill.templateId === templateId
-      || skill.executionFlowTemplateIds?.includes(templateId),
+      skill.carboneTemplateId === templateId ||
+      skill.templateId === templateId ||
+      skill.executionFlowTemplateIds?.includes(templateId)
     );
   });
 };
 
-const resolveSelectedPublishedSkillId = (
-  context: ExecutionContext,
-): string | undefined => {
-  return context.skill?.skillId
-    || context.documentContext?.selectedSkillId
-    || context.capabilitySnapshot?.selectedSkillId;
+const resolveSelectedPublishedSkillId = (context: ExecutionContext): string | undefined => {
+  return (
+    context.skill?.skillId ||
+    context.documentContext?.selectedSkillId ||
+    context.capabilitySnapshot?.selectedSkillId
+  );
 };
 
 const asPlainObject = (value: unknown): Record<string, unknown> | undefined => {
@@ -108,37 +105,30 @@ const asPlainObject = (value: unknown): Record<string, unknown> | undefined => {
 })
 export class DocumentRenderTool extends BaseTool {
   constructor() {
-    super(
-      'document_render',
-      '调用Carbone引擎根据模板ID和数据渲染文档。返回下载链接。',
-      {
-        type: 'object',
-        properties: {
-          templateId: {
-            type: 'string',
-            description: 'Carbone引擎中的模板ID',
-            required: true,
-          },
-          data: {
-            type: 'object',
-            description: '填充模板的数据',
-            required: true,
-          },
-          format: {
-            type: 'string',
-            description: '输出格式（如pdf, docx, xlsx），默认docx',
-            required: false,
-          },
+    super('document_render', '调用Carbone引擎根据模板ID和数据渲染文档。返回下载链接。', {
+      type: 'object',
+      properties: {
+        templateId: {
+          type: 'string',
+          description: 'Carbone引擎中的模板ID',
+          required: true,
         },
-        required: ['templateId', 'data'],
+        data: {
+          type: 'object',
+          description: '填充模板的数据',
+          required: true,
+        },
+        format: {
+          type: 'string',
+          description: '输出格式（如pdf, docx, xlsx），默认docx',
+          required: false,
+        },
       },
-    );
+      required: ['templateId', 'data'],
+    });
   }
 
-  async execute(
-    params: Record<string, unknown>,
-    context: ExecutionContext,
-  ): Promise<ToolResult> {
+  async execute(params: Record<string, unknown>, context: ExecutionContext): Promise<ToolResult> {
     const lockedTemplateId = context.documentContext?.selectedTemplateId;
     const publishedSkillId = resolveSelectedPublishedSkillId(context);
     const carboneSkillId = context.skill?.carboneSkillId;
@@ -151,11 +141,7 @@ export class DocumentRenderTool extends BaseTool {
       data = context.collectedParams;
     }
 
-    if (
-      lockedTemplateId
-      && requestedTemplateId
-      && lockedTemplateId !== requestedTemplateId
-    ) {
+    if (lockedTemplateId && requestedTemplateId && lockedTemplateId !== requestedTemplateId) {
       return {
         success: false,
         output: `模板已锁定为 ${lockedTemplateId}，当前请求模板 ${requestedTemplateId} 与已选模板不一致。`,
@@ -167,8 +153,7 @@ export class DocumentRenderTool extends BaseTool {
           requestedTemplateId,
         },
         requiresUserInput: true,
-        userInputPrompt:
-          `当前会话已锁定模板（templateId=${lockedTemplateId}）。请确认是否继续使用该模板，或改为通过主链路重新发起文档生成请求。`,
+        userInputPrompt: `当前会话已锁定模板（templateId=${lockedTemplateId}）。请确认是否继续使用该模板，或改为通过主链路重新发起文档生成请求。`,
         meta: {
           toolName: this.name,
           capabilityChecked: Boolean(context.capabilitySnapshot),
@@ -180,7 +165,8 @@ export class DocumentRenderTool extends BaseTool {
     if ((!templateId && !carboneSkillId) || !data) {
       return {
         success: false,
-        output: '缺少必要参数：需要提供 templateId 或可解析的文档技能上下文，以及 data，或者先执行参数收集步骤',
+        output:
+          '缺少必要参数：需要提供 templateId 或可解析的文档技能上下文，以及 data，或者先执行参数收集步骤',
         code: 'missing_params',
         severity: 'warning',
         data: {
@@ -233,7 +219,7 @@ export class DocumentRenderTool extends BaseTool {
             ...(carboneSkillId ? { skillId: carboneSkillId } : {}),
             simulatedData: data,
             outputFormat: format,
-          },
+          }
         );
         const standardizedRequest = standardizeResponse.data?.renderResolvedRequest;
         const standardizedData = asPlainObject(standardizedRequest?.data);
@@ -251,7 +237,7 @@ export class DocumentRenderTool extends BaseTool {
       // 正式运行时统一收口到 render-resolved，显式区分平台 published skill 与 Carbone skill。
       const response = await axios.post<DocumentRenderResponse>(
         `${getCarboneServiceUrl()}/studio/render-resolved`,
-        renderRequest,
+        renderRequest
       );
 
       const renderResult = response.data;

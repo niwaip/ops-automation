@@ -1,1 +1,1 @@
-export * from "./adapters/auth/authStore";
+export * from './adapters/auth/authStore';

@@ -17,7 +17,6 @@ export interface AuthenticatedRequest extends Request {
  */
 const INTERNAL_ALLOWED_ROLES = new Set(['employee', 'manager']);
 
-
 @Injectable()
 export class AuthMiddleware implements NestMiddleware {
   constructor(private readonly jwtService: JwtService) {}
@@ -38,22 +37,23 @@ export class AuthMiddleware implements NestMiddleware {
     ) {
       // 安全限制：内部认证路径不接受调用方自封的超权限角色。
       // 即使请求头中传入 x-user-role: admin，也会被强制降级为 'employee'。
-      const requestedRole = typeof internalUserRole === 'string' && internalUserRole.trim()
-        ? internalUserRole.trim()
-        : 'employee';
+      const requestedRole =
+        typeof internalUserRole === 'string' && internalUserRole.trim()
+          ? internalUserRole.trim()
+          : 'employee';
       const safeRole = INTERNAL_ALLOWED_ROLES.has(requestedRole) ? requestedRole : 'employee';
 
       req.user = {
         id: internalUserId,
-        username: typeof internalUsername === 'string' && internalUsername.trim()
-          ? internalUsername
-          : internalUserId,
+        username:
+          typeof internalUsername === 'string' && internalUsername.trim()
+            ? internalUsername
+            : internalUserId,
         role: safeRole,
       };
       next();
       return;
     }
-
 
     const authorization = req.headers.authorization;
 

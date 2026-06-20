@@ -28,9 +28,10 @@ describe('ContextWindowManager', () => {
 
     const history: ChatMessage[] = Array.from({ length: 16 }, (_, index) => ({
       role: index % 2 === 0 ? 'assistant' : 'user',
-      content: index % 2 === 0
-        ? JSON.stringify({ thought: `t${index}`, action: `a${index}`, actionInput: {} })
-        : `Observation: obs-${index}`,
+      content:
+        index % 2 === 0
+          ? JSON.stringify({ thought: `t${index}`, action: `a${index}`, actionInput: {} })
+          : `Observation: obs-${index}`,
       timestamp: new Date(),
       metadata: {
         isReAct: true,
@@ -48,7 +49,12 @@ describe('ContextWindowManager', () => {
           },
           promptAssembly: {
             systemPromptSectionKeys: ['system_policy', 'tool_spec'],
-            userPromptSectionKeys: ['task_input', 'routing_state', 'prompt_assembly_state', 'execution_request'],
+            userPromptSectionKeys: [
+              'task_input',
+              'routing_state',
+              'prompt_assembly_state',
+              'execution_request',
+            ],
           },
         },
       },
@@ -60,21 +66,18 @@ describe('ContextWindowManager', () => {
     expect(state.contextSummary).toContain('assistant');
     expect(state.contextSummary).toContain('user');
     expect(state.contextSummary).toContain('decision.routing: model=primary-model');
-    expect(state.contextSummary).toContain('decision.prompt_assembly: systemSections=system_policy>tool_spec');
+    expect(state.contextSummary).toContain(
+      'decision.prompt_assembly: systemSections=system_policy>tool_spec'
+    );
     expect(state.contextSummary).toContain('content:');
   });
 
   it('injects task summary and routing summary into user prompt', () => {
-    const prompt = buildUserPrompt(
-      '继续执行',
-      [],
-      undefined,
-      'assistant@#1: 已完成模板选择',
-      {
-        routingState: 'model=backup-model, attempted=primary-model->backup-model, reason=provider_error',
-        promptAssemblyState: 'systemSections=system_policy>tool_spec',
-      },
-    );
+    const prompt = buildUserPrompt('继续执行', [], undefined, 'assistant@#1: 已完成模板选择', {
+      routingState:
+        'model=backup-model, attempted=primary-model->backup-model, reason=provider_error',
+      promptAssemblyState: 'systemSections=system_policy>tool_spec',
+    });
 
     expect(prompt).toContain('## Task Summary');
     expect(prompt).toContain('已完成模板选择');

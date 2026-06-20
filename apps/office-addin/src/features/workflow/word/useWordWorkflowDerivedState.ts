@@ -5,8 +5,15 @@ import type {
   TemplateUnderstandResponse,
 } from '../../../api/carbone-api';
 import type { AISuggestion } from '../../../app/store';
-import { deriveWordSectionsFromDocumentIr, type WordDetectedSection } from '../../../host/office/word/chapter';
-import { buildSelectedRecognitionSections, buildCompareCandidateSections, type CompareCandidateSection } from './word-workflow.section.helpers';
+import {
+  deriveWordSectionsFromDocumentIr,
+  type WordDetectedSection,
+} from '../../../host/office/word/chapter';
+import {
+  buildSelectedRecognitionSections,
+  buildCompareCandidateSections,
+  type CompareCandidateSection,
+} from './word-workflow.section.helpers';
 import {
   buildCurrentCompareSignature,
   buildCurrentRecognitionCacheSignature,
@@ -19,9 +26,7 @@ import {
   buildWordRecognitionCacheKey,
   type WordSectionGenerationResult,
 } from './word-workflow.cache';
-import {
-  buildWordUnderstandingSummaryText,
-} from './word-workflow.debug';
+import { buildWordUnderstandingSummaryText } from './word-workflow.debug';
 import {
   normalizeCompareHeadingLanguages,
   type CompareHeadingLanguageSelection,
@@ -68,21 +73,24 @@ export function useWordWorkflowDerivedState(options: UseWordWorkflowDerivedState
     [options.compareDocumentIr, options.compareResult]
   );
   const selectedCompareSectionKeys = useMemo(
-    () => compareCandidateSections
-      .filter((section) => options.selectedCompareSections[section.sectionKey] ?? true)
-      .map((section) => section.sectionKey),
+    () =>
+      compareCandidateSections
+        .filter((section) => options.selectedCompareSections[section.sectionKey] ?? true)
+        .map((section) => section.sectionKey),
     [compareCandidateSections, options.selectedCompareSections]
   );
   const selectedCompareCandidateFields = useMemo(
-    () => compareCandidateSections
-      .filter((section) => options.selectedCompareSections[section.sectionKey] ?? true)
-      .flatMap((section) => section.candidates),
+    () =>
+      compareCandidateSections
+        .filter((section) => options.selectedCompareSections[section.sectionKey] ?? true)
+        .flatMap((section) => section.candidates),
     [compareCandidateSections, options.selectedCompareSections]
   );
   const effectiveCompareCandidateFields = useMemo(
-    () => (compareCandidateSections.length > 0
-      ? selectedCompareCandidateFields
-      : (options.compareResult?.candidateFields || [])),
+    () =>
+      compareCandidateSections.length > 0
+        ? selectedCompareCandidateFields
+        : options.compareResult?.candidateFields || [],
     [compareCandidateSections.length, options.compareResult, selectedCompareCandidateFields]
   );
   const currentCompareSignature = useMemo(
@@ -93,67 +101,72 @@ export function useWordWorkflowDerivedState(options: UseWordWorkflowDerivedState
     () => buildCurrentRecognitionCacheSignature(options.compareResult),
     [options.compareResult]
   );
-  const workflowStatus = useMemo(() => deriveWordWorkflowStatus({
-    sampleUploadState: options.sampleUploadState,
-    hasCompare,
-    understandingResult: options.understandingResult,
-    understandingRevision: options.understandingRevision,
-    understandingLanguageSignature: options.understandingLanguageSignature,
-    understandingCompareSignature: options.understandingCompareSignature,
-    languageSignature,
-    currentCompareSignature,
-    understandingCacheStatus: options.understandingCacheStatus,
-    understandingCacheUpdatedAt: options.understandingCacheUpdatedAt,
-    detectedUploadCacheStatus: options.detectedUploadCacheStatus,
-    detectedUploadCacheUpdatedAt: options.detectedUploadCacheUpdatedAt,
-    detectedUploadCacheResult: options.detectedUploadCacheResult,
-    isUnderstanding: options.isUnderstanding,
-    recognitionActivated: options.recognitionActivated,
-    recognitionRevision: options.recognitionRevision,
-    recognitionLanguageSignature: options.recognitionLanguageSignature,
-    recognitionCompareSignature: options.recognitionCompareSignature,
-    currentRecognitionCacheSignature,
-    sectionGenerationResults: options.sectionGenerationResults,
-    suggestions: options.suggestions,
-    recognitionResult: options.recognitionResult,
-    effectiveCompareCandidateFieldsCount: effectiveCompareCandidateFields.length,
-    compareCandidateSectionsCount: compareCandidateSections.length,
-  }), [
-    compareCandidateSections.length,
-    currentCompareSignature,
-    currentRecognitionCacheSignature,
-    effectiveCompareCandidateFields.length,
-    hasCompare,
-    languageSignature,
-    options.detectedUploadCacheResult,
-    options.detectedUploadCacheStatus,
-    options.detectedUploadCacheUpdatedAt,
-    options.isUnderstanding,
-    options.recognitionActivated,
-    options.recognitionCompareSignature,
-    options.recognitionLanguageSignature,
-    options.recognitionResult,
-    options.recognitionRevision,
-    options.sampleUploadState,
-    options.sectionGenerationResults,
-    options.suggestions,
-    options.understandingCacheStatus,
-    options.understandingCacheUpdatedAt,
-    options.understandingCompareSignature,
-    options.understandingLanguageSignature,
-    options.understandingResult,
-    options.understandingRevision,
-  ]);
+  const workflowStatus = useMemo(
+    () =>
+      deriveWordWorkflowStatus({
+        sampleUploadState: options.sampleUploadState,
+        hasCompare,
+        understandingResult: options.understandingResult,
+        understandingRevision: options.understandingRevision,
+        understandingLanguageSignature: options.understandingLanguageSignature,
+        understandingCompareSignature: options.understandingCompareSignature,
+        languageSignature,
+        currentCompareSignature,
+        understandingCacheStatus: options.understandingCacheStatus,
+        understandingCacheUpdatedAt: options.understandingCacheUpdatedAt,
+        detectedUploadCacheStatus: options.detectedUploadCacheStatus,
+        detectedUploadCacheUpdatedAt: options.detectedUploadCacheUpdatedAt,
+        detectedUploadCacheResult: options.detectedUploadCacheResult,
+        isUnderstanding: options.isUnderstanding,
+        recognitionActivated: options.recognitionActivated,
+        recognitionRevision: options.recognitionRevision,
+        recognitionLanguageSignature: options.recognitionLanguageSignature,
+        recognitionCompareSignature: options.recognitionCompareSignature,
+        currentRecognitionCacheSignature,
+        sectionGenerationResults: options.sectionGenerationResults,
+        suggestions: options.suggestions,
+        recognitionResult: options.recognitionResult,
+        effectiveCompareCandidateFieldsCount: effectiveCompareCandidateFields.length,
+        compareCandidateSectionsCount: compareCandidateSections.length,
+      }),
+    [
+      compareCandidateSections.length,
+      currentCompareSignature,
+      currentRecognitionCacheSignature,
+      effectiveCompareCandidateFields.length,
+      hasCompare,
+      languageSignature,
+      options.detectedUploadCacheResult,
+      options.detectedUploadCacheStatus,
+      options.detectedUploadCacheUpdatedAt,
+      options.isUnderstanding,
+      options.recognitionActivated,
+      options.recognitionCompareSignature,
+      options.recognitionLanguageSignature,
+      options.recognitionResult,
+      options.recognitionRevision,
+      options.sampleUploadState,
+      options.sectionGenerationResults,
+      options.suggestions,
+      options.understandingCacheStatus,
+      options.understandingCacheUpdatedAt,
+      options.understandingCompareSignature,
+      options.understandingLanguageSignature,
+      options.understandingResult,
+      options.understandingRevision,
+    ]
+  );
   const recognitionCacheKey = useMemo(
-    () => (options.compareDocumentIr
-      ? buildWordRecognitionCacheKey(
-          options.compareDocumentIr,
-          options.sampleUploadState,
-          options.workflowSourceLanguage,
-          options.workflowTargetLanguages,
-          currentRecognitionCacheSignature,
-        )
-      : null),
+    () =>
+      options.compareDocumentIr
+        ? buildWordRecognitionCacheKey(
+            options.compareDocumentIr,
+            options.sampleUploadState,
+            options.workflowSourceLanguage,
+            options.workflowTargetLanguages,
+            currentRecognitionCacheSignature
+          )
+        : null,
     [
       currentRecognitionCacheSignature,
       options.compareDocumentIr,
@@ -166,9 +179,8 @@ export function useWordWorkflowDerivedState(options: UseWordWorkflowDerivedState
     ? buildWordUnderstandingSummaryText(workflowStatus.displayedUnderstandingSummaryResult)
     : '';
   const derivedPrimaryChapters = useMemo<WordDetectedSection[]>(
-    () => (options.compareDocumentIr
-      ? deriveWordSectionsFromDocumentIr(options.compareDocumentIr)
-      : []),
+    () =>
+      options.compareDocumentIr ? deriveWordSectionsFromDocumentIr(options.compareDocumentIr) : [],
     [options.compareDocumentIr]
   );
   const detectedSectionMap = useMemo(
@@ -176,15 +188,20 @@ export function useWordWorkflowDerivedState(options: UseWordWorkflowDerivedState
     [derivedPrimaryChapters]
   );
   const selectedRecognitionSections = useMemo<CompareCandidateSection[]>(
-    () => buildSelectedRecognitionSections(
-      compareCandidateSections,
-      options.selectedCompareSections,
-      effectiveCompareCandidateFields,
-    ),
+    () =>
+      buildSelectedRecognitionSections(
+        compareCandidateSections,
+        options.selectedCompareSections,
+        effectiveCompareCandidateFields
+      ),
     [compareCandidateSections, effectiveCompareCandidateFields, options.selectedCompareSections]
   );
   const sectionProcessingSummary = useMemo(
-    () => buildSectionProcessingSummary(workflowStatus.recognitionReady, options.sectionGenerationResults),
+    () =>
+      buildSectionProcessingSummary(
+        workflowStatus.recognitionReady,
+        options.sectionGenerationResults
+      ),
     [options.sectionGenerationResults, workflowStatus.recognitionReady]
   );
   const sectionGenerationResultMap = useMemo(

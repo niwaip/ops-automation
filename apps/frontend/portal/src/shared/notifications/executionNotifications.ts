@@ -1,5 +1,9 @@
 import type { ExecutionDto, ExecutionStatus } from '@/api/execution';
-import type { AppNotification, NotificationCategory, NotificationSeverity } from '@/shared/notifications/types';
+import type {
+  AppNotification,
+  NotificationCategory,
+  NotificationSeverity,
+} from '@/shared/notifications/types';
 
 export const RELEVANT_EXECUTION_STATUSES = new Set<ExecutionStatus>([
   'waiting_input',
@@ -45,12 +49,8 @@ const resolveNotificationSeverity = (status: ExecutionStatus): NotificationSever
   }
 };
 
-const resolveExecutionTimestamp = (execution: ExecutionDto) => (
-  execution.endedAt
-  || execution.updatedAt
-  || execution.startedAt
-  || execution.createdAt
-);
+const resolveExecutionTimestamp = (execution: ExecutionDto) =>
+  execution.endedAt || execution.updatedAt || execution.startedAt || execution.createdAt;
 
 export const toExecutionNotification = (execution: ExecutionDto): AppNotification | null => {
   if (!RELEVANT_EXECUTION_STATUSES.has(execution.status)) {
@@ -69,7 +69,9 @@ export const toExecutionNotification = (execution: ExecutionDto): AppNotificatio
     stateKey: execution.status,
     timestamp: resolveExecutionTimestamp(execution),
     unread: false,
-    requiresAction: ['waiting_input', 'pending_approval', 'human_control'].includes(execution.status),
+    requiresAction: ['waiting_input', 'pending_approval', 'human_control'].includes(
+      execution.status
+    ),
     actionUrl: `/executions?executionId=${encodeURIComponent(execution.id)}`,
     metadata: {
       executionId: execution.id,
@@ -81,8 +83,7 @@ export const toExecutionNotification = (execution: ExecutionDto): AppNotificatio
   };
 };
 
-export const toExecutionNotifications = (executions: ExecutionDto[]): AppNotification[] => (
+export const toExecutionNotifications = (executions: ExecutionDto[]): AppNotification[] =>
   executions
     .map((execution) => toExecutionNotification(execution))
-    .filter((notification): notification is AppNotification => Boolean(notification))
-);
+    .filter((notification): notification is AppNotification => Boolean(notification));

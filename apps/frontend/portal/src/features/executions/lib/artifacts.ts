@@ -1,4 +1,8 @@
-import type { ExecutionPhaseArtifactDto, ExecutionPhaseDto, ExecutionPhaseStepDto } from '@/api/execution';
+import type {
+  ExecutionPhaseArtifactDto,
+  ExecutionPhaseDto,
+  ExecutionPhaseStepDto,
+} from '@/api/execution';
 import {
   buildBrowserWorkerArtifactUrl as buildBrowserWorkerArtifactUrlFromCore,
   extractPhaseStepImageSources as extractPhaseStepImageSourcesFromCore,
@@ -13,21 +17,17 @@ import { runtimeConfig } from '@/shared/config/runtime';
 
 export { extractPhaseStepUrl, getPhaseArtifactPath, getPhaseArtifactPayload, getVisiblePhaseSteps };
 
-export const buildBrowserWorkerArtifactUrl = (artifactPath?: string): string | undefined => (
-  buildBrowserWorkerArtifactUrlFromCore(runtimeConfig.recorderWsUrl, artifactPath)
-);
+export const buildBrowserWorkerArtifactUrl = (artifactPath?: string): string | undefined =>
+  buildBrowserWorkerArtifactUrlFromCore(runtimeConfig.recorderWsUrl, artifactPath);
 
-export const getPhaseArtifactPreviewSrc = (artifact: ExecutionPhaseArtifactDto): string | undefined => (
-  getPhaseArtifactPreviewSrcFromCore(runtimeConfig.recorderWsUrl, artifact)
-);
+export const getPhaseArtifactPreviewSrc = (
+  artifact: ExecutionPhaseArtifactDto
+): string | undefined => getPhaseArtifactPreviewSrcFromCore(runtimeConfig.recorderWsUrl, artifact);
 
-export const extractWorkflowActivitySnapshotSources = (phase: ExecutionPhaseDto): string[] => (
-  extractWorkflowActivitySnapshotSourcesFromCore(runtimeConfig.recorderWsUrl, phase)
-);
+export const extractWorkflowActivitySnapshotSources = (phase: ExecutionPhaseDto): string[] =>
+  extractWorkflowActivitySnapshotSourcesFromCore(runtimeConfig.recorderWsUrl, phase);
 
 export const extractPhaseStepImageSources = (
   step: ExecutionPhaseStepDto,
-  artifacts: ExecutionPhaseArtifactDto[],
-): string[] => (
-  extractPhaseStepImageSourcesFromCore(runtimeConfig.recorderWsUrl, step, artifacts)
-);
+  artifacts: ExecutionPhaseArtifactDto[]
+): string[] => extractPhaseStepImageSourcesFromCore(runtimeConfig.recorderWsUrl, step, artifacts);

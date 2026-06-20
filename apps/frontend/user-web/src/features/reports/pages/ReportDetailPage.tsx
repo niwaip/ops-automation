@@ -1,7 +1,4 @@
-import {
-  DownloadOutlined,
-  ReloadOutlined,
-} from "@ant-design/icons";
+import { DownloadOutlined, ReloadOutlined } from '@ant-design/icons';
 import {
   Alert,
   Button,
@@ -16,26 +13,26 @@ import {
   Tag,
   Typography,
   message,
-} from "antd";
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { useQuery } from "react-query";
+} from 'antd';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { useQuery } from 'react-query';
 import type {
   AIAnalysisResult,
   NotificationResult,
   ReportStatus,
   ValidationResult,
-} from "@ops/user-core";
-import { authStore } from "../../../adapters/auth/authStore";
-import { reportApi, resolveApiUrl } from "../../../api";
+} from '@ops/user-core';
+import { authStore } from '../../../adapters/auth/authStore';
+import { reportApi, resolveApiUrl } from '../../../api';
 
 const { Title, Text } = Typography;
 
 const STATUS_COLORS: Record<ReportStatus, string> = {
-  pending: "default",
-  generating: "processing",
-  completed: "success",
-  failed: "error",
+  pending: 'default',
+  generating: 'processing',
+  completed: 'success',
+  failed: 'error',
 };
 
 export function ReportDetailPage() {
@@ -45,24 +42,24 @@ export function ReportDetailPage() {
   const [downloading, setDownloading] = useState(false);
   const accessToken = authStore.getState().accessToken;
 
-  const reportQuery = useQuery(
-    ["user-web-report", id],
-    () => reportApi.getReport(id!),
-    { enabled: Boolean(id) },
-  );
+  const reportQuery = useQuery(['user-web-report', id], () => reportApi.getReport(id!), {
+    enabled: Boolean(id),
+  });
   const statusQuery = useQuery(
-    ["user-web-report-status", id],
+    ['user-web-report-status', id],
     () => reportApi.getReportStatus(id!),
     {
-      enabled: Boolean(id) && (reportQuery.data?.status === "pending" || reportQuery.data?.status === "generating"),
+      enabled:
+        Boolean(id) &&
+        (reportQuery.data?.status === 'pending' || reportQuery.data?.status === 'generating'),
       refetchInterval: 3000,
-    },
+    }
   );
 
   useEffect(() => {
     const nextStatus = statusQuery.data?.status;
-    setPolling(Boolean(nextStatus && (nextStatus === "pending" || nextStatus === "generating")));
-    if (nextStatus === "completed" || nextStatus === "failed") {
+    setPolling(Boolean(nextStatus && (nextStatus === 'pending' || nextStatus === 'generating')));
+    if (nextStatus === 'completed' || nextStatus === 'failed') {
       void reportQuery.refetch();
     }
   }, [reportQuery, statusQuery.data?.status]);
@@ -79,8 +76,8 @@ export function ReportDetailPage() {
   }, [reportQuery.data, statusQuery.data?.error, statusQuery.data?.status]);
 
   const handleDownload = async () => {
-    if (!report || report.status !== "completed") {
-      void message.warning("报告尚未生成完成");
+    if (!report || report.status !== 'completed') {
+      void message.warning('报告尚未生成完成');
       return;
     }
 
@@ -91,21 +88,21 @@ export function ReportDetailPage() {
       });
 
       if (!response.ok) {
-        throw new Error("报告下载失败");
+        throw new Error('报告下载失败');
       }
 
-      const contentDisposition = response.headers.get("Content-Disposition");
-      let filename = "report.docx";
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = 'report.docx';
       if (contentDisposition) {
         const filenameMatch = contentDisposition.match(/filename\*?=['"]?(?:UTF-\d['"]*)?([^;]+)/i);
         if (filenameMatch?.[1]) {
-          filename = decodeURIComponent(filenameMatch[1].trim().replace(/['"]/g, ""));
+          filename = decodeURIComponent(filenameMatch[1].trim().replace(/['"]/g, ''));
         }
       }
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
+      const link = document.createElement('a');
       link.href = url;
       link.download = filename;
       document.body.appendChild(link);
@@ -114,7 +111,7 @@ export function ReportDetailPage() {
       document.body.removeChild(link);
       void message.success(`已下载：${filename}`);
     } catch (error) {
-      void message.error(error instanceof Error ? error.message : "报告下载失败");
+      void message.error(error instanceof Error ? error.message : '报告下载失败');
     } finally {
       setDownloading(false);
     }
@@ -122,7 +119,7 @@ export function ReportDetailPage() {
 
   if (reportQuery.isLoading) {
     return (
-      <div style={{ padding: 24, textAlign: "center" }}>
+      <div style={{ padding: 24, textAlign: 'center' }}>
         <Spin size="large" />
       </div>
     );
@@ -131,26 +128,32 @@ export function ReportDetailPage() {
   if (!report) {
     return (
       <Card>
-        <Text>{reportQuery.error instanceof Error ? reportQuery.error.message : "未找到报告"}</Text>
+        <Text>{reportQuery.error instanceof Error ? reportQuery.error.message : '未找到报告'}</Text>
       </Card>
     );
   }
 
   return (
     <Card>
-      <Space style={{ width: "100%", justifyContent: "space-between", marginBottom: 16 }}>
+      <Space style={{ width: '100%', justifyContent: 'space-between', marginBottom: 16 }}>
         <Space>
-          <Button onClick={() => navigate("/reports")}>返回列表</Button>
-          <Title level={3} style={{ margin: 0 }}>报告详情</Title>
+          <Button onClick={() => navigate('/reports')}>返回列表</Button>
+          <Title level={3} style={{ margin: 0 }}>
+            报告详情
+          </Title>
         </Space>
         <Space>
-          <Button icon={<ReloadOutlined />} onClick={() => void reportQuery.refetch()} loading={polling}>
+          <Button
+            icon={<ReloadOutlined />}
+            onClick={() => void reportQuery.refetch()}
+            loading={polling}
+          >
             刷新
           </Button>
           <Button
             type="primary"
             icon={<DownloadOutlined />}
-            disabled={report.status !== "completed"}
+            disabled={report.status !== 'completed'}
             loading={downloading}
             onClick={() => void handleDownload()}
           >
@@ -159,7 +162,7 @@ export function ReportDetailPage() {
         </Space>
       </Space>
 
-      {report.status === "generating" && (
+      {report.status === 'generating' && (
         <Alert
           type="info"
           message="报告生成中"
@@ -169,7 +172,7 @@ export function ReportDetailPage() {
         />
       )}
 
-      {report.status === "failed" && report.error && (
+      {report.status === 'failed' && report.error && (
         <Alert
           type="error"
           message="报告生成失败"
@@ -197,10 +200,10 @@ export function ReportDetailPage() {
           {new Date(report.created_at).toLocaleString()}
         </Descriptions.Item>
         <Descriptions.Item label="完成时间">
-          {report.completed_at ? new Date(report.completed_at).toLocaleString() : "-"}
+          {report.completed_at ? new Date(report.completed_at).toLocaleString() : '-'}
         </Descriptions.Item>
         <Descriptions.Item label="结果文件">
-          {report.result_file ? <Text copyable>{report.result_file}</Text> : "-"}
+          {report.result_file ? <Text copyable>{report.result_file}</Text> : '-'}
         </Descriptions.Item>
       </Descriptions>
 
@@ -213,7 +216,7 @@ export function ReportDetailPage() {
               key: analysis.section_id,
               label: `Section: ${analysis.section_id}`,
               children: (
-                <Space direction="vertical" style={{ width: "100%" }}>
+                <Space direction="vertical" style={{ width: '100%' }}>
                   <Text>{analysis.analysis}</Text>
                   {analysis.tokens_used ? <Tag>Tokens used: {analysis.tokens_used}</Tag> : null}
                 </Space>
@@ -232,8 +235,8 @@ export function ReportDetailPage() {
             renderItem={(item: ValidationResult) => (
               <List.Item>
                 <Space>
-                  <Tag color={item.passed ? "success" : "error"}>
-                    {item.passed ? "PASS" : "FAIL"}
+                  <Tag color={item.passed ? 'success' : 'error'}>
+                    {item.passed ? 'PASS' : 'FAIL'}
                   </Tag>
                   <Text>Section: {item.section_id}</Text>
                   {item.condition ? <Tag>{item.condition}</Tag> : null}
@@ -254,11 +257,9 @@ export function ReportDetailPage() {
             renderItem={(item: NotificationResult) => (
               <List.Item>
                 <Space>
-                  <Tag color={item.sent ? "success" : "error"}>
-                    {item.sent ? "SENT" : "FAILED"}
-                  </Tag>
+                  <Tag color={item.sent ? 'success' : 'error'}>{item.sent ? 'SENT' : 'FAILED'}</Tag>
                   <Text>Type: {item.type}</Text>
-                  {item.recipients?.length ? <Text>To: {item.recipients.join(", ")}</Text> : null}
+                  {item.recipients?.length ? <Text>To: {item.recipients.join(', ')}</Text> : null}
                   {item.error ? <Text type="danger">{item.error}</Text> : null}
                 </Space>
               </List.Item>

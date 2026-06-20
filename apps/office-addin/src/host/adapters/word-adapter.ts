@@ -1,7 +1,13 @@
 import { AISuggestion } from '../../app/store';
 import { WordAPI } from '../office/word/api';
 import { HostCapabilities } from './capabilities';
-import { Anchor, DocumentElement, DocumentIR, DocumentSelection, TemplateSource } from './document-ir';
+import {
+  Anchor,
+  DocumentElement,
+  DocumentIR,
+  DocumentSelection,
+  TemplateSource,
+} from './document-ir';
 import { HostAdapter } from './types';
 
 export class WordAdapter implements HostAdapter {
@@ -25,11 +31,13 @@ export class WordAdapter implements HostAdapter {
       return false;
     }
 
-    return /[＿_]{2,}/u.test(normalized)
-      || /^\{[#/]?[^}\n]{1,120}\}$/u.test(normalized)
-      || /^\$\{[^}\n]{1,120}\}$/u.test(normalized)
-      || /^<[^<>\n]{1,120}>$/u.test(normalized)
-      || /^\[\[[^\]\n]{1,120}\]\]$/u.test(normalized);
+    return (
+      /[＿_]{2,}/u.test(normalized) ||
+      /^\{[#/]?[^}\n]{1,120}\}$/u.test(normalized) ||
+      /^\$\{[^}\n]{1,120}\}$/u.test(normalized) ||
+      /^<[^<>\n]{1,120}>$/u.test(normalized) ||
+      /^\[\[[^\]\n]{1,120}\]\]$/u.test(normalized)
+    );
   }
 
   private extractLoopArrayPath(suggestion: AISuggestion): string {
@@ -129,7 +137,10 @@ export class WordAdapter implements HostAdapter {
     }
 
     if (wordAnchor.type === 'content-control' && typeof wordAnchor.contentControlId === 'number') {
-      return WordAPI.replaceContentControlText(wordAnchor.contentControlId, suggestion.suggestedName);
+      return WordAPI.replaceContentControlText(
+        wordAnchor.contentControlId,
+        suggestion.suggestedName
+      );
     }
 
     if (
@@ -139,7 +150,9 @@ export class WordAdapter implements HostAdapter {
       typeof wordAnchor.cellIndex === 'number'
     ) {
       const loopArrayPath = this.extractLoopArrayPath(suggestion);
-      const tableCellReplacementText = this.normalizeTableCellReplacementText(suggestion.suggestedName);
+      const tableCellReplacementText = this.normalizeTableCellReplacementText(
+        suggestion.suggestedName
+      );
 
       if (this.isTableLoopSuggestion(suggestion) && loopArrayPath) {
         return WordAPI.applyLoopTableMarkersOnNextRow(
@@ -199,13 +212,14 @@ export class WordAdapter implements HostAdapter {
   }
 
   async extractDocument(): Promise<DocumentIR> {
-    const [structure, paragraphFormats, underlineInfo, contentControls, tableCells] = await Promise.all([
-      WordAPI.getDocumentStructure(),
-      WordAPI.getParagraphsWithFormat(),
-      WordAPI.getUnderlinedTexts(),
-      WordAPI.getContentControls(),
-      WordAPI.getTableCells(),
-    ]);
+    const [structure, paragraphFormats, underlineInfo, contentControls, tableCells] =
+      await Promise.all([
+        WordAPI.getDocumentStructure(),
+        WordAPI.getParagraphsWithFormat(),
+        WordAPI.getUnderlinedTexts(),
+        WordAPI.getContentControls(),
+        WordAPI.getTableCells(),
+      ]);
 
     const paragraphElements: DocumentElement[] = paragraphFormats.map((paragraph) => ({
       id: `word-paragraph-${paragraph.index}`,
@@ -313,7 +327,12 @@ export class WordAdapter implements HostAdapter {
         language: 'zh-CN',
         title: contentControls.find((control) => control.title)?.title || undefined,
       },
-      elements: [...paragraphElements, ...tableElements, ...cellElements, ...contentControlElements],
+      elements: [
+        ...paragraphElements,
+        ...tableElements,
+        ...cellElements,
+        ...contentControlElements,
+      ],
       anchors,
       stats: {
         paragraphCount: structure.paragraphs.length,
@@ -355,7 +374,8 @@ export class WordAdapter implements HostAdapter {
       }
     }
 
-    const contextSnippet = suggestion.context || suggestion.details?.context || suggestion.elementPath;
+    const contextSnippet =
+      suggestion.context || suggestion.details?.context || suggestion.elementPath;
     if (this.canUseContextSnippet(contextSnippet)) {
       const result = await WordAPI.highlightByContext(contextSnippet);
       if (result.found) {
@@ -399,7 +419,8 @@ export class WordAdapter implements HostAdapter {
       }
     }
 
-    const contextSnippet = suggestion.context || suggestion.details?.context || suggestion.elementPath;
+    const contextSnippet =
+      suggestion.context || suggestion.details?.context || suggestion.elementPath;
     if (this.canUseContextSnippet(contextSnippet)) {
       const result = await WordAPI.replaceBlankWithContext(
         contextSnippet,
@@ -430,7 +451,9 @@ export class WordAdapter implements HostAdapter {
       content: `base64:${result.base64}`,
       mode: 'base64',
       isBinaryFile: result.isValidDocx,
-      warnings: result.isValidDocx ? [] : [`文档通过 ${result.method} 导出，结果可能不是完整 docx 文件`],
+      warnings: result.isValidDocx
+        ? []
+        : [`文档通过 ${result.method} 导出，结果可能不是完整 docx 文件`],
     };
   }
 

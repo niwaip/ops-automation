@@ -29,10 +29,7 @@ describe('AllocationService', () => {
     global.fetch = jest.fn();
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        AllocationService,
-        { provide: RedisService, useValue: mockRedisService },
-      ],
+      providers: [AllocationService, { provide: RedisService, useValue: mockRedisService }],
     }).compile();
 
     service = module.get<AllocationService>(AllocationService);
@@ -43,10 +40,13 @@ describe('AllocationService', () => {
     it('should allocate worker successfully via HTTP API', async () => {
       (global.fetch as jest.Mock).mockResolvedValue({
         ok: true,
-        text: () => Promise.resolve(JSON.stringify({
-          worker_id: 'worker-1',
-          endpoints: mockEndpoints,
-        })),
+        text: () =>
+          Promise.resolve(
+            JSON.stringify({
+              worker_id: 'worker-1',
+              endpoints: mockEndpoints,
+            })
+          ),
       });
 
       const result = await service.allocateWorker('session-123', 'user-1');
@@ -64,7 +64,7 @@ describe('AllocationService', () => {
             user_id: 'user-1',
             runtime_session_id: 'session-123',
           }),
-        }),
+        })
       );
     });
 
@@ -91,7 +91,7 @@ describe('AllocationService', () => {
         expect.stringContaining('/workers/worker-1'),
         expect.objectContaining({
           method: 'DELETE',
-        }),
+        })
       );
     });
 
@@ -124,7 +124,7 @@ describe('AllocationService', () => {
       expect(redisService.set).toHaveBeenCalledWith(
         'worker:heartbeat:worker-1',
         expect.any(String),
-        30,
+        30
       );
     });
   });

@@ -109,7 +109,7 @@ export class ToolCatalogService {
          WHERE table_schema = 'public'
            AND table_name = $1
        ) AS "exists"`,
-      tableName,
+      tableName
     );
 
     return Boolean(rows[0]?.exists);
@@ -123,7 +123,7 @@ export class ToolCatalogService {
          WHERE schemaname = 'public'
            AND indexname = $1
        ) AS "exists"`,
-      indexName,
+      indexName
     );
 
     return Boolean(rows[0]?.exists);
@@ -139,7 +139,7 @@ export class ToolCatalogService {
            AND column_name = $2
        ) AS "exists"`,
       tableName,
-      columnName,
+      columnName
     );
 
     return Boolean(rows[0]?.exists);
@@ -147,17 +147,19 @@ export class ToolCatalogService {
 
   private isIgnorableDdlError(error: unknown, objectName: string): boolean {
     const details = JSON.stringify(error);
-    return details.includes('42P07')
-      || details.includes('42710')
-      || details.includes('23505')
-      || details.includes('already exists')
-      || details.includes(`(${objectName}, 2200)`);
+    return (
+      details.includes('42P07') ||
+      details.includes('42710') ||
+      details.includes('23505') ||
+      details.includes('already exists') ||
+      details.includes(`(${objectName}, 2200)`)
+    );
   }
 
   private async ensureStatement(
     existsCheck: () => Promise<boolean>,
     statement: string,
-    objectName: string,
+    objectName: string
   ): Promise<void> {
     if (await existsCheck()) {
       return;
@@ -195,7 +197,7 @@ export class ToolCatalogService {
         created_at timestamptz NOT NULL DEFAULT now(),
         updated_at timestamptz NOT NULL DEFAULT now()
       )`,
-      'tool_catalogs',
+      'tool_catalogs'
     );
 
     await this.ensureStatement(
@@ -209,43 +211,43 @@ export class ToolCatalogService {
         updated_at timestamptz NOT NULL DEFAULT now(),
         UNIQUE (skill_id, tool_name)
       )`,
-      'skill_tool_bindings',
+      'skill_tool_bindings'
     );
 
     await this.ensureStatement(
       () => this.indexExists('idx_tool_catalogs_status'),
       `CREATE INDEX idx_tool_catalogs_status ON tool_catalogs(status)`,
-      'idx_tool_catalogs_status',
+      'idx_tool_catalogs_status'
     );
     await this.ensureStatement(
       () => this.indexExists('idx_tool_catalogs_category_status'),
       `CREATE INDEX idx_tool_catalogs_category_status ON tool_catalogs(category, status)`,
-      'idx_tool_catalogs_category_status',
+      'idx_tool_catalogs_category_status'
     );
     await this.ensureStatement(
       () => this.indexExists('idx_tool_catalogs_runtime_status'),
       `CREATE INDEX idx_tool_catalogs_runtime_status ON tool_catalogs(runtime_type, status)`,
-      'idx_tool_catalogs_runtime_status',
+      'idx_tool_catalogs_runtime_status'
     );
     await this.ensureStatement(
       () => this.indexExists('idx_skill_tool_bindings_skill_id'),
       `CREATE INDEX idx_skill_tool_bindings_skill_id ON skill_tool_bindings(skill_id)`,
-      'idx_skill_tool_bindings_skill_id',
+      'idx_skill_tool_bindings_skill_id'
     );
     await this.ensureStatement(
       () => this.indexExists('idx_skill_tool_bindings_tool_name'),
       `CREATE INDEX idx_skill_tool_bindings_tool_name ON skill_tool_bindings(tool_name)`,
-      'idx_skill_tool_bindings_tool_name',
+      'idx_skill_tool_bindings_tool_name'
     );
     await this.ensureStatement(
       () => this.columnExists('skill_configs', 'config_status'),
       `ALTER TABLE skill_configs ADD COLUMN config_status varchar(32) NOT NULL DEFAULT 'draft'`,
-      'skill_configs.config_status',
+      'skill_configs.config_status'
     );
     await this.ensureStatement(
       () => this.columnExists('skill_configs', 'last_validation_summary'),
       `ALTER TABLE skill_configs ADD COLUMN last_validation_summary jsonb NULL`,
-      'skill_configs.last_validation_summary',
+      'skill_configs.last_validation_summary'
     );
   }
 
@@ -256,7 +258,7 @@ export class ToolCatalogService {
          FROM tool_catalogs
          WHERE name = $1
          LIMIT 1`,
-        tool.name,
+        tool.name
       );
 
       if (!existing[0]) {
@@ -281,7 +283,7 @@ export class ToolCatalogService {
           tool.promptExposure || 'prompt_and_runtime',
           tool.defaultRequiresConfirmation ?? false,
           tool.defaultRequiresApproval ?? false,
-          JSON.stringify(tool.metadataJson || {}),
+          JSON.stringify(tool.metadataJson || {})
         );
         continue;
       }
@@ -298,7 +300,7 @@ export class ToolCatalogService {
         tool.displayName,
         tool.description,
         tool.category,
-        tool.runtimeType,
+        tool.runtimeType
       );
     }
 
@@ -333,7 +335,9 @@ export class ToolCatalogService {
     }
     if (filters?.keyword) {
       params.push(`%${filters.keyword}%`);
-      clauses.push(`(name ILIKE $${params.length} OR display_name ILIKE $${params.length} OR COALESCE(description, '') ILIKE $${params.length})`);
+      clauses.push(
+        `(name ILIKE $${params.length} OR display_name ILIKE $${params.length} OR COALESCE(description, '') ILIKE $${params.length})`
+      );
     }
 
     const rows = await this.prisma.$queryRawUnsafe<any[]>(
@@ -349,7 +353,7 @@ export class ToolCatalogService {
          ON usage.tool_name = tc.name
        WHERE ${clauses.join(' AND ')}
        ORDER BY tc.category NULLS LAST, tc.name ASC`,
-      ...params,
+      ...params
     );
 
     return rows.map((row) => this.mapTool(row));
@@ -404,7 +408,7 @@ export class ToolCatalogService {
          ON usage.tool_name = tc.name
        WHERE tc.name = $1
        LIMIT 1`,
-      name,
+      name
     );
 
     if (!rows[0]) {
@@ -444,7 +448,7 @@ export class ToolCatalogService {
       next.promptExposure,
       next.defaultRequiresConfirmation,
       next.defaultRequiresApproval,
-      JSON.stringify(next.metadataJson || {}),
+      JSON.stringify(next.metadataJson || {})
     );
 
     return this.getCatalogItem(name);
@@ -458,13 +462,15 @@ export class ToolCatalogService {
 
     const rows = await this.prisma.$queryRawUnsafe<any[]>(
       `SELECT * FROM tool_catalogs WHERE name = ANY($1::text[])`,
-      uniqueToolNames,
+      uniqueToolNames
     );
 
-    return new Map(rows.map((row) => {
-      const tool = this.mapTool(row);
-      return [tool.name, tool];
-    }));
+    return new Map(
+      rows.map((row) => {
+        const tool = this.mapTool(row);
+        return [tool.name, tool];
+      })
+    );
   }
 
   private mapTool(row: any): ToolCatalogItem {
@@ -478,12 +484,14 @@ export class ToolCatalogService {
       status: (row.status || 'active') as ToolCatalogStatus,
       riskLevel: (row.risk_level || row.riskLevel || 'L0') as ToolRiskLevel,
       allowSkillBinding: Boolean(row.allow_skill_binding ?? row.allowSkillBinding ?? true),
-      promptExposure: (row.prompt_exposure || row.promptExposure || 'prompt_and_runtime') as ToolPromptExposure,
+      promptExposure: (row.prompt_exposure ||
+        row.promptExposure ||
+        'prompt_and_runtime') as ToolPromptExposure,
       defaultRequiresConfirmation: Boolean(
-        row.default_requires_confirmation ?? row.defaultRequiresConfirmation ?? false,
+        row.default_requires_confirmation ?? row.defaultRequiresConfirmation ?? false
       ),
       defaultRequiresApproval: Boolean(
-        row.default_requires_approval ?? row.defaultRequiresApproval ?? false,
+        row.default_requires_approval ?? row.defaultRequiresApproval ?? false
       ),
       metadataJson: row.metadata_json || row.metadataJson || {},
     };

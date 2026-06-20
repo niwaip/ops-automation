@@ -71,7 +71,7 @@ describe('Control Plane Integration Tests', () => {
         '192.168.1.1',
         150,
         undefined,
-        { count: 5 },
+        { count: 5 }
       );
 
       const logs = await auditService.queryLogs();
@@ -93,7 +93,7 @@ describe('Control Plane Integration Tests', () => {
         '192.168.1.1',
         50,
         { username: 'test', password: 'secret123' },
-        { accessToken: 'token-abc', refreshToken: 'refresh-xyz' },
+        { accessToken: 'token-abc', refreshToken: 'refresh-xyz' }
       );
 
       const logs = await auditService.queryLogs();

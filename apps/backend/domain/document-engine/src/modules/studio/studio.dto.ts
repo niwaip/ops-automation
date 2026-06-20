@@ -28,8 +28,8 @@ export class PreviewDto {
 export class AIIdentifyDto {
   templateId!: string;
   context?: string;
-  manualMarkings?: Record<string, string>;  // 用户手动标记：{ 元素索引: 'param'|'loop'|'static' }
-  markingSummary?: string;  // 标记摘要文本
+  manualMarkings?: Record<string, string>; // 用户手动标记：{ 元素索引: 'param'|'loop'|'static' }
+  markingSummary?: string; // 标记摘要文本
 }
 
 /**
@@ -37,25 +37,28 @@ export class AIIdentifyDto {
  * 无需先上传模板，直接对文档内容进行AI识别
  */
 export class DirectAIIdentifyDto {
-  documentContent!: string;           // 文档文本内容（从Office获取）
-  documentType!: 'docx' | 'xlsx' | 'pptx' | 'text';  // 文档类型
-  templateType?: string;              // 模板类型：report, invoice, contract, certificate 等
-  skillId?: string;                   // AI Skill ID
-  skill?: any;                        // AI Skill 对象
-  context?: string;                   // 上下文信息（如文档用途描述）
-  customRules?: Array<{               // 自定义识别规则
+  documentContent!: string; // 文档文本内容（从Office获取）
+  documentType!: 'docx' | 'xlsx' | 'pptx' | 'text'; // 文档类型
+  templateType?: string; // 模板类型：report, invoice, contract, certificate 等
+  skillId?: string; // AI Skill ID
+  skill?: any; // AI Skill 对象
+  context?: string; // 上下文信息（如文档用途描述）
+  customRules?: Array<{
+    // 自定义识别规则
     pattern: string;
     targetPath: string;
     description?: string;
   }>;
-  underlineInfo?: Array<{             // 下划线信息（从Word JS API获取）
-    text: string;                     // 带下划线的文本
-    underlineType: string;            // 下划线类型
-    paragraphIndex?: number;          // 段落索引（用于精确定位）
-    paragraphText: string;            // 所在段落完整文本
-    position: { start: number; end: number };  // 在段落中的位置
+  underlineInfo?: Array<{
+    // 下划线信息（从Word JS API获取）
+    text: string; // 带下划线的文本
+    underlineType: string; // 下划线类型
+    paragraphIndex?: number; // 段落索引（用于精确定位）
+    paragraphText: string; // 所在段落完整文本
+    position: { start: number; end: number }; // 在段落中的位置
   }>;
-  paragraphFormats?: Array<{          // 段落格式信息
+  paragraphFormats?: Array<{
+    // 段落格式信息
     text: string;
     index: number;
     format: {
@@ -70,20 +73,20 @@ export class DirectAIIdentifyDto {
 export class SaveMarkingsDto {
   templateId!: string;
   markings!: Array<{
-    index?: number;      // 元素索引
-    type?: string;       // 标记类型：param|loop|static
-    path?: string;       // 变量路径（可选）
-    text?: string;       // 文本内容（可选）
+    index?: number; // 元素索引
+    type?: string; // 标记类型：param|loop|static
+    path?: string; // 变量路径（可选）
+    text?: string; // 文本内容（可选）
     formatters?: string[];
   }>;
-  ignoredElements?: number[];  // 被忽略的元素索引列表
-  elementGroups?: Record<string, number[]>;  // 元素分组
-  ignoredGroups?: string[];  // 被忽略的分组ID列表
+  ignoredElements?: number[]; // 被忽略的元素索引列表
+  elementGroups?: Record<string, number[]>; // 元素分组
+  ignoredGroups?: string[]; // 被忽略的分组ID列表
 }
 
 export class SaveTemplateConfigDto {
   templateId!: string;
-  templateConfig!: any;  // TemplateConfig from AI analysis
+  templateConfig!: any; // TemplateConfig from AI analysis
   suggestions?: any[];
   rawSuggestions?: any[];
 }

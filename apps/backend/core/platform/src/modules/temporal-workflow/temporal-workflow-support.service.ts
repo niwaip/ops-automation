@@ -10,19 +10,18 @@ import {
   TemporalWorkflowActivityResolutionService,
   type TemporalWorkflowActivityResolutionSupport,
 } from './temporal-workflow-activity-resolution.service';
-import type {
-  TemporalWorkflowBrowserDraftSupport,
-} from './temporal-workflow-browser-draft.service';
-import type {
-  TemporalWorkflowCodegenSupport,
-} from './temporal-workflow-codegen.service';
+import type { TemporalWorkflowBrowserDraftSupport } from './temporal-workflow-browser-draft.service';
+import type { TemporalWorkflowCodegenSupport } from './temporal-workflow-codegen.service';
 import type {
   AiDraftActivityResource,
   AiWorkflowDraftPlan,
   TemporalWorkflowAiDraftSupport,
 } from './temporal-workflow-draft.service';
 import { TemporalWorkflowAiDraftService } from './temporal-workflow-draft.service';
-import { buildDeterministicActivityCodeForWorkflow, buildDeterministicWorkflowCodeForWorkflow } from './temporal-workflow-deterministic-builder';
+import {
+  buildDeterministicActivityCodeForWorkflow,
+  buildDeterministicWorkflowCodeForWorkflow,
+} from './temporal-workflow-deterministic-builder';
 import { TemporalWorkflowConfigService } from './temporal-workflow-config.service';
 import { TemporalWorkflowNormalizationService } from './temporal-workflow-normalization.service';
 import {
@@ -38,17 +37,9 @@ import {
   createTemporalWorkflowSessionSupport,
   createTemporalWorkflowTemplateSupport,
 } from './temporal-workflow-support.factory';
-import type {
-  ActivityDsl,
-  TemporalValidationResult,
-  WorkflowDsl,
-} from './temporal-workflow.types';
-import type {
-  TemporalWorkflowSessionSupport,
-} from './temporal-workflow-session.service';
-import type {
-  TemporalWorkflowTemplateSupport,
-} from './temporal-workflow-template.service';
+import type { ActivityDsl, TemporalValidationResult, WorkflowDsl } from './temporal-workflow.types';
+import type { TemporalWorkflowSessionSupport } from './temporal-workflow-session.service';
+import type { TemporalWorkflowTemplateSupport } from './temporal-workflow-template.service';
 
 @Injectable()
 export class TemporalWorkflowSupportService {
@@ -57,98 +48,118 @@ export class TemporalWorkflowSupportService {
     private readonly aiDraftService: TemporalWorkflowAiDraftService,
     private readonly activityResolutionService: TemporalWorkflowActivityResolutionService,
     private readonly workflowConfigService: TemporalWorkflowConfigService,
-    private readonly workflowNormalizationService: TemporalWorkflowNormalizationService,
+    private readonly workflowNormalizationService: TemporalWorkflowNormalizationService
   ) {}
 
   createAiDraftSupport(): TemporalWorkflowAiDraftSupport {
     return createTemporalWorkflowAiDraftSupport({
       fetchReferenceUrlExcerpt,
-      sanitizeJsonValue: <T>(value: T) => this.workflowNormalizationService.sanitizeJsonValue(value),
+      sanitizeJsonValue: <T>(value: T) =>
+        this.workflowNormalizationService.sanitizeJsonValue(value),
       parseJsonFromAiContent,
       pickFirstNonEmptyString,
-      normalizeHttpRequestConfig: (config, declaredInputKeys) => (
-        this.workflowConfigService.normalizeHttpRequestConfig(config, declaredInputKeys)
-      ),
-      optimizeHttpRequestConfig: (stepConfig, inputParams, userRequest) => (
-        this.workflowConfigService.optimizeHttpRequestConfig(stepConfig, inputParams, userRequest)
-      ),
-      previewHttpRequestConfig: (stepConfig, inputParams) => (
-        this.workflowConfigService.previewHttpRequestConfig(stepConfig, inputParams)
-      ),
-      generateStructuredTransformConfig: (sourceSample, userRequest, existingConfig) => (
-        this.workflowConfigService.generateStructuredTransformConfig(sourceSample, userRequest, existingConfig)
-      ),
-      generateAiStructuredTransformDraftConfig: (sourceSample, userRequest, existingConfig) => (
-        this.workflowConfigService.generateAiStructuredTransformDraftConfig(sourceSample, userRequest, existingConfig)
-      ),
-      normalizeStructuredTransformConfig: (config, placeholderKeys) => (
-        this.workflowConfigService.normalizeStructuredTransformConfig(config, placeholderKeys)
-      ),
-      collectTemplateVariables: (value, target) => this.workflowConfigService.collectTemplateVariables(value, target),
-      renderHttpTemplateValue: (value, params) => this.workflowConfigService.renderHttpTemplateValue(value, params),
+      normalizeHttpRequestConfig: (config, declaredInputKeys) =>
+        this.workflowConfigService.normalizeHttpRequestConfig(config, declaredInputKeys),
+      optimizeHttpRequestConfig: (stepConfig, inputParams, userRequest) =>
+        this.workflowConfigService.optimizeHttpRequestConfig(stepConfig, inputParams, userRequest),
+      previewHttpRequestConfig: (stepConfig, inputParams) =>
+        this.workflowConfigService.previewHttpRequestConfig(stepConfig, inputParams),
+      generateStructuredTransformConfig: (sourceSample, userRequest, existingConfig) =>
+        this.workflowConfigService.generateStructuredTransformConfig(
+          sourceSample,
+          userRequest,
+          existingConfig
+        ),
+      generateAiStructuredTransformDraftConfig: (sourceSample, userRequest, existingConfig) =>
+        this.workflowConfigService.generateAiStructuredTransformDraftConfig(
+          sourceSample,
+          userRequest,
+          existingConfig
+        ),
+      normalizeStructuredTransformConfig: (config, placeholderKeys) =>
+        this.workflowConfigService.normalizeStructuredTransformConfig(config, placeholderKeys),
+      collectTemplateVariables: (value, target) =>
+        this.workflowConfigService.collectTemplateVariables(value, target),
+      renderHttpTemplateValue: (value, params) =>
+        this.workflowConfigService.renderHttpTemplateValue(value, params),
       normalizeName: (value) => this.workflowNormalizationService.normalizeName(value ?? undefined),
-      normalizeDescription: (value) => this.workflowNormalizationService.normalizeDescription(value ?? undefined),
-      normalizeTaskQueue: (value) => this.workflowNormalizationService.normalizeTaskQueue(value ?? undefined),
-      normalizeWorkflowClassName: (candidate, workflowName) => (
-        this.workflowNormalizationService.normalizeWorkflowClassName(candidate, workflowName)
-      ),
-      normalizeWorkflowDsl: (workflowDsl, workflowName, taskQueue, activityDsl) => (
-        this.workflowNormalizationService.normalizeWorkflowDsl(workflowDsl, workflowName, taskQueue, activityDsl)
-      ),
-      buildWorkflowSemanticHint: (...values) => this.workflowNormalizationService.buildWorkflowSemanticHint(...values),
+      normalizeDescription: (value) =>
+        this.workflowNormalizationService.normalizeDescription(value ?? undefined),
+      normalizeTaskQueue: (value) =>
+        this.workflowNormalizationService.normalizeTaskQueue(value ?? undefined),
+      normalizeWorkflowClassName: (candidate, workflowName) =>
+        this.workflowNormalizationService.normalizeWorkflowClassName(candidate, workflowName),
+      normalizeWorkflowDsl: (workflowDsl, workflowName, taskQueue, activityDsl) =>
+        this.workflowNormalizationService.normalizeWorkflowDsl(
+          workflowDsl,
+          workflowName,
+          taskQueue,
+          activityDsl
+        ),
+      buildWorkflowSemanticHint: (...values) =>
+        this.workflowNormalizationService.buildWorkflowSemanticHint(...values),
     });
   }
 
   createTemplateSupport(): TemporalWorkflowTemplateSupport {
     return createTemporalWorkflowTemplateSupport({
       getBuiltinDocumentRenderActivity: () => this.getBuiltinDocumentRenderActivity(),
-      buildDefaultWorkflowInputPolicyParams: (inputParams) => (
-        this.workflowNormalizationService.buildDefaultWorkflowInputPolicyParams(inputParams)
-      ),
+      buildDefaultWorkflowInputPolicyParams: (inputParams) =>
+        this.workflowNormalizationService.buildDefaultWorkflowInputPolicyParams(inputParams),
       normalizeName: (value) => this.workflowNormalizationService.normalizeName(value ?? undefined),
-      normalizeDescription: (value) => this.workflowNormalizationService.normalizeDescription(value ?? undefined),
-      normalizeTaskQueue: (value) => this.workflowNormalizationService.normalizeTaskQueue(value ?? undefined),
-      normalizeWorkflowDsl: (workflowDsl, workflowName, taskQueue, activityDsl) => (
-        this.workflowNormalizationService.normalizeWorkflowDsl(workflowDsl, workflowName, taskQueue, activityDsl)
-      ),
+      normalizeDescription: (value) =>
+        this.workflowNormalizationService.normalizeDescription(value ?? undefined),
+      normalizeTaskQueue: (value) =>
+        this.workflowNormalizationService.normalizeTaskQueue(value ?? undefined),
+      normalizeWorkflowDsl: (workflowDsl, workflowName, taskQueue, activityDsl) =>
+        this.workflowNormalizationService.normalizeWorkflowDsl(
+          workflowDsl,
+          workflowName,
+          taskQueue,
+          activityDsl
+        ),
       pickFirstNonEmptyString,
       uniqueVariables: (variables) => this.workflowNormalizationService.uniqueVariables(variables),
-      buildWorkflowSemanticHint: (...values) => this.workflowNormalizationService.buildWorkflowSemanticHint(...values),
+      buildWorkflowSemanticHint: (...values) =>
+        this.workflowNormalizationService.buildWorkflowSemanticHint(...values),
     });
   }
 
   createBrowserDraftSupport(): TemporalWorkflowBrowserDraftSupport {
     return createTemporalWorkflowBrowserDraftSupport({
       normalizeName: (value) => this.workflowNormalizationService.normalizeName(value ?? undefined),
-      normalizeDescription: (value) => this.workflowNormalizationService.normalizeDescription(value ?? undefined),
+      normalizeDescription: (value) =>
+        this.workflowNormalizationService.normalizeDescription(value ?? undefined),
       pickFirstNonEmptyString,
-      collectTemplateVariables: (value, target) => this.workflowConfigService.collectTemplateVariables(value, target),
-      buildWorkflowSemanticHint: (...values) => this.workflowNormalizationService.buildWorkflowSemanticHint(...values),
+      collectTemplateVariables: (value, target) =>
+        this.workflowConfigService.collectTemplateVariables(value, target),
+      buildWorkflowSemanticHint: (...values) =>
+        this.workflowNormalizationService.buildWorkflowSemanticHint(...values),
     });
   }
 
   createCodegenSupport(): TemporalWorkflowCodegenSupport {
-    return createTemporalWorkflowCodegenSupport((workflowDsl, activityDsl) => (
+    return createTemporalWorkflowCodegenSupport((workflowDsl, activityDsl) =>
       this.buildDeterministicWorkflowCode(workflowDsl, activityDsl)
-    ));
+    );
   }
 
   createSessionSupport(
     generateAiWorkflowDraft: TemporalWorkflowSessionSupport['generateAiWorkflowDraft'],
-    refineAiWorkflowDraft: TemporalWorkflowSessionSupport['refineAiWorkflowDraft'],
+    refineAiWorkflowDraft: TemporalWorkflowSessionSupport['refineAiWorkflowDraft']
   ): TemporalWorkflowSessionSupport {
     return createTemporalWorkflowSessionSupport(generateAiWorkflowDraft, refineAiWorkflowDraft);
   }
 
   createActivityResolutionSupport(): TemporalWorkflowActivityResolutionSupport {
-    return createTemporalWorkflowActivityResolutionSupport((activityDef) => (
+    return createTemporalWorkflowActivityResolutionSupport((activityDef) =>
       this.buildDeterministicActivityCode(activityDef)
-    ));
+    );
   }
 
   async validateDsl(
     workflowDsl: WorkflowDsl,
-    activityDsl: ActivityDsl,
+    activityDsl: ActivityDsl
   ): Promise<TemporalValidationResult> {
     const errors: string[] = [];
     const warnings: string[] = [];
@@ -180,18 +191,22 @@ export class TemporalWorkflowSupportService {
       const resolvedActivity = await this.activityResolutionService.resolveActivityDefinition(
         step,
         activityDsl,
-        this.createActivityResolutionSupport(),
+        this.createActivityResolutionSupport()
       );
       if (!resolvedActivity) {
         const activityIdentifier = step.activityRef || step.activityName || '<unknown>';
-        errors.push(`Step "${step.name}" references activity "${activityIdentifier}" which cannot be resolved`);
+        errors.push(
+          `Step "${step.name}" references activity "${activityIdentifier}" which cannot be resolved`
+        );
       }
     }
 
-    errors.push(...this.aiDraftService.validatePlan(
-      { steps: workflowDsl.steps as AiWorkflowDraftPlan['steps'] },
-      this.buildAiDraftActivityResources(activityDsl),
-    ));
+    errors.push(
+      ...this.aiDraftService.validatePlan(
+        { steps: workflowDsl.steps as AiWorkflowDraftPlan['steps'] },
+        this.buildAiDraftActivityResources(activityDsl)
+      )
+    );
 
     if (!activityDsl.activities || activityDsl.activities.length === 0) {
       warnings.push('No activities defined');
@@ -218,38 +233,33 @@ export class TemporalWorkflowSupportService {
 
   async createEnrichedActivityDsl(
     workflowDsl: WorkflowDsl,
-    activityDsl: ActivityDsl,
+    activityDsl: ActivityDsl
   ): Promise<ActivityDsl> {
     const activities = await collectEnrichedActivities({
       workflowDsl,
       activityDsl,
       activityResolutionService: this.activityResolutionService,
       createActivityResolutionSupport: () => this.createActivityResolutionSupport(),
-      buildDeterministicActivityCode: (activityDef) => this.buildDeterministicActivityCode(activityDef),
+      buildDeterministicActivityCode: (activityDef) =>
+        this.buildDeterministicActivityCode(activityDef),
     });
 
     return { activities };
   }
 
-  buildDeterministicActivityCode(
-    activityDef: ActivityDsl['activities'][number],
-  ): string | null {
+  buildDeterministicActivityCode(activityDef: ActivityDsl['activities'][number]): string | null {
     return buildDeterministicActivityCodeForWorkflow(activityDef);
   }
 
   buildDeterministicWorkflowCode(
     workflowDsl: WorkflowDsl,
-    activityDsl: ActivityDsl,
+    activityDsl: ActivityDsl
   ): string | null {
-    return buildDeterministicWorkflowCodeForWorkflow(
-      workflowDsl,
-      activityDsl,
-      {
-        builtinActivityRegistry: this.builtinActivityRegistry,
-        workflowConfigService: this.workflowConfigService,
-        workflowNormalizationService: this.workflowNormalizationService,
-      },
-    );
+    return buildDeterministicWorkflowCodeForWorkflow(workflowDsl, activityDsl, {
+      builtinActivityRegistry: this.builtinActivityRegistry,
+      workflowConfigService: this.workflowConfigService,
+      workflowNormalizationService: this.workflowNormalizationService,
+    });
   }
 
   private getBuiltinDocumentRenderActivity(): BuiltinActivityDefinition {

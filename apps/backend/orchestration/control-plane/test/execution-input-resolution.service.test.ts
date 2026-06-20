@@ -66,7 +66,7 @@ describe('ExecutionInputResolutionService', () => {
         currentUsage: createUsage(3, 2, 1),
         submittedUsage: createUsage(5, 4, 2),
         reconcileSemantic,
-      },
+      }
     );
 
     expect(result.normalizedSubmittedInput).toEqual({
@@ -109,58 +109,57 @@ describe('ExecutionInputResolutionService', () => {
         previewReady: true,
       },
     });
-    expect(reconcileSemantic).toHaveBeenCalledWith(
-      { finalReady: false },
-      [
-        expect.objectContaining({
-          name: 'dueDate',
-          missing: false,
-        }),
-      ],
-    );
+    expect(reconcileSemantic).toHaveBeenCalledWith({ finalReady: false }, [
+      expect.objectContaining({
+        name: 'dueDate',
+        missing: false,
+      }),
+    ]);
   });
 
   it('rejects fields that are not currently missing', () => {
     const service = new ExecutionInputResolutionService();
 
-    expect(() => service.resolveSubmitInputState(
-      {
-        normalized: {},
-        requiredInputs: [
-          {
-            name: 'dueDate',
-            type: 'date',
-            required: true,
-            missing: true,
-            source: 'unresolved',
+    expect(() =>
+      service.resolveSubmitInputState(
+        {
+          normalized: {},
+          requiredInputs: [
+            {
+              name: 'dueDate',
+              type: 'date',
+              required: true,
+              missing: true,
+              source: 'unresolved',
+            },
+          ],
+          currentParamResolution: {
+            dueDate: {
+              type: 'date',
+              required: true,
+              requiredMode: 'always',
+              source: 'unresolved',
+              missing: true,
+              needsConfirmation: false,
+              final: false,
+            },
           },
-        ],
-        currentParamResolution: {
-          dueDate: {
-            type: 'date',
-            required: true,
-            requiredMode: 'always',
-            source: 'unresolved',
-            missing: true,
-            needsConfirmation: false,
-            final: false,
-          },
+          missingInputs: [
+            {
+              name: 'dueDate',
+              type: 'date',
+              required: true,
+              missing: true,
+              source: 'unresolved',
+            },
+          ],
         },
-        missingInputs: [
-          {
-            name: 'dueDate',
-            type: 'date',
-            required: true,
-            missing: true,
-            source: 'unresolved',
+        {
+          input: {
+            unexpected: 'value',
           },
-        ],
-      },
-      {
-        input: {
-          unexpected: 'value',
-        },
-      },
-    )).toThrow(BadRequestException);
+        }
+      )
+    ).toThrow(BadRequestException);
   });
 });

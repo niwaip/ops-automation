@@ -1,5 +1,5 @@
 export const lineHost = {
-  name: "line",
+  name: 'line',
   openUrl: (url: string) => {
     void url;
   },

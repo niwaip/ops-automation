@@ -22,12 +22,9 @@ interface WordCompareSectionCandidatesPanelProps {
   isWordLoopCompareCandidate: (candidate: TemplateFieldCandidate) => boolean;
 }
 
-export const WordCompareSectionCandidatesPanel: React.FC<WordCompareSectionCandidatesPanelProps> = ({
-  section,
-  onSaveCandidate,
-  onDeleteCandidate,
-  isWordLoopCompareCandidate,
-}) => (
+export const WordCompareSectionCandidatesPanel: React.FC<
+  WordCompareSectionCandidatesPanelProps
+> = ({ section, onSaveCandidate, onDeleteCandidate, isWordLoopCompareCandidate }) => (
   <WordCompareCandidateGroups
     groups={buildWordCompareCandidateDisplayGroups(section, {
       sortWordCandidatesByPosition,
@@ -53,7 +50,9 @@ interface WordRecognitionSectionResultPanelProps {
   formatConfidence: (confidence: number) => string;
 }
 
-export const WordRecognitionSectionResultPanel: React.FC<WordRecognitionSectionResultPanelProps> = ({
+export const WordRecognitionSectionResultPanel: React.FC<
+  WordRecognitionSectionResultPanelProps
+> = ({
   section,
   sectionGenerationResultMap,
   sectionSuggestionMap,
@@ -80,7 +79,9 @@ export const WordRecognitionSectionResultPanel: React.FC<WordRecognitionSectionR
     <AISuggestionItem
       key={suggestion.id}
       suggestion={suggestion}
-      onApply={() => { void applyState.handleApplySingle(suggestion, persistAppliedRecognitionCache); }}
+      onApply={() => {
+        void applyState.handleApplySingle(suggestion, persistAppliedRecognitionCache);
+      }}
       onDismiss={() => applyState.dismissSuggestion(suggestion.id)}
       onUpdateName={(newName: string) => applyState.updateSuggestionName(suggestion.id, newName)}
       onUpdateDetails={(details: any) => applyState.updateSuggestionDetails(suggestion.id, details)}
@@ -101,8 +102,12 @@ export const WordRecognitionSectionResultPanel: React.FC<WordRecognitionSectionR
       pendingCount={viewModel.pendingCount}
       appliedCount={viewModel.appliedCount}
       applyState={applyState}
-      onApplyGroup={() => { void applyState.handleApplyGroup(viewModel.groupName, persistAppliedRecognitionCache); }}
-      onReapplyGroup={() => { void applyState.handleReapplyGroup(viewModel.groupName, persistAppliedRecognitionCache); }}
+      onApplyGroup={() => {
+        void applyState.handleApplyGroup(viewModel.groupName, persistAppliedRecognitionCache);
+      }}
+      onReapplyGroup={() => {
+        void applyState.handleReapplyGroup(viewModel.groupName, persistAppliedRecognitionCache);
+      }}
       renderSuggestionCard={renderSuggestionCard}
       formatConfidence={formatConfidence}
     />

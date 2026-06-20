@@ -24,7 +24,7 @@ export class BrowserSessionRegistry {
 
   patch(
     runtimeSessionId: string,
-    patch: Partial<BrowserRuntimeSessionState>,
+    patch: Partial<BrowserRuntimeSessionState>
   ): BrowserRuntimeSessionState | undefined {
     const existing = this.sessions.get(runtimeSessionId);
     if (!existing) {

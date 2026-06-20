@@ -10,16 +10,17 @@ export class ExecutionPlanningService {
   private readonly logger = new Logger(ExecutionPlanningService.name);
   private readonly authServiceUrl = getAuthServiceUrl();
   private readonly aiOrchestratorUrl = getAiOrchestratorUrl();
-  private readonly internalApiSharedSecret = process.env.INTERNAL_API_SHARED_SECRET || process.env.JWT_SECRET;
+  private readonly internalApiSharedSecret =
+    process.env.INTERNAL_API_SHARED_SECRET || process.env.JWT_SECRET;
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly executionPlanNormalizationService: ExecutionPlanNormalizationService,
+    private readonly executionPlanNormalizationService: ExecutionPlanNormalizationService
   ) {}
 
   private buildAuthServiceHeaders(
     authToken?: string,
-    requester?: { id: string; role?: string },
+    requester?: { id: string; role?: string }
   ): Record<string, string> | undefined {
     if (typeof authToken === 'string' && authToken.trim().length > 0) {
       return {
@@ -28,9 +29,9 @@ export class ExecutionPlanningService {
     }
 
     if (
-      this.internalApiSharedSecret
-      && typeof requester?.id === 'string'
-      && requester.id.trim().length > 0
+      this.internalApiSharedSecret &&
+      typeof requester?.id === 'string' &&
+      requester.id.trim().length > 0
     ) {
       return {
         'X-Internal-Auth': this.internalApiSharedSecret,
@@ -45,7 +46,7 @@ export class ExecutionPlanningService {
   async assertSkillAccessibleByUser(
     skillId: string,
     authToken?: string,
-    requester?: { id: string; role?: string },
+    requester?: { id: string; role?: string }
   ): Promise<void> {
     const headers = this.buildAuthServiceHeaders(authToken, requester);
     if (!headers) {
@@ -59,9 +60,7 @@ export class ExecutionPlanningService {
       });
     } catch (error) {
       const status =
-        typeof error === 'object'
-        && error !== null
-        && 'response' in error
+        typeof error === 'object' && error !== null && 'response' in error
           ? (error as { response?: { status?: number } }).response?.status
           : undefined;
 
@@ -78,16 +77,26 @@ export class ExecutionPlanningService {
   async fetchSkillDefaultResolution(
     skillId: string,
     authToken?: string,
-    requester?: { id: string; role?: string },
+    requester?: { id: string; role?: string }
   ): Promise<{ input: Record<string, unknown>; sources: Record<string, unknown> }> {
     try {
       const headers = this.buildAuthServiceHeaders(authToken, requester);
       const response = await axios.get<{
         paramsSchema?: {
-          properties?: Record<string, { type?: string; default?: unknown; renderPath?: string | string[] }>;
+          properties?: Record<
+            string,
+            { type?: string; default?: unknown; renderPath?: string | string[] }
+          >;
         };
         inputPolicy?: {
-          params?: Record<string, { defaultValue?: unknown; defaultValueResolver?: string; valueSourcePriority?: string[] }>;
+          params?: Record<
+            string,
+            {
+              defaultValue?: unknown;
+              defaultValueResolver?: string;
+              valueSourcePriority?: string[];
+            }
+          >;
         };
         executionFlowTemplateIds?: string[];
       }>(`${this.authServiceUrl}/skills/${skillId}`, {
@@ -96,7 +105,9 @@ export class ExecutionPlanningService {
       });
 
       const templateIds = Array.isArray(response.data?.executionFlowTemplateIds)
-        ? response.data.executionFlowTemplateIds.filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
+        ? response.data.executionFlowTemplateIds.filter(
+            (id): id is string => typeof id === 'string' && id.trim().length > 0
+          )
         : [];
       const templateSchemas = await Promise.all(
         templateIds.map(async (templateId) => {
@@ -111,12 +122,12 @@ export class ExecutionPlanningService {
             this.logger.warn(`Failed to load runtime defaults from flow ${templateId}: ${message}`);
             return undefined;
           }
-        }),
+        })
       );
 
       return this.executionPlanNormalizationService.buildRuntimeDefaultResolution(
         response.data as any,
-        templateSchemas as any[],
+        templateSchemas as any[]
       ) as { input: Record<string, unknown>; sources: Record<string, unknown> };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'unknown error';
@@ -128,7 +139,7 @@ export class ExecutionPlanningService {
   async generatePlanDraft(
     userId: string,
     dto: CreateExecutionDto,
-    authToken?: string,
+    authToken?: string
   ): Promise<any | undefined> {
     try {
       const userInput = this.executionPlanNormalizationService.buildPlannerUserInput(dto);
@@ -140,13 +151,15 @@ export class ExecutionPlanningService {
           context: {
             skillId: dto.skillId,
             skillVersion: dto.skillVersion,
-            runtimeType: this.executionPlanNormalizationService.normalizeExecutionRuntimeType(dto.runtimeType),
+            runtimeType: this.executionPlanNormalizationService.normalizeExecutionRuntimeType(
+              dto.runtimeType
+            ),
             executionInput: dto.input,
           },
         },
         {
           headers: authToken ? { Authorization: authToken } : undefined,
-        },
+        }
       );
 
       return response.data;
@@ -161,15 +174,11 @@ export class ExecutionPlanningService {
     planDraft: any | undefined,
     fallbackCapabilityId?: string,
     input?: Record<string, unknown>,
-    runtimeDefaultInput?: Record<string, unknown>,
+    runtimeDefaultInput?: Record<string, unknown>
   ): Promise<any | undefined> {
     if (!planDraft) {
       return planDraft;
     }
-    if (planDraft.steps.some((step: any) => Array.isArray(step.commands) && step.commands.length > 0)) {
-      return planDraft;
-    }
-
     const capabilityId = planDraft.skill_match?.skill_id || fallbackCapabilityId;
     if (!capabilityId) {
       return planDraft;
@@ -178,39 +187,63 @@ export class ExecutionPlanningService {
     const resolvedInput = this.executionPlanNormalizationService.buildPlannerResolvedInput(
       planDraft as any,
       input,
-      runtimeDefaultInput,
+      runtimeDefaultInput
     );
 
-    const activitySteps = await this.loadBrowserRecordingPlannerActivitySteps(capabilityId, resolvedInput);
-    if (activitySteps.length === 0) {
+    const rewriteResult = await this.loadBrowserRecordingPlannerRewriteResult(
+      capabilityId,
+      resolvedInput
+    );
+    this.logger.log(
+      `Browser recording rewrite mode for capability ${capabilityId}: ${rewriteResult.mode}`
+    );
+    if (rewriteResult.mode === 'direct_skill') {
+      return this.executionPlanNormalizationService.buildDirectSkillExecutionPlanDraftFromExisting(
+        planDraft as any,
+            capabilityId,
+            {
+              runtimeSourceType: 'browser_recording',
+            }
+      );
+    }
+
+    if (
+      planDraft.steps.some((step: any) => Array.isArray(step.commands) && step.commands.length > 0)
+    ) {
+      return planDraft;
+    }
+
+    if (rewriteResult.steps.length === 0) {
       return planDraft;
     }
 
     return {
       ...planDraft,
-      steps: activitySteps,
+      steps: rewriteResult.steps,
     };
   }
 
-  private async loadBrowserRecordingPlannerActivitySteps(
+  private async loadBrowserRecordingPlannerRewriteResult(
     capabilityId: string,
-    resolvedInput: Record<string, unknown>,
-  ): Promise<any[]> {
+    resolvedInput: Record<string, unknown>
+  ): Promise<{ mode: 'workflow_activity' | 'direct_skill'; steps: any[] }> {
     if (!capabilityId) {
-      return [];
+      return { mode: 'workflow_activity', steps: [] };
     }
     if (typeof this.prisma.$queryRawUnsafe !== 'function') {
-      return [];
+      return { mode: 'workflow_activity', steps: [] };
     }
 
     try {
-      const rows = await this.prisma.$queryRawUnsafe<Array<{
-        source_type?: string;
-        source_id?: string;
-        source_payload_json?: unknown;
-        workflow_dsl?: unknown;
-        activity_dsl?: unknown;
-      }>>(
+      const rows = await this.prisma.$queryRawUnsafe<
+        Array<{
+          source_type?: string;
+          source_id?: string;
+          source_payload_json?: unknown;
+          workflow_dsl?: unknown;
+          activity_dsl?: unknown;
+        }>
+      >(
         `
           SELECT
             cr.source_type,
@@ -228,42 +261,84 @@ export class ExecutionPlanningService {
           ORDER BY cr.updated_at DESC
           LIMIT 1
         `,
-        capabilityId,
+        capabilityId
       );
 
       const row = rows[0];
       if (!row || this.readNonEmptyString(row.source_type) !== 'browser_recording') {
-        return [];
+        return { mode: 'workflow_activity', steps: [] };
       }
 
       const sourcePayload = this.parseJsonRecord(row.source_payload_json);
-      const workflowDsl = this.parseJsonRecord(sourcePayload?.workflowDsl)
-        || this.parseJsonRecord(row.workflow_dsl);
-      const activityDsl = this.parseJsonRecord(sourcePayload?.activityDsl)
-        || this.parseJsonRecord(row.activity_dsl);
-      if (!workflowDsl || !activityDsl) {
-        return [];
+      if (this.browserRecordingSourcePayloadHasLoopDraft(sourcePayload)) {
+        return {
+          mode: 'direct_skill',
+          steps: [],
+        };
       }
 
-      const workflowSteps = this.readRecordArray(workflowDsl.steps)
-        .filter((step) => this.readNonEmptyString(step.type) === 'activity');
-      const browserActivities = this.readRecordArray(activityDsl.activities)
-        .filter((activity) => this.readNonEmptyString(activity.handler) === 'browser');
+      const workflowDsl =
+        this.parseJsonRecord(sourcePayload?.workflowDsl) || this.parseJsonRecord(row.workflow_dsl);
+      const activityDsl =
+        this.parseJsonRecord(sourcePayload?.activityDsl) || this.parseJsonRecord(row.activity_dsl);
+      if (!workflowDsl || !activityDsl) {
+        return { mode: 'workflow_activity', steps: [] };
+      }
+
+      const workflowSteps = this.readRecordArray(workflowDsl.steps).filter(
+        (step) => this.readNonEmptyString(step.type) === 'activity'
+      );
+      const browserActivities = this.readRecordArray(activityDsl.activities).filter(
+        (activity) => this.readNonEmptyString(activity.handler) === 'browser'
+      );
+      const sourceContext = this.parseJsonRecord(workflowDsl.sourceContext);
+      const sourceTemplate = this.parseJsonRecord(sourceContext?.sourceTemplate);
+      const templateId = this.readNonEmptyString(
+        sourceTemplate?.templateId,
+        this.readRecordArray(activityDsl.activities)
+          .map((activity) =>
+            this.readNonEmptyString(this.parseJsonRecord(activity.config)?.templateId)
+          )
+          .find((value) => Boolean(value))
+      );
 
       if (workflowSteps.length === 0 || browserActivities.length === 0) {
-        return [];
+        return { mode: 'workflow_activity', steps: [] };
       }
 
-      return this.executionPlanNormalizationService.buildBrowserRecordingPlannerSteps(
-        workflowSteps,
-        browserActivities,
-        resolvedInput,
-      ) as any[];
+      const templateSteps = templateId ? await this.loadBrowserTemplateSteps(templateId) : [];
+
+      return {
+        mode: 'workflow_activity',
+        steps: this.executionPlanNormalizationService.buildBrowserRecordingPlannerSteps(
+          workflowSteps,
+          browserActivities,
+          resolvedInput,
+          templateSteps
+        ) as any[],
+      };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error || '');
-      this.logger.warn(`Failed to rewrite browser recording plan draft for capability ${capabilityId}: ${message}`);
-      return [];
+      this.logger.warn(
+        `Failed to rewrite browser recording plan draft for capability ${capabilityId}: ${message}`
+      );
+      return { mode: 'workflow_activity', steps: [] };
     }
+  }
+
+  private browserRecordingSourcePayloadHasLoopDraft(
+    sourcePayload?: Record<string, unknown>
+  ): boolean {
+    const apiEndpoints = this.parseJsonRecord(sourcePayload?.apiEndpoints);
+    const runtimeMetadata = this.parseJsonRecord(apiEndpoints?.runtimeMetadata);
+    const executionPlan = this.parseJsonRecord(runtimeMetadata?.executionPlan);
+    const hasLoopDraft = Boolean(
+      this.parseJsonRecord(executionPlan?.loopDraft) || this.parseJsonRecord(runtimeMetadata?.loopDraft)
+    );
+    this.logger.log(
+      `Browser recording loop detection: apiEndpoints=${Boolean(apiEndpoints)} runtimeMetadata=${Boolean(runtimeMetadata)} executionPlan=${Boolean(executionPlan)} hasLoopDraft=${hasLoopDraft}`
+    );
+    return hasLoopDraft;
   }
 
   private parseJsonRecord(value: unknown): Record<string, unknown> | undefined {
@@ -274,7 +349,7 @@ export class ExecutionPlanningService {
       try {
         const parsed = JSON.parse(value);
         return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-          ? parsed as Record<string, unknown>
+          ? (parsed as Record<string, unknown>)
           : undefined;
       } catch {
         return undefined;
@@ -283,14 +358,43 @@ export class ExecutionPlanningService {
     return undefined;
   }
 
+  private async loadBrowserTemplateSteps(templateId: string): Promise<Record<string, unknown>[]> {
+    if (!templateId || typeof this.prisma.$queryRawUnsafe !== 'function') {
+      return [];
+    }
+
+    try {
+      const rows = await this.prisma.$queryRawUnsafe<Array<{ config?: unknown }>>(
+        `
+          SELECT config
+          FROM templates
+          WHERE id = $1::uuid
+          LIMIT 1
+        `,
+        templateId
+      );
+      const config = this.parseJsonRecord(rows[0]?.config);
+      return this.readRecordArray(this.parseJsonRecord(config?.executionPlan)?.templateSteps);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error || '');
+      this.logger.warn(
+        `Failed to load browser template steps for template ${templateId}: ${message}`
+      );
+      return [];
+    }
+  }
+
   private readRecordArray(source: unknown, key?: string): Record<string, unknown>[] {
-    const value = key && source && typeof source === 'object'
-      ? (source as Record<string, unknown>)[key]
-      : source;
+    const value =
+      key && source && typeof source === 'object'
+        ? (source as Record<string, unknown>)[key]
+        : source;
     if (!Array.isArray(value)) {
       return [];
     }
-    return value.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object');
+    return value.filter(
+      (item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object'
+    );
   }
 
   private readNonEmptyString(...values: unknown[]): string | undefined {

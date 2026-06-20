@@ -3,12 +3,10 @@ const trimTrailingSlash = (value: string): string => value.replace(/\/+$/, '');
 const stripWrappingQuotes = (value: string): string => {
   let normalized = value.trim();
   while (
-    normalized.length >= 2
-    && (
-      (normalized.startsWith('"') && normalized.endsWith('"'))
-      || (normalized.startsWith('\'') && normalized.endsWith('\''))
-      || (normalized.startsWith('`') && normalized.endsWith('`'))
-    )
+    normalized.length >= 2 &&
+    ((normalized.startsWith('"') && normalized.endsWith('"')) ||
+      (normalized.startsWith("'") && normalized.endsWith("'")) ||
+      (normalized.startsWith('`') && normalized.endsWith('`')))
   ) {
     normalized = normalized.slice(1, -1).trim();
   }
@@ -28,12 +26,13 @@ const readConfiguredUrl = (...candidates: Array<string | undefined>): string | u
 };
 
 export const getPublicHost = (): string =>
-  process.env.HOST_IP?.trim()
-  || process.env.EXTERNAL_HOST?.trim()
-  || 'localhost';
+  process.env.HOST_IP?.trim() || process.env.EXTERNAL_HOST?.trim() || 'localhost';
 
 export const getAuthServiceUrl = (): string => {
-  const configured = readConfiguredUrl(process.env.AUTH_SERVICE_URL, process.env.PLATFORM_SERVICE_URL);
+  const configured = readConfiguredUrl(
+    process.env.AUTH_SERVICE_URL,
+    process.env.PLATFORM_SERVICE_URL
+  );
   if (configured) {
     return configured;
   }
@@ -42,7 +41,10 @@ export const getAuthServiceUrl = (): string => {
 };
 
 export const getCarboneServiceUrl = (): string => {
-  const configured = readConfiguredUrl(process.env.CARBONE_API_URL, process.env.CARBONE_SERVICE_URL);
+  const configured = readConfiguredUrl(
+    process.env.CARBONE_API_URL,
+    process.env.CARBONE_SERVICE_URL
+  );
   if (configured) {
     return configured;
   }

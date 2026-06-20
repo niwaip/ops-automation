@@ -1,8 +1,5 @@
 import type { DocumentIR } from '../../../../host/adapters/document-ir';
-import {
-  looksLikeJson,
-  sanitizeGlobalUnderstandingText,
-} from './chat-analysis-json.helpers';
+import { looksLikeJson, sanitizeGlobalUnderstandingText } from './chat-analysis-json.helpers';
 import { normalizeTextValue, truncateText } from './chat-analysis-suggestion.common';
 import type { StructuredAnalyzeRequest } from './types';
 
@@ -59,7 +56,7 @@ function buildCompactExcelDocumentContext(documentIR: DocumentIR): string {
           .slice(0, 5)
       : [];
     const sheetCells = cellElements.filter(
-      (cell) => Number(cell.hostData?.sheetIndex ?? -1) === sheetIndex,
+      (cell) => Number(cell.hostData?.sheetIndex ?? -1) === sheetIndex
     );
     const sampleCells = sheetCells
       .filter((cell) => normalizeTextValue(cell.text))
@@ -70,7 +67,9 @@ function buildCompactExcelDocumentContext(documentIR: DocumentIR): string {
         const text = truncateText(normalizeTextValue(cell.text) || '', 24);
         return `${toCellAddress(rowIndex, colIndex)}=${text}`;
       });
-    const formulaCount = sheetCells.filter((cell) => normalizeTextValue(cell.hostData?.formula)).length;
+    const formulaCount = sheetCells.filter((cell) =>
+      normalizeTextValue(cell.hostData?.formula)
+    ).length;
 
     return [
       `Sheet[${sheetIndex}] ${sheetName}`,
@@ -89,7 +88,7 @@ function buildCompactExcelDocumentContext(documentIR: DocumentIR): string {
 
 export function buildExcelBusinessExcerpt(
   documentIR: DocumentIR,
-  roleFilter: 'data' | 'mock' | 'all' = 'all',
+  roleFilter: 'data' | 'mock' | 'all' = 'all'
 ): string {
   const cellElements = documentIR.elements
     .filter((element) => element.type === 'cell')
@@ -170,7 +169,7 @@ export function buildExcelBusinessExcerpt(
 
 function collectExcelSheetRows(
   documentIR: DocumentIR,
-  roleFilter: 'data' | 'mock' | 'all' = 'all',
+  roleFilter: 'data' | 'mock' | 'all' = 'all'
 ): Array<{
   sheetIndex: number;
   sheetName: string;
@@ -249,7 +248,7 @@ function collectExcelSheetRows(
 
 export function buildExcelVisibleSheetSummary(
   documentIR: DocumentIR,
-  roleFilter: 'data' | 'mock' | 'all' = 'all',
+  roleFilter: 'data' | 'mock' | 'all' = 'all'
 ): string {
   const sheets = collectExcelSheetRows(documentIR, roleFilter);
   if (sheets.length === 0) {
@@ -305,7 +304,7 @@ export function buildCompactDocumentContext(request: StructuredAnalyzeRequest): 
 
 export function normalizeContextAnalysisPayload(
   parsed: Record<string, unknown>,
-  request: StructuredAnalyzeRequest,
+  request: StructuredAnalyzeRequest
 ): Record<string, unknown> | undefined {
   const explicitContextAnalysis =
     parsed.contextAnalysis && typeof parsed.contextAnalysis === 'object'
@@ -358,7 +357,7 @@ export function normalizeContextAnalysisPayload(
       topLevelNamingConventions
     ) {
       contextAnalysis.namingPrinciples = Object.entries(topLevelNamingConventions).map(
-        ([key, value]) => `${key}:${String(value ?? '').trim()}`,
+        ([key, value]) => `${key}:${String(value ?? '').trim()}`
       );
     }
   }

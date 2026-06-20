@@ -21,7 +21,7 @@ import recorderService, {
 } from '@/services/recorder.service';
 import { useAuthStore } from '@/shared/store/authStore';
 import { usePreferencesStore } from '@/shared/store/preferencesStore';
-import { templateApi, type CompileResult } from '@/api/template';
+import { isTemplateStepAction, templateApi, type CompileResult } from '@/api/template';
 
 const { Text } = Typography;
 
@@ -77,7 +77,7 @@ const RecorderPage: React.FC = () => {
         params_schema: compiledTemplate.params_schema,
         steps: compiledTemplate.steps.map((step) => ({
           step_id: step.step_id,
-          action: step.action,
+          action: isTemplateStepAction(step.action) ? step.action : 'click',
           locator: step.locator,
           params: step.params,
           wait: step.wait,
@@ -195,9 +195,12 @@ const RecorderPage: React.FC = () => {
     recorderService.resumeRecording();
   }, []);
 
-  const handleSave = useCallback((compiledTemplate: CompiledTemplate) => {
-    saveMutation.mutate(compiledTemplate);
-  }, [saveMutation]);
+  const handleSave = useCallback(
+    (compiledTemplate: CompiledTemplate) => {
+      saveMutation.mutate(compiledTemplate);
+    },
+    [saveMutation]
+  );
 
   const handleAICommandExecuted = useCallback((_commands: MCPCommand[]) => {
     setHasExecuted(true);
@@ -207,24 +210,29 @@ const RecorderPage: React.FC = () => {
     setIsExpanded((prev) => !prev);
   }, []);
 
-  const handleStartWithReset = useCallback((url: string) => {
-    setHasExecuted(false);
-    setIsExpanded(false);
-    handleStart(url);
-  }, [handleStart]);
+  const handleStartWithReset = useCallback(
+    (url: string) => {
+      setHasExecuted(false);
+      setIsExpanded(false);
+      handleStart(url);
+    },
+    [handleStart]
+  );
 
   const defaultNoVncUrl = runtimeConfig.noVncUrl;
-  const previewUrl = previewMode === 'session'
-    ? dynamicNoVncUrl
-    : previewMode === 'shared'
-      ? (defaultNoVncUrl ?? null)
-      : null;
+  const previewUrl =
+    previewMode === 'session'
+      ? dynamicNoVncUrl
+      : previewMode === 'shared'
+        ? (defaultNoVncUrl ?? null)
+        : null;
   const activeTakeover = takeoverState.mode !== 'idle';
-  const takeoverAlertType = takeoverState.mode === 'ready_to_resume'
-    ? 'success'
-    : takeoverState.mode === 'required'
-      ? 'warning'
-      : 'info';
+  const takeoverAlertType =
+    takeoverState.mode === 'ready_to_resume'
+      ? 'success'
+      : takeoverState.mode === 'required'
+        ? 'warning'
+        : 'info';
   const takeoverModeLabelMap: Record<RecorderTakeoverViewState['mode'], string> = {
     idle: '空闲',
     required: '等待人工接管',
@@ -249,7 +257,12 @@ const RecorderPage: React.FC = () => {
       }}
     >
       <div style={{ marginBottom: 8 }}>
-        <Button type="text" icon={<ArrowLeftOutlined />} href="/templates" style={{ paddingInline: 0 }}>
+        <Button
+          type="text"
+          icon={<ArrowLeftOutlined />}
+          href="/templates"
+          style={{ paddingInline: 0 }}
+        >
           {t('common:back')}
         </Button>
       </div>
@@ -269,17 +282,23 @@ const RecorderPage: React.FC = () => {
           message={
             <Space wrap>
               <span>{takeoverModeLabelMap[takeoverState.mode]}</span>
-              {takeoverState.strategy ? <Tag color="processing">{takeoverState.strategy}</Tag> : null}
-              {takeoverState.patchStepCount > 0 ? <Tag>{`patch ${takeoverState.patchStepCount}`}</Tag> : null}
-              {takeoverState.resumeCommandCount > 0 ? <Tag>{`resume ${takeoverState.resumeCommandCount}`}</Tag> : null}
+              {takeoverState.strategy ? (
+                <Tag color="processing">{takeoverState.strategy}</Tag>
+              ) : null}
+              {takeoverState.patchStepCount > 0 ? (
+                <Tag>{`patch ${takeoverState.patchStepCount}`}</Tag>
+              ) : null}
+              {takeoverState.resumeCommandCount > 0 ? (
+                <Tag>{`resume ${takeoverState.resumeCommandCount}`}</Tag>
+              ) : null}
             </Space>
           }
           description={
             <Space direction="vertical" size={4}>
               <Text>
-                {takeoverState.explanation
-                  || takeoverState.reason
-                  || '当前浏览器执行处于人工接管恢复流程中。'}
+                {takeoverState.explanation ||
+                  takeoverState.reason ||
+                  '当前浏览器执行处于人工接管恢复流程中。'}
               </Text>
               <Space wrap size={[12, 4]}>
                 {takeoverState.currentPageUrl ? (
@@ -312,7 +331,9 @@ const RecorderPage: React.FC = () => {
               flex: 1,
               height: 'auto',
               borderRadius: 16,
-              boxShadow: isDarkTheme ? '0 8px 24px rgba(0, 0, 0, 0.24)' : '0 4px 20px rgba(0, 0, 0, 0.08)',
+              boxShadow: isDarkTheme
+                ? '0 8px 24px rgba(0, 0, 0, 0.24)'
+                : '0 4px 20px rgba(0, 0, 0, 0.08)',
               border: '1px solid var(--bg-secondary)',
               overflow: 'hidden',
               background: 'var(--bg-card)',

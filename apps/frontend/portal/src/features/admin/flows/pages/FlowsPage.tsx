@@ -1,15 +1,52 @@
 import React, { useRef, useState } from 'react';
 import {
-  Table, Card, Button, Input, Space, Tag, Typography, Modal, message, Form, Select,
-  Descriptions, Tooltip, Collapse, Steps, Divider, Badge, Empty, Progress,
-  Switch, Alert, Dropdown, Timeline
+  Table,
+  Card,
+  Button,
+  Input,
+  Space,
+  Tag,
+  Typography,
+  Modal,
+  message,
+  Form,
+  Select,
+  Descriptions,
+  Tooltip,
+  Collapse,
+  Steps,
+  Divider,
+  Badge,
+  Empty,
+  Progress,
+  Switch,
+  Alert,
+  Dropdown,
+  Timeline,
 } from 'antd';
 import {
-  SearchOutlined, ReloadOutlined, EditOutlined, DeleteOutlined, PlusOutlined,
-  InfoCircleOutlined, ThunderboltOutlined, ApiOutlined,
-  FileTextOutlined, CodeOutlined, ToolOutlined, CheckCircleOutlined, WarningOutlined,
-  CopyOutlined, ExportOutlined, ImportOutlined, PlayCircleOutlined, EyeOutlined, SettingOutlined,
-  ArrowUpOutlined, ArrowDownOutlined, OrderedListOutlined,
+  SearchOutlined,
+  ReloadOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  PlusOutlined,
+  InfoCircleOutlined,
+  ThunderboltOutlined,
+  ApiOutlined,
+  FileTextOutlined,
+  CodeOutlined,
+  ToolOutlined,
+  CheckCircleOutlined,
+  WarningOutlined,
+  CopyOutlined,
+  ExportOutlined,
+  ImportOutlined,
+  PlayCircleOutlined,
+  EyeOutlined,
+  SettingOutlined,
+  ArrowUpOutlined,
+  ArrowDownOutlined,
+  OrderedListOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
@@ -197,9 +234,8 @@ const FlowsPage: React.FC = () => {
   const validationStageTimersRef = useRef<number[]>([]);
 
   // Queries
-  const templatesQuery = useQuery(
-    ['flows', selectedCategory, searchText],
-    () => executionFlowApi.list({
+  const templatesQuery = useQuery(['flows', selectedCategory, searchText], () =>
+    executionFlowApi.list({
       category: selectedCategory,
       search: searchText,
       isActive: true,
@@ -215,19 +251,19 @@ const FlowsPage: React.FC = () => {
     clearValidationStageTimers();
     setExecutionLogs([]);
     setValidationStage('auditing');
-    
+
     // 模拟审计日志
     const auditLogs = [
       '正在连接 AI 审计引擎...',
       '正在解析流程拓扑结构...',
       '正在检查参数引用完整性...',
       '正在评估原子能力边界...',
-      '正在生成优化建议...'
+      '正在生成优化建议...',
     ];
-    
+
     auditLogs.forEach((msg, i) => {
       const timerId = window.setTimeout(() => {
-        setExecutionLogs(prev => [...prev, `[Audit] ${msg}`]);
+        setExecutionLogs((prev) => [...prev, `[Audit] ${msg}`]);
       }, i * 400);
       validationStageTimersRef.current.push(timerId);
     });
@@ -235,8 +271,8 @@ const FlowsPage: React.FC = () => {
     if (withExecutionTest) {
       const timerId = window.setTimeout(() => {
         setValidationStage('executing');
-        setExecutionLogs(prev => [...prev, '[System] 静态审计完成，开始真实验证测试...']);
-        
+        setExecutionLogs((prev) => [...prev, '[System] 静态审计完成，开始真实验证测试...']);
+
         // 模拟执行日志
         const execLogs = [
           '正在初始化 ReAct 引擎...',
@@ -244,13 +280,16 @@ const FlowsPage: React.FC = () => {
           '正在构造模拟用户请求...',
           '正在观察步骤 1 执行结果...',
           '正在匹配后续步骤...',
-          '正在验证最终输出格式...'
+          '正在验证最终输出格式...',
         ];
-        
+
         execLogs.forEach((msg, i) => {
-          const tId = window.setTimeout(() => {
-            setExecutionLogs(prev => [...prev, `[Execution] ${msg}`]);
-          }, 2000 + i * 800);
+          const tId = window.setTimeout(
+            () => {
+              setExecutionLogs((prev) => [...prev, `[Execution] ${msg}`]);
+            },
+            2000 + i * 800
+          );
           validationStageTimersRef.current.push(tId);
         });
       }, 2000);
@@ -329,7 +368,9 @@ const FlowsPage: React.FC = () => {
         setValidationResult(result.validationResult);
         setValidationError(null);
         setValidationErrorTitle(null);
-        setSelectedTemplate((prev) => prev ? { ...prev, validation: result.validationResult } : prev);
+        setSelectedTemplate((prev) =>
+          prev ? { ...prev, validation: result.validationResult } : prev
+        );
         queryClient.invalidateQueries(['flows']);
         clearValidationStageTimers();
         setValidationStage('idle');
@@ -503,12 +544,15 @@ const FlowsPage: React.FC = () => {
       const newStep = { ...DEFAULT_STEP_TEMPLATES[stepTemplate], id: Date.now().toString() };
       setCurrentSteps([...currentSteps, newStep]);
     } else {
-      setCurrentSteps([...currentSteps, {
-        id: Date.now().toString(),
-        type: 'text',
-        name: `步骤 ${currentSteps.length + 1}`,
-        content: '',
-      }]);
+      setCurrentSteps([
+        ...currentSteps,
+        {
+          id: Date.now().toString(),
+          type: 'text',
+          name: `步骤 ${currentSteps.length + 1}`,
+          content: '',
+        },
+      ]);
     }
   };
 
@@ -555,7 +599,7 @@ const FlowsPage: React.FC = () => {
         paramsSchema,
         category: values.category || 'document',
         steps: currentSteps,
-        executionFlowKeys: currentSteps.map(s => s.name),
+        executionFlowKeys: currentSteps.map((s) => s.name),
         isPublic: values.isPublic,
       };
 
@@ -647,7 +691,11 @@ const FlowsPage: React.FC = () => {
       key: 'category',
       width: 120,
       render: (category: string) => {
-        const info = EXECUTION_FLOW_CATEGORIES[category] || { label: category, color: 'default', desc: '' };
+        const info = EXECUTION_FLOW_CATEGORIES[category] || {
+          label: category,
+          color: 'default',
+          desc: '',
+        };
         return (
           <Tooltip title={info.desc}>
             <Tag color={info.color}>{info.label}</Tag>
@@ -666,9 +714,7 @@ const FlowsPage: React.FC = () => {
       title: '步骤数',
       key: 'stepCount',
       width: 80,
-      render: (_, record) => (
-        <Badge count={record.steps?.length || 0} showZero color="blue" />
-      ),
+      render: (_, record) => <Badge count={record.steps?.length || 0} showZero color="blue" />,
     },
     {
       title: '验证状态',
@@ -681,9 +727,7 @@ const FlowsPage: React.FC = () => {
       dataIndex: 'usageCount',
       key: 'usageCount',
       width: 80,
-      render: (count: number) => (
-        <Text type="secondary">{count || 0}</Text>
-      ),
+      render: (count: number) => <Text type="secondary">{count || 0}</Text>,
     },
     {
       title: '公开',
@@ -691,9 +735,7 @@ const FlowsPage: React.FC = () => {
       key: 'isPublic',
       width: 80,
       render: (isPublic: boolean) => (
-        <Tag color={isPublic ? 'green' : 'default'}>
-          {isPublic ? '公开' : '私有'}
-        </Tag>
+        <Tag color={isPublic ? 'green' : 'default'}>{isPublic ? '公开' : '私有'}</Tag>
       ),
     },
     {
@@ -722,10 +764,31 @@ const FlowsPage: React.FC = () => {
           <Dropdown
             menu={{
               items: [
-                { key: 'detail', icon: <EyeOutlined />, label: '详情', onClick: () => handleViewDetail(record) },
-                { key: 'clone', icon: <CopyOutlined />, label: '复制', onClick: () => handleClone(record) },
-                { key: 'export', icon: <ExportOutlined />, label: '导出', onClick: () => handleExport(record) },
-                { key: 'delete', icon: <DeleteOutlined />, label: '删除', danger: true, onClick: () => handleDelete(record.id) },
+                {
+                  key: 'detail',
+                  icon: <EyeOutlined />,
+                  label: '详情',
+                  onClick: () => handleViewDetail(record),
+                },
+                {
+                  key: 'clone',
+                  icon: <CopyOutlined />,
+                  label: '复制',
+                  onClick: () => handleClone(record),
+                },
+                {
+                  key: 'export',
+                  icon: <ExportOutlined />,
+                  label: '导出',
+                  onClick: () => handleExport(record),
+                },
+                {
+                  key: 'delete',
+                  icon: <DeleteOutlined />,
+                  label: '删除',
+                  danger: true,
+                  onClick: () => handleDelete(record.id),
+                },
               ],
             }}
           >
@@ -755,9 +818,7 @@ const FlowsPage: React.FC = () => {
             })),
           }}
         >
-          <Button icon={<OrderedListOutlined />}>
-            添加预设步骤
-          </Button>
+          <Button icon={<OrderedListOutlined />}>添加预设步骤</Button>
         </Dropdown>
       </Space>
 
@@ -829,7 +890,9 @@ const FlowsPage: React.FC = () => {
                     <Space direction="vertical" style={{ width: '100%' }}>
                       <Select
                         value={step.script?.language}
-                        onChange={(v) => handleUpdateStep(index, 'script', { ...step.script, language: v })}
+                        onChange={(v) =>
+                          handleUpdateStep(index, 'script', { ...step.script, language: v })
+                        }
                         style={{ width: 150 }}
                       >
                         <Option value="bash">Bash</Option>
@@ -838,7 +901,12 @@ const FlowsPage: React.FC = () => {
                       </Select>
                       <TextArea
                         value={step.script?.code}
-                        onChange={(e) => handleUpdateStep(index, 'script', { ...step.script, code: e.target.value })}
+                        onChange={(e) =>
+                          handleUpdateStep(index, 'script', {
+                            ...step.script,
+                            code: e.target.value,
+                          })
+                        }
                         placeholder="脚本代码"
                         rows={4}
                       />
@@ -849,7 +917,9 @@ const FlowsPage: React.FC = () => {
                     <Space>
                       <Input
                         value={step.tool?.name}
-                        onChange={(e) => handleUpdateStep(index, 'tool', { ...step.tool, name: e.target.value })}
+                        onChange={(e) =>
+                          handleUpdateStep(index, 'tool', { ...step.tool, name: e.target.value })
+                        }
                         placeholder="工具名称（如 Read, Write, Bash）"
                         style={{ width: 200 }}
                       />
@@ -872,7 +942,9 @@ const FlowsPage: React.FC = () => {
                       <Space>
                         <Select
                           value={step.api?.method}
-                          onChange={(v) => handleUpdateStep(index, 'api', { ...step.api, method: v })}
+                          onChange={(v) =>
+                            handleUpdateStep(index, 'api', { ...step.api, method: v })
+                          }
                           style={{ width: 100 }}
                         >
                           <Option value="GET">GET</Option>
@@ -882,7 +954,12 @@ const FlowsPage: React.FC = () => {
                         </Select>
                         <Input
                           value={step.api?.endpoint}
-                          onChange={(e) => handleUpdateStep(index, 'api', { ...step.api, endpoint: e.target.value })}
+                          onChange={(e) =>
+                            handleUpdateStep(index, 'api', {
+                              ...step.api,
+                              endpoint: e.target.value,
+                            })
+                          }
                           placeholder="API端点URL（支持 {city}、{{city}}、{{flow_input.city}}）"
                           style={{ width: 300 }}
                         />
@@ -934,17 +1011,29 @@ const FlowsPage: React.FC = () => {
         <Space direction="vertical" size="small">
           <Text strong>流程模板说明：</Text>
           <Text>• 流程模板定义了AI执行的步骤序列，类似Claude Code Skills</Text>
-          <Text>• 每个步骤可以是<strong>纯文本指导</strong>、<strong>脚本执行</strong>、<strong>系统工具</strong>或<strong>API调用</strong></Text>
+          <Text>
+            • 每个步骤可以是<strong>纯文本指导</strong>、<strong>脚本执行</strong>、
+            <strong>系统工具</strong>或<strong>API调用</strong>
+          </Text>
           <Divider style={{ margin: '8px 0' }} />
           <Text strong>步骤类型：</Text>
           <Space wrap>
             {Object.entries(STEP_TYPE_LABELS).map(([key, value]) => (
-              <Tag key={key} color={value.color} icon={
-                key === 'text' ? <FileTextOutlined /> :
-                key === 'script' ? <CodeOutlined /> :
-                key === 'tool' ? <ToolOutlined /> :
-                <ApiOutlined />
-              }>
+              <Tag
+                key={key}
+                color={value.color}
+                icon={
+                  key === 'text' ? (
+                    <FileTextOutlined />
+                  ) : key === 'script' ? (
+                    <CodeOutlined />
+                  ) : key === 'tool' ? (
+                    <ToolOutlined />
+                  ) : (
+                    <ApiOutlined />
+                  )
+                }
+              >
                 {value.label}
               </Tag>
             ))}
@@ -982,23 +1071,13 @@ const FlowsPage: React.FC = () => {
             </Select>
           </Space>
           <Space>
-            <Button
-              icon={<ImportOutlined />}
-              onClick={() => setImportModalVisible(true)}
-            >
+            <Button icon={<ImportOutlined />} onClick={() => setImportModalVisible(true)}>
               导入
             </Button>
-            <Button
-              icon={<PlusOutlined />}
-              type="primary"
-              onClick={handleCreate}
-            >
+            <Button icon={<PlusOutlined />} type="primary" onClick={handleCreate}>
               创建模板
             </Button>
-            <Button
-              icon={<ReloadOutlined />}
-              onClick={() => templatesQuery.refetch()}
-            >
+            <Button icon={<ReloadOutlined />} onClick={() => templatesQuery.refetch()}>
               {t('common:refresh')}
             </Button>
           </Space>
@@ -1038,8 +1117,12 @@ const FlowsPage: React.FC = () => {
                     {EXECUTION_FLOW_CATEGORIES[selectedTemplate.category]?.label}
                   </Tag>
                 </Descriptions.Item>
-                <Descriptions.Item label="描述" span={2}>{selectedTemplate.description}</Descriptions.Item>
-                <Descriptions.Item label="使用次数">{selectedTemplate.usageCount}</Descriptions.Item>
+                <Descriptions.Item label="描述" span={2}>
+                  {selectedTemplate.description}
+                </Descriptions.Item>
+                <Descriptions.Item label="使用次数">
+                  {selectedTemplate.usageCount}
+                </Descriptions.Item>
                 <Descriptions.Item label="公开状态">
                   {selectedTemplate.isPublic ? '公开' : '私有'}
                 </Descriptions.Item>
@@ -1050,27 +1133,33 @@ const FlowsPage: React.FC = () => {
               <Steps
                 current={-1}
                 direction="vertical"
-                items={selectedTemplate.steps?.map((step: ExecutionFlowStep, idx: number) => ({
-                  title: step.name,
-                  description: (
-                    <Space direction="vertical" size="small">
-                      {renderStepTypeBadge(step.type)}
-                      {step.type === 'text' && <Text>{step.content}</Text>}
-                      {step.type === 'script' && (
-                        <Text code>{step.script?.language}: {step.script?.code?.slice(0, 50)}...</Text>
-                      )}
-                      {step.type === 'tool' && <Text>工具: {step.tool?.name}</Text>}
-                      {step.type === 'api' && (
-                        <Text>API: {step.api?.method} {step.api?.endpoint}</Text>
-                      )}
-                      {step.expectedOutput && (
-                        <Text type="secondary">预期输出: {step.expectedOutput}</Text>
-                      )}
-                    </Space>
-                  ),
-                  status: 'wait',
-                  icon: idx === 0 ? <ThunderboltOutlined /> : undefined,
-                })) || []}
+                items={
+                  selectedTemplate.steps?.map((step: ExecutionFlowStep, idx: number) => ({
+                    title: step.name,
+                    description: (
+                      <Space direction="vertical" size="small">
+                        {renderStepTypeBadge(step.type)}
+                        {step.type === 'text' && <Text>{step.content}</Text>}
+                        {step.type === 'script' && (
+                          <Text code>
+                            {step.script?.language}: {step.script?.code?.slice(0, 50)}...
+                          </Text>
+                        )}
+                        {step.type === 'tool' && <Text>工具: {step.tool?.name}</Text>}
+                        {step.type === 'api' && (
+                          <Text>
+                            API: {step.api?.method} {step.api?.endpoint}
+                          </Text>
+                        )}
+                        {step.expectedOutput && (
+                          <Text type="secondary">预期输出: {step.expectedOutput}</Text>
+                        )}
+                      </Space>
+                    ),
+                    status: 'wait',
+                    icon: idx === 0 ? <ThunderboltOutlined /> : undefined,
+                  })) || []
+                }
               />
             </Panel>
 
@@ -1082,19 +1171,20 @@ const FlowsPage: React.FC = () => {
                     status={selectedTemplate.validation.isValid ? 'success' : 'exception'}
                     format={(percent) => `${percent}分`}
                   />
-                  {selectedTemplate.validation.warnings && selectedTemplate.validation.warnings.length > 0 && (
-                    <Alert
-                      type="warning"
-                      message="警告"
-                      description={
-                        <ul>
-                          {selectedTemplate.validation.warnings.map((w, i) => (
-                            <li key={i}>{w}</li>
-                          ))}
-                        </ul>
-                      }
-                    />
-                  )}
+                  {selectedTemplate.validation.warnings &&
+                    selectedTemplate.validation.warnings.length > 0 && (
+                      <Alert
+                        type="warning"
+                        message="警告"
+                        description={
+                          <ul>
+                            {selectedTemplate.validation.warnings.map((w, i) => (
+                              <li key={i}>{w}</li>
+                            ))}
+                          </ul>
+                        }
+                      />
+                    )}
                   {selectedTemplate.validation.suggestions?.length > 0 && (
                     <Alert
                       type="info"
@@ -1193,10 +1283,7 @@ const FlowsPage: React.FC = () => {
           >
             <Input />
           </Form.Item>
-          <Form.Item
-            name="description"
-            label="描述"
-          >
+          <Form.Item name="description" label="描述">
             <TextArea rows={2} />
           </Form.Item>
           <Form.Item
@@ -1218,12 +1305,12 @@ const FlowsPage: React.FC = () => {
             label="参数定义 (JSON)"
             extra="可选。定义流程需要的输入参数，例如 city: 城市名称"
           >
-            <TextArea rows={3} placeholder='{"city": {"type": "string", "description": "城市名称"}}' />
+            <TextArea
+              rows={3}
+              placeholder='{"city": {"type": "string", "description": "城市名称"}}'
+            />
           </Form.Item>
-          <Form.Item
-            name="category"
-            label="分类"
-          >
+          <Form.Item name="category" label="分类">
             <Select>
               {Object.entries(EXECUTION_FLOW_CATEGORIES).map(([key, value]) => (
                 <Option key={key} value={key}>
@@ -1235,11 +1322,7 @@ const FlowsPage: React.FC = () => {
               ))}
             </Select>
           </Form.Item>
-          <Form.Item
-            name="isPublic"
-            label="公开状态"
-            valuePropName="checked"
-          >
+          <Form.Item name="isPublic" label="公开状态" valuePropName="checked">
             <Switch checkedChildren="公开" unCheckedChildren="私有" />
           </Form.Item>
         </Form>
@@ -1348,29 +1431,45 @@ const FlowsPage: React.FC = () => {
                     ]
               }
             />
-            <div style={{
-              margin: '20px 0',
-              padding: '12px',
-              backgroundColor: 'var(--bg-secondary)',
-              borderRadius: '4px',
-              textAlign: 'left',
-              maxHeight: '200px',
-              overflowY: 'auto',
-              border: '1px solid var(--border-color)'
-            }}>
-              <div style={{ fontWeight: 'bold', marginBottom: '8px', borderBottom: '1px solid var(--border-color)', paddingBottom: '4px', color: 'var(--text-primary)' }}>
+            <div
+              style={{
+                margin: '20px 0',
+                padding: '12px',
+                backgroundColor: 'var(--bg-secondary)',
+                borderRadius: '4px',
+                textAlign: 'left',
+                maxHeight: '200px',
+                overflowY: 'auto',
+                border: '1px solid var(--border-color)',
+              }}
+            >
+              <div
+                style={{
+                  fontWeight: 'bold',
+                  marginBottom: '8px',
+                  borderBottom: '1px solid var(--border-color)',
+                  paddingBottom: '4px',
+                  color: 'var(--text-primary)',
+                }}
+              >
                 实时验证日志
               </div>
               {executionLogs.map((log, index) => (
-                <div key={index} style={{
-                  fontSize: '12px',
-                  fontFamily: 'monospace',
-                  marginBottom: '4px',
-                  color: log.startsWith('[Error]') ? '#ff4d4f' :
-                         log.startsWith('[Audit]') ? '#1890ff' :
-                         log.startsWith('[Execution]') ? '#52c41a' :
-                         'var(--text-secondary)'
-                }}>
+                <div
+                  key={index}
+                  style={{
+                    fontSize: '12px',
+                    fontFamily: 'monospace',
+                    marginBottom: '4px',
+                    color: log.startsWith('[Error]')
+                      ? '#ff4d4f'
+                      : log.startsWith('[Audit]')
+                        ? '#1890ff'
+                        : log.startsWith('[Execution]')
+                          ? '#52c41a'
+                          : 'var(--text-secondary)',
+                  }}
+                >
                   {log}
                 </div>
               ))}
@@ -1427,22 +1526,40 @@ const FlowsPage: React.FC = () => {
             {/* Execution Test Results */}
             {validationResult.details?.executionTest && (
               <Collapse ghost>
-                <Panel header={`执行测试结果 (${validationResult.details.executionTest.success ? '成功' : '失败'}, ${validationResult.details.executionTest.iterations}次迭代)`} key="execution">
+                <Panel
+                  header={`执行测试结果 (${validationResult.details.executionTest.success ? '成功' : '失败'}, ${validationResult.details.executionTest.iterations}次迭代)`}
+                  key="execution"
+                >
                   {validationResult.details.executionTest.success ? (
-                    <Alert type="success" message="执行成功" description={validationResult.details.executionTest.result?.slice(0, 500)} />
+                    <Alert
+                      type="success"
+                      message="执行成功"
+                      description={validationResult.details.executionTest.result?.slice(0, 500)}
+                    />
                   ) : (
-                    <Alert type="error" message="执行失败" description={validationResult.details.executionTest.error} />
+                    <Alert
+                      type="error"
+                      message="执行失败"
+                      description={validationResult.details.executionTest.error}
+                    />
                   )}
                   {validationResult.details.executionTest.log?.length > 0 && (
                     <Timeline style={{ marginTop: 16 }}>
                       {validationResult.details.executionTest.log.slice(0, 20).map((log, i) => (
-                        <Timeline.Item key={i} color={
-                          log.startsWith('[Thought]') ? 'blue' :
-                          log.startsWith('[Action]') ? 'green' :
-                          log.startsWith('[Observation]') ? 'gray' :
-                          log.startsWith('[Error]') ? 'red' :
-                          'blue'
-                        }>
+                        <Timeline.Item
+                          key={i}
+                          color={
+                            log.startsWith('[Thought]')
+                              ? 'blue'
+                              : log.startsWith('[Action]')
+                                ? 'green'
+                                : log.startsWith('[Observation]')
+                                  ? 'gray'
+                                  : log.startsWith('[Error]')
+                                    ? 'red'
+                                    : 'blue'
+                          }
+                        >
                           <Text style={{ fontSize: 12 }}>{log}</Text>
                         </Timeline.Item>
                       ))}
@@ -1464,9 +1581,7 @@ const FlowsPage: React.FC = () => {
                         dataIndex: 'isExecutable',
                         key: 'isExecutable',
                         render: (v: boolean) => (
-                          <Tag color={v ? 'green' : 'red'}>
-                            {v ? '是' : '否'}
-                          </Tag>
+                          <Tag color={v ? 'green' : 'red'}>{v ? '是' : '否'}</Tag>
                         ),
                       },
                       {
@@ -1495,10 +1610,7 @@ const FlowsPage: React.FC = () => {
                 <Panel header="失败日志" key="error-log">
                   <Timeline>
                     {executionLogs.map((log, index) => (
-                      <Timeline.Item
-                        key={index}
-                        color={log.startsWith('[Error]') ? 'red' : 'blue'}
-                      >
+                      <Timeline.Item key={index} color={log.startsWith('[Error]') ? 'red' : 'blue'}>
                         <Text style={{ fontSize: 12 }}>{log}</Text>
                       </Timeline.Item>
                     ))}
@@ -1535,11 +1647,7 @@ const FlowsPage: React.FC = () => {
         confirmLoading={importMutation.isLoading}
       >
         <Space direction="vertical" style={{ width: '100%' }}>
-          <Alert
-            type="info"
-            message="请粘贴导出的JSON模板数据"
-            showIcon
-          />
+          <Alert type="info" message="请粘贴导出的JSON模板数据" showIcon />
           <TextArea
             value={importJson}
             onChange={(e) => setImportJson(e.target.value)}

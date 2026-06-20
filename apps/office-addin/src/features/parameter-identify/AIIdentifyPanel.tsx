@@ -9,9 +9,11 @@ interface Props {
 
 export const AIIdentifyPanel: React.FC<Props> = ({ onApplyComplete }) => {
   const { officeType } = useAppStore();
-  return officeType === 'excel'
-    ? <ExcelIdentifyPanel onApplyComplete={onApplyComplete} />
-    : <WordWorkflowPanel onApplyComplete={onApplyComplete} />;
+  return officeType === 'excel' ? (
+    <ExcelIdentifyPanel onApplyComplete={onApplyComplete} />
+  ) : (
+    <WordWorkflowPanel onApplyComplete={onApplyComplete} />
+  );
 };
 
 export default AIIdentifyPanel;

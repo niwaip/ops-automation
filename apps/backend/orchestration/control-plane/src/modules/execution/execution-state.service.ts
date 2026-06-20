@@ -3,13 +3,16 @@ import { EXECUTION_EVENT_TYPE } from './contracts/execution-event-type';
 import { PrismaService } from '../prisma/prisma.service';
 import { EXECUTION_STATUS, ExecutionStatus } from './contracts/execution-status';
 import { ExecutionEventService, ExecutionStreamEventPayload } from './execution-event.service';
-import { canTransitionExecutionStatus, isTerminalExecutionStatus } from './execution-transition-policy';
+import {
+  canTransitionExecutionStatus,
+  isTerminalExecutionStatus,
+} from './execution-transition-policy';
 
 @Injectable()
 export class ExecutionStateService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly executionEventService: ExecutionEventService,
+    private readonly executionEventService: ExecutionEventService
   ) {}
 
   async updateStatus(id: string, newStatus: ExecutionStatus): Promise<ExecutionStreamEventPayload> {
@@ -38,9 +41,13 @@ export class ExecutionStateService {
       },
     });
 
-    return this.executionEventService.createEvent(id, EXECUTION_EVENT_TYPE.EXECUTION_STATUS_CHANGED, {
-      oldStatus: currentStatus,
-      newStatus,
-    });
+    return this.executionEventService.createEvent(
+      id,
+      EXECUTION_EVENT_TYPE.EXECUTION_STATUS_CHANGED,
+      {
+        oldStatus: currentStatus,
+        newStatus,
+      }
+    );
   }
 }

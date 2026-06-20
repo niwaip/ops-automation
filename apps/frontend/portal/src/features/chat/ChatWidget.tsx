@@ -14,9 +14,7 @@ const ChatWidget: React.FC = () => {
   const { isOpen, toggleChat, messages } = useChatStore();
 
   // 未读消息数（assistant消息）
-  const unreadCount = messages.filter(
-    (m) => m.role === 'assistant' && !m.isStreaming
-  ).length;
+  const unreadCount = messages.filter((m) => m.role === 'assistant' && !m.isStreaming).length;
 
   return (
     <>

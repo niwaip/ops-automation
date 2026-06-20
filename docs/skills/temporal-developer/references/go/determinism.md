@@ -26,16 +26,16 @@ Do not use any of the following in workflow code (they are appropriate to use in
 
 ## Safe Builtin Alternatives
 
-| Instead of | Use |
-|---|---|
-| `go func() { ... }()` | `workflow.Go(ctx, func(ctx workflow.Context) { ... })` |
-| `chan T` | `workflow.NewChannel(ctx)` / `workflow.NewBufferedChannel(ctx, size)` |
-| `select { ... }` | `workflow.NewSelector(ctx)` |
-| `time.Now()` | `workflow.Now(ctx)` |
-| `time.Sleep(d)` | `workflow.Sleep(ctx, d)` |
-| `rand.Intn(100)` | `workflow.SideEffect(ctx, func(ctx workflow.Context) interface{} { return rand.Intn(100) })` |
-| `uuid.New()` | `workflow.SideEffect` or pass as activity result |
-| `log.Println(...)` | `workflow.GetLogger(ctx).Info(...)` |
+| Instead of            | Use                                                                                          |
+| --------------------- | -------------------------------------------------------------------------------------------- |
+| `go func() { ... }()` | `workflow.Go(ctx, func(ctx workflow.Context) { ... })`                                       |
+| `chan T`              | `workflow.NewChannel(ctx)` / `workflow.NewBufferedChannel(ctx, size)`                        |
+| `select { ... }`      | `workflow.NewSelector(ctx)`                                                                  |
+| `time.Now()`          | `workflow.Now(ctx)`                                                                          |
+| `time.Sleep(d)`       | `workflow.Sleep(ctx, d)`                                                                     |
+| `rand.Intn(100)`      | `workflow.SideEffect(ctx, func(ctx workflow.Context) interface{} { return rand.Intn(100) })` |
+| `uuid.New()`          | `workflow.SideEffect` or pass as activity result                                             |
+| `log.Println(...)`    | `workflow.GetLogger(ctx).Info(...)`                                                          |
 
 ## Testing Replay Compatibility
 

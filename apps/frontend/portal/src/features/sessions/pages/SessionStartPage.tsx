@@ -1,6 +1,20 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Select, Input, Button, Space, Spin, message, Tag, Alert, Row, Col, Typography, Table } from 'antd';
+import {
+  Card,
+  Select,
+  Input,
+  Button,
+  Space,
+  Spin,
+  message,
+  Tag,
+  Alert,
+  Row,
+  Col,
+  Typography,
+  Table,
+} from 'antd';
 import {
   RobotOutlined,
   PlayCircleOutlined,
@@ -17,11 +31,14 @@ import { runtimeConfig } from '@/shared/config/runtime';
 import { useAuthStore } from '@/shared/store/authStore';
 
 const normalizeParamsSchema = (template?: Template) => {
-  const properties = (template?.params_schema?.properties ?? {}) as Record<string, {
-    type: string;
-    description?: string;
-    default?: string | number | boolean;
-  }>;
+  const properties = (template?.params_schema?.properties ?? {}) as Record<
+    string,
+    {
+      type: string;
+      description?: string;
+      default?: string | number | boolean;
+    }
+  >;
 
   return {
     properties,
@@ -30,7 +47,10 @@ const normalizeParamsSchema = (template?: Template) => {
 };
 
 const getTemplatePropertyDescription = (template: Template | undefined, name: string) => {
-  const properties = (template?.params_schema?.properties ?? {}) as Record<string, { description?: string }>;
+  const properties = (template?.params_schema?.properties ?? {}) as Record<
+    string,
+    { description?: string }
+  >;
   return properties[name]?.description;
 };
 
@@ -82,11 +102,12 @@ const SessionStartPage: React.FC = () => {
   );
 
   const recognizeMutation = useMutation(
-    () => aiApi.recognizeParams({
-      template_id: selectedTemplateId!,
-      user_input: userInput,
-      params_schema: normalizeParamsSchema(selectedTemplate),
-    }),
+    () =>
+      aiApi.recognizeParams({
+        template_id: selectedTemplateId!,
+        user_input: userInput,
+        params_schema: normalizeParamsSchema(selectedTemplate),
+      }),
     {
       onSuccess: (data) => {
         setRecognizedParams(data);
@@ -163,7 +184,11 @@ const SessionStartPage: React.FC = () => {
   };
 
   const selectedTemplate = selectedTemplateQuery.data;
-  const isLoading = templatesQuery.isLoading || recognizeMutation.isLoading || executeMutation.isLoading || resetWorkerMutation.isLoading;
+  const isLoading =
+    templatesQuery.isLoading ||
+    recognizeMutation.isLoading ||
+    executeMutation.isLoading ||
+    resetWorkerMutation.isLoading;
 
   const stepStyle = {
     display: 'flex',
@@ -222,7 +247,9 @@ const SessionStartPage: React.FC = () => {
                     showSearch
                     size="large"
                     filterOption={(input, option) =>
-                      (option?.children as unknown as string)?.toLowerCase().includes(input.toLowerCase())
+                      (option?.children as unknown as string)
+                        ?.toLowerCase()
+                        .includes(input.toLowerCase())
                     }
                   >
                     {templatesQuery.data?.templates.map((template: Template) => (
@@ -272,7 +299,9 @@ const SessionStartPage: React.FC = () => {
             <div style={stepStyle}>
               <div style={stepNumberStyle}>1</div>
               <div>
-                <Title level={5} style={{ margin: 0 }}>{t('session:describeTask')}</Title>
+                <Title level={5} style={{ margin: 0 }}>
+                  {t('session:describeTask')}
+                </Title>
                 <Text type="secondary">{t('session:describeTaskHint')}</Text>
               </div>
             </div>
@@ -288,7 +317,9 @@ const SessionStartPage: React.FC = () => {
             <div style={stepStyle}>
               <div style={stepNumberStyle}>2</div>
               <div>
-                <Title level={5} style={{ margin: 0 }}>{t('session:recognizedParams')}</Title>
+                <Title level={5} style={{ margin: 0 }}>
+                  {t('session:recognizedParams')}
+                </Title>
                 <Text type="secondary">{t('session:recognizedParamsHint')}</Text>
               </div>
             </div>
@@ -359,7 +390,9 @@ const SessionStartPage: React.FC = () => {
             <div style={stepStyle}>
               <div style={stepNumberStyle}>3</div>
               <div>
-                <Title level={5} style={{ margin: 0 }}>{t('session:browserPreview')}</Title>
+                <Title level={5} style={{ margin: 0 }}>
+                  {t('session:browserPreview')}
+                </Title>
                 <Text type="secondary">{t('session:browserPreviewHint')}</Text>
               </div>
             </div>
@@ -392,7 +425,11 @@ const SessionStartPage: React.FC = () => {
                     <DesktopOutlined />
                     <span>{t('session:liveBrowser')}</span>
                   </Space>
-                  <Button type="link" style={{ color: '#fff' }} onClick={() => window.open(NOVNC_URL, '_blank')}>
+                  <Button
+                    type="link"
+                    style={{ color: '#fff' }}
+                    onClick={() => window.open(NOVNC_URL, '_blank')}
+                  >
                     {t('session:openInNewWindow')}
                   </Button>
                 </div>
@@ -412,7 +449,10 @@ const SessionStartPage: React.FC = () => {
                   {selectedTemplate.steps.map((step: Template['steps'][number], index: number) => {
                     const action = String(step.action || '');
                     return (
-                      <Space key={`${action}-${index}`} style={{ width: '100%', justifyContent: 'space-between' }}>
+                      <Space
+                        key={`${action}-${index}`}
+                        style={{ width: '100%', justifyContent: 'space-between' }}
+                      >
                         <Space>
                           <Tag color="blue">{index + 1}</Tag>
                           <Text>{ACTION_DESCRIPTIONS[action] || action || '-'}</Text>

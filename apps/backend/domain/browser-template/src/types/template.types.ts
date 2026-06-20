@@ -18,6 +18,7 @@ export type ActionType =
   | 'search'
   | 'smart_search'
   | 'hover'
+  | 'press'
   | 'press_key'
   | 'scroll'
   | 'type_text'
@@ -26,7 +27,10 @@ export type ActionType =
   | 'read_page'
   | 'list_search_results'
   | 'click_result'
-  | 'switch_latest_tab';
+  | 'switch_latest_tab'
+  | 'read_value'
+  | 'branch'
+  | 'takeover_gate';
 
 export type WaitType = 'timeout' | 'visible' | 'hidden' | 'text';
 
@@ -54,6 +58,24 @@ export interface RetryConfig {
   delay_ms: number;
 }
 
+export type ReadMethod = 'innerText' | 'textContent' | 'value' | 'attribute' | 'visible';
+
+export type BranchOutcome = 'continue' | 'stop' | 'takeover';
+
+export type StepExecutionPolicy =
+  | 'auto_execute'
+  | 'require_confirmation'
+  | 'require_takeover'
+  | 'forbid_in_replay';
+
+export interface BranchConfig {
+  condition_fn: string;
+  on_match: Exclude<BranchOutcome, 'takeover'>;
+  on_mismatch: BranchOutcome;
+  takeover_reason?: string;
+  description?: string;
+}
+
 export interface TemplateStep {
   step_id: string;
   action: ActionType;
@@ -64,6 +86,10 @@ export interface TemplateStep {
   retry?: RetryConfig;
   on_fail?: OnFailAction;
   idempotency_key?: string;
+  output_var?: string;
+  branch?: BranchConfig;
+  description?: string;
+  execution_policy?: StepExecutionPolicy;
 }
 
 export interface ParamSchema {
@@ -138,13 +164,21 @@ export interface ListTemplatesResponse {
 
 // Locator priority mapping
 export const LOCATOR_PRIORITY: Record<LocatorType, number> = {
-  'role': 1,
-  'text': 2,
+  role: 1,
+  text: 2,
   'test-id': 3,
-  'css': 4,
-  'xpath': 5,
-  'ref': 1,
+  css: 4,
+  xpath: 5,
+  ref: 1,
 };
 
 // Forbidden parameter names (security check)
-export const FORBIDDEN_PARAM_NAMES = ['password', 'passwd', 'pwd', 'secret', 'token', 'api_key', 'apikey'];
+export const FORBIDDEN_PARAM_NAMES = [
+  'password',
+  'passwd',
+  'pwd',
+  'secret',
+  'token',
+  'api_key',
+  'apikey',
+];

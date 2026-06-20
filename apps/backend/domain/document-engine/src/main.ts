@@ -39,7 +39,8 @@ async function bootstrap() {
     credentials: true,
   });
 
-  const port = process.env.PORT || process.env.CARBONE_ENGINE_PORT || process.env.CARBONE_PORT || 3009;
+  const port =
+    process.env.PORT || process.env.CARBONE_ENGINE_PORT || process.env.CARBONE_PORT || 3009;
   await app.listen(port);
   const publicHost = getPublicHost();
   const publicBaseUrl = `http://${publicHost}:${port}`;

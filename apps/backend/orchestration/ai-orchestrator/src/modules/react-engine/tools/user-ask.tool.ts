@@ -52,14 +52,11 @@ export class UserAskTool extends BaseTool {
         },
         required: ['question'],
       },
-      { category: 'discovery' },
+      { category: 'discovery' }
     );
   }
 
-  async execute(
-    params: Record<string, unknown>,
-    _context: ExecutionContext,
-  ): Promise<ToolResult> {
+  async execute(params: Record<string, unknown>, _context: ExecutionContext): Promise<ToolResult> {
     const question = params.question as string;
     const questionType = (params.questionType as string) || 'input';
     const options = (params.options as string[]) || [];

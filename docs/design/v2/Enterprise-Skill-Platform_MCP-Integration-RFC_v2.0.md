@@ -12,6 +12,7 @@
 当前 `ai-orchestrator` 和 `browser-worker` 之间的工具调用采用了内部定制的 JSON 格式。随着 Anthropic 推出 MCP 等行业标准，平台需要一种标准化、安全且易于接入的协议。
 
 **目标**：
+
 - 摒弃无边界的 CLI 调用，将平台能力（Capabilities 和 Skills）封装为标准 MCP Tools。
 - 允许企业内部的自研 Agent、Copilot 甚至是第三方大模型应用，安全地发现和调用本平台的 Skill。
 - 在协议层实现细粒度的 RBAC 鉴权与审计。
@@ -23,11 +24,13 @@
 MCP Server 应作为 `skill-control-plane` 的一个独立接入网关。
 
 ### 2.1 核心职责
+
 - **Resource 暴露**：将企业内的模板库（Templates）、历史报告（Artifacts）、组织知识（Org Memory）以 MCP Resources 的形式暴露，供大模型读取。
 - **Tool 暴露**：将经过审批上线的 `published` 状态的 Skill，以及基础的原子能力（如 `document.render`）暴露为 MCP Tools。
 - **Prompt 暴露**：将最佳实践和场景化系统提示词暴露为 MCP Prompts。
 
 ### 2.2 与现有系统的关系
+
 外部大模型客户端 -> `MCP Server` (鉴权/拦截) -> `skill-orchestrator` -> `Runtime`
 
 ---

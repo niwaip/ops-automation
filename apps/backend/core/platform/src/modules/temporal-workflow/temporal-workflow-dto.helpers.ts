@@ -29,7 +29,7 @@ export function toTemporalWorkflowDto(workflow: TemporalWorkflow): TemporalWorkf
 }
 
 export function toTemporalWorkflowArtifactDto(
-  workflow: TemporalWorkflow,
+  workflow: TemporalWorkflow
 ): TemporalWorkflowArtifactDTO {
   return {
     workflowId: workflow.id,
@@ -41,28 +41,37 @@ export function toTemporalWorkflowArtifactDto(
     validationStatus: ((workflow as any).validationStatus || 'draft') as string,
     validationScore: Number((workflow as any).validationScore || 0),
     validatedAt: (workflow as any).validatedAt || null,
-    validationResult: parseJson<Record<string, unknown>>((workflow as any).validationResultJson) || null,
+    validationResult:
+      parseJson<Record<string, unknown>>((workflow as any).validationResultJson) || null,
   };
 }
 
 export function extractSourceContext(
   workflowDsl: WorkflowDsl | Record<string, unknown> | null | undefined,
-  activityDsl: ActivityDsl | Record<string, unknown> | null | undefined,
+  activityDsl: ActivityDsl | Record<string, unknown> | null | undefined
 ): TemporalWorkflowSourceContext | null {
-  const workflowRecord = workflowDsl && typeof workflowDsl === 'object'
-    ? workflowDsl as Record<string, unknown>
-    : {};
-  const declaredSourceContext = parseJson<Record<string, unknown>>(workflowRecord.sourceContext) || {};
+  const workflowRecord =
+    workflowDsl && typeof workflowDsl === 'object' ? (workflowDsl as Record<string, unknown>) : {};
+  const declaredSourceContext =
+    parseJson<Record<string, unknown>>(workflowRecord.sourceContext) || {};
   const sourceTemplate = extractSourceTemplate(workflowDsl, activityDsl);
   const sourceType = pickFirstNonEmptyString(
     declaredSourceContext.sourceType,
-    sourceTemplate ? 'template' : undefined,
+    sourceTemplate ? 'template' : undefined
   ) as TemporalWorkflowSourceContext['sourceType'];
   const warnings = Array.isArray(declaredSourceContext.warnings)
-    ? declaredSourceContext.warnings.filter((item): item is string => typeof item === 'string' && !!item.trim())
+    ? declaredSourceContext.warnings.filter(
+        (item): item is string => typeof item === 'string' && !!item.trim()
+      )
     : [];
 
-  if (!sourceType && !sourceTemplate && !declaredSourceContext.referenceUrl && !declaredSourceContext.userDescription && warnings.length === 0) {
+  if (
+    !sourceType &&
+    !sourceTemplate &&
+    !declaredSourceContext.referenceUrl &&
+    !declaredSourceContext.userDescription &&
+    warnings.length === 0
+  ) {
     return null;
   }
 
@@ -78,14 +87,15 @@ export function extractSourceContext(
 
 export function extractSourceTemplate(
   workflowDsl: WorkflowDsl | Record<string, unknown> | null | undefined,
-  activityDsl: ActivityDsl | Record<string, unknown> | null | undefined,
+  activityDsl: ActivityDsl | Record<string, unknown> | null | undefined
 ): TemporalWorkflowSourceTemplate | null {
-  const workflowRecord = workflowDsl && typeof workflowDsl === 'object'
-    ? workflowDsl as Record<string, unknown>
-    : {};
+  const workflowRecord =
+    workflowDsl && typeof workflowDsl === 'object' ? (workflowDsl as Record<string, unknown>) : {};
   const workflowLevelSource = parseJson<Record<string, unknown>>(workflowRecord.sourceTemplate);
-  const workflowLevelSourceContext = parseJson<Record<string, unknown>>(workflowRecord.sourceContext) || {};
-  const workflowLevelSourceTemplate = parseJson<Record<string, unknown>>(workflowLevelSourceContext.sourceTemplate) || {};
+  const workflowLevelSourceContext =
+    parseJson<Record<string, unknown>>(workflowRecord.sourceContext) || {};
+  const workflowLevelSourceTemplate =
+    parseJson<Record<string, unknown>>(workflowLevelSourceContext.sourceTemplate) || {};
 
   const activities = Array.isArray((activityDsl as ActivityDsl | undefined)?.activities)
     ? (activityDsl as ActivityDsl).activities
@@ -106,29 +116,29 @@ export function extractSourceTemplate(
       workflowLevelSource?.templateId,
       workflowLevelSourceTemplate?.templateId,
       carboneStep?.config?.templateId,
-      carboneActivity?.config?.templateId,
+      carboneActivity?.config?.templateId
     ),
     skillId: pickFirstNonEmptyString(
       workflowLevelSource?.skillId,
       workflowLevelSourceTemplate?.skillId,
-      carboneActivity?.config?.skillId,
+      carboneActivity?.config?.skillId
     ),
     fileName: pickFirstNonEmptyString(
       workflowLevelSource?.fileName,
       workflowLevelSourceTemplate?.fileName,
-      carboneActivity?.config?.fileName,
+      carboneActivity?.config?.fileName
     ),
     format: pickFirstNonEmptyString(
       workflowLevelSource?.format,
       workflowLevelSourceTemplate?.format,
       carboneStep?.config?.format,
-      carboneActivity?.config?.format,
+      carboneActivity?.config?.format
     ),
     variableCount: pickFirstPositiveNumber(
       workflowLevelSource?.variableCount,
       workflowLevelSourceTemplate?.variableCount,
       carboneActivity?.config?.variableCount,
-      Object.keys(parseJson<Record<string, unknown>>(workflowRecord.inputParams) || {}).length,
+      Object.keys(parseJson<Record<string, unknown>>(workflowRecord.inputParams) || {}).length
     ),
   };
 

@@ -19,14 +19,14 @@ export class ExecutionPhaseSyncService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly executionPhaseService: ExecutionPhaseService,
+    private readonly executionPhaseService: ExecutionPhaseService
   ) {}
 
   async markPhaseRunningForStep(
     executionId: string,
     runtimeSessionId: string,
     phaseMetadata?: { phaseKey: string; phaseName: string; phaseType: string },
-    step?: Record<string, unknown> | null,
+    step?: Record<string, unknown> | null
   ): Promise<void> {
     if (!phaseMetadata) {
       return;
@@ -55,13 +55,16 @@ export class ExecutionPhaseSyncService {
     runtimeSessionId: string,
     capabilityId: string,
     phaseMetadata?: { phaseKey: string; phaseName: string; phaseType: string },
-    step?: Record<string, unknown> | null,
+    step?: Record<string, unknown> | null
   ): Promise<void> {
     if (!phaseMetadata) {
       return;
     }
 
-    const activityPhases = await this.loadWorkflowActivityPhaseDefinitions(capabilityId, phaseMetadata.phaseKey);
+    const activityPhases = await this.loadWorkflowActivityPhaseDefinitions(
+      capabilityId,
+      phaseMetadata.phaseKey
+    );
     if (activityPhases.length === 0) {
       return;
     }
@@ -110,7 +113,7 @@ export class ExecutionPhaseSyncService {
     runtimeSessionId: string,
     capabilityId: string,
     result: RuntimeStepInvokeResult,
-    phaseMetadata?: { phaseKey: string; phaseName: string; phaseType: string },
+    phaseMetadata?: { phaseKey: string; phaseName: string; phaseType: string }
   ): Promise<void> {
     if (!phaseMetadata) {
       return;
@@ -118,7 +121,7 @@ export class ExecutionPhaseSyncService {
 
     const activityPhases = await this.loadWorkflowActivityPhaseDefinitions(
       capabilityId,
-      phaseMetadata.phaseKey,
+      phaseMetadata.phaseKey
     );
     if (activityPhases.length === 0) {
       return;
@@ -127,7 +130,11 @@ export class ExecutionPhaseSyncService {
     const runtimePhaseResults = this.extractRuntimePhaseResults(result);
     if (runtimePhaseResults.length === 0) {
       const failedActivityPhase = !result.success
-        ? await this.resolveFailedWorkflowActivityPhase(executionId, phaseMetadata.phaseKey, activityPhases)
+        ? await this.resolveFailedWorkflowActivityPhase(
+            executionId,
+            phaseMetadata.phaseKey,
+            activityPhases
+          )
         : null;
       if (!result.success && failedActivityPhase) {
         await this.executionPhaseService.createOrUpdatePhase({
@@ -135,7 +142,10 @@ export class ExecutionPhaseSyncService {
           phaseKey: failedActivityPhase.phaseKey,
           phaseName: failedActivityPhase.phaseName,
           phaseType: failedActivityPhase.phaseType,
-          status: result.status === 'takeover_required' || result.requiresTakeover ? 'waiting_takeover' : 'failed',
+          status:
+            result.status === 'takeover_required' || result.requiresTakeover
+              ? 'waiting_takeover'
+              : 'failed',
           attempt: 1,
           runtimeSessionId,
           output: {
@@ -146,7 +156,8 @@ export class ExecutionPhaseSyncService {
           recoveryDecision: null,
           errorCode: result.errorCode || null,
           errorMessage: result.errorMessage || null,
-          completedAt: result.status === 'takeover_required' || result.requiresTakeover ? null : new Date(),
+          completedAt:
+            result.status === 'takeover_required' || result.requiresTakeover ? null : new Date(),
         });
       }
       return;
@@ -158,11 +169,8 @@ export class ExecutionPhaseSyncService {
         continue;
       }
 
-      const phaseResultBody = this.readRecord(
-        phaseResult.result,
-        phaseResult.output,
-        phaseResult,
-      ) || phaseResult;
+      const phaseResultBody =
+        this.readRecord(phaseResult.result, phaseResult.output, phaseResult) || phaseResult;
       const normalizedStatus = this.normalizeRuntimePhaseStepStatus(phaseResultBody);
       const phaseArtifacts = this.mapRuntimeArtifactsFromActivityPhaseResult(phaseResultBody);
       const phaseSteps = this.mapRuntimeStepsFromActivityPhaseResult(phaseResultBody, phaseResult);
@@ -171,7 +179,7 @@ export class ExecutionPhaseSyncService {
         activityName: this.readNonEmptyString(
           phaseResult.activityName,
           activityPhase.activityName,
-          activityPhase.phaseName,
+          activityPhase.phaseName
         ),
         stepName: this.readNonEmptyString(phaseResult.stepName, activityPhase.phaseName),
         result: phaseResultBody,
@@ -187,12 +195,18 @@ export class ExecutionPhaseSyncService {
           attempt: 1,
           runtimeSessionId,
           output: phaseOutput,
-          errorCode: this.readNonEmptyString(phaseResultBody.errorCode, phaseResultBody.error_code) || result.errorCode || null,
-          errorMessage: this.readNonEmptyString(
-            phaseResultBody.errorMessage,
-            phaseResultBody.error_message,
-            phaseResultBody.message,
-          ) || result.errorMessage || null,
+          errorCode:
+            this.readNonEmptyString(phaseResultBody.errorCode, phaseResultBody.error_code) ||
+            result.errorCode ||
+            null,
+          errorMessage:
+            this.readNonEmptyString(
+              phaseResultBody.errorMessage,
+              phaseResultBody.error_message,
+              phaseResultBody.message
+            ) ||
+            result.errorMessage ||
+            null,
           completedAt: new Date(),
         });
       } else if (normalizedStatus === 'waiting_takeover') {
@@ -205,12 +219,18 @@ export class ExecutionPhaseSyncService {
           attempt: 1,
           runtimeSessionId,
           output: phaseOutput,
-          errorCode: this.readNonEmptyString(phaseResultBody.errorCode, phaseResultBody.error_code) || result.errorCode || null,
-          errorMessage: this.readNonEmptyString(
-            phaseResultBody.errorMessage,
-            phaseResultBody.error_message,
-            phaseResultBody.message,
-          ) || result.errorMessage || null,
+          errorCode:
+            this.readNonEmptyString(phaseResultBody.errorCode, phaseResultBody.error_code) ||
+            result.errorCode ||
+            null,
+          errorMessage:
+            this.readNonEmptyString(
+              phaseResultBody.errorMessage,
+              phaseResultBody.error_message,
+              phaseResultBody.message
+            ) ||
+            result.errorMessage ||
+            null,
           completedAt: null,
         });
       } else {
@@ -225,10 +245,18 @@ export class ExecutionPhaseSyncService {
       }
 
       if (typeof this.executionPhaseService.replaceArtifacts === 'function') {
-        await this.executionPhaseService.replaceArtifacts(executionId, activityPhase.phaseKey, phaseArtifacts);
+        await this.executionPhaseService.replaceArtifacts(
+          executionId,
+          activityPhase.phaseKey,
+          phaseArtifacts
+        );
       }
       if (typeof this.executionPhaseService.replaceSteps === 'function') {
-        await this.executionPhaseService.replaceSteps(executionId, activityPhase.phaseKey, phaseSteps);
+        await this.executionPhaseService.replaceSteps(
+          executionId,
+          activityPhase.phaseKey,
+          phaseSteps
+        );
       }
     }
   }
@@ -238,7 +266,7 @@ export class ExecutionPhaseSyncService {
     runtimeSessionId: string,
     result: RuntimeStepInvokeResult,
     phaseMetadata?: { phaseKey: string; phaseName: string; phaseType: string },
-    step?: Record<string, unknown> | null,
+    step?: Record<string, unknown> | null
   ): Promise<void> {
     if (!phaseMetadata) {
       return;
@@ -255,21 +283,13 @@ export class ExecutionPhaseSyncService {
         ? { stepResults: phaseLikeResult.stepResults }
         : {}),
       ...(Array.isArray(result.artifacts) ? { artifacts: result.artifacts } : {}),
-      ...(typeof phaseLikeResult.status === 'string'
-        ? { status: phaseLikeResult.status }
-        : {}),
-      ...(phaseLikeResult.failedStepId
-        ? { failedStepId: phaseLikeResult.failedStepId }
-        : {}),
-      ...(phaseLikeResult.failedAction
-        ? { failedAction: phaseLikeResult.failedAction }
-        : {}),
+      ...(typeof phaseLikeResult.status === 'string' ? { status: phaseLikeResult.status } : {}),
+      ...(phaseLikeResult.failedStepId ? { failedStepId: phaseLikeResult.failedStepId } : {}),
+      ...(phaseLikeResult.failedAction ? { failedAction: phaseLikeResult.failedAction } : {}),
       ...(typeof phaseLikeResult.requiresTakeover === 'boolean'
         ? { requiresTakeover: phaseLikeResult.requiresTakeover }
         : {}),
-      ...(phaseLikeResult.takeoverReason
-        ? { takeoverReason: phaseLikeResult.takeoverReason }
-        : {}),
+      ...(phaseLikeResult.takeoverReason ? { takeoverReason: phaseLikeResult.takeoverReason } : {}),
     };
     const phaseArtifacts = this.mapRuntimeArtifactsToPhaseArtifacts(result);
     const phaseSteps = this.extractPhaseStepsFromRuntimeResult(result, step);
@@ -284,19 +304,28 @@ export class ExecutionPhaseSyncService {
         postcheck: null,
       });
       if (typeof this.executionPhaseService.replaceArtifacts === 'function') {
-        await this.executionPhaseService.replaceArtifacts(executionId, phaseMetadata.phaseKey, phaseArtifacts);
+        await this.executionPhaseService.replaceArtifacts(
+          executionId,
+          phaseMetadata.phaseKey,
+          phaseArtifacts
+        );
       }
       if (typeof this.executionPhaseService.replaceSteps === 'function') {
-        await this.executionPhaseService.replaceSteps(executionId, phaseMetadata.phaseKey, phaseSteps);
+        await this.executionPhaseService.replaceSteps(
+          executionId,
+          phaseMetadata.phaseKey,
+          phaseSteps
+        );
       }
       return;
     }
 
-    const mappedStatus = result.status === 'takeover_required'
-      ? 'waiting_takeover'
-      : result.status === 'waiting'
-        ? 'resumable'
-        : 'failed';
+    const mappedStatus =
+      result.status === 'takeover_required'
+        ? 'waiting_takeover'
+        : result.status === 'waiting'
+          ? 'resumable'
+          : 'failed';
 
     await this.executionPhaseService.createOrUpdatePhase({
       executionId,
@@ -313,16 +342,24 @@ export class ExecutionPhaseSyncService {
       completedAt: mappedStatus === 'failed' ? new Date() : null,
     });
     if (typeof this.executionPhaseService.replaceArtifacts === 'function') {
-      await this.executionPhaseService.replaceArtifacts(executionId, phaseMetadata.phaseKey, phaseArtifacts);
+      await this.executionPhaseService.replaceArtifacts(
+        executionId,
+        phaseMetadata.phaseKey,
+        phaseArtifacts
+      );
     }
     if (typeof this.executionPhaseService.replaceSteps === 'function') {
-      await this.executionPhaseService.replaceSteps(executionId, phaseMetadata.phaseKey, phaseSteps);
+      await this.executionPhaseService.replaceSteps(
+        executionId,
+        phaseMetadata.phaseKey,
+        phaseSteps
+      );
     }
   }
 
   async completeActivePhasesOnExecutionSuccess(
     executionId: string,
-    runtimeSessionId: string,
+    runtimeSessionId: string
   ): Promise<void> {
     const phases = await this.executionPhaseService.listByExecutionId(executionId);
     if (!Array.isArray(phases) || phases.length === 0) {
@@ -350,15 +387,24 @@ export class ExecutionPhaseSyncService {
         executionId,
         phaseKey,
         phaseName: this.readNonEmptyString(phase.phaseName, phase.phase_name) || phaseKey,
-        phaseType: this.readNonEmptyString(phase.phaseType, phase.phase_type) || 'workflow_activity',
+        phaseType:
+          this.readNonEmptyString(phase.phaseType, phase.phase_type) || 'workflow_activity',
         status: 'completed',
         attempt: this.readInteger(phase.attempt) || 0,
-        runtimeSessionId: this.readNonEmptyString(phase.runtimeSessionId, phase.runtime_session_id) || runtimeSessionId,
+        runtimeSessionId:
+          this.readNonEmptyString(phase.runtimeSessionId, phase.runtime_session_id) ||
+          runtimeSessionId,
         input: this.parseJsonRecord(phase.inputJson ?? phase.input_json),
         output: this.parseJsonRecord(phase.outputJson ?? phase.output_json),
-        precheck: this.parseJsonRecord(phase.precheckJson ?? phase.precheck_json) as BrowserPhaseCheck | undefined,
-        postcheck: this.parseJsonRecord(phase.postcheckJson ?? phase.postcheck_json) as BrowserPhaseCheck | undefined,
-        recoveryDecision: this.parseJsonRecord(phase.recoveryDecision ?? phase.recovery_decision_json),
+        precheck: this.parseJsonRecord(phase.precheckJson ?? phase.precheck_json) as
+          | BrowserPhaseCheck
+          | undefined,
+        postcheck: this.parseJsonRecord(phase.postcheckJson ?? phase.postcheck_json) as
+          | BrowserPhaseCheck
+          | undefined,
+        recoveryDecision: this.parseJsonRecord(
+          phase.recoveryDecision ?? phase.recovery_decision_json
+        ),
         errorCode: null,
         errorMessage: null,
         startedAt: this.readDateValue(phase.startedAt, phase.started_at) || null,
@@ -388,13 +434,17 @@ export class ExecutionPhaseSyncService {
   }
 
   private extractPageFingerprintFromArtifactMetadata(
-    metadata?: Record<string, unknown>,
+    metadata?: Record<string, unknown>
   ): string | undefined {
     if (!metadata) {
       return undefined;
     }
     const page = metadata.page;
-    if (page && typeof page === 'object' && typeof (page as Record<string, unknown>).fingerprint === 'string') {
+    if (
+      page &&
+      typeof page === 'object' &&
+      typeof (page as Record<string, unknown>).fingerprint === 'string'
+    ) {
       return ((page as Record<string, unknown>).fingerprint as string).trim() || undefined;
     }
     if (typeof metadata.pageFingerprint === 'string' && metadata.pageFingerprint.trim()) {
@@ -417,7 +467,7 @@ export class ExecutionPhaseSyncService {
   private async resolveFailedWorkflowActivityPhase(
     executionId: string,
     parentPhaseKey: string,
-    activityPhases: WorkflowActivityPhaseDefinition[],
+    activityPhases: WorkflowActivityPhaseDefinition[]
   ): Promise<WorkflowActivityPhaseDefinition | null> {
     if (typeof this.executionPhaseService?.listByExecutionId !== 'function') {
       return activityPhases[0] || null;
@@ -441,10 +491,11 @@ export class ExecutionPhaseSyncService {
         return rightOrder - leftOrder;
       });
 
-    const activePhase = candidatePhases.find((phase) => {
-      const status = this.readNonEmptyString(phase.status);
-      return status === 'running' || status === 'waiting_takeover' || status === 'resumable';
-    }) || candidatePhases[0];
+    const activePhase =
+      candidatePhases.find((phase) => {
+        const status = this.readNonEmptyString(phase.status);
+        return status === 'running' || status === 'waiting_takeover' || status === 'resumable';
+      }) || candidatePhases[0];
 
     const activePhaseKey = activePhase
       ? this.readNonEmptyString(activePhase.phaseKey, activePhase.phase_key)
@@ -453,11 +504,13 @@ export class ExecutionPhaseSyncService {
       return activityPhases[0] || null;
     }
 
-    return activityPhases.find((phase) => phase.phaseKey === activePhaseKey) || activityPhases[0] || null;
+    return (
+      activityPhases.find((phase) => phase.phaseKey === activePhaseKey) || activityPhases[0] || null
+    );
   }
 
   private mapRuntimeArtifactsFromActivityPhaseResult(
-    phaseResultBody: Record<string, unknown>,
+    phaseResultBody: Record<string, unknown>
   ): Array<{
     artifactType: string;
     snapshotId?: string | null;
@@ -470,40 +523,43 @@ export class ExecutionPhaseSyncService {
       return [];
     }
 
-    const mappedArtifacts = runtimeArtifacts
-      .map((artifact) => {
-        const snapshot = this.readRecord(artifact.snapshot);
-        const artifactRecord = this.readRecord(artifact.artifact);
-        const snapshotId = this.readNonEmptyString(artifact.snapshotId, artifact.snapshot_id, snapshot?.id);
-        const snapshotPath = this.readNonEmptyString(snapshot?.path);
-        const artifactPath = this.readNonEmptyString(artifactRecord?.path);
-        const command = this.readNonEmptyString(artifact.command);
-        const status = this.readNonEmptyString(artifact.status);
+    const mappedArtifacts = runtimeArtifacts.map((artifact) => {
+      const snapshot = this.readRecord(artifact.snapshot);
+      const artifactRecord = this.readRecord(artifact.artifact);
+      const snapshotId = this.readNonEmptyString(
+        artifact.snapshotId,
+        artifact.snapshot_id,
+        snapshot?.id
+      );
+      const snapshotPath = this.readNonEmptyString(snapshot?.path);
+      const artifactPath = this.readNonEmptyString(artifactRecord?.path);
+      const command = this.readNonEmptyString(artifact.command);
+      const status = this.readNonEmptyString(artifact.status);
 
-        if (!snapshotId && !snapshotPath && !artifactPath) {
-          return null;
-        }
+      if (!snapshotId && !snapshotPath && !artifactPath) {
+        return null;
+      }
 
-        return {
-          artifactType: snapshotId ? 'snapshot' : 'browser_artifact',
-          snapshotId: snapshotId || null,
-          pageUrl: null,
-          pageFingerprint: null,
-          payload: {
-            ...(command ? { command } : {}),
-            ...(status ? { status } : {}),
-            ...(snapshotPath ? { snapshotPath } : {}),
-            ...(artifactPath ? { artifactPath } : {}),
-          },
-        };
-      });
+      return {
+        artifactType: snapshotId ? 'snapshot' : 'browser_artifact',
+        snapshotId: snapshotId || null,
+        pageUrl: null,
+        pageFingerprint: null,
+        payload: {
+          ...(command ? { command } : {}),
+          ...(status ? { status } : {}),
+          ...(snapshotPath ? { snapshotPath } : {}),
+          ...(artifactPath ? { artifactPath } : {}),
+        },
+      };
+    });
 
     return mappedArtifacts.filter((item) => item !== null);
   }
 
   private mapRuntimeStepsFromActivityPhaseResult(
     phaseResultBody: Record<string, unknown>,
-    phaseResult?: Record<string, unknown>,
+    phaseResult?: Record<string, unknown>
   ): Array<{
     stepIndex: number;
     stepId?: string | null;
@@ -519,7 +575,7 @@ export class ExecutionPhaseSyncService {
   }> {
     const nestedResults = this.readRecordArray(phaseResultBody, 'results');
     if (nestedResults.length > 0) {
-      return nestedResults.map((nestedResult, index) => (
+      return nestedResults.map((nestedResult, index) =>
         this.mapRuntimePhaseStepRecord(nestedResult, index + 1, {
           phaseResult,
           fallbackAction:
@@ -527,27 +583,24 @@ export class ExecutionPhaseSyncService {
               nestedResult.action,
               nestedResult.command,
               phaseResult?.stepName,
-              phaseResult?.activityName,
+              phaseResult?.activityName
             ) || 'execute',
         })
-      ));
+      );
     }
 
     return [
       this.mapRuntimePhaseStepRecord(phaseResultBody, 1, {
         phaseResult,
         fallbackAction:
-          this.readNonEmptyString(
-            phaseResult?.stepName,
-            phaseResult?.activityName,
-          ) || 'execute',
+          this.readNonEmptyString(phaseResult?.stepName, phaseResult?.activityName) || 'execute',
       }),
     ];
   }
 
   private async loadWorkflowActivityPhaseDefinitions(
     capabilityId: string,
-    parentPhaseKey: string,
+    parentPhaseKey: string
   ): Promise<WorkflowActivityPhaseDefinition[]> {
     if (!capabilityId) {
       return [];
@@ -568,13 +621,15 @@ export class ExecutionPhaseSyncService {
           ORDER BY cr.updated_at DESC
           LIMIT 1
         `,
-        capabilityId,
+        capabilityId
       );
 
       const sourcePayload = this.parseJsonRecord(rows[0]?.source_payload_json);
       const workflowDsl = this.parseJsonRecord(sourcePayload?.workflowDsl);
       const workflowSteps = Array.isArray(workflowDsl?.steps)
-        ? workflowDsl.steps.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
+        ? workflowDsl.steps.filter(
+            (item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object'
+          )
         : [];
       const activitySteps = workflowSteps.filter((step) => {
         const stepType = this.readNonEmptyString(step.type);
@@ -582,29 +637,38 @@ export class ExecutionPhaseSyncService {
       });
 
       return activitySteps.map((activityStep, index) => {
-        const activityKeySource = this.readNonEmptyString(
-          activityStep.activityName,
-          activityStep.activityRef,
-          activityStep.name,
-        ) || `activity_${index + 1}`;
-        const activityLabel = this.readNonEmptyString(
-          activityStep.name,
-          activityStep.activityName,
-          activityStep.activityRef,
-        ) || `Activity ${index + 1}`;
+        const activityKeySource =
+          this.readNonEmptyString(
+            activityStep.activityName,
+            activityStep.activityRef,
+            activityStep.name
+          ) || `activity_${index + 1}`;
+        const activityLabel =
+          this.readNonEmptyString(
+            activityStep.name,
+            activityStep.activityName,
+            activityStep.activityRef
+          ) || `Activity ${index + 1}`;
 
         return {
           phaseKey: `${parentPhaseKey}__activity_${String(index + 1).padStart(2, '0')}_${this.sanitizePhaseKeyFragment(activityKeySource)}`,
           phaseName: activityLabel,
           phaseType: 'workflow_activity',
-          activityName: this.readNonEmptyString(activityStep.activityName, activityStep.activityRef, activityLabel) || undefined,
+          activityName:
+            this.readNonEmptyString(
+              activityStep.activityName,
+              activityStep.activityRef,
+              activityLabel
+            ) || undefined,
           parentPhaseKey,
           order: index + 1,
         };
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error || '');
-      this.logger.warn(`Failed to load workflow activity phases for capability ${capabilityId}: ${message}`);
+      this.logger.warn(
+        `Failed to load workflow activity phases for capability ${capabilityId}: ${message}`
+      );
       return [];
     }
   }
@@ -617,7 +681,7 @@ export class ExecutionPhaseSyncService {
       try {
         const parsed = JSON.parse(value);
         return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-          ? parsed as Record<string, unknown>
+          ? (parsed as Record<string, unknown>)
           : undefined;
       } catch {
         return undefined;
@@ -627,13 +691,17 @@ export class ExecutionPhaseSyncService {
   }
 
   private sanitizePhaseKeyFragment(value: string): string {
-    const normalized = value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+    const normalized = value
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '');
     return normalized || 'activity';
   }
 
   private extractPhaseStepsFromRuntimeResult(
     result: RuntimeStepInvokeResult,
-    step?: Record<string, unknown> | null,
+    step?: Record<string, unknown> | null
   ): Array<{
     stepIndex: number;
     stepId?: string | null;
@@ -647,9 +715,10 @@ export class ExecutionPhaseSyncService {
     startedAt?: Date | null;
     endedAt?: Date | null;
   }> {
-    const phaseResults = this.readRecordArray(result.output?.phaseResults).length > 0
-      ? this.readRecordArray(result.output?.phaseResults)
-      : this.readRecordArray(result.rawResult?.output, 'phaseResults');
+    const phaseResults =
+      this.readRecordArray(result.output?.phaseResults).length > 0
+        ? this.readRecordArray(result.output?.phaseResults)
+        : this.readRecordArray(result.rawResult?.output, 'phaseResults');
 
     if (phaseResults.length > 0) {
       const flattenedSteps: Array<{
@@ -670,12 +739,9 @@ export class ExecutionPhaseSyncService {
         const phaseResultBody = this.readRecord(
           phaseResult.result,
           phaseResult.output,
-          phaseResult,
+          phaseResult
         );
-        const nestedResults = this.readRecordArray(
-          phaseResultBody,
-          'results',
-        );
+        const nestedResults = this.readRecordArray(phaseResultBody, 'results');
 
         if (nestedResults.length > 0) {
           nestedResults.forEach((nestedResult) => {
@@ -689,9 +755,9 @@ export class ExecutionPhaseSyncService {
                     phaseResult.stepName,
                     phaseResult.phaseName,
                     phaseResult.name,
-                    step?.action,
+                    step?.action
                   ) || 'execute',
-              }),
+              })
             );
           });
           return;
@@ -705,29 +771,26 @@ export class ExecutionPhaseSyncService {
                 phaseResult.stepName,
                 phaseResult.phaseName,
                 phaseResult.name,
-                step?.action,
+                step?.action
               ) || `phase_${phaseIndex + 1}`,
-          }),
+          })
         );
       });
 
       return flattenedSteps;
     }
 
-    const topLevelStepResults = this.readRecordArray(result.output?.stepResults).length > 0
-      ? this.readRecordArray(result.output?.stepResults)
-      : this.readRecordArray(result.rawResult?.output, 'stepResults');
+    const topLevelStepResults =
+      this.readRecordArray(result.output?.stepResults).length > 0
+        ? this.readRecordArray(result.output?.stepResults)
+        : this.readRecordArray(result.rawResult?.output, 'stepResults');
     if (topLevelStepResults.length > 0) {
-      return topLevelStepResults.map((stepResult, index) => (
+      return topLevelStepResults.map((stepResult, index) =>
         this.mapRuntimePhaseStepRecord(stepResult, index + 1, {
           fallbackAction:
-            this.readNonEmptyString(
-              stepResult.action,
-              stepResult.name,
-              step?.action,
-            ) || 'execute',
+            this.readNonEmptyString(stepResult.action, stepResult.name, step?.action) || 'execute',
         })
-      ));
+      );
     }
 
     return [];
@@ -739,7 +802,7 @@ export class ExecutionPhaseSyncService {
     options?: {
       phaseResult?: Record<string, unknown>;
       fallbackAction?: string;
-    },
+    }
   ): {
     stepIndex: number;
     stepId?: string | null;
@@ -754,16 +817,12 @@ export class ExecutionPhaseSyncService {
     endedAt?: Date | null;
   } {
     const snapshot = this.readRecord(stepRecord.snapshot);
-    const input = this.readRecord(
-      stepRecord.input,
-      stepRecord.args,
-      stepRecord.params,
-    );
+    const input = this.readRecord(stepRecord.input, stepRecord.args, stepRecord.params);
     const output = this.readRecord(
       stepRecord.output,
       stepRecord.result,
       stepRecord.data,
-      stepRecord,
+      stepRecord
     );
 
     return {
@@ -774,19 +833,21 @@ export class ExecutionPhaseSyncService {
           stepRecord.action,
           stepRecord.command,
           stepRecord.name,
-          options?.fallbackAction,
+          options?.fallbackAction
         ) || 'execute',
       status: this.normalizeRuntimePhaseStepStatus(stepRecord),
       input,
       output,
-      errorMessage: this.readNonEmptyString(stepRecord.errorMessage, stepRecord.error_message, stepRecord.message) || null,
+      errorMessage:
+        this.readNonEmptyString(
+          stepRecord.errorMessage,
+          stepRecord.error_message,
+          stepRecord.message
+        ) || null,
       errorCode: this.readNonEmptyString(stepRecord.errorCode, stepRecord.error_code) || null,
       snapshotId:
-        this.readNonEmptyString(
-          stepRecord.snapshotId,
-          stepRecord.snapshot_id,
-          snapshot?.id,
-        ) || null,
+        this.readNonEmptyString(stepRecord.snapshotId, stepRecord.snapshot_id, snapshot?.id) ||
+        null,
       startedAt: null,
       endedAt: null,
     };
@@ -814,20 +875,25 @@ export class ExecutionPhaseSyncService {
     if (stepRecord.success === false) {
       return 'failed';
     }
-    if (this.readNonEmptyString(stepRecord.errorMessage, stepRecord.error_message, stepRecord.message)) {
+    if (
+      this.readNonEmptyString(stepRecord.errorMessage, stepRecord.error_message, stepRecord.message)
+    ) {
       return 'failed';
     }
     return 'completed';
   }
 
   private readRecordArray(source: unknown, key?: string): Record<string, unknown>[] {
-    const value = key && source && typeof source === 'object'
-      ? (source as Record<string, unknown>)[key]
-      : source;
+    const value =
+      key && source && typeof source === 'object'
+        ? (source as Record<string, unknown>)[key]
+        : source;
     if (!Array.isArray(value)) {
       return [];
     }
-    return value.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object');
+    return value.filter(
+      (item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object'
+    );
   }
 
   private readRecord(...values: unknown[]): Record<string, unknown> | null {

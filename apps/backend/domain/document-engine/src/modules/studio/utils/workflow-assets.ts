@@ -1,7 +1,4 @@
-import {
-  TemplateAssetManifest,
-  RenderPlan,
-} from '../studio.types';
+import { TemplateAssetManifest, RenderPlan } from '../studio.types';
 
 export type Primitive = string | number | boolean | null;
 
@@ -388,7 +385,10 @@ export interface WorkflowSaveResult {
 }
 
 export interface WorkflowRenderResult {
-  data: Record<string, Primitive | Primitive[] | Record<string, unknown> | Array<Record<string, unknown>>>;
+  data: Record<
+    string,
+    Primitive | Primitive[] | Record<string, unknown> | Array<Record<string, unknown>>
+  >;
   sourceTrace: Record<string, Record<string, unknown>>;
   warnings: string[];
   missingFields: string[];
@@ -622,7 +622,10 @@ export const GLOBAL_ENUM_MAPPINGS: Record<string, WorkflowEnumItem[]> = {
   ],
 };
 
-export function resolveDocumentMode(targetLanguages?: string[], explicitDocumentMode?: string): string {
+export function resolveDocumentMode(
+  targetLanguages?: string[],
+  explicitDocumentMode?: string
+): string {
   if (typeof explicitDocumentMode === 'string' && explicitDocumentMode.trim()) {
     return explicitDocumentMode;
   }

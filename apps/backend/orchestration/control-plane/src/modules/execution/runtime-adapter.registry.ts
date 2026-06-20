@@ -20,7 +20,7 @@ export class RuntimeAdapterRegistry {
     browserRuntimeAdapter: BrowserRuntimeAdapter,
     capabilityRuntimeAdapter: CapabilityRuntimeAdapter,
     documentRuntimeAdapter: DocumentRuntimeAdapter,
-    workflowRuntimeAdapter: WorkflowRuntimeAdapter,
+    workflowRuntimeAdapter: WorkflowRuntimeAdapter
   ) {
     this.adapters = [
       browserRuntimeAdapter,

@@ -1,10 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import {
-  BROWSER_ACTIONS,
-  BROWSER_MESSAGES,
-  BROWSER_RUNTIME,
-} from './browser-execution-constants';
+import { BROWSER_ACTIONS, BROWSER_MESSAGES, BROWSER_RUNTIME } from './browser-execution-constants';
 import { EXECUTION_STATUS, ExecutionStatus } from './contracts/execution-status';
 import { ExecutionStepService } from './execution-step.service';
 import { isTerminalExecutionStatus } from './execution-transition-policy';
@@ -12,42 +8,35 @@ import { isTerminalExecutionStatus } from './execution-transition-policy';
 interface AdvanceExecutionFlowHooks {
   completeActivePhasesOnExecutionSuccess: (
     executionId: string,
-    runtimeSessionId: string,
+    runtimeSessionId: string
   ) => Promise<void>;
   updateStatus: (executionId: string, newStatus: ExecutionStatus) => Promise<void>;
   closeRuntimeSessionQuietly: (
     runtimeSessionId: string,
     executionId: string,
-    reason: string,
+    reason: string
   ) => Promise<void>;
   extractStepUrl: (
     step: Record<string, unknown>,
-    execution: Record<string, unknown>,
+    execution: Record<string, unknown>
   ) => string | undefined;
-  skipSingleStep: (
-    stepId: string,
-    executionId: string,
-    reason: string,
-  ) => Promise<void>;
+  skipSingleStep: (stepId: string, executionId: string, reason: string) => Promise<void>;
   executeBrowserGotoStep: (
     execution: Record<string, unknown>,
     runtimeSessionId: string,
     stepId: string,
-    url: string,
+    url: string
   ) => Promise<void>;
-  enterWaitingInput: (
-    execution: Record<string, unknown>,
-    stepId: string,
-  ) => Promise<void>;
+  enterWaitingInput: (execution: Record<string, unknown>, stepId: string) => Promise<void>;
   executeBrowserPhaseStep: (
     execution: Record<string, unknown>,
     runtimeSessionId: string,
-    stepId: string,
+    stepId: string
   ) => Promise<void>;
   executeSystemSkillStep: (
     execution: Record<string, unknown>,
     runtimeSessionId: string,
-    stepId: string,
+    stepId: string
   ) => Promise<void>;
 }
 
@@ -57,13 +46,13 @@ export class ExecutionFlowRunnerService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly executionStepService: ExecutionStepService,
+    private readonly executionStepService: ExecutionStepService
   ) {}
 
   async advanceExecutionFlow(
     executionId: string,
     runtimeSessionId: string,
-    hooks: AdvanceExecutionFlowHooks,
+    hooks: AdvanceExecutionFlowHooks
   ): Promise<void> {
     this.logger.log(`Advancing execution flow for ${executionId}`);
 
@@ -78,7 +67,9 @@ export class ExecutionFlowRunnerService {
       }
 
       if (isTerminalExecutionStatus(execution.status)) {
-        this.logger.log(`Execution ${executionId} is in terminal status ${execution.status}; stopping flow`);
+        this.logger.log(
+          `Execution ${executionId} is in terminal status ${execution.status}; stopping flow`
+        );
         return;
       }
 
@@ -90,18 +81,31 @@ export class ExecutionFlowRunnerService {
           await hooks.completeActivePhasesOnExecutionSuccess(executionId, runtimeSessionId);
           await hooks.updateStatus(executionId, EXECUTION_STATUS.SUCCEEDED);
           this.logger.log(`Execution ${executionId} marked as succeeded`);
-          await hooks.closeRuntimeSessionQuietly(runtimeSessionId, executionId, 'execution_succeeded');
+          await hooks.closeRuntimeSessionQuietly(
+            runtimeSessionId,
+            executionId,
+            'execution_succeeded'
+          );
         }
         return;
       }
 
-      this.logger.log(`Next step for ${executionId}: ${nextStep.id} (type: ${nextStep.type}, action: ${nextStep.action})`);
+      this.logger.log(
+        `Next step for ${executionId}: ${nextStep.id} (type: ${nextStep.type}, action: ${nextStep.action})`
+      );
 
       if (nextStep.type === BROWSER_RUNTIME.STEP_TYPE && nextStep.action === BROWSER_ACTIONS.GOTO) {
-        const stepUrl = hooks.extractStepUrl(nextStep as Record<string, unknown>, execution as Record<string, unknown>);
+        const stepUrl = hooks.extractStepUrl(
+          nextStep as Record<string, unknown>,
+          execution as Record<string, unknown>
+        );
         if (!stepUrl) {
           this.logger.warn(`Browser goto step ${nextStep.id} is missing target url; skipping`);
-          await hooks.skipSingleStep(nextStep.id, executionId, BROWSER_MESSAGES.GOTO_MISSING_TARGET);
+          await hooks.skipSingleStep(
+            nextStep.id,
+            executionId,
+            BROWSER_MESSAGES.GOTO_MISSING_TARGET
+          );
           continue;
         }
 
@@ -109,7 +113,7 @@ export class ExecutionFlowRunnerService {
           execution as Record<string, unknown>,
           runtimeSessionId,
           nextStep.id,
-          stepUrl,
+          stepUrl
         );
         return;
       }
@@ -121,21 +125,25 @@ export class ExecutionFlowRunnerService {
       }
 
       if (nextStep.type === 'system' && nextStep.action === BROWSER_ACTIONS.EXECUTE_PHASE) {
-        this.logger.log(`Executing browser phase step for execution ${executionId}, step ${nextStep.id}`);
+        this.logger.log(
+          `Executing browser phase step for execution ${executionId}, step ${nextStep.id}`
+        );
         await hooks.executeBrowserPhaseStep(
           execution as Record<string, unknown>,
           runtimeSessionId,
-          nextStep.id,
+          nextStep.id
         );
         return;
       }
 
       if (nextStep.type === 'system') {
-        this.logger.log(`Executing system step for execution ${executionId}, step ${nextStep.id} (action: ${nextStep.action})`);
+        this.logger.log(
+          `Executing system step for execution ${executionId}, step ${nextStep.id} (action: ${nextStep.action})`
+        );
         await hooks.executeSystemSkillStep(
           execution as Record<string, unknown>,
           runtimeSessionId,
-          nextStep.id,
+          nextStep.id
         );
         return;
       }

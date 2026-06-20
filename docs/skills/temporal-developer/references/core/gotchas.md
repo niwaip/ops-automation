@@ -97,11 +97,11 @@ See `references/core/versioning.md` for more info.
 
 ### Query vs Signal vs Update
 
-| Operation | Modifies State? | Returns Result? | Can Block? | Use For |
-|-----------|-----------------|-----------------|------------|---------|
-| **Query** | No | Yes | No | Read current state |
-| **Signal** | Yes | No | Yes | Fire-and-forget mutations |
-| **Update** | Yes | Yes | Yes | Mutations needing results |
+| Operation  | Modifies State? | Returns Result? | Can Block? | Use For                   |
+| ---------- | --------------- | --------------- | ---------- | ------------------------- |
+| **Query**  | No              | Yes             | No         | Read current state        |
+| **Signal** | Yes             | No              | Yes        | Fire-and-forget mutations |
+| **Update** | Yes             | Yes             | Yes        | Mutations needing results |
 
 **Key rule**: Query to peek, Signal to push, Update to pop.
 
