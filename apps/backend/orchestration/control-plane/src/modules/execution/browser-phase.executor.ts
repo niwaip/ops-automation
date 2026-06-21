@@ -32,6 +32,7 @@ export interface BrowserPhaseCommand {
 
 export interface BrowserPhaseExecuteRequest {
   executionId: string;
+  executionStepId?: string;
   phaseKey: string;
   phaseName: string;
   phaseType: string;
@@ -50,6 +51,45 @@ export interface BrowserPhaseExecuteRequest {
 
 @Injectable()
 export class BrowserPhaseExecutor {
+  // #region debug-point shared:phase-resume-no-effect
+  private reportPhaseResumeDebug(
+    hypothesisId: 'A' | 'B' | 'C' | 'D' | 'E',
+    msg: string,
+    data: Record<string, unknown>,
+    runId = 'pre-fix'
+  ): void {
+    const fs = require('fs') as typeof import('fs');
+    const envPaths = [
+      '/app/.dbg/phase-resume-no-effect.env',
+      '/Users/chain/Documents/MyProject/ops-automation/.dbg/phase-resume-no-effect.env',
+    ];
+    let url = 'http://host.docker.internal:7777/event';
+    let sessionId = 'phase-resume-no-effect';
+    for (const envPath of envPaths) {
+      try {
+        const env = fs.readFileSync(envPath, 'utf8');
+        url = env.match(/DEBUG_SERVER_URL=(.+)/)?.[1]?.trim() || url;
+        sessionId = env.match(/DEBUG_SESSION_ID=(.+)/)?.[1]?.trim() || sessionId;
+        break;
+      } catch {}
+    }
+    const payload = {
+      sessionId,
+      runId,
+      hypothesisId,
+      location: 'browser-phase.executor',
+      msg: `[DEBUG] ${msg}`,
+      data,
+      ts: Date.now(),
+    };
+    void fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }).catch(() => undefined);
+  }
+  // #endregion
+
   constructor(
     private readonly browserPhaseRecoveryPlanner: BrowserPhaseRecoveryPlanner,
     private readonly browserRuntimeAdapter: BrowserRuntimeAdapter,
@@ -59,25 +99,57 @@ export class BrowserPhaseExecutor {
 
   async execute(request: BrowserPhaseExecuteRequest): Promise<RuntimePhaseInvokeResult> {
     let phaseCommands = [...request.commands];
+    const phaseRecordKey = this.resolvePhaseRecordKey(request.phaseKey, request.input);
 
     // Check for existing human intervention or recovery patch
     const existingPhase = await this.executionPhaseService.getByExecutionIdAndPhaseKey(
       request.executionId,
-      request.phaseKey
+      phaseRecordKey
     );
-    const existingDecision = existingPhase?.recovery_decision_json as any;
-    if (existingDecision?.patch) {
-      phaseCommands = this.applyRecoveryPatch(phaseCommands, existingDecision.patch);
+    const existingDecision = this.readRecordValue(existingPhase?.recovery_decision_json as any);
+    const existingPatch = this.readRecordValue(existingDecision?.patch);
+    const shouldApplyExistingPatch = this.shouldApplyRecoveryPatchForRequest(
+      existingPatch,
+      request.input
+    );
+    // #region debug-point E:browser-phase-existing-decision
+    this.reportPhaseResumeDebug('E', 'browser phase executor loaded existing recovery decision', {
+      executionId: request.executionId,
+      phaseKey: request.phaseKey,
+      runtimeSessionId: request.runtimeSessionId || null,
+      originalCommandStepIds: request.commands.map((command) => command.stepId),
+      existingDecision: existingDecision || null,
+      shouldApplyExistingPatch,
+    });
+    // #endregion
+    if (existingPatch && shouldApplyExistingPatch) {
+      phaseCommands = this.applyRecoveryPatch(
+        phaseCommands,
+        existingPatch as unknown as BrowserPhaseRecoveryPatch,
+        request.executionStepId
+      );
+      // #region debug-point E:browser-phase-patch-applied
+      this.reportPhaseResumeDebug('E', 'browser phase executor applied recovery patch', {
+        executionId: request.executionId,
+        phaseKey: request.phaseKey,
+        patchType: existingPatch.type || null,
+        patchedCommandStepIds: phaseCommands.map((command) => command.stepId),
+      });
+      // #endregion
     }
 
     const precheckMatched = await this.isCheckMatched(request.precheck, request.runtimeSessionId);
     if (
       precheckMatched ||
-      (phaseCommands.length === 0 && existingDecision?.patch?.type === 'resolve_by_human')
+      (phaseCommands.length === 0 &&
+        shouldApplyExistingPatch &&
+        existingPatch?.type === 'resolve_by_human')
     ) {
       const isHumanResolved =
-        phaseCommands.length === 0 && existingDecision?.patch?.type === 'resolve_by_human';
-      await this.executionPhaseService.markRunning(request.executionId, request.phaseKey, {
+        phaseCommands.length === 0 &&
+        shouldApplyExistingPatch &&
+        existingPatch?.type === 'resolve_by_human';
+      await this.executionPhaseService.markRunning(request.executionId, phaseRecordKey, {
         phaseName: request.phaseName,
         phaseType: request.phaseType,
         attempt: 1,
@@ -92,10 +164,10 @@ export class BrowserPhaseExecutor {
         output: {
           shortCircuitedBy: precheckMatched ? 'precheck' : 'human_resolved',
           precheck: precheckMatched ? request.precheck : null,
-          note: isHumanResolved ? existingDecision?.patch?.note : undefined,
+          note: isHumanResolved ? existingPatch?.note : undefined,
         },
       };
-      await this.executionPhaseService.markCompleted(request.executionId, request.phaseKey, {
+      await this.executionPhaseService.markCompleted(request.executionId, phaseRecordKey, {
         phaseName: request.phaseName,
         phaseType: request.phaseType,
         attempt: 1,
@@ -115,7 +187,7 @@ export class BrowserPhaseExecutor {
     let attempt = 1;
 
     while (attempt <= maxAttempts) {
-      await this.executionPhaseService.markRunning(request.executionId, request.phaseKey, {
+      await this.executionPhaseService.markRunning(request.executionId, phaseRecordKey, {
         phaseName: request.phaseName,
         phaseType: request.phaseType,
         attempt,
@@ -150,7 +222,7 @@ export class BrowserPhaseExecutor {
         postcheckedResult
       );
       if (enrichedResult.success) {
-        await this.executionPhaseService.markCompleted(request.executionId, request.phaseKey, {
+        await this.executionPhaseService.markCompleted(request.executionId, phaseRecordKey, {
           phaseName: request.phaseName,
           phaseType: request.phaseType,
           attempt,
@@ -160,11 +232,11 @@ export class BrowserPhaseExecutor {
         });
         await this.persistPhaseSteps(
           request.executionId,
-          request.phaseKey,
+          phaseRecordKey,
           enrichedResult,
           phaseCommands
         );
-        await this.persistPhaseArtifacts(request.executionId, request.phaseKey, enrichedResult);
+        await this.persistPhaseArtifacts(request.executionId, phaseRecordKey, enrichedResult);
         return enrichedResult;
       }
 
@@ -184,7 +256,11 @@ export class BrowserPhaseExecutor {
       }
 
       if (recoveryDecision.action === RECOVERY_ACTIONS.RETRY_WITH_PATCH && recoveryDecision.patch) {
-        phaseCommands = this.applyRecoveryPatch(phaseCommands, recoveryDecision.patch);
+        phaseCommands = this.applyRecoveryPatch(
+          phaseCommands,
+          recoveryDecision.patch,
+          request.executionStepId
+        );
         attempt += 1;
         continue;
       }
@@ -192,7 +268,7 @@ export class BrowserPhaseExecutor {
       if (recoveryDecision.action === RECOVERY_ACTIONS.TAKEOVER_REQUIRED) {
         await this.executionPhaseService.markWaitingTakeover(
           request.executionId,
-          request.phaseKey,
+          phaseRecordKey,
           {
             phaseName: request.phaseName,
             phaseType: request.phaseType,
@@ -210,11 +286,11 @@ export class BrowserPhaseExecutor {
         );
         await this.persistPhaseSteps(
           request.executionId,
-          request.phaseKey,
+          phaseRecordKey,
           enrichedResult,
           phaseCommands
         );
-        await this.persistPhaseArtifacts(request.executionId, request.phaseKey, enrichedResult);
+        await this.persistPhaseArtifacts(request.executionId, phaseRecordKey, enrichedResult);
         return {
           ...enrichedResult,
           status: 'takeover_required',
@@ -223,7 +299,7 @@ export class BrowserPhaseExecutor {
         };
       }
 
-      await this.executionPhaseService.markFailed(request.executionId, request.phaseKey, {
+      await this.executionPhaseService.markFailed(request.executionId, phaseRecordKey, {
         phaseName: request.phaseName,
         phaseType: request.phaseType,
         attempt,
@@ -239,11 +315,11 @@ export class BrowserPhaseExecutor {
       });
       await this.persistPhaseSteps(
         request.executionId,
-        request.phaseKey,
+        phaseRecordKey,
         enrichedResult,
         phaseCommands
       );
-      await this.persistPhaseArtifacts(request.executionId, request.phaseKey, enrichedResult);
+      await this.persistPhaseArtifacts(request.executionId, phaseRecordKey, enrichedResult);
 
       return enrichedResult;
     }
@@ -283,6 +359,14 @@ export class BrowserPhaseExecutor {
     }));
   }
 
+  private resolvePhaseRecordKey(
+    phaseKey: string,
+    input?: Record<string, unknown> | null
+  ): string {
+    const loopIteration = this.readPositiveIntegerValue(input?.loopIteration);
+    return loopIteration ? `${phaseKey}__loop_${loopIteration}` : phaseKey;
+  }
+
   private async persistPhaseSteps(
     executionId: string,
     phaseKey: string,
@@ -294,7 +378,7 @@ export class BrowserPhaseExecutor {
       return;
     }
 
-    await this.executionPhaseService.replaceSteps(
+    await this.executionPhaseService.appendSteps(
       executionId,
       phaseKey,
       stepResults.map((step, index) => {
@@ -324,7 +408,7 @@ export class BrowserPhaseExecutor {
     result: RuntimePhaseInvokeResult
   ): Promise<void> {
     const artifacts = Array.isArray(result.artifacts) ? result.artifacts : [];
-    await this.executionPhaseService.replaceArtifacts(
+    await this.executionPhaseService.appendArtifacts(
       executionId,
       phaseKey,
       artifacts.map((artifact) => ({
@@ -339,7 +423,8 @@ export class BrowserPhaseExecutor {
 
   private applyRecoveryPatch(
     commands: BrowserPhaseCommand[],
-    patch: BrowserPhaseRecoveryPatch
+    patch: BrowserPhaseRecoveryPatch,
+    executionStepId?: string
   ): BrowserPhaseCommand[] {
     if (patch.type === 'replace_selector') {
       return commands.map((command) => {
@@ -414,6 +499,9 @@ export class BrowserPhaseExecutor {
     if (patch.type === 'resolve_by_human') {
       const failedIndex = commands.findIndex((command) => command.stepId === patch.failedStepId);
       if (failedIndex < 0) {
+        if (executionStepId && patch.failedStepId === executionStepId) {
+          return [];
+        }
         return commands;
       }
 
@@ -432,6 +520,27 @@ export class BrowserPhaseExecutor {
     }
 
     return commands;
+  }
+
+  private shouldApplyRecoveryPatchForRequest(
+    patch: Record<string, unknown> | undefined,
+    input?: Record<string, unknown>
+  ): boolean {
+    if (!patch) {
+      return false;
+    }
+    if (patch.type !== 'resolve_by_human') {
+      return true;
+    }
+    const requestLoopIteration = this.readPositiveIntegerValue(input?.loopIteration);
+    if (!requestLoopIteration) {
+      return true;
+    }
+    const patchLoopIteration = this.readPositiveIntegerValue(patch.loopIteration);
+    if (!patchLoopIteration) {
+      return false;
+    }
+    return patchLoopIteration === requestLoopIteration;
   }
 
   private async isCheckMatched(
@@ -632,6 +741,31 @@ export class BrowserPhaseExecutor {
 
   private readStringValue(value: unknown): string | undefined {
     return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+  }
+
+  private readPositiveIntegerValue(value: unknown): number | undefined {
+    const normalized =
+      typeof value === 'number'
+        ? value
+        : typeof value === 'string' && value.trim().length > 0
+          ? Number(value)
+          : NaN;
+    return Number.isInteger(normalized) && normalized > 0 ? normalized : undefined;
+  }
+
+  private readRecordValue(value: unknown): Record<string, unknown> | undefined {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      return value as Record<string, unknown>;
+    }
+    if (typeof value === 'string' && value.trim().length > 0) {
+      try {
+        const parsed = JSON.parse(value);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          return parsed as Record<string, unknown>;
+        }
+      } catch {}
+    }
+    return undefined;
   }
 
   private serializeRecoveryDecision(

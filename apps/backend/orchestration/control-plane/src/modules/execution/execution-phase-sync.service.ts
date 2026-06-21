@@ -34,7 +34,8 @@ export class ExecutionPhaseSyncService {
 
     const stepInput = (step?.inputJson as Record<string, unknown> | undefined) || null;
     const stepTarget = (step?.targetJson as Record<string, unknown> | undefined) || null;
-    await this.executionPhaseService.markRunning(executionId, phaseMetadata.phaseKey, {
+    const phaseRecordKey = this.resolvePhaseRecordKey(phaseMetadata.phaseKey, step);
+    await this.executionPhaseService.markRunning(executionId, phaseRecordKey, {
       phaseName: phaseMetadata.phaseName,
       phaseType: phaseMetadata.phaseType,
       attempt: 1,
@@ -272,6 +273,7 @@ export class ExecutionPhaseSyncService {
       return;
     }
 
+    const phaseRecordKey = this.resolvePhaseRecordKey(phaseMetadata.phaseKey, step);
     const phaseLikeResult = result as RuntimeStepInvokeResult & Partial<RuntimePhaseInvokeResult>;
     const phaseOutput = {
       stepId: step?.id,
@@ -295,7 +297,7 @@ export class ExecutionPhaseSyncService {
     const phaseSteps = this.extractPhaseStepsFromRuntimeResult(result, step);
 
     if (result.success) {
-      await this.executionPhaseService.markCompleted(executionId, phaseMetadata.phaseKey, {
+      await this.executionPhaseService.markCompleted(executionId, phaseRecordKey, {
         phaseName: phaseMetadata.phaseName,
         phaseType: phaseMetadata.phaseType,
         attempt: 1,
@@ -303,17 +305,17 @@ export class ExecutionPhaseSyncService {
         output: phaseOutput,
         postcheck: null,
       });
-      if (typeof this.executionPhaseService.replaceArtifacts === 'function') {
-        await this.executionPhaseService.replaceArtifacts(
+      if (typeof this.executionPhaseService.appendArtifacts === 'function') {
+        await this.executionPhaseService.appendArtifacts(
           executionId,
-          phaseMetadata.phaseKey,
+          phaseRecordKey,
           phaseArtifacts
         );
       }
-      if (typeof this.executionPhaseService.replaceSteps === 'function') {
-        await this.executionPhaseService.replaceSteps(
+      if (typeof this.executionPhaseService.appendSteps === 'function') {
+        await this.executionPhaseService.appendSteps(
           executionId,
-          phaseMetadata.phaseKey,
+          phaseRecordKey,
           phaseSteps
         );
       }
@@ -329,7 +331,7 @@ export class ExecutionPhaseSyncService {
 
     await this.executionPhaseService.createOrUpdatePhase({
       executionId,
-      phaseKey: phaseMetadata.phaseKey,
+      phaseKey: phaseRecordKey,
       phaseName: phaseMetadata.phaseName,
       phaseType: phaseMetadata.phaseType,
       status: mappedStatus,
@@ -341,17 +343,17 @@ export class ExecutionPhaseSyncService {
       errorMessage: result.errorMessage || null,
       completedAt: mappedStatus === 'failed' ? new Date() : null,
     });
-    if (typeof this.executionPhaseService.replaceArtifacts === 'function') {
-      await this.executionPhaseService.replaceArtifacts(
+    if (typeof this.executionPhaseService.appendArtifacts === 'function') {
+      await this.executionPhaseService.appendArtifacts(
         executionId,
-        phaseMetadata.phaseKey,
+        phaseRecordKey,
         phaseArtifacts
       );
     }
-    if (typeof this.executionPhaseService.replaceSteps === 'function') {
-      await this.executionPhaseService.replaceSteps(
+    if (typeof this.executionPhaseService.appendSteps === 'function') {
+      await this.executionPhaseService.appendSteps(
         executionId,
-        phaseMetadata.phaseKey,
+        phaseRecordKey,
         phaseSteps
       );
     }
@@ -617,8 +619,9 @@ export class ExecutionPhaseSyncService {
           INNER JOIN capability_source_snapshots css
             ON css.id = cr.current_source_snapshot_id
           WHERE cr.published_skill_id = $1::uuid
-            AND cr.archived_at IS NULL
-          ORDER BY cr.updated_at DESC
+          ORDER BY
+            CASE WHEN cr.archived_at IS NULL THEN 0 ELSE 1 END,
+            cr.updated_at DESC
           LIMIT 1
         `,
         capabilityId
@@ -883,6 +886,19 @@ export class ExecutionPhaseSyncService {
     return 'completed';
   }
 
+  private resolvePhaseRecordKey(
+    phaseKey: string,
+    step?: Record<string, unknown> | null
+  ): string {
+    const stepInput = this.readRecord(step?.inputJson, step?.input_json);
+    const nestedInput = this.readRecord(stepInput?.input);
+    const loopIteration = this.readPositiveInteger(
+      stepInput?.loopIteration,
+      nestedInput?.loopIteration
+    );
+    return loopIteration ? `${phaseKey}__loop_${loopIteration}` : phaseKey;
+  }
+
   private readRecordArray(source: unknown, key?: string): Record<string, unknown>[] {
     const value =
       key && source && typeof source === 'object'
@@ -927,6 +943,11 @@ export class ExecutionPhaseSyncService {
       }
     }
     return undefined;
+  }
+
+  private readPositiveInteger(...values: unknown[]): number | undefined {
+    const value = this.readInteger(...values);
+    return value !== undefined && value > 0 ? value : undefined;
   }
 
   private readDateValue(...values: unknown[]): Date | undefined {

@@ -116,6 +116,7 @@ services:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-ops}:${POSTGRES_PASSWORD:-ops_secret}@postgres:5432/${POSTGRES_DB:-ops}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - BROWSER_LOOP_WORKFLOW_ENABLED=${BROWSER_LOOP_WORKFLOW_ENABLED:-false}
       - JWT_SECRET=${JWT_SECRET:-ops_local_dev_jwt_secret_2026_06_02_8f4a6c9d7b1e53aa}
       - INTERNAL_API_SHARED_SECRET=${INTERNAL_API_SHARED_SECRET:-ops_internal_shared_secret_change_me}
       - PORT=${CONTROL_PLANE_PORT:-3003}

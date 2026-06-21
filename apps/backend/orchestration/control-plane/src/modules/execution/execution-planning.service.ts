@@ -4,6 +4,7 @@ import { getAiOrchestratorUrl, getAuthServiceUrl } from '../../config/service-en
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateExecutionDto } from './execution.dto';
 import { ExecutionPlanNormalizationService } from './execution-plan-normalization.service';
+import type { BrowserLoopDraftLike } from './browser-loop-workflow-plan.builder';
 
 @Injectable()
 export class ExecutionPlanningService {
@@ -12,6 +13,8 @@ export class ExecutionPlanningService {
   private readonly aiOrchestratorUrl = getAiOrchestratorUrl();
   private readonly internalApiSharedSecret =
     process.env.INTERNAL_API_SHARED_SECRET || process.env.JWT_SECRET;
+  private readonly browserLoopWorkflowEnabled =
+    String(process.env.BROWSER_LOOP_WORKFLOW_ENABLED || '').trim().toLowerCase() === 'true';
 
   constructor(
     private readonly prisma: PrismaService,
@@ -200,11 +203,26 @@ export class ExecutionPlanningService {
     if (rewriteResult.mode === 'direct_skill') {
       return this.executionPlanNormalizationService.buildDirectSkillExecutionPlanDraftFromExisting(
         planDraft as any,
-            capabilityId,
-            {
-              runtimeSourceType: 'browser_recording',
-            }
+        capabilityId,
+        {
+          runtimeSourceType: 'browser_recording',
+        }
       );
+    }
+
+    if (
+      rewriteResult.mode === 'browser_loop_workflow' &&
+      rewriteResult.loopDraft &&
+      rewriteResult.templateSteps
+    ) {
+      return this.executionPlanNormalizationService.buildBrowserLoopWorkflowPlanDraftFromExisting({
+        planDraft: planDraft as any,
+        resolvedSkillId: capabilityId,
+        resolvedInput,
+        templateSteps: rewriteResult.templateSteps,
+        loopDraft: rewriteResult.loopDraft,
+        runtimeSourceType: 'browser_recording',
+      });
     }
 
     if (
@@ -226,7 +244,12 @@ export class ExecutionPlanningService {
   private async loadBrowserRecordingPlannerRewriteResult(
     capabilityId: string,
     resolvedInput: Record<string, unknown>
-  ): Promise<{ mode: 'workflow_activity' | 'direct_skill'; steps: any[] }> {
+  ): Promise<{
+    mode: 'workflow_activity' | 'direct_skill' | 'browser_loop_workflow';
+    steps: any[];
+    templateSteps?: Record<string, unknown>[];
+    loopDraft?: BrowserLoopDraftLike;
+  }> {
     if (!capabilityId) {
       return { mode: 'workflow_activity', steps: [] };
     }
@@ -240,6 +263,10 @@ export class ExecutionPlanningService {
           source_type?: string;
           source_id?: string;
           source_payload_json?: unknown;
+          runtime_loop_draft?: unknown;
+          execution_plan_loop_draft?: unknown;
+          runtime_template_steps?: unknown;
+          execution_plan_template_steps?: unknown;
           workflow_dsl?: unknown;
           activity_dsl?: unknown;
         }>
@@ -249,6 +276,10 @@ export class ExecutionPlanningService {
             cr.source_type,
             cr.source_id,
             css.source_payload_json,
+            css.source_payload_json #> '{apiEndpoints,runtimeMetadata,loopDraft}' AS runtime_loop_draft,
+            css.source_payload_json #> '{apiEndpoints,runtimeMetadata,executionPlan,loopDraft}' AS execution_plan_loop_draft,
+            css.source_payload_json #> '{apiEndpoints,runtimeMetadata,templateSteps}' AS runtime_template_steps,
+            css.source_payload_json #> '{apiEndpoints,runtimeMetadata,executionPlan,templateSteps}' AS execution_plan_template_steps,
             tw.workflow_dsl,
             tw.activity_dsl
           FROM capability_releases cr
@@ -257,8 +288,9 @@ export class ExecutionPlanningService {
           LEFT JOIN temporal_workflows tw
             ON tw.id = cr.source_id
           WHERE cr.published_skill_id = $1::uuid
-            AND cr.archived_at IS NULL
-          ORDER BY cr.updated_at DESC
+          ORDER BY
+            CASE WHEN cr.archived_at IS NULL THEN 0 ELSE 1 END,
+            cr.updated_at DESC
           LIMIT 1
         `,
         capabilityId
@@ -270,7 +302,32 @@ export class ExecutionPlanningService {
       }
 
       const sourcePayload = this.parseJsonRecord(row.source_payload_json);
-      if (this.browserRecordingSourcePayloadHasLoopDraft(sourcePayload)) {
+      const payloadLoopMetadata = this.extractBrowserRecordingLoopMetadata(sourcePayload);
+      const loopDraft =
+        (this.parseJsonRecord(row.execution_plan_loop_draft) as BrowserLoopDraftLike | undefined) ||
+        (this.parseJsonRecord(row.runtime_loop_draft) as BrowserLoopDraftLike | undefined) ||
+        payloadLoopMetadata.loopDraft;
+      const loopTemplateSteps = this.readRecordArray(row.execution_plan_template_steps).length
+        ? this.readRecordArray(row.execution_plan_template_steps)
+        : this.readRecordArray(row.runtime_template_steps).length
+          ? this.readRecordArray(row.runtime_template_steps)
+          : payloadLoopMetadata.templateSteps;
+      this.logger.log(
+        `Browser recording rewrite metadata for capability ${capabilityId}: hasLoopDraft=${Boolean(loopDraft)} templateSteps=${loopTemplateSteps.length} workflowMode=${this.browserLoopWorkflowEnabled}`
+      );
+      if (
+        this.browserLoopWorkflowEnabled &&
+        loopDraft &&
+        loopTemplateSteps.length > 0
+      ) {
+        return {
+          mode: 'browser_loop_workflow',
+          steps: [],
+          loopDraft,
+          templateSteps: loopTemplateSteps,
+        };
+      }
+      if (Boolean(loopDraft)) {
         return {
           mode: 'direct_skill',
           steps: [],
@@ -329,16 +386,29 @@ export class ExecutionPlanningService {
   private browserRecordingSourcePayloadHasLoopDraft(
     sourcePayload?: Record<string, unknown>
   ): boolean {
+    return Boolean(this.extractBrowserRecordingLoopMetadata(sourcePayload).loopDraft);
+  }
+
+  private extractBrowserRecordingLoopMetadata(sourcePayload?: Record<string, unknown>): {
+    loopDraft?: BrowserLoopDraftLike;
+    templateSteps: Record<string, unknown>[];
+  } {
     const apiEndpoints = this.parseJsonRecord(sourcePayload?.apiEndpoints);
     const runtimeMetadata = this.parseJsonRecord(apiEndpoints?.runtimeMetadata);
     const executionPlan = this.parseJsonRecord(runtimeMetadata?.executionPlan);
-    const hasLoopDraft = Boolean(
-      this.parseJsonRecord(executionPlan?.loopDraft) || this.parseJsonRecord(runtimeMetadata?.loopDraft)
-    );
+    const loopDraft =
+      (this.parseJsonRecord(executionPlan?.loopDraft) as BrowserLoopDraftLike | undefined) ||
+      (this.parseJsonRecord(runtimeMetadata?.loopDraft) as BrowserLoopDraftLike | undefined);
+    const templateSteps = this.readRecordArray(executionPlan?.templateSteps).length
+      ? this.readRecordArray(executionPlan?.templateSteps)
+      : this.readRecordArray(runtimeMetadata?.templateSteps);
     this.logger.log(
-      `Browser recording loop detection: apiEndpoints=${Boolean(apiEndpoints)} runtimeMetadata=${Boolean(runtimeMetadata)} executionPlan=${Boolean(executionPlan)} hasLoopDraft=${hasLoopDraft}`
+      `Browser recording loop detection: apiEndpoints=${Boolean(apiEndpoints)} runtimeMetadata=${Boolean(runtimeMetadata)} executionPlan=${Boolean(executionPlan)} hasLoopDraft=${Boolean(loopDraft)} templateSteps=${templateSteps.length} workflowMode=${this.browserLoopWorkflowEnabled}`
     );
-    return hasLoopDraft;
+    return {
+      ...(loopDraft ? { loopDraft } : {}),
+      templateSteps,
+    };
   }
 
   private parseJsonRecord(value: unknown): Record<string, unknown> | undefined {

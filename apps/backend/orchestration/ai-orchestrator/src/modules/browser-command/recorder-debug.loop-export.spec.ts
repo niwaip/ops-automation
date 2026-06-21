@@ -722,7 +722,8 @@ describe('RecorderDebugService', () => {
       })
     );
     const exportedBranchStep = artifacts.templateSteps?.find((step: any) => step.action === 'branch');
-    expect(exportedBranchStep?.branch?.condition_fn).toContain('${grossMarginThreshold}');
+    expect(exportedBranchStep?.branch?.condition_fn).toContain('Number(ctx.grossMarginThreshold)');
+    expect(exportedBranchStep?.branch?.condition_fn).not.toContain('${grossMarginThreshold}');
     expect(artifacts.scriptValidation).toEqual(
       expect.objectContaining({
         syntaxValid: true,
@@ -1044,6 +1045,9 @@ describe('RecorderDebugService', () => {
         }),
       ])
     );
+    const exportedBranchStep = artifacts.templateSteps?.find((step: any) => step.action === 'branch');
+    expect(exportedBranchStep?.branch?.takeover_reason).toContain('${grossMarginThreshold}');
+    expect(exportedBranchStep?.branch?.takeover_reason).not.toContain('20%');
   });
 
   it('exportArtifacts should target pending rows when loop goal explicitly describes pending approvals', async () => {

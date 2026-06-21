@@ -65,8 +65,10 @@ export const getPhaseStepStatus = (status?: string): 'wait' | 'process' | 'finis
   }
 };
 
+const asPhaseKey = (value: unknown): string => (typeof value === 'string' ? value : '');
+
 const extractPhaseSortMeta = (phase: ExecutionPhaseDto) => {
-  const key = phase.phaseKey || '';
+  const key = asPhaseKey(phase.phaseKey);
   const parentKey = key.split('__')[0] || key;
   const activityMatch = key.match(/__activity_(\d+)_/i);
   const systemIndexMatch = parentKey.match(/^phase_(\d+)_/i);
@@ -83,6 +85,10 @@ const extractPhaseSortMeta = (phase: ExecutionPhaseDto) => {
 export const compareExecutionPhases = (left: ExecutionPhaseDto, right: ExecutionPhaseDto) => {
   const leftMeta = extractPhaseSortMeta(left);
   const rightMeta = extractPhaseSortMeta(right);
+  const leftTimeSource = left.startedAt || left.createdAt;
+  const rightTimeSource = right.startedAt || right.createdAt;
+  const leftTime = new Date(leftTimeSource).getTime();
+  const rightTime = new Date(rightTimeSource).getTime();
 
   if (leftMeta.systemIndex !== rightMeta.systemIndex) {
     return leftMeta.systemIndex - rightMeta.systemIndex;
@@ -97,10 +103,8 @@ export const compareExecutionPhases = (left: ExecutionPhaseDto, right: Execution
     return leftMeta.activityIndex - rightMeta.activityIndex;
   }
 
-  const leftTime = new Date(left.startedAt || left.createdAt).getTime();
-  const rightTime = new Date(right.startedAt || right.createdAt).getTime();
   if (leftTime !== rightTime) {
     return leftTime - rightTime;
   }
-  return left.phaseKey.localeCompare(right.phaseKey);
+  return asPhaseKey(left.phaseKey).localeCompare(asPhaseKey(right.phaseKey));
 };

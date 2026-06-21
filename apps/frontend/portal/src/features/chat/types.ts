@@ -64,7 +64,13 @@ export interface PromptDebugRecord {
   messageId: string;
   executionId?: string;
   mode?: 'chat' | 'task';
-  taskStatus?: 'waiting_input' | 'pending_approval' | 'running' | 'completed' | 'failed';
+  taskStatus?:
+    | 'waiting_input'
+    | 'pending_approval'
+    | 'running'
+    | 'completed'
+    | 'failed'
+    | 'human_control';
   sourceEventType: StreamEventType;
   promptDebug: PromptDebugPayload;
   createdAt: string;
@@ -119,7 +125,13 @@ export interface ChatMessage {
       description?: string;
       missing?: boolean;
     }>;
-    taskStatus?: 'waiting_input' | 'pending_approval' | 'running' | 'completed' | 'failed';
+    taskStatus?:
+      | 'waiting_input'
+      | 'pending_approval'
+      | 'running'
+      | 'completed'
+      | 'failed'
+      | 'human_control';
     executionId?: string;
     executionStatus?: string;
     finalResult?: string;

@@ -4,6 +4,27 @@ import { PrismaService } from '../prisma/prisma.service';
 
 type RawRecord = Record<string, unknown>;
 
+const reportLoopHistoryDebug = (
+  hypothesisId: string,
+  location: string,
+  msg: string,
+  data: Record<string, unknown>
+) => {
+  fetch('http://127.0.0.1:7777/event', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      sessionId: 'chat-failure-loop-history',
+      runId: 'backend-phase-persistence',
+      hypothesisId,
+      location,
+      msg,
+      data,
+      ts: Date.now(),
+    }),
+  }).catch(() => {});
+};
+
 interface UpsertExecutionPhaseInput {
   executionId: string;
   phaseKey: string;
@@ -68,6 +89,19 @@ export class ExecutionPhaseService {
   constructor(private readonly prisma: PrismaService) {}
 
   async createOrUpdatePhase(input: UpsertExecutionPhaseInput): Promise<void> {
+    reportLoopHistoryDebug(
+      'H4',
+      'apps/backend/orchestration/control-plane/src/modules/execution/execution-phase.service.ts:createOrUpdatePhase',
+      'Persisting execution phase record',
+      {
+        executionId: input.executionId,
+        phaseKey: input.phaseKey,
+        status: input.status || 'pending',
+        attempt: input.attempt || 0,
+        hasInput: Boolean(input.input),
+        hasOutput: Boolean(input.output),
+      }
+    );
     await this.prisma.$executeRawUnsafe(
       `
         INSERT INTO execution_phases (
@@ -381,8 +415,31 @@ export class ExecutionPhaseService {
       const phase = await this.getByExecutionIdAndPhaseKey(executionId, phaseKey);
       const phaseId = typeof phase?.id === 'string' ? phase.id : String(phase?.id || '').trim();
       if (!phaseId) {
+        reportLoopHistoryDebug(
+          'H4',
+          'apps/backend/orchestration/control-plane/src/modules/execution/execution-phase.service.ts:replaceSteps',
+          'Skipped replacing phase steps because phase record is missing',
+          {
+            executionId,
+            phaseKey,
+            stepCount: steps.length,
+          }
+        );
         return;
       }
+      reportLoopHistoryDebug(
+        'H4',
+        'apps/backend/orchestration/control-plane/src/modules/execution/execution-phase.service.ts:replaceSteps',
+        'Replacing phase steps for execution phase',
+        {
+          executionId,
+          phaseKey,
+          phaseId,
+          stepCount: steps.length,
+          stepIndexes: steps.map((step) => step.stepIndex),
+          stepIds: steps.map((step) => step.stepId || null),
+        }
+      );
 
       await this.prisma.$transaction(async (tx) => {
         await tx.$executeRawUnsafe(
@@ -448,6 +505,95 @@ export class ExecutionPhaseService {
     }
   }
 
+  async appendSteps(
+    executionId: string,
+    phaseKey: string,
+    steps: UpsertExecutionPhaseStepInput[]
+  ): Promise<void> {
+    try {
+      const phase = await this.getByExecutionIdAndPhaseKey(executionId, phaseKey);
+      const phaseId = typeof phase?.id === 'string' ? phase.id : String(phase?.id || '').trim();
+      if (!phaseId) {
+        reportLoopHistoryDebug(
+          'H4',
+          'apps/backend/orchestration/control-plane/src/modules/execution/execution-phase.service.ts:appendSteps',
+          'Skipped appending phase steps because phase record is missing',
+          {
+            executionId,
+            phaseKey,
+            stepCount: steps.length,
+          }
+        );
+        return;
+      }
+      reportLoopHistoryDebug(
+        'H4',
+        'apps/backend/orchestration/control-plane/src/modules/execution/execution-phase.service.ts:appendSteps',
+        'Appending phase steps for execution phase',
+        {
+          executionId,
+          phaseKey,
+          phaseId,
+          stepCount: steps.length,
+          stepIndexes: steps.map((step) => step.stepIndex),
+          stepIds: steps.map((step) => step.stepId || null),
+        }
+      );
+
+      for (const step of steps) {
+        await this.prisma.$executeRawUnsafe(
+          `
+            INSERT INTO execution_phase_steps (
+              phase_id,
+              step_index,
+              step_id,
+              action,
+              status,
+              input_json,
+              output_json,
+              error_message,
+              error_code,
+              snapshot_id,
+              started_at,
+              ended_at
+            )
+            VALUES (
+              $1::uuid,
+              $2,
+              $3,
+              $4,
+              $5,
+              CAST($6 AS jsonb),
+              CAST($7 AS jsonb),
+              $8,
+              $9,
+              $10,
+              $11::timestamptz,
+              $12::timestamptz
+            )
+          `,
+          phaseId,
+          step.stepIndex,
+          step.stepId || null,
+          step.action,
+          step.status,
+          this.toJsonString(step.input),
+          this.toJsonString(step.output),
+          step.errorMessage || null,
+          step.errorCode || null,
+          step.snapshotId || null,
+          step.startedAt || null,
+          step.endedAt || null
+        );
+      }
+    } catch (error) {
+      if (this.isMissingPhaseTableError(error)) {
+        return;
+      }
+      throw error;
+    }
+  }
+
   async replaceArtifacts(
     executionId: string,
     phaseKey: string,
@@ -457,8 +603,30 @@ export class ExecutionPhaseService {
       const phase = await this.getByExecutionIdAndPhaseKey(executionId, phaseKey);
       const phaseId = typeof phase?.id === 'string' ? phase.id : String(phase?.id || '').trim();
       if (!phaseId) {
+        reportLoopHistoryDebug(
+          'H4',
+          'apps/backend/orchestration/control-plane/src/modules/execution/execution-phase.service.ts:replaceArtifacts',
+          'Skipped replacing phase artifacts because phase record is missing',
+          {
+            executionId,
+            phaseKey,
+            artifactCount: artifacts.length,
+          }
+        );
         return;
       }
+      reportLoopHistoryDebug(
+        'H4',
+        'apps/backend/orchestration/control-plane/src/modules/execution/execution-phase.service.ts:replaceArtifacts',
+        'Replacing phase artifacts for execution phase',
+        {
+          executionId,
+          phaseKey,
+          phaseId,
+          artifactCount: artifacts.length,
+          artifactTypes: artifacts.map((artifact) => artifact.artifactType),
+        }
+      );
 
       await this.prisma.$executeRawUnsafe(
         `
@@ -466,6 +634,76 @@ export class ExecutionPhaseService {
           WHERE phase_id = $1::uuid
         `,
         phaseId
+      );
+
+      for (const artifact of artifacts) {
+        await this.prisma.$executeRawUnsafe(
+          `
+            INSERT INTO execution_phase_artifacts (
+              phase_id,
+              artifact_type,
+              snapshot_id,
+              page_url,
+              page_fingerprint,
+              payload_json
+            )
+            VALUES (
+              $1::uuid,
+              $2,
+              $3,
+              $4,
+              $5,
+              CAST($6 AS jsonb)
+            )
+          `,
+          phaseId,
+          artifact.artifactType,
+          artifact.snapshotId || null,
+          artifact.pageUrl || null,
+          artifact.pageFingerprint || null,
+          this.toJsonString(artifact.payload)
+        );
+      }
+    } catch (error) {
+      if (this.isMissingPhaseTableError(error)) {
+        return;
+      }
+      throw error;
+    }
+  }
+
+  async appendArtifacts(
+    executionId: string,
+    phaseKey: string,
+    artifacts: UpsertExecutionPhaseArtifactInput[]
+  ): Promise<void> {
+    try {
+      const phase = await this.getByExecutionIdAndPhaseKey(executionId, phaseKey);
+      const phaseId = typeof phase?.id === 'string' ? phase.id : String(phase?.id || '').trim();
+      if (!phaseId) {
+        reportLoopHistoryDebug(
+          'H4',
+          'apps/backend/orchestration/control-plane/src/modules/execution/execution-phase.service.ts:appendArtifacts',
+          'Skipped appending phase artifacts because phase record is missing',
+          {
+            executionId,
+            phaseKey,
+            artifactCount: artifacts.length,
+          }
+        );
+        return;
+      }
+      reportLoopHistoryDebug(
+        'H4',
+        'apps/backend/orchestration/control-plane/src/modules/execution/execution-phase.service.ts:appendArtifacts',
+        'Appending phase artifacts for execution phase',
+        {
+          executionId,
+          phaseKey,
+          phaseId,
+          artifactCount: artifacts.length,
+          artifactTypes: artifacts.map((artifact) => artifact.artifactType),
+        }
       );
 
       for (const artifact of artifacts) {
@@ -628,7 +866,7 @@ export class ExecutionPhaseService {
             eps.created_at
           FROM execution_phase_steps eps
           WHERE eps.phase_id = $1::uuid
-          ORDER BY eps.step_index ASC
+          ORDER BY eps.created_at ASC, eps.step_index ASC
         `,
         phaseId
       );

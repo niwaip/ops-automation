@@ -165,11 +165,13 @@ export class CapabilityReleaseRuntimeService {
   ): void {
     const localFs = require('fs') as typeof import('fs');
     const envPaths = [
+      '/app/.dbg/gross-margin-branch.env',
+      '/Users/chain/Documents/MyProject/ops-automation/.dbg/gross-margin-branch.env',
       '/app/.dbg/approve-threshold-param.env',
       '/Users/chain/Documents/MyProject/ops-automation/.dbg/approve-threshold-param.env',
     ];
     let serverUrl = 'http://host.docker.internal:7777/event';
-    let sessionId = 'approve-threshold-param';
+    let sessionId = 'gross-margin-branch';
     for (const envPath of envPaths) {
       try {
         const envContent = localFs.readFileSync(envPath, 'utf8');
@@ -628,8 +630,9 @@ export class CapabilityReleaseRuntimeService {
       `SELECT *
        FROM capability_releases
        WHERE published_skill_id = $1::uuid
-         AND archived_at IS NULL
-       ORDER BY updated_at DESC
+       ORDER BY
+         CASE WHEN archived_at IS NULL THEN 0 ELSE 1 END,
+         updated_at DESC
        LIMIT 1`,
       skillId
     );
@@ -1184,6 +1187,19 @@ export class CapabilityReleaseRuntimeService {
             if (step.outputVar) {
               variables[step.outputVar] = textValue;
             }
+            // #region debug-point D:read-value-capture
+            this.reportApproveThresholdDebug('D', 'browser recording read_value captured output', {
+              skillId,
+              runtimeSessionId,
+              stepId: step.id,
+              action: step.action,
+              target: step.target || null,
+              outputVar: step.outputVar || null,
+              textValue,
+              variables: { ...variables },
+              rawOutput: result.output || null,
+            });
+            // #endregion
             runtimeEvidence.lastReadValue = {
               var: step.outputVar || null,
               value: textValue,

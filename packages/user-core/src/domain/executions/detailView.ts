@@ -41,7 +41,7 @@ export interface ExecutionDetailPhaseRow {
 export interface ExecutionDetailActionButton {
   key: string;
   label: string;
-  action: 'approve' | 'reject' | 'release_human_control';
+  action: 'approve' | 'reject' | 'approve_and_continue' | 'release_human_control';
   type?: 'primary' | 'default';
   danger?: boolean;
 }
@@ -142,14 +142,20 @@ export const buildExecutionDetailActionCard = (
     return {
       key: 'human_control',
       title: '人工介入',
-      description: '当前执行处于人工接管状态。确认人工处理已经完成后，可以恢复自动执行。',
+      description: '当前执行处于人工接管状态。确认人工判断已经完成后，可以直接同意并继续后续动作。',
       note: execution.takeoverReason ? `介入原因：${execution.takeoverReason}` : undefined,
       buttons: [
+        {
+          key: 'approve-and-continue',
+          label: '同意并继续',
+          action: 'approve_and_continue',
+          type: 'primary',
+        },
         {
           key: 'release-human-control',
           label: '恢复自动执行',
           action: 'release_human_control',
-          type: 'primary',
+          type: 'default',
         },
       ],
     };

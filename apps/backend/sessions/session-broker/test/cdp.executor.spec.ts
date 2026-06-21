@@ -235,6 +235,77 @@ describe('CdpExecutor execution policy', () => {
     expect(results.find((item) => item.step_id === 'step_4')).toBeUndefined();
   });
 
+  it('evaluates branch conditions against session params together with read_value outputs', async () => {
+    postJsonSpy
+      .mockResolvedValueOnce({ success: true })
+      .mockResolvedValueOnce({
+        success: true,
+        results: [{ command: 'get_text', status: 'ok', data: { text: '25.5%' } }],
+      })
+      .mockResolvedValueOnce({
+        success: true,
+        results: [{ command: 'click', status: 'ok', message: 'approved' }],
+      });
+
+    const results = await executor.executeSteps(
+      [
+        {
+          step_id: 'step_1',
+          action: 'read_value',
+          locator: { type: 'css', value: '[data-testid="gross-margin-value"]' },
+          params: {
+            selector: '[data-testid="gross-margin-value"]',
+            method: 'innerText',
+          },
+          output_var: 'projectDetailText',
+        },
+        {
+          step_id: 'step_2',
+          action: 'branch',
+          branch: {
+            condition_fn:
+              '(ctx) => { const value = Number(String(ctx.projectDetailText || "").replace(/[^0-9.-]+/g, "")); return Number.isFinite(value) && value > Number(ctx.grossMarginThreshold); }',
+            on_match: 'continue',
+            on_mismatch: 'takeover',
+            takeover_reason: '案件粗利率未达到阈值，需要人工介入审核',
+            description: '读取页面中的案件粗利率，满足阈值时自动继续执行',
+          },
+        },
+        {
+          step_id: 'step_3',
+          action: 'click',
+          locator: { type: 'role', value: 'button[name="承認する (Approve)"]' },
+        },
+      ],
+      'session-conditional-with-params',
+      {
+        grossMarginThreshold: '10',
+      },
+      'cli'
+    );
+
+    expect(results).toEqual([
+      expect.objectContaining({
+        step_id: 'step_1',
+        action: 'read_value',
+        success: true,
+        text: '25.5%',
+      }),
+      expect.objectContaining({
+        step_id: 'step_2',
+        action: 'branch',
+        success: true,
+        message: '条件成立，继续执行',
+      }),
+      expect.objectContaining({
+        step_id: 'step_3',
+        action: 'click',
+        success: true,
+        message: 'approved',
+      }),
+    ]);
+  });
+
   it('repeats iteration steps until repeat_until stop condition is met', async () => {
     postJsonSpy
       .mockResolvedValueOnce({ success: true })

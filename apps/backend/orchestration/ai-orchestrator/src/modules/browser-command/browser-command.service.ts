@@ -959,13 +959,11 @@ export class BrowserCommandService {
     }
 
     const rawTarget = actionIntent.rawTarget;
-    const rowMatch = rawTarget.match(
-      /(?:第?([一二三四五六七八九十\d]+)\s*(?:条|个)?(?:记录|行|项目|数据|案件))/i
-    );
-    const rowIndex = rowMatch?.[1] ? this.resolveResultIndex(rowMatch[1]) : undefined;
+    const rowToken = this.extractRequestedRowToken(rawTarget);
+    const rowIndex = rowToken ? this.resolveResultIndex(rowToken) : undefined;
     let requestedTarget = rawTarget
       .replace(/(?:一览的|列表的|表格里的|表格中|列表中|当前的|当前页的)/g, '')
-      .replace(/第?\s*[一二三四五六七八九十\d]+\s*(?:条|个)?(?:记录|行|项目|数据|案件)/g, '')
+      .replace(/第?\s*[一二三四五六七八九十\d]+\s*(?:个)?\s*(?:条)?\s*(?:记录|行|项目|数据|案件)/g, '')
       .replace(
         /(?:的)?(?:详细按钮|详情按钮|详情页|详细页|详细页面|详情页面|进入详细页面|进入详情页面|进入详细页|进入详情页|进入详细|进入详情|查看详情|打开详情|详细|详情|明细)/gi,
         '详情'
@@ -1173,10 +1171,15 @@ export class BrowserCommandService {
     if (!scopedAction?.rawTarget) {
       return undefined;
     }
-    const rowMatch = scopedAction.rawTarget.match(
-      /(?:第?([一二三四五六七八九十\d]+)\s*(?:条|个)?(?:记录|行|项目|数据|案件))/i
+    const rowToken = this.extractRequestedRowToken(scopedAction.rawTarget);
+    return rowToken ? this.resolveResultIndex(rowToken) : undefined;
+  }
+
+  private extractRequestedRowToken(input: string): string | undefined {
+    const rowMatch = input.match(
+      /(?:第?\s*([一二三四五六七八九十\d]+)\s*(?:个)?\s*(?:条)?\s*(?:记录|行|项目|数据|案件))/i
     );
-    return rowMatch?.[1] ? this.resolveResultIndex(rowMatch[1]) : undefined;
+    return rowMatch?.[1];
   }
 
   private isMismatchedRowScopedDetailClick(

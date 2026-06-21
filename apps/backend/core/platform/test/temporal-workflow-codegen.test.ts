@@ -229,13 +229,133 @@ describe('TemporalWorkflowCodegenService', () => {
     expect(result.code).toContain('snapshot = item.get("snapshot")');
     expect(result.code).toContain('artifact_path = data.get("path") or data.get("screenshotPath")');
     expect(result.code).toContain('"artifacts": artifact_refs');
-    expect(result.code).toContain('phase_results.append({');
+    expect(result.code).toContain('phase_entry = {');
+    expect(result.code).toContain('phase_results.append(phase_entry)');
     expect(result.code).toContain('"includeSteps": True');
     expect(result.code).toContain('requires_takeover = _should_require_takeover');
     expect(result.code).toContain('preserve_session = False');
     expect(result.code).toContain('if requires_takeover:');
     expect(result.code).toContain('preserve_session = True');
     expect(result.code).toContain('if cleanup_session and not preserve_session:');
+  });
+
+  it('generates deterministic browser loop workflow skeleton when loop draft metadata is present', async () => {
+    const { service } = createService();
+
+    const result = await service.generateWorkflowCode(
+      {
+        name: '循环审批工作流',
+        workflowClassName: 'BrowserLoopApprovalWorkflow',
+        workflowDefnName: '循环审批工作流',
+        taskQueue: 'SKILL_TASK_QUEUE',
+        sourceContext: {
+          sourceType: 'browser_template',
+          browserLoopDraft: {
+            mode: 'repeat_until',
+            maxIterations: 20,
+            eachIteration: {
+              stepIds: ['step_2', 'step_3'],
+            },
+            stopWhen: {
+              conditionFn: '!String(value || "").includes("保留中")',
+            },
+          },
+        },
+        steps: [
+          {
+            id: 'step_1',
+            name: '1. 页面打开',
+            type: 'activity',
+            activityRef: 'custom:browserTemplateRunLoop_01',
+            activityName: '1. 页面打开',
+            startToCloseTimeout: '60s',
+          },
+          {
+            id: 'step_2',
+            name: '2. 页面处理',
+            type: 'activity',
+            activityRef: 'custom:browserTemplateRunLoop_02',
+            activityName: '2. 页面处理',
+            startToCloseTimeout: '60s',
+          },
+        ],
+      } as any,
+      {
+        activities: [
+          {
+            name: '1. 页面打开',
+            fn: 'browserTemplateRunLoop_01',
+            timeout: '60s',
+            handler: 'browser',
+            config: {
+              loopSegment: 'pre_loop',
+              steps: [
+                {
+                  name: '1. 打开页面',
+                  type: 'browser',
+                  timeout: '30s',
+                  config: { action: 'goto', url: 'https://example.com/list', templateStepId: 'step_1' },
+                },
+              ],
+              sessionLifecycle: {
+                initializeSession: true,
+                cleanupSession: false,
+              },
+            },
+          },
+          {
+            name: '2. 页面处理',
+            fn: 'browserTemplateRunLoop_02',
+            timeout: '60s',
+            handler: 'browser',
+            config: {
+              loopSegment: 'iteration',
+              loopTemplate: true,
+              steps: [
+                {
+                  name: '2. 读取状态',
+                  type: 'browser',
+                  timeout: '30s',
+                  config: {
+                    action: 'get_text',
+                    originalAction: 'read_value',
+                    selector: '[data-testid="status-value"]',
+                    templateStepId: 'step_2',
+                    outputVar: 'rowStatus',
+                  },
+                },
+                {
+                  name: '3. 条件判断',
+                  type: 'browser',
+                  timeout: '30s',
+                  config: {
+                    action: 'branch',
+                    templateStepId: 'step_3',
+                    branch: {
+                      condition_fn: '!String(value || "").includes("保留中")',
+                      on_match: 'stop',
+                      on_mismatch: 'continue',
+                    },
+                  },
+                },
+              ],
+              sessionLifecycle: {
+                initializeSession: false,
+                cleanupSession: true,
+              },
+            },
+          },
+        ],
+      } as any
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.code).toContain('BROWSER_LOOP_DRAFT = {"mode":"repeat_until"');
+    expect(result.code).toContain('while current_iteration <= max_iterations:');
+    expect(result.code).toContain('iteration_phase_results = phase_results[iteration_start_index:]');
+    expect(result.code).toContain('last_loop_value = self._extract_loop_value(iteration_phase_results)');
+    expect(result.code).toContain('should_stop = self._evaluate_loop_stop(loop_stop_condition, last_loop_value)');
+    expect(result.code).toContain('"loopState": loop_state');
   });
 
   it('generates deterministic code for builtin httpRequest with step-level config', async () => {

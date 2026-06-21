@@ -118,7 +118,13 @@ interface ChatActions {
     sessionId?: string;
     executionId?: string;
     mode?: 'chat' | 'task';
-    taskStatus?: 'waiting_input' | 'pending_approval' | 'running' | 'completed' | 'failed';
+    taskStatus?:
+      | 'waiting_input'
+      | 'pending_approval'
+      | 'running'
+      | 'completed'
+      | 'failed'
+      | 'human_control';
     sourceEventType: PromptDebugRecord['sourceEventType'];
     promptDebug: PromptDebugPayload;
   }) => void;

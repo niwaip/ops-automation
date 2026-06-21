@@ -228,7 +228,8 @@ const normalizeMessageMetadata = (value: unknown): ChatMessage['metadata'] | und
       taskStatus === 'pending_approval' ||
       taskStatus === 'running' ||
       taskStatus === 'completed' ||
-      taskStatus === 'failed'
+      taskStatus === 'failed' ||
+      taskStatus === 'human_control'
         ? taskStatus
         : undefined,
     executionId: asString(record.executionId),

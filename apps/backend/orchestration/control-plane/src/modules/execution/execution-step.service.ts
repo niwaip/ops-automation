@@ -53,6 +53,12 @@ interface FinishSystemSkillStepInput {
   error?: string | null;
 }
 
+interface InsertPlannedStepsAfterStepInput {
+  executionId: string;
+  afterStepId: string;
+  steps: Array<Record<string, unknown>>;
+}
+
 @Injectable()
 export class ExecutionStepService {
   constructor(private readonly prisma: PrismaService) {}
@@ -194,6 +200,23 @@ export class ExecutionStepService {
     });
   }
 
+  async finishControlStep(
+    stepId: string,
+    input?: {
+      outputJson?: Record<string, unknown> | null;
+      errorCode?: string;
+      errorMessage?: string | null;
+      success?: boolean;
+    }
+  ): Promise<void> {
+    await this.finishRuntimeStep(stepId, {
+      success: input?.success ?? true,
+      outputJson: input?.outputJson,
+      errorCode: input?.errorCode,
+      errorMessage: input?.errorMessage,
+    });
+  }
+
   async markStepWaiting(stepId: string, input: MarkStepWaitingInput = {}): Promise<void> {
     await this.prisma.executionStep.update({
       where: { id: stepId },
@@ -289,6 +312,44 @@ export class ExecutionStepService {
           requiredInputs,
         }),
       },
+    });
+  }
+
+  async insertPlannedStepsAfterStep(input: InsertPlannedStepsAfterStepInput): Promise<void> {
+    if (!input.steps.length) {
+      return;
+    }
+
+    const afterStep = await this.prisma.executionStep.findUnique({
+      where: { id: input.afterStepId },
+      select: { stepIndex: true },
+    });
+    if (!afterStep) {
+      return;
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.executionStep.updateMany({
+        where: {
+          executionId: input.executionId,
+          stepIndex: {
+            gt: afterStep.stepIndex,
+          },
+        },
+        data: {
+          stepIndex: {
+            increment: input.steps.length,
+          },
+        },
+      });
+
+      await tx.executionStep.createMany({
+        data: input.steps.map((step, index) => ({
+          ...step,
+          executionId: input.executionId,
+          stepIndex: afterStep.stepIndex + index + 1,
+        })) as never,
+      });
     });
   }
 

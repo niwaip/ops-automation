@@ -368,6 +368,25 @@ export class RecorderDebugService {
       return response;
     }
 
+    const stagedNavigateResponse = await this.tryHandleNavigateThenActionChat({
+      session,
+      observation,
+      effectiveMessage,
+      controlTokenState,
+      request,
+    });
+    if (stagedNavigateResponse) {
+      this.recorderDebugResponseService.finalizeSession(session, this.maxHistory);
+      await this.saveSession(session);
+      if (
+        stagedNavigateResponse.status === 'executed' &&
+        stagedNavigateResponse.execution?.success
+      ) {
+        void this.refreshObservationAfterExecution(session);
+      }
+      return stagedNavigateResponse;
+    }
+
     const flow = await this.recorderDebugChatFlowService.resolveFlow({
       session,
       observation,
@@ -788,6 +807,273 @@ export class RecorderDebugService {
 
   private buildObservedElementDescriptions(items: Array<Record<string, unknown>>): string[] {
     return this.recorderObservationService.buildObservedElementDescriptions(items);
+  }
+
+  private async tryHandleNavigateThenActionChat(input: {
+    session: RecorderDebugSession;
+    observation: RecorderDebugObservation;
+    effectiveMessage: string;
+    controlTokenState: RecorderControlTokenState;
+    request: RecorderDebugChatRequest;
+  }): Promise<RecorderDebugChatResponse | null> {
+    const stagedMessage = this.splitNavigateThenActionMessage(input.effectiveMessage);
+    if (!stagedMessage) {
+      return null;
+    }
+
+    const navigateParsed = await this.browserCommandService.parseCommand({
+      input: stagedMessage.navigateMessage,
+      context: this.buildBrowserCommandParseContext(
+        input.session,
+        input.observation,
+        input.controlTokenState
+      ),
+    });
+    if (
+      !navigateParsed.success ||
+      navigateParsed.commands.length === 0 ||
+      navigateParsed.commands.some((command) => command.tool !== 'navigate')
+    ) {
+      return null;
+    }
+
+    const navigateExecution = await this.executeBrowserCommands(input.session, navigateParsed.commands, {
+      appendDefaultWait: true,
+    });
+    const postNavigateObservation = navigateExecution.success
+      ? await this.observePageSafely(
+          input.session,
+          this.mergeObservationWithExecution(input.observation, navigateExecution)
+        )
+      : this.mergeObservationWithExecution(input.observation, navigateExecution);
+
+    input.session.lastObservation = postNavigateObservation;
+    input.session.currentPageUrl =
+      postNavigateObservation.currentPageUrl || input.session.currentPageUrl;
+    input.session.executedCommands.push(
+      ...(navigateExecution.executedCommands || navigateParsed.commands)
+    );
+
+    if (!navigateExecution.success) {
+      this.applyRecorderControlTokensAfterExecution(input.session, input.controlTokenState);
+      return this.recorderDebugResponseService.createAndRecordChatResponse({
+        session: input.session,
+        reply: `${navigateParsed.explanation}\n执行失败：${
+          navigateExecution.message ||
+          this.recorderDebugChatSupportService.extractExecutionError(navigateExecution) ||
+          '导航失败'
+        }`,
+        status: 'executed',
+        observation: postNavigateObservation,
+        commands: navigateParsed.commands,
+        execution: navigateExecution,
+        controlTokenState: input.controlTokenState,
+      });
+    }
+
+    const followUpFlow = await this.recorderDebugChatFlowService.resolveFlow({
+      session: input.session,
+      observation: postNavigateObservation,
+      effectiveMessage: stagedMessage.followUpMessage,
+      availableInputs: this.buildObservedElementDescriptions(postNavigateObservation.inputs),
+      availableButtons: this.buildObservedElementDescriptions(postNavigateObservation.buttons),
+      controlHints: this.buildRecorderControlHints(input.session, input.controlTokenState),
+      parseCommand: async (parseRequest) => this.browserCommandService.parseCommand(parseRequest),
+    });
+    const followUpParsed = followUpFlow.parsed;
+    const combinedCommands = [...navigateParsed.commands, ...followUpParsed.commands];
+    const navigationPreface = '已先打开目标页面。';
+
+    if (followUpFlow.kind === 'execute') {
+      const executionOutcome = await this.recorderDebugChatExecutionService.executeAndResolve({
+        session: input.session,
+        effectiveMessage: stagedMessage.followUpMessage,
+        parsed: followUpParsed,
+        observation: postNavigateObservation,
+        controlTokenState: input.controlTokenState,
+        executeBrowserCommands: async (currentSession, commands, options) =>
+          this.executeBrowserCommands(currentSession, commands, options),
+        observePageSafely: async (currentSession, fallback) =>
+          this.observePageSafely(currentSession, fallback),
+        parseRecoveryCommand: async ({ input: recoveryInput, observation, failureContext }) =>
+          this.browserCommandService.parseCommand({
+            input: recoveryInput,
+            context: {
+              forceAI: true,
+              currentPageUrl: observation.currentPageUrl || input.session.currentPageUrl,
+              backend: input.session.backend,
+              lastObservationText: observation.text,
+              availableInputs: this.buildObservedElementDescriptions(observation.inputs),
+              availableButtons: this.buildObservedElementDescriptions(observation.buttons),
+              availableCandidates: observation.candidates || [],
+              controlHints: this.buildRecorderControlHints(input.session, input.controlTokenState),
+              lastFailureContext: failureContext,
+            },
+          }),
+        mergeObservationWithExecution: (currentObservation, execution) =>
+          this.mergeObservationWithExecution(currentObservation, execution),
+        applyRecorderControlTokensAfterExecution: (currentSession, state) =>
+          this.applyRecorderControlTokensAfterExecution(currentSession, state),
+      });
+      const mergedExecution = this.mergeBrowserExecuteResponses(
+        navigateExecution,
+        executionOutcome.execution
+      );
+      if (executionOutcome.kind === 'ambiguous') {
+        return this.recorderDebugResponseService.createAndRecordChatResponse({
+          session: input.session,
+          reply: `${navigationPreface}\n${executionOutcome.reply}`,
+          status: 'question',
+          observation: executionOutcome.nextObservation,
+          commands: combinedCommands,
+          execution: mergedExecution,
+          controlTokenState: input.controlTokenState,
+        });
+      }
+
+      return this.recorderDebugResponseService.createAndRecordChatResponse({
+        session: input.session,
+        reply: `${navigationPreface}\n${executionOutcome.reply}`,
+        status: 'executed',
+        observation: executionOutcome.nextObservation,
+        commands: combinedCommands,
+        execution: mergedExecution,
+        controlTokenState: input.controlTokenState,
+      });
+    }
+
+    this.applyRecorderControlTokensAfterExecution(input.session, input.controlTokenState);
+
+    if (followUpFlow.kind === 'export') {
+      const exportArtifacts = await this.buildExportArtifacts(
+        input.session,
+        stagedMessage.followUpMessage
+      );
+      return this.recorderDebugResponseService.createAndRecordChatResponse({
+        session: input.session,
+        reply: `${navigationPreface}\n已根据当前对话与执行历史生成 CLI 脚本和内部 skill 草稿。`,
+        status: 'completed',
+        observation: postNavigateObservation,
+        commands: combinedCommands,
+        execution: navigateExecution,
+        exportArtifacts,
+        controlTokenState: input.controlTokenState,
+      });
+    }
+
+    if (followUpFlow.kind === 'blocked' || followUpFlow.kind === 'confirmation_required') {
+      return this.recorderDebugResponseService.createAndRecordChatResponse({
+        session: input.session,
+        reply: `${navigationPreface}\n${followUpFlow.reply}`,
+        status: 'question',
+        observation: postNavigateObservation,
+        commands: combinedCommands,
+        execution: navigateExecution,
+        controlTokenState: input.controlTokenState,
+      });
+    }
+
+    if (followUpFlow.kind === 'observation') {
+      const reply = await this.describePage(
+        stagedMessage.followUpMessage,
+        postNavigateObservation,
+        input.request.userRoles || [],
+        input.request.modelId
+      );
+      return this.recorderDebugResponseService.createAndRecordChatResponse({
+        session: input.session,
+        reply: `${navigationPreface}\n${reply}`,
+        status: 'answer',
+        observation: postNavigateObservation,
+        commands: combinedCommands,
+        execution: navigateExecution,
+        controlTokenState: input.controlTokenState,
+      });
+    }
+
+    return this.recorderDebugResponseService.createAndRecordChatResponse({
+      session: input.session,
+      reply: `${navigationPreface}\n${this.recorderDebugChatSupportService.buildClarificationReply(
+        postNavigateObservation
+      )}`,
+      status: 'question',
+      observation: postNavigateObservation,
+      commands: combinedCommands,
+      execution: navigateExecution,
+      controlTokenState: input.controlTokenState,
+    });
+  }
+
+  private splitNavigateThenActionMessage(
+    effectiveMessage: string
+  ): { navigateMessage: string; followUpMessage: string } | null {
+    const lines = effectiveMessage
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+    if (lines.length < 2) {
+      return null;
+    }
+
+    const navigateMessage = lines[0] || '';
+    const followUpMessage = lines.slice(1).join('\n').trim();
+    if (!followUpMessage) {
+      return null;
+    }
+    if (!/(打开|进入|访问|前往|go to|open|visit|https?:\/\/|www\.)/i.test(navigateMessage)) {
+      return null;
+    }
+
+    return {
+      navigateMessage,
+      followUpMessage,
+    };
+  }
+
+  private buildBrowserCommandParseContext(
+    session: RecorderDebugSession,
+    observation: RecorderDebugObservation,
+    controlTokenState: RecorderControlTokenState
+  ): Record<string, unknown> {
+    return {
+      currentPageUrl: session.currentPageUrl,
+      backend: session.backend,
+      lastObservationText: observation.text,
+      availableInputs: this.buildObservedElementDescriptions(observation.inputs),
+      availableButtons: this.buildObservedElementDescriptions(observation.buttons),
+      availableCandidates: observation.candidates || [],
+      controlHints: this.buildRecorderControlHints(session, controlTokenState),
+    };
+  }
+
+  private mergeBrowserExecuteResponses(
+    first: BrowserExecuteResponse,
+    second?: BrowserExecuteResponse
+  ): BrowserExecuteResponse {
+    if (!second) {
+      return first;
+    }
+
+    const message = [first.message, second.message].filter(Boolean).join(' | ') || undefined;
+    const merged: BrowserExecuteResponse = {
+      success: first.success && second.success,
+      results: [...(first.results || []), ...(second.results || [])],
+      ...(message ? { message } : {}),
+      steps: [...(first.steps || []), ...(second.steps || [])],
+      executedCommands: [
+        ...(first.executedCommands || []),
+        ...(second.executedCommands || []),
+      ],
+    };
+
+    if (!merged.steps?.length) {
+      delete merged.steps;
+    }
+    if (!merged.executedCommands?.length) {
+      delete merged.executedCommands;
+    }
+
+    return merged;
   }
 
   buildCandidatesAndTrace(observation: RecorderDebugObservation): {

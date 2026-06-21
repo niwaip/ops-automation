@@ -168,6 +168,12 @@ describe('CapabilityReleaseRuntimeService', () => {
         downloadUrl: 'http://localhost:3009/studio/download/doc-1',
       })
     );
+    expect(String(prisma.$queryRawUnsafe.mock.calls[0]?.[0] || '')).toContain(
+      'CASE WHEN archived_at IS NULL THEN 0 ELSE 1 END'
+    );
+    expect(String(prisma.$queryRawUnsafe.mock.calls[0]?.[0] || '')).not.toContain(
+      'AND archived_at IS NULL'
+    );
   });
 
   it('posts both templateId and source skillId to render-resolved when both bindings exist', async () => {

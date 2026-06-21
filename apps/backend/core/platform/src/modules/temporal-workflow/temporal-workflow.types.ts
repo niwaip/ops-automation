@@ -231,12 +231,33 @@ export interface TemporalWorkflowSourceTemplate {
   renderPlanVersion?: number;
 }
 
+export interface BrowserLoopStopWhenDraftLike {
+  conditionFn?: string;
+  condition_fn?: string;
+  description?: string;
+}
+
+export interface BrowserLoopDraftLike {
+  mode?: string;
+  maxIterations?: number;
+  onNoProgress?: 'takeover' | 'stop' | string;
+  eachIteration?: {
+    stepIds?: string[];
+    stepCount?: number;
+  };
+  stopWhen?: BrowserLoopStopWhenDraftLike;
+  target?: Record<string, unknown>;
+  sampleRow?: Record<string, unknown>;
+  updatedAt?: string;
+}
+
 export interface TemporalWorkflowSourceContext {
   sourceType?: 'template' | 'browser_template' | 'ai' | 'text' | 'url';
   referenceUrl?: string;
   userDescription?: string;
   generatedAt?: string;
   warnings?: string[];
+  browserLoopDraft?: BrowserLoopDraftLike;
   sourceTemplate?: TemporalWorkflowSourceTemplate | null;
   templateAssetSummary?: {
     assetVersion: string;
@@ -461,6 +482,16 @@ export interface BrowserTemplateStepInput {
   step_id?: string;
   action?: string;
   params?: Record<string, unknown>;
+  output_var?: string;
+  outputVar?: string;
+  description?: string;
+  branch?: {
+    condition_fn?: string;
+    on_match?: 'continue' | 'stop';
+    on_mismatch?: 'continue' | 'stop' | 'takeover';
+    takeover_reason?: string;
+    description?: string;
+  };
   locator?: {
     type?: string;
     value?: string;
@@ -496,6 +527,7 @@ export interface GenerateBrowserWorkflowDraftDTO {
   commands?: BrowserDraftCommandInput[];
   templateId?: string;
   templateSteps?: BrowserTemplateStepInput[];
+  loopDraft?: BrowserLoopDraftLike;
   paramsSchema?: BrowserTemplateParamsSchema;
   name?: string;
   description?: string;

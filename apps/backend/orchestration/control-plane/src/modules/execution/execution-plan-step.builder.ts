@@ -3,7 +3,7 @@ import type { BrowserPhaseRecoveryPolicy } from './browser-phase-recovery.planne
 import type { BrowserPhaseCheck } from './execution.dto';
 import { BROWSER_ACTIONS, BROWSER_RUNTIME } from './browser-execution-constants';
 
-export type PlannerStepKind = 'skill' | 'tool' | 'human_input' | 'execution';
+export type PlannerStepKind = 'skill' | 'tool' | 'human_input' | 'execution' | 'control';
 
 export interface PlannerBrowserPhaseCommandInput {
   step_id?: string;
@@ -32,6 +32,13 @@ export interface PlannerPlanStepInput {
     allow_human_takeover?: boolean;
     model_id?: string;
   };
+  loop_control_action?: string;
+  loop_id?: string;
+  loop_segment?: 'pre_loop' | 'iteration' | 'post_loop' | 'control';
+  loop_iteration?: number;
+  loop_template?: boolean;
+  loop_stop_condition?: Record<string, unknown>;
+  [key: string]: unknown;
 }
 
 export interface PlannerPlanDraftStepInput {
@@ -50,6 +57,8 @@ const mapPlannerStepType = (planStep: PlannerPlanStepInput): string => {
   switch (kind) {
     case 'human_input':
       return 'input_collection';
+    case 'control':
+      return 'loop_control';
     case 'skill':
     case 'tool':
     case 'execution':
@@ -67,6 +76,10 @@ const mapPlannerStepAction = (planStep: PlannerPlanStepInput): string => {
   switch (kind) {
     case 'human_input':
       return 'collect_input';
+    case 'control':
+      return typeof planStep.loop_control_action === 'string' && planStep.loop_control_action.trim().length > 0
+          ? planStep.loop_control_action.trim()
+          : 'loop_control';
     case 'skill':
     case 'tool':
       return 'execute_skill';
@@ -179,6 +192,8 @@ const buildPlannerStepPhaseMetadata = (
     switch (planStep.kind) {
       case 'human_input':
         return 'input_collection';
+      case 'control':
+        return 'loop_control';
       case 'skill':
       case 'tool':
         return 'system_skill';
@@ -256,6 +271,18 @@ export const buildPlannedExecutionSteps = (
         ...(planStep.precheck ? { precheck: planStep.precheck } : {}),
         ...(planStep.postcheck ? { postcheck: planStep.postcheck } : {}),
         ...(recoveryPolicy ? { recoveryPolicy } : {}),
+        ...(typeof planStep.loop_control_action === 'string'
+          ? { loopControlAction: planStep.loop_control_action }
+          : {}),
+        ...(typeof planStep.loop_id === 'string' ? { loopId: planStep.loop_id } : {}),
+        ...(typeof planStep.loop_segment === 'string' ? { loopSegment: planStep.loop_segment } : {}),
+        ...(typeof planStep.loop_iteration === 'number'
+          ? { loopIteration: planStep.loop_iteration }
+          : {}),
+        ...(typeof planStep.loop_template === 'boolean'
+          ? { loopTemplate: planStep.loop_template }
+          : {}),
+        ...(planStep.loop_stop_condition ? { loopStopCondition: planStep.loop_stop_condition } : {}),
       } as Prisma.JsonObject,
       inputJson: {
         description: planStep.description,
@@ -265,6 +292,18 @@ export const buildPlannedExecutionSteps = (
         ...(planStep.precheck ? { precheck: planStep.precheck } : {}),
         ...(planStep.postcheck ? { postcheck: planStep.postcheck } : {}),
         ...(recoveryPolicy ? { recoveryPolicy } : {}),
+        ...(typeof planStep.loop_control_action === 'string'
+          ? { loopControlAction: planStep.loop_control_action }
+          : {}),
+        ...(typeof planStep.loop_id === 'string' ? { loopId: planStep.loop_id } : {}),
+        ...(typeof planStep.loop_segment === 'string' ? { loopSegment: planStep.loop_segment } : {}),
+        ...(typeof planStep.loop_iteration === 'number'
+          ? { loopIteration: planStep.loop_iteration }
+          : {}),
+        ...(typeof planStep.loop_template === 'boolean'
+          ? { loopTemplate: planStep.loop_template }
+          : {}),
+        ...(planStep.loop_stop_condition ? { loopStopCondition: planStep.loop_stop_condition } : {}),
       } as Prisma.JsonObject,
     });
   }

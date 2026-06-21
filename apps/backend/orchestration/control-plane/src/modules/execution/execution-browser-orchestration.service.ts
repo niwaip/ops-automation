@@ -602,23 +602,44 @@ export class ExecutionBrowserOrchestrationService {
 
     const currentExecution = await this.prisma.execution.findUnique({
       where: { id: executionId },
-      select: { resultJson: true },
+      select: { resultJson: true, normalizedInputJson: true },
     });
 
     const currentResult = this.readJsonRecord(currentExecution?.resultJson) || {};
+    const currentNormalized = this.readJsonRecord(currentExecution?.normalizedInputJson) || {};
+    const phaseVariables = this.extractBrowserPhaseVariables(phaseOutput);
+    const persistedBrowserPhaseVariables = {
+      ...(this.readJsonRecord(currentNormalized.browserPhaseVariables) || {}),
+      ...phaseVariables,
+    };
     const browserResult = {
       ...currentResult,
       ...phaseOutput,
       runtimeSessionId,
       backend: typeof currentResult.backend === 'string' ? currentResult.backend : 'browser',
+      ...(Object.keys(persistedBrowserPhaseVariables).length > 0
+        ? { browserPhaseVariables: persistedBrowserPhaseVariables }
+        : {}),
     };
 
     await this.prisma.execution.update({
       where: { id: executionId },
       data: {
         resultJson: this.asJsonValue(browserResult),
+        normalizedInputJson: this.asJsonValue({
+          ...currentNormalized,
+          ...(Object.keys(persistedBrowserPhaseVariables).length > 0
+            ? { browserPhaseVariables: persistedBrowserPhaseVariables }
+            : {}),
+        }),
       },
     });
+  }
+
+  private extractBrowserPhaseVariables(phaseOutput: Record<string, unknown>): Record<string, unknown> {
+    const output = this.readJsonRecord(phaseOutput.output);
+    const phaseVariables = this.readJsonRecord(output?.phaseVariables);
+    return phaseVariables || {};
   }
 
   private asJsonValue(value: unknown): Prisma.JsonValue {

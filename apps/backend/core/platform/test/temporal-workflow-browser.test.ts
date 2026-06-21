@@ -344,6 +344,150 @@ describe('TemporalWorkflowBrowserDraftService', () => {
     ]);
   });
 
+  it('preserves loop draft metadata and marks browser phases with loop segments', async () => {
+    const { service } = createService();
+
+    const draft = await service.generateBrowserWorkflowDraft({
+      templateId: 'tpl-browser-loop-001',
+      name: '循环审批工作流',
+      templateSteps: [
+        {
+          step_id: 'step_1',
+          action: 'goto',
+          params: { url: '${startUrl}' },
+        },
+        {
+          step_id: 'step_2',
+          action: 'click',
+          locator: { type: 'ref', value: 'e_open_row' },
+          params: {},
+        },
+        {
+          step_id: 'step_3',
+          action: 'read_value',
+          locator: { type: 'test-id', value: 'status-value' },
+          output_var: 'rowStatus',
+          params: {},
+        },
+        {
+          step_id: 'step_4',
+          action: 'branch',
+          branch: {
+            condition_fn: '!String(value || "").includes("保留中")',
+            on_match: 'stop',
+            on_mismatch: 'continue',
+          },
+        },
+        {
+          step_id: 'step_5',
+          action: 'click',
+          locator: { type: 'ref', value: 'e_approve' },
+          params: {},
+        },
+        {
+          step_id: 'step_6',
+          action: 'click',
+          locator: { type: 'ref', value: 'e_back' },
+          params: {},
+        },
+      ],
+      loopDraft: {
+        mode: 'repeat_until',
+        maxIterations: 20,
+        eachIteration: {
+          stepIds: ['step_2', 'step_3', 'step_4', 'step_5', 'step_6'],
+        },
+        stopWhen: {
+          conditionFn: '!String(value || "").includes("保留中")',
+        },
+      },
+    });
+
+    expect(draft.workflowDsl.sourceContext).toEqual(
+      expect.objectContaining({
+        sourceType: 'browser_template',
+        browserLoopDraft: expect.objectContaining({
+          mode: 'repeat_until',
+          maxIterations: 20,
+        }),
+      })
+    );
+    expect(draft.activityDsl.activities.map((activity) => (activity.config as any).loopSegment)).toEqual(
+      expect.arrayContaining(['pre_loop', 'iteration'])
+    );
+    const activitySteps = draft.activityDsl.activities.flatMap(
+      (activity) => ((activity.config as any).steps || []) as Array<Record<string, any>>
+    );
+    expect(activitySteps).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          config: expect.objectContaining({
+            templateStepId: 'step_3',
+            action: 'get_text',
+            originalAction: 'read_value',
+            outputVar: 'rowStatus',
+          }),
+        }),
+        expect.objectContaining({
+          config: expect.objectContaining({
+            templateStepId: 'step_4',
+            action: 'branch',
+            branch: expect.objectContaining({
+              condition_fn: '!String(value || "").includes("保留中")',
+            }),
+          }),
+        }),
+      ])
+    );
+  });
+
+  it('does not treat branch condition function bodies as browser template placeholders', async () => {
+    const { service } = createService();
+
+    const draft = await service.generateBrowserWorkflowDraft({
+      templateId: 'tpl-browser-branch-threshold',
+      name: '审批阈值工作流',
+      templateSteps: [
+        {
+          step_id: 'step_1',
+          action: 'read_value',
+          locator: { type: 'test-id', value: 'gross-margin-value' },
+          output_var: 'grossProfitRate',
+          params: {},
+        },
+        {
+          step_id: 'step_2',
+          action: 'branch',
+          branch: {
+            on_match: 'continue',
+            on_mismatch: 'takeover',
+            condition_fn:
+              "(ctx) => { const value = Number(String(ctx.grossProfitRate || '').replace(/[^0-9.-]+/g, '')); return Number.isFinite(value) && value > 20; }",
+          },
+        },
+      ],
+      paramsSchema: {
+        type: 'object',
+        properties: {
+          grossMarginThreshold: {
+            type: 'number',
+            description: '自动执行所需的毛利率阈值，低于该值时转人工接管',
+            default: 20,
+          },
+        },
+        required: ['grossMarginThreshold'],
+      },
+    });
+
+    expect(draft.workflowDsl.inputParams).toEqual({
+      grossMarginThreshold: expect.objectContaining({
+        required: true,
+        defaultValue: '20',
+        description: '自动执行所需的毛利率阈值，低于该值时转人工接管',
+      }),
+    });
+  });
+
   it('keeps navigate and fill in the same activity and splits when click changes page structure', async () => {
     const { service } = createService();
 

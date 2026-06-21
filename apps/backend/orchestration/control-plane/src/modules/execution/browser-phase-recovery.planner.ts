@@ -19,6 +19,7 @@ export interface BrowserPhaseRecoveryPatch {
   durationMs?: number;
   inputValues?: Record<string, unknown>;
   resumeFromStepId?: string;
+  loopIteration?: number;
   note?: string;
 }
 

@@ -3536,6 +3536,21 @@ describe('ExecutionService phase sync during system execution', () => {
 });
 
 describe('ExecutionService browser phase execution', () => {
+  it('extracts plain selector text from markdown wrapped browser read output', () => {
+    const service = new ExecutionService({} as never, {} as never, {} as never, {} as never);
+
+    expect(
+      (service as any).extractBrowserTextResult([
+        '### Result\n""\n### Ran Playwright code\n```js\nconsole.log("demo");\n```',
+      ])
+    ).toBe('');
+    expect(
+      (service as any).extractBrowserTextResult([
+        '### Result\n"保留中"\n### Ran Playwright code\n```js\nconsole.log("demo");\n```',
+      ])
+    ).toBe('保留中');
+  });
+
   it('routes execute_browser_phase planner steps through BrowserPhaseExecutor in the main flow', async () => {
     const prisma = {
       execution: {
@@ -3695,6 +3710,13 @@ describe('ExecutionService browser phase execution', () => {
         createdBy: 'user-1',
         riskLevel: 'L1',
         requiresApproval: false,
+        normalizedInputJson: {
+          input: {
+            username: 'admin',
+            loginCredential: 'admin',
+            grossMarginThreshold: '15',
+          },
+        },
       },
       'runtime-1',
       'step-browser-phase'
@@ -3702,6 +3724,7 @@ describe('ExecutionService browser phase execution', () => {
 
     expect(browserPhaseExecutor.execute).toHaveBeenCalledWith({
       executionId: 'execution-1',
+      executionStepId: 'step-browser-phase',
       phaseKey: 'phase_login',
       phaseName: '登录阶段',
       phaseType: 'browser_phase',
@@ -3740,6 +3763,9 @@ describe('ExecutionService browser phase execution', () => {
         },
       ],
       input: {
+        username: 'admin',
+        loginCredential: 'admin',
+        grossMarginThreshold: '15',
         description: '复用模板中的登录 phase commands',
         plannerStatus: 'planned',
       },
@@ -4100,9 +4126,17 @@ describe('ExecutionService phase takeover lifecycle', () => {
         attempt: 2,
         runtime_session_id: 'runtime-1',
         input_json: { stepId: 'step-1' },
+        recovery_decision_json: {
+          patch: {
+            type: 'resolve_by_human',
+            failedStepId: 'step-1',
+            resumeFromStepId: 'step-2',
+          },
+        },
       }),
       resolveTakeoverRecord: jest.fn().mockResolvedValue(undefined),
       markRunning: jest.fn().mockResolvedValue(undefined),
+      createOrUpdatePhase: jest.fn().mockResolvedValue(undefined),
       listByExecutionId: jest.fn().mockResolvedValue([]),
     };
     const executionStepService = {
@@ -4147,23 +4181,24 @@ describe('ExecutionService phase takeover lifecycle', () => {
         resolvedBy: 'user-1',
       })
     );
-    expect(executionPhaseService.markRunning).toHaveBeenCalledWith(
-      'execution-1',
-      'phase_login',
+    expect(executionPhaseService.createOrUpdatePhase).toHaveBeenCalledWith(
       expect.objectContaining({
+        executionId: 'execution-1',
+        phaseKey: 'phase_login',
+        status: 'running',
         phaseName: '登录阶段',
         phaseType: 'browser_login',
         attempt: 2,
       })
     );
-    expect(executionStepService.requeueFailedStep).toHaveBeenCalledWith('step-1');
+    expect(executionStepService.requeueFailedStep).not.toHaveBeenCalled();
     expect((service as any).updateStatus).toHaveBeenCalledWith(
       'execution-1',
       EXECUTION_STATUS.RUNNING
     );
-    expect(mockedAxios.post).toHaveBeenCalledWith(
+    expect(mockedAxios.post).not.toHaveBeenCalledWith(
       expect.stringContaining('/runtime-sessions/runtime-1/resume'),
-      { stepId: 'step-1' }
+      expect.anything()
     );
     expect((service as any).advanceExecutionFlow).toHaveBeenCalledWith('execution-1', 'runtime-1');
   });

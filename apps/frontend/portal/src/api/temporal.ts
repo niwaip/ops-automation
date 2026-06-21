@@ -345,6 +345,7 @@ export interface GenerateBrowserDraftDTO {
   commands?: BrowserDraftCommandInput[];
   templateId?: string;
   templateSteps?: TemplateStep[];
+  loopDraft?: Record<string, unknown>;
   paramsSchema?: TemplateParamsSchema;
   name?: string;
   description?: string;

@@ -430,12 +430,29 @@ export class RecorderExportAssemblyService {
         const nextConditionFn = this.parameterizeBranchConditionFn(
           step.branch.condition_fn,
           parameter.exampleValue,
-          placeholder
+          parameter.name
         );
+        const nextTakeoverReason = step.branch?.takeover_reason
+          ? this.parameterizeBranchTakeoverReason(
+              step.branch.takeover_reason,
+              parameter.exampleValue,
+              parameter.name
+            )
+          : step.branch?.takeover_reason;
         if (nextConditionFn !== step.branch.condition_fn) {
           step.branch = {
             ...step.branch,
             condition_fn: nextConditionFn,
+            ...(nextTakeoverReason !== undefined ? { takeover_reason: nextTakeoverReason } : {}),
+          };
+          changed = true;
+        } else if (
+          nextTakeoverReason !== undefined &&
+          nextTakeoverReason !== step.branch.takeover_reason
+        ) {
+          step.branch = {
+            ...step.branch,
+            takeover_reason: nextTakeoverReason,
           };
           changed = true;
         }
@@ -448,18 +465,50 @@ export class RecorderExportAssemblyService {
   private parameterizeBranchConditionFn(
     conditionFn: string,
     exampleValue: string | undefined,
-    placeholder: string
+    parameterName: string
   ): string {
+    const runtimeValue = `Number(ctx.${parameterName})`;
+    if (conditionFn.includes(runtimeValue)) {
+      return conditionFn;
+    }
+
     const trimmedExample = exampleValue?.trim();
     if (trimmedExample) {
       const escaped = trimmedExample.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const exactThresholdPattern = new RegExp(`([<>]=?\\s*)${escaped}(?![\\d.])`);
       if (exactThresholdPattern.test(conditionFn)) {
-        return conditionFn.replace(exactThresholdPattern, `$1${placeholder}`);
+        return conditionFn.replace(exactThresholdPattern, `$1${runtimeValue}`);
       }
     }
 
-    return conditionFn.replace(/([<>]=?\s*)(-?\d+(?:\.\d+)?)(?![\d.])/, `$1${placeholder}`);
+    return conditionFn.replace(/([<>]=?\s*)(-?\d+(?:\.\d+)?)(?![\d.])/, `$1${runtimeValue}`);
+  }
+
+  private parameterizeBranchTakeoverReason(
+    takeoverReason: string,
+    exampleValue: string | undefined,
+    parameterName: string
+  ): string {
+    const placeholder = `\${${parameterName}}`;
+    if (!takeoverReason || takeoverReason.includes(placeholder)) {
+      return takeoverReason;
+    }
+
+    const trimmedExample = exampleValue?.trim();
+    if (trimmedExample) {
+      const escaped = trimmedExample.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const exactPercentPattern = new RegExp(`(?<![\\d.])${escaped}(?:\\.0+)?(?=\\s*%)`, 'g');
+      if (exactPercentPattern.test(takeoverReason)) {
+        return takeoverReason.replace(exactPercentPattern, placeholder);
+      }
+
+      const exactNumberPattern = new RegExp(`(?<![\\d.])${escaped}(?![\\d.])`, 'g');
+      if (exactNumberPattern.test(takeoverReason)) {
+        return takeoverReason.replace(exactNumberPattern, placeholder);
+      }
+    }
+
+    return takeoverReason.replace(/(?<![\d.])-?\d+(?:\.\d+)?(?=\s*%)/, placeholder);
   }
 
   // #region debug-point shared:template-export-debug

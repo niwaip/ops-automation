@@ -2203,16 +2203,28 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
       setGeneratingBrowserTemplateId(template.id);
       const detail = await templateApi.getById(template.id);
       const templateSteps = Array.isArray(detail?.steps) ? detail.steps : [];
-      const executionPlan =
+      const templateConfig =
         detail?.config && typeof detail.config === 'object'
-          ? (detail.config as { executionPlan?: { commands?: BrowserDraftCommandInput[] } })
-              .executionPlan
+          ? (detail.config as {
+              loopDraft?: Record<string, unknown>;
+              executionPlan?: {
+                commands?: BrowserDraftCommandInput[];
+                loopDraft?: Record<string, unknown>;
+              };
+            })
           : undefined;
+      const executionPlan = templateConfig?.executionPlan;
       const executionPlanCommands = Array.isArray(executionPlan?.commands)
         ? executionPlan.commands.filter((command): command is BrowserDraftCommandInput =>
             Boolean(command && typeof command === 'object')
           )
         : [];
+      const loopDraft =
+        executionPlan?.loopDraft && typeof executionPlan.loopDraft === 'object'
+          ? executionPlan.loopDraft
+          : templateConfig?.loopDraft && typeof templateConfig.loopDraft === 'object'
+            ? templateConfig.loopDraft
+            : undefined;
       if (templateSteps.length === 0 && executionPlanCommands.length === 0) {
         void message.warning('该浏览器模版缺少可执行步骤，请先在模版页补充步骤');
         return;
@@ -2222,6 +2234,7 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
         name: detail.name,
         description: detail.description,
         templateSteps: templateSteps.length > 0 ? templateSteps : undefined,
+        loopDraft,
         paramsSchema: detail.params_schema,
         commands: executionPlanCommands.length > 0 ? executionPlanCommands : undefined,
       });

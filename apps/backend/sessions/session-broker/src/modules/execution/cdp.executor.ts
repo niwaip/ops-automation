@@ -303,7 +303,8 @@ export class CdpExecutor implements OnModuleDestroy {
   ): Promise<ExecutionResult[]> {
     this.logger.log(`Executing ${steps.length} steps for session ${sessionId}`);
     this.logger.debug(`Steps: ${JSON.stringify(steps)}, Params: ${JSON.stringify(params)}`);
-    const variables: Record<string, unknown> = {};
+    // Branch conditions may depend on both session params and runtime read_value outputs.
+    const variables: Record<string, unknown> = { ...params };
 
     try {
       const initResult = await this.postJson<{ success: boolean; message?: string }>(

@@ -20,6 +20,7 @@ import type {
   ChatRequest,
   LLMRateLimit,
   LLMUsage,
+  PromptDebugRecord,
   PromptDebugPayload,
   StreamEvent,
 } from './types';
@@ -237,7 +238,7 @@ const ChatWindow: React.FC = () => {
   const resolveTaskStatus = (
     eventType: StreamEventType,
     status?: string
-  ): 'waiting_input' | 'pending_approval' | 'running' | 'completed' | 'failed' => {
+  ): 'waiting_input' | 'pending_approval' | 'running' | 'completed' | 'failed' | 'human_control' => {
     if (eventType === StreamEventType.ERROR) {
       return 'failed';
     }
@@ -248,6 +249,10 @@ const ChatWindow: React.FC = () => {
 
     if (eventType === StreamEventType.PENDING_APPROVAL || status === 'pending_approval') {
       return 'pending_approval';
+    }
+
+    if (status === 'human_control') {
+      return 'human_control';
     }
 
     if (status && ['queued', 'running'].includes(status)) {
@@ -389,7 +394,7 @@ const ChatWindow: React.FC = () => {
         sessionId: request.sessionId,
         executionId: asString(data.executionId),
         mode: asMode(data.mode) ?? request.config?.mode,
-        taskStatus,
+        taskStatus: taskStatus as PromptDebugRecord['taskStatus'],
         sourceEventType,
         promptDebug,
       });
@@ -546,10 +551,12 @@ const ChatWindow: React.FC = () => {
           if (event.content) {
             accumulatedContent += isChatRequest ? event.content : `${event.content}\n`;
           }
+          const shouldTakeover = data.shouldTakeover === true || executionStatus === 'human_control';
+          const nextTaskStatus = shouldTakeover ? 'human_control' : 'failed';
           updateMessageMetadataById(assistantMessageId, {
             mode: request.config?.mode,
             showThinking,
-            taskStatus: 'failed',
+            taskStatus: nextTaskStatus,
             executionId,
             executionStatus,
             finalResultData: undefined,
@@ -557,7 +564,7 @@ const ChatWindow: React.FC = () => {
             errorMessage: event.content,
             promptDebug: asPromptDebugPayload(data.promptDebug),
           });
-          syncPromptDebug(event, 'failed', StreamEventType.ERROR);
+          syncPromptDebug(event, nextTaskStatus, StreamEventType.ERROR);
         } else if (event.type === StreamEventType.PARAMS_CONFIRM) {
           const skill = asRecord(data.skill);
           setPendingParamsConfirm(

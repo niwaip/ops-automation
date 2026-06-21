@@ -464,13 +464,7 @@ export function extractBrowserActivityPlaceholders(
   const keys = new Set<string>();
   const visit = (value: unknown) => {
     if (typeof value === 'string') {
-      const matches = [...value.matchAll(/\{([^{}]+)\}/g), ...value.matchAll(/\$\{([^{}]+)\}/g)];
-      matches.forEach((match) => {
-        const key = String(match[1] || '').trim();
-        if (key) {
-          keys.add(key);
-        }
-      });
+      collectBrowserTemplatePlaceholderKeys(value, keys);
       return;
     }
     if (Array.isArray(value)) {
@@ -484,6 +478,23 @@ export function extractBrowserActivityPlaceholders(
 
   steps.forEach((step) => visit(step.config));
   return Array.from(keys);
+}
+
+function collectBrowserTemplatePlaceholderKeys(value: string, target: Set<string>): void {
+  const matches = [
+    ...value.matchAll(/\$\{([^{}]+)\}/g),
+    ...value.matchAll(/\{([^{}]+)\}/g),
+  ];
+  matches.forEach((match) => {
+    const key = String(match[1] || '').trim();
+    if (isBrowserTemplatePlaceholderKey(key)) {
+      target.add(key);
+    }
+  });
+}
+
+function isBrowserTemplatePlaceholderKey(value: string): boolean {
+  return /^[A-Za-z_][A-Za-z0-9_.-]*$/.test(value);
 }
 
 export function buildBrowserActivityStepsFromDraftCommands(
@@ -532,9 +543,30 @@ export function buildBrowserActivityStepsFromTemplateSteps(
     const normalizedAction = action.toLowerCase();
     const selector = normalizeBrowserTemplateStepSelector(step);
     const params = step?.params && typeof step.params === 'object' ? step.params : {};
+    const runtimeAction = normalizedAction === 'read_value' ? 'get_text' : action;
     const config: Record<string, unknown> = {
-      action,
+      action: runtimeAction,
+      originalAction: action,
     };
+
+    if (typeof step?.step_id === 'string' && step.step_id.trim()) {
+      config.templateStepId = step.step_id.trim();
+    }
+    if (typeof step?.description === 'string' && step.description.trim()) {
+      config.templateStepDescription = step.description.trim();
+    }
+    const outputVar =
+      typeof step?.output_var === 'string' && step.output_var.trim()
+        ? step.output_var.trim()
+        : typeof step?.outputVar === 'string' && step.outputVar.trim()
+          ? step.outputVar.trim()
+          : undefined;
+    if (outputVar) {
+      config.outputVar = outputVar;
+    }
+    if (step?.branch && typeof step.branch === 'object') {
+      config.branch = step.branch;
+    }
 
     if (selector) {
       config.selector = selector;
@@ -899,13 +931,9 @@ export function parseBrowserScriptCommands(script: string): BrowserScriptCommand
 }
 
 export function extractScriptPlaceholders(script: string): string[] {
-  const scriptStr = String(script || '');
-  const matches = [
-    ...scriptStr.matchAll(/\{([^{}]+)\}/g),
-    ...scriptStr.matchAll(/\$\{([^{}]+)\}/g),
-  ];
-  const keys = matches.map((match) => String(match[1] || '').trim()).filter(Boolean);
-  return Array.from(new Set(keys));
+  const keys = new Set<string>();
+  collectBrowserTemplatePlaceholderKeys(String(script || ''), keys);
+  return Array.from(keys);
 }
 
 function inferBrowserTemplateTimeoutFromSteps(

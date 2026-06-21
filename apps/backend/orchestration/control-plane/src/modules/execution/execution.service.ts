@@ -62,7 +62,8 @@ import { RuntimeExecutionOrchestrator } from './runtime-execution.orchestrator';
 import { RuntimeResultInterpreter } from './runtime-result.interpreter';
 import { RuntimeStepRequestFactory } from './runtime-step-request.factory';
 import { BrowserPhaseExecutor } from './browser-phase.executor';
-import { BROWSER_RUNTIME } from './browser-execution-constants';
+import { BrowserRuntimeAdapter } from './browser-runtime.adapter';
+import { BROWSER_ACTIONS, BROWSER_RUNTIME } from './browser-execution-constants';
 import {
   ExecutionBrowserOrchestrationService,
   ExecutionStepPhaseMetadata,
@@ -203,6 +204,7 @@ export class ExecutionService {
   private readonly executionBrowserOrchestrationService: ExecutionBrowserOrchestrationService;
   private readonly executionRuntimeSessionService: ExecutionRuntimeSessionService;
   private readonly executionStepExecutorService: ExecutionStepExecutorService;
+  private readonly browserRuntimeAdapter: BrowserRuntimeAdapter;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -232,7 +234,8 @@ export class ExecutionService {
     executionRuntimeSessionService?: ExecutionRuntimeSessionService,
     executionFlowRunnerService?: ExecutionFlowRunnerService,
     executionStepExecutorService?: ExecutionStepExecutorService,
-    executionBrowserOrchestrationService?: ExecutionBrowserOrchestrationService
+    executionBrowserOrchestrationService?: ExecutionBrowserOrchestrationService,
+    browserRuntimeAdapter?: BrowserRuntimeAdapter
   ) {
     const dependencyCandidates = [
       runtimeExecutionOrchestrator,
@@ -254,6 +257,7 @@ export class ExecutionService {
       executionFlowRunnerService,
       executionStepExecutorService,
       executionBrowserOrchestrationService,
+      browserRuntimeAdapter,
     ];
     const pickDependency = <T>(
       explicit: T | undefined,
@@ -351,6 +355,13 @@ export class ExecutionService {
           hasMethod(value, 'bootstrapBrowserExecution') &&
           hasMethod(value, 'handleBrowserPhaseStepResult')
       );
+    const resolvedBrowserRuntimeAdapter = pickDependency<BrowserRuntimeAdapter>(
+      browserRuntimeAdapter,
+      (value) =>
+        hasMethod(value, 'invokeStep') &&
+        hasMethod(value, 'inspectState') &&
+        hasMethod(value, 'assertState')
+    );
 
     this.executionEventService = resolvedExecutionEventService || new ExecutionEventService(prisma);
     this.executionStepService = resolvedExecutionStepService || new ExecutionStepService(prisma);
@@ -409,6 +420,7 @@ export class ExecutionService {
         this.runtimeStepRequestFactory,
         resolvedBrowserPhaseExecutor
       );
+    this.browserRuntimeAdapter = resolvedBrowserRuntimeAdapter || new BrowserRuntimeAdapter();
   }
 
   subscribeToEvents(executionId: string, callback: (event: ExecutionStreamEventPayload) => void) {
@@ -1689,7 +1701,64 @@ export class ExecutionService {
         this.executeBrowserPhaseStep(execution, targetRuntimeSessionId, stepId),
       executeSystemSkillStep: (execution, targetRuntimeSessionId, stepId) =>
         this.executeSystemSkillStep(execution, targetRuntimeSessionId, stepId),
+      readBrowserTextBySelector: (targetRuntimeSessionId, selector) =>
+        this.readBrowserTextBySelector(targetRuntimeSessionId, selector),
     });
+  }
+
+  private async readBrowserTextBySelector(
+    runtimeSessionId: string,
+    selector: string
+  ): Promise<string | undefined> {
+    const result = await this.browserRuntimeAdapter.invokeStep({
+      requestId: `loop-stop:${runtimeSessionId}:${Date.now()}`,
+      executionId: runtimeSessionId,
+      stepId: `loop-stop:${runtimeSessionId}`,
+      runtimeType: BROWSER_RUNTIME.TYPE,
+      runtimeSessionId,
+      capabilityType: BROWSER_RUNTIME.CAPABILITY_TYPE,
+      action: BROWSER_ACTIONS.GET_TEXT,
+      input: {
+        target: selector,
+        args: {
+          selector,
+          method: 'textContent',
+        },
+      },
+    });
+    const output = result.output || {};
+    const data = output.data && typeof output.data === 'object' ? output.data : undefined;
+    const parsedValue = this.extractBrowserTextResult([
+      data && (data as Record<string, unknown>).text,
+      output.text,
+      output.stdout,
+      output.value,
+    ]);
+    return parsedValue ?? '';
+  }
+
+  private extractBrowserTextResult(candidates: unknown[]): string | undefined {
+    const rawValue = this.readNonEmptyString(...candidates);
+    if (!rawValue) {
+      return undefined;
+    }
+
+    const resultBlockMatch = rawValue.match(/### Result\s*\n([\s\S]*?)\n### Ran Playwright code/);
+    const candidate = resultBlockMatch?.[1]?.trim() || rawValue.trim();
+    if (!candidate) {
+      return undefined;
+    }
+    if (candidate.startsWith('"') && candidate.endsWith('"')) {
+      try {
+        const parsed = JSON.parse(candidate);
+        if (typeof parsed === 'string') {
+          return parsed.trim();
+        }
+      } catch {
+        return candidate.slice(1, -1).trim();
+      }
+    }
+    return candidate;
   }
 
   private async createPlannedSteps(

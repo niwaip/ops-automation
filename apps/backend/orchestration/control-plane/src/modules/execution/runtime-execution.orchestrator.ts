@@ -10,6 +10,44 @@ import {
 
 @Injectable()
 export class RuntimeExecutionOrchestrator {
+  // #region debug-point shared:workflow-branch-check
+  private reportWorkflowBranchDebug(
+    hypothesisId: 'A' | 'B' | 'C' | 'D' | 'E',
+    msg: string,
+    data: Record<string, unknown>,
+    runId = 'pre-fix'
+  ): void {
+    const fs = require('fs') as typeof import('fs');
+    const envPaths = [
+      '/app/.dbg/workflow-branch-check.env',
+      '/Users/chain/Documents/MyProject/ops-automation/.dbg/workflow-branch-check.env',
+    ];
+    let url = 'http://host.docker.internal:7777/event';
+    let sessionId = 'workflow-branch-check';
+    for (const envPath of envPaths) {
+      try {
+        const env = fs.readFileSync(envPath, 'utf8');
+        url = env.match(/DEBUG_SERVER_URL=(.+)/)?.[1]?.trim() || url;
+        sessionId = env.match(/DEBUG_SESSION_ID=(.+)/)?.[1]?.trim() || sessionId;
+        break;
+      } catch {}
+    }
+    void fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId,
+        runId,
+        hypothesisId,
+        location: 'runtime-execution.orchestrator',
+        msg: `[DEBUG] ${msg}`,
+        data,
+        ts: Date.now(),
+      }),
+    }).catch(() => undefined);
+  }
+  // #endregion
+
   constructor(private readonly runtimeAdapterRegistry: RuntimeAdapterRegistry) {}
 
   async executeStep(request: RuntimeStepInvokeRequest): Promise<RuntimeStepInvokeResult> {
@@ -24,11 +62,60 @@ export class RuntimeExecutionOrchestrator {
   async executePhase(request: RuntimePhaseInvokeRequest): Promise<RuntimePhaseInvokeResult> {
     const stepResults: RuntimeStepInvokeResult[] = [];
     const initializedSessions = new Set<string>();
-    const phaseVariables: Record<string, unknown> = {};
+    const metadataInput =
+      request.metadata?.input &&
+      typeof request.metadata.input === 'object' &&
+      !Array.isArray(request.metadata.input)
+        ? (request.metadata.input as Record<string, unknown>)
+        : undefined;
+    const persistedPhaseVariables =
+      metadataInput?.browserPhaseVariables &&
+      typeof metadataInput.browserPhaseVariables === 'object' &&
+      !Array.isArray(metadataInput.browserPhaseVariables)
+        ? (metadataInput.browserPhaseVariables as Record<string, unknown>)
+        : undefined;
+    const inputPhaseVariables = Object.fromEntries(
+      Object.entries(metadataInput || {}).filter(([key]) => key !== 'browserPhaseVariables')
+    );
+    const phaseVariables: Record<string, unknown> = {
+      ...(persistedPhaseVariables || {}),
+      ...inputPhaseVariables,
+    };
+    // #region debug-point A:workflow-phase-input
+    this.reportWorkflowBranchDebug('A', 'initialized workflow phase variables', {
+      executionId: request.executionId,
+      phaseKey: request.phaseKey,
+      metadataInput: metadataInput || null,
+      inputPhaseVariables,
+      persistedPhaseVariables: persistedPhaseVariables || null,
+      initialPhaseVariables: { ...phaseVariables },
+    });
+    // #endregion
 
     for (const step of request.steps) {
       if (step.action === 'branch') {
+        // #region debug-point B:workflow-branch-before-eval
+        this.reportWorkflowBranchDebug('B', 'evaluating workflow branch step', {
+          executionId: request.executionId,
+          phaseKey: request.phaseKey,
+          stepId: step.stepId,
+          branchMetadata: step.metadata?.branch || null,
+          phaseVariables: { ...phaseVariables },
+        });
+        // #endregion
         const result = this.evaluateBrowserBranchStep(step, phaseVariables);
+        // #region debug-point C:workflow-branch-result
+        this.reportWorkflowBranchDebug('C', 'workflow branch evaluation finished', {
+          executionId: request.executionId,
+          phaseKey: request.phaseKey,
+          stepId: step.stepId,
+          success: result.success,
+          status: result.status,
+          errorCode: result.errorCode || null,
+          errorMessage: result.errorMessage || null,
+          output: result.output || null,
+        });
+        // #endregion
         stepResults.push(result);
 
         if (!result.success) {
@@ -47,7 +134,7 @@ export class RuntimeExecutionOrchestrator {
             pageUrl: summary.pageUrl,
             pageFingerprint: summary.pageFingerprint,
             artifacts,
-            output: result.output,
+            output: this.buildPhaseOutput(result.output, phaseVariables),
             errorCode: result.errorCode,
             errorMessage: result.errorMessage,
             retryable: result.retryable,
@@ -94,7 +181,7 @@ export class RuntimeExecutionOrchestrator {
           pageUrl: summary.pageUrl,
           pageFingerprint: summary.pageFingerprint,
           artifacts,
-          output: result.output,
+          output: this.buildPhaseOutput(result.output, phaseVariables),
           errorCode: result.errorCode,
           errorMessage: result.errorMessage,
           retryable: result.retryable,
@@ -116,7 +203,17 @@ export class RuntimeExecutionOrchestrator {
       pageUrl: summary.pageUrl,
       pageFingerprint: summary.pageFingerprint,
       artifacts,
-      output: lastResult?.output,
+      output: this.buildPhaseOutput(lastResult?.output, phaseVariables),
+    };
+  }
+
+  private buildPhaseOutput(
+    output: Record<string, unknown> | undefined,
+    phaseVariables: Record<string, unknown>
+  ): Record<string, unknown> {
+    return {
+      ...(output || {}),
+      phaseVariables: { ...phaseVariables },
     };
   }
 
@@ -253,6 +350,41 @@ export class RuntimeExecutionOrchestrator {
     return undefined;
   }
 
+  private interpolateRuntimeTemplate(
+    template: string | undefined,
+    variables: Record<string, unknown>
+  ): string | undefined {
+    if (!template) {
+      return template;
+    }
+
+    return template.replace(/\$\{([a-zA-Z0-9_]+)\}/g, (_match, key: string) => {
+      const value = variables[key];
+      return value === null || value === undefined ? '' : String(value);
+    });
+  }
+
+  private resolveBranchTakeoverReason(
+    template: string | undefined,
+    variables: Record<string, unknown>
+  ): string | undefined {
+    const interpolated = this.interpolateRuntimeTemplate(template, variables);
+    if (!interpolated) {
+      return interpolated;
+    }
+
+    const threshold = variables.grossMarginThreshold;
+    if (threshold === null || threshold === undefined || String(threshold).trim() === '') {
+      return interpolated;
+    }
+
+    if (template?.includes('${')) {
+      return interpolated;
+    }
+
+    return interpolated.replace(/-?\d+(?:\.\d+)?(?=\s*%)/, String(threshold));
+  }
+
   private capturePhaseVariable(
     step: RuntimeStepInvokeRequest,
     result: RuntimeStepInvokeResult,
@@ -337,8 +469,10 @@ export class RuntimeExecutionOrchestrator {
             : 'stop';
       const outcome = matched ? onMatch : onMismatch;
       const description = typeof branch?.description === 'string' ? branch.description : undefined;
-      const takeoverReason =
-        typeof branch?.takeoverReason === 'string' ? branch.takeoverReason : undefined;
+      const takeoverReason = this.resolveBranchTakeoverReason(
+        typeof branch?.takeoverReason === 'string' ? branch.takeoverReason : undefined,
+        variables
+      );
 
       if (outcome === 'continue') {
         return {

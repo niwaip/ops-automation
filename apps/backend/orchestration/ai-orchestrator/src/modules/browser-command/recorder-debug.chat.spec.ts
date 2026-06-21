@@ -93,6 +93,221 @@ describe('RecorderDebugService', () => {
     expect(describePageSpy).not.toHaveBeenCalled();
   });
 
+  it('chat should navigate first and reparse follow-up actions with refreshed observation', async () => {
+    const parseCommand = jest.fn().mockImplementation(async ({ input }) => {
+      if (input === '打开 http://192.168.100.143/#approvals') {
+        return {
+          success: true,
+          commands: [
+            {
+              tool: 'navigate',
+              params: { url: 'http://192.168.100.143/#approvals' },
+              description: '打开 http://192.168.100.143/#approvals',
+            },
+          ],
+          explanation: '先打开审批页面',
+        };
+      }
+
+      return {
+        success: true,
+        commands: [
+          {
+            tool: 'fill',
+            params: { selector: '用户名', value: 'admin' },
+            description: '填写用户名',
+          },
+          {
+            tool: 'fill',
+            params: { selector: '密码', value: 'admin' },
+            description: '填写密码',
+          },
+          {
+            tool: 'click',
+            params: { target: 'e16' },
+            description: '点击登录',
+            locator: {
+              strategy: 'ref',
+              value: 'e16',
+              generatedBy: 'candidate',
+              confidence: 0.98,
+              resolutionMode: 'preferred-locator',
+            },
+          },
+        ],
+        explanation: '填写用户名密码并点击登录',
+      };
+    });
+    const executeAndResolve = jest.fn().mockResolvedValue({
+      kind: 'completed',
+      reply: '填写用户名密码并点击登录\n已执行当前页面操作。',
+      execution: {
+        success: true,
+        results: [],
+        steps: [
+          { action: 'fill', status: 'success' },
+          { action: 'fill', status: 'success' },
+          { action: 'click', status: 'success' },
+        ],
+        executedCommands: [
+          {
+            tool: 'fill',
+            params: { selector: '用户名', value: 'admin' },
+            description: '填写用户名',
+          },
+          {
+            tool: 'fill',
+            params: { selector: '密码', value: 'admin' },
+            description: '填写密码',
+          },
+          {
+            tool: 'click',
+            params: { target: 'e16' },
+            description: '点击登录',
+          },
+        ],
+      },
+      nextObservation: {
+        currentPageUrl: 'http://192.168.100.143/#approvals',
+        text: '审批列表',
+        title: 'Approvals',
+        inputs: [],
+        buttons: [{ text: '承認する (Approve)' }],
+        headings: [],
+        links: [],
+        suggestedParameters: [],
+      },
+    });
+    const service = createService({
+      browserCommandService: { parseCommand },
+      recorderDebugChatExecutionService: { executeAndResolve } as any,
+    });
+    const session = {
+      sessionId: 'recorder-debug-stage-login',
+      runtimeSessionId: 'runtime-stage-login',
+      backend: 'cli',
+      browserInitialized: true,
+      currentPageUrl: 'about:blank',
+      lastObservation: undefined,
+      history: [],
+      executedCommands: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    const initialObservation = {
+      currentPageUrl: 'about:blank',
+      text: '',
+      title: 'Blank',
+      inputs: [],
+      buttons: [],
+      headings: [],
+      links: [],
+      suggestedParameters: [],
+      candidates: [],
+      candidateTrace: [],
+    };
+    const postNavigateObservation = {
+      currentPageUrl: 'http://192.168.100.143/#approvals',
+      text: 'ログイン',
+      title: 'Login',
+      inputs: [{ label: '用户名' }, { label: '密码' }],
+      buttons: [{ ref: 'e16', text: 'ログイン', role: 'button' }],
+      headings: [],
+      links: [],
+      suggestedParameters: [],
+      candidates: [
+        {
+          candidateId: 'action_6',
+          kind: 'action',
+          label: 'ログイン',
+          summary: 'candidateId=action_6 | kind=action | ref=e16 | role=button | label=ログイン',
+          source: 'probe',
+          ref: 'e16',
+          role: 'button',
+          text: 'ログイン',
+          preferredLocator: { type: 'ref', value: 'e16' },
+        },
+      ],
+      candidateTrace: [],
+    };
+    const navigateExecution = {
+      success: true,
+      results: [{ status: 'success', data: { url: 'http://192.168.100.143/#approvals' } }],
+      steps: [{ action: 'navigate', status: 'success' }],
+      executedCommands: [
+        {
+          tool: 'navigate',
+          params: { url: 'http://192.168.100.143/#approvals' },
+          description: '打开 http://192.168.100.143/#approvals',
+        },
+      ],
+    };
+
+    jest.spyOn(service as any, 'loadOrCreateSession').mockResolvedValue(session);
+    jest.spyOn(service as any, 'ensureBrowserReady').mockResolvedValue(undefined);
+    jest
+      .spyOn(service as any, 'observePageSafely')
+      .mockResolvedValueOnce(initialObservation)
+      .mockResolvedValueOnce(postNavigateObservation);
+    const executeBrowserCommandsSpy = jest
+      .spyOn(service as any, 'executeBrowserCommands')
+      .mockResolvedValue(navigateExecution);
+    jest.spyOn(service as any, 'saveSession').mockResolvedValue(undefined);
+    jest.spyOn(service as any, 'refreshObservationAfterExecution').mockResolvedValue(undefined);
+
+    const response = await service.chat({
+      sessionId: session.sessionId,
+      runtimeSessionId: session.runtimeSessionId,
+      backend: 'cli',
+      message:
+        '打开 http://192.168.100.143/#approvals\n用 用户名admin 密码 admin 进行登录',
+    });
+
+    expect(response.status).toBe('executed');
+    expect(response.reply).toContain('已先打开目标页面');
+    expect(response.commands).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ tool: 'navigate' }),
+        expect.objectContaining({ tool: 'fill', description: '填写用户名' }),
+        expect.objectContaining({ tool: 'click', params: { target: 'e16' } }),
+      ])
+    );
+    expect(executeBrowserCommandsSpy).toHaveBeenCalledWith(
+      session,
+      [
+        expect.objectContaining({
+          tool: 'navigate',
+          params: { url: 'http://192.168.100.143/#approvals' },
+        }),
+      ],
+      { appendDefaultWait: true }
+    );
+    expect(parseCommand).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        input: '打开 http://192.168.100.143/#approvals',
+      })
+    );
+    expect(parseCommand).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        input: '用 用户名admin 密码 admin 进行登录',
+        context: expect.objectContaining({
+          currentPageUrl: 'http://192.168.100.143/#approvals',
+          availableCandidates: expect.arrayContaining([
+            expect.objectContaining({ candidateId: 'action_6', ref: 'e16' }),
+          ]),
+        }),
+      })
+    );
+    expect(executeAndResolve).toHaveBeenCalledWith(
+      expect.objectContaining({
+        effectiveMessage: '用 用户名admin 密码 admin 进行登录',
+        observation: postNavigateObservation,
+      })
+    );
+  });
+
   it('chat should execute high-risk actions directly during recorder flow', async () => {
     const parseCommand = jest.fn().mockResolvedValue({
       success: true,

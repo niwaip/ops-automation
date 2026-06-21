@@ -45,6 +45,27 @@ import {
 } from '@/shared/lib/waitingInputDisplay';
 import './ChatMessage.css';
 
+const reportChatFailureLoopDebug = (
+  hypothesisId: string,
+  location: string,
+  msg: string,
+  data: Record<string, unknown>
+) => {
+  fetch('http://127.0.0.1:7777/event', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      sessionId: 'chat-failure-loop-history',
+      runId: 'frontend-chat-message',
+      hypothesisId,
+      location,
+      msg,
+      data,
+      ts: Date.now(),
+    }),
+  }).catch(() => {});
+};
+
 interface ChatMessageProps {
   message: ChatMessage;
   isStreaming?: boolean;
@@ -122,6 +143,7 @@ const formatExecutionStatus = (status?: string): string | null => {
     running: '执行中',
     queued: '排队中',
     pending_approval: '待审批',
+    human_control: '待人工处理',
   };
 
   return statusMap[status] || status;
@@ -282,10 +304,23 @@ const getExecutionStepCount = (value: unknown): number | undefined => {
 const isBrowserExecutionResult = (
   executionId: string | undefined,
   answerText: string,
-  finalResultData: unknown
+  finalResultData: unknown,
+  options?: {
+    taskStatus?: string;
+    executionStatus?: string;
+    runtimeType?: string;
+  }
 ): boolean => {
   if (!executionId) {
     return false;
+  }
+  const normalizedRuntimeType =
+    typeof options?.runtimeType === 'string' ? options.runtimeType.trim().toLowerCase() : '';
+  if (normalizedRuntimeType === 'browser') {
+    return true;
+  }
+  if (options?.taskStatus === 'human_control' || options?.executionStatus === 'human_control') {
+    return true;
   }
   if (hasBrowserExecutionPayload(finalResultData)) {
     return true;
@@ -313,6 +348,10 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
   const isWaitingInput = isTaskMode && message.metadata?.taskStatus === 'waiting_input';
   const isPendingApproval = isTaskMode && message.metadata?.taskStatus === 'pending_approval';
   const isFailed = isTaskMode && message.metadata?.taskStatus === 'failed';
+  const taskStatus = message.metadata?.taskStatus ? String(message.metadata.taskStatus) : undefined;
+  const isHumanControl =
+    isTaskMode &&
+    (taskStatus === 'human_control' || message.metadata?.executionStatus === 'human_control');
   const finalResult = message.metadata?.finalResult?.trim();
   const finalResultData = message.metadata?.finalResultData;
   const finalSummary = message.metadata?.finalSummary?.trim();
@@ -324,6 +363,12 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
   const hasBusinessResult = message.metadata?.hasBusinessResult;
   const executionId = message.metadata?.executionId;
   const executionStatus = formatExecutionStatus(message.metadata?.executionStatus);
+  const metadataRecord =
+    message.metadata && typeof message.metadata === 'object'
+      ? (message.metadata as Record<string, unknown>)
+      : undefined;
+  const executionRuntimeType =
+    typeof metadataRecord?.runtimeType === 'string' ? metadataRecord.runtimeType : undefined;
   const usage = message.metadata?.usage;
   const promptDebug = message.metadata?.promptDebug;
   const progressLogs = message.metadata?.progressLogs || [];
@@ -332,9 +377,13 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
   const showRunningState =
     isTaskMode &&
     (isRunning || (Boolean(isStreaming) && !isWaitingInput && !isPendingApproval && !errorMessage));
+  const shouldShowTakeoverCard = Boolean((failureReason || errorMessage) && isHumanControl);
   const shouldShowErrorCard = Boolean(
-    (failureReason || errorMessage) &&
-    (isFailed || (!isWaitingInput && !isPendingApproval && !showRunningState))
+    !shouldShowTakeoverCard &&
+      (failureReason || errorMessage) &&
+      !isHumanControl &&
+      message.metadata?.executionStatus !== 'human_control' &&
+      (isFailed || (!isWaitingInput && !isPendingApproval && !showRunningState))
   );
   const missingInputs = useMemo(
     () =>
@@ -425,9 +474,63 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
     [finalResultData]
   );
   const browserExecutionMode = useMemo(
-    () => isBrowserExecutionResult(executionId, answerWithoutTaskCheckbox, finalResultData),
-    [executionId, answerWithoutTaskCheckbox, finalResultData]
+    () =>
+      isBrowserExecutionResult(executionId, answerWithoutTaskCheckbox, finalResultData, {
+        taskStatus,
+        executionStatus: message.metadata?.executionStatus
+          ? String(message.metadata.executionStatus)
+          : undefined,
+        runtimeType: executionRuntimeType,
+      }),
+    [
+      executionId,
+      answerWithoutTaskCheckbox,
+      finalResultData,
+      taskStatus,
+      message.metadata?.executionStatus,
+      executionRuntimeType,
+    ]
   );
+  useEffect(() => {
+    if (!isTaskMode || !executionId) {
+      return;
+    }
+    reportChatFailureLoopDebug(
+      'H1',
+      'apps/frontend/portal/src/features/chat/ChatMessage.tsx:status-card',
+      'Chat message resolved status card state',
+      {
+        messageId: message.id,
+        executionId,
+        taskStatus,
+        executionStatus: message.metadata?.executionStatus ?? null,
+        runtimeType: executionRuntimeType ?? null,
+        browserExecutionMode,
+        isFailed,
+        isHumanControl,
+        showRunningState,
+        shouldShowTakeoverCard,
+        shouldShowErrorCard,
+        errorMessage: errorMessage ?? null,
+        failureReason: failureReason ?? null,
+      }
+    );
+  }, [
+    browserExecutionMode,
+    errorMessage,
+    executionId,
+    executionRuntimeType,
+    failureReason,
+    isFailed,
+    isHumanControl,
+    isTaskMode,
+    message.id,
+    message.metadata?.executionStatus,
+    shouldShowErrorCard,
+    shouldShowTakeoverCard,
+    showRunningState,
+    taskStatus,
+  ]);
   const hasStructuredProgressLogs = !isUser && isTaskMode && progressLogs.length > 0;
   const currentProgressLog = hasStructuredProgressLogs
     ? progressLogs[progressLogs.length - 1]
@@ -685,7 +788,9 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
               ghost
               size="small"
               icon={<ThunderboltOutlined />}
-              onClick={() => window.open(executionDetailLink || temporalLink, '_blank')}
+              href={executionDetailLink || temporalLink}
+              target="_blank"
+              rel="noopener noreferrer"
             >
               导航到详细页面
             </Button>
@@ -702,6 +807,29 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
       </div>
     );
 
+    if (shouldShowTakeoverCard) {
+      const detailError = errorMessage || failureReason || '任务正在等待人工处理';
+      const previewError = getErrorPreview(detailError);
+      return (
+        <div className="chat-outcome-card waiting">
+          <div className="chat-outcome-title">待人工处理</div>
+          <div className="chat-outcome-meta">
+            {executionStatus && <span>状态：{executionStatus}</span>}
+            {executionId && <span>执行单 ID：{executionId}</span>}
+            {executionStepCount !== undefined && <span>执行步骤数：{executionStepCount}</span>}
+          </div>
+          <div className="chat-outcome-body">{previewError}</div>
+          {(downloadUrl || temporalLink || executionDetailLink) && renderResourceLinks()}
+          {previewError !== detailError ? (
+            <details className="chat-outcome-details">
+              <summary>查看详细信息</summary>
+              <pre className="chat-structured-result chat-error-details">{detailError}</pre>
+            </details>
+          ) : null}
+        </div>
+      );
+    }
+
     if (shouldShowErrorCard) {
       const detailError = errorMessage || failureReason || '任务执行失败';
       const previewError = getErrorPreview(detailError);
@@ -714,10 +842,13 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
             {executionStepCount !== undefined && <span>执行步骤数：{executionStepCount}</span>}
           </div>
           <div className="chat-outcome-body">{previewError}</div>
-          <details className="chat-outcome-details">
-            <summary>查看详细错误</summary>
-            <pre className="chat-structured-result chat-error-details">{detailError}</pre>
-          </details>
+          {(downloadUrl || temporalLink || executionDetailLink) && renderResourceLinks()}
+          {previewError !== detailError ? (
+            <details className="chat-outcome-details">
+              <summary>查看详细错误</summary>
+              <pre className="chat-structured-result chat-error-details">{detailError}</pre>
+            </details>
+          ) : null}
         </div>
       );
     }

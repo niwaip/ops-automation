@@ -7,6 +7,11 @@ import {
 } from './execution.dto';
 import { BROWSER_ACTIONS, BROWSER_RUNTIME } from './browser-execution-constants';
 import { ExecutionInputResolutionService } from './execution-input-resolution.service';
+import {
+  BrowserLoopDraftLike,
+  BrowserLoopWorkflowPlanLike,
+  partitionBrowserTemplateStepsForLoopWorkflow,
+} from './browser-loop-workflow-plan.builder';
 
 interface SkillSchemaPropertyLike {
   type?: string;
@@ -75,7 +80,7 @@ interface PlannerSemanticLike {
 
 interface PlanDraftLike {
   plan_id: string;
-  planner_mode: 'skill' | 'fallback';
+  planner_mode: 'skill' | 'fallback' | 'browser_loop_workflow';
   objective: string;
   summary: string;
   skill_match?: PlannerSkillMatchLike;
@@ -83,7 +88,7 @@ interface PlanDraftLike {
     id: string;
     title: string;
     description: string;
-    kind: 'skill' | 'tool' | 'human_input' | 'execution';
+    kind: 'skill' | 'tool' | 'human_input' | 'execution' | 'control';
     status: 'planned';
     commands?: Array<Record<string, unknown>>;
     [key: string]: unknown;
@@ -95,6 +100,8 @@ interface PlanDraftLike {
     items: string[];
   };
   semantic?: PlannerSemanticLike;
+  runtime_source_type?: string;
+  loop_workflow?: BrowserLoopWorkflowPlanLike;
   [key: string]: unknown;
 }
 
@@ -322,6 +329,15 @@ export class ExecutionPlanNormalizationService {
       return BROWSER_RUNTIME.TYPE;
     }
 
+    if (
+      this.readNonEmptyString(
+        normalizedInput?.runtimeSourceType,
+        planDraft?.runtime_source_type
+      ) === 'browser_recording'
+    ) {
+      return BROWSER_RUNTIME.TYPE;
+    }
+
     const bootstrapUrl = typeof normalizedInput?.url === 'string' ? normalizedInput.url.trim() : '';
     if (/^https?:\/\//i.test(bootstrapUrl)) {
       return BROWSER_RUNTIME.TYPE;
@@ -436,6 +452,91 @@ export class ExecutionPlanNormalizationService {
           status: 'planned',
         },
       ],
+    };
+  }
+
+  buildBrowserLoopWorkflowPlanDraftFromExisting(input: {
+    planDraft: PlanDraftLike;
+    resolvedSkillId: string;
+    resolvedInput: Record<string, unknown>;
+    templateSteps: Record<string, unknown>[];
+    loopDraft?: BrowserLoopDraftLike;
+    runtimeSourceType?: string;
+  }): PlanDraftLike {
+    const skillName =
+      this.readNonEmptyString(input.planDraft.skill_match?.skill_name, input.resolvedSkillId) ||
+      input.resolvedSkillId;
+    const loopPartition = partitionBrowserTemplateStepsForLoopWorkflow({
+      templateSteps: input.templateSteps,
+      loopDraft: input.loopDraft,
+      loopId: `${input.resolvedSkillId}_loop`,
+    });
+
+    const stepCounter = { value: 0 };
+    const browserSteps = [
+      ...loopPartition.preLoopSteps.map((step) =>
+        this.buildBrowserLoopWorkflowActivityStep({
+          templateStep: step,
+          segment: 'pre_loop',
+          loopPlan: loopPartition.loopPlan,
+          counter: stepCounter,
+          resolvedInput: input.resolvedInput,
+        })
+      ),
+      this.buildBrowserLoopWorkflowControlStep({
+        id: 'loop_init',
+        title: 'Loop init',
+        description: '初始化循环上下文。',
+        loopPlan: loopPartition.loopPlan,
+      }),
+      ...loopPartition.iterationSteps.map((step) =>
+        this.buildBrowserLoopWorkflowActivityStep({
+          templateStep: step,
+          segment: 'iteration',
+          loopPlan: loopPartition.loopPlan,
+          counter: stepCounter,
+          resolvedInput: input.resolvedInput,
+          loopIteration: 1,
+          loopTemplate: true,
+        })
+      ),
+      this.buildBrowserLoopWorkflowControlStep({
+        id: 'loop_eval_after_iteration',
+        title: 'Loop evaluate',
+        description: '根据 stop condition 评估是否继续下一轮。',
+        loopPlan: loopPartition.loopPlan,
+        stopCondition: loopPartition.loopPlan.stopWhen as Record<string, unknown> | undefined,
+      }),
+      ...loopPartition.postLoopSteps.map((step) =>
+        this.buildBrowserLoopWorkflowActivityStep({
+          templateStep: step,
+          segment: 'post_loop',
+          loopPlan: loopPartition.loopPlan,
+          counter: stepCounter,
+          resolvedInput: input.resolvedInput,
+        })
+      ),
+    ].filter(Boolean);
+
+    return {
+      ...input.planDraft,
+      planner_mode: 'browser_loop_workflow',
+      runtime_source_type:
+        this.readNonEmptyString(input.runtimeSourceType) || 'browser_recording',
+      loop_workflow: loopPartition.loopPlan,
+      skill_match: {
+        skill_id: input.resolvedSkillId,
+        skill_name: skillName,
+        confidence:
+          typeof input.planDraft.skill_match?.confidence === 'number'
+            ? input.planDraft.skill_match.confidence
+            : 1,
+        match_reason:
+          this.readNonEmptyString(input.planDraft.skill_match?.match_reason) ||
+          'browser_loop_workflow',
+      },
+      summary: '执行浏览器循环工作流。',
+      steps: browserSteps,
     };
   }
 
@@ -616,6 +717,10 @@ export class ExecutionPlanNormalizationService {
 
     if (this.readNonEmptyString(planDraft?.runtime_source_type)) {
       normalizedInput.runtimeSourceType = this.readNonEmptyString(planDraft.runtime_source_type);
+    }
+
+    if (planDraft?.loop_workflow) {
+      normalizedInput.loopWorkflow = planDraft.loop_workflow;
     }
 
     if (planDraft?.risk_summary) {
@@ -1009,6 +1114,74 @@ export class ExecutionPlanNormalizationService {
     return {
       steps,
       nextTemplateStepCursor,
+    };
+  }
+
+  private buildBrowserLoopWorkflowActivityStep(input: {
+    templateStep: Record<string, unknown>;
+    segment: 'pre_loop' | 'iteration' | 'post_loop';
+    loopPlan: BrowserLoopWorkflowPlanLike;
+    counter: { value: number };
+    resolvedInput: Record<string, unknown>;
+    loopIteration?: number;
+    loopTemplate?: boolean;
+  }): PlanDraftLike['steps'][number] {
+    input.counter.value += 1;
+    const templateStepId =
+      this.readNonEmptyString(input.templateStep.step_id, input.templateStep.id) ||
+      `template_step_${input.counter.value}`;
+    const title =
+      this.readNonEmptyString(input.templateStep.description, input.templateStep.name) ||
+      templateStepId;
+    const commands = this.mapBrowserActivityCommands(
+      [input.templateStep],
+      input.counter.value,
+      title,
+      input.resolvedInput
+    );
+
+    return {
+      id: `${input.segment}_${templateStepId}`,
+      title,
+      description: `执行浏览器步骤 ${title}。`,
+      kind: 'tool',
+      status: 'planned',
+      phase_key: `phase_${String(input.counter.value).padStart(2, '0')}_${this.sanitizePhaseKeyFragment(`${input.segment}_${templateStepId}`)}`,
+      phase_name: title,
+      phase_type: 'workflow_activity',
+      commands,
+      loop_id: input.loopPlan.loopId,
+      loop_segment: input.segment,
+      ...(typeof input.loopIteration === 'number' ? { loop_iteration: input.loopIteration } : {}),
+      ...(typeof input.loopTemplate === 'boolean' ? { loop_template: input.loopTemplate } : {}),
+      recovery_policy: {
+        max_auto_retries: 1,
+        allow_human_takeover: true,
+      },
+    };
+  }
+
+  private buildBrowserLoopWorkflowControlStep(input: {
+    id: string;
+    title: string;
+    description: string;
+    loopPlan: BrowserLoopWorkflowPlanLike;
+    stopCondition?: Record<string, unknown>;
+  }): PlanDraftLike['steps'][number] {
+    return {
+      id: input.id,
+      title: input.title,
+      description: input.description,
+      kind: 'control',
+      status: 'planned',
+      tool_name: 'loop_control',
+      phase_key: `phase_${this.sanitizePhaseKeyFragment(input.id)}`,
+      phase_name: input.title,
+      phase_type: 'loop_control',
+      loop_control_action: input.id,
+      loop_id: input.loopPlan.loopId,
+      loop_segment: 'control',
+      ...(input.stopCondition ? { loop_stop_condition: input.stopCondition } : {}),
     };
   }
 

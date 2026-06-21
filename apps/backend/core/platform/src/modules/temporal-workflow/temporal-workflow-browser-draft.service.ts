@@ -13,6 +13,7 @@ import { normalizeDraftInputParams } from './temporal-workflow-draft.normalizers
 import { normalizeWorkflowInputRenderPath } from './temporal-workflow-template.helpers';
 import {
   DEFAULT_TEMPLATE_WORKFLOW_DSL,
+  type BrowserLoopDraftLike,
   type BrowserWorkflowActivityStep,
   type BrowserWorkflowDraft,
   type GenerateBrowserWorkflowDraftDTO,
@@ -41,6 +42,10 @@ export class TemporalWorkflowBrowserDraftService {
     const templateSteps = Array.isArray(data?.templateSteps)
       ? data.templateSteps.filter((step) => Boolean(step && typeof step === 'object'))
       : [];
+    const loopDraft =
+      data?.loopDraft && typeof data.loopDraft === 'object' && !Array.isArray(data.loopDraft)
+        ? (data.loopDraft as BrowserLoopDraftLike)
+        : undefined;
     const structuredCommands = Array.isArray(data?.commands)
       ? data.commands.filter((command) => Boolean(command && typeof command === 'object'))
       : [];
@@ -64,6 +69,9 @@ export class TemporalWorkflowBrowserDraftService {
       placeholders = extractBrowserActivityPlaceholders(activitySteps);
       generationWarning =
         '该草稿直接复用浏览器模板原始步骤，只对步骤进行 activity 编排，不再重新解析脚本。';
+      if (loopDraft?.eachIteration?.stepIds?.length) {
+        generationWarning += ' 已保留 loopDraft，生成代码时应编译为 workflow 级循环骨架。';
+      }
       inferredInputParams = buildBrowserInputParamsFromTemplateSource(
         templateSteps,
         templateParamsSchema
@@ -159,7 +167,10 @@ export class TemporalWorkflowBrowserDraftService {
       },
       { ...declaredInputParams }
     );
-    const browserPhases = buildBrowserWorkflowActivityPhases(activitySteps);
+    const browserPhases = this.buildBrowserWorkflowPhases({
+      activitySteps,
+      loopDraft,
+    });
     const workflowSteps = browserPhases.map((phase, index) => {
       const phaseActivityFn = `${activityFnBase}_${String(index + 1).padStart(2, '0')}`;
       return {
@@ -192,6 +203,11 @@ export class TemporalWorkflowBrowserDraftService {
           ...(generatedScript ? { script: generatedScript } : {}),
           commandCount: phase.steps.length,
           phaseType: phase.phaseType,
+          loopSegment:
+            typeof phase.steps[0]?.config?.loopSegment === 'string'
+              ? phase.steps[0].config.loopSegment
+              : undefined,
+          loopTemplate: Boolean(phase.steps[0]?.config?.loopTemplate),
           phaseIndex: index + 1,
           phaseCount: browserPhases.length,
           sessionLifecycle: {
@@ -217,6 +233,7 @@ export class TemporalWorkflowBrowserDraftService {
           sourceType: 'browser_template',
           generatedAt: new Date().toISOString(),
           userDescription: workflowDescription,
+          ...(loopDraft ? { browserLoopDraft: loopDraft } : {}),
           ...(templateId
             ? {
                 sourceTemplate: {
@@ -251,5 +268,76 @@ export class TemporalWorkflowBrowserDraftService {
         placeholders,
       },
     };
+  }
+
+  private buildBrowserWorkflowPhases(input: {
+    activitySteps: BrowserWorkflowActivityStep[];
+    loopDraft?: BrowserLoopDraftLike;
+  }) {
+    const iterationStepIds = new Set(
+      Array.isArray(input.loopDraft?.eachIteration?.stepIds)
+        ? input.loopDraft?.eachIteration?.stepIds
+            ?.map((item) => String(item || '').trim())
+            .filter(Boolean)
+        : []
+    );
+    if (!iterationStepIds.size) {
+      return buildBrowserWorkflowActivityPhases(input.activitySteps);
+    }
+
+    const firstIterationIndex = input.activitySteps.findIndex((step) =>
+      iterationStepIds.has(String(step.config?.templateStepId || '').trim())
+    );
+    if (firstIterationIndex < 0) {
+      return buildBrowserWorkflowActivityPhases(input.activitySteps);
+    }
+
+    let lastIterationIndex = firstIterationIndex;
+    for (let index = input.activitySteps.length - 1; index >= firstIterationIndex; index -= 1) {
+      const step = input.activitySteps[index];
+      if (iterationStepIds.has(String(step.config?.templateStepId || '').trim())) {
+        lastIterationIndex = index;
+        break;
+      }
+    }
+
+    const segments = [
+      {
+        segment: 'pre_loop',
+        steps: input.activitySteps.slice(0, firstIterationIndex),
+      },
+      {
+        segment: 'iteration',
+        steps: input.activitySteps.slice(firstIterationIndex, lastIterationIndex + 1),
+      },
+      {
+        segment: 'post_loop',
+        steps: input.activitySteps.slice(lastIterationIndex + 1),
+      },
+    ].filter((item) => item.steps.length > 0);
+
+    const phases = segments.flatMap((segment) =>
+      buildBrowserWorkflowActivityPhases(segment.steps).map((phase) => ({
+        ...phase,
+        steps: phase.steps.map((step) => ({
+          ...step,
+          config: {
+            ...step.config,
+            loopSegment: segment.segment,
+            loopTemplate: segment.segment === 'iteration',
+          },
+        })),
+      }))
+    );
+
+    if (phases.length === 0) {
+      return [];
+    }
+
+    return phases.map((phase, index) => ({
+      ...phase,
+      initializeSession: index === 0,
+      cleanupSession: index === phases.length - 1,
+    }));
   }
 }

@@ -15,8 +15,8 @@ describe('BrowserPhaseExecutor', () => {
       markCompleted: jest.fn().mockResolvedValue(undefined),
       markFailed: jest.fn().mockResolvedValue(undefined),
       markWaitingTakeover: jest.fn().mockResolvedValue(undefined),
-      replaceSteps: jest.fn().mockResolvedValue(undefined),
-      replaceArtifacts: jest.fn().mockResolvedValue(undefined),
+      appendSteps: jest.fn().mockResolvedValue(undefined),
+      appendArtifacts: jest.fn().mockResolvedValue(undefined),
     };
     const runtimeExecutionOrchestrator = {
       executePhase: jest.fn().mockResolvedValue({
@@ -62,7 +62,7 @@ describe('BrowserPhaseExecutor', () => {
     expect(executionPhaseService.markRunning).toHaveBeenCalled();
     expect(executionPhaseService.markCompleted).toHaveBeenCalled();
     expect(executionPhaseService.markFailed).not.toHaveBeenCalled();
-    expect(executionPhaseService.replaceArtifacts).toHaveBeenCalledWith(
+    expect(executionPhaseService.appendArtifacts).toHaveBeenCalledWith(
       'execution-1',
       'phase_login',
       []
@@ -85,8 +85,8 @@ describe('BrowserPhaseExecutor', () => {
       markCompleted: jest.fn().mockResolvedValue(undefined),
       markFailed: jest.fn().mockResolvedValue(undefined),
       markWaitingTakeover: jest.fn().mockResolvedValue(undefined),
-      replaceSteps: jest.fn().mockResolvedValue(undefined),
-      replaceArtifacts: jest.fn().mockResolvedValue(undefined),
+      appendSteps: jest.fn().mockResolvedValue(undefined),
+      appendArtifacts: jest.fn().mockResolvedValue(undefined),
     };
     const runtimeExecutionOrchestrator = {
       executePhase: jest.fn(),
@@ -131,8 +131,8 @@ describe('BrowserPhaseExecutor', () => {
       markCompleted: jest.fn().mockResolvedValue(undefined),
       markFailed: jest.fn().mockResolvedValue(undefined),
       markWaitingTakeover: jest.fn().mockResolvedValue(undefined),
-      replaceSteps: jest.fn().mockResolvedValue(undefined),
-      replaceArtifacts: jest.fn().mockResolvedValue(undefined),
+      appendSteps: jest.fn().mockResolvedValue(undefined),
+      appendArtifacts: jest.fn().mockResolvedValue(undefined),
     };
     const runtimeExecutionOrchestrator = {
       executePhase: jest
@@ -202,8 +202,8 @@ describe('BrowserPhaseExecutor', () => {
       markCompleted: jest.fn().mockResolvedValue(undefined),
       markFailed: jest.fn().mockResolvedValue(undefined),
       markWaitingTakeover: jest.fn().mockResolvedValue(undefined),
-      replaceSteps: jest.fn().mockResolvedValue(undefined),
-      replaceArtifacts: jest.fn().mockResolvedValue(undefined),
+      appendSteps: jest.fn().mockResolvedValue(undefined),
+      appendArtifacts: jest.fn().mockResolvedValue(undefined),
     };
     const runtimeExecutionOrchestrator = {
       executePhase: jest.fn().mockResolvedValue({
@@ -245,7 +245,7 @@ describe('BrowserPhaseExecutor', () => {
 
     expect(executionPhaseService.markWaitingTakeover).toHaveBeenCalled();
     expect(executionPhaseService.markFailed).not.toHaveBeenCalled();
-    expect(executionPhaseService.replaceArtifacts).toHaveBeenCalledWith(
+    expect(executionPhaseService.appendArtifacts).toHaveBeenCalledWith(
       'execution-1',
       'phase_login',
       []
@@ -276,8 +276,8 @@ describe('BrowserPhaseExecutor', () => {
       markCompleted: jest.fn().mockResolvedValue(undefined),
       markFailed: jest.fn().mockResolvedValue(undefined),
       markWaitingTakeover: jest.fn().mockResolvedValue(undefined),
-      replaceSteps: jest.fn().mockResolvedValue(undefined),
-      replaceArtifacts: jest.fn().mockResolvedValue(undefined),
+      appendSteps: jest.fn().mockResolvedValue(undefined),
+      appendArtifacts: jest.fn().mockResolvedValue(undefined),
     };
     const runtimeExecutionOrchestrator = {
       executePhase: jest
@@ -348,8 +348,8 @@ describe('BrowserPhaseExecutor', () => {
       markCompleted: jest.fn().mockResolvedValue(undefined),
       markFailed: jest.fn().mockResolvedValue(undefined),
       markWaitingTakeover: jest.fn().mockResolvedValue(undefined),
-      replaceSteps: jest.fn().mockResolvedValue(undefined),
-      replaceArtifacts: jest.fn().mockResolvedValue(undefined),
+      appendSteps: jest.fn().mockResolvedValue(undefined),
+      appendArtifacts: jest.fn().mockResolvedValue(undefined),
     };
     const runtimeExecutionOrchestrator = {
       executePhase: jest.fn().mockResolvedValue({
@@ -387,7 +387,7 @@ describe('BrowserPhaseExecutor', () => {
     expect(executionPhaseService.markRunning).toHaveBeenCalled();
     expect(executionPhaseService.markCompleted).not.toHaveBeenCalled();
     expect(executionPhaseService.markFailed).toHaveBeenCalled();
-    expect(executionPhaseService.replaceArtifacts).toHaveBeenCalledWith(
+    expect(executionPhaseService.appendArtifacts).toHaveBeenCalledWith(
       'execution-1',
       'phase_login',
       []
@@ -412,8 +412,8 @@ describe('BrowserPhaseExecutor', () => {
       markCompleted: jest.fn().mockResolvedValue(undefined),
       markFailed: jest.fn().mockResolvedValue(undefined),
       markWaitingTakeover: jest.fn().mockResolvedValue(undefined),
-      replaceSteps: jest.fn().mockResolvedValue(undefined),
-      replaceArtifacts: jest.fn().mockResolvedValue(undefined),
+      appendSteps: jest.fn().mockResolvedValue(undefined),
+      appendArtifacts: jest.fn().mockResolvedValue(undefined),
     };
     const runtimeExecutionOrchestrator = {
       executePhase: jest.fn().mockResolvedValue({
@@ -451,7 +451,7 @@ describe('BrowserPhaseExecutor', () => {
     expect(browserPhaseRecoveryPlanner.plan).toHaveBeenCalled();
     expect(executionPhaseService.markCompleted).not.toHaveBeenCalled();
     expect(executionPhaseService.markFailed).toHaveBeenCalled();
-    expect(executionPhaseService.replaceArtifacts).toHaveBeenCalledWith(
+    expect(executionPhaseService.appendArtifacts).toHaveBeenCalledWith(
       'execution-1',
       'phase_submit',
       []
@@ -481,8 +481,8 @@ describe('BrowserPhaseExecutor', () => {
       markCompleted: jest.fn().mockResolvedValue(undefined),
       markFailed: jest.fn().mockResolvedValue(undefined),
       markWaitingTakeover: jest.fn().mockResolvedValue(undefined),
-      replaceSteps: jest.fn().mockResolvedValue(undefined),
-      replaceArtifacts: jest.fn().mockResolvedValue(undefined),
+      appendSteps: jest.fn().mockResolvedValue(undefined),
+      appendArtifacts: jest.fn().mockResolvedValue(undefined),
     };
     const runtimeExecutionOrchestrator = {
       executePhase: jest.fn(),
@@ -540,8 +540,8 @@ describe('BrowserPhaseExecutor', () => {
       markCompleted: jest.fn().mockResolvedValue(undefined),
       markFailed: jest.fn().mockResolvedValue(undefined),
       markWaitingTakeover: jest.fn().mockResolvedValue(undefined),
-      replaceSteps: jest.fn().mockResolvedValue(undefined),
-      replaceArtifacts: jest.fn().mockResolvedValue(undefined),
+      appendSteps: jest.fn().mockResolvedValue(undefined),
+      appendArtifacts: jest.fn().mockResolvedValue(undefined),
     };
     const runtimeExecutionOrchestrator = {
       executePhase: jest.fn(),
@@ -581,5 +581,221 @@ describe('BrowserPhaseExecutor', () => {
     });
     expect(runtimeExecutionOrchestrator.executePhase).not.toHaveBeenCalled();
     expect(result.success).toBe(true);
+  });
+
+  it('does not reuse a human-resolved patch across different loop iterations', async () => {
+    const browserPhaseRecoveryPlanner = {
+      plan: jest.fn(),
+    };
+    const browserRuntimeAdapter = {
+      inspectState: jest.fn(),
+      assertState: jest.fn(),
+    };
+    const executionPhaseService = {
+      getByExecutionIdAndPhaseKey: jest.fn().mockResolvedValue({
+        recovery_decision_json: {
+          patch: {
+            type: 'resolve_by_human',
+            failedStepId: 'step-1',
+            loopIteration: 2,
+            note: 'approved once',
+          },
+        },
+      }),
+      markRunning: jest.fn().mockResolvedValue(undefined),
+      markCompleted: jest.fn().mockResolvedValue(undefined),
+      markFailed: jest.fn().mockResolvedValue(undefined),
+      markWaitingTakeover: jest.fn().mockResolvedValue(undefined),
+      appendSteps: jest.fn().mockResolvedValue(undefined),
+      appendArtifacts: jest.fn().mockResolvedValue(undefined),
+    };
+    const runtimeExecutionOrchestrator = {
+      executePhase: jest.fn().mockResolvedValue({
+        success: true,
+        status: 'completed',
+        stepResults: [],
+        output: { ok: true },
+      }),
+    };
+
+    const executor = new BrowserPhaseExecutor(
+      browserPhaseRecoveryPlanner as never,
+      browserRuntimeAdapter as never,
+      executionPhaseService as never,
+      runtimeExecutionOrchestrator as never
+    );
+
+    const result = await executor.execute({
+      executionId: 'execution-1',
+      phaseKey: 'phase_review',
+      phaseName: '审核阶段',
+      phaseType: 'workflow_activity',
+      runtimeSessionId: 'runtime-1',
+      commands: [
+        {
+          stepId: 'step-1',
+          capabilityType: 'browser_step',
+          action: 'branch',
+          input: {},
+        },
+      ],
+      input: {
+        loopIteration: 3,
+      },
+    });
+
+    expect(runtimeExecutionOrchestrator.executePhase).toHaveBeenCalledTimes(1);
+    expect(result.output).toEqual({ ok: true });
+    expect(executionPhaseService.getByExecutionIdAndPhaseKey).toHaveBeenCalledWith(
+      'execution-1',
+      'phase_review__loop_3'
+    );
+    expect(executionPhaseService.markCompleted).toHaveBeenCalledWith(
+      'execution-1',
+      'phase_review__loop_3',
+      expect.objectContaining({
+        output: { ok: true },
+      })
+    );
+  });
+
+  it('short-circuits a human-resolved phase when the patch targets the current execution step id', async () => {
+    const browserPhaseRecoveryPlanner = {
+      plan: jest.fn(),
+    };
+    const browserRuntimeAdapter = {
+      inspectState: jest.fn(),
+      assertState: jest.fn(),
+    };
+    const executionPhaseService = {
+      getByExecutionIdAndPhaseKey: jest.fn().mockResolvedValue({
+        recovery_decision_json: {
+          patch: {
+            type: 'resolve_by_human',
+            failedStepId: 'execution-step-15',
+            loopIteration: 2,
+            resumeFromStepId: 'execution-step-16',
+            note: 'approved by human',
+          },
+        },
+      }),
+      markRunning: jest.fn().mockResolvedValue(undefined),
+      markCompleted: jest.fn().mockResolvedValue(undefined),
+      markFailed: jest.fn().mockResolvedValue(undefined),
+      markWaitingTakeover: jest.fn().mockResolvedValue(undefined),
+      appendSteps: jest.fn().mockResolvedValue(undefined),
+      appendArtifacts: jest.fn().mockResolvedValue(undefined),
+    };
+    const runtimeExecutionOrchestrator = {
+      executePhase: jest.fn(),
+    };
+
+    const executor = new BrowserPhaseExecutor(
+      browserPhaseRecoveryPlanner as never,
+      browserRuntimeAdapter as never,
+      executionPhaseService as never,
+      runtimeExecutionOrchestrator as never
+    );
+
+    const result = await executor.execute({
+      executionId: 'execution-1',
+      executionStepId: 'execution-step-15',
+      phaseKey: 'phase_review',
+      phaseName: '审核阶段',
+      phaseType: 'workflow_activity',
+      runtimeSessionId: 'runtime-1',
+      commands: [
+        {
+          stepId: '20__command_01',
+          capabilityType: 'browser_step',
+          action: 'branch',
+          input: {},
+        },
+      ],
+      input: {
+        loopIteration: 2,
+      },
+    });
+
+    expect(runtimeExecutionOrchestrator.executePhase).not.toHaveBeenCalled();
+    expect(executionPhaseService.getByExecutionIdAndPhaseKey).toHaveBeenCalledWith(
+      'execution-1',
+      'phase_review__loop_2'
+    );
+    expect(result.output).toEqual({
+      shortCircuitedBy: 'human_resolved',
+      precheck: null,
+      note: 'approved by human',
+    });
+  });
+
+  it('parses stringified recovery decisions before applying a human-resolved patch', async () => {
+    const browserPhaseRecoveryPlanner = {
+      plan: jest.fn(),
+    };
+    const browserRuntimeAdapter = {
+      inspectState: jest.fn(),
+      assertState: jest.fn(),
+    };
+    const executionPhaseService = {
+      getByExecutionIdAndPhaseKey: jest.fn().mockResolvedValue({
+        recovery_decision_json: JSON.stringify({
+          patch: {
+            type: 'resolve_by_human',
+            failedStepId: 'execution-step-15',
+            loopIteration: 2,
+            resumeFromStepId: 'execution-step-16',
+            note: 'approved from string payload',
+          },
+        }),
+      }),
+      markRunning: jest.fn().mockResolvedValue(undefined),
+      markCompleted: jest.fn().mockResolvedValue(undefined),
+      markFailed: jest.fn().mockResolvedValue(undefined),
+      markWaitingTakeover: jest.fn().mockResolvedValue(undefined),
+      appendSteps: jest.fn().mockResolvedValue(undefined),
+      appendArtifacts: jest.fn().mockResolvedValue(undefined),
+    };
+    const runtimeExecutionOrchestrator = {
+      executePhase: jest.fn(),
+    };
+
+    const executor = new BrowserPhaseExecutor(
+      browserPhaseRecoveryPlanner as never,
+      browserRuntimeAdapter as never,
+      executionPhaseService as never,
+      runtimeExecutionOrchestrator as never
+    );
+
+    const result = await executor.execute({
+      executionId: 'execution-1',
+      executionStepId: 'execution-step-15',
+      phaseKey: 'phase_review',
+      phaseName: '审核阶段',
+      phaseType: 'workflow_activity',
+      runtimeSessionId: 'runtime-1',
+      commands: [
+        {
+          stepId: '20__command_01',
+          capabilityType: 'browser_step',
+          action: 'branch',
+          input: {},
+        },
+      ],
+      input: {
+        loopIteration: 2,
+      },
+    });
+
+    expect(runtimeExecutionOrchestrator.executePhase).not.toHaveBeenCalled();
+    expect(executionPhaseService.getByExecutionIdAndPhaseKey).toHaveBeenCalledWith(
+      'execution-1',
+      'phase_review__loop_2'
+    );
+    expect(result.output).toEqual({
+      shortCircuitedBy: 'human_resolved',
+      precheck: null,
+      note: 'approved from string payload',
+    });
   });
 });

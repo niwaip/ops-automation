@@ -13,6 +13,27 @@ import { ChatResultNormalizerService } from './chat-result-normalizer.service';
 import type { ChatUserContext, WaitingInputSemantic } from './chat.types';
 import { ChatWaitingInputService } from './chat-waiting-input.service';
 
+const reportChatExecutionStreamDebug = (
+  hypothesisId: string,
+  location: string,
+  msg: string,
+  data: Record<string, unknown>
+) => {
+  fetch('http://127.0.0.1:7777/event', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      sessionId: 'chat-failure-loop-history',
+      runId: 'backend-chat-stream',
+      hypothesisId,
+      location,
+      msg,
+      data,
+      ts: Date.now(),
+    }),
+  }).catch(() => {});
+};
+
 @Injectable()
 export class ChatExecutionStreamService {
   private readonly logger = new Logger(ChatExecutionStreamService.name);
@@ -61,6 +82,21 @@ export class ChatExecutionStreamService {
             const rawData = line.substring(6);
             const event = JSON.parse(rawData);
             this.logger.debug(`Received execution event: ${event.eventType} for ${executionId}`);
+            if (
+              event.eventType === CONTROL_PLANE_EVENT_TYPE.EXECUTION_STATUS_CHANGED ||
+              event.eventType === CONTROL_PLANE_EVENT_TYPE.STEP_FAILED
+            ) {
+              reportChatExecutionStreamDebug(
+                event.eventType === CONTROL_PLANE_EVENT_TYPE.STEP_FAILED ? 'H3' : 'H1',
+                'apps/backend/orchestration/ai-orchestrator/src/modules/chat/chat-execution-stream.service.ts:observeExecution',
+                'Observed raw execution stream event',
+                {
+                  executionId,
+                  eventType: event.eventType,
+                  payload: event.payload || null,
+                }
+              );
+            }
 
             if (
               event.eventType === CONTROL_PLANE_EVENT_TYPE.EXECUTION_STATUS_CHANGED &&
@@ -114,6 +150,7 @@ export class ChatExecutionStreamService {
         id: string;
         status: string;
         approvalStatus?: string;
+        takeoverReason?: string;
         usage?: LLMUsage;
         normalizedInput?: {
           requiredInputs?: Array<{
@@ -169,6 +206,24 @@ export class ChatExecutionStreamService {
             status,
             approvalStatus: execution.approvalStatus || CONTROL_PLANE_APPROVAL_STATUS.PENDING,
             hasBusinessResult: false,
+            usage,
+          },
+        };
+      }
+
+      if (status === CONTROL_PLANE_EXECUTION_STATUS.HUMAN_CONTROL) {
+        const takeoverReason =
+          typeof execution.takeoverReason === 'string' && execution.takeoverReason.trim().length > 0
+            ? execution.takeoverReason.trim()
+            : '任务正在等待人工处理。';
+        return {
+          type: StreamEventType.RESULT,
+          content: takeoverReason,
+          data: {
+            executionId,
+            status,
+            hasBusinessResult: false,
+            takeoverReason,
             usage,
           },
         };
@@ -243,6 +298,17 @@ export class ChatExecutionStreamService {
 
       if (status === CONTROL_PLANE_EXECUTION_STATUS.FAILED) {
         const failureReason = execution.failureReason || '未知原因';
+        reportChatExecutionStreamDebug(
+          'H3',
+          'apps/backend/orchestration/ai-orchestrator/src/modules/chat/chat-execution-stream.service.ts:buildTerminalExecutionEvent',
+          'Built terminal failed execution event',
+          {
+            executionId,
+            requestedStatus: status,
+            executionStatus: execution.status,
+            failureReason,
+          }
+        );
         return {
           type: StreamEventType.ERROR,
           content: failureReason,
@@ -349,6 +415,23 @@ export class ChatExecutionStreamService {
           };
         }
 
+        if (payload.newStatus === CONTROL_PLANE_EXECUTION_STATUS.HUMAN_CONTROL) {
+          return {
+            type: StreamEventType.RESULT,
+            content:
+              this.readString(payload.takeoverReason) ||
+              this.readString(payload.reason) ||
+              '任务正在等待人工处理。',
+            data: {
+              executionId: event.executionId,
+              status: payload.newStatus,
+              hasBusinessResult: false,
+              takeoverReason:
+                this.readString(payload.takeoverReason) || this.readString(payload.reason),
+            },
+          };
+        }
+
         return {
           type: StreamEventType.THOUGHT,
           content: `任务状态变更为: ${payload.newStatus}`,
@@ -377,10 +460,28 @@ export class ChatExecutionStreamService {
         };
       }
       case CONTROL_PLANE_EVENT_TYPE.STEP_FAILED:
+        if (payload.shouldTakeover || payload.phaseStatus === 'takeover_required') {
+          return {
+            type: StreamEventType.ERROR,
+            content: `步骤执行失败: ${payload.error || '未知错误'}`,
+            data: {
+              stepId: payload.stepId,
+              error: payload.error,
+              status: CONTROL_PLANE_EXECUTION_STATUS.HUMAN_CONTROL,
+              shouldTakeover: true,
+              phaseStatus: payload.phaseStatus,
+            },
+          };
+        }
         return {
           type: StreamEventType.ERROR,
           content: `步骤执行失败: ${payload.error || '未知错误'}`,
-          data: { stepId: payload.stepId, error: payload.error },
+          data: {
+            stepId: payload.stepId,
+            error: payload.error,
+            phaseStatus: payload.phaseStatus,
+            shouldTakeover: false,
+          },
         };
       case CONTROL_PLANE_EVENT_TYPE.RUNTIME_ALLOCATED:
         return {

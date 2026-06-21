@@ -953,6 +953,69 @@ Temporal 官方允许长 Activity 通过 heartbeat 上报进度、接收取消�
 - 接管后恢复
 - 长流程可维护
 
+### 18.7 生成阶段、Release 与运行时的职责边界
+
+针对 browser recording 中的 `loop` / `branch` / `takeover` 场景，需要明确区分三层职责：
+
+- 模板/工作流生成阶段
+  - 负责把录制结果、`templateSteps`、`loopDraft`、条件表达式编译成带控制流语义的 workflow plan / IR
+- Release 阶段
+  - 负责校验这份 plan / IR 是否合法、可发布、可映射为 skill，并将其固化为 skill 可消费的发布产物
+- Execution 运行时
+  - 负责根据真实页面状态、真实 step 输出和人工介入结果，决定是否继续下一轮 iteration、是否进入 takeover、是否 resume
+
+这里需要特别强调：
+
+- 生成阶段不应把 `repeat_until` 这类循环一次性静态展开为固定 N 轮 activity
+- 生成阶段也不能只产出一份线性 Playwright 脚本，然后把 loop/branch 仅作为旁路元数据挂在 skill 上
+- 正确做法是：
+  - 在生成阶段产出“带循环语义的 workflow 结构”
+  - 在 Release 阶段验证并发布这份结构
+  - 在运行时按轮次动态展开下一轮 iteration
+
+原因是：
+
+- `repeat_until` 的退出条件依赖运行时页面状态，生成阶段无法提前知道会执行多少轮
+- 如果在生成阶段硬编码展开为 `maxIterations` 轮，会导致 workflow 体积膨胀，且难以正确承接 takeover / resume
+- 如果只发布线性脚本，则 loop/branch 无法成为真正的 execution truth，最终仍会退化为黑盒运行时
+
+因此，本项目推荐的最终形态不是：
+
+- 生成阶段展开完所有循环
+- Release 仅发布一段线性脚本
+
+而是：
+
+- 生成阶段产出 loop-aware workflow skeleton
+- Release 发布可被 control-plane / workflow 直接消费的控制流结构
+- 运行时基于 `loop_eval`、step output、人工决策动态插入或继续下一轮 activity
+
+从结构上看，生成结果应更接近：
+
+```text
+pre_loop activities
+loop_init
+while (!stop) {
+  iteration activity 1
+  iteration activity 2
+  iteration activity 3
+  loop_eval
+}
+post_loop activities
+```
+
+这里的 `while` 不一定必须表现为源码中的 `while` 语句，也可以是：
+
+- workflow DSL 中的 loop node
+- compiler IR 中的 iteration template
+- control-plane plan 中的 `loop_control + iterationSteps`
+
+关键点不在语法形式，而在于：
+
+- 循环控制权必须属于 workflow / control-plane
+- browser worker 只负责单步 activity 执行
+- release 发布的必须是“可执行的控制流结构”，而不是“附带 loop 注释的线性 skill”
+
 ---
 
 ## 19. 现有代码到目标架构的映射
@@ -1011,6 +1074,12 @@ Temporal 官方允许长 Activity 通过 heartbeat 上报进度、接收取消�
 - 保留“导出脚本”作为调试/回放能力
 - 不要让脚本导出逻辑成为 browser loop 编排的核心路径
 - browser loop 的正式执行计划应以 DSL/IR 为准，而非脚本文本
+- 对外需要明确标注：
+  - 导出的 Playwright 脚本只是一份兼容性产物
+  - loop / branch / takeover 的执行真相来自 workflow plan，而不是脚本文本
+- 当模板已经生成 `templateSteps` / `loopDraft` 时：
+  - script export 可以继续导出线性脚本用于调试
+  - 但不得把这份线性脚本当作 release 发布物的唯一执行来源
 
 ### 19.2 control-plane
 
@@ -1043,6 +1112,16 @@ Temporal 官方允许长 Activity 通过 heartbeat 上报进度、接收取消�
   - `buildLegacyBrowserPhasePlan()`
 - 增加 feature flag：
   - `browser_loop_workflow_enabled`
+- 明确该层的核心职责是：
+  - 把模板/录制结果编译为可执行控制流结构
+  - 而不是在这里提前静态展开全部 iteration
+- 生成结果应包含：
+  - loop segment 划分
+  - iteration template
+  - control node
+  - stop condition
+  - takeover / resume 所需元数据
+- release 之后真正按轮次插入下一轮 step 的动作，不应在此层完成，而应留给 runtime runner
 
 #### 19.2.2 `execution-plan-normalization.service.ts`
 
@@ -1168,6 +1247,52 @@ Temporal 官方允许长 Activity 通过 heartbeat 上报进度、接收取消�
   - 写入 `loopSegment`
   - 写入 `lastExtractedValues`
 - 将 takeover 恢复语义收敛为“当前 step 继续”
+
+### 19.2.7 capability release / published skill 桥接
+
+相关模块：
+
+- `capability-release-browser-recording.service.ts`
+- `capability-release-publish.service.ts`
+- `capability-release-runtime.service.ts`
+
+当前职责：
+
+- 把 browser recording 模板/导出产物整理为 release source payload
+- 做发布前校验
+- 生成并发布 skill 可消费的数据
+
+目标职责：
+
+- 成为“验证 + 固化 + 发布”的桥接层
+- 确保 release 发布物中包含可执行控制流结构
+- 不承担真实 loop 执行、iteration 推进、条件求值真相
+
+建议改造：
+
+- 发布时必须优先保留并透传：
+  - `executionPlan.templateSteps`
+  - `loopDraft`
+  - `loopPlanPreview`
+  - branch / extract / takeover 元数据
+- 发布校验应验证：
+  - loop 结构是否完整
+  - 条件表达式是否可解释
+  - iteration step 范围是否自洽
+  - takeover 节点是否可恢复
+- 发布产物应明确区分：
+  - `script` / `commands`：兼容或调试用途
+  - `executionPlan` / `templateSteps` / `loopDraft`：正式执行真相来源
+- 不应在 release 阶段：
+  - 预先把 `repeat_until` 展开成固定轮数
+  - 生成“已经跑完循环”的静态 skill
+  - 用线性脚本覆盖结构化 workflow plan
+
+最终定位：
+
+- 生成阶段负责“产出控制流结构”
+- release 阶段负责“验证并发布该结构”
+- runtime 阶段负责“根据真实执行结果推进该结构”
 
 ### 19.3 browser-worker
 

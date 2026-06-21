@@ -238,6 +238,128 @@ describe('ExecutionPlanNormalizationService', () => {
     );
   });
 
+  it('builds a browser loop workflow plan draft from loop draft and template steps', () => {
+    const service = createService();
+
+    const result = service.buildBrowserLoopWorkflowPlanDraftFromExisting({
+      planDraft: {
+        plan_id: 'plan-browser-loop-1',
+        planner_mode: 'skill',
+        objective: '批量审批',
+        summary: '浏览器录制技能',
+        skill_match: {
+          skill_id: 'skill-browser-loop-1',
+          skill_name: '批量审批技能',
+          confidence: 1,
+        },
+        steps: [],
+        required_inputs: [],
+        risk_summary: {
+          level: 'low',
+          requires_human_review: false,
+          items: ['no_material_risk_detected'],
+        },
+      } as any,
+      resolvedSkillId: 'skill-browser-loop-1',
+      resolvedInput: {
+        username: 'tester',
+      },
+      templateSteps: [
+        {
+          step_id: 'step_1',
+          action: 'navigate',
+          params: {
+            url: 'https://example.test/approvals',
+          },
+          description: '打开审批页',
+        },
+        {
+          step_id: 'step_2',
+          action: 'click',
+          locator: {
+            type: 'css',
+            value: '[data-testid="approve"]',
+          },
+          description: '点击审批',
+        },
+        {
+          step_id: 'step_3',
+          action: 'read_page',
+          locator: {
+            type: 'css',
+            value: '[data-testid="status"]',
+          },
+          description: '读取状态',
+        },
+        {
+          step_id: 'step_4',
+          action: 'click',
+          locator: {
+            type: 'css',
+            value: '[data-testid="done"]',
+          },
+          description: '完成收尾',
+        },
+      ],
+      loopDraft: {
+        mode: 'repeat_until',
+        eachIteration: {
+          stepIds: ['step_2', 'step_3'],
+          stepCount: 2,
+        },
+        stopWhen: {
+          read: {
+            type: 'text',
+            locator: {
+              type: 'css',
+              value: '[data-testid="status"]',
+            },
+          },
+          conditionFn: 'value === "无待审批"',
+          description: '没有待审批时结束',
+        },
+        maxIterations: 20,
+      },
+      runtimeSourceType: 'browser_recording',
+    });
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        planner_mode: 'browser_loop_workflow',
+        runtime_source_type: 'browser_recording',
+        loop_workflow: expect.objectContaining({
+          mode: 'repeat_until',
+          preLoopStepIds: ['step_1'],
+          iterationStepIds: ['step_2', 'step_3'],
+          postLoopStepIds: ['step_4'],
+          maxIterations: 20,
+        }),
+      })
+    );
+    expect(result.steps.map((step: any) => step.id)).toEqual([
+      'pre_loop_step_1',
+      'loop_init',
+      'iteration_step_2',
+      'iteration_step_3',
+      'loop_eval_after_iteration',
+      'post_loop_step_4',
+    ]);
+    expect(result.steps[0]).toEqual(
+      expect.objectContaining({
+        kind: 'tool',
+        phase_type: 'workflow_activity',
+        loop_segment: 'pre_loop',
+      })
+    );
+    expect(result.steps[1]).toEqual(
+      expect.objectContaining({
+        kind: 'control',
+        tool_name: 'loop_control',
+        loop_control_action: 'loop_init',
+      })
+    );
+  });
+
   it('reconciles semantic grouped missing fields and adds uncovered required fields', () => {
     const service = createService();
 

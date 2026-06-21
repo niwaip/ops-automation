@@ -202,8 +202,36 @@ export class ExecutionStepExecutorService {
     await this.executionStepService.startStep(stepId);
 
     try {
+      const phaseInput = (() => {
+        const extractedInput =
+          hooks.extractBrowserPhaseInput(step as Record<string, unknown> | null | undefined) || {};
+        const normalizedInput =
+          execution.normalizedInputJson &&
+          typeof execution.normalizedInputJson === 'object' &&
+          !Array.isArray(execution.normalizedInputJson)
+            ? (execution.normalizedInputJson as Record<string, unknown>)
+            : undefined;
+        const executionInput =
+          normalizedInput?.input &&
+          typeof normalizedInput.input === 'object' &&
+          !Array.isArray(normalizedInput.input)
+            ? (normalizedInput.input as Record<string, unknown>)
+            : undefined;
+        const browserPhaseVariables =
+          normalizedInput?.browserPhaseVariables &&
+          typeof normalizedInput.browserPhaseVariables === 'object' &&
+          !Array.isArray(normalizedInput.browserPhaseVariables)
+            ? (normalizedInput.browserPhaseVariables as Record<string, unknown>)
+            : undefined;
+        return {
+          ...(executionInput || {}),
+          ...extractedInput,
+          ...(browserPhaseVariables ? { browserPhaseVariables } : {}),
+        };
+      })();
       const result = await this.browserPhaseExecutor.execute({
         executionId,
+        executionStepId: stepId,
         phaseKey: phaseMetadata.phaseKey,
         phaseName: phaseMetadata.phaseName,
         phaseType: phaseMetadata.phaseType,
@@ -220,7 +248,7 @@ export class ExecutionStepExecutorService {
         policyContext: hooks.buildBrowserPhasePolicyContext(execution),
         traceContext: hooks.buildBrowserPhaseTraceContext(execution),
         commands: browserPhaseConfig.commands,
-        input: hooks.extractBrowserPhaseInput(step as Record<string, unknown> | null | undefined),
+        input: phaseInput,
         precheck: browserPhaseConfig.precheck,
         postcheck: browserPhaseConfig.postcheck,
         recoveryPolicy: browserPhaseConfig.recoveryPolicy,

@@ -230,6 +230,32 @@ export function ExecutionDetailPage() {
       },
     }
   );
+  const approveAndContinueMutation = useMutation(
+    async () => {
+      if (!id) {
+        throw new Error('缺少执行 ID');
+      }
+      const payload = {
+        stepId: execution.currentStepId || undefined,
+        comment: '同意并继续',
+      };
+      if (execution.currentPhaseKey) {
+        return executionApi.resumePhaseTakeover(id, execution.currentPhaseKey, payload);
+      }
+      return executionApi.releaseHumanControl(id, payload);
+    },
+    {
+      onSuccess: async () => {
+        void message.success('已同意并继续后续执行');
+        await refreshExecutionQueries();
+      },
+      onError: (mutationError) => {
+        void message.error(
+          mutationError instanceof Error ? mutationError.message : '同意并继续失败'
+        );
+      },
+    }
+  );
   const releaseHumanControlMutation = useMutation(
     async () => {
       if (!id) {
@@ -287,6 +313,21 @@ export function ExecutionDetailPage() {
       );
     }
 
+    if (button.action === 'approve_and_continue') {
+      return (
+        <Button
+          key={button.key}
+          type={button.type}
+          danger={button.danger}
+          onClick={() => void approveAndContinueMutation.mutateAsync()}
+          loading={approveAndContinueMutation.isLoading}
+          disabled={releaseHumanControlMutation.isLoading}
+        >
+          {button.label}
+        </Button>
+      );
+    }
+
     return (
       <Button
         key={button.key}
@@ -294,6 +335,7 @@ export function ExecutionDetailPage() {
         danger={button.danger}
         onClick={() => void releaseHumanControlMutation.mutateAsync()}
         loading={releaseHumanControlMutation.isLoading}
+        disabled={approveAndContinueMutation.isLoading}
       >
         {button.label}
       </Button>

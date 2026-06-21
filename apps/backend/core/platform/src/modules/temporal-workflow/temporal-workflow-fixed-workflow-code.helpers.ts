@@ -195,53 +195,134 @@ export function buildFixedBrowserPhaseWorkflowCode(args: {
     resultType: 'generic',
     title: workflowDisplayName,
   });
+  const browserLoopDraft =
+    workflowDsl.sourceContext?.sourceType === 'browser_template' &&
+    workflowDsl.sourceContext.browserLoopDraft &&
+    Array.isArray(workflowDsl.sourceContext.browserLoopDraft.eachIteration?.stepIds) &&
+    workflowDsl.sourceContext.browserLoopDraft.eachIteration?.stepIds?.length
+      ? workflowDsl.sourceContext.browserLoopDraft
+      : undefined;
+  const resolveLoopSegment = (pair: { step: WorkflowStep; activityDef: ActivityDefinition }) => {
+    const rawSegment =
+      typeof pair.activityDef.config?.loopSegment === 'string'
+        ? pair.activityDef.config.loopSegment
+        : undefined;
+    if (rawSegment === 'pre_loop' || rawSegment === 'iteration' || rawSegment === 'post_loop') {
+      return rawSegment;
+    }
+    return 'pre_loop';
+  };
+  const preLoopPairs = browserActivityPairs.filter((pair) => resolveLoopSegment(pair) === 'pre_loop');
+  const iterationPairs = browserActivityPairs.filter(
+    (pair) => resolveLoopSegment(pair) === 'iteration'
+  );
+  const postLoopPairs = browserActivityPairs.filter(
+    (pair) => resolveLoopSegment(pair) === 'post_loop'
+  );
 
-  const phaseExecutionLines = browserActivityPairs.flatMap(({ step, activityDef }) => {
-    const executeActivityTimeoutLines = buildExecuteActivityTimeoutLines(
-      step,
-      activityDef.timeout || '60s'
-    );
-    return [
-      `        workflow.logger.info(${JSON.stringify(`执行浏览器 Phase Activity: ${activityDef.name}`)})`,
-      '        phase_result = await workflow.execute_activity(',
-      `            ${activityDef.fn},`,
-      '            shared_activity_input,',
-      ...executeActivityTimeoutLines,
-      '        )',
-      '        phase_results.append({',
-      `            "stepId": ${JSON.stringify(step.id)},`,
-      `            "stepName": ${JSON.stringify(step.name)},`,
-      `            "activityName": ${JSON.stringify(activityDef.name)},`,
-      '            "result": phase_result,',
-      '        })',
-      '        phase_status = str((phase_result or {}).get("status") if isinstance(phase_result, dict) else "").strip().lower()',
-      '        if phase_status in ("failed", "blocked", "waiting", "takeover_required"):',
-      '            return {',
-      '                "execution": {"status": phase_status or "failed"},',
-      '                "trigger": {"type": "manual"},',
-      '                "result": {',
-      '                    "resultType": "generic",',
-      `                    "title": ${JSON.stringify(workflowDisplayName)},`,
-      '                    "summary": phase_result.get("errorMessage") if isinstance(phase_result, dict) else None,',
-      '                    "businessData": {',
-      '                        "runtimeSessionId": runtime_session_id,',
-      '                        "backend": backend,',
-      '                        "phaseResults": phase_results,',
-      '                        "result": phase_result,',
-      '                        "errorCode": phase_result.get("errorCode") if isinstance(phase_result, dict) else None,',
-      '                        "errorMessage": phase_result.get("errorMessage") if isinstance(phase_result, dict) else None,',
-      '                        "retryable": bool(phase_result.get("retryable")) if isinstance(phase_result, dict) else False,',
-      '                        "requiresTakeover": bool(phase_result.get("requiresTakeover")) if isinstance(phase_result, dict) else False,',
-      '                        "takeoverReason": phase_result.get("takeoverReason") if isinstance(phase_result, dict) else None,',
-      '                    },',
-      '                },',
-      '                "artifacts": self._collect_artifacts(phase_result),',
-      '                "presentation": {"preferAiSummary": True, "preferStructuredView": False, "summaryFormat": "plain_text", "detailFormat": "plain_text", "detailText": phase_result.get("errorMessage") if isinstance(phase_result, dict) else None, "chatSummary": phase_result.get("errorMessage") if isinstance(phase_result, dict) else None, "notificationSummary": phase_result.get("errorMessage") if isinstance(phase_result, dict) else None},',
-      '            }',
-    ];
+  const buildPhaseExecutionLines = (input: {
+    pairs: Array<{ step: WorkflowStep; activityDef: ActivityDefinition }>;
+    indentLevel: number;
+    loopIterationExpression?: string;
+  }) => {
+    const indent = '    '.repeat(input.indentLevel);
+    const childIndent = `${indent}    `;
+    const grandIndent = `${childIndent}    `;
+    return input.pairs.flatMap(({ step, activityDef }) => {
+      const executeActivityTimeoutLines = buildExecuteActivityTimeoutLines(
+        step,
+        activityDef.timeout || '60s'
+      ).map((line) => `${childIndent}${line.trimStart()}`);
+      return [
+        `${indent}workflow.logger.info(${JSON.stringify(`执行浏览器 Phase Activity: ${activityDef.name}`)})`,
+        `${indent}phase_result = await workflow.execute_activity(`,
+        `${childIndent}${activityDef.fn},`,
+        `${childIndent}shared_activity_input,`,
+        ...executeActivityTimeoutLines,
+        `${indent})`,
+        `${indent}phase_entry = {`,
+        `${childIndent}"stepId": ${JSON.stringify(step.id)},`,
+        `${childIndent}"stepName": ${JSON.stringify(step.name)},`,
+        `${childIndent}"activityName": ${JSON.stringify(activityDef.name)},`,
+        `${childIndent}"loopSegment": ${JSON.stringify(resolveLoopSegment({ step, activityDef }))},`,
+        ...(input.loopIterationExpression
+          ? [`${childIndent}"loopIteration": ${input.loopIterationExpression},`]
+          : []),
+        `${childIndent}"result": phase_result,`,
+        `${indent}}`,
+        `${indent}phase_results.append(phase_entry)`,
+        `${indent}phase_status = str((phase_result or {}).get("status") if isinstance(phase_result, dict) else "").strip().lower()`,
+        `${indent}if phase_status in ("failed", "blocked", "waiting", "takeover_required"):`,
+        `${childIndent}return {`,
+        `${grandIndent}"execution": {"status": phase_status or "failed"},`,
+        `${grandIndent}"trigger": {"type": "manual"},`,
+        `${grandIndent}"result": {`,
+        `${grandIndent}    "resultType": "generic",`,
+        `${grandIndent}    "title": ${JSON.stringify(workflowDisplayName)},`,
+        `${grandIndent}    "summary": phase_result.get("errorMessage") if isinstance(phase_result, dict) else None,`,
+        `${grandIndent}    "businessData": {`,
+        `${grandIndent}        "runtimeSessionId": runtime_session_id,`,
+        `${grandIndent}        "backend": backend,`,
+        `${grandIndent}        "phaseResults": phase_results,`,
+        `${grandIndent}        "result": phase_result,`,
+        `${grandIndent}        "errorCode": phase_result.get("errorCode") if isinstance(phase_result, dict) else None,`,
+        `${grandIndent}        "errorMessage": phase_result.get("errorMessage") if isinstance(phase_result, dict) else None,`,
+        `${grandIndent}        "retryable": bool(phase_result.get("retryable")) if isinstance(phase_result, dict) else False,`,
+        `${grandIndent}        "requiresTakeover": bool(phase_result.get("requiresTakeover")) if isinstance(phase_result, dict) else False,`,
+        `${grandIndent}        "takeoverReason": phase_result.get("takeoverReason") if isinstance(phase_result, dict) else None,`,
+        `${grandIndent}    },`,
+        `${grandIndent}},`,
+        `${grandIndent}"artifacts": self._collect_artifacts(phase_result),`,
+        `${grandIndent}"presentation": {"preferAiSummary": True, "preferStructuredView": False, "summaryFormat": "plain_text", "detailFormat": "plain_text", "detailText": phase_result.get("errorMessage") if isinstance(phase_result, dict) else None, "chatSummary": phase_result.get("errorMessage") if isinstance(phase_result, dict) else None, "notificationSummary": phase_result.get("errorMessage") if isinstance(phase_result, dict) else None},`,
+        `${childIndent}}`,
+      ];
+    });
+  };
+
+  const phaseExecutionLines = buildPhaseExecutionLines({
+    pairs: browserActivityPairs,
+    indentLevel: 2,
   });
+  const browserLoopExecutionLines =
+    browserLoopDraft && iterationPairs.length > 0
+      ? [
+          '        loop_stop_condition = self._normalize_stop_condition(self.BROWSER_LOOP_DRAFT)',
+          `        max_iterations = ${Math.max(1, Number(browserLoopDraft.maxIterations || 100))}`,
+          '        current_iteration = 1',
+          '        last_loop_value = ""',
+          ...buildPhaseExecutionLines({
+            pairs: preLoopPairs,
+            indentLevel: 2,
+          }),
+          '        while current_iteration <= max_iterations:',
+          '            iteration_start_index = len(phase_results)',
+          ...buildPhaseExecutionLines({
+            pairs: iterationPairs,
+            indentLevel: 3,
+            loopIterationExpression: 'current_iteration',
+          }),
+          '            iteration_phase_results = phase_results[iteration_start_index:]',
+          '            last_loop_value = self._extract_loop_value(iteration_phase_results)',
+          '            should_stop = self._evaluate_loop_stop(loop_stop_condition, last_loop_value)',
+          '            if should_stop:',
+          '                break',
+          '            current_iteration += 1',
+          '        loop_state = {',
+          '            "status": "completed",',
+          '            "currentIteration": current_iteration,',
+          '            "maxIterations": max_iterations,',
+          '            "lastValue": last_loop_value,',
+          '            "stopCondition": loop_stop_condition,',
+          '        }',
+          ...buildPhaseExecutionLines({
+            pairs: postLoopPairs,
+            indentLevel: 2,
+          }),
+        ]
+      : null;
 
   return [
+    'import re',
     'from datetime import timedelta',
     'from typing import Any, Dict, List',
     'import json',
@@ -253,6 +334,9 @@ export function buildFixedBrowserPhaseWorkflowCode(args: {
     `@workflow.defn(name=${JSON.stringify(workflowDisplayName)})`,
     `class ${workflowClassName}:`,
     `    ACTIVITY_START_TO_CLOSE_TIMEOUT = ${workflowTimeoutCode}`,
+    ...(browserLoopDraft
+      ? [`    BROWSER_LOOP_DRAFT = ${JSON.stringify(browserLoopDraft)}`]
+      : []),
     '',
     '    @staticmethod',
     '    def _normalize(value: Any) -> Any:',
@@ -288,6 +372,63 @@ export function buildFixedBrowserPhaseWorkflowCode(args: {
     '        if missing_params:',
     '            raise ApplicationError(f"缺少必需参数: {\', \'.join(missing_params)}", non_retryable=True)',
     '',
+    ...(browserLoopDraft
+      ? [
+          '    @staticmethod',
+          '    def _normalize_stop_condition(loop_draft: Dict[str, Any]) -> str:',
+          '        if not isinstance(loop_draft, dict):',
+          '            return ""',
+          '        stop_when = loop_draft.get("stopWhen") or {}',
+          '        if not isinstance(stop_when, dict):',
+          '            return ""',
+          '        condition = stop_when.get("conditionFn") or stop_when.get("condition_fn") or ""',
+          '        return str(condition or "").strip()',
+          '',
+          '    @staticmethod',
+          '    def _extract_loop_value(iteration_phase_results: List[Dict[str, Any]]) -> str:',
+          '        for item in reversed(iteration_phase_results):',
+          '            if not isinstance(item, dict):',
+          '                continue',
+          '            result = item.get("result")',
+          '            if not isinstance(result, dict):',
+          '                continue',
+          '            raw_results = result.get("results") or []',
+          '            if not isinstance(raw_results, list):',
+          '                continue',
+          '            for raw in reversed(raw_results):',
+          '                if not isinstance(raw, dict):',
+          '                    continue',
+          '                data = raw.get("data")',
+          '                if isinstance(data, dict):',
+          '                    text_value = data.get("text")',
+          '                    if text_value is not None:',
+          '                        return str(text_value)',
+          '            message = result.get("message")',
+          '            if message is not None:',
+          '                return str(message)',
+          '        return ""',
+          '',
+          '    @staticmethod',
+          '    def _evaluate_loop_stop(condition: str, value: str) -> bool:',
+          '        normalized = str(condition or "").strip()',
+          '        if not normalized:',
+          '            return False',
+          `        include_negated = re.match(r"""^!String\\(value \\|\\| ['"]{2}\\)\\.includes\\((['"])(.+)\\1\\)$""", normalized)`,
+          '        if include_negated:',
+          '            return include_negated.group(2) not in str(value or "")',
+          `        include_match = re.match(r"""^String\\(value \\|\\| ['"]{2}\\)\\.includes\\((['"])(.+)\\1\\)$""", normalized)`,
+          '        if include_match:',
+          '            return include_match.group(2) in str(value or "")',
+          `        equals_match = re.match(r"""^value\\s*===\\s*(['"])(.+)\\1$""", normalized)`,
+          '        if equals_match:',
+          '            return str(value or "") == equals_match.group(2)',
+          `        not_equals_match = re.match(r"""^value\\s*!==\\s*(['"])(.+)\\1$""", normalized)`,
+          '        if not_equals_match:',
+          '            return str(value or "") != not_equals_match.group(2)',
+          '        return False',
+          '',
+        ]
+      : []),
     ...workflowResultSupportLines,
     '    async def run(self, params: dict) -> Dict[str, Any]:',
     `        workflow.logger.info(${JSON.stringify(`启动工作流: ${workflowDisplayName}`)})`,
@@ -304,11 +445,12 @@ export function buildFixedBrowserPhaseWorkflowCode(args: {
     '        if "initialUrl" in normalized_params:',
     '            shared_activity_input["initialUrl"] = self._normalize(normalized_params.get("initialUrl"))',
     '        phase_results: List[Dict[str, Any]] = []',
-    ...phaseExecutionLines,
+    ...(browserLoopExecutionLines || phaseExecutionLines),
     '        return self._build_workflow_result({',
     '            "runtimeSessionId": runtime_session_id,',
     '            "backend": backend,',
     '            "phaseResults": phase_results,',
+    ...(browserLoopDraft ? ['            "loopState": loop_state,'] : []),
     '            "result": phase_results[-1]["result"] if phase_results else None,',
     '        })',
     '',

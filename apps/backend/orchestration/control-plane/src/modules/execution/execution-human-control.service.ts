@@ -70,6 +70,45 @@ interface ExecutionHumanControlHooks {
 export class ExecutionHumanControlService {
   private readonly logger = new Logger(ExecutionHumanControlService.name);
 
+  // #region debug-point shared:phase-resume-no-effect
+  private reportPhaseResumeDebug(
+    hypothesisId: 'A' | 'B' | 'C' | 'D' | 'E',
+    msg: string,
+    data: Record<string, unknown>,
+    runId = 'pre-fix'
+  ): void {
+    const fs = require('fs') as typeof import('fs');
+    const envPaths = [
+      '/app/.dbg/phase-resume-no-effect.env',
+      '/Users/chain/Documents/MyProject/ops-automation/.dbg/phase-resume-no-effect.env',
+    ];
+    let url = 'http://host.docker.internal:7777/event';
+    let sessionId = 'phase-resume-no-effect';
+    for (const envPath of envPaths) {
+      try {
+        const env = fs.readFileSync(envPath, 'utf8');
+        url = env.match(/DEBUG_SERVER_URL=(.+)/)?.[1]?.trim() || url;
+        sessionId = env.match(/DEBUG_SESSION_ID=(.+)/)?.[1]?.trim() || sessionId;
+        break;
+      } catch {}
+    }
+    const payload = {
+      sessionId,
+      runId,
+      hypothesisId,
+      location: 'execution-human-control.service',
+      msg: `[DEBUG] ${msg}`,
+      data,
+      ts: Date.now(),
+    };
+    void fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }).catch(() => undefined);
+  }
+  // #endregion
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly executionPhaseService: ExecutionPhaseService,
@@ -289,6 +328,20 @@ export class ExecutionHumanControlService {
     }
 
     const phase = await this.requirePhaseRecord(executionId, phaseKey);
+    // #region debug-point A:resume-phase-request
+    this.reportPhaseResumeDebug('A', 'resumePhaseTakeover received request', {
+      executionId,
+      phaseKey,
+      userId,
+      requestedStepId: dto.stepId || null,
+      comment: dto.comment || null,
+      executionStatus: execution.status,
+      currentPhaseKey: (execution as unknown as Record<string, unknown>).currentPhaseKey || null,
+      phaseStatus: phase.status || null,
+      phaseRuntimeSessionId: phase.runtime_session_id || null,
+      recoveryDecision: phase.recovery_decision_json || null,
+    });
+    // #endregion
     await this.resolvePhaseTakeoverAndMarkRunning(executionId, phase, userId, dto.comment);
     const runtimeSessionId = await this.exitHumanControlAndResume(
       executionId,
@@ -296,6 +349,14 @@ export class ExecutionHumanControlService {
       dto.stepId,
       phase.runtime_session_id
     );
+    // #region debug-point B:resume-phase-after-exit
+    this.reportPhaseResumeDebug('B', 'resumePhaseTakeover resumed human control', {
+      executionId,
+      phaseKey,
+      requestedStepId: dto.stepId || null,
+      runtimeSessionId: runtimeSessionId || null,
+    });
+    // #endregion
     await hooks.emitEvent(executionId, EXECUTION_EVENT_TYPE.EXECUTION_RESUMED, {
       userId,
       stepId: dto.stepId,
@@ -388,7 +449,8 @@ export class ExecutionHumanControlService {
     executionId: string,
     hooks: ExecutionHumanControlHooks,
     stepId?: string,
-    preferredRuntimeSessionId?: string | null
+    preferredRuntimeSessionId?: string | null,
+    resumeRuntimeSession = true
   ): Promise<string | null> {
     await hooks.updateStatus(executionId, EXECUTION_STATUS.RUNNING);
     await this.prisma.execution.update({
@@ -403,7 +465,9 @@ export class ExecutionHumanControlService {
       executionId,
       preferredRuntimeSessionId
     );
-    await hooks.resumeRuntimeSessionQuietly(runtimeSessionId, executionId, stepId);
+    if (resumeRuntimeSession) {
+      await hooks.resumeRuntimeSessionQuietly(runtimeSessionId, executionId, stepId);
+    }
     return runtimeSessionId;
   }
 
@@ -413,6 +477,9 @@ export class ExecutionHumanControlService {
     userId: string,
     resolutionNote?: string
   ): Promise<void> {
+    const recoveryDecision = this.readJsonRecord(phase.recovery_decision_json);
+    const recoveryPatch = this.readJsonRecord(recoveryDecision?.patch);
+    const skipFailedStepRequeue = recoveryPatch?.type === 'resolve_by_human';
     const execution = await this.prisma.execution.findUnique({
       where: { id: executionId },
       select: { currentStepId: true },
@@ -422,12 +489,31 @@ export class ExecutionHumanControlService {
       const currentStepPhase = this.extractStepPhaseMetadata(
         currentStep as Record<string, unknown> | null | undefined
       );
+      // #region debug-point C:resolve-phase-current-step
+      this.reportPhaseResumeDebug('C', 'resolvePhaseTakeoverAndMarkRunning inspected current step', {
+        executionId,
+        phaseKey: phase.phase_key || null,
+        currentStepId: execution.currentStepId,
+        currentStepStatus: currentStep?.status || null,
+        currentStepPhaseKey: currentStepPhase?.phaseKey || null,
+        resolutionNote: resolutionNote || null,
+        recoveryDecision: phase.recovery_decision_json || null,
+      });
+      // #endregion
       if (
         currentStep &&
         currentStep.status === EXECUTION_STEP_STATUS.FAILED &&
-        currentStepPhase?.phaseKey === phase.phase_key
+        currentStepPhase?.phaseKey === phase.phase_key &&
+        !skipFailedStepRequeue
       ) {
         await this.executionStepService.requeueFailedStep(currentStep.id);
+        // #region debug-point D:requeue-failed-step
+        this.reportPhaseResumeDebug('D', 'resolvePhaseTakeoverAndMarkRunning requeued failed step', {
+          executionId,
+          phaseKey: phase.phase_key || null,
+          requeuedStepId: currentStep.id,
+        });
+        // #endregion
       }
     }
 
@@ -505,9 +591,18 @@ export class ExecutionHumanControlService {
   }
 
   private readJsonRecord(value: unknown): Record<string, unknown> | undefined {
-    return value && typeof value === 'object' && !Array.isArray(value)
-      ? (value as Record<string, unknown>)
-      : undefined;
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      return value as Record<string, unknown>;
+    }
+    if (typeof value === 'string' && value.trim().length > 0) {
+      try {
+        const parsed = JSON.parse(value);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          return parsed as Record<string, unknown>;
+        }
+      } catch {}
+    }
+    return undefined;
   }
 
   private ensureExecutionPermission(

@@ -562,6 +562,86 @@ describe('BrowserCommandService', () => {
     ]);
   });
 
+  it('parses colloquial first-row detail phrasing into a row-scoped locator', async () => {
+    const service = createService();
+
+    const result = await service.parseCommand({
+      input: '点击第一个条记录，进行详细页面',
+      context: {
+        availableCandidates: [
+          {
+            candidateId: 'action_13',
+            kind: 'action',
+            label: '詳細',
+            summary:
+              'candidateId=action_13 | kind=action | role=button | action=detail | stable=open-project-detail | label=詳細',
+            source: 'probe',
+            role: 'button',
+            text: '詳細',
+            action: 'detail',
+            stableName: 'open-project-detail',
+            preferredLocator: {
+              type: 'css',
+              value: '[data-ai-action="detail"]',
+            },
+          },
+          {
+            candidateId: 'action_31',
+            kind: 'action',
+            label: '詳細',
+            summary:
+              'candidateId=action_31 | kind=action | role=button | row=1 | rowKey=PRJ-2026-001 | action=detail | stable=open-project-detail | label=詳細',
+            source: 'row',
+            role: 'button',
+            text: '詳細',
+            action: 'detail',
+            stableName: 'open-project-detail',
+            row: { index: 1, key: 'PRJ-2026-001' },
+            preferredLocator: {
+              type: 'css',
+              value: ':nth-match([data-ai-action="detail"], 1)',
+            },
+          },
+          {
+            candidateId: 'action_40',
+            kind: 'action',
+            label: '詳細',
+            summary:
+              'candidateId=action_40 | kind=action | role=button | row=2 | rowKey=PRJ-2026-002 | action=detail | stable=open-project-detail | label=詳細',
+            source: 'row',
+            role: 'button',
+            text: '詳細',
+            action: 'detail',
+            stableName: 'open-project-detail',
+            row: { index: 2, key: 'PRJ-2026-002' },
+            preferredLocator: {
+              type: 'css',
+              value: ':nth-match([data-ai-action="detail"], 2)',
+            },
+          },
+        ],
+      },
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.commands).toEqual([
+      expect.objectContaining({
+        tool: 'click',
+        params: {
+          target: ':nth-match([data-ai-action="detail"], 1)',
+        },
+        description: '点击第一个条记录，进行详细页面',
+        locator: expect.objectContaining({
+          strategy: 'css',
+          value: ':nth-match([data-ai-action="detail"], 1)',
+          generatedBy: 'candidate-first',
+          matchedCandidateId: 'action_31',
+          resolutionMode: 'preferred-locator',
+        }),
+      }),
+    ]);
+  });
+
   it('parses unique approve action from structured candidates', async () => {
     const service = createService();
 
