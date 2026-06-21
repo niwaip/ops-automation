@@ -279,11 +279,11 @@ class RecorderService {
   }
 
   startTakeover(request: StartTakeoverRequest): Promise<StartTakeoverResponse> {
-    return apiClient.post('/browser/takeover/start', request);
+    return apiClient.post('/browser-runtime/takeover/start', request);
   }
 
   stopTakeover(request: StopTakeoverRequest): Promise<StopTakeoverResponse> {
-    return apiClient.post('/browser/takeover/stop', request);
+    return apiClient.post('/browser-runtime/takeover/stop', request);
   }
 
   reconcileAfterTakeover(
@@ -293,7 +293,7 @@ class RecorderService {
   }
 
   resumeAfterTakeover(request: ResumeAfterTakeoverRequest): Promise<ResumeAfterTakeoverResponse> {
-    return apiClient.post('/browser/takeover/resume', request);
+    return apiClient.post('/browser-runtime/takeover/resume', request);
   }
 
   getTakeoverState(runtimeSessionId: string) {
@@ -301,7 +301,7 @@ class RecorderService {
       runtimeSessionId: string;
       runtime?: Record<string, unknown>;
       takeover?: Record<string, unknown>;
-    }>(`/browser/takeover/${encodeURIComponent(runtimeSessionId)}`);
+    }>(`/browser-runtime/takeover/${encodeURIComponent(runtimeSessionId)}`);
   }
 
   disconnect(): void {

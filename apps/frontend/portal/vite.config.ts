@@ -131,7 +131,17 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
-      '/api/browser': {
+      '/api/browser-semantics': {
+        target: getProxyTarget(
+          'ops-browser-semantics',
+          3006,
+          ['BROWSER_SEMANTICS_HOST'],
+          ['BROWSER_SEMANTICS_PORT']
+        ),
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/browser-semantics/, ''),
+      },
+      '/api/browser-runtime': {
         target: getProxyTarget(
           'ops-browser-worker',
           3004,
@@ -139,7 +149,7 @@ export default defineConfig({
           ['BROWSER_WORKER_PORT']
         ),
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
+        rewrite: (path) => path.replace(/^\/api\/browser-runtime/, '/browser'),
       },
       '/api/executions': {
         target: getProxyTarget(

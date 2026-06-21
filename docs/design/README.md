@@ -21,6 +21,13 @@
 - 统一能力模型与 Skill 发布：[Enterprise-Skill-Platform_Unified-Capability-Model-and-Skill-Publishing_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Unified-Capability-Model-and-Skill-Publishing_v4.0.md)
 - 浏览器执行指南：[Enterprise-Skill-Platform_AI-Browser-Execution-Guide_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_AI-Browser-Execution-Guide_v4.0.md)
 - Browser Loop Workflow 控制改造：[Enterprise-Skill-Platform_Browser-Loop-Workflow-Control-Plan_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Browser-Loop-Workflow-Control-Plan_v4.0.md)
+- 浏览器语义规则版本化与模块重组方案：[Enterprise-Skill-Platform_Browser-Semantic-Rule-Versioning-and-Module-Reorg-Plan_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Browser-Semantic-Rule-Versioning-and-Module-Reorg-Plan_v4.0.md)
+- Browser Mock ERP 评测站页面矩阵与任务集：[Enterprise-Skill-Platform_Browser-Mock-ERP-Evaluation-Site-Matrix_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Browser-Mock-ERP-Evaluation-Site-Matrix_v4.0.md)
+- 浏览器语义规则版本化数据模型与发布回退流程：[Enterprise-Skill-Platform_Browser-Semantic-Rule-Versioning-Data-and-Release-Flow_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Browser-Semantic-Rule-Versioning-Data-and-Release-Flow_v4.0.md)
+- 浏览器语义规则 Domain 下沉分层改造方案：[Enterprise-Skill-Platform_Browser-Semantic-Rule-Domain-Extraction-Plan_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Browser-Semantic-Rule-Domain-Extraction-Plan_v4.0.md)
+- Browser Semantics 服务 Schema 与模块蓝图：[Enterprise-Skill-Platform_Browser-Semantics-Service-Schema-and-Module-Blueprint_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Browser-Semantics-Service-Schema-and-Module-Blueprint_v4.0.md)
+- Browser Login 命令动态规则联动与 AI Fallback 方案：[Enterprise-Skill-Platform_Browser-Command-Login-Dynamic-Profile-and-AI-Fallback-Plan_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Browser-Command-Login-Dynamic-Profile-and-AI-Fallback-Plan_v4.0.md)
+- 浏览器语义规则版本化与模块重组实施 Backlog：[Enterprise-Skill-Platform_Browser-Semantic-Rule-Versioning-and-Module-Reorg-Implementation-Backlog_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Browser-Semantic-Rule-Versioning-and-Module-Reorg-Implementation-Backlog_v4.0.md)
 - Playwright CLI + AI 执行重构：[Enterprise-Skill-Platform_Playwright-CLI-AI-Execution-Refactor_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Playwright-CLI-AI-Execution-Refactor_v4.0.md)
 - Browser Phase 执行与恢复：[Enterprise-Skill-Platform_Browser-Phase-Execution-and-Recovery_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Browser-Phase-Execution-and-Recovery_v4.0.md)
 - browser-worker 模块拆分清单：[Enterprise-Skill-Platform_Browser-Worker-Module-Split-Checklist_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Browser-Worker-Module-Split-Checklist_v4.0.md)
@@ -36,10 +43,31 @@
 2. 当前执行基线：
    [Enterprise-Skill-Platform_AI-Browser-Execution-Guide_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_AI-Browser-Execution-Guide_v4.0.md)
    作用：录制态 AI/planner 的输入输出、动作边界、locator 与参数化规则。
-3. Loop 工作流主设计：
+3. 语义规则与模块重组方案：
+   [Enterprise-Skill-Platform_Browser-Semantic-Rule-Versioning-and-Module-Reorg-Plan_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Browser-Semantic-Rule-Versioning-and-Module-Reorg-Plan_v4.0.md)
+   作用：定义测试网站如何升级为评测站、业务语义规则如何版本化、浏览器目录如何按处理流程重组。
+4. `mock-erp` 页面矩阵与任务集：
+   [Enterprise-Skill-Platform_Browser-Mock-ERP-Evaluation-Site-Matrix_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Browser-Mock-ERP-Evaluation-Site-Matrix_v4.0.md)
+   作用：定义 `mock-erp` 的真实页面基线、页面变体、样本数据、任务集与评测目标。
+5. 语义规则版本化数据模型与发布回退流程：
+   [Enterprise-Skill-Platform_Browser-Semantic-Rule-Versioning-Data-and-Release-Flow_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Browser-Semantic-Rule-Versioning-Data-and-Release-Flow_v4.0.md)
+   作用：定义规则集对象、治理接口、灰度发布、回退和回放验证的正式契约。
+6. 语义规则 Domain 下沉分层改造方案：
+   [Enterprise-Skill-Platform_Browser-Semantic-Rule-Domain-Extraction-Plan_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Browser-Semantic-Rule-Domain-Extraction-Plan_v4.0.md)
+   作用：定义为什么规则资产应下沉到 `domain`、哪些能力留在 `ai-orchestrator`、以及新的服务边界。
+7. Browser Semantics 服务 Schema 与模块蓝图：
+   [Enterprise-Skill-Platform_Browser-Semantics-Service-Schema-and-Module-Blueprint_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Browser-Semantics-Service-Schema-and-Module-Blueprint_v4.0.md)
+   作用：定义 `browser-semantics` 服务的 Prisma schema、DTO、模块结构与首期 API 蓝图。
+8. Browser Login 命令动态规则联动与 AI Fallback：
+   [Enterprise-Skill-Platform_Browser-Command-Login-Dynamic-Profile-and-AI-Fallback-Plan_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Browser-Command-Login-Dynamic-Profile-and-AI-Fallback-Plan_v4.0.md)
+   作用：定义 `command-login` 如何从固定正则演进到受控动态 profile，并与规则管理、发布灰度和 AI fallback 打通。
+9. 语义规则与模块重组实施 Backlog：
+   [Enterprise-Skill-Platform_Browser-Semantic-Rule-Versioning-and-Module-Reorg-Implementation-Backlog_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Browser-Semantic-Rule-Versioning-and-Module-Reorg-Implementation-Backlog_v4.0.md)
+   作用：把测试网站、规则版本化、目录重组拆成可执行阶段、任务与验收标准。
+10. Loop 工作流主设计：
    [Enterprise-Skill-Platform_Browser-Loop-Workflow-Control-Plan_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Browser-Loop-Workflow-Control-Plan_v4.0.md)
    作用：解释为什么 loop 不能继续留在 runtime 黑盒中，以及 workflow 可见化的目标模型。
-4. Phase 与接管恢复设计：
+11. Phase 与接管恢复设计：
    [Enterprise-Skill-Platform_Browser-Phase-Execution-and-Recovery_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Browser-Phase-Execution-and-Recovery_v4.0.md)
    作用：解释 phase、接管、恢复、前端展示与执行 DTO 的边界。
 

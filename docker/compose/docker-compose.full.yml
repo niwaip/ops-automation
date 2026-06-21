@@ -242,6 +242,52 @@ services:
     networks:
       - ops-network
 
+  browser-semantics:
+    image: ${DOCKER_REGISTRY:-}node:20-bullseye
+    container_name: ops-browser-semantics
+    working_dir: /app
+    command: >
+      sh -c "npm config set registry https://registry.npmmirror.com
+      && npm config set fetch-retries 5
+      && npm config set fetch-retry-mintimeout 20000
+      && npm config set fetch-retry-maxtimeout 120000
+      && i=0
+      && until [ $$i -ge 5 ]; do
+        npm install --legacy-peer-deps --include=dev && break;
+        i=$$((i+1));
+        echo 'npm install failed, retrying in 10s...';
+        sleep 10;
+      done
+      && [ $$i -lt 5 ]
+      && j=0
+      && until [ $$j -ge 5 ]; do
+        npx prisma generate && break;
+        j=$$((j+1));
+        echo 'prisma generate failed, retrying in 10s...';
+        sleep 10;
+      done
+      && [ $$j -lt 5 ]
+      && npx prisma db push
+      && if [ \"${BROWSER_SEMANTICS_RUN_DEFAULT_SEED:-false}\" = \"true\" ]; then npm run seed:browser-recorder; fi
+      && npm run build
+      && npm run start"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-ops}:${POSTGRES_PASSWORD:-ops_secret}@postgres:5432/${POSTGRES_DB:-ops}?schema=browser_semantics
+      - PORT=${BROWSER_SEMANTICS_PORT:-3006}
+      - BROWSER_SEMANTICS_AUTO_SEED=${BROWSER_SEMANTICS_AUTO_SEED:-true}
+      - BROWSER_SEMANTICS_RUN_DEFAULT_SEED=${BROWSER_SEMANTICS_RUN_DEFAULT_SEED:-false}
+    ports:
+      - "${BROWSER_SEMANTICS_PORT:-3006}:${BROWSER_SEMANTICS_PORT:-3006}"
+    volumes:
+      - ${PROJECT_ROOT:-..}/apps/backend/domain/browser-semantics:/app
+      - browser_semantics_node_modules:/app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - ops-network
+
   ai-orchestrator:
     image: ${DOCKER_REGISTRY:-}node:20-bullseye
     container_name: ops-ai-orchestrator
@@ -286,6 +332,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      browser-semantics:
+        condition: service_started
     networks:
       - ops-network
 
@@ -492,6 +540,7 @@ volumes:
   browser_worker_node_modules:
   carbone_engine_node_modules:
   browser_template_node_modules:
+  browser_semantics_node_modules:
   ai_orchestrator_node_modules:
   portal_node_modules:
   user_web_node_modules:

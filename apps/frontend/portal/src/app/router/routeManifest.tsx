@@ -23,6 +23,7 @@ import RecorderDebugDetailPage from '@/features/recorder/pages/RecorderDebugDeta
 import UserAdminPage from '@/features/admin/users/pages/UserAdminPage';
 import AIModelAdminPage from '@/features/admin/models/pages/AIModelAdminPage';
 import SkillAdminPage from '@/features/admin/skills/pages/SkillAdminPage';
+import BrowserSemanticRuleAdminPage from '@/features/admin/browser-semantics/pages/BrowserSemanticRuleAdminPage';
 import SystemToolAdminPage from '@/features/admin/tools/pages/SystemToolAdminPage';
 import PromptDebugPage from '@/features/admin/prompt-debug/pages/PromptDebugPage';
 import FlowsPage from '@/features/admin/flows/pages/FlowsPage';
@@ -258,6 +259,12 @@ export const portalRouteEntries: PortalRouteEntry[] = [
           icon: <ThunderboltOutlined />,
           requiresAdmin: true,
         },
+        {
+          key: '/admin/browser-semantic-rules',
+          label: '规则管理(AI审查)',
+          icon: <OrderedListOutlined />,
+          requiresAdmin: true,
+        },
         { key: '/admin/tools', label: '系统工具', icon: <ToolOutlined />, requiresAdmin: true },
         {
           key: '/admin/prompt-debug',
@@ -279,6 +286,12 @@ export const portalRouteEntries: PortalRouteEntry[] = [
     element: <SkillAdminPage />,
     requiresAdmin: true,
     activeMenuKey: '/admin/skills',
+  },
+  {
+    path: '/admin/browser-semantic-rules',
+    element: <BrowserSemanticRuleAdminPage />,
+    requiresAdmin: true,
+    activeMenuKey: '/admin/browser-semantic-rules',
   },
   {
     path: '/admin/tools',

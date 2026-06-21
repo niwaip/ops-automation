@@ -22,7 +22,7 @@ import {
   AnalyzeBranchConditionResponseDto,
 } from '../branch-analysis/branch-analysis.dto';
 import { BranchAnalysisService } from '../branch-analysis/branch-analysis.service';
-import { BrowserPhaseRecoveryService } from '../browser-phase-recovery/browser-phase-recovery.service';
+import { BrowserPhaseRecoveryService } from '../browser/recovery/browser-phase-recovery.service';
 import { DeciderService } from '../decider/decider.service';
 import { ModelService } from '../model/model.service';
 import { PlannerService } from '../planner/planner.service';

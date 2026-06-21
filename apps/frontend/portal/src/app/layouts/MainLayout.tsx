@@ -1,3 +1,4 @@
+import React, { useEffect, useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { Layout, Menu, Dropdown, Button, Avatar, Space, Tag, Typography } from 'antd';
 import type { MenuProps } from 'antd';
@@ -33,6 +34,11 @@ const MainLayout: React.FC = () => {
   const { language, setLanguage, theme, toggleTheme, sidebarCollapsed, toggleSidebar } =
     usePreferencesStore();
   const menuItems = buildNavigationMenuItems(t, user?.role);
+  const [openKeys, setOpenKeys] = useState<string[]>(getDefaultNavigationOpenKeys(location.pathname));
+
+  useEffect(() => {
+    setOpenKeys(getDefaultNavigationOpenKeys(location.pathname));
+  }, [location.pathname]);
 
   const languageMenu: MenuProps = {
     items: [
@@ -159,7 +165,8 @@ const MainLayout: React.FC = () => {
           theme="dark"
           mode="inline"
           selectedKeys={[getSelectedNavigationKey(location.pathname)]}
-          defaultOpenKeys={getDefaultNavigationOpenKeys(location.pathname)}
+          openKeys={openKeys}
+          onOpenChange={(keys) => setOpenKeys(keys as string[])}
           items={menuItems}
           onClick={({ key }) => navigate(key)}
           style={{

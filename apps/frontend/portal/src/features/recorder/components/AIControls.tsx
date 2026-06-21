@@ -850,7 +850,7 @@ const AIControls: React.FC<AIControlsProps> = ({
     await Promise.all(
       [...uniqueSessions.values()].map(async ({ runtimeSessionId, backend }) => {
         try {
-          await apiClient.post('/browser/reset', {
+          await apiClient.post('/browser-runtime/reset', {
             runtimeSessionId,
             backend,
           });
@@ -1299,7 +1299,7 @@ const AIControls: React.FC<AIControlsProps> = ({
     async (commands: MCPCommand[]): Promise<BrowserCommandExecutionResponse> => {
       const commandsWithWait = appendDefaultWaitCommands(commands);
       console.log('[AIControls] Executing commands:', commands, 'backend:', executionBackend);
-      return apiClient.post('/browser/execute', {
+      return apiClient.post('/browser-runtime/execute', {
         commands: commandsWithWait,
         backend: executionBackend,
         runtimeSessionId: browserRuntimeSessionId,
@@ -1449,7 +1449,7 @@ const AIControls: React.FC<AIControlsProps> = ({
   const initBrowserMutation = useMutation(
     async (): Promise<BrowserInitResponse> => {
       console.log('[AIControls] Initializing browser with backend:', executionBackend);
-      return apiClient.post('/browser/init', {
+      return apiClient.post('/browser-runtime/init', {
         backend: executionBackend,
         runtimeSessionId: browserRuntimeSessionId,
         sessionPreferences: {
