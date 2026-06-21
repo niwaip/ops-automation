@@ -5,6 +5,7 @@
 
 > 本文定义 browser recording skill 在存在 `loopDraft` 时的目标执行模型。  
 > 目标是在保留 `loop` 正确语义的同时，让每一个浏览器步骤继续作为 `activity` 暴露给 workflow，支持截图、审计、人工接管、接管后从具体步骤恢复。
+> 当前状态：本文所述方向已部分落地。`browser_loop_workflow`、`loop_workflow`、轮次写库、详情页/抽屉中的轮次与接管展示已经进入现网代码；但文中部分数据模型、状态机和 runtime 协议细节仍属于目标态或持续收口中的设计描述。
 
 ---
 
@@ -25,7 +26,7 @@
 
 ### 2.1 现状
 
-当前链路存在两种执行模式：
+历史上当前链路存在两种执行模式；截至本文校对时，第三种 loop-aware workflow 模式已经开始落地：
 
 - 旧模式
   - browser recording skill 被 `control-plane` 改写为多个线性 `workflow_activity`

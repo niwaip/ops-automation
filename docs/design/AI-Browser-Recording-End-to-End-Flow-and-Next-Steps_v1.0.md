@@ -1,8 +1,9 @@
-# AI 浏览器录制到模板发布调用整体流程与下一步设计 v1.1
+# AI 浏览器录制到模板发布调用整体流程与现状校对 v1.2
 
-> 版本：v1.1  
-> 日期：2026-06-18  
-> 状态：进行中
+> 版本：v1.2  
+> 日期：2026-06-21  
+> 状态：已按当前代码校对，持续更新
+> 定位：根目录总览文档；浏览器执行细分规范请优先配合 `docs/design/v4/` 中的浏览器专题文档一起阅读
 
 ---
 
@@ -13,7 +14,7 @@
 3. [端到端主流程](#3-端到端主流程)
 4. [核心模块职责](#4-核心模块职责)
 5. [当前设计与业界最佳实践的对照](#5-当前设计与业界最佳实践的对照)
-6. [项目内建议采纳的改进项](#6-项目内建议采纳的改进项)
+6. [当前仍值得推进的改进项](#6-当前仍值得推进的改进项)
 7. [下一步任务清单](#7-下一步任务清单)
 8. [最小改动落地点与 Patch 顺序](#8-最小改动落地点与-patch-顺序)
 9. [轻量优化约束](#9-轻量优化约束)
@@ -41,7 +42,25 @@
 文档同时输出两类结果：
 
 - 梳理当前已经落地、并且经过真实端到端验证的处理流程。
-- 结合项目现状，把值得采纳的改进点沉淀为下一步明确任务。
+- 标记哪些能力已经完成，哪些能力仍处于收口阶段。
+
+### 1.1.1 与 v4 文档的关系
+
+本文档负责回答“浏览器链路整体是怎么串起来的”，重点是跨模块总览：
+
+- 录制
+- 导出
+- bridge / publish
+- published skill runtime
+- control-plane 展示、循环与接管
+
+`docs/design/v4/` 中的浏览器专题文档负责回答“某一块该怎么设计”，重点是分主题细化：
+
+- 浏览器执行指南：AI 输入输出、执行边界、步骤规范
+- Browser Loop Workflow：loop 从 runtime 黑盒迁移到 workflow 可见模型
+- Browser Phase Execution and Recovery：phase 切分、接管、恢复与展示契约
+
+因此，本文档不是 `v4` 的替代品，而是它们的入口总览与现状校对。
 
 ### 1.2 本次范围
 
@@ -52,9 +71,9 @@
 - 通用 Planner 全链路改造。
 - 平台级安全治理的完整制度设计。
 
-本次文档更新还新增一个明确约束：
+本次文档更新的明确约束：
 
-- 基本链路已经跑通，本轮优化以“补 contract、补校验、补可观测性”为主，不进行大改或重写主流程。
+- 基本链路已经跑通，当前重点是“校对现状、收口契约、补充可观测性与前端展示”，不再把已完成能力继续写成待办。
 
 ### 1.3 当前结论前提
 
@@ -62,7 +81,10 @@
 
 - 浏览器循环执行已经过真实 E2E 验证，可执行到终止条件。
 - 浏览器条件分支已经过真实 E2E 验证，支持 `continue` 与 `takeover`。
-- `RecorderDebugService` 已进入持续拆分阶段，结构探测、observation、snapshot、disambiguation、export assembly 等已独立成 service。
+- `RecorderDebugService` 已进入持续拆分阶段，聊天流、执行、观察刷新、导出装配等职责已经拆分到独立 service。
+- 录制态已经接入统一动作风险分级、阻断和确认逻辑。
+- 发布态已经接入 `browser-recording-ir/v1`、执行计划校验器、`degradedMode / degradeReason` 与 trace 字段。
+- control-plane 已支持 `browser_loop_workflow` 规划与 loop-aware 归一化，不再只依赖 runtime 黑盒循环。
 
 ---
 
@@ -83,10 +105,11 @@
 -> Runtime 严格按结构化 plan 执行
 ```
 
-这条链路有两个重要特点：
+这条链路有三个重要特点：
 
-- 探索态和生产态已经初步分层。
+- 探索态和生产态已经明显分层。
 - 条件、循环、接管等复杂语义依赖结构化 `templateSteps` 与 `runtimeMetadata.executionPlan`，而不是依赖模型在运行时自由发挥。
+- 对于需要逐步可见、可接管的浏览器循环执行，control-plane 已开始将 loop 提升为 workflow 可见模型，而不是继续完全留在 runtime 内部吞掉。
 
 ---
 
@@ -102,8 +125,10 @@
 用户输入自然语言
 -> 前端调用 /ai/recorder-debug/chat
 -> RecorderDebugService.chat()
--> observePageSafely()
+-> observePage() / buildCandidatesAndTrace()
+-> RecorderDebugChatFlowService.resolveFlow()
 -> BrowserCommandService.parseCommand()
+-> BrowserActionValidatorService.assessCommands()
 -> executeBrowserCommands()
 -> refreshObservationAfterExecution()
 -> 结果回到前端继续交互
@@ -116,6 +141,9 @@
 - `lastObservation`
 - `loopDraft`
 - `pendingDisambiguation`
+- `pendingRiskConfirmation`
+- `suggestedParameters`
+- `candidates / candidateTrace`
 
 ### 3.2 阶段 B：页面观察与元素理解
 
@@ -128,7 +156,7 @@
 - snapshot / accessibility 风格的结构化信息。
 - observation candidate 提示。
 
-当前实现中，`RecorderStructureProbeService` 负责把结构探测结果组装成 `RecorderProbeObservationLike`，其中包括：
+当前实现中，结构探测与 observation 装配已不再只是“按钮和输入框列表”，而是会进一步形成候选上下文，主要包括：
 
 - `inputs`
 - `buttons`
@@ -137,6 +165,9 @@
 - `headings`
 - `links`
 - `pageSemantics`
+- `candidates`
+- `candidateTrace`
+- `suggestedParameters`
 
 这一设计和业界“优先 accessibility snapshot / DOM，再退回视觉”的方向一致，也更适合当前业务页面。
 
@@ -163,13 +194,14 @@
 
 ### 3.4 阶段 D：浏览器执行与会话沉淀
 
-命令进入 `RecorderDebugService.executeBrowserCommands()` 后，会调用 browser worker 执行实际浏览器动作。
+命令进入录制执行层后，会先做统一动作校验与必要的风险确认，再调用 browser worker 执行实际浏览器动作。
 
 执行完成后：
 
 - 成功命令才会写入 `executedCommands`。
 - 失败命令不会污染录制导出。
 - 执行后会刷新 observation，作为下一轮自然语言解析的上下文。
+- 高风险动作会进入确认分支，而不是直接静默执行。
 
 这一步保证录制结果不是“用户以为做了什么”，而是“系统确认执行成功的动作集合”。
 
@@ -251,17 +283,23 @@ POST /capabilities/runtime/execute
 ```text
 CapabilityReleaseRuntimeService.executeBrowserRecordingPublishedSkill()
 -> 读取 release source payload
+-> BrowserRecordingExecutionPlanValidatorService.validateForRuntime()
 -> CapabilityReleaseBrowserRecordingService.buildRuntimePlan()
--> 解析 templateSteps / executionPlan / loopDraft
+-> 优先读取 runtimeMetadata.executionPlan
 -> 调 browser-worker 执行具体步骤
 ```
 
-在 runtime 阶段：
+在 published skill runtime 阶段：
 
 - 普通步骤按顺序执行。
 - `read_value` 会把页面读取结果写入变量。
 - `branch` 会基于 `conditionFn` 判断 `continue / stop / takeover`。
-- `loop` 会根据 `stopWhen` 与 `eachIteration` 执行循环。
+- 发布态执行会输出 `executionPlanVersion`、`degradedMode / degradeReason`、trace 与最小 runtime evidence。
+
+补充说明：
+
+- 对“已发布 skill 的参数化执行”场景，平台仍会消费 `runtimeMetadata.executionPlan` 构造 runtime plan。
+- 对“执行中心 / control-plane 需要逐步展示和接管”的场景，当前已经有 `browser_loop_workflow` 规划与 `loop_workflow` 归一化路径，用来保留轮次、步骤和恢复点可见性。
 
 ### 3.9 阶段 I：人工接管与恢复
 
@@ -379,19 +417,28 @@ CapabilityReleaseRuntimeService.executeBrowserRecordingPublishedSkill()
 | 审计                              | runtime 有 audit event 能力                              | 已采用 |
 | 探索与固化分层                    | recorder export 与 published skill runtime 已分层        | 已采用 |
 
-### 5.2 已经部分具备，但还不够显式的能力
+### 5.2 已经显式落地的能力
 
 | 方向                     | 当前状态                                             | 问题                            |
 | ------------------------ | ---------------------------------------------------- | ------------------------------- |
-| ReAct 状态结构           | 已有 observation、execution result、control hints    | 还没有统一成显式状态对象        |
-| Action Validator         | 已有 `validationRules` 文案和固定 executionPlan 约束 | 还缺统一的机器可执行校验层      |
-| 风险动作确认             | 已有 takeover 和 human control                       | 还没有动作分级策略              |
-| 策略化恢复               | 已有 freeze / resume / reconcile                     | 还缺统一恢复决策矩阵            |
-| 审计可视化               | 已有 audit event 和 phase takeover                   | 展示层还不够集中                |
-| ExecutionPlan 契约优先级 | runtime 已优先读取 `runtimeMetadata.executionPlan`   | 还没有明确写成唯一可信 contract |
-| Traceability             | 已有 release / draft / published skill 等标识        | 还没有形成完整反查链 contract   |
+| Action Validator         | 已有统一 `BrowserActionValidatorService`             | recorder 侧已落地，runtime 侧仍可继续收口 |
+| 风险动作确认             | 已有 `safe/caution/confirm/forbidden` 和确认流程     | 前端提示体验仍可继续优化        |
+| ExecutionPlan 契约优先级 | 已有 `executionPlanVersion` 和 `executionPlan first` | 旧数据兼容路径仍需长期清理      |
+| Plan Validation          | 已有 bridge/publish/runtime 三段校验器               | 规则还可继续扩展                |
+| Traceability             | 已有 `recorderSessionId/exportArtifactId/...` trace  | 跨产品展示仍不够集中            |
+| Loop Workflow            | 已有 `browser_loop_workflow` 和 `loop_workflow`      | 文档与产品口径还需统一          |
 
-### 5.3 不建议直接照搬的方向
+### 5.3 当前仍未完全收口的能力
+
+| 方向              | 当前状态                                           | 剩余问题                    |
+| ----------------- | -------------------------------------------------- | --------------------------- |
+| ReAct 状态结构    | 已有 observation、execution result、control hints  | 还没有统一成显式状态对象    |
+| 策略化恢复        | 已有 freeze / resume / reconcile                   | 还缺统一恢复决策矩阵        |
+| 审计可视化        | 已有 audit、phase takeover、execution summary      | 详情页/抽屉口径仍需继续统一 |
+| 旧路径兼容治理    | 已有 degradedMode 和 fallback 识别                 | legacy 数据仍需逐步收敛     |
+| Trace 展示        | trace 字段已存在                                   | 缺少稳定的产品展示入口      |
+
+### 5.4 不建议直接照搬的方向
 
 - 不建议把当前体系重构成 MCP-first。
 - 不建议把截图视觉模型作为主观察源。
@@ -400,530 +447,151 @@ CapabilityReleaseRuntimeService.executeBrowserRecordingPublishedSkill()
 
 ---
 
-## 6. 项目内建议采纳的改进项
+## 6. 当前仍值得推进的改进项
 
 ### 6.1 改进项 A：显式状态化 Recorder Prompt
 
-#### 目标
+#### 现状
 
-把当前录制态模型输入从“自然语言上下文拼接”升级成更显式的状态对象，减少长会话漂移。
+当前已经有 observation、candidate、control hints、risk confirmation，但还没有固化成统一的 recorder state DTO。
 
-#### 建议状态字段
+#### 继续推进的目标
 
-```json
-{
-  "previousActionResult": "success | failed | unknown",
-  "memory": "已完成动作和剩余目标",
-  "currentPageSummary": "当前页面摘要",
-  "candidateActions": [],
-  "riskLevel": "safe | caution | confirm",
-  "nextGoal": "下一步目标"
-}
-```
+把录制态模型输入从“多块上下文拼接”进一步升级成更显式的状态对象，减少长会话漂移。
 
-#### 价值
+### 6.2 改进项 B：恢复决策矩阵
 
-- 更贴近 ReAct 控制模式。
-- 更适合循环录制、多轮纠错和人工恢复后继续。
-- 方便后续把 prompt 策略沉淀成稳定 contract。
+#### 现状
 
-### 6.2 改进项 B：统一动作校验器
+当前已有 disambiguation、retry、takeover、resume、reconcile，但不同入口下的恢复策略仍然偏分散。
 
-#### 目标
+#### 继续推进的目标
 
-在 `parseCommand -> executeBrowserCommands` 之间新增统一校验层，对动作做前置约束。
+明确常见失败场景的标准恢复策略，统一 recorder、runtime、control-plane 三侧口径。
 
-#### 建议覆盖
+### 6.3 改进项 C：审计与接管视图统一
 
-- 跳转域名白名单。
-- 下载动作白名单。
-- 高风险动作人工确认。
-- 与当前 user goal 不一致的越界导航。
-- 参数型 skill 执行时禁止改写固定步骤。
+#### 现状
 
-#### 价值
+runtime 已有 audit、branch/loop evidence、phase takeover 与 execution summary，但产品展示仍在持续收口。
 
-- 把现有 `validationRules` 从提示语升级成真正的执行前约束。
-- 降低模型偶发漂移对生产执行的影响。
+#### 继续推进的目标
 
-### 6.3 改进项 C：动作风险分级
+在执行详情页、抽屉、聊天卡片中，统一展示条件判断、循环轮次、接管原因与恢复动作。
 
-#### 目标
+### 6.4 改进项 D：继续收缩 RecorderDebugService
 
-对浏览器动作建立统一风险分级，并在 recorder、runtime、takeover 侧共用。
+#### 现状
 
-#### 初始建议分级
+`RecorderDebugService` 已拆出聊天流、执行、观察刷新、导出等子服务，但主 orchestrator 仍有继续收缩空间。
 
-- `safe`：scroll、snapshot、read_value、wait
-- `caution`：navigate、switch_tab、普通 click
-- `confirm`：approve、submit、download、delete、外部域跳转
-- `forbidden`：未授权代码执行、绕过固定 executionPlan 的步骤改写
+#### 继续推进的目标
 
-#### 价值
+保持主服务只承担 orchestration，避免重新堆回策略与格式化逻辑。
 
-- 为人工确认和接管提供统一依据。
-- 让前端提示、runtime 拦截、audit 记录使用同一套语义。
+### 6.5 改进项 E：旧路径兼容治理
 
-### 6.4 改进项 D：恢复决策矩阵
+#### 现状
 
-#### 目标
+当前已具备 `executionPlanVersion`、validator、`degradedMode` 和 fallback 标识，但 legacy 模板/skill 仍然存在。
 
-明确浏览器执行失败后的标准恢复策略，而不是只靠局部判断。
+#### 继续推进的目标
 
-#### 建议决策
+让旧路径继续可识别、可提示、可逐步迁移，而不是长期与主路径并存混淆。
 
-- 定位歧义：先 disambiguation。
-- 页面轻微变化：允许重试一次并刷新 observation。
-- 条件不满足：`takeover_required`。
-- 登录失效或权限不足：直接进入 human control。
-- 结构化计划缺失：阻断执行并打审计。
+### 6.6 改进项 F：全链路 Trace 展示
 
-#### 价值
+#### 现状
 
-- 降低相似错误在不同入口下行为不一致的问题。
-- 让 runtime / recorder / control-plane 恢复语义更统一。
+trace 字段已经在 export、publish、runtime 中存在，但还没有形成稳定的产品反查入口。
 
-### 6.5 改进项 E：审计与接管视图统一
+#### 继续推进的目标
 
-#### 目标
-
-把 runtime 的 audit event、branch 结果、loop 状态、takeover 记录在产品侧统一呈现。
-
-#### 建议展示项
-
-- 当前执行到哪一步。
-- 最近一次 `read_value` 读到了什么。
-- `branch` 的条件表达式、人类可读说明和判定结果。
-- `loop` 当前第几轮、终止条件是什么。
-- takeover 原因和恢复动作。
-
-#### 价值
-
-- 降低排障成本。
-- 提高录制导出、发布、执行三阶段的一致性可观测性。
-
-### 6.6 改进项 F：继续收缩 RecorderDebugService
-
-#### 目标
-
-继续把 `RecorderDebugService` 收敛成纯 orchestration layer。
-
-#### 建议方向
-
-- 继续审视剩余 prompt build / control hint / session state merge 是否值得下沉。
-- 避免在主服务中重新堆积导出、恢复、验证、格式化逻辑。
-- 后续若测试文件继续膨胀，同步拆分 spec。
-
-#### 价值
-
-- 保持录制主服务职责清晰。
-- 让后续策略升级更容易落在独立 service 上。
-
-### 6.7 改进项 G：固化 ExecutionPlan 作为唯一运行时契约
-
-#### 目标
-
-明确 `runtimeMetadata.executionPlan` 是浏览器 runtime 的唯一可信执行契约，其他字段只作为兼容、展示或迁移辅助。
-
-#### 设计原则
-
-- runtime 执行优先读取 `release.sourcePayload.runtimeMetadata.executionPlan`。
-- `runtimeMetadata.templateSteps` 仅作为兼容或展示辅助，不作为长期主契约。
-- `executionFlow` 和 legacy steps 仅用于旧数据兜底，不应继续承载高级语义演进。
-
-#### 建议最小结构
-
-```json
-{
-  "executionPlanVersion": "browser-recording-ir/v1",
-  "templateSteps": [],
-  "parameters": [],
-  "outputs": [],
-  "loopDraft": {},
-  "runtimeHints": {},
-  "executionLimits": {}
-}
-```
-
-#### 价值
-
-- 降低多份元数据并存导致的不一致。
-- 为后续 branch / loop / recovery 演进提供稳定 IR。
-- 让 bridge、publish、runtime 三段围绕同一份结构协作。
-
-### 6.8 改进项 H：发布前 Plan Validation
-
-#### 目标
-
-在 bridge / publish 之前对 `executionPlan` 做结构化校验，尽量把错误拦在发布前，而不是在 runtime 里被动发现。
-
-#### 建议校验项
-
-- `templateSteps` 是否存在且非空。
-- `stepId` 是否唯一。
-- `branch` 引用的变量是否由前置 `read_value` 或输入参数提供。
-- `loop stopWhen` 是否可解析。
-- `outputs` 是否有来源。
-- 高风险动作是否具备明确策略。
-
-#### 价值
-
-- 降低高级语义在发布后退化为普通 steps 的概率。
-- 减少 `branch step missing conditionFn` 这类问题再次出现。
-
-### 6.9 改进项 I：退化治理与 Degraded Mode
-
-#### 目标
-
-当 runtime 遇到缺失元数据或只能 fallback 到旧路径时，避免静默退化，显式输出退化状态与原因。
-
-#### 建议最小返回
-
-```json
-{
-  "degradedMode": true,
-  "degradeReason": "missing runtimeMetadata.executionPlan.loopDraft"
-}
-```
-
-#### 价值
-
-- 让排障更直接，不需要依靠猜测判断是不是走了 legacy fallback。
-- 为后续审计和产品提示提供统一信号。
-
-### 6.10 改进项 J：全链路 Traceability
-
-#### 目标
-
-定义从 runtime 结果一路反查到录制与导出的最小追踪链。
-
-#### 建议最小链路字段
-
-- `recorderSessionId`
-- `exportArtifactId`
-- `releaseId`
-- `skillDraftId`
-- `publishedSkillId`
-- `runtimeExecutionId`
-
-#### 价值
-
-- 出现异常时可以从发布后 skill 反查到原始录制与导出上下文。
-- 方便条件与循环类问题做跨阶段定位。
+让发布后问题可以稳定反查到 recorder session、export artifact、release、published skill 与 runtime execution。
 
 ---
 
 ## 7. 下一步任务清单
 
-以下任务按优先级排列，作为下一阶段的设计任务与实施 backlog。
+以下任务仅保留尚未完全收口、仍值得继续推进的部分。
 
 ### 7.1 P0：显式状态化 Recorder Prompt
 
-#### 目标
+- 为 `BrowserCommandService` 与 recorder chat 引入统一状态对象 contract。
+- 让 prompt 能稳定看到 `previousActionResult / memory / nextGoal / riskLevel / candidateActions`。
 
-为 `BrowserCommandService` 与 recorder chat 引入统一状态对象 contract。
+### 7.2 P0：恢复决策矩阵与错误分类
 
-#### 任务
+- 明确定位歧义、页面轻微变化、权限问题、结构化计划缺失等场景的标准恢复路径。
+- 统一 `disambiguation / retry / takeover / stop / resume` 的判定口径。
 
-- 设计 recorder prompt state DTO。
-- 在 `RecorderDebugService` 中组装统一状态输入。
-- 改造 `BrowserCommandService` prompt 模板。
-- 补回归测试，验证多轮录制下的稳定性。
+### 7.3 P0：审计与接管视图统一
 
-#### 验收标准
+- 继续统一执行详情页、抽屉与聊天卡片中的 branch / loop / takeover 展示。
+- 让用户能直接看到条件判断值、循环轮次、接管原因和恢复动作。
 
-- 模型 prompt 中可稳定看到 `previousActionResult / memory / nextGoal`。
-- 多轮录制和循环录制场景下，误判率不高于当前实现。
+### 7.4 P1：Legacy 路径治理
 
-### 7.2 P0：统一动作校验器与风险分级
+- 明确 legacy 模板和 skill 的产品提示与运行时退化表现。
+- 逐步缩小“旧路径看起来能跑、实际语义降级”的灰区。
 
-#### 目标
+### 7.5 P1：继续拆分 RecorderDebugService 与 Spec
 
-把动作校验与风险分级从零散逻辑升级为统一模块。
+- 延续当前小步拆分策略，防止主服务和主 spec 再次膨胀。
+- 继续把 orchestration 外的策略、格式化、状态组装下沉到独立 service。
 
-#### 任务
+### 7.6 P1：Traceability 展示闭环
 
-- 定义动作风险等级枚举。
-- 新增浏览器动作 validator service。
-- 在 recorder 执行前接入 validator。
-- 在 runtime 执行前复用相同策略。
-- 将高风险动作与 human confirmation / takeover 打通。
-
-#### 验收标准
-
-- 相同动作在 recorder 和 runtime 侧风险判断一致。
-- 高风险动作能够被拦截、确认或接管。
-
-### 7.3 P0：固化 ExecutionPlan IR 与 Version
-
-#### 目标
-
-在不大改当前链路的前提下，为浏览器执行计划补齐正式 IR contract 与版本字段。
-
-#### 任务
-
-- 定义 `BrowserRecordingExecutionPlan v1` 的最小结构。
-- 在导出、bridge、publish、runtime 文档与代码中统一优先级。
-- 增加 `executionPlanVersion` 字段。
-- 保持现有字段兼容，不做大规模重构。
-
-#### 验收标准
-
-- runtime 侧的主读取路径被显式定义为 `runtimeMetadata.executionPlan`。
-- 新发布 skill 的 source snapshot 中可稳定看到版本化 execution plan。
-
-### 7.4 P0：发布前 Plan Validation
-
-#### 目标
-
-在 bridge / publish 前补一层 execution plan 校验，尽量前置发现问题。
-
-#### 任务
-
-- 新增 plan validation 规则集合。
-- 校验 `templateSteps`、`stepId`、`branch variable`、`loop stopWhen`、`outputs`。
-- 以轻量方式接入 bridge 或 publish 前置流程。
-- 保留兼容模式，不阻断已有健康链路。
-
-#### 验收标准
-
-- 高级语义缺失的 payload 不再静默进入发布态。
-- 常见结构问题能在发布前得到明确报错。
-
-### 7.5 P1：恢复决策矩阵
-
-#### 目标
-
-明确常见失败场景的标准恢复路径。
-
-#### 任务
-
-- 归类常见浏览器失败。
-- 输出错误类别到恢复策略映射表。
-- 在 recorder 和 runtime 中统一接线。
-- 增加针对性单测与 E2E 样本。
-
-#### 验收标准
-
-- 常见失败路径不会因入口不同出现截然不同的恢复行为。
-- takeover、retry、stop 的策略可追踪、可解释。
-
-### 7.6 P1：审计与接管可视化
-
-#### 目标
-
-统一呈现 branch / loop / takeover / audit 证据。
-
-#### 任务
-
-- 设计浏览器执行审计视图字段。
-- 聚合 runtime audit、phase takeover、step results。
-- 前端提供执行过程与接管原因展示。
-
-#### 验收标准
-
-- 用户可以直接看到条件判断值、循环轮次、接管原因和恢复动作。
-
-### 7.7 P1：退化治理与 Traceability
-
-#### 目标
-
-补齐退化状态标记和全链路追踪字段，但不改动已跑通的主执行逻辑。
-
-#### 任务
-
-- 定义 `degradedMode / degradeReason` 最小返回结构。
-- 增加 release 到 runtime 的关键 trace id 透传策略。
-- 明确从 runtime 反查 recorder/export/release 的字段关系。
-
-#### 验收标准
-
-- fallback 到旧路径时可显式识别。
-- 出现问题时可从 runtime 结果反查到 release 和导出上下文。
-
-### 7.8 P1：继续拆分 RecorderDebugService 与 Spec
-
-#### 目标
-
-延续当前的小步重构策略，防止主服务和主 spec 再次膨胀。
-
-#### 任务
-
-- 继续检查剩余 wrapper 和 orchestration 边界。
-- 按职责拆分 `recorder-debug.service.spec.ts`。
-- 每轮拆分后继续跑 diagnostics、单测、重启、真实 E2E。
-
-#### 验收标准
-
-- `RecorderDebugService` 继续收缩。
-- Spec 不再成为新的超大文件。
+- 在产品侧提供稳定入口，让 runtime 结果能反查 recorder/export/release/published skill。
 
 ---
 
 ## 8. 最小改动落地点与 Patch 顺序
 
-本节用于把“不要大改、只做低风险补强”的原则进一步收敛成可执行补丁包，避免讨论再次发散到重构主链路。
+本节改为记录“当前已经落地的低风险补强”和“剩余推荐顺序”，避免继续把已完成事项写成 patch 计划。
 
-### 8.1 本轮不改
+### 8.1 已完成的低风险补强
 
-以下内容本轮不作为改造目标：
+当前已经落地：
 
-- 不改 `recorder export -> release snapshot -> runtime execution` 主链路。
-- 不重写 `RecorderDebugService` 的录制交互模型。
-- 不改 release / skill draft / publish 的基本流程语义。
-- 不改 browser-worker 的基础动作执行协议。
-- 不推翻当前已验证通过的 loop / branch 样本。
-
-### 8.2 本轮只加
-
-本轮推荐只补以下低风险能力：
-
-- `executionPlanVersion`
+- `browser-recording-ir/v1`
 - `executionPlan first` 的读取优先级显式化
-- `executionPlan validator`
+- `BrowserRecordingExecutionPlanValidatorService`
 - `degradedMode / degradeReason`
 - trace ids
 - runtime evidence
+- recorder 侧动作风险分级和确认逻辑
 
-### 8.3 Patch 1：固化 ExecutionPlan Contract
+### 8.2 当前仍不建议大改的部分
 
-#### 目标
+- 不推翻 `recorder export -> release snapshot -> runtime execution` 主链路。
+- 不重写 `RecorderDebugService` 的录制交互模型。
+- 不改 release / skill draft / publish 的基本流程语义。
+- 不改 browser-worker 的基础动作执行协议。
+- 不把当前体系强行改造成 MCP-first。
 
-不改变当前执行逻辑，只把已有的执行计划结构正式化、版本化，并把读取优先级写清楚。
+### 8.3 推荐继续收口的顺序
 
-#### 建议最小结构
+1. 统一 recorder prompt state contract
+2. 统一恢复决策矩阵
+3. 统一执行详情页 / 抽屉 / 聊天的审计与接管展示
+4. 收口 legacy 路径提示与降级口径
+5. 持续拆分 recorder orchestration 与 spec
 
-```json
-{
-  "executionPlanVersion": "browser-recording-ir/v1",
-  "templateSteps": [],
-  "parameters": [],
-  "outputs": [],
-  "loopDraft": {},
-  "runtimeHints": {},
-  "executionLimits": {}
-}
-```
-
-#### 建议落点
-
-- `RecorderExportService`
-- `RecorderExportAssemblyService`
-- `CapabilityReleasePublishService`
-- `CapabilityReleaseBrowserRecordingService`
-- `CapabilityReleaseRuntimeService`
-
-#### 验收标准
-
-- 新导出的 `skillDraft.publishPayload` 中包含 `executionPlanVersion`。
-- bridge 后的 `sourcePayload.runtimeMetadata.executionPlan` 中包含 `executionPlanVersion`。
-- runtime 可明确记录当前使用的 `executionPlanVersion`。
-
-### 8.4 Patch 2：加 Plan Validation
-
-#### 目标
-
-在不影响健康数据路径的前提下，尽量把明显坏数据拦在 bridge / publish 前。
-
-#### 建议新增
-
-- `BrowserRecordingExecutionPlanValidatorService`
-
-#### 建议函数
-
-- `validateForBridge(payload)`
-- `validateForPublish(payload)`
-- `validateForRuntime(payload)`
-
-#### 第一阶段建议分级
-
-`error`:
-
-- 没有 `templateSteps`
-- `stepId` 重复
-- `branch` 引用不存在的变量
-- 标记为 loop skill 但没有可解析的 `stopWhen`
-
-`warning`:
-
-- 没有 `outputs`
-- 没有 `executionLimits`
-- 没有 trace ids
-
-#### 验收标准
-
-- 正常 E2E 不受影响。
-- 缺失关键 branch / loop 元数据的 payload 不能静默发布。
-- runtime fallback 时能明确标识原因。
-
-### 8.5 Patch 3：补 Runtime 可观测性
-
-#### 目标
-
-让运行时在不改变主执行逻辑的前提下，具备最小可排障能力。
-
-#### 建议最小结果结构
-
-```json
-{
-  "executionPlanVersion": "browser-recording-ir/v1",
-  "degradedMode": false,
-  "degradeReason": null,
-  "trace": {
-    "recorderSessionId": "...",
-    "exportArtifactId": "...",
-    "releaseId": "...",
-    "skillDraftId": "...",
-    "publishedSkillId": "...",
-    "runtimeExecutionId": "..."
-  },
-  "runtimeEvidence": {
-    "currentStepId": "...",
-    "currentLoopIteration": 3,
-    "lastReadValue": {
-      "var": "statusText",
-      "value": "..."
-    },
-    "lastBranchDecision": {
-      "condition": "...",
-      "result": "continue"
-    },
-    "takeoverReason": null
-  }
-}
-```
-
-#### 第一阶段原则
-
-- 先输出最小 trace 和 evidence，不追求一次性覆盖所有字段。
-- 先保证 branch / loop / takeover 场景可解释，再逐步补细。
-
-### 8.6 推荐实施顺序
-
-在当前阶段，推荐的低风险落地顺序如下：
-
-1. `executionPlanVersion`
-2. `runtime executionPlan first` 读取优先级显式化
-3. `bridge / publish Plan Validation`
-4. `degradedMode / degradeReason`
-5. trace id 透传
-6. runtime branch / loop evidence 记录
-7. 再做动作风险分级和恢复矩阵
-
-### 8.7 模块改动速查表
+### 8.4 模块改动速查表
 
 | 模块                                       | 当前评价                                | 本轮建议                                                |
 | ------------------------------------------ | --------------------------------------- | ------------------------------------------------------- |
 | `AIControls.tsx`                           | 录制 UI、export、save、publish 职责较重 | 先不大拆，确保新路径继续作为默认发布路径                |
 | `RecorderDebugService`                     | 主编排职责合理，已持续拆分              | 继续保持 orchestration，不再塞 export / validation 细节 |
 | `RecorderTemplateExportService`            | branch / loop 语义生成核心              | 后续可补 explanation / debug metadata，但不影响本轮     |
-| `RecorderExportAssemblyService`            | export 总装边界清晰                     | 增加 `executionPlanVersion` 透传                        |
-| `CapabilityReleasePublishService`          | bridge 入口合理                         | 接入 Plan Validation，并保留兼容模式                    |
-| `CapabilityReleaseBrowserRecordingService` | runtime plan 构造核心                   | 显式固化 `executionPlan first` 读取优先级               |
-| `CapabilityReleaseRuntimeService`          | 执行 branch / loop / takeover 主入口    | 补 `degradedMode`、trace、runtime evidence              |
+| `RecorderExportAssemblyService`            | export 总装边界清晰                     | 继续保持 `executionPlan` 与导出资产装配边界             |
+| `CapabilityReleasePublishService`          | bridge 入口合理                         | 继续保留 validator 与兼容模式                           |
+| `CapabilityReleaseBrowserRecordingService` | runtime plan 构造核心                   | 与 control-plane loop workflow 口径继续收敛            |
+| `CapabilityReleaseRuntimeService`          | 执行 branch / loop / takeover 主入口    | 继续补强 evidence 与 trace 的对外展示                   |
 | `browser-worker`                           | 执行层相对稳定                          | 不引入自由代码执行，继续保持受控动作模型                |
 
-### 8.8 新旧路径兼容策略
+### 8.5 新旧路径兼容策略
 
 当前项目仍同时存在：
 
@@ -981,12 +649,15 @@ CapabilityReleaseRuntimeService.executeBrowserRecordingPublishedSkill()
 - 循环执行样本：直到命中终止条件。
 - 条件执行样本：一组走 `continue`，一组走 `takeover`。
 
-### 10.5 本阶段回归基线
+### 10.5 当前回归基线
 
-当前文档建立时，已验证：
+当前文档校对时，已验证：
 
-- 循环浏览器 skill 可执行 3 轮后终止。
+- 循环浏览器 skill 可执行多轮后终止。
 - 条件模板与重新桥接发布后的条件 skill 都能正常运行。
+- 录制态高风险动作存在确认分支，不再直接静默执行。
+- 发布态可读取 `executionPlanVersion`、validator 结果和 `degradedMode` 相关信号。
+- control-plane 已能对 browser loop 生成 workflow-aware 归一化结果，并在执行详情中展示轮次与接管信息。
 
 ---
 
@@ -998,7 +669,10 @@ CapabilityReleaseRuntimeService.executeBrowserRecordingPublishedSkill()
 
 - `apps/frontend/portal/src/features/recorder/components/AIControls.tsx`
 - `apps/backend/orchestration/ai-orchestrator/src/modules/browser-command/recorder-debug.service.ts`
+- `apps/backend/orchestration/ai-orchestrator/src/modules/browser-command/recorder-debug-chat-flow.service.ts`
+- `apps/backend/orchestration/ai-orchestrator/src/modules/browser-command/recorder-debug-execution.service.ts`
 - `apps/backend/orchestration/ai-orchestrator/src/modules/browser-command/browser-command.service.ts`
+- `apps/backend/orchestration/ai-orchestrator/src/modules/browser-command/browser-action-validator.service.ts`
 - `apps/backend/orchestration/ai-orchestrator/src/modules/browser-command/recorder-structure-probe.service.ts`
 - `apps/backend/orchestration/ai-orchestrator/src/modules/browser-command/recorder-observation.service.ts`
 - `apps/backend/orchestration/ai-orchestrator/src/modules/browser-command/recorder-snapshot.service.ts`
@@ -1014,12 +688,18 @@ CapabilityReleaseRuntimeService.executeBrowserRecordingPublishedSkill()
 - `apps/backend/core/platform/src/modules/capability-release/capability-release-skill-draft.service.ts`
 - `apps/backend/core/platform/src/modules/capability-release/capability-release-runtime.service.ts`
 - `apps/backend/core/platform/src/modules/capability-release/capability-release-browser-recording.service.ts`
+- `apps/backend/core/platform/src/modules/capability-release/browser-recording-execution-plan-validator.service.ts`
+- `apps/backend/orchestration/ai-orchestrator/src/modules/browser-command/browser-recording-execution-plan.ts`
 
-### 11.3 浏览器执行与恢复
+### 11.3 浏览器执行、控制平面与展示
 
 - `apps/backend/runtime/browser-worker/src/modules/browser/adapters/playwright-cli.adapter.ts`
+- `apps/backend/orchestration/control-plane/src/modules/execution/execution-planning.service.ts`
+- `apps/backend/orchestration/control-plane/src/modules/execution/execution-plan-normalization.service.ts`
+- `apps/backend/orchestration/control-plane/src/modules/execution/browser-loop-workflow-plan.builder.ts`
 - `apps/backend/orchestration/control-plane/src/modules/execution/execution-human-control.service.ts`
 - `apps/backend/orchestration/control-plane/src/modules/execution/runtime-execution.orchestrator.ts`
+- `apps/frontend/portal/src/features/executions/pages/ExecutionDetailPage.tsx`
 
 ---
 
@@ -1037,7 +717,7 @@ CapabilityReleaseRuntimeService.executeBrowserRecordingPublishedSkill()
 下一阶段最值得推进的工作不是更换技术名词，而是继续补强五件事：
 
 - 显式状态化控制
-- 统一动作安全约束
-- 固化 execution plan contract
-- 补齐发布前校验与退化治理
+- 统一恢复策略
+- 收口 legacy 与降级治理
+- 继续收缩 recorder orchestration
 - 更清晰的恢复与可观测性
