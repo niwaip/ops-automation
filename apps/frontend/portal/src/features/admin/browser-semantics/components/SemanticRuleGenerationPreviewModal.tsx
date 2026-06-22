@@ -6,8 +6,182 @@ import type {
   SemanticRuleCategory,
 } from '@/api/browser-semantics';
 import { renderJsonText } from '../lib/ruleSetForm';
+import {
+  getActionProfileBadges,
+  getActionProfileSections,
+  getEmptyRuleStateCopy,
+  getFieldFillProfileBadges,
+  getFieldFillProfileSections,
+  getLoginProfileInterruptPolicy,
+  getLoginProfileSections,
+  getNavigationProfileDestinations,
+  getNavigationProfileSections,
+  getReadProfileSections,
+  getSearchProfileSections,
+  getSemanticRuleCategoryLabel,
+  getSemanticRuleKindColor,
+  getSemanticRuleKindLabel,
+  getSemanticRuleSummaryLines,
+  getSemanticRuleTypeLabel,
+  isActionProfileRule,
+  isFieldFillProfileRule,
+  isLoginProfileRule,
+  isNavigationProfileRule,
+  isReadProfileRule,
+  isSearchProfileRule,
+} from '../lib/semanticRulePresentation';
 
 const { Paragraph, Text } = Typography;
+
+const renderRulePreview = (rule: SemanticRule | GenerateSemanticRuleSetDraftResponse['draft_rule_set']['rules'][number]) => (
+  <>
+    <Space wrap style={{ marginBottom: 8 }}>
+      <Text strong>{rule.name}</Text>
+      {'category' in rule && rule.category ? (
+        <Tag color="purple">{getSemanticRuleCategoryLabel(rule.category)}</Tag>
+      ) : null}
+      <Tag>{getSemanticRuleTypeLabel(rule.type)}</Tag>
+      <Tag color={getSemanticRuleKindColor(rule as SemanticRule)}>{getSemanticRuleKindLabel(rule as SemanticRule)}</Tag>
+      <Tag color={rule.enabled ? 'success' : 'default'}>{rule.enabled ? '启用' : '禁用'}</Tag>
+      <Tag>优先级 {rule.priority}</Tag>
+    </Space>
+    <Paragraph style={{ marginBottom: 8 }}>
+      <Text type="secondary">{getSemanticRuleSummaryLines(rule as SemanticRule).join(' / ')}</Text>
+    </Paragraph>
+    <Paragraph style={{ marginBottom: 8 }}>
+      <Text strong>匹配规则</Text>
+    </Paragraph>
+    <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{renderJsonText(rule.patterns)}</pre>
+    <Paragraph style={{ marginTop: 12, marginBottom: 8 }}>
+      <Text strong>输出配置</Text>
+    </Paragraph>
+    <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{renderJsonText(rule.outputs)}</pre>
+    {isLoginProfileRule(rule as SemanticRule) ? (
+      <Space direction="vertical" size={8} style={{ width: '100%', marginTop: 12 }}>
+        <Space wrap>
+          {getLoginProfileInterruptPolicy(rule as SemanticRule) ? (
+            <Tag color="gold">
+              interrupt_policy: {getLoginProfileInterruptPolicy(rule as SemanticRule)}
+            </Tag>
+          ) : null}
+        </Space>
+        {getLoginProfileSections(rule as SemanticRule).map((section) => (
+          <div key={section.key}>
+            <Text strong>{section.label}</Text>
+            <div style={{ marginTop: 6 }}>
+              <Space wrap>
+                {section.values.map((value) => (
+                  <Tag key={`${section.key}-${value}`}>{value}</Tag>
+                ))}
+              </Space>
+            </div>
+          </div>
+        ))}
+      </Space>
+    ) : null}
+    {isNavigationProfileRule(rule as SemanticRule) ? (
+      <Space direction="vertical" size={8} style={{ width: '100%', marginTop: 12 }}>
+        <Space wrap>
+          {getNavigationProfileDestinations(rule as SemanticRule).map((item) => (
+            <Tag key={item.key} color="blue">
+              {item.label}: {item.value}
+            </Tag>
+          ))}
+        </Space>
+        {getNavigationProfileSections(rule as SemanticRule).map((section) => (
+          <div key={section.key}>
+            <Text strong>{section.label}</Text>
+            <div style={{ marginTop: 6 }}>
+              <Space wrap>
+                {section.values.map((value) => (
+                  <Tag key={`${section.key}-${value}`}>{value}</Tag>
+                ))}
+              </Space>
+            </div>
+          </div>
+        ))}
+      </Space>
+    ) : null}
+    {isReadProfileRule(rule as SemanticRule) ? (
+      <Space direction="vertical" size={8} style={{ width: '100%', marginTop: 12 }}>
+        {getReadProfileSections(rule as SemanticRule).map((section) => (
+          <div key={section.key}>
+            <Text strong>{section.label}</Text>
+            <div style={{ marginTop: 6 }}>
+              <Space wrap>
+                {section.values.map((value) => (
+                  <Tag key={`${section.key}-${value}`}>{value}</Tag>
+                ))}
+              </Space>
+            </div>
+          </div>
+        ))}
+      </Space>
+    ) : null}
+    {isActionProfileRule(rule as SemanticRule) ? (
+      <Space direction="vertical" size={8} style={{ width: '100%', marginTop: 12 }}>
+        <Space wrap>
+          {getActionProfileBadges(rule as SemanticRule).map((item) => (
+            <Tag key={item.key} color="volcano">
+              {item.label}: {item.value}
+            </Tag>
+          ))}
+        </Space>
+        {getActionProfileSections(rule as SemanticRule).map((section) => (
+          <div key={section.key}>
+            <Text strong>{section.label}</Text>
+            <div style={{ marginTop: 6 }}>
+              <Space wrap>
+                {section.values.map((value) => (
+                  <Tag key={`${section.key}-${value}`}>{value}</Tag>
+                ))}
+              </Space>
+            </div>
+          </div>
+        ))}
+      </Space>
+    ) : null}
+    {isSearchProfileRule(rule as SemanticRule) ? (
+      <Space direction="vertical" size={8} style={{ width: '100%', marginTop: 12 }}>
+        {getSearchProfileSections(rule as SemanticRule).map((section) => (
+          <div key={section.key}>
+            <Text strong>{section.label}</Text>
+            <div style={{ marginTop: 6 }}>
+              <Space wrap>
+                {section.values.map((value) => (
+                  <Tag key={`${section.key}-${value}`}>{value}</Tag>
+                ))}
+              </Space>
+            </div>
+          </div>
+        ))}
+      </Space>
+    ) : null}
+    {isFieldFillProfileRule(rule as SemanticRule) ? (
+      <Space direction="vertical" size={8} style={{ width: '100%', marginTop: 12 }}>
+        <Space wrap>
+          {getFieldFillProfileBadges(rule as SemanticRule).map((item) => (
+            <Tag key={item.key} color="magenta">
+              {item.label}: {item.value}
+            </Tag>
+          ))}
+        </Space>
+        {getFieldFillProfileSections(rule as SemanticRule).map((section) => (
+          <div key={section.key}>
+            <Text strong>{section.label}</Text>
+            <div style={{ marginTop: 6 }}>
+              <Space wrap>
+                {section.values.map((value) => (
+                  <Tag key={`${section.key}-${value}`}>{value}</Tag>
+                ))}
+              </Space>
+            </div>
+          </div>
+        ))}
+      </Space>
+    ) : null}
+  </>
+);
 
 interface SemanticRuleGenerationPreviewModalProps {
   open: boolean;
@@ -84,11 +258,17 @@ const SemanticRuleGenerationPreviewModal: React.FC<SemanticRuleGenerationPreview
             type="info"
             showIcon
             message={`已生成 ${draft.summary.rule_count} 条候选规则，基于 ${draft.summary.sample_count} 条错误样本`}
-            description={`生成追踪 ID：${draft.generation_trace_id}`}
+            description={
+              currentCategory === 'LOGIN'
+                ? `生成追踪 ID：${draft.generation_trace_id}。登录类候选会区分输入改写规则与登录画像规则。`
+                : currentCategory === 'NAVIGATION'
+                  ? `生成追踪 ID：${draft.generation_trace_id}。导航类候选会优先生成导航画像规则；无法推断目标时仍可能保留通用导航别名。`
+                : `生成追踪 ID：${draft.generation_trace_id}`
+            }
           />
 
           {currentCategory ? (
-            <Card size="small" title={`当前 ${currentCategory} 规则对比`}>
+            <Card size="small" title={`当前${getSemanticRuleCategoryLabel(currentCategory)}规则对比`}>
               <Space direction="vertical" size={12} style={{ width: '100%' }}>
                 <Space wrap>
                   <Tag>当前 {currentCategoryRules.length} 条</Tag>
@@ -123,31 +303,21 @@ const SemanticRuleGenerationPreviewModal: React.FC<SemanticRuleGenerationPreview
                         dataSource={currentCategoryRules}
                         renderItem={(rule) => (
                           <List.Item key={rule.id}>
-                            <Space wrap style={{ marginBottom: 8 }}>
-                              <Text strong>{rule.name}</Text>
-                              <Tag>{rule.type}</Tag>
-                              <Tag color={rule.enabled ? 'success' : 'default'}>
-                                {rule.enabled ? '启用' : '禁用'}
-                              </Tag>
-                              <Tag>priority {rule.priority}</Tag>
-                            </Space>
-                            <Paragraph style={{ marginBottom: 8 }}>
-                              <Text strong>Patterns</Text>
-                            </Paragraph>
-                            <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
-                              {renderJsonText(rule.patterns)}
-                            </pre>
-                            <Paragraph style={{ marginTop: 12, marginBottom: 8 }}>
-                              <Text strong>Outputs</Text>
-                            </Paragraph>
-                            <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
-                              {renderJsonText(rule.outputs)}
-                            </pre>
+                            {renderRulePreview(rule)}
                           </List.Item>
                         )}
                       />
                     ) : (
-                      <Empty description={`当前 ${currentCategory} 暂无已配置规则`} />
+                      <Empty
+                        description={
+                          <Space direction="vertical" size={8}>
+                            <Text strong>{getEmptyRuleStateCopy(currentCategory).title}</Text>
+                            <Text type="secondary">
+                              {getEmptyRuleStateCopy(currentCategory).description}
+                            </Text>
+                          </Space>
+                        }
+                      />
                     )}
                   </Card>
                   <Card
@@ -161,27 +331,7 @@ const SemanticRuleGenerationPreviewModal: React.FC<SemanticRuleGenerationPreview
                         dataSource={draft.draft_rule_set.rules}
                         renderItem={(rule) => (
                           <List.Item key={`${rule.type}-${rule.name}`}>
-                            <Space wrap style={{ marginBottom: 8 }}>
-                              <Text strong>{rule.name}</Text>
-                              {rule.category ? <Tag color="purple">{rule.category}</Tag> : null}
-                              <Tag>{rule.type}</Tag>
-                              <Tag color={rule.enabled ? 'success' : 'default'}>
-                                {rule.enabled ? '启用' : '禁用'}
-                              </Tag>
-                              <Tag>priority {rule.priority}</Tag>
-                            </Space>
-                            <Paragraph style={{ marginBottom: 8 }}>
-                              <Text strong>Patterns</Text>
-                            </Paragraph>
-                            <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
-                              {renderJsonText(rule.patterns)}
-                            </pre>
-                            <Paragraph style={{ marginTop: 12, marginBottom: 8 }}>
-                              <Text strong>Outputs</Text>
-                            </Paragraph>
-                            <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
-                              {renderJsonText(rule.outputs)}
-                            </pre>
+                            {renderRulePreview(rule)}
                           </List.Item>
                         )}
                       />
@@ -221,27 +371,7 @@ const SemanticRuleGenerationPreviewModal: React.FC<SemanticRuleGenerationPreview
                   dataSource={draft.draft_rule_set.rules}
                   renderItem={(rule) => (
                     <List.Item key={`${rule.type}-${rule.name}`}>
-                      <Space wrap style={{ marginBottom: 8 }}>
-                        <Text strong>{rule.name}</Text>
-                        {rule.category ? <Tag color="purple">{rule.category}</Tag> : null}
-                        <Tag>{rule.type}</Tag>
-                        <Tag color={rule.enabled ? 'success' : 'default'}>
-                          {rule.enabled ? '启用' : '禁用'}
-                        </Tag>
-                        <Tag>priority {rule.priority}</Tag>
-                      </Space>
-                      <Paragraph style={{ marginBottom: 8 }}>
-                        <Text strong>Patterns</Text>
-                      </Paragraph>
-                      <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
-                        {renderJsonText(rule.patterns)}
-                      </pre>
-                      <Paragraph style={{ marginTop: 12, marginBottom: 8 }}>
-                        <Text strong>Outputs</Text>
-                      </Paragraph>
-                      <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
-                        {renderJsonText(rule.outputs)}
-                      </pre>
+                      {renderRulePreview(rule)}
                     </List.Item>
                   )}
                 />

@@ -8,6 +8,12 @@ import type {
   GenerateSemanticRuleSetDraftDto,
   SemanticRuleGenerationDraftRuleSet,
 } from './semantic-rule-generation.dto';
+import { buildLoginProfileDraftOutputs } from './semantic-rule-generation.login-profile';
+import { buildNavigationProfileDraftOutputs } from './semantic-rule-generation.navigation-profile';
+import { buildReadProfileDraftOutputs } from './semantic-rule-generation.read-profile';
+import { buildActionProfileDraftOutputs } from './semantic-rule-generation.action-profile';
+import { buildSearchProfileDraftOutputs } from './semantic-rule-generation.search-profile';
+import { buildFieldFillProfileDraftOutputs } from './semantic-rule-generation.field-fill-profile';
 
 type ErrorLogRecord = Awaited<
   ReturnType<PrismaService['semanticRuleErrorLog']['findMany']>
@@ -63,7 +69,7 @@ export class SemanticRuleGenerationService {
     }
 
     const filteredLogs = dto.category
-      ? selectedLogs.filter((log) => this.classifySample(this.pickSampleText(log), log.errorType).category === dto.category)
+      ? selectedLogs.filter((log) => this.classifySample(log).category === dto.category)
       : selectedLogs;
 
     if (!filteredLogs.length) {
@@ -180,7 +186,7 @@ export class SemanticRuleGenerationService {
 
     for (const log of logs) {
       const sampleText = this.pickSampleText(log);
-      const classification = this.classifySample(sampleText, log.errorType);
+      const classification = this.classifySample(log);
 
       if (category && classification.category !== category) {
         continue;
@@ -254,6 +260,77 @@ export class SemanticRuleGenerationService {
       flags: 'AI_GENERATED_DRAFT',
       patterns: this.buildRulePatterns(group),
       outputs: {
+        ...(group.category === 'LOGIN'
+          ? buildLoginProfileDraftOutputs({
+              sources: logs
+                .filter((log) => this.classifySample(log).groupKey === group.groupKey)
+                .map((log) => ({
+                  sampleText: this.pickSampleText(log),
+                  errorMessage: log.errorMessage,
+                  observationSummary: log.observationSummary,
+                })),
+            })
+          : group.category === 'NAVIGATION' && group.semanticKey === 'navigation_profile'
+            ? (buildNavigationProfileDraftOutputs({
+                sources: logs
+                  .filter((log) => this.classifySample(log).groupKey === group.groupKey)
+                  .map((log) => ({
+                    sampleText: this.pickSampleText(log),
+                    errorMessage: log.errorMessage,
+                    observationSummary: log.observationSummary,
+                    pageUrl: log.pageUrl,
+                    normalizedSemantic: log.normalizedSemantic,
+                    parserOutput: log.parserOutput,
+                  })),
+              }) || {})
+          : group.category === 'READ_VALUE' && group.semanticKey === 'read_profile'
+            ? (buildReadProfileDraftOutputs({
+                sources: logs
+                  .filter((log) => this.classifySample(log).groupKey === group.groupKey)
+                  .map((log) => ({
+                    sampleText: this.pickSampleText(log),
+                    errorMessage: log.errorMessage,
+                    observationSummary: log.observationSummary,
+                    normalizedSemantic: log.normalizedSemantic,
+                    parserOutput: log.parserOutput,
+                  })),
+              }) || {})
+          : (group.category === 'DETAIL_OPEN' ||
+                group.category === 'ROW_ACTION' ||
+                group.category === 'MENU_SELECTION') &&
+              group.semanticKey === 'action_profile'
+            ? (buildActionProfileDraftOutputs({
+                sources: logs
+                  .filter((log) => this.classifySample(log).groupKey === group.groupKey)
+                  .map((log) => ({
+                    sampleText: this.pickSampleText(log),
+                    errorMessage: log.errorMessage,
+                    observationSummary: log.observationSummary,
+                    normalizedSemantic: log.normalizedSemantic,
+                    parserOutput: log.parserOutput,
+                  })),
+              }) || {})
+          : group.category === 'SEARCH' && group.semanticKey === 'search_profile'
+            ? (buildSearchProfileDraftOutputs({
+                sources: logs
+                  .filter((log) => this.classifySample(log).groupKey === group.groupKey)
+                  .map((log) => ({
+                    sampleText: this.pickSampleText(log),
+                    normalizedSemantic: log.normalizedSemantic,
+                    parserOutput: log.parserOutput,
+                  })),
+              }) || {})
+          : group.category === 'FIELD_FILL' && group.semanticKey === 'field_fill_profile'
+            ? (buildFieldFillProfileDraftOutputs({
+                sources: logs
+                  .filter((log) => this.classifySample(log).groupKey === group.groupKey)
+                  .map((log) => ({
+                    sampleText: this.pickSampleText(log),
+                    normalizedSemantic: log.normalizedSemantic,
+                    parserOutput: log.parserOutput,
+                  })),
+              }) || {})
+          : {}),
         semantic_key: group.semanticKey,
         source_error_log_ids: group.sourceErrorLogIds.slice(0, 20),
         source_error_types: Array.from(group.errorTypes),
@@ -318,12 +395,44 @@ export class SemanticRuleGenerationService {
       explanations.push(`Generation was narrowed to category ${dto.category}.`);
     }
 
-    if (groups.some((group) => group.ruleType === 'LOGIN_PHRASE')) {
-      explanations.push('Detected login-like phrases and proposed a dedicated LOGIN_PHRASE rule.');
+    if (groups.some((group) => group.category === 'LOGIN')) {
+      explanations.push(
+        'Detected login-related samples and proposed a dedicated LOGIN profile rule with login_terms outputs.'
+      );
     }
 
-    if (groups.some((group) => group.ruleType === 'READ_INTENT')) {
-      explanations.push('Detected read-style intents and proposed READ_INTENT patterns instead of generic aliases.');
+    if (groups.some((group) => group.semanticKey === 'navigation_profile')) {
+      explanations.push(
+        'Detected navigation samples with resolvable targets and proposed a dedicated NAVIGATION profile rule with navigation_target outputs.'
+      );
+    }
+
+    if (groups.some((group) => group.semanticKey === 'read_profile')) {
+      explanations.push(
+        'Detected read samples with resolvable targets and proposed a dedicated READ profile rule with read_target outputs.'
+      );
+    } else if (groups.some((group) => group.ruleType === 'READ_INTENT')) {
+      explanations.push(
+        'Detected read-style intents and proposed READ_INTENT patterns instead of generic aliases.'
+      );
+    }
+
+    if (groups.some((group) => group.semanticKey === 'action_profile')) {
+      explanations.push(
+        'Detected action samples with resolvable targets and proposed dedicated action profile rules with action_target outputs.'
+      );
+    }
+
+    if (groups.some((group) => group.semanticKey === 'search_profile')) {
+      explanations.push(
+        'Detected search samples with resolvable search intents and proposed dedicated SEARCH profile rules with search_intent outputs.'
+      );
+    }
+
+    if (groups.some((group) => group.semanticKey === 'field_fill_profile')) {
+      explanations.push(
+        'Detected field fill samples with resolvable field targets and proposed dedicated FIELD_FILL profile rules with field_fill_terms outputs.'
+      );
     }
 
     return explanations;
@@ -368,16 +477,86 @@ export class SemanticRuleGenerationService {
     return Array.from(patterns);
   }
 
-  private classifySample(sampleText: string, errorType: string) {
+  private classifySample(log: ErrorLogRecord) {
+    const sampleText = this.pickSampleText(log);
     const normalized = sampleText.toLowerCase();
+    const loginMetadata = this.extractLoginMetadata(log);
+    const navigationMetadata = this.extractNavigationMetadata(log);
+    const readMetadata = this.extractReadMetadata(log);
+    const actionMetadata = this.extractActionMetadata(log);
+    const searchMetadata = this.extractSearchMetadata(log);
+    const fieldFillMetadata = this.extractFieldFillMetadata(log);
 
-    if (/(登录|log\s*in|signin|sign\s*in)/i.test(normalized)) {
+    if (loginMetadata || /(登录|log\s*in|signin|sign\s*in)/i.test(normalized)) {
       return {
         groupKey: 'login',
-        semanticKey: 'login',
+        semanticKey: 'login_profile',
         ruleType: 'LOGIN_PHRASE' as SemanticRuleType,
         category: 'LOGIN' as SemanticRuleCategory,
-        name: 'ai_login_phrase',
+        name: 'ai_login_profile',
+        fallbackOnly: false,
+      };
+    }
+
+    if (
+      actionMetadata &&
+      Boolean(actionMetadata.resolvedTarget) &&
+      (Boolean(actionMetadata.semanticHint) || Boolean(actionMetadata.resolvedActionTerm))
+    ) {
+      const category =
+        actionMetadata.categoryHint === 'DETAIL_OPEN' ||
+        actionMetadata.categoryHint === 'ROW_ACTION' ||
+        actionMetadata.categoryHint === 'MENU_SELECTION'
+          ? (actionMetadata.categoryHint as SemanticRuleCategory)
+          : 'ROW_ACTION';
+      return {
+        groupKey: `action_profile_${category.toLowerCase()}`,
+        semanticKey: 'action_profile',
+        ruleType: 'INTENT_ALIAS' as SemanticRuleType,
+        category,
+        name:
+          category === 'DETAIL_OPEN'
+            ? 'ai_detail_action_profile'
+            : category === 'MENU_SELECTION'
+              ? 'ai_menu_action_profile'
+              : 'ai_row_action_profile',
+        fallbackOnly: false,
+      };
+    }
+
+    if (
+      readMetadata &&
+      Boolean(readMetadata.resolvedTarget) &&
+      (Boolean(readMetadata.resolvedField) || Boolean(readMetadata.resolvedRegion))
+    ) {
+      return {
+        groupKey: 'read_profile',
+        semanticKey: 'read_profile',
+        ruleType: 'READ_INTENT' as SemanticRuleType,
+        category: 'READ_VALUE' as SemanticRuleCategory,
+        name: 'ai_read_profile',
+        fallbackOnly: false,
+      };
+    }
+
+    if (searchMetadata && typeof searchMetadata.intentType === 'string') {
+      return {
+        groupKey: 'search_profile',
+        semanticKey: 'search_profile',
+        ruleType: 'INTENT_ALIAS' as SemanticRuleType,
+        category: 'SEARCH' as SemanticRuleCategory,
+        name: 'ai_search_profile',
+        fallbackOnly: false,
+      };
+    }
+
+    if (fieldFillMetadata && Boolean(fieldFillMetadata.resolvedField || fieldFillMetadata.resolvedCanonicalField)) {
+      return {
+        groupKey: 'field_fill_profile',
+        semanticKey: 'field_fill_profile',
+        ruleType: 'FIELD_ALIAS' as SemanticRuleType,
+        category: 'FIELD_FILL' as SemanticRuleCategory,
+        name: 'ai_field_fill_profile',
         fallbackOnly: false,
       };
     }
@@ -394,12 +573,16 @@ export class SemanticRuleGenerationService {
     }
 
     if (/(打开|进入|访问|前往|navigate|go to|open|visit)/i.test(normalized)) {
+      const canBuildNavigationProfile =
+        Boolean(navigationMetadata?.resolvedTarget) &&
+        (Boolean(navigationMetadata?.resolvedUrl) || /^(?:\/|#)/.test(String(navigationMetadata?.resolvedUrl || ''))) ||
+        /(https?:\/\/|[#/][\w-])/i.test(sampleText);
       return {
-        groupKey: 'navigate',
-        semanticKey: 'navigate',
+        groupKey: canBuildNavigationProfile ? 'navigation_profile' : 'navigate',
+        semanticKey: canBuildNavigationProfile ? 'navigation_profile' : 'navigate',
         ruleType: 'INTENT_ALIAS' as SemanticRuleType,
         category: 'NAVIGATION' as SemanticRuleCategory,
-        name: 'ai_navigate_intent',
+        name: canBuildNavigationProfile ? 'ai_navigation_profile' : 'ai_navigate_intent',
         fallbackOnly: false,
       };
     }
@@ -438,17 +621,69 @@ export class SemanticRuleGenerationService {
     }
 
     return {
-      groupKey: `fallback-${errorType.toLowerCase()}`,
-      semanticKey: errorType.toLowerCase(),
+      groupKey: `fallback-${log.errorType.toLowerCase()}`,
+      semanticKey: log.errorType.toLowerCase(),
       ruleType: 'INTENT_ALIAS' as SemanticRuleType,
       category: 'GENERIC_ALIAS' as SemanticRuleCategory,
-      name: `ai_${this.toSafeName(errorType)}`,
+      name: `ai_${this.toSafeName(log.errorType)}`,
       fallbackOnly: true,
     };
   }
 
   private pickSampleText(log: ErrorLogRecord) {
     return (log.normalizedInput || log.inputText || log.errorMessage || '').trim();
+  }
+
+  private extractLoginMetadata(log: ErrorLogRecord): Record<string, unknown> | null {
+    const normalizedSemantic = this.asRecord(log.normalizedSemantic);
+    const parserOutput = this.asRecord(log.parserOutput);
+    const normalizedLogin = this.asRecord(this.asRecord(normalizedSemantic?.parser_metadata)?.login);
+    const parserLogin = this.asRecord(this.asRecord(parserOutput?.metadata)?.login);
+    return normalizedLogin || parserLogin;
+  }
+
+  private extractNavigationMetadata(log: ErrorLogRecord): Record<string, unknown> | null {
+    const normalizedSemantic = this.asRecord(log.normalizedSemantic);
+    const parserOutput = this.asRecord(log.parserOutput);
+    const normalizedNavigation = this.asRecord(
+      this.asRecord(normalizedSemantic?.parser_metadata)?.navigation
+    );
+    const parserNavigation = this.asRecord(this.asRecord(parserOutput?.metadata)?.navigation);
+    return normalizedNavigation || parserNavigation;
+  }
+
+  private extractReadMetadata(log: ErrorLogRecord): Record<string, unknown> | null {
+    const normalizedSemantic = this.asRecord(log.normalizedSemantic);
+    const parserOutput = this.asRecord(log.parserOutput);
+    const normalizedRead = this.asRecord(this.asRecord(normalizedSemantic?.parser_metadata)?.read);
+    const parserRead = this.asRecord(this.asRecord(parserOutput?.metadata)?.read);
+    return normalizedRead || parserRead;
+  }
+
+  private extractActionMetadata(log: ErrorLogRecord): Record<string, unknown> | null {
+    const normalizedSemantic = this.asRecord(log.normalizedSemantic);
+    const parserOutput = this.asRecord(log.parserOutput);
+    const normalizedAction = this.asRecord(this.asRecord(normalizedSemantic?.parser_metadata)?.action);
+    const parserAction = this.asRecord(this.asRecord(parserOutput?.metadata)?.action);
+    return normalizedAction || parserAction;
+  }
+
+  private extractSearchMetadata(log: ErrorLogRecord): Record<string, unknown> | null {
+    const normalizedSemantic = this.asRecord(log.normalizedSemantic);
+    const parserOutput = this.asRecord(log.parserOutput);
+    const normalizedSearch = this.asRecord(this.asRecord(normalizedSemantic?.parser_metadata)?.search);
+    const parserSearch = this.asRecord(this.asRecord(parserOutput?.metadata)?.search);
+    return normalizedSearch || parserSearch;
+  }
+
+  private extractFieldFillMetadata(log: ErrorLogRecord): Record<string, unknown> | null {
+    const normalizedSemantic = this.asRecord(log.normalizedSemantic);
+    const parserOutput = this.asRecord(log.parserOutput);
+    const normalizedFieldFill = this.asRecord(
+      this.asRecord(normalizedSemantic?.parser_metadata)?.fieldFill
+    );
+    const parserFieldFill = this.asRecord(this.asRecord(parserOutput?.metadata)?.fieldFill);
+    return normalizedFieldFill || parserFieldFill;
   }
 
   private buildExactPattern(value: string) {
@@ -461,6 +696,7 @@ export class SemanticRuleGenerationService {
       case 'login':
         return ['^(?:登录|log\\s*in|sign\\s*in)$'];
       case 'read':
+      case 'read_profile':
         return ['^(?:读取|查看|获取|提取|read|extract).*$'];
       case 'navigate':
         return ['^(?:打开|进入|访问|前往|go\\s*to|open|visit).*$'];
@@ -468,6 +704,10 @@ export class SemanticRuleGenerationService {
         return ['^(?:(?:打开|进入|查看)\\s*)?(?:列表|一览|list).*$'];
       case 'detail':
         return ['^(?:(?:打开|进入|查看)\\s*)?(?:详情|明细|detail).*$'];
+      case 'search_profile':
+        return ['^(?:搜索|智搜|智能搜索|search|smart\\s*search).*$'];
+      case 'field_fill_profile':
+        return ['^(?:填写|输入|写入|设置|set).*$'];
       case 'select':
         return ['^(?:选择|选中|勾选|select|choose|pick).*$'];
       default:
@@ -495,6 +735,12 @@ export class SemanticRuleGenerationService {
 
   private clamp(value: number, min: number, max: number) {
     return Math.min(max, Math.max(min, value));
+  }
+
+  private asRecord(value: unknown): Record<string, unknown> | null {
+    return typeof value === 'object' && value !== null && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : null;
   }
 
   private mergeDescriptions(baseDescription?: string, appendedNote?: string) {

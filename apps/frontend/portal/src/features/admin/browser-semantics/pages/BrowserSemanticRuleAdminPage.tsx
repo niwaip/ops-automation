@@ -32,6 +32,21 @@ import {
   type SemanticRuleFormValuesItem,
   type SemanticRuleSetFormValues,
 } from '../lib/ruleSetForm';
+import {
+  getActionLogMetadata,
+  getActionLogReasonLabel,
+  getActionLogStatusLabel,
+  getFieldFillLogMetadata,
+  getFieldFillLogReasonLabel,
+  getFieldFillLogStatusLabel,
+  getLoginLogMetadata,
+  getNavigationLogMetadata,
+  getNavigationLogReasonLabel,
+  getNavigationLogStatusLabel,
+  getReadLogMetadata,
+  getReadLogReasonLabel,
+  getReadLogStatusLabel,
+} from '../lib/semanticRulePresentation';
 
 const { Title } = Typography;
 
@@ -93,6 +108,20 @@ const BrowserSemanticRuleAdminPage: React.FC = () => {
   const [generationPreviewVisible, setGenerationPreviewVisible] = useState(false);
   const [generationTargetCategory, setGenerationTargetCategory] = useState<SemanticRuleCategory | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<SemanticRuleCategory | null>(null);
+  const [loginLogStatusFilter, setLoginLogStatusFilter] = useState('');
+  const [loginLogReasonFilter, setLoginLogReasonFilter] = useState('');
+  const [readLogStatusFilter, setReadLogStatusFilter] = useState('');
+  const [readLogReasonFilter, setReadLogReasonFilter] = useState('');
+  const [actionLogStatusFilter, setActionLogStatusFilter] = useState('');
+  const [actionLogReasonFilter, setActionLogReasonFilter] = useState('');
+  const [navigationLogStatusFilter, setNavigationLogStatusFilter] = useState('');
+  const [navigationLogReasonFilter, setNavigationLogReasonFilter] = useState('');
+  const [fieldFillLogStatusFilter, setFieldFillLogStatusFilter] = useState('');
+  const [fieldFillLogReasonFilter, setFieldFillLogReasonFilter] = useState('');
+  const isActionCategory =
+    selectedCategory === 'DETAIL_OPEN' ||
+    selectedCategory === 'ROW_ACTION' ||
+    selectedCategory === 'MENU_SELECTION';
   const [hitLogTraceIdInput, setHitLogTraceIdInput] = useState('');
   const [appliedHitLogTraceId, setAppliedHitLogTraceId] = useState('');
   const [selectedReviewErrorLogIds, setSelectedReviewErrorLogIds] = useState<string[]>([]);
@@ -111,10 +140,38 @@ const BrowserSemanticRuleAdminPage: React.FC = () => {
       })
   );
   const reviewErrorLogsQuery = useQuery(
-    ['browser-semantics-review-error-logs', domainCode],
+    [
+      'browser-semantics-review-error-logs',
+      domainCode,
+      selectedCategory,
+      loginLogStatusFilter,
+      loginLogReasonFilter,
+      readLogStatusFilter,
+      readLogReasonFilter,
+      actionLogStatusFilter,
+      actionLogReasonFilter,
+      navigationLogStatusFilter,
+      navigationLogReasonFilter,
+      fieldFillLogStatusFilter,
+      fieldFillLogReasonFilter,
+    ],
     () =>
       browserSemanticsApi.listErrorLogs({
         domain_code: domainCode.trim() || undefined,
+        login_status: selectedCategory === 'LOGIN' ? loginLogStatusFilter || undefined : undefined,
+        login_reason: selectedCategory === 'LOGIN' ? loginLogReasonFilter || undefined : undefined,
+        read_status: selectedCategory === 'READ_VALUE' ? readLogStatusFilter || undefined : undefined,
+        read_reason: selectedCategory === 'READ_VALUE' ? readLogReasonFilter || undefined : undefined,
+        action_status: isActionCategory ? actionLogStatusFilter || undefined : undefined,
+        action_reason: isActionCategory ? actionLogReasonFilter || undefined : undefined,
+        navigation_status:
+          selectedCategory === 'NAVIGATION' ? navigationLogStatusFilter || undefined : undefined,
+        navigation_reason:
+          selectedCategory === 'NAVIGATION' ? navigationLogReasonFilter || undefined : undefined,
+        field_fill_status:
+          selectedCategory === 'FIELD_FILL' ? fieldFillLogStatusFilter || undefined : undefined,
+        field_fill_reason:
+          selectedCategory === 'FIELD_FILL' ? fieldFillLogReasonFilter || undefined : undefined,
       }),
     { enabled: !!domainCode.trim() }
   );
@@ -145,10 +202,38 @@ const BrowserSemanticRuleAdminPage: React.FC = () => {
     { enabled: !!selectedRuleSetId }
   );
   const errorLogsQuery = useQuery(
-    ['browser-semantics-rule-error-logs', selectedRuleSetId],
+    [
+      'browser-semantics-rule-error-logs',
+      selectedRuleSetId,
+      selectedCategory,
+      loginLogStatusFilter,
+      loginLogReasonFilter,
+      readLogStatusFilter,
+      readLogReasonFilter,
+      actionLogStatusFilter,
+      actionLogReasonFilter,
+      navigationLogStatusFilter,
+      navigationLogReasonFilter,
+      fieldFillLogStatusFilter,
+      fieldFillLogReasonFilter,
+    ],
     () =>
       browserSemanticsApi.listErrorLogs({
         rule_set_id: selectedRuleSetId!,
+        login_status: selectedCategory === 'LOGIN' ? loginLogStatusFilter || undefined : undefined,
+        login_reason: selectedCategory === 'LOGIN' ? loginLogReasonFilter || undefined : undefined,
+        read_status: selectedCategory === 'READ_VALUE' ? readLogStatusFilter || undefined : undefined,
+        read_reason: selectedCategory === 'READ_VALUE' ? readLogReasonFilter || undefined : undefined,
+        action_status: isActionCategory ? actionLogStatusFilter || undefined : undefined,
+        action_reason: isActionCategory ? actionLogReasonFilter || undefined : undefined,
+        navigation_status:
+          selectedCategory === 'NAVIGATION' ? navigationLogStatusFilter || undefined : undefined,
+        navigation_reason:
+          selectedCategory === 'NAVIGATION' ? navigationLogReasonFilter || undefined : undefined,
+        field_fill_status:
+          selectedCategory === 'FIELD_FILL' ? fieldFillLogStatusFilter || undefined : undefined,
+        field_fill_reason:
+          selectedCategory === 'FIELD_FILL' ? fieldFillLogReasonFilter || undefined : undefined,
       }),
     { enabled: !!selectedRuleSetId }
   );
@@ -309,7 +394,13 @@ const BrowserSemanticRuleAdminPage: React.FC = () => {
     }
   );
   const generateCategoryDraftMutation = useMutation(
-    async (category: SemanticRuleCategory) => {
+    async ({
+      category,
+      errorLogIds,
+    }: {
+      category: SemanticRuleCategory;
+      errorLogIds?: string[];
+    }) => {
       if (!selectedRuleSet) {
         throw new Error('未找到当前规则集');
       }
@@ -318,20 +409,25 @@ const BrowserSemanticRuleAdminPage: React.FC = () => {
         domain_code: selectedRuleSet.domain?.code || domainCode,
         rule_set_id: selectedRuleSet.id,
         category,
+        error_log_ids: errorLogIds,
         max_logs: 20,
         created_by: 'portal_ai_review',
       });
     },
     {
-      onSuccess: (draft, category) => {
-        setGenerationTargetCategory(category);
+      onSuccess: (draft, variables) => {
+        setGenerationTargetCategory(variables.category);
         setGenerationPreview(draft);
         setGenerationPreviewVisible(true);
         if (draft.generated) {
-          message.success(`已生成 ${category} 类候选规则草案`);
+          message.success(
+            variables.errorLogIds?.length
+              ? `已基于筛选后的 ${variables.errorLogIds.length} 条样本生成 ${variables.category} 类候选规则草案`
+              : `已生成 ${variables.category} 类候选规则草案`
+          );
           return;
         }
-        message.warning(draft.reason || `未生成 ${category} 类候选规则草案`);
+        message.warning(draft.reason || `未生成 ${variables.category} 类候选规则草案`);
       },
       onError: (error: any) => {
         message.error(error?.response?.data?.message || error?.message || '分类草案生成失败');
@@ -434,13 +530,225 @@ const BrowserSemanticRuleAdminPage: React.FC = () => {
     [selectedRuleSet]
   );
   const workspaceErrorLogs = errorLogsQuery.data?.length ? errorLogsQuery.data : reviewErrorLogs;
-  const relatedCategoryErrorLogs = useMemo(
-    () => matchErrorLogsByCategory(workspaceErrorLogs, selectedCategory).slice(0, 8),
+  const matchedCategoryErrorLogs = useMemo(
+    () => matchErrorLogsByCategory(workspaceErrorLogs, selectedCategory),
     [selectedCategory, workspaceErrorLogs]
   );
-  const relatedErrorLogsSourceLabel = errorLogsQuery.data?.length
-    ? '当前选中规则集的错误日志'
-    : '当前 domain 的全局错误样本';
+  const relatedCategoryErrorLogs = useMemo(
+    () => matchedCategoryErrorLogs.slice(0, 8),
+    [matchedCategoryErrorLogs]
+  );
+  const loginStatusDistribution = useMemo(() => {
+    if (selectedCategory !== 'LOGIN') {
+      return [];
+    }
+
+    const counts = new Map<string, number>();
+    for (const log of matchedCategoryErrorLogs) {
+      const status = getLoginLogMetadata(log)?.status;
+      if (!status) {
+        continue;
+      }
+      counts.set(status, (counts.get(status) || 0) + 1);
+    }
+
+    return Array.from(counts.entries())
+      .map(([label, count]) => ({ label, count }))
+      .sort((left, right) => right.count - left.count);
+  }, [matchedCategoryErrorLogs, selectedCategory]);
+  const loginReasonDistribution = useMemo(() => {
+    if (selectedCategory !== 'LOGIN') {
+      return [];
+    }
+
+    const counts = new Map<string, number>();
+    for (const log of matchedCategoryErrorLogs) {
+      const reason = getLoginLogMetadata(log)?.reason;
+      if (!reason) {
+        continue;
+      }
+      counts.set(reason, (counts.get(reason) || 0) + 1);
+    }
+
+    return Array.from(counts.entries())
+      .map(([label, count]) => ({ label, count }))
+      .sort((left, right) => right.count - left.count);
+  }, [matchedCategoryErrorLogs, selectedCategory]);
+  const readStatusDistribution = useMemo(() => {
+    if (selectedCategory !== 'READ_VALUE') {
+      return [];
+    }
+
+    const counts = new Map<string, number>();
+    for (const log of matchedCategoryErrorLogs) {
+      const status = getReadLogMetadata(log)?.status;
+      if (!status) {
+        continue;
+      }
+      counts.set(status, (counts.get(status) || 0) + 1);
+    }
+
+    return Array.from(counts.entries())
+      .map(([label, count]) => ({ label, count }))
+      .sort((left, right) => right.count - left.count);
+  }, [matchedCategoryErrorLogs, selectedCategory]);
+  const readReasonDistribution = useMemo(() => {
+    if (selectedCategory !== 'READ_VALUE') {
+      return [];
+    }
+
+    const counts = new Map<string, number>();
+    for (const log of matchedCategoryErrorLogs) {
+      const reason = getReadLogMetadata(log)?.reason;
+      if (!reason) {
+        continue;
+      }
+      counts.set(reason, (counts.get(reason) || 0) + 1);
+    }
+
+    return Array.from(counts.entries())
+      .map(([label, count]) => ({ label, count }))
+      .sort((left, right) => right.count - left.count);
+  }, [matchedCategoryErrorLogs, selectedCategory]);
+  const navigationStatusDistribution = useMemo(() => {
+    if (selectedCategory !== 'NAVIGATION') {
+      return [];
+    }
+
+    const counts = new Map<string, number>();
+    for (const log of matchedCategoryErrorLogs) {
+      const status = getNavigationLogMetadata(log)?.status;
+      if (!status) {
+        continue;
+      }
+      counts.set(status, (counts.get(status) || 0) + 1);
+    }
+
+    return Array.from(counts.entries())
+      .map(([label, count]) => ({ label, count }))
+      .sort((left, right) => right.count - left.count);
+  }, [matchedCategoryErrorLogs, selectedCategory]);
+  const navigationReasonDistribution = useMemo(() => {
+    if (selectedCategory !== 'NAVIGATION') {
+      return [];
+    }
+
+    const counts = new Map<string, number>();
+    for (const log of matchedCategoryErrorLogs) {
+      const reason = getNavigationLogMetadata(log)?.reason;
+      if (!reason) {
+        continue;
+      }
+      counts.set(reason, (counts.get(reason) || 0) + 1);
+    }
+
+    return Array.from(counts.entries())
+      .map(([label, count]) => ({ label, count }))
+      .sort((left, right) => right.count - left.count);
+  }, [matchedCategoryErrorLogs, selectedCategory]);
+  const actionStatusDistribution = useMemo(() => {
+    if (!isActionCategory) {
+      return [];
+    }
+
+    const counts = new Map<string, number>();
+    for (const log of matchedCategoryErrorLogs) {
+      const status = getActionLogMetadata(log)?.status;
+      if (!status) {
+        continue;
+      }
+      counts.set(status, (counts.get(status) || 0) + 1);
+    }
+
+    return Array.from(counts.entries())
+      .map(([label, count]) => ({ label, count }))
+      .sort((left, right) => right.count - left.count);
+  }, [isActionCategory, matchedCategoryErrorLogs]);
+  const actionReasonDistribution = useMemo(() => {
+    if (!isActionCategory) {
+      return [];
+    }
+
+    const counts = new Map<string, number>();
+    for (const log of matchedCategoryErrorLogs) {
+      const reason = getActionLogMetadata(log)?.reason;
+      if (!reason) {
+        continue;
+      }
+      counts.set(reason, (counts.get(reason) || 0) + 1);
+    }
+
+    return Array.from(counts.entries())
+      .map(([label, count]) => ({ label, count }))
+      .sort((left, right) => right.count - left.count);
+  }, [isActionCategory, matchedCategoryErrorLogs]);
+  const fieldFillStatusDistribution = useMemo(() => {
+    if (selectedCategory !== 'FIELD_FILL') {
+      return [];
+    }
+
+    const counts = new Map<string, number>();
+    for (const log of matchedCategoryErrorLogs) {
+      const status = getFieldFillLogMetadata(log)?.status;
+      if (!status) {
+        continue;
+      }
+      counts.set(status, (counts.get(status) || 0) + 1);
+    }
+
+    return Array.from(counts.entries())
+      .map(([label, count]) => ({ label, count }))
+      .sort((left, right) => right.count - left.count);
+  }, [matchedCategoryErrorLogs, selectedCategory]);
+  const fieldFillReasonDistribution = useMemo(() => {
+    if (selectedCategory !== 'FIELD_FILL') {
+      return [];
+    }
+
+    const counts = new Map<string, number>();
+    for (const log of matchedCategoryErrorLogs) {
+      const reason = getFieldFillLogMetadata(log)?.reason;
+      if (!reason) {
+        continue;
+      }
+      counts.set(reason, (counts.get(reason) || 0) + 1);
+    }
+
+    return Array.from(counts.entries())
+      .map(([label, count]) => ({ label, count }))
+      .sort((left, right) => right.count - left.count);
+  }, [matchedCategoryErrorLogs, selectedCategory]);
+  const relatedErrorLogsSourceLabel = [
+    errorLogsQuery.data?.length ? '当前选中规则集的错误日志' : '当前 domain 的全局错误样本',
+    selectedCategory === 'LOGIN' && loginLogStatusFilter ? `status=${loginLogStatusFilter}` : null,
+    selectedCategory === 'LOGIN' && loginLogReasonFilter ? `reason=${loginLogReasonFilter}` : null,
+    selectedCategory === 'READ_VALUE' && readLogStatusFilter
+      ? `状态=${getReadLogStatusLabel(readLogStatusFilter)}`
+      : null,
+    selectedCategory === 'READ_VALUE' && readLogReasonFilter
+      ? `原因=${getReadLogReasonLabel(readLogReasonFilter)}`
+      : null,
+    isActionCategory && actionLogStatusFilter
+      ? `状态=${getActionLogStatusLabel(actionLogStatusFilter)}`
+      : null,
+    isActionCategory && actionLogReasonFilter
+      ? `原因=${getActionLogReasonLabel(actionLogReasonFilter)}`
+      : null,
+    selectedCategory === 'NAVIGATION' && navigationLogStatusFilter
+      ? `状态=${getNavigationLogStatusLabel(navigationLogStatusFilter)}`
+      : null,
+    selectedCategory === 'NAVIGATION' && navigationLogReasonFilter
+      ? `原因=${getNavigationLogReasonLabel(navigationLogReasonFilter)}`
+      : null,
+    selectedCategory === 'FIELD_FILL' && fieldFillLogStatusFilter
+      ? `状态=${getFieldFillLogStatusLabel(fieldFillLogStatusFilter)}`
+      : null,
+    selectedCategory === 'FIELD_FILL' && fieldFillLogReasonFilter
+      ? `原因=${getFieldFillLogReasonLabel(fieldFillLogReasonFilter)}`
+      : null,
+  ]
+    .filter((value): value is string => Boolean(value))
+    .join(' / ');
 
   useEffect(() => {
     if (!selectedRuleSetId) {
@@ -472,6 +780,29 @@ const BrowserSemanticRuleAdminPage: React.FC = () => {
       setSelectedCategory(preferredCategory);
     }
   }, [selectedCategory, selectedRuleSet, selectedRuleSetCategories]);
+
+  useEffect(() => {
+    if (selectedCategory !== 'LOGIN') {
+      setLoginLogStatusFilter('');
+      setLoginLogReasonFilter('');
+    }
+    if (selectedCategory !== 'READ_VALUE') {
+      setReadLogStatusFilter('');
+      setReadLogReasonFilter('');
+    }
+    if (!isActionCategory) {
+      setActionLogStatusFilter('');
+      setActionLogReasonFilter('');
+    }
+    if (selectedCategory !== 'NAVIGATION') {
+      setNavigationLogStatusFilter('');
+      setNavigationLogReasonFilter('');
+    }
+    if (selectedCategory !== 'FIELD_FILL') {
+      setFieldFillLogStatusFilter('');
+      setFieldFillLogReasonFilter('');
+    }
+  }, [isActionCategory, selectedCategory]);
 
   useEffect(() => {
     setSelectedReviewErrorLogIds((currentIds) =>
@@ -512,7 +843,14 @@ const BrowserSemanticRuleAdminPage: React.FC = () => {
 
   const handleGenerateCategoryDraft = (category: SemanticRuleCategory) => {
     setGenerationTargetCategory(category);
-    generateCategoryDraftMutation.mutate(category);
+    const visibleErrorLogIds =
+      category === 'LOGIN'
+        ? matchedCategoryErrorLogs.map((log) => log.id).slice(0, 20)
+        : undefined;
+    generateCategoryDraftMutation.mutate({
+      category,
+      errorLogIds: visibleErrorLogIds?.length ? visibleErrorLogIds : undefined,
+    });
   };
 
   const validateMutation = useMutation(
@@ -715,8 +1053,39 @@ const BrowserSemanticRuleAdminPage: React.FC = () => {
             selectedCategory={selectedCategory}
             onSelectCategory={setSelectedCategory}
             relatedErrorLogs={relatedCategoryErrorLogs}
+            relatedErrorLogCount={matchedCategoryErrorLogs.length}
+            loginStatusDistribution={loginStatusDistribution}
+            loginReasonDistribution={loginReasonDistribution}
+            readStatusDistribution={readStatusDistribution}
+            readReasonDistribution={readReasonDistribution}
+            actionStatusDistribution={actionStatusDistribution}
+            actionReasonDistribution={actionReasonDistribution}
+            navigationStatusDistribution={navigationStatusDistribution}
+            navigationReasonDistribution={navigationReasonDistribution}
+            fieldFillStatusDistribution={fieldFillStatusDistribution}
+            fieldFillReasonDistribution={fieldFillReasonDistribution}
             relatedErrorLogsLoading={errorLogsQuery.isLoading || reviewErrorLogsQuery.isLoading}
             relatedErrorLogsSourceLabel={relatedErrorLogsSourceLabel}
+            loginLogStatusFilter={loginLogStatusFilter}
+            loginLogReasonFilter={loginLogReasonFilter}
+            readLogStatusFilter={readLogStatusFilter}
+            readLogReasonFilter={readLogReasonFilter}
+            actionLogStatusFilter={actionLogStatusFilter}
+            actionLogReasonFilter={actionLogReasonFilter}
+            navigationLogStatusFilter={navigationLogStatusFilter}
+            navigationLogReasonFilter={navigationLogReasonFilter}
+            fieldFillLogStatusFilter={fieldFillLogStatusFilter}
+            fieldFillLogReasonFilter={fieldFillLogReasonFilter}
+            onLoginLogStatusFilterChange={setLoginLogStatusFilter}
+            onLoginLogReasonFilterChange={setLoginLogReasonFilter}
+            onReadLogStatusFilterChange={setReadLogStatusFilter}
+            onReadLogReasonFilterChange={setReadLogReasonFilter}
+            onActionLogStatusFilterChange={setActionLogStatusFilter}
+            onActionLogReasonFilterChange={setActionLogReasonFilter}
+            onNavigationLogStatusFilterChange={setNavigationLogStatusFilter}
+            onNavigationLogReasonFilterChange={setNavigationLogReasonFilter}
+            onFieldFillLogStatusFilterChange={setFieldFillLogStatusFilter}
+            onFieldFillLogReasonFilterChange={setFieldFillLogReasonFilter}
             onRefreshErrorLogs={() => {
               void errorLogsQuery.refetch();
               void reviewErrorLogsQuery.refetch();

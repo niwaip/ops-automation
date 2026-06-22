@@ -15,6 +15,7 @@ export interface ResolveRuntimeSemanticRuleSetQuery {
 export interface RuntimeSemanticRule {
   id?: string;
   type?: string;
+  category?: string;
   name?: string;
   enabled?: boolean;
   priority?: number;
@@ -22,6 +23,7 @@ export interface RuntimeSemanticRule {
   flags?: string;
   patterns?: unknown;
   outputs?: Record<string, unknown>;
+  tags?: unknown;
 }
 
 export interface RuntimeResolvedSemanticRuleSet {

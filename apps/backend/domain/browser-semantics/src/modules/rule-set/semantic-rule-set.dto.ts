@@ -10,6 +10,7 @@ import {
   IsOptional,
   IsString,
   Min,
+  Validate,
   ValidateNested,
 } from 'class-validator';
 import type {
@@ -17,6 +18,7 @@ import type {
   SemanticRuleSetStatus,
   SemanticRuleType,
 } from '../../types/semantic-rule.types';
+import { SemanticRuleOutputsConstraint } from './semantic-rule-output.validation';
 
 export class CreateSemanticRuleDto {
   @IsIn(['INTENT_ALIAS', 'FIELD_ALIAS', 'REGION_ALIAS', 'ENTITY_ALIAS', 'ROW_REFERENCE', 'READ_INTENT', 'LOGIN_PHRASE'])
@@ -61,6 +63,7 @@ export class CreateSemanticRuleDto {
   patterns!: string[];
 
   @IsObject()
+  @Validate(SemanticRuleOutputsConstraint)
   outputs!: Record<string, unknown>;
 }
 

@@ -145,4 +145,44 @@ export class ListSemanticRuleErrorLogsQueryDto {
   @IsOptional()
   @IsString()
   page_type?: string;
+
+  @IsOptional()
+  @IsString()
+  login_status?: string;
+
+  @IsOptional()
+  @IsString()
+  login_reason?: string;
+
+  @IsOptional()
+  @IsString()
+  navigation_status?: string;
+
+  @IsOptional()
+  @IsString()
+  navigation_reason?: string;
+
+  @IsOptional()
+  @IsString()
+  field_fill_status?: string;
+
+  @IsOptional()
+  @IsString()
+  field_fill_reason?: string;
+
+  @IsOptional()
+  @IsString()
+  action_status?: string;
+
+  @IsOptional()
+  @IsString()
+  action_reason?: string;
+
+  @IsOptional()
+  @IsString()
+  read_status?: string;
+
+  @IsOptional()
+  @IsString()
+  read_reason?: string;
 }

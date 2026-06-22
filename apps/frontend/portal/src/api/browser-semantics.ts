@@ -154,6 +154,16 @@ export interface ListSemanticRuleErrorLogsParams {
   error_type?: string;
   host?: string;
   page_type?: string;
+  login_status?: string;
+  login_reason?: string;
+  navigation_status?: string;
+  navigation_reason?: string;
+  field_fill_status?: string;
+  field_fill_reason?: string;
+  action_status?: string;
+  action_reason?: string;
+  read_status?: string;
+  read_reason?: string;
 }
 
 export interface CreateSemanticRulePayload {

@@ -114,4 +114,5 @@ export interface ParseBrowserCommandResponse {
   success: boolean;
   commands: BrowserCommand[];
   explanation: string;
+  parserMetadata?: Record<string, unknown>;
 }

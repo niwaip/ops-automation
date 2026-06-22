@@ -76,7 +76,7 @@ export class SemanticRuleErrorLogService {
   }
 
   async list(query: ListSemanticRuleErrorLogsQueryDto) {
-    return this.prisma.semanticRuleErrorLog.findMany({
+    const logs = await this.prisma.semanticRuleErrorLog.findMany({
       where: {
         ruleSetId: query.rule_set_id,
         traceId: query.trace_id,
@@ -93,5 +93,131 @@ export class SemanticRuleErrorLogService {
       orderBy: [{ createdAt: 'desc' }],
       take: 100,
     });
+
+    if (
+      !query.login_status &&
+      !query.login_reason &&
+      !query.read_status &&
+      !query.read_reason &&
+      !query.navigation_status &&
+      !query.navigation_reason &&
+      !query.field_fill_status &&
+      !query.field_fill_reason &&
+      !query.action_status &&
+      !query.action_reason
+    ) {
+      return logs;
+    }
+
+    return logs.filter((log) => {
+      const loginMetadata = this.extractLoginMetadata(log);
+      const readMetadata = this.extractReadMetadata(log);
+      const navigationMetadata = this.extractNavigationMetadata(log);
+      const fieldFillMetadata = this.extractFieldFillMetadata(log);
+      const actionMetadata = this.extractActionMetadata(log);
+
+      if (query.login_status && loginMetadata?.status !== query.login_status) {
+        return false;
+      }
+
+      if (query.login_reason && loginMetadata?.reason !== query.login_reason) {
+        return false;
+      }
+
+      if (query.read_status && readMetadata?.status !== query.read_status) {
+        return false;
+      }
+
+      if (query.read_reason && readMetadata?.reason !== query.read_reason) {
+        return false;
+      }
+
+      if (query.navigation_status && navigationMetadata?.status !== query.navigation_status) {
+        return false;
+      }
+
+      if (query.navigation_reason && navigationMetadata?.reason !== query.navigation_reason) {
+        return false;
+      }
+
+      if (query.field_fill_status && fieldFillMetadata?.status !== query.field_fill_status) {
+        return false;
+      }
+
+      if (query.field_fill_reason && fieldFillMetadata?.reason !== query.field_fill_reason) {
+        return false;
+      }
+
+      if (query.action_status && actionMetadata?.status !== query.action_status) {
+        return false;
+      }
+
+      if (query.action_reason && actionMetadata?.reason !== query.action_reason) {
+        return false;
+      }
+
+      return true;
+    });
+  }
+
+  private extractLoginMetadata(log: {
+    normalizedSemantic: unknown;
+    parserOutput: unknown;
+  }): { status?: string; reason?: string } | null {
+    return this.extractMetadataNode(log, 'login');
+  }
+
+  private extractNavigationMetadata(log: {
+    normalizedSemantic: unknown;
+    parserOutput: unknown;
+  }): { status?: string; reason?: string } | null {
+    return this.extractMetadataNode(log, 'navigation');
+  }
+
+  private extractReadMetadata(log: {
+    normalizedSemantic: unknown;
+    parserOutput: unknown;
+  }): { status?: string; reason?: string } | null {
+    return this.extractMetadataNode(log, 'read');
+  }
+
+  private extractFieldFillMetadata(log: {
+    normalizedSemantic: unknown;
+    parserOutput: unknown;
+  }): { status?: string; reason?: string } | null {
+    return this.extractMetadataNode(log, 'fieldFill');
+  }
+
+  private extractActionMetadata(log: {
+    normalizedSemantic: unknown;
+    parserOutput: unknown;
+  }): { status?: string; reason?: string } | null {
+    return this.extractMetadataNode(log, 'action');
+  }
+
+  private extractMetadataNode(
+    log: { normalizedSemantic: unknown; parserOutput: unknown },
+    key: 'login' | 'navigation' | 'fieldFill' | 'action' | 'read'
+  ): { status?: string; reason?: string } | null {
+    const normalizedSemantic = this.asRecord(log.normalizedSemantic);
+    const parserOutput = this.asRecord(log.parserOutput);
+    const normalizedNode = this.asRecord(this.asRecord(normalizedSemantic?.parser_metadata)?.[key]);
+    const parserNode = this.asRecord(this.asRecord(parserOutput?.metadata)?.[key]);
+    const metadata = normalizedNode || parserNode;
+
+    if (!metadata) {
+      return null;
+    }
+
+    return {
+      status: typeof metadata.status === 'string' ? metadata.status : undefined,
+      reason: typeof metadata.reason === 'string' ? metadata.reason : undefined,
+    };
+  }
+
+  private asRecord(value: unknown): Record<string, unknown> | null {
+    return typeof value === 'object' && value !== null && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : null;
   }
 }

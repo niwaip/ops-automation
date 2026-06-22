@@ -188,6 +188,66 @@ User: 点击第一条数据，进入详细页面
 JSON: {"steps":[{"action":"click","params":{"candidateId":"action_1"},"description":"点击第一条数据的详情"}],"explanation":"点击第一条数据的详情按钮"}`;
   }
 
+  buildLoginFallbackPlanPrompt(
+    input: string,
+    context: BrowserCommandContext,
+    urlMappings: string
+  ): string {
+    const browserContextDescription =
+      this.browserCandidateContextFormatter.formatBrowserContext(context);
+    const failureContextSection = this.buildFailureContextSection(context);
+
+    return `You are a browser login fallback planner.
+
+Your task:
+1. Treat the request as a login-related action.
+2. Focus ONLY on username/account/email inputs, password inputs, OTP inputs, submit buttons, and optional Next buttons.
+3. Respond with JSON only.
+
+Allowed actions:
+- navigate
+- fill
+- click
+
+Website URL mappings:
+${urlMappings}
+
+Current browser context:
+${browserContextDescription}
+
+${failureContextSection}
+
+User command: "${input}"
+
+Rules:
+- Prefer deterministic login steps using the current page context.
+- Only emit fields that are justified by the user input or the visible login context.
+- Preserve literal credential values exactly as provided by the user.
+- Prefer params.candidateId or params.rawTarget with roleHint/semanticHint over loose text clicks.
+- If the page appears to be multi-step, you may output only the current step, such as fill username then click Next.
+- Do NOT attempt to solve CAPTCHA, slider, QR scan, passkey, or enterprise auth challenges.
+- If you are uncertain, return an empty steps array instead of inventing elements.
+
+Return JSON only:
+{
+  "analysis": "optional short login-specific reasoning",
+  "steps": [
+    { "action": "fill", "params": { "selector": "用户名", "value": "demo@example.com" }, "description": "填写用户名" }
+  ],
+  "explanation": "brief explanation in Chinese"
+}
+
+Examples:
+User: 用户名是 demo@example.com 密码是 pass123 登录
+JSON: {"steps":[{"action":"fill","params":{"selector":"用户名","value":"demo@example.com"},"description":"填写用户名"},{"action":"fill","params":{"selector":"密码","value":"pass123"},"description":"填写密码"},{"action":"click","params":{"rawTarget":"登录","roleHint":"button","semanticHint":"submit"},"description":"点击登录"}],"explanation":"依次填写用户名、密码并提交登录"}
+
+User: 邮箱是 demo@example.com 然后 next
+JSON: {"steps":[{"action":"fill","params":{"selector":"用户名","value":"demo@example.com"},"description":"填写用户名"},{"action":"click","params":{"rawTarget":"Next","roleHint":"button","semanticHint":"submit"},"description":"点击 Next"}],"explanation":"填写邮箱后继续下一步"}
+
+User: 口令是 123456
+JSON: {"steps":[{"action":"fill","params":{"selector":"密码","value":"123456"},"description":"填写密码"}],"explanation":"填写当前页面的密码字段"}`;
+  }
+
   private buildFailureContextSection(context: BrowserCommandContext): string {
     if (!context.lastFailureContext) {
       return '';

@@ -204,7 +204,7 @@ const SemanticRuleSetFormModal: React.FC<SemanticRuleSetFormModalProps> = ({
                         <Form.Item label="优先级" name={[field.name, 'priority']} style={{ width: 160 }}>
                           <InputNumber min={0} style={{ width: '100%' }} />
                         </Form.Item>
-                        <Form.Item label="Flags" name={[field.name, 'flags']} style={{ width: 160 }}>
+                        <Form.Item label="标记" name={[field.name, 'flags']} style={{ width: 160 }}>
                           <Input placeholder="i" />
                         </Form.Item>
                         <Form.Item
@@ -226,7 +226,7 @@ const SemanticRuleSetFormModal: React.FC<SemanticRuleSetFormModalProps> = ({
                       </Space>
 
                       <Form.Item
-                        label="Patterns"
+                        label="匹配规则"
                         name={[field.name, 'patterns']}
                         rules={[{ required: true, message: '请输入至少一条 pattern' }]}
                         extra="支持逗号或换行分隔"
@@ -235,7 +235,7 @@ const SemanticRuleSetFormModal: React.FC<SemanticRuleSetFormModalProps> = ({
                       </Form.Item>
 
                       <Form.Item
-                        label="Outputs JSON"
+                        label="输出配置 JSON"
                         name={[field.name, 'outputs']}
                         rules={[{ required: true, message: '请输入输出 JSON' }]}
                       >

@@ -1,0 +1,65 @@
+[
+  {
+    "inputText": "读取 Customer name:",
+    "createdAt": "2026-06-22T01:31:03.694Z",
+    "parserSource": "read-profile",
+    "effectiveProfileVersions": {
+      "read": "default"
+    },
+    "parserMetadata": {
+      "read": {
+        "reason": "read-default-candidate",
+        "status": "success",
+        "selector": "role=textbox[name=\"Customer name:\"]",
+        "resolvedTarget": "customer name",
+        "usedRuntimeProfile": false,
+        "matchedRuntimeRuleIds": []
+      }
+    }
+  },
+  {
+    "inputText": "填写 Customer name: AliceREAD321",
+    "createdAt": "2026-06-22T01:30:45.792Z",
+    "parserSource": "field-fill-profile",
+    "effectiveProfileVersions": {
+      "fieldFill": "default"
+    },
+    "parserMetadata": {
+      "fieldFill": {
+        "value": "AliceREAD321",
+        "reason": "field-fill-default-candidate",
+        "status": "success",
+        "selector": "role=textbox[name=\"Customer name:\"]",
+        "resolvedField": "Customer name:",
+        "usedRuntimeProfile": false,
+        "matchedRuntimeRuleIds": [],
+        "resolvedCanonicalField": "Customer name:"
+      }
+    }
+  },
+  {
+    "inputText": "读取 Customer name:",
+    "createdAt": "2026-06-22T01:28:31.717Z",
+    "parserSource": "read-profile",
+    "effectiveProfileVersions": {
+      "read": "default"
+    },
+    "parserMetadata": {
+      "read": {
+        "reason": "read-default-candidate",
+        "status": "success",
+        "selector": "role=textbox[name=\"Customer name:\"]",
+        "resolvedTarget": "customer name",
+        "usedRuntimeProfile": false,
+        "matchedRuntimeRuleIds": []
+      }
+    }
+  },
+  {
+    "inputText": "读取 Customer name:",
+    "createdAt": "2026-06-22T00:00:31.150Z",
+    "parserSource": "ai-plan",
+    "effectiveProfileVersions": null,
+    "parserMetadata": null
+  }
+]

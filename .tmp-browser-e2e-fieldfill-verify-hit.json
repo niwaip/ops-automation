@@ -1,0 +1,29 @@
+[
+  {
+    "inputText": "填写 Customer name AliceCN988",
+    "createdAt": "2026-06-22T02:32:19.525Z",
+    "parserSource": "field-fill-profile",
+    "effectiveProfileVersions": {
+      "fieldFill": "default"
+    },
+    "parserMetadata": {
+      "fieldFill": {
+        "value": "AliceCN988",
+        "reason": "field-fill-default-candidate",
+        "status": "success",
+        "selector": "role=textbox[name=\"Customer name:\"]",
+        "resolvedField": "Customer name:",
+        "usedRuntimeProfile": false,
+        "matchedRuntimeRuleIds": [],
+        "resolvedCanonicalField": "Customer name"
+      }
+    }
+  },
+  {
+    "inputText": "填写 Customer name AliceCN988",
+    "createdAt": "2026-06-22T00:00:09.674Z",
+    "parserSource": "ai-plan",
+    "effectiveProfileVersions": null,
+    "parserMetadata": null
+  }
+]

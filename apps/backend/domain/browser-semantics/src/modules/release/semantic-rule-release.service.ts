@@ -1,6 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
+  extractSemanticRuleCategory,
+  validateSemanticRuleOutputs,
+} from '../rule-set/semantic-rule-output.validation';
+import {
   ListSemanticRuleReleasesQueryDto,
   PromoteSemanticRuleSetToActiveDto,
   PromoteSemanticRuleSetToCanaryDto,
@@ -33,11 +37,12 @@ export class SemanticRuleReleaseService {
     }
 
     for (const rule of ruleSet.rules) {
-      const category = Array.isArray(rule.tags)
-        ? rule.tags.find((tag): tag is string => typeof tag === 'string' && tag.startsWith('category:'))
-        : null;
+      const category = extractSemanticRuleCategory({
+        type: rule.type,
+        tags: rule.tags,
+      });
       if (category) {
-        categorySet.add(category.replace('category:', '').trim());
+        categorySet.add(category);
       }
 
       const normalizedName = rule.name.trim().toLowerCase();
@@ -67,9 +72,13 @@ export class SemanticRuleReleaseService {
         }
       }
 
-      if (!rule.outputs || typeof rule.outputs !== 'object' || Array.isArray(rule.outputs)) {
-        errors.push(`规则 ${rule.name} 的 outputs 必须是对象`);
-      }
+      const outputErrors = validateSemanticRuleOutputs({
+        type: rule.type,
+        category,
+        tags: rule.tags,
+        outputs: rule.outputs,
+      });
+      errors.push(...outputErrors.map((message) => `规则 ${rule.name} 的 ${message}`));
     }
 
     return {

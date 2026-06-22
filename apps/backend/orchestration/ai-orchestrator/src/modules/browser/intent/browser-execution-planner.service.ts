@@ -91,6 +91,32 @@ export class BrowserExecutionPlannerService {
     }
   }
 
+  async buildLoginFallbackPlan(
+    input: string,
+    context: BrowserCommandContext,
+    urlPatterns: Record<string, string>
+  ): Promise<BrowserPlanResponse | null> {
+    const chatModel = await this.getActiveModel();
+    if (!chatModel) {
+      return null;
+    }
+
+    const prompt = this.browserPlannerPromptBuilder.buildLoginFallbackPlanPrompt(
+      input,
+      context,
+      this.formatUrlMappings(urlPatterns)
+    );
+
+    try {
+      const response = await this.modelService.callModel(chatModel.id, prompt);
+      return this.browserPlannerResponseParser.parsePlanResponse(response.content);
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.warn(`Login AI fallback planning failed: ${errorMsg}`);
+      return null;
+    }
+  }
+
   private async getActiveModel(): Promise<{ id: string } | null> {
     const models = await this.modelService.listModels();
     const chatModel = models.find((model) => model.status === 'active');
