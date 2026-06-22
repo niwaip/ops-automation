@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import type { RuntimeSemanticRule } from '../../../client/browser-semantics.client';
-import { BrowserExecutionPlannerService } from './browser-execution-planner.service';
+import { BrowserExecutionPlannerService } from './ai-planner/browser-execution-planner.service';
 import type {
   BrowserCommand,
   BrowserCommandCandidate,
@@ -17,22 +17,22 @@ import {
   inferSemanticHint,
   type PendingActionIntent,
   type PendingActionIntentSource,
-} from './action-intent.builder';
-import { BrowserCommandLoginService } from './browser-command-login.service';
-import { BrowserCommandNavigationService } from './browser-command-navigation.service';
-import { BrowserCommandReadService } from './browser-command-read.service';
-import { BrowserCommandActionService } from './browser-command-action.service';
-import { BrowserCommandSearchService } from './browser-command-search.service';
-import { BrowserCommandFieldFillService } from './browser-command-field-fill.service';
-import { BrowserCommandAtomicService } from './browser-command-atomic.service';
-import { BrowserCommandSequentialService } from './browser-command-sequential.service';
+} from './atomic-parsers/action-intent.builder';
+import { BrowserCommandLoginService } from './profiles/browser-command-login.service';
+import { BrowserCommandNavigationService } from './profiles/browser-command-navigation.service';
+import { BrowserCommandReadService } from './profiles/browser-command-read.service';
+import { BrowserCommandActionService } from './profiles/browser-command-action.service';
+import { BrowserCommandSearchService } from './profiles/browser-command-search.service';
+import { BrowserCommandFieldFillService } from './profiles/browser-command-field-fill.service';
+import { BrowserCommandAtomicService } from './atomic-parsers/browser-command-atomic.service';
+import { BrowserCommandSequentialService } from './atomic-parsers/browser-command-sequential.service';
 import { BrowserCommandSemanticLogService } from './browser-command-semantic-log.service';
 import {
   BrowserCommandSemanticRuntimeService,
   type ResolvedSemanticRuntime,
 } from './browser-command-semantic-runtime.service';
-import { BrowserCommandContextNormalizerService } from './browser-command-context-normalizer.service';
-import { BrowserCommandClickContextService } from './browser-command-click-context.service';
+import { BrowserCommandContextNormalizerService } from './atomic-parsers/browser-command-context-normalizer.service';
+import { BrowserCommandClickContextService } from './atomic-parsers/browser-command-click-context.service';
 export type {
   BrowserCommand,
   BrowserCommandCandidate,

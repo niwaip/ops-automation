@@ -6,10 +6,10 @@ jest.mock(
   { virtual: true }
 );
 
-import { BrowserActionValidatorService } from '../intent/browser-action-validator.service';
+import { BrowserActionValidatorService } from '../intent';
 import { RecorderDebugChatFlowService } from './recorder-debug-chat-flow.service';
 import { RecorderDebugChatSupportService } from './recorder-debug-chat-support.service';
-import { RecorderDisambiguationService } from '../intent/recorder-disambiguation.service';
+import { RecorderDisambiguationService } from '../intent';
 
 describe('RecorderDebugChatFlowService', () => {
   const createService = () => {

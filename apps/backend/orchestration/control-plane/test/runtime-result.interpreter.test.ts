@@ -1,4 +1,4 @@
-import { RuntimeResultInterpreter } from '../src/modules/execution/runtime-result.interpreter';
+import { RuntimeResultInterpreter } from '../src/modules/execution/step-runner/runtime-result.interpreter';
 
 describe('RuntimeResultInterpreter', () => {
   const createInterpreter = () => {

@@ -10,7 +10,7 @@ import {
   ResumeExecutionDto,
   SubmitInputDto,
   TakeoverExecutionDto,
-} from '../execution/execution.dto';
+} from '../execution';
 import { IncomingHttpHeaders } from 'http';
 
 @Injectable()

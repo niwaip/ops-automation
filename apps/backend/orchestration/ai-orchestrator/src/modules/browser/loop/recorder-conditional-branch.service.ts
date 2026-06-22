@@ -4,7 +4,7 @@ import type {
   AnalyzeBranchConditionResponseDto,
   BranchNextActionDto,
 } from '../../branch-analysis/branch-analysis.dto';
-import type { BrowserCommand, BrowserCommandCandidate } from '../intent/browser-command.types';
+import type { BrowserCommand, BrowserCommandCandidate } from '../intent';
 
 interface ObservationLike {
   currentPageUrl?: string;

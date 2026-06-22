@@ -19,7 +19,6 @@ import { TRACE_ID_HEADER } from '../../common/trace.util';
 import { BaseTool } from './tools/base.tool';
 import { TOOL_METADATA_KEY, ToolOptions } from './decorators/tool.decorator';
 import { TOOL_SECURITY_KEY, SecurityPolicy } from './decorators/security.decorator';
-import { FlowExecuteTool } from './tools';
 
 @Injectable()
 export class ToolExecutor implements OnModuleInit {
@@ -219,7 +218,14 @@ export class ToolExecutor implements OnModuleInit {
           },
           validateParams: () => ({ valid: true, missing: [] }),
           execute: async (params, context) => {
-            const flowExecutor = this.getTool('flow_execute') as FlowExecuteTool;
+            const flowExecutor = this.getTool('flow_execute');
+            if (!flowExecutor) {
+              return {
+                success: false,
+                output: '工具 "flow_execute" 不存在',
+                data: { error: 'tool_not_found', toolName: 'flow_execute' },
+              };
+            }
             return flowExecutor.execute(
               {
                 templateId: template.id,

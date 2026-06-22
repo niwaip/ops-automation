@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { BrowserCommandCandidate } from '../intent/browser-command.service';
+import { BrowserCommandCandidate } from '../intent';
 
 interface RecorderObservationTraceEntry {
   candidateId: string;

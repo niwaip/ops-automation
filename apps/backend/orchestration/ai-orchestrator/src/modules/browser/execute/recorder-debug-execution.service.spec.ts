@@ -12,10 +12,10 @@ jest.mock(
   { virtual: true }
 );
 
-import { BrowserActionValidatorService } from '../intent/browser-action-validator.service';
+import { BrowserActionValidatorService } from '../intent';
 import { RecorderDebugChatSupportService } from './recorder-debug-chat-support.service';
 import { RecorderDebugExecutionService } from './recorder-debug-execution.service';
-import { RecorderDisambiguationService } from '../intent/recorder-disambiguation.service';
+import { RecorderDisambiguationService } from '../intent';
 import { RecorderObservationService } from '../observe/recorder-observation.service';
 import { RecorderSnapshotService } from '../observe/recorder-snapshot.service';
 import { RecorderStructureProbeService } from '../observe/recorder-structure-probe.service';

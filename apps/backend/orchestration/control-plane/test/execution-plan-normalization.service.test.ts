@@ -1,5 +1,5 @@
-import { ExecutionInputResolutionService } from '../src/modules/execution/execution-input-resolution.service';
-import { ExecutionPlanNormalizationService } from '../src/modules/execution/execution-plan-normalization.service';
+import { ExecutionInputResolutionService } from '../src/modules/execution/human-control/execution-input-resolution.service';
+import { ExecutionPlanNormalizationService } from '../src/modules/execution/step-runner/execution-plan-normalization.service';
 
 describe('ExecutionPlanNormalizationService', () => {
   const createService = () =>

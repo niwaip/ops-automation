@@ -1,5 +1,5 @@
 import { Logger } from '@nestjs/common';
-import { RuntimeStepRequestFactory } from '../src/modules/execution/runtime-step-request.factory';
+import { RuntimeStepRequestFactory } from '../src/modules/execution/step-runner/runtime-step-request.factory';
 
 describe('RuntimeStepRequestFactory', () => {
   const factory = new RuntimeStepRequestFactory();

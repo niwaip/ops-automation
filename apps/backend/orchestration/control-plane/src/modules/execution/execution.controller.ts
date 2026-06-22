@@ -28,7 +28,7 @@ import {
   CleanupExecutionsBeforeDateDto,
   ReconcilePhaseTakeoverDto,
   UpdateWorkflowActivityProgressDto,
-} from './execution.dto';
+} from './state/execution.dto';
 import { AuthenticatedRequest } from '../auth/auth.middleware';
 
 @ApiTags('Executions')

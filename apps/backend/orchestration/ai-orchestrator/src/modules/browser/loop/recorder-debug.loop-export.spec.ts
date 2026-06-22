@@ -1,6 +1,6 @@
 import { createService, resetRecorderDebugTestEnv } from '../execute/recorder-debug.test-helper';
 import { RecorderLoopService } from './recorder-loop.service';
-import { RecorderParameterService } from '../intent/recorder-parameter.service';
+import { RecorderParameterService } from '../intent';
 import { RecorderTemplateExportService } from '../export/recorder-template-export.service';
 
 describe('RecorderDebugService', () => {

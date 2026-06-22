@@ -1,13 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { ModelService } from '../../model/model.service';
-import { BrowserCommand } from '../intent/browser-command.service';
+import { BrowserCommand } from '../intent';
 import { buildBrowserRecordingExecutionPlan } from './browser-recording-execution-plan';
 import type { BrowserRecordingExecutionPlanLike } from './browser-recording-execution-plan';
 import { RecorderExportService } from './recorder-export.service';
 import { RecorderLoopService } from '../loop/recorder-loop.service';
 import { RecorderLoopDraftState } from '../loop/recorder-loop.types';
-import { RecorderParameterService } from '../intent/recorder-parameter.service';
+import { RecorderParameterService } from '../intent';
 import { RecorderScriptExportService } from './recorder-script-export.service';
 import { RecorderTemplateExportService } from './recorder-template-export.service';
 import type { RecorderManualInterventionRecord } from '../loop/recorder-loop.types';

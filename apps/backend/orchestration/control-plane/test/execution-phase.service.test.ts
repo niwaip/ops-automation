@@ -1,4 +1,4 @@
-import { ExecutionPhaseService } from '../src/modules/execution/execution-phase.service';
+import { ExecutionPhaseService } from '../src/modules/execution/state/execution-phase.service';
 
 describe('ExecutionPhaseService', () => {
   it('upserts phase records and syncs execution phase summary', async () => {

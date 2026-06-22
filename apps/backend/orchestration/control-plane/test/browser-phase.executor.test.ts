@@ -1,4 +1,4 @@
-import { BrowserPhaseExecutor } from '../src/modules/execution/browser-phase.executor';
+import { BrowserPhaseExecutor } from '../src/modules/execution/step-runner/browser-phase.executor';
 
 describe('BrowserPhaseExecutor', () => {
   it('marks phase completed when all runtime steps succeed', async () => {

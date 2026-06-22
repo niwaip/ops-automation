@@ -1,7 +1,7 @@
 import {
   ExecutionEventService,
   ExecutionStreamEventPayload,
-} from '../src/modules/execution/execution-event.service';
+} from '../src/modules/execution/state/execution-event.service';
 import { EXECUTION_EVENT_TYPE } from '../src/modules/execution';
 import { ExecutionService } from '../src/modules/execution/execution.service';
 

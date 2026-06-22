@@ -1,4 +1,4 @@
-import { ExecutionPhaseSyncService } from '../src/modules/execution/execution-phase-sync.service';
+import { ExecutionPhaseSyncService } from '../src/modules/execution/state/execution-phase-sync.service';
 
 describe('ExecutionPhaseSyncService', () => {
   const createService = () => {

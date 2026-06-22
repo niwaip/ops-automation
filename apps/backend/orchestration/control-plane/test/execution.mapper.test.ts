@@ -1,7 +1,7 @@
 import {
   mapExecutionStepToDto,
   mapExecutionToDto,
-} from '../src/modules/execution/execution.mapper';
+} from '../src/modules/execution/state/execution.mapper';
 
 describe('execution.mapper', () => {
   it('maps execution record to dto and prefers embedded usage from normalized input', () => {

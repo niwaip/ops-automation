@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ModelService } from '../../model/model.service';
-import type { BrowserCommand } from '../intent/browser-command.service';
+import type { BrowserCommand } from '../intent';
 
 export type ResumeStrategy =
   | 'replace_failed_step'

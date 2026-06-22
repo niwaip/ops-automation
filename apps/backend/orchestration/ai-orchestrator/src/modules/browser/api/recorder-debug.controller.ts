@@ -5,7 +5,7 @@ import type {
   RecorderDebugChatRequest,
   RecorderDebugChatResponse,
   RecorderLoopDraftRequest,
-} from '../execute/recorder-debug.service';
+} from '../execute/recorder-debug.types';
 import type {
   ReconcileAfterTakeoverRequest,
   ReconcileAfterTakeoverResponse,

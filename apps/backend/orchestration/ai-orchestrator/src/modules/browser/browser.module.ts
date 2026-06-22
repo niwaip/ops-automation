@@ -11,26 +11,28 @@ import { RecorderObservationService } from './observe/recorder-observation.servi
 import { RecorderSnapshotService } from './observe/recorder-snapshot.service';
 import { RecorderStructureProbeService } from './observe/recorder-structure-probe.service';
 import { RecorderDebugObservationRefreshService } from './observe/recorder-debug-observation-refresh.service';
-import { BrowserCommandService } from './intent/browser-command.service';
-import { BrowserCommandLoginService } from './intent/browser-command-login.service';
-import { BrowserCommandNavigationService } from './intent/browser-command-navigation.service';
-import { BrowserCommandReadService } from './intent/browser-command-read.service';
-import { BrowserCommandActionService } from './intent/browser-command-action.service';
-import { BrowserCommandSearchService } from './intent/browser-command-search.service';
-import { BrowserCommandFieldFillService } from './intent/browser-command-field-fill.service';
-import { BrowserCommandAtomicService } from './intent/browser-command-atomic.service';
-import { BrowserCommandSequentialService } from './intent/browser-command-sequential.service';
-import { BrowserCommandSemanticLogService } from './intent/browser-command-semantic-log.service';
-import { BrowserCommandSemanticRuntimeService } from './intent/browser-command-semantic-runtime.service';
-import { BrowserCommandContextNormalizerService } from './intent/browser-command-context-normalizer.service';
-import { BrowserCommandClickContextService } from './intent/browser-command-click-context.service';
-import { BrowserCandidateContextFormatter } from './intent/browser-candidate-context.formatter';
-import { BrowserPlannerPromptBuilder } from './intent/browser-planner-prompt.builder';
-import { BrowserPlannerResponseParser } from './intent/browser-planner-response.parser';
-import { BrowserExecutionPlannerService } from './intent/browser-execution-planner.service';
-import { BrowserActionValidatorService } from './intent/browser-action-validator.service';
-import { RecorderDisambiguationService } from './intent/recorder-disambiguation.service';
-import { RecorderParameterService } from './intent/recorder-parameter.service';
+import {
+  BrowserActionValidatorService,
+  BrowserCandidateContextFormatter,
+  BrowserCommandActionService,
+  BrowserCommandAtomicService,
+  BrowserCommandClickContextService,
+  BrowserCommandContextNormalizerService,
+  BrowserCommandFieldFillService,
+  BrowserCommandLoginService,
+  BrowserCommandNavigationService,
+  BrowserCommandReadService,
+  BrowserCommandSearchService,
+  BrowserCommandSemanticLogService,
+  BrowserCommandSemanticRuntimeService,
+  BrowserCommandSequentialService,
+  BrowserCommandService,
+  BrowserExecutionPlannerService,
+  BrowserPlannerPromptBuilder,
+  BrowserPlannerResponseParser,
+  RecorderDisambiguationService,
+  RecorderParameterService,
+} from './intent';
 import { BrowserExecutionControllerService } from './execute/browser-execution-controller.service';
 import { RecorderDebugService } from './execute/recorder-debug.service';
 import { RecorderDebugChatSupportService } from './execute/recorder-debug-chat-support.service';

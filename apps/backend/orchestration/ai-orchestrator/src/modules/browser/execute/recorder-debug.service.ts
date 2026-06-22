@@ -2,11 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import { getBrowserWorkerUrl } from '../../../config/service-endpoints';
 import { BrowserSemanticsClient } from '../../../client/browser-semantics.client';
-import type { BrowserCommand, BrowserCommandCandidate } from '../intent/browser-command.types';
-import {
-  BrowserCommandService,
-} from '../intent/browser-command.service';
-import { BrowserActionRiskLevel } from '../intent/browser-action-validator.service';
+import type { BrowserCommand, BrowserCommandCandidate } from '../intent';
+import { BrowserCommandService } from '../intent';
 import {
   ExecutionReconcileService,
   ReconcileAfterTakeoverRequest,
@@ -19,218 +16,30 @@ import { RecorderDebugChatSupportService } from './recorder-debug-chat-support.s
 import { RecorderDebugChatExecutionService } from './recorder-debug-chat-execution.service';
 import { RecorderDebugChatFlowService } from './recorder-debug-chat-flow.service';
 import { RecorderDebugExecutionService } from './recorder-debug-execution.service';
+import type {
+  BrowserExecuteResponse,
+  RecorderDebugChatRequest,
+  RecorderDebugChatResponse,
+  RecorderDebugExportArtifacts,
+  RecorderDebugObservation,
+  RecorderDebugSession,
+  RecorderLoopDraft,
+  RecorderLoopDraftRequest,
+} from './recorder-debug.types';
 import { RecorderDebugObservationRefreshService } from '../observe/recorder-debug-observation-refresh.service';
 import { RecorderDebugResponseService } from './recorder-debug-response.service';
 import { RecorderDebugSessionCoordinatorService } from '../session/recorder-debug-session-coordinator.service';
 import { RecorderConditionalBranchService } from '../loop/recorder-conditional-branch.service';
 import { RecorderObservationService } from '../observe/recorder-observation.service';
 import { SnapshotNode, SnapshotResolutionState } from '../observe/recorder-snapshot.service';
-import type {
-  RecorderLoopRuntimeStateLike,
-  RecorderManualInterventionRecord,
-  RecorderManualInterventionToken,
-} from '../loop/recorder-loop.types';
+import type { RecorderManualInterventionToken } from '../loop/recorder-loop.types';
 
 export type RecorderDebugBackend = 'cli' | 'chrome-devtools' | 'mcp';
 export type RecorderDebugTurnRole = 'user' | 'assistant' | 'system';
 
-export interface BrowserExecuteResponse {
-  success: boolean;
-  results: Array<Record<string, any>>;
-  message?: string;
-  steps?: Array<Record<string, any>>;
-  executedCommands?: BrowserCommand[];
-}
-
 interface BrowserInitResponse {
   success: boolean;
   message: string;
-}
-
-interface RecorderDebugDisambiguationCandidate {
-  index: number;
-  ref: string;
-  role?: string;
-  text: string;
-}
-
-interface RecorderDebugPendingDisambiguation {
-  command: BrowserCommand;
-  targetLabel: string;
-  candidates: RecorderDebugDisambiguationCandidate[];
-}
-
-interface RecorderDebugPendingRiskConfirmation {
-  commands: BrowserCommand[];
-  explanation: string;
-  riskLevel: BrowserActionRiskLevel;
-  reason: string;
-}
-
-export interface RecorderDebugObservation {
-  currentPageUrl?: string;
-  title?: string;
-  text?: string;
-  inputs: Array<Record<string, unknown>>;
-  buttons: Array<Record<string, unknown>>;
-  rows?: Array<Record<string, unknown>>;
-  regions?: Array<Record<string, unknown>>;
-  pageSemantics?: Record<string, unknown>;
-  candidates?: BrowserCommandCandidate[];
-  candidateTrace?: Array<{
-    candidateId: string;
-    source: string;
-    kind: string;
-    reasons: string[];
-    summary: string;
-  }>;
-  headings: string[];
-  links: string[];
-  suggestedParameters: Array<{
-    name: string;
-    label: string;
-    required: boolean;
-    reason: string;
-  }>;
-  snapshotPath?: string;
-}
-
-export interface RecorderDebugExportArtifacts {
-  script: string;
-  guidance: string;
-  templateSteps?: RecorderTemplateStepArtifact[];
-  loopDraft?: RecorderLoopDraft;
-  loopPlanPreview?: Array<Record<string, unknown>>;
-  scriptValidation?: {
-    syntaxValid: boolean;
-    warnings: string[];
-  };
-  skillDraft: {
-    name: string;
-    description: string;
-    invocation: string;
-    parameterOnly: true;
-    parameters: Array<{
-      name: string;
-      description: string;
-      required: boolean;
-      exampleValue?: string;
-      source?: string;
-    }>;
-    outputs: Array<{
-      name: string;
-      description: string;
-      location: string;
-    }>;
-    usageNotes: string[];
-    usageMarkdown: string;
-    publishPayload: {
-      name: string;
-      description: string;
-      triggerKeywords: string[];
-      paramsSchema: {
-        properties: Record<
-          string,
-          {
-            type: 'string' | 'number' | 'date' | 'boolean';
-            description: string;
-            required?: boolean;
-            default?: string | number | boolean;
-            extractionPrompt?: string;
-          }
-        >;
-        required: string[];
-      };
-      executionFlowTemplateIds: string[];
-      executionFlow: Array<Record<string, unknown>>;
-      loopPlanPreview?: Array<Record<string, unknown>>;
-      tools: string[];
-      apiEndpoints: {
-        runtimeMetadata: Record<string, unknown>;
-      };
-    };
-    executionPlan: {
-      backend: RecorderDebugBackend;
-      runtimeSessionId: string;
-      commands: BrowserCommand[];
-      templateSteps?: RecorderTemplateStepArtifact[];
-      loopDraft?: RecorderLoopDraft;
-    };
-    commands: BrowserCommand[];
-  };
-}
-
-export interface RecorderDebugTurn {
-  role: RecorderDebugTurnRole;
-  content: string;
-  timestamp: string;
-  commands?: BrowserCommand[];
-  execution?: BrowserExecuteResponse;
-  observation?: RecorderDebugObservation;
-  exportArtifacts?: RecorderDebugExportArtifacts;
-  loopDraft?: RecorderLoopDraft;
-  loopState?: RecorderLoopRuntimeStateLike;
-}
-
-export interface RecorderLoopDraft {
-  mode: 'repeat_until';
-  target: {
-    scope: 'current_list' | 'current_table' | 'current_cards';
-    regionId?: string;
-    currentPageUrl?: string;
-    match?: {
-      field?: string;
-      operator?: 'equals' | 'contains' | 'lt' | 'gt';
-      value?: string | number | boolean;
-    };
-  };
-  sampleRow?: {
-    rowKey?: string;
-    entityType?: string;
-    entityId?: string;
-    semanticPath?: string[];
-  };
-  eachIteration?: {
-    capturedFromIndex?: number;
-    capturedToIndex?: number;
-    stepIds: string[];
-    stepCount: number;
-  };
-  stopWhen?: {
-    read:
-      | { type: 'count' | 'text'; locator: { type: string; value: string } }
-      | { type: 'page_signal'; key: string };
-    conditionFn: string;
-    description: string;
-  };
-  onNoProgress?: 'takeover' | 'stop';
-  maxIterations?: number;
-  updatedAt?: string;
-}
-
-export interface RecorderLoopDraftRequest {
-  sessionId?: string;
-  runtimeSessionId?: string;
-  backend?: RecorderDebugBackend;
-  loopDraft: RecorderLoopDraft;
-}
-
-export interface RecorderDebugSession {
-  sessionId: string;
-  runtimeSessionId: string;
-  backend: RecorderDebugBackend;
-  browserInitialized: boolean;
-  currentPageUrl?: string;
-  lastObservation?: RecorderDebugObservation;
-  loopDraft?: RecorderLoopDraft;
-  pendingLoopCaptureStartCommandIndex?: number;
-  manualInterventions?: RecorderManualInterventionRecord[];
-  history: RecorderDebugTurn[];
-  executedCommands: BrowserCommand[];
-  pendingDisambiguation?: RecorderDebugPendingDisambiguation;
-  pendingRiskConfirmation?: RecorderDebugPendingRiskConfirmation;
-  createdAt: string;
-  updatedAt: string;
 }
 
 interface RecorderControlTokenState {
@@ -242,51 +51,6 @@ interface RecorderControlTokenState {
   hasConditionalBranch: boolean;
   manualInterventions: RecorderManualInterventionToken[];
   manualInterventionLabels: string[];
-}
-
-interface RecorderTemplateBranchConfig {
-  condition_fn: string;
-  on_match: 'continue' | 'stop';
-  on_mismatch: 'continue' | 'stop' | 'takeover';
-  takeover_reason?: string;
-  description?: string;
-}
-
-interface RecorderTemplateStepArtifact {
-  step_id: string;
-  action: string;
-  locator?: {
-    type: string;
-    value: string;
-  };
-  params?: Record<string, string | number>;
-  output_var?: string;
-  branch?: RecorderTemplateBranchConfig;
-  description?: string;
-}
-
-export interface RecorderDebugChatRequest {
-  sessionId?: string;
-  runtimeSessionId?: string;
-  message: string;
-  backend?: RecorderDebugBackend;
-  modelId?: string;
-  userRoles?: string[];
-}
-
-export interface RecorderDebugChatResponse {
-  sessionId: string;
-  runtimeSessionId: string;
-  reply: string;
-  status: 'executed' | 'answer' | 'question' | 'completed';
-  browserReady: boolean;
-  currentPageUrl?: string;
-  observation?: RecorderDebugObservation;
-  commands?: BrowserCommand[];
-  execution?: BrowserExecuteResponse;
-  exportArtifacts?: RecorderDebugExportArtifacts;
-  loopDraft?: RecorderLoopDraft;
-  loopState?: RecorderLoopRuntimeStateLike;
 }
 
 @Injectable()

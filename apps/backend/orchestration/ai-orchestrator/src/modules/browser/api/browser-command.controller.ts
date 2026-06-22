@@ -1,11 +1,11 @@
 import { Controller, Post, Body, Get, Delete, Param } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { BrowserCommandService } from '../intent/browser-command.service';
+import { BrowserCommandService } from '../intent';
 import type {
   ParseBrowserCommandRequest,
   ParseBrowserCommandResponse,
   WebsiteConfig,
-} from '../intent/browser-command.service';
+} from '../intent';
 
 @ApiTags('AI')
 @Controller('ai/browser')

@@ -2,8 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import * as fs from 'fs/promises';
 import { getBrowserWorkerUrl } from '../../../config/service-endpoints';
-import { BrowserActionValidatorService } from '../intent/browser-action-validator.service';
-import { BrowserCommand, BrowserCommandCandidate } from '../intent/browser-command.service';
+import { BrowserActionValidatorService, BrowserCommand, BrowserCommandCandidate } from '../intent';
 import { RecorderDebugChatSupportService } from './recorder-debug-chat-support.service';
 import { RecorderObservationService } from '../observe/recorder-observation.service';
 import {
@@ -12,7 +11,7 @@ import {
   SnapshotResolutionState,
 } from '../observe/recorder-snapshot.service';
 import { RecorderStructureProbeService } from '../observe/recorder-structure-probe.service';
-import type { BrowserExecuteResponse, RecorderDebugObservation } from './recorder-debug.service';
+import type { BrowserExecuteResponse, RecorderDebugObservation } from './recorder-debug.types';
 
 interface PreparedBrowserCommand {
   command: BrowserCommand;

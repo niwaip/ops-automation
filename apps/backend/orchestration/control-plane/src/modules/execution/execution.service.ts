@@ -17,28 +17,29 @@ import {
   CreateExecutionEventOptions,
   ExecutionEventService,
   ExecutionStreamEventPayload,
-} from './execution-event.service';
-import { ExecutionFailureService } from './execution-failure.service';
-import { ExecutionFlowRunnerService } from './execution-flow-runner.service';
-import { ExecutionPhaseService } from './execution-phase.service';
-import { ExecutionPhaseSyncService } from './execution-phase-sync.service';
+} from './state/execution-event.service';
+import { ExecutionFailureService } from './recovery/execution-failure.service';
+import { ExecutionFlowRunnerService } from './step-runner/execution-flow-runner.service';
+import { ExecutionPhaseService } from './state/execution-phase.service';
+import { ExecutionPhaseSyncService } from './state/execution-phase-sync.service';
 import {
   mapExecutionPhaseToDto,
   mapExecutionStepToDto,
   mapExecutionToDto,
-} from './execution.mapper';
-import { buildPlannedExecutionSteps } from './execution-plan-step.builder';
-import { canTransitionExecutionStatus } from './execution-transition-policy';
-import { ExecutionStateService } from './execution-state.service';
-import { ExecutionStepExecutorService } from './execution-step-executor.service';
-import { ExecutionStepService } from './execution-step.service';
-import { ExecutionApprovalService } from './execution-approval.service';
-import { ExecutionHumanControlService } from './execution-human-control.service';
+} from './state/execution.mapper';
+import { WorkflowActivityProgressService } from './state/workflow-activity-progress.service';
+import { buildPlannedExecutionSteps } from './step-runner/execution-plan-step.builder';
+import { canTransitionExecutionStatus } from './state/execution-transition-policy';
+import { ExecutionStateService } from './state/execution-state.service';
+import { ExecutionStepExecutorService } from './step-runner/execution-step-executor.service';
+import { ExecutionStepService } from './step-runner/execution-step.service';
+import { ExecutionApprovalService } from './human-control/execution-approval.service';
+import { ExecutionHumanControlService } from './human-control/execution-human-control.service';
 import {
   ExecutionInputResolutionService,
   SubmitInputResolutionResult,
-} from './execution-input-resolution.service';
-import { ExecutionPlanNormalizationService } from './execution-plan-normalization.service';
+} from './human-control/execution-input-resolution.service';
+import { ExecutionPlanNormalizationService } from './step-runner/execution-plan-normalization.service';
 import {
   CreateExecutionDto,
   ExecutionDto,
@@ -54,21 +55,21 @@ import {
   SubmitInputDto,
   ApprovalDecisionDto,
   UpdateWorkflowActivityProgressDto,
-} from './execution.dto';
-import { ExecutionPlanningService } from './execution-planning.service';
-import { ExecutionRuntimeSessionService } from './execution-runtime-session.service';
-import { RuntimePhaseInvokeResult, RuntimeStepInvokeResult } from './runtime-adapter.interface';
-import { RuntimeExecutionOrchestrator } from './runtime-execution.orchestrator';
-import { RuntimeResultInterpreter } from './runtime-result.interpreter';
-import { RuntimeStepRequestFactory } from './runtime-step-request.factory';
-import { BrowserPhaseExecutor } from './browser-phase.executor';
-import { BrowserRuntimeAdapter } from './browser-runtime.adapter';
-import { BROWSER_ACTIONS, BROWSER_RUNTIME } from './browser-execution-constants';
+} from './state/execution.dto';
+import { ExecutionPlanningService } from './step-runner/execution-planning.service';
+import { ExecutionRuntimeSessionService } from './adapters/execution-runtime-session.service';
+import { RuntimePhaseInvokeResult, RuntimeStepInvokeResult } from './adapters/runtime-adapter.interface';
+import { RuntimeExecutionOrchestrator } from './step-runner/runtime-execution.orchestrator';
+import { RuntimeResultInterpreter } from './step-runner/runtime-result.interpreter';
+import { RuntimeStepRequestFactory } from './step-runner/runtime-step-request.factory';
+import { BrowserPhaseExecutor } from './step-runner/browser-phase.executor';
+import { BrowserRuntimeAdapter } from './adapters/browser-runtime.adapter';
+import { BROWSER_ACTIONS, BROWSER_RUNTIME } from './step-runner/browser-execution-constants';
 import {
   ExecutionBrowserOrchestrationService,
   ExecutionStepPhaseMetadata,
-} from './execution-browser-orchestration.service';
-import type { BrowserPhaseCheck } from './execution.dto';
+} from './step-runner/execution-browser-orchestration.service';
+import type { BrowserPhaseCheck } from './state/execution.dto';
 
 interface LLMUsage {
   prompt_tokens: number;
@@ -204,6 +205,7 @@ export class ExecutionService {
   private readonly executionBrowserOrchestrationService: ExecutionBrowserOrchestrationService;
   private readonly executionRuntimeSessionService: ExecutionRuntimeSessionService;
   private readonly executionStepExecutorService: ExecutionStepExecutorService;
+  private readonly workflowActivityProgressService: WorkflowActivityProgressService;
   private readonly browserRuntimeAdapter: BrowserRuntimeAdapter;
 
   constructor(
@@ -235,7 +237,8 @@ export class ExecutionService {
     executionFlowRunnerService?: ExecutionFlowRunnerService,
     executionStepExecutorService?: ExecutionStepExecutorService,
     executionBrowserOrchestrationService?: ExecutionBrowserOrchestrationService,
-    browserRuntimeAdapter?: BrowserRuntimeAdapter
+    browserRuntimeAdapter?: BrowserRuntimeAdapter,
+    workflowActivityProgressService?: WorkflowActivityProgressService
   ) {
     const dependencyCandidates = [
       runtimeExecutionOrchestrator,
@@ -258,6 +261,7 @@ export class ExecutionService {
       executionStepExecutorService,
       executionBrowserOrchestrationService,
       browserRuntimeAdapter,
+      workflowActivityProgressService,
     ];
     const pickDependency = <T>(
       explicit: T | undefined,
@@ -362,6 +366,10 @@ export class ExecutionService {
         hasMethod(value, 'inspectState') &&
         hasMethod(value, 'assertState')
     );
+    const resolvedWorkflowActivityProgressService = pickDependency<WorkflowActivityProgressService>(
+      workflowActivityProgressService,
+      (value) => hasMethod(value, 'sync')
+    );
 
     this.executionEventService = resolvedExecutionEventService || new ExecutionEventService(prisma);
     this.executionStepService = resolvedExecutionStepService || new ExecutionStepService(prisma);
@@ -420,6 +428,9 @@ export class ExecutionService {
         this.runtimeStepRequestFactory,
         resolvedBrowserPhaseExecutor
       );
+    this.workflowActivityProgressService =
+      resolvedWorkflowActivityProgressService ||
+      new WorkflowActivityProgressService(this.executionPhaseService);
     this.browserRuntimeAdapter = resolvedBrowserRuntimeAdapter || new BrowserRuntimeAdapter();
   }
 
@@ -817,130 +828,7 @@ export class ExecutionService {
     }
 
     this.ensureExecutionPermission(execution.createdBy, requester);
-
-    const phases = await this.executionPhaseService.listByExecutionId(executionId);
-    const workflowActivityPhases = phases
-      .filter((phase) => {
-        const phaseType = this.readNonEmptyString(phase.phaseType, phase.phase_type);
-        if (phaseType !== 'workflow_activity') {
-          return false;
-        }
-        const input = this.readRecord(phase.input, phase.input_json);
-        return this.readNonEmptyString(input?.parentPhaseKey) === dto.parentPhaseKey;
-      })
-      .sort((left, right) => {
-        const leftInput = this.readRecord(left.input, left.input_json);
-        const rightInput = this.readRecord(right.input, right.input_json);
-        const leftOrder = Number(leftInput?.order || 0);
-        const rightOrder = Number(rightInput?.order || 0);
-        if (leftOrder !== rightOrder) {
-          return leftOrder - rightOrder;
-        }
-        return String(left.phaseKey || left.phase_key || '').localeCompare(
-          String(right.phaseKey || right.phase_key || '')
-        );
-      });
-
-    if (workflowActivityPhases.length === 0) {
-      return;
-    }
-
-    const currentPhase = workflowActivityPhases.find((phase) => {
-      const input = this.readRecord(phase.input, phase.input_json);
-      const order = Number(input?.order || 0);
-      if (dto.activityOrder && order === dto.activityOrder) {
-        return true;
-      }
-      return Boolean(
-        dto.activityName &&
-        this.readNonEmptyString(phase.phaseName, phase.phase_name) === dto.activityName
-      );
-    });
-
-    if (!currentPhase) {
-      this.logger.warn(
-        `Workflow activity progress ignored for execution ${executionId}: parentPhaseKey=${dto.parentPhaseKey}, activityOrder=${dto.activityOrder ?? '-'}, activityName=${dto.activityName ?? '-'}`
-      );
-      return;
-    }
-
-    const currentPhaseKey = this.readNonEmptyString(currentPhase.phaseKey, currentPhase.phase_key);
-    const currentPhaseName = this.readNonEmptyString(
-      currentPhase.phaseName,
-      currentPhase.phase_name
-    );
-    const currentPhaseType =
-      this.readNonEmptyString(currentPhase.phaseType, currentPhase.phase_type) ||
-      'workflow_activity';
-    const currentAttempt = Number(currentPhase.attempt || 1);
-    const currentInput = this.readRecord(currentPhase.input, currentPhase.input_json);
-    const currentOutput = this.readRecord(currentPhase.output, currentPhase.output_json);
-    const currentStartedAt = this.toNullableDate(currentPhase.startedAt || currentPhase.started_at);
-    const currentOrder = Number(currentInput?.order || dto.activityOrder || 0);
-    const runtimeSessionId =
-      dto.runtimeSessionId ||
-      this.readNonEmptyString(currentPhase.runtimeSessionId, currentPhase.runtime_session_id) ||
-      null;
-
-    if (!currentPhaseKey || !currentPhaseName) {
-      return;
-    }
-
-    for (const phase of workflowActivityPhases) {
-      const phaseKey = this.readNonEmptyString(phase.phaseKey, phase.phase_key);
-      if (!phaseKey || phaseKey === currentPhaseKey) {
-        continue;
-      }
-
-      const phaseInput = this.readRecord(phase.input, phase.input_json);
-      const phaseOrder = Number(phaseInput?.order || 0);
-      const phaseStatus = this.readNonEmptyString(phase.status) || 'pending';
-      if (
-        phaseOrder > 0 &&
-        currentOrder > 0 &&
-        phaseOrder < currentOrder &&
-        phaseStatus === 'running'
-      ) {
-        await this.executionPhaseService.createOrUpdatePhase({
-          executionId,
-          phaseKey,
-          phaseName: this.readNonEmptyString(phase.phaseName, phase.phase_name) || phaseKey,
-          phaseType:
-            this.readNonEmptyString(phase.phaseType, phase.phase_type) || 'workflow_activity',
-          status: 'completed',
-          attempt: Number(phase.attempt || 1),
-          runtimeSessionId:
-            runtimeSessionId ||
-            this.readNonEmptyString(phase.runtimeSessionId, phase.runtime_session_id) ||
-            null,
-          input: phaseInput,
-          output: this.readRecord(phase.output, phase.output_json),
-          errorCode: null,
-          errorMessage: null,
-          startedAt: this.toNullableDate(phase.startedAt || phase.started_at),
-          completedAt: new Date(),
-        });
-      }
-    }
-
-    const currentStatus = this.readNonEmptyString(currentPhase.status) || 'pending';
-    if (currentStatus !== 'completed') {
-      await this.executionPhaseService.createOrUpdatePhase({
-        executionId,
-        phaseKey: currentPhaseKey,
-        phaseName: currentPhaseName,
-        phaseType: currentPhaseType,
-        status: 'running',
-        attempt: currentAttempt,
-        runtimeSessionId,
-        input: currentInput,
-        output: currentOutput,
-        errorCode: null,
-        errorMessage: null,
-        startedAt: currentStartedAt || new Date(),
-        completedAt: null,
-      });
-    }
+    await this.workflowActivityProgressService.sync(executionId, dto);
   }
 
   async takeover(
@@ -1905,15 +1793,6 @@ export class ExecutionService {
     );
   }
 
-  private readRecord(...values: unknown[]): Record<string, unknown> | null {
-    for (const value of values) {
-      if (value && typeof value === 'object' && !Array.isArray(value)) {
-        return value as Record<string, unknown>;
-      }
-    }
-    return null;
-  }
-
   private readNonEmptyString(...values: unknown[]): string | undefined {
     for (const value of values) {
       if (typeof value === 'string' && value.trim()) {
@@ -1921,17 +1800,6 @@ export class ExecutionService {
       }
     }
     return undefined;
-  }
-
-  private toNullableDate(value: unknown): Date | null {
-    if (value instanceof Date) {
-      return value;
-    }
-    if (typeof value === 'string' || typeof value === 'number') {
-      const parsed = new Date(value);
-      return Number.isNaN(parsed.getTime()) ? null : parsed;
-    }
-    return null;
   }
 
   private extractStepUrl(

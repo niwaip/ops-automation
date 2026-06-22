@@ -1,4 +1,4 @@
-import { BrowserCommand } from '../intent/browser-command.service';
+import { BrowserCommand } from '../intent';
 
 export type LoopScope = 'current_list' | 'current_table' | 'current_cards';
 

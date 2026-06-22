@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { BrowserPhaseRecoveryPlanner } from '../src/modules/execution/browser-phase-recovery.planner';
+import { BrowserPhaseRecoveryPlanner } from '../src/modules/execution/recovery/browser-phase-recovery.planner';
 
 jest.mock('axios');
 

@@ -13,7 +13,7 @@ describe('ExecutionService phase artifact sync', () => {
 
     const executionPhaseService = {
       markCompleted: jest.fn().mockResolvedValue(undefined),
-      replaceArtifacts: jest.fn().mockResolvedValue(undefined),
+      appendArtifacts: jest.fn().mockResolvedValue(undefined),
       createOrUpdatePhase: jest.fn().mockResolvedValue(undefined),
     };
 
@@ -82,7 +82,7 @@ describe('ExecutionService phase artifact sync', () => {
         runtimeSessionId: 'runtime-1',
       })
     );
-    expect(executionPhaseService.replaceArtifacts).toHaveBeenCalledWith(
+    expect(executionPhaseService.appendArtifacts).toHaveBeenCalledWith(
       'execution-1',
       'phase_01_execute_skill',
       [

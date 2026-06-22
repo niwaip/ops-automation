@@ -3,7 +3,7 @@ import {
   EXECUTION_STATUS_TRANSITIONS,
   canTransitionExecutionStatus,
   isTerminalExecutionStatus,
-} from '../src/modules/execution/execution-transition-policy';
+} from '../src/modules/execution/state/execution-transition-policy';
 
 describe('execution-transition-policy', () => {
   it('exposes the allowed transitions for active execution states', () => {

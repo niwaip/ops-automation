@@ -1,4 +1,4 @@
-import { ExecutionEventService } from '../src/modules/execution/execution-event.service';
+import { ExecutionEventService } from '../src/modules/execution/state/execution-event.service';
 import { EXECUTION_EVENT_TYPE } from '../src/modules/execution';
 
 describe('ExecutionEventService', () => {

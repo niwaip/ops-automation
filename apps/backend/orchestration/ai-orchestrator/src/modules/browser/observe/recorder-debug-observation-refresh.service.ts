@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { RecorderDebugObservation } from '../execute/recorder-debug.service';
+import type { RecorderDebugObservation } from '../execute/recorder-debug.types';
 
 type RecorderDebugObservationRefreshSession = {
   sessionId: string;

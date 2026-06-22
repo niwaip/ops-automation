@@ -1,13 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { BrowserSemanticsClient } from '../../../client/browser-semantics.client';
 import { RecorderDebugChatSupportService } from './recorder-debug-chat-support.service';
-import type { BrowserExecuteResponse, RecorderDebugObservation } from './recorder-debug.service';
+import type { BrowserExecuteResponse, RecorderDebugObservation } from './recorder-debug.types';
 import type { RecorderManualInterventionToken } from '../loop/recorder-loop.types';
 import type {
   BrowserCommand,
   BrowserCommandFailureContext,
   ParseBrowserCommandResponse,
-} from '../intent/browser-command.types';
+} from '../intent';
 
 export type RecorderControlTokenStateLike = {
   cleanedMessage: string;

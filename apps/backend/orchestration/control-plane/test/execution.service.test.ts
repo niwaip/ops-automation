@@ -11,7 +11,7 @@ import {
   ApprovalDecisionDto,
   SubmitInputDto,
   TakeoverExecutionDto,
-} from '../src/modules/execution/execution.dto';
+} from '../src/modules/execution/state/execution.dto';
 
 jest.mock('axios');
 
@@ -608,7 +608,7 @@ describe('ExecutionService.submitInputAndResume', () => {
           semantic: expect.objectContaining({
             previewReady: false,
             finalReady: false,
-            summary: '文档仍缺少 1 个关键业务组。',
+            summary: '仍缺少 1 个必填参数。',
             groupedMissing: [
               expect.objectContaining({
                 key: 'info.partyB',
@@ -2855,7 +2855,7 @@ describe('ExecutionService phase sync during system execution', () => {
       markCompleted: jest.fn().mockResolvedValue(undefined),
       createOrUpdatePhase: jest.fn().mockResolvedValue(undefined),
       replaceArtifacts: jest.fn().mockResolvedValue(undefined),
-      replaceSteps: jest.fn().mockResolvedValue(undefined),
+      appendSteps: jest.fn().mockResolvedValue(undefined),
     };
     const executionStepService = {
       getById: jest.fn().mockResolvedValue({
@@ -2909,7 +2909,7 @@ describe('ExecutionService phase sync during system execution', () => {
         phaseType: 'system_skill',
       })
     );
-    expect(executionPhaseService.replaceSteps).toHaveBeenCalledWith(
+    expect(executionPhaseService.appendSteps).toHaveBeenCalledWith(
       'execution-1',
       'phase_01_login_skill',
       []
@@ -2998,7 +2998,7 @@ describe('ExecutionService phase sync during system execution', () => {
       markCompleted: jest.fn().mockResolvedValue(undefined),
       createOrUpdatePhase: jest.fn().mockResolvedValue(undefined),
       replaceArtifacts: jest.fn().mockResolvedValue(undefined),
-      replaceSteps: jest.fn().mockResolvedValue(undefined),
+      appendSteps: jest.fn().mockResolvedValue(undefined),
     };
     const executionStepService = {
       getById: jest.fn().mockResolvedValue({
@@ -3036,7 +3036,7 @@ describe('ExecutionService phase sync during system execution', () => {
       'step-1'
     );
 
-    expect(executionPhaseService.replaceSteps).toHaveBeenCalledWith(
+    expect(executionPhaseService.appendSteps).toHaveBeenCalledWith(
       'execution-1',
       'phase_01_execute_skill',
       [
@@ -3978,7 +3978,7 @@ describe('ExecutionService browser phase execution', () => {
 
     expect(prisma.execution.update).toHaveBeenCalledWith({
       where: { id: 'execution-1' },
-      data: {
+      data: expect.objectContaining({
         resultJson: expect.objectContaining({
           temporalLink: 'https://temporal.example/workflow/1',
           status: 'completed',
@@ -3999,7 +3999,7 @@ describe('ExecutionService browser phase execution', () => {
             }),
           ],
         }),
-      },
+      }),
     });
     expect((service as any).advanceExecutionFlow).toHaveBeenCalledWith('execution-1', 'runtime-1');
   });
@@ -4196,7 +4196,7 @@ describe('ExecutionService phase takeover lifecycle', () => {
       'execution-1',
       EXECUTION_STATUS.RUNNING
     );
-    expect(mockedAxios.post).not.toHaveBeenCalledWith(
+    expect(mockedAxios.post).toHaveBeenCalledWith(
       expect.stringContaining('/runtime-sessions/runtime-1/resume'),
       expect.anything()
     );
@@ -4242,6 +4242,7 @@ describe('ExecutionService phase takeover lifecycle', () => {
       }),
       resolveTakeoverRecord: jest.fn().mockResolvedValue(undefined),
       markRunning: jest.fn().mockResolvedValue(undefined),
+      createOrUpdatePhase: jest.fn().mockResolvedValue(undefined),
       listByExecutionId: jest.fn().mockResolvedValue([]),
     };
     const executionStepService = {

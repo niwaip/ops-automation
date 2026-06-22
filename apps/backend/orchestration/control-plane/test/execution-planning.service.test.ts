@@ -1,6 +1,6 @@
-import { ExecutionInputResolutionService } from '../src/modules/execution/execution-input-resolution.service';
-import { ExecutionPlanNormalizationService } from '../src/modules/execution/execution-plan-normalization.service';
-import { ExecutionPlanningService } from '../src/modules/execution/execution-planning.service';
+import { ExecutionInputResolutionService } from '../src/modules/execution/human-control/execution-input-resolution.service';
+import { ExecutionPlanNormalizationService } from '../src/modules/execution/step-runner/execution-plan-normalization.service';
+import { ExecutionPlanningService } from '../src/modules/execution/step-runner/execution-planning.service';
 
 describe('ExecutionPlanningService', () => {
   const previousFlag = process.env.BROWSER_LOOP_WORKFLOW_ENABLED;

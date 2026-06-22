@@ -13,7 +13,7 @@ jest.mock(
 );
 
 jest.mock(
-  '../intent/browser-command.service',
+  '../intent',
   () => ({
     BrowserCommandService: class {},
   }),
@@ -37,7 +37,7 @@ jest.mock(
 );
 
 import { RecorderDebugService } from './recorder-debug.service';
-import { BrowserActionValidatorService } from '../intent/browser-action-validator.service';
+import { BrowserActionValidatorService } from '../intent/atomic-parsers/browser-action-validator.service';
 import { BrowserExecutionControllerService } from './browser-execution-controller.service';
 import { RecorderDebugChatExecutionService } from './recorder-debug-chat-execution.service';
 import { RecorderDebugChatFlowService } from './recorder-debug-chat-flow.service';

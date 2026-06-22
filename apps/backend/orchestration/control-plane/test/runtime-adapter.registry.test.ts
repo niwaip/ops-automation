@@ -1,10 +1,10 @@
 import { ServiceUnavailableException } from '@nestjs/common';
-import { RuntimeAdapterRegistry } from '../src/modules/execution/runtime-adapter.registry';
+import { RuntimeAdapterRegistry } from '../src/modules/execution/adapters/runtime-adapter.registry';
 import {
   RuntimeAdapter,
   RuntimeStepInvokeRequest,
   buildRuntimeAdapterRouteKey,
-} from '../src/modules/execution/runtime-adapter.interface';
+} from '../src/modules/execution/adapters/runtime-adapter.interface';
 
 describe('RuntimeAdapterRegistry', () => {
   const baseRequest: RuntimeStepInvokeRequest = {

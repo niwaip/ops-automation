@@ -1,4 +1,4 @@
-import { ExecutionBrowserOrchestrationService } from '../src/modules/execution/execution-browser-orchestration.service';
+import { ExecutionBrowserOrchestrationService } from '../src/modules/execution/step-runner/execution-browser-orchestration.service';
 
 describe('ExecutionBrowserOrchestrationService', () => {
   it('persists browser phase variables into normalized input after phase success', async () => {

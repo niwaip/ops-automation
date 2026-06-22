@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { BrowserCommand, ParseBrowserCommandResponse } from '../intent/browser-command.service';
-import { BrowserActionRiskLevel } from '../intent/browser-action-validator.service';
-import { RecorderDisambiguationService } from '../intent/recorder-disambiguation.service';
+import {
+  BrowserActionRiskLevel,
+  BrowserCommand,
+  ParseBrowserCommandResponse,
+  RecorderDisambiguationService,
+} from '../intent';
 
 type RecorderObservationLike = {
   suggestedParameters: Array<{ name: string }>;

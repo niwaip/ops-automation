@@ -8,7 +8,7 @@ jest.mock(
 
 import { BrowserExecutionControllerService } from './browser-execution-controller.service';
 import { RecorderDebugChatSupportService } from './recorder-debug-chat-support.service';
-import { RecorderDisambiguationService } from '../intent/recorder-disambiguation.service';
+import { RecorderDisambiguationService } from '../intent';
 
 describe('BrowserExecutionControllerService', () => {
   const createService = () => {

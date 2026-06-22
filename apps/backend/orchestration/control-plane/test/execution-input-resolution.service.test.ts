@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import { ExecutionInputResolutionService } from '../src/modules/execution/execution-input-resolution.service';
+import { ExecutionInputResolutionService } from '../src/modules/execution/human-control/execution-input-resolution.service';
 
 describe('ExecutionInputResolutionService', () => {
   const createUsage = (prompt: number, completion: number, reasoning = 0) => ({

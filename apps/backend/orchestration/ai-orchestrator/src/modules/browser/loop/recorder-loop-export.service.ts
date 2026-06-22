@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { BrowserCommand } from '../intent/browser-command.service';
+import { BrowserCommand } from '../intent';
 import { RecorderLoopLocatorService } from './recorder-loop-locator.service';
 import {
   RecorderLoopDraftState,

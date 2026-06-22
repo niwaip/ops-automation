@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { BranchAnalysisService } from '../../branch-analysis/branch-analysis.service';
-import { BrowserCommand } from '../intent/browser-command.service';
-import type { BrowserCommandCandidate } from '../intent/browser-command.types';
+import { BrowserCommand } from '../intent';
+import type { BrowserCommandCandidate } from '../intent';
 import { RecorderLoopService } from '../loop/recorder-loop.service';
 import type {
   RecorderLoopDraftState,

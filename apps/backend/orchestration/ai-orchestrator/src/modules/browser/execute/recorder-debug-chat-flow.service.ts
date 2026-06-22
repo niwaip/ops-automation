@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { BrowserActionValidatorService } from '../intent/browser-action-validator.service';
 import {
+  BrowserActionValidatorService,
   BrowserCommand,
   BrowserCommandCandidate,
   ParseBrowserCommandResponse,
-} from '../intent/browser-command.service';
+} from '../intent';
 import { RecorderDebugChatSupportService } from './recorder-debug-chat-support.service';
 
 type RecorderDebugPendingRiskConfirmationLike = {

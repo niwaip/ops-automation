@@ -1,4 +1,4 @@
-import { buildPlannedExecutionSteps } from '../src/modules/execution/execution-plan-step.builder';
+import { buildPlannedExecutionSteps } from '../src/modules/execution/step-runner/execution-plan-step.builder';
 
 describe('execution-plan-step.builder', () => {
   it('builds bootstrap and planner steps in order', () => {

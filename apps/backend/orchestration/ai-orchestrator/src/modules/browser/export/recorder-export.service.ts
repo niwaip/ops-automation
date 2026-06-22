@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { BrowserCommand } from '../intent/browser-command.service';
+import { BrowserCommand } from '../intent';
 import {
   BROWSER_RECORDING_EXECUTION_PLAN_VERSION,
   buildBrowserRecordingExecutionPlan,
