@@ -17,7 +17,7 @@ const asRecord = (value: unknown): Record<string, unknown> | undefined => {
 export class CapabilityReleaseTemporalSchemaService {
   extractTemporalGoal(
     workflowDsl: Record<string, unknown>,
-    fallbackDescription?: string | null,
+    fallbackDescription?: string | null
   ): string | null {
     const extraPrompt = workflowDsl.extraPrompt;
     if (typeof extraPrompt === 'string' && extraPrompt.trim()) {
@@ -32,12 +32,10 @@ export class CapabilityReleaseTemporalSchemaService {
     const outputParams = this.parseJson<Record<string, unknown>>(workflowDsl.outputParams) || {};
     const entries = Object.entries(outputParams)
       .map(([key, value]) => {
-        const definition = value && typeof value === 'object'
-          ? (value as Record<string, unknown>)
-          : {};
-        const description = typeof definition.description === 'string'
-          ? definition.description.trim()
-          : '';
+        const definition =
+          value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
+        const description =
+          typeof definition.description === 'string' ? definition.description.trim() : '';
         return description ? `${key}: ${description}` : key;
       })
       .filter(Boolean);
@@ -46,30 +44,31 @@ export class CapabilityReleaseTemporalSchemaService {
   }
 
   buildTemporalOutputParamsFromValidation(
-    validation: CapabilityValidationDTO,
+    validation: CapabilityValidationDTO
   ): Record<string, unknown> {
-    const snapshot = validation.resultSnapshot && typeof validation.resultSnapshot === 'object'
-      ? validation.resultSnapshot
-      : {};
-    const resultContainer = this.parseJson<Record<string, unknown>>(
-      (snapshot as Record<string, unknown>).result,
-    ) || {};
+    const snapshot =
+      validation.resultSnapshot && typeof validation.resultSnapshot === 'object'
+        ? validation.resultSnapshot
+        : {};
+    const resultContainer =
+      this.parseJson<Record<string, unknown>>((snapshot as Record<string, unknown>).result) || {};
     const rawResult = this.parseJson<Record<string, unknown>>(resultContainer.result) || {};
-    const properties = Object.entries(rawResult).reduce<Record<string, unknown>>((acc, [key, value]) => {
-      acc[key] = {
-        type: this.inferTemporalParamType(value, key),
-        description: `Workflow 输出字段 ${key}`,
-      };
-      return acc;
-    }, {});
+    const properties = Object.entries(rawResult).reduce<Record<string, unknown>>(
+      (acc, [key, value]) => {
+        acc[key] = {
+          type: this.inferTemporalParamType(value, key),
+          description: `Workflow 输出字段 ${key}`,
+        };
+        return acc;
+      },
+      {}
+    );
     return properties;
   }
 
-  resolveEffectiveTemporalParamsSchema(
-    payload: Record<string, unknown>,
-  ): Record<string, unknown> {
-    const workflowDsl = this.parseJson(payload.workflowDsl) as Record<string, unknown> || {};
-    const activityDsl = this.parseJson(payload.activityDsl) as Record<string, unknown> || {};
+  resolveEffectiveTemporalParamsSchema(payload: Record<string, unknown>): Record<string, unknown> {
+    const workflowDsl = (this.parseJson(payload.workflowDsl) as Record<string, unknown>) || {};
+    const activityDsl = (this.parseJson(payload.activityDsl) as Record<string, unknown>) || {};
     const rawSchema = this.parseJson(payload.paramsSchema) as Record<string, unknown> | null;
     const inferredSchema = this.buildTemporalParamsSchema(workflowDsl, activityDsl);
 
@@ -92,10 +91,9 @@ export class CapabilityReleaseTemporalSchemaService {
       ? inferredSchema.required.filter((item): item is string => typeof item === 'string')
       : [];
     const inferredPropertyKeys = new Set(Object.keys(inferredProperties));
-    const finalRequired = Array.from(new Set([
-      ...rawRequired.filter((key) => !inferredPropertyKeys.has(key)),
-      ...inferredRequired,
-    ]));
+    const finalRequired = Array.from(
+      new Set([...rawRequired.filter((key) => !inferredPropertyKeys.has(key)), ...inferredRequired])
+    );
 
     const mergedProperties = Object.entries(inferredProperties).reduce<Record<string, unknown>>(
       (acc, [key, inferredValue]) => {
@@ -106,18 +104,16 @@ export class CapabilityReleaseTemporalSchemaService {
             ? {
                 ...(inferredValue as Record<string, unknown>),
                 ...(rawValue as Record<string, unknown>),
-                ...(
-                  (rawValue as Record<string, unknown>).default === undefined
-                  && (inferredValue as Record<string, unknown>).default !== undefined
-                    ? { default: (inferredValue as Record<string, unknown>).default }
-                    : {}
-                ),
+                ...((rawValue as Record<string, unknown>).default === undefined &&
+                (inferredValue as Record<string, unknown>).default !== undefined
+                  ? { default: (inferredValue as Record<string, unknown>).default }
+                  : {}),
                 required: isRequired,
               }
             : inferredValue;
         return acc;
       },
-      { ...rawProperties },
+      { ...rawProperties }
     );
 
     return {
@@ -130,7 +126,7 @@ export class CapabilityReleaseTemporalSchemaService {
 
   buildTemporalParamsSchema(
     workflowDsl: Record<string, unknown>,
-    activityDsl?: Record<string, unknown>,
+    activityDsl?: Record<string, unknown>
   ): Record<string, unknown> {
     const inputParams = this.parseJson<Record<string, unknown>>(workflowDsl.inputParams) || {};
     const workflowInputPolicy = this.extractTemporalWorkflowInputPolicy(workflowDsl);
@@ -139,19 +135,18 @@ export class CapabilityReleaseTemporalSchemaService {
     const required: string[] = [];
 
     Object.entries(inputParams).forEach(([key, value]) => {
-      const definition = value && typeof value === 'object'
-        ? (value as Record<string, unknown>)
-        : {};
+      const definition =
+        value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
       const workflowPolicy = asRecord(workflowInputPolicies[key]) || {};
-      const requiredMode = typeof workflowPolicy.requiredMode === 'string'
-        ? workflowPolicy.requiredMode.trim()
-        : undefined;
-      const isRequired = requiredMode
-        ? requiredMode === 'always'
-        : Boolean(definition.required);
-      const description = typeof definition.description === 'string'
-        ? definition.description.trim()
-        : `Workflow 输入参数 ${key}`;
+      const requiredMode =
+        typeof workflowPolicy.requiredMode === 'string'
+          ? workflowPolicy.requiredMode.trim()
+          : undefined;
+      const isRequired = requiredMode ? requiredMode === 'always' : Boolean(definition.required);
+      const description =
+        typeof definition.description === 'string'
+          ? definition.description.trim()
+          : `Workflow 输入参数 ${key}`;
       const localizedDefaultValue = asRecord(definition.localizedDefaultValue);
       const policyDefaultValue = this.normalizeCapabilityDefaultValue(workflowPolicy.defaultValue);
       const definitionDefaultValue =
@@ -161,16 +156,14 @@ export class CapabilityReleaseTemporalSchemaService {
             ? localizedDefaultValue
             : undefined;
       const defaultValue =
-        policyDefaultValue !== undefined
-          ? policyDefaultValue
-          : definitionDefaultValue;
+        policyDefaultValue !== undefined ? policyDefaultValue : definitionDefaultValue;
       const normalizedDefaultValue = this.normalizeCapabilityDefaultValue(defaultValue);
       const inferredType =
-        this.normalizeDeclaredTemporalParamType(definition.type, key)
-        || this.inferTemporalParamType(
+        this.normalizeDeclaredTemporalParamType(definition.type, key) ||
+        this.inferTemporalParamType(
           normalizedDefaultValue !== undefined ? normalizedDefaultValue : definition.exampleValue,
           description,
-          key,
+          key
         );
       const displayName = this.resolveTemporalParamDisplayName(key, definition, description);
       const renderPath = this.resolveTemporalWorkflowRenderPath(definition, workflowPolicy);
@@ -178,9 +171,7 @@ export class CapabilityReleaseTemporalSchemaService {
       properties[key] = {
         type: inferredType,
         description,
-        ...(displayName
-          ? { displayName }
-          : {}),
+        ...(displayName ? { displayName } : {}),
         ...(typeof definition.groupLabel === 'string' && definition.groupLabel.trim()
           ? { groupLabel: definition.groupLabel.trim() }
           : {}),
@@ -190,13 +181,17 @@ export class CapabilityReleaseTemporalSchemaService {
         ...(Array.isArray(definition.extractionHints)
           ? {
               extractionHints: definition.extractionHints
-                .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+                .filter(
+                  (item): item is string => typeof item === 'string' && item.trim().length > 0
+                )
                 .map((item) => item.trim()),
             }
           : {}),
         ...(renderPath ? { renderPath } : {}),
         required: isRequired,
-        ...(!isRequired && normalizedDefaultValue !== undefined ? { default: normalizedDefaultValue } : {}),
+        ...(!isRequired && normalizedDefaultValue !== undefined
+          ? { default: normalizedDefaultValue }
+          : {}),
         extractionPrompt: description,
       };
 
@@ -229,12 +224,19 @@ export class CapabilityReleaseTemporalSchemaService {
           }
 
           properties[key] = {
-            type: this.normalizeDeclaredTemporalParamType(undefined, key)
-              || this.inferTemporalParamType(value, description, key),
+            type:
+              this.normalizeDeclaredTemporalParamType(undefined, key) ||
+              this.inferTemporalParamType(value, description, key),
             description,
-            ...(this.normalizeCapabilityDefaultValue(inferredFromActivities[key]?.default) !== undefined
-              ? { default: this.normalizeCapabilityDefaultValue(inferredFromActivities[key]?.default) }
-              : this.normalizeCapabilityDefaultValue(key === 'timeout' ? value : undefined) !== undefined
+            ...(this.normalizeCapabilityDefaultValue(inferredFromActivities[key]?.default) !==
+            undefined
+              ? {
+                  default: this.normalizeCapabilityDefaultValue(
+                    inferredFromActivities[key]?.default
+                  ),
+                }
+              : this.normalizeCapabilityDefaultValue(key === 'timeout' ? value : undefined) !==
+                  undefined
                 ? { default: this.normalizeCapabilityDefaultValue(value) }
                 : {}),
             ...(inferredFromActivities[key]?.required ? { required: true } : {}),
@@ -251,20 +253,21 @@ export class CapabilityReleaseTemporalSchemaService {
     return { properties, required };
   }
 
-  assessTemporalDocumentMappingReadiness(
-    payload: Record<string, unknown>,
-  ): {
+  assessTemporalDocumentMappingReadiness(payload: Record<string, unknown>): {
     applicable: boolean;
     mappedInputCount: number;
     renderPathParamCount: number;
     templateBindingParamCount: number;
   } {
-    const workflowDsl = this.parseJson(payload.workflowDsl) as Record<string, unknown> || {};
-    const activityDsl = this.parseJson(payload.activityDsl) as Record<string, unknown> || {};
-    const declaredPayloadSourceTemplate = this.parseJson<Record<string, unknown>>(payload.sourceTemplate) || {};
+    const workflowDsl = (this.parseJson(payload.workflowDsl) as Record<string, unknown>) || {};
+    const activityDsl = (this.parseJson(payload.activityDsl) as Record<string, unknown>) || {};
+    const declaredPayloadSourceTemplate =
+      this.parseJson<Record<string, unknown>>(payload.sourceTemplate) || {};
     const sourceContext = this.parseJson<Record<string, unknown>>(workflowDsl.sourceContext) || {};
-    const sourceContextTemplate = this.parseJson<Record<string, unknown>>(sourceContext.sourceTemplate) || {};
-    const extractedSourceTemplate = this.extractTemporalSourceTemplate(workflowDsl, activityDsl) || {};
+    const sourceContextTemplate =
+      this.parseJson<Record<string, unknown>>(sourceContext.sourceTemplate) || {};
+    const extractedSourceTemplate =
+      this.extractTemporalSourceTemplate(workflowDsl, activityDsl) || {};
     const sourceTemplate = {
       ...extractedSourceTemplate,
       ...sourceContextTemplate,
@@ -296,9 +299,10 @@ export class CapabilityReleaseTemporalSchemaService {
       const definition = asRecord(value) || {};
       const policy = asRecord(workflowInputPolicies[key]) || {};
       const renderPath = this.normalizeTemporalWorkflowRenderPath(definition.renderPath);
-      const templateBinding = typeof policy.templateBinding === 'string' && policy.templateBinding.trim()
-        ? policy.templateBinding.trim()
-        : undefined;
+      const templateBinding =
+        typeof policy.templateBinding === 'string' && policy.templateBinding.trim()
+          ? policy.templateBinding.trim()
+          : undefined;
       if (renderPath) {
         renderPathParamCount += 1;
       }
@@ -321,16 +325,17 @@ export class CapabilityReleaseTemporalSchemaService {
   buildSuggestedInputFromSchema(paramsSchema: Record<string, unknown>): Record<string, unknown> {
     const properties =
       paramsSchema && typeof paramsSchema === 'object'
-        ? ((paramsSchema as Record<string, unknown>).properties as Record<string, unknown> | undefined)
+        ? ((paramsSchema as Record<string, unknown>).properties as
+            | Record<string, unknown>
+            | undefined)
         : undefined;
     if (!properties) {
       return {};
     }
 
     return Object.entries(properties).reduce<Record<string, unknown>>((acc, [key, rawValue]) => {
-      const definition = rawValue && typeof rawValue === 'object'
-        ? (rawValue as Record<string, unknown>)
-        : {};
+      const definition =
+        rawValue && typeof rawValue === 'object' ? (rawValue as Record<string, unknown>) : {};
       const type = typeof definition.type === 'string' ? definition.type : 'string';
       if (definition.default !== undefined) {
         acc[key] = this.normalizeSmokeInputValue(key, definition.default, type);
@@ -358,28 +363,35 @@ export class CapabilityReleaseTemporalSchemaService {
   buildSmokeTestInput(
     release: CapabilityReleaseDTO,
     snapshot: CapabilitySourceSnapshotDTO,
-    environment: string,
+    environment: string
   ): Record<string, unknown> {
     const schema =
       release.sourceType === 'temporal_workflow'
         ? this.resolveEffectiveTemporalParamsSchema(snapshot.sourcePayload)
-        : (this.parseJson(snapshot.sourcePayload.paramsSchema) as Record<string, unknown> | null) || {};
+        : (this.parseJson(snapshot.sourcePayload.paramsSchema) as Record<string, unknown> | null) ||
+          {};
 
     const suggestedInput = this.buildSuggestedInputFromSchema(schema);
     if (release.sourceType === 'temporal_workflow') {
-      const workflowDsl = this.parseJson(snapshot.sourcePayload.workflowDsl) as Record<string, unknown> || {};
+      const workflowDsl =
+        (this.parseJson(snapshot.sourcePayload.workflowDsl) as Record<string, unknown>) || {};
       const inputParams = this.parseJson<Record<string, unknown>>(workflowDsl.inputParams) || {};
       Object.entries(inputParams).forEach(([key, rawValue]) => {
-        const definition = rawValue && typeof rawValue === 'object'
-          ? (rawValue as Record<string, unknown>)
-          : {};
+        const definition =
+          rawValue && typeof rawValue === 'object' ? (rawValue as Record<string, unknown>) : {};
         if (definition.defaultValue === undefined) {
           return;
         }
-        const normalizedDefaultValue = this.normalizeCapabilityDefaultValue(definition.defaultValue);
+        const normalizedDefaultValue = this.normalizeCapabilityDefaultValue(
+          definition.defaultValue
+        );
         if (normalizedDefaultValue !== undefined) {
           const typeHint = typeof definition.type === 'string' ? definition.type : undefined;
-          suggestedInput[key] = this.normalizeSmokeInputValue(key, normalizedDefaultValue, typeHint);
+          suggestedInput[key] = this.normalizeSmokeInputValue(
+            key,
+            normalizedDefaultValue,
+            typeHint
+          );
         }
       });
     }
@@ -396,7 +408,7 @@ export class CapabilityReleaseTemporalSchemaService {
 
   private resolveFixedTestInput(
     sourcePayload: Record<string, unknown>,
-    environment: string,
+    environment: string
   ): Record<string, unknown> | undefined {
     const deploymentProfiles = asRecord(sourcePayload.deploymentProfiles) || {};
     const environmentProfile = asRecord(deploymentProfiles[environment]) || {};
@@ -420,33 +432,36 @@ export class CapabilityReleaseTemporalSchemaService {
   }
 
   extractTemporalWorkflowInputPolicy(
-    workflowDsl: Record<string, unknown>,
+    workflowDsl: Record<string, unknown>
   ): Record<string, unknown> | undefined {
     const inputPolicy = this.parseJson<Record<string, unknown>>(workflowDsl.inputPolicy) || {};
     const rawParams =
-      inputPolicy.params && typeof inputPolicy.params === 'object' && !Array.isArray(inputPolicy.params)
-        ? inputPolicy.params as Record<string, unknown>
+      inputPolicy.params &&
+      typeof inputPolicy.params === 'object' &&
+      !Array.isArray(inputPolicy.params)
+        ? (inputPolicy.params as Record<string, unknown>)
         : inputPolicy;
     const inputParams = this.parseJson<Record<string, unknown>>(workflowDsl.inputParams) || {};
 
-    const params = Object.entries(rawParams || {}).reduce<Record<string, unknown>>((acc, [key, value]) => {
-      const policy = asRecord(value) || {};
-      const inferredTemplateBinding = this.resolveSingleTemporalWorkflowBindingPath(
-        this.normalizeTemporalWorkflowRenderPath(
-          asRecord(inputParams[key])?.renderPath,
-        ),
-      );
+    const params = Object.entries(rawParams || {}).reduce<Record<string, unknown>>(
+      (acc, [key, value]) => {
+        const policy = asRecord(value) || {};
+        const inferredTemplateBinding = this.resolveSingleTemporalWorkflowBindingPath(
+          this.normalizeTemporalWorkflowRenderPath(asRecord(inputParams[key])?.renderPath)
+        );
 
-      acc[key] = {
-        ...policy,
-        ...(typeof policy.templateBinding === 'string' && policy.templateBinding.trim()
-          ? { templateBinding: policy.templateBinding.trim() }
-          : inferredTemplateBinding
-            ? { templateBinding: inferredTemplateBinding }
-            : {}),
-      };
-      return acc;
-    }, {});
+        acc[key] = {
+          ...policy,
+          ...(typeof policy.templateBinding === 'string' && policy.templateBinding.trim()
+            ? { templateBinding: policy.templateBinding.trim() }
+            : inferredTemplateBinding
+              ? { templateBinding: inferredTemplateBinding }
+              : {}),
+        };
+        return acc;
+      },
+      {}
+    );
 
     if (Object.keys(params).length === 0) {
       return undefined;
@@ -457,7 +472,7 @@ export class CapabilityReleaseTemporalSchemaService {
 
   resolveTemporalWorkflowRenderPath(
     definition: Record<string, unknown>,
-    workflowPolicy: Record<string, unknown>,
+    workflowPolicy: Record<string, unknown>
   ): string | string[] | undefined {
     const declaredRenderPath = this.normalizeTemporalWorkflowRenderPath(definition.renderPath);
     if (declaredRenderPath) {
@@ -467,9 +482,7 @@ export class CapabilityReleaseTemporalSchemaService {
     return this.normalizeTemporalWorkflowRenderPath(workflowPolicy.templateBinding);
   }
 
-  private normalizeTemporalWorkflowRenderPath(
-    renderPath: unknown,
-  ): string | string[] | undefined {
+  private normalizeTemporalWorkflowRenderPath(renderPath: unknown): string | string[] | undefined {
     if (typeof renderPath === 'string' && renderPath.trim()) {
       return renderPath.trim();
     }
@@ -490,7 +503,7 @@ export class CapabilityReleaseTemporalSchemaService {
   }
 
   private resolveSingleTemporalWorkflowBindingPath(
-    renderPath: string | string[] | undefined,
+    renderPath: string | string[] | undefined
   ): string | undefined {
     return typeof renderPath === 'string' ? renderPath : undefined;
   }
@@ -498,11 +511,10 @@ export class CapabilityReleaseTemporalSchemaService {
   private resolveTemporalParamDisplayName(
     key: string,
     definition: Record<string, unknown>,
-    description?: string,
+    description?: string
   ): string | undefined {
-    const declaredDisplayName = typeof definition.displayName === 'string'
-      ? definition.displayName.trim()
-      : undefined;
+    const declaredDisplayName =
+      typeof definition.displayName === 'string' ? definition.displayName.trim() : undefined;
     return resolveFriendlyInputDisplayName({
       name: key,
       display_name: declaredDisplayName,
@@ -527,7 +539,7 @@ export class CapabilityReleaseTemporalSchemaService {
   }
 
   private inferTemporalParamsFromActivityDsl(
-    activityDsl?: Record<string, unknown>,
+    activityDsl?: Record<string, unknown>
   ): Record<string, { required: boolean; default?: unknown }> {
     const result: Record<string, { required: boolean; default?: unknown }> = {};
     const activities = Array.isArray(activityDsl?.activities) ? activityDsl.activities : [];
@@ -568,8 +580,7 @@ export class CapabilityReleaseTemporalSchemaService {
         return;
       }
 
-      const getPattern =
-        /input_data\.get\(\s*["']([A-Za-z0-9_]+)["'](?:\s*,\s*([^)]+))?\s*\)/g;
+      const getPattern = /input_data\.get\(\s*["']([A-Za-z0-9_]+)["'](?:\s*,\s*([^)]+))?\s*\)/g;
       let match: RegExpExecArray | null;
       while ((match = getPattern.exec(generatedCode))) {
         const [, key, defaultLiteral] = match;
@@ -600,8 +611,8 @@ export class CapabilityReleaseTemporalSchemaService {
   private parsePythonLiteral(value: string): unknown {
     const normalized = value.trim();
     if (
-      (normalized.startsWith('"') && normalized.endsWith('"'))
-      || (normalized.startsWith('\'') && normalized.endsWith('\''))
+      (normalized.startsWith('"') && normalized.endsWith('"')) ||
+      (normalized.startsWith("'") && normalized.endsWith("'"))
     ) {
       return normalized.slice(1, -1);
     }
@@ -623,7 +634,7 @@ export class CapabilityReleaseTemporalSchemaService {
   private inferTemporalParamType(
     defaultValue: unknown,
     description: string,
-    fieldName = '',
+    fieldName = ''
   ): 'string' | 'number' | 'date' | 'boolean' {
     if (typeof defaultValue === 'boolean') {
       return 'boolean';
@@ -668,9 +679,11 @@ export class CapabilityReleaseTemporalSchemaService {
 
   private normalizeDeclaredTemporalParamType(
     declaredType: unknown,
-    fieldName = '',
+    fieldName = ''
   ): 'string' | 'number' | 'date' | 'boolean' | undefined {
-    const normalized = String(declaredType || '').trim().toLowerCase();
+    const normalized = String(declaredType || '')
+      .trim()
+      .toLowerCase();
     if (!normalized) {
       return undefined;
     }
@@ -682,7 +695,11 @@ export class CapabilityReleaseTemporalSchemaService {
     if (/\b(bool|boolean)\b/.test(hint)) {
       return 'boolean';
     }
-    if (/\b(number|int|integer|float|double|decimal|amount|price|count|qty|quantity|ratio|percent)\b/.test(hint)) {
+    if (
+      /\b(number|int|integer|float|double|decimal|amount|price|count|qty|quantity|ratio|percent)\b/.test(
+        hint
+      )
+    ) {
       return 'number';
     }
     return 'string';
@@ -691,11 +708,13 @@ export class CapabilityReleaseTemporalSchemaService {
   private buildSemanticHint(...values: unknown[]): string {
     return values
       .filter((value) => value !== undefined && value !== null)
-      .map((value) => String(value)
-        .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-        .replace(/[^a-zA-Z0-9\u4e00-\u9fa5]+/g, ' ')
-        .trim()
-        .toLowerCase())
+      .map((value) =>
+        String(value)
+          .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+          .replace(/[^a-zA-Z0-9\u4e00-\u9fa5]+/g, ' ')
+          .trim()
+          .toLowerCase()
+      )
       .filter((value) => value.length > 0)
       .join(' ');
   }
@@ -706,14 +725,14 @@ export class CapabilityReleaseTemporalSchemaService {
     }
 
     const trimmed = value.trim();
-    const unquoted = trimmed.startsWith('`') && trimmed.endsWith('`')
-      ? trimmed.slice(1, -1).trim()
-      : trimmed;
+    const unquoted =
+      trimmed.startsWith('`') && trimmed.endsWith('`') ? trimmed.slice(1, -1).trim() : trimmed;
 
     const type = String(typeHint || '').toLowerCase();
     const normalizedKey = String(key || '').trim();
-    const isUrlLikeKey = /(^|[_-])(url|uri|link|endpoint|site|website)$/i.test(normalizedKey)
-      || /(?:url|uri|link|endpoint|site|website)$/i.test(normalizedKey);
+    const isUrlLikeKey =
+      /(^|[_-])(url|uri|link|endpoint|site|website)$/i.test(normalizedKey) ||
+      /(?:url|uri|link|endpoint|site|website)$/i.test(normalizedKey);
     if (type === 'string' && isUrlLikeKey) {
       return this.normalizeUrlLikeSmokeValue(unquoted);
     }
@@ -737,39 +756,57 @@ export class CapabilityReleaseTemporalSchemaService {
 
   extractTemporalSourceTemplate(
     workflowDsl: Record<string, unknown>,
-    activityDsl: Record<string, unknown>,
+    activityDsl: Record<string, unknown>
   ): Record<string, unknown> | undefined {
-    const workflowSource = this.parseJson<Record<string, unknown>>(workflowDsl.sourceTemplate) || {};
-    const activities = Array.isArray(activityDsl.activities) ? activityDsl.activities as Array<Record<string, unknown>> : [];
+    const workflowSource =
+      this.parseJson<Record<string, unknown>>(workflowDsl.sourceTemplate) || {};
+    const activities = Array.isArray(activityDsl.activities)
+      ? (activityDsl.activities as Array<Record<string, unknown>>)
+      : [];
     const carboneActivity = activities.find((activity) => {
       if (activity?.handler === 'carbone') {
         return true;
       }
-      const config = activity?.config && typeof activity.config === 'object'
-        ? activity.config as Record<string, unknown>
-        : {};
-      const steps = Array.isArray(config.steps) ? config.steps as Array<Record<string, unknown>> : [];
+      const config =
+        activity?.config && typeof activity.config === 'object'
+          ? (activity.config as Record<string, unknown>)
+          : {};
+      const steps = Array.isArray(config.steps)
+        ? (config.steps as Array<Record<string, unknown>>)
+        : [];
       return steps.some((step) => step?.type === 'carbone');
     });
-    const carboneConfig = carboneActivity?.config && typeof carboneActivity.config === 'object'
-      ? carboneActivity.config as Record<string, unknown>
-      : {};
-    const carboneSteps = Array.isArray(carboneConfig.steps) ? carboneConfig.steps as Array<Record<string, unknown>> : [];
+    const carboneConfig =
+      carboneActivity?.config && typeof carboneActivity.config === 'object'
+        ? (carboneActivity.config as Record<string, unknown>)
+        : {};
+    const carboneSteps = Array.isArray(carboneConfig.steps)
+      ? (carboneConfig.steps as Array<Record<string, unknown>>)
+      : [];
     const carboneStep = carboneSteps.find((step) => step?.type === 'carbone');
-    const carboneStepConfig = carboneStep?.config && typeof carboneStep.config === 'object'
-      ? carboneStep.config as Record<string, unknown>
-      : {};
+    const carboneStepConfig =
+      carboneStep?.config && typeof carboneStep.config === 'object'
+        ? (carboneStep.config as Record<string, unknown>)
+        : {};
     const inputParams = this.parseJson<Record<string, unknown>>(workflowDsl.inputParams) || {};
 
     const sourceTemplate = {
-      templateId: this.pickFirstNonEmptyString(workflowSource.templateId, carboneStepConfig.templateId, carboneConfig.templateId),
+      templateId: this.pickFirstNonEmptyString(
+        workflowSource.templateId,
+        carboneStepConfig.templateId,
+        carboneConfig.templateId
+      ),
       skillId: this.pickFirstNonEmptyString(workflowSource.skillId, carboneConfig.skillId),
       fileName: this.pickFirstNonEmptyString(workflowSource.fileName, carboneConfig.fileName),
-      format: this.pickFirstNonEmptyString(workflowSource.format, carboneStepConfig.format, carboneConfig.format),
+      format: this.pickFirstNonEmptyString(
+        workflowSource.format,
+        carboneStepConfig.format,
+        carboneConfig.format
+      ),
       variableCount: this.pickFirstPositiveNumber(
         workflowSource.variableCount,
         carboneConfig.variableCount,
-        Object.keys(inputParams).length,
+        Object.keys(inputParams).length
       ),
     };
 

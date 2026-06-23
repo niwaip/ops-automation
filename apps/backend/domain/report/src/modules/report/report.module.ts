@@ -8,13 +8,7 @@ import { NotificationModule } from '../notification/notification.module';
 import { PrismaModule } from '../../prisma/prisma.module';
 
 @Module({
-  imports: [
-    PrismaModule,
-    TemplateModule,
-    GeneratorModule,
-    AnalyzerModule,
-    NotificationModule,
-  ],
+  imports: [PrismaModule, TemplateModule, GeneratorModule, AnalyzerModule, NotificationModule],
   controllers: [ReportController],
   providers: [ReportService],
   exports: [ReportService],

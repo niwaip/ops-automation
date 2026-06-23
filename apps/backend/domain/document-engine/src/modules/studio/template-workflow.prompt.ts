@@ -9,10 +9,11 @@ export interface WorkflowUnderstandingPromptInput {
   sampleText: string;
 }
 
-export function buildWorkflowUnderstandingPromptText(input: WorkflowUnderstandingPromptInput): string {
-  const targetLanguageText = input.targetLanguages.length > 0
-    ? input.targetLanguages.join(', ')
-    : 'single_language';
+export function buildWorkflowUnderstandingPromptText(
+  input: WorkflowUnderstandingPromptInput
+): string {
+  const targetLanguageText =
+    input.targetLanguages.length > 0 ? input.targetLanguages.join(', ') : 'single_language';
 
   return `【系统提示词】
 你是文档理解助手。请根据提供的 Word 文档内容，输出结构化的文档理解摘要。

@@ -76,6 +76,6 @@ export const TERMINAL_CONTROL_PLANE_EXECUTION_STATUSES: TerminalControlPlaneExec
 ];
 
 export const isTerminalControlPlaneExecutionStatus = (
-  status: string,
+  status: string
 ): status is TerminalControlPlaneExecutionStatus =>
   TERMINAL_CONTROL_PLANE_EXECUTION_STATUSES.includes(status as TerminalControlPlaneExecutionStatus);

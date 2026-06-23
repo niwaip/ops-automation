@@ -14,7 +14,7 @@ const clipText = (value: string, maxChars: number): { text: string; truncated: b
   }
 
   const head = value.slice(0, Math.floor(maxChars * 0.65));
-  const tail = value.slice(-(Math.floor(maxChars * 0.25)));
+  const tail = value.slice(-Math.floor(maxChars * 0.25));
   return {
     text: `${head}\n...\n[truncated ${value.length - head.length - tail.length} chars]\n...\n${tail}`,
     truncated: true,
@@ -27,27 +27,32 @@ const summarizeTraceMessages = (messages: ChatMessage[]): string => {
     return '';
   }
 
-  return recent.map((message) => {
-    const content = typeof message.content === 'string' ? message.content.replace(/\s+/g, ' ').trim() : '';
-    const clipped = clipText(content, 180).text;
-    const iteration = message.metadata?.iteration ? `#${String(message.metadata.iteration)}` : '-';
-    const decisionContext = message.metadata?.decisionContext as DecisionContext | undefined;
-    const routing = formatRoutingDecisionTrace(
-      decisionContext?.routing || (message.metadata?.routing as RoutingMeta | undefined),
-    );
-    const promptAssembly = formatPromptAssemblyDecisionTrace(decisionContext?.promptAssembly);
-    const lines = [`${message.role}@${iteration}`];
+  return recent
+    .map((message) => {
+      const content =
+        typeof message.content === 'string' ? message.content.replace(/\s+/g, ' ').trim() : '';
+      const clipped = clipText(content, 180).text;
+      const iteration = message.metadata?.iteration
+        ? `#${String(message.metadata.iteration)}`
+        : '-';
+      const decisionContext = message.metadata?.decisionContext as DecisionContext | undefined;
+      const routing = formatRoutingDecisionTrace(
+        decisionContext?.routing || (message.metadata?.routing as RoutingMeta | undefined)
+      );
+      const promptAssembly = formatPromptAssemblyDecisionTrace(decisionContext?.promptAssembly);
+      const lines = [`${message.role}@${iteration}`];
 
-    if (routing) {
-      lines.push(`decision.routing: ${routing}`);
-    }
-    if (promptAssembly) {
-      lines.push(`decision.prompt_assembly: ${promptAssembly}`);
-    }
-    lines.push(`content: ${clipped}`);
+      if (routing) {
+        lines.push(`decision.routing: ${routing}`);
+      }
+      if (promptAssembly) {
+        lines.push(`decision.prompt_assembly: ${promptAssembly}`);
+      }
+      lines.push(`content: ${clipped}`);
 
-    return lines.join('\n');
-  }).join('\n\n');
+      return lines.join('\n');
+    })
+    .join('\n\n');
 };
 
 export class ContextWindowManager {
@@ -61,16 +66,11 @@ export class ContextWindowManager {
       : `Observation: ${clipped.text}`;
     return {
       content,
-      meta: clipped.truncated
-        ? { truncated: true, originalLength: observation.length }
-        : {},
+      meta: clipped.truncated ? { truncated: true, originalLength: observation.length } : {},
     };
   }
 
-  compactReActHistory(
-    state: ReActState,
-    history: ChatMessage[],
-  ): ChatMessage[] {
+  compactReActHistory(state: ReActState, history: ChatMessage[]): ChatMessage[] {
     const reActHistory = history.filter((message) => message.metadata?.isReAct);
     if (reActHistory.length <= MAX_REACT_TRACE_MESSAGES) {
       return history;

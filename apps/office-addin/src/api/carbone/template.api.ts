@@ -9,7 +9,9 @@ import type {
 type ApiBaseUrlGetter = () => string;
 
 function isDraftDocumentTemplate(template: { fileName?: string }): boolean {
-  const fileName = String(template.fileName || '').trim().toLowerCase();
+  const fileName = String(template.fileName || '')
+    .trim()
+    .toLowerCase();
   return fileName.startsWith('draft-');
 }
 
@@ -79,12 +81,14 @@ export function createCarboneTemplateApi(getBaseUrl: ApiBaseUrlGetter) {
       return response.data;
     },
 
-    async getFormatters(): Promise<Array<{
-      name: string;
-      syntax: string;
-      description: string;
-      example: string;
-    }>> {
+    async getFormatters(): Promise<
+      Array<{
+        name: string;
+        syntax: string;
+        description: string;
+        example: string;
+      }>
+    > {
       const response = await axios.get(
         `${getBaseUrl()}/studio/formatters`,
         getAxiosConfig(getBaseUrl())
@@ -112,7 +116,7 @@ export function createCarboneTemplateApi(getBaseUrl: ApiBaseUrlGetter) {
       return {
         ...response.data,
         templates: includeDrafts
-          ? (response.data.templates || [])
+          ? response.data.templates || []
           : (response.data.templates || []).filter(
               (template: { fileName?: string }) => !isDraftDocumentTemplate(template)
             ),
@@ -124,7 +128,8 @@ export function createCarboneTemplateApi(getBaseUrl: ApiBaseUrlGetter) {
         `${getBaseUrl()}/studio/templates/${templateId}`,
         getAxiosConfig(getBaseUrl())
       );
-      const templateWorkflow = response.data?.templateWorkflow || response.data?.templateConfig?.templateWorkflow;
+      const templateWorkflow =
+        response.data?.templateWorkflow || response.data?.templateConfig?.templateWorkflow;
       return {
         ...response.data,
         templateWorkflow,

@@ -38,19 +38,67 @@ describe('FileHandler', () => {
 
     const data = {
       procurementDetails: [
-        { seq: '1.00', materialCode: 'RB-001', deviceName: '机器人1', model: 'XR', unit: '台', quantity: '4.00', unitPrice: '185,000.00', subtotal: '740,000.00' },
-        { seq: '2.00', materialCode: 'RB-002', deviceName: '机器人2', model: 'XR', unit: '台', quantity: '4.00', unitPrice: '185,000.00', subtotal: '740,000.00' },
-        { seq: '3.00', materialCode: 'RB-003', deviceName: '机器人3', model: 'XR', unit: '台', quantity: '4.00', unitPrice: '185,000.00', subtotal: '740,000.00' },
-        { seq: '4.00', materialCode: 'RB-004', deviceName: '机器人4', model: 'XR', unit: '台', quantity: '4.00', unitPrice: '185,000.00', subtotal: '740,000.00' },
-        { seq: '5.00', materialCode: 'RB-005', deviceName: '机器人5', model: 'XR', unit: '台', quantity: '4.00', unitPrice: '185,000.00', subtotal: '740,000.00' },
+        {
+          seq: '1.00',
+          materialCode: 'RB-001',
+          deviceName: '机器人1',
+          model: 'XR',
+          unit: '台',
+          quantity: '4.00',
+          unitPrice: '185,000.00',
+          subtotal: '740,000.00',
+        },
+        {
+          seq: '2.00',
+          materialCode: 'RB-002',
+          deviceName: '机器人2',
+          model: 'XR',
+          unit: '台',
+          quantity: '4.00',
+          unitPrice: '185,000.00',
+          subtotal: '740,000.00',
+        },
+        {
+          seq: '3.00',
+          materialCode: 'RB-003',
+          deviceName: '机器人3',
+          model: 'XR',
+          unit: '台',
+          quantity: '4.00',
+          unitPrice: '185,000.00',
+          subtotal: '740,000.00',
+        },
+        {
+          seq: '4.00',
+          materialCode: 'RB-004',
+          deviceName: '机器人4',
+          model: 'XR',
+          unit: '台',
+          quantity: '4.00',
+          unitPrice: '185,000.00',
+          subtotal: '740,000.00',
+        },
+        {
+          seq: '5.00',
+          materialCode: 'RB-005',
+          deviceName: '机器人5',
+          model: 'XR',
+          unit: '台',
+          quantity: '4.00',
+          unitPrice: '185,000.00',
+          subtotal: '740,000.00',
+        },
       ],
     };
 
-    const result = handler.expandWorksheetSharedStringLoops(sheetXml, originalStrings, sharedStringDocument, data);
+    const result = handler.expandWorksheetSharedStringLoops(
+      sheetXml,
+      originalStrings,
+      sharedStringDocument,
+      data
+    );
 
-    expect(result.expansions).toEqual([
-      { startRow: 5, oldEndRow: 7, newEndRow: 9, delta: 2 },
-    ]);
+    expect(result.expansions).toEqual([{ startRow: 5, oldEndRow: 7, newEndRow: 9, delta: 2 }]);
     expect(result.xml).toContain('<row r="8"');
     expect(result.xml).toContain('<row r="9"');
     expect(result.xml).toContain('<row r="11"');
@@ -88,13 +136,18 @@ describe('FileHandler', () => {
     const handler = new FileHandler() as any;
     const zip = new JSZip();
 
-    zip.file('xl/workbook.xml', '<workbook><calcPr calcId="123"/><extLst><ext foo="bar"/></extLst></workbook>');
+    zip.file(
+      'xl/workbook.xml',
+      '<workbook><calcPr calcId="123"/><extLst><ext foo="bar"/></extLst></workbook>'
+    );
     zip.file('xl/calcChain.xml', '<calcChain/>');
 
     await handler.enableWorkbookRecalculation(zip);
 
     const workbookXml = await zip.file('xl/workbook.xml')!.async('text');
-    expect(workbookXml).toContain('<calcPr calcId="123" calcMode="auto" fullCalcOnLoad="1" forceFullCalc="1"/>');
+    expect(workbookXml).toContain(
+      '<calcPr calcId="123" calcMode="auto" fullCalcOnLoad="1" forceFullCalc="1"/>'
+    );
     expect(workbookXml).toContain('calcMode="auto"');
     expect(workbookXml).toContain('fullCalcOnLoad="1"');
     expect(workbookXml).toContain('forceFullCalc="1"');
@@ -133,9 +186,11 @@ describe('FileHandler', () => {
       patchedTemplate,
       {
         latePaymentPenaltyRatio: '每日按迟延部分货款的0.3%计收违约金',
-        qualityLiability: '若设备存在重大质量缺陷，乙方应在48小时内响应，并在5个工作日内提供解决方案或更换设备',
+        qualityLiability:
+          '若设备存在重大质量缺陷，乙方应在48小时内响应，并在5个工作日内提供解决方案或更换设备',
         acceptanceStandard: '设备运行稳定72小时无重大异常，核心性能指标达到技术协议要求',
-        installationCondition: '安装服务已启用，乙方需完成现场联调后再组织最终验收，甲方需提供必要的安装场地、电源及气源接口',
+        installationCondition:
+          '安装服务已启用，乙方需完成现场联调后再组织最终验收，甲方需提供必要的安装场地、电源及气源接口',
       },
       'preview.xlsx'
     );
@@ -225,13 +280,16 @@ describe('FileHandler', () => {
 
     const outputZip = await JSZip.loadAsync(output);
     const sharedStringsXml = await outputZip.file('xl/sharedStrings.xml')!.async('text');
-    const sharedStrings = Array.from(sharedStringsXml.matchAll(/<si\b[\s\S]*?<\/si>/g)).map((match) =>
-      Array.from(match[0].matchAll(/<t[^>]*>([\s\S]*?)<\/t>/g))
-        .map((item) => item[1])
-        .join('')
+    const sharedStrings = Array.from(sharedStringsXml.matchAll(/<si\b[\s\S]*?<\/si>/g)).map(
+      (match) =>
+        Array.from(match[0].matchAll(/<t[^>]*>([\s\S]*?)<\/t>/g))
+          .map((item) => item[1])
+          .join('')
     );
     expect(sharedStrings[5]).toBe('每日按迟延部分货款的0.3‰计收违约金');
-    expect(sharedStrings[6]).toBe('若设备存在重大质量缺陷，乙方应在48小时内响应并在72小时内到场处理');
+    expect(sharedStrings[6]).toBe(
+      '若设备存在重大质量缺陷，乙方应在48小时内响应并在72小时内到场处理'
+    );
     expect(sharedStrings[7]).toBe('设备运行稳定72小时无重大异常');
     expect(sharedStrings[8]).toBe('安装服务已启用，乙方需完成现场联调后再组织最终验收');
 

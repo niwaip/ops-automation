@@ -22,6 +22,39 @@ type BrowserRecordingRuntimeStep = {
   action: string;
   target?: string;
   args?: Record<string, unknown>;
+  outputVar?: string;
+  branch?: {
+    conditionFn: string;
+    onMatch: 'continue' | 'stop';
+    onMismatch: 'continue' | 'stop' | 'takeover';
+    takeoverReason?: string;
+    description?: string;
+  };
+  description?: string;
+};
+
+type BrowserRecordingLoopCondition = {
+  mode: 'repeat_until';
+  stopWhen: {
+    read:
+      | {
+          type: 'count' | 'text';
+          key?: string;
+          step: BrowserRecordingRuntimeStep;
+        }
+      | {
+          type: 'page_signal';
+          key: string;
+          step: BrowserRecordingRuntimeStep;
+        };
+    conditionFn: string;
+    description: string;
+  };
+  maxIterations: number;
+  onNoProgress: 'takeover' | 'stop';
+  preLoopSteps: BrowserRecordingRuntimeStep[];
+  iterationSteps: BrowserRecordingRuntimeStep[];
+  postLoopSteps: BrowserRecordingRuntimeStep[];
 };
 
 type BrowserRecordingRequestedStep = {
@@ -37,7 +70,8 @@ export class CapabilityReleaseBrowserRecordingService {
     }
     return flow
       .filter(
-        (item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object' && !Array.isArray(item),
+        (item): item is Record<string, unknown> =>
+          Boolean(item) && typeof item === 'object' && !Array.isArray(item)
       )
       .map((step) => {
         const tool = step.tool;
@@ -45,7 +79,7 @@ export class CapabilityReleaseBrowserRecordingService {
           return step;
         }
         const normalizedToolName = normalizeBrowserRecordingToolName(
-          (tool as Record<string, unknown>).name,
+          (tool as Record<string, unknown>).name
         );
         if (!normalizedToolName) {
           return step;
@@ -84,7 +118,7 @@ export class CapabilityReleaseBrowserRecordingService {
   mergeToolsWithExecutionFlow(
     declaredTools: unknown,
     executionFlow: unknown,
-    options?: { includeSkillMatch?: boolean },
+    options?: { includeSkillMatch?: boolean }
   ): string[] {
     const normalizedDeclaredTools = this.normalizeToolNames(declaredTools);
     const flowTools = this.collectExecutionFlowToolNames(executionFlow);
@@ -99,7 +133,7 @@ export class CapabilityReleaseBrowserRecordingService {
       deploymentId?: string;
       input?: Record<string, unknown>;
       testCases?: string[];
-    },
+    }
   ): {
     success: boolean;
     score: number;
@@ -148,7 +182,7 @@ export class CapabilityReleaseBrowserRecordingService {
   buildRuntimePlan(
     payload: Record<string, unknown>,
     runtimeInput: Record<string, unknown>,
-    metadata?: Record<string, unknown>,
+    metadata?: Record<string, unknown>
   ): {
     backend: string;
     sessionPreferences: {
@@ -159,17 +193,23 @@ export class CapabilityReleaseBrowserRecordingService {
     runtimeSteps: BrowserRecordingRuntimeStep[];
     runtimeStepsToExecute: BrowserRecordingRuntimeStep[];
     targetRuntimeStep: BrowserRecordingRuntimeStep | null;
+    loopPlan: BrowserRecordingLoopCondition | null;
     initialUrl?: string;
   } {
     const backend = this.resolveBackend(payload);
     const sessionPreferences = this.resolveSessionPreferences(payload);
     const runtimeSteps = this.buildRuntimeSteps(payload, runtimeInput);
+    const loopPlan = this.buildLoopPlan(payload, runtimeInput, runtimeSteps);
     const executionStepMetadata = this.extractRequestedExecutionStepMetadata(metadata);
     const targetRuntimeStep = this.resolveRequestedRuntimeStep(runtimeSteps, executionStepMetadata);
-    const runtimeStepsToExecute = targetRuntimeStep ? [targetRuntimeStep] : runtimeSteps;
+    const runtimeStepsToExecute = targetRuntimeStep
+      ? [targetRuntimeStep]
+      : loopPlan
+        ? [...loopPlan.preLoopSteps, ...loopPlan.iterationSteps, ...loopPlan.postLoopSteps]
+        : runtimeSteps;
     const initialUrl = this.pickFirstNonEmptyString(
       runtimeInput.url,
-      runtimeSteps.find((step) => step.action === 'goto')?.target,
+      runtimeSteps.find((step) => step.action === 'goto')?.target
     );
 
     return {
@@ -178,6 +218,7 @@ export class CapabilityReleaseBrowserRecordingService {
       runtimeSteps,
       runtimeStepsToExecute,
       targetRuntimeStep,
+      loopPlan,
       ...(initialUrl ? { initialUrl } : {}),
     };
   }
@@ -187,20 +228,20 @@ export class CapabilityReleaseBrowserRecordingService {
     const runtimeMetadata = asRecord(apiEndpoints?.runtimeMetadata);
     const executionPlan = asRecord(runtimeMetadata?.executionPlan);
 
-    return this.pickFirstNonEmptyString(
-      payload.backend,
-      payload.executionBackend,
-      runtimeMetadata?.backend,
-      executionPlan?.backend,
-      process.env.BROWSER_RECORDING_BACKEND,
-      process.env.BROWSER_EXECUTION_BACKEND,
-      'cli',
-    ) || 'cli';
+    return (
+      this.pickFirstNonEmptyString(
+        payload.backend,
+        payload.executionBackend,
+        runtimeMetadata?.backend,
+        executionPlan?.backend,
+        process.env.BROWSER_RECORDING_BACKEND,
+        process.env.BROWSER_EXECUTION_BACKEND,
+        'cli'
+      ) || 'cli'
+    );
   }
 
-  private resolveSessionPreferences(
-    payload: Record<string, unknown>,
-  ): {
+  private resolveSessionPreferences(payload: Record<string, unknown>): {
     mode?: 'interactive' | 'agent';
     enableCodegen?: boolean;
     headless?: boolean;
@@ -209,14 +250,14 @@ export class CapabilityReleaseBrowserRecordingService {
     const runtimeMetadata = asRecord(apiEndpoints?.runtimeMetadata);
     const executionPlan = asRecord(runtimeMetadata?.executionPlan);
     const sessionPreferences =
-      asRecord(payload.sessionPreferences)
-      || asRecord(runtimeMetadata?.sessionPreferences)
-      || asRecord(executionPlan?.sessionPreferences)
-      || {};
+      asRecord(payload.sessionPreferences) ||
+      asRecord(runtimeMetadata?.sessionPreferences) ||
+      asRecord(executionPlan?.sessionPreferences) ||
+      {};
     const mode = this.pickFirstNonEmptyString(
       sessionPreferences.mode,
       process.env.BROWSER_RUNTIME_SESSION_MODE,
-      'agent',
+      'agent'
     );
 
     return {
@@ -242,41 +283,44 @@ export class CapabilityReleaseBrowserRecordingService {
 
   private buildRuntimeSteps(
     payload: Record<string, unknown>,
-    runtimeInput: Record<string, unknown>,
+    runtimeInput: Record<string, unknown>
   ): BrowserRecordingRuntimeStep[] {
+    const templateSteps = this.extractTemplateSteps(payload);
+    if (templateSteps.length > 0) {
+      return templateSteps.map((step, index) =>
+        this.buildRuntimeStepFromTemplate(step, runtimeInput, index)
+      );
+    }
+
     const executionFlow = this.normalizeExecutionFlow(payload.executionFlow);
     const sourceSteps = Array.isArray(payload.steps)
       ? payload.steps.filter(
-          (item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object' && !Array.isArray(item),
+          (item): item is Record<string, unknown> =>
+            Boolean(item) && typeof item === 'object' && !Array.isArray(item)
         )
       : [];
     const baseSteps = executionFlow.length > 0 ? executionFlow : sourceSteps;
 
     return baseSteps.map((step, index) => {
       const runtimePayload = asRecord(step.input) || asRecord(step.config) || {};
-      const resolvedPayload = asRecord(
-        this.resolveRuntimeValue(runtimePayload, runtimeInput),
-      ) || {};
+      const resolvedPayload =
+        asRecord(this.resolveRuntimeValue(runtimePayload, runtimeInput)) || {};
       const resolvedParams = asRecord(resolvedPayload.params) || {};
       const action = this.normalizeStepAction(
-        this.pickFirstNonEmptyString(resolvedPayload.action, step.action),
+        this.pickFirstNonEmptyString(resolvedPayload.action, step.action)
       );
       if (!action) {
-        throw new BadRequestException(`浏览器录制步骤缺少 action: ${step.id || `step_${index + 1}`}`);
+        throw new BadRequestException(
+          `浏览器录制步骤缺少 action: ${step.id || `step_${index + 1}`}`
+        );
       }
-      const target = this.resolveRuntimeTarget(
-        action,
-        resolvedPayload,
-        resolvedParams,
-      );
-      const args = this.buildRuntimeArgs(
-        action,
-        resolvedPayload,
-        resolvedParams,
-      );
+      const target = this.resolveRuntimeTarget(action, resolvedPayload, resolvedParams);
+      const args = this.buildRuntimeArgs(action, resolvedPayload, resolvedParams);
 
       return {
-        id: this.pickFirstNonEmptyString(step.id, resolvedPayload.id, `step_${index + 1}`) || `step_${index + 1}`,
+        id:
+          this.pickFirstNonEmptyString(step.id, resolvedPayload.id, `step_${index + 1}`) ||
+          `step_${index + 1}`,
         name: this.pickFirstNonEmptyString(step.name, `Step ${index + 1}`) || `Step ${index + 1}`,
         action,
         ...(target ? { target } : {}),
@@ -285,23 +329,301 @@ export class CapabilityReleaseBrowserRecordingService {
     });
   }
 
+  private extractTemplateSteps(payload: Record<string, unknown>): Array<Record<string, unknown>> {
+    const apiEndpoints = asRecord(payload.apiEndpoints);
+    const runtimeMetadata =
+      asRecord(payload.runtimeMetadata) || asRecord(apiEndpoints?.runtimeMetadata);
+    const executionPlan = asRecord(runtimeMetadata?.executionPlan);
+    const templateSteps = Array.isArray(executionPlan?.templateSteps)
+      ? executionPlan.templateSteps
+      : Array.isArray(runtimeMetadata?.templateSteps)
+        ? runtimeMetadata.templateSteps
+        : [];
+    return templateSteps.filter(
+      (item): item is Record<string, unknown> =>
+        Boolean(item) && typeof item === 'object' && !Array.isArray(item)
+    );
+  }
+
+  private buildLoopPlan(
+    payload: Record<string, unknown>,
+    runtimeInput: Record<string, unknown>,
+    runtimeSteps: BrowserRecordingRuntimeStep[]
+  ): BrowserRecordingLoopCondition | null {
+    if (runtimeSteps.length === 0) {
+      return null;
+    }
+    const loopDraft = this.extractLoopDraft(payload, runtimeInput);
+    if (!loopDraft) {
+      return null;
+    }
+
+    const eachIteration = asRecord(loopDraft.eachIteration);
+    const stepIds = Array.isArray(eachIteration?.stepIds)
+      ? eachIteration.stepIds
+          .filter(
+            (stepId: unknown): stepId is string =>
+              typeof stepId === 'string' && stepId.trim().length > 0
+          )
+          .map((stepId: string) => stepId.trim())
+      : [];
+    if (stepIds.length === 0) {
+      return null;
+    }
+
+    const matchedIndexes = stepIds
+      .map((stepId: string) => runtimeSteps.findIndex((step) => step.id === stepId))
+      .filter((index: number) => index >= 0);
+    if (matchedIndexes.length === 0) {
+      return null;
+    }
+
+    const loopStartIndex = Math.min(...matchedIndexes);
+    const loopEndIndex = Math.max(...matchedIndexes);
+    const iterationSteps = runtimeSteps.slice(loopStartIndex, loopEndIndex + 1);
+    if (iterationSteps.length === 0) {
+      return null;
+    }
+
+    const stopWhen = asRecord(loopDraft.stopWhen);
+    const stopRead = asRecord(stopWhen?.read);
+    const stopConditionFn = this.pickFirstNonEmptyString(stopWhen?.conditionFn);
+    const stopDescription = this.pickFirstNonEmptyString(stopWhen?.description);
+    if (!stopRead || !stopConditionFn || !stopDescription) {
+      return null;
+    }
+
+    const readType = this.pickFirstNonEmptyString(stopRead.type);
+    const readStep = this.buildLoopStopReadStep(stopRead, runtimeInput);
+    if (!readType || !readStep) {
+      return null;
+    }
+
+    if (readType !== 'count' && readType !== 'text' && readType !== 'page_signal') {
+      return null;
+    }
+
+    const signalKey = this.pickFirstNonEmptyString(stopRead.key);
+    if (readType === 'page_signal' && !signalKey) {
+      return null;
+    }
+
+    return {
+      mode: 'repeat_until',
+      stopWhen: {
+        read:
+          readType === 'page_signal'
+            ? {
+                type: 'page_signal',
+                key: signalKey!,
+                step: readStep,
+              }
+            : {
+                type: readType,
+                ...(signalKey ? { key: signalKey } : {}),
+                step: readStep,
+              },
+        conditionFn: stopConditionFn,
+        description: stopDescription,
+      },
+      maxIterations: this.resolveLoopMaxIterations(loopDraft.maxIterations),
+      onNoProgress:
+        this.pickFirstNonEmptyString(loopDraft.onNoProgress) === 'stop' ? 'stop' : 'takeover',
+      preLoopSteps: runtimeSteps.slice(0, loopStartIndex),
+      iterationSteps,
+      postLoopSteps: runtimeSteps.slice(loopEndIndex + 1),
+    };
+  }
+
+  private extractLoopDraft(
+    payload: Record<string, unknown>,
+    runtimeInput: Record<string, unknown>
+  ): Record<string, unknown> | undefined {
+    const apiEndpoints = asRecord(payload.apiEndpoints);
+    const runtimeMetadata =
+      asRecord(payload.runtimeMetadata) || asRecord(apiEndpoints?.runtimeMetadata);
+    const executionPlan = asRecord(runtimeMetadata?.executionPlan);
+    const rawLoopDraft = asRecord(executionPlan?.loopDraft) || asRecord(runtimeMetadata?.loopDraft);
+    return rawLoopDraft
+      ? asRecord(this.resolveRuntimeValue(rawLoopDraft, runtimeInput)) || rawLoopDraft
+      : undefined;
+  }
+
+  private buildLoopStopReadStep(
+    stopRead: Record<string, unknown>,
+    runtimeInput: Record<string, unknown>
+  ): BrowserRecordingRuntimeStep | null {
+    const readType = this.pickFirstNonEmptyString(stopRead.type);
+    if (!readType) {
+      return null;
+    }
+
+    if (readType === 'page_signal') {
+      return {
+        id: 'loop_stop_read',
+        name: '读取循环终止页面信号',
+        action: 'read_page',
+        description: '读取页面信号用于判断循环是否结束',
+      };
+    }
+
+    const locator = asRecord(this.resolveRuntimeValue(stopRead.locator, runtimeInput));
+    const target = this.buildTargetFromLocator(locator);
+    if (!locator || !target) {
+      return null;
+    }
+
+    return {
+      id: 'loop_stop_read',
+      name: '读取循环终止信号',
+      action: 'read_value',
+      target,
+      args: {
+        selector: locator.value,
+      },
+      description: '读取循环终止信号',
+    };
+  }
+
+  private resolveLoopMaxIterations(value: unknown): number {
+    return typeof value === 'number' && Number.isFinite(value) && value > 0
+      ? Math.floor(value)
+      : 100;
+  }
+
+  private buildRuntimeStepFromTemplate(
+    step: Record<string, unknown>,
+    runtimeInput: Record<string, unknown>,
+    index: number
+  ): BrowserRecordingRuntimeStep {
+    const resolvedStep = asRecord(this.resolveRuntimeValue(step, runtimeInput)) || {};
+    const stepId =
+      this.pickFirstNonEmptyString(resolvedStep.step_id, resolvedStep.id, `step_${index + 1}`) ||
+      `step_${index + 1}`;
+    const action = this.normalizeStepAction(this.pickFirstNonEmptyString(resolvedStep.action));
+    if (!action) {
+      throw new BadRequestException(`浏览器模板步骤缺少 action: ${stepId}`);
+    }
+
+    const params = asRecord(resolvedStep.params) || {};
+    const locator = asRecord(resolvedStep.locator) || undefined;
+    const target = this.resolveRuntimeTarget(action, resolvedStep, {
+      ...params,
+      ...(locator ? { locator } : {}),
+    });
+
+    const runtimeStep: BrowserRecordingRuntimeStep = {
+      id: stepId,
+      name:
+        this.pickFirstNonEmptyString(
+          resolvedStep.description,
+          resolvedStep.step_id,
+          `Step ${index + 1}`
+        ) || `Step ${index + 1}`,
+      action,
+      ...(target ? { target } : {}),
+      ...(Object.keys(this.buildRuntimeArgs(action, resolvedStep, params)).length > 0
+        ? { args: this.buildRuntimeArgs(action, resolvedStep, params) }
+        : {}),
+      ...(typeof resolvedStep.output_var === 'string' && resolvedStep.output_var.trim()
+        ? { outputVar: resolvedStep.output_var.trim() }
+        : {}),
+      ...(typeof resolvedStep.description === 'string' && resolvedStep.description.trim()
+        ? { description: resolvedStep.description.trim() }
+        : {}),
+    };
+
+    const branch = this.rewriteLegacyThresholdBranch(
+      asRecord(resolvedStep.branch),
+      resolvedStep,
+      runtimeInput
+    );
+    if (action === 'branch' && branch) {
+      const conditionFn = this.pickFirstNonEmptyString(branch.condition_fn);
+      if (!conditionFn) {
+        throw new BadRequestException(`浏览器模板 branch 步骤缺少 condition_fn: ${stepId}`);
+      }
+      runtimeStep.branch = {
+        conditionFn,
+        onMatch: this.pickFirstNonEmptyString(branch.on_match) === 'stop' ? 'stop' : 'continue',
+        onMismatch:
+          this.pickFirstNonEmptyString(branch.on_mismatch) === 'stop'
+            ? 'stop'
+            : this.pickFirstNonEmptyString(branch.on_mismatch) === 'continue'
+              ? 'continue'
+              : 'takeover',
+        ...(this.pickFirstNonEmptyString(branch.takeover_reason)
+          ? { takeoverReason: this.pickFirstNonEmptyString(branch.takeover_reason) }
+          : {}),
+        ...(this.pickFirstNonEmptyString(branch.description)
+          ? { description: this.pickFirstNonEmptyString(branch.description) }
+          : {}),
+      };
+    }
+
+    return runtimeStep;
+  }
+
+  private rewriteLegacyThresholdBranch(
+    branch: Record<string, unknown> | undefined,
+    step: Record<string, unknown>,
+    runtimeInput: Record<string, unknown>
+  ): Record<string, unknown> | undefined {
+    if (!branch) {
+      return branch;
+    }
+
+    const threshold = this.asFiniteNumber(runtimeInput.grossMarginThreshold);
+    if (threshold === undefined) {
+      return branch;
+    }
+
+    const conditionFn = this.pickFirstNonEmptyString(branch.condition_fn);
+    if (!conditionFn) {
+      return branch;
+    }
+
+    const thresholdContext = [
+      conditionFn,
+      this.pickFirstNonEmptyString(branch.description),
+      this.pickFirstNonEmptyString(branch.takeover_reason),
+      this.pickFirstNonEmptyString(step.description),
+    ]
+      .filter((item): item is string => typeof item === 'string' && item.length > 0)
+      .join(' ');
+    if (!/(gross\s*margin|profit\s*margin|毛利率|粗利率)/i.test(thresholdContext)) {
+      return branch;
+    }
+
+    const formattedThreshold = this.formatThresholdNumber(threshold);
+    const nextConditionFn = conditionFn.replace(
+      /([<>]=?\s*)(-?\d+(?:\.\d+)?)(?![\d.])/,
+      `$1${formattedThreshold}`
+    );
+    if (nextConditionFn === conditionFn) {
+      return branch;
+    }
+
+    return {
+      ...branch,
+      condition_fn: nextConditionFn,
+    };
+  }
+
   private resolveRuntimeTarget(
     action: string,
     resolvedPayload: Record<string, unknown>,
-    resolvedParams: Record<string, unknown>,
+    resolvedParams: Record<string, unknown>
   ): string | undefined {
     const locatorTarget = this.buildTargetFromLocator(
-      asRecord(resolvedPayload.locator) || asRecord(resolvedParams.locator),
+      asRecord(resolvedPayload.locator) || asRecord(resolvedParams.locator)
     );
     if (locatorTarget) {
       return locatorTarget;
     }
 
     const selectorTarget = this.normalizeTarget(
-      this.pickFirstNonEmptyString(
-        resolvedPayload.selector,
-        resolvedParams.selector,
-      ),
+      this.pickFirstNonEmptyString(resolvedPayload.selector, resolvedParams.selector)
     );
     if (selectorTarget) {
       return selectorTarget;
@@ -312,8 +634,8 @@ export class CapabilityReleaseBrowserRecordingService {
         resolvedPayload.target,
         resolvedParams.target,
         action === 'goto' ? resolvedPayload.url : undefined,
-        action === 'goto' ? resolvedParams.url : undefined,
-      ),
+        action === 'goto' ? resolvedParams.url : undefined
+      )
     );
     if (!explicitTarget) {
       return undefined;
@@ -329,7 +651,7 @@ export class CapabilityReleaseBrowserRecordingService {
   private buildRuntimeArgs(
     action: string,
     resolvedPayload: Record<string, unknown>,
-    resolvedParams: Record<string, unknown>,
+    resolvedParams: Record<string, unknown>
   ): Record<string, unknown> {
     const pick = (...values: unknown[]) => values.find((value) => value !== undefined);
 
@@ -338,26 +660,31 @@ export class CapabilityReleaseBrowserRecordingService {
         return Object.fromEntries(
           Object.entries({
             url: pick(resolvedPayload.url, resolvedParams.url),
-          }).filter(([, value]) => value !== undefined),
+          }).filter(([, value]) => value !== undefined)
         );
       case 'fill':
         return Object.fromEntries(
           Object.entries({
-            value: pick(resolvedParams.value, resolvedPayload.value, resolvedPayload.text, resolvedPayload.query),
-          }).filter(([, value]) => value !== undefined),
+            value: pick(
+              resolvedParams.value,
+              resolvedPayload.value,
+              resolvedPayload.text,
+              resolvedPayload.query
+            ),
+          }).filter(([, value]) => value !== undefined)
         );
       case 'type_text':
         return Object.fromEntries(
           Object.entries({
             text: pick(resolvedParams.text, resolvedPayload.text, resolvedPayload.value),
             submit_key: pick(resolvedParams.submit_key, resolvedPayload.submit_key),
-          }).filter(([, value]) => value !== undefined),
+          }).filter(([, value]) => value !== undefined)
         );
       case 'press_key':
         return Object.fromEntries(
           Object.entries({
             key: pick(resolvedParams.key, resolvedPayload.key, resolvedPayload.value),
-          }).filter(([, value]) => value !== undefined),
+          }).filter(([, value]) => value !== undefined)
         );
       case 'wait':
         return Object.fromEntries(
@@ -366,23 +693,28 @@ export class CapabilityReleaseBrowserRecordingService {
               resolvedParams.duration,
               resolvedParams.timeoutMs,
               resolvedPayload.duration,
-              resolvedPayload.timeoutMs,
+              resolvedPayload.timeoutMs
             ),
             selector: pick(resolvedParams.selector, resolvedPayload.selector),
-          }).filter(([, value]) => value !== undefined),
+          }).filter(([, value]) => value !== undefined)
         );
       case 'smart_search':
       case 'search':
         return Object.fromEntries(
           Object.entries({
-            query: pick(resolvedParams.query, resolvedPayload.query, resolvedPayload.text, resolvedPayload.value),
-          }).filter(([, value]) => value !== undefined),
+            query: pick(
+              resolvedParams.query,
+              resolvedPayload.query,
+              resolvedPayload.text,
+              resolvedPayload.value
+            ),
+          }).filter(([, value]) => value !== undefined)
         );
       case 'click_result':
         return Object.fromEntries(
           Object.entries({
             index: pick(resolvedParams.index, resolvedPayload.index),
-          }).filter(([, value]) => value !== undefined),
+          }).filter(([, value]) => value !== undefined)
         );
       case 'screenshot':
       case 'snapshot':
@@ -397,9 +729,7 @@ export class CapabilityReleaseBrowserRecordingService {
     }
   }
 
-  private buildTargetFromLocator(
-    locator?: Record<string, unknown>,
-  ): string | undefined {
+  private buildTargetFromLocator(locator?: Record<string, unknown>): string | undefined {
     if (!locator) {
       return undefined;
     }
@@ -443,7 +773,7 @@ export class CapabilityReleaseBrowserRecordingService {
     action: string,
     target: string,
     resolvedPayload: Record<string, unknown>,
-    resolvedParams: Record<string, unknown>,
+    resolvedParams: Record<string, unknown>
   ): boolean {
     if (!['fill', 'click', 'hover', 'press_key', 'type_text'].includes(action)) {
       return false;
@@ -477,13 +807,15 @@ export class CapabilityReleaseBrowserRecordingService {
       return false;
     }
 
-    return /^e\d+$/i.test(value)
-      || /^(role|text|xpath)=/i.test(value)
-      || /^(#|\.|\[|\/\/)/.test(value)
-      || /[a-zA-Z-]+\[name=/.test(value)
-      || value.includes('>>')
-      || value.includes(':has')
-      || value.includes('[data-testid=');
+    return (
+      /^e\d+$/i.test(value) ||
+      /^(role|text|xpath)=/i.test(value) ||
+      /^(#|\.|\[|\/\/)/.test(value) ||
+      /[a-zA-Z-]+\[name=/.test(value) ||
+      value.includes('>>') ||
+      value.includes(':has') ||
+      value.includes('[data-testid=')
+    );
   }
 
   private normalizeStepAction(action: string | undefined): string | undefined {
@@ -506,12 +838,9 @@ export class CapabilityReleaseBrowserRecordingService {
   }
 
   private extractRequestedExecutionStepMetadata(
-    metadata?: Record<string, unknown>,
+    metadata?: Record<string, unknown>
   ): BrowserRecordingRequestedStep {
-    const name = this.pickFirstNonEmptyString(
-      metadata?.executionStepName,
-      metadata?.stepName,
-    );
+    const name = this.pickFirstNonEmptyString(metadata?.executionStepName, metadata?.stepName);
     const rawIndex = metadata?.executionStepIndex ?? metadata?.stepIndex;
     const index =
       typeof rawIndex === 'number' && Number.isFinite(rawIndex)
@@ -528,7 +857,7 @@ export class CapabilityReleaseBrowserRecordingService {
 
   private resolveRequestedRuntimeStep(
     runtimeSteps: BrowserRecordingRuntimeStep[],
-    requestedStep: BrowserRecordingRequestedStep,
+    requestedStep: BrowserRecordingRequestedStep
   ): BrowserRecordingRuntimeStep | null {
     if (requestedStep.name) {
       const matchedByName = runtimeSteps.find((step) => step.name === requestedStep.name);
@@ -538,10 +867,10 @@ export class CapabilityReleaseBrowserRecordingService {
     }
 
     if (
-      typeof requestedStep.index === 'number'
-      && Number.isInteger(requestedStep.index)
-      && requestedStep.index > 0
-      && requestedStep.index <= runtimeSteps.length
+      typeof requestedStep.index === 'number' &&
+      Number.isInteger(requestedStep.index) &&
+      requestedStep.index > 0 &&
+      requestedStep.index <= runtimeSteps.length
     ) {
       return runtimeSteps[requestedStep.index - 1];
     }
@@ -549,10 +878,7 @@ export class CapabilityReleaseBrowserRecordingService {
     return null;
   }
 
-  private resolveRuntimeValue(
-    value: unknown,
-    runtimeInput: Record<string, unknown>,
-  ): unknown {
+  private resolveRuntimeValue(value: unknown, runtimeInput: Record<string, unknown>): unknown {
     if (typeof value === 'string') {
       const exactMatch = value.match(/^\$\{([^}]+)\}$/);
       if (exactMatch) {
@@ -568,12 +894,30 @@ export class CapabilityReleaseBrowserRecordingService {
       return value.map((item) => this.resolveRuntimeValue(item, runtimeInput));
     }
     if (value && typeof value === 'object') {
-      return Object.entries(value as Record<string, unknown>).reduce<Record<string, unknown>>((acc, [key, current]) => {
-        acc[key] = this.resolveRuntimeValue(current, runtimeInput);
-        return acc;
-      }, {});
+      return Object.entries(value as Record<string, unknown>).reduce<Record<string, unknown>>(
+        (acc, [key, current]) => {
+          acc[key] = this.resolveRuntimeValue(current, runtimeInput);
+          return acc;
+        },
+        {}
+      );
     }
     return value;
+  }
+
+  private asFiniteNumber(value: unknown): number | undefined {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+    if (typeof value === 'string' && value.trim().length > 0) {
+      const parsed = Number(value.trim());
+      return Number.isFinite(parsed) ? parsed : undefined;
+    }
+    return undefined;
+  }
+
+  private formatThresholdNumber(value: number): string {
+    return Number.isInteger(value) ? String(value) : String(value).replace(/\.0+$/, '');
   }
 
   private pickFirstNonEmptyString(...values: unknown[]): string | undefined {

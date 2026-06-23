@@ -66,8 +66,8 @@ if [ "$USE_DOCKER" = true ]; then
 
     # 拉取镜像（使用中国源）
     echo "拉取 node:18-alpine 镜像..."
-    if docker pull docker.1ms.run/library/node:18-alpine 2>/dev/null; then
-        docker tag docker.1ms.run/library/node:18-alpine node:18-alpine
+    if docker pull node:18-alpine 2>/dev/null; then
+        docker tag node:18-alpine node:18-alpine
         echo "✅ 镜像拉取成功"
     else
         echo "⚠️ Docker 镜像拉取失败，使用本地 npm 启动"

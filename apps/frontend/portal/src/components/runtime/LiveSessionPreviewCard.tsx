@@ -27,26 +27,26 @@ export const LiveSessionPreviewCard: React.FC<LiveSessionPreviewCardProps> = ({
 
   const iframeSrc = React.useMemo(
     () => `${resolvedUrl}${resolvedUrl.includes('?') ? '&' : '?'}autoconnect=true&resize=scale`,
-    [resolvedUrl],
+    [resolvedUrl]
   );
 
   return (
     <Card
-      title={(
+      title={
         <Space>
           <EyeOutlined />
           {title}
           <Tag color="processing">{statusLabel}</Tag>
         </Space>
-      )}
-      extra={(
+      }
+      extra={
         <Button
           type="link"
           onClick={() => window.open(resolvedUrl, '_blank', 'noopener,noreferrer')}
         >
           新窗口打开
         </Button>
-      )}
+      }
     >
       <div
         style={{

@@ -73,11 +73,7 @@ export class LockService {
     const lockKey = `lock:profile:${userId}`;
 
     // Use Lua script for safe release
-    const result = await this.redisService.eval(
-      SAFE_RELEASE_SCRIPT,
-      [lockKey],
-      [sessionId],
-    );
+    const result = await this.redisService.eval(SAFE_RELEASE_SCRIPT, [lockKey], [sessionId]);
 
     if (result === 1) {
       this.logger.log(`Lock released: user=${userId}, session=${sessionId}`);
@@ -111,7 +107,7 @@ export class LockService {
     const result = await this.redisService.eval(
       SAFE_EXTEND_SCRIPT,
       [lockKey],
-      [sessionId, String(LOCK_TTL_SECONDS)],
+      [sessionId, String(LOCK_TTL_SECONDS)]
     );
 
     if (result === 1) {

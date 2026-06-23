@@ -72,12 +72,16 @@ interface CreateWordQueryCompareControllerOptions {
   setIsComparing: (value: boolean) => void;
   setCompareDocumentIr: (documentIr: Record<string, any> | null) => void;
   setCompareResult: (result: TemplateCompareResponse | null) => void;
-  addDebugLog: (level: 'info' | 'debug' | 'warn' | 'error', message: string, details?: string) => void;
+  addDebugLog: (
+    level: 'info' | 'debug' | 'warn' | 'error',
+    message: string,
+    details?: string
+  ) => void;
   buildWordCompareCacheKey: (
     templateDocumentIr: Record<string, any>,
     sampleUploadState: SampleUploadStateLike,
     selectedTemplateType: string,
-    headingLanguages: string[],
+    headingLanguages: string[]
   ) => string;
   loadWordCompareCache: () => Record<string, WordCompareCacheEntryLike>;
   removeWordCompareCacheEntry: (cacheKey: string) => void;
@@ -95,7 +99,10 @@ interface CreateWordQueryCompareControllerOptions {
     sampleText: string;
     tableAnchorParagraphMap: Map<number, number>;
   }) => TemplateCompareResponse;
-  buildTableAnchorParagraphMap: (ooxml: string, paragraphs: CompareParagraph[]) => Map<number, number>;
+  buildTableAnchorParagraphMap: (
+    ooxml: string,
+    paragraphs: CompareParagraph[]
+  ) => Map<number, number>;
   buildCompareDebugText: (result: TemplateCompareResponse, details: Record<string, any>) => string;
   buildWordKeywordFocusedDebugExcerpt: (args: {
     title: string;
@@ -149,7 +156,7 @@ export function createWordQueryCompareController(options: CreateWordQueryCompare
         templateDocumentIr as Record<string, any>,
         options.sampleUploadState,
         options.selectedTemplateType,
-        options.effectiveCompareHeadingLanguages,
+        options.effectiveCompareHeadingLanguages
       );
       const cachedCompareEntry = options.loadWordCompareCache()[compareCacheKey];
 
@@ -158,15 +165,13 @@ export function createWordQueryCompareController(options: CreateWordQueryCompare
       if (cachedCompareEntry) {
         options.removeWordCompareCacheEntry(compareCacheKey);
       }
-      options.addDebugLog('info', 'Word 参数查询重新执行', '本次点击“查询”已跳过已有缓存，并将在完成后写回最新结果。');
+      options.addDebugLog(
+        'info',
+        'Word 参数查询重新执行',
+        '本次点击“查询”已跳过已有缓存，并将在完成后写回最新结果。'
+      );
 
-      const [
-        paragraphs,
-        underlines,
-        tableCells,
-        ooxml,
-        sampleText,
-      ] = await Promise.all([
+      const [paragraphs, underlines, tableCells, ooxml, sampleText] = await Promise.all([
         WordAPI.getParagraphsWithFormat(),
         WordAPI.getUnderlinedTexts(),
         WordAPI.getTableCells(),
@@ -228,8 +233,12 @@ export function createWordQueryCompareController(options: CreateWordQueryCompare
         'Word 参数查询完成',
         options.buildCompareDebugText(uncachedResult, {
           underlineCount: underlines.length,
-          underlineCharCount: underlines.filter((underline) => underline.underlineType === 'underline-char').length,
-          underlineSpaceCount: underlines.filter((underline) => underline.underlineType !== 'underline-char').length,
+          underlineCharCount: underlines.filter(
+            (underline) => underline.underlineType === 'underline-char'
+          ).length,
+          underlineSpaceCount: underlines.filter(
+            (underline) => underline.underlineType !== 'underline-char'
+          ).length,
           tableCellCount: tableCells.length,
           paragraphCount: paragraphs.length,
           underlines: normalizedUnderlines,
@@ -276,7 +285,9 @@ export function createWordQueryCompareController(options: CreateWordQueryCompare
     } catch (error: any) {
       options.setAnalysisError(
         error?.message || '参数查询失败',
-        error?.stack || error?.response?.data ? JSON.stringify(error.response?.data, null, 2) : undefined,
+        error?.stack || error?.response?.data
+          ? JSON.stringify(error.response?.data, null, 2)
+          : undefined
       );
     } finally {
       options.setIsComparing(false);

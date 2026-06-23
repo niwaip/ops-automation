@@ -102,11 +102,7 @@ export const TaskpaneShell: React.FC<TaskpaneShellProps> = ({
       </header>
 
       <div className="host-template-tabs">
-        <button
-          className="host-template-tab active"
-          type="button"
-          disabled
-        >
+        <button className="host-template-tab active" type="button" disabled>
           {templateLabel}
         </button>
       </div>
@@ -115,7 +111,9 @@ export const TaskpaneShell: React.FC<TaskpaneShellProps> = ({
 
       <footer className="quick-actions">
         <div className="syntax-help">
-          <button className="help-btn" onClick={() => setShowHelp(true)}>语法帮助</button>
+          <button className="help-btn" onClick={() => setShowHelp(true)}>
+            语法帮助
+          </button>
         </div>
         <div className="version">v1.0.0</div>
       </footer>
@@ -125,7 +123,9 @@ export const TaskpaneShell: React.FC<TaskpaneShellProps> = ({
           <div className="help-modal" onClick={(event) => event.stopPropagation()}>
             <div className="help-modal-header">
               <h3>帮助</h3>
-              <button className="help-modal-close" onClick={() => setShowHelp(false)}>关闭</button>
+              <button className="help-modal-close" onClick={() => setShowHelp(false)}>
+                关闭
+              </button>
             </div>
             <div className="help-modal-content">{helpContent}</div>
           </div>

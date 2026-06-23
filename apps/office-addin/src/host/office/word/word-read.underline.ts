@@ -2,7 +2,7 @@ import { emitDebugLog, setLastUnderlineDebugReport } from './word-read.debug';
 
 function shouldDebugWordUnderlineParagraph(text: string): boolean {
   return /technical service is to be rendered|duration of technical service|技术服务地点|技术服务期限/iu.test(
-    String(text || ''),
+    String(text || '')
   );
 }
 
@@ -84,12 +84,15 @@ function buildUnderlineMirrorShape(text: string): string {
 
 function canUseMirrorUnderlineFallback(
   current: UnderlineSpaceCandidate,
-  counterpart: UnderlineSpaceCandidate,
+  counterpart: UnderlineSpaceCandidate
 ): boolean {
   if (current.hasUnderlineFormat || !counterpart.hasUnderlineFormat) {
     return false;
   }
-  if (current.blankCount !== counterpart.blankCount || current.blankIndex !== counterpart.blankIndex) {
+  if (
+    current.blankCount !== counterpart.blankCount ||
+    current.blankIndex !== counterpart.blankIndex
+  ) {
     return false;
   }
   if (current.blankLength !== counterpart.blankLength) {
@@ -175,7 +178,9 @@ export async function getUnderlinedTexts(): Promise<
             continue;
           }
 
-          const isWarrantyDebugParagraph = /保修期|アフターサービス保証期間|年内|年とする/u.test(fullText);
+          const isWarrantyDebugParagraph = /保修期|アフターサービス保証期間|年内|年とする/u.test(
+            fullText
+          );
           const isUnderlineDebugParagraph = shouldDebugWordUnderlineParagraph(fullText);
           const paragraphLanguage = detectUnderlineFallbackLanguage(fullText);
           const paragraphHasKana = /[\u3040-\u30ff]/u.test(fullText);
@@ -184,13 +189,16 @@ export async function getUnderlinedTexts(): Promise<
             pushWarrantyDebug(`[DEBUG][WARRANTY] 段落${pIdx} 原文: ${JSON.stringify(fullText)}`);
           }
           if (isUnderlineDebugParagraph) {
-            pushTargetUnderlineDebug('[DEBUG][UNDERLINE][A] target paragraph entered underline scan', {
-              location: 'word-read.underline.ts:getUnderlinedTexts:paragraph-entry',
-              paragraphIndex: pIdx,
-              paragraphLanguage,
-              paragraphHasKana,
-              paragraphText: fullText,
-            });
+            pushTargetUnderlineDebug(
+              '[DEBUG][UNDERLINE][A] target paragraph entered underline scan',
+              {
+                location: 'word-read.underline.ts:getUnderlinedTexts:paragraph-entry',
+                paragraphIndex: pIdx,
+                paragraphLanguage,
+                paragraphHasKana,
+                paragraphText: fullText,
+              }
+            );
           }
 
           const underlineCharMatches: Array<{ text: string; start: number; end: number }> = [];
@@ -222,7 +230,7 @@ export async function getUnderlinedTexts(): Promise<
           }
 
           console.log(
-            `[DEBUG] 段落 ${pIdx}: 发现 ${underlineCharMatches.length} 个下划线字符 + ${spaceMatches.length} 个空格区域`,
+            `[DEBUG] 段落 ${pIdx}: 发现 ${underlineCharMatches.length} 个下划线字符 + ${spaceMatches.length} 个空格区域`
           );
           if (isUnderlineDebugParagraph) {
             pushTargetUnderlineDebug('[DEBUG][UNDERLINE][A] target paragraph blank scan result', {
@@ -237,16 +245,16 @@ export async function getUnderlinedTexts(): Promise<
           }
           if (isWarrantyDebugParagraph) {
             pushWarrantyDebug(
-              `[DEBUG][WARRANTY] 段落${pIdx} 空白统计: underlineChar=${underlineCharMatches.length}, spaces=${spaceMatches.length}`,
+              `[DEBUG][WARRANTY] 段落${pIdx} 空白统计: underlineChar=${underlineCharMatches.length}, spaces=${spaceMatches.length}`
             );
             underlineCharMatches.forEach((underlineMatch, underlineIndex) => {
               pushWarrantyDebug(
-                `[DEBUG][WARRANTY] 段落${pIdx} 下划线字符#${underlineIndex + 1}: ${underlineMatch.start}-${underlineMatch.end} ${JSON.stringify(underlineMatch.text)}`,
+                `[DEBUG][WARRANTY] 段落${pIdx} 下划线字符#${underlineIndex + 1}: ${underlineMatch.start}-${underlineMatch.end} ${JSON.stringify(underlineMatch.text)}`
               );
             });
             spaceMatches.forEach((spaceMatch, spaceIndex) => {
               pushWarrantyDebug(
-                `[DEBUG][WARRANTY] 段落${pIdx} 空格候选#${spaceIndex + 1}: ${spaceMatch.start}-${spaceMatch.end} ${JSON.stringify(spaceMatch.text)}`,
+                `[DEBUG][WARRANTY] 段落${pIdx} 空格候选#${spaceIndex + 1}: ${spaceMatch.start}-${spaceMatch.end} ${JSON.stringify(spaceMatch.text)}`
               );
             });
           }
@@ -260,7 +268,9 @@ export async function getUnderlinedTexts(): Promise<
               paragraphText: fullText,
               position: { start: underlineMatch.start, end: underlineMatch.end },
             });
-            console.log(`[DEBUG] ✓ 下划线字符: 段落${pIdx} 位置${underlineMatch.start}-${underlineMatch.end}`);
+            console.log(
+              `[DEBUG] ✓ 下划线字符: 段落${pIdx} 位置${underlineMatch.start}-${underlineMatch.end}`
+            );
           }
 
           for (let spaceIndex = 0; spaceIndex < spaceMatches.length; spaceIndex += 1) {
@@ -299,7 +309,7 @@ export async function getUnderlinedTexts(): Promise<
 
               if (isWarrantyDebugParagraph) {
                 pushWarrantyDebug(
-                  `[DEBUG][WARRANTY] 段落${pIdx} 空格${spaceMatch.start}-${spaceMatch.end}: 扩展上下文 ${JSON.stringify(extendedText)}`,
+                  `[DEBUG][WARRANTY] 段落${pIdx} 空格${spaceMatch.start}-${spaceMatch.end}: 扩展上下文 ${JSON.stringify(extendedText)}`
                 );
               }
 
@@ -328,16 +338,16 @@ export async function getUnderlinedTexts(): Promise<
 
                     contextRangeCount = blankInExt.items.length;
                     contextUnderlineStates = blankInExt.items.map((foundRange) =>
-                      String(foundRange.font.underline),
+                      String(foundRange.font.underline)
                     );
 
                     if (isWarrantyDebugParagraph) {
                       pushWarrantyDebug(
-                        `[DEBUG][WARRANTY] 段落${pIdx} 空格${spaceMatch.start}-${spaceMatch.end}: 上下文命中 ${blankInExt.items.length} 个空格 range`,
+                        `[DEBUG][WARRANTY] 段落${pIdx} 空格${spaceMatch.start}-${spaceMatch.end}: 上下文命中 ${blankInExt.items.length} 个空格 range`
                       );
                       blankInExt.items.forEach((foundRange, foundIndex) => {
                         pushWarrantyDebug(
-                          `[DEBUG][WARRANTY] 段落${pIdx} 上下文range#${foundIndex + 1}: text=${JSON.stringify(foundRange.text)} underline=${String(foundRange.font.underline)}`,
+                          `[DEBUG][WARRANTY] 段落${pIdx} 上下文range#${foundIndex + 1}: text=${JSON.stringify(foundRange.text)} underline=${String(foundRange.font.underline)}`
                         );
                       });
                     }
@@ -354,27 +364,27 @@ export async function getUnderlinedTexts(): Promise<
                       detectionStats.filteredByUnderline += 1;
                       countedUnderlineFilter = true;
                       console.log(
-                        `[DEBUG] 段落${pIdx} 位置${spaceMatch.start}-${spaceMatch.end}: 上下文定位成功，但空格区域 underline 为 None/Mixed`,
+                        `[DEBUG] 段落${pIdx} 位置${spaceMatch.start}-${spaceMatch.end}: 上下文定位成功，但空格区域 underline 为 None/Mixed`
                       );
                     }
                   } else {
                     if (isWarrantyDebugParagraph) {
                       pushWarrantyDebug(
-                        `[DEBUG][WARRANTY] 段落${pIdx} 空格${spaceMatch.start}-${spaceMatch.end}: 上下文内没有找到空格片段`,
+                        `[DEBUG][WARRANTY] 段落${pIdx} 空格${spaceMatch.start}-${spaceMatch.end}: 上下文内没有找到空格片段`
                       );
                     }
                     console.log(
-                      `[DEBUG] 段落${pIdx} 位置${spaceMatch.start}-${spaceMatch.end}: 上下文命中，但在上下文内未找到空格片段`,
+                      `[DEBUG] 段落${pIdx} 位置${spaceMatch.start}-${spaceMatch.end}: 上下文命中，但在上下文内未找到空格片段`
                     );
                   }
                 } else {
                   if (isWarrantyDebugParagraph) {
                     pushWarrantyDebug(
-                      `[DEBUG][WARRANTY] 段落${pIdx} 空格${spaceMatch.start}-${spaceMatch.end}: 扩展上下文未命中`,
+                      `[DEBUG][WARRANTY] 段落${pIdx} 空格${spaceMatch.start}-${spaceMatch.end}: 扩展上下文未命中`
                     );
                   }
                   console.log(
-                    `[DEBUG] 段落${pIdx} 位置${spaceMatch.start}-${spaceMatch.end}: 未找到扩展上下文 "${extendedText}"`,
+                    `[DEBUG] 段落${pIdx} 位置${spaceMatch.start}-${spaceMatch.end}: 未找到扩展上下文 "${extendedText}"`
                   );
                 }
               }
@@ -389,7 +399,7 @@ export async function getUnderlinedTexts(): Promise<
 
                 if (isWarrantyDebugParagraph) {
                   pushWarrantyDebug(
-                    `[DEBUG][WARRANTY] 段落${pIdx} 空格${spaceMatch.start}-${spaceMatch.end}: 直接搜索命中 ${searchResults.items.length} 个 range`,
+                    `[DEBUG][WARRANTY] 段落${pIdx} 空格${spaceMatch.start}-${spaceMatch.end}: 直接搜索命中 ${searchResults.items.length} 个 range`
                   );
                 }
 
@@ -406,13 +416,13 @@ export async function getUnderlinedTexts(): Promise<
 
                 directRangeCount = searchResults.items.length;
                 directUnderlineStates = searchResults.items.map((foundRange) =>
-                  String(foundRange.font.underline),
+                  String(foundRange.font.underline)
                 );
 
                 if (isWarrantyDebugParagraph) {
                   searchResults.items.forEach((foundRange, foundIndex) => {
                     pushWarrantyDebug(
-                      `[DEBUG][WARRANTY] 段落${pIdx} 直接range#${foundIndex + 1}: text=${JSON.stringify(foundRange.text)} underline=${String(foundRange.font.underline)}`,
+                      `[DEBUG][WARRANTY] 段落${pIdx} 直接range#${foundIndex + 1}: text=${JSON.stringify(foundRange.text)} underline=${String(foundRange.font.underline)}`
                     );
                   });
                 }
@@ -428,7 +438,7 @@ export async function getUnderlinedTexts(): Promise<
                     detectionStats.filteredByUnderline += 1;
                   }
                   console.log(
-                    `[DEBUG] 段落${pIdx} 位置${spaceMatch.start}-${spaceMatch.end}: 直接搜索命中，但空格区域 underline 为 None/Mixed`,
+                    `[DEBUG] 段落${pIdx} 位置${spaceMatch.start}-${spaceMatch.end}: 直接搜索命中，但空格区域 underline 为 None/Mixed`
                   );
                 }
               }
@@ -447,36 +457,41 @@ export async function getUnderlinedTexts(): Promise<
                   paragraphText: fullText,
                   position: { start: spaceMatch.start, end: spaceMatch.end },
                 });
-                console.log(`[DEBUG] ✓ 下划线空格: 段落${pIdx} 位置${spaceMatch.start}-${spaceMatch.end}`);
+                console.log(
+                  `[DEBUG] ✓ 下划线空格: 段落${pIdx} 位置${spaceMatch.start}-${spaceMatch.end}`
+                );
                 if (isWarrantyDebugParagraph) {
                   pushWarrantyDebug(
-                    `[DEBUG][WARRANTY] 段落${pIdx} 空格${spaceMatch.start}-${spaceMatch.end}: 已写入结果，类型=${foundByContext ? 'SingleContext' : 'Single'}`,
+                    `[DEBUG][WARRANTY] 段落${pIdx} 空格${spaceMatch.start}-${spaceMatch.end}: 已写入结果，类型=${foundByContext ? 'SingleContext' : 'Single'}`
                   );
                 }
               } else if (isWarrantyDebugParagraph) {
                 pushWarrantyDebug(
-                  `[DEBUG][WARRANTY] 段落${pIdx} 空格${spaceMatch.start}-${spaceMatch.end}: 未写入结果，原因=underline 未通过或搜索未命中`,
+                  `[DEBUG][WARRANTY] 段落${pIdx} 空格${spaceMatch.start}-${spaceMatch.end}: 未写入结果，原因=underline 未通过或搜索未命中`
                 );
               }
 
               if (isUnderlineDebugParagraph) {
-                pushTargetUnderlineDebug('[DEBUG][UNDERLINE][B] target paragraph space candidate decision', {
-                  location: 'word-read.underline.ts:getUnderlinedTexts:space-decision',
-                  paragraphIndex: pIdx,
-                  paragraphText: fullText,
-                  blankIndex: spaceIndex,
-                  blankStart: spaceMatch.start,
-                  blankEnd: spaceMatch.end,
-                  blankLength: spaceMatch.text.length,
-                  extendedText,
-                  contextRangeCount,
-                  contextUnderlineStates,
-                  directRangeCount,
-                  directUnderlineStates,
-                  hasUnderlineFormat,
-                  foundByContext,
-                  resultWritten: hasUnderlineFormat,
-                });
+                pushTargetUnderlineDebug(
+                  '[DEBUG][UNDERLINE][B] target paragraph space candidate decision',
+                  {
+                    location: 'word-read.underline.ts:getUnderlinedTexts:space-decision',
+                    paragraphIndex: pIdx,
+                    paragraphText: fullText,
+                    blankIndex: spaceIndex,
+                    blankStart: spaceMatch.start,
+                    blankEnd: spaceMatch.end,
+                    blankLength: spaceMatch.text.length,
+                    extendedText,
+                    contextRangeCount,
+                    contextUnderlineStates,
+                    directRangeCount,
+                    directUnderlineStates,
+                    hasUnderlineFormat,
+                    foundByContext,
+                    resultWritten: hasUnderlineFormat,
+                  }
+                );
               }
             } catch (searchErr) {
               detectionStats.searchErrors += 1;
@@ -491,7 +506,9 @@ export async function getUnderlinedTexts(): Promise<
       }
 
       const confirmedCandidateKeys = new Set(
-        result.map((entry) => `${entry.paragraphIndex}:${entry.position.start}:${entry.position.end}`),
+        result.map(
+          (entry) => `${entry.paragraphIndex}:${entry.position.start}:${entry.position.end}`
+        )
       );
       const paragraphCandidateMap = new Map<number, UnderlineSpaceCandidate[]>();
       spaceCandidates.forEach((candidate) => {
@@ -545,7 +562,7 @@ export async function getUnderlinedTexts(): Promise<
         }
 
         const mirroredSource = neighborParagraphs.find((neighbor) =>
-          canUseMirrorUnderlineFallback(candidate, neighbor),
+          canUseMirrorUnderlineFallback(candidate, neighbor)
         );
         if (!mirroredSource) {
           if (shouldDebugWordUnderlineParagraph(candidate.paragraphText)) {
@@ -572,7 +589,7 @@ export async function getUnderlinedTexts(): Promise<
 
         if (/保修期|アフターサービス保証期間|年内|年とする/u.test(candidate.paragraphText)) {
           pushWarrantyDebug(
-            `[DEBUG][WARRANTY] 段落${candidate.paragraphIndex} 空格${candidate.start}-${candidate.end}: 镜像兜底生效，参考段落${mirroredSource.paragraphIndex} 同序号空格已确认 underline`,
+            `[DEBUG][WARRANTY] 段落${candidate.paragraphIndex} 空格${candidate.start}-${candidate.end}: 镜像兜底生效，参考段落${mirroredSource.paragraphIndex} 同序号空格已确认 underline`
           );
         }
         if (shouldDebugWordUnderlineParagraph(candidate.paragraphText)) {
@@ -593,7 +610,7 @@ export async function getUnderlinedTexts(): Promise<
       }
 
       const targetResultEntries = result.filter((entry) =>
-        shouldDebugWordUnderlineParagraph(entry.paragraphText),
+        shouldDebugWordUnderlineParagraph(entry.paragraphText)
       );
       if (targetResultEntries.length > 0 || targetUnderlineDebugLines.length > 0) {
         pushTargetUnderlineDebug('[DEBUG][UNDERLINE][D] final underline result snapshot', {
@@ -613,7 +630,7 @@ export async function getUnderlinedTexts(): Promise<
       setLastUnderlineDebugReport(
         [...targetUnderlineDebugLines, ...warrantyDebugLines].length > 0
           ? [...targetUnderlineDebugLines, ...warrantyDebugLines].join('\n')
-          : '本次未捕获到目标英文下划线段落或保修期定向下划线调试信息。',
+          : '本次未捕获到目标英文下划线段落或保修期定向下划线调试信息。'
       );
 
       console.log('[DEBUG] 最终检测到', result.length, '个参数位置');
@@ -629,7 +646,7 @@ export async function getUnderlinedTexts(): Promise<
           .map((entry, index) => ({
             ...entry,
             index,
-          })),
+          }))
       );
     }).catch((error) => {
       console.error('[DEBUG] underline总错误:', error);

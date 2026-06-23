@@ -1,5 +1,5 @@
 import { Logger } from '@nestjs/common';
-import { RuntimeStepRequestFactory } from '../src/modules/execution/runtime-step-request.factory';
+import { RuntimeStepRequestFactory } from '../src/modules/execution/step-runner/runtime-step-request.factory';
 
 describe('RuntimeStepRequestFactory', () => {
   const factory = new RuntimeStepRequestFactory();
@@ -154,6 +154,65 @@ describe('RuntimeStepRequestFactory', () => {
         phaseKey: 'phase_09_step_9',
         phaseName: '9. 输入密码后等待',
         phaseType: 'activity',
+      },
+    });
+  });
+
+  it('omits execution step targeting metadata for browser skill runtime requests', () => {
+    const request = factory.buildSkillRuntimeRequest({
+      execution: {
+        id: 'execution-browser-1',
+        skillId: 'skill-browser-1',
+        skillVersion: 'v9',
+        runtimeType: 'custom',
+        riskLevel: 'L0',
+        requiresApproval: false,
+        normalizedInputJson: {
+          runtimeSourceType: 'browser_recording',
+          input: {
+            username: 'admin',
+          },
+          capabilityMatch: {
+            capabilityId: 'published-browser-skill-1',
+          },
+        },
+      },
+      stepId: 'step-browser-1',
+      runtimeSessionId: 'runtime-browser-1',
+      phaseMetadata: {
+        phaseKey: 'phase_01_execute_selected_skill',
+        phaseName: '执行浏览器技能',
+        phaseType: 'system_skill',
+      },
+      step: {
+        name: '1. 页面打开',
+        action: 'execute_skill',
+        stepIndex: 1,
+      },
+    });
+
+    expect(request).toEqual({
+      requestId: 'execution-browser-1:step-browser-1',
+      executionId: 'execution-browser-1',
+      stepId: 'step-browser-1',
+      runtimeType: 'custom',
+      runtimeSessionId: 'runtime-browser-1',
+      skillId: 'skill-browser-1',
+      publishedSkillId: 'published-browser-skill-1',
+      capabilityType: 'skill.runtime',
+      action: 'execute',
+      input: {
+        username: 'admin',
+      },
+      policyContext: {
+        riskLevel: 'L0',
+        requiresApproval: false,
+      },
+      metadata: {
+        capabilityVersion: 'v9',
+        phaseKey: 'phase_01_execute_selected_skill',
+        phaseName: '执行浏览器技能',
+        phaseType: 'system_skill',
       },
     });
   });
@@ -431,7 +490,9 @@ describe('RuntimeStepRequestFactory', () => {
       outputFormat: 'docx',
     });
     expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Document runtime payload resolved zero mapped fields for execution execution-8'),
+      expect.stringContaining(
+        'Document runtime payload resolved zero mapped fields for execution execution-8'
+      )
     );
 
     warnSpy.mockRestore();

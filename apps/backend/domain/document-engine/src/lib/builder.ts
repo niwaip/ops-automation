@@ -43,20 +43,25 @@ export class Builder {
   }
 
   private hasOwnKey(target: unknown, key: string): target is Record<string, any> {
-    return Boolean(target) && (typeof target === 'object' || typeof target === 'function')
-      && Object.prototype.hasOwnProperty.call(target, key);
+    return (
+      Boolean(target) &&
+      (typeof target === 'object' || typeof target === 'function') &&
+      Object.prototype.hasOwnProperty.call(target, key)
+    );
   }
 
   /**
    * 数据路径求值
    * 例如: d.user.name -> data.user.name
    */
-  evaluatePath(path: string, data: any, context: { loopIndex?: number; parentsData?: any[] } = {}): any {
+  evaluatePath(
+    path: string,
+    data: any,
+    context: { loopIndex?: number; parentsData?: any[] } = {}
+  ): any {
     // 移除可能存在的花括号
-    const unwrappedPath = path.startsWith('{') && path.endsWith('}') 
-      ? path.slice(1, -1) 
-      : path;
-      
+    const unwrappedPath = path.startsWith('{') && path.endsWith('}') ? path.slice(1, -1) : path;
+
     // 去掉前缀字符 (d, c, t)
     const cleanPath = unwrappedPath.replace(/^([cdt])\./, '');
     const prefixChar = unwrappedPath.charAt(0);
@@ -207,29 +212,40 @@ export class Builder {
    * 替换循环变量
    */
   private replaceLoopVariables(unit: string, arrayPath: string, index: number, data: any): string {
-    return unit.replace(/\{([cdt])\.([^}]+)(\[(?:i)?\])([^}]*)\}/g, (match, contextChar, path, indexToken, suffix) => {
-      const expectedPrefix = arrayPath.replace(/^[cdt]\./, '').replace(/\[i\]/g, '');
-      const formatterStart = suffix.indexOf(':');
-      const propertySuffix = formatterStart >= 0 ? suffix.substring(0, formatterStart) : suffix;
-      const formatterSuffix = formatterStart >= 0 ? suffix.substring(formatterStart) : '';
+    return unit.replace(
+      /\{([cdt])\.([^}]+)(\[(?:i)?\])([^}]*)\}/g,
+      (match, contextChar, path, indexToken, suffix) => {
+        const expectedPrefix = arrayPath.replace(/^[cdt]\./, '').replace(/\[i\]/g, '');
+        const formatterStart = suffix.indexOf(':');
+        const propertySuffix = formatterStart >= 0 ? suffix.substring(0, formatterStart) : suffix;
+        const formatterSuffix = formatterStart >= 0 ? suffix.substring(formatterStart) : '';
 
-      if (path.startsWith(expectedPrefix)) {
-        // 属于当前循环，进行替换
-        const normalizedPath = `${path}${indexToken}${propertySuffix}`.replace(/\[(?:i)?\]/g, `[${index}]`);
-        const value = this.evaluatePath(`${contextChar}.${normalizedPath}`, data);
-        const formatters = this.parseFormatters(formatterSuffix);
-        return this.escapeXmlText(String(this.formatterPipeline.apply(value, formatters) ?? ''));
+        if (path.startsWith(expectedPrefix)) {
+          // 属于当前循环，进行替换
+          const normalizedPath = `${path}${indexToken}${propertySuffix}`.replace(
+            /\[(?:i)?\]/g,
+            `[${index}]`
+          );
+          const value = this.evaluatePath(`${contextChar}.${normalizedPath}`, data);
+          const formatters = this.parseFormatters(formatterSuffix);
+          return this.escapeXmlText(String(this.formatterPipeline.apply(value, formatters) ?? ''));
+        }
+
+        // 不属于当前循环，保持原样（等待父循环处理）
+        return match;
       }
-
-      // 不属于当前循环，保持原样（等待父循环处理）
-      return match;
-    });
+    );
   }
 
   /**
    * 替换嵌套循环变量
    */
-  private replaceNestedLoopVariables(unit: string, loop: LoopInfo, index: number, data: any): string {
+  private replaceNestedLoopVariables(
+    unit: string,
+    loop: LoopInfo,
+    index: number,
+    data: any
+  ): string {
     // 处理多层嵌套索引
     // 例如: {d.categories[i].products[i].name}
     // 需要将父循环的 [i] 也替换成实际索引
@@ -237,13 +253,16 @@ export class Builder {
     const parentPath = loop.parentLoop?.replace(/^[cdt]\./, '') || '';
 
     // 替换父循环路径中的 [i] 为具体索引（使用0作为示例，实际应该在父循环渲染时处理）
-    return unit.replace(/\{[cdt]\.([^}]+\[i\][^}]*)\[i\]([^}]*)\}/g, (match, parentPart, suffix) => {
-      // 将父路径的 [i] 替换为当前元素索引
-      const normalizedParentPath = parentPart.replace(/\[i\]/g, `[${index}]`);
-      const value = this.evaluatePath(`d.${normalizedParentPath}`, data);
-      const formatters = this.parseFormatters(suffix);
-      return this.escapeXmlText(String(this.formatterPipeline.apply(value, formatters) ?? ''));
-    });
+    return unit.replace(
+      /\{[cdt]\.([^}]+\[i\][^}]*)\[i\]([^}]*)\}/g,
+      (match, parentPart, suffix) => {
+        // 将父路径的 [i] 替换为当前元素索引
+        const normalizedParentPath = parentPart.replace(/\[i\]/g, `[${index}]`);
+        const value = this.evaluatePath(`d.${normalizedParentPath}`, data);
+        const formatters = this.parseFormatters(suffix);
+        return this.escapeXmlText(String(this.formatterPipeline.apply(value, formatters) ?? ''));
+      }
+    );
   }
 
   /**
@@ -272,11 +291,13 @@ export class Builder {
    */
   private updateRowNumbers(xml: string, offset: number): string {
     // Excel XML中的行号格式: <row r="1"> 或 <c r="A1">
-    return xml.replace(/r="(\d+)"/g, (match, num) => {
-      return `r="${parseInt(num, 10) + offset}"`;
-    }).replace(/r="([A-Z]+)(\d+)"/g, (match, col, row) => {
-      return `r="${col}${parseInt(row, 10) + offset}"`;
-    });
+    return xml
+      .replace(/r="(\d+)"/g, (match, num) => {
+        return `r="${parseInt(num, 10) + offset}"`;
+      })
+      .replace(/r="([A-Z]+)(\d+)"/g, (match, col, row) => {
+        return `r="${col}${parseInt(row, 10) + offset}"`;
+      });
   }
 
   /**
@@ -286,7 +307,7 @@ export class Builder {
     let resultXml = xml;
 
     // 过滤掉数组标记（它们在循环处理中已经替换）
-    const simpleMarkers = markers.filter(m => !m.isArray);
+    const simpleMarkers = markers.filter((m) => !m.isArray);
 
     for (const marker of simpleMarkers) {
       const markerString = `{${marker.name}}`;
@@ -310,8 +331,8 @@ export class Builder {
     const warnings: string[] = [];
     const arrayBackedVariables = new Set(
       parsed.markers
-        .filter(marker => marker.isArray)
-        .map(marker => marker.name.replace(/\[(?:i(?:\+\d+)?)?\]/g, ''))
+        .filter((marker) => marker.isArray)
+        .map((marker) => marker.name.replace(/\[(?:i(?:\+\d+)?)?\]/g, ''))
     );
 
     // 检查数据完整性
@@ -334,7 +355,7 @@ export class Builder {
 
     return {
       xml: processedXml,
-      warnings: warnings.length > 0 ? warnings : undefined
+      warnings: warnings.length > 0 ? warnings : undefined,
     };
   }
 }

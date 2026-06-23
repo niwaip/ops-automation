@@ -51,42 +51,35 @@ type AxiosLikeError = {
 })
 export class ApiCallTool extends BaseTool {
   constructor() {
-    super(
-      'api_call',
-      '执行外部API调用。用于流程模板中的API步骤，可以调用GET或POST接口获取数据。',
-      {
-        type: 'object',
-        properties: {
-          url: {
-            type: 'string',
-            description: 'API的完整URL地址',
-            required: true,
-          },
-          method: {
-            type: 'string',
-            description: 'HTTP方法：GET或POST',
-            required: false,
-          },
-          params: {
-            type: 'object',
-            description: '请求参数（GET查询参数或POST请求体）',
-            required: false,
-          },
-          headers: {
-            type: 'object',
-            description: '额外的请求头',
-            required: false,
-          },
+    super('api_call', '执行外部API调用。用于流程模板中的API步骤，可以调用GET或POST接口获取数据。', {
+      type: 'object',
+      properties: {
+        url: {
+          type: 'string',
+          description: 'API的完整URL地址',
+          required: true,
         },
-        required: ['url'],
+        method: {
+          type: 'string',
+          description: 'HTTP方法：GET或POST',
+          required: false,
+        },
+        params: {
+          type: 'object',
+          description: '请求参数（GET查询参数或POST请求体）',
+          required: false,
+        },
+        headers: {
+          type: 'object',
+          description: '额外的请求头',
+          required: false,
+        },
       },
-    );
+      required: ['url'],
+    });
   }
 
-  async execute(
-    params: Record<string, unknown>,
-    context: ExecutionContext,
-  ): Promise<ToolResult> {
+  async execute(params: Record<string, unknown>, context: ExecutionContext): Promise<ToolResult> {
     const url = params.url as string;
     const method = (params.method as string)?.toUpperCase() || 'GET';
     const queryParams = params.params as Record<string, unknown> | undefined;
@@ -135,23 +128,23 @@ export class ApiCallTool extends BaseTool {
 
       // 处理特定错误
       if (axiosError.response) {
-          return {
-            success: false,
-            output: `API调用失败: ${axiosError.response.status} - ${axiosError.response.statusText}`,
-            data: {
-              error: 'api_error',
-              statusCode: axiosError.response.status,
-              url,
-            },
-          };
+        return {
+          success: false,
+          output: `API调用失败: ${axiosError.response.status} - ${axiosError.response.statusText}`,
+          data: {
+            error: 'api_error',
+            statusCode: axiosError.response.status,
+            url,
+          },
+        };
       }
 
       if (axiosError.code === 'ECONNABORTED') {
-          return {
-            success: false,
-            output: `API调用超时: ${url}`,
-            data: { error: 'timeout', url },
-          };
+        return {
+          success: false,
+          output: `API调用超时: ${url}`,
+          data: { error: 'timeout', url },
+        };
       }
 
       return {

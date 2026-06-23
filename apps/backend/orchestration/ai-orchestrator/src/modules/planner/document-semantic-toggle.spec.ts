@@ -6,7 +6,7 @@ describe('PlannerService document semantic bypass toggle', () => {
     triggerKeywords: ['合同', '采购'],
     paramsSchema: {
       properties: {
-        '__rowIndex': {
+        __rowIndex: {
           type: 'int',
           description: 'row index technical noise',
           required: true,
@@ -96,18 +96,28 @@ describe('PlannerService document semantic bypass toggle', () => {
 
     jest.spyOn(service as any, 'loadAvailableSkills').mockResolvedValue([skill]);
     jest.spyOn(service as any, 'matchSkill').mockResolvedValue(match);
-    jest.spyOn(recognizerService, 'recognizeParams').mockResolvedValue({ params: {}, confidence: 0.1 });
+    jest
+      .spyOn(recognizerService, 'recognizeParams')
+      .mockResolvedValue({ params: {}, confidence: 0.1 });
 
     const plan = await service.generatePlan({
-      request: { user_input: '帮我生成采购合同', user_id: 'u1', modelId: 'selected-model-id' } as any,
+      request: {
+        user_input: '帮我生成采购合同',
+        user_id: 'u1',
+        modelId: 'selected-model-id',
+      } as any,
       userId: 'u1',
       authToken: 'Bearer test',
       traceId: 'trace-1',
     });
 
     expect(plan.semantic).toBeUndefined();
-    expect(plan.required_inputs.some((item: { name: string }) => item.name === '{#d.items}{/d.items}')).toBe(false);
-    expect(plan.required_inputs.some((item: { name: string }) => item.name === '__rowIndex')).toBe(false);
+    expect(
+      plan.required_inputs.some((item: { name: string }) => item.name === '{#d.items}{/d.items}')
+    ).toBe(false);
+    expect(plan.required_inputs.some((item: { name: string }) => item.name === '__rowIndex')).toBe(
+      false
+    );
 
     process.env.DOCUMENT_SEMANTIC_SUBAGENT_ENABLED = originalValue;
   });

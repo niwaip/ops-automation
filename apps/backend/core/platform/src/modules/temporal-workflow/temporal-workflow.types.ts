@@ -10,6 +10,66 @@ export interface WorkflowQueryHandler {
   description?: string;
 }
 
+export interface WorkflowResultExecution {
+  status?: 'success' | 'partial_success' | 'failed' | 'cancelled';
+  executionId?: string;
+  startedAt?: string;
+  finishedAt?: string;
+  durationMs?: number;
+}
+
+export interface WorkflowResultTrigger {
+  type?: 'manual' | 'schedule' | 'api' | 'resume';
+  scheduleId?: string;
+  scheduledAt?: string;
+  windowStart?: string;
+  windowEnd?: string;
+}
+
+export interface WorkflowResultArtifact {
+  type?: string;
+  name?: string;
+  label?: string;
+  downloadUrl?: string;
+  url?: string;
+  path?: string;
+  mimeType?: string;
+}
+
+export type WorkflowResultTextFormat = 'plain_text' | 'markdown';
+
+export interface WorkflowResultPresentation {
+  preferAiSummary?: boolean;
+  preferStructuredView?: boolean;
+  chatSummary?: string;
+  notificationSummary?: string;
+  summaryFormat?: WorkflowResultTextFormat;
+  detailText?: string;
+  detailFormat?: WorkflowResultTextFormat;
+}
+
+export interface WorkflowResultBusinessSection {
+  resultType?: string;
+  title?: string;
+  summary?: string;
+  businessData?: unknown;
+  metrics?: Record<string, unknown>;
+  nextActions?: Array<{
+    type?: string;
+    label?: string;
+    value?: string;
+  }>;
+}
+
+export interface WorkflowResultEnvelope {
+  execution?: WorkflowResultExecution;
+  trigger?: WorkflowResultTrigger;
+  result?: WorkflowResultBusinessSection;
+  artifacts?: WorkflowResultArtifact[];
+  presentation?: WorkflowResultPresentation;
+  delivery?: Record<string, unknown>;
+}
+
 export interface WorkflowStep {
   id: string;
   name: string;
@@ -51,11 +111,7 @@ export interface WorkflowInputParamDefinition {
   renderPath?: string | string[];
 }
 
-export type WorkflowParamRequiredMode =
-  | 'always'
-  | 'conditional'
-  | 'optional'
-  | 'system_required';
+export type WorkflowParamRequiredMode = 'always' | 'conditional' | 'optional' | 'system_required';
 
 export interface WorkflowParamPolicy {
   enabled?: boolean;
@@ -175,12 +231,33 @@ export interface TemporalWorkflowSourceTemplate {
   renderPlanVersion?: number;
 }
 
+export interface BrowserLoopStopWhenDraftLike {
+  conditionFn?: string;
+  condition_fn?: string;
+  description?: string;
+}
+
+export interface BrowserLoopDraftLike {
+  mode?: string;
+  maxIterations?: number;
+  onNoProgress?: 'takeover' | 'stop' | string;
+  eachIteration?: {
+    stepIds?: string[];
+    stepCount?: number;
+  };
+  stopWhen?: BrowserLoopStopWhenDraftLike;
+  target?: Record<string, unknown>;
+  sampleRow?: Record<string, unknown>;
+  updatedAt?: string;
+}
+
 export interface TemporalWorkflowSourceContext {
   sourceType?: 'template' | 'browser_template' | 'ai' | 'text' | 'url';
   referenceUrl?: string;
   userDescription?: string;
   generatedAt?: string;
   warnings?: string[];
+  browserLoopDraft?: BrowserLoopDraftLike;
   sourceTemplate?: TemporalWorkflowSourceTemplate | null;
   templateAssetSummary?: {
     assetVersion: string;
@@ -405,6 +482,16 @@ export interface BrowserTemplateStepInput {
   step_id?: string;
   action?: string;
   params?: Record<string, unknown>;
+  output_var?: string;
+  outputVar?: string;
+  description?: string;
+  branch?: {
+    condition_fn?: string;
+    on_match?: 'continue' | 'stop';
+    on_mismatch?: 'continue' | 'stop' | 'takeover';
+    takeover_reason?: string;
+    description?: string;
+  };
   locator?: {
     type?: string;
     value?: string;
@@ -423,12 +510,15 @@ export interface BrowserTemplateStepInput {
 
 export interface BrowserTemplateParamsSchema {
   type?: string;
-  properties?: Record<string, {
-    type?: string;
-    description?: string;
-    default?: unknown;
-    required?: boolean;
-  }>;
+  properties?: Record<
+    string,
+    {
+      type?: string;
+      description?: string;
+      default?: unknown;
+      required?: boolean;
+    }
+  >;
   required?: string[];
 }
 
@@ -437,6 +527,7 @@ export interface GenerateBrowserWorkflowDraftDTO {
   commands?: BrowserDraftCommandInput[];
   templateId?: string;
   templateSteps?: BrowserTemplateStepInput[];
+  loopDraft?: BrowserLoopDraftLike;
   paramsSchema?: BrowserTemplateParamsSchema;
   name?: string;
   description?: string;

@@ -34,6 +34,10 @@ import { useChatStore } from '@/features/chat';
 import type { PromptDebugRecord } from '@/features/chat/types';
 import { executionApi, ExecutionDto, ExecutionStepDto } from '@/api/execution';
 import { aiModelApi, AIModel } from '@/api/ai';
+import {
+  extractBrowserExecutionResult,
+  hasBrowserExecutionEvidence,
+} from '@/features/executions/lib/browser';
 
 const { Title, Text } = Typography;
 
@@ -79,9 +83,8 @@ const beautifyText = (text: string, useDivider = true): string => {
     .replace(/^[\s\n]+|[\s\n]+$/g, ''); // 去除首尾空白
 };
 
-const hasDetailedLlmCalls = (
-  promptDebug?: PromptDebugRecord['promptDebug'] | null,
-) => Boolean(promptDebug?.llmCalls?.length);
+const hasDetailedLlmCalls = (promptDebug?: PromptDebugRecord['promptDebug'] | null) =>
+  Boolean(promptDebug?.llmCalls?.length);
 
 const getDebugSourceLabel = (source?: 'planner' | 'react-engine') => {
   if (source === 'planner') {
@@ -98,10 +101,7 @@ const previewText = (value: unknown, maxLength = 240) => {
   return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
 };
 
-const getModelDisplayName = (
-  modelId: string | undefined,
-  models: AIModel[],
-) => {
+const getModelDisplayName = (modelId: string | undefined, models: AIModel[]) => {
   if (!modelId) {
     return '-';
   }
@@ -112,26 +112,25 @@ const getModelDisplayName = (
   return matched.name || modelId;
 };
 
-const renderMessageBubble = (
-  role: string,
-  content: string,
-) => (
+const renderMessageBubble = (role: string, content: string) => (
   <Card
     size="small"
     styles={{ body: { padding: 12 } }}
-    title={<Space size={8}><Tag color={role === 'system' ? 'purple' : role === 'assistant' ? 'green' : 'blue'}>{role}</Tag></Space>}
+    title={
+      <Space size={8}>
+        <Tag color={role === 'system' ? 'purple' : role === 'assistant' ? 'green' : 'blue'}>
+          {role}
+        </Tag>
+      </Space>
+    }
   >
     <div className="chat-message-markdown" style={{ maxHeight: 240, overflow: 'auto' }}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-        {beautifyText(content)}
-      </ReactMarkdown>
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>{beautifyText(content)}</ReactMarkdown>
     </div>
   </Card>
 );
 
-const renderTimelineDetails = (
-  sections: Array<{ label: string; value: unknown }>,
-) => {
+const renderTimelineDetails = (sections: Array<{ label: string; value: unknown }>) => {
   const visibleSections = sections.filter((section) => {
     if (section.value === undefined || section.value === null) {
       return false;
@@ -157,7 +156,15 @@ const renderTimelineDetails = (
       {visibleSections.map((section) => (
         <div key={section.label}>
           <Text strong>{section.label}</Text>
-          <pre style={{ margin: '8px 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 320, overflow: 'auto' }}>
+          <pre
+            style={{
+              margin: '8px 0 0',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              maxHeight: 320,
+              overflow: 'auto',
+            }}
+          >
             {typeof section.value === 'string' ? section.value : stringifyPretty(section.value)}
           </pre>
         </div>
@@ -168,11 +175,13 @@ const renderTimelineDetails = (
 
 const renderLlmCallDetails = (
   call: NonNullable<PromptDebugRecord['promptDebug']['llmCalls']>[number],
-  models: AIModel[],
+  models: AIModel[]
 ) => (
   <Space direction="vertical" size={12} style={{ width: '100%' }}>
     <Descriptions column={1} size="small" bordered>
-      <Descriptions.Item label="模型">{getModelDisplayName(call.modelId, models)}</Descriptions.Item>
+      <Descriptions.Item label="模型">
+        {getModelDisplayName(call.modelId, models)}
+      </Descriptions.Item>
       <Descriptions.Item label="请求消息数">{call.requestMessages?.length || 0}</Descriptions.Item>
     </Descriptions>
     {(call.requestMessages || []).length ? (
@@ -187,24 +196,30 @@ const renderLlmCallDetails = (
         </Space>
       </div>
     ) : null}
-    {(call.responseText || call.note) ? (
+    {call.responseText || call.note ? (
       <div>
         <Text strong>LLM 回复</Text>
         <Card size="small" styles={{ body: { padding: 12 } }} style={{ marginTop: 8 }}>
-          <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 320, overflow: 'auto' }}>
+          <pre
+            style={{
+              margin: 0,
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              maxHeight: 320,
+              overflow: 'auto',
+            }}
+          >
             {call.responseText || call.note || ''}
           </pre>
         </Card>
       </div>
     ) : null}
-    {renderTimelineDetails([
-      { label: '原始节点 JSON', value: call },
-    ])}
+    {renderTimelineDetails([{ label: '原始节点 JSON', value: call }])}
   </Space>
 );
 
 const renderSummaryChips = (
-  items: Array<{ label: string; value: React.ReactNode; color?: string }>,
+  items: Array<{ label: string; value: React.ReactNode; color?: string }>
 ) => {
   const visibleItems = items.filter((item) => {
     if (item.value === undefined || item.value === null) {
@@ -333,48 +348,50 @@ const TimelineNodeCard: React.FC<{
           }}
         >
           <Space style={{ width: '100%', justifyContent: 'space-between' }} align="start">
-          <Space direction="vertical" size={2} style={{ minWidth: 0, flex: 1, alignItems: 'flex-start', textAlign: 'left' }}>
-            <div
-              style={{
-                width: '100%',
-                height: 3,
-                borderRadius: 999,
-                background: tone.accent,
-                opacity: 0.18,
-                marginBottom: 6,
-              }}
-            />
-            <Text strong style={{ width: '100%', textAlign: 'left' }}>{title}</Text>
-            {subtitle ? <Text type="secondary" style={{ width: '100%', textAlign: 'left' }}>{subtitle}</Text> : null}
-          </Space>
-          {details ? (
-            <Button
-              type="text"
-              size="small"
-              icon={expanded ? <DownOutlined /> : <RightOutlined />}
-              style={{
-                color: tone.accent,
-                background: 'var(--bg-card)',
-                borderRadius: 999,
-              }}
-              onClick={(event) => {
-                event.stopPropagation();
-                toggleExpanded();
-              }}
-            />
-          ) : null}
+            <Space
+              direction="vertical"
+              size={2}
+              style={{ minWidth: 0, flex: 1, alignItems: 'flex-start', textAlign: 'left' }}
+            >
+              <div
+                style={{
+                  width: '100%',
+                  height: 3,
+                  borderRadius: 999,
+                  background: tone.accent,
+                  opacity: 0.18,
+                  marginBottom: 6,
+                }}
+              />
+              <Text strong style={{ width: '100%', textAlign: 'left' }}>
+                {title}
+              </Text>
+              {subtitle ? (
+                <Text type="secondary" style={{ width: '100%', textAlign: 'left' }}>
+                  {subtitle}
+                </Text>
+              ) : null}
+            </Space>
+            {details ? (
+              <Button
+                type="text"
+                size="small"
+                icon={expanded ? <DownOutlined /> : <RightOutlined />}
+                style={{
+                  color: tone.accent,
+                  background: 'var(--bg-card)',
+                  borderRadius: 999,
+                }}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  toggleExpanded();
+                }}
+              />
+            ) : null}
           </Space>
         </div>
-        {preview ? (
-          <div style={{ paddingTop: 4 }}>
-            {preview}
-          </div>
-        ) : null}
-        {expanded && details ? (
-          <div style={{ paddingTop: 4 }}>
-            {details}
-          </div>
-        ) : null}
+        {preview ? <div style={{ paddingTop: 4 }}>{preview}</div> : null}
+        {expanded && details ? <div style={{ paddingTop: 4 }}>{details}</div> : null}
       </Space>
     </Card>
   );
@@ -386,6 +403,7 @@ const buildTimelineItems = (
   execution?: ExecutionDto,
   steps?: ExecutionStepDto[],
   recordUpdatedAt?: string,
+  displayRuntimeType?: string
 ) => {
   const items: Array<{
     color?: string;
@@ -404,8 +422,16 @@ const buildTimelineItems = (
             preview={
               <Space direction="vertical" size={10} style={{ width: '100%' }}>
                 {renderSummaryChips([
-                  { label: '模型', value: getModelDisplayName(call.modelId, models), color: 'blue' },
-                  { label: '请求', value: `${call.requestMessages?.length || 0} 条`, color: 'purple' },
+                  {
+                    label: '模型',
+                    value: getModelDisplayName(call.modelId, models),
+                    color: 'blue',
+                  },
+                  {
+                    label: '请求',
+                    value: `${call.requestMessages?.length || 0} 条`,
+                    color: 'purple',
+                  },
                 ])}
                 <Text
                   type="secondary"
@@ -467,15 +493,18 @@ const buildTimelineItems = (
             subtitle={formatDateTime(execution.startedAt)}
             color="processing"
             preview={renderSummaryChips([
-              { label: '运行类型', value: execution.runtimeType || '-', color: 'processing' },
+              { label: '运行类型', value: displayRuntimeType || execution.runtimeType || '-', color: 'processing' },
               { label: '风险等级', value: execution.riskLevel || '-', color: 'orange' },
             ])}
             details={renderTimelineDetails([
-              { label: 'Execution Runtime', value: {
-                runtimeType: execution.runtimeType,
-                riskLevel: execution.riskLevel,
-                currentStepId: execution.currentStepId,
-              } },
+              {
+                label: 'Execution Runtime',
+                value: {
+                  runtimeType: displayRuntimeType || execution.runtimeType,
+                  riskLevel: execution.riskLevel,
+                  currentStepId: execution.currentStepId,
+                },
+              },
             ])}
           />
         ),
@@ -493,7 +522,13 @@ const buildTimelineItems = (
           <TimelineNodeCard
             title={`步骤 ${step.stepIndex + 1}: ${step.name || step.type}`}
             subtitle={`类型: ${step.type} | 状态: ${step.status}`}
-            color={step.status === 'failed' ? 'red' : step.status === 'succeeded' ? 'green' : 'processing'}
+            color={
+              step.status === 'failed'
+                ? 'red'
+                : step.status === 'succeeded'
+                  ? 'green'
+                  : 'processing'
+            }
             preview={
               <Space direction="vertical" size={10} style={{ width: '100%' }}>
                 {renderSummaryChips([
@@ -541,9 +576,7 @@ const buildTimelineItems = (
           preview={
             execution.failureReason ? (
               <Space direction="vertical" size={10} style={{ width: '100%' }}>
-                {renderSummaryChips([
-                  { label: '状态', value: execution.status, color: 'red' },
-                ])}
+                {renderSummaryChips([{ label: '状态', value: execution.status, color: 'red' }])}
                 <Text
                   type="danger"
                   style={{
@@ -575,9 +608,11 @@ const buildTimelineItems = (
                   {previewText(execution.result, 160)}
                 </Text>
               </Space>
-            ) : renderSummaryChips([
-              { label: '状态', value: execution.status, color: isSucceeded ? 'green' : 'blue' },
-            ])
+            ) : (
+              renderSummaryChips([
+                { label: '状态', value: execution.status, color: isSucceeded ? 'green' : 'blue' },
+              ])
+            )
           }
           details={renderTimelineDetails([
             { label: 'Execution', value: execution },
@@ -611,10 +646,14 @@ const PromptDebugPage: React.FC = () => {
   }, [promptDebugHistory, selectedRecordId]);
 
   const selectedRecord = useMemo(
-    () => promptDebugHistory.find((item) => item.id === selectedRecordId) || promptDebugHistory[0] || null,
-    [promptDebugHistory, selectedRecordId],
+    () =>
+      promptDebugHistory.find((item) => item.id === selectedRecordId) ||
+      promptDebugHistory[0] ||
+      null,
+    [promptDebugHistory, selectedRecordId]
   );
-  const selectedExecutionId = searchParams.get('executionId') || selectedRecord?.executionId || undefined;
+  const selectedExecutionId =
+    searchParams.get('executionId') || selectedRecord?.executionId || undefined;
 
   const executionQuery = useQuery(
     ['prompt-debug-execution', selectedExecutionId],
@@ -622,7 +661,7 @@ const PromptDebugPage: React.FC = () => {
     {
       enabled: Boolean(selectedExecutionId),
       retry: false,
-    },
+    }
   );
 
   const executionStepsQuery = useQuery(
@@ -631,7 +670,7 @@ const PromptDebugPage: React.FC = () => {
     {
       enabled: Boolean(selectedExecutionId),
       retry: false,
-    },
+    }
   );
 
   const debugSettingsQuery = useQuery(
@@ -639,16 +678,12 @@ const PromptDebugPage: React.FC = () => {
     () => aiModelApi.getDebugSettings(),
     {
       retry: false,
-    },
+    }
   );
 
-  const modelsQuery = useQuery(
-    ['prompt-debug-models'],
-    () => aiModelApi.listForAdmin(),
-    {
-      retry: false,
-    },
-  );
+  const modelsQuery = useQuery(['prompt-debug-models'], () => aiModelApi.listForAdmin(), {
+    retry: false,
+  });
 
   const updateDebugSettingsMutation = useMutation(
     (promptDebugEnabled: boolean) => aiModelApi.updateDebugSettings({ promptDebugEnabled }),
@@ -660,27 +695,61 @@ const PromptDebugPage: React.FC = () => {
       onError: () => {
         message.error('调试开关更新失败');
       },
-    },
+    }
   );
 
   const executionPromptDebug = useMemo(() => {
-    const normalizedInput = executionQuery.data?.normalizedInput as Record<string, unknown> | undefined;
+    const normalizedInput = executionQuery.data?.normalizedInput as
+      | Record<string, unknown>
+      | undefined;
     const promptDebug = normalizedInput?.promptDebug;
     if (promptDebug && typeof promptDebug === 'object' && !Array.isArray(promptDebug)) {
       return promptDebug as PromptDebugRecord['promptDebug'];
     }
     return null;
   }, [executionQuery.data]);
+  const promptDebugBrowserExecutionResult = useMemo(
+    () => extractBrowserExecutionResult(executionQuery.data?.resultJson),
+    [executionQuery.data?.resultJson]
+  );
+  const promptDebugRuntimeSessionId =
+    executionQuery.data?.runtimeSessionId || promptDebugBrowserExecutionResult?.runtimeSessionId;
+  const promptDebugDisplayRuntimeType = useMemo(
+    () =>
+      hasBrowserExecutionEvidence({
+        runtimeType: executionQuery.data?.runtimeType,
+        runtimeSessionId: promptDebugRuntimeSessionId,
+        browserExecutionResult: promptDebugBrowserExecutionResult,
+        phases: executionQuery.data?.phases || [],
+      })
+        ? 'browser'
+        : executionQuery.data?.runtimeType || '-',
+    [
+      executionQuery.data?.phases,
+      executionQuery.data?.runtimeType,
+      promptDebugBrowserExecutionResult,
+      promptDebugRuntimeSessionId,
+    ]
+  );
 
   const executionTimelineItems = useMemo(
-    () => buildTimelineItems(
-      executionPromptDebug || selectedRecord?.promptDebug || null,
-      modelsQuery.data?.models || [],
+    () =>
+      buildTimelineItems(
+        executionPromptDebug || selectedRecord?.promptDebug || null,
+        modelsQuery.data?.models || [],
+        executionQuery.data,
+        executionStepsQuery.data,
+        selectedRecord?.updatedAt,
+        promptDebugDisplayRuntimeType
+      ),
+    [
+      executionPromptDebug,
+      modelsQuery.data?.models,
+      promptDebugDisplayRuntimeType,
       executionQuery.data,
       executionStepsQuery.data,
-      selectedRecord?.updatedAt,
-    ),
-    [executionPromptDebug, modelsQuery.data?.models, executionQuery.data, executionStepsQuery.data, selectedRecord],
+      selectedRecord,
+    ]
   );
   const activePromptDebug = executionPromptDebug || selectedRecord?.promptDebug || null;
   const activeUpdatedAt = executionQuery.data?.updatedAt || selectedRecord?.updatedAt;
@@ -788,7 +857,10 @@ const PromptDebugPage: React.FC = () => {
                   onChange={(checked) => updateDebugSettingsMutation.mutate(checked)}
                 />
               </Space>
-              <Button icon={<ReloadOutlined />} onClick={() => setSelectedRecordId(promptDebugHistory[0]?.id || null)}>
+              <Button
+                icon={<ReloadOutlined />}
+                onClick={() => setSelectedRecordId(promptDebugHistory[0]?.id || null)}
+              >
                 定位最新一轮
               </Button>
               <Button type="primary" icon={<MessageOutlined />} onClick={() => setOpen(true)}>
@@ -811,22 +883,42 @@ const PromptDebugPage: React.FC = () => {
         </Space>
       </Card>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 8fr) minmax(280px, 2fr)', gap: 16, alignItems: 'start' }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 8fr) minmax(280px, 2fr)',
+          gap: 16,
+          alignItems: 'start',
+        }}
+      >
         <Card
           title={selectedExecutionId ? `执行单调试快照: ${selectedExecutionId}` : 'Prompt 调试总览'}
-          extra={activePromptDebug ? (
-            <Button
-              icon={<CopyOutlined />}
-              onClick={() => (executionPromptDebug ? handleCopyExecutionPrompt() : selectedRecord ? handleCopyPrompt(selectedRecord) : undefined)}
-            >
-              复制调试内容
-            </Button>
-          ) : null}
+          extra={
+            activePromptDebug ? (
+              <Button
+                icon={<CopyOutlined />}
+                onClick={() =>
+                  executionPromptDebug
+                    ? handleCopyExecutionPrompt()
+                    : selectedRecord
+                      ? handleCopyPrompt(selectedRecord)
+                      : undefined
+                }
+              >
+                复制调试内容
+              </Button>
+            ) : null
+          }
         >
           {selectedExecutionId && executionQuery.isLoading ? (
             <Text type="secondary">正在加载执行单详情...</Text>
           ) : selectedExecutionId && executionQuery.isError ? (
-            <Alert type="error" showIcon message="执行单详情加载失败" description="请确认 executionId 是否正确，且 control-plane 服务可访问。" />
+            <Alert
+              type="error"
+              showIcon
+              message="执行单详情加载失败"
+              description="请确认 executionId 是否正确，且 control-plane 服务可访问。"
+            />
           ) : activePromptDebug || executionQuery.data || selectedRecord ? (
             <Space direction="vertical" size={12} style={{ width: '100%' }}>
               {executionQuery.data && !executionPromptDebug ? (
@@ -838,24 +930,39 @@ const PromptDebugPage: React.FC = () => {
                 />
               ) : null}
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 8 }}>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+                  gap: 8,
+                }}
+              >
                 <Card size="small" styles={{ body: { textAlign: 'center' } }}>
                   <Text type="secondary">执行状态</Text>
-                  <div style={{ marginTop: 6, fontWeight: 600 }}>{executionQuery.data?.status || selectedRecord?.taskStatus || '-'}</div>
+                  <div style={{ marginTop: 6, fontWeight: 600 }}>
+                    {executionQuery.data?.status || selectedRecord?.taskStatus || '-'}
+                  </div>
                 </Card>
                 <Card size="small" styles={{ body: { textAlign: 'center' } }}>
                   <Text type="secondary">调试链路</Text>
-                  <div style={{ marginTop: 6, fontWeight: 600 }}>{getDebugSourceLabel(activePromptDebug?.debugSource)}</div>
+                  <div style={{ marginTop: 6, fontWeight: 600 }}>
+                    {getDebugSourceLabel(activePromptDebug?.debugSource)}
+                  </div>
                 </Card>
                 <Card size="small" styles={{ body: { textAlign: 'center' } }}>
                   <Text type="secondary">模型</Text>
                   <div style={{ marginTop: 6, fontWeight: 600, wordBreak: 'break-word' }}>
-                    {getModelDisplayName(activePromptDebug?.modelId, modelsQuery.data?.models || [])}
+                    {getModelDisplayName(
+                      activePromptDebug?.modelId,
+                      modelsQuery.data?.models || []
+                    )}
                   </div>
                 </Card>
                 <Card size="small" styles={{ body: { textAlign: 'center' } }}>
                   <Text type="secondary">LLM 节点数</Text>
-                  <div style={{ marginTop: 6, fontWeight: 600 }}>{activePromptDebug?.llmCalls?.length || 0}</div>
+                  <div style={{ marginTop: 6, fontWeight: 600 }}>
+                    {activePromptDebug?.llmCalls?.length || 0}
+                  </div>
                 </Card>
               </div>
 
@@ -887,10 +994,19 @@ const PromptDebugPage: React.FC = () => {
                         <Space direction="vertical" size={12} style={{ width: '100%' }}>
                           <div>
                             <Text strong>Prompt Sections</Text>
-                            <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                              {(activePromptDebug.systemPromptSectionKeys || []).map((key) => <Tag key={`summary-system-${key}`}>{key}</Tag>)}
-                              {(activePromptDebug.userPromptSectionKeys || []).map((key) => <Tag key={`summary-user-${key}`}>{key}</Tag>)}
-                              {!(activePromptDebug.systemPromptSectionKeys?.length || activePromptDebug.userPromptSectionKeys?.length) ? (
+                            <div
+                              style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 8 }}
+                            >
+                              {(activePromptDebug.systemPromptSectionKeys || []).map((key) => (
+                                <Tag key={`summary-system-${key}`}>{key}</Tag>
+                              ))}
+                              {(activePromptDebug.userPromptSectionKeys || []).map((key) => (
+                                <Tag key={`summary-user-${key}`}>{key}</Tag>
+                              ))}
+                              {!(
+                                activePromptDebug.systemPromptSectionKeys?.length ||
+                                activePromptDebug.userPromptSectionKeys?.length
+                              ) ? (
                                 <Text type="secondary">无</Text>
                               ) : null}
                             </div>
@@ -918,7 +1034,8 @@ const PromptDebugPage: React.FC = () => {
                               <div>
                                 <Text strong>LLM Raw Response</Text>
                                 <pre style={promptPreviewPreStyle}>
-                                  {activePromptDebug.llmResponseText || '当前仅记录了 Prompt，尚未保存模型原始回复。'}
+                                  {activePromptDebug.llmResponseText ||
+                                    '当前仅记录了 Prompt，尚未保存模型原始回复。'}
                                 </pre>
                               </div>
                             </>
@@ -938,12 +1055,26 @@ const PromptDebugPage: React.FC = () => {
                     label: '执行单元信息',
                     children: (
                       <Descriptions column={2} size="small" bordered>
-                        <Descriptions.Item label="执行单 ID">{selectedExecutionId || selectedRecord?.executionId || '-'}</Descriptions.Item>
-                        <Descriptions.Item label="Session ID">{selectedRecord?.sessionId || '-'}</Descriptions.Item>
-                        <Descriptions.Item label="运行类型">{executionQuery.data?.runtimeType || '-'}</Descriptions.Item>
-                        <Descriptions.Item label="技能 ID">{executionQuery.data?.skillId || '-'}</Descriptions.Item>
-                        <Descriptions.Item label="创建时间">{formatDateTime(selectedRecord?.createdAt || executionQuery.data?.createdAt)}</Descriptions.Item>
-                        <Descriptions.Item label="更新时间">{formatDateTime(activeUpdatedAt)}</Descriptions.Item>
+                        <Descriptions.Item label="执行单 ID">
+                          {selectedExecutionId || selectedRecord?.executionId || '-'}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Session ID">
+                          {selectedRecord?.sessionId || '-'}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="运行类型">
+                          {promptDebugDisplayRuntimeType}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="技能 ID">
+                          {executionQuery.data?.skillId || '-'}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="创建时间">
+                          {formatDateTime(
+                            selectedRecord?.createdAt || executionQuery.data?.createdAt
+                          )}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="更新时间">
+                          {formatDateTime(activeUpdatedAt)}
+                        </Descriptions.Item>
                       </Descriptions>
                     ),
                   },
@@ -967,18 +1098,32 @@ const PromptDebugPage: React.FC = () => {
                       padding: 12,
                       cursor: 'pointer',
                       background: isActive ? 'rgba(99, 102, 241, 0.08)' : 'transparent',
-                      borderLeft: isActive ? '3px solid var(--primary-color)' : '3px solid transparent',
+                      borderLeft: isActive
+                        ? '3px solid var(--primary-color)'
+                        : '3px solid transparent',
                     }}
                     onClick={() => setSelectedRecordId(item.id)}
                   >
                     <Space direction="vertical" size={8} style={{ width: '100%' }}>
                       <Space wrap>
-                        {renderTag(item.taskStatus || 'unknown', item.taskStatus === 'failed' ? 'error' : 'processing')}
-                        {item.promptDebug.debugSource ? renderTag(getDebugSourceLabel(item.promptDebug.debugSource)) : null}
+                        {renderTag(
+                          item.taskStatus || 'unknown',
+                          item.taskStatus === 'failed' ? 'error' : 'processing'
+                        )}
+                        {item.promptDebug.debugSource
+                          ? renderTag(getDebugSourceLabel(item.promptDebug.debugSource))
+                          : null}
                       </Space>
-                      <Text strong style={{ wordBreak: 'break-all' }}>{item.executionId || item.messageId}</Text>
+                      <Text strong style={{ wordBreak: 'break-all' }}>
+                        {item.executionId || item.messageId}
+                      </Text>
                       <Text type="secondary">{formatDateTime(item.updatedAt)}</Text>
-                      <Text type="secondary" ellipsis>{previewText(item.promptDebug.userPrompt || item.promptDebug.systemPrompt || '-', 60)}</Text>
+                      <Text type="secondary" ellipsis>
+                        {previewText(
+                          item.promptDebug.userPrompt || item.promptDebug.systemPrompt || '-',
+                          60
+                        )}
+                      </Text>
                     </Space>
                   </List.Item>
                 );

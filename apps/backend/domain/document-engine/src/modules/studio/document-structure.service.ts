@@ -17,19 +17,30 @@ export interface TableHeader {
 export interface TableRow {
   cells: string[];
   hasPreserve: boolean;
-  preserveType?: string;  // 'static' | 'loop' | 'variable'
+  preserveType?: string; // 'static' | 'loop' | 'variable'
   isHeader: boolean;
 }
 
 export interface PreserveMarker {
   type: 'static' | 'loop' | 'variable' | 'step-screenshot';
-  text?: string;  // 如 '循环'、'### 自动化操作'等
+  text?: string; // 如 '循环'、'### 自动化操作'等
   position?: number;
 }
 
 export interface DocumentElement {
   id: string;
-  type: 'title' | 'heading1' | 'heading2' | 'heading3' | 'paragraph' | 'table' | 'list' | 'image' | 'chart' | 'textbox' | 'step-screenshot';
+  type:
+    | 'title'
+    | 'heading1'
+    | 'heading2'
+    | 'heading3'
+    | 'paragraph'
+    | 'table'
+    | 'list'
+    | 'image'
+    | 'chart'
+    | 'textbox'
+    | 'step-screenshot';
   content: string;
   text: string;
   xpath: string;
@@ -121,7 +132,7 @@ export class DocumentStructureParser {
     // 使用DOMParser进行线性解析，确保与注入逻辑索引一致
     const doc = new DOMParser().parseFromString(documentXml, 'text/xml');
     const body = doc.getElementsByTagNameNS('*', 'body')[0];
-    
+
     if (!body) {
       throw new Error('Document body not found');
     }
@@ -149,7 +160,12 @@ export class DocumentStructureParser {
           if (hasImage) {
             const blips = node.getElementsByTagNameNS('*', 'blip');
             for (let i = 0; i < blips.length; i++) {
-              const embed = blips[i].getAttribute('r:embed') || blips[i].getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships', 'embed');
+              const embed =
+                blips[i].getAttribute('r:embed') ||
+                blips[i].getAttributeNS(
+                  'http://schemas.openxmlformats.org/officeDocument/2006/relationships',
+                  'embed'
+                );
               if (embed) {
                 imageIds.push(embed);
               }
@@ -158,7 +174,18 @@ export class DocumentStructureParser {
 
           // 检测 step-screenshot 组合类型
           // "Step X: screenshot" 文本段落后面紧跟图片段落
-          let elementType: 'title' | 'heading1' | 'heading2' | 'heading3' | 'paragraph' | 'table' | 'list' | 'image' | 'chart' | 'textbox' | 'step-screenshot' = hasImage ? 'image' : 'paragraph';
+          let elementType:
+            | 'title'
+            | 'heading1'
+            | 'heading2'
+            | 'heading3'
+            | 'paragraph'
+            | 'table'
+            | 'list'
+            | 'image'
+            | 'chart'
+            | 'textbox'
+            | 'step-screenshot' = hasImage ? 'image' : 'paragraph';
           let stepNumber: number | undefined = undefined;
           let combinedImage: DocumentElement | undefined = undefined;
 
@@ -177,8 +204,14 @@ export class DocumentStructureParser {
                     // 这是一个 step-screenshot 组合元素（文本段落）
                     elementType = 'step-screenshot';
                     const nextBlips = nextNode.getElementsByTagNameNS('*', 'blip');
-                    const nextImageId = nextBlips.length > 0 ?
-                      (nextBlips[0].getAttribute('r:embed') || nextBlips[0].getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships', 'embed')) : '';
+                    const nextImageId =
+                      nextBlips.length > 0
+                        ? nextBlips[0].getAttribute('r:embed') ||
+                          nextBlips[0].getAttributeNS(
+                            'http://schemas.openxmlformats.org/officeDocument/2006/relationships',
+                            'embed'
+                          )
+                        : '';
                     combinedImage = {
                       id: `image-${index + 1}`,
                       type: 'image',
@@ -191,7 +224,6 @@ export class DocumentStructureParser {
                   }
                 }
               }
-
             }
           }
           // 如果当前段落是图片，且前一个段落是 "Step X: screenshot" 文本，标记为图片（已被前一个段落引用）
@@ -241,7 +273,7 @@ export class DocumentStructureParser {
           xpath: `/w:document/w:body/w:tbl[${index}]`,
           index: index,
           attributes: {
-            rows: String(rowNodes.length)
+            rows: String(rowNodes.length),
           },
           headerRow: headerText,
           dataRowCount: Math.max(0, rowNodes.length - 1),
@@ -373,7 +405,10 @@ export class DocumentStructureParser {
           this.injectTextToElement(node, `{${marking.path}}`);
         } else if (marking.type === 'loop' && marking.path) {
           // 单个元素的段落循环
-          this.injectTextToElement(node, `{#${marking.path}}${this.getNodeText(node)}{/${marking.path}}`);
+          this.injectTextToElement(
+            node,
+            `{#${marking.path}}${this.getNodeText(node)}{/${marking.path}}`
+          );
         }
       }
     }
@@ -395,7 +430,7 @@ export class DocumentStructureParser {
 
       for (const mapping of variableMappings) {
         if (ignoredIndices.has(mapping.index)) continue;
-        
+
         const node = elements[mapping.index];
         if (!node) continue;
         if (this.shouldSkipProtectedTitleMapping(mapping, node, protectedTitleTexts)) continue;
@@ -415,7 +450,7 @@ export class DocumentStructureParser {
         this.injectTextLinesToElement(node, texts);
         if (texts.length > 1) {
           this.logger.debug(
-            `[DocumentStructure] merged variable mappings for index=${index}: ${texts.join(' | ')}`,
+            `[DocumentStructure] merged variable mappings for index=${index}: ${texts.join(' | ')}`
           );
         }
       }
@@ -425,7 +460,7 @@ export class DocumentStructureParser {
     if (config.tableLoops && Array.isArray(config.tableLoops)) {
       for (const tableLoop of config.tableLoops) {
         if (ignoredIndices.has(tableLoop.tableIndex)) continue;
-        
+
         const table = elements[tableLoop.tableIndex];
         if (!table) continue;
         const localName = table.localName || table.tagName.split(':').pop();
@@ -437,11 +472,20 @@ export class DocumentStructureParser {
 
     // 5. 应用组合变量 (Combined Variables - step-screenshot)
     // 处理 "Step X: screenshot" 类型的文本+图片组合
-    if (config.combinedVariables && Array.isArray(config.combinedVariables) && config.combinedVariables.length > 0) {
+    if (
+      config.combinedVariables &&
+      Array.isArray(config.combinedVariables) &&
+      config.combinedVariables.length > 0
+    ) {
       const stepPattern = /Step\s+(\d+)[:：]\s*screenshot/i;
 
       // 找到所有 step-screenshot 对（文本段落索引 -> 图片段落索引）
-      const screenshotPairs: { textIndex: number; imageIndex: number; textNode: any; imageNode: any }[] = [];
+      const screenshotPairs: {
+        textIndex: number;
+        imageIndex: number;
+        textNode: any;
+        imageNode: any;
+      }[] = [];
 
       for (let i = 0; i < elements.length - 1; i++) {
         const node = elements[i];
@@ -456,7 +500,7 @@ export class DocumentStructureParser {
         while (nextIndex < elements.length && ignoredIndices.has(nextIndex)) {
           nextIndex++;
         }
-        
+
         const nextNode = elements[nextIndex];
         if (!nextNode) continue;
 
@@ -466,7 +510,7 @@ export class DocumentStructureParser {
             textIndex: i,
             imageIndex: nextIndex,
             textNode: node,
-            imageNode: nextNode
+            imageNode: nextNode,
           });
         }
       }
@@ -480,9 +524,9 @@ export class DocumentStructureParser {
         const firstConfigVar = config.combinedVariables[0];
         const imagePath = firstConfigVar.imagePath || 'd.steps[].screenshot';
         // 尝试推导文本路径：将 .screenshot 替换为 .description 或使用 textContent
-        const textPath = imagePath.includes('.screenshot') ? 
-                         imagePath.replace('.screenshot', '.description') : 
-                         imagePath.replace('.url', '.description');
+        const textPath = imagePath.includes('.screenshot')
+          ? imagePath.replace('.screenshot', '.description')
+          : imagePath.replace('.url', '.description');
 
         // 替换文本段落为变量
         this.injectTextToElement(templatePair.textNode, `{${textPath}}`);
@@ -533,7 +577,8 @@ export class DocumentStructureParser {
     const children = body.childNodes;
     for (let i = 0; i < children.length; i++) {
       const child = children[i];
-      if (child.nodeType === 1) { // Element
+      if (child.nodeType === 1) {
+        // Element
         const localName = child.localName || child.tagName.split(':').pop();
         if (localName === 'p' || localName === 'tbl') {
           elements.push(child);
@@ -551,13 +596,13 @@ export class DocumentStructureParser {
     if (textNodes.length > 0) {
       // 获取第一个文本节点
       const firstT: any = textNodes[0];
-      
+
       // 清空第一个节点的内容并设置新文本
       while (firstT.firstChild) {
         firstT.removeChild(firstT.firstChild);
       }
       firstT.appendChild(element.ownerDocument.createTextNode(text));
-      
+
       // 确保保留空格
       firstT.setAttribute('xml:space', 'preserve');
 
@@ -798,8 +843,13 @@ export class DocumentStructureParser {
     let rId = '';
     if (blips.length > 0) {
       const blip = blips[0];
-      rId = blip.getAttribute('r:embed') ||
-            blip.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships', 'embed') || '';
+      rId =
+        blip.getAttribute('r:embed') ||
+        blip.getAttributeNS(
+          'http://schemas.openxmlformats.org/officeDocument/2006/relationships',
+          'embed'
+        ) ||
+        '';
     }
 
     // Carbone渲染图片通常需要在同一段落有一个包含变量的文本节点
@@ -835,7 +885,11 @@ export class DocumentStructureParser {
     return text;
   }
 
-  private shouldSkipProtectedTitleMapping(mapping: any, node: any, protectedTitleTexts: Set<string>): boolean {
+  private shouldSkipProtectedTitleMapping(
+    mapping: any,
+    node: any,
+    protectedTitleTexts: Set<string>
+  ): boolean {
     if (protectedTitleTexts.size === 0) {
       return false;
     }
@@ -845,11 +899,7 @@ export class DocumentStructureParser {
       return false;
     }
 
-    const candidateTexts = [
-      this.getNodeText(node),
-      mapping?.sampleValue,
-      mapping?.content,
-    ]
+    const candidateTexts = [this.getNodeText(node), mapping?.sampleValue, mapping?.content]
       .map((value) => this.safeText(value))
       .filter(Boolean);
 

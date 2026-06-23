@@ -13,7 +13,12 @@ export class ActivityExecutionService {
    * Execute Python code directly in subprocess
    * 先拉取最新代码，然后执行
    */
-  async executeCode(code: string, fn: string, taskQueue: string, input?: Record<string, any>): Promise<{
+  async executeCode(
+    code: string,
+    fn: string,
+    taskQueue: string,
+    input?: Record<string, any>
+  ): Promise<{
     success: boolean;
     result?: any;
     logs?: string[];
@@ -30,7 +35,9 @@ export class ActivityExecutionService {
 
       // 2. 直接执行 Python 代码
       logs.push(`[${new Date().toISOString()}] 直接执行 Python 代码`);
-      const result = await this.executePythonCode(code, fn, input || {}, (log: string) => logs.push(log));
+      const result = await this.executePythonCode(code, fn, input || {}, (log: string) =>
+        logs.push(log)
+      );
       logs.push(`[${new Date().toISOString()}] 代码执行完成`);
 
       return {
@@ -58,7 +65,7 @@ export class ActivityExecutionService {
     code: string,
     fn: string,
     taskQueue: string,
-    input?: Record<string, any>,
+    input?: Record<string, any>
   ): Promise<{
     success: boolean;
     result?: any;
@@ -90,7 +97,7 @@ export class ActivityExecutionService {
       logs.push(
         `[${new Date().toISOString()}] ${
           result.success ? 'Temporal Sandbox Agent 执行完成' : 'Temporal Sandbox Agent 执行失败'
-        }`,
+        }`
       );
       return {
         success: result.success,
@@ -120,7 +127,7 @@ export class ActivityExecutionService {
     taskQueue: string,
     input: Record<string, any> | undefined,
     onLog: (log: string) => void,
-    options: ActivityExecutionOptions = {},
+    options: ActivityExecutionOptions = {}
   ): Promise<{ success: boolean; result?: any; error?: string; workflowId?: string }> {
     const logger = new Logger('ActivityExecutionService.executeCodeStreaming');
 
@@ -135,7 +142,7 @@ export class ActivityExecutionService {
           taskQueue,
           input,
           options,
-          onLog,
+          onLog
         );
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : 'Unknown error';
@@ -200,7 +207,7 @@ export class ActivityExecutionService {
     taskQueue: string,
     input: Record<string, any> | undefined,
     options: ActivityExecutionOptions,
-    onLog: (log: string) => void,
+    onLog: (log: string) => void
   ): Promise<{ success: boolean; result?: any; error?: string }> {
     const activityId = `activity-validation-${Date.now()}-${Math.random().toString(36).substring(7)}`;
     const timeoutMs = Number(process.env.ACTIVITY_VALIDATION_TIMEOUT_MS || 300000);
@@ -209,30 +216,31 @@ export class ActivityExecutionService {
     onLog(`[${new Date().toISOString()}] 验证任务 ID: ${activityId}`);
     if (options.retryPolicy) {
       onLog(
-        `[${new Date().toISOString()}] 启用重试测试: maxRetries=${options.retryPolicy.maxRetries}, backoffMs=${options.retryPolicy.backoffMs || 1000}`,
+        `[${new Date().toISOString()}] 启用重试测试: maxRetries=${options.retryPolicy.maxRetries}, backoffMs=${options.retryPolicy.backoffMs || 1000}`
       );
     }
 
-    const response = await axios.post(`${agentUrl}/validate-activity`, {
-      code,
-      fn_name: fn,
-      activity_id: activityId,
-      task_queue: taskQueue,
-      input_data: input || {},
-      timeout: options.timeout,
-      retry_policy: options.retryPolicy || null,
-    }, {
-      timeout: timeoutMs,
-      headers: {
-        'Content-Type': 'application/json',
+    const response = await axios.post(
+      `${agentUrl}/validate-activity`,
+      {
+        code,
+        fn_name: fn,
+        activity_id: activityId,
+        task_queue: taskQueue,
+        input_data: input || {},
+        timeout: options.timeout,
+        retry_policy: options.retryPolicy || null,
       },
-    });
+      {
+        timeout: timeoutMs,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
 
     const data = response.data as any;
-    const validationResult =
-      data.result && typeof data.result === 'object'
-        ? data.result
-        : data;
+    const validationResult = data.result && typeof data.result === 'object' ? data.result : data;
 
     if (Array.isArray(validationResult.logs)) {
       validationResult.logs.forEach((log: string) => onLog(log));
@@ -248,7 +256,7 @@ export class ActivityExecutionService {
       const errorMsg = validationResult.error || 'Activity 测试 Worker 执行失败';
       if (validationResult.attempts && validationResult.max_attempts) {
         onLog(
-          `[${new Date().toISOString()}] 重试结束，实际执行 ${validationResult.attempts}/${validationResult.max_attempts} 次`,
+          `[${new Date().toISOString()}] 重试结束，实际执行 ${validationResult.attempts}/${validationResult.max_attempts} 次`
         );
       }
       return { success: false, error: errorMsg };
@@ -256,7 +264,7 @@ export class ActivityExecutionService {
 
     if (validationResult.attempts && validationResult.max_attempts) {
       onLog(
-        `[${new Date().toISOString()}] Activity 测试 Worker 执行完成，实际执行 ${validationResult.attempts}/${validationResult.max_attempts} 次`,
+        `[${new Date().toISOString()}] Activity 测试 Worker 执行完成，实际执行 ${validationResult.attempts}/${validationResult.max_attempts} 次`
       );
     }
 
@@ -274,7 +282,7 @@ export class ActivityExecutionService {
     code: string,
     fn: string,
     input: Record<string, any> | undefined,
-    onLog: (log: string) => void,
+    onLog: (log: string) => void
   ): Promise<{ success: boolean; result?: any; error?: string; workflowId?: string }> {
     const activityId = `activity-${Date.now()}-${Math.random().toString(36).substring(7)}`;
     const timeoutMs = Number(process.env.SANDBOX_AGENT_TIMEOUT_MS || 180000);
@@ -284,17 +292,21 @@ export class ActivityExecutionService {
     onLog(`[${new Date().toISOString()}] 等待 Sandbox Agent 返回结果...`);
 
     try {
-      const response = await axios.post(`${sandboxUrl}/execute`, {
-        code,
-        fn_name: fn,
-        activity_id: activityId,
-        input_data: input || {},
-      }, {
-        timeout: timeoutMs,
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await axios.post(
+        `${sandboxUrl}/execute`,
+        {
+          code,
+          fn_name: fn,
+          activity_id: activityId,
+          input_data: input || {},
         },
-      });
+        {
+          timeout: timeoutMs,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
 
       const data = response.data as any;
 
@@ -312,9 +324,8 @@ export class ActivityExecutionService {
         return { success: false, error: errorMsg };
       }
 
-      const executionEnvelope = data.result && typeof data.result === 'object'
-        ? data.result
-        : undefined;
+      const executionEnvelope =
+        data.result && typeof data.result === 'object' ? data.result : undefined;
       const executionResult =
         executionEnvelope?.result && typeof executionEnvelope.result === 'object'
           ? executionEnvelope.result
@@ -329,12 +340,10 @@ export class ActivityExecutionService {
       }
 
       if (
-        executionResult
-        && typeof executionResult === 'object'
-        && (
-          ('success' in executionResult && executionResult.success === false)
-          || ('error' in executionResult && Boolean(executionResult.error))
-        )
+        executionResult &&
+        typeof executionResult === 'object' &&
+        (('success' in executionResult && executionResult.success === false) ||
+          ('error' in executionResult && Boolean(executionResult.error)))
       ) {
         const errorMsg = executionResult.traceback
           ? `执行失败: ${executionResult.error}\n\n详细信息:\n${executionResult.traceback}`
@@ -346,7 +355,9 @@ export class ActivityExecutionService {
       // Extract the actual result from the sandbox response
       const result = normalizeDocumentExecutionResult(executionResult?.result ?? executionResult);
 
-      onLog(`[${new Date().toISOString()}] 代码执行成功，返回结果: ${JSON.stringify(result, null, 2)}`);
+      onLog(
+        `[${new Date().toISOString()}] 代码执行成功，返回结果: ${JSON.stringify(result, null, 2)}`
+      );
       return { success: true, result, workflowId: data.workflow_id };
     } catch (error) {
       const errorCode =
@@ -367,7 +378,7 @@ export class ActivityExecutionService {
     code: string,
     fn: string,
     input: Record<string, any> | undefined,
-    onLog: (log: string) => void,
+    onLog: (log: string) => void
   ): Promise<{ success: boolean; result?: any; error?: string; workflowId?: string }> {
     const activityId = `activity-${Date.now()}-${Math.random().toString(36).substring(7)}`;
     const timeoutMs = Number(process.env.SANDBOX_AGENT_TIMEOUT_MS || 180000);
@@ -395,7 +406,12 @@ export class ActivityExecutionService {
 
     const decoder = new TextDecoder();
     let buffer = '';
-    let finalResult: { success: boolean; result?: any; error?: string; workflowId?: string } | null = null;
+    let finalResult: {
+      success: boolean;
+      result?: any;
+      error?: string;
+      workflowId?: string;
+    } | null = null;
 
     for await (const chunk of response.body as any) {
       buffer += decoder.decode(chunk, { stream: true });
@@ -403,9 +419,7 @@ export class ActivityExecutionService {
       while (delimiterIndex >= 0) {
         const rawEvent = buffer.slice(0, delimiterIndex);
         buffer = buffer.slice(delimiterIndex + 2);
-        const dataLine = rawEvent
-          .split('\n')
-          .find((line) => line.startsWith('data:'));
+        const dataLine = rawEvent.split('\n').find((line) => line.startsWith('data:'));
         if (!dataLine) {
           delimiterIndex = buffer.indexOf('\n\n');
           continue;
@@ -421,7 +435,9 @@ export class ActivityExecutionService {
         if (event.type === 'log' && typeof event.content === 'string') {
           onLog(event.content);
         } else if (event.type === 'error') {
-          throw new Error(typeof event.content === 'string' ? event.content : 'Sandbox Agent 流式执行失败');
+          throw new Error(
+            typeof event.content === 'string' ? event.content : 'Sandbox Agent 流式执行失败'
+          );
         } else if (event.type === 'done') {
           finalResult = {
             success: Boolean(event.success),
@@ -449,7 +465,7 @@ export class ActivityExecutionService {
     code: string,
     fn: string,
     input: Record<string, any>,
-    onLog: (log: string) => void,
+    onLog: (log: string) => void
   ): Promise<any> {
     const tempDir = '/tmp/activity_execution';
     await fs.mkdir(tempDir, { recursive: true });
@@ -468,7 +484,10 @@ export class ActivityExecutionService {
           cleanCode = match[1].trim();
         } else {
           // Fallback for weird markdown
-          cleanCode = code.replace(/```[a-zA-Z]*\\n?/g, '').replace(/```/g, '').trim();
+          cleanCode = code
+            .replace(/```[a-zA-Z]*\\n?/g, '')
+            .replace(/```/g, '')
+            .trim();
         }
         onLog(`已清理代码中的 markdown 标记`);
       }
@@ -964,8 +983,13 @@ except Exception as e:
         let stdoutData = '';
         let stderrData = '';
 
-        proc.stdout.on('data', (data) => { stdoutData += data.toString(); });
-        proc.stderr.on('data', (data) => { stderrData += data.toString(); onLog(`[Python stderr] ${data.toString().trim()}`); });
+        proc.stdout.on('data', (data) => {
+          stdoutData += data.toString();
+        });
+        proc.stderr.on('data', (data) => {
+          stderrData += data.toString();
+          onLog(`[Python stderr] ${data.toString().trim()}`);
+        });
 
         proc.on('close', (code) => {
           if (code === 0) {
@@ -994,7 +1018,9 @@ except Exception as e:
             if (!actualError && stderrData.trim()) {
               actualError = 'stderr: ' + stderrData.trim();
             }
-            reject(new Error(`Python exited with code ${code}. Error: ${actualError || 'Unknown error'}`));
+            reject(
+              new Error(`Python exited with code ${code}. Error: ${actualError || 'Unknown error'}`)
+            );
           }
         });
         proc.on('error', (err) => reject(err));
@@ -1015,7 +1041,6 @@ except Exception as e:
       }
 
       return result.result;
-
     } finally {
       // Clean up temp files
       try {

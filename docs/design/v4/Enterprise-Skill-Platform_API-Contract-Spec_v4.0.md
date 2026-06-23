@@ -366,13 +366,16 @@ interface ExecutionEventDto {
 
 ```ts
 interface ParamsSchema {
-  properties: Record<string, {
-    type: 'string' | 'number' | 'date' | 'boolean';
-    description: string;
-    required?: boolean;
-    default?: string | number | boolean;
-    extractionPrompt?: string;
-  }>;
+  properties: Record<
+    string,
+    {
+      type: 'string' | 'number' | 'date' | 'boolean';
+      description: string;
+      required?: boolean;
+      default?: string | number | boolean;
+      extractionPrompt?: string;
+    }
+  >;
   required: string[];
 }
 ```

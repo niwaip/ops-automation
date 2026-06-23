@@ -58,17 +58,15 @@ export function buildDecisionContextPromptSummary(input: {
 }
 
 export function extractLatestDecisionContextFromSummary(
-  contextSummary?: string,
+  contextSummary?: string
 ): DecisionContextPromptSummary | undefined {
   if (!contextSummary) {
     return undefined;
   }
 
-  const routingMatches = Array.from(
-    contextSummary.matchAll(/decision\.routing:\s*([^\n]+)/g),
-  );
+  const routingMatches = Array.from(contextSummary.matchAll(/decision\.routing:\s*([^\n]+)/g));
   const promptAssemblyMatches = Array.from(
-    contextSummary.matchAll(/decision\.prompt_assembly:\s*([^\n]+)/g),
+    contextSummary.matchAll(/decision\.prompt_assembly:\s*([^\n]+)/g)
   );
 
   const routingState = routingMatches.at(-1)?.[1]?.trim();

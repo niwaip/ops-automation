@@ -37,9 +37,10 @@ type TemplateRow = Template & {
   created_by_username?: string;
 };
 
-const isUuidLike = (value: string): boolean => (
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || '').trim())
-);
+const isUuidLike = (value: string): boolean =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    String(value || '').trim()
+  );
 
 const TemplateListPage: React.FC = () => {
   const { t } = useTranslation(['common', 'template']);
@@ -65,7 +66,7 @@ const TemplateListPage: React.FC = () => {
       });
       const templates = result.templates || [];
       const creatorIds = Array.from(
-        new Set(templates.map((template) => template.created_by).filter(Boolean)),
+        new Set(templates.map((template) => template.created_by).filter(Boolean))
       );
 
       const userNamePairs = await Promise.all(
@@ -79,7 +80,7 @@ const TemplateListPage: React.FC = () => {
           } catch {
             return [userId, userId] as const;
           }
-        }),
+        })
       );
       const userNameMap = new Map<string, string>(userNamePairs);
       const enrichedTemplates: TemplateRow[] = templates.map((template) => ({
@@ -117,7 +118,11 @@ const TemplateListPage: React.FC = () => {
       const result = await sessionApi.list({ page: 1, pageSize: 500 });
       const sessions = (result.sessions || [])
         .filter((session) => session.template_id === templateId)
-        .sort((a, b) => Number(b.last_activity || b.created_at || 0) - Number(a.last_activity || a.created_at || 0));
+        .sort(
+          (a, b) =>
+            Number(b.last_activity || b.created_at || 0) -
+            Number(a.last_activity || a.created_at || 0)
+        );
 
       if (!sessions.length) {
         message.info('该模板暂无会话历史');
@@ -139,7 +144,9 @@ const TemplateListPage: React.FC = () => {
       label: `${index + 1}. ${step.action}`,
       children: (
         <Space direction="vertical" size={4} style={{ width: '100%' }}>
-          {step.locator ? <Text type="secondary">locator: {JSON.stringify(step.locator)}</Text> : null}
+          {step.locator ? (
+            <Text type="secondary">locator: {JSON.stringify(step.locator)}</Text>
+          ) : null}
           {step.params ? <Text type="secondary">params: {JSON.stringify(step.params)}</Text> : null}
           {step.wait ? <Text type="secondary">wait: {JSON.stringify(step.wait)}</Text> : null}
           {step.retry ? <Text type="secondary">retry: {JSON.stringify(step.retry)}</Text> : null}
@@ -252,17 +259,10 @@ const TemplateListPage: React.FC = () => {
             </Select>
           </Space>
           <Space>
-            <Button
-              icon={<ReloadOutlined />}
-              onClick={() => templatesQuery.refetch()}
-            >
+            <Button icon={<ReloadOutlined />} onClick={() => templatesQuery.refetch()}>
               {t('common:refresh')}
             </Button>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => navigate('/recorder')}
-            >
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/recorder')}>
               {t('template:createTemplate')}
             </Button>
           </Space>
@@ -305,13 +305,21 @@ const TemplateListPage: React.FC = () => {
           <Space direction="vertical" size={16} style={{ width: '100%' }}>
             <Descriptions bordered size="small" column={1}>
               <Descriptions.Item label="模板名称">{selectedTemplate.name}</Descriptions.Item>
-              <Descriptions.Item label="描述">{selectedTemplate.description || '-'}</Descriptions.Item>
-              <Descriptions.Item label="创建者">{selectedTemplate.created_by_username || '-'}</Descriptions.Item>
+              <Descriptions.Item label="描述">
+                {selectedTemplate.description || '-'}
+              </Descriptions.Item>
+              <Descriptions.Item label="创建者">
+                {selectedTemplate.created_by_username || '-'}
+              </Descriptions.Item>
               <Descriptions.Item label="创建时间">
-                {selectedTemplate.created_at ? new Date(selectedTemplate.created_at).toLocaleString() : '-'}
+                {selectedTemplate.created_at
+                  ? new Date(selectedTemplate.created_at).toLocaleString()
+                  : '-'}
               </Descriptions.Item>
               <Descriptions.Item label="更新时间">
-                {selectedTemplate.updated_at ? new Date(selectedTemplate.updated_at).toLocaleString() : '-'}
+                {selectedTemplate.updated_at
+                  ? new Date(selectedTemplate.updated_at).toLocaleString()
+                  : '-'}
               </Descriptions.Item>
             </Descriptions>
             <Card title="步骤详情" size="small">

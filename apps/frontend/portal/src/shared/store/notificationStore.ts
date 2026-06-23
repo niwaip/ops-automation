@@ -3,6 +3,5 @@ import { useStore } from 'zustand';
 
 export const notificationStore = createNotificationStore();
 
-export const useNotificationStore = <T>(
-  selector: (state: NotificationStoreState) => T,
-): T => useStore(notificationStore, selector);
+export const useNotificationStore = <T>(selector: (state: NotificationStoreState) => T): T =>
+  useStore(notificationStore, selector);

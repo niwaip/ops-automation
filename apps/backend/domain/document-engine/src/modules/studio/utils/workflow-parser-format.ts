@@ -118,13 +118,10 @@ export function inferRecognitionBlockTitle(text: string, blockType: string): str
 }
 
 export function hasCompareFieldShape(text: string): boolean {
-  return /[:：]|【|】|\(\s*\)|（\s*）/u.test(safeText(text))
-    || hasBlankPlaceholder(text);
+  return /[:：]|【|】|\(\s*\)|（\s*）/u.test(safeText(text)) || hasBlankPlaceholder(text);
 }
 
-export function detectTextLanguageHint(
-  text: string,
-): 'zh' | 'ja' | 'en' | 'mixed' | 'unknown' {
+export function detectTextLanguageHint(text: string): 'zh' | 'ja' | 'en' | 'mixed' | 'unknown' {
   const normalizedText = safeText(text)
     .replace(/[_＿\-—.·:：|/\\()[\]{}<>\d\s]+/gu, '')
     .trim();
@@ -157,7 +154,7 @@ export function detectTextLanguageHint(
 }
 
 export function isConcreteLanguageHint(
-  hint: 'zh' | 'ja' | 'en' | 'mixed' | 'unknown',
+  hint: 'zh' | 'ja' | 'en' | 'mixed' | 'unknown'
 ): hint is 'zh' | 'ja' | 'en' {
   return hint === 'zh' || hint === 'ja' || hint === 'en';
 }

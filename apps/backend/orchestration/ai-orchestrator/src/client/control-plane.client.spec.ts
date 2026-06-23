@@ -41,7 +41,7 @@ describe('ControlPlaneClient', () => {
           'X-Trace-Id': 'trace-1',
         },
         timeout: 1500,
-      },
+      }
     );
 
     expect(mockedAxios.post).toHaveBeenCalledWith(
@@ -55,7 +55,7 @@ describe('ControlPlaneClient', () => {
           'X-Trace-Id': 'trace-1',
         },
         timeout: 1500,
-      },
+      }
     );
   });
 
@@ -79,7 +79,7 @@ describe('ControlPlaneClient', () => {
           Authorization: 'Bearer token-1',
         },
         timeout: 10000,
-      },
+      }
     );
   });
 
@@ -103,7 +103,7 @@ describe('ControlPlaneClient', () => {
           'X-User-Role': 'employee',
         },
         responseType: 'stream',
-      },
+      }
     );
     expect(result).toBe(stream);
   });

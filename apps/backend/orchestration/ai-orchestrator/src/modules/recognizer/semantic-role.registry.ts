@@ -8,7 +8,7 @@ type SemanticRoleExtractorContext = {
 type SemanticRoleExtractor = (
   input: string,
   context: SemanticRoleExtractorContext,
-  definition: SemanticRoleDefinition,
+  definition: SemanticRoleDefinition
 ) => string | undefined;
 
 type BuiltInExtractorKind =
@@ -44,13 +44,28 @@ const SEMANTIC_ROLE_DEFINITIONS: SemanticRoleDefinition[] = [
     role: 'acceptance_type',
     aliases: ['acceptance_type', 'acceptance_mode'],
     extractor: { kind: 'acceptance_type' },
-    hintKeywords: ['acceptancetype', 'acceptance type', '验收方式', '验收类型', '到货验收', '安装验收'],
+    hintKeywords: [
+      'acceptancetype',
+      'acceptance type',
+      '验收方式',
+      '验收类型',
+      '到货验收',
+      '安装验收',
+    ],
   },
   {
     role: 'arrival_date',
     aliases: ['arrival_date', 'delivery_date'],
     extractor: { kind: 'date_by_keywords', keywords: ['到货', '交付', '送达', '收货'] },
-    hintKeywords: ['arrivaldate', 'arrival date', 'delivery date', '交付日期', '到货日期', '计划到货日期', '计划交付日期'],
+    hintKeywords: [
+      'arrivaldate',
+      'arrival date',
+      'delivery date',
+      '交付日期',
+      '到货日期',
+      '计划到货日期',
+      '计划交付日期',
+    ],
   },
   {
     role: 'installation_date',
@@ -60,12 +75,15 @@ const SEMANTIC_ROLE_DEFINITIONS: SemanticRoleDefinition[] = [
   },
 ];
 
-const SEMANTIC_ROLE_ALIASES = SEMANTIC_ROLE_DEFINITIONS.reduce<Record<string, string>>((acc, definition) => {
-  definition.aliases.forEach((alias) => {
-    acc[alias] = definition.role;
-  });
-  return acc;
-}, {});
+const SEMANTIC_ROLE_ALIASES = SEMANTIC_ROLE_DEFINITIONS.reduce<Record<string, string>>(
+  (acc, definition) => {
+    definition.aliases.forEach((alias) => {
+      acc[alias] = definition.role;
+    });
+    return acc;
+  },
+  {}
+);
 
 const BUILTIN_SEMANTIC_EXTRACTORS: Record<BuiltInExtractorKind, SemanticRoleExtractor> = {
   delivery_batch: (input, context) => context.extractBatchValue(input),
@@ -75,15 +93,17 @@ const BUILTIN_SEMANTIC_EXTRACTORS: Record<BuiltInExtractorKind, SemanticRoleExtr
     context.extractDateByKeywords(input, definition.extractor.keywords || []),
 };
 
-const normalizeSemanticToken = (value: unknown): string => String(value || '')
-  .trim()
-  .toLowerCase()
-  .replace(/[\s-]+/g, '_');
+const normalizeSemanticToken = (value: unknown): string =>
+  String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_');
 
-const normalizeHintText = (value: unknown): string => String(value || '')
-  .trim()
-  .toLowerCase()
-  .replace(/[_-]+/g, ' ');
+const normalizeHintText = (value: unknown): string =>
+  String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[_-]+/g, ' ');
 
 const findSemanticRoleDefinition = (role: unknown): SemanticRoleDefinition | undefined => {
   const normalizedRole = normalizeSemanticToken(role);
@@ -94,14 +114,18 @@ const findSemanticRoleDefinition = (role: unknown): SemanticRoleDefinition | und
   return SEMANTIC_ROLE_DEFINITIONS.find((definition) => definition.role === canonicalRole);
 };
 
-const inferSemanticRoleDefinitionFromHints = (hintText: unknown): SemanticRoleDefinition | undefined => {
+const inferSemanticRoleDefinitionFromHints = (
+  hintText: unknown
+): SemanticRoleDefinition | undefined => {
   const normalizedHint = normalizeHintText(hintText);
   if (!normalizedHint) {
     return undefined;
   }
 
   return SEMANTIC_ROLE_DEFINITIONS.find((definition) =>
-    (definition.hintKeywords || []).some((keyword) => normalizedHint.includes(keyword.toLowerCase())),
+    (definition.hintKeywords || []).some((keyword) =>
+      normalizedHint.includes(keyword.toLowerCase())
+    )
   );
 };
 
@@ -112,7 +136,7 @@ export const normalizeSemanticRole = (role: unknown): string | undefined => {
 export const inferValueBySemanticRole = (
   role: unknown,
   input: string,
-  context: SemanticRoleExtractorContext,
+  context: SemanticRoleExtractorContext
 ): string | undefined => {
   const definition = findSemanticRoleDefinition(role);
   if (!definition) {
@@ -128,8 +152,8 @@ export const inferValueBySemanticSignal = (input: {
   userInput: string;
   context: SemanticRoleExtractorContext;
 }): string | undefined => {
-  const definition = findSemanticRoleDefinition(input.role)
-    || inferSemanticRoleDefinitionFromHints(input.hintText);
+  const definition =
+    findSemanticRoleDefinition(input.role) || inferSemanticRoleDefinitionFromHints(input.hintText);
   if (!definition) {
     return undefined;
   }

@@ -10,7 +10,7 @@ export interface Marker {
   formatters: string[];
   isArray: boolean;
   arrayPath?: string;
-  isImplicitArray?: boolean;  // 隐式数组标记（无[i]但数据为数组）
+  isImplicitArray?: boolean; // 隐式数组标记（无[i]但数据为数组）
 }
 
 export interface LoopInfo {
@@ -19,8 +19,8 @@ export interface LoopInfo {
   endPos: number;
   templateUnit: string;
   depth: number;
-  parentLoop?: string;  // 父循环路径，用于嵌套循环
-  loopType: 'explicit' | 'implicit' | 'auto';  // 显式、隐式或自动检测
+  parentLoop?: string; // 父循环路径，用于嵌套循环
+  loopType: 'explicit' | 'implicit' | 'auto'; // 显式、隐式或自动检测
 }
 
 export interface ParsedTemplate {
@@ -28,29 +28,29 @@ export interface ParsedTemplate {
   loops: LoopInfo[];
   variables: string[];
   cleanedXml: string;
-  implicitArrays?: ImplicitArray[];  // 自动检测到的数组
+  implicitArrays?: ImplicitArray[]; // 自动检测到的数组
 }
 
 /**
  * 隐式数组信息
  */
 export interface ImplicitArray {
-  path: string;           // 如 d.items.name
-  detectedPath: string;   // 推断的数组路径，如 d.items
-  occurrences: number;    // 出现次数
-  container: string;      // 所在容器类型
-  confidence: number;     // 置信度
+  path: string; // 如 d.items.name
+  detectedPath: string; // 推断的数组路径，如 d.items
+  occurrences: number; // 出现次数
+  container: string; // 所在容器类型
+  confidence: number; // 置信度
 }
 
 // 正则表达式定义
 const CARBONE_MARKER_REGEX = /\{([cdt])\.([^}]+)\}/g;
-const ARRAY_INDEX_REGEX = /\[(?:i(?:\+\d+)?)?\]/;  // 支持 []、[i] 和 [i+n]
+const ARRAY_INDEX_REGEX = /\[(?:i(?:\+\d+)?)?\]/; // 支持 []、[i] 和 [i+n]
 const FORMATTER_REGEX = /:([a-zA-Z]+)(?:\(([^)]*)\))?/g;
 const LOOP_PATTERN_REGEX = /\{[cdt]\.([^}]+)\[i\+1\][^}]*\}/g;
 
 // 显式循环标记: {#d.array} 和 {/d.array}
-const LOOP_START_REGEX = /\{#([cdt])\.([^}]+)\}/g;  // {#d.items}
-const LOOP_END_REGEX = /\{\/([cdt])\.([^}]+)\}/g;   // {/d.items}
+const LOOP_START_REGEX = /\{#([cdt])\.([^}]+)\}/g; // {#d.items}
+const LOOP_END_REGEX = /\{\/([cdt])\.([^}]+)\}/g; // {/d.items}
 
 export class Parser {
   /**
@@ -125,7 +125,7 @@ export class Parser {
         name: `${contextChar}.${pathPart}`,
         formatters,
         isArray,
-        arrayPath
+        arrayPath,
       });
     }
 
@@ -163,14 +163,16 @@ export class Parser {
    */
   private detectExplicitLoops(xml: string): LoopInfo[] {
     const loops: LoopInfo[] = [];
-    const loopStack: { arrayPath: string; markerPos: number; startPos: number; depth: number }[] = [];
+    const loopStack: { arrayPath: string; markerPos: number; startPos: number; depth: number }[] =
+      [];
 
     // 重置正则表达式
     LOOP_START_REGEX.lastIndex = 0;
     LOOP_END_REGEX.lastIndex = 0;
 
     // 找到所有的循环开始和结束标记
-    const loopMarkers: { type: 'start' | 'end'; pos: number; endPos: number; arrayPath: string }[] = [];
+    const loopMarkers: { type: 'start' | 'end'; pos: number; endPos: number; arrayPath: string }[] =
+      [];
 
     let startMatch;
     while ((startMatch = LOOP_START_REGEX.exec(xml)) !== null) {
@@ -180,7 +182,7 @@ export class Parser {
         type: 'start',
         pos: startMatch.index,
         endPos: startMatch.index + startMatch[0].length,
-        arrayPath: `${contextChar}.${path}`
+        arrayPath: `${contextChar}.${path}`,
       });
     }
 
@@ -192,7 +194,7 @@ export class Parser {
         type: 'end',
         pos: endMatch.index,
         endPos: endMatch.index + endMatch[0].length,
-        arrayPath: `${contextChar}.${path}`
+        arrayPath: `${contextChar}.${path}`,
       });
     }
 
@@ -210,11 +212,11 @@ export class Parser {
           arrayPath: marker.arrayPath,
           markerPos: marker.pos,
           startPos,
-          depth
+          depth,
         });
       } else if (marker.type === 'end') {
         // 查找匹配的开始标记
-        const matchingStart = loopStack.find(s => s.arrayPath === marker.arrayPath);
+        const matchingStart = loopStack.find((s) => s.arrayPath === marker.arrayPath);
 
         if (matchingStart) {
           const bounds = this.resolveLoopBounds(xml, matchingStart.markerPos, marker.endPos);
@@ -223,9 +225,8 @@ export class Parser {
           const templateUnit = xml.substring(startPos, endPos);
 
           // 计算父循环路径
-          const parentLoop = loopStack.find(s =>
-            s.startPos < matchingStart.startPos &&
-            s.depth < matchingStart.depth
+          const parentLoop = loopStack.find(
+            (s) => s.startPos < matchingStart.startPos && s.depth < matchingStart.depth
           )?.arrayPath;
 
           loops.push({
@@ -235,11 +236,11 @@ export class Parser {
             templateUnit,
             depth: matchingStart.depth,
             parentLoop,
-            loopType: 'explicit'
+            loopType: 'explicit',
           });
 
           // 从栈中移除
-          const stackIndex = loopStack.findIndex(s => s.arrayPath === marker.arrayPath);
+          const stackIndex = loopStack.findIndex((s) => s.arrayPath === marker.arrayPath);
           if (stackIndex >= 0) {
             loopStack.splice(stackIndex, 1);
           }
@@ -279,7 +280,9 @@ export class Parser {
     xml: string,
     position: number
   ): { start: number; end: number } | null {
-    return this.findContainingWordRow(xml, position) || this.findContainingWordParagraph(xml, position);
+    return (
+      this.findContainingWordRow(xml, position) || this.findContainingWordParagraph(xml, position)
+    );
   }
 
   private findContainingWordRow(
@@ -321,10 +324,14 @@ export class Parser {
   /**
    * 检测隐式循环标记 [i] 和 [i+1] 配对
    */
-  private detectImplicitLoops(xml: string, markers: Marker[], existingLoops: LoopInfo[]): LoopInfo[] {
+  private detectImplicitLoops(
+    xml: string,
+    markers: Marker[],
+    existingLoops: LoopInfo[]
+  ): LoopInfo[] {
     const loops: LoopInfo[] = [];
 
-    const arrayMarkers = markers.filter(m => m.isArray);
+    const arrayMarkers = markers.filter((m) => m.isArray);
     const arrayGroups = new Map<string, Marker[]>();
 
     for (const marker of arrayMarkers) {
@@ -337,18 +344,24 @@ export class Parser {
 
     for (const [arrayPath, groupMarkers] of arrayGroups) {
       // 检查是否已经有显式循环
-      if (existingLoops.some(l => l.arrayPath === arrayPath && l.loopType === 'explicit')) {
+      if (existingLoops.some((l) => l.arrayPath === arrayPath && l.loopType === 'explicit')) {
         continue;
       }
 
       if (groupMarkers.length < 2) continue;
 
       const sortedMarkers = groupMarkers.sort((a, b) => a.pos - b.pos);
-      const startMarker = sortedMarkers.find(m => m.name.includes('[i]') && !m.name.includes('[i+1]'));
-      const endMarker = sortedMarkers.find(m => m.name.includes('[i+1]'));
+      const startMarker = sortedMarkers.find(
+        (m) => m.name.includes('[i]') && !m.name.includes('[i+1]')
+      );
+      const endMarker = sortedMarkers.find((m) => m.name.includes('[i+1]'));
 
       if (startMarker && endMarker) {
-        const bounds = this.resolveLoopBounds(xml, startMarker.pos, endMarker.pos + endMarker.length);
+        const bounds = this.resolveLoopBounds(
+          xml,
+          startMarker.pos,
+          endMarker.pos + endMarker.length
+        );
 
         // 计算嵌套深度
         const depth = this.calculateLoopDepth(bounds.startPos, existingLoops);
@@ -361,7 +374,7 @@ export class Parser {
           templateUnit: xml.substring(bounds.startPos, bounds.endPos),
           depth,
           parentLoop,
-          loopType: 'implicit'
+          loopType: 'implicit',
         });
       }
     }
@@ -372,7 +385,11 @@ export class Parser {
   /**
    * 检测表格行循环（只有一个[i]标记的情况）
    */
-  private detectTableRowLoops(xml: string, markers: Marker[], existingLoops: LoopInfo[]): LoopInfo[] {
+  private detectTableRowLoops(
+    xml: string,
+    markers: Marker[],
+    existingLoops: LoopInfo[]
+  ): LoopInfo[] {
     const loops: LoopInfo[] = [];
 
     const tableRowPattern = /<w:tr[^>]*>([\s\S]*?)<\/w:tr>/g;
@@ -383,15 +400,17 @@ export class Parser {
       const rowStartPos = rowMatch.index;
 
       // 检查这个行是否包含数组标记
-      const arrayInRow = markers.find(m => {
-        return m.pos >= rowStartPos &&
-               m.pos < rowStartPos + rowFullMatch.length &&
-               m.name.includes('[i]');
+      const arrayInRow = markers.find((m) => {
+        return (
+          m.pos >= rowStartPos &&
+          m.pos < rowStartPos + rowFullMatch.length &&
+          m.name.includes('[i]')
+        );
       });
 
       if (arrayInRow && arrayInRow.arrayPath) {
         // 检查是否已经有这个数组路径的循环
-        if (existingLoops.some(l => l.arrayPath === arrayInRow.arrayPath)) {
+        if (existingLoops.some((l) => l.arrayPath === arrayInRow.arrayPath)) {
           continue;
         }
 
@@ -406,7 +425,7 @@ export class Parser {
           templateUnit: rowFullMatch,
           depth,
           parentLoop,
-          loopType: 'implicit'
+          loopType: 'implicit',
         });
       }
     }
@@ -432,9 +451,9 @@ export class Parser {
    */
   private findParentLoop(pos: number, existingLoops: LoopInfo[]): string | undefined {
     // 找到包含此位置的最内层循环
-    const containingLoops = existingLoops.filter(l =>
-      l.startPos < pos && l.endPos > pos
-    ).sort((a, b) => b.depth - a.depth);
+    const containingLoops = existingLoops
+      .filter((l) => l.startPos < pos && l.endPos > pos)
+      .sort((a, b) => b.depth - a.depth);
 
     return containingLoops[0]?.arrayPath;
   }
@@ -447,9 +466,10 @@ export class Parser {
 
     for (const marker of markers) {
       // 移除数组索引部分和可能存在的花括号
-      const cleanName = marker.name.startsWith('{') && marker.name.endsWith('}') 
-        ? marker.name.slice(1, -1) 
-        : marker.name;
+      const cleanName =
+        marker.name.startsWith('{') && marker.name.endsWith('}')
+          ? marker.name.slice(1, -1)
+          : marker.name;
       const cleanPath = cleanName.replace(/\[(?:i(?:\+\d+)?)?\]/g, '');
       variables.add(cleanPath);
     }
@@ -480,7 +500,7 @@ export class Parser {
       loops,
       variables,
       cleanedXml,
-      implicitArrays
+      implicitArrays,
     };
   }
 
@@ -494,7 +514,7 @@ export class Parser {
     if (!data) return implicitArrays;
 
     // 收集所有非数组标记
-    const nonArrayMarkers = markers.filter(m => !m.isArray);
+    const nonArrayMarkers = markers.filter((m) => !m.isArray);
 
     // 按路径前缀分组
     const pathGroups = new Map<string, Marker[]>();
@@ -521,7 +541,7 @@ export class Parser {
           detectedPath: path,
           occurrences: groupMarkers.length,
           container: this.detectContainer(groupMarkers),
-          confidence: this.calculateImplicitArrayConfidence(groupMarkers, arrayData)
+          confidence: this.calculateImplicitArrayConfidence(groupMarkers, arrayData),
         });
       }
     }
@@ -541,7 +561,7 @@ export class Parser {
 
     for (const implicit of implicitArrays) {
       // 检查是否已经有这个路径的循环
-      if (existingLoops.some(l => l.arrayPath === implicit.path)) {
+      if (existingLoops.some((l) => l.arrayPath === implicit.path)) {
         continue;
       }
 
@@ -562,7 +582,7 @@ export class Parser {
             endPos: rowStart + rowContent.length,
             templateUnit: rowContent,
             depth: 1,
-            loopType: 'auto'
+            loopType: 'auto',
           });
           foundRow = true;
           break;
@@ -583,7 +603,7 @@ export class Parser {
               endPos: paraStart + paraContent.length,
               templateUnit: paraContent,
               depth: 1,
-              loopType: 'auto'
+              loopType: 'auto',
             });
             break;
           }

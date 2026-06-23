@@ -29,7 +29,7 @@ describe('StudioSkillRenderController', () => {
 
     const service = new StudioSkillRenderDataService(
       templateRepository as any,
-      skillRepository as any,
+      skillRepository as any
     );
     controller = new StudioSkillRenderController(service);
   });
@@ -65,7 +65,7 @@ describe('StudioSkillRenderController', () => {
           ],
         }),
         parameters: [],
-      }),
+      })
     );
 
     const result = await controller.generateRenderDataWithSkill({
@@ -121,7 +121,7 @@ describe('StudioSkillRenderController', () => {
         format: 'docx',
         fileName: 'linked.docx',
         skillId,
-      }),
+      })
     );
     fs.writeFileSync(
       path.join(templatesDir, `skill_${skillId}.json`),
@@ -136,7 +136,7 @@ describe('StudioSkillRenderController', () => {
           },
         }),
         parameters: [],
-      }),
+      })
     );
 
     const result = await controller.generateRenderDataWithSkill({
@@ -161,10 +161,7 @@ describe('StudioSkillRenderController', () => {
           name_cn: '新值',
         },
       },
-      items: [
-        { productName_cn: '服务A' },
-        { productName_cn: '服务B' },
-      ],
+      items: [{ productName_cn: '服务A' }, { productName_cn: '服务B' }],
     });
   });
 });

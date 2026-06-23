@@ -9,12 +9,13 @@ const readConfiguredUrl = (...candidates: Array<string | undefined>): string | u
 };
 
 export const getPublicHost = (): string =>
-  process.env.HOST_IP?.trim()
-  || process.env.EXTERNAL_HOST?.trim()
-  || 'localhost';
+  process.env.HOST_IP?.trim() || process.env.EXTERNAL_HOST?.trim() || 'localhost';
 
 export const getAuthServiceUrl = (): string => {
-  const configured = readConfiguredUrl(process.env.AUTH_SERVICE_URL, process.env.PLATFORM_SERVICE_URL);
+  const configured = readConfiguredUrl(
+    process.env.AUTH_SERVICE_URL,
+    process.env.PLATFORM_SERVICE_URL
+  );
   if (configured) {
     return configured;
   }
@@ -23,7 +24,10 @@ export const getAuthServiceUrl = (): string => {
 };
 
 export const getBrowserWorkerUrl = (): string => {
-  const configured = readConfiguredUrl(process.env.BROWSER_WORKER_URL, process.env.WORKER_SERVICE_URL);
+  const configured = readConfiguredUrl(
+    process.env.BROWSER_WORKER_URL,
+    process.env.WORKER_SERVICE_URL
+  );
   if (configured) {
     return configured;
   }
@@ -32,7 +36,10 @@ export const getBrowserWorkerUrl = (): string => {
 };
 
 export const getSessionBrokerUrl = (): string => {
-  const configured = readConfiguredUrl(process.env.SESSION_BROKER_URL, process.env.SESSION_SERVICE_URL);
+  const configured = readConfiguredUrl(
+    process.env.SESSION_BROKER_URL,
+    process.env.SESSION_SERVICE_URL
+  );
   if (configured) {
     return configured;
   }

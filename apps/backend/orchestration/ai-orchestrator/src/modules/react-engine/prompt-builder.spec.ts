@@ -25,9 +25,7 @@ describe('prompt-builder', () => {
       validateParams: () => ({ valid: true, missing: [] }),
       execute: jest.fn() as any,
     };
-    const tools: ToolDefinition[] = [
-      documentRenderTool,
-    ];
+    const tools: ToolDefinition[] = [documentRenderTool];
 
     const capabilitySnapshot: CapabilitySnapshot = {
       userId: 'u-1',
@@ -73,18 +71,24 @@ describe('prompt-builder', () => {
       version: 'test',
     };
 
-    const prompt = buildSystemPrompt(tools, undefined, [
-      {
-        skillId: 'skill-1',
-        skillName: '合同生成',
-        description: '生成合同文档',
-        triggerKeywords: ['合同'],
-        paramsSchema: {
-          properties: {},
-          required: [],
+    const prompt = buildSystemPrompt(
+      tools,
+      undefined,
+      [
+        {
+          skillId: 'skill-1',
+          skillName: '合同生成',
+          description: '生成合同文档',
+          triggerKeywords: ['合同'],
+          paramsSchema: {
+            properties: {},
+            required: [],
+          },
         },
-      },
-    ], 'task', capabilitySnapshot);
+      ],
+      'task',
+      capabilitySnapshot
+    );
 
     expect(prompt).toContain('## System Policy');
     expect(prompt).toContain('## Capability Policy');
@@ -169,7 +173,7 @@ describe('prompt-builder', () => {
         },
         generatedAt: new Date().toISOString(),
         version: 'test',
-      },
+      }
     );
 
     expect(sections.map((section) => section.key)).toEqual([
@@ -201,7 +205,7 @@ describe('prompt-builder', () => {
       {
         routingState: 'model=backup-model',
         promptAssemblyState: 'systemSections=system_policy>tool_spec',
-      },
+      }
     );
 
     expect(prompt).toContain('## Task Input');
@@ -247,7 +251,7 @@ describe('prompt-builder', () => {
       {
         routingState: 'model=backup-model',
         promptAssemblyState: 'systemSections=system_policy>tool_spec',
-      },
+      }
     );
 
     expect(sections.map((section) => section.key)).toEqual([
@@ -282,7 +286,7 @@ describe('prompt-builder', () => {
         'decision.routing: model=primary-model, attempted=primary-model, reason=provider_error',
         'decision.prompt_assembly: systemSections=system_policy>tool_spec, userSections=task_input>routing_state>execution_request',
         'content: {"thought":"t1","action":"a1"}',
-      ].join('\n'),
+      ].join('\n')
     );
 
     expect(sections.map((section) => section.key)).toEqual([
@@ -292,7 +296,11 @@ describe('prompt-builder', () => {
       'prompt_assembly_state',
       'execution_request',
     ]);
-    expect(sections.find((section) => section.key === 'routing_state')?.body).toContain('model=primary-model');
-    expect(sections.find((section) => section.key === 'prompt_assembly_state')?.body).toContain('system_policy>tool_spec');
+    expect(sections.find((section) => section.key === 'routing_state')?.body).toContain(
+      'model=primary-model'
+    );
+    expect(sections.find((section) => section.key === 'prompt_assembly_state')?.body).toContain(
+      'system_policy>tool_spec'
+    );
   });
 });

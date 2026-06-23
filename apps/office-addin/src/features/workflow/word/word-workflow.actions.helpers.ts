@@ -1,4 +1,8 @@
-import type { TemplateCompareResponse, TemplateFieldCandidate, TemplateUnderstandResponse } from '../../../api/carbone-api';
+import type {
+  TemplateCompareResponse,
+  TemplateFieldCandidate,
+  TemplateUnderstandResponse,
+} from '../../../api/carbone-api';
 import type { AnalysisExecutorKind } from '../../parameter-identify/services/index';
 import type { WordSectionDisplayLanguage } from '../../../host/office/word/chapter';
 import {
@@ -29,7 +33,7 @@ export async function probeWordCompareCache(args: {
     templateDocumentIr: Record<string, any>,
     sampleUploadState: SampleUploadStateLike,
     templateType: string,
-    headingLanguages: string[],
+    headingLanguages: string[]
   ) => string;
   loadWordCompareCache: () => Record<string, WordCompareCacheEntry>;
 }): Promise<{
@@ -44,7 +48,7 @@ export async function probeWordCompareCache(args: {
     documentIr,
     args.sampleUploadState,
     args.selectedTemplateType,
-    args.effectiveCompareHeadingLanguages,
+    args.effectiveCompareHeadingLanguages
   );
   const cachedCompareEntry = args.loadWordCompareCache()[compareCacheKey];
 
@@ -81,7 +85,7 @@ export function persistWordCompareCacheResult(args: {
     templateDocumentIr: Record<string, any>,
     sampleUploadState: SampleUploadStateLike,
     templateType: string,
-    headingLanguages: string[],
+    headingLanguages: string[]
   ) => string;
   saveWordCompareCacheEntry: (entry: {
     cacheKey: string;
@@ -99,16 +103,17 @@ export function persistWordCompareCacheResult(args: {
     args.compareDocumentIr,
     args.sampleUploadState,
     args.selectedTemplateType,
-    args.effectiveCompareHeadingLanguages,
+    args.effectiveCompareHeadingLanguages
   );
   const updatedAt = Date.now();
-  const recognitionSnapshot = (args.sectionGenerationResults.length > 0 || args.suggestions.length > 0)
-    ? {
-        suggestions: args.suggestions,
-        sectionGenerationResults: args.sectionGenerationResults,
-        collapsedSections: args.collapsedRecognitionSections,
-      }
-    : undefined;
+  const recognitionSnapshot =
+    args.sectionGenerationResults.length > 0 || args.suggestions.length > 0
+      ? {
+          suggestions: args.suggestions,
+          sectionGenerationResults: args.sectionGenerationResults,
+          collapsedSections: args.collapsedRecognitionSections,
+        }
+      : undefined;
 
   args.saveWordCompareCacheEntry({
     cacheKey,
@@ -131,7 +136,7 @@ export function updateWordCompareCandidate(args: {
   patch: Partial<TemplateFieldCandidate>;
   rebuildCompareSummary: (
     summary: TemplateCompareResponse['compareSummary'],
-    candidateFields: TemplateCompareResponse['candidateFields'],
+    candidateFields: TemplateCompareResponse['candidateFields']
   ) => TemplateCompareResponse['compareSummary'];
   onPersist: (nextResult: TemplateCompareResponse) => void;
 }): TemplateCompareResponse | null {
@@ -169,7 +174,7 @@ export function deleteWordCompareCandidate(args: {
   candidateId: string;
   rebuildCompareSummary: (
     summary: TemplateCompareResponse['compareSummary'],
-    candidateFields: TemplateCompareResponse['candidateFields'],
+    candidateFields: TemplateCompareResponse['candidateFields']
   ) => TemplateCompareResponse['compareSummary'];
   onPersist: (nextResult: TemplateCompareResponse) => void;
 }): TemplateCompareResponse | null {
@@ -177,7 +182,9 @@ export function deleteWordCompareCandidate(args: {
     return args.current;
   }
 
-  const candidateFields = args.current.candidateFields.filter((candidate) => candidate.candidateId !== args.candidateId);
+  const candidateFields = args.current.candidateFields.filter(
+    (candidate) => candidate.candidateId !== args.candidateId
+  );
   if (candidateFields.length === args.current.candidateFields.length) {
     return args.current;
   }
@@ -191,31 +198,34 @@ export function deleteWordCompareCandidate(args: {
   return nextResult;
 }
 
-export async function buildWordWorkflowRequest(args: {
-  hostAdapter: HostAdapterLike;
-  compareResult: TemplateCompareResponse | null;
-  effectiveCompareCandidateFields: TemplateFieldCandidate[];
-  currentCompareSignature: string;
-  sampleUploadState: SampleUploadStateLike;
-  understandingResult: TemplateUnderstandResponse | null;
-  workflowSourceLanguage: string;
-  workflowTargetLanguages: string[];
-  selectedTemplateType: string;
-  useMultiStage: boolean;
-  analysisExecutor: AnalysisExecutorKind;
-  analysisThinkingEnabled: boolean;
-  buildWordUnderstandingCacheKey: (
-    templateDocumentIr: Record<string, any>,
-    sampleUploadState: SampleUploadStateLike,
-    sourceLanguage: string,
-    targetLanguages: string[],
-    compareSignature: string,
-  ) => string;
-}, options?: {
-  includeUnderstanding?: boolean;
-  useSelectedCompareCandidates?: boolean;
-  prefetchedUnderstanding?: TemplateUnderstandResponse | null;
-}): Promise<{
+export async function buildWordWorkflowRequest(
+  args: {
+    hostAdapter: HostAdapterLike;
+    compareResult: TemplateCompareResponse | null;
+    effectiveCompareCandidateFields: TemplateFieldCandidate[];
+    currentCompareSignature: string;
+    sampleUploadState: SampleUploadStateLike;
+    understandingResult: TemplateUnderstandResponse | null;
+    workflowSourceLanguage: string;
+    workflowTargetLanguages: string[];
+    selectedTemplateType: string;
+    useMultiStage: boolean;
+    analysisExecutor: AnalysisExecutorKind;
+    analysisThinkingEnabled: boolean;
+    buildWordUnderstandingCacheKey: (
+      templateDocumentIr: Record<string, any>,
+      sampleUploadState: SampleUploadStateLike,
+      sourceLanguage: string,
+      targetLanguages: string[],
+      compareSignature: string
+    ) => string;
+  },
+  options?: {
+    includeUnderstanding?: boolean;
+    useSelectedCompareCandidates?: boolean;
+    prefetchedUnderstanding?: TemplateUnderstandResponse | null;
+  }
+): Promise<{
   request: {
     templateDocumentIr: unknown;
     sampleDocument?: {
@@ -239,11 +249,15 @@ export async function buildWordWorkflowRequest(args: {
 }> {
   const templateDocumentIr = await args.hostAdapter.extractDocument();
   const candidateFields = options?.useSelectedCompareCandidates
-    ? (args.compareResult ? args.effectiveCompareCandidateFields : undefined)
+    ? args.compareResult
+      ? args.effectiveCompareCandidateFields
+      : undefined
     : args.compareResult?.candidateFields;
   const compareSignature = options?.useSelectedCompareCandidates
     ? args.currentCompareSignature
-    : (args.compareResult ? `${args.compareResult.compareId || 'compare'}|all` : 'no-compare');
+    : args.compareResult
+      ? `${args.compareResult.compareId || 'compare'}|all`
+      : 'no-compare';
 
   return {
     request: {
@@ -274,7 +288,7 @@ export async function buildWordWorkflowRequest(args: {
       args.sampleUploadState,
       args.workflowSourceLanguage,
       args.workflowTargetLanguages,
-      compareSignature,
+      compareSignature
     ),
   };
 }

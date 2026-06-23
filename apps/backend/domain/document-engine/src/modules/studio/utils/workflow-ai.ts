@@ -4,14 +4,12 @@ import {
   WorkflowUnderstandResult,
 } from './workflow-assets';
 
-import {
-  safeText,
-} from './workflow-parser-format';
+import { safeText } from './workflow-parser-format';
 
 import { buildWorkflowUnderstandingPromptText } from '../template-workflow.prompt';
 
 export function computeCandidateGroupCompareMode(
-  candidates: WorkflowFieldCandidate[],
+  candidates: WorkflowFieldCandidate[]
 ): 'section_loose_compare' | 'global_probe_fallback' | 'structure_only' {
   if (candidates.some((candidate) => candidate.compareMode === 'section_loose_compare')) {
     return 'section_loose_compare';
@@ -23,14 +21,21 @@ export function computeCandidateGroupCompareMode(
 }
 
 export function buildUnderstandingSectionSummaries(
-  candidateFields: WorkflowFieldCandidate[],
+  candidateFields: WorkflowFieldCandidate[]
 ): WorkflowUnderstandResult['summary']['sectionSummaries'] {
-  const sectionMap = new Map<string, WorkflowUnderstandResult['summary']['sectionSummaries'][number]>();
+  const sectionMap = new Map<
+    string,
+    WorkflowUnderstandResult['summary']['sectionSummaries'][number]
+  >();
   const sectionOrderMap = new Map<string, number>();
 
   for (const candidate of candidateFields) {
-    const sectionId = safeText(candidate.sectionId || candidate.sectionTitle || candidate.sourceBlockId);
-    const sectionTitle = safeText(candidate.sectionTitle || candidate.sectionId || candidate.sourceBlockId);
+    const sectionId = safeText(
+      candidate.sectionId || candidate.sectionTitle || candidate.sourceBlockId
+    );
+    const sectionTitle = safeText(
+      candidate.sectionTitle || candidate.sectionId || candidate.sourceBlockId
+    );
     if (!sectionId || !sectionTitle) {
       continue;
     }
@@ -52,40 +57,58 @@ export function buildUnderstandingSectionSummaries(
     if (safeText(candidate.matchText)) {
       current.matchedCandidateCount += 1;
     }
-    current.compareStatus = current.matchedCandidateCount === 0
-      ? 'attention'
-      : (current.matchedCandidateCount === current.candidateCount ? 'aligned' : 'partial');
-    current.looseMatchScore = Math.max(current.looseMatchScore, Number(candidate.sectionMatchScore || 0));
-    current.compareMode = computeCandidateGroupCompareMode([candidate, {
-      ...candidate,
-      compareMode: current.compareMode,
-    }]);
-    current.samplePreview = current.samplePreview || candidate.matchText || candidate.sampleValue || undefined;
+    current.compareStatus =
+      current.matchedCandidateCount === 0
+        ? 'attention'
+        : current.matchedCandidateCount === current.candidateCount
+          ? 'aligned'
+          : 'partial';
+    current.looseMatchScore = Math.max(
+      current.looseMatchScore,
+      Number(candidate.sectionMatchScore || 0)
+    );
+    current.compareMode = computeCandidateGroupCompareMode([
+      candidate,
+      {
+        ...candidate,
+        compareMode: current.compareMode,
+      },
+    ]);
+    current.samplePreview =
+      current.samplePreview || candidate.matchText || candidate.sampleValue || undefined;
     if (!current.sectionSummary) {
       current.sectionSummary = [
         `章节 ${sectionTitle}`,
         `候选 ${current.candidateCount} 个`,
-        current.matchedCandidateCount > 0 ? `已命中 ${current.matchedCandidateCount} 个` : '当前未形成明确命中',
+        current.matchedCandidateCount > 0
+          ? `已命中 ${current.matchedCandidateCount} 个`
+          : '当前未形成明确命中',
         current.samplePreview ? `示例: ${safeText(current.samplePreview).slice(0, 60)}` : '',
-      ].filter(Boolean).join('，');
+      ]
+        .filter(Boolean)
+        .join('，');
     }
     sectionMap.set(sectionId, current);
   }
 
   return Array.from(sectionMap.values())
-    .sort((left, right) => (
-      (sectionOrderMap.get(left.sectionId) ?? Number.MAX_SAFE_INTEGER)
-        - (sectionOrderMap.get(right.sectionId) ?? Number.MAX_SAFE_INTEGER)
-      || right.looseMatchScore - left.looseMatchScore
-      || right.candidateCount - left.candidateCount
-    ))
+    .sort(
+      (left, right) =>
+        (sectionOrderMap.get(left.sectionId) ?? Number.MAX_SAFE_INTEGER) -
+          (sectionOrderMap.get(right.sectionId) ?? Number.MAX_SAFE_INTEGER) ||
+        right.looseMatchScore - left.looseMatchScore ||
+        right.candidateCount - left.candidateCount
+    )
     .slice(0, 8);
 }
 
 export function buildWorkflowTemplateExcerpt(templateDocumentIr: WorkflowDocumentIR): string {
   const elements = Array.isArray(templateDocumentIr.elements) ? templateDocumentIr.elements : [];
   return elements
-    .filter((element) => element.type === 'paragraph' || element.type === 'table' || element.type === 'cell')
+    .filter(
+      (element) =>
+        element.type === 'paragraph' || element.type === 'table' || element.type === 'cell'
+    )
     .map((element) => safeText(element.text))
     .filter(Boolean)
     .slice(0, 80)
@@ -129,9 +152,8 @@ export function buildFallbackWorkflowUnderstandingSummaryText(input: {
   sampleFileName?: string;
 }): string {
   const title = safeText(input.documentTitle) || '正式业务文档';
-  const sectionText = input.sectionHints.length > 0
-    ? input.sectionHints.slice(0, 4).join('、')
-    : '未提取到明确章节';
+  const sectionText =
+    input.sectionHints.length > 0 ? input.sectionHints.slice(0, 4).join('、') : '未提取到明确章节';
   return [
     '## 文档类型与用途',
     `- 该文档可归纳为“${title}”这一类正式 Word 文档，主要用于承载业务约定、履约条件与权责边界。`,
@@ -155,7 +177,9 @@ export function tryParseJsonObject(value: string): Record<string, unknown> | und
   }
 }
 
-export function parseWorkflowUnderstandingAiResponse(content: string): Record<string, unknown> | undefined {
+export function parseWorkflowUnderstandingAiResponse(
+  content: string
+): Record<string, unknown> | undefined {
   const direct = tryParseJsonObject(content);
   if (direct) {
     return direct;
@@ -180,11 +204,10 @@ export function normalizeStringArray(value: unknown, limit: number): string[] | 
     return undefined;
   }
 
-  const normalized = Array.from(new Set(
-    value
-      .map((item) => safeText(item))
-      .filter(Boolean)
-  )).slice(0, limit);
+  const normalized = Array.from(new Set(value.map((item) => safeText(item)).filter(Boolean))).slice(
+    0,
+    limit
+  );
 
   return normalized.length > 0 ? normalized : undefined;
 }
@@ -202,7 +225,7 @@ export async function generateUnderstandingSummaryWithAI(
     fieldCandidateIds: string[];
     candidateFields: WorkflowFieldCandidate[];
   },
-  callWorkflowUnderstandingAI: (prompt: string) => Promise<string>,
+  callWorkflowUnderstandingAI: (prompt: string) => Promise<string>
 ): Promise<{
   summary: {
     documentTitle?: string;
@@ -254,9 +277,9 @@ export async function generateUnderstandingSummaryWithAI(
     return {
       summary: {
         documentTitle:
-          safeText(input.templateDocumentIr.metadata?.title)
-          || safeText(input.sampleDocument?.fileName)
-          || undefined,
+          safeText(input.templateDocumentIr.metadata?.title) ||
+          safeText(input.sampleDocument?.fileName) ||
+          undefined,
         understandingSummaryText,
         sectionHints: input.fallbackSectionHints,
         sectionSummaries: fallbackSectionSummaries,

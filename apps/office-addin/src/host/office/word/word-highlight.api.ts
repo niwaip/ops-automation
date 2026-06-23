@@ -5,7 +5,11 @@ import {
 } from './word-context-search';
 
 export const WordHighlightAPI = {
-  async highlightAtPosition(paragraphIndex: number, startPos: number, endPos: number): Promise<boolean> {
+  async highlightAtPosition(
+    paragraphIndex: number,
+    startPos: number,
+    endPos: number
+  ): Promise<boolean> {
     return new Promise((resolve, reject) => {
       Word.run(async (context) => {
         const paragraphs = context.document.body.paragraphs;
@@ -32,18 +36,15 @@ export const WordHighlightAPI = {
 
         const searchResults = paragraph.search(highlightText, {
           matchCase: false,
-          matchWholeWord: false
+          matchWholeWord: false,
         });
         searchResults.load('items');
         await context.sync();
 
         if (searchResults.items.length > 0) {
-          let targetRange = pickWordSearchResultByPosition(
-            searchResults.items,
-            text,
-            highlightText,
-            startPos,
-          ) || searchResults.items[0];
+          let targetRange =
+            pickWordSearchResultByPosition(searchResults.items, text, highlightText, startPos) ||
+            searchResults.items[0];
 
           if (searchResults.items.length > 1) {
             const extendBefore = 4;
@@ -55,32 +56,34 @@ export const WordHighlightAPI = {
             if (extendedText) {
               const extendedSearch = paragraph.search(extendedText, {
                 matchCase: true,
-                matchWholeWord: false
+                matchWholeWord: false,
               });
               extendedSearch.load('items');
               await context.sync();
 
               if (extendedSearch.items.length > 0) {
-                const foundRange = pickWordSearchResultByPosition(
-                  extendedSearch.items,
-                  text,
-                  extendedText,
-                  extendedStart,
-                ) || extendedSearch.items[0];
+                const foundRange =
+                  pickWordSearchResultByPosition(
+                    extendedSearch.items,
+                    text,
+                    extendedText,
+                    extendedStart
+                  ) || extendedSearch.items[0];
                 const nestedSearch = foundRange.search(highlightText, {
                   matchCase: false,
-                  matchWholeWord: false
+                  matchWholeWord: false,
                 });
                 nestedSearch.load('items');
                 await context.sync();
 
                 if (nestedSearch.items.length > 0) {
-                  targetRange = pickWordSearchResultByPosition(
-                    nestedSearch.items,
-                    extendedText,
-                    highlightText,
-                    startPos - extendedStart,
-                  ) || nestedSearch.items[0];
+                  targetRange =
+                    pickWordSearchResultByPosition(
+                      nestedSearch.items,
+                      extendedText,
+                      highlightText,
+                      startPos - extendedStart
+                    ) || nestedSearch.items[0];
                 }
               }
             }
@@ -101,7 +104,7 @@ export const WordHighlightAPI = {
     paragraphIndex: number,
     startPos: number,
     endPos: number,
-    _textHint?: string,
+    _textHint?: string
   ): Promise<boolean> {
     return this.highlightAtPosition(paragraphIndex, startPos, endPos);
   },
@@ -109,7 +112,8 @@ export const WordHighlightAPI = {
   async highlightContentControlById(contentControlId: number): Promise<boolean> {
     return new Promise((resolve) => {
       Word.run(async (context) => {
-        const contentControl = context.document.contentControls.getByIdOrNullObject(contentControlId);
+        const contentControl =
+          context.document.contentControls.getByIdOrNullObject(contentControlId);
         contentControl.load('isNullObject');
         await context.sync();
 
@@ -130,7 +134,11 @@ export const WordHighlightAPI = {
     });
   },
 
-  async highlightTableCell(tableIndex: number, rowIndex: number, cellIndex: number): Promise<boolean> {
+  async highlightTableCell(
+    tableIndex: number,
+    rowIndex: number,
+    cellIndex: number
+  ): Promise<boolean> {
     return new Promise((resolve) => {
       Word.run(async (context) => {
         const tables = context.document.body.tables;
@@ -164,7 +172,9 @@ export const WordHighlightAPI = {
           rows.load('items');
           await context.sync();
 
-          const pickVisibleFallbackCell = async (targetRowIndex: number): Promise<Word.TableCell | null> => {
+          const pickVisibleFallbackCell = async (
+            targetRowIndex: number
+          ): Promise<Word.TableCell | null> => {
             if (targetRowIndex < 0 || targetRowIndex >= rows.items.length) {
               return null;
             }
@@ -181,15 +191,17 @@ export const WordHighlightAPI = {
 
             const visibleCells = cells.items
               .filter((candidateCell) => String(candidateCell.body.text || '').trim())
-              .sort((left, right) =>
-                Math.abs((left.cellIndex || 0) - cellIndex) - Math.abs((right.cellIndex || 0) - cellIndex)
+              .sort(
+                (left, right) =>
+                  Math.abs((left.cellIndex || 0) - cellIndex) -
+                  Math.abs((right.cellIndex || 0) - cellIndex)
               );
 
             return visibleCells[0] || null;
           };
 
-          const fallbackCell = await pickVisibleFallbackCell(rowIndex)
-            || await pickVisibleFallbackCell(0);
+          const fallbackCell =
+            (await pickVisibleFallbackCell(rowIndex)) || (await pickVisibleFallbackCell(0));
 
           if (fallbackCell) {
             const fallbackRange = fallbackCell.body.getRange(Word.RangeLocation.whole);
@@ -243,7 +255,7 @@ export const WordHighlightAPI = {
 
         const searchResults = context.document.body.search(text, {
           matchCase: false,
-          matchWholeWord: false
+          matchWholeWord: false,
         });
         searchResults.load('items');
         await context.sync();
@@ -327,7 +339,7 @@ export const WordHighlightAPI = {
 
         const searchResults = context.document.body.search(text, {
           matchCase: false,
-          matchWholeWord: false
+          matchWholeWord: false,
         });
         searchResults.load('items');
         await context.sync();
@@ -355,7 +367,7 @@ export const WordHighlightAPI = {
         for (const searchText of searchTexts) {
           const searchResults = context.document.body.search(searchText, {
             matchCase: false,
-            matchWholeWord: false
+            matchWholeWord: false,
           });
           searchResults.load('items');
           await context.sync();
@@ -368,11 +380,12 @@ export const WordHighlightAPI = {
           foundRange.load('text');
           await context.sync();
 
-          const blankText = extractLongestWordBlank(searchText) || extractLongestWordBlank(foundRange.text || '');
+          const blankText =
+            extractLongestWordBlank(searchText) || extractLongestWordBlank(foundRange.text || '');
           if (blankText && blankText.length >= 2) {
             const blankSearch = foundRange.search(blankText, {
               matchCase: false,
-              matchWholeWord: false
+              matchWholeWord: false,
             });
             blankSearch.load('items');
             await context.sync();

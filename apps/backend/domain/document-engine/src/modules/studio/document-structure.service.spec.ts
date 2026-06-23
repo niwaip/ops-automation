@@ -19,7 +19,7 @@ describe('DocumentStructureService', () => {
         '<w:p><w:r><w:t>委托方</w:t></w:r></w:p>',
         '</w:body>',
         '</w:document>',
-      ].join(''),
+      ].join('')
     );
     const buffer = await zip.generateAsync({ type: 'nodebuffer' });
 
@@ -71,7 +71,7 @@ describe('DocumentStructureService', () => {
         '</w:tbl>',
         '</w:body>',
         '</w:document>',
-      ].join(''),
+      ].join('')
     );
     const buffer = await zip.generateAsync({ type: 'nodebuffer' });
 
@@ -115,7 +115,7 @@ describe('DocumentStructureService', () => {
         '</w:tbl>',
         '</w:body>',
         '</w:document>',
-      ].join(''),
+      ].join('')
     );
     const buffer = await zip.generateAsync({ type: 'nodebuffer' });
 
@@ -157,7 +157,7 @@ describe('DocumentStructureService', () => {
         '<w:p><w:r><w:t>占位</w:t></w:r></w:p>',
         '</w:body>',
         '</w:document>',
-      ].join(''),
+      ].join('')
     );
     const buffer = await zip.generateAsync({ type: 'nodebuffer' });
 
@@ -200,7 +200,7 @@ describe('DocumentStructureService', () => {
         '<w:p><w:r><w:t>客户名称</w:t></w:r></w:p>',
         '</w:body>',
         '</w:document>',
-      ].join(''),
+      ].join('')
     );
     const buffer = await zip.generateAsync({ type: 'nodebuffer' });
 

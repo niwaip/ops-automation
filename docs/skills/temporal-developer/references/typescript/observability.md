@@ -64,9 +64,7 @@ import { DefaultLogger, Runtime } from '@temporalio/worker';
 const winstonLogger = winston.createLogger({
   level: 'debug',
   format: winston.format.json(),
-  transports: [
-    new winston.transports.File({ filename: 'temporal.log' })
-  ],
+  transports: [new winston.transports.File({ filename: 'temporal.log' })],
 });
 
 const logger = new DefaultLogger('DEBUG', (entry) => {

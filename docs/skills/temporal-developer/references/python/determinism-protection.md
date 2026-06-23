@@ -89,7 +89,7 @@ class MyWorkflow:
 - Per‑block escape hatch from runtime restrictions; imports unchanged.
 - Use when: You need to call something the sandbox would normally block (e.g., a restricted stdlib call) in a very small, controlled section.
 - **IMPORTANT:** Use it sparingly; you lose determinism checks inside the block
-- Genuinely non-deterministic code still *MUST* go into activities.
+- Genuinely non-deterministic code still _MUST_ go into activities.
 
 ## Customizing Invalid Module Members
 

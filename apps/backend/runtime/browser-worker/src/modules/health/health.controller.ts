@@ -9,7 +9,7 @@ import { HealthCheckResponseDto, SystemHealthResponseDto } from '../../dto';
 export class HealthController {
   constructor(
     private readonly healthService: HealthService,
-    private readonly workerService: WorkerService,
+    private readonly workerService: WorkerService
   ) {}
 
   @Get('workers/:id/health')

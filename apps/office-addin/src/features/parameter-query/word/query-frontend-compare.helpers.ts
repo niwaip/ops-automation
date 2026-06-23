@@ -40,7 +40,9 @@ export type CompareTableCellInfoLike = {
 };
 
 function safeCompareText(value: unknown): string {
-  return String(value || '').replace(/\s+/g, ' ').trim();
+  return String(value || '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function normalizeCompareLookupText(value: unknown): string {
@@ -51,7 +53,7 @@ function normalizeCompareLookupText(value: unknown): string {
 
 export function buildTableAnchorParagraphMap(
   ooxml: string,
-  paragraphs: CompareParagraphLike[],
+  paragraphs: CompareParagraphLike[]
 ): Map<number, number> {
   const anchors = new Map<number, number>();
   if (!ooxml.trim()) {
@@ -66,7 +68,9 @@ export function buildTableAnchorParagraphMap(
       return anchors;
     }
 
-    const body = Array.from(xml.getElementsByTagName('*')).find((node) => node.localName === 'body');
+    const body = Array.from(xml.getElementsByTagName('*')).find(
+      (node) => node.localName === 'body'
+    );
     if (!body) {
       return anchors;
     }
@@ -102,9 +106,9 @@ export function buildTableAnchorParagraphMap(
             continue;
           }
           if (
-            normalizedCandidate === normalizedXmlText
-            || normalizedCandidate.includes(normalizedXmlText)
-            || normalizedXmlText.includes(normalizedCandidate)
+            normalizedCandidate === normalizedXmlText ||
+            normalizedCandidate.includes(normalizedXmlText) ||
+            normalizedXmlText.includes(normalizedCandidate)
           ) {
             lastMatchedParagraphIndex = candidate.index;
             paragraphCursor = index + 1;
@@ -130,7 +134,7 @@ export function buildTableAnchorParagraphMap(
 
 function getFrontendQueryCandidateConfidence(
   sourceType: 'underline' | 'label-only' | 'table-cell',
-  underlineType?: string,
+  underlineType?: string
 ): number {
   if (sourceType === 'table-cell') {
     if (underlineType === 'table-loop-column') {
@@ -152,7 +156,7 @@ function getFrontendQueryCandidateConfidence(
 
 function getFrontendQueryMatchReason(
   sourceType: 'underline' | 'label-only' | 'table-cell',
-  underlineType?: string,
+  underlineType?: string
 ): string {
   if (sourceType === 'table-cell') {
     if (underlineType === 'table-loop-column') {
@@ -176,11 +180,12 @@ function getFrontendQueryMatchReason(
 
 function isDetectedHeadingParagraph(
   paragraphIndex: number,
-  detectedSections: WordDetectedSection[],
+  detectedSections: WordDetectedSection[]
 ): boolean {
-  return detectedSections.some((section) =>
-    section.headingParagraphIndices.includes(paragraphIndex)
-    || section.startParagraphIndex === paragraphIndex
+  return detectedSections.some(
+    (section) =>
+      section.headingParagraphIndices.includes(paragraphIndex) ||
+      section.startParagraphIndex === paragraphIndex
   );
 }
 
@@ -242,71 +247,80 @@ export function buildFrontendCompareResult(args: {
     return !isDetectedHeadingParagraph(param.paragraphIndex, detectedSections);
   });
 
-  const candidateFields = attachWordCandidateLanguageRelations(detectedParams.map((param, index) => {
-    const targetParagraphIndex = param.sourceType === 'table-cell' && param.tableIndex !== undefined
-      ? tableAnchorParagraphMap.get(param.tableIndex)
-      : param.paragraphIndex;
-    const matchedSection = typeof targetParagraphIndex === 'number'
-      ? detectedSections.find((section) =>
-          targetParagraphIndex >= section.startParagraphIndex && targetParagraphIndex <= section.endParagraphIndex
-        )
-      : undefined;
+  const candidateFields = attachWordCandidateLanguageRelations(
+    detectedParams.map((param, index) => {
+      const targetParagraphIndex =
+        param.sourceType === 'table-cell' && param.tableIndex !== undefined
+          ? tableAnchorParagraphMap.get(param.tableIndex)
+          : param.paragraphIndex;
+      const matchedSection =
+        typeof targetParagraphIndex === 'number'
+          ? detectedSections.find(
+              (section) =>
+                targetParagraphIndex >= section.startParagraphIndex &&
+                targetParagraphIndex <= section.endParagraphIndex
+            )
+          : undefined;
 
-    const fallbackSectionId = param.sourceType === 'table-cell' && param.tableIndex !== undefined
-      ? `table-${param.tableIndex}`
-      : (targetParagraphIndex !== undefined && targetParagraphIndex >= 0
-        ? `paragraph-${targetParagraphIndex}`
-        : `ungrouped-${index}`);
-    const fallbackSectionTitle = param.sourceType === 'table-cell' && param.tableIndex !== undefined
-      ? `表格 ${param.tableIndex + 1}`
-      : (typeof targetParagraphIndex === 'number' && targetParagraphIndex >= 0
-        ? `段落 ${targetParagraphIndex + 1}`
-        : '未归类章节');
-    const matchReason = getFrontendQueryMatchReason(param.sourceType, param.underlineType);
-    const candidateHints = inferWordCandidateHints({
-      anchorText: param.anchorText,
-      sampleValue: param.sampleValue || '',
-      segmentText: param.paragraphText || param.anchorText,
-      matchReason,
-    });
+      const fallbackSectionId =
+        param.sourceType === 'table-cell' && param.tableIndex !== undefined
+          ? `table-${param.tableIndex}`
+          : targetParagraphIndex !== undefined && targetParagraphIndex >= 0
+            ? `paragraph-${targetParagraphIndex}`
+            : `ungrouped-${index}`;
+      const fallbackSectionTitle =
+        param.sourceType === 'table-cell' && param.tableIndex !== undefined
+          ? `表格 ${param.tableIndex + 1}`
+          : typeof targetParagraphIndex === 'number' && targetParagraphIndex >= 0
+            ? `段落 ${targetParagraphIndex + 1}`
+            : '未归类章节';
+      const matchReason = getFrontendQueryMatchReason(param.sourceType, param.underlineType);
+      const candidateHints = inferWordCandidateHints({
+        anchorText: param.anchorText,
+        sampleValue: param.sampleValue || '',
+        segmentText: param.paragraphText || param.anchorText,
+        matchReason,
+      });
 
-    return {
-      candidateId: `frontend-word-query-${index + 1}`,
-      sourceBlockId: param.sourceBlockId || fallbackSectionId,
-      anchorText: param.anchorText,
-      localAnchorText: param.localAnchorText,
-      parameterSlot: param.parameterSlot,
-      sampleValue: param.sampleValue || '',
-      segmentText: param.paragraphText || param.anchorText,
-      sectionId: matchedSection?.sectionKey || fallbackSectionId,
-      sectionTitle: matchedSection?.sectionTitle || fallbackSectionTitle,
-      fieldTypeHint: candidateHints.fieldTypeHint,
-      generationPolicyHint: candidateHints.generationPolicyHint,
-      confidence: getFrontendQueryCandidateConfidence(param.sourceType, param.underlineType),
-      matchText: param.sampleMatchText,
-      matchReason,
-      compareMode: 'structure_only',
-      sectionMatchScore: matchedSection ? 1 : 0,
-      fieldIdHint: candidateHints.fieldIdHint,
-      location: {
-        blockType: param.sourceType === 'table-cell' ? 'cell' : 'paragraph',
-        paragraphIndex: typeof targetParagraphIndex === 'number' && targetParagraphIndex >= 0
-          ? targetParagraphIndex
+      return {
+        candidateId: `frontend-word-query-${index + 1}`,
+        sourceBlockId: param.sourceBlockId || fallbackSectionId,
+        anchorText: param.anchorText,
+        localAnchorText: param.localAnchorText,
+        parameterSlot: param.parameterSlot,
+        sampleValue: param.sampleValue || '',
+        segmentText: param.paragraphText || param.anchorText,
+        sectionId: matchedSection?.sectionKey || fallbackSectionId,
+        sectionTitle: matchedSection?.sectionTitle || fallbackSectionTitle,
+        fieldTypeHint: candidateHints.fieldTypeHint,
+        generationPolicyHint: candidateHints.generationPolicyHint,
+        confidence: getFrontendQueryCandidateConfidence(param.sourceType, param.underlineType),
+        matchText: param.sampleMatchText,
+        matchReason,
+        compareMode: 'structure_only',
+        sectionMatchScore: matchedSection ? 1 : 0,
+        fieldIdHint: candidateHints.fieldIdHint,
+        location: {
+          blockType: param.sourceType === 'table-cell' ? 'cell' : 'paragraph',
+          paragraphIndex:
+            typeof targetParagraphIndex === 'number' && targetParagraphIndex >= 0
+              ? targetParagraphIndex
+              : undefined,
+          tableIndex: param.tableIndex,
+          rowIndex: param.rowIndex,
+          cellIndex: param.cellIndex,
+          anchorStart: param.sourceType === 'table-cell' ? undefined : param.start,
+          anchorEnd: param.sourceType === 'table-cell' ? undefined : param.end,
+        },
+        languageRelation: param.languageHint
+          ? {
+              mode: 'single_language' as const,
+              currentLanguageHint: param.languageHint,
+            }
           : undefined,
-        tableIndex: param.tableIndex,
-        rowIndex: param.rowIndex,
-        cellIndex: param.cellIndex,
-        anchorStart: param.sourceType === 'table-cell' ? undefined : param.start,
-        anchorEnd: param.sourceType === 'table-cell' ? undefined : param.end,
-      },
-      languageRelation: param.languageHint
-        ? {
-            mode: 'single_language' as const,
-            currentLanguageHint: param.languageHint,
-          }
-        : undefined,
-    };
-  }));
+      };
+    })
+  );
 
   const summarySeed: TemplateCompareResponse['compareSummary'] = {
     candidateCount: candidateFields.length,

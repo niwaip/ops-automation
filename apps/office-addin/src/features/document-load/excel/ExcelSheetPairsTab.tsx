@@ -4,7 +4,10 @@ import { ExcelSheetPairState, useAppStore } from '../../../app/store';
 import { analyzeExcelWorkbookUnderstanding } from '../../parameter-identify/services/index';
 import { getHostScopedStorageKey } from '../../../shared/utils/host-storage';
 
-const EXCEL_UNDERSTANDING_CACHE_STORAGE_KEY = getHostScopedStorageKey('excel', 'understanding-cache:v1');
+const EXCEL_UNDERSTANDING_CACHE_STORAGE_KEY = getHostScopedStorageKey(
+  'excel',
+  'understanding-cache:v1'
+);
 
 interface ExcelUnderstandingCacheEntry {
   cacheKey: string;
@@ -107,27 +110,35 @@ export const ExcelSheetPairsTab: React.FC = () => {
     try {
       const sheets = await ExcelAPI.getWorkbookSheets();
       setWorkbookSheets(sheets);
-      const previousPairsById = new Map(useAppStore.getState().excelSheetPairs.map((pair) => [pair.id, pair]));
+      const previousPairsById = new Map(
+        useAppStore.getState().excelSheetPairs.map((pair) => [pair.id, pair])
+      );
       const nextPairs = buildSheetPairs(sheets).map((pair) => {
         const previous = previousPairsById.get(pair.id);
-        return previous
-          ? { ...pair, compare: previous.compare, hidden: previous.hidden }
-          : pair;
+        return previous ? { ...pair, compare: previous.compare, hidden: previous.hidden } : pair;
       });
       setExcelSheetPairs(nextPairs);
-      const previousSelectedSheets = useAppStore.getState().excelWorkbookUnderstanding.selectedSheetIndexes;
+      const previousSelectedSheets =
+        useAppStore.getState().excelWorkbookUnderstanding.selectedSheetIndexes;
       const availableSheetIndexes = sheets.map((sheet) => sheet.index);
-      
+
       // 默认选中所有“右侧”（数据）sheet
       const dataSheetIndexes = nextPairs
         .map((pair) => pair.rightSheetIndex)
         .filter((idx): idx is number => typeof idx === 'number');
 
-      const nextSelectedSheets = previousSelectedSheets.length > 0
-        ? previousSelectedSheets.filter((sheetIndex) => availableSheetIndexes.includes(sheetIndex))
-        : dataSheetIndexes;
+      const nextSelectedSheets =
+        previousSelectedSheets.length > 0
+          ? previousSelectedSheets.filter((sheetIndex) =>
+              availableSheetIndexes.includes(sheetIndex)
+            )
+          : dataSheetIndexes;
       setExcelUnderstandingSelectedSheets(nextSelectedSheets);
-      addDebugLog('info', 'Excel sheet 对照加载成功', `共 ${sheets.length} 个 sheet，生成 ${nextPairs.length} 个对照组`);
+      addDebugLog(
+        'info',
+        'Excel sheet 对照加载成功',
+        `共 ${sheets.length} 个 sheet，生成 ${nextPairs.length} 个对照组`
+      );
     } catch (loadError) {
       const message = loadError instanceof Error ? loadError.message : '读取 Excel sheet 失败';
       setError(message);
@@ -155,14 +166,20 @@ export const ExcelSheetPairsTab: React.FC = () => {
     [excelWorkbookUnderstanding.selectedSheetIndexes]
   );
   const understandingCacheKey = useMemo(
-    () => buildUnderstandingCacheKey(workbookSheets, excelWorkbookUnderstanding.selectedSheetIndexes),
+    () =>
+      buildUnderstandingCacheKey(workbookSheets, excelWorkbookUnderstanding.selectedSheetIndexes),
     [workbookSheets, excelWorkbookUnderstanding.selectedSheetIndexes]
   );
   const currentCacheEntry = useMemo(
-    () => (hasSelectionInteraction && excelWorkbookUnderstanding.selectedSheetIndexes.length > 0
-      ? loadExcelUnderstandingCache()[understandingCacheKey]
-      : undefined),
-    [hasSelectionInteraction, understandingCacheKey, excelWorkbookUnderstanding.selectedSheetIndexes.length]
+    () =>
+      hasSelectionInteraction && excelWorkbookUnderstanding.selectedSheetIndexes.length > 0
+        ? loadExcelUnderstandingCache()[understandingCacheKey]
+        : undefined,
+    [
+      hasSelectionInteraction,
+      understandingCacheKey,
+      excelWorkbookUnderstanding.selectedSheetIndexes.length,
+    ]
   );
 
   useEffect(() => {
@@ -260,15 +277,22 @@ export const ExcelSheetPairsTab: React.FC = () => {
       saveExcelUnderstandingCacheEntry({
         cacheKey: understandingCacheKey,
         summary: result.summary,
-        promptRequestText: result.contextAnalysis?.promptRequestText ? String(result.contextAnalysis.promptRequestText) : undefined,
-        rawAiResponse: result.contextAnalysis?.rawAiResponse ? String(result.contextAnalysis.rawAiResponse) : undefined,
+        promptRequestText: result.contextAnalysis?.promptRequestText
+          ? String(result.contextAnalysis.promptRequestText)
+          : undefined,
+        rawAiResponse: result.contextAnalysis?.rawAiResponse
+          ? String(result.contextAnalysis.rawAiResponse)
+          : undefined,
         updatedAt: Date.now(),
       });
-      addDebugLog('info', 'Excel 文档理解', 
+      addDebugLog(
+        'info',
+        'Excel 文档理解',
         `【理解摘要】\n${result.summary}\n\n【发送给 AI 的请求原文】\n${result.contextAnalysis?.promptRequestText || '无'}\n\n【AI 原始返回】\n${result.contextAnalysis?.rawAiResponse || '无'}`
       );
     } catch (understandingError) {
-      const errorMessage = understandingError instanceof Error ? understandingError.message : '文档理解失败';
+      const errorMessage =
+        understandingError instanceof Error ? understandingError.message : '文档理解失败';
       setExcelWorkbookUnderstandingState({
         isUnderstanding: false,
         error: {
@@ -297,7 +321,7 @@ export const ExcelSheetPairsTab: React.FC = () => {
   return (
     <div className="excel-sheet-pairs-tab">
       <div className="excel-understanding-card">
-        <div 
+        <div
           className="excel-understanding-header"
           onClick={() => setUnderstandingCollapsed((value) => !value)}
         >
@@ -306,7 +330,13 @@ export const ExcelSheetPairsTab: React.FC = () => {
             <p>选择要参与业务理解的 sheet，然后单独执行文档理解。</p>
           </div>
           <div className="excel-understanding-actions" onClick={(e) => e.stopPropagation()}>
-            <button className="sheet-action-btn refresh-btn" onClick={() => { void loadWorkbookSheets(); }} disabled={loading}>
+            <button
+              className="sheet-action-btn refresh-btn"
+              onClick={() => {
+                void loadWorkbookSheets();
+              }}
+              disabled={loading}
+            >
               {loading ? '加载中...' : '刷新'}
             </button>
             <button
@@ -325,7 +355,9 @@ export const ExcelSheetPairsTab: React.FC = () => {
             </button>
             <button
               className="sheet-action-btn sheet-action-btn-primary"
-              onClick={() => { void handleUnderstandWorkbook(); }}
+              onClick={() => {
+                void handleUnderstandWorkbook();
+              }}
               disabled={loading || excelWorkbookUnderstanding.isUnderstanding}
             >
               {excelWorkbookUnderstanding.isUnderstanding ? '理解中...' : '理解'}
@@ -338,9 +370,10 @@ export const ExcelSheetPairsTab: React.FC = () => {
           <span>参与比较: {activeCompareCount}</span>
           <span>已跳过: {sheetPairs.length - activeCompareCount}</span>
           <span>已选 sheet: {excelWorkbookUnderstanding.selectedSheetIndexes.length}</span>
-          {hasSelectionInteraction && excelWorkbookUnderstanding.selectedSheetIndexes.length > 0 && (
-            <span>{currentCacheEntry ? '缓存: 已命中' : '缓存: 未命中'}</span>
-          )}
+          {hasSelectionInteraction &&
+            excelWorkbookUnderstanding.selectedSheetIndexes.length > 0 && (
+              <span>{currentCacheEntry ? '缓存: 已命中' : '缓存: 未命中'}</span>
+            )}
         </div>
 
         {!understandingCollapsed && (
@@ -362,7 +395,9 @@ export const ExcelSheetPairsTab: React.FC = () => {
         )}
 
         {excelWorkbookUnderstanding.error?.message && (
-          <div className="analysis-pair-result-error">❌ {excelWorkbookUnderstanding.error.message}</div>
+          <div className="analysis-pair-result-error">
+            ❌ {excelWorkbookUnderstanding.error.message}
+          </div>
         )}
 
         {excelWorkbookUnderstanding.summary && (
@@ -381,7 +416,6 @@ export const ExcelSheetPairsTab: React.FC = () => {
           当前没有可展示的 sheet 对照组，请确认工作簿已包含模板 sheet 和真实数据 sheet。
         </div>
       )}
-
     </div>
   );
 };

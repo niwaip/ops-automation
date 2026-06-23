@@ -1,8 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import {
-  TakeoverTriggerRequest,
-  TakeoverTriggerResponse,
-} from '../../interfaces';
+import { TakeoverTriggerRequest, TakeoverTriggerResponse } from '../../interfaces';
 import { getSessionBrokerUrl } from '../../config/service-endpoints';
 
 interface TakeoverResponse {
@@ -27,9 +24,7 @@ export class TakeoverService {
    * Transitions session state from RUNNING to HUMAN_CONTROL
    */
   async triggerTakeover(request: TakeoverTriggerRequest): Promise<TakeoverTriggerResponse> {
-    this.logger.warn(
-      `Triggering takeover for session ${request.session_id}: ${request.reason}`,
-    );
+    this.logger.warn(`Triggering takeover for session ${request.session_id}: ${request.reason}`);
 
     try {
       const response = await fetch(
@@ -42,14 +37,12 @@ export class TakeoverService {
           body: JSON.stringify({
             reason: request.reason,
           }),
-        },
+        }
       );
 
       if (!response.ok) {
         const errorText = await response.text();
-        this.logger.error(
-          `Takeover request failed: ${response.status} - ${errorText}`,
-        );
+        this.logger.error(`Takeover request failed: ${response.status} - ${errorText}`);
         return {
           success: false,
           session_state: 'RUNNING',
@@ -57,11 +50,9 @@ export class TakeoverService {
         };
       }
 
-      const data = await response.json() as TakeoverResponse;
+      const data = (await response.json()) as TakeoverResponse;
 
-      this.logger.log(
-        `Takeover successful for session ${request.session_id}: state=${data.state}`,
-      );
+      this.logger.log(`Takeover successful for session ${request.session_id}: state=${data.state}`);
 
       return {
         success: true,
@@ -83,31 +74,23 @@ export class TakeoverService {
    * Release takeover (continue session)
    * Transitions session state from HUMAN_CONTROL to RUNNING
    */
-  async releaseTakeover(
-    sessionId: string,
-    stepId: string,
-  ): Promise<TakeoverTriggerResponse> {
+  async releaseTakeover(sessionId: string, stepId: string): Promise<TakeoverTriggerResponse> {
     this.logger.log(`Releasing takeover for session ${sessionId}, continuing from step ${stepId}`);
 
     try {
-      const response = await fetch(
-        `${this.sessionBrokerUrl}/session/${sessionId}/continue`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            step_id: stepId,
-          }),
+      const response = await fetch(`${this.sessionBrokerUrl}/session/${sessionId}/continue`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-      );
+        body: JSON.stringify({
+          step_id: stepId,
+        }),
+      });
 
       if (!response.ok) {
         const errorText = await response.text();
-        this.logger.error(
-          `Continue request failed: ${response.status} - ${errorText}`,
-        );
+        this.logger.error(`Continue request failed: ${response.status} - ${errorText}`);
         return {
           success: false,
           session_state: 'HUMAN_CONTROL',
@@ -115,11 +98,9 @@ export class TakeoverService {
         };
       }
 
-      const data = await response.json() as TakeoverResponse;
+      const data = (await response.json()) as TakeoverResponse;
 
-      this.logger.log(
-        `Continue successful for session ${sessionId}: state=${data.state}`,
-      );
+      this.logger.log(`Continue successful for session ${sessionId}: state=${data.state}`);
 
       return {
         success: true,
@@ -142,18 +123,15 @@ export class TakeoverService {
    */
   async getSessionState(sessionId: string): Promise<string | null> {
     try {
-      const response = await fetch(
-        `${this.sessionBrokerUrl}/session/${sessionId}`,
-        {
-          method: 'GET',
-        },
-      );
+      const response = await fetch(`${this.sessionBrokerUrl}/session/${sessionId}`, {
+        method: 'GET',
+      });
 
       if (!response.ok) {
         return null;
       }
 
-      const data = await response.json() as { state?: string };
+      const data = (await response.json()) as { state?: string };
       return data.state ?? null;
     } catch {
       return null;
@@ -180,7 +158,7 @@ export class TakeoverService {
    * Batch trigger takeover for multiple sessions
    */
   async batchTriggerTakeover(
-    requests: TakeoverTriggerRequest[],
+    requests: TakeoverTriggerRequest[]
   ): Promise<TakeoverTriggerResponse[]> {
     const results: TakeoverTriggerResponse[] = [];
 

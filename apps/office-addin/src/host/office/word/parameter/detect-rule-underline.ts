@@ -1,15 +1,8 @@
-import {
-  extractWordParamAnchorText,
-  extractWordParamName,
-} from './anchor';
+import { extractWordParamAnchorText, extractWordParamName } from './anchor';
 import { looksLikeWordHeaderTitle } from './heading-filter';
 import { buildWordParamPromptParts } from './prompt';
 import { findSampleMatchForWordParam } from './sample';
-import type {
-  WordDetectedParam,
-  WordParagraphLike,
-  WordUnderlineLike,
-} from './types';
+import type { WordDetectedParam, WordParagraphLike, WordUnderlineLike } from './types';
 import { safeWordRuleText } from '../shared/text';
 
 /**
@@ -26,9 +19,14 @@ import { safeWordRuleText } from '../shared/text';
 export function detectWordUnderlineParams(
   underlines: WordUnderlineLike[],
   paragraphs: WordParagraphLike[] = [],
-  sampleText = '',
+  sampleText = ''
 ): WordDetectedParam[] {
-  const paragraphIdByIndex = new Map(paragraphs.map((paragraph) => [paragraph.index, paragraph.id || `word-paragraph-${paragraph.index}`]));
+  const paragraphIdByIndex = new Map(
+    paragraphs.map((paragraph) => [
+      paragraph.index,
+      paragraph.id || `word-paragraph-${paragraph.index}`,
+    ])
+  );
   const paragraphByIndex = new Map(paragraphs.map((paragraph) => [paragraph.index, paragraph]));
 
   const resolveUnderlineAnchorText = (underline: WordUnderlineLike): string => {
@@ -87,9 +85,11 @@ export function detectWordUnderlineParams(
       paragraphText: underline.paragraphText,
       sourceBlockId: paragraphIdByIndex.get(underline.paragraphIndex),
     };
-    return [{
-      ...param,
-      ...findSampleMatchForWordParam(sampleText, param),
-    }];
+    return [
+      {
+        ...param,
+        ...findSampleMatchForWordParam(sampleText, param),
+      },
+    ];
   });
 }

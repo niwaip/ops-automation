@@ -1,0 +1,22 @@
+[
+  {
+    "inputText": "填写 Customer name: AliceCN999",
+    "createdAt": "2026-06-22T00:05:54.944Z",
+    "parserSource": "field-fill-profile",
+    "effectiveProfileVersions": {
+      "fieldFill": "default"
+    },
+    "parserMetadata": {
+      "fieldFill": {
+        "value": "AliceCN999",
+        "reason": "field-fill-default-candidate",
+        "status": "success",
+        "selector": "role=textbox[name=\"Customer name:\"]",
+        "resolvedField": "Customer name:",
+        "usedRuntimeProfile": false,
+        "matchedRuntimeRuleIds": [],
+        "resolvedCanonicalField": "Customer name:"
+      }
+    }
+  }
+]

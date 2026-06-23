@@ -32,7 +32,7 @@ export class RecorderService implements OnModuleDestroy {
 
   constructor(
     private eventEmitter: EventEmitter2,
-    private readonly workerService: WorkerService,
+    private readonly workerService: WorkerService
   ) {}
 
   async onModuleDestroy() {
@@ -44,7 +44,7 @@ export class RecorderService implements OnModuleDestroy {
   async startBrowser(
     sessionId: string,
     startUrl: string,
-    options?: StartBrowserOptions,
+    options?: StartBrowserOptions
   ): Promise<{ cdpPort: number; noVncPort: number }> {
     const codegenBaseUrl = this.resolveCodegenBaseUrl(options?.codegenBaseUrl);
     this.logger.log(`Starting codegen for session ${sessionId}`);
@@ -58,7 +58,7 @@ export class RecorderService implements OnModuleDestroy {
       sessionId,
       startUrl,
       codegenBaseUrl,
-      options?.reuseBrowser === true,
+      options?.reuseBrowser === true
     );
     if (!success) {
       throw new Error('Failed to start codegen');
@@ -87,7 +87,7 @@ export class RecorderService implements OnModuleDestroy {
     options?: {
       startUrl?: string;
       reuseExistingPage?: boolean;
-    },
+    }
   ): Promise<{ sessionId: string }> {
     const codegenBaseUrl = await this.resolveTakeoverCodegenBaseUrl(runtimeSessionId);
     await this.startBrowser(runtimeSessionId, options?.startUrl || 'about:blank', {
@@ -127,14 +127,14 @@ export class RecorderService implements OnModuleDestroy {
     sessionId: string,
     url: string,
     codegenBaseUrl: string,
-    reuseBrowser = false,
+    reuseBrowser = false
   ): Promise<boolean> {
     return new Promise<boolean>((resolve) => {
       const req = http.get(
         `${codegenBaseUrl}/start?session=${encodeURIComponent(sessionId)}&url=${encodeURIComponent(url)}&reuse_browser=${reuseBrowser ? 'true' : 'false'}`,
         (res) => {
           let data = '';
-          res.on('data', (chunk) => data += chunk);
+          res.on('data', (chunk) => (data += chunk));
           res.on('end', () => {
             try {
               const result = JSON.parse(data);
@@ -189,7 +189,7 @@ export class RecorderService implements OnModuleDestroy {
     return new Promise<string>((resolve, reject) => {
       const req = http.get(`${codegenBaseUrl}/script`, (res) => {
         let data = '';
-        res.on('data', (chunk) => data += chunk);
+        res.on('data', (chunk) => (data += chunk));
         res.on('end', () => {
           try {
             const result = JSON.parse(data);
@@ -226,7 +226,7 @@ export class RecorderService implements OnModuleDestroy {
       const result = await new Promise<any>((resolve, reject) => {
         const req = http.get(`${session.codegenBaseUrl}/stop`, (res) => {
           let data = '';
-          res.on('data', (chunk) => data += chunk);
+          res.on('data', (chunk) => (data += chunk));
           res.on('end', () => {
             try {
               resolve(JSON.parse(data));
@@ -255,7 +255,7 @@ export class RecorderService implements OnModuleDestroy {
   }
 
   async stopTakeoverRecording(
-    runtimeSessionId: string,
+    runtimeSessionId: string
   ): Promise<{ rawScript: string; recordedAt: string }> {
     const sessionBeforeStop = this.sessions.get(runtimeSessionId);
     await this.stopBrowser(runtimeSessionId);

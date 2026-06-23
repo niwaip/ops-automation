@@ -11,9 +11,6 @@ export interface SocketPort {
   connect(): Promise<void> | void;
   disconnect(): Promise<void> | void;
   emit(event: string, payload?: unknown): Promise<void> | void;
-  subscribe(
-    event: string,
-    listener: (payload: unknown) => void,
-  ): SocketSubscription;
+  subscribe(event: string, listener: (payload: unknown) => void): SocketSubscription;
   getState?(): SocketConnectionState;
 }

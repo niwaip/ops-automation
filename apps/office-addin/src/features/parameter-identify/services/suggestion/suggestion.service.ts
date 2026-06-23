@@ -1,8 +1,9 @@
 import { HostAdapter } from '../../../../host/adapters';
-import {
-  resolveAnalysisExecutor,
-} from '../analysis-executor';
-import type { AnalyzeDocumentOptions, AnalyzeDocumentResult } from '../identify/common/identify.types';
+import { resolveAnalysisExecutor } from '../analysis-executor';
+import type {
+  AnalyzeDocumentOptions,
+  AnalyzeDocumentResult,
+} from '../identify/common/identify.types';
 import {
   analyzeExcelDocumentWithAI,
   analyzeExcelWorkbookUnderstanding,
@@ -13,7 +14,6 @@ import {
 } from '../identify/excel/excel-suggestion-merge';
 import { enrichWordSuggestionAnchors } from '../identify/word/word-anchor-enricher';
 import { buildAnalyzeRequestPayload } from './suggestion.service.shared';
-
 
 export async function analyzeDocumentWithAI(
   adapter: HostAdapter,
@@ -27,14 +27,14 @@ export async function analyzeDocumentWithAI(
     useMultiStage: options.useMultiStage,
     requestedKind: options.analysisExecutor,
     thinking: options.thinking,
-    aiOrchestratorBaseUrl: (options as AnalyzeDocumentOptions & { aiOrchestratorBaseUrl?: string }).aiOrchestratorBaseUrl,
-    aiOrchestratorAuthToken: (options as AnalyzeDocumentOptions & { aiOrchestratorAuthToken?: string }).aiOrchestratorAuthToken,
+    aiOrchestratorBaseUrl: (options as AnalyzeDocumentOptions & { aiOrchestratorBaseUrl?: string })
+      .aiOrchestratorBaseUrl,
+    aiOrchestratorAuthToken: (
+      options as AnalyzeDocumentOptions & { aiOrchestratorAuthToken?: string }
+    ).aiOrchestratorAuthToken,
   });
-  const requestMode = executor.kind === 'chat'
-    ? 'chat'
-    : options.useMultiStage
-      ? 'multi-stage'
-      : 'direct';
+  const requestMode =
+    executor.kind === 'chat' ? 'chat' : options.useMultiStage ? 'multi-stage' : 'direct';
 
   if (adapter.host === 'excel') {
     const excelResult = await analyzeExcelDocumentWithAI({
@@ -59,7 +59,10 @@ export async function analyzeDocumentWithAI(
     throw error;
   }
 
-  const remoteSuggestions = annotateSuggestionSource(response.rawSuggestions || response.suggestions, 'ai');
+  const remoteSuggestions = annotateSuggestionSource(
+    response.rawSuggestions || response.suggestions,
+    'ai'
+  );
   const finalSuggestions =
     adapter.host === 'word'
       ? enrichWordSuggestionAnchors(documentIR, remoteSuggestions)

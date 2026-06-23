@@ -1,10 +1,6 @@
 import { Logger } from '@nestjs/common';
-import {
-  WorkflowTemplateFieldSpec,
-} from './workflow-assets';
-import {
-  safeText,
-} from './document-xml-parser';
+import { WorkflowTemplateFieldSpec } from './workflow-assets';
+import { safeText } from './document-xml-parser';
 import {
   resolveTabularRowWidth,
   shouldMergeBilingualTabularRows,
@@ -25,7 +21,11 @@ export function readSelector(value: Record<string, unknown>, selector: string): 
   const trySegments = (segments: string[]): unknown => {
     let current: unknown = value;
     for (const segment of segments) {
-      if (!current || typeof current !== 'object' || !(segment in (current as Record<string, unknown>))) {
+      if (
+        !current ||
+        typeof current !== 'object' ||
+        !(segment in (current as Record<string, unknown>))
+      ) {
         return undefined;
       }
       current = (current as Record<string, unknown>)[segment];
@@ -60,7 +60,11 @@ export function readSelector(value: Record<string, unknown>, selector: string): 
   return undefined;
 }
 
-export function extractFieldValue(fieldId: string, userInput: string, overrideValue: unknown): unknown {
+export function extractFieldValue(
+  fieldId: string,
+  userInput: string,
+  overrideValue: unknown
+): unknown {
   if (overrideValue !== undefined) {
     return overrideValue;
   }
@@ -79,15 +83,9 @@ export function extractFieldValue(fieldId: string, userInput: string, overrideVa
 
   switch (fieldId) {
     case 'partyAName':
-      return matchValue([
-        /甲方(?:是|为)?([^，。；]+)/u,
-        /委托方(?:是|为)?[:：]?\s*([^，。；]+)/u,
-      ]);
+      return matchValue([/甲方(?:是|为)?([^，。；]+)/u, /委托方(?:是|为)?[:：]?\s*([^，。；]+)/u]);
     case 'partyBName':
-      return matchValue([
-        /乙方(?:是|为)?([^，。；]+)/u,
-        /受托方(?:是|为)?[:：]?\s*([^，。；]+)/u,
-      ]);
+      return matchValue([/乙方(?:是|为)?([^，。；]+)/u, /受托方(?:是|为)?[:：]?\s*([^，。；]+)/u]);
     case 'projectName':
       return matchValue([
         /项目(?:名称)?(?:是|为)?([^，。；]+)/u,
@@ -105,30 +103,19 @@ export function extractFieldValue(fieldId: string, userInput: string, overrideVa
         /(人民币[\d,]+(?:\.\d+)?元?)/u,
       ]);
     case 'paymentMode':
-      return matchValue([
-        /(一次支付|一次付款|一次性支付|一次|分期支付|分期付款|分期|分次支付)/u,
-      ]);
+      return matchValue([/(一次支付|一次付款|一次性支付|一次|分期支付|分期付款|分期|分次支付)/u]);
     case 'bankAccount':
-      return matchValue([
-        /(?:银行账号|银行账户)(?:为|是)?([0-9]{8,})/u,
-        /\b([0-9]{8,})\b/u,
-      ]);
+      return matchValue([/(?:银行账号|银行账户)(?:为|是)?([0-9]{8,})/u, /\b([0-9]{8,})\b/u]);
     case 'signingDate':
       return matchValue([
         /(?:签订日期|签约日期)(?:为|是)?([0-9]{4}[年/-][0-9]{1,2}[月/-][0-9]{1,2}日?)/u,
       ]);
     case 'acceptanceDays':
-      return matchValue([
-        /验收(?:期限|天数)?(?:为|是)?([0-9]+)\s*天/u,
-      ]);
+      return matchValue([/验收(?:期限|天数)?(?:为|是)?([0-9]+)\s*天/u]);
     case 'paymentDeadlineDays':
-      return matchValue([
-        /付款(?:期限|截止天数)?(?:为|是)?([0-9]+)\s*(?:天|工作日)/u,
-      ]);
+      return matchValue([/付款(?:期限|截止天数)?(?:为|是)?([0-9]+)\s*(?:天|工作日)/u]);
     case 'serviceScopeSummary':
-      return matchValue([
-        /(?:服务内容|服务范围)(?:是|为)?([^。；]+)/u,
-      ]);
+      return matchValue([/(?:服务内容|服务范围)(?:是|为)?([^。；]+)/u]);
     default:
       return undefined;
   }
@@ -136,7 +123,7 @@ export function extractFieldValue(fieldId: string, userInput: string, overrideVa
 
 export function parseListValueFromText(
   rawInput: string,
-  spec: WorkflowTemplateFieldSpec,
+  spec: WorkflowTemplateFieldSpec
 ): Array<Record<string, unknown>> | undefined {
   const normalizedInput = typeof rawInput === 'string' ? rawInput.replace(/\r/g, '') : '';
   if (!normalizedInput || !normalizedInput.includes('\t')) {
@@ -168,9 +155,9 @@ export function parseListValueFromText(
     const currentRow = candidateRows[index];
     const nextRow = candidateRows[index + 1];
     if (nextRow && shouldMergeBilingualTabularRows(currentRow, nextRow, expectedWidth)) {
-      logicalRows.push(currentRow.map((cell, cellIndex) =>
-        mergeTabularCellText(cell, nextRow[cellIndex]),
-      ));
+      logicalRows.push(
+        currentRow.map((cell, cellIndex) => mergeTabularCellText(cell, nextRow[cellIndex]))
+      );
       index += 1;
       continue;
     }
@@ -182,9 +169,7 @@ export function parseListValueFromText(
   }
 
   const headerRow = logicalRows[0];
-  const dataRows = logicalRows
-    .slice(1)
-    .filter((row) => row.some((cell) => safeText(cell)));
+  const dataRows = logicalRows.slice(1).filter((row) => row.some((cell) => safeText(cell)));
 
   if (dataRows.length === 0) {
     return undefined;
@@ -204,7 +189,7 @@ export function parseListValueFromText(
   });
   if (spec.type === 'table_row' && verboseDebugEnabled) {
     logger.log(
-      `[table-data] parsed field=${spec.fieldId} rows=${items.length} width=${expectedWidth}`,
+      `[table-data] parsed field=${spec.fieldId} rows=${items.length} width=${expectedWidth}`
     );
   }
   return items;

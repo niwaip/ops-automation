@@ -5,6 +5,7 @@
 
 > 本文定义浏览器执行链路从“step 级原子执行”升级为“phase 级阶段执行”的设计方案。  
 > 目标是在不影响现有文档执行与生成能力的前提下，为浏览器 workflow 增加幂等执行、失败恢复、人工接管、接管后继续执行的能力。
+> 当前状态：本文中的 phase 骨架、DTO、mapper、phase 写库、接管/恢复基础链路和前端 phase 展示已大体落地；但 `precheck/postcheck`、`BrowserPhaseInput/Result` 的完整协议、AI recovery planner 和部分理想化 phase 模型仍然是目标态设计，而非全部现状。
 
 ---
 

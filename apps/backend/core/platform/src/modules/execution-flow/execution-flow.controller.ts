@@ -46,9 +46,10 @@ export class ExecutionFlowTemplateController {
     message: string;
     status: HttpStatus;
   } {
-    const rawMessage = typeof error?.message === 'string' && error.message.trim()
-      ? error.message
-      : '验证失败，请检查服务状态后重试';
+    const rawMessage =
+      typeof error?.message === 'string' && error.message.trim()
+        ? error.message
+        : '验证失败，请检查服务状态后重试';
     const normalizedMessage = rawMessage.toLowerCase();
 
     if (normalizedMessage.includes('template not found')) {
@@ -133,7 +134,9 @@ export class ExecutionFlowTemplateController {
    */
   @Get('popular')
   async getPopularTemplates(@Query('limit') limit?: string) {
-    const templates = await this.templateService.getPopularTemplates(limit ? parseInt(limit, 10) : undefined);
+    const templates = await this.templateService.getPopularTemplates(
+      limit ? parseInt(limit, 10) : undefined
+    );
     return { templates };
   }
 
@@ -228,7 +231,7 @@ export class ExecutionFlowTemplateController {
     @Param('id') id: string,
     @Query('aiServiceUrl') aiServiceUrl?: string,
     @Query('enableExecutionTest') enableExecutionTest?: string,
-    @Body() body?: { testParams?: Record<string, unknown>; testUserInput?: string },
+    @Body() body?: { testParams?: Record<string, unknown>; testUserInput?: string }
   ) {
     try {
       const enableExec = enableExecutionTest === 'true';
@@ -239,7 +242,7 @@ export class ExecutionFlowTemplateController {
         aiServiceUrl,
         testParams,
         enableExec,
-        testUserInput,
+        testUserInput
       );
       return { validationResult };
     } catch (error) {

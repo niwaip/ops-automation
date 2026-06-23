@@ -1,9 +1,10 @@
 # Feature Structure
 
 `features/` follows the business-step-first layout defined in
-`docs/design/Office-Addin-Structure-Refactor-Complete-Solution_v1.0.md`.
+`docs/design/archive/Office-Addin-Structure-Refactor-Complete-Solution_v1.0.md`.
 
 Canonical feature paths:
+
 - `document-load/`
 - `parameter-query/`
 - `parameter-identify/`
@@ -12,11 +13,13 @@ Canonical feature paths:
 - `workflow/`
 
 Rules:
+
 - Add new implementation under the canonical feature-step directories above.
 - Inside each feature, prefer `shared/`, `word/`, and `excel/` splits.
 - Do not introduce new business logic under historical host-first directories.
 
 Legacy compatibility directories:
+
 - `word/`
 - `excel/`
 

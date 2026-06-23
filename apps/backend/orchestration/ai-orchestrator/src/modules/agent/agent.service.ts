@@ -1,6 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
-import { AIAgentDTO, CreateAgentDTO, ChatMessage, ExecuteActivityResponseDTO } from '../../interfaces';
+import {
+  AIAgentDTO,
+  CreateAgentDTO,
+  ChatMessage,
+  ExecuteActivityResponseDTO,
+} from '../../interfaces';
 import { OpenAICompatibleClient } from '../../client/openai-compatible';
 import { promises as fs } from 'fs';
 import * as path from 'path';
@@ -17,7 +22,7 @@ function assertSafeIdentifier(value: string, label: string): void {
   if (!SAFE_IDENTIFIER_RE.test(value)) {
     throw new Error(
       `[Security] ${label} contains invalid characters: "${value}". ` +
-      'Only alphanumeric characters, underscores, hyphens and dots are allowed.',
+        'Only alphanumeric characters, underscores, hyphens and dots are allowed.'
     );
   }
 }
@@ -73,18 +78,14 @@ export class AgentService {
    * List agents by session ID
    */
   async listAgentsBySession(sessionId: string): Promise<AIAgentDTO[]> {
-    return Array.from(this.agents.values()).filter(
-      (agent) => agent.session_id === sessionId,
-    );
+    return Array.from(this.agents.values()).filter((agent) => agent.session_id === sessionId);
   }
 
   /**
    * List agents by model ID
    */
   async listAgentsByModel(modelId: string): Promise<AIAgentDTO[]> {
-    return Array.from(this.agents.values()).filter(
-      (agent) => agent.model_id === modelId,
-    );
+    return Array.from(this.agents.values()).filter((agent) => agent.model_id === modelId);
   }
 
   /**
@@ -104,7 +105,10 @@ export class AgentService {
   /**
    * Update agent status
    */
-  async setAgentStatus(id: string, status: 'idle' | 'active' | 'error'): Promise<AIAgentDTO | null> {
+  async setAgentStatus(
+    id: string,
+    status: 'idle' | 'active' | 'error'
+  ): Promise<AIAgentDTO | null> {
     const agent = this.agents.get(id);
     if (!agent) return null;
 
@@ -231,15 +235,18 @@ export class AgentService {
     code: string,
     fn: string,
     taskQueue: string,
-    input?: Record<string, any>,
+    input?: Record<string, any>
   ): Promise<ExecuteActivityResponseDTO> {
     // ⚠️ 安全门控：此端点仅用于开发/测试目的，生产环境必须显式开启才可使用。
     // 设置环境变量 ENABLE_AGENT_EXECUTE_ACTIVITY=true 以启用（不建议在生产开启）。
     if (process.env.ENABLE_AGENT_EXECUTE_ACTIVITY !== 'true') {
-      this.logger.warn('executeActivity endpoint is disabled. Set ENABLE_AGENT_EXECUTE_ACTIVITY=true to enable (not recommended in production).');
+      this.logger.warn(
+        'executeActivity endpoint is disabled. Set ENABLE_AGENT_EXECUTE_ACTIVITY=true to enable (not recommended in production).'
+      );
       return {
         success: false,
-        error: 'This endpoint is disabled. It is intended for development/testing only and must be explicitly enabled via ENABLE_AGENT_EXECUTE_ACTIVITY=true.',
+        error:
+          'This endpoint is disabled. It is intended for development/testing only and must be explicitly enabled via ENABLE_AGENT_EXECUTE_ACTIVITY=true.',
         logs: [],
       };
     }
@@ -368,29 +375,33 @@ if __name__ == "__main__":
       // Parse the result from stdout (assuming the Python script prints JSON result)
       let result: any;
       let errorResult: string | undefined;
-      
+
       // Check for error in stderr first
       if (stderr) {
-          try {
-              const errJson = JSON.parse(stderr);
-              if (errJson.error) {
-                  errorResult = errJson.error;
-              }
-          } catch (e) {
-              // If stderr is not JSON, treat it as a raw error message
-              errorResult = stderr;
+        try {
+          const errJson = JSON.parse(stderr);
+          if (errJson.error) {
+            errorResult = errJson.error;
           }
+        } catch (e) {
+          // If stderr is not JSON, treat it as a raw error message
+          errorResult = stderr;
+        }
       }
 
       if (errorResult) {
-          return { success: false, error: errorResult, logs };
+        return { success: false, error: errorResult, logs };
       }
 
       try {
         result = JSON.parse(stdout);
       } catch (parseError: any) {
-        this.logger.error(`Failed to parse stdout as JSON: ${parseError.message}. Raw stdout: ${stdout}`);
-        logs.push(`[${new Date().toISOString()}] Error parsing result: ${parseError.message}. Raw stdout: ${stdout}`);
+        this.logger.error(
+          `Failed to parse stdout as JSON: ${parseError.message}. Raw stdout: ${stdout}`
+        );
+        logs.push(
+          `[${new Date().toISOString()}] Error parsing result: ${parseError.message}. Raw stdout: ${stdout}`
+        );
         return { success: false, error: 'Invalid JSON response from activity execution', logs };
       }
 
@@ -398,7 +409,9 @@ if __name__ == "__main__":
     } catch (error: any) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       this.logger.error(`Failed to execute activity: ${errorMsg}. Stderr: ${error.stderr}`);
-      logs.push(`[${new Date().toISOString()}] Execution failed: ${errorMsg}. Stderr: ${error.stderr}`);
+      logs.push(
+        `[${new Date().toISOString()}] Execution failed: ${errorMsg}. Stderr: ${error.stderr}`
+      );
       return { success: false, error: errorMsg, logs };
     } finally {
       // Clean up temporary files

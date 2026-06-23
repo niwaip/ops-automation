@@ -1,0 +1,57 @@
+{
+  "release": {
+    "id": "f79d4d08-bbe7-49b0-bee9-e1f8f5aca69f",
+    "sourceType": "temporal_workflow",
+    "sourceId": "b8626f64-629b-43dc-a092-5563f34f5be2",
+    "sourceName": "AUTO-test",
+    "sourceStatus": "draft",
+    "releaseVersion": 1,
+    "status": "validation_failed",
+    "approvalStatus": "not_required",
+    "deploymentStatus": "not_started",
+    "currentSourceSnapshotId": "cb68ba6d-c4a3-40b0-aabc-f6e54831176e",
+    "currentBuildId": "90e0ebab-1b39-4807-a647-e43534cb9402",
+    "latestSuccessfulBuildId": "90e0ebab-1b39-4807-a647-e43534cb9402",
+    "latestValidationId": "5f6de3bb-d598-43b6-bf52-809daec99bb9",
+    "latestSuccessfulValidationId": "1e7e4f3b-3613-4537-8417-23d05284e670",
+    "currentSkillDraftId": null,
+    "publishedSkillId": null,
+    "lastDeploymentId": null,
+    "rollbackOfReleaseId": null,
+    "createdBy": "96cfc65b-3828-40c4-a10e-6d9063df86fd",
+    "createdAt": "2026-04-25T04:05:25.419Z",
+    "updatedAt": "2026-04-25T04:22:53.430Z"
+  },
+  "validation": {
+    "id": "5f6de3bb-d598-43b6-bf52-809daec99bb9",
+    "releaseId": "f79d4d08-bbe7-49b0-bee9-e1f8f5aca69f",
+    "buildId": "90e0ebab-1b39-4807-a647-e43534cb9402",
+    "validationType": "sandbox",
+    "inputSnapshot": { "city": "shanghai", "format": "j1" },
+    "resultSnapshot": {
+      "fn": "testWorkflow",
+      "error": "module 'temporalio.workflow' has no attribute 'uuid4'",
+      "result": {
+        "result": {
+          "logs": [],
+          "error": "module 'temporalio.workflow' has no attribute 'uuid4'",
+          "result": null,
+          "success": false,
+          "traceback": "Traceback (most recent call last):\n  File \"/tmp/tmp0s9176at/runner.py\", line 201, in <module>\n    instance = target()\n               ^^^^^^^^\n  File \"/tmp/tmp0s9176at/activity.py\", line 75, in __init__\n    self.workflow_id = workflow.uuid4()\n                       ^^^^^^^^^^^^^^\nAttributeError: module 'temporalio.workflow' has no attribute 'uuid4'\n"
+        },
+        "success": true
+      }
+    },
+    "logs": [
+      "Sandbox response: {\"success\":true,\"result\":{\"result\":{\"error\":\"module 'temporalio.workflow' has no attribute 'uuid4'\",\"logs\":[],\"result\":null,\"success\":false,\"traceback\":\"Traceback (most recent call last):\\n  File \\\"/tmp/tmp0s9176at/runner.py\\\", line 201, in <module>\\n    instance = target()\\n               ^^^^^^^^\\n  File \\\"/tmp/tmp0s9176at/activity.py\\\", line 75, in __init__\\n    self.workflow_id = workflow.uuid4()\\n                       ^^^^^^^^^^^^^^\\nAttributeError: module 'temporalio.workflow' has no attribute 'uuid4'\\n\"},\"success\":true},\"workflow_id\":\"agent-session-workflow-validate-1777090972887\",\"activity_id\":\"workflow-validate-1777090972887\"}",
+      "执行错误: module 'temporalio.workflow' has no attribute 'uuid4'"
+    ],
+    "score": 50,
+    "success": false,
+    "errorSummary": "module 'temporalio.workflow' has no attribute 'uuid4'",
+    "startedAt": "2026-04-25T04:22:52.885Z",
+    "finishedAt": "2026-04-25T04:22:53.427Z",
+    "createdBy": "96cfc65b-3828-40c4-a10e-6d9063df86fd",
+    "createdAt": "2026-04-25T04:22:52.885Z"
+  }
+}

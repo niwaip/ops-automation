@@ -1,5 +1,5 @@
-import type { ApiClient } from "./client.js";
-import type { RuntimeConfigPort } from "../ports/runtime.port.js";
+import type { ApiClient } from './client.js';
+import type { RuntimeConfigPort } from '../ports/runtime.port.js';
 import type {
   ApprovalStatus,
   BrowserPhaseCheck,
@@ -10,7 +10,8 @@ import type {
   ExecutionStatus,
   ExecutionStepDto,
   ExecutionTakeoverRecordDto,
-} from "../types/execution.types.js";
+} from '../types/execution.types.js';
+import { resolveExecutionNormalizedResult } from '../domain/executions/result.js';
 
 export type {
   ApprovalStatus,
@@ -69,7 +70,7 @@ export interface CleanupExecutionsBeforeDateRequest {
 }
 
 const normalizeExecutionPhaseArtifact = (
-  raw: ExecutionPhaseArtifactDto,
+  raw: ExecutionPhaseArtifactDto
 ): ExecutionPhaseArtifactDto => ({
   ...raw,
   snapshotId: raw.snapshotId || undefined,
@@ -79,7 +80,7 @@ const normalizeExecutionPhaseArtifact = (
 });
 
 const normalizeExecutionTakeover = (
-  raw: ExecutionTakeoverRecordDto,
+  raw: ExecutionTakeoverRecordDto
 ): ExecutionTakeoverRecordDto => ({
   ...raw,
   reason: raw.reason || undefined,
@@ -89,9 +90,7 @@ const normalizeExecutionTakeover = (
   resolvedAt: raw.resolvedAt || undefined,
 });
 
-const normalizeExecutionPhaseStep = (
-  raw: ExecutionPhaseStepDto,
-): ExecutionPhaseStepDto => ({
+const normalizeExecutionPhaseStep = (raw: ExecutionPhaseStepDto): ExecutionPhaseStepDto => ({
   ...raw,
   stepId: raw.stepId || undefined,
   input: raw.input || undefined,
@@ -138,8 +137,12 @@ const normalizeExecution = (raw: ExecutionDto): ExecutionDto => ({
   endedAt: raw.endedAt || undefined,
   input: raw.input || undefined,
   normalizedInput: raw.normalizedInput || undefined,
-  semantic: raw.semantic || (raw.normalizedInput?.semantic as ExecutionDto["semantic"] | undefined) || undefined,
+  semantic:
+    raw.semantic ||
+    (raw.normalizedInput?.semantic as ExecutionDto['semantic'] | undefined) ||
+    undefined,
   result: raw.resultJson || raw.result || undefined,
+  normalizedResult: raw.normalizedResult || resolveExecutionNormalizedResult(raw),
   createdBy: raw.createdBy || undefined,
   createdByName: raw.createdByName || undefined,
   phases: raw.phases?.map(normalizeExecutionPhase) || [],
@@ -160,44 +163,35 @@ const normalizeExecutionStep = (raw: ExecutionStepDto): ExecutionStepDto => ({
   retryCount: raw.retryCount ?? 0,
 });
 
-const resolveExecutionPath = (
-  runtimeConfig: RuntimeConfigPort,
-  path: string,
-): string => {
+const resolveExecutionPath = (runtimeConfig: RuntimeConfigPort, path: string): string => {
   const baseUrl = runtimeConfig.controlPlaneApiBaseUrl?.trim();
-  return baseUrl ? `${baseUrl.replace(/\/+$/, "")}${path}` : path;
+  return baseUrl ? `${baseUrl.replace(/\/+$/, '')}${path}` : path;
 };
 
-export const createExecutionApi = (
-  client: ApiClient,
-  runtimeConfig: RuntimeConfigPort,
-) => ({
+export const createExecutionApi = (client: ApiClient, runtimeConfig: RuntimeConfigPort) => ({
   create: async (data: CreateExecutionRequest): Promise<ExecutionDto> =>
     normalizeExecution(
-      await client.post<ExecutionDto>(
-        resolveExecutionPath(runtimeConfig, "/executions"),
-        data,
-      ),
+      await client.post<ExecutionDto>(resolveExecutionPath(runtimeConfig, '/executions'), data)
     ),
   getById: async (id: string): Promise<ExecutionDto> =>
     normalizeExecution(
-      await client.get<ExecutionDto>(
-        resolveExecutionPath(runtimeConfig, `/executions/${id}`),
-      ),
+      await client.get<ExecutionDto>(resolveExecutionPath(runtimeConfig, `/executions/${id}`))
     ),
   getSteps: async (id: string): Promise<ExecutionStepDto[]> =>
     (
       await client.get<ExecutionStepDto[]>(
-        resolveExecutionPath(runtimeConfig, `/executions/${id}/steps`),
+        resolveExecutionPath(runtimeConfig, `/executions/${id}/steps`)
       )
     ).map(normalizeExecutionStep),
   getPhases: async (id: string): Promise<ExecutionPhaseDto[]> =>
     (
       await client.get<ExecutionPhaseDto[]>(
-        resolveExecutionPath(runtimeConfig, `/executions/${id}/phases`),
+        resolveExecutionPath(runtimeConfig, `/executions/${id}/phases`)
       )
     ).map(normalizeExecutionPhase),
-  list: async (params?: ListExecutionsRequest): Promise<{
+  list: async (
+    params?: ListExecutionsRequest
+  ): Promise<{
     data: ExecutionDto[];
     total: number;
     page: number;
@@ -208,124 +202,110 @@ export const createExecutionApi = (
       total: number;
       page: number;
       pageSize: number;
-    }>(
-      resolveExecutionPath(runtimeConfig, "/executions"),
-      { params },
-    );
+    }>(resolveExecutionPath(runtimeConfig, '/executions'), { params });
     return {
       ...response,
       data: response.data.map(normalizeExecution),
     };
   },
-  takeover: async (
-    id: string,
-    data: TakeoverExecutionRequest,
-  ): Promise<ExecutionDto> =>
+  takeover: async (id: string, data: TakeoverExecutionRequest): Promise<ExecutionDto> =>
     normalizeExecution(
       await client.post<ExecutionDto>(
         resolveExecutionPath(runtimeConfig, `/executions/${id}/takeover`),
-        data,
-      ),
+        data
+      )
     ),
   takeoverPhase: async (
     id: string,
     phaseKey: string,
-    data: TakeoverExecutionRequest,
+    data: TakeoverExecutionRequest
   ): Promise<ExecutionDto> =>
     normalizeExecution(
       await client.post<ExecutionDto>(
         resolveExecutionPath(
           runtimeConfig,
-          `/executions/${id}/phases/${encodeURIComponent(phaseKey)}/takeover`,
+          `/executions/${id}/phases/${encodeURIComponent(phaseKey)}/takeover`
         ),
-        data,
-      ),
+        data
+      )
     ),
   reconcilePhaseTakeover: async (
     id: string,
     phaseKey: string,
-    data?: ReconcilePhaseTakeoverRequest,
+    data?: ReconcilePhaseTakeoverRequest
   ): Promise<ExecutionDto> =>
     normalizeExecution(
       await client.post<ExecutionDto>(
         resolveExecutionPath(
           runtimeConfig,
-          `/executions/${id}/phases/${encodeURIComponent(phaseKey)}/reconcile`,
+          `/executions/${id}/phases/${encodeURIComponent(phaseKey)}/reconcile`
         ),
-        data || {},
-      ),
+        data || {}
+      )
     ),
   resumePhaseTakeover: async (
     id: string,
     phaseKey: string,
-    data?: ResumeExecutionRequest,
+    data?: ResumeExecutionRequest
   ): Promise<ExecutionDto> =>
     normalizeExecution(
       await client.post<ExecutionDto>(
         resolveExecutionPath(
           runtimeConfig,
-          `/executions/${id}/phases/${encodeURIComponent(phaseKey)}/resume`,
+          `/executions/${id}/phases/${encodeURIComponent(phaseKey)}/resume`
         ),
-        data || {},
-      ),
+        data || {}
+      )
     ),
   resume: async (id: string, data?: ResumeExecutionRequest): Promise<ExecutionDto> =>
     normalizeExecution(
       await client.post<ExecutionDto>(
         resolveExecutionPath(runtimeConfig, `/executions/${id}/resume`),
-        data || {},
-      ),
+        data || {}
+      )
     ),
-  releaseHumanControl: async (
-    id: string,
-    data?: ResumeExecutionRequest,
-  ): Promise<ExecutionDto> =>
+  releaseHumanControl: async (id: string, data?: ResumeExecutionRequest): Promise<ExecutionDto> =>
     normalizeExecution(
       await client.post<ExecutionDto>(
         resolveExecutionPath(runtimeConfig, `/executions/${id}/release-human-control`),
-        data || {},
-      ),
+        data || {}
+      )
     ),
   approve: async (id: string, data?: ApprovalDecisionRequest): Promise<ExecutionDto> =>
     normalizeExecution(
       await client.post<ExecutionDto>(
         resolveExecutionPath(runtimeConfig, `/executions/${id}/approve`),
-        data || {},
-      ),
+        data || {}
+      )
     ),
   reject: async (id: string, data?: ApprovalDecisionRequest): Promise<ExecutionDto> =>
     normalizeExecution(
       await client.post<ExecutionDto>(
         resolveExecutionPath(runtimeConfig, `/executions/${id}/reject`),
-        data || {},
-      ),
+        data || {}
+      )
     ),
-  submitInput: async (
-    id: string,
-    data: SubmitInputRequest,
-  ): Promise<ExecutionDto> =>
+  submitInput: async (id: string, data: SubmitInputRequest): Promise<ExecutionDto> =>
     normalizeExecution(
       await client.post<ExecutionDto>(
         resolveExecutionPath(runtimeConfig, `/executions/${id}/submit-input`),
-        data,
-      ),
+        data
+      )
     ),
   cancel: async (id: string): Promise<ExecutionDto> =>
     normalizeExecution(
       await client.post<ExecutionDto>(
         resolveExecutionPath(runtimeConfig, `/executions/${id}/cancel`),
-        {},
-      ),
+        {}
+      )
     ),
   delete: async (id: string): Promise<{ success: boolean }> =>
-    client.delete<{ success: boolean }>(
-      resolveExecutionPath(runtimeConfig, `/executions/${id}`),
-    ),
+    client.delete<{ success: boolean }>(resolveExecutionPath(runtimeConfig, `/executions/${id}`)),
   cleanupBeforeDate: async (
-    data: CleanupExecutionsBeforeDateRequest,
+    data: CleanupExecutionsBeforeDateRequest
   ): Promise<{ success: boolean; deletedCount: number; beforeDate: string }> =>
     client.post<{ success: boolean; deletedCount: number; beforeDate: string }>(
-      resolveExecutionPath(runtimeConfig, "/executions/cleanup"),
-      data,
+      resolveExecutionPath(runtimeConfig, '/executions/cleanup'),
+      data
     ),
 });

@@ -1,6 +1,6 @@
-import { createPreferencesStore } from "@ops/user-core";
-import { mobileI18n } from "../adapters/i18n/mobileI18n";
-import { memoryStorage } from "../adapters/storage/memoryStorage";
+import { createPreferencesStore } from '@ops/user-core';
+import { mobileI18n } from '../adapters/i18n/mobileI18n';
+import { memoryStorage } from '../adapters/storage/memoryStorage';
 
 const preferencesStore = createPreferencesStore({
   storage: memoryStorage,

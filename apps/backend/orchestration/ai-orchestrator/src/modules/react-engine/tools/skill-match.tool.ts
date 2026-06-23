@@ -15,7 +15,8 @@ const AUTH_SERVICE_URL = getAuthServiceUrl();
 @Injectable()
 @Tool({
   name: 'skill_match',
-  description: '根据用户输入匹配合适的技能(Skill)。使用AI语义匹配，自动过滤用户无权限的技能。返回匹配的skillId、置信度和匹配原因。',
+  description:
+    '根据用户输入匹配合适的技能(Skill)。使用AI语义匹配，自动过滤用户无权限的技能。返回匹配的skillId、置信度和匹配原因。',
   parameters: {
     type: 'object',
     properties: {
@@ -56,14 +57,11 @@ export class SkillMatchTool extends BaseTool {
         },
         required: ['userInput'],
       },
-      { category: 'discovery' },
+      { category: 'discovery' }
     );
   }
 
-  async execute(
-    params: Record<string, unknown>,
-    context: ExecutionContext,
-  ): Promise<ToolResult> {
+  async execute(params: Record<string, unknown>, context: ExecutionContext): Promise<ToolResult> {
     const userInput = params.userInput as string;
     const userId = context.userId;
 
@@ -87,15 +85,19 @@ export class SkillMatchTool extends BaseTool {
 
     try {
       // 调用Auth服务的Skill匹配API（带userId，进行权限过滤和AI语义匹配）
-      const response = await axios.post<{ match: SkillMatchResult | null }>(`${AUTH_SERVICE_URL}/skills/match`, {
-        userInput,
-        userId,  // 新增：传递用户ID进行权限过滤
-      }, {
-        headers: {
-          ...(context.traceId ? { [TRACE_ID_HEADER]: context.traceId } : {}),
-          ...(context.authToken ? { Authorization: context.authToken } : {}),
+      const response = await axios.post<{ match: SkillMatchResult | null }>(
+        `${AUTH_SERVICE_URL}/skills/match`,
+        {
+          userInput,
+          userId, // 新增：传递用户ID进行权限过滤
         },
-      });
+        {
+          headers: {
+            ...(context.traceId ? { [TRACE_ID_HEADER]: context.traceId } : {}),
+            ...(context.authToken ? { Authorization: context.authToken } : {}),
+          },
+        }
+      );
 
       const matchResult = response.data.match;
 
@@ -107,8 +109,8 @@ export class SkillMatchTool extends BaseTool {
         };
       }
 
-      const flowTemplateId = matchResult.executionFlowTemplateId
-        || matchResult.executionFlowTemplateIds?.[0];
+      const flowTemplateId =
+        matchResult.executionFlowTemplateId || matchResult.executionFlowTemplateIds?.[0];
 
       // 文档技能统一收敛为最终渲染步骤，参数识别与补参由主链路负责
       if (matchResult.carboneSkillId) {
@@ -156,9 +158,10 @@ export class SkillMatchTool extends BaseTool {
     } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
       // 如果API调用失败（可能是403权限错误）
-      const statusCode = typeof error === 'object' && error && 'response' in error
-        ? (error as { response?: { status?: number } }).response?.status
-        : undefined;
+      const statusCode =
+        typeof error === 'object' && error && 'response' in error
+          ? (error as { response?: { status?: number } }).response?.status
+          : undefined;
       if (statusCode === 403) {
         return {
           success: false,

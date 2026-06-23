@@ -83,17 +83,23 @@ export const WordIdentifyResultSection: React.FC<WordIdentifyResultSectionProps>
         <span className="word-tag">候选参数 {section.candidates.length}</span>
         {sectionResult && (
           <>
-            <span className={`word-tag ${sectionResult.error ? 'risk-high' : sectionSuggestions.length > 0 ? 'success' : 'warning'}`}>
+            <span
+              className={`word-tag ${sectionResult.error ? 'risk-high' : sectionSuggestions.length > 0 ? 'success' : 'warning'}`}
+            >
               生成参数 {sectionSuggestions.length}
             </span>
             {sectionResult.qualityIssues && sectionResult.qualityIssues.length > 0 && (
-              <span className="word-tag warning">质量提示 {sectionResult.qualityIssues.length}</span>
+              <span className="word-tag warning">
+                质量提示 {sectionResult.qualityIssues.length}
+              </span>
             )}
           </>
         )}
         {groupSummary && (
           <>
-            <span className="word-tag">平均置信度 {formatConfidence(groupSummary.averageConfidence)}</span>
+            <span className="word-tag">
+              平均置信度 {formatConfidence(groupSummary.averageConfidence)}
+            </span>
             <span className="word-tag warning">待确认 {groupSummary.pendingReviewCount}</span>
             <span className="word-tag risk-high">高风险 {groupSummary.highRiskCount}</span>
           </>
@@ -104,11 +110,13 @@ export const WordIdentifyResultSection: React.FC<WordIdentifyResultSectionProps>
           当前章节生成失败: {sectionResult.error.message}
         </div>
       )}
-      {sectionResult?.qualityIssues && sectionResult.qualityIssues.length > 0 && !sectionResult.error?.message && (
-        <div className="word-status-summary-item warning">
-          {sectionResult.qualityIssues.join(' | ')}
-        </div>
-      )}
+      {sectionResult?.qualityIssues &&
+        sectionResult.qualityIssues.length > 0 &&
+        !sectionResult.error?.message && (
+          <div className="word-status-summary-item warning">
+            {sectionResult.qualityIssues.join(' | ')}
+          </div>
+        )}
       {sectionCollapsed ? (
         <div className="word-step-placeholder">
           当前章节参数已折叠，点击“展开”查看生成参数与应用操作。
@@ -118,15 +126,17 @@ export const WordIdentifyResultSection: React.FC<WordIdentifyResultSectionProps>
           点击“生成参数”后，这里会直接展示当前章节的生成参数值。
         </div>
       ) : sectionSuggestions.length === 0 ? (
-        <div className="word-step-placeholder">
-          当前章节还没有可展示的生成参数值。
-        </div>
+        <div className="word-step-placeholder">当前章节还没有可展示的生成参数值。</div>
       ) : (
         <>
           <div className="excel-understanding-actions" style={{ margin: '12px 0' }}>
             <button
               className="sheet-action-btn"
-              onClick={() => applyState.setActiveManualAddGroup(applyState.activeManualAddGroup === groupName ? null : groupName)}
+              onClick={() =>
+                applyState.setActiveManualAddGroup(
+                  applyState.activeManualAddGroup === groupName ? null : groupName
+                )
+              }
             >
               {applyState.activeManualAddGroup === groupName ? '取消添加' : '添加参数'}
             </button>
@@ -149,7 +159,7 @@ export const WordIdentifyResultSection: React.FC<WordIdentifyResultSectionProps>
             <ManualAddParamForm applyState={applyState} targetGroupName={groupName} />
           )}
           <div className="suggestion-list">
-            {sectionSuggestionGroups.map((group) => (
+            {sectionSuggestionGroups.map((group) =>
               group.type === 'pair' ? (
                 <div
                   key={group.key}
@@ -163,9 +173,7 @@ export const WordIdentifyResultSection: React.FC<WordIdentifyResultSectionProps>
                 >
                   <div className="word-tag-list word-tag-list-compact" style={{ marginBottom: 12 }}>
                     <span className="word-tag">双语成对显示</span>
-                    {group.pairPath && (
-                      <span className="word-tag">{group.pairPath}</span>
-                    )}
+                    {group.pairPath && <span className="word-tag">{group.pairPath}</span>}
                   </div>
                   <div
                     style={{
@@ -182,7 +190,7 @@ export const WordIdentifyResultSection: React.FC<WordIdentifyResultSectionProps>
                   {renderSuggestionCard(group.suggestions[0])}
                 </React.Fragment>
               )
-            ))}
+            )}
           </div>
         </>
       )}

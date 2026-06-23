@@ -72,19 +72,32 @@ export const ExcelAnalysisCard: React.FC<{
                 <span className="spinner"></span>
                 <span className="loading-text">识别中...</span>
               </span>
-            ) : '识别'}
+            ) : (
+              '识别'
+            )}
           </button>
 
-          <div className="header-actions" onClick={(e) => e.stopPropagation()} style={{ display: 'flex', gap: '8px' }}>
+          <div
+            className="header-actions"
+            onClick={(e) => e.stopPropagation()}
+            style={{ display: 'flex', gap: '8px' }}
+          >
             <button
               className="apply-all-btn"
               onClick={(e) => {
                 e.stopPropagation();
                 void applyState.handleApplyAll(onApplyComplete);
               }}
-              disabled={!applyState.suggestions || applyState.suggestions.filter((s: any) => !s.applied).length === 0}
+              disabled={
+                !applyState.suggestions ||
+                applyState.suggestions.filter((s: any) => !s.applied).length === 0
+              }
             >
-              应用 ({applyState.suggestions ? applyState.suggestions.filter((s: any) => !s.applied).length : 0})
+              应用 (
+              {applyState.suggestions
+                ? applyState.suggestions.filter((s: any) => !s.applied).length
+                : 0}
+              )
             </button>
             <button
               className="apply-all-btn"
@@ -92,7 +105,10 @@ export const ExcelAnalysisCard: React.FC<{
                 e.stopPropagation();
                 void applyState.handleReapplyAll(onApplyComplete);
               }}
-              disabled={!applyState.suggestions || applyState.suggestions.filter((s: any) => s.applied).length === 0}
+              disabled={
+                !applyState.suggestions ||
+                applyState.suggestions.filter((s: any) => s.applied).length === 0
+              }
               style={{ backgroundColor: '#f3f4f6', color: '#4b5563', border: '1px solid #d1d5db' }}
               title="重新应用所有已应用的参数"
             >
@@ -119,7 +135,8 @@ export const ExcelAnalysisCard: React.FC<{
               <div>
                 <div className="analysis-source-title">参考卡片组</div>
                 <div className="excel-reference-card-group-meta">
-                  共 {visibleExcelPairs.length} 组，参与比较 {visibleExcelPairs.filter((pair) => pair.compare).length} 组
+                  共 {visibleExcelPairs.length} 组，参与比较{' '}
+                  {visibleExcelPairs.filter((pair) => pair.compare).length} 组
                 </div>
               </div>
               <div className="excel-understanding-actions" onClick={(e) => e.stopPropagation()}>
@@ -148,7 +165,9 @@ export const ExcelAnalysisCard: React.FC<{
                   </div>
                 ) : (
                   visibleExcelPairs.map((pair) => {
-                    const pairAnalysis = analysisSummary?.pairResults.find((result) => result.pairIndex === pair.pairIndex);
+                    const pairAnalysis = analysisSummary?.pairResults.find(
+                      (result) => result.pairIndex === pair.pairIndex
+                    );
                     const sheetKey = pair.leftSheetName || '未归属 Sheet';
 
                     return (
@@ -156,9 +175,15 @@ export const ExcelAnalysisCard: React.FC<{
                         key={pair.id}
                         className={`sheet-pair-card excel-reference-card ${pair.compare ? '' : 'sheet-pair-card--skipped'}`}
                       >
-                        <div className="sheet-pair-card-header" style={{ marginBottom: pairAnalysis ? '8px' : '0' }}>
+                        <div
+                          className="sheet-pair-card-header"
+                          style={{ marginBottom: pairAnalysis ? '8px' : '0' }}
+                        >
                           <div className="sheet-pair-card-title">
-                            <label className="sheet-pair-checkbox" style={{ margin: 0, display: 'flex' }}>
+                            <label
+                              className="sheet-pair-checkbox"
+                              style={{ margin: 0, display: 'flex' }}
+                            >
                               <input
                                 type="checkbox"
                                 checked={pair.compare}
@@ -206,10 +231,16 @@ export const ExcelAnalysisCard: React.FC<{
                               return (
                                 <div className="analysis-pair-result-header">
                                   <div>
-                                    <span className="analysis-pair-result-name" style={{ fontWeight: 600 }}>
+                                    <span
+                                      className="analysis-pair-result-name"
+                                      style={{ fontWeight: 600 }}
+                                    >
                                       分析结果
                                     </span>
-                                    <span className={`analysis-pair-result-badge ${pairStatus.className}`} style={{ marginLeft: '8px' }}>
+                                    <span
+                                      className={`analysis-pair-result-badge ${pairStatus.className}`}
+                                      style={{ marginLeft: '8px' }}
+                                    >
                                       {pairStatus.label}
                                     </span>
                                   </div>
@@ -218,83 +249,149 @@ export const ExcelAnalysisCard: React.FC<{
                             })()}
 
                             <div className="analysis-pair-result-meta">
-                              候选差异 {pairAnalysis.candidateCount} · 建议 {pairAnalysis.suggestionCount} · {pairAnalysis.loopDetected ? '含循环区域' : '单值为主'}
+                              候选差异 {pairAnalysis.candidateCount} · 建议{' '}
+                              {pairAnalysis.suggestionCount} ·{' '}
+                              {pairAnalysis.loopDetected ? '含循环区域' : '单值为主'}
                             </div>
                             {pairAnalysis.error && (
                               <div className="analysis-pair-result-error">
                                 失败原因: {pairAnalysis.error.message || '未知错误'}
                                 {pairAnalysis.error.reason ? ` · ${pairAnalysis.error.reason}` : ''}
-                                {pairAnalysis.error.status ? ` · HTTP ${pairAnalysis.error.status}` : ''}
+                                {pairAnalysis.error.status
+                                  ? ` · HTTP ${pairAnalysis.error.status}`
+                                  : ''}
                                 {pairAnalysis.error.url ? ` · ${pairAnalysis.error.url}` : ''}
                               </div>
                             )}
                           </div>
                         )}
 
-                        {groupedSuggestions && groupedSuggestions[sheetKey] && groupedSuggestions[sheetKey].length > 0 && (
-                          <div className="suggestion-group chapter-group" style={{ marginTop: '16px' }}>
-                            <h4
-                              className="group-title chapter-title"
-                              onClick={() => applyState.toggleSuggestionGroupCollapse(sheetKey)}
-                              style={{ cursor: 'pointer', userSelect: 'none', margin: 0, padding: '8px 12px', background: '#f8fafc', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                        {groupedSuggestions &&
+                          groupedSuggestions[sheetKey] &&
+                          groupedSuggestions[sheetKey].length > 0 && (
+                            <div
+                              className="suggestion-group chapter-group"
+                              style={{ marginTop: '16px' }}
                             >
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <span className="chapter-icon">{applyState.getGroupIcon(sheetKey)}</span>
-                                <span className="chapter-name">{sheetKey}</span>
-                                <span className="count">({groupedSuggestions[sheetKey].length})</span>
-                              </div>
-                              <div className="excel-understanding-actions" onClick={(e) => e.stopPropagation()} style={{ display: 'flex', gap: '6px' }}>
-                                <button
-                                  className="sheet-action-btn"
-                                  onClick={() => onAnalyzePair(pair.id)}
-                                  disabled={isAnalyzing}
+                              <h4
+                                className="group-title chapter-title"
+                                onClick={() => applyState.toggleSuggestionGroupCollapse(sheetKey)}
+                                style={{
+                                  cursor: 'pointer',
+                                  userSelect: 'none',
+                                  margin: 0,
+                                  padding: '8px 12px',
+                                  background: '#f8fafc',
+                                  borderRadius: '6px',
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  alignItems: 'center',
+                                }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <span className="chapter-icon">
+                                    {applyState.getGroupIcon(sheetKey)}
+                                  </span>
+                                  <span className="chapter-name">{sheetKey}</span>
+                                  <span className="count">
+                                    ({groupedSuggestions[sheetKey].length})
+                                  </span>
+                                </div>
+                                <div
+                                  className="excel-understanding-actions"
+                                  onClick={(e) => e.stopPropagation()}
+                                  style={{ display: 'flex', gap: '6px' }}
                                 >
-                                  重新识别
-                                </button>
-                                <button
-                                  className="sheet-action-btn"
-                                  onClick={() => applyState.setActiveManualAddGroup(applyState.activeManualAddGroup === sheetKey ? null : sheetKey)}
-                                >
-                                  {applyState.activeManualAddGroup === sheetKey ? '取消添加' : '添加参数'}
-                                </button>
-                                <button
-                                  className="sheet-action-btn sheet-action-btn-primary"
-                                  onClick={() => { void applyState.handleApplyGroup(sheetKey, onApplyComplete); }}
-                                  disabled={groupedSuggestions[sheetKey].filter((s: any) => !s.applied).length === 0}
-                                >
-                                  应用 ({groupedSuggestions[sheetKey].filter((s: any) => !s.applied).length})
-                                </button>
-                                <button
-                                  className="sheet-action-btn sheet-action-btn-primary"
-                                  onClick={() => { void applyState.handleReapplyGroup(sheetKey, onApplyComplete); }}
-                                  disabled={groupedSuggestions[sheetKey].filter((s: any) => s.applied).length === 0}
-                                  style={{ backgroundColor: '#f3f4f6', color: '#4b5563', border: '1px solid #d1d5db' }}
-                                  title="重新应用当前表已应用的参数"
-                                >
-                                  重新应用
-                                </button>
-                              </div>
-                            </h4>
+                                  <button
+                                    className="sheet-action-btn"
+                                    onClick={() => onAnalyzePair(pair.id)}
+                                    disabled={isAnalyzing}
+                                  >
+                                    重新识别
+                                  </button>
+                                  <button
+                                    className="sheet-action-btn"
+                                    onClick={() =>
+                                      applyState.setActiveManualAddGroup(
+                                        applyState.activeManualAddGroup === sheetKey
+                                          ? null
+                                          : sheetKey
+                                      )
+                                    }
+                                  >
+                                    {applyState.activeManualAddGroup === sheetKey
+                                      ? '取消添加'
+                                      : '添加参数'}
+                                  </button>
+                                  <button
+                                    className="sheet-action-btn sheet-action-btn-primary"
+                                    onClick={() => {
+                                      void applyState.handleApplyGroup(sheetKey, onApplyComplete);
+                                    }}
+                                    disabled={
+                                      groupedSuggestions[sheetKey].filter((s: any) => !s.applied)
+                                        .length === 0
+                                    }
+                                  >
+                                    应用 (
+                                    {
+                                      groupedSuggestions[sheetKey].filter((s: any) => !s.applied)
+                                        .length
+                                    }
+                                    )
+                                  </button>
+                                  <button
+                                    className="sheet-action-btn sheet-action-btn-primary"
+                                    onClick={() => {
+                                      void applyState.handleReapplyGroup(sheetKey, onApplyComplete);
+                                    }}
+                                    disabled={
+                                      groupedSuggestions[sheetKey].filter((s: any) => s.applied)
+                                        .length === 0
+                                    }
+                                    style={{
+                                      backgroundColor: '#f3f4f6',
+                                      color: '#4b5563',
+                                      border: '1px solid #d1d5db',
+                                    }}
+                                    title="重新应用当前表已应用的参数"
+                                  >
+                                    重新应用
+                                  </button>
+                                </div>
+                              </h4>
 
-                            {!applyState.collapsedSuggestionGroups[sheetKey] && (
-                              <div className="suggestion-list" style={{ marginTop: '8px' }}>
-                                {applyState.activeManualAddGroup === sheetKey && (
-                                  <ManualAddParamForm applyState={applyState} targetGroupName={sheetKey} />
-                                )}
-                                {groupedSuggestions[sheetKey].map((suggestion: any) => (
-                                  <AISuggestionItem
-                                    key={suggestion.id}
-                                    suggestion={suggestion}
-                                    onApply={() => { void applyState.handleApplySingle(suggestion, onApplyComplete); }}
-                                    onDismiss={() => applyState.dismissSuggestion(suggestion.id)}
-                                    onUpdateName={(newName: string) => applyState.updateSuggestionName(suggestion.id, newName)}
-                                    onUpdateDetails={(details: any) => applyState.updateSuggestionDetails(suggestion.id, details)}
-                                  />
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        )}
+                              {!applyState.collapsedSuggestionGroups[sheetKey] && (
+                                <div className="suggestion-list" style={{ marginTop: '8px' }}>
+                                  {applyState.activeManualAddGroup === sheetKey && (
+                                    <ManualAddParamForm
+                                      applyState={applyState}
+                                      targetGroupName={sheetKey}
+                                    />
+                                  )}
+                                  {groupedSuggestions[sheetKey].map((suggestion: any) => (
+                                    <AISuggestionItem
+                                      key={suggestion.id}
+                                      suggestion={suggestion}
+                                      onApply={() => {
+                                        void applyState.handleApplySingle(
+                                          suggestion,
+                                          onApplyComplete
+                                        );
+                                      }}
+                                      onDismiss={() => applyState.dismissSuggestion(suggestion.id)}
+                                      onUpdateName={(newName: string) =>
+                                        applyState.updateSuggestionName(suggestion.id, newName)
+                                      }
+                                      onUpdateDetails={(details: any) =>
+                                        applyState.updateSuggestionDetails(suggestion.id, details)
+                                      }
+                                    />
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
                       </div>
                     );
                   })

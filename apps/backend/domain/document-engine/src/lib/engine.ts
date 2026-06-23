@@ -126,7 +126,7 @@ export class CarboneEngine {
           id: i + 1,
           name: `Item ${i + 1}`,
           value: Math.floor(Math.random() * 1000),
-          date: new Date().toISOString()
+          date: new Date().toISOString(),
         });
       }
     }
@@ -164,7 +164,11 @@ export class CarboneEngine {
     if (lowerName.includes('desc') || lowerName.includes('content') || lowerName.includes('text')) {
       return 'This is sample content for preview.';
     }
-    if (lowerName.includes('bool') || lowerName.includes('active') || lowerName.includes('enabled')) {
+    if (
+      lowerName.includes('bool') ||
+      lowerName.includes('active') ||
+      lowerName.includes('enabled')
+    ) {
       return true;
     }
 
@@ -177,7 +181,11 @@ export class CarboneEngine {
    * @param rowCount 数据行数
    * @param useRealisticData 是否使用真实感数据（用于验证渲染效果）
    */
-  generateSampleDataFromConfig(config: any, rowCount: number = 5, useRealisticData: boolean = true): any {
+  generateSampleDataFromConfig(
+    config: any,
+    rowCount: number = 5,
+    useRealisticData: boolean = true
+  ): any {
     const data: any = {};
     const timestamp = Date.now(); // 用于生成唯一标识
 
@@ -241,7 +249,12 @@ export class CarboneEngine {
 
               // 生成每行不同的数据（忽略sampleValue，使用动态生成）
               // sampleValue仅作为类型参考，实际数据应该每行不同
-              row[fieldName] = this.generateSampleValueByType('text', fieldName, i, useRealisticData);
+              row[fieldName] = this.generateSampleValueByType(
+                'text',
+                fieldName,
+                i,
+                useRealisticData
+              );
             }
           }
 
@@ -277,12 +290,13 @@ export class CarboneEngine {
                 step: data[tableName].length + 1,
                 action: '点击按钮',
                 result: '成功',
-                status: 'completed'
+                status: 'completed',
               });
             }
 
             // 设置截图（使用占位符图片URL）
-            data[tableName][stepIndex].screenshot = `https://via.placeholder.com/500x350?text=Step+${combined.stepNumber}+Screenshot`;
+            data[tableName][stepIndex].screenshot =
+              `https://via.placeholder.com/500x350?text=Step+${combined.stepNumber}+Screenshot`;
           }
         }
       }
@@ -305,7 +319,12 @@ export class CarboneEngine {
    * @param index 索引
    * @param useRealisticData 是否使用真实感数据
    */
-  private generateSampleValueByType(type: string, varName: string, index?: number, useRealisticData: boolean = true): any {
+  private generateSampleValueByType(
+    type: string,
+    varName: string,
+    index?: number,
+    useRealisticData: boolean = true
+  ): any {
     const lowerName = varName.toLowerCase();
     const timestamp = Date.now();
 
@@ -332,7 +351,7 @@ export class CarboneEngine {
           '导出报表文档',
           '发送通知邮件',
           '删除临时文件',
-          '刷新页面数据'
+          '刷新页面数据',
         ];
         return index !== undefined ? actions[index % actions.length] : '点击按钮';
       }
@@ -349,7 +368,7 @@ export class CarboneEngine {
           '文件已生成',
           '邮件已发送',
           '清理完成',
-          '数据已更新'
+          '数据已更新',
         ];
         return index !== undefined ? results[index % results.length] : '成功';
       }
@@ -387,7 +406,7 @@ export class CarboneEngine {
 
     return {
       valid: missing.length === 0,
-      missing
+      missing,
     };
   }
 

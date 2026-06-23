@@ -1,6 +1,24 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Input, Button, Space, Typography, Tag, Empty, message, Divider, Collapse, InputNumber, Modal, List, Tooltip, Switch, Checkbox, Radio } from 'antd';
+import {
+  Input,
+  Button,
+  Space,
+  Typography,
+  Tag,
+  Empty,
+  message,
+  Divider,
+  Collapse,
+  InputNumber,
+  Modal,
+  List,
+  Tooltip,
+  Switch,
+  Checkbox,
+  Radio,
+  Select,
+} from 'antd';
 import {
   SendOutlined,
   AudioOutlined,
@@ -33,9 +51,16 @@ import type { TextAreaRef } from 'antd/es/input/TextArea';
 import { useTranslation } from 'react-i18next';
 import { useMutation } from 'react-query';
 import { apiClient } from '@/shared/api/http/client';
-import { templateApi } from '@/api/template';
+import {
+  templateApi,
+  type TemplateStepAction,
+  type TemplateStepExecutionPolicy,
+} from '@/api/template';
 import { sessionApi, workerApi } from '@/api/session';
 import { transcribeAudio } from '@/features/chat/chatApi';
+import BranchGateModal from '@/features/recorder/components/BranchGateModal';
+import LoopRecordingPanel from '@/features/recorder/components/LoopRecordingPanel';
+import type { BranchStepSpec } from '@/features/recorder/lib/branch-analysis.api';
 import type { RecorderTakeoverViewState } from '@/features/recorder/lib/types';
 import recorderRuntimeService, {
   type ReconcileAfterTakeoverResponse,
@@ -100,9 +125,70 @@ interface RecorderDebugObservation {
   snapshotPath?: string;
 }
 
+type LoopScope = 'current_list' | 'current_table' | 'current_cards';
+
+interface RecorderLoopDraft {
+  mode: 'repeat_until';
+  target: {
+    scope: LoopScope;
+    regionId?: string;
+    currentPageUrl?: string;
+    match?: {
+      field?: string;
+      operator?: 'equals' | 'contains' | 'lt' | 'gt';
+      value?: string | number | boolean;
+    };
+  };
+  sampleRow?: {
+    rowKey?: string;
+    entityType?: string;
+    entityId?: string;
+    semanticPath?: string[];
+  };
+  eachIteration?: {
+    capturedFromIndex?: number;
+    capturedToIndex?: number;
+    stepIds: string[];
+    stepCount: number;
+  };
+  stopWhen?: {
+    read:
+      | { type: 'count' | 'text'; locator: { type: string; value: string } }
+      | { type: 'page_signal'; key: string };
+    conditionFn: string;
+    description: string;
+  };
+  onNoProgress?: 'takeover' | 'stop';
+  maxIterations?: number;
+  updatedAt?: string;
+}
+
+interface RecorderLoopState {
+  rawTokens: string[];
+  loopTargetScope?: LoopScope;
+  hasLoopStart: boolean;
+  hasLoopEnd: boolean;
+  hasConditionalBranch: boolean;
+  manualInterventionLabels: string[];
+  pendingLoopCaptureStartCommandIndex?: number;
+  isLoopCaptureActive: boolean;
+}
+
 interface RecorderDebugExportArtifacts {
   script?: string;
   guidance?: string;
+  templateSteps?: Array<{
+    step_id: string;
+    action: TemplateStepAction;
+    locator?: { type: string; value: string; fallback?: { type: string; value: string } };
+    params?: Record<string, string | number>;
+    output_var?: string;
+    branch?: TemplateBranchConfig;
+    description?: string;
+    execution_policy?: TemplateStepExecutionPolicy;
+  }>;
+  loopDraft?: Record<string, unknown>;
+  loopPlanPreview?: Array<Record<string, unknown>>;
   skillDraft?: {
     name?: string;
     description?: string;
@@ -127,17 +213,21 @@ interface RecorderDebugExportArtifacts {
       description?: string;
       triggerKeywords?: string[];
       paramsSchema?: {
-        properties?: Record<string, {
-          type: 'string' | 'number' | 'date' | 'boolean';
-          description: string;
-          required?: boolean;
-          default?: string | number | boolean;
-          extractionPrompt?: string;
-        }>;
+        properties?: Record<
+          string,
+          {
+            type: 'string' | 'number' | 'date' | 'boolean';
+            description: string;
+            required?: boolean;
+            default?: string | number | boolean;
+            extractionPrompt?: string;
+          }
+        >;
         required?: string[];
       };
       executionFlowTemplateIds?: string[];
       executionFlow?: Array<Record<string, unknown>>;
+      loopPlanPreview?: Array<Record<string, unknown>>;
       tools?: string[];
       apiEndpoints?: {
         runtimeMetadata?: Record<string, unknown>;
@@ -147,6 +237,7 @@ interface RecorderDebugExportArtifacts {
       backend?: ExecutionBackend;
       runtimeSessionId?: string;
       commands?: MCPCommand[];
+      loopDraft?: Record<string, unknown>;
     };
   };
 }
@@ -172,6 +263,8 @@ interface RecorderDebugChatResponse {
     results?: Array<Record<string, unknown>>;
   };
   exportArtifacts?: RecorderDebugExportArtifacts;
+  loopDraft?: RecorderLoopDraft;
+  loopState?: RecorderLoopState;
 }
 
 interface TemplateInfo {
@@ -245,6 +338,8 @@ interface CommandHistoryResult {
   commands?: MCPCommand[];
   execution?: RecorderDebugChatResponse['execution'];
   exportArtifacts?: RecorderDebugExportArtifacts;
+  loopDraft?: RecorderLoopDraft;
+  loopState?: RecorderLoopState;
 }
 
 // Command history entry
@@ -270,19 +365,27 @@ const buildCompactAiReply = (
     execution?: unknown;
     observation?: unknown;
     exportArtifacts?: unknown;
-  },
+    loopDraft?: unknown;
+    loopState?: unknown;
+  }
 ): string => {
   const replyText = String(reply || '');
   const hasBrowserExecutionPayload = Boolean(
-    resultPayload.execution || resultPayload.observation || resultPayload.exportArtifacts,
+    resultPayload.execution ||
+      resultPayload.observation ||
+      resultPayload.exportArtifacts ||
+      resultPayload.loopDraft ||
+      resultPayload.loopState
   );
-  const looksLikeVerboseExecutionReply = (
-    replyText.length > 500
-    || /stepResults|### Ran Playwright code|stdout|snapshotId|backend/i.test(replyText)
-    || /任务已完成[,，]?\s*返回结果/.test(replyText)
-  );
-  if (hasBrowserExecutionPayload || looksLikeVerboseExecutionReply) {
+  const looksLikeVerboseExecutionReply =
+    replyText.length > 500 ||
+    /stepResults|### Ran Playwright code|stdout|snapshotId|backend/i.test(replyText) ||
+    /任务已完成[,，]?\s*返回结果/.test(replyText);
+  if (hasBrowserExecutionPayload) {
     return '浏览器执行已完成，详细信息请点击下方“查看详情”或“打开链接”。';
+  }
+  if (looksLikeVerboseExecutionReply) {
+    return '任务已完成，详细信息请点击下方“查看详情”或“打开链接”。';
   }
   return replyText || 'OK';
 };
@@ -293,25 +396,36 @@ const buildCompactHistoryBubbleText = (entry: CommandHistoryEntry): string => {
   }
 
   const hasExecutionLikeResult = Boolean(
-    entry.result
-    && (
-      entry.result.execution
-      || entry.result.observation
-      || entry.result.exportArtifacts
-      || entry.result.status
-    ),
+    entry.result &&
+    (entry.result.execution ||
+      entry.result.observation ||
+      entry.result.exportArtifacts ||
+      entry.result.loopDraft ||
+      entry.result.loopState ||
+      entry.result.status)
   );
   if (entry.type === 'ai' && hasExecutionLikeResult) {
-    return '浏览器执行已完成，详细信息请点击下方“查看详情”或“打开链接”。';
+    return (
+      entry.result?.execution ||
+      entry.result?.observation ||
+      entry.result?.exportArtifacts ||
+      entry.result?.loopDraft ||
+      entry.result?.loopState
+    )
+      ? '浏览器执行已完成，详细信息请点击下方“查看详情”或“打开链接”。'
+      : '任务已完成，详细信息请点击下方“查看详情”或“打开链接”。';
   }
 
-  const compacted = entry.type === 'ai'
-    ? buildCompactAiReply(entry.content, {
-      execution: entry.result?.execution,
-      observation: entry.result?.observation,
-      exportArtifacts: entry.result?.exportArtifacts,
-    })
-    : String(entry.content || '');
+  const compacted =
+    entry.type === 'ai'
+      ? buildCompactAiReply(entry.content, {
+          execution: entry.result?.execution,
+          observation: entry.result?.observation,
+          exportArtifacts: entry.result?.exportArtifacts,
+          loopDraft: entry.result?.loopDraft,
+          loopState: entry.result?.loopState,
+        })
+      : String(entry.content || '');
 
   const text = String(compacted || '').trim();
   if (!text) {
@@ -326,7 +440,50 @@ const buildCompactHistoryBubbleText = (entry: CommandHistoryEntry): string => {
   return text;
 };
 
-const createRuntimeSessionId = () => `recorder-ui-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+const getLoopScopeLabel = (scope?: LoopScope): string => {
+  if (scope === 'current_table') {
+    return '当前表格';
+  }
+  if (scope === 'current_cards') {
+    return '当前卡片区';
+  }
+  return '当前列表';
+};
+
+const buildLoopSummaryText = (
+  loopDraft?: RecorderLoopDraft,
+  loopState?: RecorderLoopState
+): string | undefined => {
+  if (!loopDraft && !loopState) {
+    return undefined;
+  }
+
+  const parts: string[] = [];
+  const scope = loopState?.loopTargetScope || loopDraft?.target?.scope;
+  if (scope) {
+    parts.push(`循环对象：${getLoopScopeLabel(scope)}`);
+  }
+  if (loopState?.hasLoopStart) {
+    parts.push('已标记循环开始');
+  }
+  if (loopState?.hasLoopEnd) {
+    parts.push('已标记循环结束');
+  }
+  if (loopState?.isLoopCaptureActive) {
+    parts.push('正在捕获单轮步骤');
+  }
+  if (loopDraft?.eachIteration?.stepCount !== undefined) {
+    parts.push(`当前单轮步骤 ${loopDraft.eachIteration.stepCount} 个`);
+  }
+  if (loopState?.manualInterventionLabels?.length) {
+    parts.push(`人工介入：${loopState.manualInterventionLabels.join('、')}`);
+  }
+
+  return parts.length > 0 ? parts.join('；') : '已更新循环录制状态';
+};
+
+const createRuntimeSessionId = () =>
+  `recorder-ui-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
 const resolveErrorMessage = (error: unknown, fallback = '未知错误'): string => {
   if (typeof error !== 'object' || error === null) {
@@ -355,7 +512,7 @@ const resolveErrorMessage = (error: unknown, fallback = '未知错误'): string 
 
 const getPrimaryExecutionResult = (
   payload: BrowserCommandExecutionResponse,
-  fallbackMessage: string,
+  fallbackMessage: string
 ): BrowserCommandExecutionResult => {
   const failedResult = payload.results?.find((item) => item.status === 'error');
   if (failedResult) {
@@ -422,16 +579,87 @@ const getNumberParam = (params: Record<string, unknown>, key: string): number | 
   return typeof value === 'number' ? value : undefined;
 };
 
+interface TemplateBranchConfig {
+  condition_fn: string;
+  on_match: 'continue' | 'stop';
+  on_mismatch: 'continue' | 'stop' | 'takeover';
+  takeover_reason?: string;
+  description?: string;
+}
+
+interface BackendTemplateStepDraft {
+  action: TemplateStepAction;
+  params?: Record<string, string | number>;
+  locator?: { type: string; value: string };
+  output_var?: string;
+  branch?: TemplateBranchConfig;
+  description?: string;
+  execution_policy?: TemplateStepExecutionPolicy;
+}
+
+interface BackendTemplateStepPayload extends BackendTemplateStepDraft {
+  step_id: string;
+}
+
 // Template step - deterministic command for replay
 interface TemplateStep {
   id: string;
-  tool: string;
+  tool: TemplateStepAction;
   params: Record<string, unknown>;
   description: string;
   timestamp: Date;
   // 记录哪些参数是可替换的 (参数名 -> 是否可替换)
   replaceableParams?: Record<string, boolean>;
+  output_var?: string;
+  branch?: TemplateBranchConfig;
+  execution_policy?: TemplateStepExecutionPolicy;
 }
+
+const TEMPLATE_STEP_POLICY_OPTIONS: Array<{
+  value: TemplateStepExecutionPolicy;
+  label: string;
+  color: string;
+  description: string;
+}> = [
+  {
+    value: 'auto_execute',
+    label: '自动执行',
+    color: 'green',
+    description: '回放时默认自动执行该步骤',
+  },
+  {
+    value: 'require_confirmation',
+    label: '需确认',
+    color: 'gold',
+    description: '回放时停下来，要求人工确认后再继续',
+  },
+  {
+    value: 'require_takeover',
+    label: '人工接管',
+    color: 'orange',
+    description: '回放时在该步骤切换为人工接管',
+  },
+  {
+    value: 'forbid_in_replay',
+    label: '禁止回放',
+    color: 'red',
+    description: '模板中保留该步骤，但回放时不允许自动执行',
+  },
+];
+
+const normalizeTemplateStepExecutionPolicy = (
+  value: unknown
+): TemplateStepExecutionPolicy | undefined => {
+  if (
+    value === 'auto_execute' ||
+    value === 'require_confirmation' ||
+    value === 'require_takeover' ||
+    value === 'forbid_in_replay'
+  ) {
+    return value;
+  }
+  return undefined;
+};
 
 interface AIControlsProps {
   onCommandExecuted?: (commands: MCPCommand[]) => void;
@@ -479,11 +707,36 @@ const AIControls: React.FC<AIControlsProps> = ({
   // 搜索: 用户指定搜索框和关键词
   // 智搜: AI自动识别页面搜索框，用户只需提供关键词
   const predefinedCommands = [
-    { value: 'navigate', label: '打开', prefix: '打开 ', placeholder: '输入网址，如：百度、google.com' },
-    { value: 'click', label: '点击', prefix: '点击 ', placeholder: '输入目标元素描述，如：搜索按钮、登录链接' },
-    { value: 'fill', label: '填充', prefix: '填充 ', placeholder: '输入内容和目标，如：用户名输入框填写 admin' },
-    { value: 'search', label: '搜索', prefix: '搜索 ', placeholder: '指定搜索框和关键词，如：在搜索框输入 MCP' },
-    { value: 'smart_search', label: '智搜', prefix: '智搜 ', placeholder: '输入关键词，AI自动找到搜索框，如：MCP 协议' },
+    {
+      value: 'navigate',
+      label: '打开',
+      prefix: '打开 ',
+      placeholder: '输入网址，如：百度、google.com',
+    },
+    {
+      value: 'click',
+      label: '点击',
+      prefix: '点击 ',
+      placeholder: '输入目标元素描述，如：搜索按钮、登录链接',
+    },
+    {
+      value: 'fill',
+      label: '填充',
+      prefix: '填充 ',
+      placeholder: '输入内容和目标，如：用户名输入框填写 admin',
+    },
+    {
+      value: 'search',
+      label: '搜索',
+      prefix: '搜索 ',
+      placeholder: '指定搜索框和关键词，如：在搜索框输入 MCP',
+    },
+    {
+      value: 'smart_search',
+      label: '智搜',
+      prefix: '智搜 ',
+      placeholder: '输入关键词，AI自动找到搜索框，如：MCP 协议',
+    },
   ];
 
   const [selectedCommand, setSelectedCommand] = useState<string>('navigate');
@@ -514,6 +767,8 @@ const AIControls: React.FC<AIControlsProps> = ({
   const [testLoading, setTestLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
   const [exportTemplateLoading, setExportTemplateLoading] = useState(false);
+  const [showBranchGateModal, setShowBranchGateModal] = useState(false);
+  const [branchInsertAfterStepId, setBranchInsertAfterStepId] = useState<string>();
 
   // Parameter editing state - maps original param name to custom name
   const [paramNames, setParamNames] = useState<Record<string, string>>({});
@@ -526,7 +781,8 @@ const AIControls: React.FC<AIControlsProps> = ({
   const [isReactChatMode, setIsReactChatMode] = useState(true);
   const [recorderDebugSessionId, setRecorderDebugSessionId] = useState<string>();
   const [recorderDebugRuntimeSessionId, setRecorderDebugRuntimeSessionId] = useState<string>();
-  const [browserRuntimeSessionId, setBrowserRuntimeSessionId] = useState<string>(createRuntimeSessionId);
+  const [browserRuntimeSessionId, setBrowserRuntimeSessionId] =
+    useState<string>(createRuntimeSessionId);
   const [takeoverState, setTakeoverState] = useState<TakeoverUiState>(createIdleTakeoverState);
   const [isTemplatePanelExpanded, setIsTemplatePanelExpanded] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
@@ -576,9 +832,12 @@ const AIControls: React.FC<AIControlsProps> = ({
   }, [onTakeoverStateChange, takeoverState]);
 
   const cleanupBrowserSessions = async (
-    sessions: Array<{ runtimeSessionId?: string; backend: ExecutionBackend }>,
+    sessions: Array<{ runtimeSessionId?: string; backend: ExecutionBackend }>
   ) => {
-    const uniqueSessions = new Map<string, { runtimeSessionId: string; backend: ExecutionBackend }>();
+    const uniqueSessions = new Map<
+      string,
+      { runtimeSessionId: string; backend: ExecutionBackend }
+    >();
 
     sessions.forEach(({ runtimeSessionId, backend }) => {
       if (!runtimeSessionId) {
@@ -591,14 +850,14 @@ const AIControls: React.FC<AIControlsProps> = ({
     await Promise.all(
       [...uniqueSessions.values()].map(async ({ runtimeSessionId, backend }) => {
         try {
-          await apiClient.post('/browser/reset', {
+          await apiClient.post('/browser-runtime/reset', {
             runtimeSessionId,
             backend,
           });
         } catch (error) {
           console.warn(`Failed to cleanup browser session ${runtimeSessionId}:`, error);
         }
-      }),
+      })
     );
   };
 
@@ -606,42 +865,50 @@ const AIControls: React.FC<AIControlsProps> = ({
     setTakeoverState(createIdleTakeoverState());
   }, []);
 
-  const markTakeoverRequired = useCallback((input: {
-    runtimeSessionId?: string;
-    sessionId?: string;
-    backend: ExecutionBackend;
-    reason: string;
-    originalCommands: MCPCommand[];
-    failedCommand?: MCPCommand;
-  }) => {
-    const runtimeSessionId = input.runtimeSessionId?.trim();
-    if (!runtimeSessionId) {
-      return;
-    }
-
-    setTakeoverState((prev) => {
-      if (prev.mode === 'recording' || prev.mode === 'reconciling' || prev.mode === 'ready_to_resume' || prev.mode === 'resuming') {
-        return prev;
+  const markTakeoverRequired = useCallback(
+    (input: {
+      runtimeSessionId?: string;
+      sessionId?: string;
+      backend: ExecutionBackend;
+      reason: string;
+      originalCommands: MCPCommand[];
+      failedCommand?: MCPCommand;
+    }) => {
+      const runtimeSessionId = input.runtimeSessionId?.trim();
+      if (!runtimeSessionId) {
+        return;
       }
 
-      return {
-        mode: 'required',
-        runtimeSessionId,
-        sessionId: input.sessionId,
-        backend: input.backend,
-        reason: input.reason,
-        originalCommands: input.originalCommands,
-        failedCommand: input.failedCommand
-          ? {
-              ...input.failedCommand,
-              errorMessage: input.reason,
-            }
-          : undefined,
-        patchSteps: [],
-        resumeCommands: [],
-      };
-    });
-  }, []);
+      setTakeoverState((prev) => {
+        if (
+          prev.mode === 'recording' ||
+          prev.mode === 'reconciling' ||
+          prev.mode === 'ready_to_resume' ||
+          prev.mode === 'resuming'
+        ) {
+          return prev;
+        }
+
+        return {
+          mode: 'required',
+          runtimeSessionId,
+          sessionId: input.sessionId,
+          backend: input.backend,
+          reason: input.reason,
+          originalCommands: input.originalCommands,
+          failedCommand: input.failedCommand
+            ? {
+                ...input.failedCommand,
+                errorMessage: input.reason,
+              }
+            : undefined,
+          patchSteps: [],
+          resumeCommands: [],
+        };
+      });
+    },
+    []
+  );
 
   useEffect(() => {
     setIsBrowserReady(false);
@@ -821,23 +1088,9 @@ const AIControls: React.FC<AIControlsProps> = ({
   };
 
   const appendTemplateScreenshotSteps = (
-    steps: Array<{
-      action: string;
-      params?: Record<string, string | number>;
-      locator?: { type: string; value: string };
-    }>,
-  ): Array<{
-    step_id: string;
-    action: string;
-    params?: Record<string, string | number>;
-    locator?: { type: string; value: string };
-  }> => {
-    const backendSteps: Array<{
-      step_id: string;
-      action: string;
-      params?: Record<string, string | number>;
-      locator?: { type: string; value: string };
-    }> = [];
+    steps: BackendTemplateStepDraft[]
+  ): BackendTemplateStepPayload[] => {
+    const backendSteps: BackendTemplateStepPayload[] = [];
     let stepCounter = 1;
 
     steps.forEach((step) => {
@@ -846,6 +1099,10 @@ const AIControls: React.FC<AIControlsProps> = ({
         action: step.action,
         params: step.params,
         locator: step.locator,
+        output_var: step.output_var,
+        branch: step.branch,
+        description: step.description,
+        execution_policy: step.execution_policy,
       });
       stepCounter++;
 
@@ -878,15 +1135,126 @@ const AIControls: React.FC<AIControlsProps> = ({
     return backendSteps;
   };
 
+  const buildBranchTemplateSteps = (spec: BranchStepSpec): TemplateStep[] => {
+    const timestamp = new Date();
+    const stepSeed = Date.now();
+    const primarySelector = spec.readSelectors[0] || 'body';
+
+    return [
+      {
+        id: `${stepSeed}-read-value`,
+        tool: 'read_value',
+        params: {
+          selector: primarySelector,
+          method: spec.readMethod,
+        },
+        description: `读取条件值：${spec.description}`,
+        timestamp,
+        output_var: spec.outputVar,
+        execution_policy: 'auto_execute',
+      },
+      {
+        id: `${stepSeed}-branch`,
+        tool: 'branch',
+        params: {},
+        description: `条件分歧：${spec.description}`,
+        timestamp,
+        branch: {
+          condition_fn: spec.conditionFn,
+          on_match: spec.onMatch,
+          on_mismatch: spec.onMismatch,
+          takeover_reason: spec.takeoverReason,
+          description: spec.description,
+        },
+        execution_policy: 'auto_execute',
+      },
+    ];
+  };
+
+  const buildBackendCoreSteps = (
+    steps: TemplateStep[],
+    extractedParams: Record<
+      string,
+      { type: string; description: string; default?: string | number; replaceable?: boolean }
+    >,
+    resolveParamName: (
+      originalName: string,
+      schema: {
+        type: string;
+        description: string;
+        default?: string | number;
+        replaceable?: boolean;
+      }
+    ) => string | undefined
+  ): BackendTemplateStepDraft[] => {
+    return steps.map((step) => {
+      const substitutedParams = { ...step.params };
+
+      Object.entries(extractedParams).forEach(([originalName, schema]) => {
+        if (!schema.replaceable) {
+          return;
+        }
+        const resolvedName = resolveParamName(originalName, schema);
+        if (!resolvedName || schema.default === undefined) {
+          return;
+        }
+        Object.keys(substitutedParams).forEach((key) => {
+          if (substitutedParams[key] === schema.default) {
+            substitutedParams[key] = `\${${resolvedName}}`;
+          }
+        });
+      });
+
+      const selector = typeof step.params.selector === 'string' ? step.params.selector : undefined;
+      const backendStep: BackendTemplateStepDraft = {
+        action: step.tool,
+        ...(Object.keys(substitutedParams).length > 0
+          ? { params: substitutedParams as Record<string, string | number> }
+          : {}),
+        ...(selector
+          ? {
+              locator: {
+                type: 'css',
+                value: selector,
+              },
+            }
+          : {}),
+        ...(step.output_var ? { output_var: step.output_var } : {}),
+        ...(step.branch ? { branch: step.branch } : {}),
+        ...(step.description ? { description: step.description } : {}),
+        ...(step.execution_policy ? { execution_policy: step.execution_policy } : {}),
+      };
+
+      return backendStep;
+    });
+  };
+
+  const openBranchGateModal = (stepId?: string) => {
+    setBranchInsertAfterStepId(stepId);
+    setShowBranchGateModal(true);
+  };
+
+  const handleConfirmBranchGate = (spec: BranchStepSpec) => {
+    const branchSteps = buildBranchTemplateSteps(spec);
+    setTemplateSteps((prev) => {
+      const insertIndex = branchInsertAfterStepId
+        ? prev.findIndex((step) => step.id === branchInsertAfterStepId)
+        : -1;
+      if (insertIndex < 0) {
+        return [...prev, ...branchSteps];
+      }
+      return [...prev.slice(0, insertIndex + 1), ...branchSteps, ...prev.slice(insertIndex + 1)];
+    });
+    setShowBranchGateModal(false);
+    setBranchInsertAfterStepId(undefined);
+    void message.success('条件步骤已插入模版');
+  };
+
   const getScreenshotModeLabel = () => (autoAppendScreenshots ? '含自动截图' : '不含自动截图');
 
   const getFailedExecutionMessage = (payload?: BrowserCommandExecutionResponse): string => {
     const firstFailedResult = payload?.results?.find((item) => item.status === 'error');
-    return (
-      firstFailedResult?.message ||
-      payload?.message ||
-      '页面操作执行失败'
-    );
+    return firstFailedResult?.message || payload?.message || '页面操作执行失败';
   };
 
   const isExecutionFailed = (payload?: BrowserCommandExecutionResponse): boolean => {
@@ -896,7 +1264,34 @@ const AIControls: React.FC<AIControlsProps> = ({
     if (payload.success === false) {
       return true;
     }
-    return Array.isArray(payload.results) && payload.results.some((item) => item.status === 'error');
+    return (
+      Array.isArray(payload.results) && payload.results.some((item) => item.status === 'error')
+    );
+  };
+
+  const isStaleRecorderRuntimeFailure = (
+    execution?: BrowserCommandExecutionResponse,
+    observation?: RecorderDebugObservation
+  ): boolean => {
+    const failedResults = execution?.results?.filter((item) => item.status === 'error') || [];
+    if (!failedResults.length) {
+      return false;
+    }
+    const snapshotOnlyFailure = failedResults.every((item) =>
+      String(item.message || '').includes('snapshot')
+    );
+    if (!snapshotOnlyFailure) {
+      return false;
+    }
+    const hasObservationSignals = Boolean(
+      observation?.text ||
+        observation?.inputs?.length ||
+        observation?.buttons?.length ||
+        observation?.headings?.length ||
+        observation?.links?.length ||
+        observation?.suggestedParameters?.length
+    );
+    return !hasObservationSignals;
   };
 
   // Execute MCP commands directly
@@ -904,7 +1299,7 @@ const AIControls: React.FC<AIControlsProps> = ({
     async (commands: MCPCommand[]): Promise<BrowserCommandExecutionResponse> => {
       const commandsWithWait = appendDefaultWaitCommands(commands);
       console.log('[AIControls] Executing commands:', commands, 'backend:', executionBackend);
-      return apiClient.post('/browser/execute', {
+      return apiClient.post('/browser-runtime/execute', {
         commands: commandsWithWait,
         backend: executionBackend,
         runtimeSessionId: browserRuntimeSessionId,
@@ -963,7 +1358,14 @@ const AIControls: React.FC<AIControlsProps> = ({
   // Parse natural language to MCP commands
   const parseCommandMutation = useMutation(
     async ({ userInput, commandType }: { userInput: string; commandType: string }) => {
-      console.log('[AIControls] Parsing command:', userInput, 'commandType:', commandType, 'currentPageUrl:', currentPageUrl);
+      console.log(
+        '[AIControls] Parsing command:',
+        userInput,
+        'commandType:',
+        commandType,
+        'currentPageUrl:',
+        currentPageUrl
+      );
       const payload: ParseBrowserCommandPayload = {
         input: userInput,
         context: {
@@ -980,14 +1382,17 @@ const AIControls: React.FC<AIControlsProps> = ({
         if (data.success && data.commands.length > 0) {
           // Get replaceable info from the last user entry
           setHistory((prev) => {
-            const lastUserEntry = [...prev].reverse().find(e => e.type === 'user');
-            const replaceableInfo = lastUserEntry ? {
-              replaceable: lastUserEntry.replaceable,
-              commandType: lastUserEntry.commandType,
-              rawParam: lastUserEntry.rawParam,
-            } : {};
+            const lastUserEntry = [...prev].reverse().find((e) => e.type === 'user');
+            const replaceableInfo = lastUserEntry
+              ? {
+                  replaceable: lastUserEntry.replaceable,
+                  commandType: lastUserEntry.commandType,
+                  rawParam: lastUserEntry.rawParam,
+                }
+              : {};
 
-            return [...prev,
+            return [
+              ...prev,
               {
                 id: Date.now().toString(),
                 type: 'ai' as const,
@@ -1012,7 +1417,10 @@ const AIControls: React.FC<AIControlsProps> = ({
             {
               id: Date.now().toString(),
               type: 'system',
-              content: data.explanation || t('recorder:ai.parseFailed') || '无法解析命令，请尝试其他表达方式',
+              content:
+                data.explanation ||
+                t('recorder:ai.parseFailed') ||
+                '无法解析命令，请尝试其他表达方式',
               timestamp: new Date(),
               backend: executionBackend,
             },
@@ -1041,7 +1449,7 @@ const AIControls: React.FC<AIControlsProps> = ({
   const initBrowserMutation = useMutation(
     async (): Promise<BrowserInitResponse> => {
       console.log('[AIControls] Initializing browser with backend:', executionBackend);
-      return apiClient.post('/browser/init', {
+      return apiClient.post('/browser-runtime/init', {
         backend: executionBackend,
         runtimeSessionId: browserRuntimeSessionId,
         sessionPreferences: {
@@ -1104,7 +1512,7 @@ const AIControls: React.FC<AIControlsProps> = ({
 
   const handleSend = async () => {
     // Combine command and parameter
-    const commandConfig = predefinedCommands.find(c => c.value === selectedCommand);
+    const commandConfig = predefinedCommands.find((c) => c.value === selectedCommand);
     const prefix = commandConfig?.prefix || '';
     const fullMessage = isReactChatMode ? paramInput.trim() : prefix + paramInput.trim();
 
@@ -1156,7 +1564,7 @@ const AIControls: React.FC<AIControlsProps> = ({
 
     if (isReactChatMode) {
       try {
-        const activeRuntimeSessionId = recorderDebugRuntimeSessionId || browserRuntimeSessionId;
+        const activeRuntimeSessionId = browserRuntimeSessionId || recorderDebugRuntimeSessionId;
         const data = await apiClient.post<RecorderDebugChatResponse>('/ai/recorder-debug/chat', {
           sessionId: recorderDebugSessionId,
           runtimeSessionId: activeRuntimeSessionId,
@@ -1169,6 +1577,8 @@ const AIControls: React.FC<AIControlsProps> = ({
           commands: data.commands,
           execution: data.execution,
           exportArtifacts: data.exportArtifacts,
+          loopDraft: data.loopDraft,
+          loopState: data.loopState,
         };
         setRecorderDebugSessionId(data.sessionId);
         setRecorderDebugRuntimeSessionId(data.runtimeSessionId);
@@ -1189,19 +1599,31 @@ const AIControls: React.FC<AIControlsProps> = ({
         if (data.currentPageUrl || data.observation?.currentPageUrl) {
           setCurrentPageUrl(data.currentPageUrl || data.observation?.currentPageUrl);
         }
-        if (data.execution && isExecutionFailed(data.execution as BrowserCommandExecutionResponse)) {
-          const failureReason = getFailedExecutionMessage(data.execution as BrowserCommandExecutionResponse);
-          markTakeoverRequired({
-            runtimeSessionId: data.runtimeSessionId,
-            sessionId: data.sessionId,
-            backend: executionBackend,
-            reason: failureReason,
-            originalCommands: data.commands || [],
-            failedCommand: pickFailedCommand(data.commands || []),
-          });
-          void message.warning('检测到浏览器执行失败，可进入人工接管');
+        if (
+          data.execution &&
+          isExecutionFailed(data.execution as BrowserCommandExecutionResponse)
+        ) {
+          const failureReason = getFailedExecutionMessage(
+            data.execution as BrowserCommandExecutionResponse
+          );
+          if (
+            isStaleRecorderRuntimeFailure(
+              data.execution as BrowserCommandExecutionResponse,
+              data.observation
+            )
+          ) {
+            setIsBrowserReady(false);
+            onBrowserReady?.(false);
+            setRecorderDebugRuntimeSessionId(undefined);
+            setCurrentPageUrl(undefined);
+            void message.warning(
+              '浏览器录制会话已失效，下一次发送命令时会自动重新初始化浏览器会话'
+            );
+          }
+          setTakeoverState(createIdleTakeoverState());
+          void message.warning(`录制执行失败：${failureReason}`);
         } else {
-          setTakeoverState((prev) => (prev.mode === 'required' ? createIdleTakeoverState() : prev));
+          setTakeoverState(createIdleTakeoverState());
         }
         void message.success('对话已处理');
       } catch (error: unknown) {
@@ -1218,25 +1640,31 @@ const AIControls: React.FC<AIControlsProps> = ({
       }
       return;
     }
-    parseCommandMutation.mutate({ userInput: userMessage, commandType: selectedCommand }, {
-      onSettled: () => {
-        setHistory((prev) => prev.filter((h) => h.id !== parsingId));
-      },
-    });
+    parseCommandMutation.mutate(
+      { userInput: userMessage, commandType: selectedCommand },
+      {
+        onSettled: () => {
+          setHistory((prev) => prev.filter((h) => h.id !== parsingId));
+        },
+      }
+    );
   };
 
-  const handleInputKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key !== 'Enter' || e.shiftKey) {
-      return;
-    }
+  const handleInputKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key !== 'Enter' || e.shiftKey) {
+        return;
+      }
 
-    if (e.nativeEvent.isComposing || isComposingRef.current) {
-      return;
-    }
+      if (e.nativeEvent.isComposing || isComposingRef.current) {
+        return;
+      }
 
-    e.preventDefault();
-    void handleSend();
-  }, [handleSend]);
+      e.preventDefault();
+      void handleSend();
+    },
+    [handleSend]
+  );
 
   const handleExecuteCommands = async (commands: MCPCommand[]) => {
     // Auto init browser if not ready
@@ -1350,9 +1778,9 @@ const AIControls: React.FC<AIControlsProps> = ({
 
   const handleStopTakeover = async () => {
     if (
-      takeoverState.mode !== 'recording'
-      || !takeoverState.runtimeSessionId
-      || !takeoverState.takeoverSessionId
+      takeoverState.mode !== 'recording' ||
+      !takeoverState.runtimeSessionId ||
+      !takeoverState.takeoverSessionId
     ) {
       return;
     }
@@ -1416,9 +1844,9 @@ const AIControls: React.FC<AIControlsProps> = ({
 
   const handleResumeAfterTakeover = async () => {
     if (
-      takeoverState.mode !== 'ready_to_resume'
-      || !takeoverState.runtimeSessionId
-      || takeoverState.resumeCommands.length === 0
+      takeoverState.mode !== 'ready_to_resume' ||
+      !takeoverState.runtimeSessionId ||
+      takeoverState.resumeCommands.length === 0
     ) {
       return;
     }
@@ -1470,6 +1898,17 @@ const AIControls: React.FC<AIControlsProps> = ({
     setTemplateSteps((prev) => prev.filter((s) => s.id !== stepId));
   };
 
+  const handleUpdateTemplateStepPolicy = (
+    stepId: string,
+    executionPolicy: TemplateStepExecutionPolicy
+  ) => {
+    setTemplateSteps((prev) =>
+      prev.map((step) =>
+        step.id === stepId ? { ...step, execution_policy: executionPolicy } : step
+      )
+    );
+  };
+
   // Clear template
   const handleClearTemplate = () => {
     setTemplateSteps([]);
@@ -1504,7 +1943,10 @@ const AIControls: React.FC<AIControlsProps> = ({
     const extractedParams = extractParameters(templateSteps);
 
     // Only include replaceable params in params_schema
-    const replaceableParamsSchema: Record<string, { type: string; description: string; default?: string | number }> = {};
+    const replaceableParamsSchema: Record<
+      string,
+      { type: string; description: string; default?: string | number }
+    > = {};
     Object.entries(extractedParams).forEach(([name, schema]) => {
       if (schema.replaceable) {
         replaceableParamsSchema[name] = schema;
@@ -1513,49 +1955,11 @@ const AIControls: React.FC<AIControlsProps> = ({
 
     // Convert TemplateStep to backend format and append optional screenshots
     // Also substitute replaceable params with placeholders
-    const coreBackendSteps: Array<{
-      action: string;
-      params?: Record<string, string | number>;
-      locator?: { type: 'css'; value: string };
-    }> = [];
-
-    templateSteps.forEach((step) => {
-      // Create params with placeholder substitution for replaceable params
-      const substitutedParams = { ...step.params };
-
-      // Only substitute params that are marked as replaceable
-      Object.entries(extractedParams).forEach(([originalName, schema]) => {
-        if (schema.replaceable) {
-          const defaultValue = schema.default;
-          if (defaultValue !== undefined) {
-            Object.keys(substitutedParams).forEach(key => {
-              if (substitutedParams[key] === defaultValue) {
-                substitutedParams[key] = `\${${originalName}}`;
-              }
-            });
-          }
-        }
-      });
-
-      // Add the step with substituted params
-      const backendStep: {
-        action: string;
-        params: Record<string, string | number>;
-        locator?: { type: 'css'; value: string };
-      } = {
-        action: step.tool,
-        params: substitutedParams as Record<string, string | number>,
-      };
-
-      if (step.params.selector) {
-        backendStep.locator = {
-          type: 'css',
-          value: step.params.selector as string,
-        };
-      }
-
-      coreBackendSteps.push(backendStep);
-    });
+    const coreBackendSteps = buildBackendCoreSteps(
+      templateSteps,
+      extractedParams,
+      (originalName, schema) => (schema.replaceable ? originalName : undefined)
+    );
 
     const backendSteps = appendTemplateScreenshotSteps(coreBackendSteps);
 
@@ -1591,8 +1995,16 @@ const AIControls: React.FC<AIControlsProps> = ({
   };
 
   // Extract parameters from template steps for later replacement
-  const extractParameters = (steps: TemplateStep[]): Record<string, { type: string; description: string; default?: string | number; replaceable?: boolean }> => {
-    const params: Record<string, { type: string; description: string; default?: string | number; replaceable?: boolean }> = {};
+  const extractParameters = (
+    steps: TemplateStep[]
+  ): Record<
+    string,
+    { type: string; description: string; default?: string | number; replaceable?: boolean }
+  > => {
+    const params: Record<
+      string,
+      { type: string; description: string; default?: string | number; replaceable?: boolean }
+    > = {};
 
     steps.forEach((step, index) => {
       const stepPrefix = `step${index + 1}`;
@@ -1713,7 +2125,13 @@ const AIControls: React.FC<AIControlsProps> = ({
   };
 
   // Generate executable script from template steps with parameterized variables
-  const generateScript = (steps: TemplateStep[], params: Record<string, { type: string; description: string; default?: string | number; replaceable?: boolean }> = {}): string => {
+  const generateScript = (
+    steps: TemplateStep[],
+    params: Record<
+      string,
+      { type: string; description: string; default?: string | number; replaceable?: boolean }
+    > = {}
+  ): string => {
     const lines: string[] = [
       '// Auto-generated browser automation script',
       '// Generated at: ' + new Date().toISOString(),
@@ -1776,8 +2194,12 @@ const AIControls: React.FC<AIControlsProps> = ({
           }
           break;
         case 'fill': {
-          const selectorVar = params[`${stepPrefix}_selector`] ? `${stepPrefix}_selector` : `'${selector || ''}'`;
-          const valueVar = params[`${stepPrefix}_value`] ? `${stepPrefix}_value` : `'${text || getStringParam(step.params, 'value') || ''}'`;
+          const selectorVar = params[`${stepPrefix}_selector`]
+            ? `${stepPrefix}_selector`
+            : `'${selector || ''}'`;
+          const valueVar = params[`${stepPrefix}_value`]
+            ? `${stepPrefix}_value`
+            : `'${text || getStringParam(step.params, 'value') || ''}'`;
           lines.push(`  await page.fill(${selectorVar}, ${valueVar});`);
           break;
         }
@@ -1786,7 +2208,9 @@ const AIControls: React.FC<AIControlsProps> = ({
           break;
         case 'scroll':
           if (direction === 'down') {
-            const amountVar = params[`${stepPrefix}_amount`] ? `${stepPrefix}_amount` : String(amount ?? 300);
+            const amountVar = params[`${stepPrefix}_amount`]
+              ? `${stepPrefix}_amount`
+              : String(amount ?? 300);
             lines.push(`  await page.evaluate(() => window.scrollBy(0, ${amountVar}));`);
           } else if (direction === 'top') {
             lines.push(`  await page.evaluate(() => window.scrollTo(0, 0));`);
@@ -1811,15 +2235,21 @@ const AIControls: React.FC<AIControlsProps> = ({
         }
         case 'search':
         case 'smart_search': {
-          const searchQuery = params[`${stepPrefix}_query`] ? `${stepPrefix}_query` : `'${query || ''}'`;
-          const searchSelector = params[`${stepPrefix}_input_selector`] ? `${stepPrefix}_input_selector` : `'${inputSelector || ''}'`;
+          const searchQuery = params[`${stepPrefix}_query`]
+            ? `${stepPrefix}_query`
+            : `'${query || ''}'`;
+          const searchSelector = params[`${stepPrefix}_input_selector`]
+            ? `${stepPrefix}_input_selector`
+            : `'${inputSelector || ''}'`;
           lines.push(`  // Search: fill search input and submit`);
           lines.push(`  let searchInput;`);
           if (inputSelector) {
             lines.push(`  searchInput = page.locator(${searchSelector});`);
             lines.push(`  await searchInput.fill(${searchQuery});`);
           } else {
-            lines.push(`  searchInput = page.locator('input[type="search"], input[name="q"], [role="searchbox"], input[placeholder*="search" i], input[placeholder*="搜" i]').first();`);
+            lines.push(
+              `  searchInput = page.locator('input[type="search"], input[name="q"], [role="searchbox"], input[placeholder*="search" i], input[placeholder*="搜" i]').first();`
+            );
             lines.push(`  await searchInput.fill(${searchQuery});`);
           }
           if (submitMethod === 'click' && buttonSelector) {
@@ -1868,7 +2298,10 @@ const AIControls: React.FC<AIControlsProps> = ({
 
     // Only include replaceable params in final params_schema
     // Also apply custom parameter names
-    const finalParams: Record<string, { type: string; description: string; default?: string | number }> = {};
+    const finalParams: Record<
+      string,
+      { type: string; description: string; default?: string | number }
+    > = {};
     Object.entries(extractedParams).forEach(([originalName, schema]) => {
       // Only include if param is replaceable (checked by user during recording)
       if (schema.replaceable) {
@@ -1882,55 +2315,16 @@ const AIControls: React.FC<AIControlsProps> = ({
 
     // Convert TemplateStep to backend format and append optional screenshots
     // Also replace parameter values with ${param_name} placeholders
-    const coreBackendSteps: Array<{
-      action: string;
-      params?: Record<string, string | number>;
-      locator?: { type: 'css'; value: string };
-    }> = [];
-
-    templateSteps.forEach((step) => {
-      // Create params with placeholder substitution for replaceable params only
-      const substitutedParams = { ...step.params };
-
-      // Find which original params map to this step's params and substitute
-      // Only substitute params that are marked as replaceable
-      Object.entries(extractedParams).forEach(([originalName, schema]) => {
-        // Only substitute if param is replaceable
-        if (schema.replaceable && paramEnabled[originalName] !== false) {
-          const customName = paramNames[originalName] || originalName;
-          // Replace the value with placeholder
-          const defaultValue = schema.default;
-          if (defaultValue !== undefined) {
-            // Find and replace in params
-            Object.keys(substitutedParams).forEach(key => {
-              if (substitutedParams[key] === defaultValue) {
-                substitutedParams[key] = `\${${customName}}`;
-              }
-            });
-          }
+    const coreBackendSteps = buildBackendCoreSteps(
+      templateSteps,
+      extractedParams,
+      (originalName, schema) => {
+        if (!schema.replaceable || paramEnabled[originalName] === false) {
+          return undefined;
         }
-      });
-
-      // Add the original step with substituted params
-      const backendStep: {
-        action: string;
-        params: Record<string, string | number>;
-        locator?: { type: 'css'; value: string };
-      } = {
-        action: step.tool,
-        params: substitutedParams as Record<string, string | number>,
-      };
-
-      // Add locator for selector-based actions
-      if (step.params.selector) {
-        backendStep.locator = {
-          type: 'css',
-          value: step.params.selector as string,
-        };
+        return paramNames[originalName] || originalName;
       }
-
-      coreBackendSteps.push(backendStep);
-    });
+    );
 
     const backendSteps = appendTemplateScreenshotSteps(coreBackendSteps);
 
@@ -2064,7 +2458,19 @@ const AIControls: React.FC<AIControlsProps> = ({
         const info = entry.result.template_info;
         // Only add deterministic commands (navigate, fill, click with selector, etc.)
         // Skip non-deterministic commands like click_result without actual navigation
-        const deterministicTools = ['navigate', 'fill', 'click', 'screenshot', 'scroll', 'wait', 'press_key', 'hover', 'type_text', 'search', 'smart_search'];
+        const deterministicTools = [
+          'navigate',
+          'fill',
+          'click',
+          'screenshot',
+          'scroll',
+          'wait',
+          'press_key',
+          'hover',
+          'type_text',
+          'search',
+          'smart_search',
+        ];
         if (deterministicTools.includes(info.tool)) {
           // Determine which params are replaceable based on entry.replaceable and commandType
           const replaceableParams: Record<string, boolean> = {};
@@ -2093,11 +2499,12 @@ const AIControls: React.FC<AIControlsProps> = ({
 
           extractedSteps.push({
             id: Date.now().toString() + Math.random(),
-            tool: info.tool,
+            tool: info.tool as TemplateStepAction,
             params: info.params,
             description: info.description || `${info.tool} ${JSON.stringify(info.params)}`,
             timestamp: entry.timestamp,
             replaceableParams,
+            execution_policy: 'auto_execute',
           });
         }
       }
@@ -2140,28 +2547,42 @@ const AIControls: React.FC<AIControlsProps> = ({
     'chrome-devtools': 'CDT CLI',
   };
 
-  const buildTemplateDescriptionFromArtifacts = (
-    artifacts: RecorderDebugExportArtifacts,
-  ) => {
-    return artifacts.skillDraft?.publishPayload?.description
-      || artifacts.skillDraft?.description
-      || artifacts.guidance
-      || '由录制流程自动生成的浏览器执行模板';
+  const buildTemplateDescriptionFromArtifacts = (artifacts: RecorderDebugExportArtifacts) => {
+    const baseDescription =
+      artifacts.skillDraft?.publishPayload?.description ||
+      artifacts.skillDraft?.description ||
+      artifacts.guidance ||
+      '由录制流程自动生成的浏览器执行模板';
+    return artifacts.loopDraft ? `${baseDescription}（包含循环处理草稿）` : baseDescription;
   };
 
   const buildTemplateNameFromArtifacts = (artifacts: RecorderDebugExportArtifacts) => {
-    const rawName = artifacts.skillDraft?.publishPayload?.name
-      || artifacts.skillDraft?.name
-      || `recorder-export-${Date.now()}`;
+    const rawName =
+      artifacts.skillDraft?.publishPayload?.name ||
+      artifacts.skillDraft?.name ||
+      `recorder-export-${Date.now()}`;
     return rawName.slice(0, 255);
   };
 
-  const buildTemplateStepsFromArtifacts = (artifacts: RecorderDebugExportArtifacts): Array<{
+  const buildTemplateStepsFromArtifacts = (
+    artifacts: RecorderDebugExportArtifacts
+  ): Array<{
     step_id: string;
-    action: string;
+    action: TemplateStepAction;
     locator?: { type: string; value: string; fallback?: { type: string; value: string } };
     params?: Record<string, string | number>;
+    output_var?: string;
+    branch?: TemplateBranchConfig;
+    description?: string;
+    execution_policy?: TemplateStepExecutionPolicy;
   }> => {
+    if (artifacts.templateSteps && artifacts.templateSteps.length > 0) {
+      return artifacts.templateSteps.map((step) => ({
+        ...step,
+        execution_policy: normalizeTemplateStepExecutionPolicy(step.execution_policy),
+      }));
+    }
+
     const parameterSources = new Map<string, string>();
     (artifacts.skillDraft?.parameters || []).forEach((parameter) => {
       if (parameter.source) {
@@ -2169,41 +2590,52 @@ const AIControls: React.FC<AIControlsProps> = ({
       }
     });
 
-    const coreSteps = (artifacts.skillDraft?.executionPlan?.commands || []).map((command, commandIndex) => {
-      const rawParams = Object.fromEntries(
-        Object.entries(command.params || {}).filter(([, value]) =>
-          ['string', 'number'].includes(typeof value),
-        ),
-      ) as Record<string, string | number>;
-      const locator = inferTemplateLocatorFromCommand(command);
-      const locatorParamKeys = new Set(['selector', 'target', 'text']);
+    const coreSteps = (artifacts.skillDraft?.executionPlan?.commands || []).map(
+      (command, commandIndex) => {
+        const rawParams = Object.fromEntries(
+          Object.entries(command.params || {}).filter(([, value]) =>
+            ['string', 'number'].includes(typeof value)
+          )
+        ) as Record<string, string | number>;
+        const locator = inferTemplateLocatorFromCommand(command);
+        const locatorParamKeys = new Set(['selector', 'target', 'text']);
 
-      const substitutedEntries = Object.entries(rawParams)
-        .map(([key, value]) => {
-          const parameterName = parameterSources.get(`command.${commandIndex}.${key}`)
-            || parameterSources.get(`${command.tool}.${key}`);
-          if (!parameterName) {
-            return [key, value];
-          }
-          return [key, `\${${parameterName}}`];
-        })
-        .filter((entry): entry is [string, string | number] => !locatorParamKeys.has(String(entry[0])));
+        const substitutedEntries = Object.entries(rawParams)
+          .map(([key, value]) => {
+            const parameterName =
+              parameterSources.get(`command.${commandIndex}.${key}`) ||
+              parameterSources.get(`${command.tool}.${key}`);
+            if (!parameterName) {
+              return [key, value];
+            }
+            return [key, `\${${parameterName}}`];
+          })
+          .filter(
+            (entry): entry is [string, string | number] => !locatorParamKeys.has(String(entry[0]))
+          );
 
-      const normalizedParams = Object.fromEntries(
-        substitutedEntries,
-      ) as Record<string, string | number>;
+        const normalizedParams = Object.fromEntries(substitutedEntries) as Record<
+          string,
+          string | number
+        >;
 
-      return {
-        action: command.tool,
-        ...(locator ? { locator } : {}),
-        ...(Object.keys(normalizedParams).length > 0 ? { params: normalizedParams } : {}),
-      };
-    });
+        return {
+          step_id: `step_${commandIndex + 1}`,
+          action: command.tool as TemplateStepAction,
+          ...(locator ? { locator } : {}),
+          ...(Object.keys(normalizedParams).length > 0 ? { params: normalizedParams } : {}),
+          description: command.description,
+          execution_policy: 'auto_execute' as const,
+        };
+      }
+    );
 
     return appendTemplateScreenshotSteps(coreSteps);
   };
 
-  const inferTemplateLocatorFromCommand = (command: MCPCommand): { type: string; value: string } | undefined => {
+  const inferTemplateLocatorFromCommand = (
+    command: MCPCommand
+  ): { type: string; value: string } | undefined => {
     const runtimeLocator = command.locator;
     if (runtimeLocator?.value && runtimeLocator.strategy) {
       const mappedType = mapRuntimeLocatorType(runtimeLocator.strategy);
@@ -2216,13 +2648,14 @@ const AIControls: React.FC<AIControlsProps> = ({
     }
 
     const params = command.params || {};
-    const candidate = typeof params.selector === 'string'
-      ? params.selector
-      : typeof params.text === 'string'
-        ? params.text
-        : typeof params.target === 'string' && !/^e\d+$/i.test(params.target)
-          ? params.target
-          : undefined;
+    const candidate =
+      typeof params.selector === 'string'
+        ? params.selector
+        : typeof params.text === 'string'
+          ? params.text
+          : typeof params.target === 'string' && !/^e\d+$/i.test(params.target)
+            ? params.target
+            : undefined;
 
     if (!candidate || !['click', 'fill', 'select', 'check'].includes(command.tool)) {
       return undefined;
@@ -2268,11 +2701,11 @@ const AIControls: React.FC<AIControlsProps> = ({
       return 'xpath';
     }
     if (
-      trimmed.startsWith('#')
-      || trimmed.startsWith('.')
-      || trimmed.startsWith('[')
-      || trimmed.includes('>')
-      || trimmed.includes(':')
+      trimmed.startsWith('#') ||
+      trimmed.startsWith('.') ||
+      trimmed.startsWith('[') ||
+      trimmed.includes('>') ||
+      trimmed.includes(':')
     ) {
       return 'css';
     }
@@ -2293,7 +2726,7 @@ const AIControls: React.FC<AIControlsProps> = ({
               default: value.default,
               required: value.required,
             },
-          ]),
+          ])
         ),
         required: publishSchema.required || [],
       };
@@ -2310,7 +2743,7 @@ const AIControls: React.FC<AIControlsProps> = ({
             default: parameter.exampleValue,
             required: parameter.required,
           },
-        ]),
+        ])
       ),
       required: (artifacts.skillDraft?.parameters || [])
         .filter((parameter) => parameter.required)
@@ -2333,16 +2766,20 @@ const AIControls: React.FC<AIControlsProps> = ({
 
     setExportTemplateLoading(true);
     try {
-      const exported = await apiClient.post<RecorderDebugExportResponse>('/ai/recorder-debug/export', {
-        sessionId,
-        runtimeSessionId,
-        backend: executionBackend,
-        userGoal: history
-          .filter((entry) => entry.type === 'user')
-          .map((entry) => entry.content)
-          .slice(-3)
-          .join(' / ') || '录制浏览器任务',
-      });
+      const exported = await apiClient.post<RecorderDebugExportResponse>(
+        '/ai/recorder-debug/export',
+        {
+          sessionId,
+          runtimeSessionId,
+          backend: executionBackend,
+          userGoal:
+            history
+              .filter((entry) => entry.type === 'user')
+              .map((entry) => entry.content)
+              .slice(-3)
+              .join(' / ') || '录制浏览器任务',
+        }
+      );
 
       const artifacts = exported.exportArtifacts;
       const createdTemplate = await templateApi.create({
@@ -2363,6 +2800,11 @@ const AIControls: React.FC<AIControlsProps> = ({
           backend: executionBackend,
           script: artifacts.script,
           guidance: artifacts.guidance,
+          loopDraft: artifacts.loopDraft || null,
+          loopPlanPreview:
+            artifacts.loopPlanPreview ||
+            artifacts.skillDraft?.publishPayload?.loopPlanPreview ||
+            [],
           outputs: artifacts.skillDraft?.outputs || [],
           usageNotes: artifacts.skillDraft?.usageNotes || [],
           usageMarkdown: artifacts.skillDraft?.usageMarkdown,
@@ -2393,12 +2835,12 @@ const AIControls: React.FC<AIControlsProps> = ({
 
   const latestReactSuggestedParameters = [...history]
     .reverse()
-    .find((entry) => (
-      entry.type === 'ai'
-      && Array.isArray(entry.result?.observation?.suggestedParameters)
-      && entry.result.observation.suggestedParameters.length > 0
-    ))
-    ?.result?.observation?.suggestedParameters;
+    .find(
+      (entry) =>
+        entry.type === 'ai' &&
+        Array.isArray(entry.result?.observation?.suggestedParameters) &&
+        entry.result.observation.suggestedParameters.length > 0
+    )?.result?.observation?.suggestedParameters;
 
   const handleInsertSuggestedParameter = (name: string) => {
     const template = `${name}: `;
@@ -2414,12 +2856,42 @@ const AIControls: React.FC<AIControlsProps> = ({
     });
   };
 
+  const handleInsertRecorderControlToken = useCallback((token: string) => {
+    setParamInput((prev) => {
+      const normalizedToken = token.trim();
+      if (!normalizedToken) {
+        return prev;
+      }
+
+      const lines = prev
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .filter((line) => {
+          if (normalizedToken.startsWith('[循环对象:')) {
+            return !line.startsWith('[循环对象:');
+          }
+          if (normalizedToken === '[条件分歧]') {
+            return line !== '[条件分歧]';
+          }
+          return line !== normalizedToken;
+        });
+
+      return [normalizedToken, ...lines].join('\n');
+    });
+    window.setTimeout(() => {
+      inputRef.current?.focus();
+    }, 0);
+  }, []);
+
   const isRecording = recorderStatus === 'recording';
   const isPaused = recorderStatus === 'paused';
   const canSend = Boolean(
     isReactChatMode
       ? paramInput.trim()
-      : (predefinedCommands.find(c => c.value === selectedCommand)?.prefix + paramInput.trim()).trim(),
+      : (
+          predefinedCommands.find((c) => c.value === selectedCommand)?.prefix + paramInput.trim()
+        ).trim()
   );
   const canExport = Boolean(recorderDebugSessionId && recorderDebugRuntimeSessionId);
   const canUseSpeech = speechSupported && !isLoading && !isTranscribing;
@@ -2473,13 +2945,29 @@ const AIControls: React.FC<AIControlsProps> = ({
           border: isDarkTheme ? '1px solid #334155' : '1px solid rgba(99, 102, 241, 0.1)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+            flexWrap: 'wrap',
+          }}
+        >
           <Space>
             <Switch
               checked={isAIMode}
               onChange={setIsAIMode}
-              checkedChildren={<><RobotOutlined /> AI</>}
-              unCheckedChildren={<><VideoCameraOutlined /> 手动</>}
+              checkedChildren={
+                <>
+                  <RobotOutlined /> AI
+                </>
+              }
+              unCheckedChildren={
+                <>
+                  <VideoCameraOutlined /> 手动
+                </>
+              }
             />
           </Space>
           <Space wrap>
@@ -2493,7 +2981,9 @@ const AIControls: React.FC<AIControlsProps> = ({
               buttonStyle="solid"
             >
               <Radio.Button value="cli">{backendButtonLabels.cli}</Radio.Button>
-              <Radio.Button value="chrome-devtools">{backendButtonLabels['chrome-devtools']}</Radio.Button>
+              <Radio.Button value="chrome-devtools">
+                {backendButtonLabels['chrome-devtools']}
+              </Radio.Button>
             </Radio.Group>
             {isAIMode && (
               <Space>
@@ -2523,9 +3013,7 @@ const AIControls: React.FC<AIControlsProps> = ({
               onChange={(val) => setWaitDuration(val ?? 0.5)}
               style={{ width: 68 }}
             />
-            <Button disabled>
-              s
-            </Button>
+            <Button disabled>s</Button>
           </Space.Compact>
           <Text type="secondary" style={{ fontSize: 14, marginLeft: 8 }}>
             自动截图
@@ -2536,7 +3024,16 @@ const AIControls: React.FC<AIControlsProps> = ({
 
       {isAIMode ? (
         // AI Mode Content
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minHeight: 0, overflow: 'hidden' }}>
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2,
+            flex: 1,
+            minHeight: 0,
+            overflow: 'hidden',
+          }}
+        >
           {/* Message history */}
           <div
             style={{
@@ -2549,916 +3046,1158 @@ const AIControls: React.FC<AIControlsProps> = ({
               border: isDarkTheme ? '1px solid #334155' : '1px solid #e5e7eb',
             }}
           >
-          {history.length === 0 ? (
-            <Empty
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-              description={t('recorder:ai.noHistory') || '暂无对话记录'}
-            />
-          ) : (
-            history.map((entry) => (
-              (() => {
-                const displayContent = buildCompactHistoryBubbleText(entry);
-                return (
-              <div
-                key={entry.id}
-                style={{
-                  marginBottom: 12,
-                  textAlign: entry.type === 'user' ? 'right' : 'left',
-                }}
-              >
-                <div
-                  style={{
-                    display: 'inline-block',
-                    maxWidth: '85%',
-                    padding: '8px 12px',
-                    borderRadius: 12,
-                    background: entry.type === 'user' 
-                      ? '#6366f1' 
-                      : entry.type === 'system' 
-                        ? (isDarkTheme ? '#1e3a8a' : '#e6f7ff') 
-                        : (isDarkTheme ? 'var(--bg-card)' : '#fff'),
-                    color: entry.type === 'user' ? '#fff' : 'inherit',
-                    boxShadow: isDarkTheme ? '0 1px 3px rgba(0,0,0,0.3)' : '0 1px 2px rgba(0,0,0,0.1)',
-                    border: isDarkTheme && entry.type !== 'user' ? '1px solid #334155' : 'none',
-                  }}
-                >
-                  {entry.backend && (
-                    <div style={{ marginBottom: 6 }}>
-                      <Tag color={backendTagColors[entry.backend]}>
-                        {backendLabels[entry.backend]}
-                      </Tag>
-                    </div>
-                  )}
-                  <Text
-                    style={{
-                      color: entry.type === 'user' ? '#fff' : 'inherit',
-                      whiteSpace: 'pre-wrap',
-                      wordBreak: 'break-word',
-                      overflowWrap: 'anywhere',
-                    }}
-                  >
-                    {displayContent}
-                  </Text>
+            {history.length === 0 ? (
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description={t('recorder:ai.noHistory') || '暂无对话记录'}
+              />
+            ) : (
+              history.map((entry) =>
+                (() => {
+                  const displayContent = buildCompactHistoryBubbleText(entry);
+                  return (
+                    <div
+                      key={entry.id}
+                      style={{
+                        marginBottom: 12,
+                        textAlign: entry.type === 'user' ? 'right' : 'left',
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: 'inline-block',
+                          maxWidth: '85%',
+                          padding: '8px 12px',
+                          borderRadius: 12,
+                          background:
+                            entry.type === 'user'
+                              ? '#6366f1'
+                              : entry.type === 'system'
+                                ? isDarkTheme
+                                  ? '#1e3a8a'
+                                  : '#e6f7ff'
+                                : isDarkTheme
+                                  ? 'var(--bg-card)'
+                                  : '#fff',
+                          color: entry.type === 'user' ? '#fff' : 'inherit',
+                          boxShadow: isDarkTheme
+                            ? '0 1px 3px rgba(0,0,0,0.3)'
+                            : '0 1px 2px rgba(0,0,0,0.1)',
+                          border:
+                            isDarkTheme && entry.type !== 'user' ? '1px solid #334155' : 'none',
+                        }}
+                      >
+                        {entry.backend && (
+                          <div style={{ marginBottom: 6 }}>
+                            <Tag color={backendTagColors[entry.backend]}>
+                              {backendLabels[entry.backend]}
+                            </Tag>
+                          </div>
+                        )}
+                        <Text
+                          style={{
+                            color: entry.type === 'user' ? '#fff' : 'inherit',
+                            whiteSpace: 'pre-wrap',
+                            wordBreak: 'break-word',
+                            overflowWrap: 'anywhere',
+                          }}
+                        >
+                          {displayContent}
+                        </Text>
 
-                  {/* Show commands if present */}
-                  {entry.commands && entry.commands.length > 0 && !isReactChatMode && (
-                    <div style={{ marginTop: 8 }}>
-                      <Collapse
-                        size="small"
-                        ghost
-                        items={[
-                          {
-                            key: '1',
-                            label: (
-                              <Space>
-                                <CodeOutlined />
-                                <Text style={{ fontSize: 12 }}>
-                                  {entry.commands.length} {t('recorder:ai.commands') || '执行命令'}
-                                </Text>
-                              </Space>
-                            ),
-                            children: (
-                              <div>
-                                {entry.commands.map((cmd, i) => (
+                        {/* Show commands if present */}
+                        {entry.commands && entry.commands.length > 0 && !isReactChatMode && (
+                          <div style={{ marginTop: 8 }}>
+                            <Collapse
+                              size="small"
+                              ghost
+                              items={[
+                                {
+                                  key: '1',
+                                  label: (
+                                    <Space>
+                                      <CodeOutlined />
+                                      <Text style={{ fontSize: 12 }}>
+                                        {entry.commands.length}{' '}
+                                        {t('recorder:ai.commands') || '执行命令'}
+                                      </Text>
+                                    </Space>
+                                  ),
+                                  children: (
+                                    <div>
+                                      {entry.commands.map((cmd, i) => (
+                                        <div
+                                          key={i}
+                                          style={{
+                                            background: isDarkTheme ? '#1e293b' : '#f5f5f5',
+                                            padding: '4px 8px',
+                                            borderRadius: 4,
+                                            marginBottom: 4,
+                                            fontFamily: 'monospace',
+                                            fontSize: 12,
+                                            border: isDarkTheme ? '1px solid #334155' : 'none',
+                                          }}
+                                        >
+                                          <Space>
+                                            <Tag color="blue">{cmd.tool}</Tag>
+                                            <Text code style={{ fontSize: 11 }}>
+                                              {JSON.stringify(cmd.params)}
+                                            </Text>
+                                            <Button
+                                              type="text"
+                                              size="small"
+                                              icon={<CopyOutlined />}
+                                              onClick={() => handleCopyCommand(cmd)}
+                                            />
+                                          </Space>
+                                        </div>
+                                      ))}
+                                      <Button
+                                        type="primary"
+                                        size="small"
+                                        icon={<PlayCircleOutlined />}
+                                        onClick={() => {
+                                          void handleExecuteCommands(entry.commands!);
+                                        }}
+                                        style={{ marginTop: 8 }}
+                                      >
+                                        {t('recorder:ai.execute') || '执行命令'}
+                                      </Button>
+                                    </div>
+                                  ),
+                                },
+                              ]}
+                            />
+                          </div>
+                        )}
+
+                        {/* Show result if present */}
+                        {entry.result && (
+                          <div style={{ marginTop: 8 }}>
+                            {isReactChatMode ? (
+                              <div style={{ marginTop: 8 }}>
+                                {entry.commands && entry.commands.length > 0 && (
+                                  <div style={{ marginBottom: 8 }}>
+                                    <Text type="secondary" style={{ fontSize: 12 }}>
+                                      已执行: {entry.commands.map((cmd) => cmd.tool).join(' / ')}
+                                    </Text>
+                                  </div>
+                                )}
+                                {buildLoopSummaryText(
+                                  entry.result.loopDraft,
+                                  entry.result.loopState
+                                ) ? (
+                                  <div style={{ marginBottom: 8 }}>
+                                    <Text type="secondary" style={{ fontSize: 12 }}>
+                                      {buildLoopSummaryText(
+                                        entry.result.loopDraft,
+                                        entry.result.loopState
+                                      )}
+                                    </Text>
+                                  </div>
+                                ) : null}
+                                {(entry.result.execution ||
+                                  entry.result.observation ||
+                                  entry.result.exportArtifacts ||
+                                  entry.result.loopDraft ||
+                                  entry.result.loopState) && (
                                   <div
-                                    key={i}
                                     style={{
-                                      background: isDarkTheme ? '#1e293b' : '#f5f5f5',
-                                      padding: '4px 8px',
-                                      borderRadius: 4,
-                                      marginBottom: 4,
-                                      fontFamily: 'monospace',
+                                      marginBottom: 8,
+                                      padding: '8px 10px',
+                                      borderRadius: 8,
+                                      background: isDarkTheme ? '#111827' : '#f8fafc',
+                                      border: isDarkTheme
+                                        ? '1px solid #334155'
+                                        : '1px solid #e2e8f0',
                                       fontSize: 12,
-                                      border: isDarkTheme ? '1px solid #334155' : 'none',
                                     }}
                                   >
-                                    <Space>
-                                      <Tag color="blue">{cmd.tool}</Tag>
-                                      <Text code style={{ fontSize: 11 }}>
-                                        {JSON.stringify(cmd.params)}
-                                      </Text>
-                                      <Button
-                                        type="text"
-                                        size="small"
-                                        icon={<CopyOutlined />}
-                                        onClick={() => handleCopyCommand(cmd)}
-                                      />
-                                    </Space>
-                                  </div>
-                                ))}
-                                <Button
-                                  type="primary"
-                                  size="small"
-                                  icon={<PlayCircleOutlined />}
-                                  onClick={() => {
-                                    void handleExecuteCommands(entry.commands!);
-                                  }}
-                                  style={{ marginTop: 8 }}
-                                >
-                                  {t('recorder:ai.execute') || '执行命令'}
-                                </Button>
-                              </div>
-                            ),
-                          },
-                        ]}
-                      />
-                    </div>
-                  )}
-
-                  {/* Show result if present */}
-                  {entry.result && (
-                    <div style={{ marginTop: 8 }}>
-                      {isReactChatMode ? (
-                        <div style={{ marginTop: 8 }}>
-                          {entry.commands && entry.commands.length > 0 && (
-                            <div style={{ marginBottom: 8 }}>
-                              <Text type="secondary" style={{ fontSize: 12 }}>
-                                已执行: {entry.commands.map((cmd) => cmd.tool).join(' / ')}
-                              </Text>
-                            </div>
-                          )}
-                          {(entry.result.execution || entry.result.observation || entry.result.exportArtifacts) && (
-                            <div
-                              style={{
-                                marginBottom: 8,
-                                padding: '8px 10px',
-                                borderRadius: 8,
-                                background: isDarkTheme ? '#111827' : '#f8fafc',
-                                border: isDarkTheme ? '1px solid #334155' : '1px solid #e2e8f0',
-                                fontSize: 12,
-                              }}
-                            >
-                              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                                <div>
-                                  <div>
-                                    {entry.result.execution?.success === false ? '浏览器执行失败' : '浏览器执行详情已生成'}
-                                  </div>
-                                  <div style={{ marginTop: 2, color: isDarkTheme ? '#94a3b8' : '#64748b' }}>
-                                    {entry.commands?.length ? `命令数 ${entry.commands.length}` : '已隐藏详细执行内容，请按需查看详情'}
-                                  </div>
-                                </div>
-                                <Space size={4} wrap>
-                                  {entry.sessionId ? (
-                                    <>
-                                      <Button
-                                        size="small"
-                                        icon={<EyeOutlined />}
-                                        onClick={() => navigate(buildRecorderDebugDetailPath(entry.sessionId!))}
-                                      >
-                                        查看详情
-                                      </Button>
-                                      <Button
-                                        size="small"
-                                        type="link"
-                                        icon={<LinkOutlined />}
-                                        onClick={() => window.open(buildRecorderDebugDetailPath(entry.sessionId!), '_blank', 'noopener,noreferrer')}
-                                      >
-                                        打开链接
-                                      </Button>
-                                    </>
-                                  ) : null}
-                                </Space>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <Collapse
-                          size="small"
-                          ghost
-                          items={[
-                            {
-                              key: 'result',
-                              label: (
-                                <Space>
-                                  {entry.result.status === 'error' ? (
-                                    <CloseCircleOutlined style={{ color: '#ff4d4f' }} />
-                                  ) : (
-                                    <CheckCircleOutlined style={{ color: '#52c41a' }} />
-                                  )}
-                                  <Text style={{ fontSize: 12 }}>
-                                    {entry.result.status === 'error'
-                                      ? (entry.result.message || '执行失败')
-                                      : (t('recorder:ai.result') || '执行结果')}
-                                  </Text>
-                                </Space>
-                              ),
-                              children: (
-                                <div
-                                  style={{
-                                    padding: '8px 10px',
-                                    borderRadius: 8,
-                                    background: isDarkTheme ? '#111827' : '#f8fafc',
-                                    border: isDarkTheme ? '1px solid #334155' : '1px solid #e2e8f0',
-                                    fontSize: 12,
-                                  }}
-                                >
-                                  <div style={{ marginBottom: 6 }}>
-                                    已隐藏详细执行内容，请按需查看详情。
-                                  </div>
-                                  <Space size={4} wrap>
-                                    {entry.sessionId ? (
-                                      <>
-                                        <Button
-                                          size="small"
-                                          icon={<EyeOutlined />}
-                                          onClick={() => navigate(buildRecorderDebugDetailPath(entry.sessionId!))}
+                                    <div
+                                      style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        gap: 8,
+                                        alignItems: 'center',
+                                        flexWrap: 'wrap',
+                                      }}
+                                    >
+                                      <div>
+                                        <div>
+                                          {entry.result.execution?.success === false
+                                            ? '浏览器执行失败'
+                                            : '浏览器执行详情已生成'}
+                                        </div>
+                                        <div
+                                          style={{
+                                            marginTop: 2,
+                                            color: isDarkTheme ? '#94a3b8' : '#64748b',
+                                          }}
                                         >
-                                          查看详情
-                                        </Button>
-                                        <Button
-                                          size="small"
-                                          type="link"
-                                          icon={<LinkOutlined />}
-                                          onClick={() => window.open(buildRecorderDebugDetailPath(entry.sessionId!), '_blank', 'noopener,noreferrer')}
-                                        >
-                                          打开链接
-                                        </Button>
-                                      </>
-                                    ) : null}
-                                  </Space>
-                                </div>
-                              ),
-                            },
-                          ]}
-                        />
-                      )}
+                                          {entry.commands?.length
+                                            ? `命令数 ${entry.commands.length}`
+                                            : buildLoopSummaryText(
+                                                  entry.result.loopDraft,
+                                                  entry.result.loopState
+                                                ) || '已隐藏详细执行内容，请按需查看详情'}
+                                        </div>
+                                      </div>
+                                      <Space size={4} wrap>
+                                        {entry.sessionId ? (
+                                          <>
+                                            <Button
+                                              size="small"
+                                              icon={<EyeOutlined />}
+                                              onClick={() =>
+                                                navigate(
+                                                  buildRecorderDebugDetailPath(entry.sessionId!)
+                                                )
+                                              }
+                                            >
+                                              查看详情
+                                            </Button>
+                                            <Button
+                                              size="small"
+                                              type="link"
+                                              icon={<LinkOutlined />}
+                                              onClick={() =>
+                                                window.open(
+                                                  buildRecorderDebugDetailPath(entry.sessionId!),
+                                                  '_blank',
+                                                  'noopener,noreferrer'
+                                                )
+                                              }
+                                            >
+                                              打开链接
+                                            </Button>
+                                          </>
+                                        ) : null}
+                                      </Space>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <Collapse
+                                size="small"
+                                ghost
+                                items={[
+                                  {
+                                    key: 'result',
+                                    label: (
+                                      <Space>
+                                        {entry.result.status === 'error' ? (
+                                          <CloseCircleOutlined style={{ color: '#ff4d4f' }} />
+                                        ) : (
+                                          <CheckCircleOutlined style={{ color: '#52c41a' }} />
+                                        )}
+                                        <Text style={{ fontSize: 12 }}>
+                                          {entry.result.status === 'error'
+                                            ? entry.result.message || '执行失败'
+                                            : t('recorder:ai.result') || '执行结果'}
+                                        </Text>
+                                      </Space>
+                                    ),
+                                    children: (
+                                      <div
+                                        style={{
+                                          padding: '8px 10px',
+                                          borderRadius: 8,
+                                          background: isDarkTheme ? '#111827' : '#f8fafc',
+                                          border: isDarkTheme
+                                            ? '1px solid #334155'
+                                            : '1px solid #e2e8f0',
+                                          fontSize: 12,
+                                        }}
+                                      >
+                                        <div style={{ marginBottom: 6 }}>
+                                          已隐藏详细执行内容，请按需查看详情。
+                                        </div>
+                                        <Space size={4} wrap>
+                                          {entry.sessionId ? (
+                                            <>
+                                              <Button
+                                                size="small"
+                                                icon={<EyeOutlined />}
+                                                onClick={() =>
+                                                  navigate(
+                                                    buildRecorderDebugDetailPath(entry.sessionId!)
+                                                  )
+                                                }
+                                              >
+                                                查看详情
+                                              </Button>
+                                              <Button
+                                                size="small"
+                                                type="link"
+                                                icon={<LinkOutlined />}
+                                                onClick={() =>
+                                                  window.open(
+                                                    buildRecorderDebugDetailPath(entry.sessionId!),
+                                                    '_blank',
+                                                    'noopener,noreferrer'
+                                                  )
+                                                }
+                                              >
+                                                打开链接
+                                              </Button>
+                                            </>
+                                          ) : null}
+                                        </Space>
+                                      </div>
+                                    ),
+                                  },
+                                ]}
+                              />
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 10,
+                          color: isDarkTheme ? '#64748b' : '#999',
+                          marginTop: 2,
+                        }}
+                      >
+                        {entry.timestamp.toLocaleTimeString()}
+                      </div>
                     </div>
-                  )}
-                </div>
-                <div style={{ fontSize: 10, color: isDarkTheme ? '#64748b' : '#999', marginTop: 2 }}>
-                  {entry.timestamp.toLocaleTimeString()}
-                </div>
-              </div>
-                );
-              })()
-            ))
-          )}
-          <div ref={messagesEndRef} />
-        </div>
+                  );
+                })()
+              )
+            )}
+            <div ref={messagesEndRef} />
+          </div>
 
-        {/* Input area - 3列2行布局 */}
-        <div style={{ marginTop: 0, flexShrink: 0 }}>
-          {takeoverState.mode !== 'idle' && (
-            <div
-              style={{
-                marginBottom: 8,
-                padding: '10px 12px',
-                borderRadius: 10,
-                background: isDarkTheme ? '#111827' : '#fff7e6',
-                border: isDarkTheme ? '1px solid #374151' : '1px solid #ffe7ba',
-              }}
-            >
-              <Space direction="vertical" size={8} style={{ width: '100%' }}>
-                <Space wrap>
-                  <Tag color={
-                    takeoverState.mode === 'required'
-                      ? 'warning'
-                      : takeoverState.mode === 'recording'
-                        ? 'processing'
-                        : takeoverState.mode === 'reconciling'
-                          ? 'blue'
-                          : takeoverState.mode === 'ready_to_resume'
-                            ? 'success'
-                            : 'purple'
-                  }>
-                    {{
-                      required: '等待人工接管',
-                      recording: '人工接管中',
-                      reconciling: '生成恢复方案中',
-                      ready_to_resume: '可继续执行',
-                      resuming: '恢复执行中',
-                    }[takeoverState.mode] || '接管处理中'}
-                  </Tag>
-                  {takeoverState.strategy ? (
-                    <Tag color="processing">{takeoverState.strategy}</Tag>
-                  ) : null}
-                  {takeoverState.patchSteps.length > 0 ? (
-                    <Tag>{`patchSteps: ${takeoverState.patchSteps.length}`}</Tag>
-                  ) : null}
-                </Space>
-                <Text style={{ whiteSpace: 'pre-wrap' }}>
-                  {takeoverState.explanation
-                    || takeoverState.reason
-                    || '检测到执行失败，建议进入人工接管完成补录后再恢复执行。'}
-                </Text>
-                {takeoverState.observation?.currentPageUrl ? (
-                  <Text type="secondary" style={{ fontSize: 12 }}>
-                    当前页面: {takeoverState.observation.currentPageUrl}
-                  </Text>
-                ) : null}
-                {(takeoverState.patchSteps.length > 0 || takeoverState.resumeCommands.length > 0) ? (
-                  <Collapse
-                    size="small"
-                    ghost
-                    items={[
-                      ...(takeoverState.patchSteps.length > 0 ? [{
-                        key: 'patch-steps',
-                        label: `补录步骤 (${takeoverState.patchSteps.length})`,
-                        children: (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            {takeoverState.patchSteps.map((step, index) => (
-                              <div
-                                key={`${step.id || step.action}-${index}`}
-                                style={{
-                                  padding: '6px 8px',
-                                  borderRadius: 8,
-                                  background: isDarkTheme ? '#0b1220' : '#fff',
-                                  border: isDarkTheme ? '1px solid #374151' : '1px solid #f0f0f0',
-                                  fontSize: 12,
-                                }}
-                              >
-                                {describePatchStep(step)}
-                              </div>
-                            ))}
-                          </div>
-                        ),
-                      }] : []),
-                      ...(takeoverState.resumeCommands.length > 0 ? [{
-                        key: 'resume-commands',
-                        label: `恢复命令 (${takeoverState.resumeCommands.length})`,
-                        children: (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            {takeoverState.resumeCommands.map((command, index) => (
-                              <div
-                                key={`${command.tool}-${index}`}
-                                style={{
-                                  padding: '6px 8px',
-                                  borderRadius: 8,
-                                  background: isDarkTheme ? '#0b1220' : '#fff',
-                                  border: isDarkTheme ? '1px solid #374151' : '1px solid #f0f0f0',
-                                  fontSize: 12,
-                                }}
-                              >
-                                {describeTakeoverCommand(command)}
-                              </div>
-                            ))}
-                          </div>
-                        ),
-                      }] : []),
-                    ]}
-                  />
-                ) : null}
-                <Space wrap>
-                  {takeoverState.mode === 'required' ? (
-                    <Button type="primary" onClick={() => { void handleStartTakeover(); }}>
-                      人工接管
-                    </Button>
-                  ) : null}
-                  {takeoverState.mode === 'recording' ? (
-                    <Button type="primary" onClick={() => { void handleStopTakeover(); }}>
-                      结束接管
-                    </Button>
-                  ) : null}
-                  {takeoverState.mode === 'ready_to_resume' ? (
-                    <Button
-                      type="primary"
-                      disabled={takeoverState.resumeCommands.length === 0}
-                      onClick={() => { void handleResumeAfterTakeover(); }}
-                    >
-                      继续执行
-                    </Button>
-                  ) : null}
-                  {takeoverState.mode !== 'recording' && takeoverState.mode !== 'reconciling' && takeoverState.mode !== 'resuming' ? (
-                    <Button onClick={resetTakeoverState}>
-                      关闭
-                    </Button>
-                  ) : null}
-                </Space>
-              </Space>
-            </div>
-          )}
-          {isReactChatMode && latestReactSuggestedParameters && latestReactSuggestedParameters.length > 0 && (
-            <div
-              style={{
-                marginBottom: 8,
-                padding: '8px 10px',
-                borderRadius: 10,
-                background: isDarkTheme ? '#0f172a' : '#f8fafc',
-                border: isDarkTheme ? '1px solid #334155' : '1px solid #e2e8f0',
-              }}
-            >
-              <div style={{ marginBottom: 6 }}>
-                <Text strong style={{ fontSize: 12 }}>快速补充参数</Text>
-              </div>
-              <Space size={[6, 6]} wrap>
-                {latestReactSuggestedParameters.map((param) => (
-                  <Tooltip key={param.name} title={`${param.label}${param.reason ? `: ${param.reason}` : ''}`}>
+          {/* Input area - 3列2行布局 */}
+          <div style={{ marginTop: 0, flexShrink: 0 }}>
+            {!isReactChatMode && takeoverState.mode !== 'idle' && (
+              <div
+                style={{
+                  marginBottom: 8,
+                  padding: '10px 12px',
+                  borderRadius: 10,
+                  background: isDarkTheme ? '#111827' : '#fff7e6',
+                  border: isDarkTheme ? '1px solid #374151' : '1px solid #ffe7ba',
+                }}
+              >
+                <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                  <Space wrap>
                     <Tag
-                      color={param.required ? 'processing' : 'default'}
-                      onClick={() => handleInsertSuggestedParameter(param.name)}
-                      style={{ cursor: 'pointer', marginInlineEnd: 0 }}
+                      color={
+                        takeoverState.mode === 'required'
+                          ? 'warning'
+                          : takeoverState.mode === 'recording'
+                            ? 'processing'
+                            : takeoverState.mode === 'reconciling'
+                              ? 'blue'
+                              : takeoverState.mode === 'ready_to_resume'
+                                ? 'success'
+                                : 'purple'
+                      }
                     >
-                      {param.name}
+                      {{
+                        required: '等待人工接管',
+                        recording: '人工接管中',
+                        reconciling: '生成恢复方案中',
+                        ready_to_resume: '可继续执行',
+                        resuming: '恢复执行中',
+                      }[takeoverState.mode] || '接管处理中'}
                     </Tag>
-                  </Tooltip>
-                ))}
-              </Space>
-            </div>
-          )}
-          {!isReactChatMode && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
-              {predefinedCommands.map(c => (
-                <Radio.Button
-                  key={c.value}
-                  value={c.value}
-                  onClick={() => setSelectedCommand(c.value)}
+                    {takeoverState.strategy ? (
+                      <Tag color="processing">{takeoverState.strategy}</Tag>
+                    ) : null}
+                    {takeoverState.patchSteps.length > 0 ? (
+                      <Tag>{`patchSteps: ${takeoverState.patchSteps.length}`}</Tag>
+                    ) : null}
+                  </Space>
+                  <Text style={{ whiteSpace: 'pre-wrap' }}>
+                    {takeoverState.explanation ||
+                      takeoverState.reason ||
+                      '检测到执行失败，建议进入人工接管完成补录后再恢复执行。'}
+                  </Text>
+                  {takeoverState.observation?.currentPageUrl ? (
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      当前页面: {takeoverState.observation.currentPageUrl}
+                    </Text>
+                  ) : null}
+                  {takeoverState.patchSteps.length > 0 ||
+                  takeoverState.resumeCommands.length > 0 ? (
+                    <Collapse
+                      size="small"
+                      ghost
+                      items={[
+                        ...(takeoverState.patchSteps.length > 0
+                          ? [
+                              {
+                                key: 'patch-steps',
+                                label: `补录步骤 (${takeoverState.patchSteps.length})`,
+                                children: (
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                    {takeoverState.patchSteps.map((step, index) => (
+                                      <div
+                                        key={`${step.id || step.action}-${index}`}
+                                        style={{
+                                          padding: '6px 8px',
+                                          borderRadius: 8,
+                                          background: isDarkTheme ? '#0b1220' : '#fff',
+                                          border: isDarkTheme
+                                            ? '1px solid #374151'
+                                            : '1px solid #f0f0f0',
+                                          fontSize: 12,
+                                        }}
+                                      >
+                                        {describePatchStep(step)}
+                                      </div>
+                                    ))}
+                                  </div>
+                                ),
+                              },
+                            ]
+                          : []),
+                        ...(takeoverState.resumeCommands.length > 0
+                          ? [
+                              {
+                                key: 'resume-commands',
+                                label: `恢复命令 (${takeoverState.resumeCommands.length})`,
+                                children: (
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                    {takeoverState.resumeCommands.map((command, index) => (
+                                      <div
+                                        key={`${command.tool}-${index}`}
+                                        style={{
+                                          padding: '6px 8px',
+                                          borderRadius: 8,
+                                          background: isDarkTheme ? '#0b1220' : '#fff',
+                                          border: isDarkTheme
+                                            ? '1px solid #374151'
+                                            : '1px solid #f0f0f0',
+                                          fontSize: 12,
+                                        }}
+                                      >
+                                        {describeTakeoverCommand(command)}
+                                      </div>
+                                    ))}
+                                  </div>
+                                ),
+                              },
+                            ]
+                          : []),
+                      ]}
+                    />
+                  ) : null}
+                  <Space wrap>
+                    {takeoverState.mode === 'required' ? (
+                      <Button
+                        type="primary"
+                        onClick={() => {
+                          void handleStartTakeover();
+                        }}
+                      >
+                        人工接管
+                      </Button>
+                    ) : null}
+                    {takeoverState.mode === 'recording' ? (
+                      <Button
+                        type="primary"
+                        onClick={() => {
+                          void handleStopTakeover();
+                        }}
+                      >
+                        结束接管
+                      </Button>
+                    ) : null}
+                    {takeoverState.mode === 'ready_to_resume' ? (
+                      <Button
+                        type="primary"
+                        disabled={takeoverState.resumeCommands.length === 0}
+                        onClick={() => {
+                          void handleResumeAfterTakeover();
+                        }}
+                      >
+                        继续执行
+                      </Button>
+                    ) : null}
+                    {takeoverState.mode !== 'recording' &&
+                    takeoverState.mode !== 'reconciling' &&
+                    takeoverState.mode !== 'resuming' ? (
+                      <Button onClick={resetTakeoverState}>关闭</Button>
+                    ) : null}
+                  </Space>
+                </Space>
+              </div>
+            )}
+            {isReactChatMode &&
+              latestReactSuggestedParameters &&
+              latestReactSuggestedParameters.length > 0 && (
+                <div
                   style={{
-                    borderRadius: 16,
-                    padding: '4px 16px',
-                    height: 32,
-                    lineHeight: '24px',
-                    border: selectedCommand === c.value ? '2px solid #6366f1' : (isDarkTheme ? '1px solid #334155' : '1px solid #d9d9d9'),
-                    background: selectedCommand === c.value 
-                      ? (isDarkTheme ? '#312e81' : '#eef2ff') 
-                      : (isDarkTheme ? 'var(--bg-primary)' : '#fff'),
-                    color: selectedCommand === c.value 
-                      ? (isDarkTheme ? '#e0e7ff' : '#6366f1') 
-                      : (isDarkTheme ? '#94a3b8' : '#666'),
-                    fontWeight: selectedCommand === c.value ? 500 : 400,
-                    transition: 'all 0.2s ease',
-                    cursor: 'pointer',
+                    marginBottom: 8,
+                    padding: '8px 10px',
+                    borderRadius: 10,
+                    background: isDarkTheme ? '#0f172a' : '#f8fafc',
+                    border: isDarkTheme ? '1px solid #334155' : '1px solid #e2e8f0',
                   }}
                 >
-                  {c.label}
-                </Radio.Button>
-              ))}
-            </div>
-          )}
+                  <div style={{ marginBottom: 6 }}>
+                    <Text strong style={{ fontSize: 12 }}>
+                      快速补充参数
+                    </Text>
+                  </div>
+                  <Space size={[6, 6]} wrap>
+                    {latestReactSuggestedParameters.map((param) => (
+                      <Tooltip
+                        key={param.name}
+                        title={`${param.label}${param.reason ? `: ${param.reason}` : ''}`}
+                      >
+                        <Tag
+                          color={param.required ? 'processing' : 'default'}
+                          onClick={() => handleInsertSuggestedParameter(param.name)}
+                          style={{ cursor: 'pointer', marginInlineEnd: 0 }}
+                        >
+                          {param.name}
+                        </Tag>
+                      </Tooltip>
+                    ))}
+                  </Space>
+                </div>
+              )}
+            {!isReactChatMode && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                {predefinedCommands.map((c) => (
+                  <Radio.Button
+                    key={c.value}
+                    value={c.value}
+                    onClick={() => setSelectedCommand(c.value)}
+                    style={{
+                      borderRadius: 16,
+                      padding: '4px 16px',
+                      height: 32,
+                      lineHeight: '24px',
+                      border:
+                        selectedCommand === c.value
+                          ? '2px solid #6366f1'
+                          : isDarkTheme
+                            ? '1px solid #334155'
+                            : '1px solid #d9d9d9',
+                      background:
+                        selectedCommand === c.value
+                          ? isDarkTheme
+                            ? '#312e81'
+                            : '#eef2ff'
+                          : isDarkTheme
+                            ? 'var(--bg-primary)'
+                            : '#fff',
+                      color:
+                        selectedCommand === c.value
+                          ? isDarkTheme
+                            ? '#e0e7ff'
+                            : '#6366f1'
+                          : isDarkTheme
+                            ? '#94a3b8'
+                            : '#666',
+                      fontWeight: selectedCommand === c.value ? 500 : 400,
+                      transition: 'all 0.2s ease',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {c.label}
+                  </Radio.Button>
+                ))}
+              </div>
+            )}
 
-          {/* Row 2: 参数输入 | 按钮区 | 参数可替换 */}
-          <div style={{ display: 'flex', alignItems: 'stretch', gap: 10 }}>
-            {/* 参数输入 */}
-            <TextArea
-              ref={inputRef}
-              value={paramInput}
-              onChange={(e) => handleParamInputChange(e.target.value)}
-              onCompositionStart={() => {
-                isComposingRef.current = true;
-              }}
-              onCompositionEnd={() => {
-                isComposingRef.current = false;
-              }}
-              placeholder={
-                isReactChatMode
-                  ? '直接描述你的目标，或询问页面结构、需要填写的参数'
-                  : (predefinedCommands.find(c => c.value === selectedCommand)?.placeholder || '输入参数')
-              }
-              autoSize={isReactChatMode ? false : { minRows: 2, maxRows: 4 }}
-              onKeyDown={handleInputKeyDown}
-              disabled={isLoading || isTranscribing}
-              style={{
-                flex: 1,
-                minWidth: 180,
-                height: isReactChatMode ? actionColumnHeight : undefined,
-                borderRadius: 20,
-                padding: isReactChatMode ? '10px 14px' : '8px 14px',
-                background: isDarkTheme ? '#0f172a' : '#ffffff',
-                borderColor: isDarkTheme ? '#475569' : '#cbd5e1',
-                color: 'var(--text-primary)',
-                resize: 'none',
-              }}
-            />
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'flex-start',
-                alignItems: 'stretch',
-                gap: 8,
-                paddingTop: 0,
-                height: isReactChatMode ? actionColumnHeight : undefined,
-              }}
-            >
-              <Button
-                icon={<SendOutlined />}
-                onClick={() => {
-                  void handleSend();
+            {/* Row 2: 参数输入 | 按钮区 | 参数可替换 */}
+            <div style={{ display: 'flex', alignItems: 'stretch', gap: 10 }}>
+              {/* 参数输入 */}
+              <TextArea
+                ref={inputRef}
+                value={paramInput}
+                onChange={(e) => handleParamInputChange(e.target.value)}
+                onCompositionStart={() => {
+                  isComposingRef.current = true;
                 }}
-                loading={isLoading}
+                onCompositionEnd={() => {
+                  isComposingRef.current = false;
+                }}
+                placeholder={
+                  isReactChatMode
+                    ? '直接描述你的目标，或询问页面结构、需要填写的参数'
+                    : predefinedCommands.find((c) => c.value === selectedCommand)?.placeholder ||
+                      '输入参数'
+                }
+                autoSize={isReactChatMode ? false : { minRows: 2, maxRows: 4 }}
+                onKeyDown={handleInputKeyDown}
+                disabled={isLoading || isTranscribing}
                 style={{
-                  ...primaryActionButtonStyle,
-                  ...(!canSend ? mutedActionButtonStyle : {}),
+                  flex: 1,
+                  minWidth: 180,
+                  height: isReactChatMode ? actionColumnHeight : undefined,
+                  borderRadius: 20,
+                  padding: isReactChatMode ? '10px 14px' : '8px 14px',
+                  background: isDarkTheme ? '#0f172a' : '#ffffff',
+                  borderColor: isDarkTheme ? '#475569' : '#cbd5e1',
+                  color: 'var(--text-primary)',
+                  resize: 'none',
+                }}
+              />
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'flex-start',
+                  alignItems: 'stretch',
+                  gap: 8,
+                  paddingTop: 0,
+                  height: isReactChatMode ? actionColumnHeight : undefined,
                 }}
               >
-                {t('common:send')}
-              </Button>
-              <Button
-                icon={<AudioOutlined />}
-                onClick={() => {
-                  void handleSpeechToggle();
-                }}
-                disabled={!canUseSpeech && !isListening}
-                loading={isTranscribing}
-                type={isListening ? 'primary' : 'default'}
-                style={{
-                  ...secondaryActionButtonStyle,
-                  ...(canUseSpeech || isListening ? {} : mutedActionButtonStyle),
-                }}
-                title={speechSupported ? (isListening ? '停止录音并转写' : '语音输入') : '当前浏览器不支持录音'}
-              >
-                {isListening ? '录音中' : (isTranscribing ? '转写中' : '语音')}
-              </Button>
-              {isReactChatMode ? (
                 <Button
-                  size="middle"
-                  icon={<SaveOutlined />}
+                  icon={<SendOutlined />}
                   onClick={() => {
-                    void handleExportTemplateFromRecorder();
+                    void handleSend();
                   }}
-                  loading={exportTemplateLoading}
+                  loading={isLoading}
+                  style={{
+                    ...primaryActionButtonStyle,
+                    ...(!canSend ? mutedActionButtonStyle : {}),
+                  }}
+                >
+                  {t('common:send')}
+                </Button>
+                <Button
+                  icon={<AudioOutlined />}
+                  onClick={() => {
+                    void handleSpeechToggle();
+                  }}
+                  disabled={!canUseSpeech && !isListening}
+                  loading={isTranscribing}
+                  type={isListening ? 'primary' : 'default'}
                   style={{
                     ...secondaryActionButtonStyle,
-                    ...(!canExport ? mutedActionButtonStyle : {}),
+                    ...(canUseSpeech || isListening ? {} : mutedActionButtonStyle),
                   }}
+                  title={
+                    speechSupported
+                      ? isListening
+                        ? '停止录音并转写'
+                        : '语音输入'
+                      : '当前浏览器不支持录音'
+                  }
                 >
-                  导出
+                  {isListening ? '录音中' : isTranscribing ? '转写中' : '语音'}
                 </Button>
-              ) : (
-                <Checkbox
-                  checked={isReplaceable}
-                  onChange={(e) => setIsReplaceable(e.target.checked)}
-                  disabled={!paramInput.trim()}
-                  style={{ marginLeft: 4 }}
-                >
-                  <Tooltip title="勾选后，此参数在生成模版时会被标记为可替换参数">
-                    <Text style={{ fontSize: 12, color: isReplaceable ? '#6366f1' : '#999' }}>可替换</Text>
-                  </Tooltip>
-                </Checkbox>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Quick action buttons */}
-        {!isReactChatMode && (
-        <div style={{ marginTop: 2 }}>
-
-          {/* Direct execution commands - click to execute immediately */}
-          <div style={{ marginBottom: 8 }}>
-            <Space wrap size="small">
-              <Button
-                size="small"
-                icon={<CameraOutlined />}
-                onClick={() => {
-                  void handleQuickAction('screenshot');
-                }}
-                loading={isLoading && executeCommandMutation.isLoading}
-                title="截取当前页面图片"
-              >
-                {t('recorder:ai.quick.screenshot') || '截图'}
-              </Button>
-
-              <Button
-                size="small"
-                icon={<EyeOutlined />}
-                onClick={() => {
-                  void handleQuickAction('snapshot');
-                }}
-                loading={isLoading && executeCommandMutation.isLoading}
-                title="获取页面结构快照"
-              >
-                {t('recorder:ai.quick.snapshot') || '快照'}
-              </Button>
-
-              <Button
-                size="small"
-                icon={<FileSearchOutlined />}
-                onClick={() => {
-                  void handleQuickAction('read_page');
-                }}
-                loading={isLoading && executeCommandMutation.isLoading}
-                title="读取页面内容"
-              >
-                {t('recorder:ai.quick.readPage') || '读取页面'}
-              </Button>
-
-              <Button
-                size="small"
-                icon={<CodeOutlined />}
-                onClick={() => {
-                  void handleQuickAction('get_text');
-                }}
-                loading={isLoading && executeCommandMutation.isLoading}
-                title="获取页面所有文本"
-              >
-                {t('recorder:ai.quick.getText') || '获取文本'}
-              </Button>
-
-              <Button
-                size="small"
-                icon={<ArrowDownOutlined />}
-                onClick={() => {
-                  void handleQuickAction('scroll', { direction: 'down' });
-                }}
-                loading={isLoading && executeCommandMutation.isLoading}
-                title="向下滚动页面"
-              >
-                {t('recorder:ai.quick.scrollDown') || '向下'}
-              </Button>
-
-              <Button
-                size="small"
-                icon={<CloudUploadOutlined />}
-                onClick={() => {
-                  void handleQuickAction('scroll', { direction: 'top' });
-                }}
-                loading={isLoading && executeCommandMutation.isLoading}
-                title="滚动到顶部"
-              >
-                {t('recorder:ai.quick.scrollTop') || '顶部'}
-              </Button>
-
-              <Button
-                size="small"
-                icon={<ClockCircleOutlined />}
-                onClick={() => {
-                  void handleQuickAction('wait', { duration: waitDuration * 1000 });
-                }}
-                loading={isLoading && executeCommandMutation.isLoading}
-                title={`等待 ${waitDuration} 秒`}
-              >
-                {t('recorder:ai.quick.wait') || '等待'} {waitDuration}s
-              </Button>
-            </Space>
-          </div>
-        </div>
-        )}
-
-        {/* Clear history button */}
-        {history.length > 0 && (
-          <Button
-            type="text"
-            icon={<DeleteOutlined />}
-            onClick={() => {
-              void handleClearHistory();
-            }}
-            style={{ color: '#999', marginTop: 2 }}
-          >
-            {t('recorder:ai.clearHistory') || '清空记录'}
-          </Button>
-        )}
-
-        {/* Template section */}
-        {!isReactChatMode && (
-          <>
-            <Divider style={{ margin: '12px 0' }} />
-            <Collapse
-              size="small"
-              activeKey={isTemplatePanelExpanded ? ['template'] : []}
-              onChange={(keys) => setIsTemplatePanelExpanded(Array.isArray(keys) ? keys.includes('template') : keys === 'template')}
-              items={[
-                {
-                  key: 'template',
-                  label: (
-                    <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-                      <Space>
-                        <Text strong style={{ fontSize: 13 }}>
-                          <FileAddOutlined style={{ marginRight: 4 }} />
-                          模版录制
-                        </Text>
-                        <Tag color={templateSteps.length > 0 ? 'processing' : 'default'}>
-                          {templateSteps.length} 步
-                        </Tag>
-                        {savedTemplateId && (
-                          <Tag color="success">已保存</Tag>
-                        )}
-                      </Space>
-                    </Space>
-                  ),
-                  children: (
-                <div style={{ background: isDarkTheme ? 'var(--bg-secondary)' : '#f6f8fa', borderRadius: 8, padding: 12, border: isDarkTheme ? '1px solid #334155' : 'none' }}>
-                  <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-                    <Space>
-                      <Text strong style={{ fontSize: 13 }}>
-                        <FileAddOutlined style={{ marginRight: 4 }} />
-                        模版录制
+                {isReactChatMode ? (
+                  <Button
+                    size="middle"
+                    icon={<SaveOutlined />}
+                    onClick={() => {
+                      void handleExportTemplateFromRecorder();
+                    }}
+                    loading={exportTemplateLoading}
+                    style={{
+                      ...secondaryActionButtonStyle,
+                      ...(!canExport ? mutedActionButtonStyle : {}),
+                    }}
+                  >
+                    导出
+                  </Button>
+                ) : (
+                  <Checkbox
+                    checked={isReplaceable}
+                    onChange={(e) => setIsReplaceable(e.target.checked)}
+                    disabled={!paramInput.trim()}
+                    style={{ marginLeft: 4 }}
+                  >
+                    <Tooltip title="勾选后，此参数在生成模版时会被标记为可替换参数">
+                      <Text style={{ fontSize: 12, color: isReplaceable ? '#6366f1' : '#999' }}>
+                        可替换
                       </Text>
-                    </Space>
-                    <Space>
-                      <Button
-                        size="small"
-                        icon={<RobotOutlined />}
-                        onClick={handleAutoExtractTemplate}
-                        disabled={history.length === 0}
-                        title="从历史记录中自动提取确定性命令"
-                      >
-                        自动提取
-                      </Button>
-                      <Button
-                        type="primary"
-                        size="small"
-                        icon={<CodeOutlined />}
-                        onClick={handleCompileTemplate}
-                        disabled={templateSteps.length === 0}
-                      >
-                        编译模版
-                      </Button>
-                      <Button
-                        size="small"
-                        danger
-                        icon={<DeleteOutlined />}
-                        onClick={handleClearTemplate}
-                        disabled={templateSteps.length === 0}
-                      >
-                        清空
-                      </Button>
-                    </Space>
-                  </Space>
+                    </Tooltip>
+                  </Checkbox>
+                )}
+              </div>
+            </div>
+            {isAIMode && (
+              <LoopRecordingPanel
+                sessionId={recorderDebugSessionId}
+                runtimeSessionId={recorderDebugRuntimeSessionId}
+                backend={executionBackend}
+                currentPageUrl={currentPageUrl}
+                templateSteps={templateSteps.map((step) => ({
+                  id: step.id,
+                  tool: step.tool,
+                  description: step.description,
+                }))}
+                isDarkTheme={isDarkTheme}
+                onSessionBound={(nextSessionId, nextRuntimeSessionId) => {
+                  setRecorderDebugSessionId(nextSessionId);
+                  setRecorderDebugRuntimeSessionId(nextRuntimeSessionId);
+                }}
+                onInsertControlToken={handleInsertRecorderControlToken}
+              />
+            )}
+          </div>
 
-                  {savedTemplateId && (
-                    <Space style={{ marginTop: 12, width: '100%' }}>
-                      <Button
-                        type="primary"
-                        size="small"
-                        icon={<BugOutlined />}
-                        onClick={() => {
-                          void handleTestSavedTemplate();
-                        }}
-                        loading={testLoading}
-                      >
-                        测试模版
-                      </Button>
-                      <Button
-                        size="small"
-                        icon={<ReloadOutlined />}
-                        onClick={() => {
-                          void handleResetWorkers();
-                        }}
-                        loading={resetLoading}
-                      >
-                        重置 Worker
-                      </Button>
-                    </Space>
-                  )}
+          {/* Quick action buttons */}
+          {!isReactChatMode && (
+            <div style={{ marginTop: 2 }}>
+              {/* Direct execution commands - click to execute immediately */}
+              <div style={{ marginBottom: 8 }}>
+                <Space wrap size="small">
+                  <Button
+                    size="small"
+                    icon={<CameraOutlined />}
+                    onClick={() => {
+                      void handleQuickAction('screenshot');
+                    }}
+                    loading={isLoading && executeCommandMutation.isLoading}
+                    title="截取当前页面图片"
+                  >
+                    {t('recorder:ai.quick.screenshot') || '截图'}
+                  </Button>
 
-                  {templateSteps.length > 0 && (
-                    <List
-                      size="small"
-                      style={{
-                        marginTop: 12,
-                        background: isDarkTheme ? 'var(--bg-primary)' : '#fff',
-                        borderRadius: 4,
-                        border: isDarkTheme ? '1px solid #334155' : '1px solid #e8e8e8'
-                      }}
-                      dataSource={templateSteps}
-                      renderItem={(step, index) => (
-                        <List.Item
-                          actions={[
+                  <Button
+                    size="small"
+                    icon={<EyeOutlined />}
+                    onClick={() => {
+                      void handleQuickAction('snapshot');
+                    }}
+                    loading={isLoading && executeCommandMutation.isLoading}
+                    title="获取页面结构快照"
+                  >
+                    {t('recorder:ai.quick.snapshot') || '快照'}
+                  </Button>
+
+                  <Button
+                    size="small"
+                    icon={<FileSearchOutlined />}
+                    onClick={() => {
+                      void handleQuickAction('read_page');
+                    }}
+                    loading={isLoading && executeCommandMutation.isLoading}
+                    title="读取页面内容"
+                  >
+                    {t('recorder:ai.quick.readPage') || '读取页面'}
+                  </Button>
+
+                  <Button
+                    size="small"
+                    icon={<CodeOutlined />}
+                    onClick={() => {
+                      void handleQuickAction('get_text');
+                    }}
+                    loading={isLoading && executeCommandMutation.isLoading}
+                    title="获取页面所有文本"
+                  >
+                    {t('recorder:ai.quick.getText') || '获取文本'}
+                  </Button>
+
+                  <Button
+                    size="small"
+                    icon={<ArrowDownOutlined />}
+                    onClick={() => {
+                      void handleQuickAction('scroll', { direction: 'down' });
+                    }}
+                    loading={isLoading && executeCommandMutation.isLoading}
+                    title="向下滚动页面"
+                  >
+                    {t('recorder:ai.quick.scrollDown') || '向下'}
+                  </Button>
+
+                  <Button
+                    size="small"
+                    icon={<CloudUploadOutlined />}
+                    onClick={() => {
+                      void handleQuickAction('scroll', { direction: 'top' });
+                    }}
+                    loading={isLoading && executeCommandMutation.isLoading}
+                    title="滚动到顶部"
+                  >
+                    {t('recorder:ai.quick.scrollTop') || '顶部'}
+                  </Button>
+
+                  <Button
+                    size="small"
+                    icon={<ClockCircleOutlined />}
+                    onClick={() => {
+                      void handleQuickAction('wait', { duration: waitDuration * 1000 });
+                    }}
+                    loading={isLoading && executeCommandMutation.isLoading}
+                    title={`等待 ${waitDuration} 秒`}
+                  >
+                    {t('recorder:ai.quick.wait') || '等待'} {waitDuration}s
+                  </Button>
+                </Space>
+              </div>
+            </div>
+          )}
+
+          {/* Clear history button */}
+          {history.length > 0 && (
+            <Button
+              type="text"
+              icon={<DeleteOutlined />}
+              onClick={() => {
+                void handleClearHistory();
+              }}
+              style={{ color: '#999', marginTop: 2 }}
+            >
+              {t('recorder:ai.clearHistory') || '清空记录'}
+            </Button>
+          )}
+
+          {/* Template section */}
+          {!isReactChatMode && (
+            <>
+              <Divider style={{ margin: '12px 0' }} />
+              <Collapse
+                size="small"
+                activeKey={isTemplatePanelExpanded ? ['template'] : []}
+                onChange={(keys) =>
+                  setIsTemplatePanelExpanded(
+                    Array.isArray(keys) ? keys.includes('template') : keys === 'template'
+                  )
+                }
+                items={[
+                  {
+                    key: 'template',
+                    label: (
+                      <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                        <Space>
+                          <Text strong style={{ fontSize: 13 }}>
+                            <FileAddOutlined style={{ marginRight: 4 }} />
+                            模版录制
+                          </Text>
+                          <Tag color={templateSteps.length > 0 ? 'processing' : 'default'}>
+                            {templateSteps.length} 步
+                          </Tag>
+                          {savedTemplateId && <Tag color="success">已保存</Tag>}
+                        </Space>
+                      </Space>
+                    ),
+                    children: (
+                      <div
+                        style={{
+                          background: isDarkTheme ? 'var(--bg-secondary)' : '#f6f8fa',
+                          borderRadius: 8,
+                          padding: 12,
+                          border: isDarkTheme ? '1px solid #334155' : 'none',
+                        }}
+                      >
+                        <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                          <Space>
+                            <Text strong style={{ fontSize: 13 }}>
+                              <FileAddOutlined style={{ marginRight: 4 }} />
+                              模版录制
+                            </Text>
+                          </Space>
+                          <Space>
                             <Button
-                              key="remove"
-                              type="text"
+                              size="small"
+                              icon={<RobotOutlined />}
+                              onClick={handleAutoExtractTemplate}
+                              disabled={history.length === 0}
+                              title="从历史记录中自动提取确定性命令"
+                            >
+                              自动提取
+                            </Button>
+                            <Button
+                              size="small"
+                              icon={<FileSearchOutlined />}
+                              onClick={() => openBranchGateModal()}
+                            >
+                              条件分歧
+                            </Button>
+                            <Button
+                              type="primary"
+                              size="small"
+                              icon={<CodeOutlined />}
+                              onClick={handleCompileTemplate}
+                              disabled={templateSteps.length === 0}
+                            >
+                              编译模版
+                            </Button>
+                            <Button
                               size="small"
                               danger
                               icon={<DeleteOutlined />}
-                              onClick={() => handleRemoveTemplateStep(step.id)}
-                            />,
-                          ]}
-                        >
-                          <Space>
-                            <Tag color="blue">{index + 1}</Tag>
-                            <Tag>{step.tool}</Tag>
-                            <Text style={{ fontSize: 11 }}>{step.description}</Text>
+                              onClick={handleClearTemplate}
+                              disabled={templateSteps.length === 0}
+                            >
+                              清空
+                            </Button>
                           </Space>
-                        </List.Item>
-                      )}
-                    />
-                  )}
-
-                  {templateSteps.length === 0 && (
-                    <div style={{ marginTop: 12, textAlign: 'center', color: isDarkTheme ? '#64748b' : '#999', fontSize: 12 }}>
-                      执行命令后，点击"添加到模版"按钮将确定性命令添加到模版中
-                    </div>
-                  )}
-                </div>
-                  ),
-                },
-              ]}
-            />
-          </>
-        )}
-
-        {/* Template save modal */}
-        <Modal
-          title="保存模版"
-          open={showTemplateModal}
-          onOk={() => {
-            void handleConfirmSaveTemplate();
-          }}
-          onCancel={() => setShowTemplateModal(false)}
-          okText="保存"
-          cancelText="取消"
-          width={600}
-        >
-          <Space direction="vertical" style={{ width: '100%' }}>
-            <Text>模版名称：</Text>
-            <Input
-              value={templateName}
-              onChange={(e) => setTemplateName(e.target.value)}
-              placeholder={`模版 ${new Date().toLocaleString()}`}
-            />
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              包含 {templateSteps.length} 个步骤
-            </Text>
-
-            {/* Parameter editing section */}
-            {Object.keys(extractParameters(templateSteps)).length > 0 && (
-              <>
-                <Divider style={{ margin: '12px 0' }} />
-                <Text strong>可替换参数：</Text>
-                <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 8 }}>
-                  修改参数名称使其更具语义化（如将 step2_value 改为 query），取消勾选可排除不需要替换的参数
-                </Text>
-                <List
-                  size="small"
-                  bordered
-                  dataSource={Object.entries(extractParameters(templateSteps))}
-                  renderItem={([originalName, schema]) => (
-                    <List.Item style={{ padding: '8px 12px' }}>
-                      <Space direction="vertical" style={{ width: '100%' }} size={4}>
-                        <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-                          <Switch
-                            size="small"
-                            checked={paramEnabled[originalName] !== false}
-                            onChange={(checked) => {
-                              setParamEnabled(prev => ({ ...prev, [originalName]: checked }));
-                            }}
-                          />
-                          <Text code style={{ fontSize: 11 }}>{originalName}</Text>
-                          <Text type="secondary" style={{ fontSize: 11 }}>→</Text>
-                          <Input
-                            size="small"
-                            value={paramNames[originalName] || originalName}
-                            onChange={(e) => {
-                              setParamNames(prev => ({ ...prev, [originalName]: e.target.value }));
-                            }}
-                            style={{ width: 120 }}
-                            placeholder="参数名"
-                          />
                         </Space>
-                        <Space>
-                          <Tag color="blue">{schema.type}</Tag>
-                          <Text type="secondary" style={{ fontSize: 11 }}>
-                            默认值: {String(schema.default || '-')}
-                          </Text>
-                        </Space>
-                      </Space>
-                    </List.Item>
-                  )}
-                />
-              </>
-            )}
-          </Space>
-        </Modal>
 
-        {/* Compiled script modal */}
-        <Modal
-          title="编译后的脚本"
-          open={showScriptModal}
-          onCancel={() => setShowScriptModal(false)}
-          width={700}
-          footer={[
-            <Button key="copy" icon={<CopyOutlined />} onClick={handleCopyScript}>
-              复制
-            </Button>,
-            <Button key="download" icon={<DownloadOutlined />} onClick={handleDownloadScript}>
-              下载
-            </Button>,
-            <Button key="save" type="primary" icon={<SaveOutlined />} onClick={() => {
-              void handleSaveCompiledTemplate();
-            }}>
-              保存模版
-            </Button>,
-          ]}
-        >
-          <Space direction="vertical" style={{ width: '100%', marginBottom: 16 }}>
-            <Text>模版名称：</Text>
-            <Input
-              value={templateName}
-              onChange={(e) => setTemplateName(e.target.value)}
-              placeholder={`编译模版 ${new Date().toLocaleString()}`}
-              style={{ marginBottom: 8 }}
-            />
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              包含 {templateSteps.length} 个步骤，可修改参数后保存
-            </Text>
-          </Space>
-          <pre
-            style={{
-              background: 'var(--bg-secondary)',
-              color: 'var(--text-primary)',
-              border: '1px solid var(--border-color)',
-              padding: 16,
-              borderRadius: 8,
-              maxHeight: 400,
-              overflow: 'auto',
-              fontSize: 12,
+                        {savedTemplateId && (
+                          <Space style={{ marginTop: 12, width: '100%' }}>
+                            <Button
+                              type="primary"
+                              size="small"
+                              icon={<BugOutlined />}
+                              onClick={() => {
+                                void handleTestSavedTemplate();
+                              }}
+                              loading={testLoading}
+                            >
+                              测试模版
+                            </Button>
+                            <Button
+                              size="small"
+                              icon={<ReloadOutlined />}
+                              onClick={() => {
+                                void handleResetWorkers();
+                              }}
+                              loading={resetLoading}
+                            >
+                              重置 Worker
+                            </Button>
+                          </Space>
+                        )}
+
+                        {templateSteps.length > 0 && (
+                          <List
+                            size="small"
+                            style={{
+                              marginTop: 12,
+                              background: isDarkTheme ? 'var(--bg-primary)' : '#fff',
+                              borderRadius: 4,
+                              border: isDarkTheme ? '1px solid #334155' : '1px solid #e8e8e8',
+                            }}
+                            dataSource={templateSteps}
+                            renderItem={(step, index) => (
+                              <List.Item
+                                actions={[
+                                  <Button
+                                    key="branch"
+                                    type="text"
+                                    size="small"
+                                    icon={<FileSearchOutlined />}
+                                    onClick={() => openBranchGateModal(step.id)}
+                                    title="在当前步骤后插入条件分歧"
+                                  />,
+                                  <Button
+                                    key="remove"
+                                    type="text"
+                                    size="small"
+                                    danger
+                                    icon={<DeleteOutlined />}
+                                    onClick={() => handleRemoveTemplateStep(step.id)}
+                                  />,
+                                ]}
+                              >
+                                <Space
+                                  style={{ width: '100%', justifyContent: 'space-between' }}
+                                  align="start"
+                                >
+                                  <Space wrap>
+                                    <Tag color="blue">{index + 1}</Tag>
+                                    <Tag>{step.tool}</Tag>
+                                    {step.execution_policy && (
+                                      <Tag
+                                        color={
+                                          TEMPLATE_STEP_POLICY_OPTIONS.find(
+                                            (option) => option.value === step.execution_policy
+                                          )?.color || 'default'
+                                        }
+                                      >
+                                        {TEMPLATE_STEP_POLICY_OPTIONS.find(
+                                          (option) => option.value === step.execution_policy
+                                        )?.label || step.execution_policy}
+                                      </Tag>
+                                    )}
+                                    <Text style={{ fontSize: 11 }}>{step.description}</Text>
+                                  </Space>
+                                  <Select<TemplateStepExecutionPolicy>
+                                    size="small"
+                                    value={step.execution_policy || 'auto_execute'}
+                                    style={{ width: 132 }}
+                                    options={TEMPLATE_STEP_POLICY_OPTIONS.map((option) => ({
+                                      value: option.value,
+                                      label: option.label,
+                                      title: option.description,
+                                    }))}
+                                    onChange={(value) =>
+                                      handleUpdateTemplateStepPolicy(step.id, value)
+                                    }
+                                  />
+                                </Space>
+                              </List.Item>
+                            )}
+                          />
+                        )}
+
+                        {templateSteps.length === 0 && (
+                          <div
+                            style={{
+                              marginTop: 12,
+                              textAlign: 'center',
+                              color: isDarkTheme ? '#64748b' : '#999',
+                              fontSize: 12,
+                            }}
+                          >
+                            执行命令后，点击"添加到模版"按钮将确定性命令添加到模版中
+                          </div>
+                        )}
+                      </div>
+                    ),
+                  },
+                ]}
+              />
+            </>
+          )}
+
+          {/* Template save modal */}
+          <Modal
+            title="保存模版"
+            open={showTemplateModal}
+            onOk={() => {
+              void handleConfirmSaveTemplate();
             }}
+            onCancel={() => setShowTemplateModal(false)}
+            okText="保存"
+            cancelText="取消"
+            width={600}
           >
-            {compiledScript}
-          </pre>
-        </Modal>
-      </div>
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Text>模版名称：</Text>
+              <Input
+                value={templateName}
+                onChange={(e) => setTemplateName(e.target.value)}
+                placeholder={`模版 ${new Date().toLocaleString()}`}
+              />
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                包含 {templateSteps.length} 个步骤
+              </Text>
+
+              {/* Parameter editing section */}
+              {Object.keys(extractParameters(templateSteps)).length > 0 && (
+                <>
+                  <Divider style={{ margin: '12px 0' }} />
+                  <Text strong>可替换参数：</Text>
+                  <Text
+                    type="secondary"
+                    style={{ fontSize: 11, display: 'block', marginBottom: 8 }}
+                  >
+                    修改参数名称使其更具语义化（如将 step2_value 改为
+                    query），取消勾选可排除不需要替换的参数
+                  </Text>
+                  <List
+                    size="small"
+                    bordered
+                    dataSource={Object.entries(extractParameters(templateSteps))}
+                    renderItem={([originalName, schema]) => (
+                      <List.Item style={{ padding: '8px 12px' }}>
+                        <Space direction="vertical" style={{ width: '100%' }} size={4}>
+                          <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                            <Switch
+                              size="small"
+                              checked={paramEnabled[originalName] !== false}
+                              onChange={(checked) => {
+                                setParamEnabled((prev) => ({ ...prev, [originalName]: checked }));
+                              }}
+                            />
+                            <Text code style={{ fontSize: 11 }}>
+                              {originalName}
+                            </Text>
+                            <Text type="secondary" style={{ fontSize: 11 }}>
+                              →
+                            </Text>
+                            <Input
+                              size="small"
+                              value={paramNames[originalName] || originalName}
+                              onChange={(e) => {
+                                setParamNames((prev) => ({
+                                  ...prev,
+                                  [originalName]: e.target.value,
+                                }));
+                              }}
+                              style={{ width: 120 }}
+                              placeholder="参数名"
+                            />
+                          </Space>
+                          <Space>
+                            <Tag color="blue">{schema.type}</Tag>
+                            <Text type="secondary" style={{ fontSize: 11 }}>
+                              默认值: {String(schema.default || '-')}
+                            </Text>
+                          </Space>
+                        </Space>
+                      </List.Item>
+                    )}
+                  />
+                </>
+              )}
+            </Space>
+          </Modal>
+
+          {/* Compiled script modal */}
+          <Modal
+            title="编译后的脚本"
+            open={showScriptModal}
+            onCancel={() => setShowScriptModal(false)}
+            width={700}
+            footer={[
+              <Button key="copy" icon={<CopyOutlined />} onClick={handleCopyScript}>
+                复制
+              </Button>,
+              <Button key="download" icon={<DownloadOutlined />} onClick={handleDownloadScript}>
+                下载
+              </Button>,
+              <Button
+                key="save"
+                type="primary"
+                icon={<SaveOutlined />}
+                onClick={() => {
+                  void handleSaveCompiledTemplate();
+                }}
+              >
+                保存模版
+              </Button>,
+            ]}
+          >
+            <Space direction="vertical" style={{ width: '100%', marginBottom: 16 }}>
+              <Text>模版名称：</Text>
+              <Input
+                value={templateName}
+                onChange={(e) => setTemplateName(e.target.value)}
+                placeholder={`编译模版 ${new Date().toLocaleString()}`}
+                style={{ marginBottom: 8 }}
+              />
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                包含 {templateSteps.length} 个步骤，可修改参数后保存
+              </Text>
+            </Space>
+            <pre
+              style={{
+                background: 'var(--bg-secondary)',
+                color: 'var(--text-primary)',
+                border: '1px solid var(--border-color)',
+                padding: 16,
+                borderRadius: 8,
+                maxHeight: 400,
+                overflow: 'auto',
+                fontSize: 12,
+              }}
+            >
+              {compiledScript}
+            </pre>
+          </Modal>
+          <BranchGateModal
+            open={showBranchGateModal}
+            runtimeSessionId={
+              recorderDebugRuntimeSessionId ||
+              (isBrowserReady ? browserRuntimeSessionId : undefined)
+            }
+            onCancel={() => {
+              setShowBranchGateModal(false);
+              setBranchInsertAfterStepId(undefined);
+            }}
+            onConfirm={handleConfirmBranchGate}
+          />
+        </div>
       ) : (
         // Manual Mode Content
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -3504,11 +4243,7 @@ const AIControls: React.FC<AIControlsProps> = ({
             </Button>
 
             {isRecording && (
-              <Button
-                size="large"
-                icon={<PauseCircleOutlined />}
-                onClick={onPauseRecording}
-              >
+              <Button size="large" icon={<PauseCircleOutlined />} onClick={onPauseRecording}>
                 {t('recorder:pause') || '暂停'}
               </Button>
             )}
@@ -3525,12 +4260,7 @@ const AIControls: React.FC<AIControlsProps> = ({
             )}
 
             {(isRecording || isPaused) && (
-              <Button
-                size="large"
-                icon={<StopOutlined />}
-                onClick={onStopRecording}
-                danger
-              >
+              <Button size="large" icon={<StopOutlined />} onClick={onStopRecording} danger>
                 {t('recorder:stop') || '停止'}
               </Button>
             )}

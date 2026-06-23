@@ -2,9 +2,7 @@ import type React from 'react';
 import type { AISuggestion } from '../../../app/store';
 import type { WordDraftSection } from '../../draft/word';
 import type { WordPublishSection } from '../../publish/word';
-import {
-  buildWordSectionSuggestionDisplayGroups,
-} from '../../parameter-identify/word/identify-suggestion.helpers';
+import { buildWordSectionSuggestionDisplayGroups } from '../../parameter-identify/word/identify-suggestion.helpers';
 import type { CompareCandidateSection } from './word-workflow.section.helpers';
 import { buildSuggestionGroupSummary } from './word-workflow.debug';
 import type { WordSectionGenerationResult } from './word-workflow.cache';
@@ -37,7 +35,11 @@ export function buildWordRecognitionFollowupProps(args: {
   draftId: string | null;
   draftInfo: { templateType: string; parameterCount: number; savedAt: string } | null;
   latestBackendDraftInfo: { id: string; fileName: string; savedAt: string } | null;
-  draftWorkflowNotice: { type: 'success' | 'error' | 'info'; message: string; lines?: string[] } | null;
+  draftWorkflowNotice: {
+    type: 'success' | 'error' | 'info';
+    message: string;
+    lines?: string[];
+  } | null;
   isGeneratingGuide: boolean;
   isVerifying: boolean;
   isSavingDraft: boolean;
@@ -80,7 +82,9 @@ export function buildWordRecognitionFollowupProps(args: {
     draftSectionProps: {
       suggestions: args.suggestions,
       isAnalyzing: args.isAnalyzing,
-      aiSkillGuide: args.aiSkillGuide as React.ComponentProps<typeof WordDraftSection>['aiSkillGuide'],
+      aiSkillGuide: args.aiSkillGuide as React.ComponentProps<
+        typeof WordDraftSection
+      >['aiSkillGuide'],
       draftId: args.draftId,
       draftInfo: args.draftInfo,
       latestBackendDraftInfo: args.latestBackendDraftInfo,
@@ -100,9 +104,13 @@ export function buildWordRecognitionFollowupProps(args: {
     },
     publishSectionProps: {
       suggestions: args.suggestions,
-      aiSkillGuide: args.aiSkillGuide as React.ComponentProps<typeof WordPublishSection>['aiSkillGuide'],
+      aiSkillGuide: args.aiSkillGuide as React.ComponentProps<
+        typeof WordPublishSection
+      >['aiSkillGuide'],
       aiGeneratedData: args.aiGeneratedData,
-      previewResult: args.previewResult as React.ComponentProps<typeof WordPublishSection>['previewResult'],
+      previewResult: args.previewResult as React.ComponentProps<
+        typeof WordPublishSection
+      >['previewResult'],
       draftId: args.draftId,
       saveResult: args.saveResult as React.ComponentProps<typeof WordPublishSection>['saveResult'],
       verifySaveCollapsed: args.verifySaveCollapsed,
@@ -148,13 +156,15 @@ export function buildWordRecognitionSectionViewModel(args: {
   return {
     sectionResult,
     sectionSuggestions,
-    sectionSuggestionGroups: buildWordSectionSuggestionDisplayGroups(args.section, sectionSuggestions),
+    sectionSuggestionGroups: buildWordSectionSuggestionDisplayGroups(
+      args.section,
+      sectionSuggestions
+    ),
     groupName: sectionSuggestions[0]?.details?.chapter || args.section.sectionTitle,
     sectionCollapsed: args.collapsedRecognitionSections[args.section.sectionKey] ?? false,
     pendingCount,
     appliedCount,
-    groupSummary: sectionSuggestions.length > 0
-      ? buildSuggestionGroupSummary(sectionSuggestions)
-      : null,
+    groupSummary:
+      sectionSuggestions.length > 0 ? buildSuggestionGroupSummary(sectionSuggestions) : null,
   };
 }

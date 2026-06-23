@@ -12,7 +12,11 @@ interface UseTemplateAssetManagerProps {
   uploadedFile: File | null;
   uploadedFileBase64: string;
   addDebugLog: (level: any, title: string, content: string) => void;
-  loadTemplateSource: () => Promise<{ documentContent: string; format: string; isBinaryFile: boolean }>;
+  loadTemplateSource: () => Promise<{
+    documentContent: string;
+    format: string;
+    isBinaryFile: boolean;
+  }>;
 }
 
 export function useTemplateAssetManager({
@@ -94,7 +98,11 @@ export function useTemplateAssetManager({
         setStatusMessage(`预览验证成功！模板ID: ${templateResult.templateId}`);
         setPreviewData(result.generatedData || {});
         console.log('预览结果:', result);
-        addDebugLog('info', '预览验证成功', `生成的数据: ${JSON.stringify(result.generatedData, null, 2)}`);
+        addDebugLog(
+          'info',
+          '预览验证成功',
+          `生成的数据: ${JSON.stringify(result.generatedData, null, 2)}`
+        );
       } else {
         setStatusMessage(`预览验证失败: ${result.error || '未知错误'}`);
         addDebugLog('error', '预览验证失败', result.error || '未知错误');
@@ -235,7 +243,9 @@ export function useTemplateAssetManager({
     const appliedSuggestions = suggestions.filter((s) => s.applied);
     if (appliedSuggestions.length === 0) {
       setStatusMessage('请先在AI识别面板中应用建议，再生成模板指南');
-      setValidationErrors(['当前没有已应用的变量。请返回AI识别面板，点击"应用全部"或逐个应用建议后再继续。']);
+      setValidationErrors([
+        '当前没有已应用的变量。请返回AI识别面板，点击"应用全部"或逐个应用建议后再继续。',
+      ]);
       return;
     }
 
@@ -299,7 +309,9 @@ export function useTemplateAssetManager({
       }
 
       if (!templateResult.hasValidFile) {
-        setStatusMessage(`模板配置已保存（模板ID: ${templateResult.templateId}），但由于无法获取完整的docx文件，预览功能暂不可用。请手动上传Word文档到模板管理页面进行完整预览。`);
+        setStatusMessage(
+          `模板配置已保存（模板ID: ${templateResult.templateId}），但由于无法获取完整的docx文件，预览功能暂不可用。请手动上传Word文档到模板管理页面进行完整预览。`
+        );
         setCurrentStep(4);
         setSkillPreviewResult({
           generatedData: generatedSkill.parameters?.map((p: any) => ({ [p.name]: p.example })),

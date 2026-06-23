@@ -514,6 +514,51 @@
   color: var(--text-secondary);
 }
 
+.user-chat-progress-card {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px dashed rgba(59, 130, 246, 0.24);
+  background: rgba(59, 130, 246, 0.04);
+}
+
+[data-theme="dark"] .user-chat-progress-card {
+  background: rgba(59, 130, 246, 0.08);
+  border-color: rgba(96, 165, 250, 0.26);
+}
+
+.user-chat-progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-chat-progress-list {
+  display: grid;
+  gap: 8px;
+}
+
+.user-chat-progress-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+[data-theme="dark"] .user-chat-progress-item {
+  background: rgba(15, 23, 42, 0.35);
+}
+
+.user-chat-progress-item .ant-typography {
+  flex: 1;
+  white-space: pre-wrap;
+}
+
 .user-chat-thoughts {
   margin-bottom: 12px;
   border: 1px dashed var(--bg-secondary);

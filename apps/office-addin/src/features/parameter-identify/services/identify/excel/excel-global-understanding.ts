@@ -27,7 +27,10 @@ interface WorkbookSheetSummary {
   formulas: string[][];
 }
 
-export function buildExcelGlobalUnderstandingContext(documentIR: DocumentIR, templateType: string): string {
+export function buildExcelGlobalUnderstandingContext(
+  documentIR: DocumentIR,
+  templateType: string
+): string {
   const sheetCount = documentIR.stats.sheetCount || 0;
   const cellCount = documentIR.stats.cellCount || 0;
 
@@ -35,45 +38,56 @@ export function buildExcelGlobalUnderstandingContext(documentIR: DocumentIR, tem
 }
 
 export function buildExcelGlobalUnderstandingSummary(response: AnalyzeResponse): string {
-  const globalUnderstandingText = String(response.contextAnalysis?.globalUnderstandingText || '').trim();
+  const globalUnderstandingText = String(
+    response.contextAnalysis?.globalUnderstandingText || ''
+  ).trim();
   if (globalUnderstandingText) {
     return globalUnderstandingText;
   }
 
   const detectedTemplateType = String(response.contextAnalysis?.detectedTemplateType || 'unknown');
   const userIntent = String(response.contextAnalysis?.userIntent || '未提供');
-  const globalBusinessSummary = String(response.contextAnalysis?.globalBusinessSummary || '').trim();
-  const recommendedDataSchema = String(response.contextAnalysis?.recommendedDataSchema || '').trim();
+  const globalBusinessSummary = String(
+    response.contextAnalysis?.globalBusinessSummary || ''
+  ).trim();
+  const recommendedDataSchema = String(
+    response.contextAnalysis?.recommendedDataSchema || ''
+  ).trim();
   const namingPrinciples = Array.isArray(response.contextAnalysis?.namingPrinciples)
     ? (response.contextAnalysis?.namingPrinciples as unknown[])
-      .map((item) => String(item || '').trim())
-      .filter(Boolean)
-      .join('、')
+        .map((item) => String(item || '').trim())
+        .filter(Boolean)
+        .join('、')
     : '';
   const keyEntities = Array.isArray(response.contextAnalysis?.keyEntities)
     ? (response.contextAnalysis?.keyEntities as unknown[])
-      .map((item) => String(item || '').trim())
-      .filter(Boolean)
-      .join('、')
+        .map((item) => String(item || '').trim())
+        .filter(Boolean)
+        .join('、')
     : '';
   const candidateSuggestions = (response.rawSuggestions || response.suggestions || []).slice(0, 8);
-  const suggestionSummary = candidateSuggestions.length > 0
-    ? candidateSuggestions
-      .map((suggestion) => {
-        const name = 'suggestedName' in suggestion ? String(suggestion.suggestedName || '') : '';
-        const original = 'originalText' in suggestion ? String(suggestion.originalText || '') : '';
-        return [name, original].filter(Boolean).join(' <- ');
-      })
-      .filter(Boolean)
-      .join('；')
-    : '未返回候选参数';
+  const suggestionSummary =
+    candidateSuggestions.length > 0
+      ? candidateSuggestions
+          .map((suggestion) => {
+            const name =
+              'suggestedName' in suggestion ? String(suggestion.suggestedName || '') : '';
+            const original =
+              'originalText' in suggestion ? String(suggestion.originalText || '') : '';
+            return [name, original].filter(Boolean).join(' <- ');
+          })
+          .filter(Boolean)
+          .join('；')
+      : '未返回候选参数';
 
-  return `模板类型判断: ${detectedTemplateType}。业务目的: ${userIntent}。`
-    + `${globalBusinessSummary ? `业务摘要: ${globalBusinessSummary}。` : ''}`
-    + `${keyEntities ? `关键实体: ${keyEntities}。` : ''}`
-    + `${recommendedDataSchema ? `建议数据模型: ${recommendedDataSchema}。` : ''}`
-    + `${namingPrinciples ? `命名原则: ${namingPrinciples}。` : ''}`
-    + `全局候选摘要: ${suggestionSummary}。`;
+  return (
+    `模板类型判断: ${detectedTemplateType}。业务目的: ${userIntent}。` +
+    `${globalBusinessSummary ? `业务摘要: ${globalBusinessSummary}。` : ''}` +
+    `${keyEntities ? `关键实体: ${keyEntities}。` : ''}` +
+    `${recommendedDataSchema ? `建议数据模型: ${recommendedDataSchema}。` : ''}` +
+    `${namingPrinciples ? `命名原则: ${namingPrinciples}。` : ''}` +
+    `全局候选摘要: ${suggestionSummary}。`
+  );
 }
 
 function recalculateDocumentStats(documentIR: DocumentIR): DocumentIR['stats'] {

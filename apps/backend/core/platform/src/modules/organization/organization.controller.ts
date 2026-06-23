@@ -1,11 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Param,
-  Post,
-  Request,
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Request } from '@nestjs/common';
 import {
   AddOrganizationMemberDto,
   CreateDepartmentDto,
@@ -23,7 +16,7 @@ export class OrganizationController {
   @Post()
   async createOrganization(
     @Body() dto: CreateOrganizationDto,
-    @Request() req: { user: { id: string } },
+    @Request() req: { user: { id: string } }
   ) {
     return this.organizationService.createOrganization(dto, req.user.id);
   }
@@ -40,10 +33,7 @@ export class OrganizationController {
 
   @RequireAdmin()
   @Post(':orgId/departments')
-  async createDepartment(
-    @Param('orgId') orgId: string,
-    @Body() dto: CreateDepartmentDto,
-  ) {
+  async createDepartment(@Param('orgId') orgId: string, @Body() dto: CreateDepartmentDto) {
     return this.organizationService.createDepartment(orgId, dto);
   }
 
@@ -58,7 +48,7 @@ export class OrganizationController {
   async addMember(
     @Param('orgId') orgId: string,
     @Body() dto: AddOrganizationMemberDto,
-    @Request() req: { user: { id: string } },
+    @Request() req: { user: { id: string } }
   ) {
     return this.organizationService.addMember(orgId, dto, req.user.id);
   }

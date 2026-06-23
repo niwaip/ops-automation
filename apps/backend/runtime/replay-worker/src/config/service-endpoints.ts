@@ -9,9 +9,7 @@ const readConfiguredUrl = (...candidates: Array<string | undefined>): string | u
 };
 
 export const getPublicHost = (): string =>
-  process.env.HOST_IP?.trim()
-  || process.env.EXTERNAL_HOST?.trim()
-  || 'localhost';
+  process.env.HOST_IP?.trim() || process.env.EXTERNAL_HOST?.trim() || 'localhost';
 
 export const getSessionBrokerUrl = (): string => {
   const configured = readConfiguredUrl(process.env.SESSION_BROKER_URL);
@@ -46,8 +44,9 @@ export const getDefaultCdpUrl = (): string => {
     return configured.replace(/^http/i, 'ws');
   }
 
-  const host = process.env.CHROME_REMOTE_DEBUGGING_HOST
-    || (isContainerRuntime() ? 'browser-chrome' : 'localhost');
+  const host =
+    process.env.CHROME_REMOTE_DEBUGGING_HOST ||
+    (isContainerRuntime() ? 'browser-chrome' : 'localhost');
   const port = process.env.CHROME_REMOTE_DEBUGGING_PORT || process.env.CDP_PORT || '9222';
   return `ws://${host}:${port}`;
 };

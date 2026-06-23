@@ -13,12 +13,12 @@ type PickFirstNonEmptyString = (...values: unknown[]) => string | undefined;
 type BuildWorkflowSemanticHint = (...values: unknown[]) => string;
 type CollectTemplateVariables = (value: unknown, target?: Set<string>) => Set<string>;
 type NormalizeWorkflowInputRenderPath = (
-  renderPath: string | string[] | undefined,
+  renderPath: string | string[] | undefined
 ) => string | string[] | undefined;
 type SanitizeJsonValue = <T>(value: T) => T;
 type NormalizeStructuredTransformConfig = (
   config: Record<string, any>,
-  placeholderKeys?: Set<string>,
+  placeholderKeys?: Set<string>
 ) => Record<string, any>;
 
 const defaultPickFirstNonEmptyString: PickFirstNonEmptyString = (...values) => {
@@ -31,7 +31,9 @@ const defaultPickFirstNonEmptyString: PickFirstNonEmptyString = (...values) => {
 };
 
 export function extractValueByPath(value: unknown, path: string): unknown {
-  const normalizedPath = String(path || '').trim().replace(/^body\./, '');
+  const normalizedPath = String(path || '')
+    .trim()
+    .replace(/^body\./, '');
   if (!normalizedPath) {
     return value;
   }
@@ -57,7 +59,7 @@ export function extractValueByPath(value: unknown, path: string): unknown {
 
 export function buildPlaceholderValueFromSchemaHint(
   schemaHint: unknown,
-  fieldName: string,
+  fieldName: string
 ): unknown {
   const hint = String(schemaHint || '').toLowerCase();
   if (/(number|int|float|double|decimal)/.test(hint)) {
@@ -83,18 +85,23 @@ export function buildGenericAiDraftSampleValue(args: {
 }): string | number | boolean {
   const { key, description, referenceUrl, buildWorkflowSemanticHint } = args;
   const hint = buildWorkflowSemanticHint(key, description);
-  const normalizedKey = String(key || '')
-    .trim()
-    .replace(/[^a-zA-Z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '')
-    .toLowerCase() || 'value';
+  const normalizedKey =
+    String(key || '')
+      .trim()
+      .replace(/[^a-zA-Z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '')
+      .toLowerCase() || 'value';
   if (/\b(url|uri|link)\b|网址|链接/.test(hint)) {
     return referenceUrl || `https://example.com/${normalizedKey}`;
   }
   if (/\b(bool|boolean)\b|启用|是否/.test(hint)) {
     return true;
   }
-  if (/\b(number|int|float|double|decimal|count|size|limit|page|offset|age)\b|数量|页码|大小|编号/.test(hint)) {
+  if (
+    /\b(number|int|float|double|decimal|count|size|limit|page|offset|age)\b|数量|页码|大小|编号/.test(
+      hint
+    )
+  ) {
     return 1;
   }
   if (/\b(date|day|time|datetime)\b|时间|日期/.test(hint)) {
@@ -106,7 +113,7 @@ export function buildGenericAiDraftSampleValue(args: {
 export function extractAiDraftSampleValuesFromReferenceUrl(
   referenceUrl: string,
   steps: Array<{ activityRef?: unknown; input?: unknown }>,
-  pickFirstNonEmptyString: PickFirstNonEmptyString = defaultPickFirstNonEmptyString,
+  pickFirstNonEmptyString: PickFirstNonEmptyString = defaultPickFirstNonEmptyString
 ): Record<string, string> {
   const resolved: Record<string, string> = {};
   const targetUrl = String(referenceUrl || '').trim();
@@ -126,9 +133,10 @@ export function extractAiDraftSampleValuesFromReferenceUrl(
     if (activityRef !== 'builtin:httpRequest') {
       continue;
     }
-    const stepInput = step?.input && typeof step.input === 'object' && !Array.isArray(step.input)
-      ? step.input as Record<string, any>
-      : {};
+    const stepInput =
+      step?.input && typeof step.input === 'object' && !Array.isArray(step.input)
+        ? (step.input as Record<string, any>)
+        : {};
     const httpConfig = stepInput[HTTP_REQUEST_STEP_CONFIG_KEY];
     if (!httpConfig || typeof httpConfig !== 'object' || Array.isArray(httpConfig)) {
       continue;
@@ -138,16 +146,18 @@ export function extractAiDraftSampleValuesFromReferenceUrl(
     try {
       const templateUrl = new URL(urlTemplate.replace(/\{[^{}]+\}/g, '__placeholder__'));
       if (templateUrl.origin === actualUrl.origin) {
-        const templatePath = urlTemplate
-          .replace(/^[a-zA-Z][a-zA-Z\d+\-.]*:\/\/[^/]+/, '')
-          .split('?')[0] || '/';
-        const templateSegments = templatePath.split('/').filter(Boolean).map((item) => {
-          try {
-            return decodeURIComponent(item);
-          } catch {
-            return item;
-          }
-        });
+        const templatePath =
+          urlTemplate.replace(/^[a-zA-Z][a-zA-Z\d+\-.]*:\/\/[^/]+/, '').split('?')[0] || '/';
+        const templateSegments = templatePath
+          .split('/')
+          .filter(Boolean)
+          .map((item) => {
+            try {
+              return decodeURIComponent(item);
+            } catch {
+              return item;
+            }
+          });
         const actualSegments = actualUrl.pathname.split('/').filter(Boolean);
         if (templateSegments.length === actualSegments.length) {
           templateSegments.forEach((segment, index) => {
@@ -167,11 +177,16 @@ export function extractAiDraftSampleValuesFromReferenceUrl(
       // ignore malformed template URL and continue with query inference only
     }
 
-    const queryTemplate = httpConfig.queryTemplate && typeof httpConfig.queryTemplate === 'object' && !Array.isArray(httpConfig.queryTemplate)
-      ? httpConfig.queryTemplate as Record<string, any>
-      : {};
+    const queryTemplate =
+      httpConfig.queryTemplate &&
+      typeof httpConfig.queryTemplate === 'object' &&
+      !Array.isArray(httpConfig.queryTemplate)
+        ? (httpConfig.queryTemplate as Record<string, any>)
+        : {};
     Object.entries(queryTemplate).forEach(([queryKey, queryValue]) => {
-      const tokenMatch = String(queryValue || '').trim().match(/^\{([^{}]+)\}$/);
+      const tokenMatch = String(queryValue || '')
+        .trim()
+        .match(/^\{([^{}]+)\}$/);
       if (!tokenMatch) {
         return;
       }
@@ -220,7 +235,11 @@ export function inferWorkflowInputParamType(args: {
   if (/\b(date|day|time|datetime)\b|日期|时间/.test(text)) {
     return 'date';
   }
-  if (/\b(number|int|float|double|decimal|count|size|limit|page|offset|age|temperature|temp|speed|pressure)\b|数量|页码|大小|编号/.test(text)) {
+  if (
+    /\b(number|int|float|double|decimal|count|size|limit|page|offset|age|temperature|temp|speed|pressure)\b|数量|页码|大小|编号/.test(
+      text
+    )
+  ) {
     return 'number';
   }
   return 'string';
@@ -238,19 +257,26 @@ function collectWorkflowInputPlaceholdersFromSteps(args: {
       continue;
     }
     const activityRef = pickFirstNonEmptyString(step.activityRef);
-    const stepInput = step.input && typeof step.input === 'object' && !Array.isArray(step.input)
-      ? step.input as Record<string, any>
-      : {};
+    const stepInput =
+      step.input && typeof step.input === 'object' && !Array.isArray(step.input)
+        ? (step.input as Record<string, any>)
+        : {};
 
     if (activityRef === 'builtin:httpRequest') {
       collectTemplateVariables(stepInput[HTTP_REQUEST_STEP_CONFIG_KEY], placeholders);
       continue;
     }
 
-    if (activityRef === 'builtin:structuredTransform' || activityRef === 'builtin:aiStructuredTransform') {
-      const structuredConfig = stepInput[STRUCTURED_TRANSFORM_STEP_CONFIG_KEY] && typeof stepInput[STRUCTURED_TRANSFORM_STEP_CONFIG_KEY] === 'object' && !Array.isArray(stepInput[STRUCTURED_TRANSFORM_STEP_CONFIG_KEY])
-        ? stepInput[STRUCTURED_TRANSFORM_STEP_CONFIG_KEY] as Record<string, any>
-        : {};
+    if (
+      activityRef === 'builtin:structuredTransform' ||
+      activityRef === 'builtin:aiStructuredTransform'
+    ) {
+      const structuredConfig =
+        stepInput[STRUCTURED_TRANSFORM_STEP_CONFIG_KEY] &&
+        typeof stepInput[STRUCTURED_TRANSFORM_STEP_CONFIG_KEY] === 'object' &&
+        !Array.isArray(stepInput[STRUCTURED_TRANSFORM_STEP_CONFIG_KEY])
+          ? (stepInput[STRUCTURED_TRANSFORM_STEP_CONFIG_KEY] as Record<string, any>)
+          : {};
       collectTemplateVariables(structuredConfig, placeholders);
       const internalStructuredKeys = new Set<string>([
         'content',
@@ -258,14 +284,18 @@ function collectWorkflowInputPlaceholdersFromSteps(args: {
         'httpResult',
         'httpBody',
         ...Object.keys(
-          structuredConfig.fieldMappings && typeof structuredConfig.fieldMappings === 'object' && !Array.isArray(structuredConfig.fieldMappings)
+          structuredConfig.fieldMappings &&
+            typeof structuredConfig.fieldMappings === 'object' &&
+            !Array.isArray(structuredConfig.fieldMappings)
             ? structuredConfig.fieldMappings
-            : {},
+            : {}
         ),
         ...Object.keys(
-          structuredConfig.outputSchema && typeof structuredConfig.outputSchema === 'object' && !Array.isArray(structuredConfig.outputSchema)
+          structuredConfig.outputSchema &&
+            typeof structuredConfig.outputSchema === 'object' &&
+            !Array.isArray(structuredConfig.outputSchema)
             ? structuredConfig.outputSchema
-            : {},
+            : {}
         ),
       ]);
       internalStructuredKeys.forEach((key) => placeholders.delete(key));
@@ -280,9 +310,7 @@ function collectWorkflowInputPlaceholdersFromSteps(args: {
     });
   }
 
-  return new Set(
-    Array.from(placeholders).filter((key) => isValidTemplateToken(key)),
-  );
+  return new Set(Array.from(placeholders).filter((key) => isValidTemplateToken(key)));
 }
 
 function mergeDraftInputParamsWithStepPlaceholders(args: {
@@ -317,9 +345,10 @@ function mergeDraftInputParamsWithStepPlaceholders(args: {
       description: pickFirstNonEmptyString(value?.description),
       required: value?.required,
       defaultValue: value?.defaultValue ?? '',
-      localizedDefaultValue: value?.localizedDefaultValue && Object.keys(value.localizedDefaultValue).length > 0
-        ? value.localizedDefaultValue
-        : undefined,
+      localizedDefaultValue:
+        value?.localizedDefaultValue && Object.keys(value.localizedDefaultValue).length > 0
+          ? value.localizedDefaultValue
+          : undefined,
       source: value?.source || 'declared',
       type: value?.type,
       exampleValue: value?.exampleValue,
@@ -341,7 +370,8 @@ function mergeDraftInputParamsWithStepPlaceholders(args: {
         description: inferredDescription,
         required: true,
         defaultValue: '',
-        source: referenceExample !== undefined ? 'inferred_from_reference_url' : 'inferred_from_template',
+        source:
+          referenceExample !== undefined ? 'inferred_from_reference_url' : 'inferred_from_template',
         type: inferWorkflowInputParamType({
           key,
           description: inferredDescription,
@@ -349,30 +379,33 @@ function mergeDraftInputParamsWithStepPlaceholders(args: {
           exampleValue: referenceExample,
           buildWorkflowSemanticHint,
         }),
-        exampleValue: referenceExample !== undefined
-          ? referenceExample
-          : buildGenericAiDraftSampleValue({
-              key,
-              description: inferredDescription,
-              referenceUrl,
-              buildWorkflowSemanticHint,
-            }),
-      };
-      return;
-    }
-    merged[key] = {
-      ...merged[key],
-      source: merged[key].source && merged[key].source !== 'declared' ? merged[key].source : 'merged',
-      exampleValue: merged[key].exampleValue !== undefined
-        ? merged[key].exampleValue
-        : (referenceExample !== undefined
+        exampleValue:
+          referenceExample !== undefined
             ? referenceExample
             : buildGenericAiDraftSampleValue({
                 key,
                 description: inferredDescription,
                 referenceUrl,
                 buildWorkflowSemanticHint,
-              })),
+              }),
+      };
+      return;
+    }
+    merged[key] = {
+      ...merged[key],
+      source:
+        merged[key].source && merged[key].source !== 'declared' ? merged[key].source : 'merged',
+      exampleValue:
+        merged[key].exampleValue !== undefined
+          ? merged[key].exampleValue
+          : referenceExample !== undefined
+            ? referenceExample
+            : buildGenericAiDraftSampleValue({
+                key,
+                description: inferredDescription,
+                referenceUrl,
+                buildWorkflowSemanticHint,
+              }),
     };
   });
 
@@ -406,40 +439,49 @@ export function normalizeDraftInputParams(args: {
     normalizeWorkflowInputRenderPath,
     buildWorkflowSemanticHint,
   });
-  const entries = Object.entries(mergedInputParams || {}).filter(([key]) => String(key || '').trim());
+  const entries = Object.entries(mergedInputParams || {}).filter(([key]) =>
+    String(key || '').trim()
+  );
   if (!entries.length) {
     return undefined;
   }
   return entries.reduce<Record<string, WorkflowInputParamDefinition>>((acc, [key, value]) => {
     const normalizedKey = String(key).trim();
     const defaultValue = value?.defaultValue ?? '';
-    const localizedDefaultValue = value?.localizedDefaultValue && Object.keys(value.localizedDefaultValue).length > 0
-      ? value.localizedDefaultValue
-      : undefined;
-    const description = pickFirstNonEmptyString(value?.description) || buildDefaultDraftInputDescription(normalizedKey);
-    const exampleValue = value?.exampleValue !== undefined
-      ? value.exampleValue
-      : buildGenericAiDraftSampleValue({
-          key: normalizedKey,
-          description,
-          referenceUrl,
-          buildWorkflowSemanticHint,
-        });
+    const localizedDefaultValue =
+      value?.localizedDefaultValue && Object.keys(value.localizedDefaultValue).length > 0
+        ? value.localizedDefaultValue
+        : undefined;
+    const description =
+      pickFirstNonEmptyString(value?.description) ||
+      buildDefaultDraftInputDescription(normalizedKey);
+    const exampleValue =
+      value?.exampleValue !== undefined
+        ? value.exampleValue
+        : buildGenericAiDraftSampleValue({
+            key: normalizedKey,
+            description,
+            referenceUrl,
+            buildWorkflowSemanticHint,
+          });
     acc[String(key).trim()] = {
       description,
-      required: value?.required === undefined
-        ? (!String(defaultValue).trim() && !localizedDefaultValue)
-        : value.required !== false,
+      required:
+        value?.required === undefined
+          ? !String(defaultValue).trim() && !localizedDefaultValue
+          : value.required !== false,
       defaultValue,
       localizedDefaultValue,
       source: value?.source,
-      type: value?.type || inferWorkflowInputParamType({
-        key: normalizedKey,
-        description,
-        defaultValue,
-        exampleValue,
-        buildWorkflowSemanticHint,
-      }),
+      type:
+        value?.type ||
+        inferWorkflowInputParamType({
+          key: normalizedKey,
+          description,
+          defaultValue,
+          exampleValue,
+          buildWorkflowSemanticHint,
+        }),
       exampleValue,
       ...(normalizeWorkflowInputRenderPath(value?.renderPath)
         ? { renderPath: normalizeWorkflowInputRenderPath(value?.renderPath) }
@@ -451,7 +493,7 @@ export function normalizeDraftInputParams(args: {
 
 export function normalizeDraftOutputParams(
   outputParams: Record<string, { description?: string; sourceStep?: string }> | undefined,
-  pickFirstNonEmptyString: PickFirstNonEmptyString,
+  pickFirstNonEmptyString: PickFirstNonEmptyString
 ): WorkflowDsl['outputParams'] {
   const entries = Object.entries(outputParams || {}).filter(([key]) => String(key || '').trim());
   if (!entries.length) {
@@ -462,30 +504,37 @@ export function normalizeDraftOutputParams(
       },
     };
   }
-  return entries.reduce<Record<string, { description?: string; sourceStep?: string }>>((acc, [key, value]) => {
-    acc[String(key).trim()] = {
-      description: pickFirstNonEmptyString(value?.description) || '',
-      sourceStep: pickFirstNonEmptyString(value?.sourceStep) || 'step_1',
-    };
-    return acc;
-  }, {});
+  return entries.reduce<Record<string, { description?: string; sourceStep?: string }>>(
+    (acc, [key, value]) => {
+      acc[String(key).trim()] = {
+        description: pickFirstNonEmptyString(value?.description) || '',
+        sourceStep: pickFirstNonEmptyString(value?.sourceStep) || 'step_1',
+      };
+      return acc;
+    },
+    {}
+  );
 }
 
 function inferStructuredTransformOutputMode(
   stepName: string,
   workflowIntentText: string,
-  normalizedConfig: Record<string, any>,
+  normalizedConfig: Record<string, any>
 ): 'json' | 'text' {
   const signalText = [
     stepName,
     workflowIntentText,
     String(normalizedConfig.instructionTemplate || ''),
     String(normalizedConfig.textTemplate || ''),
-  ].filter(Boolean).join('\n');
+  ]
+    .filter(Boolean)
+    .join('\n');
 
   if (
-    String(normalizedConfig.textTemplate || '').trim()
-    || /(格式化|format|render|文本|text|纯文本|markdown|邮件|消息|总结|summary|报告|report)/i.test(signalText)
+    String(normalizedConfig.textTemplate || '').trim() ||
+    /(格式化|format|render|文本|text|纯文本|markdown|邮件|消息|总结|summary|报告|report)/i.test(
+      signalText
+    )
   ) {
     return 'text';
   }
@@ -554,14 +603,16 @@ function extractStructuredTransformCandidateFieldKeys(...sources: unknown[]): st
       for (const match of source.matchAll(/[`"'"]([a-zA-Z][a-zA-Z0-9_]*)[`"'"]/g)) {
         addKey(match[1]);
       }
-      for (const match of source.matchAll(/\b([a-z][a-zA-Z0-9_]*[A-Z][a-zA-Z0-9_]*|[a-z][a-zA-Z0-9_]*_[a-zA-Z0-9_]+)\b/g)) {
+      for (const match of source.matchAll(
+        /\b([a-z][a-zA-Z0-9_]*[A-Z][a-zA-Z0-9_]*|[a-z][a-zA-Z0-9_]*_[a-zA-Z0-9_]+)\b/g
+      )) {
         addKey(match[1]);
       }
-      const fieldHintMatches = source.match(/(?:字段|fields?|返回|输出|包含|保留|重点保证字段)\s*[:：]?\s*([^\n。；;]+)/i);
+      const fieldHintMatches = source.match(
+        /(?:字段|fields?|返回|输出|包含|保留|重点保证字段)\s*[:：]?\s*([^\n。；;]+)/i
+      );
       if (fieldHintMatches?.[1]) {
-        fieldHintMatches[1]
-          .split(/[,\s、，|/]+/)
-          .forEach((item) => addKey(item));
+        fieldHintMatches[1].split(/[,\s、，|/]+/).forEach((item) => addKey(item));
       }
       return;
     }
@@ -581,11 +632,12 @@ function extractStructuredTransformCandidateFieldKeys(...sources: unknown[]): st
 function buildDefaultAiStructuredTransformInstruction(
   stepName: string,
   outputMode: string,
-  outputSchema: unknown,
+  outputSchema: unknown
 ): string {
-  const normalizedSchema = outputSchema && typeof outputSchema === 'object' && !Array.isArray(outputSchema)
-    ? outputSchema as Record<string, any>
-    : {};
+  const normalizedSchema =
+    outputSchema && typeof outputSchema === 'object' && !Array.isArray(outputSchema)
+      ? (outputSchema as Record<string, any>)
+      : {};
   if (String(outputMode || '').toLowerCase() === 'text') {
     return `请根据输入内容完成${stepName}，输出整理后的纯文本结果，只返回纯文本，不要 JSON。`;
   }
@@ -597,7 +649,7 @@ function buildDefaultAiStructuredTransformInstruction(
 function buildDefaultStructuredTransformOutputSchema(
   stepName: string,
   workflowIntentText: string,
-  normalizedConfig?: Record<string, any>,
+  normalizedConfig?: Record<string, any>
 ): Record<string, string> {
   const candidateFieldKeys = extractStructuredTransformCandidateFieldKeys(
     normalizedConfig?.fieldMappings,
@@ -606,7 +658,7 @@ function buildDefaultStructuredTransformOutputSchema(
     normalizedConfig?.instructionTemplate,
     normalizedConfig?.contextTemplate,
     stepName,
-    workflowIntentText,
+    workflowIntentText
   );
   if (candidateFieldKeys.length > 0) {
     return Object.fromEntries(candidateFieldKeys.slice(0, 8).map((key) => [key, 'string']));
@@ -628,7 +680,7 @@ function buildDefaultStructuredTransformOutputSchema(
 function humanizeStructuredTransformFieldLabel(
   stepName: string,
   fieldKey: string,
-  pickFirstNonEmptyString: PickFirstNonEmptyString,
+  pickFirstNonEmptyString: PickFirstNonEmptyString
 ): string {
   const normalized = String(fieldKey || '').trim();
   if (!normalized) {
@@ -639,32 +691,28 @@ function humanizeStructuredTransformFieldLabel(
       .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
       .replace(/^./, (item) => item.toUpperCase());
   }
-  const segments = normalized
-    .replace(/[_-]+/g, ' ')
-    .split(/\s+/)
-    .filter(Boolean);
+  const segments = normalized.replace(/[_-]+/g, ' ').split(/\s+/).filter(Boolean);
   if (segments.length === 0) {
     return normalized;
   }
-  return segments
-    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
-    .join(' ');
+  return segments.map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1)).join(' ');
 }
 
 function buildDefaultStructuredTransformTextTemplate(
   stepName: string,
   fieldKeys: string[],
-  pickFirstNonEmptyString: PickFirstNonEmptyString,
+  pickFirstNonEmptyString: PickFirstNonEmptyString
 ): string {
-  const normalizedFields = fieldKeys
-    .map((key) => String(key || '').trim())
-    .filter(Boolean);
+  const normalizedFields = fieldKeys.map((key) => String(key || '').trim()).filter(Boolean);
   if (normalizedFields.length === 0) {
     return '{content}';
   }
   return normalizedFields
     .slice(0, 8)
-    .map((key) => `${humanizeStructuredTransformFieldLabel(stepName, key, pickFirstNonEmptyString)}: {${key}}`)
+    .map(
+      (key) =>
+        `${humanizeStructuredTransformFieldLabel(stepName, key, pickFirstNonEmptyString)}: {${key}}`
+    )
     .join('\n');
 }
 
@@ -689,55 +737,67 @@ export function normalizeAiDraftStepInput(args: {
     pickFirstNonEmptyString = defaultPickFirstNonEmptyString,
   } = args;
   const input = sanitizeJsonValue(rawInput || {}) as Record<string, any>;
-  if (activityRef !== 'builtin:structuredTransform' && activityRef !== 'builtin:aiStructuredTransform') {
+  if (
+    activityRef !== 'builtin:structuredTransform' &&
+    activityRef !== 'builtin:aiStructuredTransform'
+  ) {
     return input;
   }
 
   const isAiTransform = activityRef === 'builtin:aiStructuredTransform';
   const previousIsHttpRequest = previousActivityRef === 'builtin:httpRequest';
-  const rawStructuredConfig = input[STRUCTURED_TRANSFORM_STEP_CONFIG_KEY] && typeof input[STRUCTURED_TRANSFORM_STEP_CONFIG_KEY] === 'object'
-    ? input[STRUCTURED_TRANSFORM_STEP_CONFIG_KEY] as Record<string, any>
-    : {};
+  const rawStructuredConfig =
+    input[STRUCTURED_TRANSFORM_STEP_CONFIG_KEY] &&
+    typeof input[STRUCTURED_TRANSFORM_STEP_CONFIG_KEY] === 'object'
+      ? (input[STRUCTURED_TRANSFORM_STEP_CONFIG_KEY] as Record<string, any>)
+      : {};
   const structuredPlaceholderKeys = new Set<string>([
     'content',
     ...Object.keys(
-      rawStructuredConfig.fieldMappings && typeof rawStructuredConfig.fieldMappings === 'object' && !Array.isArray(rawStructuredConfig.fieldMappings)
+      rawStructuredConfig.fieldMappings &&
+        typeof rawStructuredConfig.fieldMappings === 'object' &&
+        !Array.isArray(rawStructuredConfig.fieldMappings)
         ? rawStructuredConfig.fieldMappings
-        : {},
+        : {}
     ),
     ...Object.keys(
-      rawStructuredConfig.outputSchema && typeof rawStructuredConfig.outputSchema === 'object' && !Array.isArray(rawStructuredConfig.outputSchema)
+      rawStructuredConfig.outputSchema &&
+        typeof rawStructuredConfig.outputSchema === 'object' &&
+        !Array.isArray(rawStructuredConfig.outputSchema)
         ? rawStructuredConfig.outputSchema
-        : {},
+        : {}
     ),
   ]);
   const normalizedConfig = normalizeStructuredTransformConfig(
     rawStructuredConfig,
-    structuredPlaceholderKeys,
+    structuredPlaceholderKeys
   );
 
-  const declaredOutputMode = String(rawStructuredConfig.outputMode || '').trim().toLowerCase();
+  const declaredOutputMode = String(rawStructuredConfig.outputMode || '')
+    .trim()
+    .toLowerCase();
   let outputMode = declaredOutputMode;
   if (!outputMode) {
-    outputMode = inferStructuredTransformOutputMode(
-      stepName,
-      workflowIntentText,
-      normalizedConfig,
-    );
+    outputMode = inferStructuredTransformOutputMode(stepName, workflowIntentText, normalizedConfig);
   }
 
-  let contentType = String(rawStructuredConfig.contentType || '').trim().toLowerCase();
+  let contentType = String(rawStructuredConfig.contentType || '')
+    .trim()
+    .toLowerCase();
   if (!contentType) {
     contentType = previousIsHttpRequest ? 'json' : 'text';
   }
 
-  const outputSchema = normalizedConfig.outputSchema && typeof normalizedConfig.outputSchema === 'object' && !Array.isArray(normalizedConfig.outputSchema)
-    ? { ...normalizedConfig.outputSchema }
-    : {};
+  const outputSchema =
+    normalizedConfig.outputSchema &&
+    typeof normalizedConfig.outputSchema === 'object' &&
+    !Array.isArray(normalizedConfig.outputSchema)
+      ? { ...normalizedConfig.outputSchema }
+      : {};
   if (outputMode === 'json' && Object.keys(outputSchema).length === 0) {
     Object.assign(
       outputSchema,
-      buildDefaultStructuredTransformOutputSchema(stepName, workflowIntentText, normalizedConfig),
+      buildDefaultStructuredTransformOutputSchema(stepName, workflowIntentText, normalizedConfig)
     );
   }
 
@@ -746,24 +806,28 @@ export function normalizeAiDraftStepInput(args: {
     instructionTemplate = buildDefaultAiStructuredTransformInstruction(
       stepName,
       outputMode,
-      outputSchema,
+      outputSchema
     );
   }
 
-  const fieldMappings = normalizedConfig.fieldMappings && typeof normalizedConfig.fieldMappings === 'object' && !Array.isArray(normalizedConfig.fieldMappings)
-    ? { ...normalizedConfig.fieldMappings }
-    : {};
+  const fieldMappings =
+    normalizedConfig.fieldMappings &&
+    typeof normalizedConfig.fieldMappings === 'object' &&
+    !Array.isArray(normalizedConfig.fieldMappings)
+      ? { ...normalizedConfig.fieldMappings }
+      : {};
   let textTemplate = String(normalizedConfig.textTemplate || '').trim();
 
   if (!isAiTransform) {
     if (outputMode === 'text' && !textTemplate) {
-      const inferredTextFieldKeys = Object.keys(fieldMappings).length > 0
-        ? Object.keys(fieldMappings)
-        : Object.keys(outputSchema);
+      const inferredTextFieldKeys =
+        Object.keys(fieldMappings).length > 0
+          ? Object.keys(fieldMappings)
+          : Object.keys(outputSchema);
       textTemplate = buildDefaultStructuredTransformTextTemplate(
         stepName,
         inferredTextFieldKeys,
-        pickFirstNonEmptyString,
+        pickFirstNonEmptyString
       );
       inferredTextFieldKeys.forEach((key) => {
         if (!fieldMappings[key]) {
@@ -772,7 +836,11 @@ export function normalizeAiDraftStepInput(args: {
       });
     }
 
-    if (outputMode === 'json' && Object.keys(fieldMappings).length === 0 && Object.keys(outputSchema).length > 0) {
+    if (
+      outputMode === 'json' &&
+      Object.keys(fieldMappings).length === 0 &&
+      Object.keys(outputSchema).length > 0
+    ) {
       Object.keys(outputSchema).forEach((key) => {
         fieldMappings[key] = key;
       });

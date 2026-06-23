@@ -29,7 +29,7 @@ export function buildPromptAssembly(params: {
     params.templateName,
     params.properties,
     params.guideContext,
-    params.normalizePromptDefaultValue,
+    params.normalizePromptDefaultValue
   );
   const dynamicUser = buildDynamicUserContextSection(params.dto, params.guideContext);
 
@@ -37,7 +37,11 @@ export function buildPromptAssembly(params: {
     staticSystem,
     skillContext,
     dynamicUser,
-    promptCacheKey: buildPromptCacheKey(params.templateName, params.properties, params.guideContext),
+    promptCacheKey: buildPromptCacheKey(
+      params.templateName,
+      params.properties,
+      params.guideContext
+    ),
   };
 }
 
@@ -61,7 +65,7 @@ function buildSkillKnowledgeSection(
   templateName: string,
   properties: Record<string, PromptAssemblyProperty>,
   guideContext: DocumentGuideContext | undefined,
-  normalizePromptDefaultValue: (value: unknown) => unknown,
+  normalizePromptDefaultValue: (value: unknown) => unknown
 ): string {
   const entries = Object.entries(properties);
   const requiredEntries = entries.filter(([, schema]) => schema.required === true);
@@ -70,7 +74,9 @@ function buildSkillKnowledgeSection(
   const guideSections = isDocumentGuide
     ? [
         guideContext?.templateOverview ? `文档概述：\n${guideContext.templateOverview}` : undefined,
-        guideContext?.paramCollectionGuidance ? `参数识别指导：\n${guideContext.paramCollectionGuidance}` : undefined,
+        guideContext?.paramCollectionGuidance
+          ? `参数识别指导：\n${guideContext.paramCollectionGuidance}`
+          : undefined,
         guideContext?.guideMarkdown
           ? `模板指南摘要：\n${truncateText(guideContext.guideMarkdown, DEFAULT_GUIDE_BUDGET.maxGuideChars, '\n...（模板指南已截断，以上为关键部分）')}`
           : undefined,
@@ -81,7 +87,9 @@ function buildSkillKnowledgeSection(
         guideContext?.outputExample
           ? `示例 JSON（仅帮助理解业务结构）：\n${truncateText(JSON.stringify(guideContext.outputExample, null, 2), DEFAULT_GUIDE_BUDGET.maxExampleChars, '\n...（示例已截断）')}`
           : undefined,
-      ].filter(Boolean).join('\n\n')
+      ]
+        .filter(Boolean)
+        .join('\n\n')
     : '';
 
   const arrayOutputRule = Object.keys(properties).some((name) => name.includes('[]'))
@@ -105,12 +113,13 @@ function buildSkillKnowledgeSection(
 
 function buildDynamicUserContextSection(
   dto: RecognizeParamsDTO,
-  guideContext?: DocumentGuideContext,
+  guideContext?: DocumentGuideContext
 ): string {
   const sections: string[] = [];
-  const context = dto.context && typeof dto.context === 'object'
-    ? dto.context as Record<string, unknown>
-    : undefined;
+  const context =
+    dto.context && typeof dto.context === 'object'
+      ? (dto.context as Record<string, unknown>)
+      : undefined;
 
   if (context?.mode === 'waiting_input_resume') {
     sections.push('[本轮模式]\n补充缺失参数');
@@ -118,7 +127,9 @@ function buildDynamicUserContextSection(
       sections.push(`[原始任务]\n${context.original_objective.trim()}`);
     }
     const missing = Array.isArray(context.missing_inputs)
-      ? context.missing_inputs.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+      ? context.missing_inputs.filter(
+          (item): item is string => typeof item === 'string' && item.trim().length > 0
+        )
       : [];
     if (missing.length > 0) {
       sections.push(`[当前仍缺失字段]\n${missing.join('、')}`);
@@ -127,12 +138,14 @@ function buildDynamicUserContextSection(
     if (collected) {
       sections.push(`[已确认参数]\n${collected}`);
     }
-    sections.push([
-      '[本轮输出要求]',
-      '优先只返回当前仍缺失字段在本轮用户输入中新增确认的值。',
-      '不要重复返回已确认参数；如果用户本轮明确纠正了已确认参数，可以返回该字段以覆盖旧值。',
-      '最终只返回字段键值 JSON，不要附加解释。',
-    ].join('\n'));
+    sections.push(
+      [
+        '[本轮输出要求]',
+        '优先只返回当前仍缺失字段在本轮用户输入中新增确认的值。',
+        '不要重复返回已确认参数；如果用户本轮明确纠正了已确认参数，可以返回该字段以覆盖旧值。',
+        '最终只返回字段键值 JSON，不要附加解释。',
+      ].join('\n')
+    );
   } else if (context) {
     const lines = Object.entries(context)
       .filter(([, value]) => value !== undefined && value !== null && value !== '')
@@ -144,11 +157,13 @@ function buildDynamicUserContextSection(
 
   sections.push(`[本轮用户输入]\n${dto.user_input}`);
   if (guideContext?.mode === 'document_skill') {
-    sections.push([
-      '注意：如果是文档模板，请结合文档概述、参数用途和示例结构理解业务语义，但最终返回仍必须使用扁平字段键名。',
-      '注意：禁止把 Carbone 模板变量语法（如 {d.xxx}、{#...}、{/...}）写进 JSON key；key 必须与 paramsSchema 中的字段路径完全一致，且不应包含 { 或 }。',
-      '注意：如果关键字段缺失、只有低置信度候选值、或数组行信息不完整，请不要硬补占位值；只返回当前可确认字段，让系统在下一轮继续追问。',
-    ].join('\n'));
+    sections.push(
+      [
+        '注意：如果是文档模板，请结合文档概述、参数用途和示例结构理解业务语义，但最终返回仍必须使用扁平字段键名。',
+        '注意：禁止把 Carbone 模板变量语法（如 {d.xxx}、{#...}、{/...}）写进 JSON key；key 必须与 paramsSchema 中的字段路径完全一致，且不应包含 { 或 }。',
+        '注意：如果关键字段缺失、只有低置信度候选值、或数组行信息不完整，请不要硬补占位值；只返回当前可确认字段，让系统在下一轮继续追问。',
+      ].join('\n')
+    );
   }
   return sections.join('\n\n');
 }
@@ -156,15 +171,17 @@ function buildDynamicUserContextSection(
 function formatParamLine(
   name: string,
   schema: PromptAssemblyProperty,
-  normalizePromptDefaultValue: (value: unknown) => unknown,
+  normalizePromptDefaultValue: (value: unknown) => unknown
 ): string {
   const normalizedDefaultValue = normalizePromptDefaultValue(schema.default);
-  const defaultStr = normalizedDefaultValue !== undefined ? ` (默认值: ${normalizedDefaultValue})` : '';
+  const defaultStr =
+    normalizedDefaultValue !== undefined ? ` (默认值: ${normalizedDefaultValue})` : '';
   const hintStr = schema.extractionPrompt ? `；提取提示：${schema.extractionPrompt}` : '';
   const semanticRoleStr = schema.semanticRole ? `；语义角色：${schema.semanticRole}` : '';
-  const semanticHintsStr = Array.isArray(schema.extractionHints) && schema.extractionHints.length > 0
-    ? `；语义提示：${schema.extractionHints.join('、')}`
-    : '';
+  const semanticHintsStr =
+    Array.isArray(schema.extractionHints) && schema.extractionHints.length > 0
+      ? `；语义提示：${schema.extractionHints.join('、')}`
+      : '';
   return `- ${name}: ${schema.type}${schema.description ? ` - ${schema.description}` : ''}${defaultStr}${hintStr}${semanticRoleStr}${semanticHintsStr}`;
 }
 
@@ -175,7 +192,7 @@ function truncateText(value: string, maxChars: number, suffix: string): string {
 function buildPromptCacheKey(
   templateName: string,
   properties: Record<string, PromptAssemblyProperty>,
-  guideContext?: DocumentGuideContext,
+  guideContext?: DocumentGuideContext
 ): string {
   const seed = JSON.stringify({
     templateName,

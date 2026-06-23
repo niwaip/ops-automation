@@ -68,31 +68,25 @@ export class XmlPreprocessor {
 
       // 合并相邻的 <w:t> 节点（在同一个 <w:r> 内）
       // 模式: </w:t><w:t...> 表示相邻的文本节点
-      result = result.replace(
-        /<\/w:t>(\s*)<w:t([^>]*)>/g,
-        (match, whitespace, attrs) => {
-          // 如果新节点有特殊属性（如xml:space），保留它
-          if (attrs.includes('xml:space')) {
-            return match; // 保持原样
-          }
-          // 否则合并节点
-          return '';
+      result = result.replace(/<\/w:t>(\s*)<w:t([^>]*)>/g, (match, whitespace, attrs) => {
+        // 如果新节点有特殊属性（如xml:space），保留它
+        if (attrs.includes('xml:space')) {
+          return match; // 保持原样
         }
-      );
+        // 否则合并节点
+        return '';
+      });
 
       // 步骤3: 合并被拆分的 Carbone 标记
       // 处理 {d.xxx} 被拆分成 {</w:t></w:r><w:r><w:t>d.xxx} 的情况
       // 合并 </w:r><w:r 中间没有内容的相邻 run 元素
-      result = result.replace(
-        /<\/w:r>(\s*)<w:r(\s[^>]*)?>/g,
-        (match, whitespace, attrs) => {
-          // 检查是否是空的相邻 run（没有格式属性）
-          if (attrs && attrs.trim() === '') {
-            return '';
-          }
-          return match;
+      result = result.replace(/<\/w:r>(\s*)<w:r(\s[^>]*)?>/g, (match, whitespace, attrs) => {
+        // 检查是否是空的相邻 run（没有格式属性）
+        if (attrs && attrs.trim() === '') {
+          return '';
         }
-      );
+        return match;
+      });
 
       // 如果没有变化，停止迭代
       if (result === previousResult) break;
@@ -125,10 +119,10 @@ export class XmlPreprocessor {
 
   private looksLikeExcelXml(xml: string): boolean {
     return (
-      xml.includes('http://schemas.openxmlformats.org/spreadsheetml')
-      || xml.includes('<sst')
-      || xml.includes('<worksheet')
-      || xml.includes('<sheetData')
+      xml.includes('http://schemas.openxmlformats.org/spreadsheetml') ||
+      xml.includes('<sst') ||
+      xml.includes('<worksheet') ||
+      xml.includes('<sheetData')
     );
   }
 
@@ -199,11 +193,13 @@ export class XmlPreprocessor {
       if (!containerXml.includes('<t')) {
         return containerXml;
       }
-      const tNodes = Array.from(containerXml.matchAll(/<t([^>]*)>([\s\S]*?)<\/t>/g)).map((match) => ({
-        full: match[0],
-        attrs: match[1],
-        text: match[2],
-      }));
+      const tNodes = Array.from(containerXml.matchAll(/<t([^>]*)>([\s\S]*?)<\/t>/g)).map(
+        (match) => ({
+          full: match[0],
+          attrs: match[1],
+          text: match[2],
+        })
+      );
       if (tNodes.length <= 1) {
         return containerXml;
       }
@@ -262,15 +258,17 @@ export class XmlPreprocessor {
       if (textNodes.length === 0) continue;
 
       // 合并相邻的文本节点（虚拟合并）
-      const mergedText = textNodes.map(n => n.text).join('');
+      const mergedText = textNodes.map((n) => n.text).join('');
       const hasMarker = /\{[cdt][.#\/]?\./.test(mergedText);
 
       const virtualNode: VirtualTextNode = {
         text: mergedText,
         originalNodes: textNodes,
         startPos: textNodes[0].position,
-        endPos: textNodes[textNodes.length - 1].position + textNodes[textNodes.length - 1].fullMatch.length,
-        hasMarker
+        endPos:
+          textNodes[textNodes.length - 1].position +
+          textNodes[textNodes.length - 1].fullMatch.length,
+        hasMarker,
       };
 
       virtualNodes.push(virtualNode);
@@ -281,7 +279,7 @@ export class XmlPreprocessor {
         for (let i = 0; i < node.text.length; i++) {
           positionMap.set(virtualPos, {
             originalPos: node.position + node.fullMatch.indexOf(node.text) + i,
-            nodeIndex: virtualNodes.length - 1
+            nodeIndex: virtualNodes.length - 1,
           });
           virtualPos++;
         }
@@ -291,7 +289,7 @@ export class XmlPreprocessor {
     return {
       virtualNodes,
       positionMap,
-      originalXml: xml
+      originalXml: xml,
     };
   }
 
@@ -308,7 +306,7 @@ export class XmlPreprocessor {
         fullMatch: match[0],
         position: runStart + match.index,
         text: match[2],
-        attributes: match[1]
+        attributes: match[1],
       });
     }
 
@@ -319,7 +317,9 @@ export class XmlPreprocessor {
    * 使用虚拟视图查找标记
    * 返回标记在虚拟视图和原始XML中的位置
    */
-  findMarkersWithVirtualView(xml: string): { marker: string; virtualPos: number; originalPositions: number[] }[] {
+  findMarkersWithVirtualView(
+    xml: string
+  ): { marker: string; virtualPos: number; originalPositions: number[] }[] {
     const result = this.virtualFlatten(xml);
     const markers: { marker: string; virtualPos: number; originalPositions: number[] }[] = [];
 
@@ -343,7 +343,7 @@ export class XmlPreprocessor {
         markers.push({
           marker: match[0],
           virtualPos,
-          originalPositions
+          originalPositions,
         });
       }
     }
@@ -355,11 +355,7 @@ export class XmlPreprocessor {
    * 使用虚拟视图安全替换标记
    * 保持原始XML结构不变，只替换文本内容
    */
-  replaceWithVirtualView(
-    xml: string,
-    marker: string,
-    replacement: string
-  ): string {
+  replaceWithVirtualView(xml: string, marker: string, replacement: string): string {
     const result = this.virtualFlatten(xml);
     let modifiedXml = xml;
 
@@ -378,11 +374,16 @@ export class XmlPreprocessor {
         const nodeEndInVirtual = currentPos + node.text.length;
 
         // 检查这个节点是否包含标记的一部分
-        if (nodeEndInVirtual > markerStartInVirtual &&
-            nodeStartInVirtual < markerStartInVirtual + marker.length) {
+        if (
+          nodeEndInVirtual > markerStartInVirtual &&
+          nodeStartInVirtual < markerStartInVirtual + marker.length
+        ) {
           // 计算需要替换的部分
           const overlapStart = Math.max(0, markerStartInVirtual - nodeStartInVirtual);
-          const overlapEnd = Math.min(node.text.length, markerStartInVirtual + marker.length - nodeStartInVirtual);
+          const overlapEnd = Math.min(
+            node.text.length,
+            markerStartInVirtual + marker.length - nodeStartInVirtual
+          );
 
           // 如果整个节点都是标记的一部分
           if (overlapStart === 0 && overlapEnd === node.text.length && node.text === marker) {
@@ -411,7 +412,8 @@ export class XmlPreprocessor {
           const nodeEnd = node.position + node.fullMatch.length;
           const newFullMatch = `<w:t${node.attributes}>${newText}</w:t>`;
 
-          modifiedXml = modifiedXml.substring(0, nodeStart) + newFullMatch + modifiedXml.substring(nodeEnd);
+          modifiedXml =
+            modifiedXml.substring(0, nodeStart) + newFullMatch + modifiedXml.substring(nodeEnd);
         }
       }
     }
@@ -481,7 +483,7 @@ export class XmlPreprocessor {
       issues.push({
         type: 'unbalanced_braces',
         message: `检测到不平衡的大括号: ${openBraces} 个 { 和 ${closeBraces} 个 }`,
-        position: 0
+        position: 0,
       });
     }
 
@@ -491,7 +493,7 @@ export class XmlPreprocessor {
       issues.push({
         type: 'split_marker',
         message: '检测到可能被拆分的Carbone标记',
-        position: xml.search(splitPattern)
+        position: xml.search(splitPattern),
       });
     }
 
@@ -501,7 +503,10 @@ export class XmlPreprocessor {
   /**
    * 完整预处理流程
    */
-  process(xml: string): { xml: string; issues: { type: string; message: string; position: number }[] } {
+  process(xml: string): {
+    xml: string;
+    issues: { type: string; message: string; position: number }[];
+  } {
     // 1. 扁平化XML
     let processed = this.flatten(xml);
 

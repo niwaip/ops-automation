@@ -13,7 +13,10 @@ import {
 import { BrowserExecutionBackend, MCPCommand } from './adapters/browser-execution.adapter';
 import { BrowserCommandService } from './application/browser-command.service';
 import { BrowserSessionService } from './application/browser-session.service';
-import { BrowserScriptExportService, ExportOptions } from './application/browser-script-export.service';
+import {
+  BrowserScriptExportService,
+  ExportOptions,
+} from './application/browser-script-export.service';
 import { BrowserSchemaService } from './application/browser-schema.service';
 import { BrowserActionStep } from './domain/browser-step.types';
 import { BrowserSessionPreferences } from './domain/browser.types';
@@ -24,7 +27,7 @@ export class BrowserService implements OnModuleDestroy {
     private readonly browserSessionService: BrowserSessionService,
     private readonly browserCommandService: BrowserCommandService,
     private readonly browserScriptExportService: BrowserScriptExportService,
-    private readonly browserSchemaService: BrowserSchemaService,
+    private readonly browserSchemaService: BrowserSchemaService
   ) {}
 
   async onModuleDestroy() {
@@ -57,7 +60,7 @@ export class BrowserService implements OnModuleDestroy {
       runtimeSessionId?: string;
       includeArtifacts?: boolean;
       includeSteps?: boolean;
-    },
+    }
   ): Promise<{ success: boolean; results: any[]; message?: string; steps?: BrowserActionStep[] }> {
     return this.browserCommandService.executeCommands(commands, options);
   }

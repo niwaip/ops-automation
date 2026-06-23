@@ -107,9 +107,7 @@ describe('UserService', () => {
     it('should throw NotFoundException when user not found', async () => {
       prisma.user.findUnique.mockResolvedValue(null);
 
-      await expect(service.findOne('nonexistent')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.findOne('nonexistent')).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -138,9 +136,9 @@ describe('UserService', () => {
 
       prisma.user.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.updateRoles('nonexistent', updateDto, 'admin-id'),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.updateRoles('nonexistent', updateDto, 'admin-id')).rejects.toThrow(
+        NotFoundException
+      );
     });
 
     it('should throw error for invalid roles', async () => {
@@ -149,9 +147,9 @@ describe('UserService', () => {
       prisma.user.findUnique.mockResolvedValue(mockUser);
       prisma.role.findMany.mockResolvedValue([]);
 
-      await expect(
-        service.updateRoles('test-uuid', updateDto, 'admin-id'),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.updateRoles('test-uuid', updateDto, 'admin-id')).rejects.toThrow(
+        BadRequestException
+      );
     });
   });
 

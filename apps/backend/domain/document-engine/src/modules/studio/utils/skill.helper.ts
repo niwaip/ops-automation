@@ -18,7 +18,7 @@ import {
   getExtractionPattern,
   buildCompleteAIInstructions,
   buildSkillGuideMarkdown,
-  sanitizeSkillDataExample
+  sanitizeSkillDataExample,
 } from './parameter.helper';
 
 import {
@@ -26,7 +26,7 @@ import {
   normalizeJsonLikeText,
   tryNormalizeGeneratedParameters,
   extractJsonCandidate,
-  tryParseJsonValue
+  tryParseJsonValue,
 } from './ai-json-normalizer';
 
 /**
@@ -84,7 +84,9 @@ export async function generateAISkillGuide(
 
   for (const suggestion of appliedSuggestions) {
     const variableName = suggestion?.suggestedName || suggestion?.details?.variableName || '';
-    const fieldType = suggestion?.details?.fieldType || inferFieldType(variableName, suggestion?.originalText || '');
+    const fieldType =
+      suggestion?.details?.fieldType ||
+      inferFieldType(variableName, suggestion?.originalText || '');
     const exampleValue = buildSkillExampleValue(suggestion?.originalText, fieldType, variableName);
     const groupMeta = resolveSuggestionGroupMeta(suggestion);
 
@@ -99,8 +101,15 @@ export async function generateAISkillGuide(
           if (!cleanName || isPlaceholderSkillParameterPath(cleanName)) {
             continue;
           }
-          const columnFieldType = inferFieldType(column.headerName || cleanName, column.sampleValue || '');
-          const columnExample = buildSkillExampleValue(column.sampleValue, columnFieldType, cleanName);
+          const columnFieldType = inferFieldType(
+            column.headerName || cleanName,
+            column.sampleValue || ''
+          );
+          const columnExample = buildSkillExampleValue(
+            column.sampleValue,
+            columnFieldType,
+            cleanName
+          );
 
           registerParameter({
             name: cleanName,
@@ -108,10 +117,9 @@ export async function generateAISkillGuide(
             displayName: `${tableName}.${column.headerName || cleanName}`,
             groupLabel: groupMeta.groupLabel,
             sheetName: groupMeta.sheetName,
-            usage:
-              suggestion?.details?.significance
-                ? `${suggestion.details.significance} 其中字段“${column.headerName || cleanName}”用于表格列填充`
-                : `用于填写 ${tableName} 中“${column.headerName || cleanName}”这一列的值`,
+            usage: suggestion?.details?.significance
+              ? `${suggestion.details.significance} 其中字段“${column.headerName || cleanName}”用于表格列填充`
+              : `用于填写 ${tableName} 中“${column.headerName || cleanName}”这一列的值`,
             dataType: columnFieldType,
             formatter: getDefaultFormatter(columnFieldType),
             extractionHint: generateExtractionHint(
@@ -156,7 +164,11 @@ export async function generateAISkillGuide(
   const parameters = Array.from(parameterMap.values());
 
   // 根据模板类型生成特定的AI指导
-  const templateDescription = generateTemplateDescription(templateType, documentDescription, parameters);
+  const templateDescription = generateTemplateDescription(
+    templateType,
+    documentDescription,
+    parameters
+  );
 
   // 构建数据示例JSON（完整可用的数据结构）
   const dataExampleJson = buildDataExampleJson(parameters, effectiveTableLoops);
@@ -220,17 +232,19 @@ export async function generateAISkillGuide(
         '检查日期格式是否正确',
         '验证金额字段为数值类型',
       ],
-      postConditions: [
-        '生成文档后检查变量是否正确填充',
-        '确认无遗漏的下划线或空白',
-      ],
+      postConditions: ['生成文档后检查变量是否正确填充', '确认无遗漏的下划线或空白'],
     },
 
     // AI使用提示（完整指导）
     aiInstructions: buildCompleteAIInstructions(templateType, parameters, documentDescription),
 
     // 完整的Markdown格式Skill指南（自包含、可独立阅读）
-    skillGuideMarkdown: buildSkillGuideMarkdown(templateType, templateDescription, parameters, dataExampleJson),
+    skillGuideMarkdown: buildSkillGuideMarkdown(
+      templateType,
+      templateDescription,
+      parameters,
+      dataExampleJson
+    ),
 
     createdAt: new Date().toISOString(),
   };
@@ -261,28 +275,36 @@ export async function generateParametersFromDescription(
     ? skill.parameters.filter((p: any) => !isPlaceholderSkillParameterPath(p?.name || ''))
     : [];
   const sanitizedDataExampleJson = sanitizeSkillDataExample(skill.dataExampleJson || {});
-  const templateType = typeof skill.templateType === 'string' && skill.templateType.trim()
-    ? skill.templateType
-    : 'custom';
-  const templateDescription = typeof skill.templateDescription === 'string'
-    ? skill.templateDescription
-    : '';
+  const templateType =
+    typeof skill.templateType === 'string' && skill.templateType.trim()
+      ? skill.templateType
+      : 'custom';
+  const templateDescription =
+    typeof skill.templateDescription === 'string' ? skill.templateDescription : '';
 
   // 获取dataExampleJson作为输出格式参考
   const dataExampleJson = sanitizedDataExampleJson;
   const dataExampleStr = JSON.stringify(dataExampleJson, null, 2);
 
   // Skill Guide Markdown作为参数定义参考
-  const skillGuideMarkdown = sanitizedParameters.length > 0
-    ? buildSkillGuideMarkdown(templateType, templateDescription, sanitizedParameters, dataExampleStr)
-    : (skill.skillGuideMarkdown || '');
+  const skillGuideMarkdown =
+    sanitizedParameters.length > 0
+      ? buildSkillGuideMarkdown(
+          templateType,
+          templateDescription,
+          sanitizedParameters,
+          dataExampleStr
+        )
+      : skill.skillGuideMarkdown || '';
 
   // 如果Skill Guide不存在，尝试从parameters构建简要指南（后备方案）
   let fallbackGuide = '';
   if (!skillGuideMarkdown) {
-    const paramList = sanitizedParameters.map((p: any) => {
-      return `- ${p.name}: ${p.usage || '需要填写'} (示例: ${p.example || '无'})`;
-    }).join('\n');
+    const paramList = sanitizedParameters
+      .map((p: any) => {
+        return `- ${p.name}: ${p.usage || '需要填写'} (示例: ${p.example || '无'})`;
+      })
+      .join('\n');
     fallbackGuide = `## 参数列表\n${paramList}`;
   }
 
@@ -331,9 +353,10 @@ ${description}
     // 兼容可能的回调响应格式
     const hasSuccessFlag = response && typeof response === 'object' && 'success' in response;
     const isSuccess = hasSuccessFlag ? response.success : true;
-    const rawResponse = (response && typeof response === 'object' && 'response' in response)
-      ? response.response
-      : response;
+    const rawResponse =
+      response && typeof response === 'object' && 'response' in response
+        ? response.response
+        : response;
 
     if (isSuccess === false) {
       const upstreamError = String(response?.error || 'AI service returned unsuccessful response');
@@ -366,13 +389,17 @@ ${description}
     const debugInfo = {
       rawAiResponse: rawContent.slice(0, 4000),
       cleanedAiResponse: content.slice(0, 4000),
-      upstreamError: (response && typeof response === 'object' && 'error' in response) ? String(response.error) : undefined,
+      upstreamError:
+        response && typeof response === 'object' && 'error' in response
+          ? String(response.error)
+          : undefined,
     };
 
     if (!content.trim()) {
-      const emptyResponseError = (response && typeof response === 'object' && 'error' in response && response.error)
-        ? `AI returned empty response: ${String(response.error)}`
-        : 'AI returned empty response';
+      const emptyResponseError =
+        response && typeof response === 'object' && 'error' in response && response.error
+          ? `AI returned empty response: ${String(response.error)}`
+          : 'AI returned empty response';
       return {
         success: false,
         error: `Failed to generate parameters: ${emptyResponseError}`,

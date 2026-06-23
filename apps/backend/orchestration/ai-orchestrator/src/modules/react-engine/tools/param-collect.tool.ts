@@ -12,7 +12,8 @@ import { ModelService } from '../../model/model.service';
 @Injectable()
 @Tool({
   name: 'param_collect',
-  description: '收集并验证技能执行所需的参数。检查参数是否完整，提取缺失参数列表。支持双语参数(_cn/_jp)自动对齐与批量翻译。',
+  description:
+    '收集并验证技能执行所需的参数。检查参数是否完整，提取缺失参数列表。支持双语参数(_cn/_jp)自动对齐与批量翻译。',
   parameters: {
     type: 'object',
     properties: {
@@ -61,14 +62,11 @@ export class ParamCollectTool extends BaseTool {
           },
         },
         required: ['skillId', 'userInput'],
-      },
+      }
     );
   }
 
-  async execute(
-    params: Record<string, unknown>,
-    context: ExecutionContext,
-  ): Promise<ToolResult> {
+  async execute(params: Record<string, unknown>, context: ExecutionContext): Promise<ToolResult> {
     const userInput = params.userInput as string;
     const existingParams = (params.existingParams as Record<string, unknown>) || {};
     const collectedParams = { ...existingParams };
@@ -105,13 +103,13 @@ export class ParamCollectTool extends BaseTool {
 
     // 3. 计算缺失参数 (逻辑层面)
     let missingParams = schema.required.filter(
-      (key) => collectedParams[key] === undefined || collectedParams[key] === null,
+      (key) => collectedParams[key] === undefined || collectedParams[key] === null
     );
 
     // 4. 双语对齐逻辑
     if (isBilingualMode) {
-      missingParams = missingParams.filter(key => {
-        const pair = bilingualPairs.find(p => p.cn === key || p.jp === key);
+      missingParams = missingParams.filter((key) => {
+        const pair = bilingualPairs.find((p) => p.cn === key || p.jp === key);
         if (pair) {
           return collectedParams[pair.cn] === undefined && collectedParams[pair.jp] === undefined;
         }
@@ -176,15 +174,19 @@ ${JSON.stringify(schema, null, 2)}
       const cleanContent = response.content.replace(/```json|```/g, '').trim();
       return JSON.parse(cleanContent);
     } catch (e) {
-      this.logger.warn(`AI Parameter extraction failed: ${e instanceof Error ? e.message : String(e)}`);
+      this.logger.warn(
+        `AI Parameter extraction failed: ${e instanceof Error ? e.message : String(e)}`
+      );
       return {};
     }
   }
 
-  private identifyBilingualPairs(schema: ParamsSchema): Array<{ base: string; cn: string; jp: string }> {
+  private identifyBilingualPairs(
+    schema: ParamsSchema
+  ): Array<{ base: string; cn: string; jp: string }> {
     const pairs: Array<{ base: string; cn: string; jp: string }> = [];
     const keys = Object.keys(schema.properties);
-    keys.forEach(key => {
+    keys.forEach((key) => {
       if (key.endsWith('_cn')) {
         const base = key.slice(0, -3);
         const jpKey = `${base}_jp`;
@@ -197,14 +199,14 @@ ${JSON.stringify(schema, null, 2)}
   }
 
   private generateDeDupedPrompts(
-    missingParams: string[], 
+    missingParams: string[],
     pairs: Array<{ base: string; cn: string; jp: string }>,
     schema: ParamsSchema
   ): string[] {
     const processedBases = new Set<string>();
     const prompts: string[] = [];
-    missingParams.forEach(key => {
-      const pair = pairs.find(p => p.cn === key || p.jp === key);
+    missingParams.forEach((key) => {
+      const pair = pairs.find((p) => p.cn === key || p.jp === key);
       if (pair) {
         if (processedBases.has(pair.base)) return;
         processedBases.add(pair.base);
@@ -274,9 +276,13 @@ ${JSON.stringify(data, null, 2)}`;
       const cleanContent = response.content.replace(/```json|```/g, '').trim();
       return JSON.parse(cleanContent);
     } catch (error) {
-      this.logger.error(`Batch translation failed: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.error(
+        `Batch translation failed: ${error instanceof Error ? error.message : String(error)}`
+      );
       const fallback: Record<string, string> = {};
-      Object.entries(data).forEach(([key, value]) => { fallback[key] = value; });
+      Object.entries(data).forEach(([key, value]) => {
+        fallback[key] = value;
+      });
       return fallback;
     }
   }
@@ -284,7 +290,7 @@ ${JSON.stringify(data, null, 2)}`;
   private async extractParam(
     text: string,
     paramName: string,
-    prop: ParamProperty,
+    prop: ParamProperty
   ): Promise<unknown | null> {
     const patterns: Record<string, RegExp[]> = {
       date: [/\d{4}[-\/年]\d{1,2}[-\/月]\d{1,2}[日]?/, /\d{4}-\d{2}-\d{2}/],
@@ -308,14 +314,17 @@ ${JSON.stringify(data, null, 2)}`;
 
   private formatValue(value: string, type: string): unknown {
     switch (type) {
-      case 'date': return value.replace(/[年月日]/g, '-').replace(/[^\d-]/g, '');
-      case 'number': return parseFloat(value.replace(/,/g, ''));
+      case 'date':
+        return value.replace(/[年月日]/g, '-').replace(/[^\d-]/g, '');
+      case 'number':
+        return parseFloat(value.replace(/,/g, ''));
       case 'amount':
         const num = parseFloat(value.replace(/[,元万美元]/g, ''));
         if (value.includes('万')) return num * 10000;
         if (value.includes('美元')) return { value: num, currency: 'USD' };
         return { value: num, currency: 'CNY' };
-      default: return value;
+      default:
+        return value;
     }
   }
 }

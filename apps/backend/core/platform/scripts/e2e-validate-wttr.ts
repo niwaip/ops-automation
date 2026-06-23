@@ -40,15 +40,15 @@ async function main() {
             urlTemplate: 'https://wttr.in/{city}',
             // j1 是可选参数，这里作为默认常量注入
             queryTemplate: { format: 'j1' },
-            responseMode: previewBodyMap ? 'bodyMap' : (previewFull ? 'body' : 'bodyPath'),
-            responseBodyPath: previewBodyMap ? '' : (previewFull ? '' : 'current_condition.0.temp_C'),
+            responseMode: previewBodyMap ? 'bodyMap' : previewFull ? 'body' : 'bodyPath',
+            responseBodyPath: previewBodyMap ? '' : previewFull ? '' : 'current_condition.0.temp_C',
             responseFieldMappings: previewBodyMap
               ? {
-                weatherText: 'current_condition.0.lang_zh.0.value',
-                temperatureC: 'current_condition.0.temp_C',
-                feelsLikeC: 'current_condition.0.FeelsLikeC',
-                windSpeedKmph: 'current_condition.0.windspeedKmph',
-              }
+                  weatherText: 'current_condition.0.lang_zh.0.value',
+                  temperatureC: 'current_condition.0.temp_C',
+                  feelsLikeC: 'current_condition.0.FeelsLikeC',
+                  windSpeedKmph: 'current_condition.0.windspeedKmph',
+                }
               : {},
             timeout: 30,
           },
@@ -65,13 +65,16 @@ async function main() {
   }
 
   const code = gen.code;
-  const fn = workflowDsl.workflowClassName || `${(workflowDsl.name || 'Custom').replace(/\s+/g, '')}Workflow`;
+  const fn =
+    workflowDsl.workflowClassName ||
+    `${(workflowDsl.name || 'Custom').replace(/\s+/g, '')}Workflow`;
 
   // Call sandbox agent for real validation
-  const agentUrl = process.env.WORKFLOW_VALIDATION_AGENT_URL
-    || process.env.ACTIVITY_VALIDATION_AGENT_URL
-    || process.env.TEMPORAL_SANDBOX_AGENT_URL
-    || 'http://localhost:8090';
+  const agentUrl =
+    process.env.WORKFLOW_VALIDATION_AGENT_URL ||
+    process.env.ACTIVITY_VALIDATION_AGENT_URL ||
+    process.env.TEMPORAL_SANDBOX_AGENT_URL ||
+    'http://localhost:8090';
 
   const payload = {
     code,
@@ -79,7 +82,7 @@ async function main() {
     workflow_id: `wttr-${Date.now()}`,
     input_data: {
       city: 'shanghai',
-      ...((previewFull || previewBodyMap) ? { __httpResponsePreview: true } : {}),
+      ...(previewFull || previewBodyMap ? { __httpResponsePreview: true } : {}),
     },
     // task_queue can be omitted; the agent has its own validation queue
   };
@@ -90,14 +93,20 @@ async function main() {
   const ok = data?.success === true && data?.result?.success === true && !data?.result?.error;
   const result = data?.result?.result ?? data?.result;
   // eslint-disable-next-line no-console
-  console.log(JSON.stringify({
-    agentUrl,
-    previewFull,
-    previewBodyMap,
-    ok,
-    status: resp.status,
-    value: result,
-  }, null, 2));
+  console.log(
+    JSON.stringify(
+      {
+        agentUrl,
+        previewFull,
+        previewBodyMap,
+        ok,
+        status: resp.status,
+        value: result,
+      },
+      null,
+      2
+    )
+  );
 }
 
 main().catch((err) => {

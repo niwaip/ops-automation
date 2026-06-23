@@ -465,15 +465,15 @@ Activity calls heartbeat()
 
 ## Choosing Between Patterns
 
-| Need | Pattern |
-|------|---------|
-| Send data, don't need response | Signal |
-| Read state, no modification | Query |
-| Modify state, need response | Update |
-| Break down large workflow | Child Workflow |
-| Prevent history growth | Continue-as-New |
-| Rollback on failure | Saga |
-| Process items concurrently | Parallel Execution |
-| Long-lived stateful entity | Entity Workflow |
-| Safe retries/replays | Idempotency |
-| Low-latency short operations | Local Activities |
+| Need                           | Pattern            |
+| ------------------------------ | ------------------ |
+| Send data, don't need response | Signal             |
+| Read state, no modification    | Query              |
+| Modify state, need response    | Update             |
+| Break down large workflow      | Child Workflow     |
+| Prevent history growth         | Continue-as-New    |
+| Rollback on failure            | Saga               |
+| Process items concurrently     | Parallel Execution |
+| Long-lived stateful entity     | Entity Workflow    |
+| Safe retries/replays           | Idempotency        |
+| Low-latency short operations   | Local Activities   |

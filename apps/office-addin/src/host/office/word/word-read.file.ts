@@ -14,8 +14,8 @@ export function utf8ToBase64(str: string): string {
     try {
       return btoa(
         encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (_, p1) =>
-          String.fromCharCode(parseInt(p1, 16)),
-        ),
+          String.fromCharCode(parseInt(p1, 16))
+        )
       );
     } catch (fallbackError) {
       console.error('备用转换也失败:', fallbackError);
@@ -104,7 +104,7 @@ export async function getFileContentBase64(): Promise<string> {
 }
 
 export async function getDocumentFileBase64WithFallback(
-  getDocumentContent: () => Promise<string>,
+  getDocumentContent: () => Promise<string>
 ): Promise<{ base64: string; method: string; isValidDocx: boolean }> {
   try {
     const base64 = await getDocumentFileViaWordRun();

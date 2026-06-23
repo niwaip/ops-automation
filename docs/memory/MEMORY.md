@@ -15,10 +15,10 @@ VK Framework：人类设计约束 → 智能体生成规格 → 智能体执行�
 
 ## 两技能分离
 
-| 技能 | 文件 | 触发 | 说明 |
-|------|------|------|------|
-| **VK-Plan** | `vk-plan.md` | 用户提出需求 | 需求细化 → 任务划分 → OpenSpec |
-| **VK-Execute** | `vk-execute.md` | 用户确认规划 | 创建 Issues → 启动 Workspaces |
+| 技能           | 文件            | 触发         | 说明                           |
+| -------------- | --------------- | ------------ | ------------------------------ |
+| **VK-Plan**    | `vk-plan.md`    | 用户提出需求 | 需求细化 → 任务划分 → OpenSpec |
+| **VK-Execute** | `vk-execute.md` | 用户确认规划 | 创建 Issues → 启动 Workspaces  |
 
 ---
 
@@ -47,6 +47,7 @@ VK Framework：人类设计约束 → 智能体生成规格 → 智能体执行�
 ## OpenSpec 内容要点
 
 **OpenSpec 是任务执行指令，不是规格文档。每个任务指示应包含：**
+
 - **🎯 TASK INSTRUCTION**：明确告诉AI要做什么（使用祈使句）
 - **Interface Specifications**：定义必须实现的接口
 - **Constraints and Rules**：AI必须遵守的规则
@@ -69,17 +70,18 @@ VK-Plan 会在 Phase 0 读取并确认配置。
 
 ## 详细文档
 
-| 文件 | 内容 |
-|------|------|
+| 文件                 | 内容                    |
+| -------------------- | ----------------------- |
 | `VK_IMPORT_GUIDE.md` | 导入指南 + 强制规则详解 |
-| `vk-plan.md` | 规划技能完整文档 |
-| `vk-execute.md` | 执行技能完整文档 |
+| `vk-plan.md`         | 规划技能完整文档        |
+| `vk-execute.md`      | 执行技能完整文档        |
 
 ---
 
 ## Harness Engineering 原则
 
 参考 OpenAI Harness Engineering：
+
 - **仓库即记录系统**：不在仓库里的东西，对智能体不存在
 - **地图而非手册**：渐进披露，从小入口开始
 - **机械化执行**：lint 错误 = 修复指令，不只报错

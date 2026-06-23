@@ -1,8 +1,6 @@
 import type { DocumentIR } from '../../../host/adapters/document-ir';
 import type { TemplateFieldCandidate } from '../../../api/carbone-api';
-import {
-  buildWordParamPromptParts,
-} from '../../../host/office/word/parameter';
+import { buildWordParamPromptParts } from '../../../host/office/word/parameter';
 import {
   type WordSectionPromptBilingualGroup,
   type WordSectionPromptCandidate,
@@ -26,7 +24,9 @@ import {
 } from '../shared/word-section-recognition';
 
 function safeCompareText(value: unknown): string {
-  return String(value || '').replace(/\s+/g, ' ').trim();
+  return String(value || '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function compactWordPromptText(value: unknown, maxLength = 160): string {
@@ -51,12 +51,13 @@ function buildWordSectionParagraphTextMap(documentIr: DocumentIR): Map<number, s
 function buildWordCandidatePromptSlot(
   candidate: CompareCandidateSection['candidates'][number],
   siblingCandidates: CompareCandidateSection['candidates'],
-  paragraphTextByIndex: Map<number, string>,
+  paragraphTextByIndex: Map<number, string>
 ): { localAnchorText: string; parameterSlot?: string } {
   const paragraphIndex = candidate.location?.paragraphIndex;
-  const paragraphText = typeof paragraphIndex === 'number'
-    ? String(paragraphTextByIndex.get(paragraphIndex) || '')
-    : '';
+  const paragraphText =
+    typeof paragraphIndex === 'number'
+      ? String(paragraphTextByIndex.get(paragraphIndex) || '')
+      : '';
   const anchorStart = candidate.location?.anchorStart;
   const anchorEnd = candidate.location?.anchorEnd;
   const rawAnchorText = compactWordPromptText(candidate.anchorText || '无');
@@ -69,15 +70,17 @@ function buildWordCandidatePromptSlot(
   }
 
   const sameParagraphCandidates = siblingCandidates
-    .filter((item) =>
-      item.candidateId !== candidate.candidateId
-      && item.location?.paragraphIndex === paragraphIndex
-      && typeof item.location?.anchorStart === 'number'
-      && typeof item.location?.anchorEnd === 'number'
+    .filter(
+      (item) =>
+        item.candidateId !== candidate.candidateId &&
+        item.location?.paragraphIndex === paragraphIndex &&
+        typeof item.location?.anchorStart === 'number' &&
+        typeof item.location?.anchorEnd === 'number'
     )
-    .sort((left, right) => (
-      Number(left.location?.anchorStart || 0) - Number(right.location?.anchorStart || 0)
-    ));
+    .sort(
+      (left, right) =>
+        Number(left.location?.anchorStart || 0) - Number(right.location?.anchorStart || 0)
+    );
 
   const promptParts = buildWordParamPromptParts({
     paragraphText,
@@ -91,7 +94,8 @@ function buildWordCandidatePromptSlot(
   });
 
   return {
-    localAnchorText: compactWordPromptText(promptParts.localAnchorText || rawAnchorText, 48) || rawAnchorText,
+    localAnchorText:
+      compactWordPromptText(promptParts.localAnchorText || rawAnchorText, 48) || rawAnchorText,
     parameterSlot: promptParts.parameterSlot
       ? compactWordPromptText(promptParts.parameterSlot, 120)
       : undefined,
@@ -110,28 +114,28 @@ export function buildWordSectionPromptCandidates(
           localAnchorText: candidate.localAnchorText || candidate.anchorText || '无',
           parameterSlot: candidate.parameterSlot,
         }
-      : buildWordCandidatePromptSlot(
-          candidate,
-          section.candidates,
-          paragraphTextByIndex,
-        );
+      : buildWordCandidatePromptSlot(candidate, section.candidates, paragraphTextByIndex);
     const hints = inferWordCandidateHints(candidate);
     const isLoopCandidate = isWordLoopCompareCandidate(candidate);
     return {
       candidateId: candidate.candidateId,
       sourceBlockId: candidate.sourceBlockId,
-      anchorText: compactWordPromptText(localAnchorText || candidate.localAnchorText || candidate.anchorText || '无'),
+      anchorText: compactWordPromptText(
+        localAnchorText || candidate.localAnchorText || candidate.anchorText || '无'
+      ),
       parameterSlot,
       sampleValue: compactWordPromptText(candidate.sampleValue || '无'),
       fieldIdHint: candidate.fieldIdHint || hints.fieldIdHint,
       fieldTypeHint: candidate.fieldTypeHint || hints.fieldTypeHint,
       generationPolicyHint: candidate.generationPolicyHint || hints.generationPolicyHint,
-      language: candidate.languageRelation?.currentLanguageHint || getWordCandidateLanguageHint(candidate),
+      language:
+        candidate.languageRelation?.currentLanguageHint || getWordCandidateLanguageHint(candidate),
       paragraphIndex: candidate.location?.paragraphIndex,
       candidateType: isLoopCandidate ? 'loop_column' : 'variable',
-      loopGroupKey: isLoopCandidate && typeof candidate.location?.tableIndex === 'number'
-        ? `table-${candidate.location.tableIndex}`
-        : undefined,
+      loopGroupKey:
+        isLoopCandidate && typeof candidate.location?.tableIndex === 'number'
+          ? `table-${candidate.location.tableIndex}`
+          : undefined,
       tableIndex: candidate.location?.tableIndex,
       rowIndex: candidate.location?.rowIndex,
       cellIndex: candidate.location?.cellIndex,
@@ -139,7 +143,10 @@ export function buildWordSectionPromptCandidates(
   });
 }
 
-export function buildWordSectionCandidateList(documentIr: DocumentIR, section: CompareCandidateSection): string {
+export function buildWordSectionCandidateList(
+  documentIr: DocumentIR,
+  section: CompareCandidateSection
+): string {
   if (section.candidates.length === 0) {
     return '当前章节没有显式候选参数。';
   }
@@ -153,12 +160,10 @@ export function buildWordSectionCandidateList(documentIr: DocumentIR, section: C
             localAnchorText: candidate.localAnchorText || candidate.anchorText || '无',
             parameterSlot: candidate.parameterSlot,
           }
-        : buildWordCandidatePromptSlot(
-            candidate,
-            section.candidates,
-            paragraphTextByIndex,
-          );
-      const anchorText = compactWordPromptText(localAnchorText || candidate.localAnchorText || candidate.anchorText || '无');
+        : buildWordCandidatePromptSlot(candidate, section.candidates, paragraphTextByIndex);
+      const anchorText = compactWordPromptText(
+        localAnchorText || candidate.localAnchorText || candidate.anchorText || '无'
+      );
       const sampleValue = compactWordPromptText(candidate.sampleValue || '无');
       const hints = inferWordCandidateHints(candidate);
       return [
@@ -179,7 +184,9 @@ export function buildWordSectionCandidateList(documentIr: DocumentIR, section: C
         candidate.generationPolicyHint || hints.generationPolicyHint
           ? `generationPolicyHint: ${candidate.generationPolicyHint || hints.generationPolicyHint}`
           : undefined,
-      ].filter(Boolean).join('\n');
+      ]
+        .filter(Boolean)
+        .join('\n');
     })
     .join('\n\n');
 }
@@ -191,20 +198,27 @@ function buildWordSectionBilingualPairs(section: CompareCandidateSection): Array
   return buildWordSectionBilingualPairsForRecognition(section.candidates);
 }
 
-export function buildWordSectionBilingualPairList(documentIr: DocumentIR, section: CompareCandidateSection): string {
+export function buildWordSectionBilingualPairList(
+  documentIr: DocumentIR,
+  section: CompareCandidateSection
+): string {
   const sentenceGroups = buildWordSectionParagraphGroups(section.candidates, {
     sortWordCandidatesByPosition,
     getWordCandidateLanguageHint,
   });
   const bilingualGroups: Array<{
-    left: typeof sentenceGroups[number];
-    right: typeof sentenceGroups[number];
+    left: (typeof sentenceGroups)[number];
+    right: (typeof sentenceGroups)[number];
   }> = [];
 
   for (let index = 0; index < sentenceGroups.length - 1; index += 1) {
     const currentGroup = sentenceGroups[index];
     const nextGroup = sentenceGroups[index + 1];
-    if (!currentGroup || !nextGroup || !isWordAdjacentBilingualParagraphGroup(currentGroup, nextGroup)) {
+    if (
+      !currentGroup ||
+      !nextGroup ||
+      !isWordAdjacentBilingualParagraphGroup(currentGroup, nextGroup)
+    ) {
       continue;
     }
     bilingualGroups.push(
@@ -231,7 +245,7 @@ export function buildWordSectionBilingualPairList(documentIr: DocumentIR, sectio
       const renderGroupLines = (
         candidates: TemplateFieldCandidate[],
         languageLabel: string,
-        paragraphIndex: number,
+        paragraphIndex: number
       ) => {
         const candidateLines = candidates.map((candidate) => {
           const { localAnchorText, parameterSlot } = candidate.parameterSlot
@@ -239,17 +253,15 @@ export function buildWordSectionBilingualPairList(documentIr: DocumentIR, sectio
                 localAnchorText: candidate.localAnchorText || candidate.anchorText || '无',
                 parameterSlot: candidate.parameterSlot,
               }
-            : buildWordCandidatePromptSlot(
-                candidate,
-                section.candidates,
-                paragraphTextByIndex,
-              );
+            : buildWordCandidatePromptSlot(candidate, section.candidates, paragraphTextByIndex);
           return [
             `${languageLabel} candidateId: ${candidate.candidateId}`,
             `sourceBlockId: ${candidate.sourceBlockId}`,
             `anchorText: ${compactWordPromptText(localAnchorText || candidate.localAnchorText || candidate.anchorText || '无')}`,
             parameterSlot ? `parameterSlot: ${parameterSlot}` : undefined,
-          ].filter(Boolean).join('\n');
+          ]
+            .filter(Boolean)
+            .join('\n');
         });
 
         return [
@@ -262,21 +274,39 @@ export function buildWordSectionBilingualPairList(documentIr: DocumentIR, sectio
       return [
         `[双语句子对照组 ${index + 1}]`,
         'pairRule: 当前对照组按句子为单位比较，参数顺序不要求一致；同一组内可出现 1比1 或 3比3。',
-        renderGroupLines(group.left.candidates, getLanguageHintLabel(group.left.languageHint), group.left.paragraphIndex),
-        renderGroupLines(group.right.candidates, getLanguageHintLabel(group.right.languageHint), group.right.paragraphIndex),
+        renderGroupLines(
+          group.left.candidates,
+          getLanguageHintLabel(group.left.languageHint),
+          group.left.paragraphIndex
+        ),
+        renderGroupLines(
+          group.right.candidates,
+          getLanguageHintLabel(group.right.languageHint),
+          group.right.paragraphIndex
+        ),
       ].join('\n');
     })
     .join('\n\n');
 }
 
-export function buildWordSectionPromptBilingualGroups(section: CompareCandidateSection): WordSectionPromptBilingualGroup[] {
+export function buildWordSectionPromptBilingualGroups(
+  section: CompareCandidateSection
+): WordSectionPromptBilingualGroup[] {
   return buildWordSectionBilingualPairs(section)
     .map((pair) => {
       const zhCandidateIds = pair.candidates
-        .filter((candidate) => (candidate.languageRelation?.currentLanguageHint || getWordCandidateLanguageHint(candidate)) === 'zh')
+        .filter(
+          (candidate) =>
+            (candidate.languageRelation?.currentLanguageHint ||
+              getWordCandidateLanguageHint(candidate)) === 'zh'
+        )
         .map((candidate) => candidate.candidateId);
       const jpCandidateIds = pair.candidates
-        .filter((candidate) => (candidate.languageRelation?.currentLanguageHint || getWordCandidateLanguageHint(candidate)) === 'ja')
+        .filter(
+          (candidate) =>
+            (candidate.languageRelation?.currentLanguageHint ||
+              getWordCandidateLanguageHint(candidate)) === 'ja'
+        )
         .map((candidate) => candidate.candidateId);
 
       if (zhCandidateIds.length === 0 || jpCandidateIds.length === 0) {
@@ -332,15 +362,13 @@ export function appendUniqueCandidateIds(targetQueue: string[], candidateIds: st
   });
 }
 
-export function takeWordRecognitionBatch(
-  options: {
-    retryLoopIds: string[];
-    unsentLoopIds: string[];
-    retryNormalIds: string[];
-    unsentNormalIds: string[];
-    candidateById: Map<string, TemplateFieldCandidate>;
-    acceptedIds: Set<string>;
-  }
-): TemplateFieldCandidate[] {
+export function takeWordRecognitionBatch(options: {
+  retryLoopIds: string[];
+  unsentLoopIds: string[];
+  retryNormalIds: string[];
+  unsentNormalIds: string[];
+  candidateById: Map<string, TemplateFieldCandidate>;
+  acceptedIds: Set<string>;
+}): TemplateFieldCandidate[] {
   return takeWordRecognitionBatchForRecognition(options);
 }

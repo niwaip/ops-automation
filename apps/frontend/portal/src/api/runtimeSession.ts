@@ -62,7 +62,10 @@ export const runtimeSessionApi = {
     return response.data[0];
   },
 
-  getByIdOrExecutionId: async (id: string, executionId?: string): Promise<RuntimeSessionDto | undefined> => {
+  getByIdOrExecutionId: async (
+    id: string,
+    executionId?: string
+  ): Promise<RuntimeSessionDto | undefined> => {
     try {
       return await runtimeSessionApi.getById(id);
     } catch (error) {

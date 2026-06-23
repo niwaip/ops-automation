@@ -20,11 +20,7 @@ Create custom converters for special serialization needs.
 
 ```typescript
 // payload-converter.ts
-import {
-  PayloadConverter,
-  Payload,
-  defaultPayloadConverter,
-} from '@temporalio/common';
+import { PayloadConverter, Payload, defaultPayloadConverter } from '@temporalio/common';
 
 class CustomPayloadConverter implements PayloadConverter {
   toPayload<T>(value: T): Payload | undefined {
@@ -72,7 +68,7 @@ import { CompositePayloadConverter } from '@temporalio/common';
 // The order matters — converters are tried in sequence until one returns a non-null Payload
 export const payloadConverter = new CompositePayloadConverter(
   new PayloadConverterFoo(),
-  new PayloadConverterBar(),
+  new PayloadConverterBar()
 );
 ```
 

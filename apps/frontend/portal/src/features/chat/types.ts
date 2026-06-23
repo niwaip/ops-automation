@@ -64,11 +64,22 @@ export interface PromptDebugRecord {
   messageId: string;
   executionId?: string;
   mode?: 'chat' | 'task';
-  taskStatus?: 'waiting_input' | 'pending_approval' | 'running' | 'completed' | 'failed';
+  taskStatus?:
+    | 'waiting_input'
+    | 'pending_approval'
+    | 'running'
+    | 'completed'
+    | 'failed'
+    | 'human_control';
   sourceEventType: StreamEventType;
   promptDebug: PromptDebugPayload;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ChatProgressLog {
+  stage: 'thought' | 'action' | 'observation';
+  text: string;
 }
 
 export interface LLMUsage {
@@ -114,13 +125,21 @@ export interface ChatMessage {
       description?: string;
       missing?: boolean;
     }>;
-    taskStatus?: 'waiting_input' | 'pending_approval' | 'running' | 'completed' | 'failed';
+    taskStatus?:
+      | 'waiting_input'
+      | 'pending_approval'
+      | 'running'
+      | 'completed'
+      | 'failed'
+      | 'human_control';
     executionId?: string;
     executionStatus?: string;
     finalResult?: string;
     finalResultData?: unknown;
     finalSummary?: string;
+    progressLogs?: ChatProgressLog[];
     errorMessage?: string;
+    failureReason?: string;
     hasBusinessResult?: boolean;
     promptDebug?: PromptDebugPayload;
   };
@@ -179,7 +198,7 @@ export interface UploadedFile {
   mimeType: string;
   size: number;
   file?: File;
-  content?: string;  // base64编码的文件内容
+  content?: string; // base64编码的文件内容
 }
 
 /**
@@ -194,7 +213,7 @@ export interface ChatRequest {
   modelId?: string;
   files?: UploadedFile[];
   config?: {
-    mode?: 'chat' | 'task';  // 聊天模式：chat(普通) 或 task(ReAct引擎)
+    mode?: 'chat' | 'task'; // 聊天模式：chat(普通) 或 task(ReAct引擎)
     maxIterations?: number;
     thinking?: boolean;
     webSearch?: boolean;

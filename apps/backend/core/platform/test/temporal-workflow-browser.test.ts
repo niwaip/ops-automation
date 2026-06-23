@@ -61,19 +61,19 @@ describe('TemporalWorkflowBrowserDraftService', () => {
     const builtinRegistry = new BuiltinActivityRegistry();
     const workflowNormalizationService = new TemporalWorkflowNormalizationService(
       prisma as any,
-      builtinRegistry,
+      builtinRegistry
     );
     const aiDraftService = new TemporalWorkflowAiDraftService(prisma as any, builtinRegistry);
     const browserDraftService = new TemporalWorkflowBrowserDraftService();
     const codegenService = new TemporalWorkflowCodegenService();
     const sessionService = new TemporalWorkflowSessionService(
       prisma as any,
-      workflowNormalizationService,
+      workflowNormalizationService
     );
     const validationService = new TemporalWorkflowValidationService();
     const activityResolutionService = new TemporalWorkflowActivityResolutionService(
       prisma as any,
-      builtinRegistry,
+      builtinRegistry
     );
     const workflowConfigService = new TemporalWorkflowConfigService();
     const workflowTemplateService = new TemporalWorkflowTemplateService();
@@ -82,7 +82,7 @@ describe('TemporalWorkflowBrowserDraftService', () => {
       aiDraftService,
       activityResolutionService,
       workflowConfigService,
-      workflowNormalizationService,
+      workflowNormalizationService
     );
     const service = new TemporalWorkflowService(
       prisma as any,
@@ -94,7 +94,7 @@ describe('TemporalWorkflowBrowserDraftService', () => {
       workflowConfigService,
       workflowNormalizationService,
       workflowTemplateService,
-      workflowSupportService,
+      workflowSupportService
     );
 
     return {
@@ -132,24 +132,32 @@ describe('TemporalWorkflowBrowserDraftService', () => {
     });
 
     expect(draft.name).toBe('登录自动化');
-    expect(draft.workflowDsl.sourceContext).toEqual(expect.objectContaining({
-      sourceType: 'browser_template',
-    }));
-    expect(draft.workflowDsl.steps[0]).toEqual(expect.objectContaining({
-      activityRef: expect.stringMatching(/^custom:/),
-    }));
+    expect(draft.workflowDsl.sourceContext).toEqual(
+      expect.objectContaining({
+        sourceType: 'browser_template',
+      })
+    );
+    expect(draft.workflowDsl.steps[0]).toEqual(
+      expect.objectContaining({
+        activityRef: expect.stringMatching(/^custom:/),
+      })
+    );
     expect(draft.workflowDsl.steps).toHaveLength(2);
     expect(draft.workflowDsl.steps).toEqual([
       expect.objectContaining({ name: '1. 页面打开' }),
       expect.objectContaining({ name: '2. 页面迁移' }),
     ]);
     expect(draft.browserTemplate.commandCount).toBe(4);
-    expect(draft.browserTemplate.placeholders).toEqual(expect.arrayContaining(['username', 'password']));
+    expect(draft.browserTemplate.placeholders).toEqual(
+      expect.arrayContaining(['username', 'password'])
+    );
     expect(draft.activityDsl.activities).toHaveLength(2);
-    expect(draft.activityDsl.activities[0]).toEqual(expect.objectContaining({
-      handler: 'browser',
-      name: '1. 页面打开',
-    }));
+    expect(draft.activityDsl.activities[0]).toEqual(
+      expect.objectContaining({
+        handler: 'browser',
+        name: '1. 页面打开',
+      })
+    );
     expect((draft.activityDsl.activities[0].config as any).steps).toHaveLength(4);
     expect((draft.activityDsl.activities[0].config as any).steps[1]).toEqual(
       expect.objectContaining({
@@ -157,7 +165,7 @@ describe('TemporalWorkflowBrowserDraftService', () => {
           action: 'waitForSelector',
           selector: '#username',
         }),
-      }),
+      })
     );
     expect((draft.activityDsl.activities[0].config as any).sessionLifecycle).toEqual({
       initializeSession: true,
@@ -170,7 +178,7 @@ describe('TemporalWorkflowBrowserDraftService', () => {
           action: 'click',
           selector: 'button[type=submit]',
         }),
-      }),
+      })
     );
     expect((draft.activityDsl.activities[1].config as any).sessionLifecycle).toEqual({
       initializeSession: false,
@@ -227,22 +235,24 @@ describe('TemporalWorkflowBrowserDraftService', () => {
     expect(draft.browserTemplate.placeholders).toEqual(expect.arrayContaining(['username']));
     expect(draft.workflowDsl.steps).toHaveLength(2);
     expect(draft.activityDsl.activities).toHaveLength(2);
-    expect(draft.workflowDsl.sourceContext).toEqual(expect.objectContaining({
-      sourceType: 'browser_template',
-      warnings: expect.arrayContaining([
-        expect.stringContaining('executionPlan.commands'),
-      ]),
-    }));
-    expect((draft.activityDsl.activities[0].config as any).steps).toEqual(expect.arrayContaining([
+    expect(draft.workflowDsl.sourceContext).toEqual(
       expect.objectContaining({
-        config: expect.objectContaining({
-          action: 'fill',
-          target: 'e12',
-          locator: expect.objectContaining({ type: 'ref', value: 'e12' }),
-          value: '${username}',
+        sourceType: 'browser_template',
+        warnings: expect.arrayContaining([expect.stringContaining('executionPlan.commands')]),
+      })
+    );
+    expect((draft.activityDsl.activities[0].config as any).steps).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          config: expect.objectContaining({
+            action: 'fill',
+            target: 'e12',
+            locator: expect.objectContaining({ type: 'ref', value: 'e12' }),
+            value: '${username}',
+          }),
         }),
-      }),
-    ]));
+      ])
+    );
     expect((draft.activityDsl.activities[1].config as any).steps).toEqual([
       expect.objectContaining({
         config: expect.objectContaining({
@@ -296,25 +306,25 @@ describe('TemporalWorkflowBrowserDraftService', () => {
 
     expect(draft.browserTemplate.commandCount).toBe(2);
     expect(draft.workflowDsl.steps).toHaveLength(1);
-    expect(draft.workflowDsl.steps).toEqual([
-      expect.objectContaining({ name: '1. 页面打开' }),
-    ]);
-    expect(draft.workflowDsl.sourceContext).toEqual(expect.objectContaining({
-      sourceType: 'browser_template',
-      sourceTemplate: expect.objectContaining({
-        templateId: 'tpl-browser-001',
-      }),
-      warnings: expect.arrayContaining([
-        expect.stringContaining('模板原始步骤'),
-      ]),
-    }));
-    expect(draft.workflowDsl.inputParams).toEqual(expect.objectContaining({
-      username: expect.objectContaining({
-        required: true,
-        defaultValue: 'test',
-        description: '登录用户名',
-      }),
-    }));
+    expect(draft.workflowDsl.steps).toEqual([expect.objectContaining({ name: '1. 页面打开' })]);
+    expect(draft.workflowDsl.sourceContext).toEqual(
+      expect.objectContaining({
+        sourceType: 'browser_template',
+        sourceTemplate: expect.objectContaining({
+          templateId: 'tpl-browser-001',
+        }),
+        warnings: expect.arrayContaining([expect.stringContaining('模板原始步骤')]),
+      })
+    );
+    expect(draft.workflowDsl.inputParams).toEqual(
+      expect.objectContaining({
+        username: expect.objectContaining({
+          required: true,
+          defaultValue: 'test',
+          description: '登录用户名',
+        }),
+      })
+    );
     expect(draft.activityDsl.activities).toHaveLength(1);
     expect((draft.activityDsl.activities[0].config as any).steps).toEqual([
       expect.objectContaining({
@@ -332,6 +342,150 @@ describe('TemporalWorkflowBrowserDraftService', () => {
         }),
       }),
     ]);
+  });
+
+  it('preserves loop draft metadata and marks browser phases with loop segments', async () => {
+    const { service } = createService();
+
+    const draft = await service.generateBrowserWorkflowDraft({
+      templateId: 'tpl-browser-loop-001',
+      name: '循环审批工作流',
+      templateSteps: [
+        {
+          step_id: 'step_1',
+          action: 'goto',
+          params: { url: '${startUrl}' },
+        },
+        {
+          step_id: 'step_2',
+          action: 'click',
+          locator: { type: 'ref', value: 'e_open_row' },
+          params: {},
+        },
+        {
+          step_id: 'step_3',
+          action: 'read_value',
+          locator: { type: 'test-id', value: 'status-value' },
+          output_var: 'rowStatus',
+          params: {},
+        },
+        {
+          step_id: 'step_4',
+          action: 'branch',
+          branch: {
+            condition_fn: '!String(value || "").includes("保留中")',
+            on_match: 'stop',
+            on_mismatch: 'continue',
+          },
+        },
+        {
+          step_id: 'step_5',
+          action: 'click',
+          locator: { type: 'ref', value: 'e_approve' },
+          params: {},
+        },
+        {
+          step_id: 'step_6',
+          action: 'click',
+          locator: { type: 'ref', value: 'e_back' },
+          params: {},
+        },
+      ],
+      loopDraft: {
+        mode: 'repeat_until',
+        maxIterations: 20,
+        eachIteration: {
+          stepIds: ['step_2', 'step_3', 'step_4', 'step_5', 'step_6'],
+        },
+        stopWhen: {
+          conditionFn: '!String(value || "").includes("保留中")',
+        },
+      },
+    });
+
+    expect(draft.workflowDsl.sourceContext).toEqual(
+      expect.objectContaining({
+        sourceType: 'browser_template',
+        browserLoopDraft: expect.objectContaining({
+          mode: 'repeat_until',
+          maxIterations: 20,
+        }),
+      })
+    );
+    expect(draft.activityDsl.activities.map((activity) => (activity.config as any).loopSegment)).toEqual(
+      expect.arrayContaining(['pre_loop', 'iteration'])
+    );
+    const activitySteps = draft.activityDsl.activities.flatMap(
+      (activity) => ((activity.config as any).steps || []) as Array<Record<string, any>>
+    );
+    expect(activitySteps).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          config: expect.objectContaining({
+            templateStepId: 'step_3',
+            action: 'get_text',
+            originalAction: 'read_value',
+            outputVar: 'rowStatus',
+          }),
+        }),
+        expect.objectContaining({
+          config: expect.objectContaining({
+            templateStepId: 'step_4',
+            action: 'branch',
+            branch: expect.objectContaining({
+              condition_fn: '!String(value || "").includes("保留中")',
+            }),
+          }),
+        }),
+      ])
+    );
+  });
+
+  it('does not treat branch condition function bodies as browser template placeholders', async () => {
+    const { service } = createService();
+
+    const draft = await service.generateBrowserWorkflowDraft({
+      templateId: 'tpl-browser-branch-threshold',
+      name: '审批阈值工作流',
+      templateSteps: [
+        {
+          step_id: 'step_1',
+          action: 'read_value',
+          locator: { type: 'test-id', value: 'gross-margin-value' },
+          output_var: 'grossProfitRate',
+          params: {},
+        },
+        {
+          step_id: 'step_2',
+          action: 'branch',
+          branch: {
+            on_match: 'continue',
+            on_mismatch: 'takeover',
+            condition_fn:
+              "(ctx) => { const value = Number(String(ctx.grossProfitRate || '').replace(/[^0-9.-]+/g, '')); return Number.isFinite(value) && value > 20; }",
+          },
+        },
+      ],
+      paramsSchema: {
+        type: 'object',
+        properties: {
+          grossMarginThreshold: {
+            type: 'number',
+            description: '自动执行所需的毛利率阈值，低于该值时转人工接管',
+            default: 20,
+          },
+        },
+        required: ['grossMarginThreshold'],
+      },
+    });
+
+    expect(draft.workflowDsl.inputParams).toEqual({
+      grossMarginThreshold: expect.objectContaining({
+        required: true,
+        defaultValue: '20',
+        description: '自动执行所需的毛利率阈值，低于该值时转人工接管',
+      }),
+    });
   });
 
   it('keeps navigate and fill in the same activity and splits when click changes page structure', async () => {
@@ -427,7 +581,9 @@ describe('TemporalWorkflowBrowserDraftService', () => {
       expect.objectContaining({ name: '2. 页面迁移' }),
     ]);
     expect(draft.activityDsl.activities).toHaveLength(2);
-    expect((draft.activityDsl.activities[0].config as any).steps.map((step: any) => step.config.action)).toEqual([
+    expect(
+      (draft.activityDsl.activities[0].config as any).steps.map((step: any) => step.config.action)
+    ).toEqual([
       'navigate',
       'wait',
       'screenshot',
@@ -439,11 +595,9 @@ describe('TemporalWorkflowBrowserDraftService', () => {
       'wait',
       'screenshot',
     ]);
-    expect((draft.activityDsl.activities[1].config as any).steps.map((step: any) => step.config.action)).toEqual([
-      'click',
-      'wait',
-      'screenshot',
-    ]);
+    expect(
+      (draft.activityDsl.activities[1].config as any).steps.map((step: any) => step.config.action)
+    ).toEqual(['click', 'wait', 'screenshot']);
   });
 
   it('preserves declared browser template input params when commands do not expose placeholders', async () => {
@@ -485,18 +639,20 @@ describe('TemporalWorkflowBrowserDraftService', () => {
       },
     });
 
-    expect(draft.workflowDsl.inputParams).toEqual(expect.objectContaining({
-      startUrl: expect.objectContaining({
-        required: false,
-        defaultValue: 'http://192.168.100.143:5173/',
-        description: '起始页面地址',
-      }),
-      username: expect.objectContaining({
-        required: true,
-        defaultValue: 'test',
-        description: '登录用户名',
-      }),
-    }));
+    expect(draft.workflowDsl.inputParams).toEqual(
+      expect.objectContaining({
+        startUrl: expect.objectContaining({
+          required: false,
+          defaultValue: 'http://192.168.100.143:5173/',
+          description: '起始页面地址',
+        }),
+        username: expect.objectContaining({
+          required: true,
+          defaultValue: 'test',
+          description: '登录用户名',
+        }),
+      })
+    );
     expect(draft.browserTemplate.placeholders).toEqual([]);
   });
 
@@ -546,11 +702,10 @@ describe('TemporalWorkflowBrowserDraftService', () => {
             config: {},
           },
         ],
-      },
+      }
     );
 
     expect(validation.isValid).toBe(true);
     expect(validation.errors).toEqual([]);
   });
-
 });

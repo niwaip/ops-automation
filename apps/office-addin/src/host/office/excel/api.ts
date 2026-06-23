@@ -13,22 +13,24 @@ export const ExcelAPI = {
    * 获取整个工作簿的 sheet 概览
    * 用于 Excel 模板页按成对 sheet 展示空白模板和真实数据。
    */
-  async getWorkbookSheets(): Promise<Array<{
-    name: string;
-    index: number;
-    address: string;
-    rowCount: number;
-    columnCount: number;
-    tables: Array<{
+  async getWorkbookSheets(): Promise<
+    Array<{
       name: string;
+      index: number;
       address: string;
-      headerAddress?: string;
-      dataBodyAddress?: string;
-    }>;
-    values: (string | number | boolean | null)[][];
-    formulas: string[][];
-    sampleValues: string[][];
-  }>> {
+      rowCount: number;
+      columnCount: number;
+      tables: Array<{
+        name: string;
+        address: string;
+        headerAddress?: string;
+        dataBodyAddress?: string;
+      }>;
+      values: (string | number | boolean | null)[][];
+      formulas: string[][];
+      sampleValues: string[][];
+    }>
+  > {
     return new Promise((resolve, reject) => {
       Excel.run(async (context) => {
         const worksheets = context.workbook.worksheets;
@@ -90,8 +92,10 @@ export const ExcelAPI = {
             tables: tableRefs.map(({ table, tableRange, headerRange }) => {
               const hasDataRows = (tableRange.rowCount || 0) > 1;
               const dataStartRow = (tableRange.rowIndex || 0) + 1;
-              const dataEndRow = (tableRange.rowIndex || 0) + Math.max((tableRange.rowCount || 1) - 1, 1);
-              const dataEndCol = (tableRange.columnIndex || 0) + Math.max((tableRange.columnCount || 1) - 1, 0);
+              const dataEndRow =
+                (tableRange.rowIndex || 0) + Math.max((tableRange.rowCount || 1) - 1, 1);
+              const dataEndCol =
+                (tableRange.columnIndex || 0) + Math.max((tableRange.columnCount || 1) - 1, 0);
               return {
                 name: table.name || '',
                 address: tableRange.address || '',
@@ -226,9 +230,7 @@ export const ExcelAPI = {
   /**
    * 批量插入标记
    */
-  async insertMarkersBatch(
-    mappings: Array<{ address: string; marker: string }>
-  ): Promise<void> {
+  async insertMarkersBatch(mappings: Array<{ address: string; marker: string }>): Promise<void> {
     return new Promise((resolve, reject) => {
       Excel.run(async (context) => {
         const sheet = context.workbook.worksheets.getActiveWorksheet();
@@ -307,9 +309,13 @@ export const ExcelAPI = {
 
         templateCells.forEach((cell, columnOffset) => {
           const existingValue = cell.values?.[0]?.[0] == null ? '' : String(cell.values[0][0]);
-          const matchedMapping = columnMappings?.find((mapping) => (mapping.columnIndex ?? columnOffset) === columnOffset);
+          const matchedMapping = columnMappings?.find(
+            (mapping) => (mapping.columnIndex ?? columnOffset) === columnOffset
+          );
           let nextValue = matchedMapping?.variablePath
-            ? (matchedMapping.variablePath.startsWith('d.') ? `{${matchedMapping.variablePath}}` : `{d.${matchedMapping.variablePath}}`)
+            ? matchedMapping.variablePath.startsWith('d.')
+              ? `{${matchedMapping.variablePath}}`
+              : `{d.${matchedMapping.variablePath}}`
             : existingValue;
 
           if (columnOffset === 0) {
@@ -357,8 +363,10 @@ export const ExcelAPI = {
         const existingNames = new Set(worksheets.items.map((sheet) => sheet.name));
         const escapeSheetName = (name: string) => name.replace(/'/g, "''");
         const referencesDeletedSheet = (formula: string): boolean =>
-          deletedSheets.some((sheetName) =>
-            formula.includes(`${sheetName}!`) || formula.includes(`'${escapeSheetName(sheetName)}'!`)
+          deletedSheets.some(
+            (sheetName) =>
+              formula.includes(`${sheetName}!`) ||
+              formula.includes(`'${escapeSheetName(sheetName)}'!`)
           );
 
         let frozenFormulaCount = 0;
@@ -382,11 +390,22 @@ export const ExcelAPI = {
           const formulas = (usedRange.formulas as string[][]) || [];
           const values = (usedRange.values as (string | number | boolean | null)[][]) || [];
           for (let rowIndex = 0; rowIndex < formulas.length; rowIndex += 1) {
-            for (let columnIndex = 0; columnIndex < (formulas[rowIndex] || []).length; columnIndex += 1) {
+            for (
+              let columnIndex = 0;
+              columnIndex < (formulas[rowIndex] || []).length;
+              columnIndex += 1
+            ) {
               const formula = formulas[rowIndex]?.[columnIndex];
-              if (typeof formula === 'string' && formula.startsWith('=') && referencesDeletedSheet(formula)) {
+              if (
+                typeof formula === 'string' &&
+                formula.startsWith('=') &&
+                referencesDeletedSheet(formula)
+              ) {
                 const currentValue = values[rowIndex]?.[columnIndex] ?? '';
-                sheet.getCell((usedRange.rowIndex || 0) + rowIndex, (usedRange.columnIndex || 0) + columnIndex).values = [[currentValue]];
+                sheet.getCell(
+                  (usedRange.rowIndex || 0) + rowIndex,
+                  (usedRange.columnIndex || 0) + columnIndex
+                ).values = [[currentValue]];
                 frozenFormulaCount += 1;
               }
             }

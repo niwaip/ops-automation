@@ -1,11 +1,4 @@
-import {
-  IsArray,
-  IsOptional,
-  IsString,
-  IsUUID,
-  MaxLength,
-  MinLength,
-} from 'class-validator';
+import { IsArray, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
 
 export class CreateOrganizationDto {
   @IsString()

@@ -13,7 +13,7 @@ interface State {
 export class ErrorBoundary extends Component<Props, State> {
   public state: State = {
     hasError: false,
-    error: null
+    error: null,
   };
 
   public static getDerivedStateFromError(error: Error): State {
@@ -30,12 +30,20 @@ export class ErrorBoundary extends Component<Props, State> {
         return this.props.fallback;
       }
       return (
-        <div style={{ padding: '20px', background: '#fee2e2', color: '#991b1b', borderRadius: '8px', margin: '10px 0' }}>
+        <div
+          style={{
+            padding: '20px',
+            background: '#fee2e2',
+            color: '#991b1b',
+            borderRadius: '8px',
+            margin: '10px 0',
+          }}
+        >
           <h3 style={{ margin: '0 0 10px 0' }}>组件渲染失败</h3>
           <pre style={{ fontSize: '12px', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
             {this.state.error?.message}
           </pre>
-          <button 
+          <button
             onClick={() => this.setState({ hasError: false, error: null })}
             style={{ marginTop: '10px', padding: '4px 8px' }}
           >

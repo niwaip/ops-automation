@@ -16,10 +16,7 @@ import {
   normalizeContextAnalysisPayload,
   normalizeTextValue,
 } from './chat-analysis-suggestion.helpers';
-import {
-  buildChatAnalysisPrompt,
-  buildPromptDebugSummary,
-} from './chat-analysis-prompt.helpers';
+import { buildChatAnalysisPrompt, buildPromptDebugSummary } from './chat-analysis-prompt.helpers';
 
 export class ChatAnalysisExecutor implements StructuredAnalysisExecutor {
   kind: AnalysisExecutorKind = 'chat';
@@ -67,12 +64,15 @@ export class ChatAnalysisExecutor implements StructuredAnalysisExecutor {
         }),
       });
     } catch (error) {
-      throw new ChatAnalysisError(`chat 执行器请求失败: ${error instanceof Error ? error.message : 'unknown error'}`, {
-        stage: request.analysisStage,
-        pairLabel: request.pairLabel,
-        url,
-        reason: 'network_error',
-      });
+      throw new ChatAnalysisError(
+        `chat 执行器请求失败: ${error instanceof Error ? error.message : 'unknown error'}`,
+        {
+          stage: request.analysisStage,
+          pairLabel: request.pairLabel,
+          url,
+          reason: 'network_error',
+        }
+      );
     }
 
     if (!response.ok) {
@@ -122,7 +122,10 @@ export class ChatAnalysisExecutor implements StructuredAnalysisExecutor {
         for (const line of dataLines) {
           try {
             const event = JSON.parse(line) as { type?: string; content?: string };
-            if (typeof event.content === 'string' && ['observation', 'result'].includes(String(event.type))) {
+            if (
+              typeof event.content === 'string' &&
+              ['observation', 'result'].includes(String(event.type))
+            ) {
               if (String(event.type) === 'result') {
                 latestResultContent = event.content;
                 resultPayloads.push(event.content);
@@ -160,7 +163,8 @@ export class ChatAnalysisExecutor implements StructuredAnalysisExecutor {
           suggestions: [],
           contextAnalysis: {
             detectedTemplateType: request.templateType || 'unknown',
-            userIntent: '理解整份工作簿的业务类型、关键字段、sheet 职责与相互关系，为后续逐对照组参数识别提供上下文',
+            userIntent:
+              '理解整份工作簿的业务类型、关键字段、sheet 职责与相互关系，为后续逐对照组参数识别提供上下文',
             globalBusinessSummary: globalUnderstandingText,
             globalUnderstandingText,
             usedAI: true,
@@ -209,7 +213,10 @@ export class ChatAnalysisExecutor implements StructuredAnalysisExecutor {
         pairLabel: request.pairLabel,
         url,
         reason:
-          latestResultContent || latestObservationContent || resultPayloads.length > 0 || observationPayloads.length > 0
+          latestResultContent ||
+          latestObservationContent ||
+          resultPayloads.length > 0 ||
+          observationPayloads.length > 0
             ? 'invalid_json_response'
             : 'empty_stream_response',
       });

@@ -59,21 +59,27 @@ const LoginPage: React.FC = () => {
   });
 
   const handleSubmit = (values: LoginFormValues) => {
-    loginMutation.mutate({
-      username: values.username,
-      password: values.password,
-    }, {
-      onSuccess: () => {
-        if (values.remember) {
-          localStorage.setItem(REMEMBERED_CREDENTIALS_KEY, JSON.stringify({
-            username: values.username,
-            password: values.password,
-          }));
-        } else {
-          localStorage.removeItem(REMEMBERED_CREDENTIALS_KEY);
-        }
+    loginMutation.mutate(
+      {
+        username: values.username,
+        password: values.password,
       },
-    });
+      {
+        onSuccess: () => {
+          if (values.remember) {
+            localStorage.setItem(
+              REMEMBERED_CREDENTIALS_KEY,
+              JSON.stringify({
+                username: values.username,
+                password: values.password,
+              })
+            );
+          } else {
+            localStorage.removeItem(REMEMBERED_CREDENTIALS_KEY);
+          }
+        },
+      }
+    );
   };
 
   const languageMenu: MenuProps = {
@@ -222,9 +228,7 @@ const LoginPage: React.FC = () => {
           </Form.Item>
 
           <Form.Item name="remember" valuePropName="checked" style={{ marginBottom: 16 }}>
-            <Checkbox style={{ color: 'var(--text-secondary)' }}>
-              {t('rememberMe')}
-            </Checkbox>
+            <Checkbox style={{ color: 'var(--text-secondary)' }}>{t('rememberMe')}</Checkbox>
           </Form.Item>
 
           <Form.Item style={{ marginBottom: 0 }}>

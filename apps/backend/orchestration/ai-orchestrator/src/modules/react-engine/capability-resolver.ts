@@ -27,16 +27,11 @@ export class CapabilityResolver {
 
   constructor(private readonly toolExecutor: ToolExecutor) {}
 
-  async resolve(
-    request: ChatRequestDTO,
-    context: ExecutionContext,
-  ): Promise<CapabilitySnapshot> {
+  async resolve(request: ChatRequestDTO, context: ExecutionContext): Promise<CapabilitySnapshot> {
     const mode = request.config?.mode || 'task';
     const roles = request.userRoles || context.userRoles || [];
     const availableSkills = await this.loadAvailableSkills(context);
-    const selectedSkillId =
-      context.skill?.skillId
-      || context.documentContext?.selectedSkillId;
+    const selectedSkillId = context.skill?.skillId || context.documentContext?.selectedSkillId;
 
     const visibleSkills = this.toVisibleSkills(availableSkills);
     const configuredToolNames = request.config?.tools;
@@ -45,14 +40,13 @@ export class CapabilityResolver {
       : this.toolExecutor.getAllTools(roles);
     const toolScope = await this.loadSelectedSkillToolScope(selectedSkillId, context);
     const visibleTools = this.toVisibleTools(
-      this.applyToolVisibilityPolicy(allVisibleTools, visibleSkills, mode)
-        .filter((tool) => {
-          if (!toolScope.allowedToolNames?.length) {
-            return true;
-          }
-          return toolScope.allowedToolNames.includes(tool.name);
-        }),
-      toolScope.toolPolicies,
+      this.applyToolVisibilityPolicy(allVisibleTools, visibleSkills, mode).filter((tool) => {
+        if (!toolScope.allowedToolNames?.length) {
+          return true;
+        }
+        return toolScope.allowedToolNames.includes(tool.name);
+      }),
+      toolScope.toolPolicies
     );
 
     return {
@@ -90,7 +84,7 @@ export class CapabilityResolver {
   shouldRefresh(
     snapshot: CapabilitySnapshot | undefined,
     request: ChatRequestDTO,
-    context: ExecutionContext,
+    context: ExecutionContext
   ): boolean {
     if (!snapshot) {
       return true;
@@ -124,16 +118,21 @@ export class CapabilityResolver {
 
   async resolveIfNeeded(
     request: ChatRequestDTO,
-    context: ExecutionContext,
+    context: ExecutionContext
   ): Promise<CapabilitySnapshot> {
-    if (!this.shouldRefresh(context.capabilitySnapshot, request, context) && context.capabilitySnapshot) {
+    if (
+      !this.shouldRefresh(context.capabilitySnapshot, request, context) &&
+      context.capabilitySnapshot
+    ) {
       return context.capabilitySnapshot;
     }
 
     return this.resolve(request, context);
   }
 
-  private async loadAvailableSkills(context: ExecutionContext): Promise<AvailableSkillDefinition[]> {
+  private async loadAvailableSkills(
+    context: ExecutionContext
+  ): Promise<AvailableSkillDefinition[]> {
     if (!context.userId) {
       return [];
     }
@@ -151,63 +150,81 @@ export class CapabilityResolver {
         return [];
       }
 
-      const payload = await response.json() as { skills?: Array<Record<string, unknown>> };
+      const payload = (await response.json()) as { skills?: Array<Record<string, unknown>> };
       const rawSkills = Array.isArray(payload.skills) ? payload.skills : [];
 
-      return rawSkills.map((item) => {
-        const apiEndpoints = (typeof item.apiEndpoints === 'object' && item.apiEndpoints)
-          ? item.apiEndpoints as AvailableSkillDefinition['apiEndpoints']
-          : undefined;
-        const sourceTemplate = apiEndpoints?.runtimeMetadata?.sourceTemplate;
-        const templateId =
-          typeof item.templateId === 'string'
-            ? item.templateId
-            : typeof sourceTemplate?.templateId === 'string'
-              ? sourceTemplate.templateId
+      return rawSkills
+        .map((item) => {
+          const apiEndpoints =
+            typeof item.apiEndpoints === 'object' && item.apiEndpoints
+              ? (item.apiEndpoints as AvailableSkillDefinition['apiEndpoints'])
               : undefined;
-        const carboneTemplateId =
-          typeof item.carboneTemplateId === 'string'
-            ? item.carboneTemplateId
-            : typeof sourceTemplate?.templateId === 'string'
-              ? sourceTemplate.templateId
+          const sourceTemplate = apiEndpoints?.runtimeMetadata?.sourceTemplate;
+          const templateId =
+            typeof item.templateId === 'string'
+              ? item.templateId
+              : typeof sourceTemplate?.templateId === 'string'
+                ? sourceTemplate.templateId
+                : undefined;
+          const carboneTemplateId =
+            typeof item.carboneTemplateId === 'string'
+              ? item.carboneTemplateId
+              : typeof sourceTemplate?.templateId === 'string'
+                ? sourceTemplate.templateId
+                : undefined;
+          const carboneSkillId =
+            typeof item.carboneSkillId === 'string'
+              ? item.carboneSkillId
+              : typeof sourceTemplate?.skillId === 'string'
+                ? sourceTemplate.skillId
+                : undefined;
+          const sourceType = apiEndpoints?.runtimeMetadata?.sourceType;
+          const executionType: AvailableSkillDefinition['executionType'] =
+            sourceType === 'document' || sourceType === 'execution_flow_template'
+              ? 'document'
               : undefined;
-        const carboneSkillId =
-          typeof item.carboneSkillId === 'string'
-            ? item.carboneSkillId
-            : typeof sourceTemplate?.skillId === 'string'
-              ? sourceTemplate.skillId
-              : undefined;
-        const sourceType = apiEndpoints?.runtimeMetadata?.sourceType;
-        const executionType: AvailableSkillDefinition['executionType'] =
-          sourceType === 'document' || sourceType === 'execution_flow_template'
-            ? 'document'
-            : undefined;
 
-        return {
-          skillId: String(item.id || ''),
-          skillName: String(item.name || ''),
-          description: typeof item.description === 'string' ? item.description : undefined,
-          triggerKeywords: Array.isArray(item.triggerKeywords) ? item.triggerKeywords.map(String) : [],
-          paramsSchema: (item.paramsSchema as AvailableSkillDefinition['paramsSchema']) || { properties: {}, required: [] },
-          templateId,
-          carboneTemplateId,
-          carboneSkillId,
-          executionType,
-          executionFlowTemplateIds: Array.isArray(item.executionFlowTemplateIds) ? item.executionFlowTemplateIds.map(String) : [],
-          executionFlow: Array.isArray(item.executionFlow)
-            ? item.executionFlow
-                .map((step) => (step && typeof step === 'object'
-                  ? String((step as Record<string, unknown>).name || (step as Record<string, unknown>).type || '')
-                  : ''))
-                .filter(Boolean)
-            : [],
-          apiEndpoints,
-          goal: apiEndpoints?.runtimeMetadata?.goal,
-          expectedResult: apiEndpoints?.runtimeMetadata?.expectedResult,
-          outputParams: apiEndpoints?.runtimeMetadata?.outputParams,
-          effectiveTools: Array.isArray(item.effectiveTools) ? item.effectiveTools.map(String) : undefined,
-        };
-      }).filter((item) => item.skillId && item.skillName);
+          return {
+            skillId: String(item.id || ''),
+            skillName: String(item.name || ''),
+            description: typeof item.description === 'string' ? item.description : undefined,
+            triggerKeywords: Array.isArray(item.triggerKeywords)
+              ? item.triggerKeywords.map(String)
+              : [],
+            paramsSchema: (item.paramsSchema as AvailableSkillDefinition['paramsSchema']) || {
+              properties: {},
+              required: [],
+            },
+            templateId,
+            carboneTemplateId,
+            carboneSkillId,
+            executionType,
+            executionFlowTemplateIds: Array.isArray(item.executionFlowTemplateIds)
+              ? item.executionFlowTemplateIds.map(String)
+              : [],
+            executionFlow: Array.isArray(item.executionFlow)
+              ? item.executionFlow
+                  .map((step) =>
+                    step && typeof step === 'object'
+                      ? String(
+                          (step as Record<string, unknown>).name ||
+                            (step as Record<string, unknown>).type ||
+                            ''
+                        )
+                      : ''
+                  )
+                  .filter(Boolean)
+              : [],
+            apiEndpoints,
+            goal: apiEndpoints?.runtimeMetadata?.goal,
+            expectedResult: apiEndpoints?.runtimeMetadata?.expectedResult,
+            outputParams: apiEndpoints?.runtimeMetadata?.outputParams,
+            effectiveTools: Array.isArray(item.effectiveTools)
+              ? item.effectiveTools.map(String)
+              : undefined,
+          };
+        })
+        .filter((item) => item.skillId && item.skillName);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'unknown';
       this.logger.warn(`Failed to load available skills: ${message}`);
@@ -218,7 +235,7 @@ export class CapabilityResolver {
   private applyToolVisibilityPolicy(
     tools: ToolDefinition[],
     visibleSkills: CapabilityVisibleSkill[],
-    mode: 'chat' | 'task',
+    mode: 'chat' | 'task'
   ): ToolDefinition[] {
     const hasDocumentSkill = visibleSkills.some((skill) => skill.executionType === 'document');
 
@@ -237,7 +254,7 @@ export class CapabilityResolver {
 
   private async loadSelectedSkillToolScope(
     selectedSkillId: string | undefined,
-    context: ExecutionContext,
+    context: ExecutionContext
   ): Promise<{
     allowedToolNames: string[];
     deniedToolNames: string[];
@@ -252,15 +269,20 @@ export class CapabilityResolver {
     }
 
     try {
-      const response = await fetch(`${this.authServiceUrl}/capabilities/runtime/skills/${selectedSkillId}/context`, {
-        headers: {
-          ...(context.authToken ? { Authorization: context.authToken } : {}),
-          ...(context.traceId ? { 'x-trace-id': context.traceId } : {}),
-        },
-      });
+      const response = await fetch(
+        `${this.authServiceUrl}/capabilities/runtime/skills/${selectedSkillId}/context`,
+        {
+          headers: {
+            ...(context.authToken ? { Authorization: context.authToken } : {}),
+            ...(context.traceId ? { 'x-trace-id': context.traceId } : {}),
+          },
+        }
+      );
 
       if (!response.ok) {
-        this.logger.warn(`Failed to load tool scope for skill ${selectedSkillId}: ${response.status}`);
+        this.logger.warn(
+          `Failed to load tool scope for skill ${selectedSkillId}: ${response.status}`
+        );
         return {
           allowedToolNames: [],
           deniedToolNames: [],
@@ -268,7 +290,7 @@ export class CapabilityResolver {
         };
       }
 
-      const payload = await response.json() as {
+      const payload = (await response.json()) as {
         allowedToolNames?: string[];
         toolPolicies?: RuntimeToolPolicy[];
       };
@@ -278,13 +300,16 @@ export class CapabilityResolver {
       const toolPolicies = new Map(
         (Array.isArray(payload.toolPolicies) ? payload.toolPolicies : [])
           .filter((item): item is RuntimeToolPolicy => Boolean(item?.name))
-          .map((item) => [String(item.name), {
-            name: String(item.name),
-            promptExposure: item.promptExposure || 'prompt_and_runtime',
-            defaultRequiresConfirmation: Boolean(item.defaultRequiresConfirmation),
-            defaultRequiresApproval: Boolean(item.defaultRequiresApproval),
-            status: String(item.status || 'active'),
-          }]),
+          .map((item) => [
+            String(item.name),
+            {
+              name: String(item.name),
+              promptExposure: item.promptExposure || 'prompt_and_runtime',
+              defaultRequiresConfirmation: Boolean(item.defaultRequiresConfirmation),
+              defaultRequiresApproval: Boolean(item.defaultRequiresApproval),
+              status: String(item.status || 'active'),
+            },
+          ])
       );
 
       return {
@@ -294,7 +319,7 @@ export class CapabilityResolver {
       };
     } catch (error) {
       this.logger.warn(
-        `Failed to load tool scope for skill ${selectedSkillId}: ${error instanceof Error ? error.message : 'unknown'}`,
+        `Failed to load tool scope for skill ${selectedSkillId}: ${error instanceof Error ? error.message : 'unknown'}`
       );
       return {
         allowedToolNames: [],
@@ -306,7 +331,7 @@ export class CapabilityResolver {
 
   private toVisibleTools(
     tools: ToolDefinition[],
-    toolPolicies: Map<string, RuntimeToolPolicy> = new Map(),
+    toolPolicies: Map<string, RuntimeToolPolicy> = new Map()
   ): CapabilityVisibleTool[] {
     const visibleTools: CapabilityVisibleTool[] = [];
 
@@ -321,7 +346,9 @@ export class CapabilityResolver {
         name: tool.name,
         description: tool.description,
         category: tool.category,
-        requiresConfirmation: Boolean(tool.requiresConfirmation || policy?.defaultRequiresConfirmation),
+        requiresConfirmation: Boolean(
+          tool.requiresConfirmation || policy?.defaultRequiresConfirmation
+        ),
         requiresApproval: Boolean(policy?.defaultRequiresApproval),
         requiredRoles: tool.requiredRoles,
         parameters: tool.parameters,
@@ -344,7 +371,11 @@ export class CapabilityResolver {
       description: skill.description,
       triggerKeywords: skill.triggerKeywords,
       paramsSchema: skill.paramsSchema,
-      executionType: skill.carboneSkillId ? 'document' : skill.executionFlow?.length ? 'flow' : 'query',
+      executionType: skill.carboneSkillId
+        ? 'document'
+        : skill.executionFlow?.length
+          ? 'flow'
+          : 'query',
       templateId: skill.templateId,
       carboneSkillId: skill.carboneSkillId,
       carboneTemplateId: skill.carboneTemplateId,

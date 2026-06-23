@@ -63,7 +63,9 @@ function mapExcelBusinessFieldName(_label: string): string | undefined {
 }
 
 function buildExcelLoopFieldName(header: string, columnIndex: number): string {
-  return mapExcelBusinessFieldName(header) || buildAsciiIdentifier(header, `field${columnIndex + 1}`);
+  return (
+    mapExcelBusinessFieldName(header) || buildAsciiIdentifier(header, `field${columnIndex + 1}`)
+  );
 }
 
 function normalizeLoopArrayBasePath(arrayPath: string): string {
@@ -91,22 +93,25 @@ function stripSheetPrefix(address: string): string {
   return bangIndex >= 0 ? normalized.slice(bangIndex + 1) : normalized;
 }
 
-function parseR1C1Range(address: string): {
-  sheetName?: string;
-  startRow: number;
-  endRow: number;
-  startCol: number;
-  endCol: number;
-} | undefined {
+function parseR1C1Range(address: string):
+  | {
+      sheetName?: string;
+      startRow: number;
+      endRow: number;
+      startCol: number;
+      endCol: number;
+    }
+  | undefined {
   const normalized = normalizeText(address).replace(/\$/g, '');
   if (!normalized) {
     return undefined;
   }
 
   const bangIndex = normalized.lastIndexOf('!');
-  const sheetName = bangIndex >= 0
-    ? normalized.slice(0, bangIndex).replace(/^'/, '').replace(/'$/, '').replace(/''/g, '\'')
-    : undefined;
+  const sheetName =
+    bangIndex >= 0
+      ? normalized.slice(0, bangIndex).replace(/^'/, '').replace(/'$/, '').replace(/''/g, "'")
+      : undefined;
   const rangePart = bangIndex >= 0 ? normalized.slice(bangIndex + 1) : normalized;
   const match = rangePart.match(/^R(\d+)C(\d+)(?::R(\d+)C(\d+))?$/i);
   if (!match) {
@@ -122,22 +127,25 @@ function parseR1C1Range(address: string): {
   };
 }
 
-function parseA1Range(address: string): {
-  sheetName?: string;
-  startRow: number;
-  endRow: number;
-  startCol: number;
-  endCol: number;
-} | undefined {
+function parseA1Range(address: string):
+  | {
+      sheetName?: string;
+      startRow: number;
+      endRow: number;
+      startCol: number;
+      endCol: number;
+    }
+  | undefined {
   const normalized = normalizeText(address).replace(/\$/g, '');
   if (!normalized) {
     return undefined;
   }
 
   const bangIndex = normalized.lastIndexOf('!');
-  const sheetName = bangIndex >= 0
-    ? normalized.slice(0, bangIndex).replace(/^'/, '').replace(/'$/, '').replace(/''/g, '\'')
-    : undefined;
+  const sheetName =
+    bangIndex >= 0
+      ? normalized.slice(0, bangIndex).replace(/^'/, '').replace(/'$/, '').replace(/''/g, "'")
+      : undefined;
   const rangePart = bangIndex >= 0 ? normalized.slice(bangIndex + 1) : normalized;
   const r1c1Range = parseR1C1Range(address);
   if (r1c1Range) {
@@ -204,10 +212,15 @@ export function buildExcelColumnMappingsForTable(
   const normalizedArrayPath = normalizeLoopArrayBasePath(arrayPath);
   const sheets = extractExcelSheets(documentIR);
   const cells = extractExcelCells(documentIR);
-  const tableSheet = sheets.find((sheet) => normalizeText(sheet.name) === normalizeText(tableAnchor.sheetName));
-  const tableMeta = tableSheet?.tables.find((table) =>
-    (tableAnchor.tableName && normalizeText(table.name) === normalizeText(tableAnchor.tableName))
-    || (tableAnchor.startAddress && rangesOverlap(parseA1Range(table.address), parseA1Range(tableAnchor.startAddress)))
+  const tableSheet = sheets.find(
+    (sheet) => normalizeText(sheet.name) === normalizeText(tableAnchor.sheetName)
+  );
+  const tableMeta = tableSheet?.tables.find(
+    (table) =>
+      (tableAnchor.tableName &&
+        normalizeText(table.name) === normalizeText(tableAnchor.tableName)) ||
+      (tableAnchor.startAddress &&
+        rangesOverlap(parseA1Range(table.address), parseA1Range(tableAnchor.startAddress)))
   );
 
   if (!tableSheet || !tableMeta) {
@@ -223,17 +236,23 @@ export function buildExcelColumnMappingsForTable(
   const sampleRowIndex = headerRowIndex + 1;
   const mappings: ExcelColumnMapping[] = [];
 
-  for (let columnIndex = headerRange.startCol; columnIndex <= headerRange.endCol; columnIndex += 1) {
+  for (
+    let columnIndex = headerRange.startCol;
+    columnIndex <= headerRange.endCol;
+    columnIndex += 1
+  ) {
     const tableColumnIndex = columnIndex - headerRange.startCol;
-    const headerCell = cells.find((cell) =>
-      normalizeText(cell.sheetName) === normalizeText(tableSheet.name)
-      && cell.rowIndex === headerRowIndex
-      && cell.colIndex === columnIndex
+    const headerCell = cells.find(
+      (cell) =>
+        normalizeText(cell.sheetName) === normalizeText(tableSheet.name) &&
+        cell.rowIndex === headerRowIndex &&
+        cell.colIndex === columnIndex
     );
-    const sampleCell = cells.find((cell) =>
-      normalizeText(cell.sheetName) === normalizeText(tableSheet.name)
-      && cell.rowIndex === sampleRowIndex
-      && cell.colIndex === columnIndex
+    const sampleCell = cells.find(
+      (cell) =>
+        normalizeText(cell.sheetName) === normalizeText(tableSheet.name) &&
+        cell.rowIndex === sampleRowIndex &&
+        cell.colIndex === columnIndex
     );
     const headerName = normalizeText(headerCell?.text) || `列${tableColumnIndex + 1}`;
     const fieldName = buildExcelLoopFieldName(headerName, tableColumnIndex);
@@ -255,12 +274,16 @@ function buildExcelTableAnchorForSuggestion(
   fallbackPairIndex?: number
 ): ExcelTableAnchor | undefined {
   const sheets = extractExcelSheets(documentIR);
-  const requestedTableName = normalizeText(suggestion.details?.tableName || suggestion.originalText);
-  const requestedPosition = parseA1Range(suggestion.details?.displayPosition || suggestion.elementPath || '');
+  const requestedTableName = normalizeText(
+    suggestion.details?.tableName || suggestion.originalText
+  );
+  const requestedPosition = parseA1Range(
+    suggestion.details?.displayPosition || suggestion.elementPath || ''
+  );
   const candidateSheetName = normalizeText(
-    suggestion.details?.excelAnchor?.sheetName
-      || suggestion.details?.chapter
-      || requestedPosition?.sheetName
+    suggestion.details?.excelAnchor?.sheetName ||
+      suggestion.details?.chapter ||
+      requestedPosition?.sheetName
   );
 
   const candidateTables = sheets.flatMap((sheet) =>
@@ -330,8 +353,7 @@ export function expandExcelLoopColumnSuggestions(suggestions: AISuggestion[]): A
     if (suggestion.type === 'variable') {
       existingVariableKeys.add(normalizeText(suggestion.suggestedName));
       const arrayPath = normalizeLoopArrayBasePath(
-        suggestion.details?.arrayPath
-          || extractVariableArrayPath(suggestion.suggestedName)
+        suggestion.details?.arrayPath || extractVariableArrayPath(suggestion.suggestedName)
       );
       if (arrayPath) {
         explicitVariableArrayKeys.add(
@@ -348,12 +370,14 @@ export function expandExcelLoopColumnSuggestions(suggestions: AISuggestion[]): A
       continue;
     }
 
-    const tableAnchor = suggestion.details?.excelAnchor?.type === 'table'
-      ? suggestion.details.excelAnchor
-      : undefined;
+    const tableAnchor =
+      suggestion.details?.excelAnchor?.type === 'table'
+        ? suggestion.details.excelAnchor
+        : undefined;
     const headerRange = parseA1Range(tableAnchor?.startAddress || '');
     const bodyRange = parseA1Range(tableAnchor?.endAddress || '');
-    const firstDataRow = bodyRange?.startRow || (headerRange ? headerRange.startRow + 1 : undefined);
+    const firstDataRow =
+      bodyRange?.startRow || (headerRange ? headerRange.startRow + 1 : undefined);
     const startColumn = headerRange?.startCol ?? 0;
     const targetSheetName = tableAnchor?.sheetName || suggestion.details?.chapter || '';
 
@@ -370,13 +394,22 @@ export function expandExcelLoopColumnSuggestions(suggestions: AISuggestion[]): A
 
       const relativeColumnIndex = mapping.columnIndex ?? mappingIndex;
       const absoluteColumnIndex = startColumn + relativeColumnIndex;
-      const address = typeof firstDataRow === 'number'
-        ? `${toColumnName(absoluteColumnIndex)}${firstDataRow}`
-        : suggestion.elementPath;
-      const inferredFieldType = inferExcelFieldTypeWithLabel(mapping.sampleValue || '', '', mapping.headerName);
+      const address =
+        typeof firstDataRow === 'number'
+          ? `${toColumnName(absoluteColumnIndex)}${firstDataRow}`
+          : suggestion.elementPath;
+      const inferredFieldType = inferExcelFieldTypeWithLabel(
+        mapping.sampleValue || '',
+        '',
+        mapping.headerName
+      );
       const normalizedLoopArrayPath = normalizeLoopArrayBasePath(extractLoopArrayPath(suggestion));
 
-      if (explicitVariableArrayKeys.has(buildArrayExpansionKey(normalizedLoopArrayPath, tableAnchor?.pairIndex))) {
+      if (
+        explicitVariableArrayKeys.has(
+          buildArrayExpansionKey(normalizedLoopArrayPath, tableAnchor?.pairIndex)
+        )
+      ) {
         return;
       }
 
@@ -397,7 +430,11 @@ export function expandExcelLoopColumnSuggestions(suggestions: AISuggestion[]): A
           arrayPath: `${normalizedLoopArrayPath}[]`,
           tableName: suggestion.details?.tableName,
           chapter: suggestion.details?.chapter,
-          significance: buildExcelExtractionHint(mapping.headerName, variablePath, inferredFieldType),
+          significance: buildExcelExtractionHint(
+            mapping.headerName,
+            variablePath,
+            inferredFieldType
+          ),
           displayPosition: targetSheetName ? `${targetSheetName}!${address}` : address,
           context: `来自循环表 ${suggestion.details?.tableName || suggestion.originalText} 的列映射`,
           excelAnchor: targetSheetName
@@ -427,8 +464,7 @@ export function dedupeExcelArraySuggestions(suggestions: AISuggestion[]): AISugg
 
   for (const suggestion of suggestions) {
     const arrayPath = normalizeText(
-      suggestion.details?.arrayPath
-      || extractLoopArrayPath(suggestion)
+      suggestion.details?.arrayPath || extractLoopArrayPath(suggestion)
     );
     const tableName = normalizeText(suggestion.details?.tableName || '');
     const pairIndex = suggestion.details?.excelAnchor?.pairIndex;
@@ -485,7 +521,8 @@ function applyDefaultExcelSuggestionMetadata(
   suggestions: AISuggestion[],
   pair: ExcelPairSuggestionContext
 ): AISuggestion[] {
-  const templateSheetName = pair.mockSheet?.name || pair.dataSheet?.name || `对照组 ${pair.pairIndex + 1}`;
+  const templateSheetName =
+    pair.mockSheet?.name || pair.dataSheet?.name || `对照组 ${pair.pairIndex + 1}`;
   const templateSheetIndex = pair.mockSheet?.sheetIndex ?? pair.dataSheet?.sheetIndex;
   const chapter = templateSheetName;
 
@@ -525,39 +562,42 @@ function applyDefaultExcelSuggestionMetadata(
 
   return suggestions.map((suggestion) => {
     const inferredAnchorFromPosition = inferExcelAnchorFromPosition(suggestion);
-    const inferredTableAnchor = suggestion.type === 'loop'
-      ? buildExcelTableAnchorForSuggestion(pair.pairDocumentIR, suggestion, pair.pairIndex)
-      : undefined;
-    const rawExcelAnchor = suggestion.details?.excelAnchor
-      || inferredTableAnchor
-      || inferredAnchorFromPosition;
-    const excelAnchor = rawExcelAnchor?.type === 'table'
-      ? {
-          ...rawExcelAnchor,
-          sheetName: templateSheetName,
-          sheetIndex: templateSheetIndex,
-        }
-      : rawExcelAnchor?.type === 'cell'
+    const inferredTableAnchor =
+      suggestion.type === 'loop'
+        ? buildExcelTableAnchorForSuggestion(pair.pairDocumentIR, suggestion, pair.pairIndex)
+        : undefined;
+    const rawExcelAnchor =
+      suggestion.details?.excelAnchor || inferredTableAnchor || inferredAnchorFromPosition;
+    const excelAnchor =
+      rawExcelAnchor?.type === 'table'
         ? {
             ...rawExcelAnchor,
             sheetName: templateSheetName,
             sheetIndex: templateSheetIndex,
           }
-        : rawExcelAnchor;
+        : rawExcelAnchor?.type === 'cell'
+          ? {
+              ...rawExcelAnchor,
+              sheetName: templateSheetName,
+              sheetIndex: templateSheetIndex,
+            }
+          : rawExcelAnchor;
     const loopArrayPath = suggestion.type === 'loop' ? extractLoopArrayPath(suggestion) : '';
-    const tableExcelAnchor = excelAnchor?.type === 'table'
-      ? {
-          type: 'table' as const,
-          sheetName: excelAnchor.sheetName,
-          sheetIndex: excelAnchor.sheetIndex,
-          pairIndex: excelAnchor.pairIndex,
-          tableName: excelAnchor.tableName,
-          startAddress: excelAnchor.startAddress,
-          endAddress: excelAnchor.endAddress,
-        }
-      : undefined;
-    const columnMappings = suggestion.details?.columnMappings
-      || (suggestion.type === 'loop' && tableExcelAnchor && loopArrayPath
+    const tableExcelAnchor =
+      excelAnchor?.type === 'table'
+        ? {
+            type: 'table' as const,
+            sheetName: excelAnchor.sheetName,
+            sheetIndex: excelAnchor.sheetIndex,
+            pairIndex: excelAnchor.pairIndex,
+            tableName: excelAnchor.tableName,
+            startAddress: excelAnchor.startAddress,
+            endAddress: excelAnchor.endAddress,
+          }
+        : undefined;
+    const columnMappings =
+      suggestion.details?.columnMappings ||
+      (suggestion.type === 'loop' && tableExcelAnchor && loopArrayPath
         ? buildExcelColumnMappingsForTable(pair.pairDocumentIR, tableExcelAnchor, loopArrayPath)
         : undefined);
 
@@ -567,11 +607,8 @@ function applyDefaultExcelSuggestionMetadata(
         ...suggestion.details,
         chapter,
         description:
-          suggestion.details?.description ||
-          `AI 基于 ${pair.pairLabel} 的对照差异生成的模板化建议`,
-        significance:
-          suggestion.details?.significance ||
-          `来自 ${pair.pairLabel} 的对照分析结果`,
+          suggestion.details?.description || `AI 基于 ${pair.pairLabel} 的对照差异生成的模板化建议`,
+        significance: suggestion.details?.significance || `来自 ${pair.pairLabel} 的对照分析结果`,
         displayPosition:
           rewriteDisplayPositionSheet(
             suggestion.details?.displayPosition || suggestion.elementPath || pair.pairLabel,
@@ -590,8 +627,9 @@ function normalizeSuggestionPathForQualityCheck(value: string): string {
 }
 
 function isGenericFallbackSuggestedName(value: string): boolean {
-  return /^(?:d\.)?(?:[A-Za-z_][A-Za-z0-9_]*\[\]\.)?(field\d*|textValue|textField\d*|value\d*|var\d*|param\d*|undefined|null|unknown)$/i
-    .test(normalizeSuggestionPathForQualityCheck(value));
+  return /^(?:d\.)?(?:[A-Za-z_][A-Za-z0-9_]*\[\]\.)?(field\d*|textValue|textField\d*|value\d*|var\d*|param\d*|undefined|null|unknown)$/i.test(
+    normalizeSuggestionPathForQualityCheck(value)
+  );
 }
 
 export function normalizeExcelPairSuggestions(
@@ -601,7 +639,10 @@ export function normalizeExcelPairSuggestions(
   return dedupeExcelArraySuggestions(
     expandExcelLoopColumnSuggestions(
       applyDefaultExcelSuggestionMetadata(
-        annotateSuggestionSource((pairResponse.rawSuggestions || pairResponse.suggestions) as AISuggestion[], 'ai'),
+        annotateSuggestionSource(
+          (pairResponse.rawSuggestions || pairResponse.suggestions) as AISuggestion[],
+          'ai'
+        ),
         pair
       )
     )
@@ -631,7 +672,11 @@ export function evaluateExcelPairAttempt(
     qualityIssues.push('missing-loop');
   }
 
-  if (pairSuggestions.some((suggestion) => isGenericFallbackSuggestedName(suggestion.suggestedName || ''))) {
+  if (
+    pairSuggestions.some((suggestion) =>
+      isGenericFallbackSuggestedName(suggestion.suggestedName || '')
+    )
+  ) {
     qualityIssues.push('generic-name');
   }
 
@@ -668,7 +713,11 @@ export function summarizeSuggestionSources(suggestions: AISuggestion[]): {
     };
   }
 
-  if (distinctSources.includes('ai') && distinctSources.includes('heuristic') && distinctSources.length === 2) {
+  if (
+    distinctSources.includes('ai') &&
+    distinctSources.includes('heuristic') &&
+    distinctSources.length === 2
+  ) {
     return {
       resultSource: 'ai+heuristic',
       sourceCounts,

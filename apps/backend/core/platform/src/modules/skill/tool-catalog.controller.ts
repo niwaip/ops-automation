@@ -17,16 +17,13 @@ export class ToolCatalogController {
     @Query('category') category?: string,
     @Query('runtimeType') runtimeType?: string,
     @Query('allowSkillBinding') allowSkillBinding?: string,
-    @Query('keyword') keyword?: string,
+    @Query('keyword') keyword?: string
   ) {
     const tools = await this.toolCatalogService.listCatalog({
       status,
       category,
       runtimeType,
-      allowSkillBinding:
-        allowSkillBinding === undefined
-          ? undefined
-          : allowSkillBinding === 'true',
+      allowSkillBinding: allowSkillBinding === undefined ? undefined : allowSkillBinding === 'true',
       keyword,
     });
     return { tools };
@@ -41,10 +38,7 @@ export class ToolCatalogController {
 
   @Patch(':name')
   @Roles('admin')
-  async updateCatalogItem(
-    @Param('name') name: string,
-    @Body() body: UpdateToolCatalogDTO,
-  ) {
+  async updateCatalogItem(@Param('name') name: string, @Body() body: UpdateToolCatalogDTO) {
     const tool = await this.toolCatalogService.updateCatalogItem(name, body);
     return { tool };
   }

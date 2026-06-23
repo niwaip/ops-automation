@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   AddOrganizationMemberDto,
@@ -175,11 +171,7 @@ export class OrganizationService {
     return { team };
   }
 
-  async addMember(
-    orgId: string,
-    dto: AddOrganizationMemberDto,
-    actorUserId: string,
-  ) {
+  async addMember(orgId: string, dto: AddOrganizationMemberDto, actorUserId: string) {
     await this.ensureOrganizationExists(orgId);
 
     const user = await this.prisma.user.findUnique({

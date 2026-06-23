@@ -39,19 +39,28 @@ function normalizeRenderPath(renderPath: unknown): string[] {
   if (!Array.isArray(renderPath)) {
     return [];
   }
-  return Array.from(new Set(
-    renderPath
-      .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
-      .map((item) => item.trim()),
-  ));
+  return Array.from(
+    new Set(
+      renderPath
+        .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+        .map((item) => item.trim())
+    )
+  );
 }
 
 function normalizeLanguageCode(value: unknown): string | undefined {
-  const normalized = String(value || '').trim().toLowerCase();
+  const normalized = String(value || '')
+    .trim()
+    .toLowerCase();
   if (!normalized) {
     return undefined;
   }
-  if (normalized === 'cn' || normalized === 'zh-cn' || normalized === 'zh-hans' || normalized === 'zh-hans-cn') {
+  if (
+    normalized === 'cn' ||
+    normalized === 'zh-cn' ||
+    normalized === 'zh-hans' ||
+    normalized === 'zh-hans-cn'
+  ) {
     return 'zh';
   }
   if (normalized === 'jp' || normalized === 'ja-jp') {
@@ -71,7 +80,7 @@ function resolveBindingLanguage(
   localizedVariants: string[],
   index: number,
   sourceLanguage: string,
-  targetLanguages: string[],
+  targetLanguages: string[]
 ): string | undefined {
   const normalizedPath = String(variablePath || '').trim();
   if (/_((?:cn|zh))$/iu.test(normalizedPath)) {
@@ -101,11 +110,19 @@ function inferSelectorLanguage(
   localizedVariants: string[],
   index: number,
   sourceLanguage: string,
-  targetLanguages: string[],
+  targetLanguages: string[]
 ): string {
-  return resolveBindingLanguage(variablePath, localizedVariants, index, sourceLanguage, targetLanguages)
-    || normalizeLanguageCode(definition.sourceLanguage)
-    || sourceLanguage;
+  return (
+    resolveBindingLanguage(
+      variablePath,
+      localizedVariants,
+      index,
+      sourceLanguage,
+      targetLanguages
+    ) ||
+    normalizeLanguageCode(definition.sourceLanguage) ||
+    sourceLanguage
+  );
 }
 
 function inferFieldSpecType(definition: WorkflowRuntimeInputDefinition): string {
@@ -116,25 +133,32 @@ function inferFieldSpecType(definition: WorkflowRuntimeInputDefinition): string 
 
 function inferFieldSpecPolicy(
   definition: WorkflowRuntimeInputDefinition,
-  type: string,
+  type: string
 ): WorkflowTemplateFieldSpec['policy'] | undefined {
   if (
-    definition.policy === 'dictionary_first'
-    || definition.policy === 'enum_mapping'
-    || definition.policy === 'format_only'
-    || definition.policy === 'llm_translate'
+    definition.policy === 'dictionary_first' ||
+    definition.policy === 'enum_mapping' ||
+    definition.policy === 'format_only' ||
+    definition.policy === 'llm_translate'
   ) {
     return definition.policy;
   }
 
-  if (type === 'date' || type === 'currency_amount' || type === 'bank_account' || type === 'number') {
+  if (
+    type === 'date' ||
+    type === 'currency_amount' ||
+    type === 'bank_account' ||
+    type === 'number'
+  ) {
     return 'format_only';
   }
 
   return undefined;
 }
 
-function inferValueMode(definition: WorkflowRuntimeInputDefinition): WorkflowTemplateFieldSpec['valueMode'] {
+function inferValueMode(
+  definition: WorkflowRuntimeInputDefinition
+): WorkflowTemplateFieldSpec['valueMode'] {
   if (definition.valueMode === 'list' || definition.type === 'array') {
     return 'list';
   }
@@ -156,7 +180,7 @@ function inferTransform(type: string): string {
 
 function resolveRequired(
   definition: WorkflowRuntimeInputDefinition,
-  policy: WorkflowRuntimeInputDefinition,
+  policy: WorkflowRuntimeInputDefinition
 ): boolean {
   if (typeof definition.required === 'boolean') {
     return definition.required;
@@ -170,10 +194,12 @@ export function buildWorkflowRuntimeCompatConfig(input: {
   inputPolicy?: Record<string, unknown>;
   sourceLanguage: string;
   targetLanguages: string[];
-}): {
-  templateFieldSpecs: WorkflowTemplateFieldSpec[];
-  carboneBindingPlan: WorkflowBindingPlan;
-} | undefined {
+}):
+  | {
+      templateFieldSpecs: WorkflowTemplateFieldSpec[];
+      carboneBindingPlan: WorkflowBindingPlan;
+    }
+  | undefined {
   const entries = Object.entries(input.inputParams || {});
   if (entries.length === 0) {
     return undefined;
@@ -183,26 +209,30 @@ export function buildWorkflowRuntimeCompatConfig(input: {
   const bindings: WorkflowBindingPlanBinding[] = [];
   const bindingKeys = new Set<string>();
   const normalizedSourceLanguage = normalizeLanguageCode(input.sourceLanguage) || 'zh';
-  const normalizedTargetLanguages = Array.from(new Set(
-    (input.targetLanguages || [])
-      .map((item) => normalizeLanguageCode(item))
-      .filter((item): item is string => Boolean(item) && item !== normalizedSourceLanguage),
-  ));
+  const normalizedTargetLanguages = Array.from(
+    new Set(
+      (input.targetLanguages || [])
+        .map((item) => normalizeLanguageCode(item))
+        .filter((item): item is string => Boolean(item) && item !== normalizedSourceLanguage)
+    )
+  );
   const policies = (
-    input.inputPolicy
-    && typeof input.inputPolicy.params === 'object'
-    && !Array.isArray(input.inputPolicy.params)
+    input.inputPolicy &&
+    typeof input.inputPolicy.params === 'object' &&
+    !Array.isArray(input.inputPolicy.params)
       ? input.inputPolicy.params
       : input.inputPolicy
   ) as Record<string, unknown> | undefined;
 
   for (const [fieldId, rawDefinition] of entries) {
-    const definition = rawDefinition && typeof rawDefinition === 'object'
-      ? rawDefinition as WorkflowRuntimeInputDefinition
-      : {};
-    const policy = policies?.[fieldId] && typeof policies[fieldId] === 'object'
-      ? policies[fieldId] as WorkflowRuntimeInputDefinition
-      : {};
+    const definition =
+      rawDefinition && typeof rawDefinition === 'object'
+        ? (rawDefinition as WorkflowRuntimeInputDefinition)
+        : {};
+    const policy =
+      policies?.[fieldId] && typeof policies[fieldId] === 'object'
+        ? (policies[fieldId] as WorkflowRuntimeInputDefinition)
+        : {};
     const renderPaths = normalizeRenderPath(definition.renderPath ?? policy.templateBinding);
     if (renderPaths.length === 0) {
       continue;
@@ -221,22 +251,24 @@ export function buildWorkflowRuntimeCompatConfig(input: {
       valueMode,
       type,
       ...(fieldPolicy ? { policy: fieldPolicy } : {}),
-      description: typeof definition.description === 'string' ? definition.description.trim() : undefined,
+      description:
+        typeof definition.description === 'string' ? definition.description.trim() : undefined,
       sourceLanguage: normalizeLanguageCode(definition.sourceLanguage) || normalizedSourceLanguage,
       targetLanguages: normalizedTargetLanguages,
       required,
     });
 
     renderPaths.forEach((variablePath, index) => {
-      const language = valueMode === 'scalar'
-        ? resolveBindingLanguage(
-          variablePath,
-          localizedVariants,
-          index,
-          normalizedSourceLanguage,
-          normalizedTargetLanguages,
-        )
-        : undefined;
+      const language =
+        valueMode === 'scalar'
+          ? resolveBindingLanguage(
+              variablePath,
+              localizedVariants,
+              index,
+              normalizedSourceLanguage,
+              normalizedTargetLanguages
+            )
+          : undefined;
       const bindingKey = `${fieldId}::${variablePath}`;
       if (bindingKeys.has(bindingKey)) {
         return;
@@ -245,16 +277,17 @@ export function buildWorkflowRuntimeCompatConfig(input: {
       bindings.push({
         fieldId,
         variablePath,
-        valueSelector: valueMode === 'scalar'
-          ? `${fieldId}.${inferSelectorLanguage(
-            definition,
-            variablePath,
-            localizedVariants,
-            index,
-            normalizedSourceLanguage,
-            normalizedTargetLanguages,
-          )}`
-          : `${fieldId}.value`,
+        valueSelector:
+          valueMode === 'scalar'
+            ? `${fieldId}.${inferSelectorLanguage(
+                definition,
+                variablePath,
+                localizedVariants,
+                index,
+                normalizedSourceLanguage,
+                normalizedTargetLanguages
+              )}`
+            : `${fieldId}.value`,
         language,
         transform: inferTransform(type),
         required,
@@ -266,16 +299,17 @@ export function buildWorkflowRuntimeCompatConfig(input: {
           valueMode,
           variablePath,
           language: language || null,
-          valueSelector: valueMode === 'scalar'
-            ? `${fieldId}.${inferSelectorLanguage(
-              definition,
-              variablePath,
-              localizedVariants,
-              index,
-              normalizedSourceLanguage,
-              normalizedTargetLanguages,
-            )}`
-            : `${fieldId}.value`,
+          valueSelector:
+            valueMode === 'scalar'
+              ? `${fieldId}.${inferSelectorLanguage(
+                  definition,
+                  variablePath,
+                  localizedVariants,
+                  index,
+                  normalizedSourceLanguage,
+                  normalizedTargetLanguages
+                )}`
+              : `${fieldId}.value`,
           localizedVariants,
           sourceLanguage: normalizedSourceLanguage,
           targetLanguages: normalizedTargetLanguages,

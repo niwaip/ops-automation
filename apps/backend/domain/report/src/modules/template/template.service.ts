@@ -1,9 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import {
-  CreateReportTemplateDTO,
-  UpdateReportTemplateDTO,
-} from './template.dto';
+import { CreateReportTemplateDTO, UpdateReportTemplateDTO } from './template.dto';
 import {
   AIConfig,
   NotificationConfig,
@@ -31,9 +28,7 @@ type ReportTemplateRecord = {
 export class TemplateService {
   private readonly logger = new Logger(TemplateService.name);
 
-  constructor(
-    private readonly prisma: PrismaService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async create(dto: CreateReportTemplateDTO): Promise<ReportTemplateDTO> {
     this.logger.log(`Creating report template: ${dto.name}`);

@@ -1,8 +1,17 @@
 import { BadRequestException } from '@nestjs/common';
 import axios from 'axios';
-import { APPROVAL_STATUS, EXECUTION_EVENT_TYPE, EXECUTION_STATUS, EXECUTION_STEP_STATUS } from '../src/modules/execution';
+import {
+  APPROVAL_STATUS,
+  EXECUTION_EVENT_TYPE,
+  EXECUTION_STATUS,
+  EXECUTION_STEP_STATUS,
+} from '../src/modules/execution';
 import { ExecutionService } from '../src/modules/execution/execution.service';
-import { ApprovalDecisionDto, SubmitInputDto, TakeoverExecutionDto } from '../src/modules/execution/execution.dto';
+import {
+  ApprovalDecisionDto,
+  SubmitInputDto,
+  TakeoverExecutionDto,
+} from '../src/modules/execution/state/execution.dto';
 
 jest.mock('axios');
 
@@ -40,7 +49,9 @@ describe('ExecutionService.fetchSkillDefaultResolution', () => {
 
     const service = new ExecutionService({} as never, {} as never, {} as never, {} as never);
 
-    await expect((service as any).fetchSkillDefaultResolution('skill-1', 'Bearer token-1')).resolves.toEqual({
+    await expect(
+      (service as any).fetchSkillDefaultResolution('skill-1', 'Bearer token-1')
+    ).resolves.toEqual({
       input: {
         username: 'flow-user',
         loginCredential: 'secret',
@@ -52,22 +63,14 @@ describe('ExecutionService.fetchSkillDefaultResolution', () => {
         retryCount: 'default',
       },
     });
-    expect(mockedAxios.get).toHaveBeenNthCalledWith(
-      1,
-      expect.stringContaining('/skills/skill-1'),
-      {
-        headers: { Authorization: 'Bearer token-1' },
-        timeout: 10000,
-      },
-    );
-    expect(mockedAxios.get).toHaveBeenNthCalledWith(
-      2,
-      expect.stringContaining('/flows/flow-1'),
-      {
-        headers: { Authorization: 'Bearer token-1' },
-        timeout: 10000,
-      },
-    );
+    expect(mockedAxios.get).toHaveBeenNthCalledWith(1, expect.stringContaining('/skills/skill-1'), {
+      headers: { Authorization: 'Bearer token-1' },
+      timeout: 10000,
+    });
+    expect(mockedAxios.get).toHaveBeenNthCalledWith(2, expect.stringContaining('/flows/flow-1'), {
+      headers: { Authorization: 'Bearer token-1' },
+      timeout: 10000,
+    });
   });
 
   it('uses internal auth headers when no bearer token is available', async () => {
@@ -87,10 +90,12 @@ describe('ExecutionService.fetchSkillDefaultResolution', () => {
     try {
       const service = new ExecutionService({} as never, {} as never, {} as never, {} as never);
 
-      await expect((service as any).fetchSkillDefaultResolution('skill-1', undefined, {
-        id: 'user-1',
-        role: 'admin',
-      })).resolves.toEqual({
+      await expect(
+        (service as any).fetchSkillDefaultResolution('skill-1', undefined, {
+          id: 'user-1',
+          role: 'admin',
+        })
+      ).resolves.toEqual({
         input: {
           startUrl: 'http://example.test/login',
         },
@@ -98,17 +103,14 @@ describe('ExecutionService.fetchSkillDefaultResolution', () => {
           startUrl: 'default',
         },
       });
-      expect(mockedAxios.get).toHaveBeenCalledWith(
-        expect.stringContaining('/skills/skill-1'),
-        {
-          headers: {
-            'X-Internal-Auth': 'internal-secret',
-            'X-User-Id': 'user-1',
-            'X-User-Role': 'admin',
-          },
-          timeout: 10000,
+      expect(mockedAxios.get).toHaveBeenCalledWith(expect.stringContaining('/skills/skill-1'), {
+        headers: {
+          'X-Internal-Auth': 'internal-secret',
+          'X-User-Id': 'user-1',
+          'X-User-Role': 'admin',
         },
-      );
+        timeout: 10000,
+      });
     } finally {
       if (originalInternalSecret === undefined) {
         delete process.env.INTERNAL_API_SHARED_SECRET;
@@ -150,7 +152,9 @@ describe('ExecutionService.fetchSkillDefaultResolution', () => {
 
     const service = new ExecutionService({} as never, {} as never, {} as never, {} as never);
 
-    await expect((service as any).fetchSkillDefaultResolution('skill-1', 'Bearer token-1')).resolves.toEqual({
+    await expect(
+      (service as any).fetchSkillDefaultResolution('skill-1', 'Bearer token-1')
+    ).resolves.toEqual({
       input: {
         username: 'flow-user',
         loginCredential: 'policy-secret',
@@ -383,9 +387,11 @@ describe('ExecutionService.submitInputAndResume', () => {
     prisma.execution.findUnique.mockResolvedValue(baseExecution);
     prisma.executionStep.findUnique.mockResolvedValue(baseStep);
 
-    await expect(service.submitInputAndResume('execution-1', 'user-1', dto)).rejects.toThrow(BadRequestException);
     await expect(service.submitInputAndResume('execution-1', 'user-1', dto)).rejects.toThrow(
-      'Unexpected input fields: unexpected',
+      BadRequestException
+    );
+    await expect(service.submitInputAndResume('execution-1', 'user-1', dto)).rejects.toThrow(
+      'Unexpected input fields: unexpected'
     );
   });
 
@@ -602,7 +608,7 @@ describe('ExecutionService.submitInputAndResume', () => {
           semantic: expect.objectContaining({
             previewReady: false,
             finalReady: false,
-            summary: '文档仍缺少 1 个关键业务组。',
+            summary: '仍缺少 1 个必填参数。',
             groupedMissing: [
               expect.objectContaining({
                 key: 'info.partyB',
@@ -696,13 +702,36 @@ describe('ExecutionService.submitInputAndResume', () => {
           input: {},
           requiredInputs: [
             expect.objectContaining({ name: 'otherTerms', missing: true, source: 'unresolved' }),
-            expect.objectContaining({ name: 'installationCondition', missing: true, source: 'unresolved' }),
-            expect.objectContaining({ name: 'deliveryItems[].installationDate', missing: true, source: 'unresolved' }),
+            expect.objectContaining({
+              name: 'installationCondition',
+              missing: true,
+              source: 'unresolved',
+            }),
+            expect.objectContaining({
+              name: 'deliveryItems[].installationDate',
+              missing: true,
+              source: 'unresolved',
+            }),
           ],
           paramResolution: {
-            otherTerms: expect.objectContaining({ missing: true, source: 'unresolved', final: false, value: undefined }),
-            installationCondition: expect.objectContaining({ missing: true, source: 'unresolved', final: false, value: undefined }),
-            'deliveryItems[].installationDate': expect.objectContaining({ missing: true, source: 'unresolved', final: false, value: undefined }),
+            otherTerms: expect.objectContaining({
+              missing: true,
+              source: 'unresolved',
+              final: false,
+              value: undefined,
+            }),
+            installationCondition: expect.objectContaining({
+              missing: true,
+              source: 'unresolved',
+              final: false,
+              value: undefined,
+            }),
+            'deliveryItems[].installationDate': expect.objectContaining({
+              missing: true,
+              source: 'unresolved',
+              final: false,
+              value: undefined,
+            }),
           },
           otherTerms: undefined,
           installationCondition: undefined,
@@ -910,7 +939,7 @@ describe('ExecutionService waiting_input semantic passthrough', () => {
       'runtime-1',
       'step-1',
       [{ name: 'url', type: 'string' }],
-      'missing fields',
+      'missing fields'
     );
 
     expect((service as any).createEvent).toHaveBeenCalledWith(
@@ -924,7 +953,7 @@ describe('ExecutionService waiting_input semantic passthrough', () => {
       expect.objectContaining({
         runtimeSessionId: 'runtime-1',
         stepId: 'step-1',
-      }),
+      })
     );
   });
 });
@@ -988,7 +1017,10 @@ describe('ExecutionService approval flow', () => {
         approvalStatus: APPROVAL_STATUS.APPROVED,
       },
     });
-    expect((service as any).updateStatus).toHaveBeenCalledWith('execution-approve', EXECUTION_STATUS.QUEUED);
+    expect((service as any).updateStatus).toHaveBeenCalledWith(
+      'execution-approve',
+      EXECUTION_STATUS.QUEUED
+    );
     expect((service as any).startExecution).toHaveBeenCalledWith('execution-approve');
     expect(response).toBe(result);
   });
@@ -1024,7 +1056,10 @@ describe('ExecutionService approval flow', () => {
         failureCode: 'APPROVAL_REJECTED',
       },
     });
-    expect((service as any).updateStatus).toHaveBeenCalledWith('execution-reject', EXECUTION_STATUS.CANCELLED);
+    expect((service as any).updateStatus).toHaveBeenCalledWith(
+      'execution-reject',
+      EXECUTION_STATUS.CANCELLED
+    );
     expect(response).toBe(result);
   });
 });
@@ -1096,7 +1131,7 @@ describe('ExecutionService takeover and cancel flow', () => {
     });
     expect(mockedAxios.post).toHaveBeenCalledWith(
       'http://session-broker:3002/runtime-sessions/runtime-1/freeze',
-      { reason: 'Captcha detected' },
+      { reason: 'Captcha detected' }
     );
     expect(prisma.executionEvent.create).toHaveBeenCalledWith({
       data: {
@@ -1135,11 +1170,11 @@ describe('ExecutionService takeover and cancel flow', () => {
 
     expect((service as any).updateStatus).toHaveBeenCalledWith(
       'execution-cancel',
-      EXECUTION_STATUS.CANCELLED,
+      EXECUTION_STATUS.CANCELLED
     );
     expect(mockedAxios.post).toHaveBeenCalledWith(
       'http://session-broker:3002/runtime-sessions/runtime-2/close',
-      {},
+      {}
     );
     expect(prisma.executionEvent.create).toHaveBeenCalledWith({
       data: {
@@ -1200,7 +1235,7 @@ describe('ExecutionService.startExecution runtime selection', () => {
 
     expect((service as any).updateStatus).toHaveBeenCalledWith(
       'execution-non-browser',
-      EXECUTION_STATUS.RUNNING,
+      EXECUTION_STATUS.RUNNING
     );
     expect((service as any).createEvent).toHaveBeenCalledWith(
       'execution-non-browser',
@@ -1208,11 +1243,11 @@ describe('ExecutionService.startExecution runtime selection', () => {
       {
         runtimeType: 'sandbox',
         mode: 'non_browser_runtime',
-      },
+      }
     );
     expect((service as any).advanceExecutionFlow).toHaveBeenCalledWith(
       'execution-non-browser',
-      'execution-non-browser',
+      'execution-non-browser'
     );
   });
 });
@@ -1267,14 +1302,14 @@ describe('ExecutionService.bootstrapBrowserExecution', () => {
           query: 'mcp',
         },
       },
-      'runtime-browser-skill-1',
+      'runtime-browser-skill-1'
     );
 
     expect(prisma.executionStep.findFirst).not.toHaveBeenCalled();
     expect(prisma.executionStep.create).not.toHaveBeenCalled();
     expect((service as any).advanceExecutionFlow).toHaveBeenCalledWith(
       'execution-browser-skill-1',
-      'runtime-browser-skill-1',
+      'runtime-browser-skill-1'
     );
   });
 });
@@ -1322,16 +1357,16 @@ describe('ExecutionService runtime session close on terminal state', () => {
 
     expect((service as any).updateStatus).toHaveBeenCalledWith(
       'execution-terminal-1',
-      EXECUTION_STATUS.SUCCEEDED,
+      EXECUTION_STATUS.SUCCEEDED
     );
     expect((service as any).completeActivePhasesOnExecutionSuccess).toHaveBeenCalledWith(
       'execution-terminal-1',
-      'runtime-terminal-1',
+      'runtime-terminal-1'
     );
     expect((service as any).closeRuntimeSessionQuietly).toHaveBeenCalledWith(
       'runtime-terminal-1',
       'execution-terminal-1',
-      'execution_succeeded',
+      'execution_succeeded'
     );
   });
 
@@ -1356,12 +1391,12 @@ describe('ExecutionService runtime session close on terminal state', () => {
     });
     expect((service as any).updateStatus).toHaveBeenCalledWith(
       'execution-terminal-2',
-      EXECUTION_STATUS.FAILED,
+      EXECUTION_STATUS.FAILED
     );
     expect((service as any).closeRuntimeSessionQuietly).toHaveBeenCalledWith(
       'runtime-terminal-2',
       'execution-terminal-2',
-      'runtime_step_failed',
+      'runtime_step_failed'
     );
   });
 });
@@ -1393,7 +1428,9 @@ describe('ExecutionService.create planner draft reuse', () => {
     const service = new ExecutionService(prisma as never, {} as never, {} as never, {} as never);
     const serviceInternals = service as any;
     jest.spyOn(serviceInternals, 'assertSkillAccessibleByUser').mockResolvedValue(undefined);
-    jest.spyOn(serviceInternals, 'fetchSkillDefaultResolution').mockResolvedValue({ input: {}, sources: {} });
+    jest
+      .spyOn(serviceInternals, 'fetchSkillDefaultResolution')
+      .mockResolvedValue({ input: {}, sources: {} });
     jest.spyOn(serviceInternals, 'generatePlanDraft').mockResolvedValue(undefined);
     jest.spyOn(serviceInternals, 'createPlannedSteps').mockResolvedValue(undefined);
     jest.spyOn(serviceInternals, 'startExecution').mockResolvedValue(undefined);
@@ -1450,7 +1487,7 @@ describe('ExecutionService.create planner draft reuse', () => {
       },
       {
         authToken: 'Bearer token-1',
-      },
+      }
     );
 
     expect((service as any).generatePlanDraft).not.toHaveBeenCalled();
@@ -1485,7 +1522,7 @@ describe('ExecutionService.create planner draft reuse', () => {
       },
       {
         authToken: 'Bearer token-1',
-      },
+      }
     );
 
     expect((service as any).generatePlanDraft).not.toHaveBeenCalled();
@@ -1504,7 +1541,7 @@ describe('ExecutionService.create planner draft reuse', () => {
             status: 'planned',
           }),
         ],
-      }),
+      })
     );
     expect(prisma.execution.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
@@ -1599,7 +1636,7 @@ describe('ExecutionService.create planner draft reuse', () => {
       },
       {
         authToken: 'Bearer token-1',
-      },
+      }
     );
 
     expect(prisma.execution.create).toHaveBeenCalledWith({
@@ -1784,52 +1821,155 @@ describe('ExecutionService.create planner draft reuse', () => {
       },
       {
         authToken: 'Bearer token-1',
-      },
+      }
     );
 
-    const normalizedInput = prisma.execution.create.mock.calls[0][0].data.normalizedInputJson as Record<string, unknown>;
+    const normalizedInput = prisma.execution.create.mock.calls[0][0].data
+      .normalizedInputJson as Record<string, unknown>;
     const rewrittenSteps = normalizedInput.planSteps as Array<Record<string, unknown>>;
     expect(rewrittenSteps).toHaveLength(3);
-    expect(rewrittenSteps[0]).toEqual(expect.objectContaining({
-      title: '1. 页面打开',
-      phase_type: 'workflow_activity',
-    }));
-    expect(rewrittenSteps[0].commands).toEqual(expect.arrayContaining([
+    expect(rewrittenSteps[0]).toEqual(
       expect.objectContaining({
-        action: 'goto',
-        input: expect.objectContaining({
-          target: 'http://example.test/login',
-          args: expect.objectContaining({
-            url: 'http://example.test/login',
-          }),
-        }),
-      }),
-      expect.objectContaining({
-        action: 'fill',
-        input: expect.objectContaining({
-          target: 'textbox[name="Enter username"]',
-          args: expect.objectContaining({
-            selector: 'textbox[name="Enter username"]',
-            value: 'tester',
-          }),
-        }),
-      }),
-    ]));
-    expect(rewrittenSteps[2]).toEqual(expect.objectContaining({
-      title: '3. 页面迁移',
-      commands: [
+        title: '1. 页面打开',
+        phase_type: 'workflow_activity',
+      })
+    );
+    expect(rewrittenSteps[0].commands).toEqual(
+      expect.arrayContaining([
         expect.objectContaining({
-          action: 'wait',
+          action: 'goto',
           input: expect.objectContaining({
-            target: 'menuitem[name="Executions"]',
+            target: 'http://example.test/login',
             args: expect.objectContaining({
-              selector: 'menuitem[name="Executions"]',
-              duration: 15000,
+              url: 'http://example.test/login',
             }),
           }),
         }),
+        expect.objectContaining({
+          action: 'fill',
+          input: expect.objectContaining({
+            target: 'textbox[name="Enter username"]',
+            args: expect.objectContaining({
+              selector: 'textbox[name="Enter username"]',
+              value: 'tester',
+            }),
+          }),
+        }),
+      ])
+    );
+    expect(rewrittenSteps[2]).toEqual(
+      expect.objectContaining({
+        title: '3. 页面迁移',
+        commands: [
+          expect.objectContaining({
+            action: 'wait',
+            input: expect.objectContaining({
+              target: 'menuitem[name="Executions"]',
+              args: expect.objectContaining({
+                selector: 'menuitem[name="Executions"]',
+                duration: 15000,
+              }),
+            }),
+          }),
+        ],
+      })
+    );
+  });
+
+  it('keeps browser recording skills with loop draft as a direct skill execution during create', async () => {
+    const { service, prisma } = createService();
+
+    const providedPlanDraft = {
+      plan_id: 'plan-browser-loop-1',
+      planner_mode: 'skill',
+      objective: '登录并进入审批页面',
+      summary: '已识别浏览器技能',
+      skill_match: {
+        skill_id: 'skill-browser-loop-1',
+        skill_name: '登录并进入承认页面',
+        confidence: 1,
+      },
+      steps: [
+        {
+          id: 'raw-step-1',
+          title: '1. navigate',
+          description: '执行 1. navigate 步骤。',
+          kind: 'tool',
+          status: 'planned',
+          tool_name: '1. navigate',
+        },
       ],
-    }));
+      required_inputs: [
+        {
+          name: 'username',
+          type: 'string',
+          required: true,
+          value: 'tester',
+          missing: false,
+          source: 'user_input',
+        },
+      ],
+      risk_summary: {
+        level: 'low',
+        requires_human_review: false,
+        items: ['no_material_risk_detected'],
+      },
+    };
+
+    prisma.$queryRawUnsafe.mockResolvedValue([
+      {
+        source_type: 'browser_recording',
+        source_payload_json: {
+          apiEndpoints: {
+            runtimeMetadata: {
+              executionPlan: {
+                loopDraft: {
+                  mode: 'repeat_until',
+                },
+              },
+            },
+          },
+        },
+      },
+    ]);
+    prisma.execution.create.mockResolvedValue({
+      id: 'execution-create-loop-1',
+      requiresApproval: false,
+      createdBy: 'user-1',
+    });
+    prisma.executionEvent.create.mockResolvedValue(undefined);
+
+    await service.create(
+      'user-1',
+      {
+        skillId: 'skill-browser-loop-1',
+        runtimeType: 'browser',
+        input: {
+          username: 'tester',
+        },
+        planDraft: providedPlanDraft as any,
+      },
+      {
+        authToken: 'Bearer token-1',
+      }
+    );
+
+    const normalizedInput = prisma.execution.create.mock.calls[0][0].data
+      .normalizedInputJson as Record<string, unknown>;
+    const rewrittenSteps = normalizedInput.planSteps as Array<Record<string, unknown>>;
+    expect(rewrittenSteps).toHaveLength(1);
+    expect(rewrittenSteps[0]).toEqual(
+      expect.objectContaining({
+        id: 'execute_selected_skill',
+        kind: 'skill',
+        status: 'planned',
+      })
+    );
+    expect(rewrittenSteps[0].phase_type).toBeUndefined();
+    expect((normalizedInput.capabilityMatch as Record<string, unknown>).capabilityId).toBe(
+      'skill-browser-loop-1'
+    );
+    expect(normalizedInput.runtimeSourceType).toBe('browser_recording');
   });
 
   it('applies runtime defaults after planning so browser steps can execute without treating defaults as user input', async () => {
@@ -1976,10 +2116,11 @@ describe('ExecutionService.create planner draft reuse', () => {
       },
       {
         authToken: 'Bearer token-1',
-      },
+      }
     );
 
-    const normalizedInput = prisma.execution.create.mock.calls[0][0].data.normalizedInputJson as Record<string, unknown>;
+    const normalizedInput = prisma.execution.create.mock.calls[0][0].data
+      .normalizedInputJson as Record<string, unknown>;
     expect(normalizedInput.input).toEqual({
       prompt: '登录主页',
       startUrl: 'http://example.test/login',
@@ -2008,26 +2149,28 @@ describe('ExecutionService.create planner draft reuse', () => {
         final: true,
       }),
     });
-    expect(normalizedInput.requiredInputs).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        name: 'startUrl',
-        value: 'http://example.test/login',
-        missing: false,
-        source: 'default',
-      }),
-      expect.objectContaining({
-        name: 'username',
-        value: 'tester',
-        missing: false,
-        source: 'default',
-      }),
-      expect.objectContaining({
-        name: 'loginCredential',
-        value: 'secret',
-        missing: false,
-        source: 'workflow_default',
-      }),
-    ]));
+    expect(normalizedInput.requiredInputs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: 'startUrl',
+          value: 'http://example.test/login',
+          missing: false,
+          source: 'default',
+        }),
+        expect.objectContaining({
+          name: 'username',
+          value: 'tester',
+          missing: false,
+          source: 'default',
+        }),
+        expect.objectContaining({
+          name: 'loginCredential',
+          value: 'secret',
+          missing: false,
+          source: 'workflow_default',
+        }),
+      ])
+    );
     expect(normalizedInput.planSteps).toEqual([
       expect.objectContaining({
         commands: expect.arrayContaining([
@@ -2138,10 +2281,11 @@ describe('ExecutionService.create planner draft reuse', () => {
       },
       {
         authToken: 'Bearer token-1',
-      },
+      }
     );
 
-    const normalizedInput = prisma.execution.create.mock.calls[0][0].data.normalizedInputJson as Record<string, unknown>;
+    const normalizedInput = prisma.execution.create.mock.calls[0][0].data
+      .normalizedInputJson as Record<string, unknown>;
     expect(normalizedInput.input).toEqual({
       prompt: '登录主页',
     });
@@ -2154,19 +2298,21 @@ describe('ExecutionService.create planner draft reuse', () => {
         final: false,
       }),
     });
-    expect(normalizedInput.requiredInputs).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        name: 'loginCredential',
-        value: 'test123',
-        source: 'workflow_default',
-        missing: true,
-        needs_confirmation: true,
-        missing_reason: 'overall_low_confidence',
-      }),
-    ]));
+    expect(normalizedInput.requiredInputs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: 'loginCredential',
+          value: 'test123',
+          source: 'workflow_default',
+          missing: true,
+          needs_confirmation: true,
+          missing_reason: 'overall_low_confidence',
+        }),
+      ])
+    );
     expect((service as any).enterWaitingInput).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'execution-create-confirmation' }),
-      'step-waiting-input',
+      'step-waiting-input'
     );
     expect((service as any).startExecution).not.toHaveBeenCalled();
   });
@@ -2240,10 +2386,11 @@ describe('ExecutionService.create planner draft reuse', () => {
       },
       {
         authToken: 'Bearer token-1',
-      },
+      }
     );
 
-    const normalizedInput = prisma.execution.create.mock.calls[0][0].data.normalizedInputJson as Record<string, unknown>;
+    const normalizedInput = prisma.execution.create.mock.calls[0][0].data
+      .normalizedInputJson as Record<string, unknown>;
     expect(normalizedInput.paramResolution).toEqual({
       loginCredential: expect.objectContaining({
         value: 'test1234',
@@ -2253,15 +2400,17 @@ describe('ExecutionService.create planner draft reuse', () => {
         final: true,
       }),
     });
-    expect(normalizedInput.requiredInputs).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        name: 'loginCredential',
-        value: 'test1234',
-        source: 'user_input',
-        missing: false,
-        needs_confirmation: false,
-      }),
-    ]));
+    expect(normalizedInput.requiredInputs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: 'loginCredential',
+          value: 'test1234',
+          source: 'user_input',
+          missing: false,
+          needs_confirmation: false,
+        }),
+      ])
+    );
     expect((service as any).startExecution).toHaveBeenCalledWith('execution-create-confirmed');
   });
 
@@ -2407,10 +2556,11 @@ describe('ExecutionService.create planner draft reuse', () => {
       },
       {
         authToken: 'Bearer token-1',
-      },
+      }
     );
 
-    const normalizedInput = prisma.execution.create.mock.calls[0][0].data.normalizedInputJson as Record<string, unknown>;
+    const normalizedInput = prisma.execution.create.mock.calls[0][0].data
+      .normalizedInputJson as Record<string, unknown>;
     expect(normalizedInput.planSteps).toEqual([
       expect.objectContaining({
         commands: expect.arrayContaining([
@@ -2454,9 +2604,7 @@ describe('ExecutionService.create planner draft reuse', () => {
       status: 'succeeded',
     };
 
-    prisma.$queryRawUnsafe.mockResolvedValue([
-      { execution_id: 'execution-existing-1' },
-    ]);
+    prisma.$queryRawUnsafe.mockResolvedValue([{ execution_id: 'execution-existing-1' }]);
     jest.spyOn(service, 'getById').mockResolvedValue(existingExecution as never);
 
     const response = await service.create(
@@ -2469,7 +2617,7 @@ describe('ExecutionService.create planner draft reuse', () => {
       },
       {
         authToken: 'Bearer token-1',
-      },
+      }
     );
 
     expect(prisma.execution.create).not.toHaveBeenCalled();
@@ -2508,7 +2656,10 @@ describe('ExecutionService.cleanupBeforeDate', () => {
     prisma.executionEvent.deleteMany.mockResolvedValue({ count: 2 });
     prisma.execution.deleteMany.mockResolvedValue({ count: 2 });
 
-    const result = await service.cleanupBeforeDate('2026-05-13', 'user-1', { id: 'user-1', role: 'employee' } as any);
+    const result = await service.cleanupBeforeDate('2026-05-13', 'user-1', {
+      id: 'user-1',
+      role: 'employee',
+    } as any);
 
     expect(prisma.execution.findMany).toHaveBeenCalledWith({
       where: {
@@ -2588,7 +2739,7 @@ describe('ExecutionService.getById with phases', () => {
       {} as never,
       {} as never,
       undefined,
-      executionPhaseService as never,
+      executionPhaseService as never
     );
 
     const dto = await service.getById('execution-1', { id: 'user-1' });
@@ -2601,7 +2752,7 @@ describe('ExecutionService.getById with phases', () => {
         phaseKey: 'phase_login',
         phaseName: '登录阶段',
         phaseType: 'browser_login',
-      }),
+      })
     );
   });
 });
@@ -2642,7 +2793,7 @@ describe('ExecutionService.getPhases', () => {
       {} as never,
       {} as never,
       undefined,
-      executionPhaseService as never,
+      executionPhaseService as never
     );
 
     const phases = await service.getPhases('execution-1', { id: 'user-1' });
@@ -2704,7 +2855,7 @@ describe('ExecutionService phase sync during system execution', () => {
       markCompleted: jest.fn().mockResolvedValue(undefined),
       createOrUpdatePhase: jest.fn().mockResolvedValue(undefined),
       replaceArtifacts: jest.fn().mockResolvedValue(undefined),
-      replaceSteps: jest.fn().mockResolvedValue(undefined),
+      appendSteps: jest.fn().mockResolvedValue(undefined),
     };
     const executionStepService = {
       getById: jest.fn().mockResolvedValue({
@@ -2732,14 +2883,14 @@ describe('ExecutionService phase sync during system execution', () => {
       undefined,
       executionPhaseService as never,
       undefined,
-      executionStepService as never,
+      executionStepService as never
     );
     jest.spyOn(service as any, 'createEvent').mockResolvedValue(undefined);
 
     await (service as any).executeSystemSkillStep(
       { id: 'execution-1', skillId: 'skill-1', runtimeType: 'browser' },
       'runtime-1',
-      'step-1',
+      'step-1'
     );
 
     expect(executionPhaseService.markRunning).toHaveBeenCalledWith(
@@ -2748,7 +2899,7 @@ describe('ExecutionService phase sync during system execution', () => {
       expect.objectContaining({
         phaseName: '登录并进入主页',
         phaseType: 'system_skill',
-      }),
+      })
     );
     expect(executionPhaseService.markCompleted).toHaveBeenCalledWith(
       'execution-1',
@@ -2756,12 +2907,12 @@ describe('ExecutionService phase sync during system execution', () => {
       expect.objectContaining({
         phaseName: '登录并进入主页',
         phaseType: 'system_skill',
-      }),
+      })
     );
-    expect(executionPhaseService.replaceSteps).toHaveBeenCalledWith(
+    expect(executionPhaseService.appendSteps).toHaveBeenCalledWith(
       'execution-1',
       'phase_01_login_skill',
-      [],
+      []
     );
     expect(executionPhaseService.createOrUpdatePhase).not.toHaveBeenCalled();
   });
@@ -2847,7 +2998,7 @@ describe('ExecutionService phase sync during system execution', () => {
       markCompleted: jest.fn().mockResolvedValue(undefined),
       createOrUpdatePhase: jest.fn().mockResolvedValue(undefined),
       replaceArtifacts: jest.fn().mockResolvedValue(undefined),
-      replaceSteps: jest.fn().mockResolvedValue(undefined),
+      appendSteps: jest.fn().mockResolvedValue(undefined),
     };
     const executionStepService = {
       getById: jest.fn().mockResolvedValue({
@@ -2875,17 +3026,17 @@ describe('ExecutionService phase sync during system execution', () => {
       undefined,
       executionPhaseService as never,
       undefined,
-      executionStepService as never,
+      executionStepService as never
     );
     jest.spyOn(service as any, 'createEvent').mockResolvedValue(undefined);
 
     await (service as any).executeSystemSkillStep(
       { id: 'execution-1', skillId: 'skill-1', runtimeType: 'browser' },
       'runtime-1',
-      'step-1',
+      'step-1'
     );
 
-    expect(executionPhaseService.replaceSteps).toHaveBeenCalledWith(
+    expect(executionPhaseService.appendSteps).toHaveBeenCalledWith(
       'execution-1',
       'phase_01_execute_skill',
       [
@@ -2914,7 +3065,7 @@ describe('ExecutionService phase sync during system execution', () => {
             clicked: true,
           },
         }),
-      ],
+      ]
     );
   });
 
@@ -3052,14 +3203,14 @@ describe('ExecutionService phase sync during system execution', () => {
       undefined,
       executionPhaseService as never,
       undefined,
-      executionStepService as never,
+      executionStepService as never
     );
     jest.spyOn(service as any, 'createEvent').mockResolvedValue(undefined);
 
     await (service as any).executeSystemSkillStep(
       { id: 'execution-1', skillId: 'published-skill-1', runtimeType: 'browser' },
       'runtime-1',
-      'step-1',
+      'step-1'
     );
 
     expect(executionPhaseService.createOrUpdatePhase).toHaveBeenCalledWith(
@@ -3069,7 +3220,7 @@ describe('ExecutionService phase sync during system execution', () => {
         phaseName: '提交登录',
         phaseType: 'workflow_activity',
         status: 'pending',
-      }),
+      })
     );
     expect(executionPhaseService.markRunning.mock.calls).toEqual(
       expect.arrayContaining([
@@ -3082,7 +3233,7 @@ describe('ExecutionService phase sync during system execution', () => {
             runtimeSessionId: 'runtime-1',
           }),
         ],
-      ]),
+      ])
     );
     expect(executionPhaseService.markCompleted.mock.calls).toEqual(
       expect.arrayContaining([
@@ -3102,7 +3253,7 @@ describe('ExecutionService phase sync during system execution', () => {
             phaseType: 'workflow_activity',
           }),
         ],
-      ]),
+      ])
     );
   });
 
@@ -3157,7 +3308,7 @@ describe('ExecutionService phase sync during system execution', () => {
       undefined,
       executionPhaseService as never,
       undefined,
-      {} as never,
+      {} as never
     );
 
     await service.updateWorkflowActivityProgress(
@@ -3168,7 +3319,7 @@ describe('ExecutionService phase sync during system execution', () => {
         activityName: '2. 页面处理',
         runtimeSessionId: 'runtime-1',
       },
-      { id: 'user-1' },
+      { id: 'user-1' }
     );
 
     expect(executionPhaseService.createOrUpdatePhase).toHaveBeenNthCalledWith(
@@ -3177,7 +3328,7 @@ describe('ExecutionService phase sync during system execution', () => {
         executionId: 'execution-1',
         phaseKey: 'phase_01_execute_skill__activity_01_open',
         status: 'completed',
-      }),
+      })
     );
     expect(executionPhaseService.createOrUpdatePhase).toHaveBeenNthCalledWith(
       2,
@@ -3186,7 +3337,7 @@ describe('ExecutionService phase sync during system execution', () => {
         phaseKey: 'phase_01_execute_skill__activity_02_process',
         status: 'running',
         runtimeSessionId: 'runtime-1',
-      }),
+      })
     );
   });
 
@@ -3226,7 +3377,7 @@ describe('ExecutionService phase sync during system execution', () => {
       undefined,
       executionPhaseService as never,
       undefined,
-      {} as never,
+      {} as never
     );
 
     jest.spyOn(service as any, 'loadWorkflowActivityPhaseDefinitions').mockResolvedValue([
@@ -3270,7 +3421,7 @@ describe('ExecutionService phase sync during system execution', () => {
         phaseKey: 'phase_01_execute_skill',
         phaseName: '执行技能',
         phaseType: 'system_skill',
-      },
+      }
     );
 
     expect(executionPhaseService.createOrUpdatePhase).toHaveBeenCalledWith(
@@ -3280,7 +3431,7 @@ describe('ExecutionService phase sync during system execution', () => {
         phaseName: '2. 页面处理',
         status: 'failed',
         errorCode: 'CAPABILITY_RUNTIME_FAILED',
-      }),
+      })
     );
   });
 
@@ -3301,7 +3452,7 @@ describe('ExecutionService phase sync during system execution', () => {
       undefined,
       executionPhaseService as never,
       undefined,
-      {} as never,
+      {} as never
     );
 
     jest.spyOn(service as any, 'loadWorkflowActivityPhaseDefinitions').mockResolvedValue([
@@ -3360,7 +3511,7 @@ describe('ExecutionService phase sync during system execution', () => {
         phaseKey: 'phase_01_execute_skill',
         phaseName: '执行技能',
         phaseType: 'system_skill',
-      },
+      }
     );
 
     expect(executionPhaseService.markCompleted).toHaveBeenCalledWith(
@@ -3368,7 +3519,7 @@ describe('ExecutionService phase sync during system execution', () => {
       'phase_01_execute_skill__activity_01_open',
       expect.objectContaining({
         phaseName: '1. 页面打开',
-      }),
+      })
     );
     expect(executionPhaseService.createOrUpdatePhase).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -3379,12 +3530,27 @@ describe('ExecutionService phase sync during system execution', () => {
         errorCode: 'BROWSER_WORKER_EXECUTION_FAILED',
         errorMessage: '浏览器页面未进入预期状态',
         completedAt: null,
-      }),
+      })
     );
   });
 });
 
 describe('ExecutionService browser phase execution', () => {
+  it('extracts plain selector text from markdown wrapped browser read output', () => {
+    const service = new ExecutionService({} as never, {} as never, {} as never, {} as never);
+
+    expect(
+      (service as any).extractBrowserTextResult([
+        '### Result\n""\n### Ran Playwright code\n```js\nconsole.log("demo");\n```',
+      ])
+    ).toBe('');
+    expect(
+      (service as any).extractBrowserTextResult([
+        '### Result\n"保留中"\n### Ran Playwright code\n```js\nconsole.log("demo");\n```',
+      ])
+    ).toBe('保留中');
+  });
+
   it('routes execute_browser_phase planner steps through BrowserPhaseExecutor in the main flow', async () => {
     const prisma = {
       execution: {
@@ -3410,7 +3576,7 @@ describe('ExecutionService browser phase execution', () => {
       undefined,
       undefined,
       undefined,
-      executionStepService as never,
+      executionStepService as never
     );
     jest.spyOn(service as any, 'executeBrowserPhaseStep').mockResolvedValue(undefined);
 
@@ -3419,7 +3585,7 @@ describe('ExecutionService browser phase execution', () => {
     expect((service as any).executeBrowserPhaseStep).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'execution-1' }),
       'runtime-1',
-      'step-browser-phase',
+      'step-browser-phase'
     );
   });
 
@@ -3529,7 +3695,7 @@ describe('ExecutionService browser phase execution', () => {
       executionStepService as never,
       undefined,
       undefined,
-      browserPhaseExecutor as never,
+      browserPhaseExecutor as never
     );
     jest.spyOn(service as any, 'createEvent').mockResolvedValue(undefined);
     jest.spyOn(service as any, 'advanceExecutionFlow').mockResolvedValue(undefined);
@@ -3544,13 +3710,21 @@ describe('ExecutionService browser phase execution', () => {
         createdBy: 'user-1',
         riskLevel: 'L1',
         requiresApproval: false,
+        normalizedInputJson: {
+          input: {
+            username: 'admin',
+            loginCredential: 'admin',
+            grossMarginThreshold: '15',
+          },
+        },
       },
       'runtime-1',
-      'step-browser-phase',
+      'step-browser-phase'
     );
 
     expect(browserPhaseExecutor.execute).toHaveBeenCalledWith({
       executionId: 'execution-1',
+      executionStepId: 'step-browser-phase',
       phaseKey: 'phase_login',
       phaseName: '登录阶段',
       phaseType: 'browser_phase',
@@ -3589,6 +3763,9 @@ describe('ExecutionService browser phase execution', () => {
         },
       ],
       input: {
+        username: 'admin',
+        loginCredential: 'admin',
+        grossMarginThreshold: '15',
         description: '复用模板中的登录 phase commands',
         plannerStatus: 'planned',
       },
@@ -3616,7 +3793,7 @@ describe('ExecutionService browser phase execution', () => {
             completedCommands: 2,
           },
         }),
-      }),
+      })
     );
     expect((service as any).advanceExecutionFlow).toHaveBeenCalledWith('execution-1', 'runtime-1');
     expect((service as any).failExecutionFromRuntimeStep).not.toHaveBeenCalled();
@@ -3683,7 +3860,7 @@ describe('ExecutionService browser phase execution', () => {
       executionStepService as never,
       undefined,
       undefined,
-      browserPhaseExecutor as never,
+      browserPhaseExecutor as never
     );
     jest.spyOn(service as any, 'createEvent').mockResolvedValue(undefined);
     jest.spyOn(service as any, 'advanceExecutionFlow').mockResolvedValue(undefined);
@@ -3701,7 +3878,7 @@ describe('ExecutionService browser phase execution', () => {
         requiresApproval: false,
       },
       'runtime-1',
-      'step-browser-phase',
+      'step-browser-phase'
     );
 
     expect(executionStepService.finishRuntimeStep).toHaveBeenCalledWith(
@@ -3716,7 +3893,7 @@ describe('ExecutionService browser phase execution', () => {
           requiresTakeover: true,
           takeoverReason: 'selector not found',
         }),
-      }),
+      })
     );
     expect((service as any).takeover).toHaveBeenCalledWith(
       'execution-1',
@@ -3727,7 +3904,7 @@ describe('ExecutionService browser phase execution', () => {
       {
         id: 'system',
         role: 'admin',
-      },
+      }
     );
     expect((service as any).failExecutionFromRuntimeStep).not.toHaveBeenCalled();
     expect((service as any).advanceExecutionFlow).not.toHaveBeenCalled();
@@ -3756,7 +3933,7 @@ describe('ExecutionService browser phase execution', () => {
       undefined,
       undefined,
       undefined,
-      executionStepService as never,
+      executionStepService as never
     );
     jest.spyOn(service as any, 'createEvent').mockResolvedValue(undefined);
     jest.spyOn(service as any, 'advanceExecutionFlow').mockResolvedValue(undefined);
@@ -3796,12 +3973,12 @@ describe('ExecutionService browser phase execution', () => {
         snapshotId: 'snapshot-1',
         pageUrl: 'http://localhost:5173/dashboard',
         pageFingerprint: 'fingerprint-1',
-      },
+      }
     );
 
     expect(prisma.execution.update).toHaveBeenCalledWith({
       where: { id: 'execution-1' },
-      data: {
+      data: expect.objectContaining({
         resultJson: expect.objectContaining({
           temporalLink: 'https://temporal.example/workflow/1',
           status: 'completed',
@@ -3822,7 +3999,7 @@ describe('ExecutionService browser phase execution', () => {
             }),
           ],
         }),
-      },
+      }),
     });
     expect((service as any).advanceExecutionFlow).toHaveBeenCalledWith('execution-1', 'runtime-1');
   });
@@ -3879,7 +4056,7 @@ describe('ExecutionService phase takeover lifecycle', () => {
       {} as never,
       {} as never,
       undefined,
-      executionPhaseService as never,
+      executionPhaseService as never
     );
     jest.spyOn(service, 'getById').mockResolvedValue({ id: 'execution-1' } as never);
 
@@ -3888,7 +4065,7 @@ describe('ExecutionService phase takeover lifecycle', () => {
       'phase_login',
       'user-1',
       { reason: 'Captcha detected' },
-      { id: 'user-1' },
+      { id: 'user-1' }
     );
 
     expect(prisma.execution.update).toHaveBeenCalledWith({
@@ -3905,17 +4082,18 @@ describe('ExecutionService phase takeover lifecycle', () => {
       expect.objectContaining({
         phaseName: '登录阶段',
         phaseType: 'browser_login',
-      }),
+      })
     );
     expect(executionPhaseService.createTakeoverRecord).toHaveBeenCalled();
     expect(mockedAxios.post).toHaveBeenCalledWith(
       expect.stringContaining('/runtime-sessions/runtime-1/freeze'),
-      { reason: 'Captcha detected' },
+      { reason: 'Captcha detected' }
     );
   });
 
   it('resumes phase takeover and resolves takeover record before resuming runtime session', async () => {
-    const executionFindUnique = jest.fn()
+    const executionFindUnique = jest
+      .fn()
       .mockResolvedValueOnce({
         id: 'execution-1',
         createdBy: 'user-1',
@@ -3948,9 +4126,17 @@ describe('ExecutionService phase takeover lifecycle', () => {
         attempt: 2,
         runtime_session_id: 'runtime-1',
         input_json: { stepId: 'step-1' },
+        recovery_decision_json: {
+          patch: {
+            type: 'resolve_by_human',
+            failedStepId: 'step-1',
+            resumeFromStepId: 'step-2',
+          },
+        },
       }),
       resolveTakeoverRecord: jest.fn().mockResolvedValue(undefined),
       markRunning: jest.fn().mockResolvedValue(undefined),
+      createOrUpdatePhase: jest.fn().mockResolvedValue(undefined),
       listByExecutionId: jest.fn().mockResolvedValue([]),
     };
     const executionStepService = {
@@ -3974,7 +4160,7 @@ describe('ExecutionService phase takeover lifecycle', () => {
       undefined,
       executionPhaseService as never,
       undefined,
-      executionStepService as never,
+      executionStepService as never
     );
     jest.spyOn(service as any, 'updateStatus').mockResolvedValue(undefined);
     jest.spyOn(service as any, 'advanceExecutionFlow').mockResolvedValue(undefined);
@@ -3985,7 +4171,7 @@ describe('ExecutionService phase takeover lifecycle', () => {
       'phase_login',
       'user-1',
       { stepId: 'step-1', comment: 'Manual fix complete' },
-      { id: 'user-1' },
+      { id: 'user-1' }
     );
 
     expect(executionPhaseService.resolveTakeoverRecord).toHaveBeenCalledWith(
@@ -3993,28 +4179,33 @@ describe('ExecutionService phase takeover lifecycle', () => {
         executionId: 'execution-1',
         phaseId: 'phase-1',
         resolvedBy: 'user-1',
-      }),
+      })
     );
-    expect(executionPhaseService.markRunning).toHaveBeenCalledWith(
-      'execution-1',
-      'phase_login',
+    expect(executionPhaseService.createOrUpdatePhase).toHaveBeenCalledWith(
       expect.objectContaining({
+        executionId: 'execution-1',
+        phaseKey: 'phase_login',
+        status: 'running',
         phaseName: '登录阶段',
         phaseType: 'browser_login',
         attempt: 2,
-      }),
+      })
     );
-    expect(executionStepService.requeueFailedStep).toHaveBeenCalledWith('step-1');
-    expect((service as any).updateStatus).toHaveBeenCalledWith('execution-1', EXECUTION_STATUS.RUNNING);
+    expect(executionStepService.requeueFailedStep).not.toHaveBeenCalled();
+    expect((service as any).updateStatus).toHaveBeenCalledWith(
+      'execution-1',
+      EXECUTION_STATUS.RUNNING
+    );
     expect(mockedAxios.post).toHaveBeenCalledWith(
       expect.stringContaining('/runtime-sessions/runtime-1/resume'),
-      { stepId: 'step-1' },
+      expect.anything()
     );
     expect((service as any).advanceExecutionFlow).toHaveBeenCalledWith('execution-1', 'runtime-1');
   });
 
   it('resumes legacy human_control execution and restarts execution flow asynchronously', async () => {
-    const executionFindUnique = jest.fn()
+    const executionFindUnique = jest
+      .fn()
       .mockResolvedValueOnce({
         id: 'execution-1',
         createdBy: 'user-1',
@@ -4051,6 +4242,7 @@ describe('ExecutionService phase takeover lifecycle', () => {
       }),
       resolveTakeoverRecord: jest.fn().mockResolvedValue(undefined),
       markRunning: jest.fn().mockResolvedValue(undefined),
+      createOrUpdatePhase: jest.fn().mockResolvedValue(undefined),
       listByExecutionId: jest.fn().mockResolvedValue([]),
     };
     const executionStepService = {
@@ -4074,7 +4266,7 @@ describe('ExecutionService phase takeover lifecycle', () => {
       undefined,
       executionPhaseService as never,
       undefined,
-      executionStepService as never,
+      executionStepService as never
     );
     jest.spyOn(service as any, 'updateStatus').mockResolvedValue(undefined);
     jest.spyOn(service as any, 'advanceExecutionFlow').mockResolvedValue(undefined);
@@ -4084,12 +4276,12 @@ describe('ExecutionService phase takeover lifecycle', () => {
       'execution-1',
       'user-1',
       { stepId: 'step-1', comment: 'Continue after manual fix' },
-      { id: 'user-1' },
+      { id: 'user-1' }
     );
 
     expect(mockedAxios.post).toHaveBeenCalledWith(
       expect.stringContaining('/runtime-sessions/runtime-1/resume'),
-      { stepId: 'step-1' },
+      { stepId: 'step-1' }
     );
     expect(executionStepService.requeueFailedStep).toHaveBeenCalledWith('step-1');
     expect((service as any).advanceExecutionFlow).toHaveBeenCalledWith('execution-1', 'runtime-1');

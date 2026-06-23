@@ -50,7 +50,7 @@ describe('DocumentRenderTool', () => {
           generatedAt: new Date().toISOString(),
           version: 'v1',
         },
-      } as any,
+      } as any
     );
 
     expect(result.success).toBe(false);
@@ -115,7 +115,7 @@ describe('DocumentRenderTool', () => {
         documentContext: {
           selectedTemplateId: 'tpl-locked',
         },
-      } as any,
+      } as any
     );
 
     expect(result.success).toBe(true);
@@ -129,7 +129,7 @@ describe('DocumentRenderTool', () => {
         templateId: 'tpl-locked',
         simulatedData: { partyA: '甲方' },
         outputFormat: 'docx',
-      },
+      }
     );
     expect(mockedAxios.post).toHaveBeenNthCalledWith(
       2,
@@ -138,7 +138,7 @@ describe('DocumentRenderTool', () => {
         templateId: 'tpl-locked',
         data: { partyA: '甲方' },
         outputFormat: 'docx',
-      },
+      }
     );
   });
 
@@ -185,7 +185,7 @@ describe('DocumentRenderTool', () => {
           carboneTemplateId: 'tpl-contract',
           carboneSkillId: 'carbone-skill-9',
         },
-      } as any,
+      } as any
     );
 
     expect(result.success).toBe(true);
@@ -198,7 +198,7 @@ describe('DocumentRenderTool', () => {
         skillId: 'carbone-skill-9',
         simulatedData: { partyA: '甲方' },
         outputFormat: 'docx',
-      },
+      }
     );
     expect(mockedAxios.post).toHaveBeenNthCalledWith(
       2,
@@ -213,7 +213,7 @@ describe('DocumentRenderTool', () => {
           },
         },
         outputFormat: 'docx',
-      },
+      }
     );
   });
 
@@ -260,7 +260,7 @@ describe('DocumentRenderTool', () => {
           generatedAt: new Date().toISOString(),
           version: 'v1',
         },
-      } as any,
+      } as any
     );
 
     expect(result.success).toBe(false);

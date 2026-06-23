@@ -1,5 +1,10 @@
 import React from 'react';
-import type { DurationUnit, StepDurationField, HttpRequestStepConfig, StructuredTransformStepConfig } from './TemporalPage.types';
+import type {
+  DurationUnit,
+  StepDurationField,
+  HttpRequestStepConfig,
+  StructuredTransformStepConfig,
+} from './TemporalPage.types';
 
 export const DEFAULT_DURATION_UNIT: DurationUnit = 's';
 export const HTTP_REQUEST_STEP_CONFIG_KEY = '__httpRequest';

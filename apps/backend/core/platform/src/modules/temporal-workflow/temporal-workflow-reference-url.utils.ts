@@ -13,12 +13,8 @@ export async function fetchReferenceUrlExcerpt(referenceUrl: string): Promise<st
   });
 
   const contentType = String(response.headers?.['content-type'] || '');
-  const rawText = typeof response.data === 'string'
-    ? response.data
-    : JSON.stringify(response.data);
-  const normalizedText = contentType.includes('html')
-    ? stripHtmlToText(rawText)
-    : rawText;
+  const rawText = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
+  const normalizedText = contentType.includes('html') ? stripHtmlToText(rawText) : rawText;
 
   return normalizedText.replace(/\s+/g, ' ').trim().slice(0, 12000);
 }
@@ -36,14 +32,15 @@ function normalizeReferenceUrl(value: string): string {
   }
 
   const hostname = url.hostname.toLowerCase();
-  const isPrivateIpv4 = /^10\.|^127\.|^192\.168\.|^169\.254\./.test(hostname)
-    || /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname);
+  const isPrivateIpv4 =
+    /^10\.|^127\.|^192\.168\.|^169\.254\./.test(hostname) ||
+    /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname);
   if (
-    hostname === 'localhost'
-    || hostname === '0.0.0.0'
-    || hostname === '::1'
-    || hostname.endsWith('.local')
-    || isPrivateIpv4
+    hostname === 'localhost' ||
+    hostname === '0.0.0.0' ||
+    hostname === '::1' ||
+    hostname.endsWith('.local') ||
+    isPrivateIpv4
   ) {
     throw new BadRequestException('参考 URL 不允许访问本地或内网地址');
   }

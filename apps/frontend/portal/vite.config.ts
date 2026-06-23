@@ -4,19 +4,27 @@ import { existsSync } from 'fs';
 import path from 'path';
 
 const readEnv = (...keys: string[]): string | undefined => {
-  const configured = keys.find((key) => typeof process.env[key] === 'string' && process.env[key]?.trim());
+  const configured = keys.find(
+    (key) => typeof process.env[key] === 'string' && process.env[key]?.trim()
+  );
   return configured ? process.env[configured]?.trim() : undefined;
 };
 
-const getProxyTarget = (service: string, defaultPort: number, hostEnvKeys: string[] = [], portEnvKeys: string[] = []) => {
+const getProxyTarget = (
+  service: string,
+  defaultPort: number,
+  hostEnvKeys: string[] = [],
+  portEnvKeys: string[] = []
+) => {
   const host = readEnv(...hostEnvKeys) || (process.env.DOCKER_ENV ? service : 'localhost');
   const port = readEnv(...portEnvKeys) || String(defaultPort);
   return `http://${host}:${port}`;
 };
 
 const getCarboneProxyTarget = () => {
-  const host = readEnv('CARBONE_ENGINE_HOST')
-    || (process.env.DOCKER_ENV ? 'host.docker.internal' : 'localhost');
+  const host =
+    readEnv('CARBONE_ENGINE_HOST') ||
+    (process.env.DOCKER_ENV ? 'host.docker.internal' : 'localhost');
   const port = readEnv('CARBONE_ENGINE_PORT', 'CARBONE_PORT') || '3009';
   return `http://${host}:${port}`;
 };
@@ -49,7 +57,12 @@ export default defineConfig({
     },
     proxy: {
       '/api/auth': {
-        target: getProxyTarget('ops-platform', 3001, ['AUTH_SERVICE_HOST', 'PLATFORM_HOST'], ['AUTH_PORT', 'PLATFORM_PORT']),
+        target: getProxyTarget(
+          'ops-platform',
+          3001,
+          ['AUTH_SERVICE_HOST', 'PLATFORM_HOST'],
+          ['AUTH_PORT', 'PLATFORM_PORT']
+        ),
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
@@ -69,37 +82,82 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
       '/api/templates': {
-        target: getProxyTarget('ops-browser-template', 3005, ['BROWSER_TEMPLATE_HOST'], ['BROWSER_TEMPLATE_PORT', 'TEMPLATE_PORT']),
+        target: getProxyTarget(
+          'ops-browser-template',
+          3005,
+          ['BROWSER_TEMPLATE_HOST'],
+          ['BROWSER_TEMPLATE_PORT', 'TEMPLATE_PORT']
+        ),
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
       '/api/sessions': {
-        target: getProxyTarget('ops-session-broker', 3002, ['SESSION_BROKER_HOST'], ['SESSION_BROKER_PORT']),
+        target: getProxyTarget(
+          'ops-session-broker',
+          3002,
+          ['SESSION_BROKER_HOST'],
+          ['SESSION_BROKER_PORT']
+        ),
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
       '/api/runtime-sessions': {
-        target: getProxyTarget('ops-session-broker', 3002, ['SESSION_BROKER_HOST'], ['SESSION_BROKER_PORT']),
+        target: getProxyTarget(
+          'ops-session-broker',
+          3002,
+          ['SESSION_BROKER_HOST'],
+          ['SESSION_BROKER_PORT']
+        ),
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
       '/api/workers': {
-        target: getProxyTarget('ops-session-broker', 3002, ['SESSION_BROKER_HOST'], ['SESSION_BROKER_PORT']),
+        target: getProxyTarget(
+          'ops-session-broker',
+          3002,
+          ['SESSION_BROKER_HOST'],
+          ['SESSION_BROKER_PORT']
+        ),
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
       '/api/ai': {
-        target: getProxyTarget('ai-orchestrator', 3007, ['AI_ORCHESTRATOR_HOST'], ['AI_ORCHESTRATOR_PORT']),
+        target: getProxyTarget(
+          'ai-orchestrator',
+          3007,
+          ['AI_ORCHESTRATOR_HOST'],
+          ['AI_ORCHESTRATOR_PORT']
+        ),
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
-      '/api/browser': {
-        target: getProxyTarget('ops-browser-worker', 3004, ['BROWSER_WORKER_HOST'], ['BROWSER_WORKER_PORT']),
+      '/api/browser-semantics': {
+        target: getProxyTarget(
+          'ops-browser-semantics',
+          3006,
+          ['BROWSER_SEMANTICS_HOST'],
+          ['BROWSER_SEMANTICS_PORT']
+        ),
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
+        rewrite: (path) => path.replace(/^\/api\/browser-semantics/, ''),
+      },
+      '/api/browser-runtime': {
+        target: getProxyTarget(
+          'ops-browser-worker',
+          3004,
+          ['BROWSER_WORKER_HOST'],
+          ['BROWSER_WORKER_PORT']
+        ),
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/browser-runtime/, '/browser'),
       },
       '/api/executions': {
-        target: getProxyTarget('ops-control-plane', 3003, ['CONTROL_PLANE_HOST'], ['CONTROL_PLANE_PORT']),
+        target: getProxyTarget(
+          'ops-control-plane',
+          3003,
+          ['CONTROL_PLANE_HOST'],
+          ['CONTROL_PLANE_PORT']
+        ),
         changeOrigin: true,
       },
       '/api/report-templates': {

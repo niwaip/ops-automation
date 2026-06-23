@@ -1,8 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import {
-  DecideFailureRequest,
-  DecideFailureResponse,
-} from '../../interfaces';
+import { DecideFailureRequest, DecideFailureResponse } from '../../interfaces';
 
 /**
  * Retry Configuration
@@ -107,11 +104,7 @@ export class RetryService {
   /**
    * Record retry attempt
    */
-  recordRetryAttempt(
-    sessionId: string,
-    stepId: string,
-    error: string,
-  ): void {
+  recordRetryAttempt(sessionId: string, stepId: string, error: string): void {
     const retryCount = this.getRetryCount(sessionId, stepId);
 
     this.retryHistory.push({
@@ -140,7 +133,7 @@ export class RetryService {
   } {
     const totalRetries = this.retryHistory.length;
     const maxRetriesReached = this.retryHistory.filter(
-      (entry) => entry.retry_count >= this.defaultConfig.max_retries,
+      (entry) => entry.retry_count >= this.defaultConfig.max_retries
     ).length;
 
     return {
@@ -163,9 +156,7 @@ export class RetryService {
       'temporary_error',
     ];
 
-    return retryableErrors.some((e) =>
-      errorType.toLowerCase().includes(e.toLowerCase()),
-    );
+    return retryableErrors.some((e) => errorType.toLowerCase().includes(e.toLowerCase()));
   }
 
   /**
@@ -173,7 +164,7 @@ export class RetryService {
    */
   determineRetryStrategy(
     request: DecideFailureRequest,
-    maxRetries?: number,
+    maxRetries?: number
   ): DecideFailureResponse {
     const currentRetries = this.getRetryCount(request.session_id, request.step_id);
     const limit = maxRetries || this.defaultConfig.max_retries;

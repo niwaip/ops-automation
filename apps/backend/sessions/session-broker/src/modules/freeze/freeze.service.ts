@@ -21,7 +21,7 @@ export class FreezeService {
     sessionId: string,
     state: string,
     controlMode: 'AGENT_RUNNING' | 'HUMAN_CONTROL',
-    reason?: string | null,
+    reason?: string | null
   ): Promise<void> {
     const runtimeKey = this.getRuntimeControlKey(sessionId);
     const fields: Record<string, string> = {
@@ -105,7 +105,8 @@ export class FreezeService {
     const runtimeKey = this.getRuntimeControlKey(sessionId);
     const state = (await this.redisService.hget(runtimeKey, 'state')) || 'unknown';
     const frozen = (await this.redisService.hget(runtimeKey, 'frozen')) || '0';
-    const controlMode = (await this.redisService.hget(runtimeKey, 'control_mode')) || 'AGENT_RUNNING';
+    const controlMode =
+      (await this.redisService.hget(runtimeKey, 'control_mode')) || 'AGENT_RUNNING';
 
     return {
       frozen: frozen === '1',
@@ -160,7 +161,7 @@ export class FreezeService {
         (response) => {
           response.on('data', () => undefined);
           response.on('end', () => resolve());
-        },
+        }
       );
 
       request.on('error', (error) => {

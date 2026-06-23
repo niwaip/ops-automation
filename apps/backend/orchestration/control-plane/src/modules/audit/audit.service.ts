@@ -36,7 +36,11 @@ export class InMemoryAuditStorage implements AuditLogStorage {
     return auditLog;
   }
 
-  async query(filters?: { userId?: string; action?: string; resource?: string }): Promise<AuditLog[]> {
+  async query(filters?: {
+    userId?: string;
+    action?: string;
+    resource?: string;
+  }): Promise<AuditLog[]> {
     let result = this.logs;
 
     if (filters?.userId) {
@@ -88,13 +92,17 @@ export class PrismaAuditStorage implements AuditLogStorage {
       ipAddress: result.ipAddress || undefined,
       statusCode: result.statusCode || undefined,
       durationMs: result.durationMs || undefined,
-      requestBody: result.requestBody as Record<string, unknown> || undefined,
-      responseBody: result.responseBody as Record<string, unknown> || undefined,
+      requestBody: (result.requestBody as Record<string, unknown>) || undefined,
+      responseBody: (result.responseBody as Record<string, unknown>) || undefined,
       createdAt: result.createdAt,
     };
   }
 
-  async query(filters?: { userId?: string; action?: string; resource?: string }): Promise<AuditLog[]> {
+  async query(filters?: {
+    userId?: string;
+    action?: string;
+    resource?: string;
+  }): Promise<AuditLog[]> {
     const where: Prisma.AuditLogWhereInput = {};
     if (filters?.userId) {
       where.userId = filters.userId;
@@ -120,8 +128,8 @@ export class PrismaAuditStorage implements AuditLogStorage {
       ipAddress: r.ipAddress || undefined,
       statusCode: r.statusCode || undefined,
       durationMs: r.durationMs || undefined,
-      requestBody: r.requestBody as Record<string, unknown> || undefined,
-      responseBody: r.responseBody as Record<string, unknown> || undefined,
+      requestBody: (r.requestBody as Record<string, unknown>) || undefined,
+      responseBody: (r.responseBody as Record<string, unknown>) || undefined,
       createdAt: r.createdAt,
     }));
   }
@@ -137,7 +145,7 @@ export class AuditService {
 
   constructor(
     private readonly prisma: PrismaService,
-    @Optional() @Inject('AUDIT_STORAGE') storage?: AuditLogStorage,
+    @Optional() @Inject('AUDIT_STORAGE') storage?: AuditLogStorage
   ) {
     // Default to PrismaAuditStorage if PrismaService is available, otherwise fall back to InMemory
     this.storage = storage || new PrismaAuditStorage(prisma);
@@ -148,7 +156,7 @@ export class AuditService {
     action: string,
     resource: string,
     ipAddress: string,
-    details: Record<string, unknown>,
+    details: Record<string, unknown>
   ): Promise<AuditLog> {
     return this.storage.save({
       userId,
@@ -176,7 +184,7 @@ export class AuditService {
     ipAddress: string,
     durationMs: number,
     requestBody?: Record<string, unknown>,
-    responseBody?: Record<string, unknown>,
+    responseBody?: Record<string, unknown>
   ): Promise<AuditLog> {
     return this.storage.save({
       userId,
@@ -196,7 +204,7 @@ export class AuditService {
     event: 'login' | 'logout' | 'refresh' | 'register',
     ipAddress: string,
     success: boolean,
-    details?: Record<string, unknown>,
+    details?: Record<string, unknown>
   ): Promise<AuditLog> {
     return this.storage.save({
       userId,
@@ -211,7 +219,14 @@ export class AuditService {
   // Sanitize sensitive data from body
   private sanitizeBody(body: Record<string, unknown>): Record<string, unknown> {
     const sanitized = { ...body };
-    const sensitiveFields = ['password', 'passwordHash', 'token', 'accessToken', 'refreshToken', 'apiKey'];
+    const sensitiveFields = [
+      'password',
+      'passwordHash',
+      'token',
+      'accessToken',
+      'refreshToken',
+      'apiKey',
+    ];
 
     for (const field of sensitiveFields) {
       if (sanitized[field]) {

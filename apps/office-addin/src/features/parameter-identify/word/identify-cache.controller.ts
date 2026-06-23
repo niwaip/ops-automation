@@ -42,7 +42,11 @@ interface UseWordIdentifyCacheControllerOptions {
   setRecognitionCacheStatus: (status: 'hit' | 'miss' | null) => void;
   setRecognitionCacheUpdatedAt: (updatedAt: number | null) => void;
   setCompareCacheUpdatedAt: (updatedAt: number | null) => void;
-  addDebugLog: (level: 'info' | 'debug' | 'warn' | 'error', message: string, details?: string) => void;
+  addDebugLog: (
+    level: 'info' | 'debug' | 'warn' | 'error',
+    message: string,
+    details?: string
+  ) => void;
   loadWordRecognitionCache: () => Record<string, any>;
   saveWordRecognitionCacheEntry: (entry: {
     cacheKey: string;
@@ -59,7 +63,7 @@ interface UseWordIdentifyCacheControllerOptions {
     templateDocumentIr: Record<string, any>,
     sampleUploadState: SampleUploadStateLike,
     templateType: string,
-    headingLanguages: string[],
+    headingLanguages: string[]
   ) => string;
   saveWordCompareCacheEntry: (entry: {
     cacheKey: string;
@@ -71,42 +75,43 @@ interface UseWordIdentifyCacheControllerOptions {
 }
 
 export function useWordIdentifyCacheController(options: UseWordIdentifyCacheControllerOptions) {
-  const persistCompareCacheRecognitionSnapshot = useCallback((
-    recognitionSnapshot: RecognitionSnapshotLike
-  ) => {
-    if (!options.compareDocumentIr || !options.compareResult) {
-      return;
-    }
+  const persistCompareCacheRecognitionSnapshot = useCallback(
+    (recognitionSnapshot: RecognitionSnapshotLike) => {
+      if (!options.compareDocumentIr || !options.compareResult) {
+        return;
+      }
 
-    const cacheKey = options.buildWordCompareCacheKey(
-      options.compareDocumentIr,
-      options.sampleUploadState,
-      options.selectedTemplateType,
-      options.effectiveCompareHeadingLanguages,
-    );
-    const updatedAt = Date.now();
-    options.saveWordCompareCacheEntry({
-      cacheKey,
-      result: {
-        ...options.compareResult,
-        cacheStatus: {
-          compareHit: false,
+      const cacheKey = options.buildWordCompareCacheKey(
+        options.compareDocumentIr,
+        options.sampleUploadState,
+        options.selectedTemplateType,
+        options.effectiveCompareHeadingLanguages
+      );
+      const updatedAt = Date.now();
+      options.saveWordCompareCacheEntry({
+        cacheKey,
+        result: {
+          ...options.compareResult,
+          cacheStatus: {
+            compareHit: false,
+          },
+          recognitionSnapshot,
         },
-        recognitionSnapshot,
-      },
-      updatedAt,
-    });
-    options.setCompareCacheUpdatedAt(updatedAt);
-  }, [
-    options.buildWordCompareCacheKey,
-    options.compareDocumentIr,
-    options.compareResult,
-    options.effectiveCompareHeadingLanguages,
-    options.sampleUploadState,
-    options.saveWordCompareCacheEntry,
-    options.selectedTemplateType,
-    options.setCompareCacheUpdatedAt,
-  ]);
+        updatedAt,
+      });
+      options.setCompareCacheUpdatedAt(updatedAt);
+    },
+    [
+      options.buildWordCompareCacheKey,
+      options.compareDocumentIr,
+      options.compareResult,
+      options.effectiveCompareHeadingLanguages,
+      options.sampleUploadState,
+      options.saveWordCompareCacheEntry,
+      options.selectedTemplateType,
+      options.setCompareCacheUpdatedAt,
+    ]
+  );
 
   const persistAppliedRecognitionCache = useCallback(() => {
     if (!options.recognitionCacheKey) {
@@ -116,11 +121,14 @@ export function useWordIdentifyCacheController(options: UseWordIdentifyCacheCont
 
     const latestSuggestions = useAppStore.getState().suggestions;
     const cachedEntry = options.loadWordRecognitionCache()[options.recognitionCacheKey];
-    const mergedResult = options.mergeRecognitionResultWithAppliedCache({
-      suggestions: latestSuggestions,
-      sectionGenerationResults: options.sectionGenerationResults,
-      collapsedSections: options.collapsedRecognitionSections,
-    }, cachedEntry);
+    const mergedResult = options.mergeRecognitionResultWithAppliedCache(
+      {
+        suggestions: latestSuggestions,
+        sectionGenerationResults: options.sectionGenerationResults,
+        collapsedSections: options.collapsedRecognitionSections,
+      },
+      cachedEntry
+    );
 
     const updatedAt = Date.now();
     options.saveWordRecognitionCacheEntry({
@@ -149,7 +157,12 @@ export function useWordIdentifyCacheController(options: UseWordIdentifyCacheCont
   ]);
 
   useEffect(() => {
-    if (!options.sampleUploadState.uploaded || !options.compareDocumentIr || !options.hasCompare || !options.recognitionCacheKey) {
+    if (
+      !options.sampleUploadState.uploaded ||
+      !options.compareDocumentIr ||
+      !options.hasCompare ||
+      !options.recognitionCacheKey
+    ) {
       return;
     }
     if (options.recognitionReady && !options.recognitionStale) {
@@ -210,12 +223,12 @@ export function useWordIdentifyCacheController(options: UseWordIdentifyCacheCont
 
   useEffect(() => {
     if (
-      !options.sampleUploadState.uploaded
-      || !options.compareDocumentIr
-      || !options.recognitionCacheKey
-      || !options.recognitionActivated
-      || options.recognitionStale
-      || !options.recognitionDataFresh
+      !options.sampleUploadState.uploaded ||
+      !options.compareDocumentIr ||
+      !options.recognitionCacheKey ||
+      !options.recognitionActivated ||
+      options.recognitionStale ||
+      !options.recognitionDataFresh
     ) {
       return;
     }

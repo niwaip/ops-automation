@@ -61,10 +61,10 @@ export class BrowserStepMapper {
     }
 
     const { type, expected } = command.assertion;
-    
+
     // Default to a locator if present
     const locatorStr = command.locator?.expression || 'page';
-    
+
     switch (type) {
       case 'visible':
         return `await expect(${locatorStr}).toBeVisible();`;
@@ -110,11 +110,7 @@ export class BrowserStepMapper {
   }
 
   private extractRuntimeTargetRef(params: Record<string, unknown>): string | undefined {
-    const candidates = [
-      params.target,
-      params.selector,
-      params.ref,
-    ];
+    const candidates = [params.target, params.selector, params.ref];
     for (const candidate of candidates) {
       if (typeof candidate === 'string' && /^e\d+$/i.test(candidate.trim())) {
         return candidate.trim();
@@ -125,7 +121,7 @@ export class BrowserStepMapper {
 
   private extractLocator(
     params: Record<string, unknown>,
-    runtimeTargetRef?: string,
+    runtimeTargetRef?: string
   ): BrowserRuntimeLocator | undefined {
     if (runtimeTargetRef) {
       return {
@@ -169,9 +165,8 @@ export class BrowserStepMapper {
   }
 
   private extractError(result?: Record<string, unknown>): BrowserError | undefined {
-    const message = typeof result?.message === 'string'
-      ? result.message
-      : 'Browser command execution failed';
+    const message =
+      typeof result?.message === 'string' ? result.message : 'Browser command execution failed';
     return {
       code: 'BROWSER_COMMAND_FAILED',
       message,
@@ -255,8 +250,8 @@ export class BrowserStepMapper {
   private normalizeLocatorName(value: string): string {
     const trimmed = value.trim();
     if (
-      (trimmed.startsWith('\'') && trimmed.endsWith('\''))
-      || (trimmed.startsWith('"') && trimmed.endsWith('"'))
+      (trimmed.startsWith("'") && trimmed.endsWith("'")) ||
+      (trimmed.startsWith('"') && trimmed.endsWith('"'))
     ) {
       return trimmed.slice(1, -1);
     }
@@ -299,11 +294,12 @@ export class BrowserStepMapper {
 
       const lowerKey = key.toLowerCase();
       const isSecret = /(password|token|secret|cookie|authorization|auth)/.test(lowerKey);
-      const userInputLike = /(url|value|text|query|username|password|email|keyword|content|expected)/.test(lowerKey);
+      const userInputLike =
+        /(url|value|text|query|username|password|email|keyword|content|expected)/.test(lowerKey);
 
       bindings.push({
         name: key,
-        source: isSecret ? 'secret' : (userInputLike ? 'user_input' : 'literal'),
+        source: isSecret ? 'secret' : userInputLike ? 'user_input' : 'literal',
         required: true,
         ...(isSecret ? { secret: true } : {}),
         value,
@@ -354,11 +350,12 @@ export class BrowserStepMapper {
 
   private extractArtifacts(
     result: Record<string, unknown> | undefined,
-    scriptFragment: string | null,
+    scriptFragment: string | null
   ): BrowserArtifactRef[] {
     const artifacts: BrowserArtifactRef[] = [];
     const data = this.asRecord(result?.data);
-    const screenshotPath = typeof data?.screenshotPath === 'string' ? data.screenshotPath : undefined;
+    const screenshotPath =
+      typeof data?.screenshotPath === 'string' ? data.screenshotPath : undefined;
     const text = typeof result?.text === 'string' ? result.text : undefined;
     const html = typeof result?.html === 'string' ? result.html : undefined;
 
@@ -405,7 +402,11 @@ export class BrowserStepMapper {
     if (typeof snapshotPath !== 'string') {
       return 'yaml';
     }
-    if (snapshotPath.endsWith('.png') || snapshotPath.endsWith('.jpg') || snapshotPath.endsWith('.jpeg')) {
+    if (
+      snapshotPath.endsWith('.png') ||
+      snapshotPath.endsWith('.jpg') ||
+      snapshotPath.endsWith('.jpeg')
+    ) {
       return 'image';
     }
     if (snapshotPath.endsWith('.html')) {

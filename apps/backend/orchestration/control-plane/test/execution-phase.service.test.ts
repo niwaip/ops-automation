@@ -1,4 +1,4 @@
-import { ExecutionPhaseService } from '../src/modules/execution/execution-phase.service';
+import { ExecutionPhaseService } from '../src/modules/execution/state/execution-phase.service';
 
 describe('ExecutionPhaseService', () => {
   it('upserts phase records and syncs execution phase summary', async () => {
@@ -29,7 +29,8 @@ describe('ExecutionPhaseService', () => {
   it('returns phases with nested artifacts and takeovers when phase tables exist', async () => {
     const prisma = {
       $executeRawUnsafe: jest.fn(),
-      $queryRawUnsafe: jest.fn()
+      $queryRawUnsafe: jest
+        .fn()
         .mockResolvedValueOnce([
           {
             id: 'phase-1',
@@ -103,7 +104,9 @@ describe('ExecutionPhaseService', () => {
   it('returns empty list when phase tables are not migrated yet', async () => {
     const prisma = {
       $executeRawUnsafe: jest.fn(),
-      $queryRawUnsafe: jest.fn().mockRejectedValue(new Error('relation "execution_phases" does not exist')),
+      $queryRawUnsafe: jest
+        .fn()
+        .mockRejectedValue(new Error('relation "execution_phases" does not exist')),
     };
 
     const service = new ExecutionPhaseService(prisma as never);
@@ -138,7 +141,7 @@ describe('ExecutionPhaseService', () => {
       'phase-1',
       'runtime-1',
       'Captcha detected',
-      'user-1',
+      'user-1'
     );
     expect(prisma.$executeRawUnsafe).toHaveBeenCalledWith(
       expect.stringContaining('UPDATE execution_takeovers'),
@@ -146,7 +149,7 @@ describe('ExecutionPhaseService', () => {
       'phase-1',
       'resolved',
       'user-2',
-      'Handled manually',
+      'Handled manually'
     );
   });
 
@@ -181,7 +184,7 @@ describe('ExecutionPhaseService', () => {
 
     expect(prisma.$executeRawUnsafe).toHaveBeenCalledWith(
       expect.stringContaining('DELETE FROM execution_phase_artifacts'),
-      'phase-1',
+      'phase-1'
     );
     expect(prisma.$executeRawUnsafe).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO execution_phase_artifacts'),
@@ -190,7 +193,7 @@ describe('ExecutionPhaseService', () => {
       'snapshot-1',
       'https://example.com/login',
       'fp-1',
-      JSON.stringify({ title: 'Login' }),
+      JSON.stringify({ title: 'Login' })
     );
   });
 });

@@ -72,7 +72,7 @@ describe('StudioController template workflow', () => {
       templateRepository as any,
       skillRepository,
       renderOutputRepository,
-      templateWorkflowService,
+      templateWorkflowService
     );
     renderController = new StudioRenderController(
       previewService,
@@ -81,7 +81,7 @@ describe('StudioController template workflow', () => {
       templateRepository as any,
       skillRepository,
       renderOutputRepository,
-      templateWorkflowService,
+      templateWorkflowService
     );
     templateController = new StudioTemplateController(
       previewService,
@@ -90,7 +90,7 @@ describe('StudioController template workflow', () => {
       templateRepository as any,
       skillRepository,
       renderOutputRepository,
-      templateWorkflowService,
+      templateWorkflowService
     );
     aiController = new StudioAiController(
       previewService,
@@ -99,10 +99,15 @@ describe('StudioController template workflow', () => {
       templateRepository as any,
       skillRepository,
       renderOutputRepository,
-      templateWorkflowService,
+      templateWorkflowService
     );
 
-    for (const controller of [workflowController, renderController, templateController, aiController]) {
+    for (const controller of [
+      workflowController,
+      renderController,
+      templateController,
+      aiController,
+    ]) {
       (controller as any).templatesDir = templatesDir;
       (controller as any).outputsDir = outputsDir;
     }
@@ -184,13 +189,13 @@ describe('StudioController template workflow', () => {
         assetVersion: TEMPLATE_ASSET_MANIFEST_VERSION,
         fieldCount: 1,
         renderPlanVersion: DEFAULT_RENDER_PLAN_VERSION,
-      }),
+      })
     );
     expect(savedMeta.templateConfig.templateAssetManifest).toEqual(
       expect.objectContaining({
         assetVersion: TEMPLATE_ASSET_MANIFEST_VERSION,
         fieldCount: 1,
-      }),
+      })
     );
     expect(templateRepository.upsertFromMeta).toHaveBeenCalled();
   });
@@ -240,7 +245,7 @@ describe('StudioController template workflow', () => {
       expect.objectContaining({
         templateId,
         assetVersion: TEMPLATE_ASSET_MANIFEST_VERSION,
-      }),
+      })
     );
     expect(exported.templateBinary).toBe(binaryContent.toString('base64'));
 
@@ -257,7 +262,7 @@ describe('StudioController template workflow', () => {
       expect.objectContaining({
         templateId: 'tpl-imported-roundtrip',
         assetVersion: TEMPLATE_ASSET_MANIFEST_VERSION,
-      }),
+      })
     );
     expect(fs.existsSync(path.join(templatesDir, 'tpl-imported-roundtrip.docx'))).toBe(true);
   });
@@ -316,12 +321,12 @@ describe('StudioController template workflow', () => {
         assetVersion: TEMPLATE_ASSET_MANIFEST_VERSION,
         fieldCount: 1,
         fileName: 'published-asset-template.docx',
-      }),
+      })
     );
     expect(savedMeta.templateConfig.templateWorkflow.renderPlan).toEqual(
       expect.objectContaining({
         version: DEFAULT_RENDER_PLAN_VERSION,
-      }),
+      })
     );
     expect(savedMeta.skillId).toBeTruthy();
   });
@@ -462,7 +467,10 @@ describe('StudioController template workflow', () => {
 
   it('prepares localized render data before render when requested', async () => {
     const templateId = 'tpl-render-before-translate';
-    fs.writeFileSync(path.join(templatesDir, `${templateId}.docx`), Buffer.from('template-binary-demo'));
+    fs.writeFileSync(
+      path.join(templatesDir, `${templateId}.docx`),
+      Buffer.from('template-binary-demo')
+    );
 
     await workflowController.saveTemplateWorkflow({
       templateId,
@@ -495,7 +503,9 @@ describe('StudioController template workflow', () => {
       saveMode: 'draft',
     });
 
-    const renderSpy = jest.spyOn((renderController as any).engine, 'render').mockResolvedValue(Buffer.from('rendered-output'));
+    const renderSpy = jest
+      .spyOn((renderController as any).engine, 'render')
+      .mockResolvedValue(Buffer.from('rendered-output'));
 
     const result = await renderController.renderResolved({
       templateId,
@@ -512,14 +522,17 @@ describe('StudioController template workflow', () => {
       expect.objectContaining({
         partyAName: '上海云章科技有限公司',
       }),
-      'render-before-translate.docx',
+      'render-before-translate.docx'
     );
     expect(result.downloadUrl).toMatch(/^\/studio\/download\//);
   });
 
   it('uses outputName and localized render data in render-resolved', async () => {
     const templateId = 'tpl-render-resolved-runtime';
-    fs.writeFileSync(path.join(templatesDir, `${templateId}.docx`), Buffer.from('template-binary-demo'));
+    fs.writeFileSync(
+      path.join(templatesDir, `${templateId}.docx`),
+      Buffer.from('template-binary-demo')
+    );
 
     await workflowController.saveTemplateWorkflow({
       templateId,
@@ -552,7 +565,9 @@ describe('StudioController template workflow', () => {
       saveMode: 'draft',
     });
 
-    const renderSpy = jest.spyOn((renderController as any).engine, 'render').mockResolvedValue(Buffer.from('rendered-output'));
+    const renderSpy = jest
+      .spyOn((renderController as any).engine, 'render')
+      .mockResolvedValue(Buffer.from('rendered-output'));
 
     const result = await renderController.renderResolved({
       templateId,
@@ -572,7 +587,7 @@ describe('StudioController template workflow', () => {
       expect.objectContaining({
         partyAName: '上海云章科技有限公司',
       }),
-      'resolved-runtime.docx',
+      'resolved-runtime.docx'
     );
     expect(result.fileName).toMatch(/^统一入口合同_\d{12}\.docx$/);
     expect(result.downloadUrl).toMatch(/^\/studio\/download\//);
@@ -580,7 +595,10 @@ describe('StudioController template workflow', () => {
 
   it('falls back to templateId when embedded carbone skillId is stale in render-resolved', async () => {
     const templateId = 'tpl-render-resolved-stale-skill';
-    fs.writeFileSync(path.join(templatesDir, `${templateId}.docx`), Buffer.from('template-binary-demo'));
+    fs.writeFileSync(
+      path.join(templatesDir, `${templateId}.docx`),
+      Buffer.from('template-binary-demo')
+    );
 
     await workflowController.saveTemplateWorkflow({
       templateId,
@@ -608,7 +626,9 @@ describe('StudioController template workflow', () => {
     });
 
     skillRepository.findById.mockResolvedValueOnce(null);
-    const renderSpy = jest.spyOn((renderController as any).engine, 'render').mockResolvedValue(Buffer.from('rendered-output'));
+    const renderSpy = jest
+      .spyOn((renderController as any).engine, 'render')
+      .mockResolvedValue(Buffer.from('rendered-output'));
 
     const result = await renderController.renderResolved({
       templateId,
@@ -625,7 +645,7 @@ describe('StudioController template workflow', () => {
       expect.objectContaining({
         customerName: 'Alice',
       }),
-      'stale-skill-fallback.docx',
+      'stale-skill-fallback.docx'
     );
     expect(result.fileName).toMatch(/^stale-skill-fallback_\d{12}\.docx$/);
     expect(result.downloadUrl).toMatch(/^\/studio\/download\//);
@@ -633,7 +653,10 @@ describe('StudioController template workflow', () => {
 
   it('prefers workflow input mappings in render-resolved when template field specs are missing', async () => {
     const templateId = 'tpl-render-workflow-mapping-first';
-    fs.writeFileSync(path.join(templatesDir, `${templateId}.docx`), Buffer.from('template-binary-demo'));
+    fs.writeFileSync(
+      path.join(templatesDir, `${templateId}.docx`),
+      Buffer.from('template-binary-demo')
+    );
 
     await workflowController.saveTemplateWorkflow({
       templateId,
@@ -679,7 +702,9 @@ describe('StudioController template workflow', () => {
     };
     fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2));
 
-    const renderSpy = jest.spyOn((renderController as any).engine, 'render').mockResolvedValue(Buffer.from('rendered-output'));
+    const renderSpy = jest
+      .spyOn((renderController as any).engine, 'render')
+      .mockResolvedValue(Buffer.from('rendered-output'));
 
     const result = await renderController.renderResolved({
       templateId,
@@ -709,14 +734,17 @@ describe('StudioController template workflow', () => {
           },
         },
       }),
-      'workflow-mapping-first.docx',
+      'workflow-mapping-first.docx'
     );
     expect(result.downloadUrl).toMatch(/^\/studio\/download\//);
   });
 
   it('maps scalar loop inputs onto final renderPath rows in render-resolved', async () => {
     const templateId = 'tpl-render-direct-loop-paths';
-    fs.writeFileSync(path.join(templatesDir, `${templateId}.docx`), Buffer.from('template-binary-demo'));
+    fs.writeFileSync(
+      path.join(templatesDir, `${templateId}.docx`),
+      Buffer.from('template-binary-demo')
+    );
 
     await workflowController.saveTemplateWorkflow({
       templateId,
@@ -743,7 +771,9 @@ describe('StudioController template workflow', () => {
       saveMode: 'draft',
     });
 
-    const renderSpy = jest.spyOn((renderController as any).engine, 'render').mockResolvedValue(Buffer.from('rendered-output'));
+    const renderSpy = jest
+      .spyOn((renderController as any).engine, 'render')
+      .mockResolvedValue(Buffer.from('rendered-output'));
 
     await renderController.renderResolved({
       templateId,
@@ -774,7 +804,7 @@ describe('StudioController template workflow', () => {
           },
         ],
       }),
-      'direct-loop-paths.docx',
+      'direct-loop-paths.docx'
     );
   });
 
@@ -846,17 +876,21 @@ describe('StudioController template workflow', () => {
     const templateId = 'tpl-cache-1';
     fs.writeFileSync(
       path.join(templatesDir, `${templateId}.json`),
-      JSON.stringify({
-        id: templateId,
-        fileName: 'cache-test.docx',
-        format: 'docx',
-        size: 128,
-        variables: [],
-        loops: [],
-        templateConfig: {
-          variableMappings: [],
+      JSON.stringify(
+        {
+          id: templateId,
+          fileName: 'cache-test.docx',
+          format: 'docx',
+          size: 128,
+          variables: [],
+          loops: [],
+          templateConfig: {
+            variableMappings: [],
+          },
         },
-      }, null, 2),
+        null,
+        2
+      )
     );
 
     await templateController.saveTemplateConfig(templateId, {
@@ -886,21 +920,21 @@ describe('StudioController template workflow', () => {
     expect(config.templateConfig).toEqual(
       expect.objectContaining({
         variableMappings: [{ index: 0, path: 'd.customerName' }],
-      }),
+      })
     );
     expect(config.suggestions).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           suggestedName: 'customerName',
         }),
-      ]),
+      ])
     );
     expect(config.rawSuggestions).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           originalText: '客户名称',
         }),
-      ]),
+      ])
     );
   });
 
@@ -908,25 +942,29 @@ describe('StudioController template workflow', () => {
     const templateId = 'tpl-skill-merge-1';
     fs.writeFileSync(
       path.join(templatesDir, `${templateId}.json`),
-      JSON.stringify({
-        id: templateId,
-        fileName: 'skill-merge.docx',
-        format: 'docx',
-        size: 128,
-        variables: [],
-        loops: [],
-        suggestions: [
-          {
-            id: 's1',
-            applied: true,
-            suggestedName: 'customerName',
-            originalText: '客户名称',
+      JSON.stringify(
+        {
+          id: templateId,
+          fileName: 'skill-merge.docx',
+          format: 'docx',
+          size: 128,
+          variables: [],
+          loops: [],
+          suggestions: [
+            {
+              id: 's1',
+              applied: true,
+              suggestedName: 'customerName',
+              originalText: '客户名称',
+            },
+          ],
+          templateConfig: {
+            variableMappings: [{ index: 0, path: 'd.customerName' }],
           },
-        ],
-        templateConfig: {
-          variableMappings: [{ index: 0, path: 'd.customerName' }],
         },
-      }, null, 2),
+        null,
+        2
+      )
     );
 
     await aiController.generateAISkill({
@@ -958,7 +996,7 @@ describe('StudioController template workflow', () => {
         variableMappings: [{ index: 0, path: 'd.customerName' }],
       }),
       'contract',
-      '合同模板',
+      '合同模板'
     );
   });
 });

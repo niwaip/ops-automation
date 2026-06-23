@@ -5,7 +5,12 @@ import { Tooltip } from 'antd';
 import { asPlainRecord } from '../pages/TemporalPage.utils';
 
 export interface HttpTemplateMapEditorProps {
-  field: 'queryTemplate' | 'headersTemplate' | 'jsonTemplate' | 'dataTemplate' | 'responseFieldMappings';
+  field:
+    | 'queryTemplate'
+    | 'headersTemplate'
+    | 'jsonTemplate'
+    | 'dataTemplate'
+    | 'responseFieldMappings';
   label: string;
   tip: string;
   value: Record<string, any> | undefined;
@@ -21,7 +26,13 @@ const renderTipLabel = (label: string, tip: string) => (
   </Space>
 );
 
-export const HttpTemplateMapEditor: React.FC<HttpTemplateMapEditorProps> = ({ field, label, tip, value: rawValue, onChange }) => {
+export const HttpTemplateMapEditor: React.FC<HttpTemplateMapEditorProps> = ({
+  field,
+  label,
+  tip,
+  value: rawValue,
+  onChange,
+}) => {
   const mapValue = asPlainRecord(rawValue);
   const entries = Object.entries(mapValue);
 

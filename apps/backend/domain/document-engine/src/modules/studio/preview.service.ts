@@ -50,7 +50,9 @@ export class PreviewService {
         return pdfResult;
       }
     } catch (error) {
-      this.logger.warn(`PDF conversion failed, falling back to HTML: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.warn(
+        `PDF conversion failed, falling back to HTML: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
 
     // 回退到HTML预览
@@ -91,7 +93,7 @@ export class PreviewService {
 
       // 查找生成的PDF文件
       const files = fs.readdirSync(outputDir);
-      const pdfFile = files.find(f => f.endsWith('.pdf'));
+      const pdfFile = files.find((f) => f.endsWith('.pdf'));
 
       if (!pdfFile) {
         throw new Error('PDF file not generated');
@@ -111,7 +113,7 @@ export class PreviewService {
         html,
         format,
         previewType: 'pdf',
-        pdfBase64
+        pdfBase64,
       };
     } catch (error) {
       // 清理临时文件
@@ -393,14 +395,17 @@ export class PreviewService {
    */
   private async previewDocx(buffer: Buffer): Promise<PreviewResult> {
     try {
-      const result = await mammoth.convertToHtml({ buffer }, {
-        styleMap: [
-          "p[style-name='Heading 1'] => h1:fresh",
-          "p[style-name='Heading 2'] => h2:fresh",
-          "p[style-name='Heading 3'] => h3:fresh",
-          "p[style-name='Title'] => h1.title:fresh",
-        ]
-      });
+      const result = await mammoth.convertToHtml(
+        { buffer },
+        {
+          styleMap: [
+            "p[style-name='Heading 1'] => h1:fresh",
+            "p[style-name='Heading 2'] => h2:fresh",
+            "p[style-name='Heading 3'] => h3:fresh",
+            "p[style-name='Title'] => h1.title:fresh",
+          ],
+        }
+      );
 
       // 提取图片
       const images: Array<{ id: string; data: string; contentType: string }> = [];
@@ -418,7 +423,7 @@ export class PreviewService {
               images.push({
                 id: fileName.replace('word/media/', ''),
                 data: imageData,
-                contentType
+                contentType,
               });
             }
           }
@@ -440,7 +445,7 @@ export class PreviewService {
         html,
         format: 'docx',
         previewType: 'html',
-        images
+        images,
       };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -462,15 +467,23 @@ export class PreviewService {
         htmlContent = XLSX.utils.sheet_to_html(sheet, {
           editable: false,
           header: '',
-          footer: ''
+          footer: '',
         });
       }
 
-      const tabsHtml = sheetNames.map((name, index) =>
-        `<button class="sheet-tab ${index === 0 ? 'active' : ''}" data-sheet="${name}">${name}</button>`
-      ).join('');
+      const tabsHtml = sheetNames
+        .map(
+          (name, index) =>
+            `<button class="sheet-tab ${index === 0 ? 'active' : ''}" data-sheet="${name}">${name}</button>`
+        )
+        .join('');
 
-      const html = this.wrapHtml(htmlContent, 'xlsx', [], `<div class="sheet-tabs">${tabsHtml}</div>`);
+      const html = this.wrapHtml(
+        htmlContent,
+        'xlsx',
+        [],
+        `<div class="sheet-tabs">${tabsHtml}</div>`
+      );
       return { html, format: 'xlsx', previewType: 'html' };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -486,7 +499,7 @@ export class PreviewService {
       const zip = await JSZip.loadAsync(buffer);
       const slides: string[] = [];
       const slideFiles = Object.keys(zip.files)
-        .filter(name => name.match(/ppt\/slides\/slide\d+\.xml$/))
+        .filter((name) => name.match(/ppt\/slides\/slide\d+\.xml$/))
         .sort();
 
       for (const slideFile of slideFiles) {
@@ -498,16 +511,23 @@ export class PreviewService {
         }
       }
 
-      const slidesHtml = slides.map((slide, index) =>
-        `<div class="slide ${index === 0 ? 'active' : ''}">${slide}</div>`
-      ).join('');
+      const slidesHtml = slides
+        .map((slide, index) => `<div class="slide ${index === 0 ? 'active' : ''}">${slide}</div>`)
+        .join('');
 
-      const navHtml = slides.map((_, index) =>
-        `<button class="slide-nav ${index === 0 ? 'active' : ''}" data-slide="${index}">${index + 1}</button>`
-      ).join('');
+      const navHtml = slides
+        .map(
+          (_, index) =>
+            `<button class="slide-nav ${index === 0 ? 'active' : ''}" data-slide="${index}">${index + 1}</button>`
+        )
+        .join('');
 
-      const html = this.wrapHtml(slidesHtml, 'pptx', [],
-        `<div class="slide-nav-container">${navHtml}</div><div class="slides-container">${slidesHtml}</div>`);
+      const html = this.wrapHtml(
+        slidesHtml,
+        'pptx',
+        [],
+        `<div class="slide-nav-container">${navHtml}</div><div class="slides-container">${slidesHtml}</div>`
+      );
       return { html, format: 'pptx', previewType: 'html' };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -522,7 +542,7 @@ export class PreviewService {
     return {
       html: buffer.toString('utf-8'),
       format: 'html',
-      previewType: 'html'
+      previewType: 'html',
     };
   }
 
@@ -531,7 +551,7 @@ export class PreviewService {
    */
   private parseSlideXml(xmlContent: string): string {
     const textMatches = xmlContent.match(/<a:t>([^<]*)<\/a:t>/g) || [];
-    const texts = textMatches.map(match => match.replace(/<a:t>|<\/a:t>/g, ''));
+    const texts = textMatches.map((match) => match.replace(/<a:t>|<\/a:t>/g, ''));
     return `<div class="slide-content"><p>${texts.join('</p><p>')}</p></div>`;
   }
 
@@ -544,9 +564,12 @@ export class PreviewService {
     images: Array<{ id: string; data: string; contentType: string }> = [],
     extraContent: string = ''
   ): string {
-    const imageStyles = images.map(img =>
-      `.image-${img.id} { background-image: url('data:${img.contentType};base64,${img.data}'); }`
-    ).join('\n');
+    const imageStyles = images
+      .map(
+        (img) =>
+          `.image-${img.id} { background-image: url('data:${img.contentType};base64,${img.data}'); }`
+      )
+      .join('\n');
 
     return `
 <!DOCTYPE html>
@@ -612,7 +635,7 @@ export class PreviewService {
       '.jpg': 'image/jpeg',
       '.jpeg': 'image/jpeg',
       '.gif': 'image/gif',
-      '.bmp': 'image/bmp'
+      '.bmp': 'image/bmp',
     };
     return types[ext] || 'image/png';
   }

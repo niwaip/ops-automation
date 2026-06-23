@@ -49,9 +49,7 @@ describe('OpenAICompatibleClient', () => {
         },
       });
 
-      const messages = [
-        { role: 'user' as const, content: 'Hello' },
-      ];
+      const messages = [{ role: 'user' as const, content: 'Hello' }];
 
       const result = await client.chatCompletion(messages);
 
@@ -70,8 +68,9 @@ describe('OpenAICompatibleClient', () => {
         message: 'Request failed',
       });
 
-      await expect(client.chatCompletion([{ role: 'user', content: 'test' }]))
-        .rejects.toThrow('OpenAI API Error');
+      await expect(client.chatCompletion([{ role: 'user', content: 'test' }])).rejects.toThrow(
+        'OpenAI API Error'
+      );
     });
   });
 

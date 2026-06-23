@@ -1,4 +1,4 @@
-import type { SocketPort, SocketSubscription } from "@ops/user-core";
+import type { SocketPort, SocketSubscription } from '@ops/user-core';
 
 const noopSubscription: SocketSubscription = {
   unsubscribe: () => undefined,

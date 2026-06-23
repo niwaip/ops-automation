@@ -46,7 +46,7 @@ async def test_workflow():
 Conveniently, the local `env` can be shared among tests, e.g. via a pytest fixture.
 
 If your workflows / tests involve long durations (such as using Temporal timers / sleeps), then you can use the time-skipping environment, via `WorkflowEnvironment.start_time_skipping()`.
-Only use time-skipping if you must. It can *not* be shared among tests.
+Only use time-skipping if you must. It can _not_ be shared among tests.
 
 ## Mocking Activities
 

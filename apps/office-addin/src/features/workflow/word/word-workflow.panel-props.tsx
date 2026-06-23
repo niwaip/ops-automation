@@ -28,7 +28,9 @@ export function buildWordLoadSectionProps(args: {
   understandingSummaryText: string;
   displayedUnderstandingSummaryResult: unknown;
   handleStartUnderstanding: (options?: { forceRefresh?: boolean }) => Promise<void>;
-  handleSampleUploadStateChange: React.ComponentProps<typeof WordLoadSection>['onUploadStateChange'];
+  handleSampleUploadStateChange: React.ComponentProps<
+    typeof WordLoadSection
+  >['onUploadStateChange'];
 }): React.ComponentProps<typeof WordLoadSection> {
   const {
     step1Collapsed,
@@ -80,9 +82,15 @@ export function buildWordQuerySectionProps(args: {
   stepStatus: React.ComponentProps<typeof WordQuerySection>['stepStatus'];
   sampleUploadState: React.ComponentProps<typeof WordLoadSection>['sampleUploadState'];
   selectedTemplateType: 'contract' | 'report';
-  effectiveCompareHeadingLanguages: React.ComponentProps<typeof WordQuerySection>['effectiveCompareHeadingLanguages'];
-  handleCompareDocumentTypeChange: React.ComponentProps<typeof WordQuerySection>['onChangeDocumentType'];
-  handleCompareHeadingLanguageToggle: React.ComponentProps<typeof WordQuerySection>['onToggleHeadingLanguage'];
+  effectiveCompareHeadingLanguages: React.ComponentProps<
+    typeof WordQuerySection
+  >['effectiveCompareHeadingLanguages'];
+  handleCompareDocumentTypeChange: React.ComponentProps<
+    typeof WordQuerySection
+  >['onChangeDocumentType'];
+  handleCompareHeadingLanguageToggle: React.ComponentProps<
+    typeof WordQuerySection
+  >['onToggleHeadingLanguage'];
   isComparing: boolean;
   isHighlightingCandidates: boolean;
   isClearingHighlights: boolean;
@@ -97,7 +105,9 @@ export function buildWordQuerySectionProps(args: {
   compareCacheStatus: React.ComponentProps<typeof WordQuerySection>['compareCacheStatus'];
   compareCacheUpdatedAt: number | null;
   selectedCompareSectionKeys: string[];
-  compareCandidateSections: React.ComponentProps<typeof WordQuerySection>['compareCandidateSections'];
+  compareCandidateSections: React.ComponentProps<
+    typeof WordQuerySection
+  >['compareCandidateSections'];
   selectedCompareSections: Record<string, boolean>;
   collapsedCompareSections: Record<string, boolean>;
   analysisThinkingEnabled: boolean;
@@ -117,16 +127,32 @@ export function buildWordQuerySectionProps(args: {
   persistAppliedRecognitionCache: () => void;
   getCompareDocumentTypeLabel: (templateType: string) => string;
   getCompareHeadingLanguageSummary: (
-    languages: React.ComponentProps<typeof WordQuerySection>['effectiveCompareHeadingLanguages'],
+    languages: React.ComponentProps<typeof WordQuerySection>['effectiveCompareHeadingLanguages']
   ) => string;
-  updateCompareCandidate: React.ComponentProps<typeof WordCompareSectionCandidatesPanel>['onSaveCandidate'];
-  deleteCompareCandidate: React.ComponentProps<typeof WordCompareSectionCandidatesPanel>['onDeleteCandidate'];
-  isWordLoopCompareCandidate: React.ComponentProps<typeof WordCompareSectionCandidatesPanel>['isWordLoopCompareCandidate'];
-  sectionGenerationResultMap: React.ComponentProps<typeof WordRecognitionSectionResultPanel>['sectionGenerationResultMap'];
-  sectionSuggestionMap: React.ComponentProps<typeof WordRecognitionSectionResultPanel>['sectionSuggestionMap'];
-  collapsedRecognitionSections: React.ComponentProps<typeof WordRecognitionSectionResultPanel>['collapsedRecognitionSections'];
-  toggleRecognitionSectionCollapse: React.ComponentProps<typeof WordRecognitionSectionResultPanel>['toggleRecognitionSectionCollapse'];
-  formatConfidence: React.ComponentProps<typeof WordRecognitionSectionResultPanel>['formatConfidence'];
+  updateCompareCandidate: React.ComponentProps<
+    typeof WordCompareSectionCandidatesPanel
+  >['onSaveCandidate'];
+  deleteCompareCandidate: React.ComponentProps<
+    typeof WordCompareSectionCandidatesPanel
+  >['onDeleteCandidate'];
+  isWordLoopCompareCandidate: React.ComponentProps<
+    typeof WordCompareSectionCandidatesPanel
+  >['isWordLoopCompareCandidate'];
+  sectionGenerationResultMap: React.ComponentProps<
+    typeof WordRecognitionSectionResultPanel
+  >['sectionGenerationResultMap'];
+  sectionSuggestionMap: React.ComponentProps<
+    typeof WordRecognitionSectionResultPanel
+  >['sectionSuggestionMap'];
+  collapsedRecognitionSections: React.ComponentProps<
+    typeof WordRecognitionSectionResultPanel
+  >['collapsedRecognitionSections'];
+  toggleRecognitionSectionCollapse: React.ComponentProps<
+    typeof WordRecognitionSectionResultPanel
+  >['toggleRecognitionSectionCollapse'];
+  formatConfidence: React.ComponentProps<
+    typeof WordRecognitionSectionResultPanel
+  >['formatConfidence'];
   sectionProcessingSummary: { totalSuggestions?: number } | null | undefined;
   followupProps: React.ComponentProps<typeof WordRecognitionFollowup>;
 }): React.ComponentProps<typeof WordQuerySection> {

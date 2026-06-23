@@ -1,4 +1,3 @@
-
 const base = 'http://localhost:3001';
 const workflowName = '保密协议模板-48cd5507-工作流';
 
@@ -25,7 +24,9 @@ async function bootstrap() {
 
   console.log('Checking existing releases...');
   const list = await fetch(base + '/capability-releases', { headers }).then((r) => r.json());
-  let release = (list.releases || []).find((r) => r.sourceType === 'temporal_workflow' && r.sourceId === wf.id);
+  let release = (list.releases || []).find(
+    (r) => r.sourceType === 'temporal_workflow' && r.sourceId === wf.id
+  );
 
   if (!release) {
     console.log('Creating new Capability Release...');
@@ -54,7 +55,7 @@ async function bootstrap() {
     }).then((r) => r.json());
     console.log('Build triggered');
     // Wait a bit for build to complete (simple mock/local build is fast)
-    await new Promise(r => setTimeout(r, 2000));
+    await new Promise((r) => setTimeout(r, 2000));
   }
 
   // 2. Validate
@@ -110,14 +111,20 @@ async function bootstrap() {
   }
 
   console.log('\nBootstrap successful!');
-  console.log(JSON.stringify({
-    releaseId: release.id,
-    publishedSkillId: release.publishedSkillId,
-    status: release.status
-  }, null, 2));
+  console.log(
+    JSON.stringify(
+      {
+        releaseId: release.id,
+        publishedSkillId: release.publishedSkillId,
+        status: release.status,
+      },
+      null,
+      2
+    )
+  );
 }
 
-bootstrap().catch(err => {
+bootstrap().catch((err) => {
   console.error('Bootstrap failed:', err);
   process.exit(1);
 });

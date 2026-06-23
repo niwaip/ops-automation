@@ -1,6 +1,10 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { CreateTemplateDto, UpdateTemplateDto, PublishTemplateDto } from './template.dto';
-import { TemplateJSON, ListTemplatesQuery, ListTemplatesResponse } from '../../types/template.types';
+import {
+  TemplateJSON,
+  ListTemplatesQuery,
+  ListTemplatesResponse,
+} from '../../types/template.types';
 import { TemplateValidator } from '../../validators/template.validator';
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -28,7 +32,7 @@ type TemplateRecord = {
 export class TemplateService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly templateValidator: TemplateValidator,
+    private readonly templateValidator: TemplateValidator
   ) {}
 
   /**
@@ -146,7 +150,9 @@ export class TemplateService {
 
     // Only allow updates on DRAFT templates
     if (template.status !== 'DRAFT') {
-      throw new BadRequestException(`Cannot update template with status "${template.status}". Only DRAFT templates can be modified.`);
+      throw new BadRequestException(
+        `Cannot update template with status "${template.status}". Only DRAFT templates can be modified.`
+      );
     }
 
     const mergedTemplate: TemplateRecord = {
@@ -199,7 +205,9 @@ export class TemplateService {
     }
 
     if (template.status !== 'DRAFT') {
-      throw new BadRequestException(`Cannot submit for review. Current status is "${template.status}", expected DRAFT`);
+      throw new BadRequestException(
+        `Cannot submit for review. Current status is "${template.status}", expected DRAFT`
+      );
     }
 
     const saved = await this.prisma.template.update({
@@ -219,13 +227,17 @@ export class TemplateService {
     }
 
     if (template.status !== 'REVIEW') {
-      throw new BadRequestException(`Cannot publish. Current status is "${template.status}", expected REVIEW`);
+      throw new BadRequestException(
+        `Cannot publish. Current status is "${template.status}", expected REVIEW`
+      );
     }
 
     // Final validation before publishing
     const validation = this.templateValidator.validate(this.toJSON(template));
     if (!validation.valid) {
-      throw new BadRequestException(`Template validation failed before publishing: ${validation.errors.join(', ')}`);
+      throw new BadRequestException(
+        `Template validation failed before publishing: ${validation.errors.join(', ')}`
+      );
     }
 
     const saved = await this.prisma.template.update({
@@ -249,7 +261,9 @@ export class TemplateService {
     }
 
     if (template.status !== 'PUBLISHED') {
-      throw new BadRequestException(`Cannot deprecate. Current status is "${template.status}", expected PUBLISHED`);
+      throw new BadRequestException(
+        `Cannot deprecate. Current status is "${template.status}", expected PUBLISHED`
+      );
     }
 
     const saved = await this.prisma.template.update({
@@ -327,7 +341,8 @@ export class TemplateService {
       version: entity.version,
       status: entity.status,
       description: entity.description || undefined,
-      params_schema: (entity.paramsSchema as TemplateJSON['params_schema']) || this.getDefaultParamsSchema(),
+      params_schema:
+        (entity.paramsSchema as TemplateJSON['params_schema']) || this.getDefaultParamsSchema(),
       steps: (entity.steps as TemplateJSON['steps']) || [],
       guards: (entity.guards as TemplateJSON['guards']) || [],
       config: (entity.config as TemplateJSON['config']) || {},

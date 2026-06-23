@@ -1,8 +1,5 @@
 import type { DocumentGuideContext } from '../interfaces';
-import type {
-  ParamsSchema,
-  SkillRuntimeMetadata,
-} from '../modules/react-engine/interfaces';
+import type { ParamsSchema, SkillRuntimeMetadata } from '../modules/react-engine/interfaces';
 
 type BuildDocumentGuideInput = {
   enabled?: boolean;
@@ -50,16 +47,11 @@ const summarizeSchema = (paramsSchema?: ParamsSchema, limit = 18): string[] => {
     .map(([name, schema]) => {
       const description = readText(schema?.description);
       const type = readText(schema?.type) || 'string';
-      return description
-        ? `- ${name} [${type}]：${description}`
-        : `- ${name} [${type}]`;
+      return description ? `- ${name} [${type}]：${description}` : `- ${name} [${type}]`;
     });
 };
 
-const summarizeHints = (
-  runtimeMetadata?: SkillRuntimeMetadata,
-  limit = 12,
-): string[] => {
+const summarizeHints = (runtimeMetadata?: SkillRuntimeMetadata, limit = 12): string[] => {
   const hints: string[] = [];
   const mappingHints = Array.isArray(runtimeMetadata?.mappingHints)
     ? runtimeMetadata?.mappingHints
@@ -79,7 +71,9 @@ const summarizeHints = (
     const suffix = [
       description ? `说明：${description}` : undefined,
       example ? `示例：${example}` : undefined,
-    ].filter(Boolean).join('；');
+    ]
+      .filter(Boolean)
+      .join('；');
     hints.push(suffix ? `${parameter} -> ${suffix}` : parameter);
   });
 
@@ -90,18 +84,14 @@ const summarizeHints = (
     if (!parameter) {
       return;
     }
-    hints.push(
-      fallbackStrategy
-        ? `${parameter} -> 缺失时：${fallbackStrategy}`
-        : parameter,
-    );
+    hints.push(fallbackStrategy ? `${parameter} -> 缺失时：${fallbackStrategy}` : parameter);
   });
 
   return hints;
 };
 
 export const buildDocumentGuideContext = (
-  input: BuildDocumentGuideInput,
+  input: BuildDocumentGuideInput
 ): DocumentGuideContext | undefined => {
   if (input.enabled === false) {
     return undefined;
@@ -133,22 +123,23 @@ export const buildDocumentGuideContext = (
 
   const schemaSummary = summarizeSchema(input.paramsSchema);
   const extractionHints = summarizeHints(runtimeMetadata);
-  const synthesizedGuide = schemaSummary.length > 0
-    ? [
-        '请优先依据字段用途、业务分组和示例结构识别参数，再输出当前步骤要求的扁平字段键名。',
-        '参数概览：',
-        ...schemaSummary,
-      ].join('\n')
-    : undefined;
+  const synthesizedGuide =
+    schemaSummary.length > 0
+      ? [
+          '请优先依据字段用途、业务分组和示例结构识别参数，再输出当前步骤要求的扁平字段键名。',
+          '参数概览：',
+          ...schemaSummary,
+        ].join('\n')
+      : undefined;
 
   if (
-    overviewParts.length === 0
-    && !guideMarkdown
-    && !paramCollectionGuidance
-    && !validationRules
-    && !outputExample
-    && !synthesizedGuide
-    && extractionHints.length === 0
+    overviewParts.length === 0 &&
+    !guideMarkdown &&
+    !paramCollectionGuidance &&
+    !validationRules &&
+    !outputExample &&
+    !synthesizedGuide &&
+    extractionHints.length === 0
   ) {
     return undefined;
   }

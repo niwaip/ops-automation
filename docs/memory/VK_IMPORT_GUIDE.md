@@ -5,6 +5,7 @@
 **AI Agent 必须严格遵守以下规则，违反将导致流程失败：**
 
 ### Rule 1: 必须先理解框架
+
 ```
 在执行任何任务前，AI Agent 必须：
 1. 读取 memory/MEMORY.md
@@ -15,6 +16,7 @@
 ```
 
 ### Rule 2: 必须按顺序执行
+
 ```
 ❌ 禁止：跳过 VK-Plan 直接执行 VK-Execute
 ❌ 禁止：不生成 OpenSpec 就启动 Workspace
@@ -25,6 +27,7 @@ VK-Plan (REFINE → SPLIT → PLAN → 用户确认) → VK-Execute → 询问�
 ```
 
 ### Rule 3: 需求细化提问 + 自我确认 + 用户确认
+
 ```
 VK-Plan REFINE 阶段，必须：
 1. 对用户需求进行细化提问，至少 3 次追问
@@ -57,6 +60,7 @@ VK-Plan 完成后，必须：
 ```
 
 ### Rule 4: 任务粒度规则（避免过度拆分）
+
 ```
 ❌ 禁止：过度拆分任务（如：创建实体、DTO、Service分别作为独立任务）
 
@@ -73,6 +77,7 @@ VK-Plan 完成后，必须：
 ```
 
 ### Rule 5: OpenSpec 是任务执行指令
+
 ```
 ❌ 禁止：OpenSpec 只是规格文档，AI只了解内容不执行操作
 
@@ -91,6 +96,7 @@ OpenSpec 必须包含：
 ```
 
 ### Rule 6: 检查 MCP 可用性
+
 ```
 VK-Execute 开始前，必须：
 1. 检查 Vibe-Kanban MCP 是否连接
@@ -99,6 +105,7 @@ VK-Execute 开始前，必须：
 ```
 
 ### Rule 7: 任务独立性原则
+
 ```
 ❌ 禁止：创建父子关系的子任务（parent_issue_id）
 ❌ 禁止：任务嵌套或层级依赖
@@ -111,6 +118,7 @@ VK-Execute 开始前，必须：
 ```
 
 ### Rule 8: 任务命名规范
+
 ```
 任务名称必须包含阶段信息，格式：
 [阶段]-[功能名称]
@@ -130,6 +138,7 @@ VK-Execute 开始前，必须：
 ```
 
 ### Rule 9: 创建 Issue 后询问执行方式
+
 ```
 VK-Execute 创建完所有 Issue 后，必须询问用户：
 
@@ -154,9 +163,9 @@ AI Agent 读取此指南后，可自动配置 VK Framework 开发体系。
 
 VK Framework 是一套基于 OpenSpec + Harness 的开发方法论，分为两个独立技能：
 
-| 技能 | 名称 | 依赖 | 用途 |
-|------|------|------|------|
-| **VK-Plan** | 项目规划与拆解 | 无（纯方法论） | 需求细化、任务划分、规格生成 |
+| 技能           | 名称             | 依赖            | 用途                                   |
+| -------------- | ---------------- | --------------- | -------------------------------------- |
+| **VK-Plan**    | 项目规划与拆解   | 无（纯方法论）  | 需求细化、任务划分、规格生成           |
 | **VK-Execute** | Vibe-Kanban 执行 | Vibe-Kanban MCP | 创建 Issues、启动 Workspaces、执行开发 |
 
 **执行顺序**：VK-Plan 完成后 → VK-Execute 开始
@@ -175,22 +184,26 @@ VK Framework 是一套基于 OpenSpec + Harness 的开发方法论，分为两�
 ## Layer 1: METHODOLOGY（方法论）
 
 开发流程阶段：
-1. REFINE  - 需求细化，输出功能点清单
-2. SPLIT   - 任务划分，输出原子化任务列表 + 依赖图
-3. PLAN    - 规划，输出 OpenSpec 规格文档
+
+1. REFINE - 需求细化，输出功能点清单
+2. SPLIT - 任务划分，输出原子化任务列表 + 依赖图
+3. PLAN - 规划，输出 OpenSpec 规格文档
 4. DEVELOP - 开发实现
-5. TEST    - 单体测试 + 集成测试
-6. DEPLOY  - 部署发布
+5. TEST - 单体测试 + 集成测试
+6. DEPLOY - 部署发布
 
 执行模式：
-- A (auto):        完全自动，无确认
-- B (semi_auto):   PLAN和DEPLOY前确认
+
+- A (auto): 完全自动，无确认
+- B (semi_auto): PLAN和DEPLOY前确认
 - C (interactive): 每阶段确认
 
 ## Layer 2: SPECIFICATIONS（规格）
 
 ### OpenSpec 格式模板
+
 每个任务规格包含：
+
 - Execution Order: RUN_FIRST | RUN_PARALLEL | RUN_AFTER:[deps]
 - Branch Isolation Rules: READ-ONLY / OWNED / FORBIDDEN 文件
 - Objective: 一句话目标
@@ -200,11 +213,13 @@ VK Framework 是一套基于 OpenSpec + Harness 的开发方法论，分为两�
 - Acceptance Criteria: 验收命令
 
 ### Harness 测试模板
+
 核心函数：assert_eq, assert_contains, assert_exit_code, run_tests
 
 ## Layer 3: ORCHESTRATION（编排）
 
 批次执行策略：
+
 - Batch 0: Foundation (先行，必须完成)
 - Batch 1: Core Features (并行，依赖Batch 0)
 - Batch 2: Integration (整合，依赖Batch 1)
@@ -216,16 +231,19 @@ VK Framework 是一套基于 OpenSpec + Harness 的开发方法论，分为两�
 
 将以下内容作为 Agent 的规划技能：
 
-```markdown
+````markdown
 # VK-Plan: 项目规划与拆解
 
 ## 触发
+
 用户提出新需求时调用
 
 ## 输入
+
 用户需求描述
 
 ## 输出
+
 - 功能点清单
 - 任务列表 + 依赖图
 - OpenSpec 规格文档
@@ -274,35 +292,46 @@ VK Framework 是一套基于 OpenSpec + Harness 的开发方法论，分为两�
 # {Task-ID} — {Title}
 
 ## Execution Order
+
 **{order}**
 
 ## Branch Isolation Rules
+
 READ-ONLY: {files}
 OWNED: {files}
 FORBIDDEN: {files}
 
 ## Objective
+
 {一句话}
 
 ## Deliverables
+
 - [ ] {file} — {desc}
 
 ## Implementation
+
 {骨架代码}
 
 ## Test Cases
+
 | ID | Desc | Input | Expected |
 
 ## Acceptance Criteria
+
 {验收命令}
 ```
+````
 
 ## 完成标志
+
 所有任务的 OpenSpec 文档生成完毕，等待用户确认
 
 ## 下一步
+
 确认后调用 VK-Execute (Vibe-Kanban MCP)
-```
+
+````
 
 ### Step 3: 配置 Skill 2 (VK-Execute)
 
@@ -345,51 +374,63 @@ Vibe-Kanban MCP Server 已连接
 ### Phase 1: 环境准备
 
 1. 获取当前上下文：
-   ```
-   mcp__vibe_kanban__get_context
-   ```
+````
+
+mcp**vibe_kanban**get_context
+
+```
 
 2. 获取可用 repo：
-   ```
-   mcp__vibe_kanban__list_repos
-   ```
+```
+
+mcp**vibe_kanban**list_repos
+
+```
 
 ### Phase 2: 创建 Issues
 
 1. 为每个任务创建 Issue：
-   ```
-   mcp__vibe_kanban__create_issue(
-     title="{Task-ID}: {Title}",
-     description="{OpenSpec内容}",
-     priority="{优先级}"
-   )
-   ```
+```
+
+mcp**vibe_kanban**create_issue(
+title="{Task-ID}: {Title}",
+description="{OpenSpec内容}",
+priority="{优先级}"
+)
+
+```
 
 2. 设置依赖关系：
-   ```
-   mcp__vibe_kanban__create_issue_relationship(
-     issue_id="{子任务ID}",
-     related_issue_id="{父任务ID}",
-     relationship_type="blocking"
-   )
-   ```
+```
+
+mcp**vibe_kanban**create_issue_relationship(
+issue_id="{子任务ID}",
+related_issue_id="{父任务ID}",
+relationship_type="blocking"
+)
+
+```
 
 ### Phase 3: 执行 Batch 0 (Foundation)
 
 1. 启动 Foundation Workspace：
-   ```
-   mcp__vibe_kanban__start_workspace(
-     name="VK-{Task-ID}",
-     executor="CLAUDE_CODE",
-     repositories=[{repo_id, branch}],
-     prompt="{OpenSpec内容}"
-   )
-   ```
+```
+
+mcp**vibe_kanban**start_workspace(
+name="VK-{Task-ID}",
+executor="CLAUDE_CODE",
+repositories=[{repo_id, branch}],
+prompt="{OpenSpec内容}"
+)
+
+```
 
 2. 等待完成：
-   ```
-   监控 mcp__vibe_kanban__list_workspaces 直到状态为 completed
-   ```
+```
+
+监控 mcp**vibe_kanban**list_workspaces 直到状态为 completed
+
+```
 
 ### Phase 4: 执行 Batch 1 (Core - 并行)
 
@@ -487,10 +528,10 @@ Agent (VK-Execute):
 ```yaml
 # 用户自定义配置
 vk_config:
-  execution_mode: semi_auto   # A/B/C
+  execution_mode: semi_auto # A/B/C
   executor: CLAUDE_CODE
   max_parallel: 5
-  skip_phases: []             # 跳过的阶段
+  skip_phases: [] # 跳过的阶段
 ```
 
 ---

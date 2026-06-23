@@ -1,7 +1,10 @@
 # 企业级 Skill 平台 AI 浏览器执行指南
 
 **AI Browser Execution Guide v4.0**  
-日期：2026-05-07
+日期：2026-06-21
+
+> 状态：已按当前代码校对。  
+> 说明：本文中的“输出协议”指录制与 AI planner 的规范化步骤输出，不等同于导出后的 `executionPlan` 或运行时最终 DSL。
 
 > 本文是面向 `ai-orchestrator`、`browser-worker`、录制器前端以及后续 coding agent 的统一执行指南。  
 > 目标是让 AI 在浏览器场景下生成稳定、可参数化、可导出的步骤，而不是输出脆弱的文本点击命令。
@@ -138,12 +141,15 @@ AI 不负责：
 输出结构化步骤计划：
 
 - `action`
-- `intent`
-- `runtimeTargetRef`
-- `locator`
 - `params`
-- `replaceableParams`
-- `expectedOutcome`
+- `description`
+
+可选附加信息：
+
+- `locator`
+- `candidateId`
+- `rawTarget`
+- `roleHint`
 
 ### 5.4 Execute
 
@@ -187,9 +193,7 @@ AI 不负责：
         { "ref": "e21", "placeholder": "请输入用户名" },
         { "ref": "e32", "placeholder": "请输入密码" }
       ],
-      "buttons": [
-        { "ref": "e53", "role": "button", "name": "登 录" }
-      ]
+      "buttons": [{ "ref": "e53", "role": "button", "name": "登 录" }]
     }
   },
   "history": [],
@@ -216,56 +220,50 @@ AI 的输出应是结构化步骤，而不是自由文本。
 
 ```json
 {
-  "summary": "将填写用户名和密码，点击登录后打开执行管理。",
+  "analysis": "当前页面存在用户名、密码输入框和登录按钮，适合拆成填写后提交的多步计划。",
   "steps": [
     {
       "action": "fill",
-      "intent": "填写用户名",
-      "runtimeTargetRef": "e21",
-      "locator": {
-        "strategy": "placeholder",
-        "value": "请输入用户名"
-      },
       "params": {
+        "selector": "用户名",
         "value": "{{username}}"
       },
-      "replaceableParams": ["username"],
-      "expectedOutcome": "用户名输入框已填写"
+      "description": "填写用户名"
     },
     {
       "action": "fill",
-      "intent": "填写密码",
-      "runtimeTargetRef": "e32",
-      "locator": {
-        "strategy": "placeholder",
-        "value": "请输入密码"
-      },
       "params": {
+        "selector": "密码",
         "value": "{{password}}"
       },
-      "replaceableParams": ["password"],
-      "expectedOutcome": "密码输入框已填写"
+      "description": "填写密码"
     },
     {
       "action": "click",
-      "intent": "提交登录表单",
-      "runtimeTargetRef": "e53",
-      "locator": {
-        "strategy": "role",
-        "value": "button",
-        "name": "登 录"
+      "params": {
+        "candidateId": "action_login",
+        "rawTarget": "登录",
+        "roleHint": "button",
+        "semanticHint": "submit"
       },
-      "expectedOutcome": "页面跳转到登录后首页"
+      "description": "点击登录"
     }
-  ]
+  ],
+  "explanation": "依次填写用户名和密码，再点击登录按钮"
 }
 ```
 
 要求：
 
 - 必须包含 `action`
-- 若存在 `ref`，必须同时尝试给出 locator proposal
-- 输入类动作必须给出参数绑定
+- 输入类动作必须给出参数值
+- 若当前上下文已有结构化 candidate，优先使用 `candidateId`、`rawTarget`、`roleHint`、`rowHint`
+- 若存在运行时 `ref`，可以用于本轮执行，但不要把它当成长期稳定契约
+
+补充说明：
+
+- `replaceableParams`、`expectedOutcome`、更丰富的 locator 元数据，可以在导出后的 `templateSteps` / `executionPlan` 阶段继续补强。
+- 录制态 parser / planner 的最小稳定输出以 `action + params + description` 为主。
 
 ---
 
@@ -285,7 +283,7 @@ AI 的输出应是结构化步骤，而不是自由文本。
 推荐输出：
 
 ```ts
-page.getByRole('button', { name: '提交' })
+page.getByRole('button', { name: '提交' });
 ```
 
 ### 8.2 `label`
@@ -297,7 +295,7 @@ page.getByRole('button', { name: '提交' })
 推荐输出：
 
 ```ts
-page.getByLabel('密码')
+page.getByLabel('密码');
 ```
 
 ### 8.3 `placeholder`
@@ -309,7 +307,7 @@ page.getByLabel('密码')
 推荐输出：
 
 ```ts
-page.getByPlaceholder('请输入用户名')
+page.getByPlaceholder('请输入用户名');
 ```
 
 ### 8.4 `testid`
@@ -322,7 +320,7 @@ page.getByPlaceholder('请输入用户名')
 推荐输出：
 
 ```ts
-page.getByTestId('submit')
+page.getByTestId('submit');
 ```
 
 ### 8.5 `text`
@@ -372,7 +370,7 @@ page.getByTestId('submit')
 
 规则：
 
-- 优先使用 `runtimeTargetRef`
+- 优先使用 `candidateId`、结构化 `rawTarget + roleHint + semanticHint`，其次才是临时 `ref`
 - 成功后立即生成持久化 locator
 - 若点击引发页面变化，应补充验证
 
@@ -394,12 +392,12 @@ page.getByTestId('submit')
 - 优先等待具体元素或状态
 - 避免大量裸 `waitForTimeout`
 
-### 9.6 `assert_visible` / `assert_text`
+### 9.6 `read_page` / `get_text` / `screenshot`
 
 规则：
 
-- 关键流程必须至少生成一个断言建议
-- 对可能变化的内容优先使用局部结构断言
+- 关键流程应至少保留一个可验证页面状态的读取或截图步骤
+- 对可能变化的内容，优先读取结构化上下文，而不是只依赖整页模糊文本
 
 ---
 
@@ -574,26 +572,31 @@ await expect(page).toHaveURL(/dashboard|executions|home/);
 
 ```json
 {
-  "summary": "填写登录凭证并进入执行管理页面。",
   "steps": [
     {
-      "action": "fill",
-      "runtimeTargetRef": "e21",
-      "locator": { "strategy": "placeholder", "value": "请输入用户名" },
-      "params": { "value": "{{username}}" },
-      "replaceableParams": ["username"]
+      "action": "navigate",
+      "params": { "url": "https://example.com/login" },
+      "description": "打开登录页"
     },
     {
       "action": "fill",
-      "runtimeTargetRef": "e32",
-      "locator": { "strategy": "placeholder", "value": "请输入密码" },
-      "params": { "value": "{{password}}" },
-      "replaceableParams": ["password"]
+      "params": { "selector": "用户名", "value": "{{username}}" },
+      "description": "填写用户名"
+    },
+    {
+      "action": "fill",
+      "params": { "selector": "密码", "value": "{{password}}" },
+      "description": "填写密码"
     },
     {
       "action": "click",
-      "runtimeTargetRef": "e53",
-      "locator": { "strategy": "role", "value": "button", "name": "登 录" }
+      "params": {
+        "candidateId": "action_login",
+        "rawTarget": "登录",
+        "roleHint": "button",
+        "semanticHint": "submit"
+      },
+      "description": "点击登录"
     }
   ]
 }
@@ -630,7 +633,7 @@ await expect(page).toHaveURL(/dashboard|executions|home/);
 ## 16. 验收清单
 
 - AI 输出包含结构化步骤而不是自由文本
-- 点击类动作能区分 `runtimeTargetRef` 与持久化 locator
+- 点击类动作能优先利用 `candidateId`、`rawTarget` 与结构化 locator 线索
 - 输入类动作能自动识别参数化字段
 - secret 参数不会在导出脚本中写死
 - 失败时能够基于新快照进行有限修正

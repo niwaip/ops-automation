@@ -42,7 +42,9 @@ export class BrowserScriptExportService {
       const allParams = this.collectParams(steps);
       if (Object.keys(allParams).length > 0) {
         lines.push('  // Parameters used in this script:');
-        lines.push(`  const params = ${JSON.stringify(allParams, null, 2).replace(/\n/g, '\n  ')};`);
+        lines.push(
+          `  const params = ${JSON.stringify(allParams, null, 2).replace(/\n/g, '\n  ')};`
+        );
         lines.push('');
       }
     }
@@ -58,11 +60,11 @@ export class BrowserScriptExportService {
       if (fragment) {
         lines.push(`  // Step: ${step.intent || step.action}`);
         lines.push(`  ${fragment}`);
-        
+
         if (step.assertionFragment) {
           lines.push(`  ${step.assertionFragment}`);
         }
-        
+
         lines.push('');
       }
     }

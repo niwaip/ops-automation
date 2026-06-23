@@ -3,7 +3,11 @@ import { Modal, Space, Alert, Card, Typography, Tag, Input, Button } from 'antd'
 import { ExperimentOutlined } from '@ant-design/icons';
 import { temporalWorkflowApi, WorkflowRealValidationResult } from '@/api/temporal';
 import { normalizeExecutionResult } from '@/api/execution-normalizer';
-import { normalizeValidationInputValue, collectLeafPaths, unwrapValidationResultPayload } from '../pages/TemporalPage.utils';
+import {
+  normalizeValidationInputValue,
+  collectLeafPaths,
+  unwrapValidationResultPayload,
+} from '../pages/TemporalPage.utils';
 
 const { Text } = Typography;
 
@@ -28,14 +32,23 @@ export const initialRealValidationState: RealValidationState = {
   result: null,
 };
 
-export const realValidationReducer = (state: RealValidationState, action: RealValidationAction): RealValidationState => {
+export const realValidationReducer = (
+  state: RealValidationState,
+  action: RealValidationAction
+): RealValidationState => {
   switch (action.type) {
-    case 'START': return { ...state, isStreaming: true, logs: [], result: null };
-    case 'OPEN': return { ...state, visible: true, isStreaming: false, logs: [], result: null };
-    case 'APPEND_LOG': return { ...state, logs: [...state.logs.slice(-(2000 - 1)), action.payload] };
-    case 'SET_RESULT': return { ...state, isStreaming: false, result: action.payload };
-    case 'CLOSE': return { ...initialRealValidationState };
-    default: return state;
+    case 'START':
+      return { ...state, isStreaming: true, logs: [], result: null };
+    case 'OPEN':
+      return { ...state, visible: true, isStreaming: false, logs: [], result: null };
+    case 'APPEND_LOG':
+      return { ...state, logs: [...state.logs.slice(-(2000 - 1)), action.payload] };
+    case 'SET_RESULT':
+      return { ...state, isStreaming: false, result: action.payload };
+    case 'CLOSE':
+      return { ...initialRealValidationState };
+    default:
+      return state;
   }
 };
 
@@ -52,7 +65,15 @@ export interface RealValidationModalProps {
 }
 
 export const RealValidationModal: React.FC<RealValidationModalProps> = ({
-  visible, onClose, generatedCode, workflowClassName, taskQueue, initialInputParams, hasHttpRequest, onApplySuggestedResponsePath, onRegenerateCode
+  visible,
+  onClose,
+  generatedCode,
+  workflowClassName,
+  taskQueue,
+  initialInputParams,
+  hasHttpRequest,
+  onApplySuggestedResponsePath,
+  onRegenerateCode,
 }) => {
   const [state, dispatch] = useReducer(realValidationReducer, initialRealValidationState);
   const [inputParams, setInputParams] = useState<Record<string, string>>({});
@@ -92,7 +113,10 @@ export const RealValidationModal: React.FC<RealValidationModalProps> = ({
           if (event.type === 'log' && event.content) {
             dispatch({ type: 'APPEND_LOG', payload: event.content });
           } else if (event.type === 'done') {
-            const normalized = normalizeExecutionResult(event, { defaultSuccessScore: 100, defaultFailureScore: 0 });
+            const normalized = normalizeExecutionResult(event, {
+              defaultSuccessScore: 100,
+              defaultFailureScore: 0,
+            });
             dispatch({
               type: 'SET_RESULT',
               payload: {
@@ -106,7 +130,12 @@ export const RealValidationModal: React.FC<RealValidationModalProps> = ({
           } else if (event.type === 'error') {
             dispatch({
               type: 'SET_RESULT',
-              payload: { success: false, logs: [], error: event.content || 'Unknown error', score: 0 },
+              payload: {
+                success: false,
+                logs: [],
+                error: event.content || 'Unknown error',
+                score: 0,
+              },
             });
           }
         }
@@ -119,7 +148,10 @@ export const RealValidationModal: React.FC<RealValidationModalProps> = ({
     }
   };
 
-  const rawResult = useMemo(() => unwrapValidationResultPayload(state.result?.result), [state.result?.result]);
+  const rawResult = useMemo(
+    () => unwrapValidationResultPayload(state.result?.result),
+    [state.result?.result]
+  );
   const leafPaths = useMemo(() => collectLeafPaths(rawResult), [rawResult]);
 
   const handleRegenerateCode = () => {
@@ -134,12 +166,16 @@ export const RealValidationModal: React.FC<RealValidationModalProps> = ({
   };
 
   const footer = [
-    ...(state.result && !state.result.success && onRegenerateCode ? [
-      <Button key="regenerate" type="primary" onClick={handleRegenerateCode}>重新生成代码</Button>
-    ] : []),
+    ...(state.result && !state.result.success && onRegenerateCode
+      ? [
+          <Button key="regenerate" type="primary" onClick={handleRegenerateCode}>
+            重新生成代码
+          </Button>,
+        ]
+      : []),
     <Button key="close" onClick={onClose}>
       关闭
-    </Button>
+    </Button>,
   ];
 
   return (
@@ -159,7 +195,9 @@ export const RealValidationModal: React.FC<RealValidationModalProps> = ({
                       <Input
                         placeholder={`请输入 ${key}`}
                         value={value}
-                        onChange={(e) => setInputParams(prev => ({ ...prev, [key]: e.target.value }))}
+                        onChange={(e) =>
+                          setInputParams((prev) => ({ ...prev, [key]: e.target.value }))
+                        }
                         style={{ width: 160 }}
                         size="small"
                       />
@@ -183,10 +221,27 @@ export const RealValidationModal: React.FC<RealValidationModalProps> = ({
 
         {state.result && (
           <>
-            <Alert type={state.result.success ? 'success' : 'error'} message={state.result.success ? '真实验证通过' : '真实验证失败'} showIcon />
-            <Card><Text><strong>评分:</strong> {state.result.score}/100</Text></Card>
-            {state.result.error && <Alert type="error" message="错误" description={state.result.error} showIcon />}
-            {state.result.result?.error && <Alert type="error" message="执行错误" description={String(state.result.result.error).substring(0, 500)} showIcon />}
+            <Alert
+              type={state.result.success ? 'success' : 'error'}
+              message={state.result.success ? '真实验证通过' : '真实验证失败'}
+              showIcon
+            />
+            <Card>
+              <Text>
+                <strong>评分:</strong> {state.result.score}/100
+              </Text>
+            </Card>
+            {state.result.error && (
+              <Alert type="error" message="错误" description={state.result.error} showIcon />
+            )}
+            {state.result.result?.error && (
+              <Alert
+                type="error"
+                message="执行错误"
+                description={String(state.result.result.error).substring(0, 500)}
+                showIcon
+              />
+            )}
             {rawResult !== undefined && rawResult !== null && (
               <Card title="执行结果" size="small">
                 <pre style={{ maxHeight: 300, overflow: 'auto', fontSize: 11, margin: 0 }}>
@@ -216,8 +271,14 @@ export const RealValidationModal: React.FC<RealValidationModalProps> = ({
         )}
         <Card title="执行日志" size="small">
           <div style={{ maxHeight: 300, overflow: 'auto', fontFamily: 'monospace', fontSize: 11 }}>
-            {state.logs.map((log, i) => <div key={i} style={{ marginBottom: 4 }}>{log}</div>)}
-            {state.logs.length === 0 && !state.isStreaming && <Text type="secondary">暂无日志</Text>}
+            {state.logs.map((log, i) => (
+              <div key={i} style={{ marginBottom: 4 }}>
+                {log}
+              </div>
+            ))}
+            {state.logs.length === 0 && !state.isStreaming && (
+              <Text type="secondary">暂无日志</Text>
+            )}
             {state.isStreaming && <Text type="secondary">等待更多日志...</Text>}
           </div>
         </Card>

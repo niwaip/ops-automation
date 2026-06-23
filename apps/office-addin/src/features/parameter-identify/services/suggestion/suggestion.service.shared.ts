@@ -1,9 +1,6 @@
 import { HostAdapter } from '../../../../host/adapters';
 import { DocumentIR } from '../../../../host/adapters/document-ir';
-import {
-  ChatAnalysisError,
-  StructuredAnalyzeRequest,
-} from '../analysis-executor';
+import { ChatAnalysisError, StructuredAnalyzeRequest } from '../analysis-executor';
 import { buildDocumentContext, serializeDocument } from '../identify/common/document-serialize';
 import type { AnalyzeDocumentOptions } from '../identify/common/identify.types';
 
@@ -57,7 +54,7 @@ function extractWordParagraphFormats(documentIR: DocumentIR): Array<Record<strin
 export function buildAnalyzeRequestPayload(
   adapter: HostAdapter,
   options: AnalyzeDocumentOptions,
-  documentIR: DocumentIR,
+  documentIR: DocumentIR
 ): StructuredAnalyzeRequest {
   const documentContent = serializeDocument(documentIR);
   const documentType: 'docx' | 'xlsx' | 'pptx' =

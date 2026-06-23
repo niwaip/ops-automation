@@ -70,7 +70,7 @@ export class ProxyService {
     method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
     path: string,
     data?: unknown,
-    headers?: Record<string, string>,
+    headers?: Record<string, string>
   ): Promise<{ data: unknown; status: number }> {
     const instance = this.axiosInstances[serviceName];
 
@@ -115,18 +115,15 @@ export class ProxyService {
         // Forward error from downstream service
         throw new HttpException(
           axiosLikeError.response.data || axiosLikeError.message || 'Downstream request failed',
-          axiosLikeError.response.status,
+          axiosLikeError.response.status
         );
       } else if (axiosLikeError.code === 'ECONNABORTED') {
-        throw new HttpException(
-          `Timeout connecting to ${serviceName}`,
-          HttpStatus.GATEWAY_TIMEOUT,
-        );
+        throw new HttpException(`Timeout connecting to ${serviceName}`, HttpStatus.GATEWAY_TIMEOUT);
       }
 
       throw new HttpException(
         `Failed to connect to ${serviceName}: ${axiosLikeError.message || 'Unknown error'}`,
-        HttpStatus.SERVICE_UNAVAILABLE,
+        HttpStatus.SERVICE_UNAVAILABLE
       );
     }
   }

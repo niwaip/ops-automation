@@ -57,22 +57,25 @@ function columnNameToIndex(columnName: string): number {
   return Math.max(result - 1, 0);
 }
 
-function parseR1C1Range(address: string): {
-  sheetName?: string;
-  startRow: number;
-  endRow: number;
-  startCol: number;
-  endCol: number;
-} | undefined {
+function parseR1C1Range(address: string):
+  | {
+      sheetName?: string;
+      startRow: number;
+      endRow: number;
+      startCol: number;
+      endCol: number;
+    }
+  | undefined {
   const normalized = normalizeText(address).replace(/\$/g, '');
   if (!normalized) {
     return undefined;
   }
 
   const bangIndex = normalized.lastIndexOf('!');
-  const sheetName = bangIndex >= 0
-    ? normalized.slice(0, bangIndex).replace(/^'/, '').replace(/'$/, '').replace(/''/g, '\'')
-    : undefined;
+  const sheetName =
+    bangIndex >= 0
+      ? normalized.slice(0, bangIndex).replace(/^'/, '').replace(/'$/, '').replace(/''/g, "'")
+      : undefined;
   const rangePart = bangIndex >= 0 ? normalized.slice(bangIndex + 1) : normalized;
   const match = rangePart.match(/^R(\d+)C(\d+)(?::R(\d+)C(\d+))?$/i);
   if (!match) {
@@ -93,22 +96,25 @@ function parseR1C1Range(address: string): {
   };
 }
 
-function parseA1Range(address: string): {
-  sheetName?: string;
-  startRow: number;
-  endRow: number;
-  startCol: number;
-  endCol: number;
-} | undefined {
+function parseA1Range(address: string):
+  | {
+      sheetName?: string;
+      startRow: number;
+      endRow: number;
+      startCol: number;
+      endCol: number;
+    }
+  | undefined {
   const normalized = normalizeText(address).replace(/\$/g, '');
   if (!normalized) {
     return undefined;
   }
 
   const bangIndex = normalized.lastIndexOf('!');
-  const sheetName = bangIndex >= 0
-    ? normalized.slice(0, bangIndex).replace(/^'/, '').replace(/'$/, '').replace(/''/g, '\'')
-    : undefined;
+  const sheetName =
+    bangIndex >= 0
+      ? normalized.slice(0, bangIndex).replace(/^'/, '').replace(/'$/, '').replace(/''/g, "'")
+      : undefined;
   const rangePart = bangIndex >= 0 ? normalized.slice(bangIndex + 1) : normalized;
   const r1c1Range = parseR1C1Range(address);
   if (r1c1Range) {
@@ -185,9 +191,10 @@ function getExcelLoopTableContextForCell(
   cell: ExcelCellInfo,
   tableContexts: ExcelLoopTableContext[]
 ): ExcelLoopTableContext | undefined {
-  return tableContexts.find((context) =>
-    normalizeText(context.sheetName) === normalizeText(cell.sheetName) &&
-    isCellInParsedRange(cell.rowIndex, cell.colIndex, context.bodyRange || context.headerRange)
+  return tableContexts.find(
+    (context) =>
+      normalizeText(context.sheetName) === normalizeText(cell.sheetName) &&
+      isCellInParsedRange(cell.rowIndex, cell.colIndex, context.bodyRange || context.headerRange)
   );
 }
 
@@ -199,17 +206,22 @@ function getExcelLoopHeaderLabel(
 ): string {
   const headerRowIndex = tableContext.headerRange.startRow - 1;
   const headerKey = `${headerRowIndex}:${cell.colIndex}`;
-  return normalizeText(dataCellMap.get(headerKey)?.text) || normalizeText(mockCellMap.get(headerKey)?.text);
+  return (
+    normalizeText(dataCellMap.get(headerKey)?.text) ||
+    normalizeText(mockCellMap.get(headerKey)?.text)
+  );
 }
 
 function buildExcelLoopPromptSummary(
   mockSheet: ExcelSheetInfo | undefined,
   dataSheet: ExcelSheetInfo | undefined,
   cells: ExcelCellInfo[]
-): {
-  summary: string;
-  fieldCount: number;
-} | undefined {
+):
+  | {
+      summary: string;
+      fieldCount: number;
+    }
+  | undefined {
   const templateSheet = mockSheet || dataSheet;
   const sampleSheet = dataSheet || mockSheet;
   const templateTable = templateSheet?.tables[0];
@@ -247,15 +259,17 @@ function buildExcelLoopPromptSummary(
 
   for (let columnIndex = headerRange.startCol; columnIndex <= lastColumnIndex; columnIndex += 1) {
     const headerCell =
-      cellMap.get(`data:${headerRowIndex}:${columnIndex}`)
-      || cellMap.get(`mock:${headerRowIndex}:${columnIndex}`);
+      cellMap.get(`data:${headerRowIndex}:${columnIndex}`) ||
+      cellMap.get(`mock:${headerRowIndex}:${columnIndex}`);
     const rowCell =
-      cellMap.get(`data:${sampleFirstDataRowIndex}:${columnIndex}`)
-      || cellMap.get(`mock:${sampleFirstDataRowIndex}:${columnIndex}`);
-    const headerName = normalizeText(headerCell?.text) || `列${columnIndex - headerRange.startCol + 1}`;
+      cellMap.get(`data:${sampleFirstDataRowIndex}:${columnIndex}`) ||
+      cellMap.get(`mock:${sampleFirstDataRowIndex}:${columnIndex}`);
+    const headerName =
+      normalizeText(headerCell?.text) || `列${columnIndex - headerRange.startCol + 1}`;
     const sampleValue = normalizeText(rowCell?.text);
     if (sampleValue) {
-      const templateColumnIndex = templateHeaderRange.startCol + (columnIndex - headerRange.startCol);
+      const templateColumnIndex =
+        templateHeaderRange.startCol + (columnIndex - headerRange.startCol);
       firstRowItems.push(
         `字段名称：${headerName}，示例值：${sampleValue}，位置：${toCellAddress(templateFirstDataRowIndex, templateColumnIndex)}`
       );
@@ -267,7 +281,9 @@ function buildExcelLoopPromptSummary(
       `表区域: ${templateTable.address || '未知'}`,
       firstRowItems.length > 0 ? '明细数据:' : undefined,
       ...firstRowItems,
-    ].filter(Boolean).join('\n'),
+    ]
+      .filter(Boolean)
+      .join('\n'),
     fieldCount: firstRowItems.length,
   };
 }
@@ -333,10 +349,18 @@ function buildExcelPairDiffSummary(
   loopDetected: boolean;
 } {
   const pairLabel = `${mockSheet?.name || '模板sheet'} ↔ ${dataSheet?.name || '数据sheet'}`;
-  const mockCells = cells.filter((cell) => cell.pairIndex === pairIndex && cell.sheetRole === 'mock');
-  const dataCells = cells.filter((cell) => cell.pairIndex === pairIndex && cell.sheetRole === 'data');
-  const mockCellMap = new Map(mockCells.map((cell) => [`${cell.rowIndex}:${cell.colIndex}`, cell] as const));
-  const dataCellMap = new Map(dataCells.map((cell) => [`${cell.rowIndex}:${cell.colIndex}`, cell] as const));
+  const mockCells = cells.filter(
+    (cell) => cell.pairIndex === pairIndex && cell.sheetRole === 'mock'
+  );
+  const dataCells = cells.filter(
+    (cell) => cell.pairIndex === pairIndex && cell.sheetRole === 'data'
+  );
+  const mockCellMap = new Map(
+    mockCells.map((cell) => [`${cell.rowIndex}:${cell.colIndex}`, cell] as const)
+  );
+  const dataCellMap = new Map(
+    dataCells.map((cell) => [`${cell.rowIndex}:${cell.colIndex}`, cell] as const)
+  );
   const loopTableContexts = buildExcelLoopTableContexts(mockSheet, dataSheet);
 
   let candidateCount = 0;
@@ -374,8 +398,9 @@ function buildExcelPairDiffSummary(
     }
   }
 
-  const loopDetected = [mockSheet, dataSheet].some((sheet) => (sheet?.tables.length || 0) > 0)
-    || /明细|交付|付款|detail|delivery|payment/i.test(pairLabel);
+  const loopDetected =
+    [mockSheet, dataSheet].some((sheet) => (sheet?.tables.length || 0) > 0) ||
+    /明细|交付|付款|detail|delivery|payment/i.test(pairLabel);
   const loopPromptSummary = loopDetected
     ? buildExcelLoopPromptSummary(mockSheet, dataSheet, cells)
     : undefined;
@@ -393,7 +418,9 @@ function buildExcelPairDiffSummary(
         loopPromptSummary.summary,
         candidateExamples.length > 0 ? '单独字段:' : undefined,
         candidateExamples.length > 0 ? candidateExamples.join('\n') : undefined,
-      ].filter(Boolean).join('\n')
+      ]
+        .filter(Boolean)
+        .join('\n')
     : candidateExamples.length > 0
       ? candidateExamples.join('\n')
       : '未提取到明确候选字段。';
@@ -410,7 +437,9 @@ function buildExcelPairDiffSummary(
 export function buildExcelPairAnalysisInputs(documentIR: DocumentIR): ExcelPairAnalysisInput[] {
   const sheets = extractExcelSheets(documentIR);
   const cells = extractExcelCells(documentIR);
-  const pairIndexes = Array.from(new Set(sheets.map((sheet) => sheet.pairIndex))).sort((a, b) => a - b);
+  const pairIndexes = Array.from(new Set(sheets.map((sheet) => sheet.pairIndex))).sort(
+    (a, b) => a - b
+  );
 
   return pairIndexes.map((pairIndex) => {
     const pairSheets = sheets.filter((sheet) => sheet.pairIndex === pairIndex);

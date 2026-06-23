@@ -16,7 +16,7 @@ import {
   TemplateConfig,
   AIIdentifyResponse,
   VariableMapping,
-  PathMappingRule
+  PathMappingRule,
 } from './utils/types';
 export {
   ProcessingStage,
@@ -26,7 +26,7 @@ export {
   TemplateConfig,
   AIIdentifyResponse,
   VariableMapping,
-  PathMappingRule
+  PathMappingRule,
 };
 
 import { parseDocxStructure } from './utils/docx-parser';
@@ -35,9 +35,13 @@ import {
   mergeUnderlineInfo,
   extractSectionContent,
   inferVariablePath,
-  calculateContextOverlap
+  calculateContextOverlap,
 } from './utils/blank-extractor';
-import { generateVariableSuggestions, generateColumnMappingsFromHeaders, normalizeColumnMappings } from './utils/table-loop-helper';
+import {
+  generateVariableSuggestions,
+  generateColumnMappingsFromHeaders,
+  normalizeColumnMappings,
+} from './utils/table-loop-helper';
 import {
   validateVariableMappings,
   validateGroupLoops,
@@ -48,16 +52,13 @@ import {
   extractFormatter,
   normalizeTemplateConfig,
   formatRawSuggestions,
-  buildVariableMappingsFromSuggestions
+  buildVariableMappingsFromSuggestions,
 } from './utils/parameter.helper';
-import {
-  generateAISkillGuide,
-  generateParametersFromDescription
-} from './utils/skill.helper';
+import { generateAISkillGuide, generateParametersFromDescription } from './utils/skill.helper';
 import {
   analyzeBlankPatternsWithAI,
   buildAIAnalysisPrompt,
-  parseAIAnalysisResponse
+  parseAIAnalysisResponse,
 } from './utils/ai-prompt.builder';
 
 type AiModelDescriptor = {
@@ -109,7 +110,12 @@ export class AIIdentifierService {
     const elements = documentStructure?.elements || [];
     const userIntent = parseUserContext(context || '');
 
-    const templateConfig = await this.analyzeWithAI(elements, context, manualMarkings, markingSummary);
+    const templateConfig = await this.analyzeWithAI(
+      elements,
+      context,
+      manualMarkings,
+      markingSummary
+    );
     if (!templateConfig) {
       throw new Error('AI分析失败，请检查AI服务是否正常');
     }
@@ -128,15 +134,15 @@ export class AIIdentifierService {
       analyzedAt: new Date().toISOString(),
       documentStats: {
         totalElements: elements.length,
-        tables: elements.filter(e => e.type === 'table').length,
-        images: elements.filter(e => e.type === 'image').length,
-        stepScreenshots: elements.filter(e => e.type === 'step-screenshot').length,
-        potentialLoops: loops.length + images.length
+        tables: elements.filter((e) => e.type === 'table').length,
+        images: elements.filter((e) => e.type === 'image').length,
+        stepScreenshots: elements.filter((e) => e.type === 'step-screenshot').length,
+        potentialLoops: loops.length + images.length,
       },
       contextAnalysis: {
         detectedTemplateType: templateConfig.templateType,
-        userIntent: userIntent.summary
-      }
+        userIntent: userIntent.summary,
+      },
     };
   }
 
@@ -151,7 +157,9 @@ export class AIIdentifierService {
     customRules?: Array<{ pattern: string; targetPath: string; description?: string }>,
     skill?: any
   ): Promise<AIIdentifyResponse> {
-    this.logger.log(`Direct AI identify from content, type: ${templateType}, content length: ${documentContent.length}`);
+    this.logger.log(
+      `Direct AI identify from content, type: ${templateType}, content length: ${documentContent.length}`
+    );
 
     const blankPatterns = extractBlankPatterns(documentContent, templateType);
     this.logger.log(`Found ${blankPatterns.length} blank patterns`);
@@ -175,7 +183,7 @@ export class AIIdentifierService {
       imageLoops: [],
       combinedVariables: [],
       variableMappings: [],
-      analysisNotes: []
+      analysisNotes: [],
     };
 
     const documentStats = {
@@ -183,7 +191,7 @@ export class AIIdentifierService {
       tables: 0,
       images: 0,
       stepScreenshots: 0,
-      potentialLoops: 0
+      potentialLoops: 0,
     };
 
     const variableMappings: VariableMapping[] = suggestions.map((s, idx) => ({
@@ -191,7 +199,7 @@ export class AIIdentifierService {
       sampleValue: s.originalText,
       index: idx,
       type: 'text' as const,
-      reason: s.details?.significance || ''
+      reason: s.details?.significance || '',
     }));
 
     return {
@@ -207,8 +215,8 @@ export class AIIdentifierService {
         detectedTemplateType: templateType,
         userIntent: context || 'Office文档模板化',
         usedAI,
-        aiServiceUrl: this.aiOrchestratorUrl
-      }
+        aiServiceUrl: this.aiOrchestratorUrl,
+      },
     };
   }
 
@@ -244,16 +252,27 @@ export class AIIdentifierService {
 
     if (underlineInfo && underlineInfo.length > 0) {
       this.logger.log(`检测到 ${underlineInfo.length} 个精确下划线位置，使用快速命名流程`);
-      return await this.quickNameParameters(underlineInfo, documentContent, templateType, progressCallback);
+      return await this.quickNameParameters(
+        underlineInfo,
+        documentContent,
+        templateType,
+        progressCallback
+      );
     }
 
-    const reportProgress = (stage: ProcessingStage, stageName: string, progress: number, message: string, currentSection?: string) => {
+    const reportProgress = (
+      stage: ProcessingStage,
+      stageName: string,
+      progress: number,
+      message: string,
+      currentSection?: string
+    ) => {
       const progressInfo: ProcessingProgress = {
         stage,
         stageName,
         progress,
         message,
-        currentSection
+        currentSection,
       };
       this.logger.log(`进度报告: [${stageName}] ${progress}% - ${message}`);
       if (progressCallback) {
@@ -262,12 +281,30 @@ export class AIIdentifierService {
     };
 
     try {
-      reportProgress(ProcessingStage.DOCUMENT_UNDERSTANDING, '文档理解', 0, '正在分析文档整体结构和内容...');
-      const documentUnderstanding = await this.analyzeDocumentUnderstanding(documentContent, templateType, context);
-      reportProgress(ProcessingStage.DOCUMENT_UNDERSTANDING, '文档理解', 100,
-        `文档理解完成，识别到 ${documentUnderstanding.sections.length} 个章节，${documentUnderstanding.parties.length} 个当事人`);
+      reportProgress(
+        ProcessingStage.DOCUMENT_UNDERSTANDING,
+        '文档理解',
+        0,
+        '正在分析文档整体结构和内容...'
+      );
+      const documentUnderstanding = await this.analyzeDocumentUnderstanding(
+        documentContent,
+        templateType,
+        context
+      );
+      reportProgress(
+        ProcessingStage.DOCUMENT_UNDERSTANDING,
+        '文档理解',
+        100,
+        `文档理解完成，识别到 ${documentUnderstanding.sections.length} 个章节，${documentUnderstanding.parties.length} 个当事人`
+      );
 
-      reportProgress(ProcessingStage.SECTION_ANALYSIS, '预处理', 0, '正在预提取文档中的空白位置...');
+      reportProgress(
+        ProcessingStage.SECTION_ANALYSIS,
+        '预处理',
+        0,
+        '正在预提取文档中的空白位置...'
+      );
       const preExtractedBlanks = extractBlankPatterns(documentContent, templateType);
       this.logger.log(`预处理提取到 ${preExtractedBlanks.length} 个空白位置`);
 
@@ -275,27 +312,50 @@ export class AIIdentifierService {
       if (underlineInfo && underlineInfo.length > 0) {
         blanksToUse = mergeUnderlineInfo([], underlineInfo, documentContent, templateType);
         this.logger.log(`使用下划线信息作为参数来源，共 ${blanksToUse.length} 个参数位置`);
-        reportProgress(ProcessingStage.SECTION_ANALYSIS, '预处理', 10,
-          `使用 Word 下划线检测结果，发现 ${blanksToUse.length} 个参数位置`);
+        reportProgress(
+          ProcessingStage.SECTION_ANALYSIS,
+          '预处理',
+          10,
+          `使用 Word 下划线检测结果，发现 ${blanksToUse.length} 个参数位置`
+        );
       } else {
-        reportProgress(ProcessingStage.SECTION_ANALYSIS, '预处理', 10,
-          `预提取完成，发现 ${preExtractedBlanks.length} 个潜在空白位置`);
+        reportProgress(
+          ProcessingStage.SECTION_ANALYSIS,
+          '预处理',
+          10,
+          `预提取完成，发现 ${preExtractedBlanks.length} 个潜在空白位置`
+        );
       }
 
-      reportProgress(ProcessingStage.SECTION_ANALYSIS, '分段参数化', 0, '开始对各章节进行语义分析...');
+      reportProgress(
+        ProcessingStage.SECTION_ANALYSIS,
+        '分段参数化',
+        0,
+        '开始对各章节进行语义分析...'
+      );
       const allSectionResults: SectionParameterization[] = [];
-      const sectionsToProcess = documentUnderstanding.sections.filter(s => s.needsParameterization);
+      const sectionsToProcess = documentUnderstanding.sections.filter(
+        (s) => s.needsParameterization
+      );
 
       for (let i = 0; i < sectionsToProcess.length; i++) {
         const section = sectionsToProcess[i];
         const sectionProgress = Math.round((i / sectionsToProcess.length) * 80);
 
-        reportProgress(ProcessingStage.SECTION_ANALYSIS, '分段参数化', sectionProgress,
-          `正在分析章节: ${section.name}`, section.name);
+        reportProgress(
+          ProcessingStage.SECTION_ANALYSIS,
+          '分段参数化',
+          sectionProgress,
+          `正在分析章节: ${section.name}`,
+          section.name
+        );
 
         const sectionContent = extractSectionContent(documentContent, section.name);
-        const sectionBlanks = blanksToUse.filter(b =>
-          b.chapter === section.name || b.chapter.includes(section.name) || section.name.includes(b.chapter)
+        const sectionBlanks = blanksToUse.filter(
+          (b) =>
+            b.chapter === section.name ||
+            b.chapter.includes(section.name) ||
+            section.name.includes(b.chapter)
         );
 
         const sectionResult = await this.parameterizeSection(
@@ -307,12 +367,20 @@ export class AIIdentifierService {
         );
 
         allSectionResults.push(sectionResult);
-        reportProgress(ProcessingStage.SECTION_ANALYSIS, '分段参数化', sectionProgress + Math.round(80 / sectionsToProcess.length),
-          `章节 ${section.name} 分析完成，识别到 ${sectionResult.suggestions.length} 个参数`);
+        reportProgress(
+          ProcessingStage.SECTION_ANALYSIS,
+          '分段参数化',
+          sectionProgress + Math.round(80 / sectionsToProcess.length),
+          `章节 ${section.name} 分析完成，识别到 ${sectionResult.suggestions.length} 个参数`
+        );
       }
 
-      reportProgress(ProcessingStage.SECTION_ANALYSIS, '分段参数化', 100,
-        `分段参数化完成，共识别到 ${allSectionResults.reduce((sum, s) => sum + s.suggestions.length, 0)} 个潜在参数`);
+      reportProgress(
+        ProcessingStage.SECTION_ANALYSIS,
+        '分段参数化',
+        100,
+        `分段参数化完成，共识别到 ${allSectionResults.reduce((sum, s) => sum + s.suggestions.length, 0)} 个潜在参数`
+      );
 
       reportProgress(ProcessingStage.INTEGRATION, '整合确认', 0, '正在整合和确认所有识别结果...');
       const finalSuggestions = await this.integrateAndConfirm(
@@ -321,8 +389,12 @@ export class AIIdentifierService {
         documentContent,
         templateType
       );
-      reportProgress(ProcessingStage.INTEGRATION, '整合确认', 100,
-        `整合确认完成，最终确认 ${finalSuggestions.length} 个有效参数`);
+      reportProgress(
+        ProcessingStage.INTEGRATION,
+        '整合确认',
+        100,
+        `整合确认完成，最终确认 ${finalSuggestions.length} 个有效参数`
+      );
 
       reportProgress(ProcessingStage.COMPLETE, '完成', 100, 'AI识别处理完成');
 
@@ -333,7 +405,10 @@ export class AIIdentifierService {
         imageLoops: [],
         combinedVariables: [],
         variableMappings: [],
-        analysisNotes: [`文档类型: ${documentUnderstanding.documentType}`, `主要用途: ${documentUnderstanding.mainPurpose}`]
+        analysisNotes: [
+          `文档类型: ${documentUnderstanding.documentType}`,
+          `主要用途: ${documentUnderstanding.mainPurpose}`,
+        ],
       };
 
       const variableMappings = buildVariableMappingsFromSuggestions(finalSuggestions);
@@ -342,7 +417,7 @@ export class AIIdentifierService {
         tables: 0,
         images: 0,
         stepScreenshots: 0,
-        potentialLoops: 0
+        potentialLoops: 0,
       };
 
       return {
@@ -359,8 +434,8 @@ export class AIIdentifierService {
           userIntent: documentUnderstanding.mainPurpose,
           usedAI: true,
           aiServiceUrl: this.aiOrchestratorUrl,
-          flowType: 'multi-stage'
-        }
+          flowType: 'multi-stage',
+        },
       };
     } catch (error: any) {
       this.logger.error('多阶段AI识别失败:', error);
@@ -417,12 +492,14 @@ ${documentContent.length > 3000 ? '\n...(文档较长，已截取前3000字符)'
     try {
       const aiResponse = await this.callAIService(prompt);
       if (aiResponse && aiResponse.documentType) {
-        this.logger.log(`文档理解成功: 类型=${aiResponse.documentType}, 章节数=${aiResponse.sections?.length || 0}`);
+        this.logger.log(
+          `文档理解成功: 类型=${aiResponse.documentType}, 章节数=${aiResponse.sections?.length || 0}`
+        );
         return {
           documentType: aiResponse.documentType || templateType,
           mainPurpose: aiResponse.mainPurpose || '文档模板化处理',
           sections: aiResponse.sections || [],
-          parties: aiResponse.parties || []
+          parties: aiResponse.parties || [],
         };
       }
       this.logger.warn('AI文档理解返回格式异常，使用基础理解');
@@ -436,28 +513,34 @@ ${documentContent.length > 3000 ? '\n...(文档较长，已截取前3000字符)'
   /**
    * 构建基础文档理解
    */
-  private buildBasicDocumentUnderstanding(content: string, templateType: string): DocumentUnderstanding {
+  private buildBasicDocumentUnderstanding(
+    content: string,
+    templateType: string
+  ): DocumentUnderstanding {
     const chapterStructure = extractBlankPatterns(content, templateType);
-    const sections = chapterStructure.map(chapter => ({
+    const sections = chapterStructure.map((chapter) => ({
       name: chapter.chapter || '正文',
-      content: content.substring(chapter.position, Math.min(content.length, chapter.position + 200)),
+      content: content.substring(
+        chapter.position,
+        Math.min(content.length, chapter.position + 200)
+      ),
       purpose: '文档章节内容',
       needsParameterization: this.checkNeedsParameterization(content.substring(chapter.position)),
-      estimatedParams: []
+      estimatedParams: [],
     }));
 
     const parties = ['甲方', '乙方', '委托方', '受托方']
-      .filter(keyword => content.includes(keyword))
-      .map(role => ({
+      .filter((keyword) => content.includes(keyword))
+      .map((role) => ({
         role,
-        fieldsNeeded: ['名称', '地址']
+        fieldsNeeded: ['名称', '地址'],
       }));
 
     return {
       documentType: templateType,
       mainPurpose: '文档模板化处理',
       sections,
-      parties
+      parties,
     };
   }
 
@@ -472,7 +555,7 @@ ${documentContent.length > 3000 ? '\n...(文档较长，已截取前3000字符)'
       /[（【\(][　 ]*[）】\)]/,
       /[\s　]+年[\s　]+月[\s　]+日/,
     ];
-    return patterns.some(pattern => pattern.test(content));
+    return patterns.some((pattern) => pattern.test(content));
   }
 
   /**
@@ -485,17 +568,27 @@ ${documentContent.length > 3000 ? '\n...(文档较长，已截取前3000字符)'
     templateType: string,
     preExtractedBlanks: any[] = []
   ): Promise<SectionParameterization> {
-    this.logger.log(`阶段2: 参数化章节 "${sectionName}", 预处理空白 ${preExtractedBlanks.length} 个`);
+    this.logger.log(
+      `阶段2: 参数化章节 "${sectionName}", 预处理空白 ${preExtractedBlanks.length} 个`
+    );
 
     const relevantParties = documentUnderstanding.parties;
-    const keyEntitiesInfo = documentUnderstanding.keyEntities ? `【关键实体】: ${documentUnderstanding.keyEntities.join(', ')}` : '';
-    const dataSchemaInfo = documentUnderstanding.dataSchema ? `【建议数据架构】: ${documentUnderstanding.dataSchema}` : '';
-
-    const preBlanksList = preExtractedBlanks.length > 0
-      ? `\n【已识别的空白填充位置】（共${preExtractedBlanks.length}个，每个位置都需要填写内容）\n${preExtractedBlanks.map((b, i) =>
-        `[${i + 1}] 空白内容: "${b.text}"\n    前文: "${b.beforeBlank}"\n    上下文片段: "${b.context}"\n    类型: ${b.type}\n    建议意义: "${b.significance}"`
-      ).join('\n')}\n\n请根据上下文为每个空白位置生成合适的变量名，变量名应反映其业务含义。`
+    const keyEntitiesInfo = documentUnderstanding.keyEntities
+      ? `【关键实体】: ${documentUnderstanding.keyEntities.join(', ')}`
       : '';
+    const dataSchemaInfo = documentUnderstanding.dataSchema
+      ? `【建议数据架构】: ${documentUnderstanding.dataSchema}`
+      : '';
+
+    const preBlanksList =
+      preExtractedBlanks.length > 0
+        ? `\n【已识别的空白填充位置】（共${preExtractedBlanks.length}个，每个位置都需要填写内容）\n${preExtractedBlanks
+            .map(
+              (b, i) =>
+                `[${i + 1}] 空白内容: "${b.text}"\n    前文: "${b.beforeBlank}"\n    上下文片段: "${b.context}"\n    类型: ${b.type}\n    建议意义: "${b.significance}"`
+            )
+            .join('\n')}\n\n请根据上下文为每个空白位置生成合适的变量名，变量名应反映其业务含义。`
+        : '';
 
     const prompt = `你是一个专业的文档模板化专家。请分析以下章节内容，为每个空白填充位置生成语义化变量。
 
@@ -511,7 +604,7 @@ ${keyEntitiesInfo}
 ${dataSchemaInfo}
 
 【当事人信息】
-${relevantParties.map(p => `${p.role} 需要字段: ${p.fieldsNeeded.join(', ')}`).join('\n')}
+${relevantParties.map((p) => `${p.role} 需要字段: ${p.fieldsNeeded.join(', ')}`).join('\n')}
 
 【已识别的空白位置】
 ${preBlanksList || '无空白位置'}
@@ -545,7 +638,9 @@ ${sectionContent}
     try {
       const aiResponse = await this.callAIService(prompt);
       if (aiResponse && aiResponse.suggestions && Array.isArray(aiResponse.suggestions)) {
-        this.logger.log(`章节 "${sectionName}" AI参数化成功，识别到 ${aiResponse.suggestions.length} 个参数`);
+        this.logger.log(
+          `章节 "${sectionName}" AI参数化成功，识别到 ${aiResponse.suggestions.length} 个参数`
+        );
 
         const aiSuggestions = aiResponse.suggestions.map((s: any) => ({
           originalText: s.originalText || '',
@@ -554,16 +649,29 @@ ${sectionContent}
           fieldType: s.fieldType || 'text',
           significance: s.significance || '文档填充字段',
           context: s.context || sectionContent.substring(0, 50),
-          confidence: s.confidence || 0.7
+          confidence: s.confidence || 0.7,
         }));
 
-        const missingBlanks = preExtractedBlanks.filter(pre => {
+        const missingBlanks = preExtractedBlanks.filter((pre) => {
           const inferredPath = inferVariablePath(pre.beforeBlank, pre.type, templateType);
           return !aiSuggestions.some((ai: any) => {
             if (ai.variablePath === inferredPath) return true;
-            const coreKeywords = ['甲方', '乙方', '地址', '名称', '签字', '盖章', '日期', '年份', '附件', '保密期限'];
-            const preKeyword = coreKeywords.find(kw => pre.beforeBlank.includes(kw));
-            const aiKeyword = coreKeywords.find(kw => ai.variablePath.includes(kw) || ai.variableName?.includes(kw));
+            const coreKeywords = [
+              '甲方',
+              '乙方',
+              '地址',
+              '名称',
+              '签字',
+              '盖章',
+              '日期',
+              '年份',
+              '附件',
+              '保密期限',
+            ];
+            const preKeyword = coreKeywords.find((kw) => pre.beforeBlank.includes(kw));
+            const aiKeyword = coreKeywords.find(
+              (kw) => ai.variablePath.includes(kw) || ai.variableName?.includes(kw)
+            );
             if (preKeyword && aiKeyword && preKeyword === aiKeyword) {
               const contextOverlap = calculateContextOverlap(pre.context, ai.context || '');
               if (contextOverlap > 0.5) return true;
@@ -582,7 +690,7 @@ ${sectionContent}
               variableName: blank.beforeBlank || '未知字段',
               significance: blank.significance,
               context: blank.context,
-              confidence: 0.6
+              confidence: 0.6,
             });
           }
         }
@@ -592,27 +700,27 @@ ${sectionContent}
 
       return {
         sectionName,
-        suggestions: preExtractedBlanks.map(b => ({
+        suggestions: preExtractedBlanks.map((b) => ({
           originalText: b.text,
           variablePath: inferVariablePath(b.beforeBlank, b.type, templateType),
           variableName: b.beforeBlank || '未知字段',
           significance: b.significance,
           context: b.context,
-          confidence: 0.5
-        }))
+          confidence: 0.5,
+        })),
       };
     } catch (error: any) {
       this.logger.error(`章节 "${sectionName}" 参数化失败:`, error);
       return {
         sectionName,
-        suggestions: preExtractedBlanks.map(b => ({
+        suggestions: preExtractedBlanks.map((b) => ({
           originalText: b.text,
           variablePath: inferVariablePath(b.beforeBlank, b.type, templateType),
           variableName: b.beforeBlank || '未知字段',
           significance: b.significance,
           context: b.context,
-          confidence: 0.5
-        }))
+          confidence: 0.5,
+        })),
       };
     }
   }
@@ -627,7 +735,7 @@ ${sectionContent}
     templateType: string
   ): Promise<any[]> {
     this.logger.log('阶段3: 开始整合确认');
-    const allSuggestions = sectionResults.flatMap(sr => sr.suggestions);
+    const allSuggestions = sectionResults.flatMap((sr) => sr.suggestions);
 
     if (allSuggestions.length === 0) {
       this.logger.warn('没有识别到任何参数');
@@ -666,7 +774,11 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
 
     try {
       const aiResponse = await this.callAIService(prompt);
-      if (aiResponse && aiResponse.confirmedSuggestions && Array.isArray(aiResponse.confirmedSuggestions)) {
+      if (
+        aiResponse &&
+        aiResponse.confirmedSuggestions &&
+        Array.isArray(aiResponse.confirmedSuggestions)
+      ) {
         this.logger.log(`整合确认完成，最终确认 ${aiResponse.confirmedSuggestions.length} 个参数`);
         return aiResponse.confirmedSuggestions.map((s: any, idx: number) => ({
           id: `sugg-${Date.now()}-${idx}`,
@@ -683,8 +795,8 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
             usage: s.usage,
             variableName: s.variableName,
             fieldType: s.fieldType || 'text',
-            formatter: extractFormatter(s.variablePath)
-          }
+            formatter: extractFormatter(s.variablePath),
+          },
         }));
       }
       return formatRawSuggestions(allSuggestions);
@@ -705,7 +817,12 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
   ): Promise<AIIdentifyResponse> {
     this.logger.log(`快速命名流程: 处理 ${underlineInfo.length} 个参数位置`);
 
-    const reportProgress = (stage: ProcessingStage, stageName: string, progress: number, message: string) => {
+    const reportProgress = (
+      stage: ProcessingStage,
+      stageName: string,
+      progress: number,
+      message: string
+    ) => {
       this.logger.log(`进度: [${stageName}] ${progress}% - ${message}`);
       if (progressCallback) {
         progressCallback({ stage, stageName, progress, message });
@@ -728,7 +845,7 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
         text: info.text,
         context: context,
         label: label,
-        paragraph: paraText.substring(0, 50) + '...'
+        paragraph: paraText.substring(0, 50) + '...',
       };
     });
 
@@ -737,12 +854,16 @@ ${fullContent.substring(0, Math.min(1000, fullContent.length))}
 模板类型: ${templateType}
 
 【参数位置列表】
-${parameterList.map(p => `
+${parameterList
+  .map(
+    (p) => `
 #${p.index}
 - 上下文: "${p.context}"
 - 前置标签: "${p.label}"
 - 段落: "${p.paragraph}"
-`).join('\n')}
+`
+  )
+  .join('\n')}
 
 请返回JSON数组，为每个参数生成：
 [
@@ -781,7 +902,7 @@ ${parameterList.map(p => `
             variableName: `field_${i + 1}`,
             significance: '待填写内容',
             fieldType: 'text',
-            confidence: 0.7
+            confidence: 0.7,
           });
         }
       }
@@ -791,7 +912,10 @@ ${parameterList.map(p => `
         const para = info?.paragraphText || '';
         const posStart = info?.position?.start || 0;
         const posEnd = info?.position?.end || 0;
-        const context = para.substring(Math.max(0, posStart - 15), Math.min(para.length, posEnd + 15));
+        const context = para.substring(
+          Math.max(0, posStart - 15),
+          Math.min(para.length, posEnd + 15)
+        );
 
         return {
           id: `sugg-${Date.now()}-${idx}`,
@@ -806,7 +930,7 @@ ${parameterList.map(p => `
             paragraphIndex: info?.paragraphIndex,
             position: info?.position,
             paragraphText: info?.paragraphText,
-            underlineType: info?.underlineType
+            underlineType: info?.underlineType,
           },
           details: {
             chapter: result.chapter || '正文',
@@ -816,12 +940,17 @@ ${parameterList.map(p => `
             displayPosition: context,
             beforeBlank: parameterList[idx]?.label || '',
             afterBlank: para.substring(posEnd, Math.min(para.length, posEnd + 10)),
-            formatter: extractFormatter(result.variablePath)
-          }
+            formatter: extractFormatter(result.variablePath),
+          },
         };
       });
 
-      reportProgress(ProcessingStage.COMPLETE, '完成', 100, `快速识别完成，共 ${suggestions.length} 个参数`);
+      reportProgress(
+        ProcessingStage.COMPLETE,
+        '完成',
+        100,
+        `快速识别完成，共 ${suggestions.length} 个参数`
+      );
 
       return {
         templateConfig: {
@@ -831,7 +960,7 @@ ${parameterList.map(p => `
           imageLoops: [],
           combinedVariables: [],
           variableMappings: [],
-          analysisNotes: [`快速识别模式，基于 ${underlineInfo.length} 个下划线位置`]
+          analysisNotes: [`快速识别模式，基于 ${underlineInfo.length} 个下划线位置`],
         },
         suggestions: suggestions.map((s, idx) => ({
           path: s.suggestedName,
@@ -839,7 +968,7 @@ ${parameterList.map(p => `
           index: idx,
           type: 'text',
           reason: s.details?.significance,
-          fieldType: s.details?.fieldType
+          fieldType: s.details?.fieldType,
         })),
         rawSuggestions: suggestions,
         loops: [],
@@ -851,15 +980,15 @@ ${parameterList.map(p => `
           tables: 0,
           images: 0,
           stepScreenshots: 0,
-          potentialLoops: 0
+          potentialLoops: 0,
         },
         contextAnalysis: {
           detectedTemplateType: templateType,
           userIntent: '基于下划线位置的参数识别',
           usedAI: true,
           aiServiceUrl: this.aiOrchestratorUrl,
-          flowType: 'quick'
-        }
+          flowType: 'quick',
+        },
       };
     } catch (error) {
       this.logger.error('快速命名流程失败:', error);
@@ -878,8 +1007,8 @@ ${parameterList.map(p => `
           chapter: '正文',
           significance: '待填写内容',
           variableName: `field_${idx + 1}`,
-          fieldType: 'text'
-        }
+          fieldType: 'text',
+        },
       }));
 
       return {
@@ -890,14 +1019,14 @@ ${parameterList.map(p => `
           imageLoops: [],
           combinedVariables: [],
           variableMappings: [],
-          analysisNotes: ['后备命名模式']
+          analysisNotes: ['后备命名模式'],
         },
         suggestions: suggestions.map((s, idx) => ({
           path: s.suggestedName,
           sampleValue: s.originalText,
           index: idx,
           type: 'text',
-          reason: s.details?.significance
+          reason: s.details?.significance,
         })),
         rawSuggestions: suggestions,
         loops: [],
@@ -909,14 +1038,14 @@ ${parameterList.map(p => `
           tables: 0,
           images: 0,
           stepScreenshots: 0,
-          potentialLoops: 0
+          potentialLoops: 0,
         },
         contextAnalysis: {
           detectedTemplateType: templateType,
           userIntent: '后备命名',
           usedAI: false,
-          aiServiceUrl: this.aiOrchestratorUrl
-        }
+          aiServiceUrl: this.aiOrchestratorUrl,
+        },
       };
     }
   }
@@ -926,9 +1055,12 @@ ${parameterList.map(p => `
    */
   private async callAIService(prompt: string, retryCount: number = 0): Promise<any> {
     try {
-      const modelsResponse = await axios.get<AiModelsResponse>(`${this.aiOrchestratorUrl}/ai/models`, {
-        timeout: 5000,
-      });
+      const modelsResponse = await axios.get<AiModelsResponse>(
+        `${this.aiOrchestratorUrl}/ai/models`,
+        {
+          timeout: 5000,
+        }
+      );
       const models = modelsResponse.data?.models || [];
       const activeModel = models.find((m: { status: string }) => m.status === 'active');
 
@@ -976,7 +1108,9 @@ ${parameterList.map(p => `
   }
 
   async generateParametersFromDescription(description: string, skill: any): Promise<any> {
-    return generateParametersFromDescription(description, skill, (prompt) => this.callAIService(prompt));
+    return generateParametersFromDescription(description, skill, (prompt) =>
+      this.callAIService(prompt)
+    );
   }
 
   /**
@@ -986,7 +1120,10 @@ ${parameterList.map(p => `
     return normalizeTemplateConfig(config);
   }
 
-  generateVariableSuggestions(elements: DocumentElement[], config: TemplateConfig): VariableMapping[] {
+  generateVariableSuggestions(
+    elements: DocumentElement[],
+    config: TemplateConfig
+  ): VariableMapping[] {
     return generateVariableSuggestions(elements, config);
   }
 
@@ -1012,9 +1149,12 @@ ${parameterList.map(p => `
     markingSummary?: string
   ): Promise<TemplateConfig | null> {
     try {
-      const modelsResponse = await axios.get<AiModelsResponse>(`${this.aiOrchestratorUrl}/ai/models`, {
-        timeout: 5000,
-      });
+      const modelsResponse = await axios.get<AiModelsResponse>(
+        `${this.aiOrchestratorUrl}/ai/models`,
+        {
+          timeout: 5000,
+        }
+      );
       const models = modelsResponse.data.models || [];
       const activeModel = models.find((m: { status: string }) => m.status === 'active');
       if (!activeModel) return null;
@@ -1045,9 +1185,12 @@ ${parameterList.map(p => `
     onProgress?: (chunk: string) => void
   ): Promise<TemplateConfig | null> {
     try {
-      const modelsResponse = await axios.get<AiModelsResponse>(`${this.aiOrchestratorUrl}/ai/models`, {
-        timeout: 5000,
-      });
+      const modelsResponse = await axios.get<AiModelsResponse>(
+        `${this.aiOrchestratorUrl}/ai/models`,
+        {
+          timeout: 5000,
+        }
+      );
       const models = modelsResponse.data?.models || [];
       const activeModel = models.find((m: { status: string }) => m.status === 'active');
       if (!activeModel) return null;
@@ -1118,7 +1261,11 @@ ${parameterList.map(p => `
     }
   }
 
-  private async callAIForVerify(prompt: string, templateConfig: any, testData: any): Promise<{ report: string }> {
+  private async callAIForVerify(
+    prompt: string,
+    templateConfig: any,
+    testData: any
+  ): Promise<{ report: string }> {
     const aiUrl = getAiOrchestratorUrl();
     const systemPrompt = `你是一个文档模版验证助手。用户会提供一个模版配置和验证需求，你需要根据这些信息生成一份示例报告内容。
 

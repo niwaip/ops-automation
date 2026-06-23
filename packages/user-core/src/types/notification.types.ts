@@ -1,15 +1,15 @@
-export type NotificationSource = "execution" | "report";
+export type NotificationSource = 'execution' | 'report';
 
-export type NotificationSeverity = "success" | "error" | "warning" | "info";
+export type NotificationSeverity = 'success' | 'error' | 'warning' | 'info';
 
 export type NotificationCategory =
-  | "completed"
-  | "failed"
-  | "cancelled"
-  | "waiting_input"
-  | "pending_approval"
-  | "human_control"
-  | "status_update";
+  | 'completed'
+  | 'failed'
+  | 'cancelled'
+  | 'waiting_input'
+  | 'pending_approval'
+  | 'human_control'
+  | 'status_update';
 
 export interface AppNotification {
   id: string;

@@ -2,10 +2,12 @@ export const PPTAPI = {
   /**
    * 获取所有幻灯片内容
    */
-  async getSlidesContent(): Promise<Array<{
-    index: string;
-    shapes: Array<{ type: string; text: string; id: string }>;
-  }>> {
+  async getSlidesContent(): Promise<
+    Array<{
+      index: string;
+      shapes: Array<{ type: string; text: string; id: string }>;
+    }>
+  > {
     return new Promise((resolve, reject) => {
       PowerPoint.run(async (context) => {
         const slides = context.presentation.slides;

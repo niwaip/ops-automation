@@ -43,8 +43,8 @@ function tryParseJSONObject(content: string): Record<string, unknown> | null {
 export function looksLikeJson(content: string): boolean {
   const trimmed = content.trim();
   return (
-    (trimmed.startsWith('{') && trimmed.endsWith('}'))
-    || (trimmed.startsWith('[') && trimmed.endsWith(']'))
+    (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+    (trimmed.startsWith('[') && trimmed.endsWith(']'))
   );
 }
 
@@ -135,7 +135,9 @@ function extractBalancedJsonObjectsLoose(content: string): string[] {
 }
 
 function extractJsonStringField(content: string, fieldName: string): string | undefined {
-  const match = content.match(new RegExp(`"${fieldName}"\\s*:\\s*"([^"\\\\]*(?:\\\\.[^"\\\\]*)*)"`, 'i'));
+  const match = content.match(
+    new RegExp(`"${fieldName}"\\s*:\\s*"([^"\\\\]*(?:\\\\.[^"\\\\]*)*)"`, 'i')
+  );
   if (!match) {
     return undefined;
   }
@@ -163,11 +165,14 @@ function countJsonFieldOccurrences(content: string, fieldName: string): number {
 
 function isSuspiciousMalformedSuggestionObject(content: string): boolean {
   // Duplicate core keys usually mean the object was truncated or stitched together incorrectly.
-  return ['id', 'type', 'elementPath', 'suggestedName', 'originalText']
-    .some((fieldName) => countJsonFieldOccurrences(content, fieldName) > 1);
+  return ['id', 'type', 'elementPath', 'suggestedName', 'originalText'].some(
+    (fieldName) => countJsonFieldOccurrences(content, fieldName) > 1
+  );
 }
 
-function salvageSuggestionRecordFromMalformedObject(content: string): Record<string, unknown> | null {
+function salvageSuggestionRecordFromMalformedObject(
+  content: string
+): Record<string, unknown> | null {
   if (isSuspiciousMalformedSuggestionObject(content)) {
     return null;
   }
@@ -230,10 +235,7 @@ function splitJsonObjectFragments(content: string): string[] {
     .replace(/```(?:json)?/gi, '')
     .replace(/```/g, '')
     .trim();
-  const arrayBody = normalized
-    .replace(/^\[/, '')
-    .replace(/\]$/, '')
-    .trim();
+  const arrayBody = normalized.replace(/^\[/, '').replace(/\]$/, '').trim();
 
   if (!arrayBody) {
     return [];
@@ -327,9 +329,7 @@ function extractReadableTextContent(content: string): string {
   const fenced = stripped.match(/```(?:text|markdown|md|json)?\s*([\s\S]*?)\s*```/i)?.[1]?.trim();
   const candidate = fenced || stripped;
 
-  return candidate
-    .replace(/^\[result\]\s*/i, '')
-    .trim();
+  return candidate.replace(/^\[result\]\s*/i, '').trim();
 }
 
 function trimAfterLastMarker(content: string, markers: string[]): string {
@@ -346,7 +346,8 @@ function trimAfterLastMarker(content: string, markers: string[]): string {
 }
 
 function findStructuredHeadingStart(text: string): number | null {
-  const headingPattern = /(?:^|\n)(###\s+.+|第[一二三四五六七八九十百千万零两0-9０-９]+[章节条編部節款項目][^\n]*|[一二三四五六七八九十]+、.+|[（(][^（）()\n]{1,20}[)）]|(?:article|Article|ARTICLE)\s*[0-9]+[^\n]*)/u;
+  const headingPattern =
+    /(?:^|\n)(###\s+.+|第[一二三四五六七八九十百千万零两0-9０-９]+[章节条編部節款項目][^\n]*|[一二三四五六七八九十]+、.+|[（(][^（）()\n]{1,20}[)）]|(?:article|Article|ARTICLE)\s*[0-9]+[^\n]*)/u;
   const match = text.match(headingPattern);
   return typeof match?.index === 'number' ? match.index : null;
 }
@@ -376,7 +377,9 @@ export function sanitizeGlobalUnderstandingText(content: string): string {
     '未提供具体数据',
     '当前消息中未包含实际业务数据',
   ];
-  const hasLeadingError = errorLeadPatterns.some((pattern) => text.startsWith(pattern) || text.includes(`"${pattern}"`));
+  const hasLeadingError = errorLeadPatterns.some(
+    (pattern) => text.startsWith(pattern) || text.includes(`"${pattern}"`)
+  );
   if (hasLeadingError) {
     const laterHeadingStart = findStructuredHeadingStart(text);
     if (typeof laterHeadingStart === 'number') {
@@ -387,7 +390,12 @@ export function sanitizeGlobalUnderstandingText(content: string): string {
   return text.trim();
 }
 
-function extractBalancedSegment(content: string, startIndex: number, openChar: string, closeChar: string): string | null {
+function extractBalancedSegment(
+  content: string,
+  startIndex: number,
+  openChar: string,
+  closeChar: string
+): string | null {
   let depth = 0;
   let inString = false;
   let escaped = false;
@@ -429,7 +437,10 @@ export function tryParseJSONArray(content: string): Array<Record<string, unknown
     try {
       const parsed = JSON.parse(value);
       return Array.isArray(parsed)
-        ? parsed.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object' && !Array.isArray(item))
+        ? parsed.filter(
+            (item): item is Record<string, unknown> =>
+              Boolean(item) && typeof item === 'object' && !Array.isArray(item)
+          )
         : null;
     } catch {
       return null;
@@ -447,7 +458,11 @@ export function tryParseJSONArray(content: string): Array<Record<string, unknown
   return null;
 }
 
-function extractNamedJsonSegment(content: string, propertyName: string, openingChar: '[' | '{'): string | null {
+function extractNamedJsonSegment(
+  content: string,
+  propertyName: string,
+  openingChar: '[' | '{'
+): string | null {
   const normalized = stripThinkArtifacts(content);
   const pattern = new RegExp(`"${propertyName}"\\s*:\\s*\\${openingChar}`, 'i');
   const match = pattern.exec(normalized);
@@ -460,14 +475,21 @@ function extractNamedJsonSegment(content: string, propertyName: string, openingC
     return null;
   }
 
-  return extractBalancedSegment(normalized, openingIndex, openingChar, openingChar === '[' ? ']' : '}');
+  return extractBalancedSegment(
+    normalized,
+    openingIndex,
+    openingChar,
+    openingChar === '[' ? ']' : '}'
+  );
 }
 
 function salvageSuggestionRecords(content: string): Array<Record<string, unknown>> {
   const tryParseObjectCandidates = (candidates: string[]): Array<Record<string, unknown>> =>
     candidates
-      .map((candidate) =>
-        tryParseJSONObject(removeTrailingCommas(candidate)) || salvageSuggestionRecordFromMalformedObject(candidate)
+      .map(
+        (candidate) =>
+          tryParseJSONObject(removeTrailingCommas(candidate)) ||
+          salvageSuggestionRecordFromMalformedObject(candidate)
       )
       .filter((value): value is Record<string, unknown> => Boolean(value));
 
@@ -483,7 +505,9 @@ function salvageSuggestionRecords(content: string): Array<Record<string, unknown
       return objectCandidates;
     }
 
-    const looseObjectCandidates = tryParseObjectCandidates(extractBalancedJsonObjectsLoose(suggestionArray));
+    const looseObjectCandidates = tryParseObjectCandidates(
+      extractBalancedJsonObjectsLoose(suggestionArray)
+    );
     if (looseObjectCandidates.length > 0) {
       return looseObjectCandidates;
     }
@@ -522,12 +546,7 @@ function salvageContextAnalysis(content: string): Record<string, unknown> | unde
 }
 
 function extractAlternativeSuggestionArray(parsed: Record<string, unknown>): unknown[] | undefined {
-  const candidateKeys = [
-    'suggestions',
-    'fieldExtractionRules',
-    'fields',
-    '候选字段处理建议',
-  ];
+  const candidateKeys = ['suggestions', 'fieldExtractionRules', 'fields', '候选字段处理建议'];
 
   for (const key of candidateKeys) {
     const value = parsed[key];
@@ -547,7 +566,10 @@ export function salvageChatPayload(
     .map((content) => tryParseJSONObject(content))
     .find((value): value is Record<string, unknown> => Boolean(value));
   if (parsed) {
-    const parsedSuggestions = normalizeChatSuggestions(extractAlternativeSuggestionArray(parsed), request);
+    const parsedSuggestions = normalizeChatSuggestions(
+      extractAlternativeSuggestionArray(parsed),
+      request
+    );
     if (parsedSuggestions.length > 0 || request.analysisStage === 'excel-global-understanding') {
       return {
         parsed: parsed.suggestions

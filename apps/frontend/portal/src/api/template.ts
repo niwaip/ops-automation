@@ -9,14 +9,64 @@ export interface TemplateParamsSchema {
   required?: string[];
 }
 
+export const TEMPLATE_STEP_ACTIONS = [
+  'click',
+  'fill',
+  'navigate',
+  'wait',
+  'select',
+  'check',
+  'screenshot',
+  'assert',
+  'search',
+  'smart_search',
+  'hover',
+  'press',
+  'press_key',
+  'scroll',
+  'type_text',
+  'get_text',
+  'snapshot',
+  'read_page',
+  'list_search_results',
+  'click_result',
+  'switch_latest_tab',
+  'read_value',
+  'branch',
+  'takeover_gate',
+] as const;
+
+export type TemplateStepAction = (typeof TEMPLATE_STEP_ACTIONS)[number];
+
+export const isTemplateStepAction = (value: string): value is TemplateStepAction =>
+  (TEMPLATE_STEP_ACTIONS as readonly string[]).includes(value);
+
+export interface BranchConfig {
+  condition_fn: string;
+  on_match: 'continue' | 'stop';
+  on_mismatch: 'continue' | 'stop' | 'takeover';
+  takeover_reason?: string;
+  description?: string;
+}
+
+export type TemplateStepExecutionPolicy =
+  | 'auto_execute'
+  | 'require_confirmation'
+  | 'require_takeover'
+  | 'forbid_in_replay';
+
 export interface TemplateStep {
   step_id: string;
-  action: string;
+  action: TemplateStepAction;
   locator?: { type: string; value: string; fallback?: { type: string; value: string } };
   params?: Record<string, string | number>;
   wait?: { type: string; value: number | string };
   retry?: { max_attempts: number; delay_ms: number };
   on_fail?: string;
+  output_var?: string;
+  branch?: BranchConfig;
+  description?: string;
+  execution_policy?: TemplateStepExecutionPolicy;
 }
 
 export interface Template {
@@ -75,12 +125,16 @@ export interface TemplateQueryParams {
 
 export interface CompileResultStep {
   step_id: string;
-  action: string;
+  action: TemplateStepAction;
   locator?: { type: string; value: string; fallback?: { type: string; value: string } };
   params?: Record<string, string | number>;
   wait?: { type: string; value: number | string };
   on_fail?: string;
   retry?: { max_attempts: number; delay_ms: number };
+  output_var?: string;
+  branch?: BranchConfig;
+  description?: string;
+  execution_policy?: TemplateStepExecutionPolicy;
 }
 
 export interface CompileResult {

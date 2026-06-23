@@ -1,7 +1,10 @@
 import { getCarboneExternalUrl } from '../../config/service-endpoints';
 
 export const normalizeInputParams = (
-  inputParams: Array<{ key?: string; value?: string; required?: boolean }> | Record<string, string> | undefined,
+  inputParams:
+    | Array<{ key?: string; value?: string; required?: boolean }>
+    | Record<string, string>
+    | undefined
 ): Array<{ key: string; value: string; required: boolean }> => {
   if (!inputParams) {
     return [];
@@ -41,9 +44,7 @@ export const toExternalDownloadUrl = (value?: unknown): string | undefined => {
   return `${getCarboneExternalUrl()}/${trimmed.replace(/^\/+/, '')}`;
 };
 
-export const extractNestedDownloadUrl = (
-  value: unknown,
-): string | undefined => {
+export const extractNestedDownloadUrl = (value: unknown): string | undefined => {
   const queue: unknown[] = [value];
   const visited = new Set<unknown>();
   let inspected = 0;
@@ -64,9 +65,9 @@ export const extractNestedDownloadUrl = (
 
     const record = current as Record<string, unknown>;
     const downloadUrl =
-      toExternalDownloadUrl(record.downloadUrl)
-      || toExternalDownloadUrl(record.download_url)
-      || toExternalDownloadUrl(record.url);
+      toExternalDownloadUrl(record.downloadUrl) ||
+      toExternalDownloadUrl(record.download_url) ||
+      toExternalDownloadUrl(record.url);
 
     if (downloadUrl) {
       return downloadUrl;

@@ -11,6 +11,7 @@ import { ChatConversationService } from './chat-conversation.service';
 import { ChatExecutionStreamService } from './chat-execution-stream.service';
 import { ChatMediaService } from './chat-media.service';
 import { ChatOrchestratorService } from './chat-orchestrator.service';
+import { ChatResultNormalizerService } from './chat-result-normalizer.service';
 import { ChatWaitingInputService } from './chat-waiting-input.service';
 
 @Module({
@@ -26,6 +27,7 @@ import { ChatWaitingInputService } from './chat-waiting-input.service';
   controllers: [ChatController],
   providers: [
     ChatWaitingInputService,
+    ChatResultNormalizerService,
     ChatExecutionStreamService,
     ChatOrchestratorService,
     ChatConversationService,

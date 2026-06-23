@@ -15,7 +15,7 @@ export class McpController {
     // 这是一个简单的 SSE 实现
     // 实际上 MCP SSE 需要更复杂的会话管理
     const subject = new Subject<MessageEvent>();
-    
+
     // 发送初始 endpoint 信息
     setTimeout(() => {
       subject.next({
@@ -60,7 +60,7 @@ export class McpController {
           result: await this.mcpService.callTool(
             this.getObjectValue(params, 'name'),
             this.getObjectRecordValue(params, 'arguments'),
-            req.headers,
+            req.headers
           ),
         };
 
@@ -75,7 +75,10 @@ export class McpController {
         return {
           jsonrpc: '2.0',
           id,
-          result: await this.mcpService.readResource(this.getObjectValue(params, 'uri'), req.headers),
+          result: await this.mcpService.readResource(
+            this.getObjectValue(params, 'uri'),
+            req.headers
+          ),
         };
 
       default:

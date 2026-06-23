@@ -335,13 +335,15 @@ describe('TemplateWorkflowService', () => {
     };
     const sampleDocument = {
       fileName: 'sample.docx',
-      contentBase64: Buffer.from(
-        '第三条 交付信息\n交付地址：广州市天河区软件路 8 号'
-      ).toString('base64'),
+      contentBase64: Buffer.from('第三条 交付信息\n交付地址：广州市天河区软件路 8 号').toString(
+        'base64'
+      ),
     };
 
     const result = await service.compareTemplate(documentIr, sampleDocument, 'zh', []);
-    const addressCandidate = result.candidateFields.find((candidate) => candidate.sourceBlockId === 'p-1');
+    const addressCandidate = result.candidateFields.find(
+      (candidate) => candidate.sourceBlockId === 'p-1'
+    );
 
     expect(addressCandidate).toEqual(
       expect.objectContaining({
@@ -386,8 +388,12 @@ describe('TemplateWorkflowService', () => {
     };
 
     const result = await service.compareTemplate(documentIr, sampleDocument, 'zh', []);
-    const signingDateCandidate = result.candidateFields.find((candidate) => candidate.sourceBlockId === 'p-1');
-    const signingPlaceCandidate = result.candidateFields.find((candidate) => candidate.sourceBlockId === 'p-2');
+    const signingDateCandidate = result.candidateFields.find(
+      (candidate) => candidate.sourceBlockId === 'p-1'
+    );
+    const signingPlaceCandidate = result.candidateFields.find(
+      (candidate) => candidate.sourceBlockId === 'p-2'
+    );
 
     expect(signingDateCandidate).toEqual(
       expect.objectContaining({
@@ -494,8 +500,12 @@ describe('TemplateWorkflowService', () => {
     };
 
     const result = await service.compareTemplate(documentIr, sampleDocument, 'zh', []);
-    const contractNoCandidate = result.candidateFields.find((candidate) => candidate.sourceBlockId === 'p-1');
-    const signingDateCandidate = result.candidateFields.find((candidate) => candidate.sourceBlockId === 'p-2');
+    const contractNoCandidate = result.candidateFields.find(
+      (candidate) => candidate.sourceBlockId === 'p-1'
+    );
+    const signingDateCandidate = result.candidateFields.find(
+      (candidate) => candidate.sourceBlockId === 'p-2'
+    );
 
     expect(contractNoCandidate).toEqual(
       expect.objectContaining({
@@ -513,10 +523,9 @@ describe('TemplateWorkflowService', () => {
         sampleValue: '2024年10月10日',
       })
     );
-    expect(result.compareSummary.sections.slice(0, 2).map((section) => section.sectionTitle)).toEqual([
-      '技术服务合同',
-      '一、 技术服务内容、方式：',
-    ]);
+    expect(
+      result.compareSummary.sections.slice(0, 2).map((section) => section.sectionTitle)
+    ).toEqual(['技术服务合同', '一、 技术服务内容、方式：']);
   });
 
   it('extracts candidate value by comparing placeholder narrative text with real sample content', async () => {
@@ -551,7 +560,8 @@ describe('TemplateWorkflowService', () => {
         sectionId: 'sec-1',
         sectionTitle: '一、 技术服务内容、方式：',
         sampleValue: '无线网络设备更新',
-        matchText: '本合同甲方委托乙方就无线网络设备更新项目进行专项技术服务，并支付相应的技术服务报酬。',
+        matchText:
+          '本合同甲方委托乙方就无线网络设备更新项目进行专项技术服务，并支付相应的技术服务报酬。',
         fieldIdHint: undefined,
         compareMode: 'section_loose_compare',
       })
@@ -648,7 +658,9 @@ describe('TemplateWorkflowService', () => {
     };
 
     const result = await service.compareTemplate(documentIr, sampleDocument, 'zh', []);
-    const groupedCandidates = result.candidateFields.filter((candidate) => candidate.sourceBlockId === 'p-1');
+    const groupedCandidates = result.candidateFields.filter(
+      (candidate) => candidate.sourceBlockId === 'p-1'
+    );
 
     expect(groupedCandidates).toHaveLength(1);
     expect(groupedCandidates[0]).toEqual(
@@ -656,7 +668,9 @@ describe('TemplateWorkflowService', () => {
         anchorText: '甲方：',
         fieldIdHint: undefined,
         compareMode: 'section_loose_compare',
-        segmentText: expect.stringContaining('甲方：______________，乙方：______________，签订日期：______________'),
+        segmentText: expect.stringContaining(
+          '甲方：______________，乙方：______________，签订日期：______________'
+        ),
         matchText: expect.stringContaining('签订日期：2024年10月10日'),
       })
     );
@@ -694,7 +708,9 @@ describe('TemplateWorkflowService', () => {
     };
 
     const result = await service.compareTemplate(documentIr, sampleDocument, 'zh', ['ja']);
-    const chineseGroupedCandidate = result.candidateFields.find((candidate) => candidate.sourceBlockId === 'p-1');
+    const chineseGroupedCandidate = result.candidateFields.find(
+      (candidate) => candidate.sourceBlockId === 'p-1'
+    );
 
     expect(chineseGroupedCandidate).toEqual(
       expect.objectContaining({
@@ -741,7 +757,9 @@ describe('TemplateWorkflowService', () => {
     };
 
     const result = await service.compareTemplate(documentIr, sampleDocument, 'zh', ['ja']);
-    const chineseCandidate = result.candidateFields.find((candidate) => candidate.sourceBlockId === 'p-1');
+    const chineseCandidate = result.candidateFields.find(
+      (candidate) => candidate.sourceBlockId === 'p-1'
+    );
 
     expect(chineseCandidate).toEqual(
       expect.objectContaining({
@@ -786,7 +804,9 @@ describe('TemplateWorkflowService', () => {
     };
 
     const result = await service.compareTemplate(documentIr, sampleDocument, 'zh', []);
-    const englishCandidate = result.candidateFields.find((candidate) => candidate.sourceBlockId === 'p-1');
+    const englishCandidate = result.candidateFields.find(
+      (candidate) => candidate.sourceBlockId === 'p-1'
+    );
 
     expect(englishCandidate?.languageRelation).toEqual(
       expect.objectContaining({
@@ -871,20 +891,26 @@ describe('TemplateWorkflowService', () => {
     };
     const sampleDocument = {
       fileName: 'sample.docx',
-      contentBase64: Buffer.from([
-        '<w:document><w:body>',
-        '<w:p><w:r><w:t>第一条 基本信息</w:t></w:r></w:p>',
-        '<w:tbl>',
-        '<w:tr><w:tc><w:p><w:r><w:t>签订日期</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>2024年10月10日</w:t></w:r></w:p></w:tc></w:tr>',
-        '<w:tr><w:tc><w:p><w:r><w:t>签订地点</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>上海市浦东新区</w:t></w:r></w:p></w:tc></w:tr>',
-        '</w:tbl>',
-        '</w:body></w:document>',
-      ].join('')).toString('base64'),
+      contentBase64: Buffer.from(
+        [
+          '<w:document><w:body>',
+          '<w:p><w:r><w:t>第一条 基本信息</w:t></w:r></w:p>',
+          '<w:tbl>',
+          '<w:tr><w:tc><w:p><w:r><w:t>签订日期</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>2024年10月10日</w:t></w:r></w:p></w:tc></w:tr>',
+          '<w:tr><w:tc><w:p><w:r><w:t>签订地点</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>上海市浦东新区</w:t></w:r></w:p></w:tc></w:tr>',
+          '</w:tbl>',
+          '</w:body></w:document>',
+        ].join('')
+      ).toString('base64'),
     };
 
     const result = await service.compareTemplate(documentIr, sampleDocument, 'zh', []);
-    const signingDateCandidate = result.candidateFields.find((candidate) => candidate.sourceBlockId === 'cell-0-0-1');
-    const signingPlaceCandidate = result.candidateFields.find((candidate) => candidate.sourceBlockId === 'cell-0-1-1');
+    const signingDateCandidate = result.candidateFields.find(
+      (candidate) => candidate.sourceBlockId === 'cell-0-0-1'
+    );
+    const signingPlaceCandidate = result.candidateFields.find(
+      (candidate) => candidate.sourceBlockId === 'cell-0-1-1'
+    );
 
     expect(signingDateCandidate).toEqual(
       expect.objectContaining({
@@ -910,7 +936,9 @@ describe('TemplateWorkflowService', () => {
         }),
       })
     );
-    expect(result.candidateFields.some((candidate) => candidate.sourceBlockId === 'cell-0-0-0')).toBe(false);
+    expect(
+      result.candidateFields.some((candidate) => candidate.sourceBlockId === 'cell-0-0-0')
+    ).toBe(false);
   });
 
   it('uses the first table row as column titles for grid-style tables', async () => {
@@ -988,20 +1016,26 @@ describe('TemplateWorkflowService', () => {
     };
     const sampleDocument = {
       fileName: 'sample.docx',
-      contentBase64: Buffer.from([
-        '<w:document><w:body>',
-        '<w:p><w:r><w:t>第二条 项目清单</w:t></w:r></w:p>',
-        '<w:tbl>',
-        '<w:tr><w:tc><w:p><w:r><w:t>项目名称</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>数量</w:t></w:r></w:p></w:tc></w:tr>',
-        '<w:tr><w:tc><w:p><w:r><w:t>无线网络设备更新</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>20台</w:t></w:r></w:p></w:tc></w:tr>',
-        '</w:tbl>',
-        '</w:body></w:document>',
-      ].join('')).toString('base64'),
+      contentBase64: Buffer.from(
+        [
+          '<w:document><w:body>',
+          '<w:p><w:r><w:t>第二条 项目清单</w:t></w:r></w:p>',
+          '<w:tbl>',
+          '<w:tr><w:tc><w:p><w:r><w:t>项目名称</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>数量</w:t></w:r></w:p></w:tc></w:tr>',
+          '<w:tr><w:tc><w:p><w:r><w:t>无线网络设备更新</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>20台</w:t></w:r></w:p></w:tc></w:tr>',
+          '</w:tbl>',
+          '</w:body></w:document>',
+        ].join('')
+      ).toString('base64'),
     };
 
     const result = await service.compareTemplate(documentIr, sampleDocument, 'zh', []);
-    const projectNameCandidate = result.candidateFields.find((candidate) => candidate.sourceBlockId === 'cell-0-1-0');
-    const amountCandidate = result.candidateFields.find((candidate) => candidate.sourceBlockId === 'cell-0-1-1');
+    const projectNameCandidate = result.candidateFields.find(
+      (candidate) => candidate.sourceBlockId === 'cell-0-1-0'
+    );
+    const amountCandidate = result.candidateFields.find(
+      (candidate) => candidate.sourceBlockId === 'cell-0-1-1'
+    );
 
     expect(projectNameCandidate).toEqual(
       expect.objectContaining({
@@ -1022,8 +1056,12 @@ describe('TemplateWorkflowService', () => {
         }),
       })
     );
-    expect(result.candidateFields.some((candidate) => candidate.sourceBlockId === 'cell-0-0-0')).toBe(false);
-    expect(result.candidateFields.some((candidate) => candidate.sourceBlockId === 'cell-0-0-1')).toBe(false);
+    expect(
+      result.candidateFields.some((candidate) => candidate.sourceBlockId === 'cell-0-0-0')
+    ).toBe(false);
+    expect(
+      result.candidateFields.some((candidate) => candidate.sourceBlockId === 'cell-0-0-1')
+    ).toBe(false);
   });
 
   it('treats first-row headers plus blank body rows as loop candidates and highlights the second row', async () => {
@@ -1121,20 +1159,26 @@ describe('TemplateWorkflowService', () => {
     };
     const sampleDocument = {
       fileName: 'sample.docx',
-      contentBase64: Buffer.from([
-        '<w:document><w:body>',
-        '<w:p><w:r><w:t>第二条 费用清单</w:t></w:r></w:p>',
-        '<w:tbl>',
-        '<w:tr><w:tc><w:p><w:r><w:t>费用名称</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>金额</w:t></w:r></w:p></w:tc></w:tr>',
-        '<w:tr><w:tc><w:p><w:r><w:t>实施服务费</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>10000元</w:t></w:r></w:p></w:tc></w:tr>',
-        '</w:tbl>',
-        '</w:body></w:document>',
-      ].join('')).toString('base64'),
+      contentBase64: Buffer.from(
+        [
+          '<w:document><w:body>',
+          '<w:p><w:r><w:t>第二条 费用清单</w:t></w:r></w:p>',
+          '<w:tbl>',
+          '<w:tr><w:tc><w:p><w:r><w:t>费用名称</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>金额</w:t></w:r></w:p></w:tc></w:tr>',
+          '<w:tr><w:tc><w:p><w:r><w:t>实施服务费</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>10000元</w:t></w:r></w:p></w:tc></w:tr>',
+          '</w:tbl>',
+          '</w:body></w:document>',
+        ].join('')
+      ).toString('base64'),
     };
 
     const result = await service.compareTemplate(documentIr, sampleDocument, 'zh', []);
-    const nameCandidate = result.candidateFields.find((candidate) => candidate.sourceBlockId === 'cell-0-1-0');
-    const amountCandidate = result.candidateFields.find((candidate) => candidate.sourceBlockId === 'cell-0-1-1');
+    const nameCandidate = result.candidateFields.find(
+      (candidate) => candidate.sourceBlockId === 'cell-0-1-0'
+    );
+    const amountCandidate = result.candidateFields.find(
+      (candidate) => candidate.sourceBlockId === 'cell-0-1-1'
+    );
 
     expect(nameCandidate).toEqual(
       expect.objectContaining({
@@ -1158,8 +1202,12 @@ describe('TemplateWorkflowService', () => {
         }),
       })
     );
-    expect(result.candidateFields.some((candidate) => candidate.sourceBlockId === 'cell-0-2-0')).toBe(false);
-    expect(result.candidateFields.some((candidate) => candidate.sourceBlockId === 'cell-0-2-1')).toBe(false);
+    expect(
+      result.candidateFields.some((candidate) => candidate.sourceBlockId === 'cell-0-2-0')
+    ).toBe(false);
+    expect(
+      result.candidateFields.some((candidate) => candidate.sourceBlockId === 'cell-0-2-1')
+    ).toBe(false);
   });
 
   it('reads blank-cell parameters from the right-side cell and splits multiline titles', async () => {
@@ -1207,31 +1255,33 @@ describe('TemplateWorkflowService', () => {
     };
     const sampleDocument = {
       fileName: 'sample.docx',
-      contentBase64: Buffer.from([
-        '<w:document><w:body>',
-        '<w:p><w:r><w:t>第一条 参与方</w:t></w:r></w:p>',
-        '<w:tbl>',
-        '<w:tr>',
-        '<w:tc>',
-        '<w:p><w:r><w:t>广州日产通商贸易有限公司</w:t></w:r></w:p>',
-        '<w:p><w:r><w:t>深圳智联科技有限公司</w:t></w:r></w:p>',
-        '</w:tc>',
-        '<w:tc>',
-        '<w:p><w:r><w:t>甲方</w:t></w:r></w:p>',
-        '<w:p><w:r><w:t>乙方</w:t></w:r></w:p>',
-        '</w:tc>',
-        '</w:tr>',
-        '</w:tbl>',
-        '</w:body></w:document>',
-      ].join('')).toString('base64'),
+      contentBase64: Buffer.from(
+        [
+          '<w:document><w:body>',
+          '<w:p><w:r><w:t>第一条 参与方</w:t></w:r></w:p>',
+          '<w:tbl>',
+          '<w:tr>',
+          '<w:tc>',
+          '<w:p><w:r><w:t>广州日产通商贸易有限公司</w:t></w:r></w:p>',
+          '<w:p><w:r><w:t>深圳智联科技有限公司</w:t></w:r></w:p>',
+          '</w:tc>',
+          '<w:tc>',
+          '<w:p><w:r><w:t>甲方</w:t></w:r></w:p>',
+          '<w:p><w:r><w:t>乙方</w:t></w:r></w:p>',
+          '</w:tc>',
+          '</w:tr>',
+          '</w:tbl>',
+          '</w:body></w:document>',
+        ].join('')
+      ).toString('base64'),
     };
 
     const result = await service.compareTemplate(documentIr, sampleDocument, 'zh', []);
-    const partyACandidate = result.candidateFields.find((candidate) =>
-      candidate.sourceBlockId === 'cell-0-0-0' && candidate.anchorText === '甲方'
+    const partyACandidate = result.candidateFields.find(
+      (candidate) => candidate.sourceBlockId === 'cell-0-0-0' && candidate.anchorText === '甲方'
     );
-    const partyBCandidate = result.candidateFields.find((candidate) =>
-      candidate.sourceBlockId === 'cell-0-0-0' && candidate.anchorText === '乙方'
+    const partyBCandidate = result.candidateFields.find(
+      (candidate) => candidate.sourceBlockId === 'cell-0-0-0' && candidate.anchorText === '乙方'
     );
 
     expect(partyACandidate).toEqual(
@@ -1256,7 +1306,9 @@ describe('TemplateWorkflowService', () => {
         }),
       })
     );
-    expect(result.candidateFields.some((candidate) => candidate.sourceBlockId === 'cell-0-0-1')).toBe(false);
+    expect(
+      result.candidateFields.some((candidate) => candidate.sourceBlockId === 'cell-0-0-1')
+    ).toBe(false);
   });
 
   it('splits bilingual loop headers from the same cell and keeps duplicated labels as separate candidates', async () => {
@@ -1334,29 +1386,38 @@ describe('TemplateWorkflowService', () => {
     };
     const sampleDocument = {
       fileName: 'sample.docx',
-      contentBase64: Buffer.from([
-        '<w:document><w:body>',
-        '<w:p><w:r><w:t>第二条 项目清单</w:t></w:r></w:p>',
-        '<w:tbl>',
-        '<w:tr>',
-        '<w:tc><w:p><w:r><w:t>项目</w:t></w:r></w:p><w:p><w:r><w:t>プロジェクト</w:t></w:r></w:p></w:tc>',
-        '<w:tc><w:p><w:r><w:t>品名</w:t></w:r></w:p><w:p><w:r><w:t>品名</w:t></w:r></w:p></w:tc>',
-        '</w:tr>',
-        '<w:tr>',
-        '<w:tc><w:p><w:r><w:t>无线网络设备更新</w:t></w:r></w:p></w:tc>',
-        '<w:tc><w:p><w:r><w:t>AP-001</w:t></w:r></w:p></w:tc>',
-        '</w:tr>',
-        '</w:tbl>',
-        '</w:body></w:document>',
-      ].join('')).toString('base64'),
+      contentBase64: Buffer.from(
+        [
+          '<w:document><w:body>',
+          '<w:p><w:r><w:t>第二条 项目清单</w:t></w:r></w:p>',
+          '<w:tbl>',
+          '<w:tr>',
+          '<w:tc><w:p><w:r><w:t>项目</w:t></w:r></w:p><w:p><w:r><w:t>プロジェクト</w:t></w:r></w:p></w:tc>',
+          '<w:tc><w:p><w:r><w:t>品名</w:t></w:r></w:p><w:p><w:r><w:t>品名</w:t></w:r></w:p></w:tc>',
+          '</w:tr>',
+          '<w:tr>',
+          '<w:tc><w:p><w:r><w:t>无线网络设备更新</w:t></w:r></w:p></w:tc>',
+          '<w:tc><w:p><w:r><w:t>AP-001</w:t></w:r></w:p></w:tc>',
+          '</w:tr>',
+          '</w:tbl>',
+          '</w:body></w:document>',
+        ].join('')
+      ).toString('base64'),
     };
 
     const result = await service.compareTemplate(documentIr, sampleDocument, 'zh', ['ja']);
-    const projectCandidates = result.candidateFields.filter((candidate) => candidate.sourceBlockId === 'cell-0-1-0');
-    const itemNameCandidates = result.candidateFields.filter((candidate) => candidate.sourceBlockId === 'cell-0-1-1');
+    const projectCandidates = result.candidateFields.filter(
+      (candidate) => candidate.sourceBlockId === 'cell-0-1-0'
+    );
+    const itemNameCandidates = result.candidateFields.filter(
+      (candidate) => candidate.sourceBlockId === 'cell-0-1-1'
+    );
 
     expect(projectCandidates).toHaveLength(2);
-    expect(projectCandidates.map((candidate) => candidate.anchorText)).toEqual(['项目', 'プロジェクト']);
+    expect(projectCandidates.map((candidate) => candidate.anchorText)).toEqual([
+      '项目',
+      'プロジェクト',
+    ]);
     expect(projectCandidates.map((candidate) => candidate.sampleValue)).toEqual([
       '无线网络设备更新',
       '无线网络设备更新',
@@ -1364,7 +1425,10 @@ describe('TemplateWorkflowService', () => {
 
     expect(itemNameCandidates).toHaveLength(2);
     expect(itemNameCandidates.map((candidate) => candidate.anchorText)).toEqual(['品名', '品名']);
-    expect(itemNameCandidates.map((candidate) => candidate.sampleValue)).toEqual(['AP-001', 'AP-001']);
+    expect(itemNameCandidates.map((candidate) => candidate.sampleValue)).toEqual([
+      'AP-001',
+      'AP-001',
+    ]);
   });
 
   it('extracts multiple parameters from a non-loop table cell without dropping the first one', async () => {
@@ -1402,27 +1466,29 @@ describe('TemplateWorkflowService', () => {
     };
     const sampleDocument = {
       fileName: 'sample.docx',
-      contentBase64: Buffer.from([
-        '<w:document><w:body>',
-        '<w:p><w:r><w:t>第一条 合同主体</w:t></w:r></w:p>',
-        '<w:tbl>',
-        '<w:tr>',
-        '<w:tc>',
-        '<w:p><w:r><w:t>甲方：广州日产通商贸易有限公司</w:t></w:r></w:p>',
-        '<w:p><w:r><w:t>乙方：深圳智联科技有限公司</w:t></w:r></w:p>',
-        '</w:tc>',
-        '</w:tr>',
-        '</w:tbl>',
-        '</w:body></w:document>',
-      ].join('')).toString('base64'),
+      contentBase64: Buffer.from(
+        [
+          '<w:document><w:body>',
+          '<w:p><w:r><w:t>第一条 合同主体</w:t></w:r></w:p>',
+          '<w:tbl>',
+          '<w:tr>',
+          '<w:tc>',
+          '<w:p><w:r><w:t>甲方：广州日产通商贸易有限公司</w:t></w:r></w:p>',
+          '<w:p><w:r><w:t>乙方：深圳智联科技有限公司</w:t></w:r></w:p>',
+          '</w:tc>',
+          '</w:tr>',
+          '</w:tbl>',
+          '</w:body></w:document>',
+        ].join('')
+      ).toString('base64'),
     };
 
     const result = await service.compareTemplate(documentIr, sampleDocument, 'zh', []);
-    const partyACandidate = result.candidateFields.find((candidate) =>
-      candidate.sourceBlockId === 'cell-0-0-0' && candidate.anchorText === '甲方：'
+    const partyACandidate = result.candidateFields.find(
+      (candidate) => candidate.sourceBlockId === 'cell-0-0-0' && candidate.anchorText === '甲方：'
     );
-    const partyBCandidate = result.candidateFields.find((candidate) =>
-      candidate.sourceBlockId === 'cell-0-0-0' && candidate.anchorText === '乙方：'
+    const partyBCandidate = result.candidateFields.find(
+      (candidate) => candidate.sourceBlockId === 'cell-0-0-0' && candidate.anchorText === '乙方：'
     );
 
     expect(partyACandidate).toEqual(
@@ -1494,18 +1560,20 @@ describe('TemplateWorkflowService', () => {
     };
     const sampleDocument = {
       fileName: 'sample.docx',
-      contentBase64: Buffer.from([
-        '<w:document><w:body>',
-        '<w:p><w:r><w:t>第一条 基本信息</w:t></w:r></w:p>',
-        '<w:tbl>',
-        '<w:tr>',
-        '<w:tc><w:p><w:r><w:t>签订地点</w:t></w:r></w:p></w:tc>',
-        '<w:tc><w:p><w:r><w:t>上海市浦东新区</w:t></w:r></w:p></w:tc>',
-        '<w:tc><w:p><w:r><w:t>备用标题</w:t></w:r></w:p></w:tc>',
-        '</w:tr>',
-        '</w:tbl>',
-        '</w:body></w:document>',
-      ].join('')).toString('base64'),
+      contentBase64: Buffer.from(
+        [
+          '<w:document><w:body>',
+          '<w:p><w:r><w:t>第一条 基本信息</w:t></w:r></w:p>',
+          '<w:tbl>',
+          '<w:tr>',
+          '<w:tc><w:p><w:r><w:t>签订地点</w:t></w:r></w:p></w:tc>',
+          '<w:tc><w:p><w:r><w:t>上海市浦东新区</w:t></w:r></w:p></w:tc>',
+          '<w:tc><w:p><w:r><w:t>备用标题</w:t></w:r></w:p></w:tc>',
+          '</w:tr>',
+          '</w:tbl>',
+          '</w:body></w:document>',
+        ].join('')
+      ).toString('base64'),
     };
 
     const result = await service.compareTemplate(documentIr, sampleDocument, 'zh', []);
@@ -1558,19 +1626,23 @@ describe('TemplateWorkflowService', () => {
     };
     const sampleDocument = {
       fileName: 'sample.docx',
-      contentBase64: Buffer.from([
-        '<w:document><w:body>',
-        '<w:p><w:r><w:t>第一条 基本信息</w:t></w:r></w:p>',
-        '<w:tbl>',
-        '<w:tr><w:tc><w:p><w:r><w:t>签订地点</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>上海市浦东新区</w:t></w:r></w:p></w:tc></w:tr>',
-        '</w:tbl>',
-        '</w:body></w:document>',
-      ].join('')).toString('base64'),
+      contentBase64: Buffer.from(
+        [
+          '<w:document><w:body>',
+          '<w:p><w:r><w:t>第一条 基本信息</w:t></w:r></w:p>',
+          '<w:tbl>',
+          '<w:tr><w:tc><w:p><w:r><w:t>签订地点</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>上海市浦东新区</w:t></w:r></w:p></w:tc></w:tr>',
+          '</w:tbl>',
+          '</w:body></w:document>',
+        ].join('')
+      ).toString('base64'),
     };
 
     const result = await service.compareTemplate(documentIr, sampleDocument, 'zh', []);
 
-    expect(result.candidateFields.some((candidate) => candidate.sourceBlockId === 'cell-0-0-1')).toBe(false);
+    expect(
+      result.candidateFields.some((candidate) => candidate.sourceBlockId === 'cell-0-0-1')
+    ).toBe(false);
   });
 
   it('prefers table-cell candidates and skips duplicated table label paragraphs', async () => {
@@ -1623,18 +1695,22 @@ describe('TemplateWorkflowService', () => {
     };
     const sampleDocument = {
       fileName: 'sample.docx',
-      contentBase64: Buffer.from([
-        '<w:document><w:body>',
-        '<w:p><w:r><w:t>第一条 合同主体</w:t></w:r></w:p>',
-        '<w:tbl>',
-        '<w:tr><w:tc><w:p><w:r><w:t>甲方：</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>广州日产通商贸易有限公司</w:t></w:r></w:p></w:tc></w:tr>',
-        '</w:tbl>',
-        '</w:body></w:document>',
-      ].join('')).toString('base64'),
+      contentBase64: Buffer.from(
+        [
+          '<w:document><w:body>',
+          '<w:p><w:r><w:t>第一条 合同主体</w:t></w:r></w:p>',
+          '<w:tbl>',
+          '<w:tr><w:tc><w:p><w:r><w:t>甲方：</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>广州日产通商贸易有限公司</w:t></w:r></w:p></w:tc></w:tr>',
+          '</w:tbl>',
+          '</w:body></w:document>',
+        ].join('')
+      ).toString('base64'),
     };
 
     const result = await service.compareTemplate(documentIr, sampleDocument, 'zh', []);
-    const partyCandidate = result.candidateFields.find((candidate) => candidate.anchorText === '甲方：');
+    const partyCandidate = result.candidateFields.find(
+      (candidate) => candidate.anchorText === '甲方：'
+    );
 
     expect(partyCandidate).toEqual(
       expect.objectContaining({
@@ -1646,7 +1722,9 @@ describe('TemplateWorkflowService', () => {
         }),
       })
     );
-    expect(result.candidateFields.some((candidate) => candidate.sourceBlockId === 'p-duplicate-label')).toBe(false);
+    expect(
+      result.candidateFields.some((candidate) => candidate.sourceBlockId === 'p-duplicate-label')
+    ).toBe(false);
   });
 
   it('compiles scalar fields into Carbone binding plan', () => {
@@ -1674,7 +1752,10 @@ describe('TemplateWorkflowService', () => {
       expect.arrayContaining([
         expect.objectContaining({ variablePath: 'partyAName_zh', valueSelector: 'partyAName.zh' }),
         expect.objectContaining({ variablePath: 'partyAName_ja', valueSelector: 'partyAName.ja' }),
-        expect.objectContaining({ variablePath: 'paymentMode_code', valueSelector: 'paymentMode.code' }),
+        expect.objectContaining({
+          variablePath: 'paymentMode_code',
+          valueSelector: 'paymentMode.code',
+        }),
       ])
     );
   });
@@ -1778,7 +1859,7 @@ describe('TemplateWorkflowService', () => {
       fieldSpecs,
       bindingPlan,
       'zh',
-      ['ja'],
+      ['ja']
     );
 
     expect(result.data).toEqual(
@@ -1839,7 +1920,7 @@ describe('TemplateWorkflowService', () => {
           zh: '上海云章科技有限公司',
           ja: '上海云章科技有限公司（日本語）',
         },
-      },
+      }
     );
 
     expect(result.data).toEqual({
@@ -1861,19 +1942,12 @@ describe('TemplateWorkflowService', () => {
     ];
 
     const bindingPlan = service.compileBindingPlan('tpl_demo', 1, fieldSpecs, 'zh', []);
-    const result = await service.renderData(
-      '',
-      fieldSpecs,
-      bindingPlan,
-      'zh',
-      [],
-      {
-        lineItems: [
-          { name: '实施服务费', amount: '10000元' },
-          { name: '维护服务费', amount: '3000元' },
-        ],
-      },
-    );
+    const result = await service.renderData('', fieldSpecs, bindingPlan, 'zh', [], {
+      lineItems: [
+        { name: '实施服务费', amount: '10000元' },
+        { name: '维护服务费', amount: '3000元' },
+      ],
+    });
 
     expect(bindingPlan.bindings).toEqual([
       expect.objectContaining({
@@ -1915,7 +1989,7 @@ describe('TemplateWorkflowService', () => {
       fieldSpecs,
       bindingPlan,
       'zh',
-      ['ja'],
+      ['ja']
     );
 
     expect(result.data.lineItems).toEqual([
@@ -1954,7 +2028,7 @@ describe('TemplateWorkflowService', () => {
         resolution: 'tabular_text_parse',
         valueMode: 'list',
         rowCount: 2,
-      }),
+      })
     );
   });
 
@@ -1979,7 +2053,7 @@ describe('TemplateWorkflowService', () => {
       fieldSpecs,
       bindingPlan,
       'zh',
-      [],
+      []
     );
 
     expect(result.data.lineItems).toEqual([
@@ -2012,25 +2086,18 @@ describe('TemplateWorkflowService', () => {
     ];
 
     const bindingPlan = service.compileBindingPlan('tpl_demo', 1, fieldSpecs, 'zh', ['ja']);
-    const result = await service.renderData(
-      '',
-      fieldSpecs,
-      bindingPlan,
-      'zh',
-      ['ja'],
-      {
-        lineItems: [
-          {
-            projectName_zh: '企业信息化系统升级',
-            projectName_ja: '企業情報化システムアップグレード',
-            itemName_zh: '系统开发服务',
-            itemName_ja: 'システム開発サービス',
-            quantity: '1',
-            maintenanceFee: '¥50,000/年',
-          },
-        ],
-      },
-    );
+    const result = await service.renderData('', fieldSpecs, bindingPlan, 'zh', ['ja'], {
+      lineItems: [
+        {
+          projectName_zh: '企业信息化系统升级',
+          projectName_ja: '企業情報化システムアップグレード',
+          itemName_zh: '系统开发服务',
+          itemName_ja: 'システム開発サービス',
+          quantity: '1',
+          maintenanceFee: '¥50,000/年',
+        },
+      ],
+    });
 
     expect(result.data.lineItems).toEqual([
       {
@@ -2111,7 +2178,7 @@ describe('TemplateWorkflowService', () => {
       'zh',
       ['ja'],
       undefined,
-      termAssets,
+      termAssets
     );
 
     expect(result.data).toEqual(
@@ -2173,18 +2240,11 @@ describe('TemplateWorkflowService', () => {
       },
     } as any);
 
-    const result = await service.renderData(
-      '',
-      fieldSpecs,
-      bindingPlan,
-      'zh',
-      ['ja'],
-      {
-        contractPartyAName: '上海云章科技有限公司',
-        paymentDays: '30',
-        signingDate: '2026-06-01',
-      },
-    );
+    const result = await service.renderData('', fieldSpecs, bindingPlan, 'zh', ['ja'], {
+      contractPartyAName: '上海云章科技有限公司',
+      paymentDays: '30',
+      signingDate: '2026-06-01',
+    });
 
     expect(postSpy).toHaveBeenCalledTimes(1);
     expect(result.data).toEqual(
@@ -2195,14 +2255,14 @@ describe('TemplateWorkflowService', () => {
         paymentDays_ja: '30',
         signingDate_zh: '2026年06月01日',
         signingDate_ja: '2026年06月01日',
-      }),
+      })
     );
     expect(result.sourceTrace.contractPartyAName).toEqual(
       expect.objectContaining({
         resolution: 'llm_translated',
         translationMode: 'batch',
         translatedTargets: ['ja'],
-      }),
+      })
     );
   });
 
@@ -2220,19 +2280,12 @@ describe('TemplateWorkflowService', () => {
     const bindingPlan = service.compileBindingPlan('tpl_demo', 1, fieldSpecs, 'zh', ['ja']);
     const postSpy = jest.spyOn(axios, 'post');
 
-    const result = await service.renderData(
-      '',
-      fieldSpecs,
-      bindingPlan,
-      'zh',
-      ['ja'],
-      {
-        contractPartyAName: {
-          cn: '上海云章科技有限公司',
-          jp: '上海クラウドドキュメント科技有限公司',
-        },
+    const result = await service.renderData('', fieldSpecs, bindingPlan, 'zh', ['ja'], {
+      contractPartyAName: {
+        cn: '上海云章科技有限公司',
+        jp: '上海クラウドドキュメント科技有限公司',
       },
-    );
+    });
 
     expect(postSpy).not.toHaveBeenCalled();
     expect(result.data).toEqual(
@@ -2241,12 +2294,12 @@ describe('TemplateWorkflowService', () => {
         contractPartyAName_ja: '上海クラウドドキュメント科技有限公司',
         contractPartyAName_cn: '上海云章科技有限公司',
         contractPartyAName_jp: '上海クラウドドキュメント科技有限公司',
-      }),
+      })
     );
     expect(result.sourceTrace.contractPartyAName).toEqual(
       expect.objectContaining({
         resolution: 'localized_override',
-      }),
+      })
     );
   });
 
@@ -2264,17 +2317,10 @@ describe('TemplateWorkflowService', () => {
     const bindingPlan = service.compileBindingPlan('tpl_demo', 1, fieldSpecs, 'zh', ['ja']);
     const postSpy = jest.spyOn(axios, 'post');
 
-    const result = await service.renderData(
-      '',
-      fieldSpecs,
-      bindingPlan,
-      'zh',
-      ['ja'],
-      {
-        companyName_zh: '上海云章科技有限公司',
-        companyName_ja: '上海クラウドドキュメント科技有限公司',
-      },
-    );
+    const result = await service.renderData('', fieldSpecs, bindingPlan, 'zh', ['ja'], {
+      companyName_zh: '上海云章科技有限公司',
+      companyName_ja: '上海クラウドドキュメント科技有限公司',
+    });
 
     expect(postSpy).not.toHaveBeenCalled();
     expect(result.data).toEqual(
@@ -2283,12 +2329,12 @@ describe('TemplateWorkflowService', () => {
         companyName_ja: '上海クラウドドキュメント科技有限公司',
         companyName_cn: '上海云章科技有限公司',
         companyName_jp: '上海クラウドドキュメント科技有限公司',
-      }),
+      })
     );
     expect(result.sourceTrace.companyName).toEqual(
       expect.objectContaining({
         resolution: 'localized_override',
-      }),
+      })
     );
   });
 
@@ -2398,7 +2444,9 @@ describe('TemplateWorkflowService', () => {
     };
     const sampleDocument = {
       fileName: 'sample.docx',
-      contentBase64: Buffer.from('委托方：广州日产通商贸易有限公司\n项目名称：无线网络设备更新').toString('base64'),
+      contentBase64: Buffer.from(
+        '委托方：广州日产通商贸易有限公司\n项目名称：无线网络设备更新'
+      ).toString('base64'),
     };
     const postSpy = jest.spyOn(axios, 'post');
     postSpy
@@ -2526,7 +2574,7 @@ describe('TemplateWorkflowService', () => {
       },
       undefined,
       TEMPLATE_ASSET_SOURCE_OFFICE_ADDIN,
-      '1.2.3',
+      '1.2.3'
     );
 
     expect(manifest).toEqual(
@@ -2541,7 +2589,7 @@ describe('TemplateWorkflowService', () => {
           source: TEMPLATE_ASSET_SOURCE_OFFICE_ADDIN,
           addinVersion: '1.2.3',
         }),
-      }),
+      })
     );
     expect(manifest.renderPlan.bindings).toEqual(
       expect.arrayContaining([
@@ -2553,7 +2601,7 @@ describe('TemplateWorkflowService', () => {
           fieldId: 'partyAName',
           variablePath: 'partyAName_ja',
         }),
-      ]),
+      ])
     );
   });
 
@@ -2593,7 +2641,9 @@ describe('TemplateWorkflowService', () => {
     };
     const sampleDocument = {
       fileName: 'sample.docx',
-      contentBase64: Buffer.from('委托方：广州日产通商贸易有限公司\n项目名称：无线网络设备更新').toString('base64'),
+      contentBase64: Buffer.from(
+        '委托方：广州日产通商贸易有限公司\n项目名称：无线网络设备更新'
+      ).toString('base64'),
     };
     const prefetchedUnderstanding = {
       analysisId: 'ana_prefetched',
@@ -2671,7 +2721,7 @@ describe('TemplateWorkflowService', () => {
       ['ja'],
       undefined,
       undefined,
-      prefetchedUnderstanding,
+      prefetchedUnderstanding
     );
 
     expect(postSpy).toHaveBeenCalledTimes(2);

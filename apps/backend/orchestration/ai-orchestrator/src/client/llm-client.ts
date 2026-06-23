@@ -1,16 +1,8 @@
 import { ChatMessage, LLMResponse, OpenAICompatibleConfig } from '../interfaces';
 
-export type PromptCachingMode =
-  | 'none'
-  | 'openai_auto'
-  | 'anthropic_auto'
-  | 'anthropic_explicit';
+export type PromptCachingMode = 'none' | 'openai_auto' | 'anthropic_auto' | 'anthropic_explicit';
 
-export type PromptCacheRetention =
-  | 'in_memory'
-  | '24h'
-  | '5m'
-  | '1h';
+export type PromptCacheRetention = 'in_memory' | '24h' | '5m' | '1h';
 
 export interface PromptCachingConfig {
   enabled?: boolean;
@@ -35,7 +27,10 @@ export interface LLMChatRequest {
 
 export interface LLMClient {
   chatCompletion(request: ChatMessage[] | LLMChatRequest): Promise<LLMResponse>;
-  chatCompletionStream(messages: ChatMessage[], onChunk: (chunk: string) => void): Promise<LLMResponse>;
+  chatCompletionStream(
+    messages: ChatMessage[],
+    onChunk: (chunk: string) => void
+  ): Promise<LLMResponse>;
   listModels(): Promise<string[]>;
   healthCheck(): Promise<boolean>;
   updateConfig(config: Partial<OpenAICompatibleConfig>): void;

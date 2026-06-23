@@ -1,7 +1,13 @@
 import { AISuggestion, ExcelSheetPairState, useAppStore } from '../../app/store';
 import { ExcelAPI } from '../office/excel/api';
 import { HostCapabilities } from './capabilities';
-import { Anchor, DocumentElement, DocumentIR, DocumentSelection, TemplateSource } from './document-ir';
+import {
+  Anchor,
+  DocumentElement,
+  DocumentIR,
+  DocumentSelection,
+  TemplateSource,
+} from './document-ir';
 import { HostAdapter } from './types';
 
 interface WorkbookSheetSummary {
@@ -35,12 +41,17 @@ export class ExcelAdapter implements HostAdapter {
     const anchorSheetIndex = excelAnchor?.sheetIndex;
 
     const matchedPair =
-      pairs.find((pair) =>
-        (anchorSheetName && (pair.leftSheetName === anchorSheetName || pair.rightSheetName === anchorSheetName))
-        || (typeof anchorSheetIndex === 'number'
-          && (pair.leftSheetIndex === anchorSheetIndex || pair.rightSheetIndex === anchorSheetIndex))
-      )
-      || pairs.find((pair) => typeof excelAnchor?.pairIndex === 'number' && pair.pairIndex === excelAnchor.pairIndex);
+      pairs.find(
+        (pair) =>
+          (anchorSheetName &&
+            (pair.leftSheetName === anchorSheetName || pair.rightSheetName === anchorSheetName)) ||
+          (typeof anchorSheetIndex === 'number' &&
+            (pair.leftSheetIndex === anchorSheetIndex || pair.rightSheetIndex === anchorSheetIndex))
+      ) ||
+      pairs.find(
+        (pair) =>
+          typeof excelAnchor?.pairIndex === 'number' && pair.pairIndex === excelAnchor.pairIndex
+      );
 
     if (!matchedPair) {
       return {
@@ -119,8 +130,12 @@ export class ExcelAdapter implements HostAdapter {
         return false;
       }
 
-      const hasLeftSheet = typeof pair.leftSheetIndex === 'number' && sheets.some((sheet) => sheet.index === pair.leftSheetIndex);
-      const hasRightSheet = typeof pair.rightSheetIndex === 'number' && sheets.some((sheet) => sheet.index === pair.rightSheetIndex);
+      const hasLeftSheet =
+        typeof pair.leftSheetIndex === 'number' &&
+        sheets.some((sheet) => sheet.index === pair.leftSheetIndex);
+      const hasRightSheet =
+        typeof pair.rightSheetIndex === 'number' &&
+        sheets.some((sheet) => sheet.index === pair.rightSheetIndex);
       return hasLeftSheet || hasRightSheet;
     });
   }
@@ -188,8 +203,8 @@ export class ExcelAdapter implements HostAdapter {
             sheetName: sheet.name,
             sheetRole,
             pairIndex: pair.pairIndex,
-                tableNames: sheet.tables.map((table) => table.name),
-                tables: sheet.tables,
+            tableNames: sheet.tables.map((table) => table.name),
+            tables: sheet.tables,
             address: sheet.address,
           },
         });
@@ -281,11 +296,7 @@ export class ExcelAdapter implements HostAdapter {
       if (!marker.startsWith('{')) {
         marker = marker.startsWith('d.') ? `{${marker}}` : `{d.${marker}}`;
       }
-      await ExcelAPI.insertMarkerInSheetCell(
-        targetSheet.sheetName,
-        excelAnchor.address,
-        marker
-      );
+      await ExcelAPI.insertMarkerInSheetCell(targetSheet.sheetName, excelAnchor.address, marker);
       return;
     }
 

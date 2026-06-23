@@ -1,6 +1,7 @@
 export const CAPABILITY_RELEASE_ERROR_CODE = {
   MISSING_PUBLISH_PAYLOAD: 'missing_publish_payload',
   INVALID_RELEASE_TYPE: 'invalid_release_type',
+  INVALID_SOURCE_PAYLOAD: 'invalid_source_payload',
   RELEASE_APPROVAL_PENDING: 'release_approval_pending',
   RELEASE_APPROVAL_REJECTED: 'release_approval_rejected',
   SKILL_DRAFT_NOT_FOUND: 'skill_draft_not_found',

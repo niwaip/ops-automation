@@ -32,21 +32,29 @@ describe('Studio API (e2e)', () => {
     const zip = new JSZip();
 
     // [Content_Types].xml
-    zip.file('[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8"?>
+    zip.file(
+      '[Content_Types].xml',
+      `<?xml version="1.0" encoding="UTF-8"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
   <Default Extension="xml" ContentType="application/xml"/>
   <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
-</Types>`);
+</Types>`
+    );
 
     // _rels/.rels
-    zip.folder('_rels')?.file('.rels', `<?xml version="1.0" encoding="UTF-8"?>
+    zip.folder('_rels')?.file(
+      '.rels',
+      `<?xml version="1.0" encoding="UTF-8"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
-</Relationships>`);
+</Relationships>`
+    );
 
     // word/document.xml - 包含测试变量
-    zip.folder('word')?.file('document.xml', `<?xml version="1.0" encoding="UTF-8"?>
+    zip.folder('word')?.file(
+      'document.xml',
+      `<?xml version="1.0" encoding="UTF-8"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
   <w:body>
     <w:p>
@@ -65,12 +73,19 @@ describe('Studio API (e2e)', () => {
       </w:r>
     </w:p>
   </w:body>
-</w:document>`);
+</w:document>`
+    );
 
     // word/_rels/document.xml.rels
-    zip.folder('word')?.folder('_rels')?.file('document.xml.rels', `<?xml version="1.0" encoding="UTF-8"?>
+    zip
+      .folder('word')
+      ?.folder('_rels')
+      ?.file(
+        'document.xml.rels',
+        `<?xml version="1.0" encoding="UTF-8"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-</Relationships>`);
+</Relationships>`
+      );
 
     return zip.generateAsync({ type: 'nodebuffer' });
   }
@@ -78,19 +93,27 @@ describe('Studio API (e2e)', () => {
   async function createTableLoopDocxTemplate(): Promise<Buffer> {
     const zip = new JSZip();
 
-    zip.file('[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8"?>
+    zip.file(
+      '[Content_Types].xml',
+      `<?xml version="1.0" encoding="UTF-8"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
   <Default Extension="xml" ContentType="application/xml"/>
   <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
-</Types>`);
+</Types>`
+    );
 
-    zip.folder('_rels')?.file('.rels', `<?xml version="1.0" encoding="UTF-8"?>
+    zip.folder('_rels')?.file(
+      '.rels',
+      `<?xml version="1.0" encoding="UTF-8"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
-</Relationships>`);
+</Relationships>`
+    );
 
-    zip.folder('word')?.file('document.xml', `<?xml version="1.0" encoding="UTF-8"?>
+    zip.folder('word')?.file(
+      'document.xml',
+      `<?xml version="1.0" encoding="UTF-8"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
   <w:body>
     <w:tbl>
@@ -104,11 +127,18 @@ describe('Studio API (e2e)', () => {
       </w:tr>
     </w:tbl>
   </w:body>
-</w:document>`);
+</w:document>`
+    );
 
-    zip.folder('word')?.folder('_rels')?.file('document.xml.rels', `<?xml version="1.0" encoding="UTF-8"?>
+    zip
+      .folder('word')
+      ?.folder('_rels')
+      ?.file(
+        'document.xml.rels',
+        `<?xml version="1.0" encoding="UTF-8"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-</Relationships>`);
+</Relationships>`
+      );
 
     return zip.generateAsync({ type: 'nodebuffer' });
   }
@@ -116,30 +146,45 @@ describe('Studio API (e2e)', () => {
   async function createTemplateWorkflowDocxTemplate(): Promise<Buffer> {
     const zip = new JSZip();
 
-    zip.file('[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8"?>
+    zip.file(
+      '[Content_Types].xml',
+      `<?xml version="1.0" encoding="UTF-8"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
   <Default Extension="xml" ContentType="application/xml"/>
   <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
-</Types>`);
+</Types>`
+    );
 
-    zip.folder('_rels')?.file('.rels', `<?xml version="1.0" encoding="UTF-8"?>
+    zip.folder('_rels')?.file(
+      '.rels',
+      `<?xml version="1.0" encoding="UTF-8"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
-</Relationships>`);
+</Relationships>`
+    );
 
-    zip.folder('word')?.file('document.xml', `<?xml version="1.0" encoding="UTF-8"?>
+    zip.folder('word')?.file(
+      'document.xml',
+      `<?xml version="1.0" encoding="UTF-8"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
   <w:body>
     <w:p><w:r><w:t>合同编号：{d.contractNo_zh}</w:t></w:r></w:p>
     <w:p><w:r><w:t>客户名称：{d.customerName_zh}</w:t></w:r></w:p>
     <w:p><w:r><w:t>合同金额：{d.amount_zh}</w:t></w:r></w:p>
   </w:body>
-</w:document>`);
+</w:document>`
+    );
 
-    zip.folder('word')?.folder('_rels')?.file('document.xml.rels', `<?xml version="1.0" encoding="UTF-8"?>
+    zip
+      .folder('word')
+      ?.folder('_rels')
+      ?.file(
+        'document.xml.rels',
+        `<?xml version="1.0" encoding="UTF-8"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-</Relationships>`);
+</Relationships>`
+      );
 
     return zip.generateAsync({ type: 'nodebuffer' });
   }
@@ -170,9 +215,7 @@ describe('Studio API (e2e)', () => {
     });
 
     it('should reject missing file', async () => {
-      await request(app.getHttpServer())
-        .post('/studio/upload')
-        .expect(400);
+      await request(app.getHttpServer()).post('/studio/upload').expect(400);
     });
   });
 
@@ -192,9 +235,7 @@ describe('Studio API (e2e)', () => {
     });
 
     it('should return 404 for non-existent template', async () => {
-      await request(app.getHttpServer())
-        .get('/studio/templates/non-existent-id')
-        .expect(404);
+      await request(app.getHttpServer()).get('/studio/templates/non-existent-id').expect(404);
     });
   });
 
@@ -205,9 +246,7 @@ describe('Studio API (e2e)', () => {
         .post('/studio/upload')
         .attach('file', testDocxBuffer, 'test_list.docx');
 
-      const response = await request(app.getHttpServer())
-        .get('/studio/templates')
-        .expect(200);
+      const response = await request(app.getHttpServer()).get('/studio/templates').expect(200);
 
       expect(response.body.templates).toBeDefined();
       expect(Array.isArray(response.body.templates)).toBe(true);
@@ -232,9 +271,7 @@ describe('Studio API (e2e)', () => {
 
   describe('/studio/formatters (GET)', () => {
     it('should return available formatters', async () => {
-      const response = await request(app.getHttpServer())
-        .get('/studio/formatters')
-        .expect(200);
+      const response = await request(app.getHttpServer()).get('/studio/formatters').expect(200);
 
       expect(response.body.formatters).toBeDefined();
       expect(Array.isArray(response.body.formatters)).toBe(true);
@@ -254,8 +291,8 @@ describe('Studio API (e2e)', () => {
         data: {
           name: 'Test User',
           email: 'test@example.com',
-          total: 1234.56
-        }
+          total: 1234.56,
+        },
       };
 
       const response = await request(app.getHttpServer())
@@ -271,7 +308,7 @@ describe('Studio API (e2e)', () => {
     it('should return 404 for non-existent template', async () => {
       const renderData = {
         templateId: 'non-existent',
-        data: { name: 'Test' }
+        data: { name: 'Test' },
       };
 
       await request(app.getHttpServer())
@@ -395,7 +432,7 @@ describe('Studio API (e2e)', () => {
           templateId: uploadRes.body.id,
           fileName: '1234.docx',
           fieldCount: 3,
-        }),
+        })
       );
 
       const renderDataRes = await request(app.getHttpServer())
@@ -412,11 +449,13 @@ describe('Studio API (e2e)', () => {
 
       expect([200, 201]).toContain(renderDataRes.status);
       expect(renderDataRes.body.missingFields).toEqual([]);
-      expect(renderDataRes.body.data).toEqual(expect.objectContaining({
-        contractNo_zh: 'HT-2026-1234',
-        customerName_zh: '上海云章科技有限公司',
-        amount_zh: '1234元',
-      }));
+      expect(renderDataRes.body.data).toEqual(
+        expect.objectContaining({
+          contractNo_zh: 'HT-2026-1234',
+          customerName_zh: '上海云章科技有限公司',
+          amount_zh: '1234元',
+        })
+      );
 
       const renderRes = await request(app.getHttpServer())
         .post('/studio/render-resolved')
@@ -452,8 +491,8 @@ describe('Studio API (e2e)', () => {
         data: {
           name: 'Test User',
           email: 'test@example.com',
-          total: 100
-        }
+          total: 100,
+        },
       };
 
       const response = await request(app.getHttpServer())
@@ -472,7 +511,7 @@ describe('Studio API (e2e)', () => {
 
       const validateData = {
         templateId: uploadRes.body.id,
-        data: { name: 'Test User' } // missing email and total
+        data: { name: 'Test User' }, // missing email and total
       };
 
       const response = await request(app.getHttpServer())
@@ -496,7 +535,7 @@ describe('Studio API (e2e)', () => {
         .post('/studio/render-resolved')
         .send({
           templateId: uploadRes.body.id,
-          data: { name: 'Download Test', email: 'download@test.com', total: 999 }
+          data: { name: 'Download Test', email: 'download@test.com', total: 999 },
         });
 
       const downloadId = renderRes.body.downloadUrl.split('/').pop();
@@ -509,9 +548,7 @@ describe('Studio API (e2e)', () => {
     });
 
     it('should return 404 for non-existent download', async () => {
-      await request(app.getHttpServer())
-        .get('/studio/download/non-existent')
-        .expect(404);
+      await request(app.getHttpServer()).get('/studio/download/non-existent').expect(404);
     });
   });
 
@@ -526,9 +563,7 @@ describe('Studio API (e2e)', () => {
         .expect(200);
 
       // 验证已删除
-      await request(app.getHttpServer())
-        .get(`/studio/templates/${uploadRes.body.id}`)
-        .expect(404);
+      await request(app.getHttpServer()).get(`/studio/templates/${uploadRes.body.id}`).expect(404);
     });
   });
 
@@ -547,7 +582,7 @@ describe('Studio API (e2e)', () => {
         .post('/studio/validate')
         .send({
           templateId: uploadRes.body.id,
-          data: { name: 'Workflow User', email: 'workflow@test.com', total: 1500 }
+          data: { name: 'Workflow User', email: 'workflow@test.com', total: 1500 },
         })
         .expect(200);
 
@@ -558,7 +593,7 @@ describe('Studio API (e2e)', () => {
         .post('/studio/render-resolved')
         .send({
           templateId: uploadRes.body.id,
-          data: { name: 'Workflow User', email: 'workflow@test.com', total: 1500.75 }
+          data: { name: 'Workflow User', email: 'workflow@test.com', total: 1500.75 },
         })
         .expect(200);
 
@@ -566,9 +601,7 @@ describe('Studio API (e2e)', () => {
 
       // 4. Download
       const downloadId = renderRes.body.downloadUrl.split('/').pop();
-      await request(app.getHttpServer())
-        .get(`/studio/download/${downloadId}`)
-        .expect(200);
+      await request(app.getHttpServer()).get(`/studio/download/${downloadId}`).expect(200);
 
       // 5. Cleanup
       await request(app.getHttpServer())

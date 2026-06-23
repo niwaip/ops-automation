@@ -10,7 +10,10 @@ import {
 
 const logger = new Logger('WorkflowTableNormalizer');
 
-export function resolveTabularRowWidth(lines: string[][], itemSchema?: string[]): number | undefined {
+export function resolveTabularRowWidth(
+  lines: string[][],
+  itemSchema?: string[]
+): number | undefined {
   if (Array.isArray(itemSchema) && itemSchema.length >= 2) {
     return itemSchema.length;
   }
@@ -37,7 +40,7 @@ export function resolveTabularRowWidth(lines: string[][], itemSchema?: string[])
 export function shouldMergeBilingualTabularRows(
   currentRow: string[],
   nextRow: string[],
-  expectedWidth: number,
+  expectedWidth: number
 ): boolean {
   if (currentRow.length !== expectedWidth || nextRow.length !== expectedWidth) {
     return false;
@@ -46,9 +49,9 @@ export function shouldMergeBilingualTabularRows(
   const currentHint = detectTextLanguageHint(currentRow.join(' '));
   const nextHint = detectTextLanguageHint(nextRow.join(' '));
   if (
-    isConcreteLanguageHint(currentHint)
-    && isConcreteLanguageHint(nextHint)
-    && currentHint !== nextHint
+    isConcreteLanguageHint(currentHint) &&
+    isConcreteLanguageHint(nextHint) &&
+    currentHint !== nextHint
   ) {
     return true;
   }
@@ -61,9 +64,11 @@ export function shouldMergeBilingualTabularRows(
     }
     const currentCellHint = detectTextLanguageHint(currentText);
     const nextCellHint = detectTextLanguageHint(nextText);
-    return isConcreteLanguageHint(currentCellHint)
-      && isConcreteLanguageHint(nextCellHint)
-      && currentCellHint !== nextCellHint;
+    return (
+      isConcreteLanguageHint(currentCellHint) &&
+      isConcreteLanguageHint(nextCellHint) &&
+      currentCellHint !== nextCellHint
+    );
   });
 }
 
@@ -82,7 +87,7 @@ export function mergeTabularCellText(primary: string, secondary: string): string
 export function resolveListColumnKeys(
   headerRow: string[],
   itemSchema: string[] | undefined,
-  expectedWidth: number,
+  expectedWidth: number
 ): string[] {
   if (Array.isArray(itemSchema) && itemSchema.length === expectedWidth) {
     return itemSchema;
@@ -110,7 +115,7 @@ export function normalizeTableListRows(
   rows: Array<Record<string, unknown>>,
   spec: WorkflowTemplateFieldSpec,
   sourceLanguage: string,
-  targetLanguages: string[],
+  targetLanguages: string[]
 ): Array<Record<string, unknown>> {
   if (spec.type !== 'table_row' || !Array.isArray(rows) || rows.length === 0) {
     return rows;
@@ -118,10 +123,10 @@ export function normalizeTableListRows(
 
   const preferredLanguages = resolveTableRowLanguages(spec, sourceLanguage, targetLanguages);
   const hasExplicitAliases = rows.some((row) =>
-    Object.keys(row || {}).some((key) => Boolean(extractTableFieldBaseKey(key, preferredLanguages))),
+    Object.keys(row || {}).some((key) => Boolean(extractTableFieldBaseKey(key, preferredLanguages)))
   );
   const hasMultilineCells = rows.some((row) =>
-    Object.values(row || {}).some((value) => splitTableCellLines(safeText(value)).length >= 2),
+    Object.values(row || {}).some((value) => splitTableCellLines(safeText(value)).length >= 2)
   );
   const shouldExpand = hasExplicitAliases || (preferredLanguages.length >= 2 && hasMultilineCells);
   if (!shouldExpand) {
@@ -129,16 +134,16 @@ export function normalizeTableListRows(
   }
 
   const normalizedRows = rows.map((row) => normalizeTableListRow(row, spec, preferredLanguages));
-  const expandedRows = normalizedRows.filter((row, index) =>
-    JSON.stringify(row) !== JSON.stringify(rows[index])
+  const expandedRows = normalizedRows.filter(
+    (row, index) => JSON.stringify(row) !== JSON.stringify(rows[index])
   ).length;
 
   if (expandedRows > 0) {
     logger.log(
-      `[table-data] normalized field=${spec.fieldId} rows=${rows.length} expandedRows=${expandedRows} languages=${preferredLanguages.join(',') || 'auto'}`,
+      `[table-data] normalized field=${spec.fieldId} rows=${rows.length} expandedRows=${expandedRows} languages=${preferredLanguages.join(',') || 'auto'}`
     );
     logger.debug(
-      `[table-data] normalized field=${spec.fieldId} sampleKeys=${Object.keys(normalizedRows[0] || {}).join(',')}`,
+      `[table-data] normalized field=${spec.fieldId} sampleKeys=${Object.keys(normalizedRows[0] || {}).join(',')}`
     );
   }
 
@@ -148,7 +153,7 @@ export function normalizeTableListRows(
 export function normalizeTableListRow(
   row: Record<string, unknown>,
   spec: WorkflowTemplateFieldSpec,
-  preferredLanguages: string[],
+  preferredLanguages: string[]
 ): Record<string, unknown> {
   if (!row || typeof row !== 'object' || Array.isArray(row)) {
     return row;
@@ -156,13 +161,11 @@ export function normalizeTableListRow(
 
   const normalizedRow: Record<string, unknown> = { ...row };
   const rowKeys = Object.keys(normalizedRow);
-  const rowHasMultilingualSignal = rowKeys.some((key) =>
-    Boolean(extractTableFieldBaseKey(key, preferredLanguages)),
-  ) || Object.values(normalizedRow).some((value) =>
-    splitTableCellLines(safeText(value)).length >= 2,
-  );
+  const rowHasMultilingualSignal =
+    rowKeys.some((key) => Boolean(extractTableFieldBaseKey(key, preferredLanguages))) ||
+    Object.values(normalizedRow).some((value) => splitTableCellLines(safeText(value)).length >= 2);
   const baseKeys = new Set<string>(
-    rowKeys.map((key) => extractTableFieldBaseKey(key, preferredLanguages) || key),
+    rowKeys.map((key) => extractTableFieldBaseKey(key, preferredLanguages) || key)
   );
 
   for (const itemKey of spec.itemSchema || []) {
@@ -174,7 +177,7 @@ export function normalizeTableListRow(
       normalizedRow,
       baseKey,
       preferredLanguages,
-      rowHasMultilingualSignal,
+      rowHasMultilingualSignal
     );
     for (const [lang, value] of aliasMap.entries()) {
       const languageKey = `${baseKey}_${lang}`;
@@ -197,18 +200,23 @@ export function normalizeTableListRow(
 export function resolveTableRowLanguages(
   spec: WorkflowTemplateFieldSpec,
   sourceLanguage: string,
-  targetLanguages: string[],
+  targetLanguages: string[]
 ): string[] {
   return Array.from(
-    new Set([
-      spec.sourceLanguage || sourceLanguage,
-      ...(spec.targetLanguages || []),
-      ...targetLanguages,
-    ].filter(Boolean)),
+    new Set(
+      [
+        spec.sourceLanguage || sourceLanguage,
+        ...(spec.targetLanguages || []),
+        ...targetLanguages,
+      ].filter(Boolean)
+    )
   );
 }
 
-export function extractTableFieldBaseKey(key: string, preferredLanguages: string[]): string | undefined {
+export function extractTableFieldBaseKey(
+  key: string,
+  preferredLanguages: string[]
+): string | undefined {
   const match = key.match(/^(.+)_([a-z]{2,5})$/iu);
   if (!match) {
     return undefined;
@@ -225,7 +233,7 @@ export function resolveTableCellAliasMap(
   row: Record<string, unknown>,
   baseKey: string,
   preferredLanguages: string[],
-  rowHasMultilingualSignal: boolean,
+  rowHasMultilingualSignal: boolean
 ): Map<string, string> {
   const aliasMap = new Map<string, string>();
   const baseValue = safeText(row[baseKey]);
@@ -299,14 +307,17 @@ export function extractTableLanguageSuffix(key: string, baseKey: string): string
   return match[2].toLowerCase();
 }
 
-export function orderTableLanguagesForCell(lines: string[], preferredLanguages: string[]): string[] {
+export function orderTableLanguagesForCell(
+  lines: string[],
+  preferredLanguages: string[]
+): string[] {
   const detectedLanguages = lines
     .map((line) => detectTextLanguageHint(line))
     .filter((hint): hint is 'zh' | 'ja' | 'en' => isConcreteLanguageHint(hint));
 
   if (
-    detectedLanguages.length === lines.length
-    && new Set(detectedLanguages).size === detectedLanguages.length
+    detectedLanguages.length === lines.length &&
+    new Set(detectedLanguages).size === detectedLanguages.length
   ) {
     return detectedLanguages;
   }
@@ -316,13 +327,13 @@ export function orderTableLanguagesForCell(lines: string[], preferredLanguages: 
 
 export function mergeTableLanguageValues(
   aliasMap: Map<string, string>,
-  preferredLanguages: string[],
+  preferredLanguages: string[]
 ): string | undefined {
   const orderedValues = preferredLanguages
     .map((language) => safeText(aliasMap.get(language)))
     .filter(Boolean);
-  const fallbackValues = Array.from(aliasMap.values()).filter((value) =>
-    !orderedValues.includes(value),
+  const fallbackValues = Array.from(aliasMap.values()).filter(
+    (value) => !orderedValues.includes(value)
   );
   const values = [...orderedValues, ...fallbackValues];
   if (values.length === 0) {

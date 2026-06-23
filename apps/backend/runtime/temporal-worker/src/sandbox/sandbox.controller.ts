@@ -9,23 +9,24 @@ export class SandboxController {
 
   @Post('execute-code')
   @ApiOperation({ summary: 'Execute Python code in sandbox' })
-  async executeCode(@Body() data: {
-    code: string;
-    fn: string;
-    taskQueue: string;
-    input?: Record<string, any>;
-  }) {
+  async executeCode(
+    @Body() data: { code: string; fn: string; taskQueue: string; input?: Record<string, any> }
+  ) {
     return this.sandboxService.executeCode(data);
   }
 
   @Post('execute-code/stream')
   @ApiOperation({ summary: 'Execute Python code with SSE streaming' })
-  async executeCodeStream(@Body() data: {
-    code: string;
-    fn: string;
-    taskQueue: string;
-    input?: Record<string, any>;
-  }, @Res() res: any) {
+  async executeCodeStream(
+    @Body()
+    data: {
+      code: string;
+      fn: string;
+      taskQueue: string;
+      input?: Record<string, any>;
+    },
+    @Res() res: any
+  ) {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');

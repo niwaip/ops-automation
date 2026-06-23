@@ -79,14 +79,14 @@
 
 ## 4. 写入口矩阵
 
-| 目标对象 | 写入口位置 | 写入方式 | 当前角色判断 | 处理建议 |
-|---|---|---|---|---|
-| `Execution` | `control-plane/execution.service.ts` | Prisma 直写 | 正式入口 | 保留并拆层 |
-| `ExecutionStep` | `control-plane/execution.service.ts` | Prisma 直写 / `createMany` / `updateMany` | 正式入口 | 保留并拆层 |
-| `ExecutionEvent` | `control-plane/execution.service.ts` | Prisma 直写 | 正式入口 | 保留并拆层 |
-| `ExecutionStep` | `ai-orchestrator/execution-step.service.ts` | Prisma 直写 | 残留兼容 / 待移除 | 改为只读或改为调 `control-plane` |
-| `Execution` 相关状态 | `ai-orchestrator/chat.controller.ts` | HTTP 调 `control-plane` | 间接入口 | 保留，但抽 client |
-| `Execution` takeover | `ai-orchestrator/browser-step.tool.ts` | HTTP 调 `control-plane` | 间接入口 | 保留，但标准化内部契约 |
+| 目标对象             | 写入口位置                                  | 写入方式                                  | 当前角色判断      | 处理建议                         |
+| -------------------- | ------------------------------------------- | ----------------------------------------- | ----------------- | -------------------------------- |
+| `Execution`          | `control-plane/execution.service.ts`        | Prisma 直写                               | 正式入口          | 保留并拆层                       |
+| `ExecutionStep`      | `control-plane/execution.service.ts`        | Prisma 直写 / `createMany` / `updateMany` | 正式入口          | 保留并拆层                       |
+| `ExecutionEvent`     | `control-plane/execution.service.ts`        | Prisma 直写                               | 正式入口          | 保留并拆层                       |
+| `ExecutionStep`      | `ai-orchestrator/execution-step.service.ts` | Prisma 直写                               | 残留兼容 / 待移除 | 改为只读或改为调 `control-plane` |
+| `Execution` 相关状态 | `ai-orchestrator/chat.controller.ts`        | HTTP 调 `control-plane`                   | 间接入口          | 保留，但抽 client                |
+| `Execution` takeover | `ai-orchestrator/browser-step.tool.ts`      | HTTP 调 `control-plane`                   | 间接入口          | 保留，但标准化内部契约           |
 
 ---
 

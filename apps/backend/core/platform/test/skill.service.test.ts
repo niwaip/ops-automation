@@ -13,13 +13,13 @@ describe('SkillService workflow input policy enrichment', () => {
     const toolCatalogService = {} as any;
 
     const service = new SkillService(
-      prisma as any, 
-      executionFlowService as any, 
+      prisma as any,
+      executionFlowService as any,
       toolCatalogService,
       {} as any, // temporalWorkflowService
       {} as any, // capabilityReleaseRuntimeService
       {} as any, // userFeatureService
-      {} as any  // skillEnrichmentService
+      {} as any // skillEnrichmentService
     );
     return { service, prisma, executionFlowService };
   };
@@ -73,7 +73,7 @@ describe('SkillService workflow input policy enrichment', () => {
       },
       {
         executionFlowTemplateIds: ['flow-1'],
-      },
+      }
     );
 
     expect(result.apiEndpoints?.runtimeMetadata?.workflowInputPolicy).toEqual({
@@ -122,12 +122,9 @@ describe('SkillService workflow input policy enrichment', () => {
       },
     };
 
-    const result = await (service as any).enrichSkillWithWorkflowInputPolicy(
-      skill,
-      {
-        executionFlowTemplateIds: ['flow-2'],
-      },
-    );
+    const result = await (service as any).enrichSkillWithWorkflowInputPolicy(skill, {
+      executionFlowTemplateIds: ['flow-2'],
+    });
 
     expect(result).toEqual(skill);
   });

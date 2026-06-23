@@ -11,6 +11,11 @@ export { ProxyController } from './modules/proxy/proxy.controller';
 export { ProxyService } from './modules/proxy/proxy.service';
 export { AuthMiddleware, AuthenticatedRequest } from './modules/auth/auth.middleware';
 export { AuditModule } from './modules/audit/audit.module';
-export { AuditService, AuditLog, AuditLogStorage, InMemoryAuditStorage } from './modules/audit/audit.service';
+export {
+  AuditService,
+  AuditLog,
+  AuditLogStorage,
+  InMemoryAuditStorage,
+} from './modules/audit/audit.service';
 
 export const SERVICE_NAME = 'control-plane';

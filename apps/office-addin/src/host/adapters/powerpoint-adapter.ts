@@ -1,7 +1,13 @@
 import { AISuggestion } from '../../app/store';
 import { PPTAPI } from '../office/powerpoint/api';
 import { HostCapabilities } from './capabilities';
-import { Anchor, DocumentElement, DocumentIR, DocumentSelection, TemplateSource } from './document-ir';
+import {
+  Anchor,
+  DocumentElement,
+  DocumentIR,
+  DocumentSelection,
+  TemplateSource,
+} from './document-ir';
 import { HostAdapter } from './types';
 
 export class PowerPointAdapter implements HostAdapter {
@@ -28,7 +34,10 @@ export class PowerPointAdapter implements HostAdapter {
       elements.push({
         id: slideId,
         type: 'slide',
-        text: slide.shapes.map((shape) => shape.text).filter(Boolean).join('\n'),
+        text: slide.shapes
+          .map((shape) => shape.text)
+          .filter(Boolean)
+          .join('\n'),
         hostData: {
           slideId: slide.index,
         },

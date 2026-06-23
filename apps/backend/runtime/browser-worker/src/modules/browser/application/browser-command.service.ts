@@ -27,7 +27,7 @@ export class BrowserCommandService {
   constructor(
     private readonly playwrightCliAdapter: PlaywrightCliAdapter,
     private readonly chromeDevtoolsCliAdapter: ChromeDevtoolsCliAdapter,
-    private readonly browserStepService: BrowserStepService,
+    private readonly browserStepService: BrowserStepService
   ) {
     this.adapters = new Map<BrowserExecutionBackend, BrowserExecutionAdapter>([
       ['cli', this.playwrightCliAdapter],
@@ -42,7 +42,7 @@ export class BrowserCommandService {
       runtimeSessionId?: string;
       includeArtifacts?: boolean;
       includeSteps?: boolean;
-    },
+    }
   ): Promise<{ success: boolean; results: any[]; message?: string; steps?: BrowserActionStep[] }> {
     const backend = options?.backend || 'cli';
     const adapter = this.getAdapter(backend);
@@ -52,15 +52,16 @@ export class BrowserCommandService {
       includeSteps: options?.includeSteps,
     };
     const execution = await adapter.executeCommands(commands, adapterOptions);
-    const steps = options?.includeSteps === false
-      ? undefined
-      : await this.browserStepService.buildSteps(
-        commands,
-        execution.results as Array<Record<string, unknown>>,
-        backend,
-        adapter,
-        adapterOptions,
-      );
+    const steps =
+      options?.includeSteps === false
+        ? undefined
+        : await this.browserStepService.buildSteps(
+            commands,
+            execution.results as Array<Record<string, unknown>>,
+            backend,
+            adapter,
+            adapterOptions
+          );
     return {
       ...execution,
       steps,

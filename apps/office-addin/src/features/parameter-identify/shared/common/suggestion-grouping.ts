@@ -10,9 +10,9 @@ export function getSuggestionGroupName(
   hostKind: 'word' | 'excel'
 ): string {
   if (hostKind === 'excel') {
-    return suggestion.details?.excelAnchor?.sheetName
-      || suggestion.details?.chapter
-      || '未归属 Sheet';
+    return (
+      suggestion.details?.excelAnchor?.sheetName || suggestion.details?.chapter || '未归属 Sheet'
+    );
   }
 
   return suggestion.details?.chapter || '默认分组';

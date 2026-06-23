@@ -84,10 +84,18 @@ function deriveTextualHeadingLevel(text: string): number | null {
     return null;
   }
 
-  if (/^[【\[]?(?:附件|付属文書)(?:[一二三四五六七八九十百千万零两0-9０-９]+)?[】\]]?(?:[\s　].*)?$/u.test(normalized)) {
+  if (
+    /^[【\[]?(?:附件|付属文書)(?:[一二三四五六七八九十百千万零两0-9０-９]+)?[】\]]?(?:[\s　].*)?$/u.test(
+      normalized
+    )
+  ) {
     return 1;
   }
-  if (/^第[一二三四五六七八九十百千万零两0-9０-９]+[章节編部節款項目](?:[\s　：:].*)?$/u.test(normalized)) {
+  if (
+    /^第[一二三四五六七八九十百千万零两0-9０-９]+[章节編部節款項目](?:[\s　：:].*)?$/u.test(
+      normalized
+    )
+  ) {
     return 1;
   }
   if (/^(?:chapter|section|article)\s+[0-9ivx]+(?:[\s:.-].*)?$/iu.test(normalized)) {
@@ -116,7 +124,9 @@ function looksLikeBilingualHeadingCompanion(text: string): boolean {
 }
 
 function isPotentialSectionHeadingText(text: string): boolean {
-  const compactText = String(text || '').trim().replace(/\s+/g, ' ');
+  const compactText = String(text || '')
+    .trim()
+    .replace(/\s+/g, ' ');
   if (!compactText || compactText.length > 60) {
     return false;
   }
@@ -138,15 +148,19 @@ function hasVisibleHeadingMarker(text: string): boolean {
     return false;
   }
 
-  return /^第[一二三四五六七八九十百千万零两0-9０-９]+[章节編部節款項目](?:[\s　：:].*)?$/u.test(normalized)
-    || /^(?:chapter|section|article)\s+[0-9ivx]+(?:[\s:.-].*)?$/iu.test(normalized)
-    || /^(?:[一二三四五六七八九十百千万零两]+|[0-9０-９]+)[、.)）．]\s*\S+/u.test(normalized)
-    || /^[0-9０-９]+(?:\.[0-9０-９]+){1,3}(?:[\s　).）．:：-].*)?$/u.test(normalized);
+  return (
+    /^第[一二三四五六七八九十百千万零两0-9０-９]+[章节編部節款項目](?:[\s　：:].*)?$/u.test(
+      normalized
+    ) ||
+    /^(?:chapter|section|article)\s+[0-9ivx]+(?:[\s:.-].*)?$/iu.test(normalized) ||
+    /^(?:[一二三四五六七八九十百千万零两]+|[0-9０-９]+)[、.)）．]\s*\S+/u.test(normalized) ||
+    /^[0-9０-９]+(?:\.[0-9０-９]+){1,3}(?:[\s　).）．:：-].*)?$/u.test(normalized)
+  );
 }
 
 function deriveOfficeNumberingHeadingLevel(
   paragraph: WordSectionParagraph,
-  styleLevel: number | null,
+  styleLevel: number | null
 ): number | null {
   const format = paragraph.format;
   const isListItem = Boolean(format?.isListItem);
@@ -169,8 +183,9 @@ function deriveOfficeHeadingLevel(paragraph: WordSectionParagraph): number | nul
     return null;
   }
 
-  const styleLevel = extractHeadingLevelFromStyleName(String(paragraph.format?.styleBuiltIn || ''))
-    ?? extractHeadingLevelFromStyleName(String(paragraph.format?.style || ''));
+  const styleLevel =
+    extractHeadingLevelFromStyleName(String(paragraph.format?.styleBuiltIn || '')) ??
+    extractHeadingLevelFromStyleName(String(paragraph.format?.style || ''));
   if (styleLevel !== null) {
     return styleLevel;
   }
@@ -222,7 +237,9 @@ function buildHeadingCandidate(
   };
 }
 
-export function collectOfficeHeadingCandidates(paragraphs: WordSectionParagraph[]): HeadingCandidate[] {
+export function collectOfficeHeadingCandidates(
+  paragraphs: WordSectionParagraph[]
+): HeadingCandidate[] {
   return paragraphs
     .map((paragraph, index) => {
       const level = deriveOfficeHeadingLevel(paragraph);
@@ -236,13 +253,15 @@ export function collectSpecialRuleHeadingCandidates(
   options?: WordSectionDetectorOptions
 ): HeadingCandidate[] {
   const rules = Array.isArray(options?.specialRules) ? options.specialRules : [];
-  return rules.flatMap((rule) => paragraphs.flatMap((paragraph, index) => {
-    const text = String(paragraph.text || '').trim();
-    if (!text || !rule.pattern.test(text)) {
-      return [];
-    }
-    return [buildHeadingCandidate(paragraph, index, rule.level || 1, 'special_rule')];
-  }));
+  return rules.flatMap((rule) =>
+    paragraphs.flatMap((paragraph, index) => {
+      const text = String(paragraph.text || '').trim();
+      if (!text || !rule.pattern.test(text)) {
+        return [];
+      }
+      return [buildHeadingCandidate(paragraph, index, rule.level || 1, 'special_rule')];
+    })
+  );
 }
 
 function dedupeHeadingCandidates(candidates: HeadingCandidate[]): HeadingCandidate[] {
@@ -254,7 +273,9 @@ function dedupeHeadingCandidates(candidates: HeadingCandidate[]): HeadingCandida
       candidateMap.set(candidate.paragraphIndex, candidate);
     }
   });
-  return Array.from(candidateMap.values()).sort((left, right) => left.paragraphIndex - right.paragraphIndex);
+  return Array.from(candidateMap.values()).sort(
+    (left, right) => left.paragraphIndex - right.paragraphIndex
+  );
 }
 
 function collectPrimaryHeadingCandidates(
@@ -274,9 +295,11 @@ function collectPrimaryHeadingCandidates(
 
 function collectBilingualCompanionHeadingIndexes(
   paragraphs: WordSectionParagraph[],
-  headingCandidates: HeadingCandidate[],
+  headingCandidates: HeadingCandidate[]
 ): Set<number> {
-  const paragraphByIndex = new Map(paragraphs.map((paragraph) => [paragraph.paragraphIndex, paragraph]));
+  const paragraphByIndex = new Map(
+    paragraphs.map((paragraph) => [paragraph.paragraphIndex, paragraph])
+  );
   const headingIndexSet = new Set(headingCandidates.map((candidate) => candidate.paragraphIndex));
   const companionIndexes = new Set<number>();
 
@@ -295,11 +318,11 @@ function collectBilingualCompanionHeadingIndexes(
       const adjacentText = String(adjacentParagraph.text || '').trim();
       const adjacentLanguage = inferWordHeadingLanguage(adjacentText);
       if (
-        adjacentLanguage === 'other'
-        || adjacentLanguage === 'mixed'
-        || adjacentLanguage === baseLanguage
-        || !looksLikeBilingualHeadingCompanion(adjacentText)
-        || deriveTextualHeadingLevel(adjacentText) !== null
+        adjacentLanguage === 'other' ||
+        adjacentLanguage === 'mixed' ||
+        adjacentLanguage === baseLanguage ||
+        !looksLikeBilingualHeadingCompanion(adjacentText) ||
+        deriveTextualHeadingLevel(adjacentText) !== null
       ) {
         return;
       }
@@ -313,11 +336,16 @@ function collectBilingualCompanionHeadingIndexes(
 
 export function collectWordChapterHeadingParagraphIndexes(
   paragraphs: WordSectionParagraph[],
-  options?: WordSectionDetectorOptions,
+  options?: WordSectionDetectorOptions
 ): Set<number> {
   const primaryHeadingCandidates = collectPrimaryHeadingCandidates(paragraphs, options);
-  const headingIndexes = new Set(primaryHeadingCandidates.map((candidate) => candidate.paragraphIndex));
-  const companionIndexes = collectBilingualCompanionHeadingIndexes(paragraphs, primaryHeadingCandidates);
+  const headingIndexes = new Set(
+    primaryHeadingCandidates.map((candidate) => candidate.paragraphIndex)
+  );
+  const companionIndexes = collectBilingualCompanionHeadingIndexes(
+    paragraphs,
+    primaryHeadingCandidates
+  );
   companionIndexes.forEach((paragraphIndex) => headingIndexes.add(paragraphIndex));
   return headingIndexes;
 }
@@ -429,10 +457,15 @@ export function deriveWordSectionsFromDocumentIr(
 }
 
 function formatWordSectionParagraphText(text: string): string {
-  return String(text || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+  return String(text || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .trim();
 }
 
-export function collectWordSectionParagraphsFromDocumentIr(templateDocumentIr: Record<string, any> | null): WordSectionParagraph[] {
+export function collectWordSectionParagraphsFromDocumentIr(
+  templateDocumentIr: Record<string, any> | null
+): WordSectionParagraph[] {
   const elements = Array.isArray(templateDocumentIr?.elements) ? templateDocumentIr.elements : [];
   return elements
     .filter((element) => element?.type === 'paragraph')
@@ -451,5 +484,5 @@ export function formatWordHeadingSource(source?: WordDetectedSection['detectionS
     ? 'office_api'
     : source === 'special_rule'
       ? 'special_rule'
-    : 'derived';
+      : 'derived';
 }

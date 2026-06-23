@@ -21,11 +21,13 @@ docker-compose down
 ## API 端点
 
 ### 健康检查
+
 ```
 GET http://localhost:3100/health
 ```
 
 ### 渲染模板
+
 ```
 POST http://localhost:3100/render
 Body: {
@@ -36,6 +38,7 @@ Body: {
 ```
 
 ### 上传文件渲染
+
 ```
 POST http://localhost:3100/render-file
 Content-Type: multipart/form-data
@@ -45,6 +48,7 @@ Content-Type: multipart/form-data
 ```
 
 ### 解析模板变量
+
 ```
 POST http://localhost:3100/parse
 Body: {
@@ -53,6 +57,7 @@ Body: {
 ```
 
 ### 转换格式
+
 ```
 POST http://localhost:3100/convert
 Content-Type: multipart/form-data
@@ -61,6 +66,7 @@ Content-Type: multipart/form-data
 ```
 
 ### 添加格式化器
+
 ```
 POST http://localhost:3100/formatter
 Body: {

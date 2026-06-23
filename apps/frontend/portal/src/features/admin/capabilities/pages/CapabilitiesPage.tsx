@@ -49,6 +49,7 @@ import {
   temporalWorkflowApi,
   WorkflowInputParamDefinition,
 } from '@/api/temporal';
+import { templateApi } from '@/api/template';
 import { skillApi } from '@/api/skill';
 import ParamSchemaEditor, {
   ParamSchemaFieldDraft,
@@ -158,8 +159,14 @@ const getValidationTypeLabel = (value: string) => {
 };
 
 const getNextStepHint = (release: CapabilityRelease): { label: string; color: string } => {
-  if (release.deploymentStatus === 'succeeded' || release.deploymentStatus === 'deployed' || release.status === 'deployed') return { label: '观察运行/回滚', color: 'green' };
-  if (release.status === 'deploying' || release.deploymentStatus === 'deploying') return { label: '正在部署...', color: 'processing' };
+  if (
+    release.deploymentStatus === 'succeeded' ||
+    release.deploymentStatus === 'deployed' ||
+    release.status === 'deployed'
+  )
+    return { label: '观察运行/回滚', color: 'green' };
+  if (release.status === 'deploying' || release.deploymentStatus === 'deploying')
+    return { label: '正在部署...', color: 'processing' };
   if (release.status === 'build_failed') return { label: '重新绑定工件', color: 'red' };
   if (release.status === 'validation_failed') return { label: '重新校验', color: 'volcano' };
   if (release.status === 'deploy_failed') return { label: '重新部署', color: 'magenta' };
@@ -185,8 +192,10 @@ const getNextStepHint = (release: CapabilityRelease): { label: string; color: st
       color: 'lime',
     };
   }
-  if (release.currentBuildId || release.latestSuccessfulBuildId) return { label: 'Sandbox 校验', color: 'purple' };
-  if (release.sourceType === 'browser_recording') return { label: '准备浏览器回放校验', color: 'default' };
+  if (release.currentBuildId || release.latestSuccessfulBuildId)
+    return { label: 'Sandbox 校验', color: 'purple' };
+  if (release.sourceType === 'browser_recording')
+    return { label: '准备浏览器回放校验', color: 'default' };
 
   return { label: '绑定 Workflow 工件', color: 'default' };
 };
@@ -199,7 +208,7 @@ const canEnterReleaseCenter = (release: CapabilityRelease): boolean =>
 const flattenSnapshotPayload = (
   value: unknown,
   prefix = '',
-  output: Record<string, string> = {},
+  output: Record<string, string> = {}
 ): Record<string, string> => {
   if (Array.isArray(value)) {
     if (value.length === 0 && prefix) {
@@ -216,7 +225,7 @@ const flattenSnapshotPayload = (
 
   if (value && typeof value === 'object') {
     const entries = Object.entries(value as Record<string, unknown>).sort(([left], [right]) =>
-      left.localeCompare(right),
+      left.localeCompare(right)
     );
 
     if (entries.length === 0 && prefix) {
@@ -238,12 +247,12 @@ const flattenSnapshotPayload = (
 
 const buildSnapshotDiffRows = (
   leftPayload: Record<string, unknown> = {},
-  rightPayload: Record<string, unknown> = {},
+  rightPayload: Record<string, unknown> = {}
 ): SnapshotDiffRow[] => {
   const leftMap = flattenSnapshotPayload(leftPayload);
   const rightMap = flattenSnapshotPayload(rightPayload);
-  const allPaths = Array.from(new Set([...Object.keys(leftMap), ...Object.keys(rightMap)])).sort((a, b) =>
-    a.localeCompare(b),
+  const allPaths = Array.from(new Set([...Object.keys(leftMap), ...Object.keys(rightMap)])).sort(
+    (a, b) => a.localeCompare(b)
   );
 
   return allPaths.map((path) => {
@@ -275,14 +284,14 @@ const hasNonEmptyCode = (value: unknown): value is string =>
 
 const getTemporalDeployReadiness = (
   detail: CapabilityReleaseDetail | undefined,
-  sourceWorkflow?: TemporalWorkflowDTO | null,
+  sourceWorkflow?: TemporalWorkflowDTO | null
 ): TemporalDeployReadiness => {
   if (!detail || detail.release.sourceType !== 'temporal_workflow') {
     return { hasExecutableCode: true };
   }
 
   const successfulBuild = detail.builds?.find(
-    (build) => build.status === 'succeeded' && hasNonEmptyCode(build.generatedCode),
+    (build) => build.status === 'succeeded' && hasNonEmptyCode(build.generatedCode)
   );
   if (successfulBuild) {
     return { hasExecutableCode: true, source: 'build' };
@@ -313,22 +322,29 @@ const getTemporalDeployReadiness = (
   };
 };
 
-const parseJsonDraft = <T,>(raw: string, fallbackLabel: string): { valid: true; value: T } | { valid: false; error: string } => {
+const parseJsonDraft = <T,>(
+  raw: string,
+  fallbackLabel: string
+): { valid: true; value: T } | { valid: false; error: string } => {
   try {
     return { valid: true, value: JSON.parse(raw) as T };
   } catch (error) {
     return {
       valid: false,
-      error: error instanceof Error ? `${fallbackLabel}: ${error.message}` : `${fallbackLabel}: JSON 解析失败`,
+      error:
+        error instanceof Error
+          ? `${fallbackLabel}: ${error.message}`
+          : `${fallbackLabel}: JSON 解析失败`,
     };
   }
 };
 
 const createParamFieldId = () => `param-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-const createApiEndpointId = () => `endpoint-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+const createApiEndpointId = () =>
+  `endpoint-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
 const parseParamSchemaToDraft = (
-  schema: Record<string, unknown> | undefined,
+  schema: Record<string, unknown> | undefined
 ): { fields: ParamSchemaFieldDraft[]; extras: Record<string, unknown> } => {
   const normalized = schema && typeof schema === 'object' ? schema : {};
   const properties =
@@ -339,7 +355,7 @@ const parseParamSchemaToDraft = (
     ? normalized.required.filter((item): item is string => typeof item === 'string')
     : [];
   const extras = Object.fromEntries(
-    Object.entries(normalized).filter(([key]) => key !== 'properties' && key !== 'required'),
+    Object.entries(normalized).filter(([key]) => key !== 'properties' && key !== 'required')
   );
 
   const fields = Object.entries(properties).map(([name, config]) => ({
@@ -354,8 +370,7 @@ const parseParamSchemaToDraft = (
         : typeof config.default === 'string'
           ? config.default
           : JSON.stringify(config.default),
-    extractionPrompt:
-      typeof config?.extractionPrompt === 'string' ? config.extractionPrompt : '',
+    extractionPrompt: typeof config?.extractionPrompt === 'string' ? config.extractionPrompt : '',
     enumValues: Array.isArray(config?.enum)
       ? config.enum.filter((item): item is string => typeof item === 'string')
       : [],
@@ -392,7 +407,7 @@ const normalizeParamDefaultValue = (type: string, raw: string): unknown => {
 
 const buildParamSchemaFromDraft = (
   fields: ParamSchemaFieldDraft[],
-  extras: Record<string, unknown>,
+  extras: Record<string, unknown>
 ): Record<string, unknown> => {
   const properties: Record<string, Record<string, unknown>> = {};
   const required: string[] = [];
@@ -434,17 +449,20 @@ const buildParamSchemaFromDraft = (
   };
 };
 
-const parseApiEndpointsToDraft = (value: Record<string, unknown> | null | undefined): ApiEndpointDraft[] => {
+const parseApiEndpointsToDraft = (
+  value: Record<string, unknown> | null | undefined
+): ApiEndpointDraft[] => {
   if (!value || typeof value !== 'object') {
     return [];
   }
 
   return Object.entries(value).map(([key, rawConfig]) => {
-    const config = rawConfig && typeof rawConfig === 'object' ? (rawConfig as Record<string, unknown>) : {};
+    const config =
+      rawConfig && typeof rawConfig === 'object' ? (rawConfig as Record<string, unknown>) : {};
     const extras = Object.fromEntries(
       Object.entries(config).filter(
-        ([entryKey]) => !['url', 'method', 'description'].includes(entryKey),
-      ),
+        ([entryKey]) => !['url', 'method', 'description'].includes(entryKey)
+      )
     );
 
     return {
@@ -497,9 +515,7 @@ const looksLikeBrowserSelector = (value: string): boolean => {
   return false;
 };
 
-const normalizeBrowserWorkflowLocator = (
-  locator: unknown,
-): Record<string, unknown> | undefined => {
+const normalizeBrowserWorkflowLocator = (locator: unknown): Record<string, unknown> | undefined => {
   if (!locator || typeof locator !== 'object' || Array.isArray(locator)) {
     return undefined;
   }
@@ -521,18 +537,23 @@ const browserPlaceholder = (name: string) => `\${${name}}`;
 
 const inferBrowserWorkflowParamDefinition = (
   stepName: string,
-  config: Record<string, unknown>,
+  config: Record<string, unknown>
 ): { name: string; definition: WorkflowInputParamDefinition } | undefined => {
-  const action = normalizeBrowserWorkflowAction(typeof config.action === 'string' ? config.action : '');
+  const action = normalizeBrowserWorkflowAction(
+    typeof config.action === 'string' ? config.action : ''
+  );
   const locator = normalizeBrowserWorkflowLocator(config.locator);
   const url = typeof config.url === 'string' ? config.url.trim() : '';
-  const value = config.value === undefined || config.value === null ? '' : String(config.value).trim();
+  const value =
+    config.value === undefined || config.value === null ? '' : String(config.value).trim();
   const hint = [
     stepName,
     typeof config.selector === 'string' ? config.selector : '',
     typeof config.target === 'string' ? config.target : '',
     typeof locator?.value === 'string' ? locator.value : '',
-  ].filter(Boolean).join(' ');
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   if (action === 'navigate' && url) {
     return {
@@ -583,16 +604,22 @@ const inferBrowserWorkflowParamDefinition = (
   return undefined;
 };
 
-const normalizeBrowserWorkflowStepConfig = (config: Record<string, unknown>): Record<string, unknown> => {
-  const action = normalizeBrowserWorkflowAction(typeof config.action === 'string' ? config.action : '');
+const normalizeBrowserWorkflowStepConfig = (
+  config: Record<string, unknown>
+): Record<string, unknown> => {
+  const action = normalizeBrowserWorkflowAction(
+    typeof config.action === 'string' ? config.action : ''
+  );
   const url = typeof config.url === 'string' ? config.url.trim() : '';
   const selector = typeof config.selector === 'string' ? config.selector.trim() : '';
   const rawTarget = typeof config.target === 'string' ? config.target.trim() : '';
   const locator = normalizeBrowserWorkflowLocator(config.locator);
-  const valueCandidate = [config.value, config.text, config.query]
-    .find((item) => item !== undefined && item !== null && String(item).trim() !== '');
-  const keyCandidate = [config.key, config.value]
-    .find((item) => item !== undefined && item !== null && String(item).trim() !== '');
+  const valueCandidate = [config.value, config.text, config.query].find(
+    (item) => item !== undefined && item !== null && String(item).trim() !== ''
+  );
+  const keyCandidate = [config.key, config.value].find(
+    (item) => item !== undefined && item !== null && String(item).trim() !== ''
+  );
   const normalized: Record<string, unknown> = {
     ...(action ? { action } : {}),
   };
@@ -607,18 +634,16 @@ const normalizeBrowserWorkflowStepConfig = (config: Record<string, unknown>): Re
     normalized.locator = locator;
   }
 
-  const targetLooksSuspicious = rawTarget
-    && !looksLikeBrowserSelector(rawTarget)
-    && (
-      looksLikeTemplatePlaceholder(rawTarget)
-      || (valueCandidate !== undefined && String(valueCandidate).trim() === rawTarget)
-    );
-  const shouldKeepTarget = rawTarget
-    && (
-      action === 'navigate'
-      || /^e\d+$/i.test(rawTarget)
-      || (!targetLooksSuspicious && (!selector || rawTarget !== selector))
-    );
+  const targetLooksSuspicious =
+    rawTarget &&
+    !looksLikeBrowserSelector(rawTarget) &&
+    (looksLikeTemplatePlaceholder(rawTarget) ||
+      (valueCandidate !== undefined && String(valueCandidate).trim() === rawTarget));
+  const shouldKeepTarget =
+    rawTarget &&
+    (action === 'navigate' ||
+      /^e\d+$/i.test(rawTarget) ||
+      (!targetLooksSuspicious && (!selector || rawTarget !== selector)));
   if (shouldKeepTarget) {
     normalized.target = rawTarget;
   }
@@ -641,7 +666,7 @@ const normalizeBrowserWorkflowStepConfig = (config: Record<string, unknown>): Re
 
 const parameterizeBrowserWorkflowStepConfig = (
   stepName: string,
-  config: Record<string, unknown>,
+  config: Record<string, unknown>
 ): {
   config: Record<string, unknown>;
   inferredParam?: { name: string; definition: WorkflowInputParamDefinition };
@@ -671,7 +696,7 @@ const parameterizeBrowserWorkflowStepConfig = (
 
 const buildBrowserWorkflowParamsSchema = (
   inputParams?: Record<string, WorkflowInputParamDefinition>,
-  inferredParams?: Record<string, WorkflowInputParamDefinition>,
+  inferredParams?: Record<string, WorkflowInputParamDefinition>
 ): Record<string, unknown> => {
   const entries = Object.entries({
     ...(inferredParams || {}),
@@ -679,22 +704,91 @@ const buildBrowserWorkflowParamsSchema = (
   });
   return {
     type: 'object',
-    properties: Object.fromEntries(entries.map(([key, definition]) => [
-      key,
-      {
-        type: definition?.type || 'string',
-        description: definition?.description || '',
-        default: definition?.defaultValue,
-        required: Boolean(definition?.required),
-      },
-    ])),
-    required: entries
-      .filter(([, definition]) => Boolean(definition?.required))
-      .map(([key]) => key),
+    properties: Object.fromEntries(
+      entries.map(([key, definition]) => [
+        key,
+        {
+          type: definition?.type || 'string',
+          description: definition?.description || '',
+          default: definition?.defaultValue,
+          required: Boolean(definition?.required),
+        },
+      ])
+    ),
+    required: entries.filter(([, definition]) => Boolean(definition?.required)).map(([key]) => key),
   };
 };
 
-const extractBrowserWorkflowSteps = (workflow: TemporalWorkflowDTO): Array<Record<string, unknown>> => {
+const asRecord = (value: unknown): Record<string, unknown> | undefined => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return undefined;
+  }
+  return value as Record<string, unknown>;
+};
+
+const asRecordArray = (value: unknown): Array<Record<string, unknown>> =>
+  Array.isArray(value)
+    ? value.filter(
+        (item): item is Record<string, unknown> =>
+          Boolean(item) && typeof item === 'object' && !Array.isArray(item)
+      )
+    : [];
+
+const resolveBrowserWorkflowTemplateId = (workflow: TemporalWorkflowDTO): string | undefined => {
+  const sourceTemplate =
+    workflow.sourceTemplate ||
+    workflow.sourceContext?.sourceTemplate ||
+    workflow.workflowDsl?.sourceContext?.sourceTemplate;
+  const templateId = sourceTemplate?.templateId;
+  return typeof templateId === 'string' && templateId.trim() ? templateId.trim() : undefined;
+};
+
+const extractBrowserTemplateRuntimeMetadata = (
+  template: Awaited<ReturnType<typeof templateApi.getById>>
+): Record<string, unknown> => {
+  const config = asRecord(template.config) || {};
+  const configExecutionPlan = asRecord(config.executionPlan) || {};
+  const executionPlanTemplateSteps = asRecordArray(configExecutionPlan.templateSteps);
+  const configTemplateSteps =
+    asRecordArray(config.templateSteps).length > 0
+      ? asRecordArray(config.templateSteps)
+      : executionPlanTemplateSteps.length > 0
+        ? executionPlanTemplateSteps
+        : asRecordArray(template.steps);
+  const configLoopDraft =
+    asRecord(config.loopDraft) || asRecord(configExecutionPlan.loopDraft) || undefined;
+  const configLoopPlanPreview =
+    asRecordArray(config.loopPlanPreview).length > 0
+      ? asRecordArray(config.loopPlanPreview)
+      : asRecordArray(configExecutionPlan.loopPlanPreview);
+  const executionPlan =
+    Object.keys(configExecutionPlan).length > 0
+      ? {
+          ...configExecutionPlan,
+          ...(executionPlanTemplateSteps.length > 0
+            ? {}
+            : configTemplateSteps.length > 0
+              ? { templateSteps: configTemplateSteps }
+              : {}),
+          ...(configExecutionPlan.loopDraft
+            ? {}
+            : configLoopDraft
+              ? { loopDraft: configLoopDraft }
+              : {}),
+        }
+      : {};
+
+  return {
+    ...(Object.keys(executionPlan).length > 0 ? { executionPlan } : {}),
+    ...(configTemplateSteps.length > 0 ? { templateSteps: configTemplateSteps } : {}),
+    ...(configLoopDraft ? { loopDraft: configLoopDraft } : {}),
+    ...(configLoopPlanPreview.length > 0 ? { loopPlanPreview: configLoopPlanPreview } : {}),
+  };
+};
+
+const extractBrowserWorkflowSteps = (
+  workflow: TemporalWorkflowDTO
+): Array<Record<string, unknown>> => {
   const activities = Array.isArray(workflow.activityDsl?.activities)
     ? workflow.activityDsl.activities
     : [];
@@ -703,39 +797,49 @@ const extractBrowserWorkflowSteps = (workflow: TemporalWorkflowDTO): Array<Recor
       return [];
     }
     if (activity.handler !== 'browser') {
-      const config = activity.config && typeof activity.config === 'object'
-        ? activity.config as Record<string, unknown>
-        : {};
+      const config =
+        activity.config && typeof activity.config === 'object'
+          ? (activity.config as Record<string, unknown>)
+          : {};
       const steps = Array.isArray(config.steps) ? config.steps : [];
       if (!steps.some((step) => step && typeof step === 'object')) {
         return [];
       }
     }
 
-    const config = activity.config && typeof activity.config === 'object'
-      ? activity.config as Record<string, unknown>
-      : {};
+    const config =
+      activity.config && typeof activity.config === 'object'
+        ? (activity.config as Record<string, unknown>)
+        : {};
     return Array.isArray(config.steps)
       ? config.steps.filter(
-        (step): step is Record<string, unknown> => Boolean(step) && typeof step === 'object' && !Array.isArray(step),
-      )
+          (step): step is Record<string, unknown> =>
+            Boolean(step) && typeof step === 'object' && !Array.isArray(step)
+        )
       : [];
   });
 };
 
-const buildBrowserRecordingSourcePayload = (workflow: TemporalWorkflowDTO): Record<string, unknown> => {
+const buildBrowserRecordingSourcePayload = async (
+  workflow: TemporalWorkflowDTO
+): Promise<Record<string, unknown>> => {
   const workflowSteps = extractBrowserWorkflowSteps(workflow);
   const inferredParams: Record<string, WorkflowInputParamDefinition> = {};
   const normalizedSteps = workflowSteps.map((step, index) => {
-    const config = step.config && typeof step.config === 'object'
-      ? step.config as Record<string, unknown>
-      : {};
+    const config =
+      step.config && typeof step.config === 'object'
+        ? (step.config as Record<string, unknown>)
+        : {};
     const stepName = String(step.name || `${index + 1}. browser_action`);
-    const { config: normalizedConfig, inferredParam } = parameterizeBrowserWorkflowStepConfig(stepName, config);
+    const { config: normalizedConfig, inferredParam } = parameterizeBrowserWorkflowStepConfig(
+      stepName,
+      config
+    );
     if (inferredParam && !inferredParams[inferredParam.name]) {
       inferredParams[inferredParam.name] = inferredParam.definition;
     }
-    const action = String(normalizedConfig.action || step.action || 'browser_action').trim() || 'browser_action';
+    const action =
+      String(normalizedConfig.action || step.action || 'browser_action').trim() || 'browser_action';
     return {
       id: String(step.id || `step_${index + 1}`),
       name: stepName || `${index + 1}. ${action}`,
@@ -768,15 +872,21 @@ const buildBrowserRecordingSourcePayload = (workflow: TemporalWorkflowDTO): Reco
       tool: { name: 'browser_step' },
       input: {
         action,
-        ...(typeof config.target === 'string' && config.target.trim() ? { target: config.target } : {}),
-        ...(typeof config.selector === 'string' && config.selector.trim() ? { selector: config.selector } : {}),
-        ...(config.locator && typeof config.locator === 'object' ? { locator: config.locator } : {}),
+        ...(typeof config.target === 'string' && config.target.trim()
+          ? { target: config.target }
+          : {}),
+        ...(typeof config.selector === 'string' && config.selector.trim()
+          ? { selector: config.selector }
+          : {}),
+        ...(config.locator && typeof config.locator === 'object'
+          ? { locator: config.locator }
+          : {}),
         ...(Object.keys(params).length > 0 ? { params } : {}),
       },
     };
   });
 
-  return {
+  const sourcePayload: Record<string, unknown> = {
     id: workflow.id,
     name: workflow.name,
     description: workflow.description || '',
@@ -787,7 +897,10 @@ const buildBrowserRecordingSourcePayload = (workflow: TemporalWorkflowDTO): Reco
       workflowName: workflow.name,
       ...(workflow.sourceTemplate || {}),
     },
-    paramsSchema: buildBrowserWorkflowParamsSchema(workflow.workflowDsl?.inputParams, inferredParams),
+    paramsSchema: buildBrowserWorkflowParamsSchema(
+      workflow.workflowDsl?.inputParams,
+      inferredParams
+    ),
     steps: normalizedSteps,
     executionFlow,
     tools: ['skill_match', 'browser_step'],
@@ -798,6 +911,28 @@ const buildBrowserRecordingSourcePayload = (workflow: TemporalWorkflowDTO): Reco
         sourceType: 'browser_recording',
         backend: 'cli',
         goal: workflow.description || workflow.name,
+      },
+    },
+  };
+
+  const templateId = resolveBrowserWorkflowTemplateId(workflow);
+  if (!templateId) {
+    return sourcePayload;
+  }
+
+  const template = await templateApi.getById(templateId);
+  const templateRuntimeMetadata = extractBrowserTemplateRuntimeMetadata(template);
+  if (Object.keys(templateRuntimeMetadata).length === 0) {
+    return sourcePayload;
+  }
+
+  return {
+    ...sourcePayload,
+    apiEndpoints: {
+      ...(asRecord(sourcePayload.apiEndpoints) || {}),
+      runtimeMetadata: {
+        ...(asRecord(asRecord(sourcePayload.apiEndpoints)?.runtimeMetadata) || {}),
+        ...templateRuntimeMetadata,
       },
     },
   };
@@ -824,9 +959,9 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
   const [deployVisible, setDeployVisible] = useState(false);
   const [deployTargetReleaseId, setDeployTargetReleaseId] = useState<string | null>(null);
   const [deployEnvironment, setDeployEnvironment] = useState<DeploymentEnvironment>('staging');
-  const [deployStrategy, setDeployStrategy] = useState<'hot_reload' | 'rolling_restart' | 'full_restart'>(
-    'rolling_restart',
-  );
+  const [deployStrategy, setDeployStrategy] = useState<
+    'hot_reload' | 'rolling_restart' | 'full_restart'
+  >('rolling_restart');
   const [deployOverridesDraft, setDeployOverridesDraft] = useState('{}');
   const [createWizardStep, setCreateWizardStep] = useState(0);
   const [wizardReleaseId, setWizardReleaseId] = useState<string | null>(null);
@@ -867,7 +1002,7 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
       onError: (error: any) => {
         message.error(error?.message || 'AI 分析失败');
       },
-    },
+    }
   );
 
   const [isEditingSkillDraft, setIsEditingSkillDraft] = useState(false);
@@ -877,10 +1012,14 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
   const [skillDraftTools, setSkillDraftTools] = useState<string[]>([]);
   const [skillDraftTemplateIds, setSkillDraftTemplateIds] = useState<string[]>([]);
   const [skillDraftParamFields, setSkillDraftParamFields] = useState<ParamSchemaFieldDraft[]>([]);
-  const [skillDraftParamSchemaExtras, setSkillDraftParamSchemaExtras] = useState<Record<string, unknown>>({
+  const [skillDraftParamSchemaExtras, setSkillDraftParamSchemaExtras] = useState<
+    Record<string, unknown>
+  >({
     type: 'object',
   });
-  const [skillDraftApiEndpointFields, setSkillDraftApiEndpointFields] = useState<ApiEndpointDraft[]>([]);
+  const [skillDraftApiEndpointFields, setSkillDraftApiEndpointFields] = useState<
+    ApiEndpointDraft[]
+  >([]);
   const [createForm] = Form.useForm();
   const createSourceType = Form.useWatch('sourceType', createForm);
   const createSourceId = Form.useWatch('sourceId', createForm);
@@ -889,31 +1028,31 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
   const temporalWorkflowOptionsQuery = useQuery(
     ['temporal-options'],
     () => temporalWorkflowApi.list(),
-    { staleTime: 30_000 },
+    { staleTime: 30_000 }
   );
   const executionFlowOptionsQuery = useQuery(
     ['flow-options'],
     () => executionFlowApi.list({ limit: 200, isActive: true }),
-    { staleTime: 30_000 },
+    { staleTime: 30_000 }
   );
   const detailQuery = useQuery(
     ['capability-detail', selectedReleaseId],
     () => capabilityReleaseApi.getById(selectedReleaseId as string),
-    { enabled: Boolean(selectedReleaseId) },
+    { enabled: Boolean(selectedReleaseId) }
   );
   const wizardDetailQuery = useQuery(
     ['capability-wizard-detail', wizardReleaseId],
     () => capabilityReleaseApi.getById(wizardReleaseId as string),
-    { enabled: Boolean(wizardReleaseId && createVisible) },
+    { enabled: Boolean(wizardReleaseId && createVisible) }
   );
 
   const createSourceOptions = useMemo<CapabilitySourceOption[]>(() => {
     if (createSourceType === 'temporal_workflow') {
       return (temporalWorkflowOptionsQuery.data || [])
-        .filter((workflow: TemporalWorkflowDTO) => (
-          workflow.validationStatus === 'validated'
-          && Boolean(workflow.generatedCode?.trim())
-        ))
+        .filter(
+          (workflow: TemporalWorkflowDTO) =>
+            workflow.validationStatus === 'validated' && Boolean(workflow.generatedCode?.trim())
+        )
         .map((workflow: TemporalWorkflowDTO) => ({
           label: workflow.name || `Workflow ${workflow.id.slice(0, 8)}`,
           value: workflow.id,
@@ -925,7 +1064,9 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
               ? `验证时间: ${new Date(workflow.validatedAt).toLocaleString()}`
               : null,
             `Task Queue: ${workflow.taskQueue}`,
-          ].filter(Boolean).join(' | '),
+          ]
+            .filter(Boolean)
+            .join(' | '),
         }));
     }
 
@@ -939,7 +1080,10 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
 
     if (createSourceType === 'browser_recording') {
       return (temporalWorkflowOptionsQuery.data || [])
-        .filter((workflow: TemporalWorkflowDTO) => workflow.sourceContext?.sourceType === 'browser_template')
+        .filter(
+          (workflow: TemporalWorkflowDTO) =>
+            workflow.sourceContext?.sourceType === 'browser_template'
+        )
         .map((workflow: TemporalWorkflowDTO) => ({
           label: workflow.name || `Browser Workflow ${workflow.id.slice(0, 8)}`,
           value: workflow.id,
@@ -960,13 +1104,11 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
         ? executionFlowOptionsQuery.isLoading
         : createSourceType === 'browser_recording'
           ? temporalWorkflowOptionsQuery.isLoading
-        : false;
+          : false;
   const temporalWorkflowMap = useMemo(
     () =>
-      new Map(
-        (temporalWorkflowOptionsQuery.data || []).map((workflow) => [workflow.id, workflow]),
-      ),
-    [temporalWorkflowOptionsQuery.data],
+      new Map((temporalWorkflowOptionsQuery.data || []).map((workflow) => [workflow.id, workflow])),
+    [temporalWorkflowOptionsQuery.data]
   );
 
   useEffect(() => {
@@ -994,13 +1136,7 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
     if (!currentName || currentName === '') {
       createForm.setFieldsValue({ sourceName: selectedSource.label });
     }
-  }, [
-    createForm,
-    createSourceId,
-    createSourceOptions,
-    createSourceType,
-    createVisible,
-  ]);
+  }, [createForm, createSourceId, createSourceOptions, createSourceType, createVisible]);
 
   const refreshQueries = async (releaseId?: string) => {
     await queryClient.invalidateQueries(['capabilities']);
@@ -1033,7 +1169,7 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
       onError: (error: any) => {
         message.error(error?.message || '静态校验失败');
       },
-    },
+    }
   );
 
   const generateDraftMutation = useMutation(
@@ -1046,7 +1182,7 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
       onError: (error: any) => {
         message.error(error?.message || '生成 Skill 草案失败');
       },
-    },
+    }
   );
 
   const publishMutation = useMutation(
@@ -1062,7 +1198,7 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
       onError: (error: any) => {
         message.error(error?.message || '发布 Skill 失败');
       },
-    },
+    }
   );
 
   const approveMutation = useMutation(
@@ -1076,7 +1212,7 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
       onError: (error: any) => {
         message.error(error?.message || '审批失败');
       },
-    },
+    }
   );
 
   const deployMutation = useMutation(
@@ -1090,8 +1226,7 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
       environment: DeploymentEnvironment;
       strategy: 'hot_reload' | 'rolling_restart' | 'full_restart';
       configOverrides?: Record<string, unknown>;
-    }) =>
-      capabilityReleaseApi.deploy(id, { environment, strategy, configOverrides }),
+    }) => capabilityReleaseApi.deploy(id, { environment, strategy, configOverrides }),
     {
       onSuccess: async (result, variables) => {
         message.success(`部署完成: ${result.deployment.status}`);
@@ -1105,7 +1240,7 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
       onError: (error: any) => {
         message.error(error?.message || '部署失败');
       },
-    },
+    }
   );
 
   const validateSkillMutation = useMutation(
@@ -1118,7 +1253,7 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
       onError: (error: any) => {
         message.error(error?.message || 'Skill 校验失败');
       },
-    },
+    }
   );
 
   const realValidateMutation = useMutation(
@@ -1144,7 +1279,7 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
       onError: (error: any) => {
         message.error(error?.message || '真实校验失败');
       },
-    },
+    }
   );
   const wizardAssistMutation = useMutation(
     ({ id, environment }: { id: string; environment: DeploymentEnvironment }) =>
@@ -1157,7 +1292,7 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
         }
         if (result.testUserInput) {
           setWizardValidationCasesDraft((prev) =>
-            [prev, result.testUserInput].filter((item) => item && item.trim()).join('\n'),
+            [prev, result.testUserInput].filter((item) => item && item.trim()).join('\n')
           );
           setWizardValidationUserInput(result.testUserInput);
         }
@@ -1166,7 +1301,7 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
       onError: (error: any) => {
         message.error(error?.message || 'AI 辅助建议生成失败');
       },
-    },
+    }
   );
 
   const archiveReleaseMutation = useMutation(
@@ -1183,7 +1318,7 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
       onError: (error: any) => {
         message.error(error?.message || '删除 Release 失败');
       },
-    },
+    }
   );
 
   const updateSourceMutation = useMutation(
@@ -1202,14 +1337,14 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
         setIsEditingSource(false);
         setSourceNameDraft(result.release.release.sourceName || '');
         setSourcePayloadDraft(
-          JSON.stringify(result.release.currentSourceSnapshot?.sourcePayload || {}, null, 2),
+          JSON.stringify(result.release.currentSourceSnapshot?.sourcePayload || {}, null, 2)
         );
         await refreshQueries(variables.id);
       },
       onError: (error: any) => {
         message.error(error?.message || '保存源定义失败');
       },
-    },
+    }
   );
 
   const updateSkillDraftMutation = useMutation(
@@ -1229,7 +1364,7 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
       onError: (error: any) => {
         message.error(error?.message || '更新 Skill 草案失败');
       },
-    },
+    }
   );
 
   const filteredReleases = useMemo(() => {
@@ -1242,7 +1377,9 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
       const nextStepHint = getNextStepHint(release);
       return (
         release.id.toLowerCase().includes(keyword) ||
-        String(release.sourceName || '').toLowerCase().includes(keyword) ||
+        String(release.sourceName || '')
+          .toLowerCase()
+          .includes(keyword) ||
         release.sourceType.toLowerCase().includes(keyword) ||
         release.status.toLowerCase().includes(keyword) ||
         nextStepHint.label.toLowerCase().includes(keyword)
@@ -1284,7 +1421,15 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
       width: 120,
       align: 'center',
       render: (value: string) => (
-        <Tag color={value === 'temporal_workflow' ? 'purple' : value === 'browser_recording' ? 'cyan' : 'blue'}>
+        <Tag
+          color={
+            value === 'temporal_workflow'
+              ? 'purple'
+              : value === 'browser_recording'
+                ? 'cyan'
+                : 'blue'
+          }
+        >
           {getSourceTypeLabel(value)}
         </Tag>
       ),
@@ -1370,30 +1515,31 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
       selectedDetail?.release.sourceId
         ? temporalWorkflowMap.get(selectedDetail.release.sourceId) || null
         : null,
-    [selectedDetail?.release.sourceId, temporalWorkflowMap],
+    [selectedDetail?.release.sourceId, temporalWorkflowMap]
   );
   const wizardSourceWorkflow = useMemo(
     () =>
       wizardDetail?.release.sourceId
         ? temporalWorkflowMap.get(wizardDetail.release.sourceId) || null
         : null,
-    [wizardDetail?.release.sourceId, temporalWorkflowMap],
+    [wizardDetail?.release.sourceId, temporalWorkflowMap]
   );
   const selectedDeployReadiness = useMemo(
     () => getTemporalDeployReadiness(selectedDetail, selectedSourceWorkflow),
-    [selectedDetail, selectedSourceWorkflow],
+    [selectedDetail, selectedSourceWorkflow]
   );
   const wizardDeployReadiness = useMemo(
     () => getTemporalDeployReadiness(wizardDetail, wizardSourceWorkflow),
-    [wizardDetail, wizardSourceWorkflow],
+    [wizardDetail, wizardSourceWorkflow]
   );
   const currentSkillDraftRuntimeMetadata = useMemo(() => {
-    const runtimeMetadata = selectedDetail?.currentSkillDraft?.apiEndpoints
-      && typeof selectedDetail.currentSkillDraft.apiEndpoints === 'object'
-      ? (selectedDetail.currentSkillDraft.apiEndpoints as Record<string, unknown>).runtimeMetadata
-      : undefined;
+    const runtimeMetadata =
+      selectedDetail?.currentSkillDraft?.apiEndpoints &&
+      typeof selectedDetail.currentSkillDraft.apiEndpoints === 'object'
+        ? (selectedDetail.currentSkillDraft.apiEndpoints as Record<string, unknown>).runtimeMetadata
+        : undefined;
     return runtimeMetadata && typeof runtimeMetadata === 'object'
-      ? runtimeMetadata as Record<string, unknown>
+      ? (runtimeMetadata as Record<string, unknown>)
       : {};
   }, [selectedDetail?.currentSkillDraft?.id, selectedDetail?.currentSkillDraft?.updatedAt]);
   const wizardRelease =
@@ -1427,9 +1573,8 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
     selectedDetail?.validations?.find(
       (item) =>
         item.validationType === 'post_deploy_smoke' &&
-        item.id === latestDeployment?.smokeValidationId,
-    ) ||
-    selectedDetail?.validations?.find((item) => item.validationType === 'post_deploy_smoke');
+        item.id === latestDeployment?.smokeValidationId
+    ) || selectedDetail?.validations?.find((item) => item.validationType === 'post_deploy_smoke');
   const latestAuditEvents = selectedDetail?.auditEvents?.slice(0, 12) || [];
   const deploymentProfiles = useMemo(() => {
     const raw = selectedDetail?.currentSourceSnapshot?.sourcePayload?.deploymentProfiles;
@@ -1448,7 +1593,7 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
 
         return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
       }),
-    [selectedDetail?.sourceSnapshots],
+    [selectedDetail?.sourceSnapshots]
   );
   const activeDetailTab = searchParams.get('tab') === 'studio' ? 'studio' : 'ops';
 
@@ -1493,9 +1638,11 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
       return;
     }
 
-    const currentSnapshotId = selectedDetail.currentSourceSnapshot?.id || sourceSnapshots[0]?.id || null;
+    const currentSnapshotId =
+      selectedDetail.currentSourceSnapshot?.id || sourceSnapshots[0]?.id || null;
     const previousSnapshotId =
-      sourceSnapshots.find((snapshot) => snapshot.id !== currentSnapshotId)?.id || currentSnapshotId;
+      sourceSnapshots.find((snapshot) => snapshot.id !== currentSnapshotId)?.id ||
+      currentSnapshotId;
 
     setDiffLeftSnapshotId(previousSnapshotId);
     setDiffRightSnapshotId(currentSnapshotId);
@@ -1511,10 +1658,14 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
 
     setSourceNameDraft(selectedDetail.release.sourceName || '');
     setSourcePayloadDraft(
-      JSON.stringify(selectedDetail.currentSourceSnapshot?.sourcePayload || {}, null, 2),
+      JSON.stringify(selectedDetail.currentSourceSnapshot?.sourcePayload || {}, null, 2)
     );
     setIsEditingSource(false);
-  }, [selectedDetail?.release.id, selectedDetail?.release.sourceName, selectedDetail?.currentSourceSnapshot?.id]);
+  }, [
+    selectedDetail?.release.id,
+    selectedDetail?.release.sourceName,
+    selectedDetail?.currentSourceSnapshot?.id,
+  ]);
 
   useEffect(() => {
     const draft = selectedDetail?.currentSkillDraft;
@@ -1541,10 +1692,16 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
     setSkillDraftParamSchemaExtras(parsedParamSchema.extras);
     setSkillDraftApiEndpointFields(parseApiEndpointsToDraft(draft.apiEndpoints ?? null));
     setIsEditingSkillDraft(false);
-  }, [selectedDetail?.release.id, selectedDetail?.currentSkillDraft?.id, selectedDetail?.currentSkillDraft?.updatedAt]);
+  }, [
+    selectedDetail?.release.id,
+    selectedDetail?.currentSkillDraft?.id,
+    selectedDetail?.currentSkillDraft?.updatedAt,
+  ]);
 
   const leftSnapshot =
-    sourceSnapshots.find((snapshot) => snapshot.id === diffLeftSnapshotId) || sourceSnapshots[1] || null;
+    sourceSnapshots.find((snapshot) => snapshot.id === diffLeftSnapshotId) ||
+    sourceSnapshots[1] ||
+    null;
   const rightSnapshot =
     sourceSnapshots.find((snapshot) => snapshot.id === diffRightSnapshotId) ||
     selectedDetail?.currentSourceSnapshot ||
@@ -1555,14 +1712,12 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
       leftSnapshot && rightSnapshot
         ? buildSnapshotDiffRows(leftSnapshot.sourcePayload, rightSnapshot.sourcePayload)
         : [],
-    [leftSnapshot, rightSnapshot],
+    [leftSnapshot, rightSnapshot]
   );
   const visibleSnapshotDiffRows = useMemo(
     () =>
-      showOnlyDiff
-        ? snapshotDiffRows.filter((row) => row.status !== 'same')
-        : snapshotDiffRows,
-    [showOnlyDiff, snapshotDiffRows],
+      showOnlyDiff ? snapshotDiffRows.filter((row) => row.status !== 'same') : snapshotDiffRows,
+    [showOnlyDiff, snapshotDiffRows]
   );
   const snapshotDiffSummary = useMemo(
     () =>
@@ -1579,24 +1734,24 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
           }
           return summary;
         },
-        { added: 0, removed: 0, changed: 0, same: 0 },
+        { added: 0, removed: 0, changed: 0, same: 0 }
       ),
-    [snapshotDiffRows],
+    [snapshotDiffRows]
   );
   const hasSnapshotDrift = Boolean(
     selectedDetail?.currentSourceSnapshot?.id &&
-      latestBuild?.sourceSnapshotId &&
-      selectedDetail.currentSourceSnapshot.id !== latestBuild.sourceSnapshotId,
+    latestBuild?.sourceSnapshotId &&
+    selectedDetail.currentSourceSnapshot.id !== latestBuild.sourceSnapshotId
   );
   const hasNoBuild = !latestBuild;
   const hasNoValidation = !latestValidation;
   const sourcePayloadDraftState = useMemo(
     () => parseJsonDraft<Record<string, unknown>>(sourcePayloadDraft || '{}', '源定义 JSON'),
-    [sourcePayloadDraft],
+    [sourcePayloadDraft]
   );
   const skillDraftParamsSchemaValue = useMemo(
     () => buildParamSchemaFromDraft(skillDraftParamFields, skillDraftParamSchemaExtras),
-    [skillDraftParamFields, skillDraftParamSchemaExtras],
+    [skillDraftParamFields, skillDraftParamSchemaExtras]
   );
   const skillDraftParamFieldErrors = useMemo(() => {
     const nameSet = new Set<string>();
@@ -1640,7 +1795,7 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
       if (endpoint.extraJson.trim()) {
         const parsed = parseJsonDraft<Record<string, unknown>>(
           endpoint.extraJson,
-          `API Endpoint ${key || index + 1} 额外 JSON`,
+          `API Endpoint ${key || index + 1} 额外 JSON`
         );
         if (!parsed.valid) {
           errors.push(parsed.error);
@@ -1660,7 +1815,10 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
       }
 
       const parsedExtra = endpoint.extraJson.trim()
-        ? parseJsonDraft<Record<string, unknown>>(endpoint.extraJson, `API Endpoint ${key} 额外 JSON`)
+        ? parseJsonDraft<Record<string, unknown>>(
+            endpoint.extraJson,
+            `API Endpoint ${key} 额外 JSON`
+          )
         : { valid: true as const, value: {} as Record<string, unknown> };
 
       endpoints[key] = {
@@ -1674,8 +1832,9 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
     return Object.keys(endpoints).length > 0 ? endpoints : null;
   }, [skillDraftApiEndpointFields]);
   const deployOverridesState = useMemo(
-    () => parseJsonDraft<Record<string, unknown>>(deployOverridesDraft || '{}', '部署覆盖参数 JSON'),
-    [deployOverridesDraft],
+    () =>
+      parseJsonDraft<Record<string, unknown>>(deployOverridesDraft || '{}', '部署覆盖参数 JSON'),
+    [deployOverridesDraft]
   );
   const wizardValidationCases = useMemo(
     () =>
@@ -1683,32 +1842,35 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
         .split('\n')
         .map((item) => item.trim())
         .filter(Boolean),
-    [wizardValidationCasesDraft],
+    [wizardValidationCasesDraft]
   );
   const wizardActiveDeployProfile =
     wizardDetail?.currentSourceSnapshot?.sourcePayload?.deploymentProfiles &&
     typeof wizardDetail.currentSourceSnapshot.sourcePayload.deploymentProfiles === 'object'
-      ? ((wizardDetail.currentSourceSnapshot.sourcePayload.deploymentProfiles as Record<string, unknown>)[
-          deployEnvironment
-        ] as Record<string, unknown> | undefined) || {}
+      ? ((
+          wizardDetail.currentSourceSnapshot.sourcePayload.deploymentProfiles as Record<
+            string,
+            unknown
+          >
+        )[deployEnvironment] as Record<string, unknown> | undefined) || {}
       : {};
   const hasSuccessfulStagingDeployment = useMemo(
     () =>
       Boolean(
         selectedDetail?.deployments?.some(
-          (deployment) => deployment.environment === 'staging' && deployment.status === 'succeeded',
-        ),
+          (deployment) => deployment.environment === 'staging' && deployment.status === 'succeeded'
+        )
       ),
-    [selectedDetail?.deployments],
+    [selectedDetail?.deployments]
   );
   const wizardHasSuccessfulStagingDeployment = useMemo(
     () =>
       Boolean(
         wizardDetail?.deployments?.some(
-          (deployment) => deployment.environment === 'staging' && deployment.status === 'succeeded',
-        ),
+          (deployment) => deployment.environment === 'staging' && deployment.status === 'succeeded'
+        )
       ),
-    [wizardDetail?.deployments],
+    [wizardDetail?.deployments]
   );
 
   const resetCreateWizard = () => {
@@ -1747,7 +1909,7 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
           sourcePayload = JSON.parse(values.sourcePayload);
         } else if (values.sourceId) {
           const workflowDetail = await temporalWorkflowApi.getById(values.sourceId);
-          sourcePayload = buildBrowserRecordingSourcePayload(workflowDetail);
+          sourcePayload = await buildBrowserRecordingSourcePayload(workflowDetail);
         }
       } else if (values.sourcePayload?.trim()) {
         sourcePayload = JSON.parse(values.sourcePayload);
@@ -1809,7 +1971,10 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
         latestRelease = draftResult.release;
       }
 
-      if (latestRelease.approvalStatus !== 'approved' && latestRelease.approvalStatus !== 'not_required') {
+      if (
+        latestRelease.approvalStatus !== 'approved' &&
+        latestRelease.approvalStatus !== 'not_required'
+      ) {
         const approveResult = await capabilityReleaseApi.approveRelease(release.id, {
           decision: 'approved',
           comment: 'Portal 自动审批通过',
@@ -1953,7 +2118,9 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
           description: skillDraftDescription.trim(),
           triggerKeywords: skillDraftTriggerKeywords.map((item) => item.trim()).filter(Boolean),
           tools: skillDraftTools.map((item) => item.trim()).filter(Boolean),
-          executionFlowTemplateIds: skillDraftTemplateIds.map((item) => item.trim()).filter(Boolean),
+          executionFlowTemplateIds: skillDraftTemplateIds
+            .map((item) => item.trim())
+            .filter(Boolean),
           paramsSchema: skillDraftParamsSchemaValue,
           apiEndpoints: skillDraftApiEndpointsValue,
         },
@@ -1983,12 +2150,9 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
     ]);
   };
 
-  const updateSkillDraftParamField = (
-    id: string,
-    patch: Partial<ParamSchemaFieldDraft>,
-  ) => {
+  const updateSkillDraftParamField = (id: string, patch: Partial<ParamSchemaFieldDraft>) => {
     setSkillDraftParamFields((current) =>
-      current.map((item) => (item.id === id ? { ...item, ...patch } : item)),
+      current.map((item) => (item.id === id ? { ...item, ...patch } : item))
     );
   };
 
@@ -2081,7 +2245,9 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                 <Alert type="error" showIcon message={sourcePayloadDraftState.error} />
               )}
               <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
-                <Button size="small" onClick={() => setIsEditingSource(false)}>取消</Button>
+                <Button size="small" onClick={() => setIsEditingSource(false)}>
+                  取消
+                </Button>
                 <Button
                   type="primary"
                   size="small"
@@ -2096,9 +2262,15 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
           ) : (
             <div style={{ padding: '8px 0' }}>
               <Descriptions column={1} size="small">
-                <Descriptions.Item label="名称">{selectedDetail.release.sourceName || '未命名能力'}</Descriptions.Item>
-                <Descriptions.Item label="版本">v{selectedDetail.currentSourceSnapshot?.snapshotVersion || '-'}</Descriptions.Item>
-                <Descriptions.Item label="类型">{getSourceTypeLabel(selectedDetail.release.sourceType)}</Descriptions.Item>
+                <Descriptions.Item label="名称">
+                  {selectedDetail.release.sourceName || '未命名能力'}
+                </Descriptions.Item>
+                <Descriptions.Item label="版本">
+                  v{selectedDetail.currentSourceSnapshot?.snapshotVersion || '-'}
+                </Descriptions.Item>
+                <Descriptions.Item label="类型">
+                  {getSourceTypeLabel(selectedDetail.release.sourceType)}
+                </Descriptions.Item>
               </Descriptions>
               <Text type="secondary" style={{ fontSize: 12 }}>
                 包含核心逻辑定义、输入输出 Schema 及部署配置。
@@ -2172,7 +2344,9 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                     onChangeField={updateSkillDraftParamField}
                   />
                   <Space style={{ width: '100%', justifyContent: 'flex-end', marginTop: 8 }}>
-                    <Button size="small" onClick={resetSkillDraftEditor}>取消</Button>
+                    <Button size="small" onClick={resetSkillDraftEditor}>
+                      取消
+                    </Button>
                     <Button
                       type="primary"
                       size="small"
@@ -2188,7 +2362,9 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
             ) : (
               <div style={{ padding: '8px 0' }}>
                 <Descriptions column={1} size="small">
-                  <Descriptions.Item label="名称">{selectedDetail.currentSkillDraft.name}</Descriptions.Item>
+                  <Descriptions.Item label="名称">
+                    {selectedDetail.currentSkillDraft.name}
+                  </Descriptions.Item>
                   <Descriptions.Item label="状态">
                     <Tag color="blue">{selectedDetail.currentSkillDraft.status}</Tag>
                   </Descriptions.Item>
@@ -2201,7 +2377,8 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                       : '无'}
                   </Descriptions.Item>
                   <Descriptions.Item label="触发词">
-                    {selectedDetail.currentSkillDraft.triggerKeywords?.slice(0, 3).join(', ') || '无'}
+                    {selectedDetail.currentSkillDraft.triggerKeywords?.slice(0, 3).join(', ') ||
+                      '无'}
                     {(selectedDetail.currentSkillDraft.triggerKeywords?.length || 0) > 3 && ' ...'}
                   </Descriptions.Item>
                   <Descriptions.Item label="参数补充情报">
@@ -2216,7 +2393,8 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                   </Descriptions.Item>
                 </Descriptions>
                 <Text type="secondary" style={{ fontSize: 12 }}>
-                  description 负责说明能力本身；参数补充情报与校验规则已拆到独立元数据，避免继续污染 skill match。
+                  description 负责说明能力本身；参数补充情报与校验规则已拆到独立元数据，避免继续污染
+                  skill match。
                 </Text>
               </div>
             )
@@ -2235,10 +2413,7 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
           extra={
             sourceSnapshots.length > 1 ? (
               <Space>
-                <Button
-                  size="small"
-                  onClick={() => setShowOnlyDiff((current) => !current)}
-                >
+                <Button size="small" onClick={() => setShowOnlyDiff((current) => !current)}>
                   {showOnlyDiff ? '显示全部' : '只看差异'}
                 </Button>
               </Space>
@@ -2274,7 +2449,14 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                 <Tag color="red">删除 {snapshotDiffSummary.removed}</Tag>
               </Space>
 
-              <div style={{ maxHeight: 300, overflowY: 'auto', border: '1px solid var(--border-color)', borderRadius: 8 }}>
+              <div
+                style={{
+                  maxHeight: 300,
+                  overflowY: 'auto',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: 8,
+                }}
+              >
                 {visibleSnapshotDiffRows.length > 0 ? (
                   visibleSnapshotDiffRows.map((row) => (
                     <div
@@ -2301,7 +2483,17 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                       }}
                     >
                       <Text code>{row.path}</Text>
-                      <Tag color={row.status === 'changed' ? 'gold' : row.status === 'added' ? 'green' : row.status === 'removed' ? 'red' : 'default'}>
+                      <Tag
+                        color={
+                          row.status === 'changed'
+                            ? 'gold'
+                            : row.status === 'added'
+                              ? 'green'
+                              : row.status === 'removed'
+                                ? 'red'
+                                : 'default'
+                        }
+                      >
                         {row.status}
                       </Tag>
                     </div>
@@ -2334,11 +2526,7 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
               <Space direction="vertical" size="small">
                 <Text>当前 Release 已准备就绪，建议将其部署到测试环境进行最后的冒烟验证。</Text>
                 {!selectedDeployReadiness.hasExecutableCode ? (
-                  <Alert
-                    type="warning"
-                    showIcon
-                    message={selectedDeployReadiness.message}
-                  />
+                  <Alert type="warning" showIcon message={selectedDeployReadiness.message} />
                 ) : null}
                 <Button
                   size="small"
@@ -2389,17 +2577,26 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                 <Tag>策略: {latestDeployment.reloadStrategy || '无'}</Tag>
               </Space>
               <Descriptions size="small" column={1} bordered>
-                <Descriptions.Item label="制品">{latestDeployment.artifactUri || '无'}</Descriptions.Item>
-                <Descriptions.Item label="回滚目标">{latestDeployment.rollbackTargetReleaseId || '无'}</Descriptions.Item>
+                <Descriptions.Item label="制品">
+                  {latestDeployment.artifactUri || '无'}
+                </Descriptions.Item>
+                <Descriptions.Item label="回滚目标">
+                  {latestDeployment.rollbackTargetReleaseId || '无'}
+                </Descriptions.Item>
                 <Descriptions.Item label="发起时间">
-                  {latestDeployment.startedAt ? new Date(latestDeployment.startedAt).toLocaleString() : '无'}
+                  {latestDeployment.startedAt
+                    ? new Date(latestDeployment.startedAt).toLocaleString()
+                    : '无'}
                 </Descriptions.Item>
                 <Descriptions.Item label="完成时间">
-                  {latestDeployment.finishedAt ? new Date(latestDeployment.finishedAt).toLocaleString() : '无'}
+                  {latestDeployment.finishedAt
+                    ? new Date(latestDeployment.finishedAt).toLocaleString()
+                    : '无'}
                 </Descriptions.Item>
                 {latestSmokeValidation && (
                   <Descriptions.Item label="Smoke Test">
-                    {latestSmokeValidation.success ? '通过' : '失败'} / 分数 {latestSmokeValidation.score}
+                    {latestSmokeValidation.success ? '通过' : '失败'} / 分数{' '}
+                    {latestSmokeValidation.score}
                   </Descriptions.Item>
                 )}
               </Descriptions>
@@ -2466,7 +2663,13 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                     }}
                     styles={{ body: { padding: '8px 12px' } }}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'flex-start',
+                      }}
+                    >
                       <div style={{ flex: 1 }}>
                         <div
                           style={{
@@ -2482,7 +2685,8 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                           {event.summary}
                         </div>
                         <div style={{ fontSize: 12, color: 'var(--text-light)' }}>
-                          {new Date(event.createdAt).toLocaleString()} · {event.actorName || 'System'}
+                          {new Date(event.createdAt).toLocaleString()} ·{' '}
+                          {event.actorName || 'System'}
                         </div>
                       </div>
                       <Tag color={event.success ? 'success' : 'error'} style={{ marginRight: 0 }}>
@@ -2528,7 +2732,7 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
               onClick={() =>
                 selectedDetail?.release.publishedSkillId
                   ? navigate(
-                      `/published-skills/${selectedDetail.release.publishedSkillId}?releaseId=${selectedDetail.release.id}`,
+                      `/published-skills/${selectedDetail.release.publishedSkillId}?releaseId=${selectedDetail.release.id}`
                     )
                   : undefined
               }
@@ -2558,11 +2762,16 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
               }))}
             />
             <Space wrap>
-              <Button icon={<ReloadOutlined />} onClick={() => refreshQueries(selectedReleaseId || undefined)}>
+              <Button
+                icon={<ReloadOutlined />}
+                onClick={() => refreshQueries(selectedReleaseId || undefined)}
+              >
                 刷新
               </Button>
               {selectedReleaseId ? (
-                <Button onClick={() => navigate(`/admin/capabilities?releaseId=${selectedReleaseId}`)}>
+                <Button
+                  onClick={() => navigate(`/admin/capabilities?releaseId=${selectedReleaseId}`)}
+                >
                   查看完整 Release
                 </Button>
               ) : null}
@@ -2574,9 +2783,13 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
           <Space direction="vertical" size="large" style={{ width: '100%' }}>
             <Card size="small">
               <Descriptions column={2} bordered size="small">
-                <Descriptions.Item label="Release ID">{selectedDetail.release.id}</Descriptions.Item>
+                <Descriptions.Item label="Release ID">
+                  {selectedDetail.release.id}
+                </Descriptions.Item>
                 <Descriptions.Item label="状态">
-                  <Tag color={statusColor(selectedDetail.release.status)}>{selectedDetail.release.status}</Tag>
+                  <Tag color={statusColor(selectedDetail.release.status)}>
+                    {selectedDetail.release.status}
+                  </Tag>
                 </Descriptions.Item>
                 <Descriptions.Item label="能力名称">
                   {selectedDetail.release.sourceName || '未命名'}
@@ -2597,7 +2810,9 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
         ) : (
           <Card>
             <Text type="secondary">
-              {releasesQuery.isLoading ? '正在加载 Release 列表...' : '请选择一个 Release 进入 Capability Studio。'}
+              {releasesQuery.isLoading
+                ? '正在加载 Release 列表...'
+                : '请选择一个 Release 进入 Capability Studio。'}
             </Text>
           </Card>
         )}
@@ -2611,8 +2826,8 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
           confirmLoading={deployMutation.isLoading}
           okButtonProps={{
             disabled:
-              !deployOverridesState.valid
-              || (deployEnvironment === 'prod' && !hasSuccessfulStagingDeployment),
+              !deployOverridesState.valid ||
+              (deployEnvironment === 'prod' && !hasSuccessfulStagingDeployment),
           }}
           width={760}
         >
@@ -2681,7 +2896,7 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
       (release) =>
         release.deploymentStatus === 'succeeded' ||
         release.deploymentStatus === 'deployed' ||
-        release.status === 'deployed',
+        release.status === 'deployed'
     ).length,
     visible: filteredReleases.length,
   };
@@ -2731,13 +2946,26 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
           <Card
             key={item.key}
             size="small"
-            style={{ borderRadius: 14, border: '1px solid var(--bg-secondary)', boxShadow: 'var(--shadow-md)' }}
+            style={{
+              borderRadius: 14,
+              border: '1px solid var(--bg-secondary)',
+              boxShadow: 'var(--shadow-md)',
+            }}
             styles={{ body: { padding: '12px 16px' } }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+              }}
+            >
               <Space size={10} align="center">
                 <span style={{ display: 'inline-flex', fontSize: 16 }}>{item.icon}</span>
-                <Text type="secondary" style={{ fontSize: 13 }}>{item.label}</Text>
+                <Text type="secondary" style={{ fontSize: 13 }}>
+                  {item.label}
+                </Text>
               </Space>
               <Text style={{ fontSize: 24, fontWeight: 700, color: item.color, lineHeight: 1 }}>
                 {item.value}
@@ -2747,11 +2975,19 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
         ))}
       </div>
 
-      <Card style={{ borderRadius: 16, border: '1px solid var(--bg-secondary)', boxShadow: 'var(--shadow-md)' }}>
+      <Card
+        style={{
+          borderRadius: 16,
+          border: '1px solid var(--bg-secondary)',
+          boxShadow: 'var(--shadow-md)',
+        }}
+      >
         <ListSectionHeader
-          title={(
+          title={
             <Space wrap size={12}>
-              <Text strong style={{ fontSize: 16 }}>流程发布列表</Text>
+              <Text strong style={{ fontSize: 16 }}>
+                流程发布列表
+              </Text>
               <Input
                 size="large"
                 placeholder="搜索 Release / 能力名称 / 状态"
@@ -2768,21 +3004,34 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                 }}
               />
               <Tooltip title="查看、筛选并管理能力发布的生命周期，包括构建、校验、部署及 Skill 发布。">
-                <InfoCircleOutlined style={{ color: 'var(--text-secondary)', fontSize: 14, cursor: 'help' }} />
+                <InfoCircleOutlined
+                  style={{ color: 'var(--text-secondary)', fontSize: 14, cursor: 'help' }}
+                />
               </Tooltip>
             </Space>
-          )}
-          extra={(
+          }
+          extra={
             <Space wrap size={12}>
               <Text type="secondary">当前显示 {filteredReleases.length} 条</Text>
-              <Button size="large" icon={<ReloadOutlined />} onClick={() => refreshQueries(selectedReleaseId || undefined)} className="btn-pill">
+              <Button
+                size="large"
+                icon={<ReloadOutlined />}
+                onClick={() => refreshQueries(selectedReleaseId || undefined)}
+                className="btn-pill"
+              >
                 刷新
               </Button>
-              <Button size="large" type="primary" icon={<AppstoreAddOutlined />} onClick={openCreateWizard} className="btn-pill">
+              <Button
+                size="large"
+                type="primary"
+                icon={<AppstoreAddOutlined />}
+                onClick={openCreateWizard}
+                className="btn-pill"
+              >
                 新建 Release
               </Button>
             </Space>
-          )}
+          }
         />
         <Table
           rowKey="id"
@@ -2813,7 +3062,9 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
             items={[
               {
                 title: '创建基础信息',
-                description: wizardReleaseId ? `已创建 ${wizardReleaseId.slice(0, 8)}` : '填写源信息',
+                description: wizardReleaseId
+                  ? `已创建 ${wizardReleaseId.slice(0, 8)}`
+                  : '填写源信息',
               },
               {
                 title: '部署',
@@ -2830,7 +3081,9 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
               },
               {
                 title: '真实校验',
-                description: wizardDetail?.validations?.length ? '执行后可查看结果' : '输入真实参数执行',
+                description: wizardDetail?.validations?.length
+                  ? '执行后可查看结果'
+                  : '输入真实参数执行',
               },
             ]}
           />
@@ -2849,7 +3102,9 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                     label="能力类型"
                     rules={[{ required: true, message: '请选择能力类型' }]}
                   >
-                    <Select options={SOURCE_TYPE_OPTIONS as unknown as { label: string; value: string }[]} />
+                    <Select
+                      options={SOURCE_TYPE_OPTIONS as unknown as { label: string; value: string }[]}
+                    />
                   </Form.Item>
                   {createSourceType ? (
                     <Form.Item
@@ -2891,7 +3146,9 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                       />
                     </Form.Item>
                   ) : null}
-                  {createSourceType && !isCreateSourceLoading && createSourceOptions.length === 0 ? (
+                  {createSourceType &&
+                  !isCreateSourceLoading &&
+                  createSourceOptions.length === 0 ? (
                     <Alert
                       style={{ marginBottom: 16 }}
                       type="warning"
@@ -2948,12 +3205,18 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
             <Space direction="vertical" size="middle" style={{ width: '100%' }}>
               <Card size="small" title="部署配置" style={{ borderRadius: 12 }}>
                 <Descriptions bordered size="small" column={2}>
-                  <Descriptions.Item label="Release ID">{wizardRelease?.id || wizardReleaseId}</Descriptions.Item>
+                  <Descriptions.Item label="Release ID">
+                    {wizardRelease?.id || wizardReleaseId}
+                  </Descriptions.Item>
                   <Descriptions.Item label="能力类型">
                     {wizardRelease?.sourceType ? getSourceTypeLabel(wizardRelease.sourceType) : '-'}
                   </Descriptions.Item>
-                  <Descriptions.Item label="能力名称">{wizardRelease?.sourceName || '未命名'}</Descriptions.Item>
-                  <Descriptions.Item label="当前状态">{wizardRelease?.status || '-'}</Descriptions.Item>
+                  <Descriptions.Item label="能力名称">
+                    {wizardRelease?.sourceName || '未命名'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="当前状态">
+                    {wizardRelease?.status || '-'}
+                  </Descriptions.Item>
                 </Descriptions>
 
                 {wizardRelease?.sourceType === 'execution_flow_template' ? (
@@ -2984,7 +3247,11 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                     <Alert
                       type="warning"
                       showIcon
-                      message={wizardRelease?.sourceType === 'browser_recording' ? '浏览器能力发布建议' : '生产发布建议'}
+                      message={
+                        wizardRelease?.sourceType === 'browser_recording'
+                          ? '浏览器能力发布建议'
+                          : '生产发布建议'
+                      }
                       description={
                         wizardRelease?.sourceType === 'browser_recording'
                           ? 'prod 建议先小流量验证目标站点可达性、选择器稳定性与凭证有效期，确认无异常后再全量；保留回滚路径。'
@@ -3010,7 +3277,9 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                         style={{ width: 220 }}
                         value={deployStrategy}
                         onChange={(value) =>
-                          setDeployStrategy(value as 'hot_reload' | 'rolling_restart' | 'full_restart')
+                          setDeployStrategy(
+                            value as 'hot_reload' | 'rolling_restart' | 'full_restart'
+                          )
                         }
                         options={[
                           { label: 'hot_reload', value: 'hot_reload' },
@@ -3034,45 +3303,54 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                       </Button>
                     </Space>
 
-                  <Card
-                    size="small"
-                    title={`环境 Profile 预览: ${deployEnvironment}`}
-                    extra={<Text type="secondary">说明：读取当前 Release 快照里该环境的默认部署参数</Text>}
-                  >
-                    <pre style={{ ...studioPaneStyle, maxHeight: 120 }}>
-                      {JSON.stringify(wizardActiveDeployProfile, null, 2)}
-                    </pre>
-                  </Card>
+                    <Card
+                      size="small"
+                      title={`环境 Profile 预览: ${deployEnvironment}`}
+                      extra={
+                        <Text type="secondary">
+                          说明：读取当前 Release 快照里该环境的默认部署参数
+                        </Text>
+                      }
+                    >
+                      <pre style={{ ...studioPaneStyle, maxHeight: 120 }}>
+                        {JSON.stringify(wizardActiveDeployProfile, null, 2)}
+                      </pre>
+                    </Card>
 
-                  {wizardAssistExplanation ? (
-                    <Alert type="success" showIcon message="AI 建议已生成" description={wizardAssistExplanation} />
-                  ) : null}
+                    {wizardAssistExplanation ? (
+                      <Alert
+                        type="success"
+                        showIcon
+                        message="AI 建议已生成"
+                        description={wizardAssistExplanation}
+                      />
+                    ) : null}
 
-                  <Alert
-                    type="info"
-                    showIcon
-                    message="部署覆盖参数"
-                    description="这里填写的是“本次部署额外覆盖”的 JSON。系统会将它与上面的环境默认参数合并，最终形成本次 deploy 实际使用的配置。"
-                  />
-                  <TextArea
-                    rows={5}
-                    value={deployOverridesDraft}
-                    onChange={(event) => setDeployOverridesDraft(event.target.value)}
-                    placeholder='部署覆盖参数 JSON，例如 {"taskQueue":"SKILL_STAGING_QUEUE","workerReload":true}'
-                    spellCheck={false}
-                    style={{ fontFamily: 'monospace' }}
-                  />
-                  {!deployOverridesState.valid ? (
-                    <Alert type="error" showIcon message={deployOverridesState.error} />
-                  ) : null}
-                  {deployEnvironment === 'prod' && !wizardHasSuccessfulStagingDeployment ? (
                     <Alert
-                      type="error"
+                      type="info"
                       showIcon
-                      message="prod 发布门禁"
-                      description="请先完成 staging 成功部署，再发布到 prod。"
+                      message="部署覆盖参数"
+                      description="这里填写的是“本次部署额外覆盖”的 JSON。系统会将它与上面的环境默认参数合并，最终形成本次 deploy 实际使用的配置。"
                     />
-                  ) : null}
+                    <TextArea
+                      rows={5}
+                      value={deployOverridesDraft}
+                      onChange={(event) => setDeployOverridesDraft(event.target.value)}
+                      placeholder='部署覆盖参数 JSON，例如 {"taskQueue":"SKILL_STAGING_QUEUE","workerReload":true}'
+                      spellCheck={false}
+                      style={{ fontFamily: 'monospace' }}
+                    />
+                    {!deployOverridesState.valid ? (
+                      <Alert type="error" showIcon message={deployOverridesState.error} />
+                    ) : null}
+                    {deployEnvironment === 'prod' && !wizardHasSuccessfulStagingDeployment ? (
+                      <Alert
+                        type="error"
+                        showIcon
+                        message="prod 发布门禁"
+                        description="请先完成 staging 成功部署，再发布到 prod。"
+                      />
+                    ) : null}
                   </>
                 )}
               </Card>
@@ -3088,8 +3366,8 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                     type="primary"
                     loading={deployMutation.isLoading}
                     disabled={
-                      !wizardDeployReadiness.hasExecutableCode
-                      || (deployEnvironment === 'prod' && !wizardHasSuccessfulStagingDeployment)
+                      !wizardDeployReadiness.hasExecutableCode ||
+                      (deployEnvironment === 'prod' && !wizardHasSuccessfulStagingDeployment)
                     }
                     onClick={handleWizardDeploy}
                   >
@@ -3111,9 +3389,15 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                   style={{ marginBottom: 12 }}
                 />
                 <Descriptions bordered size="small" column={2}>
-                  <Descriptions.Item label="Release">{wizardRelease?.sourceName || '未命名'}</Descriptions.Item>
-                  <Descriptions.Item label="部署状态">{wizardRelease?.deploymentStatus || '未部署'}</Descriptions.Item>
-                  <Descriptions.Item label="审批状态">{wizardRelease?.approvalStatus || '未审批'}</Descriptions.Item>
+                  <Descriptions.Item label="Release">
+                    {wizardRelease?.sourceName || '未命名'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="部署状态">
+                    {wizardRelease?.deploymentStatus || '未部署'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="审批状态">
+                    {wizardRelease?.approvalStatus || '未审批'}
+                  </Descriptions.Item>
                   <Descriptions.Item label="已发布 Skill">
                     {wizardRelease?.publishedSkillId || '尚未发布'}
                   </Descriptions.Item>
@@ -3130,9 +3414,15 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                 <Button onClick={resetCreateWizard}>稍后继续</Button>
                 <Button
                   type="primary"
-                  loading={publishMutation.isLoading || generateDraftMutation.isLoading || approveMutation.isLoading}
+                  loading={
+                    publishMutation.isLoading ||
+                    generateDraftMutation.isLoading ||
+                    approveMutation.isLoading
+                  }
                   disabled={!wizardRelease}
-                  onClick={() => (wizardRelease ? void handlePublishSkill(wizardRelease) : undefined)}
+                  onClick={() =>
+                    wizardRelease ? void handlePublishSkill(wizardRelease) : undefined
+                  }
                 >
                   自动发布 Skills
                 </Button>
@@ -3165,17 +3455,22 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                   >
                     AI 辅助设置
                   </Button>
-                  {wizardAssistExplanation ? <Text type="secondary">{wizardAssistExplanation}</Text> : null}
+                  {wizardAssistExplanation ? (
+                    <Text type="secondary">{wizardAssistExplanation}</Text>
+                  ) : null}
                 </Space>
                 <TextArea
                   rows={4}
                   value={wizardValidationCasesDraft}
                   onChange={(event) => setWizardValidationCasesDraft(event.target.value)}
-                  placeholder={'自然语言测试用例（每行一条）\n例如：\n查询北京天气\n查询上海天气，格式json'}
+                  placeholder={
+                    '自然语言测试用例（每行一条）\n例如：\n查询北京天气\n查询上海天气，格式json'
+                  }
                   style={{ marginTop: 12 }}
                 />
                 <Text type="secondary">
-                  已识别 {wizardValidationCases.length} 条用例；点击“开始真实校验”后会按顺序逐条执行。
+                  已识别 {wizardValidationCases.length}{' '}
+                  条用例；点击“开始真实校验”后会按顺序逐条执行。
                 </Text>
                 <Input
                   value={wizardValidationUserInput}
@@ -3185,7 +3480,9 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                   onPressEnter={(event) => {
                     const value = (event.target as HTMLInputElement).value.trim();
                     if (!value) return;
-                    setWizardValidationCasesDraft((prev) => [prev, value].filter(Boolean).join('\n'));
+                    setWizardValidationCasesDraft((prev) =>
+                      [prev, value].filter(Boolean).join('\n')
+                    );
                     setWizardValidationUserInput('');
                   }}
                 />
@@ -3194,7 +3491,9 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                 <Card size="small" title="最近一次真实校验结果">
                   <Space direction="vertical" style={{ width: '100%' }}>
                     <Text>结果：{wizardLatestValidation.success ? '通过' : '失败'}</Text>
-                    <Text>类型：{getValidationTypeLabel(wizardLatestValidation.validationType)}</Text>
+                    <Text>
+                      类型：{getValidationTypeLabel(wizardLatestValidation.validationType)}
+                    </Text>
                     <Text>分数：{wizardLatestValidation.score}</Text>
                     {wizardLatestValidation.errorSummary ? (
                       <Alert
@@ -3216,7 +3515,12 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                               <Text>结果：{item.success ? '通过' : '失败'}</Text>
                               <Text>分数：{item.score}</Text>
                               {item.error ? (
-                                <Alert type="error" showIcon message="失败原因" description={item.error} />
+                                <Alert
+                                  type="error"
+                                  showIcon
+                                  message="失败原因"
+                                  description={item.error}
+                                />
                               ) : null}
                               <pre style={{ ...studioPaneStyle, maxHeight: 180 }}>
                                 {item.logs.join('\n') || '暂无日志'}
@@ -3250,7 +3554,11 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
               ) : null}
               <Space style={{ justifyContent: 'space-between', width: '100%' }}>
                 <Button onClick={resetCreateWizard}>完成并关闭</Button>
-                <Button type="primary" loading={realValidateMutation.isLoading} onClick={handleWizardValidate}>
+                <Button
+                  type="primary"
+                  loading={realValidateMutation.isLoading}
+                  onClick={handleWizardValidate}
+                >
                   开始真实校验
                 </Button>
               </Space>
@@ -3268,9 +3576,9 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
         confirmLoading={deployMutation.isLoading}
         okButtonProps={{
           disabled:
-            !deployOverridesState.valid
-            || !selectedDeployReadiness.hasExecutableCode
-            || (deployEnvironment === 'prod' && !hasSuccessfulStagingDeployment),
+            !deployOverridesState.valid ||
+            !selectedDeployReadiness.hasExecutableCode ||
+            (deployEnvironment === 'prod' && !hasSuccessfulStagingDeployment),
         }}
         width={760}
       >
@@ -3554,7 +3862,14 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
               size="small"
               bordered
               items={[
-                { label: '状态', children: <Tag color={statusColor(selectedDetail.release.status)}>{selectedDetail.release.status}</Tag> },
+                {
+                  label: '状态',
+                  children: (
+                    <Tag color={statusColor(selectedDetail.release.status)}>
+                      {selectedDetail.release.status}
+                    </Tag>
+                  ),
+                },
                 { label: '类型', children: getSourceTypeLabel(selectedDetail.release.sourceType) },
                 { label: '审批', children: selectedDetail.release.approvalStatus },
                 { label: '部署', children: selectedDetail.release.deploymentStatus || '未部署' },
@@ -3579,16 +3894,27 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                       size="small"
                       hoverable
                       style={{ textAlign: 'center', width: '100%' }}
-                      styles={{ body: { minHeight: 130, display: 'flex', flexDirection: 'column', justifyContent: 'center' } }}
+                      styles={{
+                        body: {
+                          minHeight: 130,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'center',
+                        },
+                      }}
                     >
-                      <SafetyCertificateOutlined style={{ fontSize: 24, color: 'var(--primary-color)', marginBottom: 8 }} />
+                      <SafetyCertificateOutlined
+                        style={{ fontSize: 24, color: 'var(--primary-color)', marginBottom: 8 }}
+                      />
                       <div style={{ fontWeight: 'bold', marginBottom: 4 }}>1. 检查</div>
                       <Button
                         type="primary"
                         size="small"
                         ghost
                         loading={validateStaticMutation.isLoading}
-                        onClick={() => validateStaticMutation.mutate({ id: selectedDetail.release.id })}
+                        onClick={() =>
+                          validateStaticMutation.mutate({ id: selectedDetail.release.id })
+                        }
                       >
                         静态校验
                       </Button>
@@ -3599,9 +3925,18 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                       size="small"
                       hoverable
                       style={{ textAlign: 'center', width: '100%' }}
-                      styles={{ body: { minHeight: 130, display: 'flex', flexDirection: 'column', justifyContent: 'center' } }}
+                      styles={{
+                        body: {
+                          minHeight: 130,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'center',
+                        },
+                      }}
                     >
-                      <RocketOutlined style={{ fontSize: 24, color: 'var(--success-color)', marginBottom: 8 }} />
+                      <RocketOutlined
+                        style={{ fontSize: 24, color: 'var(--success-color)', marginBottom: 8 }}
+                      />
                       <div style={{ fontWeight: 'bold', marginBottom: 4 }}>2. 重新部署</div>
                       <Button
                         type="primary"
@@ -3620,9 +3955,18 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                       size="small"
                       hoverable
                       style={{ textAlign: 'center', width: '100%' }}
-                      styles={{ body: { minHeight: 130, display: 'flex', flexDirection: 'column', justifyContent: 'center' } }}
+                      styles={{
+                        body: {
+                          minHeight: 130,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'center',
+                        },
+                      }}
                     >
-                      <AppstoreAddOutlined style={{ fontSize: 24, color: 'var(--accent-color)', marginBottom: 8 }} />
+                      <AppstoreAddOutlined
+                        style={{ fontSize: 24, color: 'var(--accent-color)', marginBottom: 8 }}
+                      />
                       <Tooltip title="将当前 Release 的设计（触发词、参数 Schema、API 端点）发布到 Skill Center。发布后，AI 即可通过这些配置识别并调用此能力。">
                         <div style={{ fontWeight: 'bold', marginBottom: 4, cursor: 'help' }}>
                           3. 发布 Skill <QuestionCircleOutlined style={{ fontSize: 12 }} />
@@ -3633,7 +3977,11 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                           type="primary"
                           size="small"
                           ghost
-                          loading={publishMutation.isLoading || generateDraftMutation.isLoading || approveMutation.isLoading}
+                          loading={
+                            publishMutation.isLoading ||
+                            generateDraftMutation.isLoading ||
+                            approveMutation.isLoading
+                          }
                           onClick={() => void handlePublishSkill(selectedDetail.release)}
                         >
                           发布 Skill
@@ -3645,7 +3993,9 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                           loading={validateSkillMutation.isLoading}
                           onClick={() =>
                             selectedDetail.release.publishedSkillId
-                              ? validateSkillMutation.mutate({ skillId: selectedDetail.release.publishedSkillId })
+                              ? validateSkillMutation.mutate({
+                                  skillId: selectedDetail.release.publishedSkillId,
+                                })
                               : undefined
                           }
                           style={{ fontSize: 11 }}
@@ -3660,9 +4010,18 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                       size="small"
                       hoverable
                       style={{ textAlign: 'center', width: '100%' }}
-                      styles={{ body: { minHeight: 130, display: 'flex', flexDirection: 'column', justifyContent: 'center' } }}
+                      styles={{
+                        body: {
+                          minHeight: 130,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'center',
+                        },
+                      }}
                     >
-                      <CheckCircleOutlined style={{ fontSize: 24, color: 'var(--warning-color)', marginBottom: 8 }} />
+                      <CheckCircleOutlined
+                        style={{ fontSize: 24, color: 'var(--warning-color)', marginBottom: 8 }}
+                      />
                       <Tooltip title="在隔离的 Sandbox 或连接真实插件环境执行测试用例，验证代码逻辑与环境集成是否正常。建议在发布到生产环境前完成此步骤。">
                         <div style={{ fontWeight: 'bold', marginBottom: 4, cursor: 'help' }}>
                           4. 验证 <QuestionCircleOutlined style={{ fontSize: 12 }} />

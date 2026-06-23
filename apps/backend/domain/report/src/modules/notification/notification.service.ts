@@ -14,7 +14,7 @@ export class NotificationService {
   async sendNotifications(
     sections: ReportSection[],
     validationResults: ValidationResult[],
-    sessionId: string,
+    sessionId: string
   ): Promise<NotificationResult[]> {
     this.logger.log(`Processing notifications for session ${sessionId}`);
 
@@ -26,7 +26,7 @@ export class NotificationService {
         continue;
       }
 
-      const validationResult = validationResults.find(v => v.section_id === section.id);
+      const validationResult = validationResults.find((v) => v.section_id === section.id);
       if (!validationResult || validationResult.passed) {
         continue;
       }
@@ -42,7 +42,7 @@ export class NotificationService {
   private async sendNotification(
     section: ReportSection,
     validationResult: ValidationResult,
-    sessionId: string,
+    sessionId: string
   ): Promise<NotificationResult> {
     const notifyConfig = section.validation?.notify_config;
 
@@ -99,9 +99,10 @@ export class NotificationService {
     section: ReportSection,
     validationResult: ValidationResult,
     sessionId: string,
-    notifyConfig: { message_template?: string },
+    notifyConfig: { message_template?: string }
   ): string {
-    const template = notifyConfig.message_template ||
+    const template =
+      notifyConfig.message_template ||
       `Report validation failed for section "{{section_name}}" in session {{session_id}}.\nCondition: {{condition}}\nMessage: {{message}}`;
 
     return template
@@ -114,13 +115,17 @@ export class NotificationService {
   private async sendWebhook(url: string, message: string): Promise<void> {
     this.logger.debug(`Sending webhook to ${url}`);
 
-    await axios.post(url, {
-      event: 'report_validation_failed',
-      timestamp: new Date().toISOString(),
-      message,
-    }, {
-      timeout: 10000,
-    });
+    await axios.post(
+      url,
+      {
+        event: 'report_validation_failed',
+        timestamp: new Date().toISOString(),
+        message,
+      },
+      {
+        timeout: 10000,
+      }
+    );
   }
 
   private async sendEmail(recipients: string[], message: string): Promise<void> {

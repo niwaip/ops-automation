@@ -10,7 +10,10 @@ import type {
 import { exportTemplateSource } from '../../../shared/services/template-source.service';
 import type { AnalysisSummary } from './AIIdentifyPanel.helpers';
 import { ExcelAPI } from '../../../host/office/excel/api';
-import { getDefaultTemplateFormatForHost, getHostScopedStorageKey } from '../../../shared/utils/host-storage';
+import {
+  getDefaultTemplateFormatForHost,
+  getHostScopedStorageKey,
+} from '../../../shared/utils/host-storage';
 import { useIdentifyDraft } from './common/useIdentifyDraft';
 import { useSkillPreviewWorkflow } from './common/useSkillPreviewWorkflow';
 import { useTemplateAssetDraft } from './common/useTemplateAssetDraft';
@@ -52,11 +55,14 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
   const [templateName, setTemplateName] = useState('');
 
   const [templateFieldSpecsDraft, setTemplateFieldSpecsDraft] = useState<TemplateFieldSpec[]>([]);
-  const [templateTermAssetsDraft, setTemplateTermAssetsDraft] = useState<WorkflowTermAssets | null>(null);
+  const [templateTermAssetsDraft, setTemplateTermAssetsDraft] = useState<WorkflowTermAssets | null>(
+    null
+  );
   const [templateTermAssetsText, setTemplateTermAssetsText] = useState('');
   const [isSavingTemplateAssetManifest, setIsSavingTemplateAssetManifest] = useState(false);
   const [templateAssetNotice, setTemplateAssetNotice] = useState<TemplateAssetNotice | null>(null);
-  const [templateAssetRenderDiagnostics, setTemplateAssetRenderDiagnostics] = useState<TemplateRenderDataResponse | null>(null);
+  const [templateAssetRenderDiagnostics, setTemplateAssetRenderDiagnostics] =
+    useState<TemplateRenderDataResponse | null>(null);
 
   const loadTemplateSource = async () => {
     const source = await exportTemplateSource(hostAdapter);
@@ -132,7 +138,9 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
   });
 
   const normalizeLanguageCode = useCallback((language?: string): string => {
-    const normalized = String(language || 'zh').trim().toLowerCase();
+    const normalized = String(language || 'zh')
+      .trim()
+      .toLowerCase();
     if (!normalized) {
       return 'zh';
     }
@@ -296,11 +304,14 @@ export function useAIIdentifyPanel(hostAdapter: any, isExcelMode: boolean) {
 
       const configToValidate = {
         templateType: selectedTemplateType,
-        variables: suggestions.reduce((acc, suggestion) => {
-          const varPath = suggestion.suggestedName.replace(/[{}]/g, '').replace(/^d\./, '');
-          acc[varPath] = suggestion.originalText || '';
-          return acc;
-        }, {} as Record<string, string>),
+        variables: suggestions.reduce(
+          (acc, suggestion) => {
+            const varPath = suggestion.suggestedName.replace(/[{}]/g, '').replace(/^d\./, '');
+            acc[varPath] = suggestion.originalText || '';
+            return acc;
+          },
+          {} as Record<string, string>
+        ),
         loops: suggestions
           .filter((suggestion: any) => suggestion.details?.fieldType === 'loop')
           .map((suggestion: any) => ({

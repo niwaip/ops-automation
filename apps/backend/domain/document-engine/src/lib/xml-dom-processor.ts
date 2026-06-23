@@ -16,10 +16,10 @@ export interface XmlNodeInfo {
 }
 
 export interface LoopTemplate {
-  startNode: string;   // 循环开始节点XPath或标识
-  endNode: string;     // 循环结束节点XPath或标识
-  templateNodes: XmlNodeInfo[];  // 模板节点列表
-  arrayPath: string;   // 数组数据路径
+  startNode: string; // 循环开始节点XPath或标识
+  endNode: string; // 循环结束节点XPath或标识
+  templateNodes: XmlNodeInfo[]; // 模板节点列表
+  arrayPath: string; // 数组数据路径
 }
 
 // 使用any类型避免DOM类型冲突
@@ -264,7 +264,7 @@ export class XmlDomProcessor {
       nodeType: node.nodeType,
       children: [],
       attributes: {},
-      position
+      position,
     };
 
     if (node.nodeType === 1 && node.attributes) {
@@ -275,7 +275,9 @@ export class XmlDomProcessor {
     }
 
     for (let i = 0; i < node.childNodes.length; i++) {
-      info.children.push(this.extractNodeInfo(node.childNodes[i], { start: position.start + i, end: position.end }));
+      info.children.push(
+        this.extractNodeInfo(node.childNodes[i], { start: position.start + i, end: position.end })
+      );
     }
 
     return info;
@@ -367,8 +369,10 @@ export class XmlDomProcessor {
    */
   containsMarker(node: XmlNode): boolean {
     const text = this.getNodeText(node);
-    return /\{[cdt]\.[^}]+\}/.test(text) ||
-           /\{#[cdt]\.[^}]+\}/.test(text) ||
-           /\{\/[cdt]\.[^}]+\}/.test(text);
+    return (
+      /\{[cdt]\.[^}]+\}/.test(text) ||
+      /\{#[cdt]\.[^}]+\}/.test(text) ||
+      /\{\/[cdt]\.[^}]+\}/.test(text)
+    );
   }
 }

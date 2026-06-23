@@ -1,5 +1,5 @@
 export interface SkillParamProperty {
-  type: "string" | "number" | "date" | "boolean" | "object" | "json";
+  type: 'string' | 'number' | 'date' | 'boolean' | 'object' | 'json';
   description: string;
   required?: boolean;
   default?: string | number | boolean | Record<string, unknown>;

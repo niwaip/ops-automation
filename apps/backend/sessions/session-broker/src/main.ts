@@ -15,7 +15,7 @@ async function bootstrap() {
       transformOptions: {
         enableImplicitConversion: true,
       },
-    }),
+    })
   );
 
   // Enable CORS
@@ -29,7 +29,9 @@ async function bootstrap() {
   // Setup Swagger documentation
   const config = new DocumentBuilder()
     .setTitle('Session Broker API')
-    .setDescription('Session Broker Service - Browser session allocation, lifecycle management, and worker assignment')
+    .setDescription(
+      'Session Broker Service - Browser session allocation, lifecycle management, and worker assignment'
+    )
     .setVersion('1.0.0')
     .build();
   const document = SwaggerModule.createDocument(app, config);

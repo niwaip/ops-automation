@@ -77,9 +77,9 @@ const { myActivity } = proxyActivities<typeof activities>({
 
 ```typescript
 const { myActivity } = proxyActivities<typeof activities>({
-  startToCloseTimeout: '5 minutes',      // Single attempt
-  scheduleToCloseTimeout: '30 minutes',  // Including retries
-  heartbeatTimeout: '30 seconds',        // Between heartbeats
+  startToCloseTimeout: '5 minutes', // Single attempt
+  scheduleToCloseTimeout: '30 minutes', // Including retries
+  heartbeatTimeout: '30 seconds', // Between heartbeats
 });
 ```
 

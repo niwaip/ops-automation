@@ -1,5 +1,5 @@
-import { createStore, type StoreApi } from "zustand/vanilla";
-import type { AppNotification } from "../types/notification.types.js";
+import { createStore, type StoreApi } from 'zustand/vanilla';
+import type { AppNotification } from '../types/notification.types.js';
 
 export interface NotificationStateData {
   items: AppNotification[];
@@ -40,18 +40,25 @@ export const createNotificationStore = (): NotificationStore =>
         };
 
         const nextItems = notifications.map<AppNotification>((notification) => {
-          const existingItem = state.items.find((item) => item.dedupeKey === notification.dedupeKey);
-          const nextStateKey = notification.stateKey || notification.status || notification.timestamp;
+          const existingItem = state.items.find(
+            (item) => item.dedupeKey === notification.dedupeKey
+          );
+          const nextStateKey =
+            notification.stateKey || notification.status || notification.timestamp;
           const previousStateKey = state.entityStateMap[notification.dedupeKey];
           const shouldMarkUnread = state.initialized
-            ? (!existingItem || previousStateKey !== nextStateKey)
+            ? !existingItem || previousStateKey !== nextStateKey
             : false;
 
           nextEntityStateMap[notification.dedupeKey] = nextStateKey;
 
           return {
             ...notification,
-            unread: existingItem ? (shouldMarkUnread ? true : existingItem.unread) : shouldMarkUnread,
+            unread: existingItem
+              ? shouldMarkUnread
+                ? true
+                : existingItem.unread
+              : shouldMarkUnread,
           };
         });
 
@@ -72,7 +79,7 @@ export const createNotificationStore = (): NotificationStore =>
 
         nextItems.push({
           ...notification,
-          unread: markUnread && hasChanged ? true : (existingItem?.unread || false),
+          unread: markUnread && hasChanged ? true : existingItem?.unread || false,
         });
 
         return {

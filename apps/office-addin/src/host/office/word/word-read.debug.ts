@@ -3,7 +3,7 @@ export type WordReadDebugLogLevel = 'info' | 'warn' | 'error' | 'debug';
 export type WordReadDebugLogger = (
   level: WordReadDebugLogLevel,
   message: string,
-  details?: string,
+  details?: string
 ) => void;
 
 let lastUnderlineDebugReport = '';
@@ -32,16 +32,10 @@ export function clearDebugLogger(): void {
 export function emitDebugLog(
   level: WordReadDebugLogLevel,
   message: string,
-  details?: string,
+  details?: string
 ): void {
   debugLogger?.(level, message, details);
   const consoleMethod =
-    level === 'error'
-      ? 'error'
-      : level === 'warn'
-        ? 'warn'
-        : level === 'debug'
-          ? 'debug'
-          : 'log';
+    level === 'error' ? 'error' : level === 'warn' ? 'warn' : level === 'debug' ? 'debug' : 'log';
   console[consoleMethod](`[WORD LOOP] ${message}`, details || '');
 }

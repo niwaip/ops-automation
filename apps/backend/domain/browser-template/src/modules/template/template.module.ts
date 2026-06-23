@@ -9,12 +9,7 @@ import { PrismaModule } from '../../prisma/prisma.module';
 @Module({
   imports: [PrismaModule],
   controllers: [TemplateController],
-  providers: [
-    TemplateService,
-    LocatorValidator,
-    TemplateValidator,
-    PlaywrightCompiler,
-  ],
+  providers: [TemplateService, LocatorValidator, TemplateValidator, PlaywrightCompiler],
   exports: [TemplateService, TemplateValidator, PlaywrightCompiler],
 })
 export class TemplateModule {}

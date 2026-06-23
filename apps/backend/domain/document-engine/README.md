@@ -24,18 +24,18 @@ npm run dev
 
 ## API Endpoints
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/studio/upload` | POST | Upload template file |
-| `/studio/templates` | GET | List all templates |
-| `/studio/templates/:id` | GET | Get template info |
-| `/studio/templates/:id/variables` | GET | Get template variables |
-| `/studio/templates/:id/loops` | GET | Get loop configurations |
-| `/studio/render-resolved` | POST | Unified runtime render entry for formal document generation |
-| `/studio/preview` | POST | Preview with sample data |
-| `/studio/validate` | POST | Validate data |
-| `/studio/download/:id` | GET | Download rendered document |
-| `/studio/formatters` | GET | Get available formatters |
+| Endpoint                          | Method | Description                                                 |
+| --------------------------------- | ------ | ----------------------------------------------------------- |
+| `/studio/upload`                  | POST   | Upload template file                                        |
+| `/studio/templates`               | GET    | List all templates                                          |
+| `/studio/templates/:id`           | GET    | Get template info                                           |
+| `/studio/templates/:id/variables` | GET    | Get template variables                                      |
+| `/studio/templates/:id/loops`     | GET    | Get loop configurations                                     |
+| `/studio/render-resolved`         | POST   | Unified runtime render entry for formal document generation |
+| `/studio/preview`                 | POST   | Preview with sample data                                    |
+| `/studio/validate`                | POST   | Validate data                                               |
+| `/studio/download/:id`            | GET    | Download rendered document                                  |
+| `/studio/formatters`              | GET    | Get available formatters                                    |
 
 ## Runtime Entry Semantics
 

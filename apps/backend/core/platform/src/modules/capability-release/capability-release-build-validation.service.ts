@@ -30,7 +30,7 @@ export interface CapabilityReleaseBuildValidationAccessors {
     release: CapabilityReleaseDTO,
     snapshot: CapabilitySourceSnapshotDTO,
     buildId: string | undefined,
-    userId: string | undefined,
+    userId: string | undefined
   ): Promise<CapabilityBuildDTO>;
   resolveWorkflowFnOrThrow(payload: Record<string, unknown>): string;
   insertAuditEvent(
@@ -39,7 +39,7 @@ export interface CapabilityReleaseBuildValidationAccessors {
     actorId: string | undefined,
     success: boolean,
     summary: string,
-    details?: Record<string, unknown> | null,
+    details?: Record<string, unknown> | null
   ): Promise<void>;
 }
 
@@ -52,14 +52,14 @@ export class CapabilityReleaseBuildValidationService {
     private readonly capabilityReleaseRuntimeService: CapabilityReleaseRuntimeService,
     private readonly capabilityReleaseBrowserRecordingService: CapabilityReleaseBrowserRecordingService,
     private readonly capabilityReleaseSkillDraftService: CapabilityReleaseSkillDraftService,
-    private readonly capabilityReleaseTemporalSchemaService: CapabilityReleaseTemporalSchemaService,
+    private readonly capabilityReleaseTemporalSchemaService: CapabilityReleaseTemporalSchemaService
   ) {}
 
   async build(
     id: string,
     dto: CreateCapabilityBuildDTO,
     userId: string | undefined,
-    accessors: CapabilityReleaseBuildValidationAccessors,
+    accessors: CapabilityReleaseBuildValidationAccessors
   ): Promise<{ release: CapabilityReleaseDTO; build: CapabilityBuildDTO }> {
     const release = await accessors.getReleaseOrThrow(id);
     const snapshot = await accessors.getCurrentSnapshotOrThrow(release);
@@ -81,7 +81,7 @@ export class CapabilityReleaseBuildValidationService {
       buildType,
       modelId,
       JSON.stringify(inputSnapshot),
-      userId || null,
+      userId || null
     );
 
     await this.prisma.$executeRawUnsafe(
@@ -89,7 +89,7 @@ export class CapabilityReleaseBuildValidationService {
        SET status = 'building', current_build_id = $2::uuid, updated_at = now()
        WHERE id = $1::uuid`,
       id,
-      buildId,
+      buildId
     );
 
     await accessors.insertAuditEvent(id, 'build_started', userId, true, `开始构建 (${buildType})`);
@@ -104,7 +104,9 @@ export class CapabilityReleaseBuildValidationService {
       logs.push(`[${new Date().toISOString()}] 模型: ${modelId}`);
 
       if (release.sourceType === 'temporal_workflow') {
-        logs.push(`[${new Date().toISOString()}] 识别为 Temporal 工作流，开始读取已保存的 Workflow 代码工件`);
+        logs.push(
+          `[${new Date().toISOString()}] 识别为 Temporal 工作流，开始读取已保存的 Workflow 代码工件`
+        );
         const artifact = await this.resolveSavedTemporalWorkflowArtifact(release, snapshot);
         generatedConfig = {
           workflowArtifactRef: {
@@ -115,7 +117,7 @@ export class CapabilityReleaseBuildValidationService {
         };
         diffSummary = `已绑定 Workflow artifact: ${artifact.workflowId}@${artifact.artifactVersion ?? 0}`;
         logs.push(
-          `[${new Date().toISOString()}] 已确认 Workflow 工件 ${artifact.workflowId} 已验证，代码长度: ${artifact.generatedCode.length} 字符`,
+          `[${new Date().toISOString()}] 已确认 Workflow 工件 ${artifact.workflowId} 已验证，代码长度: ${artifact.generatedCode.length} 字符`
         );
       } else {
         generatedConfig = inputSnapshot;
@@ -136,7 +138,7 @@ export class CapabilityReleaseBuildValidationService {
         generatedCode,
         JSON.stringify(generatedConfig),
         diffSummary,
-        JSON.stringify(logs),
+        JSON.stringify(logs)
       );
 
       await this.prisma.$executeRawUnsafe(
@@ -147,10 +149,16 @@ export class CapabilityReleaseBuildValidationService {
              updated_at = now()
          WHERE id = $1::uuid`,
         id,
-        buildId,
+        buildId
       );
 
-      await accessors.insertAuditEvent(id, 'build_succeeded', userId, true, `构建成功 (${buildType})`);
+      await accessors.insertAuditEvent(
+        id,
+        'build_succeeded',
+        userId,
+        true,
+        `构建成功 (${buildType})`
+      );
       return {
         release: await accessors.getReleaseOrThrow(id),
         build: await accessors.getBuildOrThrow(buildId),
@@ -166,13 +174,13 @@ export class CapabilityReleaseBuildValidationService {
          WHERE id = $1::uuid`,
         buildId,
         message,
-        JSON.stringify([`[${new Date().toISOString()}] ${message}`]),
+        JSON.stringify([`[${new Date().toISOString()}] ${message}`])
       );
       await this.prisma.$executeRawUnsafe(
         `UPDATE capability_releases
          SET status = 'build_failed', updated_at = now()
          WHERE id = $1::uuid`,
-        id,
+        id
       );
       await accessors.insertAuditEvent(id, 'build_failed', userId, false, `构建失败: ${message}`);
       throw new BadRequestException(message);
@@ -184,7 +192,7 @@ export class CapabilityReleaseBuildValidationService {
     dto: CreateCapabilityBuildDTO,
     userId: string | undefined,
     onEvent: (event: string, payload: Record<string, unknown>) => void,
-    accessors: CapabilityReleaseBuildValidationAccessors,
+    accessors: CapabilityReleaseBuildValidationAccessors
   ): Promise<void> {
     const release = await accessors.getReleaseOrThrow(id);
     const snapshot = await accessors.getCurrentSnapshotOrThrow(release);
@@ -212,7 +220,7 @@ export class CapabilityReleaseBuildValidationService {
       buildType,
       modelId,
       JSON.stringify(inputSnapshot),
-      userId || null,
+      userId || null
     );
 
     await this.prisma.$executeRawUnsafe(
@@ -220,7 +228,7 @@ export class CapabilityReleaseBuildValidationService {
        SET status = 'building', current_build_id = $2::uuid, updated_at = now()
        WHERE id = $1::uuid`,
       id,
-      buildId,
+      buildId
     );
 
     onEvent('status', {
@@ -242,7 +250,9 @@ export class CapabilityReleaseBuildValidationService {
 
       if (release.sourceType === 'temporal_workflow') {
         onEvent('status', { phase: 'loading_workflow_artifact', buildId });
-        pushLog(`[${new Date().toISOString()}] 识别为 Temporal 工作流，开始读取已保存的 Workflow 代码工件`);
+        pushLog(
+          `[${new Date().toISOString()}] 识别为 Temporal 工作流，开始读取已保存的 Workflow 代码工件`
+        );
         const artifact = await this.resolveSavedTemporalWorkflowArtifact(release, snapshot);
         generatedConfig = {
           workflowArtifactRef: {
@@ -253,7 +263,7 @@ export class CapabilityReleaseBuildValidationService {
         };
         diffSummary = `已绑定 Workflow artifact: ${artifact.workflowId}@${artifact.artifactVersion ?? 0}`;
         pushLog(
-          `[${new Date().toISOString()}] 已确认 Workflow 工件 ${artifact.workflowId} 已验证，代码长度: ${artifact.generatedCode.length} 字符`,
+          `[${new Date().toISOString()}] 已确认 Workflow 工件 ${artifact.workflowId} 已验证，代码长度: ${artifact.generatedCode.length} 字符`
         );
       } else {
         onEvent('status', { phase: 'solidifying_config', buildId });
@@ -276,7 +286,7 @@ export class CapabilityReleaseBuildValidationService {
         generatedCode,
         JSON.stringify(generatedConfig),
         diffSummary,
-        JSON.stringify(logs),
+        JSON.stringify(logs)
       );
 
       await this.prisma.$executeRawUnsafe(
@@ -287,13 +297,19 @@ export class CapabilityReleaseBuildValidationService {
              updated_at = now()
          WHERE id = $1::uuid`,
         id,
-        buildId,
+        buildId
       );
 
-      await accessors.insertAuditEvent(id, 'build_succeeded', userId, true, `构建成功 (${buildType})`);
+      await accessors.insertAuditEvent(
+        id,
+        'build_succeeded',
+        userId,
+        true,
+        `构建成功 (${buildType})`
+      );
       onEvent('complete', {
-        release: await accessors.getReleaseOrThrow(id) as unknown as Record<string, unknown>,
-        build: await accessors.getBuildOrThrow(buildId) as unknown as Record<string, unknown>,
+        release: (await accessors.getReleaseOrThrow(id)) as unknown as Record<string, unknown>,
+        build: (await accessors.getBuildOrThrow(buildId)) as unknown as Record<string, unknown>,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : '未知错误';
@@ -307,19 +323,19 @@ export class CapabilityReleaseBuildValidationService {
          WHERE id = $1::uuid`,
         buildId,
         message,
-        JSON.stringify(logs),
+        JSON.stringify(logs)
       );
       await this.prisma.$executeRawUnsafe(
         `UPDATE capability_releases
          SET status = 'build_failed', updated_at = now()
          WHERE id = $1::uuid`,
-        id,
+        id
       );
       await accessors.insertAuditEvent(id, 'build_failed', userId, false, `构建失败: ${message}`);
       onEvent('error', {
         message,
-        release: await accessors.getReleaseOrThrow(id) as unknown as Record<string, unknown>,
-        build: await accessors.getBuildOrThrow(buildId) as unknown as Record<string, unknown>,
+        release: (await accessors.getReleaseOrThrow(id)) as unknown as Record<string, unknown>,
+        build: (await accessors.getBuildOrThrow(buildId)) as unknown as Record<string, unknown>,
       });
     }
   }
@@ -328,11 +344,17 @@ export class CapabilityReleaseBuildValidationService {
     id: string,
     dto: ValidateCapabilityDTO,
     userId: string | undefined,
-    accessors: CapabilityReleaseBuildValidationAccessors,
+    accessors: CapabilityReleaseBuildValidationAccessors
   ): Promise<{ release: CapabilityReleaseDTO; validation: CapabilityValidationDTO }> {
     const release = await accessors.getReleaseOrThrow(id);
     const snapshot = await accessors.getCurrentSnapshotOrThrow(release);
-    const build = await this.resolveBuildForValidation(release, snapshot, dto.buildId, userId, accessors);
+    const build = await this.resolveBuildForValidation(
+      release,
+      snapshot,
+      dto.buildId,
+      userId,
+      accessors
+    );
     const preserveReleaseStatus = this.shouldPreserveReleaseStatusDuringValidation(release);
     const validationId = await this.createValidationRecord(
       id,
@@ -340,7 +362,7 @@ export class CapabilityReleaseBuildValidationService {
       'static',
       dto.input,
       userId,
-      !preserveReleaseStatus,
+      !preserveReleaseStatus
     );
 
     await accessors.insertAuditEvent(id, 'validation_started', userId, true, '开始静态校验');
@@ -353,11 +375,17 @@ export class CapabilityReleaseBuildValidationService {
       let errorSummary: string | null = null;
 
       if (release.sourceType === 'temporal_workflow') {
-        const workflowDsl = this.expectRecord(snapshot.sourcePayload.workflowDsl, '缺少 workflowDsl');
-        const activityDsl = this.expectRecord(snapshot.sourcePayload.activityDsl, '缺少 activityDsl');
+        const workflowDsl = this.expectRecord(
+          snapshot.sourcePayload.workflowDsl,
+          '缺少 workflowDsl'
+        );
+        const activityDsl = this.expectRecord(
+          snapshot.sourcePayload.activityDsl,
+          '缺少 activityDsl'
+        );
         const result = await this.temporalWorkflowService.validate(
           workflowDsl as any,
-          activityDsl as any,
+          activityDsl as any
         );
         success = result.isValid;
         score = result.score;
@@ -388,7 +416,7 @@ export class CapabilityReleaseBuildValidationService {
         logs,
         resultSnapshot,
         errorSummary,
-        preserveReleaseStatus,
+        preserveReleaseStatus
       );
 
       await accessors.insertAuditEvent(
@@ -396,7 +424,7 @@ export class CapabilityReleaseBuildValidationService {
         success ? 'validation_succeeded' : 'validation_failed',
         userId,
         success,
-        success ? '静态校验通过' : `静态校验失败: ${errorSummary || '未知错误'}`,
+        success ? '静态校验通过' : `静态校验失败: ${errorSummary || '未知错误'}`
       );
 
       return {
@@ -413,9 +441,15 @@ export class CapabilityReleaseBuildValidationService {
         0,
         [`[Error] ${message}`],
         null,
-        message,
+        message
       );
-      await accessors.insertAuditEvent(id, 'validation_failed', userId, false, `静态校验失败: ${message}`);
+      await accessors.insertAuditEvent(
+        id,
+        'validation_failed',
+        userId,
+        false,
+        `静态校验失败: ${message}`
+      );
       throw new BadRequestException(message);
     }
   }
@@ -425,11 +459,17 @@ export class CapabilityReleaseBuildValidationService {
     dto: ValidateCapabilityDTO,
     userId: string | undefined,
     authToken: string | undefined,
-    accessors: CapabilityReleaseBuildValidationAccessors,
+    accessors: CapabilityReleaseBuildValidationAccessors
   ): Promise<{ release: CapabilityReleaseDTO; validation: CapabilityValidationDTO }> {
     const release = await accessors.getReleaseOrThrow(id);
     const snapshot = await accessors.getCurrentSnapshotOrThrow(release);
-    const build = await this.resolveBuildForValidation(release, snapshot, dto.buildId, userId, accessors);
+    const build = await this.resolveBuildForValidation(
+      release,
+      snapshot,
+      dto.buildId,
+      userId,
+      accessors
+    );
     const preserveReleaseStatus = this.shouldPreserveReleaseStatusDuringValidation(release);
     const validationId = await this.createValidationRecord(
       id,
@@ -437,7 +477,7 @@ export class CapabilityReleaseBuildValidationService {
       'sandbox',
       dto.input,
       userId,
-      !preserveReleaseStatus,
+      !preserveReleaseStatus
     );
 
     await accessors.insertAuditEvent(id, 'validation_started', userId, true, '开始 Sandbox 校验');
@@ -451,13 +491,19 @@ export class CapabilityReleaseBuildValidationService {
       const testCasesFromRequest = Array.isArray(dto.testCases)
         ? dto.testCases.map((item) => (typeof item === 'string' ? item.trim() : '')).filter(Boolean)
         : [];
-      const naturalLanguageCases = testCasesFromRequest.length > 0
-        ? testCasesFromRequest
-        : (dto.testUserInput?.trim() ? [dto.testUserInput.trim()] : []);
+      const naturalLanguageCases =
+        testCasesFromRequest.length > 0
+          ? testCasesFromRequest
+          : dto.testUserInput?.trim()
+            ? [dto.testUserInput.trim()]
+            : [];
       const templateId = this.resolveExecutionTemplateIdForRuntime(release, snapshot);
 
       if (release.sourceType === 'temporal_workflow') {
-        if (naturalLanguageCases.length > 0 && (!dto.input || Object.keys(dto.input).length === 0)) {
+        if (
+          naturalLanguageCases.length > 0 &&
+          (!dto.input || Object.keys(dto.input).length === 0)
+        ) {
           if (!release.publishedSkillId) {
             throw new Error('请先发布 Skill，再使用自然语言进行真实验证');
           }
@@ -473,11 +519,11 @@ export class CapabilityReleaseBuildValidationService {
 
           for (let i = 0; i < naturalLanguageCases.length; i += 1) {
             const currentCase = naturalLanguageCases[i] as string;
-            const runtimeResult = await this.capabilityReleaseRuntimeService
-              .executePublishedSkillByPromptForValidation(
+            const runtimeResult =
+              await this.capabilityReleaseRuntimeService.executePublishedSkillByPromptForValidation(
                 release.publishedSkillId,
                 currentCase,
-                authToken,
+                authToken
               );
             caseResults.push({
               caseIndex: i + 1,
@@ -513,7 +559,7 @@ export class CapabilityReleaseBuildValidationService {
           const result = await this.temporalWorkflowService.validateWorkflowReal(
             build.generatedCode,
             fn,
-            dto.input,
+            dto.input
           );
           success = result.success;
           score = result.score;
@@ -541,7 +587,7 @@ export class CapabilityReleaseBuildValidationService {
           undefined,
           dto.input,
           true,
-          dto.testUserInput,
+          dto.testUserInput
         );
         success = validation.isValid;
         score = validation.score || 0;
@@ -561,7 +607,7 @@ export class CapabilityReleaseBuildValidationService {
         logs,
         resultSnapshot,
         errorSummary,
-        preserveReleaseStatus,
+        preserveReleaseStatus
       );
 
       await accessors.insertAuditEvent(
@@ -569,7 +615,7 @@ export class CapabilityReleaseBuildValidationService {
         success ? 'validation_succeeded' : 'validation_failed',
         userId,
         success,
-        success ? 'Sandbox 校验通过' : `Sandbox 校验失败: ${errorSummary || '未知错误'}`,
+        success ? 'Sandbox 校验通过' : `Sandbox 校验失败: ${errorSummary || '未知错误'}`
       );
 
       return {
@@ -586,9 +632,15 @@ export class CapabilityReleaseBuildValidationService {
         0,
         [`[Error] ${message}`],
         null,
-        message,
+        message
       );
-      await accessors.insertAuditEvent(id, 'validation_failed', userId, false, `Sandbox 校验失败: ${message}`);
+      await accessors.insertAuditEvent(
+        id,
+        'validation_failed',
+        userId,
+        false,
+        `Sandbox 校验失败: ${message}`
+      );
       throw new BadRequestException(message);
     }
   }
@@ -598,12 +650,24 @@ export class CapabilityReleaseBuildValidationService {
     dto: ValidateCapabilityDTO,
     userId: string | undefined,
     onEvent: (event: string, payload: Record<string, unknown>) => void,
-    accessors: CapabilityReleaseBuildValidationAccessors,
+    accessors: CapabilityReleaseBuildValidationAccessors
   ): Promise<void> {
     const release = await accessors.getReleaseOrThrow(id);
     const snapshot = await accessors.getCurrentSnapshotOrThrow(release);
-    const build = await this.resolveBuildForValidation(release, snapshot, dto.buildId, userId, accessors);
-    const validationId = await this.createValidationRecord(id, build.id, 'sandbox', dto.input, userId);
+    const build = await this.resolveBuildForValidation(
+      release,
+      snapshot,
+      dto.buildId,
+      userId,
+      accessors
+    );
+    const validationId = await this.createValidationRecord(
+      id,
+      build.id,
+      'sandbox',
+      dto.input,
+      userId
+    );
 
     onEvent('status', {
       phase: 'started',
@@ -625,9 +689,12 @@ export class CapabilityReleaseBuildValidationService {
       const testCasesFromRequest = Array.isArray(dto.testCases)
         ? dto.testCases.map((item) => (typeof item === 'string' ? item.trim() : '')).filter(Boolean)
         : [];
-      const naturalLanguageCases = testCasesFromRequest.length > 0
-        ? testCasesFromRequest
-        : (dto.testUserInput?.trim() ? [dto.testUserInput.trim()] : []);
+      const naturalLanguageCases =
+        testCasesFromRequest.length > 0
+          ? testCasesFromRequest
+          : dto.testUserInput?.trim()
+            ? [dto.testUserInput.trim()]
+            : [];
       const templateId = this.resolveExecutionTemplateIdForRuntime(release, snapshot);
 
       if (release.sourceType === 'temporal_workflow') {
@@ -649,7 +716,7 @@ export class CapabilityReleaseBuildValidationService {
           (log: string) => {
             streamedLogs.push(log);
             onEvent('log', { message: log });
-          },
+          }
         );
         success = result.success;
         score = result.score;
@@ -690,7 +757,7 @@ export class CapabilityReleaseBuildValidationService {
           undefined,
           dto.input,
           true,
-          dto.testUserInput,
+          dto.testUserInput
         );
         success = validation.isValid;
         score = validation.score || 0;
@@ -712,7 +779,7 @@ export class CapabilityReleaseBuildValidationService {
         score,
         logs,
         resultSnapshot,
-        errorSummary,
+        errorSummary
       );
 
       await accessors.insertAuditEvent(
@@ -720,7 +787,7 @@ export class CapabilityReleaseBuildValidationService {
         success ? 'validation_succeeded' : 'validation_failed',
         userId,
         success,
-        success ? 'Sandbox 校验通过' : `Sandbox 校验失败: ${errorSummary || '未知错误'}`,
+        success ? 'Sandbox 校验通过' : `Sandbox 校验失败: ${errorSummary || '未知错误'}`
       );
 
       const finalRelease = await accessors.getReleaseOrThrow(id);
@@ -739,9 +806,15 @@ export class CapabilityReleaseBuildValidationService {
         0,
         [`[Error] ${message}`],
         null,
-        message,
+        message
       );
-      await accessors.insertAuditEvent(id, 'validation_failed', userId, false, `Sandbox 校验失败: ${message}`);
+      await accessors.insertAuditEvent(
+        id,
+        'validation_failed',
+        userId,
+        false,
+        `Sandbox 校验失败: ${message}`
+      );
       const failedRelease = await accessors.getReleaseOrThrow(id);
       const failedValidation = await accessors.getValidationOrThrow(validationId);
       onEvent('error', {
@@ -756,7 +829,7 @@ export class CapabilityReleaseBuildValidationService {
     id: string,
     dto: GenerateSkillDraftDTO,
     userId: string | undefined,
-    accessors: CapabilityReleaseBuildValidationAccessors,
+    accessors: CapabilityReleaseBuildValidationAccessors
   ): Promise<{ release: CapabilityReleaseDTO; skillDraft: SkillDraftDTO }> {
     const release = await accessors.getReleaseOrThrow(id);
     const snapshot = await accessors.getCurrentSnapshotOrThrow(release);
@@ -764,8 +837,11 @@ export class CapabilityReleaseBuildValidationService {
       ? await accessors.getValidationOrThrow(dto.validationId)
       : await accessors.getLatestSuccessfulValidationOrThrow(id);
 
-    const draftPayload = this.capabilityReleaseSkillDraftService
-      .buildSkillDraftPayload(release, snapshot, validation);
+    const draftPayload = this.capabilityReleaseSkillDraftService.buildSkillDraftPayload(
+      release,
+      snapshot,
+      validation
+    );
     const draftId = randomUUID();
 
     await this.prisma.$executeRawUnsafe(
@@ -791,7 +867,7 @@ export class CapabilityReleaseBuildValidationService {
       JSON.stringify(draftPayload.tools),
       JSON.stringify(draftPayload.apiEndpoints || null),
       JSON.stringify(draftPayload),
-      userId || null,
+      userId || null
     );
 
     await this.prisma.$executeRawUnsafe(
@@ -802,7 +878,7 @@ export class CapabilityReleaseBuildValidationService {
            updated_at = now()
        WHERE id = $1::uuid`,
       id,
-      draftId,
+      draftId
     );
 
     await accessors.insertAuditEvent(id, 'skill_draft_generated', userId, true, '生成 Skill 草案');
@@ -818,33 +894,41 @@ export class CapabilityReleaseBuildValidationService {
 
   private async resolveSavedTemporalWorkflowArtifact(
     release: CapabilityReleaseDTO,
-    snapshot: CapabilitySourceSnapshotDTO,
-  ): Promise<{ workflowId: string; artifactVersion?: number | null; artifactHash?: string | null; generatedCode: string }> {
-    const snapshotPayload = snapshot.sourcePayload && typeof snapshot.sourcePayload === 'object'
-      ? snapshot.sourcePayload as Record<string, unknown>
-      : {};
-    const workflowId = (
+    snapshot: CapabilitySourceSnapshotDTO
+  ): Promise<{
+    workflowId: string;
+    artifactVersion?: number | null;
+    artifactHash?: string | null;
+    generatedCode: string;
+  }> {
+    const snapshotPayload =
+      snapshot.sourcePayload && typeof snapshot.sourcePayload === 'object'
+        ? (snapshot.sourcePayload as Record<string, unknown>)
+        : {};
+    const workflowId =
       typeof release.sourceId === 'string' && release.sourceId.trim()
         ? release.sourceId.trim()
         : typeof snapshotPayload.id === 'string' && snapshotPayload.id.trim()
           ? snapshotPayload.id.trim()
-          : ''
-    );
+          : '';
 
     if (!workflowId) {
-      throw new Error('当前 Release 未绑定 Workflow，请先在 Workflow 页面保存并关联后再进入 Release');
+      throw new Error(
+        '当前 Release 未绑定 Workflow，请先在 Workflow 页面保存并关联后再进入 Release'
+      );
     }
 
     const artifact = await this.temporalWorkflowService.getArtifact(workflowId);
-    const generatedCode = typeof artifact.generatedCode === 'string' ? artifact.generatedCode.trim() : '';
+    const generatedCode =
+      typeof artifact.generatedCode === 'string' ? artifact.generatedCode.trim() : '';
     if (!generatedCode) {
       throw new Error(
-        `关联的 Workflow 尚未生成并保存代码: ${artifact.workflowName || workflowId}。请先在 Workflow 页面执行“生成并保存代码”`,
+        `关联的 Workflow 尚未生成并保存代码: ${artifact.workflowName || workflowId}。请先在 Workflow 页面执行“生成并保存代码”`
       );
     }
     if (artifact.validationStatus !== 'validated') {
       throw new Error(
-        `关联的 Workflow 尚未完成 artifact 验证: ${artifact.workflowName || workflowId}。请先在 Workflow 页面执行“端到端验证”`,
+        `关联的 Workflow 尚未完成 artifact 验证: ${artifact.workflowName || workflowId}。请先在 Workflow 页面执行“端到端验证”`
       );
     }
 
@@ -862,7 +946,7 @@ export class CapabilityReleaseBuildValidationService {
     validationType: 'static' | 'sandbox' | 'post_deploy_smoke',
     input: Record<string, unknown> | undefined,
     userId?: string,
-    updateReleaseStatus = true,
+    updateReleaseStatus = true
   ): Promise<string> {
     const validationId = randomUUID();
     await this.prisma.$executeRawUnsafe(
@@ -878,7 +962,7 @@ export class CapabilityReleaseBuildValidationService {
       buildId,
       validationType,
       JSON.stringify(input || null),
-      userId || null,
+      userId || null
     );
     if (updateReleaseStatus) {
       await this.prisma.$executeRawUnsafe(
@@ -886,7 +970,7 @@ export class CapabilityReleaseBuildValidationService {
          SET status = 'validating', latest_validation_id = $2::uuid, updated_at = now()
          WHERE id = $1::uuid`,
         releaseId,
-        validationId,
+        validationId
       );
     } else {
       await this.prisma.$executeRawUnsafe(
@@ -894,7 +978,7 @@ export class CapabilityReleaseBuildValidationService {
          SET latest_validation_id = $2::uuid, updated_at = now()
          WHERE id = $1::uuid`,
         releaseId,
-        validationId,
+        validationId
       );
     }
     return validationId;
@@ -909,7 +993,7 @@ export class CapabilityReleaseBuildValidationService {
     logs: string[],
     resultSnapshot: Record<string, unknown> | null,
     errorSummary: string | null,
-    preserveReleaseStatus = false,
+    preserveReleaseStatus = false
   ): Promise<void> {
     await this.prisma.$executeRawUnsafe(
       `UPDATE capability_validations
@@ -925,7 +1009,7 @@ export class CapabilityReleaseBuildValidationService {
       JSON.stringify(logs),
       score,
       success,
-      errorSummary,
+      errorSummary
     );
 
     if (preserveReleaseStatus) {
@@ -937,7 +1021,7 @@ export class CapabilityReleaseBuildValidationService {
          WHERE id = $1::uuid`,
         releaseId,
         validationId,
-        success,
+        success
       );
       return;
     }
@@ -952,7 +1036,7 @@ export class CapabilityReleaseBuildValidationService {
       releaseId,
       releaseStatus,
       validationId,
-      success,
+      success
     );
   }
 
@@ -969,7 +1053,7 @@ export class CapabilityReleaseBuildValidationService {
     snapshot: CapabilitySourceSnapshotDTO,
     buildId: string | undefined,
     userId: string | undefined,
-    accessors: CapabilityReleaseBuildValidationAccessors,
+    accessors: CapabilityReleaseBuildValidationAccessors
   ): Promise<CapabilityBuildDTO> {
     if (release.sourceType === 'temporal_workflow') {
       return accessors.resolveTemporalExecutableBuildOrThrow(release, snapshot, buildId, userId);
@@ -996,7 +1080,7 @@ export class CapabilityReleaseBuildValidationService {
       snapshot.id,
       JSON.stringify(snapshot.sourcePayload),
       JSON.stringify(snapshot.sourcePayload),
-      userId || null,
+      userId || null
     );
 
     await this.prisma.$executeRawUnsafe(
@@ -1004,7 +1088,7 @@ export class CapabilityReleaseBuildValidationService {
        SET current_build_id = $2::uuid, latest_successful_build_id = $2::uuid, updated_at = now()
        WHERE id = $1::uuid`,
       release.id,
-      syntheticBuildId,
+      syntheticBuildId
     );
 
     return accessors.getBuildOrThrow(syntheticBuildId);
@@ -1012,7 +1096,7 @@ export class CapabilityReleaseBuildValidationService {
 
   private resolveExecutionTemplateIdForRuntime(
     release: CapabilityReleaseDTO,
-    snapshot: CapabilitySourceSnapshotDTO,
+    snapshot: CapabilitySourceSnapshotDTO
   ): string | null {
     if (release.sourceType === 'temporal_workflow') {
       return null;
@@ -1020,12 +1104,14 @@ export class CapabilityReleaseBuildValidationService {
     if (release.sourceId && release.sourceId.trim()) {
       return release.sourceId.trim();
     }
-    const payload = snapshot.sourcePayload && typeof snapshot.sourcePayload === 'object'
-      ? snapshot.sourcePayload as Record<string, unknown>
-      : {};
-    const sourceTemplate = payload.sourceTemplate && typeof payload.sourceTemplate === 'object'
-      ? payload.sourceTemplate as Record<string, unknown>
-      : {};
+    const payload =
+      snapshot.sourcePayload && typeof snapshot.sourcePayload === 'object'
+        ? (snapshot.sourcePayload as Record<string, unknown>)
+        : {};
+    const sourceTemplate =
+      payload.sourceTemplate && typeof payload.sourceTemplate === 'object'
+        ? (payload.sourceTemplate as Record<string, unknown>)
+        : {};
     const fromTemplate = sourceTemplate.templateId;
     if (typeof fromTemplate === 'string' && fromTemplate.trim()) {
       return fromTemplate.trim();

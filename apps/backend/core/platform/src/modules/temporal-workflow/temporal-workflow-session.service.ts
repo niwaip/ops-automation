@@ -23,25 +23,77 @@ export interface TemporalWorkflowSessionSupport {
 export class TemporalWorkflowSessionService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly workflowNormalizationService: TemporalWorkflowNormalizationService,
+    private readonly workflowNormalizationService: TemporalWorkflowNormalizationService
   ) {}
 
   async createAiDraftSession(
     data: GenerateAiWorkflowDraftSessionDTO,
     support: TemporalWorkflowSessionSupport,
-    userId?: string,
+    userId?: string
   ): Promise<AiWorkflowDraftSession> {
-    const effectiveUserId = userId || await this.resolveFallbackUserId();
+    const debugUrl =
+      process.env.DEBUG_SERVER_URL ||
+      (process.env.DOCKER_ENV
+        ? 'http://host.docker.internal:7777/event'
+        : 'http://127.0.0.1:7777/event');
+    const debugSessionId = process.env.DEBUG_SESSION_ID || 'draft-sessions-401';
+    // #region debug-point B:create-session-enter
+    void fetch(debugUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId: debugSessionId,
+        runId: 'pre-fix',
+        hypothesisId: 'B',
+        location: 'temporal-workflow-session.service.ts:34',
+        msg: '[DEBUG] createAiDraftSession entered',
+        data: {
+          userId: userId || null,
+          descriptionLength: String(data?.description || '').length,
+          hasReferenceUrl: Boolean(String(data?.referenceUrl || '').trim()),
+        },
+        ts: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
+    const effectiveUserId = userId || (await this.resolveFallbackUserId());
     const draft = await support.generateAiWorkflowDraft(data);
+    // #region debug-point C:draft-generated
+    void fetch(debugUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId: debugSessionId,
+        runId: 'pre-fix',
+        hypothesisId: 'C',
+        location: 'temporal-workflow-session.service.ts:39',
+        msg: '[DEBUG] ai draft generated before persistence',
+        data: {
+          effectiveUserId,
+          draftName: draft?.name || draft?.workflowDsl?.name || null,
+          stepCount: Array.isArray(draft?.workflowDsl?.steps)
+            ? draft.workflowDsl.steps.length
+            : null,
+          warningCount: Array.isArray(draft?.warnings) ? draft.warnings.length : 0,
+        },
+        ts: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
     const userPrompt = [
       String(data?.description || '').trim(),
       data?.referenceUrl ? `参考 URL: ${String(data.referenceUrl).trim()}` : '',
-    ].filter(Boolean).join('\n');
+    ]
+      .filter(Boolean)
+      .join('\n');
 
     const session = await this.prisma.chatSession.create({
       data: {
         userId: effectiveUserId,
-        title: String(data?.title || draft.name || 'Workflow Draft Session').trim().slice(0, 255) || 'Workflow Draft Session',
+        title:
+          String(data?.title || draft.name || 'Workflow Draft Session')
+            .trim()
+            .slice(0, 255) || 'Workflow Draft Session',
         modelId: 'temporal-workflow-draft',
         status: 'active',
         messages: {
@@ -67,6 +119,21 @@ export class TemporalWorkflowSessionService {
         },
       },
     });
+    // #region debug-point D:session-persisted
+    void fetch(debugUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId: debugSessionId,
+        runId: 'pre-fix',
+        hypothesisId: 'D',
+        location: 'temporal-workflow-session.service.ts:76',
+        msg: '[DEBUG] draft session persisted',
+        data: { sessionId: session.id, effectiveUserId, title: session.title || null },
+        ts: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
 
     return this.getAiDraftSession(session.id, effectiveUserId);
   }
@@ -74,7 +141,7 @@ export class TemporalWorkflowSessionService {
   async refineAiDraftSession(
     data: RefineAiWorkflowDraftSessionDTO,
     support: TemporalWorkflowSessionSupport,
-    userId?: string,
+    userId?: string
   ): Promise<AiWorkflowDraftSession> {
     const session = await this.prisma.chatSession.findUnique({
       where: { id: data.sessionId },
@@ -142,7 +209,28 @@ export class TemporalWorkflowSessionService {
   }
 
   async listAiDraftSessions(userId?: string): Promise<AiWorkflowDraftSessionListItem[]> {
-    const effectiveUserId = userId || await this.resolveFallbackUserId();
+    const debugUrl =
+      process.env.DEBUG_SERVER_URL ||
+      (process.env.DOCKER_ENV
+        ? 'http://host.docker.internal:7777/event'
+        : 'http://127.0.0.1:7777/event');
+    const debugSessionId = process.env.DEBUG_SESSION_ID || 'draft-sessions-401';
+    const effectiveUserId = userId || (await this.resolveFallbackUserId());
+    // #region debug-point B:list-session-enter
+    void fetch(debugUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId: debugSessionId,
+        runId: 'pre-fix',
+        hypothesisId: 'B',
+        location: 'temporal-workflow-session.service.ts:152',
+        msg: '[DEBUG] listAiDraftSessions entered',
+        data: { userId: userId || null, effectiveUserId },
+        ts: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
     const sessions = await this.prisma.chatSession.findMany({
       where: {
         userId: effectiveUserId,
@@ -152,6 +240,25 @@ export class TemporalWorkflowSessionService {
       take: 20,
       include: { messages: { orderBy: { createdAt: 'asc' } } },
     });
+    // #region debug-point D:list-session-result
+    void fetch(debugUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId: debugSessionId,
+        runId: 'pre-fix',
+        hypothesisId: 'D',
+        location: 'temporal-workflow-session.service.ts:164',
+        msg: '[DEBUG] listAiDraftSessions queried sessions',
+        data: {
+          effectiveUserId,
+          sessionCount: sessions.length,
+          sessionIds: sessions.slice(0, 5).map((session) => session.id),
+        },
+        ts: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
 
     return sessions.map((session) => {
       const currentDraft = this.extractLatestDraftFromMessages(session.messages);
@@ -168,7 +275,7 @@ export class TemporalWorkflowSessionService {
   }
 
   async deleteAiDraftSession(sessionId: string, userId?: string): Promise<{ success: boolean }> {
-    const effectiveUserId = userId || await this.resolveFallbackUserId();
+    const effectiveUserId = userId || (await this.resolveFallbackUserId());
     const session = await this.prisma.chatSession.findUnique({
       where: { id: sessionId },
       select: {
@@ -177,7 +284,11 @@ export class TemporalWorkflowSessionService {
         modelId: true,
       },
     });
-    if (!session || session.modelId !== 'temporal-workflow-draft' || session.userId !== effectiveUserId) {
+    if (
+      !session ||
+      session.modelId !== 'temporal-workflow-draft' ||
+      session.userId !== effectiveUserId
+    ) {
       throw new NotFoundException(`草稿会话不存在: ${sessionId}`);
     }
 
@@ -211,7 +322,7 @@ export class TemporalWorkflowSessionService {
   }
 
   private mapChatSessionToAiDraftSession(
-    session: ChatSession & { messages: ChatMessage[] },
+    session: ChatSession & { messages: ChatMessage[] }
   ): AiWorkflowDraftSession {
     return {
       sessionId: session.id,

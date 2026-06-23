@@ -1,10 +1,6 @@
 import React from 'react';
 import { Button, Space, Tag } from 'antd';
-import {
-  CompressOutlined,
-  FullscreenOutlined,
-  RobotOutlined,
-} from '@ant-design/icons';
+import { CompressOutlined, FullscreenOutlined, RobotOutlined } from '@ant-design/icons';
 
 interface RecorderTopActionsProps {
   isBrowserInitialized: boolean;

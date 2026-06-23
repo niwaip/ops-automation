@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
-const AUTH_BASE = process.env.AUTH_BASE || "http://localhost:3001";
-const USERNAME = process.env.AUTH_USER || "admin";
-const PASSWORD = process.env.AUTH_PASS || "admin123";
-const APPLY = process.env.APPLY === "true" || process.argv.includes("--apply");
+const AUTH_BASE = process.env.AUTH_BASE || 'http://localhost:3001';
+const USERNAME = process.env.AUTH_USER || 'admin';
+const PASSWORD = process.env.AUTH_PASS || 'admin123';
+const APPLY = process.env.APPLY === 'true' || process.argv.includes('--apply');
 
 function log(...args) {
-  console.log("[migrate-workflow-activity-refs]", ...args);
+  console.log('[migrate-workflow-activity-refs]', ...args);
 }
 
 async function requestJson(url, options = {}) {
@@ -19,33 +19,39 @@ async function requestJson(url, options = {}) {
     data = text;
   }
   if (!res.ok) {
-    throw new Error(`[${res.status}] ${url} -> ${typeof data === "string" ? data : JSON.stringify(data)}`);
+    throw new Error(
+      `[${res.status}] ${url} -> ${typeof data === 'string' ? data : JSON.stringify(data)}`
+    );
   }
   return data;
 }
 
 function resolveBuiltin(step, builtinActivities) {
-  const activityName = String(step.activityName || "").trim();
+  const activityName = String(step.activityName || '').trim();
   if (!activityName) {
     return null;
   }
-  return builtinActivities.find((activity) =>
-    activity.ref === activityName
-    || activity.key === activityName
-    || activity.name === activityName
-    || activity.fn === activityName
-  ) || null;
+  return (
+    builtinActivities.find(
+      (activity) =>
+        activity.ref === activityName ||
+        activity.key === activityName ||
+        activity.name === activityName ||
+        activity.fn === activityName
+    ) || null
+  );
 }
 
 function resolveCustom(step, customActivities) {
-  const activityName = String(step.activityName || "").trim();
+  const activityName = String(step.activityName || '').trim();
   if (!activityName) {
     return null;
   }
-  return customActivities.find((activity) =>
-    activity.name === activityName
-    || activity.fn === activityName
-  ) || null;
+  return (
+    customActivities.find(
+      (activity) => activity.name === activityName || activity.fn === activityName
+    ) || null
+  );
 }
 
 function migrateSteps(workflow, builtinActivities, customActivities) {
@@ -53,7 +59,7 @@ function migrateSteps(workflow, builtinActivities, customActivities) {
   let changed = false;
 
   const nextSteps = steps.map((step) => {
-    if (!step || step.type !== "activity") {
+    if (!step || step.type !== 'activity') {
       return step;
     }
     if (step.activityRef && String(step.activityRef).trim()) {
@@ -90,21 +96,21 @@ function migrateSteps(workflow, builtinActivities, customActivities) {
 }
 
 async function main() {
-  log(`mode=${APPLY ? "apply" : "dry-run"}`);
+  log(`mode=${APPLY ? 'apply' : 'dry-run'}`);
 
   const login = await requestJson(`${AUTH_BASE}/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username: USERNAME, password: PASSWORD }),
   });
 
   const token = login.accessToken;
   if (!token) {
-    throw new Error("登录成功但未返回 accessToken");
+    throw new Error('登录成功但未返回 accessToken');
   }
 
   const headers = {
-    "Content-Type": "application/json",
+    'Content-Type': 'application/json',
     Authorization: `Bearer ${token}`,
   };
 
@@ -123,10 +129,8 @@ async function main() {
       continue;
     }
 
-    const unresolvedSteps = result.steps.filter((step) =>
-      step?.type === "activity"
-      && step.activityName
-      && !step.activityRef
+    const unresolvedSteps = result.steps.filter(
+      (step) => step?.type === 'activity' && step.activityName && !step.activityRef
     );
 
     if (unresolvedSteps.length > 0) {
@@ -155,7 +159,7 @@ async function main() {
   if (APPLY) {
     for (const workflow of updated) {
       await requestJson(`${AUTH_BASE}/temporal-workflow/${workflow.id}`, {
-        method: "PUT",
+        method: 'PUT',
         headers,
         body: JSON.stringify({
           workflowDsl: workflow.workflowDsl,
@@ -165,21 +169,27 @@ async function main() {
     }
   }
 
-  console.log(JSON.stringify({
-    mode: APPLY ? "apply" : "dry-run",
-    scannedWorkflows: (workflows || []).length,
-    updatedCount: updated.length,
-    unresolvedCount: unresolved.length,
-    updated: updated.map((item) => ({
-      id: item.id,
-      name: item.name,
-      unresolvedStepCount: item.unresolvedStepCount,
-    })),
-    unresolved,
-  }, null, 2));
+  console.log(
+    JSON.stringify(
+      {
+        mode: APPLY ? 'apply' : 'dry-run',
+        scannedWorkflows: (workflows || []).length,
+        updatedCount: updated.length,
+        unresolvedCount: unresolved.length,
+        updated: updated.map((item) => ({
+          id: item.id,
+          name: item.name,
+          unresolvedStepCount: item.unresolvedStepCount,
+        })),
+        unresolved,
+      },
+      null,
+      2
+    )
+  );
 }
 
 main().catch((error) => {
-  console.error("[migrate-workflow-activity-refs] failed:", error.message);
+  console.error('[migrate-workflow-activity-refs] failed:', error.message);
   process.exit(1);
 });

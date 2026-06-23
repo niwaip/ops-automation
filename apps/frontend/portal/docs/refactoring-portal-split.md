@@ -102,61 +102,61 @@ ops-automation/
 
 ### 留在 `portal`（管理后台）
 
-| 功能 | 路由 | 说明 |
-|---|---|---|
-| 用户管理 | `/admin/users` | 管理员专属 |
-| AI 模型配置 | `/admin/models` | 管理员专属 |
-| 技能管理 | `/admin/skills` | 管理员专属 |
-| 系统工具管理 | `/admin/tools` | 管理员专属 |
-| Temporal 工作流 | `/admin/temporal` | 系统级别 |
-| 能力发布中心 | `/admin/capabilities` | 管理员专属 |
-| 执行流配置 | `/admin/flows` | 管理员专属 |
-| 工作单元 | `/admin/activities` | 管理员专属 |
-| Prompt 调试台 | `/admin/prompt-debug` | 管理员专属 |
-| 录制器 | `/recorder` | 管理工具 |
-| 浏览器模板管理 | `/templates` | 管理工具 |
-| Carbone 模板管理 | `/carbone-templates` | 管理编辑，用户侧只读或间接使用 |
+| 功能             | 路由                  | 说明                           |
+| ---------------- | --------------------- | ------------------------------ |
+| 用户管理         | `/admin/users`        | 管理员专属                     |
+| AI 模型配置      | `/admin/models`       | 管理员专属                     |
+| 技能管理         | `/admin/skills`       | 管理员专属                     |
+| 系统工具管理     | `/admin/tools`        | 管理员专属                     |
+| Temporal 工作流  | `/admin/temporal`     | 系统级别                       |
+| 能力发布中心     | `/admin/capabilities` | 管理员专属                     |
+| 执行流配置       | `/admin/flows`        | 管理员专属                     |
+| 工作单元         | `/admin/activities`   | 管理员专属                     |
+| Prompt 调试台    | `/admin/prompt-debug` | 管理员专属                     |
+| 录制器           | `/recorder`           | 管理工具                       |
+| 浏览器模板管理   | `/templates`          | 管理工具                       |
+| Carbone 模板管理 | `/carbone-templates`  | 管理编辑，用户侧只读或间接使用 |
 
 ### 迁移到 `user-web`（用户侧 Web）
 
-| 功能 | 路由 | 说明 |
-|---|---|---|
-| 执行列表 | `/executions` | 核心用户功能 |
-| 创建执行 | `/executions/new` | 核心用户功能 |
-| 执行详情 | `/executions/:id` | 核心用户功能 |
-| AI 对话 | `chat/` | 核心用户功能 |
-| 报告列表/详情 | `/reports/**` | 核心用户功能 |
-| 仪表盘 | `/dashboard` | 简化版保留 |
-| 已发布技能 | `/published-skills` | 用户查看 |
-| 执行通知中心 | `notifications/` | 跟随用户功能 |
+| 功能          | 路由                | 说明         |
+| ------------- | ------------------- | ------------ |
+| 执行列表      | `/executions`       | 核心用户功能 |
+| 创建执行      | `/executions/new`   | 核心用户功能 |
+| 执行详情      | `/executions/:id`   | 核心用户功能 |
+| AI 对话       | `chat/`             | 核心用户功能 |
+| 报告列表/详情 | `/reports/**`       | 核心用户功能 |
+| 仪表盘        | `/dashboard`        | 简化版保留   |
+| 已发布技能    | `/published-skills` | 用户查看     |
+| 执行通知中心  | `notifications/`    | 跟随用户功能 |
 
 ### 迁移到 `packages/user-core`（核心层）
 
-| 类型 | 当前来源 | 目标位置 |
-|---|---|---|
-| API client | `src/shared/api/http/client.ts` | `user-core/api/client.ts` |
-| 执行 / 会话 / 报告 / 技能 API | `src/api/*.ts` | `user-core/api/*.ts` |
-| 聊天 API | `src/features/chat/chatApi.ts` | `user-core/api/chat.api.ts` |
-| 状态元数据与纯工具 | `src/shared/lib/*.ts` | `user-core/lib/*` |
-| 执行领域纯逻辑（见下表） | `src/features/executions/lib/` | `user-core/domain/executions/*` |
-| 类型定义 | `src/features/**/types.ts`、`src/shared/**/types.ts` | `user-core/types/*` |
-| 状态容器 | 现有 store 中与 UI 无关部分 | `user-core/state/*` |
-| 通知规则 | `src/shared/notifications/*` 中纯规则部分 | `user-core/domain/notifications/*` |
+| 类型                          | 当前来源                                             | 目标位置                           |
+| ----------------------------- | ---------------------------------------------------- | ---------------------------------- |
+| API client                    | `src/shared/api/http/client.ts`                      | `user-core/api/client.ts`          |
+| 执行 / 会话 / 报告 / 技能 API | `src/api/*.ts`                                       | `user-core/api/*.ts`               |
+| 聊天 API                      | `src/features/chat/chatApi.ts`                       | `user-core/api/chat.api.ts`        |
+| 状态元数据与纯工具            | `src/shared/lib/*.ts`                                | `user-core/lib/*`                  |
+| 执行领域纯逻辑（见下表）      | `src/features/executions/lib/`                       | `user-core/domain/executions/*`    |
+| 类型定义                      | `src/features/**/types.ts`、`src/shared/**/types.ts` | `user-core/types/*`                |
+| 状态容器                      | 现有 store 中与 UI 无关部分                          | `user-core/state/*`                |
+| 通知规则                      | `src/shared/notifications/*` 中纯规则部分            | `user-core/domain/notifications/*` |
 
 **`executions/lib/` 文件明细**（需区分处理方式）：
 
-| 文件 | 是否含 JSX | 处理方式 |
-|---|:---:|---|
-| `artifacts.ts` | ❌ | ✅ 直接迁入 `user-core` |
-| `browser.ts` | ❌ | ✅ 直接迁入 `user-core` |
-| `common.ts` | ❌ | ✅ 直接迁入 `user-core` |
-| `listHelpers.ts` | ❌ | ✅ 直接迁入 `user-core` |
-| `listView.ts` | ❌ | ✅ 直接迁入 `user-core` |
-| `phase.ts` | ❌ | ✅ 直接迁入 `user-core` |
-| `runtimeSession.ts` | ❌ | ✅ 直接迁入 `user-core` |
-| `detailView.tsx` | ✅ | ⚠️ 拆分：数据建模部分迁 `user-core`，JSX 留 `user-web` |
-| `inputFields.tsx` | ✅ | ⚠️ 拆分：字段定义迁 `user-core`，渲染留 `user-web` |
-| `json.tsx` | ✅ | ⚠️ 拆分：JSON 解析逻辑迁 `user-core`，展示留 `user-web` |
+| 文件                | 是否含 JSX | 处理方式                                                |
+| ------------------- | :--------: | ------------------------------------------------------- |
+| `artifacts.ts`      |     ❌     | ✅ 直接迁入 `user-core`                                 |
+| `browser.ts`        |     ❌     | ✅ 直接迁入 `user-core`                                 |
+| `common.ts`         |     ❌     | ✅ 直接迁入 `user-core`                                 |
+| `listHelpers.ts`    |     ❌     | ✅ 直接迁入 `user-core`                                 |
+| `listView.ts`       |     ❌     | ✅ 直接迁入 `user-core`                                 |
+| `phase.ts`          |     ❌     | ✅ 直接迁入 `user-core`                                 |
+| `runtimeSession.ts` |     ❌     | ✅ 直接迁入 `user-core`                                 |
+| `detailView.tsx`    |     ✅     | ⚠️ 拆分：数据建模部分迁 `user-core`，JSX 留 `user-web`  |
+| `inputFields.tsx`   |     ✅     | ⚠️ 拆分：字段定义迁 `user-core`，渲染留 `user-web`      |
+| `json.tsx`          |     ✅     | ⚠️ 拆分：JSON 解析逻辑迁 `user-core`，展示留 `user-web` |
 
 > 注意：现有 store、通知、聊天逻辑不能机械复制，必须先剥离其中的 React、i18n、storage、router、socket 依赖。
 
@@ -192,9 +192,9 @@ ops-automation/
 ### 禁止出现的 import
 
 ```ts
-import React from 'react';                  // ❌
-import { JSX } from 'react';                // ❌
-import { Button } from 'antd';              // ❌
+import React from 'react'; // ❌
+import { JSX } from 'react'; // ❌
+import { Button } from 'antd'; // ❌
 import { useNavigate } from 'react-router-dom'; // ❌
 ```
 
@@ -596,7 +596,7 @@ import i18n from '@/shared/i18n';
 setLanguage: (language) => {
   i18n.changeLanguage(language);
   set({ language });
-}
+};
 ```
 
 改造后：
@@ -607,7 +607,7 @@ import type { I18nPort } from '../ports/i18n.port';
 setLanguage: async (language: string, i18n?: I18nPort) => {
   await i18n?.changeLanguage(language);
   setState({ language });
-}
+};
 ```
 
 ### 2. 浏览器存储改造
@@ -640,7 +640,7 @@ export function renderTimelineNode(execution: ExecutionDto) {
 export function buildTimelineNodeViewModel(execution: ExecutionDto) {
   return {
     title: execution.name,
-    status: execution.status
+    status: execution.status,
   };
 }
 ```
@@ -676,11 +676,11 @@ export function TimelineNodeCard({ model }: { model: TimelineNodeViewModel }) {
 
 ### 当前迭代对多端的最低交付要求
 
-| 平台 | 当前要求 | 不要求 |
-|---|---|---|
-| React Native / App | 目录脚手架、adapter 接口、最小接线示例 | 完整业务页面与发布 |
-| Electron / Desktop | renderer 侧骨架、`user-core` 接入示例 | 完整桌面端功能与打包 |
-| social-platform | 宿主接入骨架、adapter 接口、最小 API / state 示例 | 完整社交平台页面、宿主适配细节与上线流程 |
+| 平台               | 当前要求                                          | 不要求                                   |
+| ------------------ | ------------------------------------------------- | ---------------------------------------- |
+| React Native / App | 目录脚手架、adapter 接口、最小接线示例            | 完整业务页面与发布                       |
+| Electron / Desktop | renderer 侧骨架、`user-core` 接入示例             | 完整桌面端功能与打包                     |
+| social-platform    | 宿主接入骨架、adapter 接口、最小 API / state 示例 | 完整社交平台页面、宿主适配细节与上线流程 |
 
 ### 建议保留的最小目录
 
@@ -728,18 +728,18 @@ apps/
 
 ### 各端最小文件清单
 
-| 平台 | 必须保留的文件 | 作用 |
-|---|---|---|
-| mobile | `package.json`、`tsconfig.json`、`README.md`、`src/app/App.tsx` | 说明工程可启动与后续接入点 |
-| mobile | `src/adapters/*` | 对接 storage / i18n / runtime |
-| mobile | `src/examples/execution-list.example.tsx` | 演示如何消费 `user-core` |
-| desktop | `src/renderer/main.tsx` | 仅保留 renderer 入口骨架 |
-| desktop | `src/renderer/adapters/*` | Electron renderer 侧适配器占位 |
-| desktop | `src/renderer/examples/*` | 最小接线示例 |
-| social-platform | `src/bootstrap.ts` | 社交平台宿主入口占位 |
-| social-platform | `src/adapters/*` | 平台适配器占位 |
-| social-platform | `src/hosts/*` | 宿主差异占位，如 WeChat / LINE / generic |
-| social-platform | `src/examples/execution-list.example.tsx` | 最小页面或接线示例 |
+| 平台            | 必须保留的文件                                                  | 作用                                     |
+| --------------- | --------------------------------------------------------------- | ---------------------------------------- |
+| mobile          | `package.json`、`tsconfig.json`、`README.md`、`src/app/App.tsx` | 说明工程可启动与后续接入点               |
+| mobile          | `src/adapters/*`                                                | 对接 storage / i18n / runtime            |
+| mobile          | `src/examples/execution-list.example.tsx`                       | 演示如何消费 `user-core`                 |
+| desktop         | `src/renderer/main.tsx`                                         | 仅保留 renderer 入口骨架                 |
+| desktop         | `src/renderer/adapters/*`                                       | Electron renderer 侧适配器占位           |
+| desktop         | `src/renderer/examples/*`                                       | 最小接线示例                             |
+| social-platform | `src/bootstrap.ts`                                              | 社交平台宿主入口占位                     |
+| social-platform | `src/adapters/*`                                                | 平台适配器占位                           |
+| social-platform | `src/hosts/*`                                                   | 宿主差异占位，如 WeChat / LINE / generic |
+| social-platform | `src/examples/execution-list.example.tsx`                       | 最小页面或接线示例                       |
 
 ### 示例代码允许做到什么程度
 
@@ -841,87 +841,87 @@ apps/
 
 ### A. 架构与决策任务
 
-| 编号 | 任务 | 输出物 | 优先级 |
-|---|---|---|---|
-| A1 | 确认 `portal` 用户路由处置方案 | 选定方案 A 或 B，形成结论记录 | P0 |
-| A2 | 确认登录态共享方案 | 同域 / 跨域 / Cookie / Token 策略说明 | P0 |
-| A3 | 确认通知与 WebSocket 生命周期归属 | `user-core` 与平台层职责边界说明 | P0 |
-| A4 | 确认 i18n 注入方案 | `I18nPort` 接口和调用约定 | P0 |
-| A5 | 确认执行详情 JSX 拆分边界 | 数据建模层与 UI 渲染层拆分清单 | P0 |
+| 编号 | 任务                              | 输出物                                | 优先级 |
+| ---- | --------------------------------- | ------------------------------------- | ------ |
+| A1   | 确认 `portal` 用户路由处置方案    | 选定方案 A 或 B，形成结论记录         | P0     |
+| A2   | 确认登录态共享方案                | 同域 / 跨域 / Cookie / Token 策略说明 | P0     |
+| A3   | 确认通知与 WebSocket 生命周期归属 | `user-core` 与平台层职责边界说明      | P0     |
+| A4   | 确认 i18n 注入方案                | `I18nPort` 接口和调用约定             | P0     |
+| A5   | 确认执行详情 JSX 拆分边界         | 数据建模层与 UI 渲染层拆分清单        | P0     |
 
 ### B. `user-core` 基础设施任务
 
-| 编号 | 任务 | 输出物 | 优先级 |
-|---|---|---|---|
-| B1 | 创建 `packages/user-core` 目录骨架 | `src/api`、`src/domain`、`src/state`、`src/ports` 等目录 | P0 |
-| B2 | 配置 workspace 依赖 | 根工作区可识别 `@ops/user-core` | P0 |
-| B3 | 配置 `tsconfig` / `tsconfig.build.json` | `user-core` 可独立编译 | P0 |
-| B4 | 配置 `package.json` 导出 | `exports` 指向 `dist` | P0 |
-| B5 | 增加 lint / CI 边界规则 | 禁止 React / antd / router / `.tsx` | P0 |
-| B6 | 定义 ports 接口 | `StoragePort`、`I18nPort`、`SocketPort`、`RuntimeConfigPort` | P0 |
+| 编号 | 任务                                    | 输出物                                                       | 优先级 |
+| ---- | --------------------------------------- | ------------------------------------------------------------ | ------ |
+| B1   | 创建 `packages/user-core` 目录骨架      | `src/api`、`src/domain`、`src/state`、`src/ports` 等目录     | P0     |
+| B2   | 配置 workspace 依赖                     | 根工作区可识别 `@ops/user-core`                              | P0     |
+| B3   | 配置 `tsconfig` / `tsconfig.build.json` | `user-core` 可独立编译                                       | P0     |
+| B4   | 配置 `package.json` 导出                | `exports` 指向 `dist`                                        | P0     |
+| B5   | 增加 lint / CI 边界规则                 | 禁止 React / antd / router / `.tsx`                          | P0     |
+| B6   | 定义 ports 接口                         | `StoragePort`、`I18nPort`、`SocketPort`、`RuntimeConfigPort` | P0     |
 
 ### C. Phase 1 纯基础层迁移任务
 
-| 编号 | 任务 | 来源 | 目标 | 优先级 |
-|---|---|---|---|---|
-| C1 | 迁移 runtime 配置 schema 与 normalize 逻辑 | `src/shared/config/runtime.ts` | `user-core/lib/runtime.ts` + `user-core/ports/runtime.port.ts` | P1 |
-| C2 | 迁移 HTTP client | `src/shared/api/http/client.ts` | `user-core/api/client.ts` | P1 |
-| C3 | 迁移认证 API | `src/api/auth.ts` | `user-core/api/auth.api.ts` | P1 |
-| C4 | 迁移执行 API | `src/api/execution.ts` | `user-core/api/execution.api.ts` | P1 |
-| C5 | 迁移报告 API | `src/api/report.ts` | `user-core/api/report.api.ts` | P1 |
-| C6 | 迁移会话 API | `src/api/session.ts` | `user-core/api/session.api.ts` | P1 |
-| C7 | 迁移技能 API | `src/api/skill.ts` | `user-core/api/skill.api.ts` | P1 |
-| C8 | 迁移 streaming API | `src/api/streaming.ts` | `user-core/api/streaming.api.ts` | P1 |
-| C9 | 迁移聊天 API | `src/features/chat/chatApi.ts` | `user-core/api/chat.api.ts` | P1 |
-| C10 | 迁移纯类型 | `src/features/**/types.ts` | `user-core/types/*` | P1 |
-| C11 | 迁移纯工具函数 | `src/shared/lib/*.ts` | `user-core/lib/*` | P1 |
+| 编号 | 任务                                       | 来源                            | 目标                                                           | 优先级 |
+| ---- | ------------------------------------------ | ------------------------------- | -------------------------------------------------------------- | ------ |
+| C1   | 迁移 runtime 配置 schema 与 normalize 逻辑 | `src/shared/config/runtime.ts`  | `user-core/lib/runtime.ts` + `user-core/ports/runtime.port.ts` | P1     |
+| C2   | 迁移 HTTP client                           | `src/shared/api/http/client.ts` | `user-core/api/client.ts`                                      | P1     |
+| C3   | 迁移认证 API                               | `src/api/auth.ts`               | `user-core/api/auth.api.ts`                                    | P1     |
+| C4   | 迁移执行 API                               | `src/api/execution.ts`          | `user-core/api/execution.api.ts`                               | P1     |
+| C5   | 迁移报告 API                               | `src/api/report.ts`             | `user-core/api/report.api.ts`                                  | P1     |
+| C6   | 迁移会话 API                               | `src/api/session.ts`            | `user-core/api/session.api.ts`                                 | P1     |
+| C7   | 迁移技能 API                               | `src/api/skill.ts`              | `user-core/api/skill.api.ts`                                   | P1     |
+| C8   | 迁移 streaming API                         | `src/api/streaming.ts`          | `user-core/api/streaming.api.ts`                               | P1     |
+| C9   | 迁移聊天 API                               | `src/features/chat/chatApi.ts`  | `user-core/api/chat.api.ts`                                    | P1     |
+| C10  | 迁移纯类型                                 | `src/features/**/types.ts`      | `user-core/types/*`                                            | P1     |
+| C11  | 迁移纯工具函数                             | `src/shared/lib/*.ts`           | `user-core/lib/*`                                              | P1     |
 
 ### D. Phase 2 领域逻辑拆分任务
 
-| 编号 | 任务 | 输出物 | 优先级 |
-|---|---|---|---|
-| D1 | 梳理执行列表纯逻辑 | `domain/executions/list*` | P1 |
-| D2 | 梳理执行详情纯逻辑 | DTO -> View Model 转换函数 | P1 |
-| D3 | 拆分执行详情 JSX 依赖 | `detailView.tsx` 的纯数据部分清单 | P1 |
-| D4 | 梳理聊天领域逻辑 | `domain/chat/*` | P2 |
-| D5 | 梳理通知规则 | `domain/notifications/*` | P1 |
-| D6 | 重构状态容器 | `state/auth.state.ts`、`state/chat.state.ts` 等 | P1 |
-| D7 | 清理平台耦合 | 去除 i18n、storage、router、socket 直连 | P1 |
+| 编号 | 任务                  | 输出物                                          | 优先级 |
+| ---- | --------------------- | ----------------------------------------------- | ------ |
+| D1   | 梳理执行列表纯逻辑    | `domain/executions/list*`                       | P1     |
+| D2   | 梳理执行详情纯逻辑    | DTO -> View Model 转换函数                      | P1     |
+| D3   | 拆分执行详情 JSX 依赖 | `detailView.tsx` 的纯数据部分清单               | P1     |
+| D4   | 梳理聊天领域逻辑      | `domain/chat/*`                                 | P2     |
+| D5   | 梳理通知规则          | `domain/notifications/*`                        | P1     |
+| D6   | 重构状态容器          | `state/auth.state.ts`、`state/chat.state.ts` 等 | P1     |
+| D7   | 清理平台耦合          | 去除 i18n、storage、router、socket 直连         | P1     |
 
 ### E. `user-web` 建设任务
 
-| 编号 | 任务 | 输出物 | 优先级 |
-|---|---|---|---|
-| E1 | 新建 `apps/frontend/user-web` 最小骨架 | `main.tsx`、`App.tsx`、基础路由 | P1 |
-| E2 | 构建 `UserLayout` | 统一布局与导航 | P1 |
-| E3 | 接入适配器层 | storage / i18n / socket 注入实现 | P1 |
-| E4 | 接入登录页 | `LoginPage` 可用 | P1 |
-| E5 | 接入执行列表页 | 页面基于 `@ops/user-core` 运行 | P1 |
-| E6 | 接入执行详情页 | 页面基于 View Model 渲染 | P1 |
-| E7 | 接入报告页 | 最小报告链路可用 | P2 |
-| E8 | 接入聊天页 | 最小聊天链路可用 | P2 |
-| E9 | 接入通知中心 | 通知展示与未读数可用 | P2 |
+| 编号 | 任务                                   | 输出物                           | 优先级 |
+| ---- | -------------------------------------- | -------------------------------- | ------ |
+| E1   | 新建 `apps/frontend/user-web` 最小骨架 | `main.tsx`、`App.tsx`、基础路由  | P1     |
+| E2   | 构建 `UserLayout`                      | 统一布局与导航                   | P1     |
+| E3   | 接入适配器层                           | storage / i18n / socket 注入实现 | P1     |
+| E4   | 接入登录页                             | `LoginPage` 可用                 | P1     |
+| E5   | 接入执行列表页                         | 页面基于 `@ops/user-core` 运行   | P1     |
+| E6   | 接入执行详情页                         | 页面基于 View Model 渲染         | P1     |
+| E7   | 接入报告页                             | 最小报告链路可用                 | P2     |
+| E8   | 接入聊天页                             | 最小聊天链路可用                 | P2     |
+| E9   | 接入通知中心                           | 通知展示与未读数可用             | P2     |
 
 ### F. `portal` 收敛任务
 
-| 编号 | 任务 | 输出物 | 优先级 |
-|---|---|---|---|
-| F1 | 标记用户侧旧路由 | 待跳转 / 待删除清单 | P1 |
-| F2 | 实施跳转或删除 | `portal` 仅保留管理后台能力 | P2 |
-| F3 | 清理历史用户侧 API | `portal` 仅保留 Admin API，移除用户侧重复 API | P2 |
-| F4 | 清理重复状态 | `portal` 不再维护重复 auth / notification 逻辑 | P2 |
-| F5 | 清理用户侧遗留 features | 删除不再使用的代码 | P2 |
+| 编号 | 任务                    | 输出物                                         | 优先级 |
+| ---- | ----------------------- | ---------------------------------------------- | ------ |
+| F1   | 标记用户侧旧路由        | 待跳转 / 待删除清单                            | P1     |
+| F2   | 实施跳转或删除          | `portal` 仅保留管理后台能力                    | P2     |
+| F3   | 清理历史用户侧 API      | `portal` 仅保留 Admin API，移除用户侧重复 API  | P2     |
+| F4   | 清理重复状态            | `portal` 不再维护重复 auth / notification 逻辑 | P2     |
+| F5   | 清理用户侧遗留 features | 删除不再使用的代码                             | P2     |
 
 ### G. 验证与验收任务
 
-| 编号 | 任务 | 输出物 | 优先级 |
-|---|---|---|---|
-| G1 | `user-core` 类型检查 | `tsc --noEmit` 通过 | P0 |
-| G2 | `user-core` 边界扫描 | 无 React / antd / router / `.tsx` | P0 |
-| G3 | `user-web` 启动验证 | 本地 dev 可启动 | P1 |
-| G4 | 用户主链路回归 | 登录、执行列表、执行详情通过 | P1 |
-| G5 | 聊天 / 报告 / 通知回归 | 主链路通过 | P2 |
-| G6 | `portal` 管理后台回归 | Admin 功能不受影响 | P1 |
+| 编号 | 任务                   | 输出物                            | 优先级 |
+| ---- | ---------------------- | --------------------------------- | ------ |
+| G1   | `user-core` 类型检查   | `tsc --noEmit` 通过               | P0     |
+| G2   | `user-core` 边界扫描   | 无 React / antd / router / `.tsx` | P0     |
+| G3   | `user-web` 启动验证    | 本地 dev 可启动                   | P1     |
+| G4   | 用户主链路回归         | 登录、执行列表、执行详情通过      | P1     |
+| G5   | 聊天 / 报告 / 通知回归 | 主链路通过                        | P2     |
+| G6   | `portal` 管理后台回归  | Admin 功能不受影响                | P1     |
 
 ### 建议迭代切分
 
@@ -1079,26 +1079,26 @@ Backlog 验收标准：
 
 ### 已完成状态
 
-| Sprint | 目标 | 落地状态 |
-|---|---|---|
-| Sprint 1 | 架构决策 | ✅ 已决策（见第六章） |
-| Sprint 2 | user-core 基础设施 | ✅ 目录骨架 / workspace / tsconfig / exports / ports 均已到位 |
-| Sprint 3 | 纯基础层迁移 | ✅ API client、auth/execution/report/session/skill/streaming/chat API、类型、工具函数已迁入 |
-| Sprint 4 | 执行链路最小闭环 | ✅ user-web 可启动；执行列表、详情、聊天、通知页均已建立 |
-| Sprint 5 | 补齐用户侧主链路 | 🔄 聊天、报告、通知页框架已建立，业务闭环尚需验收 |
-| Sprint 6 | portal 收敛清理 | ⏳ 待按“保留内部全集工作台”原则执行 |
+| Sprint   | 目标               | 落地状态                                                                                    |
+| -------- | ------------------ | ------------------------------------------------------------------------------------------- |
+| Sprint 1 | 架构决策           | ✅ 已决策（见第六章）                                                                       |
+| Sprint 2 | user-core 基础设施 | ✅ 目录骨架 / workspace / tsconfig / exports / ports 均已到位                               |
+| Sprint 3 | 纯基础层迁移       | ✅ API client、auth/execution/report/session/skill/streaming/chat API、类型、工具函数已迁入 |
+| Sprint 4 | 执行链路最小闭环   | ✅ user-web 可启动；执行列表、详情、聊天、通知页均已建立                                    |
+| Sprint 5 | 补齐用户侧主链路   | 🔄 聊天、报告、通知页框架已建立，业务闭环尚需验收                                           |
+| Sprint 6 | portal 收敛清理    | ⏳ 待按“保留内部全集工作台”原则执行                                                         |
 
 ### 边界合规性检查
 
-| 约束项 | 状态 | 说明 |
-|---|---|---|
-| `user-core` 无 `.tsx` 文件 | ✅ | 已核查，全部为 `.ts` |
-| `user-core` 无 `react` / `antd` / `react-router-dom` import | ✅ | grep 无命中 |
-| `user-core` 无 `localStorage` / `sessionStorage` / `window` / `document` 直接引用 | ✅ | grep 无命中 |
-| `user-core` 无 `import.meta.env` 直接访问 | ✅ | grep 无命中 |
-| `auth.state.ts` 使用 `zustand/vanilla` 的 `createStore` | ✅ | 符合规范 |
-| `ApiClient` 通过 `RuntimeConfigPort` 注入配置 | ✅ | 符合规范 |
-| `user-web` adapters 层正确注入 `storage` / `i18n` / `onLogout` | ✅ | `authStore.ts` 结构正确 |
+| 约束项                                                                            | 状态 | 说明                    |
+| --------------------------------------------------------------------------------- | ---- | ----------------------- |
+| `user-core` 无 `.tsx` 文件                                                        | ✅   | 已核查，全部为 `.ts`    |
+| `user-core` 无 `react` / `antd` / `react-router-dom` import                       | ✅   | grep 无命中             |
+| `user-core` 无 `localStorage` / `sessionStorage` / `window` / `document` 直接引用 | ✅   | grep 无命中             |
+| `user-core` 无 `import.meta.env` 直接访问                                         | ✅   | grep 无命中             |
+| `auth.state.ts` 使用 `zustand/vanilla` 的 `createStore`                           | ✅   | 符合规范                |
+| `ApiClient` 通过 `RuntimeConfigPort` 注入配置                                     | ✅   | 符合规范                |
+| `user-web` adapters 层正确注入 `storage` / `i18n` / `onLogout`                    | ✅   | `authStore.ts` 结构正确 |
 
 ### 识别到的风险
 
@@ -1111,6 +1111,7 @@ Backlog 验收标准：
 #### 风险 2：`domain/executions/index.ts` 体积偏大（318 行）
 
 当前 `domain/executions/index.ts` 同时承载了：
+
 - View Model 接口定义
 - 输入字段解析逻辑
 - 详情摘要/步骤/阶段构建逻辑
@@ -1135,6 +1136,7 @@ domain/executions/
 #### 风险 3：`auth.state.ts` 包含 UI 偏好（theme / sidebarCollapsed）
 
 `AuthStoreState` 目前混合了认证状态（`accessToken` / `refreshToken` / `user`）与 UI 偏好（`theme` / `language` / `sidebarCollapsed`）。这会导致：
+
 - 未来多端使用时，非 Web 端（RN / Electron）也持有了不需要的 Web UI 偏好字段
 - 状态持久化逻辑与认证逻辑耦合在一个 store 中
 
@@ -1143,6 +1145,7 @@ domain/executions/
 #### 风险 4：`notification.state.ts` 与 WebSocket 生命周期绑定点需持续验收
 
 `packages/user-core/src/state/notification.state.ts` 仍由状态层承载通知数据，但生命周期绑定点已经收敛到 `apps/frontend/user-web/src/app/UserRuntimeEffects.tsx`：
+
 - 登录后由 `UserRuntimeEffects` 负责建立 `runtimeSocket` 连接并挂载订阅
 - 登出或无会话时由同一入口负责 `disconnect()` 与 `notificationStore.reset()`
 - 组件卸载时统一清理 subscription，避免 socket 生命周期分散在页面层
@@ -1152,6 +1155,7 @@ domain/executions/
 #### 风险 5：SSO 认证接口尚未落地
 
 目前 `user-web` 保持独立登录入口，`user-core` 通过 `AuthSessionPort` 抽象了会话能力。当需要支持 SSO 时：
+
 - `AuthSessionPort.getSnapshot()` / `setTokens()` / `clearSession()` 的接口设计已经足够支撑 SSO 适配器替换
 - 需要新增的能力：SSO 重定向（`onUnauthorized` 可复用）、token 交换、静默刷新
 
@@ -1160,6 +1164,7 @@ domain/executions/
 #### 风险 6：`portal` 与 `user-web` 仍然各自维护认证逻辑
 
 `portal` 目前有自己的 auth store 和登录链路，`user-web` 使用 `@ops/user-core` 的 `createAuthStore`。两者目前互相独立（符合当前决策），但：
+
 - 若用户同时打开 `portal` 和 `user-web`，token 刷新会各自独立执行，可能导致 token 竞争
 - Sprint 6 清理 portal 时，需要先确认 token 管理策略，并明确哪些用户链路应继续保留给内部排障与调试使用
 
@@ -1196,18 +1201,18 @@ export interface AuthSessionPort {
   clearSession(): void;
   onUnauthorized?(): void;
   // SSO 阶段新增（可选）
-  initiateLogin?(): void;          // 触发 SSO 重定向
+  initiateLogin?(): void; // 触发 SSO 重定向
   handleCallback?(code: string): Promise<void>; // 交换 token
 }
 ```
 
 ### 下一步优先建议
 
-| 优先级 | 建议 | 原因 |
-|---|---|---|
-| P0 | 按 `docs/sprint5-minimal-acceptance.md` 验收 Sprint 5 功能闭环（聊天/报告/通知）| 当前 user-web 功能尚未完整回归 |
-| P1 | 拆分 `domain/executions/index.ts` → `inputFields.ts` + `detailView.ts` | 防止单文件继续膨胀 |
-| P1 | 验收 `UserRuntimeEffects` 中的通知 / Socket 生命周期闭环 | 绑定点已明确，需继续做功能回归 |
-| P2 | 启动 Sprint 6：按“内部全集工作台”原则收敛 portal | 保留 `/executions`、`/reports` 等调试入口，同时清理无必要重复链路 |
-| P2 | 继续推进 SSO 阶段一（统一认证入口）| `AuthSessionPort` 与 `user-web` 登录入口已可承载最小前端适配 |
-| P3 | 将 theme/language/sidebarCollapsed 从 authStore 拆出为 preferencesStore | 风险 3，非紧急 |
+| 优先级 | 建议                                                                             | 原因                                                              |
+| ------ | -------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| P0     | 按 `docs/sprint5-minimal-acceptance.md` 验收 Sprint 5 功能闭环（聊天/报告/通知） | 当前 user-web 功能尚未完整回归                                    |
+| P1     | 拆分 `domain/executions/index.ts` → `inputFields.ts` + `detailView.ts`           | 防止单文件继续膨胀                                                |
+| P1     | 验收 `UserRuntimeEffects` 中的通知 / Socket 生命周期闭环                         | 绑定点已明确，需继续做功能回归                                    |
+| P2     | 启动 Sprint 6：按“内部全集工作台”原则收敛 portal                                 | 保留 `/executions`、`/reports` 等调试入口，同时清理无必要重复链路 |
+| P2     | 继续推进 SSO 阶段一（统一认证入口）                                              | `AuthSessionPort` 与 `user-web` 登录入口已可承载最小前端适配      |
+| P3     | 将 theme/language/sidebarCollapsed 从 authStore 拆出为 preferencesStore          | 风险 3，非紧急                                                    |

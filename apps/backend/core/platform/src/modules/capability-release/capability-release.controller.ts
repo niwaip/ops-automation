@@ -1,4 +1,15 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Query, Request, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Put,
+  Query,
+  Request,
+  Res,
+} from '@nestjs/common';
 import type { Response } from 'express';
 import { ApiBody, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Roles, Public } from '../../decorators';
@@ -99,10 +110,7 @@ export class CapabilityReleaseController {
 
   @Post('runtime/execute')
   @Public()
-  async executeCapabilityRuntime(
-    @Body() body: ExecuteCapabilityRuntimeDTO,
-    @Request() req: any,
-  ) {
+  async executeCapabilityRuntime(@Body() body: ExecuteCapabilityRuntimeDTO, @Request() req: any) {
     return this.capabilityReleaseService.executeCapabilityRuntime(body, req.user?.id);
   }
 
@@ -122,12 +130,12 @@ export class CapabilityReleaseController {
   async executePublishedSkill(
     @Param('skillId') skillId: string,
     @Body() body: { input?: Record<string, unknown> },
-    @Request() req: any,
+    @Request() req: any
   ) {
     const result = await this.capabilityReleaseService.executePublishedSkill(
       skillId,
       body?.input,
-      req.user?.id,
+      req.user?.id
     );
     return result;
   }
@@ -157,7 +165,7 @@ export class CapabilityReleaseController {
   async updateSource(
     @Param('id') id: string,
     @Body() body: UpdateCapabilitySourceDTO,
-    @Request() req: any,
+    @Request() req: any
   ) {
     const release = await this.capabilityReleaseService.updateSource(id, body, req.user?.id);
     return { release };
@@ -168,7 +176,7 @@ export class CapabilityReleaseController {
   async build(
     @Param('id') id: string,
     @Body() body: CreateCapabilityBuildDTO,
-    @Request() req: any,
+    @Request() req: any
   ) {
     return this.capabilityReleaseService.build(id, body, req.user?.id);
   }
@@ -181,7 +189,7 @@ export class CapabilityReleaseController {
     @Query('modelId') modelId: string | undefined,
     @Query('errorContext') errorContext: string | undefined,
     @Request() req: any,
-    @Res() res: Response,
+    @Res() res: Response
   ) {
     res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
     res.setHeader('Cache-Control', 'no-cache, no-transform');
@@ -202,7 +210,7 @@ export class CapabilityReleaseController {
           errorContext,
         },
         req.user?.id,
-        sendEvent,
+        sendEvent
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : '未知错误';
@@ -224,7 +232,7 @@ export class CapabilityReleaseController {
   async validateStatic(
     @Param('id') id: string,
     @Body() body: ValidateCapabilityDTO,
-    @Request() req: any,
+    @Request() req: any
   ) {
     return this.capabilityReleaseService.validateStatic(id, body, req.user?.id);
   }
@@ -234,13 +242,13 @@ export class CapabilityReleaseController {
   async validateSandbox(
     @Param('id') id: string,
     @Body() body: ValidateCapabilityDTO,
-    @Request() req: any,
+    @Request() req: any
   ) {
     return this.capabilityReleaseService.validateSandbox(
       id,
       body,
       req.user?.id,
-      req.headers?.authorization,
+      req.headers?.authorization
     );
   }
 
@@ -253,7 +261,7 @@ export class CapabilityReleaseController {
     @Query('testUserInput') testUserInput: string | undefined,
     @Query('input') input: string | undefined,
     @Request() req: any,
-    @Res() res: Response,
+    @Res() res: Response
   ) {
     const parsedInput = input ? JSON.parse(input) : undefined;
     res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
@@ -277,7 +285,7 @@ export class CapabilityReleaseController {
         },
         req.user?.id,
         req.headers?.authorization,
-        sendEvent,
+        sendEvent
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : '未知错误';
@@ -299,7 +307,7 @@ export class CapabilityReleaseController {
   async generateSkillDraft(
     @Param('id') id: string,
     @Body() body: GenerateSkillDraftDTO,
-    @Request() req: any,
+    @Request() req: any
   ) {
     return this.capabilityReleaseService.generateSkillDraft(id, body, req.user?.id);
   }
@@ -316,7 +324,7 @@ export class CapabilityReleaseController {
   async updateSkillDraft(
     @Param('id') id: string,
     @Body() body: UpdateSkillDraftDTO,
-    @Request() req: any,
+    @Request() req: any
   ) {
     const skillDraft = await this.capabilityReleaseService.updateSkillDraft(id, body, req.user?.id);
     return { skillDraft };
@@ -327,7 +335,7 @@ export class CapabilityReleaseController {
   async publishSkill(
     @Param('id') id: string,
     @Body() body: PublishSkillDraftDTO,
-    @Request() req: any,
+    @Request() req: any
   ) {
     return this.capabilityReleaseService.publishSkill(id, body, req.user?.id);
   }
@@ -337,7 +345,7 @@ export class CapabilityReleaseController {
   async approveRelease(
     @Param('id') id: string,
     @Body() body: ApproveCapabilityReleaseDTO,
-    @Request() req: any,
+    @Request() req: any
   ) {
     const release = await this.capabilityReleaseService.approveRelease(id, body, req.user?.id);
     return { release };
@@ -348,7 +356,7 @@ export class CapabilityReleaseController {
   async deploy(
     @Param('id') id: string,
     @Body() body: DeployCapabilityReleaseDTO,
-    @Request() req: any,
+    @Request() req: any
   ) {
     return this.capabilityReleaseService.deploy(id, body, req.user?.id);
   }
@@ -358,7 +366,7 @@ export class CapabilityReleaseController {
   async suggestWizardAssist(
     @Param('id') id: string,
     @Body() body: SuggestReleaseWizardAssistDTO,
-    @Request() req: any,
+    @Request() req: any
   ) {
     return this.capabilityReleaseService.suggestWizardAssist(id, body, req.user?.id);
   }
@@ -382,7 +390,7 @@ export class CapabilityReleaseController {
   async rollback(
     @Param('id') id: string,
     @Body() body: RollbackCapabilityReleaseDTO,
-    @Request() req: any,
+    @Request() req: any
   ) {
     return this.capabilityReleaseService.rollback(id, body, req.user?.id);
   }
@@ -392,7 +400,7 @@ export class CapabilityReleaseController {
   async analyzeFailure(
     @Param('id') id: string,
     @Body() body: AnalyzeFailureDTO,
-    @Request() req: any,
+    @Request() req: any
   ) {
     return this.capabilityReleaseService.analyzeFailure(id, body, req.user?.id);
   }

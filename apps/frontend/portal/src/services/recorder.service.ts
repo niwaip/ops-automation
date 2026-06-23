@@ -34,6 +34,11 @@ export interface CompiledTemplate {
     wait?: { type: string; value: number | string };
     on_fail?: string;
     retry?: { max_attempts: number; delay_ms: number };
+    execution_policy?:
+      | 'auto_execute'
+      | 'require_confirmation'
+      | 'require_takeover'
+      | 'forbid_in_replay';
   }>;
   metadata: {
     created_by: string;
@@ -203,9 +208,12 @@ class RecorderService {
         resolve();
       });
 
-      this.socket.on('STATUS', (data: { status: RecorderStatus; url?: string; cdpPort?: number }) => {
-        this.emit('status', data);
-      });
+      this.socket.on(
+        'STATUS',
+        (data: { status: RecorderStatus; url?: string; cdpPort?: number }) => {
+          this.emit('status', data);
+        }
+      );
 
       this.socket.on('SCRIPT_UPDATE', (data: { script: string }) => {
         this.emit('script', data);
@@ -271,23 +279,21 @@ class RecorderService {
   }
 
   startTakeover(request: StartTakeoverRequest): Promise<StartTakeoverResponse> {
-    return apiClient.post('/browser/takeover/start', request);
+    return apiClient.post('/browser-runtime/takeover/start', request);
   }
 
   stopTakeover(request: StopTakeoverRequest): Promise<StopTakeoverResponse> {
-    return apiClient.post('/browser/takeover/stop', request);
+    return apiClient.post('/browser-runtime/takeover/stop', request);
   }
 
   reconcileAfterTakeover(
-    request: ReconcileAfterTakeoverRequest,
+    request: ReconcileAfterTakeoverRequest
   ): Promise<ReconcileAfterTakeoverResponse> {
     return apiClient.post('/ai/recorder-debug/reconcile', request);
   }
 
-  resumeAfterTakeover(
-    request: ResumeAfterTakeoverRequest,
-  ): Promise<ResumeAfterTakeoverResponse> {
-    return apiClient.post('/browser/takeover/resume', request);
+  resumeAfterTakeover(request: ResumeAfterTakeoverRequest): Promise<ResumeAfterTakeoverResponse> {
+    return apiClient.post('/browser-runtime/takeover/resume', request);
   }
 
   getTakeoverState(runtimeSessionId: string) {
@@ -295,7 +301,7 @@ class RecorderService {
       runtimeSessionId: string;
       runtime?: Record<string, unknown>;
       takeover?: Record<string, unknown>;
-    }>(`/browser/takeover/${encodeURIComponent(runtimeSessionId)}`);
+    }>(`/browser-runtime/takeover/${encodeURIComponent(runtimeSessionId)}`);
   }
 
   disconnect(): void {

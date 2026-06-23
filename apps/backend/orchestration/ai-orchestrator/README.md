@@ -12,15 +12,15 @@ AI Orchestrator Service for the Browser Control Plane. Provides OpenAI-compatibl
 
 ## API Endpoints
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/ai/models` | GET | List all registered models |
-| `/ai/models` | POST | Register a new model |
-| `/ai/models/:id` | GET | Get model details |
-| `/ai/agents` | POST | Create a new agent instance |
-| `/ai/agents/:id` | GET | Get agent status |
-| `/ai/recognize-params` | POST | Recognize parameters from input |
-| `/ai/decide-failure` | POST | Decide failure handling strategy |
+| Endpoint               | Method | Description                      |
+| ---------------------- | ------ | -------------------------------- |
+| `/ai/models`           | GET    | List all registered models       |
+| `/ai/models`           | POST   | Register a new model             |
+| `/ai/models/:id`       | GET    | Get model details                |
+| `/ai/agents`           | POST   | Create a new agent instance      |
+| `/ai/agents/:id`       | GET    | Get agent status                 |
+| `/ai/recognize-params` | POST   | Recognize parameters from input  |
+| `/ai/decide-failure`   | POST   | Decide failure handling strategy |
 
 ## Project Structure
 

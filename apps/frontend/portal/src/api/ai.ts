@@ -1,7 +1,17 @@
 import { apiClient } from './client';
 
 // AI Model types for admin page
-export type ModelProvider = 'openai' | 'anthropic' | 'azure' | 'local' | 'alibaba-coding' | 'alibaba-bailian' | 'deepseek' | 'minimax' | 'siliconflow';
+export type ModelProvider =
+  | 'openai'
+  | 'anthropic'
+  | 'azure'
+  | 'local'
+  | 'alibaba-coding'
+  | 'alibaba-bailian'
+  | 'deepseek'
+  | 'minimax'
+  | 'bigmodel'
+  | 'siliconflow';
 
 export type ModelCapabilityTier = 'standard' | 'advanced';
 
@@ -138,11 +148,16 @@ export const aiModelApi = {
     return apiClient.post<AIProviderConfig>('/ai/providers', data);
   },
 
-  updateProviderConfig: async (id: string, data: UpdateAIProviderConfigRequest): Promise<AIProviderConfig> => {
+  updateProviderConfig: async (
+    id: string,
+    data: UpdateAIProviderConfigRequest
+  ): Promise<AIProviderConfig> => {
     return apiClient.patch<AIProviderConfig>(`/ai/providers/${id}`, data);
   },
 
-  checkProviderHealth: async (id: string): Promise<{ success: boolean; response?: string; error?: string }> => {
+  checkProviderHealth: async (
+    id: string
+  ): Promise<{ success: boolean; response?: string; error?: string }> => {
     return apiClient.post(`/ai/providers/${id}/health`);
   },
 
@@ -174,15 +189,24 @@ export const aiModelApi = {
     return apiClient.patch<AIModel>(`/ai/models/${id}/disable`);
   },
 
-  test: async (id: string, prompt: string): Promise<{ success: boolean; response?: string; error?: string }> => {
+  test: async (
+    id: string,
+    prompt: string
+  ): Promise<{ success: boolean; response?: string; error?: string }> => {
     return apiClient.post(`/ai/models/${id}/test`, { prompt });
   },
 
-  testConfigWithStoredKey: async (id: string): Promise<{ success: boolean; response?: string; error?: string }> => {
+  testConfigWithStoredKey: async (
+    id: string
+  ): Promise<{ success: boolean; response?: string; error?: string }> => {
     return apiClient.post(`/ai/models/${id}/test-config`);
   },
 
-  testConfig: async (endpoint: string, apiKey: string, modelName: string): Promise<{ success: boolean; response?: string; error?: string }> => {
+  testConfig: async (
+    endpoint: string,
+    apiKey: string,
+    modelName: string
+  ): Promise<{ success: boolean; response?: string; error?: string }> => {
     return apiClient.post('/ai/models/test-config', { endpoint, apiKey, modelName });
   },
 
@@ -202,11 +226,14 @@ export interface RecognizeParamsRequest {
   context?: Record<string, unknown>;
   // 传入模版的 params_schema，让 AI 能够正确识别参数
   params_schema?: {
-    properties: Record<string, {
-      type: string;
-      description?: string;
-      default?: string | number | boolean;
-    }>;
+    properties: Record<
+      string,
+      {
+        type: string;
+        description?: string;
+        default?: string | number | boolean;
+      }
+    >;
     required?: string[];
   };
 }

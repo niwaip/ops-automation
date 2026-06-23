@@ -4,7 +4,8 @@ import { FileHandler } from '../../lib/file';
 
 describe('Render real DOCX template diagnostic', () => {
   it('renders template 9517d1eb without concatenating adjacent loop rows', async () => {
-    const templatePath = '/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/9517d1eb-ee64-442a-ba67-c0dbe2a5ecf6.docx';
+    const templatePath =
+      '/Users/chain/Documents/MyProject/ops-automation/.data/carbone-engine/templates/9517d1eb-ee64-442a-ba67-c0dbe2a5ecf6.docx';
     const templateBuffer = fs.readFileSync(templatePath);
     const handler = new FileHandler();
 
@@ -50,7 +51,12 @@ describe('Render real DOCX template diagnostic', () => {
     const outputZip = await JSZip.loadAsync(renderedBuffer);
     const documentXml = await outputZip.file('word/document.xml')!.async('text');
     const rows = documentXml.match(/<w:tr\b[^>]*>[\s\S]*?<\/w:tr>/g) || [];
-    const targetRows = rows.filter((row) => row.includes('人民元280,000円') || row.includes('人民元120,000円') || row.includes('人民元100,000円'));
+    const targetRows = rows.filter(
+      (row) =>
+        row.includes('人民元280,000円') ||
+        row.includes('人民元120,000円') ||
+        row.includes('人民元100,000円')
+    );
     const targetCells = targetRows.flatMap((row) => row.match(/<w:tc\b[\s\S]*?<\/w:tc>/g) || []);
 
     expect(documentXml).not.toContain('人民元280,000円企业管理系统升级');

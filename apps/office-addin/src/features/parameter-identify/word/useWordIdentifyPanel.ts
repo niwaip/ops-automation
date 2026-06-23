@@ -53,11 +53,11 @@ export function useWordIdentifyPanel() {
           if (log.level !== 'error') return false;
           const text = `${log.message || ''}\n${log.details || ''}`.toLowerCase();
           return (
-            text.includes('识别')
-            || text.includes('分析')
-            || text.includes('direct-ai-identify')
-            || text.includes('status code 500')
-            || text.includes('状态码')
+            text.includes('识别') ||
+            text.includes('分析') ||
+            text.includes('direct-ai-identify') ||
+            text.includes('status code 500') ||
+            text.includes('状态码')
           );
         })
         .slice(-3)

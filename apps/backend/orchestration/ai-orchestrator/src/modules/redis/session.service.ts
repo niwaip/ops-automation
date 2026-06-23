@@ -21,9 +21,13 @@ export class SessionService {
   private readonly logger = new Logger(SessionService.name);
   private readonly taskSessionTTL = parseInt(process.env.TASK_SESSION_TTL_SECONDS || '86400', 10);
   private readonly chatSessionTTL = parseInt(process.env.CHAT_SESSION_TTL_SECONDS || '259200', 10);
-  private readonly chatSessionMaxMessages = parseInt(process.env.CHAT_SESSION_MAX_MESSAGES || '20', 10);
-  private readonly chatSessionCleanupStrategy =
-    (process.env.CHAT_SESSION_CLEANUP_STRATEGY || 'sliding_window').toLowerCase();
+  private readonly chatSessionMaxMessages = parseInt(
+    process.env.CHAT_SESSION_MAX_MESSAGES || '20',
+    10
+  );
+  private readonly chatSessionCleanupStrategy = (
+    process.env.CHAT_SESSION_CLEANUP_STRATEGY || 'sliding_window'
+  ).toLowerCase();
 
   constructor(private readonly redisService: RedisService) {}
 
@@ -35,16 +39,14 @@ export class SessionService {
     return `chat_session:${sessionId}`;
   }
 
-  private cleanupChatHistory(
-    history: ChatSessionData['history'],
-  ): ChatSessionData['history'] {
+  private cleanupChatHistory(history: ChatSessionData['history']): ChatSessionData['history'] {
     if (this.chatSessionMaxMessages <= 0 || history.length <= this.chatSessionMaxMessages) {
       return history;
     }
 
     if (this.chatSessionCleanupStrategy === 'reset_on_limit') {
       this.logger.debug(
-        `Chat history exceeds limit ${this.chatSessionMaxMessages}, reset by strategy reset_on_limit`,
+        `Chat history exceeds limit ${this.chatSessionMaxMessages}, reset by strategy reset_on_limit`
       );
       return [];
     }
@@ -112,7 +114,7 @@ export class SessionService {
 
   async appendChatMessages(
     sessionId: string,
-    messages: ChatSessionData['history'],
+    messages: ChatSessionData['history']
   ): Promise<ChatSessionData> {
     const existing = await this.getChatSession(sessionId);
     const merged = [...(existing?.history || []), ...messages];

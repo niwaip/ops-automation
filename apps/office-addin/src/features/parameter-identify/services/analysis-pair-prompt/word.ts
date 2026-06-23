@@ -3,26 +3,39 @@ import { buildPromptShortContext } from './shared';
 
 export function buildWordSectionAnalysisChatPrompt(request: StructuredAnalyzeRequest): string {
   const shortContext = buildPromptShortContext(request);
-  const documentContentText = String(request.documentContent || request.diffOverview || request.diffSummary || '')
+  const documentContentText = String(
+    request.documentContent || request.diffOverview || request.diffSummary || ''
+  )
     .replace(/\s+/g, ' ')
     .trim();
   const chapterContext = documentContentText
-    ? (documentContentText.length > 1200 ? `${documentContentText.slice(0, 1200).trim()}...` : documentContentText)
+    ? documentContentText.length > 1200
+      ? `${documentContentText.slice(0, 1200).trim()}...`
+      : documentContentText
     : '未提供';
-  const structuredCandidates = Array.isArray(request.wordSectionCandidates) ? request.wordSectionCandidates : [];
-  const structuredBilingualGroups = Array.isArray(request.wordSectionBilingualGroups) ? request.wordSectionBilingualGroups : [];
-  const acceptedSuggestions = Array.isArray(request.wordSectionAcceptedSuggestions) ? request.wordSectionAcceptedSuggestions : [];
-  const roundIndex = typeof request.wordSectionRoundIndex === 'number' ? request.wordSectionRoundIndex : 1;
-  const maxRounds = typeof request.wordSectionMaxRounds === 'number' ? request.wordSectionMaxRounds : 5;
-  const candidatesPayload = structuredCandidates.length > 0
-    ? JSON.stringify(structuredCandidates, null, 2)
-    : (request.candidateFieldList || '未提供');
-  const bilingualGroupsPayload = structuredBilingualGroups.length > 0
-    ? JSON.stringify(structuredBilingualGroups, null, 2)
-    : (request.bilingualCandidatePairs || '未提供');
-  const acceptedSuggestionsPayload = acceptedSuggestions.length > 0
-    ? JSON.stringify(acceptedSuggestions, null, 2)
-    : '[]';
+  const structuredCandidates = Array.isArray(request.wordSectionCandidates)
+    ? request.wordSectionCandidates
+    : [];
+  const structuredBilingualGroups = Array.isArray(request.wordSectionBilingualGroups)
+    ? request.wordSectionBilingualGroups
+    : [];
+  const acceptedSuggestions = Array.isArray(request.wordSectionAcceptedSuggestions)
+    ? request.wordSectionAcceptedSuggestions
+    : [];
+  const roundIndex =
+    typeof request.wordSectionRoundIndex === 'number' ? request.wordSectionRoundIndex : 1;
+  const maxRounds =
+    typeof request.wordSectionMaxRounds === 'number' ? request.wordSectionMaxRounds : 5;
+  const candidatesPayload =
+    structuredCandidates.length > 0
+      ? JSON.stringify(structuredCandidates, null, 2)
+      : request.candidateFieldList || '未提供';
+  const bilingualGroupsPayload =
+    structuredBilingualGroups.length > 0
+      ? JSON.stringify(structuredBilingualGroups, null, 2)
+      : request.bilingualCandidatePairs || '未提供';
+  const acceptedSuggestionsPayload =
+    acceptedSuggestions.length > 0 ? JSON.stringify(acceptedSuggestions, null, 2) : '[]';
 
   return `【系统提示词】
 你是 Word 模板参数建模专家。任务：仅根据当前章节的 candidates，为每个 candidateId 分配一个合理的、带业务语义的 JSON 字段路径。

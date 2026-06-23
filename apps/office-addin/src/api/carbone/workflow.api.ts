@@ -34,15 +34,20 @@ function buildUnderstandFallbackFromAnalyze(
     analysisId: analyzeResult.analysisId,
     languageProfile: analyzeResult.languageProfile,
     summary: {
-      documentTitle: request.templateDocumentIr?.metadata?.title || request.sampleDocument?.fileName,
+      documentTitle:
+        request.templateDocumentIr?.metadata?.title || request.sampleDocument?.fileName,
       understandingSummaryText: undefined,
       sampleFileName: request.sampleDocument?.fileName,
-      paragraphCount: request.templateDocumentIr?.stats?.paragraphCount
-        || request.templateDocumentIr?.elements?.filter((element) => element?.type === 'paragraph').length
-        || 0,
-      tableCount: request.templateDocumentIr?.stats?.tableCount
-        || request.templateDocumentIr?.elements?.filter((element) => element?.type === 'table').length
-        || 0,
+      paragraphCount:
+        request.templateDocumentIr?.stats?.paragraphCount ||
+        request.templateDocumentIr?.elements?.filter((element) => element?.type === 'paragraph')
+          .length ||
+        0,
+      tableCount:
+        request.templateDocumentIr?.stats?.tableCount ||
+        request.templateDocumentIr?.elements?.filter((element) => element?.type === 'table')
+          .length ||
+        0,
       sectionHints: [],
       terminologyCandidates: analyzeResult.fields
         .filter((field) => field.termMatch?.status === 'matched')
@@ -86,9 +91,17 @@ function buildRecognizeFallbackFromAnalyze(
       return {
         blockId,
         blockType: String(element?.type || 'paragraph'),
-        title: String(element?.text || '').trim().slice(0, 24) || blockId,
-        sectionTitle: String(element?.text || '').trim().slice(0, 24) || blockId,
-        sourceExcerpt: String(element?.text || '').trim().slice(0, 120),
+        title:
+          String(element?.text || '')
+            .trim()
+            .slice(0, 24) || blockId,
+        sectionTitle:
+          String(element?.text || '')
+            .trim()
+            .slice(0, 24) || blockId,
+        sourceExcerpt: String(element?.text || '')
+          .trim()
+          .slice(0, 120),
         suggestionCount: matchedFields.length,
         fieldIds: matchedFields.map((field) => field.fieldId),
         aiCallSucceeded: false,
@@ -99,9 +112,10 @@ function buildRecognizeFallbackFromAnalyze(
         fallbackReason: matchedFields.length > 0 ? 'rule_based_block_scan' : undefined,
         contextAnalysis: {
           requestSummary: `块 ${blockId || 'unknown'} 已进入识别队列`,
-          responseSummary: matchedFields.length > 0
-            ? `通过回退链路识别到 ${matchedFields.length} 个字段`
-            : '当前块未返回字段候选',
+          responseSummary:
+            matchedFields.length > 0
+              ? `通过回退链路识别到 ${matchedFields.length} 个字段`
+              : '当前块未返回字段候选',
           cacheHit: false,
           fallbackReason: matchedFields.length > 0 ? 'rule_based_block_scan' : undefined,
           retryCount: 0,
@@ -123,16 +137,19 @@ function buildRecognizeFallbackFromAnalyze(
         candidateFieldCount: analyzeResult.fields.length,
       },
       responseTrace: {
-        summary: analyzeResult.fields.length > 0
-          ? `已合并 ${analyzeResult.fields.length} 个字段候选`
-          : '当前未返回字段候选',
+        summary:
+          analyzeResult.fields.length > 0
+            ? `已合并 ${analyzeResult.fields.length} 个字段候选`
+            : '当前未返回字段候选',
         mergedFieldCount: analyzeResult.fields.length,
         recognizedBlockCount: blockResults.filter((block) => block.suggestionCount > 0).length,
       },
       fallbackTrace: {
         usedFallback: true,
         reason: 'recognize 接口不可用，前端已回退到 analyze 结果',
-        fallbackBlockCount: blockResults.filter((block) => block.resultStatus === 'fallback_success').length,
+        fallbackBlockCount: blockResults.filter(
+          (block) => block.resultStatus === 'fallback_success'
+        ).length,
       },
       cacheTrace: {
         recognitionHit: false,
@@ -152,7 +169,9 @@ export function createCarboneWorkflowApi(getBaseUrl: ApiBaseUrlGetter) {
       return response.data;
     },
 
-    async identifyDocumentMultiStage(request: DirectAIIdentifyRequest): Promise<AIIdentifyResponse> {
+    async identifyDocumentMultiStage(
+      request: DirectAIIdentifyRequest
+    ): Promise<AIIdentifyResponse> {
       const response = await axios.post(
         `${getBaseUrl()}/studio/direct-ai-identify-multistage`,
         request,
@@ -202,7 +221,9 @@ export function createCarboneWorkflowApi(getBaseUrl: ApiBaseUrlGetter) {
       };
     },
 
-    async analyzeTemplateWorkflow(request: TemplateAnalyzeRequest): Promise<TemplateAnalyzeResponse> {
+    async analyzeTemplateWorkflow(
+      request: TemplateAnalyzeRequest
+    ): Promise<TemplateAnalyzeResponse> {
       const response = await axios.post(
         `${getBaseUrl()}/studio/template/analyze`,
         request,
@@ -211,7 +232,9 @@ export function createCarboneWorkflowApi(getBaseUrl: ApiBaseUrlGetter) {
       return response.data;
     },
 
-    async compareTemplateWorkflow(request: TemplateAnalyzeRequest): Promise<TemplateCompareResponse> {
+    async compareTemplateWorkflow(
+      request: TemplateAnalyzeRequest
+    ): Promise<TemplateCompareResponse> {
       const response = await axios.post(
         `${getBaseUrl()}/studio/template/compare`,
         request,
@@ -220,7 +243,9 @@ export function createCarboneWorkflowApi(getBaseUrl: ApiBaseUrlGetter) {
       return response.data;
     },
 
-    async understandTemplateWorkflow(request: TemplateAnalyzeRequest): Promise<TemplateUnderstandResponse> {
+    async understandTemplateWorkflow(
+      request: TemplateAnalyzeRequest
+    ): Promise<TemplateUnderstandResponse> {
       try {
         const response = await axios.post(
           `${getBaseUrl()}/studio/template/understand`,
@@ -238,7 +263,9 @@ export function createCarboneWorkflowApi(getBaseUrl: ApiBaseUrlGetter) {
       }
     },
 
-    async recognizeTemplateWorkflow(request: TemplateAnalyzeRequest): Promise<TemplateRecognizeResponse> {
+    async recognizeTemplateWorkflow(
+      request: TemplateAnalyzeRequest
+    ): Promise<TemplateRecognizeResponse> {
       try {
         const response = await axios.post(
           `${getBaseUrl()}/studio/template/recognize`,

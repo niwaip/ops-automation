@@ -55,7 +55,9 @@ function inferSourceCounts(suggestions: AISuggestion[]): Record<string, number> 
   }, {});
 }
 
-export function buildAnalysisSummary(result: Awaited<ReturnType<typeof analyzeDocumentWithAI>>): AnalysisSummary {
+export function buildAnalysisSummary(
+  result: Awaited<ReturnType<typeof analyzeDocumentWithAI>>
+): AnalysisSummary {
   const contextAnalysis = result.contextAnalysis || {};
   const sourceCounts =
     (contextAnalysis.sourceCounts as Record<string, number> | undefined) ||
@@ -70,7 +72,9 @@ export function buildAnalysisSummary(result: Awaited<ReturnType<typeof analyzeDo
     requestMode: String(contextAnalysis.requestMode || 'unknown'),
     resultSource: String(contextAnalysis.resultSource || 'unknown'),
     analysisExecutor: String(contextAnalysis.analysisExecutor || 'studio'),
-    requestedAnalysisExecutor: String(contextAnalysis.requestedAnalysisExecutor || contextAnalysis.analysisExecutor || 'studio'),
+    requestedAnalysisExecutor: String(
+      contextAnalysis.requestedAnalysisExecutor || contextAnalysis.analysisExecutor || 'studio'
+    ),
     analysisExecutorFallbackReason: contextAnalysis.analysisExecutorFallbackReason
       ? String(contextAnalysis.analysisExecutorFallbackReason)
       : undefined,
@@ -95,10 +99,13 @@ export function buildAnalysisSummary(result: Awaited<ReturnType<typeof analyzeDo
       ? String(contextAnalysis.rawAiResponse)
       : undefined,
     globalUnderstandingError:
-      contextAnalysis.globalUnderstandingError && typeof contextAnalysis.globalUnderstandingError === 'object'
+      contextAnalysis.globalUnderstandingError &&
+      typeof contextAnalysis.globalUnderstandingError === 'object'
         ? {
             message: (contextAnalysis.globalUnderstandingError as Record<string, unknown>).message
-              ? String((contextAnalysis.globalUnderstandingError as Record<string, unknown>).message)
+              ? String(
+                  (contextAnalysis.globalUnderstandingError as Record<string, unknown>).message
+                )
               : undefined,
             reason: (contextAnalysis.globalUnderstandingError as Record<string, unknown>).reason
               ? String((contextAnalysis.globalUnderstandingError as Record<string, unknown>).reason)
@@ -165,7 +172,10 @@ function getExcelSuggestionSheetNames(suggestion: AISuggestion): string[] {
   return Array.from(names);
 }
 
-function suggestionBelongsToExcelPair(suggestion: AISuggestion, pair: AnalysisSummary['pairResults'][number]): boolean {
+function suggestionBelongsToExcelPair(
+  suggestion: AISuggestion,
+  pair: AnalysisSummary['pairResults'][number]
+): boolean {
   const anchorPairIndex = suggestion.details?.excelAnchor?.pairIndex;
   if (typeof anchorPairIndex === 'number') {
     return anchorPairIndex === pair.pairIndex;
@@ -218,18 +228,16 @@ export function mergeExcelSuggestionsByPairResult(
 
   const processedPairs = summary.pairResults.filter((pair) => pair.pairIndex >= 0);
   const processedSheetNames = collectProcessedExcelSheetNames(summary, nextSuggestions);
-  const preservedSuggestions = previousSuggestions.filter(
-    (suggestion) => {
-      if (processedPairs.some((pair) => suggestionBelongsToExcelPair(suggestion, pair))) {
-        return false;
-      }
-      const suggestionSheetNames = getExcelSuggestionSheetNames(suggestion);
-      if (suggestionSheetNames.some((sheetName) => processedSheetNames.includes(sheetName))) {
-        return false;
-      }
-      return true;
+  const preservedSuggestions = previousSuggestions.filter((suggestion) => {
+    if (processedPairs.some((pair) => suggestionBelongsToExcelPair(suggestion, pair))) {
+      return false;
     }
-  );
+    const suggestionSheetNames = getExcelSuggestionSheetNames(suggestion);
+    if (suggestionSheetNames.some((sheetName) => processedSheetNames.includes(sheetName))) {
+      return false;
+    }
+    return true;
+  });
 
   return [...preservedSuggestions, ...nextSuggestions];
 }
@@ -244,16 +252,14 @@ export function countPreservedExcelSuggestions(
 
   const processedPairs = summary.pairResults.filter((pair) => pair.pairIndex >= 0);
   const processedSheetNames = collectProcessedExcelSheetNames(summary, []);
-  return previousSuggestions.filter(
-    (suggestion) => {
-      if (processedPairs.some((pair) => suggestionBelongsToExcelPair(suggestion, pair))) {
-        return false;
-      }
-      const suggestionSheetNames = getExcelSuggestionSheetNames(suggestion);
-      if (suggestionSheetNames.some((sheetName) => processedSheetNames.includes(sheetName))) {
-        return false;
-      }
-      return true;
+  return previousSuggestions.filter((suggestion) => {
+    if (processedPairs.some((pair) => suggestionBelongsToExcelPair(suggestion, pair))) {
+      return false;
     }
-  ).length;
+    const suggestionSheetNames = getExcelSuggestionSheetNames(suggestion);
+    if (suggestionSheetNames.some((sheetName) => processedSheetNames.includes(sheetName))) {
+      return false;
+    }
+    return true;
+  }).length;
 }

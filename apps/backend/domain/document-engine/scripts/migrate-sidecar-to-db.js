@@ -132,8 +132,10 @@ function normalizeVariableName(value) {
 }
 
 function isUuid(value) {
-  return typeof value === 'string'
-    && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+  return (
+    typeof value === 'string' &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+  );
 }
 
 function buildSkillSignature(skill) {
@@ -175,7 +177,11 @@ function buildTemplateVariableSignature(meta) {
 
   if (Array.isArray(meta.suggestions)) {
     for (const suggestion of meta.suggestions) {
-      if (!isRecord(suggestion) || !suggestion.applied || typeof suggestion.suggestedName !== 'string') {
+      if (
+        !isRecord(suggestion) ||
+        !suggestion.applied ||
+        typeof suggestion.suggestedName !== 'string'
+      ) {
         continue;
       }
 
@@ -216,7 +222,8 @@ function buildSkillInferenceContext(skillFiles) {
   }
 
   if (fileExists(templatesDir)) {
-    const templateMetaFiles = fs.readdirSync(templatesDir)
+    const templateMetaFiles = fs
+      .readdirSync(templatesDir)
       .filter((fileName) => fileName.endsWith('.json') && !fileName.startsWith('skill_'));
 
     for (const fileName of templateMetaFiles) {
@@ -228,7 +235,7 @@ function buildSkillInferenceContext(skillFiles) {
       addUniqueValue(
         templateVariableSignatureToTemplateIds,
         buildTemplateVariableSignature(meta),
-        meta.id,
+        meta.id
       );
     }
   }
@@ -385,7 +392,7 @@ function resolveSkillMigrationPlan(files, inferenceContext) {
 
     for (const candidate of candidates.slice(1)) {
       console.warn(
-        `[warn] Skip duplicate skill for templateId ${templateId}: ${candidate.fullPath} (keep ${winner.fullPath})`,
+        `[warn] Skip duplicate skill for templateId ${templateId}: ${candidate.fullPath} (keep ${winner.fullPath})`
       );
       details.skipped.push({
         file: candidate.fullPath,
@@ -404,9 +411,10 @@ function resolveSkillMigrationPlan(files, inferenceContext) {
 
 function buildTemplateData(meta) {
   const suggestions = Array.isArray(meta.suggestions) ? meta.suggestions : [];
-  const variables = Array.isArray(meta.variables) && meta.variables.length > 0
-    ? meta.variables
-    : extractVariablesFromSuggestions(suggestions);
+  const variables =
+    Array.isArray(meta.variables) && meta.variables.length > 0
+      ? meta.variables
+      : extractVariablesFromSuggestions(suggestions);
   const templateConfig = meta.templateConfig ?? meta.config ?? null;
 
   return {
@@ -465,10 +473,10 @@ function buildOutputData(meta, outputContext) {
   const canonicalSkillId = resolveCanonicalSkillId(meta.skillId, outputContext);
   const resolvedTemplateId = isUuid(meta.templateId)
     ? meta.templateId
-    : (canonicalSkillId ? outputContext.skillIdToTemplateId.get(canonicalSkillId) ?? null : null);
-  const resolvedMarkedTemplateId = isUuid(meta.markedTemplateId)
-    ? meta.markedTemplateId
-    : null;
+    : canonicalSkillId
+      ? (outputContext.skillIdToTemplateId.get(canonicalSkillId) ?? null)
+      : null;
+  const resolvedMarkedTemplateId = isUuid(meta.markedTemplateId) ? meta.markedTemplateId : null;
 
   return {
     templateId: resolvedTemplateId,
@@ -491,7 +499,8 @@ async function migrateTemplates(prisma) {
     return { scanned: 0, migrated: 0 };
   }
 
-  const files = fs.readdirSync(templatesDir)
+  const files = fs
+    .readdirSync(templatesDir)
     .filter((fileName) => fileName.endsWith('.json') && !fileName.startsWith('skill_'));
 
   let migrated = 0;
@@ -573,8 +582,7 @@ async function migrateOutputs(prisma) {
   const inferenceContext = buildSkillInferenceContext(skillFiles);
   const outputContext = resolveSkillMigrationPlan(skillFiles, inferenceContext);
 
-  const files = fs.readdirSync(outputsDir)
-    .filter((fileName) => fileName.endsWith('.json'));
+  const files = fs.readdirSync(outputsDir).filter((fileName) => fileName.endsWith('.json'));
 
   let migrated = 0;
 

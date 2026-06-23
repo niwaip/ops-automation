@@ -61,19 +61,21 @@ describe('ModelRouterService', () => {
     } as any;
 
     const service = new ModelRouterService(modelService);
-    expect(service.resolveInitialModel('default', undefined, undefined, {
-      mode: 'task',
-      userInput: '生成合同文档并导出 PDF',
-      availableSkills: [
-        {
-          skillId: 'skill-1',
-          skillName: '合同文档生成',
-          triggerKeywords: ['合同', '文档'],
-          paramsSchema: { properties: {}, required: [] },
-          executionType: 'document',
-        },
-      ],
-    })).toEqual({
+    expect(
+      service.resolveInitialModel('default', undefined, undefined, {
+        mode: 'task',
+        userInput: '生成合同文档并导出 PDF',
+        availableSkills: [
+          {
+            skillId: 'skill-1',
+            skillName: '合同文档生成',
+            triggerKeywords: ['合同', '文档'],
+            paramsSchema: { properties: {}, required: [] },
+            executionType: 'document',
+          },
+        ],
+      })
+    ).toEqual({
       modelId: 'doc-model',
       attemptedModelIds: ['doc-model'],
       reason: 'task_type_document',
@@ -113,10 +115,12 @@ describe('ModelRouterService', () => {
     } as any;
 
     const service = new ModelRouterService(modelService);
-    expect(service.resolveInitialModel('default', undefined, undefined, {
-      mode: 'task',
-      userInput: '执行浏览器自动化流程并修复接口脚本',
-    })).toEqual({
+    expect(
+      service.resolveInitialModel('default', undefined, undefined, {
+        mode: 'task',
+        userInput: '执行浏览器自动化流程并修复接口脚本',
+      })
+    ).toEqual({
       modelId: 'coder-model',
       attemptedModelIds: ['coder-model'],
       reason: 'task_type_code',
@@ -125,12 +129,14 @@ describe('ModelRouterService', () => {
 
   it('uses cross-provider-first order for provider errors', () => {
     const modelService = {
-      getFallbackModelIds: jest.fn().mockImplementation((_id: string, strategy?: { groupOrder: string[] }) => {
-        if (strategy?.groupOrder?.[0] === 'cross_provider') {
-          return ['primary', 'cross-backup', 'same-backup'];
-        }
-        return ['primary', 'same-backup', 'cross-backup'];
-      }),
+      getFallbackModelIds: jest
+        .fn()
+        .mockImplementation((_id: string, strategy?: { groupOrder: string[] }) => {
+          if (strategy?.groupOrder?.[0] === 'cross_provider') {
+            return ['primary', 'cross-backup', 'same-backup'];
+          }
+          return ['primary', 'same-backup', 'cross-backup'];
+        }),
     } as any;
 
     const service = new ModelRouterService(modelService);

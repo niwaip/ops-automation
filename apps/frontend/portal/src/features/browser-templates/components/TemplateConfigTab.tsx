@@ -19,9 +19,10 @@ const TemplateConfigTab: React.FC<TemplateConfigTabProps> = ({
   const exportedOutputs = Array.isArray(config.outputs)
     ? (config.outputs as Array<Record<string, unknown>>)
     : [];
-  const exportedSkillDraft = config.skillDraft && typeof config.skillDraft === 'object'
-    ? (config.skillDraft as Record<string, unknown>)
-    : null;
+  const exportedSkillDraft =
+    config.skillDraft && typeof config.skillDraft === 'object'
+      ? (config.skillDraft as Record<string, unknown>)
+      : null;
 
   return (
     <>
@@ -31,9 +32,7 @@ const TemplateConfigTab: React.FC<TemplateConfigTabProps> = ({
             <Card size="small" title="JS 脚本">
               <Collapse ghost defaultActiveKey={[]}>
                 <Panel header="展开查看 JS 脚本" key="script">
-                  <pre style={scriptBlockStyle}>
-                    {exportedScript}
-                  </pre>
+                  <pre style={scriptBlockStyle}>{exportedScript}</pre>
                 </Panel>
               </Collapse>
             </Card>
@@ -57,16 +56,12 @@ const TemplateConfigTab: React.FC<TemplateConfigTabProps> = ({
           )}
           {exportedSkillDraft && (
             <Card size="small" title="Skill 草稿">
-              <pre style={jsonBlockStyle}>
-                {JSON.stringify(exportedSkillDraft, null, 2)}
-              </pre>
+              <pre style={jsonBlockStyle}>{JSON.stringify(exportedSkillDraft, null, 2)}</pre>
             </Card>
           )}
         </Space>
       )}
-      <pre style={jsonBlockStyle}>
-        {JSON.stringify(config, null, 2)}
-      </pre>
+      <pre style={jsonBlockStyle}>{JSON.stringify(config, null, 2)}</pre>
     </>
   );
 };

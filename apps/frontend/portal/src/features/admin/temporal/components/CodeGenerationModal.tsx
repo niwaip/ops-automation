@@ -1,7 +1,13 @@
 import React, { useReducer, useEffect } from 'react';
 import { Modal, Space, Alert, Card, Typography, Button, message } from 'antd';
 import { CodeOutlined } from '@ant-design/icons';
-import { temporalWorkflowApi, WorkflowDsl, ActivityDsl, WorkflowCodeResult, WorkflowCodeStreamEvent } from '@/api/temporal';
+import {
+  temporalWorkflowApi,
+  WorkflowDsl,
+  ActivityDsl,
+  WorkflowCodeResult,
+  WorkflowCodeStreamEvent,
+} from '@/api/temporal';
 
 const { Text } = Typography;
 const MAX_LOG_LINES = 2000;
@@ -26,13 +32,21 @@ export const initialCodeGenerationState: CodeGenerationState = {
   result: null,
 };
 
-export const codeGenerationReducer = (state: CodeGenerationState, action: CodeGenerationAction): CodeGenerationState => {
+export const codeGenerationReducer = (
+  state: CodeGenerationState,
+  action: CodeGenerationAction
+): CodeGenerationState => {
   switch (action.type) {
-    case 'START': return { visible: true, isStreaming: true, logs: [], result: null };
-    case 'APPEND_LOG': return { ...state, logs: [...state.logs.slice(-(MAX_LOG_LINES - 1)), action.payload] };
-    case 'SET_RESULT': return { ...state, isStreaming: false, result: action.payload };
-    case 'CLOSE': return { ...initialCodeGenerationState };
-    default: return state;
+    case 'START':
+      return { visible: true, isStreaming: true, logs: [], result: null };
+    case 'APPEND_LOG':
+      return { ...state, logs: [...state.logs.slice(-(MAX_LOG_LINES - 1)), action.payload] };
+    case 'SET_RESULT':
+      return { ...state, isStreaming: false, result: action.payload };
+    case 'CLOSE':
+      return { ...initialCodeGenerationState };
+    default:
+      return state;
   }
 };
 
@@ -50,7 +64,16 @@ export interface CodeGenerationModalProps {
 }
 
 export const CodeGenerationModal: React.FC<CodeGenerationModalProps> = ({
-  visible, onClose, workflowDsl, activityDsl, workflowName, errorContext, forceAiGeneration, onGenerateSuccess, onViewCode, onAutoRetried
+  visible,
+  onClose,
+  workflowDsl,
+  activityDsl,
+  workflowName,
+  errorContext,
+  forceAiGeneration,
+  onGenerateSuccess,
+  onViewCode,
+  onAutoRetried,
 }) => {
   const [state, dispatch] = useReducer(codeGenerationReducer, initialCodeGenerationState);
 
@@ -61,12 +84,20 @@ export const CodeGenerationModal: React.FC<CodeGenerationModalProps> = ({
   }, [visible]);
 
   const handleGenerateCode = async () => {
-    if (!workflowName) { message.warning('请先填写工作流名称'); onClose(); return; }
-    if (workflowDsl.steps.length === 0) { message.warning('请先添加至少一个步骤'); onClose(); return; }
-    
+    if (!workflowName) {
+      message.warning('请先填写工作流名称');
+      onClose();
+      return;
+    }
+    if (workflowDsl.steps.length === 0) {
+      message.warning('请先添加至少一个步骤');
+      onClose();
+      return;
+    }
+
     const nextWorkflowDsl = { ...workflowDsl, name: workflowName };
     dispatch({ type: 'START' });
-    
+
     try {
       await temporalWorkflowApi.generateWorkflowCodeStream(
         nextWorkflowDsl,
@@ -90,9 +121,11 @@ export const CodeGenerationModal: React.FC<CodeGenerationModalProps> = ({
             dispatch({ type: 'SET_RESULT', payload: result });
             if (result.success && result.code) {
               onGenerateSuccess(result.code);
-              
+
               if (result.autoRetried) {
-                message.success(`代码生成成功，已基于编译反馈自动重试 ${Math.max((result.attempts || 1) - 1, 1)} 次`);
+                message.success(
+                  `代码生成成功，已基于编译反馈自动重试 ${Math.max((result.attempts || 1) - 1, 1)} 次`
+                );
                 if (onAutoRetried) onAutoRetried(result.attempts || 1);
               } else if (forceAiGeneration && result.generationMode === 'ai') {
                 message.success('代码生成成功（已强制使用 AI 生成）');
@@ -125,17 +158,23 @@ export const CodeGenerationModal: React.FC<CodeGenerationModalProps> = ({
   };
 
   const footer = [
-    state.result?.success
-      ? <Button key="view" type="primary" icon={<CodeOutlined />} onClick={onViewCode}>查看代码</Button>
-      : null,
-    <Button key="close" onClick={onClose} disabled={state.isStreaming}>关闭</Button>,
+    state.result?.success ? (
+      <Button key="view" type="primary" icon={<CodeOutlined />} onClick={onViewCode}>
+        查看代码
+      </Button>
+    ) : null,
+    <Button key="close" onClick={onClose} disabled={state.isStreaming}>
+      关闭
+    </Button>,
   ].filter(Boolean);
 
   return (
     <Modal
       title="AI 生成代码状态"
       open={visible}
-      onCancel={() => { if (!state.isStreaming) onClose(); }}
+      onCancel={() => {
+        if (!state.isStreaming) onClose();
+      }}
       footer={footer}
       width={760}
     >
@@ -145,18 +184,25 @@ export const CodeGenerationModal: React.FC<CodeGenerationModalProps> = ({
           <Alert
             type={state.result.success ? 'success' : 'error'}
             message={state.result.success ? '代码生成完成' : '代码生成失败'}
-            description={state.result.error || (
-              state.result.generationMode === 'deterministic'
+            description={
+              state.result.error ||
+              (state.result.generationMode === 'deterministic'
                 ? '本次命中固定模版编译路径。'
-                : `共尝试 ${state.result.attempts || 1} 次生成。`
-            )}
+                : `共尝试 ${state.result.attempts || 1} 次生成。`)
+            }
             showIcon
           />
         )}
         <Card title="生成日志" size="small">
           <div style={{ maxHeight: 320, overflow: 'auto', fontFamily: 'monospace', fontSize: 11 }}>
-            {state.logs.map((log, i) => <div key={i} style={{ marginBottom: 4 }}>{log}</div>)}
-            {state.logs.length === 0 && !state.isStreaming && <Text type="secondary">暂无日志</Text>}
+            {state.logs.map((log, i) => (
+              <div key={i} style={{ marginBottom: 4 }}>
+                {log}
+              </div>
+            ))}
+            {state.logs.length === 0 && !state.isStreaming && (
+              <Text type="secondary">暂无日志</Text>
+            )}
             {state.isStreaming && <Text type="secondary">等待更多状态...</Text>}
           </div>
         </Card>

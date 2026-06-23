@@ -1,8 +1,4 @@
-import type {
-  ActivityDefinition,
-  ActivityDsl,
-  WorkflowDsl,
-} from './temporal-workflow.types';
+import type { ActivityDefinition, ActivityDsl, WorkflowDsl } from './temporal-workflow.types';
 import { TemporalWorkflowActivityResolutionService } from './temporal-workflow-activity-resolution.service';
 import type { TemporalWorkflowActivityResolutionSupport } from './temporal-workflow-activity-resolution.service';
 
@@ -15,7 +11,7 @@ interface CollectEnrichedActivitiesParams {
 }
 
 export async function collectEnrichedActivities(
-  params: CollectEnrichedActivitiesParams,
+  params: CollectEnrichedActivitiesParams
 ): Promise<ActivityDefinition[]> {
   const {
     workflowDsl,
@@ -43,10 +39,11 @@ export async function collectEnrichedActivities(
   for (const activity of activityDsl.activities) {
     const enriched = await activityResolutionService.enrichActivityDefinition(
       activity,
-      createActivityResolutionSupport(),
+      createActivityResolutionSupport()
     );
     if (enriched.handler === 'browser') {
-      enriched.generatedCode = buildDeterministicActivityCode(enriched) || enriched.generatedCode || undefined;
+      enriched.generatedCode =
+        buildDeterministicActivityCode(enriched) || enriched.generatedCode || undefined;
     } else if (!enriched.generatedCode) {
       enriched.generatedCode = buildDeterministicActivityCode(enriched) || undefined;
     }
@@ -54,11 +51,13 @@ export async function collectEnrichedActivities(
   }
 
   for (const step of workflowDsl.steps.filter((item) => item.type === 'activity')) {
-    pushActivity(await activityResolutionService.resolveActivityDefinition(
-      step,
-      activityDsl,
-      createActivityResolutionSupport(),
-    ));
+    pushActivity(
+      await activityResolutionService.resolveActivityDefinition(
+        step,
+        activityDsl,
+        createActivityResolutionSupport()
+      )
+    );
   }
 
   return enrichedActivities;

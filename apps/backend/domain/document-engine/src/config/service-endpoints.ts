@@ -9,9 +9,7 @@ const readConfiguredUrl = (...candidates: Array<string | undefined>): string | u
 };
 
 export const getPublicHost = (): string =>
-  process.env.HOST_IP?.trim()
-  || process.env.EXTERNAL_HOST?.trim()
-  || 'localhost';
+  process.env.HOST_IP?.trim() || process.env.EXTERNAL_HOST?.trim() || 'localhost';
 
 export const getAiOrchestratorUrl = (): string => {
   const configured = readConfiguredUrl(process.env.AI_ORCHESTRATOR_URL);

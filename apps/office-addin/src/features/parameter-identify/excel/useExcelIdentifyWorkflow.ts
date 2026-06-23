@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { analyzeDocumentWithAI } from '../services/index';
-import { buildAnalysisSummary, mergeExcelSuggestionsByPairResult } from '../shared/AIIdentifyPanel.helpers';
+import {
+  buildAnalysisSummary,
+  mergeExcelSuggestionsByPairResult,
+} from '../shared/AIIdentifyPanel.helpers';
 import {
   buildCollapsedPairDetails,
   buildCollapsedSuggestionGroups,
@@ -30,9 +33,13 @@ export function useExcelIdentifyWorkflow({
   setExcelSheetPairs,
   excelWorkbookUnderstanding,
 }: ExcelIdentifyWorkflowOptions): IdentifyWorkflowResult {
-  const [analysisSummary, setAnalysisSummary] = useState<ReturnType<typeof buildAnalysisSummary> | null>(null);
+  const [analysisSummary, setAnalysisSummary] = useState<ReturnType<
+    typeof buildAnalysisSummary
+  > | null>(null);
   const [stagedSuggestions, setStagedSuggestions] = useState<typeof suggestions>([]);
-  const [collapsedSuggestionGroups, setCollapsedSuggestionGroups] = useState<Record<string, boolean>>({});
+  const [collapsedSuggestionGroups, setCollapsedSuggestionGroups] = useState<
+    Record<string, boolean>
+  >({});
   const [collapsedPairDetails, setCollapsedPairDetails] = useState<Record<string, boolean>>({});
 
   const runAnalyze = async (targetPairId?: string) => {
@@ -88,7 +95,11 @@ export function useExcelIdentifyWorkflow({
           });
 
           const nextSummary = buildAnalysisSummary(result);
-          const mergedSuggestions = mergeExcelSuggestionsByPairResult(suggestions, result.suggestions, nextSummary);
+          const mergedSuggestions = mergeExcelSuggestionsByPairResult(
+            suggestions,
+            result.suggestions,
+            nextSummary
+          );
 
           setAnalysisSummary(nextSummary);
           setSuggestions(mergedSuggestions);

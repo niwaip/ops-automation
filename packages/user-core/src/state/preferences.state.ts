@@ -1,9 +1,9 @@
-import { createStore, type StoreApi } from "zustand/vanilla";
-import type { I18nPort } from "../ports/i18n.port.js";
-import type { StoragePort } from "../ports/storage.port.js";
+import { createStore, type StoreApi } from 'zustand/vanilla';
+import type { I18nPort } from '../ports/i18n.port.js';
+import type { StoragePort } from '../ports/storage.port.js';
 
-export type Language = "zh-CN" | "en-US" | "ja-JP";
-export type ThemeMode = "light" | "dark";
+export type Language = 'zh-CN' | 'en-US' | 'ja-JP';
+export type ThemeMode = 'light' | 'dark';
 
 export interface PreferencesStateData {
   language: Language;
@@ -29,14 +29,14 @@ export interface CreatePreferencesStoreOptions {
 }
 
 const defaultState: PreferencesStateData = {
-  language: "zh-CN",
-  theme: "light",
+  language: 'zh-CN',
+  theme: 'light',
   sidebarCollapsed: false,
 };
 
 const loadPersistedState = (
   storageKey: string,
-  storage?: StoragePort,
+  storage?: StoragePort
 ): Partial<PreferencesStateData> => {
   if (!storage) {
     return {};
@@ -50,8 +50,9 @@ const loadPersistedState = (
 
     const parsed = JSON.parse(raw) as Partial<PreferencesStateData>;
     return {
-      language: parsed.language === "en-US" || parsed.language === "ja-JP" ? parsed.language : "zh-CN",
-      theme: parsed.theme === "dark" ? "dark" : "light",
+      language:
+        parsed.language === 'en-US' || parsed.language === 'ja-JP' ? parsed.language : 'zh-CN',
+      theme: parsed.theme === 'dark' ? 'dark' : 'light',
       sidebarCollapsed: Boolean(parsed.sidebarCollapsed),
     };
   } catch {
@@ -62,7 +63,7 @@ const loadPersistedState = (
 const persistState = (
   storageKey: string,
   storage: StoragePort | undefined,
-  state: PreferencesStateData,
+  state: PreferencesStateData
 ): void => {
   if (!storage) {
     return;
@@ -74,14 +75,14 @@ const persistState = (
       language: state.language,
       theme: state.theme,
       sidebarCollapsed: state.sidebarCollapsed,
-    }),
+    })
   );
 };
 
 export const createPreferencesStore = (
-  options: CreatePreferencesStoreOptions = {},
+  options: CreatePreferencesStoreOptions = {}
 ): PreferencesStore => {
-  const storageKey = options.storageKey || "ops-user-preferences";
+  const storageKey = options.storageKey || 'ops-user-preferences';
   const initialState: PreferencesStateData = {
     ...defaultState,
     ...loadPersistedState(storageKey, options.storage),
@@ -99,7 +100,7 @@ export const createPreferencesStore = (
       persistState(storageKey, options.storage, get());
     },
     toggleTheme: () => {
-      set((state) => ({ theme: state.theme === "light" ? "dark" : "light" }));
+      set((state) => ({ theme: state.theme === 'light' ? 'dark' : 'light' }));
       persistState(storageKey, options.storage, get());
     },
     toggleSidebar: () => {

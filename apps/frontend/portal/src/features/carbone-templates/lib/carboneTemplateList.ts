@@ -30,7 +30,9 @@ export type SkillOverview = {
 };
 
 export const isDraftDocumentTemplate = (template: CarboneTemplate): boolean => {
-  const fileName = String(template.fileName || '').trim().toLowerCase();
+  const fileName = String(template.fileName || '')
+    .trim()
+    .toLowerCase();
   return fileName.startsWith('draft-');
 };
 
@@ -45,10 +47,7 @@ export const formatExampleValue = (value: unknown): string => {
   }
 };
 
-export const toParameterRow = (
-  parameter: SkillParameter,
-  fieldName: string
-): ParameterRow => ({
+export const toParameterRow = (parameter: SkillParameter, fieldName: string): ParameterRow => ({
   key: String(parameter.name || fieldName),
   fieldName,
   displayName: String(parameter.displayName || fieldName),
@@ -101,12 +100,11 @@ export const getArrayParameterGroups = (
     .sort((a, b) => a.arrayPath.localeCompare(b.arrayPath, 'zh-Hans-CN'));
 };
 
-export const getScalarParameters = (parameters?: SkillParameter[]): ParameterRow[] => (
+export const getScalarParameters = (parameters?: SkillParameter[]): ParameterRow[] =>
   (parameters || [])
     .filter((parameter) => {
       const name = String(parameter?.name || '');
       return name.length > 0 && !name.includes('[].');
     })
     .map((parameter) => toParameterRow(parameter, String(parameter?.name || '')))
-    .sort((a, b) => a.fieldName.localeCompare(b.fieldName, 'zh-Hans-CN'))
-);
+    .sort((a, b) => a.fieldName.localeCompare(b.fieldName, 'zh-Hans-CN'));

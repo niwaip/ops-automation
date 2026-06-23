@@ -145,8 +145,14 @@ export const activityApi = {
     return apiClient.post<ActivityValidationResult>('/activities/validate', config);
   },
 
-  generateCode: async (config: CreateActivityDto, errorContext?: string): Promise<GenerateCodeResult> => {
-    return apiClient.post<GenerateCodeResult>('/activities/generate-code', { config, errorContext });
+  generateCode: async (
+    config: CreateActivityDto,
+    errorContext?: string
+  ): Promise<GenerateCodeResult> => {
+    return apiClient.post<GenerateCodeResult>('/activities/generate-code', {
+      config,
+      errorContext,
+    });
   },
 
   executeCode: async (data: ExecuteCodeDto): Promise<ExecuteCodeResult> => {
@@ -154,7 +160,10 @@ export const activityApi = {
   },
 
   // SSE streaming execution
-  executeCodeStream: (data: ExecuteCodeDto, onEvent: (event: StreamEvent) => void): Promise<void> => {
+  executeCodeStream: (
+    data: ExecuteCodeDto,
+    onEvent: (event: StreamEvent) => void
+  ): Promise<void> => {
     const token = useAuthStore.getState().accessToken;
     return postSseStream({
       url: '/api/activities/execute-code/stream',

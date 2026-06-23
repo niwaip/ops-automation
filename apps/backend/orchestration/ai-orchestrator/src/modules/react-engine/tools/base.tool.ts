@@ -19,8 +19,8 @@ export abstract class BaseTool implements ToolDefinition {
     name: string,
     description: string,
     parameters: ToolDefinition['parameters'],
-    options?: { 
-      category?: ToolDefinition['category']; 
+    options?: {
+      category?: ToolDefinition['category'];
       requiresConfirmation?: boolean;
       requiredRoles?: string[];
     }
@@ -37,10 +37,7 @@ export abstract class BaseTool implements ToolDefinition {
   /**
    * 执行工具 - 子类必须实现
    */
-  abstract execute(
-    params: Record<string, unknown>,
-    context: ExecutionContext,
-  ): Promise<ToolResult>;
+  abstract execute(params: Record<string, unknown>, context: ExecutionContext): Promise<ToolResult>;
 
   /**
    * 验证参数
@@ -69,14 +66,14 @@ export abstract class BaseTool implements ToolDefinition {
     if (!this.requiredRoles || this.requiredRoles.length === 0) {
       return true;
     }
-    
+
     // 如果用户没有角色信息，但工具限制了角色，则无权执行
     if (!userRoles || userRoles.length === 0) {
       return false;
     }
 
     // 检查用户角色是否包含工具所需的任一角色
-    return this.requiredRoles.some(role => userRoles.includes(role));
+    return this.requiredRoles.some((role) => userRoles.includes(role));
   }
 
   /**

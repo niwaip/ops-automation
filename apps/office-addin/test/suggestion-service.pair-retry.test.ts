@@ -6,7 +6,9 @@ function buildSseResponse(content: string): Response {
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     start(controller) {
-      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'result', content })}\n\n`));
+      controller.enqueue(
+        encoder.encode(`data: ${JSON.stringify({ type: 'result', content })}\n\n`)
+      );
       controller.close();
     },
   });
@@ -31,7 +33,16 @@ function createWorkbookDocumentIR(): DocumentIR {
     dataBodyAddress: 'A5:H7',
   };
 
-  const headerValues = ['序号', '物料编码', '设备名称', '规格型号', '单位', '数量', '含税单价', '含税小计'];
+  const headerValues = [
+    '序号',
+    '物料编码',
+    '设备名称',
+    '规格型号',
+    '单位',
+    '数量',
+    '含税单价',
+    '含税小计',
+  ];
   const dataRows = [
     ['1', 'RB-6A-001', '六轴工业机器人', 'XR-600', '台', '4', '185000', '740000'],
     ['2', 'SG-2B-010', '伺服滑台模组', 'SGM-220', '套', '3', '96000', '288000'],
@@ -156,7 +167,12 @@ describe('analyzeDocumentWithAI Excel pair retry', () => {
       extractSelection: async () => null,
       previewSuggestion: async () => {},
       applySuggestion: async () => {},
-      createTemplateSource: async () => ({ format: 'xlsx', content: '', mode: 'json', isBinaryFile: false }),
+      createTemplateSource: async () => ({
+        format: 'xlsx',
+        content: '',
+        mode: 'json',
+        isBinaryFile: false,
+      }),
       extractOutline: async () => [],
       getDocumentMetadata: async () => ({}),
     } as any;
@@ -305,7 +321,8 @@ describe('analyzeDocumentWithAI Excel pair retry', () => {
             arrayPath: 'd.items',
             chapter: '采购明细_模板',
             description: '合同标的条款，定义采购设备的具体种类、型号规格及配套服务内容',
-            significance: '用于填写采购范围，明确乙方向甲方提供设备的具体内容，为后续条款提供基础前提',
+            significance:
+              '用于填写采购范围，明确乙方向甲方提供设备的具体内容，为后续条款提供基础前提',
           },
         },
         {
@@ -335,7 +352,8 @@ describe('analyzeDocumentWithAI Excel pair retry', () => {
             arrayPath: 'd.items[]',
             chapter: '采购明细_模板',
             description: '采购物料编码，用于唯一标识当前明细中的设备或物料',
-            significance: '用于将业务系统中的物料主数据映射到模板明细行，确保渲染结果可追溯和可对账',
+            significance:
+              '用于将业务系统中的物料主数据映射到模板明细行，确保渲染结果可追溯和可对账',
           },
         },
         {
@@ -431,7 +449,8 @@ describe('analyzeDocumentWithAI Excel pair retry', () => {
       ],
     });
 
-    const fetchMock = jest.spyOn(global, 'fetch' as any)
+    const fetchMock = jest
+      .spyOn(global, 'fetch' as any)
       .mockResolvedValueOnce(buildSseResponse(malformedResponse))
       .mockResolvedValueOnce(buildSseResponse(validResponse));
 
@@ -456,7 +475,9 @@ describe('analyzeDocumentWithAI Excel pair retry', () => {
     expect(firstRequestBody.message).toContain('每个 suggestion 的 `details` 都必须包含');
     expect(firstRequestBody.message).toContain('参数描述');
     expect(firstRequestBody.message).toContain('用途说明');
-    expect(firstRequestBody.message).toContain('合同标的条款，定义采购设备的具体种类、型号规格及配套服务内容');
+    expect(firstRequestBody.message).toContain(
+      '合同标的条款，定义采购设备的具体种类、型号规格及配套服务内容'
+    );
     expect(firstRequestBody.message).toContain('字段名称：含税单价，示例值：185000，位置：G5');
     expect(firstRequestBody.config.thinking).toBe(false);
 
@@ -469,13 +490,17 @@ describe('analyzeDocumentWithAI Excel pair retry', () => {
     expect(normalizedNames).toContain('d.items[].subtotalTax');
     expect(result.suggestions).toHaveLength(9);
     expect(
-      result.suggestions.find((suggestion) => suggestion.elementPath === '采购明细_模板!G5')?.suggestedName.replace(/[{}]/g, '')
+      result.suggestions
+        .find((suggestion) => suggestion.elementPath === '采购明细_模板!G5')
+        ?.suggestedName.replace(/[{}]/g, '')
     ).toBe('d.items[].unitPriceTax');
     expect(
-      result.suggestions.find((suggestion) => suggestion.elementPath === '采购明细_模板!G5')?.details?.description
+      result.suggestions.find((suggestion) => suggestion.elementPath === '采购明细_模板!G5')
+        ?.details?.description
     ).toBe('含税单价字段，用于表示单个设备或物料的含税价格');
     expect(
-      result.suggestions.find((suggestion) => suggestion.elementPath === '采购明细_模板!G5')?.details?.significance
+      result.suggestions.find((suggestion) => suggestion.elementPath === '采购明细_模板!G5')
+        ?.details?.significance
     ).toBe('用于计算采购成本并支撑合同金额与结算金额核对');
 
     expect(result.contextAnalysis?.pairResults).toEqual(

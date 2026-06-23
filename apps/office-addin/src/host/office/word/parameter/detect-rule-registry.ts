@@ -33,8 +33,7 @@ type WordParameterRuleHandler = (args: DetectWordRuleExecutionArgs) => WordDetec
 export const WORD_PARAMETER_RULE_HANDLERS = {
   underline: ({ underlines, paragraphs, sampleText = '' }) =>
     detectWordUnderlineParams(underlines, paragraphs, sampleText),
-  table: ({ tableCells, sampleText = '' }) =>
-    detectWordTableParams(tableCells, sampleText),
+  table: ({ tableCells, sampleText = '' }) => detectWordTableParams(tableCells, sampleText),
   colon: ({ paragraphs, underlines, tableCells, sampleText = '', includeLabelOnly = true }) =>
     detectWordColonParams(paragraphs, underlines, tableCells, {
       sampleText,
@@ -53,7 +52,9 @@ export const WORD_PARAMETER_RULE_NAMES = Object.freeze(
 );
 
 export function detectWordParamsByRules(args: DetectWordParamsByRulesArgs): WordDetectedParam[] {
-  const params = args.ruleNames.flatMap((ruleName) => WORD_PARAMETER_RULE_HANDLERS[ruleName]?.(args) || []);
+  const params = args.ruleNames.flatMap(
+    (ruleName) => WORD_PARAMETER_RULE_HANDLERS[ruleName]?.(args) || []
+  );
   return dedupeDetectedWordParams(params);
 }
 

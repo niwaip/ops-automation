@@ -11,13 +11,13 @@ export type StepType = 'text' | 'script' | 'tool' | 'api' | 'llm' | 'validator';
 // Single step in the execution flow
 export interface ExecutionFlowStep {
   id?: string;
-  type: StepType | string;  // 支持扩展类型
+  type: StepType | string; // 支持扩展类型
   name: string;
   description?: string;
   content?: string;
   expectedOutput?: string;
-  condition?: string;  // 执行条件，如 "step_xxx.status == 'success'"
-  inputMapping?: Record<string, string>;  // 输入变量映射
+  condition?: string; // 执行条件，如 "step_xxx.status == 'success'"
+  inputMapping?: Record<string, string>; // 输入变量映射
   retryPolicy?: {
     maxRetries?: number;
     backoff?: number;
@@ -73,9 +73,9 @@ export interface ValidationResult {
 export interface CreateExecutionFlowTemplateDTO {
   name: string;
   description?: string;
-  goal?: string;             // 流程目标
-  expectedResult?: string;   // 预期结果
-  paramsSchema?: Record<string, any>;  // 参数定义
+  goal?: string; // 流程目标
+  expectedResult?: string; // 预期结果
+  paramsSchema?: Record<string, any>; // 参数定义
   category?: string;
   steps: ExecutionFlowStep[];
   executionFlowKeys?: string[];
@@ -99,9 +99,9 @@ export interface ExecutionFlowTemplateDTO {
   id: string;
   name: string;
   description: string | null;
-  goal: string | null;             // 流程目标 - 指导AI验证和宏工具生成
-  expectedResult: string | null;   // 预期结果 - 指导AI验证
-  paramsSchema: Record<string, any> | null;  // 参数定义 - 可选
+  goal: string | null; // 流程目标 - 指导AI验证和宏工具生成
+  expectedResult: string | null; // 预期结果 - 指导AI验证
+  paramsSchema: Record<string, any> | null; // 参数定义 - 可选
   category: string;
   steps: ExecutionFlowStep[];
   executionFlowKeys: string[];
@@ -115,7 +115,10 @@ export interface ExecutionFlowTemplateDTO {
 }
 
 // Category labels
-export const EXECUTION_FLOW_CATEGORIES: Record<string, { label: string; color: string; desc: string }> = {
+export const EXECUTION_FLOW_CATEGORIES: Record<
+  string,
+  { label: string; color: string; desc: string }
+> = {
   document: { label: '文档处理', color: 'blue', desc: 'Word/PDF文档生成与处理' },
   analysis: { label: '数据分析', color: 'green', desc: '数据统计、报表分析' },
   automation: { label: '自动化流程', color: 'purple', desc: '自动化任务执行' },
@@ -167,9 +170,7 @@ export const executionFlowApi = {
     if (options?.offset) params.append('offset', String(options.offset));
     if (options?.search) params.append('search', options.search);
 
-    return apiClient.get<ExecutionFlowTemplateListResponse>(
-      `/flows?${params.toString()}`
-    );
+    return apiClient.get<ExecutionFlowTemplateListResponse>(`/flows?${params.toString()}`);
   },
 
   /**
@@ -189,7 +190,10 @@ export const executionFlowApi = {
   /**
    * 更新模板
    */
-  update: async (id: string, data: UpdateExecutionFlowTemplateDTO): Promise<ExecutionFlowTemplateDTO> => {
+  update: async (
+    id: string,
+    data: UpdateExecutionFlowTemplateDTO
+  ): Promise<ExecutionFlowTemplateDTO> => {
     return apiClient.put<ExecutionFlowTemplateDTO>(`/flows/${id}`, data);
   },
 
@@ -211,43 +215,38 @@ export const executionFlowApi = {
       enableExecutionTest?: boolean;
       testParams?: Record<string, any>;
       testUserInput?: string;
-    },
+    }
   ): Promise<ValidateResponse> => {
     const params = new URLSearchParams();
-    if (options?.aiServiceUrl) params.append('aiServiceUrl', encodeURIComponent(options.aiServiceUrl));
+    if (options?.aiServiceUrl)
+      params.append('aiServiceUrl', encodeURIComponent(options.aiServiceUrl));
     if (options?.enableExecutionTest) params.append('enableExecutionTest', 'true');
 
-    const body = options?.testParams || options?.testUserInput
-      ? {
-          testParams: options?.testParams,
-          testUserInput: options?.testUserInput,
-        }
-      : undefined;
+    const body =
+      options?.testParams || options?.testUserInput
+        ? {
+            testParams: options?.testParams,
+            testUserInput: options?.testUserInput,
+          }
+        : undefined;
 
-    return apiClient.post<ValidateResponse>(
-      `/flows/${id}/validate?${params.toString()}`,
-      body,
-      { timeout: 180000 },
-    );
+    return apiClient.post<ValidateResponse>(`/flows/${id}/validate?${params.toString()}`, body, {
+      timeout: 180000,
+    });
   },
 
   /**
    * 应用AI优化建议
    */
   applyAdjustment: async (id: string): Promise<ExecutionFlowTemplateDTO> => {
-    return apiClient.post<ExecutionFlowTemplateDTO>(
-      `/flows/${id}/apply-adjustment`
-    );
+    return apiClient.post<ExecutionFlowTemplateDTO>(`/flows/${id}/apply-adjustment`);
   },
 
   /**
    * 复制模板（创建副本）
    */
   clone: async (id: string, newName: string): Promise<ExecutionFlowTemplateDTO> => {
-    return apiClient.post<ExecutionFlowTemplateDTO>(
-      `/flows/${id}/clone`,
-      { name: newName }
-    );
+    return apiClient.post<ExecutionFlowTemplateDTO>(`/flows/${id}/clone`, { name: newName });
   },
 
   /**
@@ -261,10 +260,7 @@ export const executionFlowApi = {
    * 导入模板（从JSON格式）
    */
   import: async (jsonData: string): Promise<ExecutionFlowTemplateDTO> => {
-    return apiClient.post<ExecutionFlowTemplateDTO>(
-      '/flows/import',
-      { data: jsonData }
-    );
+    return apiClient.post<ExecutionFlowTemplateDTO>('/flows/import', { data: jsonData });
   },
 
   /**
@@ -279,9 +275,7 @@ export const executionFlowApi = {
    */
   getPopular: async (limit?: number): Promise<{ templates: ExecutionFlowTemplateDTO[] }> => {
     const params = limit ? `?limit=${limit}` : '';
-    return apiClient.get<{ templates: ExecutionFlowTemplateDTO[] }>(
-      `/flows/popular${params}`
-    );
+    return apiClient.get<{ templates: ExecutionFlowTemplateDTO[] }>(`/flows/popular${params}`);
   },
 
   /**

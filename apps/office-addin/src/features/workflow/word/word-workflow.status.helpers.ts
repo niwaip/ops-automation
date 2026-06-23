@@ -1,4 +1,8 @@
-import type { TemplateCompareResponse, TemplateRecognizeResponse, TemplateUnderstandResponse } from '../../../api/carbone-api';
+import type {
+  TemplateCompareResponse,
+  TemplateRecognizeResponse,
+  TemplateUnderstandResponse,
+} from '../../../api/carbone-api';
 import type { AISuggestion } from '../../../app/store';
 import type { SampleUploadStateLike, WordSectionGenerationResult } from './word-workflow.cache';
 
@@ -19,19 +23,21 @@ export type WordSectionProcessingSummary = {
 
 export function buildCurrentCompareSignature(
   compareResult: TemplateCompareResponse | null,
-  selectedCompareSectionKeys: string[],
+  selectedCompareSectionKeys: string[]
 ): string {
   if (!compareResult) {
     return 'no-compare';
   }
 
   const candidateSignature = compareResult.candidateFields
-    .map((candidate) => [
-      candidate.candidateId,
-      candidate.fieldIdHint || '',
-      candidate.sampleValue || '',
-      candidate.sectionId || '',
-    ].join(':'))
+    .map((candidate) =>
+      [
+        candidate.candidateId,
+        candidate.fieldIdHint || '',
+        candidate.sampleValue || '',
+        candidate.sectionId || '',
+      ].join(':')
+    )
     .join('|');
 
   return [
@@ -42,26 +48,24 @@ export function buildCurrentCompareSignature(
 }
 
 export function buildCurrentRecognitionCacheSignature(
-  compareResult: TemplateCompareResponse | null,
+  compareResult: TemplateCompareResponse | null
 ): string {
   if (!compareResult) {
     return 'no-compare';
   }
 
   const candidateSignature = compareResult.candidateFields
-    .map((candidate) => [
-      candidate.candidateId,
-      candidate.fieldIdHint || '',
-      candidate.sampleValue || '',
-      candidate.sectionId || '',
-    ].join(':'))
+    .map((candidate) =>
+      [
+        candidate.candidateId,
+        candidate.fieldIdHint || '',
+        candidate.sampleValue || '',
+        candidate.sectionId || '',
+      ].join(':')
+    )
     .join('|');
 
-  return [
-    compareResult.compareId || 'compare',
-    candidateSignature,
-    'all-sections',
-  ].join('|');
+  return [compareResult.compareId || 'compare', candidateSignature, 'all-sections'].join('|');
 }
 
 export function deriveWordWorkflowStatus(args: {
@@ -110,34 +114,45 @@ export function deriveWordWorkflowStatus(args: {
   displayedUnderstandingSummaryResult: TemplateUnderstandResponse | null;
 } {
   const hasUnderstanding = Boolean(args.understandingResult);
-  const displayedCacheUpdatedAt = args.understandingCacheUpdatedAt
-    ?? (args.detectedUploadCacheStatus === 'available' ? args.detectedUploadCacheUpdatedAt : null);
+  const displayedCacheUpdatedAt =
+    args.understandingCacheUpdatedAt ??
+    (args.detectedUploadCacheStatus === 'available' ? args.detectedUploadCacheUpdatedAt : null);
 
-  const understandingStale = hasUnderstanding && (
-    args.understandingRevision !== args.sampleUploadState.revision
-    || args.understandingLanguageSignature !== args.languageSignature
-    || args.understandingCompareSignature !== args.currentCompareSignature
-  );
+  const understandingStale =
+    hasUnderstanding &&
+    (args.understandingRevision !== args.sampleUploadState.revision ||
+      args.understandingLanguageSignature !== args.languageSignature ||
+      args.understandingCompareSignature !== args.currentCompareSignature);
 
-  const recognitionStale = args.recognitionActivated && (
-    args.recognitionRevision !== args.sampleUploadState.revision
-    || args.recognitionLanguageSignature !== args.languageSignature
-    || args.recognitionCompareSignature !== args.currentRecognitionCacheSignature
-  );
+  const recognitionStale =
+    args.recognitionActivated &&
+    (args.recognitionRevision !== args.sampleUploadState.revision ||
+      args.recognitionLanguageSignature !== args.languageSignature ||
+      args.recognitionCompareSignature !== args.currentRecognitionCacheSignature);
 
-  const hasRecognitionSnapshot = args.recognitionActivated
-    && (args.sectionGenerationResults.length > 0 || args.suggestions.length > 0 || Boolean(args.recognitionResult));
-  const recognitionDataFresh = hasRecognitionSnapshot
-    && args.recognitionRevision === args.sampleUploadState.revision
-    && args.recognitionLanguageSignature === args.languageSignature
-    && args.recognitionCompareSignature === args.currentRecognitionCacheSignature;
+  const hasRecognitionSnapshot =
+    args.recognitionActivated &&
+    (args.sectionGenerationResults.length > 0 ||
+      args.suggestions.length > 0 ||
+      Boolean(args.recognitionResult));
+  const recognitionDataFresh =
+    hasRecognitionSnapshot &&
+    args.recognitionRevision === args.sampleUploadState.revision &&
+    args.recognitionLanguageSignature === args.languageSignature &&
+    args.recognitionCompareSignature === args.currentRecognitionCacheSignature;
   const recognitionReady = args.recognitionActivated && recognitionDataFresh && !recognitionStale;
-  const recognitionSelectionBlocked = args.compareCandidateSectionsCount > 0 && args.effectiveCompareCandidateFieldsCount === 0;
-  const recognitionBlocked = !args.sampleUploadState.uploaded || !args.hasCompare || recognitionSelectionBlocked;
+  const recognitionSelectionBlocked =
+    args.compareCandidateSectionsCount > 0 && args.effectiveCompareCandidateFieldsCount === 0;
+  const recognitionBlocked =
+    !args.sampleUploadState.uploaded || !args.hasCompare || recognitionSelectionBlocked;
   const totalSuggestionCount = args.suggestions.length;
-  const pendingSuggestionCount = args.suggestions.filter((suggestion) => !suggestion.applied).length;
+  const pendingSuggestionCount = args.suggestions.filter(
+    (suggestion) => !suggestion.applied
+  ).length;
   const uploadStatusLabel = args.sampleUploadState.uploaded ? '已上传' : '待上传';
-  const uploadStatusTone: 'default' | 'success' = args.sampleUploadState.uploaded ? 'success' : 'default';
+  const uploadStatusTone: 'default' | 'success' = args.sampleUploadState.uploaded
+    ? 'success'
+    : 'default';
 
   const understandingStatusLabel = !args.sampleUploadState.uploaded
     ? '未开始'
@@ -159,7 +174,9 @@ export function deriveWordWorkflowStatus(args: {
 
   const understandingStatusTone: '' | 'warning' | 'success' = args.isUnderstanding
     ? 'warning'
-    : args.understandingCacheStatus === 'hit' || args.understandingResult || args.detectedUploadCacheStatus === 'available'
+    : args.understandingCacheStatus === 'hit' ||
+        args.understandingResult ||
+        args.detectedUploadCacheStatus === 'available'
       ? 'success'
       : understandingStale
         ? 'warning'
@@ -205,11 +222,12 @@ export function deriveWordWorkflowStatus(args: {
                 ? '当前结果可直接用于参数生成'
                 : '点击开始全文理解';
 
-  const displayedUnderstandingSummaryResult = args.understandingResult && !understandingStale
-    ? args.understandingResult
-    : args.detectedUploadCacheStatus === 'available'
-      ? args.detectedUploadCacheResult
-      : null;
+  const displayedUnderstandingSummaryResult =
+    args.understandingResult && !understandingStale
+      ? args.understandingResult
+      : args.detectedUploadCacheStatus === 'available'
+        ? args.detectedUploadCacheResult
+        : null;
 
   return {
     displayedCacheUpdatedAt,
@@ -235,19 +253,33 @@ export function deriveWordWorkflowStatus(args: {
 
 export function buildSectionProcessingSummary(
   recognitionReady: boolean,
-  sectionGenerationResults: WordSectionGenerationResult[],
+  sectionGenerationResults: WordSectionGenerationResult[]
 ): WordSectionProcessingSummary | null {
   if (!recognitionReady || sectionGenerationResults.length === 0) {
     return null;
   }
 
-  const succeeded = sectionGenerationResults.filter((section) => section.aiCallSucceeded && section.suggestionCount > 0).length;
-  const empty = sectionGenerationResults.filter((section) => section.aiCallSucceeded && section.suggestionCount === 0 && !section.error).length;
-  const failed = sectionGenerationResults.filter((section) => !section.aiCallSucceeded || section.error).length;
+  const succeeded = sectionGenerationResults.filter(
+    (section) => section.aiCallSucceeded && section.suggestionCount > 0
+  ).length;
+  const empty = sectionGenerationResults.filter(
+    (section) => section.aiCallSucceeded && section.suggestionCount === 0 && !section.error
+  ).length;
+  const failed = sectionGenerationResults.filter(
+    (section) => !section.aiCallSucceeded || section.error
+  ).length;
   const retryUsed = sectionGenerationResults.filter((section) => section.usedRetry).length;
-  const qualityIssueSections = sectionGenerationResults.filter((section) => (section.qualityIssues || []).length > 0).length;
-  const totalCandidates = sectionGenerationResults.reduce((sum, section) => sum + section.candidateCount, 0);
-  const totalSuggestions = sectionGenerationResults.reduce((sum, section) => sum + section.suggestionCount, 0);
+  const qualityIssueSections = sectionGenerationResults.filter(
+    (section) => (section.qualityIssues || []).length > 0
+  ).length;
+  const totalCandidates = sectionGenerationResults.reduce(
+    (sum, section) => sum + section.candidateCount,
+    0
+  );
+  const totalSuggestions = sectionGenerationResults.reduce(
+    (sum, section) => sum + section.suggestionCount,
+    0
+  );
 
   return {
     total: sectionGenerationResults.length,
@@ -258,23 +290,26 @@ export function buildSectionProcessingSummary(
     qualityIssueSections,
     totalCandidates,
     totalSuggestions,
-    narrative: totalSuggestions > 0
-      ? `本次共处理 ${sectionGenerationResults.length} 个章节，累计候选 ${totalCandidates} 个，生成参数 ${totalSuggestions} 个。`
-      : `本次已处理 ${sectionGenerationResults.length} 个章节，但当前还没有产出可落地的参数建议。`,
+    narrative:
+      totalSuggestions > 0
+        ? `本次共处理 ${sectionGenerationResults.length} 个章节，累计候选 ${totalCandidates} 个，生成参数 ${totalSuggestions} 个。`
+        : `本次已处理 ${sectionGenerationResults.length} 个章节，但当前还没有产出可落地的参数建议。`,
   };
 }
 
 export function buildSectionGenerationResultMap(
-  sectionGenerationResults: WordSectionGenerationResult[],
+  sectionGenerationResults: WordSectionGenerationResult[]
 ): Map<string, WordSectionGenerationResult> {
   return new Map(sectionGenerationResults.map((section) => [section.sectionKey, section]));
 }
 
 export function buildSectionSuggestionMap(
   sectionGenerationResults: WordSectionGenerationResult[],
-  suggestions: AISuggestion[],
+  suggestions: AISuggestion[]
 ): Map<string, AISuggestion[]> {
-  const suggestionById = new Map(suggestions.map((suggestion) => [suggestion.id, suggestion] as const));
+  const suggestionById = new Map(
+    suggestions.map((suggestion) => [suggestion.id, suggestion] as const)
+  );
 
   return new Map(
     sectionGenerationResults.map((section) => [

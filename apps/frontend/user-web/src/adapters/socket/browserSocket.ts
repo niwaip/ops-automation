@@ -1,5 +1,5 @@
-import type { RuntimeConfigPort, SocketPort, SocketSubscription } from "@ops/user-core";
-import { io, type Socket } from "socket.io-client";
+import type { RuntimeConfigPort, SocketPort, SocketSubscription } from '@ops/user-core';
+import { io, type Socket } from 'socket.io-client';
 
 interface CreateBrowserSocketOptions {
   runtimeConfig: RuntimeConfigPort;
@@ -8,10 +8,7 @@ interface CreateBrowserSocketOptions {
 
 type SocketListener = (payload: unknown) => void;
 
-const applySocketAuth = (
-  targetSocket: Socket,
-  token: string | null | undefined,
-): void => {
+const applySocketAuth = (targetSocket: Socket, token: string | null | undefined): void => {
   targetSocket.auth = token ? { token } : {};
 };
 
@@ -21,10 +18,10 @@ const resolveSocketBaseUrl = (runtimeConfig: RuntimeConfigPort): string => {
   }
 
   if (/^https?:\/\//i.test(runtimeConfig.apiBaseUrl)) {
-    return runtimeConfig.apiBaseUrl.replace(/\/api\/?$/i, "");
+    return runtimeConfig.apiBaseUrl.replace(/\/api\/?$/i, '');
   }
 
-  if (typeof window !== "undefined") {
+  if (typeof window !== 'undefined') {
     return window.location.origin;
   }
 
@@ -53,18 +50,18 @@ export const createBrowserSocket = (options: CreateBrowserSocketOptions): Socket
     const token = await options.getAccessToken?.();
     const nextSocket = io(resolveSocketBaseUrl(options.runtimeConfig), {
       autoConnect: false,
-      transports: ["websocket"],
+      transports: ['websocket'],
     });
     applySocketAuth(nextSocket, token);
 
-    nextSocket.on("connect", () => {
+    nextSocket.on('connect', () => {
       connected = true;
       lastError = undefined;
     });
-    nextSocket.on("disconnect", () => {
+    nextSocket.on('disconnect', () => {
       connected = false;
     });
-    nextSocket.on("connect_error", (error: Error) => {
+    nextSocket.on('connect_error', (error: Error) => {
       connected = false;
       lastError = error.message;
     });
@@ -89,16 +86,16 @@ export const createBrowserSocket = (options: CreateBrowserSocketOptions): Socket
 
       await new Promise<void>((resolve, reject) => {
         const handleConnect = () => {
-          currentSocket.off("connect_error", handleError);
+          currentSocket.off('connect_error', handleError);
           resolve();
         };
         const handleError = (error: Error) => {
-          currentSocket.off("connect", handleConnect);
+          currentSocket.off('connect', handleConnect);
           reject(error);
         };
 
-        currentSocket.once("connect", handleConnect);
-        currentSocket.once("connect_error", handleError);
+        currentSocket.once('connect', handleConnect);
+        currentSocket.once('connect_error', handleError);
         currentSocket.connect();
       });
     },

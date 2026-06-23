@@ -1,5 +1,1 @@
-export {
-  asRecord,
-  hasMeaningfulExecutionResult,
-  tryParseJsonValue,
-} from '@ops/user-core';
+export { asRecord, hasMeaningfulExecutionResult, tryParseJsonValue } from '@ops/user-core';

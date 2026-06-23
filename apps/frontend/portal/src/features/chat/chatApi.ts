@@ -31,9 +31,8 @@ const asRecord = (value: unknown): Record<string, unknown> | undefined => {
   return value as Record<string, unknown>;
 };
 
-const asString = (value: unknown): string | undefined => (
-  typeof value === 'string' && value.trim() ? value : undefined
-);
+const asString = (value: unknown): string | undefined =>
+  typeof value === 'string' && value.trim() ? value : undefined;
 
 const asStringArray = (value: unknown): string[] | undefined => {
   if (!Array.isArray(value)) {
@@ -43,17 +42,16 @@ const asStringArray = (value: unknown): string[] | undefined => {
   return value.filter((item): item is string => typeof item === 'string');
 };
 
-const isStreamEventType = (value: unknown): value is StreamEventType => (
-  typeof value === 'string' && Object.values(StreamEventType).includes(value as StreamEventType)
-);
+const isStreamEventType = (value: unknown): value is StreamEventType =>
+  typeof value === 'string' && Object.values(StreamEventType).includes(value as StreamEventType);
 
 const normalizeUsage = (value: unknown): LLMUsage | undefined => {
   const record = asRecord(value);
   if (
-    !record
-    || typeof record.prompt_tokens !== 'number'
-    || typeof record.completion_tokens !== 'number'
-    || typeof record.total_tokens !== 'number'
+    !record ||
+    typeof record.prompt_tokens !== 'number' ||
+    typeof record.completion_tokens !== 'number' ||
+    typeof record.total_tokens !== 'number'
   ) {
     return undefined;
   }
@@ -63,9 +61,10 @@ const normalizeUsage = (value: unknown): LLMUsage | undefined => {
     prompt_tokens: record.prompt_tokens,
     completion_tokens: record.completion_tokens,
     total_tokens: record.total_tokens,
-    completion_tokens_details: completionTokenDetails && typeof completionTokenDetails.reasoning_tokens === 'number'
-      ? { reasoning_tokens: completionTokenDetails.reasoning_tokens }
-      : undefined,
+    completion_tokens_details:
+      completionTokenDetails && typeof completionTokenDetails.reasoning_tokens === 'number'
+        ? { reasoning_tokens: completionTokenDetails.reasoning_tokens }
+        : undefined,
   };
 };
 
@@ -77,10 +76,12 @@ const normalizeRateLimit = (value: unknown): LLMRateLimit | undefined => {
 
   return {
     requests_limit: typeof record.requests_limit === 'number' ? record.requests_limit : undefined,
-    requests_remaining: typeof record.requests_remaining === 'number' ? record.requests_remaining : undefined,
+    requests_remaining:
+      typeof record.requests_remaining === 'number' ? record.requests_remaining : undefined,
     requests_reset: asString(record.requests_reset),
     tokens_limit: typeof record.tokens_limit === 'number' ? record.tokens_limit : undefined,
-    tokens_remaining: typeof record.tokens_remaining === 'number' ? record.tokens_remaining : undefined,
+    tokens_remaining:
+      typeof record.tokens_remaining === 'number' ? record.tokens_remaining : undefined,
     tokens_reset: asString(record.tokens_reset),
   };
 };
@@ -97,19 +98,21 @@ const normalizePromptDebugPayload = (value: unknown): PromptDebugPayload | undef
     return undefined;
   }
 
-  const llmRequestMessages: PromptDebugPayload['llmRequestMessages'] = Array.isArray(record.llmRequestMessages)
-    ? record.llmRequestMessages.reduce<NonNullable<PromptDebugPayload['llmRequestMessages']>>((acc, item) => {
-        const message = asRecord(item);
-        const role = message?.role;
-        const content = asString(message?.content);
-        if (
-          (role === 'system' || role === 'user' || role === 'assistant')
-          && content
-        ) {
-          acc.push({ role, content });
-        }
-        return acc;
-      }, [])
+  const llmRequestMessages: PromptDebugPayload['llmRequestMessages'] = Array.isArray(
+    record.llmRequestMessages
+  )
+    ? record.llmRequestMessages.reduce<NonNullable<PromptDebugPayload['llmRequestMessages']>>(
+        (acc, item) => {
+          const message = asRecord(item);
+          const role = message?.role;
+          const content = asString(message?.content);
+          if ((role === 'system' || role === 'user' || role === 'assistant') && content) {
+            acc.push({ role, content });
+          }
+          return acc;
+        },
+        []
+      )
     : undefined;
   const llmCalls: PromptDebugPayload['llmCalls'] = Array.isArray(record.llmCalls)
     ? record.llmCalls.reduce<NonNullable<PromptDebugPayload['llmCalls']>>((acc, item) => {
@@ -121,14 +124,13 @@ const normalizePromptDebugPayload = (value: unknown): PromptDebugPayload | undef
         }
 
         const requestMessages = Array.isArray(call.requestMessages)
-          ? call.requestMessages.reduce<NonNullable<NonNullable<PromptDebugPayload['llmCalls']>[number]['requestMessages']>>((messages, messageItem) => {
+          ? call.requestMessages.reduce<
+              NonNullable<NonNullable<PromptDebugPayload['llmCalls']>[number]['requestMessages']>
+            >((messages, messageItem) => {
               const message = asRecord(messageItem);
               const role = message?.role;
               const content = asString(message?.content);
-              if (
-                (role === 'system' || role === 'user' || role === 'assistant')
-                && content
-              ) {
+              if ((role === 'system' || role === 'user' || role === 'assistant') && content) {
                 messages.push({ role, content });
               }
               return messages;
@@ -150,9 +152,10 @@ const normalizePromptDebugPayload = (value: unknown): PromptDebugPayload | undef
   return {
     systemPrompt,
     userPrompt,
-    debugSource: record.debugSource === 'planner' || record.debugSource === 'react-engine'
-      ? record.debugSource
-      : undefined,
+    debugSource:
+      record.debugSource === 'planner' || record.debugSource === 'react-engine'
+        ? record.debugSource
+        : undefined,
     systemPromptSectionKeys: asStringArray(record.systemPromptSectionKeys),
     systemPromptSectionSources: asStringArray(record.systemPromptSectionSources),
     userPromptSectionKeys: asStringArray(record.userPromptSectionKeys),
@@ -171,8 +174,12 @@ const normalizeMessageMetadata = (value: unknown): ChatMessage['metadata'] | und
     return undefined;
   }
 
-  const missingInputs: NonNullable<ChatMessage['metadata']>['missingInputs'] = Array.isArray(record.missingInputs)
-    ? record.missingInputs.reduce<NonNullable<NonNullable<ChatMessage['metadata']>['missingInputs']>>((acc, item) => {
+  const missingInputs: NonNullable<ChatMessage['metadata']>['missingInputs'] = Array.isArray(
+    record.missingInputs
+  )
+    ? record.missingInputs.reduce<
+        NonNullable<NonNullable<ChatMessage['metadata']>['missingInputs']>
+      >((acc, item) => {
         const input = asRecord(item);
         if (!input) {
           return acc;
@@ -187,6 +194,22 @@ const normalizeMessageMetadata = (value: unknown): ChatMessage['metadata'] | und
     : undefined;
   const mode = record.mode === 'chat' || record.mode === 'task' ? record.mode : undefined;
   const taskStatus = record.taskStatus;
+  const progressLogs: NonNullable<ChatMessage['metadata']>['progressLogs'] = Array.isArray(
+    record.progressLogs
+  )
+    ? record.progressLogs.reduce<NonNullable<NonNullable<ChatMessage['metadata']>['progressLogs']>>(
+        (acc, item) => {
+          const progress = asRecord(item);
+          const stage = progress?.stage;
+          const text = asString(progress?.text);
+          if ((stage === 'thought' || stage === 'action' || stage === 'observation') && text) {
+            acc.push({ stage, text });
+          }
+          return acc;
+        },
+        []
+      )
+    : undefined;
 
   return {
     mode,
@@ -201,11 +224,12 @@ const normalizeMessageMetadata = (value: unknown): ChatMessage['metadata'] | und
     temporalLink: asString(record.temporalLink),
     missingInputs,
     taskStatus:
-      taskStatus === 'waiting_input'
-      || taskStatus === 'pending_approval'
-      || taskStatus === 'running'
-      || taskStatus === 'completed'
-      || taskStatus === 'failed'
+      taskStatus === 'waiting_input' ||
+      taskStatus === 'pending_approval' ||
+      taskStatus === 'running' ||
+      taskStatus === 'completed' ||
+      taskStatus === 'failed' ||
+      taskStatus === 'human_control'
         ? taskStatus
         : undefined,
     executionId: asString(record.executionId),
@@ -213,8 +237,10 @@ const normalizeMessageMetadata = (value: unknown): ChatMessage['metadata'] | und
     finalResult: asString(record.finalResult),
     finalResultData: record.finalResultData,
     finalSummary: asString(record.finalSummary),
+    progressLogs,
     errorMessage: asString(record.errorMessage),
-    hasBusinessResult: typeof record.hasBusinessResult === 'boolean' ? record.hasBusinessResult : undefined,
+    hasBusinessResult:
+      typeof record.hasBusinessResult === 'boolean' ? record.hasBusinessResult : undefined,
     promptDebug: normalizePromptDebugPayload(record.promptDebug),
   };
 };
@@ -228,15 +254,13 @@ const normalizeChatMessage = (value: unknown): ChatMessage | null => {
   const id = asString(record?.id);
   const role = record?.role;
   const content = typeof record?.content === 'string' ? record.content : '';
-  if (
-    !id
-    || (role !== 'user' && role !== 'assistant' && role !== 'system')
-  ) {
+  if (!id || (role !== 'user' && role !== 'assistant' && role !== 'system')) {
     return null;
   }
 
   const timestampValue = record.timestamp ?? record.createdAt ?? Date.now();
-  const timestamp = timestampValue instanceof Date ? timestampValue : new Date(String(timestampValue));
+  const timestamp =
+    timestampValue instanceof Date ? timestampValue : new Date(String(timestampValue));
 
   return {
     id,
@@ -279,7 +303,7 @@ const buildAuthHeaders = (): Record<string, string> => {
 
 const fetchWithAuthRetry = async (
   input: RequestInfo | URL,
-  init?: RequestInit,
+  init?: RequestInit
 ): Promise<Response> => {
   const executeRequest = async (overrideToken?: string | null) => {
     const headers = new Headers(init?.headers || {});
@@ -321,7 +345,7 @@ export function streamChat(
   request: ChatRequest,
   onEvent: (event: StreamEvent) => void,
   onError?: (error: Error) => void,
-  onComplete?: () => void,
+  onComplete?: () => void
 ): () => void {
   const abortController = new AbortController();
 
@@ -337,7 +361,7 @@ export function streamChat(
           if (event) {
             onEvent(event);
           }
-        },
+        }
       );
       onComplete?.();
     } catch (error) {

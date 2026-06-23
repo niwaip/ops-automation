@@ -18,7 +18,9 @@ const HTTP_PORT = process.env.CARBONE_API_PORT || 3100;
 const HTTPS_PORT = process.env.CARBONE_API_HTTPS_PORT || 3443;
 const ENABLE_HTTPS = process.env.ENABLE_HTTPS === 'true';
 const CARBONE_ENGINE_URL = process.env.CARBONE_ENGINE_URL || 'http://carbone-engine:3009';
-const CARBONE_ENGINE_PROXY_TIMEOUT_MS = Number(process.env.CARBONE_ENGINE_PROXY_TIMEOUT_MS || 120000);
+const CARBONE_ENGINE_PROXY_TIMEOUT_MS = Number(
+  process.env.CARBONE_ENGINE_PROXY_TIMEOUT_MS || 120000
+);
 
 // CORS 配置 - 允许 Office Add-in 访问
 app.use((req, res, next) => {
@@ -74,7 +76,8 @@ const proxyToEngine = (req, res, targetPath) => {
   console.log(`[Proxy] ${req.method} ${req.path} -> ${targetUrl}`);
 
   // 检查是否是multipart请求
-  const isMultipart = req.headers['content-type'] && req.headers['content-type'].includes('multipart');
+  const isMultipart =
+    req.headers['content-type'] && req.headers['content-type'].includes('multipart');
   let requestBody = null;
 
   if (isMultipart && req.rawBody) {
@@ -87,9 +90,9 @@ const proxyToEngine = (req, res, targetPath) => {
     method: req.method,
     headers: {
       'Content-Type': req.headers['content-type'] || 'application/json',
-      'Authorization': req.headers['authorization'] || '',
+      Authorization: req.headers['authorization'] || '',
       'Content-Length': requestBody ? String(requestBody.length) : '0',
-    }
+    },
   };
 
   const proxyReq = http.request(targetUrl, options, (proxyRes) => {
@@ -98,9 +101,10 @@ const proxyToEngine = (req, res, targetPath) => {
 
     // 判断是否是二进制响应（文件下载）
     const contentType = proxyRes.headers['content-type'] || '';
-    const isBinary = contentType.includes('octet-stream') ||
-                     contentType.includes('application/vnd.') ||
-                     contentType.includes('pdf');
+    const isBinary =
+      contentType.includes('octet-stream') ||
+      contentType.includes('application/vnd.') ||
+      contentType.includes('pdf');
 
     if (isBinary) {
       // 二进制数据：使用Buffer数组收集
@@ -143,7 +147,7 @@ const proxyToEngine = (req, res, targetPath) => {
     res.status(500).json({
       error: 'Failed to connect to carbone-engine service',
       details: error.message,
-      targetUrl: targetUrl
+      targetUrl: targetUrl,
     });
   });
 
@@ -194,7 +198,7 @@ app.post('/render', async (req, res) => {
       res.json({
         success: true,
         result: result.toString('base64'),
-        format: options.convertTo || 'docx'
+        format: options.convertTo || 'docx',
       });
     });
   } catch (error) {
@@ -304,13 +308,13 @@ async function parseTemplate(templatePath) {
       marker: fullMatch,
       path: `${context}.${varPath}`,
       formatter: formatter,
-      isArray: varPath.includes('[i]')
+      isArray: varPath.includes('[i]'),
     });
   }
 
   return {
     variables,
-    totalMarkers: variables.length
+    totalMarkers: variables.length,
   };
 }
 

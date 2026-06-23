@@ -14,12 +14,15 @@ describe('DocumentStructureParser Tag Injection', () => {
   });
 
   it('should inject a single tag and clear multiple text nodes', () => {
-    const doc = new DOMParser().parseFromString(`
+    const doc = new DOMParser().parseFromString(
+      `
       <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
         <w:r><w:t>Part 1 </w:t></w:r>
         <w:r><w:t>Part 2</w:t></w:r>
       </w:p>
-    `, 'text/xml');
+    `,
+      'text/xml'
+    );
     const p = doc.getElementsByTagNameNS('*', 'p')[0];
 
     // Accessing private method for testing
@@ -32,11 +35,14 @@ describe('DocumentStructureParser Tag Injection', () => {
   });
 
   it('should handle prefix and suffix correctly', () => {
-    const doc = new DOMParser().parseFromString(`
+    const doc = new DOMParser().parseFromString(
+      `
       <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
         <w:r><w:t>Original Text</w:t></w:r>
       </w:p>
-    `, 'text/xml');
+    `,
+      'text/xml'
+    );
     const p = doc.getElementsByTagNameNS('*', 'p')[0];
 
     (parser as any).prefixTextToElement(p, '{#loop}');
@@ -47,7 +53,8 @@ describe('DocumentStructureParser Tag Injection', () => {
   });
 
   it('should correctly inject combined variable loops (text + image paragraphs)', async () => {
-      const doc = new DOMParser().parseFromString(`
+    const doc = new DOMParser().parseFromString(
+      `
         <w:body xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" 
                 xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
                 xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing">
@@ -70,46 +77,48 @@ describe('DocumentStructureParser Tag Injection', () => {
           <w:p><w:r><w:t>Step 2: screenshot</w:t></w:r></w:p>
           <w:p><w:r><w:drawing><wp:inline><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:blipFill><a:blip r:embed="rId2"/></pic:blipFill></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>
         </w:body>
-      `, 'text/xml');
-      
-      const body = doc.documentElement;
-      const elements = (parser as any).collectElements(body);
-      
-      // Expected behavior:
-      const screenshotPairs: any[] = [];
-      const stepPattern = /Step\s+(\d+)[:：]\s*screenshot/i;
+      `,
+      'text/xml'
+    );
 
-      for (let i = 0; i < elements.length - 1; i++) {
-        const node = elements[i];
-        const text = (parser as any).getNodeText(node);
-        if (stepPattern.test(text) && (parser as any).isImageElement(elements[i+1])) {
-            screenshotPairs.push({ textNode: elements[i], imageNode: elements[i+1] });
-        }
+    const body = doc.documentElement;
+    const elements = (parser as any).collectElements(body);
+
+    // Expected behavior:
+    const screenshotPairs: any[] = [];
+    const stepPattern = /Step\s+(\d+)[:：]\s*screenshot/i;
+
+    for (let i = 0; i < elements.length - 1; i++) {
+      const node = elements[i];
+      const text = (parser as any).getNodeText(node);
+      if (stepPattern.test(text) && (parser as any).isImageElement(elements[i + 1])) {
+        screenshotPairs.push({ textNode: elements[i], imageNode: elements[i + 1] });
       }
+    }
 
-      expect(screenshotPairs.length).toBe(2);
+    expect(screenshotPairs.length).toBe(2);
 
-      // Apply logic
-      const templatePair = screenshotPairs[0];
-      (parser as any).injectTextToElement(templatePair.textNode, `{d.screenshots[].description}`);
-      (parser as any).injectImageVariable(templatePair.imageNode, `d.screenshots[].url`);
-      (parser as any).prefixTextToElement(templatePair.textNode, `{#d.screenshots}`);
-      (parser as any).suffixTextToElement(templatePair.imageNode, `{/d.screenshots}`);
+    // Apply logic
+    const templatePair = screenshotPairs[0];
+    (parser as any).injectTextToElement(templatePair.textNode, `{d.screenshots[].description}`);
+    (parser as any).injectImageVariable(templatePair.imageNode, `d.screenshots[].url`);
+    (parser as any).prefixTextToElement(templatePair.textNode, `{#d.screenshots}`);
+    (parser as any).suffixTextToElement(templatePair.imageNode, `{/d.screenshots}`);
 
-      // Cleanup others
-      for (let i = screenshotPairs.length - 1; i >= 1; i--) {
-        const pair = screenshotPairs[i];
-        pair.imageNode.parentNode.removeChild(pair.imageNode);
-        pair.textNode.parentNode.removeChild(pair.textNode);
-      }
+    // Cleanup others
+    for (let i = screenshotPairs.length - 1; i >= 1; i--) {
+      const pair = screenshotPairs[i];
+      pair.imageNode.parentNode.removeChild(pair.imageNode);
+      pair.textNode.parentNode.removeChild(pair.textNode);
+    }
 
-      const finalXml = new XMLSerializer().serializeToString(doc);
-      expect(finalXml).toContain('{#d.screenshots}{d.screenshots[].description}');
-      // New format: {d.screenshots[].url:formatImage(rId1)} appended to existing text node (if any) or new one
-      expect(finalXml).toContain('{d.screenshots[].url:formatImage(rId1)}');
-      expect(finalXml).toContain('{/d.screenshots}');
-      // Should have removed the second pair
-      expect(finalXml).not.toContain('Step 2: screenshot');
+    const finalXml = new XMLSerializer().serializeToString(doc);
+    expect(finalXml).toContain('{#d.screenshots}{d.screenshots[].description}');
+    // New format: {d.screenshots[].url:formatImage(rId1)} appended to existing text node (if any) or new one
+    expect(finalXml).toContain('{d.screenshots[].url:formatImage(rId1)}');
+    expect(finalXml).toContain('{/d.screenshots}');
+    // Should have removed the second pair
+    expect(finalXml).not.toContain('Step 2: screenshot');
   });
 
   describe('applyConfigToDocx Integration', () => {
@@ -136,13 +145,13 @@ describe('DocumentStructureParser Tag Injection', () => {
         combinedVariables: [
           {
             type: 'step-screenshot',
-            imagePath: 'd.steps[].screenshot'
-          }
-        ]
+            imagePath: 'd.steps[].screenshot',
+          },
+        ],
       };
 
       const resultBuffer = await parser.applyConfigToDocx(buffer, config);
-      
+
       const resultZip = new JSZip();
       await resultZip.loadAsync(resultBuffer);
       const resultXml = await resultZip.file('word/document.xml')?.async('text');
@@ -166,9 +175,9 @@ describe('DocumentStructureParser Tag Injection', () => {
       const buffer = await createMockDocx(documentXml);
       const config = {
         elementGroups: {
-          '#loop': [0, 2]
+          '#loop': [0, 2],
         },
-        ignoredElements: [3]
+        ignoredElements: [3],
       };
 
       const resultBuffer = await parser.applyConfigToDocx(buffer, config);
@@ -195,12 +204,10 @@ describe('DocumentStructureParser Tag Injection', () => {
       const config = {
         // Element 0 is in a group loop
         elementGroups: {
-          '#d.steps': [0, 1]
+          '#d.steps': [0, 1],
         },
         // But element 0 also has an individual marking (which should be ignored)
-        markings: [
-          { index: 0, type: 'loop', path: 'd.individual' }
-        ]
+        markings: [{ index: 0, type: 'loop', path: 'd.individual' }],
       };
 
       const resultBuffer = await parser.applyConfigToDocx(buffer, config);

@@ -27,7 +27,7 @@ const worker = await Worker.create({
 
 **Note**: Modules with the `node:` prefix (e.g., `node:fs`) require additional webpack configuration to ignore. You may need to configure the bundler's `externals` or use webpack `resolve.alias` to handle these imports.
 
-Use this with *extreme caution*.
+Use this with _extreme caution_.
 
 ## Function Replacement
 

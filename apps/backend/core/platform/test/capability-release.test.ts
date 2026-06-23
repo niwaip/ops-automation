@@ -54,7 +54,7 @@ describe('CapabilityReleaseService', () => {
       {
         deploy: jest.fn(),
       } as any,
-      {} as any,
+      {} as any
     );
 
     return { service, prisma, skillService, toolCatalogService, activityService };
@@ -75,12 +75,12 @@ describe('CapabilityReleaseService', () => {
     expect(prisma.$executeRawUnsafe).toHaveBeenNthCalledWith(
       1,
       expect.stringContaining('UPDATE capability_releases'),
-      'release-1',
+      'release-1'
     );
     expect(prisma.$executeRawUnsafe).toHaveBeenNthCalledWith(
       2,
       expect.stringContaining('UPDATE skill_configs'),
-      'skill-1',
+      'skill-1'
     );
     expect((service as any).insertAuditEvent).toHaveBeenCalledWith(
       'release-1',
@@ -88,14 +88,14 @@ describe('CapabilityReleaseService', () => {
       'user-1',
       true,
       '归档 Release 时停用已发布 Skill: skill-1',
-      { publishedSkillId: 'skill-1' },
+      { publishedSkillId: 'skill-1' }
     );
     expect((service as any).insertAuditEvent).toHaveBeenCalledWith(
       'release-1',
       'release_archived',
       'user-1',
       true,
-      '归档 Capability',
+      '归档 Capability'
     );
   });
 
@@ -104,30 +104,34 @@ describe('CapabilityReleaseService', () => {
 
     prisma.$queryRawUnsafe.mockResolvedValueOnce([]);
 
-    await expect((service as any).resolveTemporalExecutableBuildOrThrow(
-      {
-        id: 'release-1',
-        currentBuildId: null,
-        sourceId: 'workflow-1',
-      },
-      {
-        id: 'snapshot-1',
-        sourcePayload: {
-          generatedCode: 'LEGACY_CODE',
+    await expect(
+      (service as any).resolveTemporalExecutableBuildOrThrow(
+        {
+          id: 'release-1',
+          currentBuildId: null,
+          sourceId: 'workflow-1',
         },
-      },
-      undefined,
-      'user-1',
-    )).rejects.toThrow('当前 Release 缺少真实构建产物，请先执行一次构建 / 代码生成');
+        {
+          id: 'snapshot-1',
+          sourcePayload: {
+            generatedCode: 'LEGACY_CODE',
+          },
+        },
+        undefined,
+        'user-1'
+      )
+    ).rejects.toThrow('当前 Release 缺少真实构建产物，请先执行一次构建 / 代码生成');
 
     expect(prisma.$executeRawUnsafe).not.toHaveBeenCalled();
     expect(prisma.$queryRawUnsafe).toHaveBeenCalledTimes(1);
     expect(prisma.$queryRawUnsafe).toHaveBeenCalledWith(
       expect.stringContaining('FROM capability_builds'),
-      'release-1',
+      'release-1'
     );
     expect(
-      prisma.$queryRawUnsafe.mock.calls.some(([sql]) => String(sql).includes('FROM temporal_workflows')),
+      prisma.$queryRawUnsafe.mock.calls.some(([sql]) =>
+        String(sql).includes('FROM temporal_workflows')
+      )
     ).toBe(false);
   });
 
@@ -170,9 +174,18 @@ describe('CapabilityReleaseService', () => {
     expect(schema).toEqual({
       properties: expect.objectContaining({
         'info.currency': expect.objectContaining({ type: 'string', displayName: '合同金额币种' }),
-        installationCondition: expect.objectContaining({ type: 'string', displayName: '设备安装条件和乙方配合义务' }),
-        'info.warrantyPeriod': expect.objectContaining({ type: 'number', displayName: '质保期月数' }),
-        'info.includeInstall': expect.objectContaining({ type: 'string', displayName: '是否包含安装服务' }),
+        installationCondition: expect.objectContaining({
+          type: 'string',
+          displayName: '设备安装条件和乙方配合义务',
+        }),
+        'info.warrantyPeriod': expect.objectContaining({
+          type: 'number',
+          displayName: '质保期月数',
+        }),
+        'info.includeInstall': expect.objectContaining({
+          type: 'string',
+          displayName: '是否包含安装服务',
+        }),
       }),
       required: expect.arrayContaining([
         'info.currency',
@@ -239,15 +252,17 @@ describe('CapabilityReleaseService', () => {
           },
         },
       },
-      'staging',
+      'staging'
     );
 
-    expect(smokeInput).toEqual(expect.objectContaining({
-      startUrl: 'http://192.168.100.143:5173/',
-      username: 'test',
-      smokeTest: true,
-      environment: 'staging',
-    }));
+    expect(smokeInput).toEqual(
+      expect.objectContaining({
+        startUrl: 'http://192.168.100.143:5173/',
+        username: 'test',
+        smokeTest: true,
+        environment: 'staging',
+      })
+    );
   });
 
   it('prefers fixed source-level test input when building deploy smoke input', () => {
@@ -272,7 +287,7 @@ describe('CapabilityReleaseService', () => {
           },
         },
       },
-      'staging',
+      'staging'
     );
 
     expect(smokeInput).toEqual({
@@ -311,7 +326,7 @@ describe('CapabilityReleaseService', () => {
           },
         },
       },
-      'staging',
+      'staging'
     );
 
     expect(smokeInput).toEqual({
@@ -349,14 +364,12 @@ describe('CapabilityReleaseService', () => {
     });
 
     expect(schema.properties.notes).toEqual(
-      expect.not.objectContaining({ default: expect.anything() }),
+      expect.not.objectContaining({ default: expect.anything() })
     );
     expect(schema.properties.paymentStages).toEqual(
-      expect.not.objectContaining({ default: expect.anything() }),
+      expect.not.objectContaining({ default: expect.anything() })
     );
-    expect(schema.properties.timeout).toEqual(
-      expect.objectContaining({ default: 30 }),
-    );
+    expect(schema.properties.timeout).toEqual(expect.objectContaining({ default: 30 }));
   });
 
   it('keeps L1 presentation metadata in published temporal params schema without leaking policy fields', () => {
@@ -393,12 +406,12 @@ describe('CapabilityReleaseService', () => {
     expect(schema.properties['paymentSchedule[].amount']).toEqual(
       expect.not.objectContaining({
         previewBlocking: expect.anything(),
-      }),
+      })
     );
     expect(schema.properties['paymentSchedule[].amount']).toEqual(
       expect.not.objectContaining({
         confirmationThreshold: expect.anything(),
-      }),
+      })
     );
   });
 
@@ -639,9 +652,7 @@ describe('CapabilityReleaseService', () => {
           executionFlowKeys: ['技术服务合同'],
           apiEndpoints: {
             runtimeMetadata: {
-              mappingHints: [
-                { parameter: 'contract.partyA', path: '{d.contract.partyA_cn}' },
-              ],
+              mappingHints: [{ parameter: 'contract.partyA', path: '{d.contract.partyA_cn}' }],
               workflowInputPolicy: {
                 params: {
                   'contract.partyA': {
@@ -662,15 +673,13 @@ describe('CapabilityReleaseService', () => {
       },
       {
         id: 'validation-1',
-      },
+      }
     );
 
     expect(payload.apiEndpoints.runtimeMetadata).toEqual(
       expect.objectContaining({
         sourceType: 'execution_flow_template',
-        mappingHints: [
-          { parameter: 'contract.partyA', path: '{d.contract.partyA_cn}' },
-        ],
+        mappingHints: [{ parameter: 'contract.partyA', path: '{d.contract.partyA_cn}' }],
         workflowInputPolicy: {
           params: {
             'contract.partyA': {
@@ -685,7 +694,7 @@ describe('CapabilityReleaseService', () => {
             partyA_cn: '上海链合智能科技有限公司',
           },
         },
-      }),
+      })
     );
   });
 
@@ -717,9 +726,7 @@ describe('CapabilityReleaseService', () => {
           workflowSteps: [{ id: 'step-1', name: 'render' }],
           apiEndpoints: {
             runtimeMetadata: {
-              mappingHints: [
-                { parameter: 'contract.partyA', path: '{d.contract.partyA_cn}' },
-              ],
+              mappingHints: [{ parameter: 'contract.partyA', path: '{d.contract.partyA_cn}' }],
               workflowInputPolicy: {
                 params: {
                   'contract.partyA': {
@@ -734,15 +741,13 @@ describe('CapabilityReleaseService', () => {
       },
       {
         id: 'validation-2',
-      },
+      }
     );
 
     expect(payload.apiEndpoints.runtimeMetadata).toEqual(
       expect.objectContaining({
         sourceType: 'temporal_workflow',
-        mappingHints: [
-          { parameter: 'contract.partyA', path: '{d.contract.partyA_cn}' },
-        ],
+        mappingHints: [{ parameter: 'contract.partyA', path: '{d.contract.partyA_cn}' }],
         workflowInputPolicy: {
           params: {
             'contract.partyA': {
@@ -751,7 +756,7 @@ describe('CapabilityReleaseService', () => {
             },
           },
         },
-      }),
+      })
     );
     expect(payload.executionFlowTemplateIds).toEqual(['wf-tech-service']);
   });
@@ -811,19 +816,21 @@ describe('CapabilityReleaseService', () => {
       },
       {
         id: 'validation-3',
-      },
+      }
     );
 
-    expect(payload.paramsSchema).toEqual(expect.objectContaining({
-      properties: expect.objectContaining({
-        'contract.partyA': expect.objectContaining({
-          renderPath: ['contract.partyA_cn', 'contract.partyA_jp'],
+    expect(payload.paramsSchema).toEqual(
+      expect.objectContaining({
+        properties: expect.objectContaining({
+          'contract.partyA': expect.objectContaining({
+            renderPath: ['contract.partyA_cn', 'contract.partyA_jp'],
+          }),
+          'payment.bankAccount': expect.objectContaining({
+            renderPath: 'payment.bankAccount_cn',
+          }),
         }),
-        'payment.bankAccount': expect.objectContaining({
-          renderPath: 'payment.bankAccount_cn',
-        }),
-      }),
-    }));
+      })
+    );
     expect(payload.apiEndpoints.runtimeMetadata).toEqual(
       expect.objectContaining({
         sourceType: 'temporal_workflow',
@@ -839,7 +846,7 @@ describe('CapabilityReleaseService', () => {
             },
           },
         },
-      }),
+      })
     );
   });
 
@@ -888,14 +895,16 @@ describe('CapabilityReleaseService', () => {
     });
 
     expect(schema.required).toEqual(['contract.signingDate']);
-    expect(schema.properties).toEqual(expect.objectContaining({
-      'contract.partyA': expect.objectContaining({
-        required: false,
-      }),
-      'contract.signingDate': expect.objectContaining({
-        required: true,
-      }),
-    }));
+    expect(schema.properties).toEqual(
+      expect.objectContaining({
+        'contract.partyA': expect.objectContaining({
+          required: false,
+        }),
+        'contract.signingDate': expect.objectContaining({
+          required: true,
+        }),
+      })
+    );
   });
 
   it('falls back to concise description labels when declared displayName is still machine-like', () => {
@@ -931,7 +940,8 @@ describe('CapabilityReleaseService', () => {
     const { service, prisma } = createService();
 
     prisma.$executeRawUnsafe.mockResolvedValue(undefined);
-    jest.spyOn(service as any, 'getReleaseOrThrow')
+    jest
+      .spyOn(service as any, 'getReleaseOrThrow')
       .mockResolvedValueOnce({
         id: 'release-temporal-1',
         sourceType: 'temporal_workflow',
@@ -1016,14 +1026,16 @@ describe('CapabilityReleaseService', () => {
 
     const insertedParamsSchema = JSON.parse(prisma.$executeRawUnsafe.mock.calls[0][9]);
     expect(insertedParamsSchema.required).toEqual(['contract.signingDate']);
-    expect(insertedParamsSchema.properties).toEqual(expect.objectContaining({
-      'contract.partyA': expect.objectContaining({
-        required: false,
-      }),
-      'contract.signingDate': expect.objectContaining({
-        required: true,
-      }),
-    }));
+    expect(insertedParamsSchema.properties).toEqual(
+      expect.objectContaining({
+        'contract.partyA': expect.objectContaining({
+          required: false,
+        }),
+        'contract.signingDate': expect.objectContaining({
+          required: true,
+        }),
+      })
+    );
     expect(result).toEqual({
       release: expect.objectContaining({
         id: 'release-temporal-1',
@@ -1095,7 +1107,7 @@ describe('CapabilityReleaseService', () => {
         toolValidation: expect.objectContaining({
           isValid: false,
         }),
-      }),
+      })
     );
   });
 
@@ -1176,7 +1188,7 @@ describe('CapabilityReleaseService', () => {
           applicable: true,
           mappedInputCount: 0,
         }),
-      }),
+      })
     );
   });
 
@@ -1245,7 +1257,7 @@ describe('CapabilityReleaseService', () => {
             tool: expect.objectContaining({ name: 'browser_step' }),
           }),
         ],
-      }),
+      })
     );
     expect(result).toEqual({
       release: expect.objectContaining({ id: 'release-browser-1' }),
@@ -1292,7 +1304,8 @@ describe('CapabilityReleaseService', () => {
   it('allows pre-publish deploy for non-temporal releases to validate runtime wiring', async () => {
     const { service } = createService();
 
-    jest.spyOn(service as any, 'getReleaseOrThrow')
+    jest
+      .spyOn(service as any, 'getReleaseOrThrow')
       .mockResolvedValueOnce({
         id: 'release-no-skill',
         sourceType: 'browser_recording',
@@ -1341,7 +1354,7 @@ describe('CapabilityReleaseService', () => {
       'template-1',
       null,
       null,
-      null,
+      null
     );
     expect(result).toEqual({
       release: expect.objectContaining({ id: 'release-no-skill', status: 'deployed' }),
@@ -1370,7 +1383,8 @@ describe('CapabilityReleaseService', () => {
   it('uses snapshot validation for browser recording sandbox validation', async () => {
     const { service } = createService();
 
-    jest.spyOn(service as any, 'getReleaseOrThrow')
+    jest
+      .spyOn(service as any, 'getReleaseOrThrow')
       .mockResolvedValueOnce({
         id: 'release-browser-validate-1',
         sourceType: 'browser_recording',
@@ -1391,7 +1405,9 @@ describe('CapabilityReleaseService', () => {
     jest.spyOn(service as any, 'resolveBuildForValidation').mockResolvedValue({
       id: 'build-1',
     });
-    jest.spyOn(service as any, 'shouldPreserveReleaseStatusDuringValidation').mockReturnValue(false);
+    jest
+      .spyOn(service as any, 'shouldPreserveReleaseStatusDuringValidation')
+      .mockReturnValue(false);
     jest.spyOn(service as any, 'createValidationRecord').mockResolvedValue('validation-1');
     jest.spyOn(service as any, 'finishValidation').mockResolvedValue(undefined);
     jest.spyOn(service as any, 'insertAuditEvent').mockResolvedValue(undefined);
@@ -1404,7 +1420,7 @@ describe('CapabilityReleaseService', () => {
     const result = await service.validateSandbox(
       'release-browser-validate-1',
       { testCases: ['通过 bing 查询mcp'] },
-      'user-1',
+      'user-1'
     );
 
     expect((service as any).finishValidation).toHaveBeenCalledWith(
@@ -1422,7 +1438,7 @@ describe('CapabilityReleaseService', () => {
         testCases: ['通过 bing 查询mcp'],
       }),
       null,
-      false,
+      false
     );
     expect(result).toEqual({
       release: expect.objectContaining({ id: 'release-browser-validate-1' }),
@@ -1453,19 +1469,25 @@ describe('CapabilityReleaseService', () => {
     });
     toolCatalogService.getCatalogItemsByNames.mockResolvedValue(
       new Map([
-        ['api_call', {
-          promptExposure: 'prompt_and_runtime',
-          defaultRequiresConfirmation: false,
-          defaultRequiresApproval: true,
-          status: 'active',
-        }],
-        ['user_ask', {
-          promptExposure: 'runtime_only',
-          defaultRequiresConfirmation: false,
-          defaultRequiresApproval: false,
-          status: 'active',
-        }],
-      ]),
+        [
+          'api_call',
+          {
+            promptExposure: 'prompt_and_runtime',
+            defaultRequiresConfirmation: false,
+            defaultRequiresApproval: true,
+            status: 'active',
+          },
+        ],
+        [
+          'user_ask',
+          {
+            promptExposure: 'runtime_only',
+            defaultRequiresConfirmation: false,
+            defaultRequiresApproval: false,
+            status: 'active',
+          },
+        ],
+      ])
     );
 
     const result = await service.getPublishedSkillRuntimeContext('skill-1');
@@ -1569,7 +1591,7 @@ describe('CapabilityReleaseService', () => {
       {
         executionId: 'exec-1',
         stepId: 'step-1',
-      },
+      }
     );
 
     expect(mockedAxios.post).toHaveBeenNthCalledWith(
@@ -1586,7 +1608,7 @@ describe('CapabilityReleaseService', () => {
       },
       {
         timeout: 120000,
-      },
+      }
     );
     expect(mockedAxios.post).toHaveBeenNthCalledWith(
       2,
@@ -1601,7 +1623,7 @@ describe('CapabilityReleaseService', () => {
       },
       {
         timeout: 120000,
-      },
+      }
     );
     expect(result.runtime).toBe('document');
     expect(result.success).toBe(true);
@@ -1611,7 +1633,7 @@ describe('CapabilityReleaseService', () => {
         templateId: 'tpl-001',
         fileName: 'contract.docx',
         downloadUrl: 'http://localhost:3009/studio/download/doc-1',
-      }),
+      })
     );
   });
 
@@ -1664,7 +1686,7 @@ describe('CapabilityReleaseService', () => {
         },
         outputFormat: 'pdf',
       },
-      'user-1',
+      'user-1'
     );
 
     expect(mockedAxios.post).toHaveBeenNthCalledWith(
@@ -1681,7 +1703,7 @@ describe('CapabilityReleaseService', () => {
       },
       {
         timeout: 120000,
-      },
+      }
     );
     expect(mockedAxios.post).toHaveBeenNthCalledWith(
       2,
@@ -1696,7 +1718,7 @@ describe('CapabilityReleaseService', () => {
       },
       {
         timeout: 120000,
-      },
+      }
     );
     expect(result.runtime).toBe('document');
     expect(result.success).toBe(true);
@@ -1718,7 +1740,7 @@ describe('CapabilityReleaseService', () => {
       },
     });
     jest.spyOn(service as any, 'insertAuditEvent').mockResolvedValue(undefined);
-    
+
     // Carbone engine returns a plain string for some reason (hypothetical)
     mockedAxios.post
       .mockResolvedValueOnce({
@@ -1731,11 +1753,7 @@ describe('CapabilityReleaseService', () => {
         data: 'SUCCESS_STRING',
       } as any);
 
-    const result = await service.executePublishedSkill(
-      'skill-doc-string',
-      {},
-      'user-1',
-    );
+    const result = await service.executePublishedSkill('skill-doc-string', {}, 'user-1');
 
     expect(result.success).toBe(true);
     expect(result.output).toEqual({ result: 'SUCCESS_STRING', templateId: 'tpl-1' });
@@ -1762,20 +1780,22 @@ describe('CapabilityReleaseService', () => {
       generatedCode: 'PYTHON_CODE',
     });
     jest.spyOn(service as any, 'insertAuditEvent').mockResolvedValue(undefined);
-    
-    jest.spyOn(activityService, 'executeCodeStreaming').mockImplementation(async (_code, _fn, _taskQueue, _input, onLog) => {
-      onLog('[2026-05-16T00:00:00.000Z] 启动工作流: WeatherWorkflow');
-      return {
-        success: true,
-        result: '上海天气：晴，25度',
-        workflowId: 'workflow-1',
-      };
-    });
+
+    jest
+      .spyOn(activityService, 'executeCodeStreaming')
+      .mockImplementation(async (_code, _fn, _taskQueue, _input, onLog) => {
+        onLog('[2026-05-16T00:00:00.000Z] 启动工作流: WeatherWorkflow');
+        return {
+          success: true,
+          result: '上海天气：晴，25度',
+          workflowId: 'workflow-1',
+        };
+      });
 
     const result = await service.executePublishedSkill(
       'skill-temporal',
       { city: 'shanghai' },
-      'user-1',
+      'user-1'
     );
 
     expect(activityService.executeCodeStreaming).toHaveBeenCalledWith(
@@ -1790,7 +1810,7 @@ describe('CapabilityReleaseService', () => {
       expect.any(Function),
       expect.objectContaining({
         preferSandboxStreaming: true,
-      }),
+      })
     );
     expect(result.success).toBe(true);
     expect(result.runtimeSessionId).toMatch(/^capability-runtime-/);
@@ -1840,7 +1860,7 @@ describe('CapabilityReleaseService', () => {
     const result = await service.executePublishedSkill(
       'skill-temporal',
       { contractNo: 'NDA-001' },
-      'user-1',
+      'user-1'
     );
 
     expect(result.success).toBe(true);
@@ -1878,15 +1898,17 @@ describe('CapabilityReleaseService', () => {
     });
     jest.spyOn(service as any, 'insertAuditEvent').mockResolvedValue(undefined);
 
-    jest.spyOn(activityService, 'executeCodeStreaming').mockImplementation(async (_code, _fn, _taskQueue, _input, onLog) => {
-      onLog('[2026-05-16T00:00:01.000Z] 执行浏览器 Phase Activity: 1. 页面打开');
-      onLog('[2026-05-16T00:00:02.000Z] 执行浏览器 Phase Activity: 2. 页面处理');
-      return {
-        success: true,
-        result: { ok: true },
-        workflowId: 'workflow-2',
-      };
-    });
+    jest
+      .spyOn(activityService, 'executeCodeStreaming')
+      .mockImplementation(async (_code, _fn, _taskQueue, _input, onLog) => {
+        onLog('[2026-05-16T00:00:01.000Z] 执行浏览器 Phase Activity: 1. 页面打开');
+        onLog('[2026-05-16T00:00:02.000Z] 执行浏览器 Phase Activity: 2. 页面处理');
+        return {
+          success: true,
+          result: { ok: true },
+          workflowId: 'workflow-2',
+        };
+      });
 
     const result = await service.executePublishedSkill(
       'skill-temporal',
@@ -1896,7 +1918,7 @@ describe('CapabilityReleaseService', () => {
         executionId: 'execution-1',
         runtimeSessionId: 'runtime-1',
         phaseKey: 'phase_01_execute_skill',
-      },
+      }
     );
 
     expect(mockedAxios.post).toHaveBeenNthCalledWith(
@@ -1914,7 +1936,7 @@ describe('CapabilityReleaseService', () => {
           'x-internal-auth': 'internal-secret',
           'x-user-id': 'user-1',
         }),
-      }),
+      })
     );
     expect(mockedAxios.post).toHaveBeenNthCalledWith(
       2,
@@ -1925,7 +1947,7 @@ describe('CapabilityReleaseService', () => {
         activityName: '2. 页面处理',
         runtimeSessionId: 'runtime-1',
       },
-      expect.any(Object),
+      expect.any(Object)
     );
     expect(result.success).toBe(true);
   });
@@ -1980,7 +2002,7 @@ describe('CapabilityReleaseService', () => {
         executionId: 'exec-browser-1',
         stepId: 'step-system-1',
         runtimeSessionId: 'runtime-browser-1',
-      },
+      }
     );
 
     expect(mockedAxios.post).toHaveBeenNthCalledWith(
@@ -1991,7 +2013,7 @@ describe('CapabilityReleaseService', () => {
         runtimeSessionId: 'runtime-browser-1',
         initialUrl: 'https://www.bing.com',
       }),
-      { timeout: 60000 },
+      { timeout: 60000 }
     );
     expect(mockedAxios.post).toHaveBeenNthCalledWith(
       2,
@@ -2003,7 +2025,7 @@ describe('CapabilityReleaseService', () => {
         target: 'https://www.bing.com',
         args: { url: 'https://www.bing.com' },
       }),
-      { timeout: 120000 },
+      { timeout: 120000 }
     );
     expect(mockedAxios.post).toHaveBeenNthCalledWith(
       3,
@@ -2014,14 +2036,14 @@ describe('CapabilityReleaseService', () => {
         action: 'smart_search',
         args: { query: 'mcp' },
       }),
-      { timeout: 120000 },
+      { timeout: 120000 }
     );
     expect(result).toEqual(
       expect.objectContaining({
         releaseId: 'release-browser-runtime-1',
         runtime: 'browser_recording',
         success: true,
-      }),
+      })
     );
   });
 
@@ -2087,7 +2109,7 @@ describe('CapabilityReleaseService', () => {
           executionStepName: '3. click',
           executionStepIndex: 3,
         },
-      },
+      }
     );
 
     expect(mockedAxios.post).toHaveBeenCalledTimes(1);
@@ -2100,12 +2122,12 @@ describe('CapabilityReleaseService', () => {
         action: 'click',
         target: '#submit',
       }),
-      { timeout: 120000 },
+      { timeout: 120000 }
     );
     expect(mockedAxios.post).not.toHaveBeenCalledWith(
       'http://localhost:3004/browser/init',
       expect.anything(),
-      expect.anything(),
+      expect.anything()
     );
     expect(result).toEqual(
       expect.objectContaining({
@@ -2122,7 +2144,7 @@ describe('CapabilityReleaseService', () => {
             }),
           ],
         }),
-      }),
+      })
     );
   });
 
@@ -2156,18 +2178,15 @@ describe('CapabilityReleaseService', () => {
     jest.spyOn(service as any, 'insertAuditEvent').mockResolvedValue(undefined);
     mockedAxios.post
       .mockResolvedValueOnce({ data: { success: true, message: 'initialized' } } as any)
-      .mockResolvedValueOnce({ data: { success: true, output: { status: 'selector-ready' } } } as any);
+      .mockResolvedValueOnce({
+        data: { success: true, output: { status: 'selector-ready' } },
+      } as any);
 
-    const result = await service.executePublishedSkill(
-      'skill-browser-runtime',
-      {},
-      'user-1',
-      {
-        executionId: 'exec-browser-wait-selector',
-        stepId: 'step-system-wait-selector',
-        runtimeSessionId: 'runtime-browser-wait-selector',
-      },
-    );
+    const result = await service.executePublishedSkill('skill-browser-runtime', {}, 'user-1', {
+      executionId: 'exec-browser-wait-selector',
+      stepId: 'step-system-wait-selector',
+      runtimeSessionId: 'runtime-browser-wait-selector',
+    });
 
     expect(mockedAxios.post).toHaveBeenNthCalledWith(
       2,
@@ -2182,14 +2201,14 @@ describe('CapabilityReleaseService', () => {
           selector: 'textbox[name="Enter username"]',
         },
       }),
-      { timeout: 120000 },
+      { timeout: 120000 }
     );
     expect(result).toEqual(
       expect.objectContaining({
         releaseId: 'release-browser-runtime-wait-selector',
         runtime: 'browser_recording',
         success: true,
-      }),
+      })
     );
   });
 
@@ -2248,7 +2267,7 @@ describe('CapabilityReleaseService', () => {
       {
         executionId: 'exec-browser-2',
         stepId: 'step-system-2',
-      },
+      }
     );
 
     expect(result).toEqual(
@@ -2257,12 +2276,12 @@ describe('CapabilityReleaseService', () => {
         runtime: 'browser_recording',
         success: false,
         error: 'click failed',
-      }),
+      })
     );
     expect(mockedAxios.post).not.toHaveBeenCalledWith(
       'http://localhost:3004/browser/reset',
       expect.anything(),
-      expect.anything(),
+      expect.anything()
     );
   });
 
@@ -2288,7 +2307,16 @@ describe('CapabilityReleaseService', () => {
         exportArtifacts: {
           guidance: 'g',
           commands: [{ tool: 'navigate', params: { url: 'https://example.com' } }],
+          templateSteps: [{ action: 'fill', params: { value: '${username}' } }],
+          loopDraft: {
+            type: 'collection',
+            variableName: 'items',
+          },
+          loopPlanPreview: [{ label: 'items[*]' }],
           skillDraft: {
+            executionPlan: {
+              version: 'v1',
+            },
             publishPayload: {
               name: 'recorder-skill',
               description: 'desc',
@@ -2309,15 +2337,18 @@ describe('CapabilityReleaseService', () => {
           },
         },
       },
-      'user-1',
+      'user-1'
     );
+    const insertedApiEndpoints = JSON.parse(prisma.$executeRawUnsafe.mock.calls[0][10]);
+    const insertedDraftPayload = JSON.parse(prisma.$executeRawUnsafe.mock.calls[0][11]);
+
 
     expect((service as any).createCapability).toHaveBeenCalledWith(
       expect.objectContaining({
         sourceType: 'browser_recording',
         sourceName: 'recorder-skill',
       }),
-      'user-1',
+      'user-1'
     );
     expect(prisma.$executeRawUnsafe).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO skill_drafts'),
@@ -2332,8 +2363,38 @@ describe('CapabilityReleaseService', () => {
       expect.any(String),
       expect.any(String),
       expect.any(String),
-      'user-1',
+      'user-1'
     );
+    expect(insertedApiEndpoints.runtimeMetadata).toEqual(
+      expect.objectContaining({
+        sourceType: 'browser_recording',
+        templateSteps: [{ action: 'fill', params: { value: '${username}' } }],
+        loopDraft: {
+          type: 'collection',
+          variableName: 'items',
+        },
+        loopPlanPreview: [{ label: 'items[*]' }],
+        executionPlan: expect.objectContaining({
+          version: 'v1',
+          templateSteps: [{ action: 'fill', params: { value: '${username}' } }],
+          loopDraft: {
+            type: 'collection',
+            variableName: 'items',
+          },
+        }),
+      })
+    );
+    expect(insertedDraftPayload.apiEndpoints.runtimeMetadata.executionPlan).toEqual(
+      expect.objectContaining({
+        version: 'v1',
+        templateSteps: [{ action: 'fill', params: { value: '${username}' } }],
+        loopDraft: {
+          type: 'collection',
+          variableName: 'items',
+        },
+      })
+    );
+    expect(insertedDraftPayload.loopPlanPreview).toEqual([{ label: 'items[*]' }]);
     expect(result).toEqual({
       release: {
         id: 'release-bridge-1',
@@ -2365,7 +2426,7 @@ describe('CapabilityReleaseService', () => {
             },
           },
         },
-      }),
+      })
     ).rejects.toMatchObject({
       response: expect.objectContaining({
         code: 'invalid_release_type',
@@ -2388,7 +2449,7 @@ describe('CapabilityReleaseService', () => {
             name: 'recorder-skill',
           },
         },
-      } as any),
+      } as any)
     ).rejects.toMatchObject({
       response: expect.objectContaining({
         code: 'missing_publish_payload',
@@ -2432,8 +2493,8 @@ describe('CapabilityReleaseService', () => {
     await expect(
       (service as any).getRollbackTargetOrThrow(
         { id: 'release-1', sourceId: 'src-1', sourceName: 's', sourceType: 'browser_recording' },
-        'release-1',
-      ),
+        'release-1'
+      )
     ).rejects.toMatchObject({
       response: expect.objectContaining({
         code: 'rollback_target_same_release',
@@ -2446,9 +2507,12 @@ describe('CapabilityReleaseService', () => {
     const { service } = createService();
 
     await expect(
-      (service as any).getRollbackTargetOrThrow(
-        { id: 'release-1', sourceId: null, sourceName: null, sourceType: 'browser_recording' },
-      ),
+      (service as any).getRollbackTargetOrThrow({
+        id: 'release-1',
+        sourceId: null,
+        sourceName: null,
+        sourceType: 'browser_recording',
+      })
     ).rejects.toMatchObject({
       response: expect.objectContaining({
         code: 'rollback_source_identifier_missing',

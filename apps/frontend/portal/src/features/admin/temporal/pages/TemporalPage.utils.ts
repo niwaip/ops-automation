@@ -1,7 +1,16 @@
-import { WorkflowDsl, ActivityDsl, TemporalWorkflowSourceTemplate, TemporalWorkflowSourceContext, WorkflowInputParamDefinition } from '@/api/temporal';
+import {
+  WorkflowDsl,
+  ActivityDsl,
+  TemporalWorkflowSourceTemplate,
+  TemporalWorkflowSourceContext,
+  WorkflowInputParamDefinition,
+} from '@/api/temporal';
 import { CarboneSkill } from '@/api/carbone';
 import type { DurationUnit } from './TemporalPage.types';
-import { DEFAULT_DURATION_UNIT, PARAMETER_DESCRIPTION_PREVIEW_LIMIT } from './TemporalPage.constants';
+import {
+  DEFAULT_DURATION_UNIT,
+  PARAMETER_DESCRIPTION_PREVIEW_LIMIT,
+} from './TemporalPage.constants';
 
 export const beautifyText = (text: string, useDivider = true): string => {
   if (!text) return '';
@@ -12,7 +21,10 @@ export const beautifyText = (text: string, useDivider = true): string => {
     .replace(/^[\s\n]+|[\s\n]+$/g, '');
 };
 
-export const truncateText = (text: string, maxLength = PARAMETER_DESCRIPTION_PREVIEW_LIMIT): string => {
+export const truncateText = (
+  text: string,
+  maxLength = PARAMETER_DESCRIPTION_PREVIEW_LIMIT
+): string => {
   const normalized = String(text || '').trim();
   if (!normalized) {
     return '';
@@ -42,7 +54,10 @@ export const parseDurationValue = (duration?: string): { value?: number; unit: D
   return { value: undefined, unit: DEFAULT_DURATION_UNIT };
 };
 
-export const formatDurationValue = (value?: number | null, unit: DurationUnit = DEFAULT_DURATION_UNIT): string | undefined => {
+export const formatDurationValue = (
+  value?: number | null,
+  unit: DurationUnit = DEFAULT_DURATION_UNIT
+): string | undefined => {
   if (value === null || value === undefined || Number.isNaN(value)) {
     return undefined;
   }
@@ -51,30 +66,35 @@ export const formatDurationValue = (value?: number | null, unit: DurationUnit = 
 
 export const resolveApiErrorMessage = (error: any, fallback = '请求失败'): string => {
   const responseData = error?.response?.data;
-  const messageText = typeof responseData?.message === 'string'
-    ? responseData.message
-    : typeof error?.message === 'string'
-      ? error.message
-      : fallback;
-  const codeText = typeof responseData?.code === 'string'
-    ? responseData.code
-    : typeof responseData?.error === 'string'
-      ? responseData.error
-      : '';
+  const messageText =
+    typeof responseData?.message === 'string'
+      ? responseData.message
+      : typeof error?.message === 'string'
+        ? error.message
+        : fallback;
+  const codeText =
+    typeof responseData?.code === 'string'
+      ? responseData.code
+      : typeof responseData?.error === 'string'
+        ? responseData.error
+        : '';
   return codeText ? `${messageText} (${codeText})` : messageText;
 };
 
 export const deriveWorkflowSourceTemplate = (
   workflowDsl?: WorkflowDsl | null,
-  activityDsl?: ActivityDsl | null,
+  activityDsl?: ActivityDsl | null
 ): TemporalWorkflowSourceTemplate | null => {
   const workflowDslRecord = workflowDsl as unknown as Record<string, unknown> | undefined;
-  const workflowSource = workflowDslRecord && typeof workflowDslRecord.sourceTemplate === 'object'
-    ? (workflowDsl as unknown as { sourceTemplate?: TemporalWorkflowSourceTemplate }).sourceTemplate
-    : undefined;
-  const workflowSourceContext = workflowDslRecord && typeof workflowDslRecord.sourceContext === 'object'
-    ? (workflowDsl as unknown as { sourceContext?: TemporalWorkflowSourceContext }).sourceContext
-    : undefined;
+  const workflowSource =
+    workflowDslRecord && typeof workflowDslRecord.sourceTemplate === 'object'
+      ? (workflowDsl as unknown as { sourceTemplate?: TemporalWorkflowSourceTemplate })
+          .sourceTemplate
+      : undefined;
+  const workflowSourceContext =
+    workflowDslRecord && typeof workflowDslRecord.sourceContext === 'object'
+      ? (workflowDsl as unknown as { sourceContext?: TemporalWorkflowSourceContext }).sourceContext
+      : undefined;
   const workflowSourceTemplate = workflowSourceContext?.sourceTemplate;
   const activities = Array.isArray(activityDsl?.activities) ? activityDsl.activities : [];
   const carboneActivity = activities.find((activity) => {
@@ -88,11 +108,33 @@ export const deriveWorkflowSourceTemplate = (
     ? carboneActivity?.config?.steps.find((step: Record<string, any>) => step?.type === 'carbone')
     : null;
   const sourceTemplate: TemporalWorkflowSourceTemplate = {
-    templateId: workflowSource?.templateId || workflowSourceTemplate?.templateId || carboneStep?.config?.templateId || carboneActivity?.config?.templateId,
-    skillId: workflowSource?.skillId || workflowSourceTemplate?.skillId || carboneActivity?.config?.skillId || undefined,
-    fileName: workflowSource?.fileName || workflowSourceTemplate?.fileName || carboneActivity?.config?.fileName || undefined,
-    format: workflowSource?.format || workflowSourceTemplate?.format || carboneStep?.config?.format || carboneActivity?.config?.format || undefined,
-    variableCount: workflowSource?.variableCount || workflowSourceTemplate?.variableCount || carboneActivity?.config?.variableCount || Object.keys(workflowDsl?.inputParams || {}).length || undefined,
+    templateId:
+      workflowSource?.templateId ||
+      workflowSourceTemplate?.templateId ||
+      carboneStep?.config?.templateId ||
+      carboneActivity?.config?.templateId,
+    skillId:
+      workflowSource?.skillId ||
+      workflowSourceTemplate?.skillId ||
+      carboneActivity?.config?.skillId ||
+      undefined,
+    fileName:
+      workflowSource?.fileName ||
+      workflowSourceTemplate?.fileName ||
+      carboneActivity?.config?.fileName ||
+      undefined,
+    format:
+      workflowSource?.format ||
+      workflowSourceTemplate?.format ||
+      carboneStep?.config?.format ||
+      carboneActivity?.config?.format ||
+      undefined,
+    variableCount:
+      workflowSource?.variableCount ||
+      workflowSourceTemplate?.variableCount ||
+      carboneActivity?.config?.variableCount ||
+      Object.keys(workflowDsl?.inputParams || {}).length ||
+      undefined,
   };
   if (!sourceTemplate.templateId && !sourceTemplate.skillId && !sourceTemplate.fileName) {
     return null;
@@ -102,20 +144,21 @@ export const deriveWorkflowSourceTemplate = (
 
 export const deriveWorkflowSourceContext = (
   workflowDsl?: WorkflowDsl | null,
-  activityDsl?: ActivityDsl | null,
+  activityDsl?: ActivityDsl | null
 ): TemporalWorkflowSourceContext | null => {
   const workflowDslRecord = workflowDsl as unknown as Record<string, unknown> | undefined;
-  const workflowSourceContext = workflowDslRecord && typeof workflowDslRecord.sourceContext === 'object'
-    ? (workflowDsl as unknown as { sourceContext?: TemporalWorkflowSourceContext }).sourceContext
-    : undefined;
+  const workflowSourceContext =
+    workflowDslRecord && typeof workflowDslRecord.sourceContext === 'object'
+      ? (workflowDsl as unknown as { sourceContext?: TemporalWorkflowSourceContext }).sourceContext
+      : undefined;
   const sourceTemplate = deriveWorkflowSourceTemplate(workflowDsl, activityDsl);
   if (
-    !workflowSourceContext?.sourceType
-    && !workflowSourceContext?.referenceUrl
-    && !workflowSourceContext?.userDescription
-    && !workflowSourceContext?.generatedAt
-    && !workflowSourceContext?.warnings?.length
-    && !sourceTemplate
+    !workflowSourceContext?.sourceType &&
+    !workflowSourceContext?.referenceUrl &&
+    !workflowSourceContext?.userDescription &&
+    !workflowSourceContext?.generatedAt &&
+    !workflowSourceContext?.warnings?.length &&
+    !sourceTemplate
   ) {
     return null;
   }
@@ -129,24 +172,28 @@ export const deriveWorkflowSourceContext = (
 export const buildWorkflowDraftSignature = (
   workflowDsl: WorkflowDsl,
   activityDsl: ActivityDsl,
-  workflowName?: string,
-): string => JSON.stringify({
-  workflowDsl: {
-    ...workflowDsl,
-    name: workflowName || workflowDsl.name || '',
-  },
-  activityDsl,
-});
+  workflowName?: string
+): string =>
+  JSON.stringify({
+    workflowDsl: {
+      ...workflowDsl,
+      name: workflowName || workflowDsl.name || '',
+    },
+    activityDsl,
+  });
 
-export const asPlainRecord = (value: unknown): Record<string, any> => (
-  value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, any> : {}
-);
+export const asPlainRecord = (value: unknown): Record<string, any> =>
+  value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, any>) : {};
 
-export const getStepInputPublicEntries = (step?: WorkflowDsl['steps'][number]): Array<[string, any]> => (
-  Object.entries(step?.input || {}).filter(([key]) => key !== 'timeout' && !key.startsWith('__'))
-);
+export const getStepInputPublicEntries = (
+  step?: WorkflowDsl['steps'][number]
+): Array<[string, any]> =>
+  Object.entries(step?.input || {}).filter(([key]) => key !== 'timeout' && !key.startsWith('__'));
 
-export const collectTemplateVariablesFromValue = (value: unknown, target: Set<string> = new Set<string>()): Set<string> => {
+export const collectTemplateVariablesFromValue = (
+  value: unknown,
+  target: Set<string> = new Set<string>()
+): Set<string> => {
   if (typeof value === 'string') {
     Array.from(value.matchAll(/\{([^{}]+)\}/g)).forEach((match) => {
       const variable = String(match[1] || '').trim();
@@ -161,37 +208,45 @@ export const collectTemplateVariablesFromValue = (value: unknown, target: Set<st
     return target;
   }
   if (value && typeof value === 'object') {
-    Object.values(value as Record<string, unknown>).forEach((item) => collectTemplateVariablesFromValue(item, target));
+    Object.values(value as Record<string, unknown>).forEach((item) =>
+      collectTemplateVariablesFromValue(item, target)
+    );
   }
   return target;
 };
 
 export const normalizeWorkflowInputParamMap = (
-  inputParams?: Record<string, WorkflowInputParamDefinition>,
+  inputParams?: Record<string, WorkflowInputParamDefinition>
 ): Record<string, WorkflowInputParamDefinition> => {
   if (!inputParams || typeof inputParams !== 'object') {
     return {};
   }
-  return Object.entries(inputParams).reduce<Record<string, WorkflowInputParamDefinition>>((acc, [rawKey, value]) => {
-    const key = String(rawKey || '').trim();
-    if (!key) {
+  return Object.entries(inputParams).reduce<Record<string, WorkflowInputParamDefinition>>(
+    (acc, [rawKey, value]) => {
+      const key = String(rawKey || '').trim();
+      if (!key) {
+        return acc;
+      }
+      acc[key] = {
+        description: typeof value?.description === 'string' ? value.description : '',
+        required: value?.required === true,
+        defaultValue:
+          value?.defaultValue === undefined || value?.defaultValue === null
+            ? ''
+            : String(value.defaultValue),
+        source: value?.source,
+        type: value?.type,
+        exampleValue: value?.exampleValue,
+        displayName: typeof value?.displayName === 'string' ? value.displayName : '',
+        groupLabel: typeof value?.groupLabel === 'string' ? value.groupLabel : '',
+        paramKind: value?.paramKind,
+        arrayPath: typeof value?.arrayPath === 'string' ? value.arrayPath : '',
+        fieldName: typeof value?.fieldName === 'string' ? value.fieldName : '',
+      };
       return acc;
-    }
-    acc[key] = {
-      description: typeof value?.description === 'string' ? value.description : '',
-      required: value?.required === true,
-      defaultValue: value?.defaultValue === undefined || value?.defaultValue === null ? '' : String(value.defaultValue),
-      source: value?.source,
-      type: value?.type,
-      exampleValue: value?.exampleValue,
-      displayName: typeof value?.displayName === 'string' ? value.displayName : '',
-      groupLabel: typeof value?.groupLabel === 'string' ? value.groupLabel : '',
-      paramKind: value?.paramKind,
-      arrayPath: typeof value?.arrayPath === 'string' ? value.arrayPath : '',
-      fieldName: typeof value?.fieldName === 'string' ? value.fieldName : '',
-    };
-    return acc;
-  }, {});
+    },
+    {}
+  );
 };
 
 export const normalizeActivityInputParams = (
@@ -218,7 +273,7 @@ export const normalizeActivityInputParams = (
 };
 
 export const buildWorkflowInputParamsFromActivityDsl = (
-  activityDsl?: ActivityDsl,
+  activityDsl?: ActivityDsl
 ): Record<string, WorkflowInputParamDefinition> => {
   const merged: Record<string, WorkflowInputParamDefinition> = {};
   (activityDsl?.activities || []).forEach((activity) => {
@@ -246,14 +301,11 @@ export const buildWorkflowInputParamsFromActivityDsl = (
 
 export const mergeWorkflowInputParamMaps = (
   preferred?: Record<string, WorkflowInputParamDefinition>,
-  fallback?: Record<string, WorkflowInputParamDefinition>,
+  fallback?: Record<string, WorkflowInputParamDefinition>
 ): Record<string, WorkflowInputParamDefinition> => {
   const base = normalizeWorkflowInputParamMap(fallback);
   const overlay = normalizeWorkflowInputParamMap(preferred);
-  const mergedKeys = Array.from(new Set([
-    ...Object.keys(base),
-    ...Object.keys(overlay),
-  ]));
+  const mergedKeys = Array.from(new Set([...Object.keys(base), ...Object.keys(overlay)]));
   return mergedKeys.reduce<Record<string, WorkflowInputParamDefinition>>((acc, key) => {
     const fallbackValue = base[key] || {};
     const preferredValue = overlay[key] || {};
@@ -278,11 +330,11 @@ export const mergeWorkflowInputParamMaps = (
 
 export const withNormalizedWorkflowInputParams = (
   workflowDsl: WorkflowDsl,
-  activityDsl?: ActivityDsl,
+  activityDsl?: ActivityDsl
 ): WorkflowDsl => {
   const mergedInputParams = mergeWorkflowInputParamMaps(
     workflowDsl?.inputParams,
-    buildWorkflowInputParamsFromActivityDsl(activityDsl),
+    buildWorkflowInputParamsFromActivityDsl(activityDsl)
   );
   if (Object.keys(mergedInputParams).length === 0) {
     return workflowDsl.inputParams ? { ...workflowDsl, inputParams: {} } : workflowDsl;
@@ -293,7 +345,7 @@ export const withNormalizedWorkflowInputParams = (
   };
 };
 
-export const normalizeWorkflowSkillParamKey = (name: unknown): string => (
+export const normalizeWorkflowSkillParamKey = (name: unknown): string =>
   String(name || '')
     .trim()
     .replace(/^\{/, '')
@@ -301,60 +353,72 @@ export const normalizeWorkflowSkillParamKey = (name: unknown): string => (
     .replace(/^#/, '')
     .replace(/^\//, '')
     .replace(/^d\./, '')
-    .trim()
-);
+    .trim();
 
 export const buildWorkflowInputParamMapFromSkill = (
-  skill?: CarboneSkill | null,
+  skill?: CarboneSkill | null
 ): Record<string, Partial<WorkflowInputParamDefinition>> => {
   const parameters = Array.isArray(skill?.parameters) ? skill.parameters : [];
-  return parameters.reduce<Record<string, Partial<WorkflowInputParamDefinition>>>((acc, rawParameter) => {
-    const parameter = (rawParameter || {}) as Record<string, unknown>;
-    const key = normalizeWorkflowSkillParamKey(parameter.name);
-    if (!key || acc[key]) {
+  return parameters.reduce<Record<string, Partial<WorkflowInputParamDefinition>>>(
+    (acc, rawParameter) => {
+      const parameter = (rawParameter || {}) as Record<string, unknown>;
+      const key = normalizeWorkflowSkillParamKey(parameter.name);
+      if (!key || acc[key]) {
+        return acc;
+      }
+      const arrayMatch = key.match(/^(.+\[\])\.(.+)$/);
+      acc[key] = {
+        description: typeof parameter.usage === 'string' ? parameter.usage : '',
+        displayName: typeof parameter.displayName === 'string' ? parameter.displayName : '',
+        groupLabel: [
+          parameter.groupLabel,
+          parameter.sheetName,
+          parameter.chapter,
+          parameter.section,
+          parameter.group,
+        ].find((value) => typeof value === 'string' && value.trim()) as string | undefined,
+        paramKind: arrayMatch ? 'array' : 'scalar',
+        arrayPath: arrayMatch?.[1] || '',
+        fieldName: arrayMatch?.[2] || key,
+      };
       return acc;
-    }
-    const arrayMatch = key.match(/^(.+\[\])\.(.+)$/);
-    acc[key] = {
-      description: typeof parameter.usage === 'string' ? parameter.usage : '',
-      displayName: typeof parameter.displayName === 'string' ? parameter.displayName : '',
-      groupLabel: [
-        parameter.groupLabel,
-        parameter.sheetName,
-        parameter.chapter,
-        parameter.section,
-        parameter.group,
-      ].find((value) => typeof value === 'string' && value.trim()) as string | undefined,
-      paramKind: arrayMatch ? 'array' : 'scalar',
-      arrayPath: arrayMatch?.[1] || '',
-      fieldName: arrayMatch?.[2] || key,
-    };
-    return acc;
-  }, {});
+    },
+    {}
+  );
 };
 
 export const enrichWorkflowInputParamsWithSkill = (
   inputParams?: Record<string, WorkflowInputParamDefinition>,
-  skill?: CarboneSkill | null,
+  skill?: CarboneSkill | null
 ): Record<string, WorkflowInputParamDefinition> => {
   const normalizedInputParams = normalizeWorkflowInputParamMap(inputParams);
   if (Object.keys(normalizedInputParams).length === 0) {
     return normalizedInputParams;
   }
   const skillParamMap = buildWorkflowInputParamMapFromSkill(skill);
-  return Object.entries(normalizedInputParams).reduce<Record<string, WorkflowInputParamDefinition>>((acc, [key, value]) => {
-    const metadata = skillParamMap[key] || {};
-    acc[key] = {
-      ...value,
-      description: value.description || metadata.description || '',
-      displayName: value.displayName || metadata.displayName || '',
-      groupLabel: value.groupLabel || metadata.groupLabel || '',
-      paramKind: value.paramKind || metadata.paramKind || (key.includes('[].') ? 'array' : 'scalar'),
-      arrayPath: value.arrayPath || metadata.arrayPath || (key.includes('[].') ? `${key.split('[].')[0]}[]` : ''),
-      fieldName: value.fieldName || metadata.fieldName || (key.includes('[].') ? (key.split('[].')[1] || key) : key),
-    };
-    return acc;
-  }, {});
+  return Object.entries(normalizedInputParams).reduce<Record<string, WorkflowInputParamDefinition>>(
+    (acc, [key, value]) => {
+      const metadata = skillParamMap[key] || {};
+      acc[key] = {
+        ...value,
+        description: value.description || metadata.description || '',
+        displayName: value.displayName || metadata.displayName || '',
+        groupLabel: value.groupLabel || metadata.groupLabel || '',
+        paramKind:
+          value.paramKind || metadata.paramKind || (key.includes('[].') ? 'array' : 'scalar'),
+        arrayPath:
+          value.arrayPath ||
+          metadata.arrayPath ||
+          (key.includes('[].') ? `${key.split('[].')[0]}[]` : ''),
+        fieldName:
+          value.fieldName ||
+          metadata.fieldName ||
+          (key.includes('[].') ? key.split('[].')[1] || key : key),
+      };
+      return acc;
+    },
+    {}
+  );
 };
 
 export type GroupedWorkflowInputParams = {
@@ -368,7 +432,7 @@ export type GroupedWorkflowInputParams = {
 };
 
 export const groupWorkflowInputParams = (
-  inputParams?: Record<string, WorkflowInputParamDefinition>,
+  inputParams?: Record<string, WorkflowInputParamDefinition>
 ): GroupedWorkflowInputParams[] => {
   const groupMap = new Map<string, GroupedWorkflowInputParams>();
   const entries = Object.entries(inputParams || {});
@@ -383,7 +447,7 @@ export const groupWorkflowInputParams = (
       arrayGroups: [],
     };
 
-    const isArray = (param.paramKind === 'array') || key.includes('[].');
+    const isArray = param.paramKind === 'array' || key.includes('[].');
     if (!isArray) {
       existing.scalarEntries.push([key, param]);
       groupMap.set(groupLabel, existing);
@@ -418,18 +482,21 @@ export const groupWorkflowInputParams = (
     .sort((a, b) => a.label.localeCompare(b.label, 'zh-Hans-CN'));
 };
 
-export const extractTemplatePlaceholders = (template: string): string[] => (
+export const extractTemplatePlaceholders = (template: string): string[] =>
   Array.from(String(template || '').matchAll(/\{([^{}]+)\}/g))
     .map((match) => String(match[1] || '').trim())
-    .filter(Boolean)
-);
+    .filter(Boolean);
 
-export const collectContextReferenceKeys = (fieldMappings: Record<string, any>): string[] => (
+export const collectContextReferenceKeys = (fieldMappings: Record<string, any>): string[] =>
   Object.values(fieldMappings || {})
     .filter((value): value is string => typeof value === 'string')
-    .map((value) => String(value || '').trim().match(/^context\.([^.\s]+)$/)?.[1] || '')
-    .filter(Boolean)
-);
+    .map(
+      (value) =>
+        String(value || '')
+          .trim()
+          .match(/^context\.([^.\s]+)$/)?.[1] || ''
+    )
+    .filter(Boolean);
 
 export const hasUsableContextTemplate = (value: unknown): boolean => {
   if (typeof value === 'string') {
@@ -462,7 +529,7 @@ export const collectLeafPaths = (
   value: unknown,
   prefix = '',
   acc: Array<{ path: string; value: unknown }> = [],
-  depth = 0,
+  depth = 0
 ): Array<{ path: string; value: unknown }> => {
   if (depth > 6) {
     return acc;
@@ -475,10 +542,12 @@ export const collectLeafPaths = (
     return acc;
   }
   if (value && typeof value === 'object') {
-    Object.entries(value as Record<string, unknown>).slice(0, 20).forEach(([key, item]) => {
-      const nextPath = prefix ? `${prefix}.${key}` : key;
-      collectLeafPaths(item, nextPath, acc, depth + 1);
-    });
+    Object.entries(value as Record<string, unknown>)
+      .slice(0, 20)
+      .forEach(([key, item]) => {
+        const nextPath = prefix ? `${prefix}.${key}` : key;
+        collectLeafPaths(item, nextPath, acc, depth + 1);
+      });
     return acc;
   }
   if (prefix) {
@@ -497,7 +566,9 @@ export const unwrapValidationResultPayload = (value: unknown): unknown => {
     if (!('result' in record)) {
       return current;
     }
-    const hasExecutionEnvelope = ['success', 'error', 'logs', 'traceback', 'score'].some((key) => key in record);
+    const hasExecutionEnvelope = ['success', 'error', 'logs', 'traceback', 'score'].some(
+      (key) => key in record
+    );
     if (!hasExecutionEnvelope) {
       return current;
     }
@@ -511,12 +582,12 @@ export const extractHttpPreviewBody = (value: unknown): unknown => {
     return value;
   }
   const record = value as Record<string, unknown>;
-  const looksLikeHttpPreview = 'body' in record && (
-    'statusCode' in record
-    || 'headers' in record
-    || 'ok' in record
-    || 'text' in record
-    || 'url' in record
-  );
+  const looksLikeHttpPreview =
+    'body' in record &&
+    ('statusCode' in record ||
+      'headers' in record ||
+      'ok' in record ||
+      'text' in record ||
+      'url' in record);
   return looksLikeHttpPreview ? record.body : value;
 };

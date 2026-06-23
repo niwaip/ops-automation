@@ -21,14 +21,10 @@ export function createWordWorkflowActionControllers(args: {
     setAllCompareSectionsSelected,
     handleSampleUploadStateChange,
   } = createWordQueryStepController(args.step);
-  const {
-    handleHighlightCompareCandidates,
-    handleClearCompareHighlights,
-  } = createWordQueryHighlightController(args.highlight);
-  const {
-    handleStartUnderstanding,
-    handleStartRecognition,
-  } = createWordIdentifyRecognitionController(args.recognition);
+  const { handleHighlightCompareCandidates, handleClearCompareHighlights } =
+    createWordQueryHighlightController(args.highlight);
+  const { handleStartUnderstanding, handleStartRecognition } =
+    createWordIdentifyRecognitionController(args.recognition);
 
   return {
     handleStartCompare,

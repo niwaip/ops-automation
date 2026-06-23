@@ -7,15 +7,22 @@ function normalizeText(value: unknown): string {
     .trim();
 }
 
-export function enrichWordSuggestionAnchors(documentIR: DocumentIR, suggestions: AISuggestion[]): AISuggestion[] {
-  const contentControlAnchors = documentIR.anchors.filter((anchor) => anchor.type === 'word-content-control');
+export function enrichWordSuggestionAnchors(
+  documentIR: DocumentIR,
+  suggestions: AISuggestion[]
+): AISuggestion[] {
+  const contentControlAnchors = documentIR.anchors.filter(
+    (anchor) => anchor.type === 'word-content-control'
+  );
   const tableCellAnchors = documentIR.anchors.filter(
     (anchor) => anchor.type === 'word-range' && anchor.ref?.anchorSource === 'table-cell'
   );
 
   return suggestions.map((suggestion) => {
     const originalText = normalizeText(suggestion.originalText);
-    const contextText = normalizeText(suggestion.context || suggestion.details?.context || suggestion.elementPath);
+    const contextText = normalizeText(
+      suggestion.context || suggestion.details?.context || suggestion.elementPath
+    );
 
     const exactContentControls = originalText
       ? contentControlAnchors.filter((anchor) => normalizeText(anchor.text) === originalText)

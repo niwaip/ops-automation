@@ -3,12 +3,7 @@
  * 简单的角色检查 Guard
  */
 
-import {
-  Injectable,
-  CanActivate,
-  ExecutionContext,
-  ForbiddenException,
-} from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 
@@ -40,7 +35,7 @@ export class RolesGuard implements CanActivate {
 
     if (!hasRole) {
       throw new ForbiddenException(
-        `User role '${user.role}' is not authorized. Required roles: ${requiredRoles.join(', ')}`,
+        `User role '${user.role}' is not authorized. Required roles: ${requiredRoles.join(', ')}`
       );
     }
 

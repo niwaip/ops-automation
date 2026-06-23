@@ -26,10 +26,11 @@ describe('ReActEngineService Retry E2E', () => {
       }),
     });
 
-    const chatCompletion = jest.fn()
+    const chatCompletion = jest
+      .fn()
       .mockRejectedValueOnce(new Error('upstream timeout'))
       .mockResolvedValueOnce(
-        'Thought: 模型恢复成功，直接完成\nAction: finish\nAction Input: {"answer":"自动重试后成功"}',
+        'Thought: 模型恢复成功，直接完成\nAction: finish\nAction Input: {"answer":"自动重试后成功"}'
       );
 
     const modelService = {
@@ -54,7 +55,7 @@ describe('ReActEngineService Retry E2E', () => {
       toolExecutor,
       sessionService,
       capabilityResolver,
-      modelRouterService,
+      modelRouterService
     );
 
     const request: ChatRequestDTO = {
@@ -93,12 +94,30 @@ describe('ReActEngineService Retry E2E', () => {
       attemptedModelIds: ['default'],
     });
     expect(resultEvent?.data?.meta).toMatchObject({
-      systemPromptSectionKeys: expect.arrayContaining(['system_policy', 'capability_policy', 'skill_index']),
-      userPromptSectionKeys: expect.arrayContaining(['task_input', 'routing_state', 'prompt_assembly_state', 'execution_request']),
+      systemPromptSectionKeys: expect.arrayContaining([
+        'system_policy',
+        'capability_policy',
+        'skill_index',
+      ]),
+      userPromptSectionKeys: expect.arrayContaining([
+        'task_input',
+        'routing_state',
+        'prompt_assembly_state',
+        'execution_request',
+      ]),
     });
     expect(resultEvent?.data?.promptAssembly).toMatchObject({
-      systemPromptSectionKeys: expect.arrayContaining(['system_policy', 'capability_policy', 'skill_index']),
-      userPromptSectionKeys: expect.arrayContaining(['task_input', 'routing_state', 'prompt_assembly_state', 'execution_request']),
+      systemPromptSectionKeys: expect.arrayContaining([
+        'system_policy',
+        'capability_policy',
+        'skill_index',
+      ]),
+      userPromptSectionKeys: expect.arrayContaining([
+        'task_input',
+        'routing_state',
+        'prompt_assembly_state',
+        'execution_request',
+      ]),
     });
     expect(resultEvent?.data?.decisionContext).toMatchObject({
       routing: {
@@ -106,13 +125,24 @@ describe('ReActEngineService Retry E2E', () => {
         attemptedModelIds: ['default'],
       },
       promptAssembly: {
-        systemPromptSectionKeys: expect.arrayContaining(['system_policy', 'capability_policy', 'skill_index']),
-        userPromptSectionKeys: expect.arrayContaining(['task_input', 'routing_state', 'prompt_assembly_state', 'execution_request']),
+        systemPromptSectionKeys: expect.arrayContaining([
+          'system_policy',
+          'capability_policy',
+          'skill_index',
+        ]),
+        userPromptSectionKeys: expect.arrayContaining([
+          'task_input',
+          'routing_state',
+          'prompt_assembly_state',
+          'execution_request',
+        ]),
       },
     });
     expect(chatCompletion.mock.calls[1]?.[0]?.[1]?.content).toContain('systemSections=');
     expect(chatCompletion.mock.calls[1]?.[0]?.[1]?.content).toContain('## Prompt Assembly State');
-    expect(chatCompletion.mock.calls[1]?.[0]?.[1]?.content).toContain('system_policy>capability_policy>skill_index');
+    expect(chatCompletion.mock.calls[1]?.[0]?.[1]?.content).toContain(
+      'system_policy>capability_policy>skill_index'
+    );
     expect(chatCompletion).toHaveBeenCalledTimes(2);
     expect(sessionService.deleteSession).toHaveBeenCalledWith('retry-session');
   });
@@ -127,12 +157,14 @@ describe('ReActEngineService Retry E2E', () => {
       }),
     });
 
-    const primaryChatCompletion = jest.fn()
+    const primaryChatCompletion = jest
+      .fn()
       .mockRejectedValueOnce(new Error('primary timeout'))
       .mockRejectedValueOnce(new Error('primary timeout again'));
-    const backupChatCompletion = jest.fn()
+    const backupChatCompletion = jest
+      .fn()
       .mockResolvedValueOnce(
-        'Thought: 后备模型恢复成功，直接完成\nAction: finish\nAction Input: {"answer":"切换后备模型后成功"}',
+        'Thought: 后备模型恢复成功，直接完成\nAction: finish\nAction Input: {"answer":"切换后备模型后成功"}'
       );
     const primaryClient = {
       updateConfig: jest.fn(),
@@ -175,7 +207,7 @@ describe('ReActEngineService Retry E2E', () => {
       toolExecutor,
       sessionService,
       capabilityResolver,
-      modelRouterService,
+      modelRouterService
     );
 
     const request: ChatRequestDTO = {
@@ -200,8 +232,7 @@ describe('ReActEngineService Retry E2E', () => {
     const waitingEvent = events.find((event) => event.type === StreamEventType.WAITING_INPUT);
     const resultEvent = events.find((event) => event.type === StreamEventType.RESULT);
     const providerErrorEvent = events.find((event) => {
-      return event.type === StreamEventType.ERROR
-        && event.data?.code === 'provider_error';
+      return event.type === StreamEventType.ERROR && event.data?.code === 'provider_error';
     });
     const fallbackFinishAction = events.find((event) => {
       return event.type === StreamEventType.ACTION && event.content === 'finish';
@@ -214,12 +245,28 @@ describe('ReActEngineService Retry E2E', () => {
       attemptedModelIds: ['primary-model'],
     });
     expect(providerErrorEvent?.data?.meta).toMatchObject({
-      systemPromptSectionKeys: expect.arrayContaining(['system_policy', 'capability_policy', 'skill_index']),
-      userPromptSectionKeys: expect.arrayContaining(['task_input', 'routing_state', 'execution_request']),
+      systemPromptSectionKeys: expect.arrayContaining([
+        'system_policy',
+        'capability_policy',
+        'skill_index',
+      ]),
+      userPromptSectionKeys: expect.arrayContaining([
+        'task_input',
+        'routing_state',
+        'execution_request',
+      ]),
     });
     expect(providerErrorEvent?.data?.promptAssembly).toMatchObject({
-      systemPromptSectionKeys: expect.arrayContaining(['system_policy', 'capability_policy', 'skill_index']),
-      userPromptSectionKeys: expect.arrayContaining(['task_input', 'routing_state', 'execution_request']),
+      systemPromptSectionKeys: expect.arrayContaining([
+        'system_policy',
+        'capability_policy',
+        'skill_index',
+      ]),
+      userPromptSectionKeys: expect.arrayContaining([
+        'task_input',
+        'routing_state',
+        'execution_request',
+      ]),
     });
     expect(providerErrorEvent?.data?.decisionContext).toMatchObject({
       routing: {
@@ -227,8 +274,16 @@ describe('ReActEngineService Retry E2E', () => {
         attemptedModelIds: ['primary-model'],
       },
       promptAssembly: {
-        systemPromptSectionKeys: expect.arrayContaining(['system_policy', 'capability_policy', 'skill_index']),
-        userPromptSectionKeys: expect.arrayContaining(['task_input', 'routing_state', 'execution_request']),
+        systemPromptSectionKeys: expect.arrayContaining([
+          'system_policy',
+          'capability_policy',
+          'skill_index',
+        ]),
+        userPromptSectionKeys: expect.arrayContaining([
+          'task_input',
+          'routing_state',
+          'execution_request',
+        ]),
       },
     });
     expect(resultEvent?.data?.routing).toMatchObject({
@@ -243,8 +298,17 @@ describe('ReActEngineService Retry E2E', () => {
         routingReason: 'provider_error',
       },
       promptAssembly: {
-        systemPromptSectionKeys: expect.arrayContaining(['system_policy', 'capability_policy', 'skill_index']),
-        userPromptSectionKeys: expect.arrayContaining(['task_input', 'routing_state', 'prompt_assembly_state', 'execution_request']),
+        systemPromptSectionKeys: expect.arrayContaining([
+          'system_policy',
+          'capability_policy',
+          'skill_index',
+        ]),
+        userPromptSectionKeys: expect.arrayContaining([
+          'task_input',
+          'routing_state',
+          'prompt_assembly_state',
+          'execution_request',
+        ]),
       },
     });
     expect(fallbackFinishAction?.data?.routing).toMatchObject({
@@ -271,12 +335,14 @@ describe('ReActEngineService Retry E2E', () => {
       }),
     });
 
-    const primaryChatCompletion = jest.fn()
+    const primaryChatCompletion = jest
+      .fn()
       .mockResolvedValueOnce('not a valid react payload')
       .mockResolvedValueOnce('still invalid payload');
-    const sameProviderChatCompletion = jest.fn()
+    const sameProviderChatCompletion = jest
+      .fn()
       .mockResolvedValueOnce(
-        'Thought: 同 provider 后备模型恢复成功\nAction: finish\nAction Input: {"answer":"同 provider fallback 成功"}',
+        'Thought: 同 provider 后备模型恢复成功\nAction: finish\nAction Input: {"answer":"同 provider fallback 成功"}'
       );
     const crossProviderChatCompletion = jest.fn();
 
@@ -293,12 +359,16 @@ describe('ReActEngineService Retry E2E', () => {
         }
         return null;
       }),
-      getFallbackModelIds: jest.fn().mockImplementation((_id: string, strategy?: { groupOrder: string[]; includeCurrentModel: boolean }) => {
-        if (strategy?.groupOrder?.[0] === 'same_provider') {
-          return ['primary-model', 'same-provider-backup', 'cross-provider-backup'];
-        }
-        return ['primary-model', 'cross-provider-backup', 'same-provider-backup'];
-      }),
+      getFallbackModelIds: jest
+        .fn()
+        .mockImplementation(
+          (_id: string, strategy?: { groupOrder: string[]; includeCurrentModel: boolean }) => {
+            if (strategy?.groupOrder?.[0] === 'same_provider') {
+              return ['primary-model', 'same-provider-backup', 'cross-provider-backup'];
+            }
+            return ['primary-model', 'cross-provider-backup', 'same-provider-backup'];
+          }
+        ),
     } as unknown as ModelService;
 
     const sessionService = {
@@ -315,7 +385,7 @@ describe('ReActEngineService Retry E2E', () => {
       toolExecutor,
       sessionService,
       capabilityResolver,
-      modelRouterService,
+      modelRouterService
     );
 
     const request: ChatRequestDTO = {
@@ -339,8 +409,7 @@ describe('ReActEngineService Retry E2E', () => {
 
     const resultEvent = events.find((event) => event.type === StreamEventType.RESULT);
     const protocolErrorEvent = events.find((event) => {
-      return event.type === StreamEventType.ERROR
-        && event.data?.code === 'protocol_error';
+      return event.type === StreamEventType.ERROR && event.data?.code === 'protocol_error';
     });
     const protocolFinishAction = events.find((event) => {
       return event.type === StreamEventType.ACTION && event.content === 'finish';
@@ -363,8 +432,17 @@ describe('ReActEngineService Retry E2E', () => {
         routingReason: 'protocol_error',
       },
       promptAssembly: {
-        systemPromptSectionKeys: expect.arrayContaining(['system_policy', 'capability_policy', 'skill_index']),
-        userPromptSectionKeys: expect.arrayContaining(['task_input', 'routing_state', 'prompt_assembly_state', 'execution_request']),
+        systemPromptSectionKeys: expect.arrayContaining([
+          'system_policy',
+          'capability_policy',
+          'skill_index',
+        ]),
+        userPromptSectionKeys: expect.arrayContaining([
+          'task_input',
+          'routing_state',
+          'prompt_assembly_state',
+          'execution_request',
+        ]),
       },
     });
     expect(protocolFinishAction?.data?.routing).toMatchObject({

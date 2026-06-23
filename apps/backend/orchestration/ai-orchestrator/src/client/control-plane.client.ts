@@ -35,7 +35,9 @@ export class ControlPlaneClient {
     return userRoles[0];
   }
 
-  private buildHeaders(options: ControlPlaneRequestOptions = {}): Record<string, string> | undefined {
+  private buildHeaders(
+    options: ControlPlaneRequestOptions = {}
+  ): Record<string, string> | undefined {
     const internalSecret = this.getInternalServiceSecret();
 
     if (internalSecret && options.user?.userId) {
@@ -70,34 +72,34 @@ export class ControlPlaneClient {
 
   async createExecution<T = { id: string }>(
     body: Record<string, unknown>,
-    options?: ControlPlaneRequestOptions,
+    options?: ControlPlaneRequestOptions
   ): Promise<T> {
     const response = await axios.post<T>(
       `${this.getBaseUrl()}/executions`,
       body,
-      this.buildConfig(options),
+      this.buildConfig(options)
     );
     return response.data;
   }
 
   async getExecution<T = unknown>(
     executionId: string,
-    options?: ControlPlaneRequestOptions,
+    options?: ControlPlaneRequestOptions
   ): Promise<T> {
     const response = await axios.get<T>(
       `${this.getBaseUrl()}/executions/${executionId}`,
-      this.buildConfig(options),
+      this.buildConfig(options)
     );
     return response.data;
   }
 
   async getExecutionSteps<T = unknown[]>(
     executionId: string,
-    options?: ControlPlaneRequestOptions,
+    options?: ControlPlaneRequestOptions
   ): Promise<T> {
     const response = await axios.get<T>(
       `${this.getBaseUrl()}/executions/${executionId}/steps`,
-      this.buildConfig(options),
+      this.buildConfig(options)
     );
     return response.data;
   }
@@ -105,12 +107,12 @@ export class ControlPlaneClient {
   async submitExecutionInput<T = unknown>(
     executionId: string,
     body: Record<string, unknown>,
-    options?: ControlPlaneRequestOptions,
+    options?: ControlPlaneRequestOptions
   ): Promise<T> {
     const response = await axios.post<T>(
       `${this.getBaseUrl()}/executions/${executionId}/submit-input`,
       body,
-      this.buildConfig(options),
+      this.buildConfig(options)
     );
     return response.data;
   }
@@ -118,26 +120,26 @@ export class ControlPlaneClient {
   async triggerTakeover<T = unknown>(
     executionId: string,
     reason: string,
-    options?: ControlPlaneRequestOptions,
+    options?: ControlPlaneRequestOptions
   ): Promise<T> {
     const response = await axios.post<T>(
       `${this.getBaseUrl()}/executions/${executionId}/takeover`,
       { reason },
-      this.buildConfig(options),
+      this.buildConfig(options)
     );
     return response.data;
   }
 
   async streamExecutionEvents(
     executionId: string,
-    options?: ControlPlaneRequestOptions,
+    options?: ControlPlaneRequestOptions
   ): Promise<Readable> {
     const response = await axios.get<Readable>(
       `${this.getBaseUrl()}/executions/${executionId}/events/stream`,
       {
         ...this.buildConfig(options),
         responseType: 'stream',
-      },
+      }
     );
     return response.data;
   }

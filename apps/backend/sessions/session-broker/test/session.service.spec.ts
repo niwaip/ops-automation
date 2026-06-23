@@ -50,6 +50,7 @@ describe('SessionService', () => {
       hgetall: jest.fn(),
       hget: jest.fn(),
       hset: jest.fn(),
+      hdel: jest.fn(),
       expire: jest.fn(),
       set: jest.fn(),
       del: jest.fn(),
@@ -123,9 +124,9 @@ describe('SessionService', () => {
         lock_key: `lock:profile:${mockUserId}`,
       });
 
-      await expect(
-        service.createSession({ user_id: mockUserId }),
-      ).rejects.toThrow(ConflictException);
+      await expect(service.createSession({ user_id: mockUserId })).rejects.toThrow(
+        ConflictException
+      );
     });
 
     it('should throw BadRequestException when no workers available', async () => {
@@ -138,9 +139,9 @@ describe('SessionService', () => {
       allocationService.allocateWorker.mockResolvedValue(null);
       lockService.releaseProfileLock.mockResolvedValue(true);
 
-      await expect(
-        service.createSession({ user_id: mockUserId }),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.createSession({ user_id: mockUserId })).rejects.toThrow(
+        BadRequestException
+      );
 
       expect(lockService.releaseProfileLock).toHaveBeenCalledWith(mockUserId, expect.any(String));
     });
@@ -181,9 +182,9 @@ describe('SessionService', () => {
     it('should throw NotFoundException when session not found', async () => {
       redisService.hgetall.mockResolvedValue({});
 
-      await expect(
-        service.takeoverSession(mockSessionId, { reason: 'test' }),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.takeoverSession(mockSessionId, { reason: 'test' })).rejects.toThrow(
+        NotFoundException
+      );
     });
 
     it('should throw BadRequestException when session not in RUNNING state', async () => {
@@ -195,9 +196,9 @@ describe('SessionService', () => {
         last_activity: '1712345999',
       });
 
-      await expect(
-        service.takeoverSession(mockSessionId, { reason: 'test' }),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.takeoverSession(mockSessionId, { reason: 'test' })).rejects.toThrow(
+        BadRequestException
+      );
     });
   });
 
@@ -240,9 +241,9 @@ describe('SessionService', () => {
         last_activity: '1712345999',
       });
 
-      await expect(
-        service.continueSession(mockSessionId, { step_id: 'test' }),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.continueSession(mockSessionId, { step_id: 'test' })).rejects.toThrow(
+        BadRequestException
+      );
     });
   });
 
@@ -303,6 +304,179 @@ describe('SessionService', () => {
       redisService.hgetall.mockResolvedValue({});
 
       await expect(service.getSession(mockSessionId)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('startSession blocking semantics', () => {
+    it('stores confirmation blocking metadata separately from takeover', async () => {
+      redisService.hgetall
+        .mockResolvedValueOnce({
+          user_id: mockUserId,
+          state: 'IDLE',
+          control_mode: 'AGENT_RUNNING',
+          frozen: '0',
+          worker_ref: mockWorkerRef,
+          novnc_url: mockEndpoints.novnc,
+          cdp_url: mockEndpoints.cdp,
+          created_at: '1712345678',
+          last_activity: '1712345999',
+        })
+        .mockResolvedValueOnce({
+          user_id: mockUserId,
+          state: 'HUMAN_CONTROL',
+          control_mode: 'HUMAN_CONTROL',
+          frozen: '1',
+          worker_ref: mockWorkerRef,
+          novnc_url: mockEndpoints.novnc,
+          cdp_url: mockEndpoints.cdp,
+          current_step: 'step_2',
+          step_index: '1',
+          blocking_mode: 'confirmation',
+          blocking_reason: '步骤策略要求人工确认后执行',
+          created_at: '1712345678',
+          last_activity: '1712346001',
+        });
+      redisService.set.mockResolvedValue('OK');
+      redisService.hdel.mockResolvedValue(1);
+      freezeService.freezeSession.mockResolvedValue({
+        success: true,
+        previousState: 'RUNNING',
+        newState: 'HUMAN_CONTROL',
+        frozen: true,
+      });
+
+      const templateClient = (service as any).templateClient as jest.Mocked<TemplateClient>;
+      const cdpExecutor = (service as any).cdpExecutor as jest.Mocked<CdpExecutor>;
+      templateClient.getTemplate.mockResolvedValue({
+        id: 'template-1',
+        config: { backend: 'cli' },
+        steps: [
+          { step_id: 'step_1', action: 'click' },
+          { step_id: 'step_2', action: 'click', execution_policy: 'require_confirmation' },
+        ],
+      } as any);
+      cdpExecutor.executeSteps.mockResolvedValue([
+        { success: true, step_id: 'step_1', action: 'click', message: 'ok' },
+        {
+          success: false,
+          step_id: 'step_2',
+          action: 'click',
+          error: '步骤策略要求人工确认后执行',
+          confirmation_required: true,
+          confirmation_reason: '步骤策略要求人工确认后执行',
+        },
+      ]);
+      cdpExecutor.captureFinalState.mockResolvedValue({
+        success: false,
+        step_id: 'final_state',
+        action: 'final_state',
+      });
+
+      const result = await service.startSession(mockSessionId, {
+        template_id: 'template-1',
+        params: {},
+      });
+
+      expect(redisService.hmset).toHaveBeenCalledWith(
+        `session:${mockSessionId}`,
+        expect.objectContaining({
+          state: 'HUMAN_CONTROL',
+          control_mode: 'HUMAN_CONTROL',
+          frozen: '1',
+          current_step: 'step_2',
+          blocking_mode: 'confirmation',
+          blocking_reason: '步骤策略要求人工确认后执行',
+        })
+      );
+      expect(freezeService.freezeSession).toHaveBeenCalledWith(
+        mockSessionId,
+        '步骤策略要求人工确认后执行'
+      );
+      expect(result.blocking_mode).toBe('confirmation');
+      expect(result.blocking_reason).toBe('步骤策略要求人工确认后执行');
+    });
+
+    it('uses executionPlan loopDraft and templateSteps when starting a replay session', async () => {
+      redisService.hgetall
+        .mockResolvedValueOnce({
+          user_id: mockUserId,
+          state: 'IDLE',
+          control_mode: 'AGENT_RUNNING',
+          frozen: '0',
+          worker_ref: mockWorkerRef,
+          novnc_url: mockEndpoints.novnc,
+          cdp_url: mockEndpoints.cdp,
+          created_at: '1712345678',
+          last_activity: '1712345999',
+        })
+        .mockResolvedValueOnce({
+          user_id: mockUserId,
+          state: 'CLOSED',
+          control_mode: 'AGENT_RUNNING',
+          frozen: '0',
+          worker_ref: mockWorkerRef,
+          novnc_url: mockEndpoints.novnc,
+          cdp_url: mockEndpoints.cdp,
+          current_step: 'step_0',
+          step_index: '0',
+          created_at: '1712345678',
+          last_activity: '1712346001',
+        });
+      redisService.set.mockResolvedValue('OK');
+      redisService.hdel.mockResolvedValue(1);
+      allocationService.releaseWorker.mockResolvedValue(true);
+
+      const templateClient = (service as any).templateClient as jest.Mocked<TemplateClient>;
+      const cdpExecutor = (service as any).cdpExecutor as jest.Mocked<CdpExecutor>;
+      templateClient.getTemplate.mockResolvedValue({
+        id: 'template-loop',
+        config: {
+          backend: 'cli',
+          executionPlan: {
+            templateSteps: [{ step_id: 'loop_step', action: 'click' }],
+            loopDraft: {
+              mode: 'repeat_until',
+              eachIteration: { stepIds: ['loop_step'] },
+              stopWhen: {
+                read: {
+                  type: 'count',
+                  locator: { type: 'css', value: '.pending-count' },
+                },
+                conditionFn: 'Number(value || 0) === 0',
+                description: '待处理数量为 0 时结束',
+              },
+              maxIterations: 3,
+            },
+          },
+        },
+        steps: [{ step_id: 'legacy_step', action: 'goto' }],
+      } as any);
+      cdpExecutor.executeSteps.mockResolvedValue([
+        { success: true, step_id: 'loop_stop_read:before:1', action: 'loop_stop_read', text: '0' },
+      ]);
+      cdpExecutor.captureFinalState.mockResolvedValue({
+        success: false,
+        step_id: 'final_state',
+        action: 'final_state',
+      });
+
+      await service.startSession(mockSessionId, {
+        template_id: 'template-loop',
+        params: {},
+      });
+
+      expect(cdpExecutor.executeSteps).toHaveBeenCalledWith(
+        [{ step_id: 'loop_step', action: 'click' }],
+        mockSessionId,
+        {},
+        'cli',
+        expect.objectContaining({
+          loopDraft: expect.objectContaining({
+            mode: 'repeat_until',
+            eachIteration: { stepIds: ['loop_step'] },
+          }),
+        })
+      );
     });
   });
 });

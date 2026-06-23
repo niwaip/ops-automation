@@ -6,7 +6,7 @@ import {
 
 function createCandidate(
   candidateId: string,
-  overrides: Partial<TemplateFieldCandidate> = {},
+  overrides: Partial<TemplateFieldCandidate> = {}
 ): TemplateFieldCandidate {
   return {
     candidateId,
@@ -67,10 +67,9 @@ describe('word section recognition helpers', () => {
     const merged = mergeWordCandidatesBySlotForRecognition([zhCandidate, jpCandidate]);
 
     expect(merged).toHaveLength(2);
-    expect(new Set(merged.map((candidate) => candidate.candidateId))).toEqual(new Set([
-      'frontend-word-query-zh',
-      'frontend-word-query-jp',
-    ]));
+    expect(new Set(merged.map((candidate) => candidate.candidateId))).toEqual(
+      new Set(['frontend-word-query-zh', 'frontend-word-query-jp'])
+    );
   });
 
   it('保留同一表格单元格内换行形成的成对候选，不依赖语言提示也不在发给 AI 前合并', () => {
@@ -116,10 +115,9 @@ describe('word section recognition helpers', () => {
     const merged = mergeWordCandidatesBySlotForRecognition([zhCandidate, jpCandidate]);
 
     expect(merged).toHaveLength(2);
-    expect(new Set(merged.map((candidate) => candidate.candidateId))).toEqual(new Set([
-      'frontend-word-cell-zh',
-      'frontend-word-cell-jp',
-    ]));
+    expect(new Set(merged.map((candidate) => candidate.candidateId))).toEqual(
+      new Set(['frontend-word-cell-zh', 'frontend-word-cell-jp'])
+    );
   });
 
   it('仍会合并非双语的同槽位重复候选，避免普通重复项放大候选数', () => {

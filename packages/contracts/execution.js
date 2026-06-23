@@ -66,8 +66,7 @@ const EXECUTION_EVENT_TYPE = {
 
 const EXECUTION_EVENT_TYPE_VALUES = Object.values(EXECUTION_EVENT_TYPE);
 
-const isTerminalExecutionStatus = (status) =>
-  TERMINAL_EXECUTION_STATUSES.includes(status);
+const isTerminalExecutionStatus = (status) => TERMINAL_EXECUTION_STATUSES.includes(status);
 
 module.exports = {
   APPROVAL_STATUS,

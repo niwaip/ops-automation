@@ -9,11 +9,9 @@ interface Props {
 }
 
 export const WordWorkflowPanel: React.FC<Props> = ({ onApplyComplete }) => {
-  const {
-    loadSectionProps,
-    querySectionProps,
-    debugPanelProps,
-  } = useWordWorkflowPanelController({ onApplyComplete });
+  const { loadSectionProps, querySectionProps, debugPanelProps } = useWordWorkflowPanelController({
+    onApplyComplete,
+  });
 
   return (
     <div className="ai-identify-panel word-identify-panel">

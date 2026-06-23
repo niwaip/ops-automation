@@ -62,7 +62,10 @@ export class RenderOutputRepository {
     }
   }
 
-  private buildCreateInput(meta: OutputMetaDocument, filePath: string): Prisma.RenderOutputUncheckedCreateInput {
+  private buildCreateInput(
+    meta: OutputMetaDocument,
+    filePath: string
+  ): Prisma.RenderOutputUncheckedCreateInput {
     return {
       id: meta.id,
       templateId: meta.templateId ?? null,
@@ -73,14 +76,23 @@ export class RenderOutputRepository {
       format: this.normalizeFormat(meta.format),
       size: typeof meta.size === 'number' ? meta.size : null,
       params: (meta.params ?? Prisma.DbNull) as Prisma.InputJsonValue | Prisma.NullTypes.DbNull,
-      sampleData: (meta.sampleData ?? Prisma.DbNull) as Prisma.InputJsonValue | Prisma.NullTypes.DbNull,
-      simulatedData: (meta.simulatedData ?? Prisma.DbNull) as Prisma.InputJsonValue | Prisma.NullTypes.DbNull,
-      debugLogs: (meta.debugLogs ?? Prisma.DbNull) as Prisma.InputJsonValue | Prisma.NullTypes.DbNull,
+      sampleData: (meta.sampleData ?? Prisma.DbNull) as
+        | Prisma.InputJsonValue
+        | Prisma.NullTypes.DbNull,
+      simulatedData: (meta.simulatedData ?? Prisma.DbNull) as
+        | Prisma.InputJsonValue
+        | Prisma.NullTypes.DbNull,
+      debugLogs: (meta.debugLogs ?? Prisma.DbNull) as
+        | Prisma.InputJsonValue
+        | Prisma.NullTypes.DbNull,
       renderedAt: this.parseDate(meta.renderedAt ?? meta.createdAt) ?? new Date(),
     };
   }
 
-  private buildUpdateInput(meta: OutputMetaDocument, filePath: string): Prisma.RenderOutputUncheckedUpdateInput {
+  private buildUpdateInput(
+    meta: OutputMetaDocument,
+    filePath: string
+  ): Prisma.RenderOutputUncheckedUpdateInput {
     return {
       templateId: meta.templateId ?? null,
       markedTemplateId: meta.markedTemplateId ?? null,
@@ -90,9 +102,15 @@ export class RenderOutputRepository {
       format: this.normalizeFormat(meta.format),
       size: typeof meta.size === 'number' ? meta.size : null,
       params: (meta.params ?? Prisma.DbNull) as Prisma.InputJsonValue | Prisma.NullTypes.DbNull,
-      sampleData: (meta.sampleData ?? Prisma.DbNull) as Prisma.InputJsonValue | Prisma.NullTypes.DbNull,
-      simulatedData: (meta.simulatedData ?? Prisma.DbNull) as Prisma.InputJsonValue | Prisma.NullTypes.DbNull,
-      debugLogs: (meta.debugLogs ?? Prisma.DbNull) as Prisma.InputJsonValue | Prisma.NullTypes.DbNull,
+      sampleData: (meta.sampleData ?? Prisma.DbNull) as
+        | Prisma.InputJsonValue
+        | Prisma.NullTypes.DbNull,
+      simulatedData: (meta.simulatedData ?? Prisma.DbNull) as
+        | Prisma.InputJsonValue
+        | Prisma.NullTypes.DbNull,
+      debugLogs: (meta.debugLogs ?? Prisma.DbNull) as
+        | Prisma.InputJsonValue
+        | Prisma.NullTypes.DbNull,
       renderedAt: this.parseDate(meta.renderedAt ?? meta.createdAt) ?? new Date(),
     };
   }

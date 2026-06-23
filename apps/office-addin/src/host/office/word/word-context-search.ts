@@ -24,7 +24,10 @@ export function extractLongestWordBlank(text: string): string {
     if (!matches || matches.length === 0) {
       continue;
     }
-    const currentLongest = matches.reduce((left, right) => (left.length >= right.length ? left : right), '');
+    const currentLongest = matches.reduce(
+      (left, right) => (left.length >= right.length ? left : right),
+      ''
+    );
     if (currentLongest.length > longestBlank.length) {
       longestBlank = currentLongest;
     }
@@ -32,7 +35,9 @@ export function extractLongestWordBlank(text: string): string {
   return longestBlank;
 }
 
-export function extractWordLabelValueTarget(text: string): { labelText: string; valueText: string } | null {
+export function extractWordLabelValueTarget(
+  text: string
+): { labelText: string; valueText: string } | null {
   const lines = stripWordContextSnippet(text)
     .split(/\n+/u)
     .map((line) => line.trim())
@@ -52,7 +57,11 @@ export function extractWordLabelValueTarget(text: string): { labelText: string; 
     if (/[，。；;]/u.test(labelCore)) {
       continue;
     }
-    if (/(?:如下|如下所示|说明如下|约定如下|内容如下|条款如下|方式如下|时间如下|支付如下)$/u.test(labelCore)) {
+    if (
+      /(?:如下|如下所示|说明如下|约定如下|内容如下|条款如下|方式如下|时间如下|支付如下)$/u.test(
+        labelCore
+      )
+    ) {
       continue;
     }
 
@@ -63,9 +72,10 @@ export function extractWordLabelValueTarget(text: string): { labelText: string; 
     }
 
     const nextLabelMatch = /(^|[\s(（【[])[^，。；;\n]{1,24}[：:]/u.exec(afterLabel);
-    let valueText = nextLabelMatch && typeof nextLabelMatch.index === 'number' && nextLabelMatch.index > 0
-      ? afterLabel.slice(0, nextLabelMatch.index)
-      : afterLabel;
+    let valueText =
+      nextLabelMatch && typeof nextLabelMatch.index === 'number' && nextLabelMatch.index > 0
+        ? afterLabel.slice(0, nextLabelMatch.index)
+        : afterLabel;
 
     valueText = valueText.replace(/[，。；;]+$/u, '').trim();
     if (!valueText || valueText.length > 120) {
@@ -78,7 +88,9 @@ export function extractWordLabelValueTarget(text: string): { labelText: string; 
   return null;
 }
 
-export function extractWordMultilineLabelValueTarget(text: string): { labelText: string; valueText: string } | null {
+export function extractWordMultilineLabelValueTarget(
+  text: string
+): { labelText: string; valueText: string } | null {
   const lines = stripWordContextSnippet(text)
     .split(/\n+/u)
     .map((line) => line.trim())
@@ -156,11 +168,17 @@ export function buildWordContextSearchTexts(contextSnippet: string): string[] {
     return [];
   });
 
-  const preferredLines = lines.filter((line) => extractLongestWordBlank(line) || extractWordLabelValueTarget(line));
+  const preferredLines = lines.filter(
+    (line) => extractLongestWordBlank(line) || extractWordLabelValueTarget(line)
+  );
   return Array.from(new Set([...preferredLines, ...aliasLines, ...lines])).slice(0, 10);
 }
 
-function countWordTextOccurrencesBefore(sourceText: string, searchText: string, targetStart: number): number {
+function countWordTextOccurrencesBefore(
+  sourceText: string,
+  searchText: string,
+  targetStart: number
+): number {
   const haystack = String(sourceText || '');
   const needle = String(searchText || '');
   if (!haystack || !needle) {
@@ -187,7 +205,7 @@ export function pickWordSearchResultByPosition<T>(
   items: T[],
   sourceText: string,
   searchText: string,
-  targetStart: number,
+  targetStart: number
 ): T | undefined {
   if (!Array.isArray(items) || items.length === 0) {
     return undefined;

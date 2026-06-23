@@ -11,7 +11,13 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { TemplateService } from './template.service';
-import { CreateTemplateDto, UpdateTemplateDto, PublishTemplateDto, CompileScriptDto, ValidateTemplateDto } from './template.dto';
+import {
+  CreateTemplateDto,
+  UpdateTemplateDto,
+  PublishTemplateDto,
+  CompileScriptDto,
+  ValidateTemplateDto,
+} from './template.dto';
 import { TemplateJSON, ListTemplatesQuery, ValidationResult } from '../../types/template.types';
 import { PlaywrightCompiler } from '../../compiler/playwright-to-json';
 import { TemplateValidator } from '../../validators/template.validator';
@@ -21,7 +27,7 @@ export class TemplateController {
   constructor(
     private readonly templateService: TemplateService,
     private readonly compiler: PlaywrightCompiler,
-    private readonly templateValidator: TemplateValidator,
+    private readonly templateValidator: TemplateValidator
   ) {}
 
   /**
@@ -101,7 +107,9 @@ export class TemplateController {
    * POST /templates/compile - Compile Playwright script to JSON template
    */
   @Post('compile')
-  async compile(@Body() dto: CompileScriptDto): Promise<{ template: TemplateJSON; validation: ValidationResult }> {
+  async compile(
+    @Body() dto: CompileScriptDto
+  ): Promise<{ template: TemplateJSON; validation: ValidationResult }> {
     // Use a system user ID for compilation
     const systemUserId = 'system-compiler';
     return this.compiler.compile(dto.script, systemUserId, dto.intent);

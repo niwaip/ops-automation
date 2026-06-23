@@ -102,14 +102,20 @@ async function startMockServer(): Promise<{ port: number; close: () => Promise<v
   const port = typeof address === 'object' && address ? address.port : 0;
   return {
     port,
-    close: () => new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve()))),
+    close: () =>
+      new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve()))
+      ),
   };
 }
 
 async function main() {
   const mock = await startMockServer();
   const previewHost = process.env.WORKFLOW_HTTP_PREVIEW_HOST || '127.0.0.1';
-  const runtimeHost = process.env.WORKFLOW_HTTP_RUNTIME_HOST || process.env.WORKFLOW_HTTP_MOCK_HOST || 'host.docker.internal';
+  const runtimeHost =
+    process.env.WORKFLOW_HTTP_RUNTIME_HOST ||
+    process.env.WORKFLOW_HTTP_MOCK_HOST ||
+    'host.docker.internal';
   const prisma: any = {
     temporalWorkflow: {},
     activity: {},
@@ -141,7 +147,7 @@ async function main() {
       ...httpStepConfig,
       urlTemplate: `http://${previewHost}:${mock.port}/wttr/{city}`,
     },
-    sampleInputs,
+    sampleInputs
   );
   if (!preview.success || !preview.previewResponse) {
     throw new Error(`HTTP 预览失败: ${preview.error || 'unknown error'}`);
@@ -157,7 +163,7 @@ async function main() {
     {
       contentType: 'json',
       outputMode: 'json',
-    },
+    }
   );
   if (!generatedTransform.success || !generatedTransform.config) {
     throw new Error(`结构化转换配置生成失败: ${generatedTransform.error || 'unknown error'}`);
@@ -212,7 +218,7 @@ async function main() {
     activityDsl,
     undefined,
     undefined,
-    (log) => generationLogs.push(log),
+    (log) => generationLogs.push(log)
   );
 
   if (!generation.success || !generation.code) {
@@ -229,23 +235,26 @@ async function main() {
       format: 'j1',
     },
     workflowDsl.taskQueue,
-    (log) => validationLogs.push(log),
+    (log) => validationLogs.push(log)
   );
 
   // eslint-disable-next-line no-console
-  console.log(JSON.stringify({
-    mockPreviewBaseUrl: `http://${previewHost}:${mock.port}`,
-    mockRuntimeBaseUrl: `http://${runtimeHost}:${mock.port}`,
-    validWttrExamples: [
-      'https://wttr.in/Berlin?lang=zh',
-      'https://wttr.in/shanghai?format=j1',
-    ],
-    generationMode: generation.generationMode,
-    generatedTransformConfig: generatedTransform.config,
-    generationLogs,
-    validation,
-    validationLogs,
-  }, null, 2));
+  console.log(
+    JSON.stringify(
+      {
+        mockPreviewBaseUrl: `http://${previewHost}:${mock.port}`,
+        mockRuntimeBaseUrl: `http://${runtimeHost}:${mock.port}`,
+        validWttrExamples: ['https://wttr.in/Berlin?lang=zh', 'https://wttr.in/shanghai?format=j1'],
+        generationMode: generation.generationMode,
+        generatedTransformConfig: generatedTransform.config,
+        generationLogs,
+        validation,
+        validationLogs,
+      },
+      null,
+      2
+    )
+  );
 
   await mock.close();
 

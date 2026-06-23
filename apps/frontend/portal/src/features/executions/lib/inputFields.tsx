@@ -19,11 +19,14 @@ export const renderRequiredInputField = (
     jsonPlaceholder?: string;
     textPlaceholderPrefix?: string;
     treatArrayAsJson?: boolean;
-  },
+  }
 ) => {
   const normalizedType = field.type.toLowerCase();
   const treatArrayAsJson = options?.treatArrayAsJson ?? false;
-  const isJsonLike = normalizedType === 'object' || normalizedType === 'json' || (treatArrayAsJson && normalizedType === 'array');
+  const isJsonLike =
+    normalizedType === 'object' ||
+    normalizedType === 'json' ||
+    (treatArrayAsJson && normalizedType === 'array');
 
   if (normalizedType === 'number' || normalizedType === 'integer') {
     return <InputNumber style={{ width: '100%' }} />;
@@ -34,10 +37,18 @@ export const renderRequiredInputField = (
   }
 
   if (isJsonLike) {
-    return <Input.TextArea rows={4} placeholder={options?.jsonPlaceholder || '请输入 JSON 字符串'} />;
+    return (
+      <Input.TextArea rows={4} placeholder={options?.jsonPlaceholder || '请输入 JSON 字符串'} />
+    );
   }
 
-  return <Input placeholder={field.description || `${options?.textPlaceholderPrefix || '请输入'} ${field.name}`} />;
+  return (
+    <Input
+      placeholder={
+        field.description || `${options?.textPlaceholderPrefix || '请输入'} ${field.name}`
+      }
+    />
+  );
 };
 
 export const normalizeRequiredInputValues = (
@@ -45,7 +56,7 @@ export const normalizeRequiredInputValues = (
   requiredInputs: RequiredInputField[],
   options?: {
     treatArrayAsJson?: boolean;
-  },
+  }
 ) => {
   const treatArrayAsJson = options?.treatArrayAsJson ?? false;
 
@@ -56,7 +67,10 @@ export const normalizeRequiredInputValues = (
     }
 
     const normalizedType = field.type.toLowerCase();
-    const isJsonLike = normalizedType === 'object' || normalizedType === 'json' || (treatArrayAsJson && normalizedType === 'array');
+    const isJsonLike =
+      normalizedType === 'object' ||
+      normalizedType === 'json' ||
+      (treatArrayAsJson && normalizedType === 'array');
     if (isJsonLike && typeof rawValue === 'string') {
       acc[field.name] = JSON.parse(rawValue);
       return acc;

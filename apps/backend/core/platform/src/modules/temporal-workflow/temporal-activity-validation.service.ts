@@ -58,7 +58,9 @@ export class ActivityValidationService {
           }
         });
       }
-      suggestions.push('Steps are defined - AI code will be generated based on step configurations');
+      suggestions.push(
+        'Steps are defined - AI code will be generated based on step configurations'
+      );
     } else {
       // No steps - validate at top level (legacy behavior)
       switch (config.handler) {

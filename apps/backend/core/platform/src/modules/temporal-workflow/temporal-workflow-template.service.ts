@@ -30,7 +30,7 @@ import {
 export interface TemporalWorkflowTemplateSupport {
   getBuiltinDocumentRenderActivity(): BuiltinActivityDefinition;
   buildDefaultWorkflowInputPolicyParams(
-    inputParams: Record<string, WorkflowInputParamDefinition> | undefined,
+    inputParams: Record<string, WorkflowInputParamDefinition> | undefined
   ): Record<string, WorkflowParamPolicy>;
   normalizeName(value?: string): string;
   normalizeDescription(value?: string | null): string | null;
@@ -39,7 +39,7 @@ export interface TemporalWorkflowTemplateSupport {
     workflowDsl: WorkflowDsl,
     workflowName?: string,
     taskQueue?: string,
-    activityDsl?: ActivityDsl,
+    activityDsl?: ActivityDsl
   ): Promise<WorkflowDsl>;
   pickFirstNonEmptyString(...values: unknown[]): string | undefined;
   uniqueVariables(variables: string[]): string[];
@@ -52,17 +52,19 @@ export class TemporalWorkflowTemplateService {
 
   async generateTemplateWorkflowDraftFromRequest(
     data: GenerateTemplateWorkflowDraftDTO,
-    support: TemporalWorkflowTemplateSupport,
+    support: TemporalWorkflowTemplateSupport
   ): Promise<TemplateWorkflowDraft> {
     return this.generateTemplateWorkflowDraft(data.templateId, support);
   }
 
   async generateTemplateWorkflowDraft(
     templateId: string,
-    support: TemporalWorkflowTemplateSupport,
+    support: TemporalWorkflowTemplateSupport
   ): Promise<TemplateWorkflowDraft> {
     const template = await this.fetchCarboneTemplate(templateId);
-    const skill = template.skillId ? await this.fetchCarboneSkill(template.skillId).catch(() => null) : null;
+    const skill = template.skillId
+      ? await this.fetchCarboneSkill(template.skillId).catch(() => null)
+      : null;
     const analysis = await this.analyzeTemplateWorkflow(template, skill, support);
     const templateAssetManifest = template.templateAssetManifest;
     const templateAssetVersion = templateAssetManifest?.assetVersion;
@@ -70,18 +72,24 @@ export class TemporalWorkflowTemplateService {
     const templateAssetSource = resolveTemplateAssetSource(templateAssetManifest);
     const generationWarnings: string[] = [];
     if (!templateAssetManifest) {
-      generationWarnings.push('当前模板缺少完整模板资产清单，已回退为基于 variables 的兼容草稿；建议先在 Addin 中保存模板资产。');
+      generationWarnings.push(
+        '当前模板缺少完整模板资产清单，已回退为基于 variables 的兼容草稿；建议先在 Addin 中保存模板资产。'
+      );
     } else if (!templateAssetManifest.renderPlan?.bindings?.length) {
-      generationWarnings.push('当前模板资产缺少 renderPlan 绑定信息，已尽量基于字段定义生成草稿，请人工确认输入参数。');
+      generationWarnings.push(
+        '当前模板资产缺少 renderPlan 绑定信息，已尽量基于字段定义生成草稿，请人工确认输入参数。'
+      );
     }
     const short = slugFromTemplate(template.id);
     const fileBaseName = stripTemplateExtension(template.fileName || template.id);
     const documentType = analysis.documentType?.trim() || fileBaseName || `模板${short}`;
     const workflowName = analysis.workflowName?.trim() || `${documentType}模板-${short}-工作流`;
-    const activityDescription = analysis.activityDescription?.trim()
-      || `共享文档渲染 Activity，绑定模板 ${template.id} 生成 ${documentType} 文档`;
-    const workflowDescription = analysis.workflowDescription?.trim()
-      || `基于模板 ${template.id} 自动生成的 ${documentType} 工作流`;
+    const activityDescription =
+      analysis.activityDescription?.trim() ||
+      `共享文档渲染 Activity，绑定模板 ${template.id} 生成 ${documentType} 文档`;
+    const workflowDescription =
+      analysis.workflowDescription?.trim() ||
+      `基于模板 ${template.id} 自动生成的 ${documentType} 工作流`;
     const outputName = analysis.outputName?.trim() || `${documentType}-输出`;
     const paramSeeds = buildTemplateWorkflowParamSeeds({
       template,
@@ -91,32 +99,38 @@ export class TemporalWorkflowTemplateService {
       buildWorkflowSemanticHint: (...values) => support.buildWorkflowSemanticHint(...values),
     });
     const resolvedTargetLanguages = resolveTemplateWorkflowTargetLanguages(template, paramSeeds);
-    const resolvedTemplateFieldCount = resolveTemplateAssetFieldCount(templateAssetManifest, paramSeeds.length);
+    const resolvedTemplateFieldCount = resolveTemplateAssetFieldCount(
+      templateAssetManifest,
+      paramSeeds.length
+    );
     const inputParamsArray = paramSeeds.map((param) => ({
       key: param.key,
       value: '',
       required: param.required,
     }));
-    const inputParams = paramSeeds.reduce<Record<string, WorkflowInputParamDefinition>>((acc, item) => {
-      const renderPath = normalizeWorkflowInputRenderPath(item.renderPath);
-      acc[item.key] = {
-        required: item.required,
-        defaultValue: '',
-        localizedDefaultValue: undefined,
-        localizedVariants: item.localizedVariants,
-        description: analysis.inputParamDescriptions?.[item.key]?.trim() || item.description,
-        source: 'inferred_from_template',
-        type: item.type,
-        exampleValue: item.exampleValue,
-        displayName: item.displayName,
-        groupLabel: item.groupLabel,
-        paramKind: item.paramKind,
-        arrayPath: item.arrayPath,
-        fieldName: item.fieldName,
-        ...(renderPath ? { renderPath } : {}),
-      };
-      return acc;
-    }, {});
+    const inputParams = paramSeeds.reduce<Record<string, WorkflowInputParamDefinition>>(
+      (acc, item) => {
+        const renderPath = normalizeWorkflowInputRenderPath(item.renderPath);
+        acc[item.key] = {
+          required: item.required,
+          defaultValue: '',
+          localizedDefaultValue: undefined,
+          localizedVariants: item.localizedVariants,
+          description: analysis.inputParamDescriptions?.[item.key]?.trim() || item.description,
+          source: 'inferred_from_template',
+          type: item.type,
+          exampleValue: item.exampleValue,
+          displayName: item.displayName,
+          groupLabel: item.groupLabel,
+          paramKind: item.paramKind,
+          arrayPath: item.arrayPath,
+          fieldName: item.fieldName,
+          ...(renderPath ? { renderPath } : {}),
+        };
+        return acc;
+      },
+      {}
+    );
     const inputPolicyParams = support.buildDefaultWorkflowInputPolicyParams(inputParams);
 
     const builtinDocumentRender = support.getBuiltinDocumentRenderActivity();
@@ -151,12 +165,15 @@ export class TemporalWorkflowTemplateService {
             templateAssetVersion,
             renderPlanVersion,
           },
-          templateAssetSummary: templateAssetManifest && templateAssetVersion ? {
-            assetVersion: templateAssetVersion,
-            renderPlanVersion: renderPlanVersion ?? 1,
-            fieldCount: resolvedTemplateFieldCount,
-            source: templateAssetSource,
-          } : undefined,
+          templateAssetSummary:
+            templateAssetManifest && templateAssetVersion
+              ? {
+                  assetVersion: templateAssetVersion,
+                  renderPlanVersion: renderPlanVersion ?? 1,
+                  fieldCount: resolvedTemplateFieldCount,
+                  source: templateAssetSource,
+                }
+              : undefined,
         },
         inputParams,
         ...(Object.keys(inputPolicyParams).length > 0
@@ -172,14 +189,18 @@ export class TemporalWorkflowTemplateService {
             description: analysis.outputDescription?.trim() || `${documentType} 文档渲染结果`,
           },
         },
-        extraPrompt: analysis.extraPrompt?.trim() || [
-          `该工作流用于生成 ${documentType} 文档。`,
-          `模板ID: ${template.id}`,
-          templateAssetVersion ? `模板资产版本: ${templateAssetVersion}` : '',
-          renderPlanVersion ? `渲染计划版本: ${renderPlanVersion}` : '',
-          template.skillId ? `模板内置 Skill ID: ${template.skillId}` : '',
-          '工作流只负责编排与参数校验，真正的渲染由共享 documentRender Activity 执行。',
-        ].filter(Boolean).join('\n'),
+        extraPrompt:
+          analysis.extraPrompt?.trim() ||
+          [
+            `该工作流用于生成 ${documentType} 文档。`,
+            `模板ID: ${template.id}`,
+            templateAssetVersion ? `模板资产版本: ${templateAssetVersion}` : '',
+            renderPlanVersion ? `渲染计划版本: ${renderPlanVersion}` : '',
+            template.skillId ? `模板内置 Skill ID: ${template.skillId}` : '',
+            '工作流只负责编排与参数校验，真正的渲染由共享 documentRender Activity 执行。',
+          ]
+            .filter(Boolean)
+            .join('\n'),
         steps: [
           {
             id: 'step_1',
@@ -247,28 +268,33 @@ export class TemporalWorkflowTemplateService {
 
   async compileTemplateWorkflowDraft(
     data: CompileTemplateWorkflowDraftDTO,
-    support: TemporalWorkflowTemplateSupport,
+    support: TemporalWorkflowTemplateSupport
   ): Promise<TemplateWorkflowDraft> {
     const baseDraft = await this.generateTemplateWorkflowDraft(data.templateId, support);
-    const compiledDraft = await this.applyTemplateWorkflowDraftOverrides(baseDraft, {
-      ...data,
-      inputPolicy: this.stripTemplateBindingOverridesFromInputPolicy(data.inputPolicy),
-    }, support);
+    const compiledDraft = await this.applyTemplateWorkflowDraftOverrides(
+      baseDraft,
+      {
+        ...data,
+        inputPolicy: this.stripTemplateBindingOverridesFromInputPolicy(data.inputPolicy),
+      },
+      support
+    );
     return compiledDraft;
   }
 
   private async applyTemplateWorkflowDraftOverrides(
     baseDraft: TemplateWorkflowDraft,
     overrides: Omit<CompileTemplateWorkflowDraftDTO, 'templateId'>,
-    support: TemporalWorkflowTemplateSupport,
+    support: TemporalWorkflowTemplateSupport
   ): Promise<TemplateWorkflowDraft> {
     const nextName = support.normalizeName(overrides.name || baseDraft.name);
     const nextTaskQueue = support.normalizeTaskQueue(
-      overrides.taskQueue || baseDraft.taskQueue || baseDraft.workflowDsl.taskQueue,
+      overrides.taskQueue || baseDraft.taskQueue || baseDraft.workflowDsl.taskQueue
     );
-    const nextDescription = support.normalizeDescription(
-      overrides.description !== undefined ? overrides.description : baseDraft.description,
-    ) || baseDraft.description;
+    const nextDescription =
+      support.normalizeDescription(
+        overrides.description !== undefined ? overrides.description : baseDraft.description
+      ) || baseDraft.description;
     const nextWorkflowDsl = await support.normalizeWorkflowDsl(
       {
         ...baseDraft.workflowDsl,
@@ -279,7 +305,7 @@ export class TemporalWorkflowTemplateService {
       },
       nextName,
       nextTaskQueue,
-      baseDraft.activityDsl,
+      baseDraft.activityDsl
     );
 
     return {
@@ -292,21 +318,24 @@ export class TemporalWorkflowTemplateService {
   }
 
   private stripTemplateBindingOverridesFromInputPolicy(
-    inputPolicy?: WorkflowInputPolicy,
+    inputPolicy?: WorkflowInputPolicy
   ): WorkflowInputPolicy | undefined {
     if (!inputPolicy?.params || typeof inputPolicy.params !== 'object') {
       return inputPolicy;
     }
 
-    const params = Object.entries(inputPolicy.params).reduce<Record<string, WorkflowParamPolicy>>((acc, [key, value]) => {
-      if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    const params = Object.entries(inputPolicy.params).reduce<Record<string, WorkflowParamPolicy>>(
+      (acc, [key, value]) => {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) {
+          return acc;
+        }
+        const nextPolicy = { ...value } as WorkflowParamPolicy;
+        delete nextPolicy.templateBinding;
+        acc[key] = nextPolicy;
         return acc;
-      }
-      const nextPolicy = { ...value } as WorkflowParamPolicy;
-      delete nextPolicy.templateBinding;
-      acc[key] = nextPolicy;
-      return acc;
-    }, {});
+      },
+      {}
+    );
 
     return { params };
   }
@@ -314,7 +343,7 @@ export class TemporalWorkflowTemplateService {
   private async analyzeTemplateWorkflow(
     template: CarboneTemplateMeta,
     skill: CarboneSkillMeta | null,
-    support: TemporalWorkflowTemplateSupport,
+    support: TemporalWorkflowTemplateSupport
   ): Promise<TemplateWorkflowAiAnalysis> {
     const fallback: TemplateWorkflowAiAnalysis = {};
     try {
@@ -349,10 +378,14 @@ export class TemporalWorkflowTemplateService {
         `模板 HTML 预览（可能被截断）: ${previewHtml.slice(0, 12000)}`,
       ].join('\n');
 
-      const response = await axios.post<{ result: string }>(`${aiOrchestratorUrl}/ai/model/call`, {
-        modelId: 'default',
-        prompt,
-      }, { timeout: 180000 });
+      const response = await axios.post<{ result: string }>(
+        `${aiOrchestratorUrl}/ai/model/call`,
+        {
+          modelId: 'default',
+          prompt,
+        },
+        { timeout: 180000 }
+      );
 
       return this.parseJsonFromAiContent(response.data?.result || '') as TemplateWorkflowAiAnalysis;
     } catch (error: any) {
@@ -363,25 +396,34 @@ export class TemporalWorkflowTemplateService {
 
   private async fetchCarboneTemplate(templateId: string): Promise<CarboneTemplateMeta> {
     const carboneBaseUrl = this.getCarboneBaseUrl();
-    const response = await axios.get<CarboneTemplateMeta>(`${carboneBaseUrl}/studio/templates/${templateId}`, {
-      timeout: 30000,
-    });
+    const response = await axios.get<CarboneTemplateMeta>(
+      `${carboneBaseUrl}/studio/templates/${templateId}`,
+      {
+        timeout: 30000,
+      }
+    );
     return response.data;
   }
 
   private async fetchCarboneSkill(skillId: string): Promise<CarboneSkillMeta> {
     const carboneBaseUrl = this.getCarboneBaseUrl();
-    const response = await axios.get<CarboneSkillMeta>(`${carboneBaseUrl}/studio/skill/${skillId}`, {
-      timeout: 30000,
-    });
+    const response = await axios.get<CarboneSkillMeta>(
+      `${carboneBaseUrl}/studio/skill/${skillId}`,
+      {
+        timeout: 30000,
+      }
+    );
     return response.data;
   }
 
   private async fetchTemplatePreviewHtml(templateId: string): Promise<string> {
     const carboneBaseUrl = this.getCarboneBaseUrl();
-    const response = await axios.get<{ html: string }>(`${carboneBaseUrl}/studio/templates/${templateId}/preview-html`, {
-      timeout: 60000,
-    });
+    const response = await axios.get<{ html: string }>(
+      `${carboneBaseUrl}/studio/templates/${templateId}/preview-html`,
+      {
+        timeout: 60000,
+      }
+    );
     return response.data?.html || '';
   }
 

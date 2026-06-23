@@ -1,6 +1,12 @@
 export type DurationUnit = 's' | 'm' | 'h';
-export type StepDurationField = 'startToCloseTimeout' | 'scheduleToCloseTimeout' | 'heartbeatTimeout';
-export type WorkflowDurationField = 'workflowExecutionTimeout' | 'workflowRunTimeout' | 'workflowTaskTimeout';
+export type StepDurationField =
+  | 'startToCloseTimeout'
+  | 'scheduleToCloseTimeout'
+  | 'heartbeatTimeout';
+export type WorkflowDurationField =
+  | 'workflowExecutionTimeout'
+  | 'workflowRunTimeout'
+  | 'workflowTaskTimeout';
 export type ActivityResourceSource = 'builtin' | 'custom';
 export type HttpResponseMode = 'body' | 'full' | 'bodyPath' | 'bodyMap';
 export type TemplateModalMode = 'document' | 'browser';

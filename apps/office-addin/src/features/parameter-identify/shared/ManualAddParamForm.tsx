@@ -5,16 +5,35 @@ interface ManualAddParamFormProps {
   targetGroupName: string;
 }
 
-export const ManualAddParamForm: React.FC<ManualAddParamFormProps> = ({ applyState, targetGroupName }) => {
+export const ManualAddParamForm: React.FC<ManualAddParamFormProps> = ({
+  applyState,
+  targetGroupName,
+}) => {
   return (
-    <div className="manual-add-form expanded" style={{ marginTop: '8px', padding: '12px', background: '#ffffff', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+    <div
+      className="manual-add-form expanded"
+      style={{
+        marginTop: '8px',
+        padding: '12px',
+        background: '#ffffff',
+        borderRadius: '6px',
+        border: '1px solid #e2e8f0',
+      }}
+    >
       <div className="selection-section">
-        <button className="get-selection-btn" onClick={() => { void applyState.handleGetSelection(); }}>
+        <button
+          className="get-selection-btn"
+          onClick={() => {
+            void applyState.handleGetSelection();
+          }}
+        >
           📍 获取当前选中内容
         </button>
         {applyState.selectedContent && (
           <div className="selected-preview">
-            <span className="selected-text">已选: "{applyState.selectedContent.substring(0, 30)}..."</span>
+            <span className="selected-text">
+              已选: "{applyState.selectedContent.substring(0, 30)}..."
+            </span>
           </div>
         )}
       </div>
@@ -33,7 +52,9 @@ export const ManualAddParamForm: React.FC<ManualAddParamFormProps> = ({ applySta
             />
             <button
               className="ai-generate-btn"
-              onClick={() => { void applyState.handleAIGenerateVariableName(); }}
+              onClick={() => {
+                void applyState.handleAIGenerateVariableName();
+              }}
               disabled={applyState.isGeneratingAI || !applyState.selectedContent}
             >
               {applyState.isGeneratingAI ? '⏳' : '🤖'}
@@ -43,7 +64,10 @@ export const ManualAddParamForm: React.FC<ManualAddParamFormProps> = ({ applySta
 
         <div className="input-group">
           <label>格式化器:</label>
-          <select value={applyState.manualFormatter} onChange={(e) => applyState.setManualFormatter(e.target.value)}>
+          <select
+            value={applyState.manualFormatter}
+            onChange={(e) => applyState.setManualFormatter(e.target.value)}
+          >
             <option value="">无格式化</option>
             <option value="formatDate(YYYY-MM-DD)">日期 YYYY-MM-DD</option>
             <option value="formatDate(YYYY/MM/DD)">日期 YYYY/MM/DD</option>
@@ -95,7 +119,12 @@ export const ManualAddParamForm: React.FC<ManualAddParamFormProps> = ({ applySta
       )}
 
       <div className="manual-actions">
-        <button className="confirm-add-btn" onClick={() => { void applyState.handleManualAddParam(targetGroupName); }}>
+        <button
+          className="confirm-add-btn"
+          onClick={() => {
+            void applyState.handleManualAddParam(targetGroupName);
+          }}
+        >
           ✅ 添加到列表
         </button>
         <button

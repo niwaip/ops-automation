@@ -30,7 +30,7 @@ const schedule = await client.schedule.create({
 const handle = client.schedule.getHandle('daily-report');
 await handle.pause('Maintenance window');
 await handle.unpause();
-await handle.trigger();  // Run immediately
+await handle.trigger(); // Run immediately
 await handle.delete();
 ```
 
@@ -140,7 +140,7 @@ const worker = await Worker.create({
         fn(workflowInfo, message, attrs) {
           console.log(`[${workflowInfo.workflowId}] ${message}`, attrs);
         },
-        callDuringReplay: false,  // Don't log during replay
+        callDuringReplay: false, // Don't log during replay
       },
       error: {
         fn(workflowInfo, message, attrs) {

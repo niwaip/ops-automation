@@ -46,12 +46,12 @@ for task in tasks:
 
 ## 技能概述
 
-| 属性 | 值 |
-|------|-----|
-| 名称 | VK-Execute |
-| 依赖 | Vibe-Kanban MCP Server |
-| 触发 | VK-Plan 完成且用户确认 |
-| 输入 | OpenSpec 规格、任务列表、依赖图 |
+| 属性 | 值                                  |
+| ---- | ----------------------------------- |
+| 名称 | VK-Execute                          |
+| 依赖 | Vibe-Kanban MCP Server              |
+| 触发 | VK-Plan 完成且用户确认              |
+| 输入 | OpenSpec 规格、任务列表、依赖图     |
 | 输出 | 创建的 Issues、Workspaces、开发结果 |
 
 ---
@@ -68,41 +68,41 @@ for task in tasks:
 
 ### 核心 API
 
-| API | 用途 | 参数 |
-|-----|------|------|
-| `mcp__vibe_kanban__get_context` | 获取当前上下文 | 无 |
-| `mcp__vibe_kanban__list_repos` | 获取可用仓库 | 无 |
-| `mcp__vibe_kanban__list_organizations` | 获取组织 | 无 |
-| `mcp__vibe_kanban__list_projects` | 获取项目 | organization_id |
-| `mcp__vibe_kanban__create_issue` | 创建任务 | title, description, priority, project_id |
-| `mcp__vibe_kanban__create_issue_relationship` | 设置依赖 | issue_id, related_issue_id, relationship_type |
-| `mcp__vibe_kanban__start_workspace` | 启动开发环境 | name, executor, repositories, prompt |
-| `mcp__vibe_kanban__run_session_prompt` | 执行任务 | session_id, prompt |
-| `mcp__vibe_kanban__list_workspaces` | 查询状态 | workspace_id (可选) |
-| `mcp__vibe_kanban__list_sessions` | 查询会话 | workspace_id |
-| `mcp__vibe_kanban__update_issue` | 更新状态 | issue_id, status |
-| `mcp__vibe_kanban__assign_issue` | 分配执行者 | issue_id, user_id |
+| API                                           | 用途           | 参数                                          |
+| --------------------------------------------- | -------------- | --------------------------------------------- |
+| `mcp__vibe_kanban__get_context`               | 获取当前上下文 | 无                                            |
+| `mcp__vibe_kanban__list_repos`                | 获取可用仓库   | 无                                            |
+| `mcp__vibe_kanban__list_organizations`        | 获取组织       | 无                                            |
+| `mcp__vibe_kanban__list_projects`             | 获取项目       | organization_id                               |
+| `mcp__vibe_kanban__create_issue`              | 创建任务       | title, description, priority, project_id      |
+| `mcp__vibe_kanban__create_issue_relationship` | 设置依赖       | issue_id, related_issue_id, relationship_type |
+| `mcp__vibe_kanban__start_workspace`           | 启动开发环境   | name, executor, repositories, prompt          |
+| `mcp__vibe_kanban__run_session_prompt`        | 执行任务       | session_id, prompt                            |
+| `mcp__vibe_kanban__list_workspaces`           | 查询状态       | workspace_id (可选)                           |
+| `mcp__vibe_kanban__list_sessions`             | 查询会话       | workspace_id                                  |
+| `mcp__vibe_kanban__update_issue`              | 更新状态       | issue_id, status                              |
+| `mcp__vibe_kanban__assign_issue`              | 分配执行者     | issue_id, user_id                             |
 
 ### 状态值
 
-| Status | 说明 |
-|--------|------|
-| pending | 待执行 |
-| in_progress | 进行中 |
-| needs_fix | 需修复 |
-| tested_unit | 单体测试通过 |
+| Status             | 说明         |
+| ------------------ | ------------ |
+| pending            | 待执行       |
+| in_progress        | 进行中       |
+| needs_fix          | 需修复       |
+| tested_unit        | 单体测试通过 |
 | tested_integration | 集成测试通过 |
-| review | 待审查 |
-| released | 已发布 |
-| completed | 完成 |
+| review             | 待审查       |
+| released           | 已发布       |
+| completed          | 完成         |
 
 ### 依赖类型
 
-| Type | 说明 |
-|------|------|
-| blocking | 阻塞关系（A 必须先完成 B 才能开始） |
-| related | 相关关系（参考关联） |
-| has_duplicate | 重复关系 |
+| Type          | 说明                                |
+| ------------- | ----------------------------------- |
+| blocking      | 阻塞关系（A 必须先完成 B 才能开始） |
+| related       | 相关关系（参考关联）                |
+| has_duplicate | 重复关系                            |
 
 ---
 
@@ -186,15 +186,17 @@ for task in tasks:
 ```
 
 **❌ 禁止做法**：
+
 ```json
 // 错误：使用父子关系
 {
   "title": "子任务：实现登录",
-  "parent_issue_id": "xxx"  // 禁止使用
+  "parent_issue_id": "xxx" // 禁止使用
 }
 ```
 
 **依赖关系通过 create_issue_relationship 设置**：
+
 ```python
 # 设置依赖：Core-SpellWords 依赖 Foundation-TestHarness
 mcp__vibe_kanban__create_issue_relationship(
@@ -210,6 +212,7 @@ mcp__vibe_kanban__create_issue_relationship(
 
 ```markdown
 已创建 {N} 个 Vibe-Kanban Issue：
+
 - Issue 1: Foundation-XXX
 - Issue 2: Core-XXX
 - Issue 3: Integration-XXX
@@ -218,6 +221,7 @@ mcp__vibe_kanban__create_issue_relationship(
 请问如何执行这些任务？
 
 选项：
+
 1. **自动执行**：立即启动 Workspace 执行所有任务
 2. **手动执行**：只创建 Issue，用户手动触发执行
 3. **选择性执行**：用户指定哪些任务自动执行
@@ -376,25 +380,29 @@ mcp__vibe_kanban__update_issue(
 ## VK-Execute 执行报告
 
 ### 执行摘要
+
 - 总任务数: {N}
 - 成功: {M}
 - 失败: {F}
 - 总耗时: {X} 分钟
 
 ### Issue 状态
-| Task | Issue ID | Status | Workspace |
-|------|----------|--------|-----------|
-| T00 | {uuid} | tested_unit | VK-T00 |
-| T01 | {uuid} | tested_unit | VK-T01 |
-| T02 | {uuid} | tested_unit | VK-T02 |
-| T03 | {uuid} | needs_fix | VK-T03 |
-| T04 | {uuid} | pending | - |
+
+| Task | Issue ID | Status      | Workspace |
+| ---- | -------- | ----------- | --------- |
+| T00  | {uuid}   | tested_unit | VK-T00    |
+| T01  | {uuid}   | tested_unit | VK-T01    |
+| T02  | {uuid}   | tested_unit | VK-T02    |
+| T03  | {uuid}   | needs_fix   | VK-T03    |
+| T04  | {uuid}   | pending     | -         |
 
 ### 失败任务详情
+
 - T03: {错误原因}
   - 建议: {修复建议}
 
 ### 下一步
+
 1. 修复失败任务后重新执行
 2. 或跳过失败任务继续 Integration
 3. 准备发布流程
@@ -404,14 +412,15 @@ mcp__vibe_kanban__update_issue(
 
 ## Executor 选择
 
-| Executor | 适用场景 | 能力 |
-|----------|---------|------|
+| Executor    | 适用场景 | 能力     |
+| ----------- | -------- | -------- |
 | CLAUDE_CODE | 通用开发 | 强，推荐 |
-| AMP | 简单任务 | 中 |
-| GEMINI | 简单任务 | 中 |
-| CODEX | 简单任务 | 中 |
+| AMP         | 简单任务 | 中       |
+| GEMINI      | 简单任务 | 中       |
+| CODEX       | 简单任务 | 中       |
 
 建议：
+
 - Foundation / Integration → CLAUDE_CODE
 - 简单 Core 任务 → 可用其他 executor
 
@@ -419,24 +428,24 @@ mcp__vibe_kanban__update_issue(
 
 ## 失败处理策略
 
-| 失败类型 | 处理 |
-|---------|------|
-| Foundation 失败 | 停止整个流程，报告错误，等待修复 |
-| Core Task 失败 | 单个任务重试，或标记为 needs_fix |
-| Integration 失败 | 检查依赖任务，修复后重试 |
-| MCP 连接失败 | 检查 MCP 配置，重试连接 |
+| 失败类型         | 处理                             |
+| ---------------- | -------------------------------- |
+| Foundation 失败  | 停止整个流程，报告错误，等待修复 |
+| Core Task 失败   | 单个任务重试，或标记为 needs_fix |
+| Integration 失败 | 检查依赖任务，修复后重试         |
+| MCP 连接失败     | 检查 MCP 配置，重试连接          |
 
 ---
 
 ## 配置选项
 
-| 配置项 | 说明 | 默认值 |
-|--------|------|--------|
-| executor | 执行器类型 | CLAUDE_CODE |
-| branch_prefix | 分支前缀 | vk/ |
-| max_parallel | 最大并行数 | 5 |
-| timeout | 单任务超时（秒） | 3600 |
-| retry_on_fail | 失败重试次数 | 1 |
+| 配置项        | 说明             | 默认值      |
+| ------------- | ---------------- | ----------- |
+| executor      | 执行器类型       | CLAUDE_CODE |
+| branch_prefix | 分支前缀         | vk/         |
+| max_parallel  | 最大并行数       | 5           |
+| timeout       | 单任务超时（秒） | 3600        |
+| retry_on_fail | 失败重试次数     | 1           |
 
 ---
 
@@ -461,21 +470,25 @@ mcp__vibe_kanban__update_issue(
 ## 验证检查
 
 ### 功能验证
+
 - [ ] 所有 Given/When/Then 场景已测试
 - [ ] 边界条件已覆盖
 - [ ] 异常处理正确
 
 ### 代码质量
+
 - [ ] 静态检查通过（shellcheck/lint）
 - [ ] 测试覆盖率达标
 - [ ] 无明显性能问题
 
 ### 规范符合
+
 - [ ] 文件所有权规则已遵守
 - [ ] 代码风格符合项目规范
 - [ ] 文档已更新
 
 ### 验证结果
+
 ✅ 验证通过，所有实现符合文档要求
 或
 ❌ 验证失败，需要修复：{问题列表}
@@ -571,6 +584,7 @@ def monitor_workspaces():
 参考 OpenAI Harness Engineering 方法论：
 
 ### 1. 机械化执行
+
 - 文档会腐烂，lint 规则不会
 - 验证阶段（VERIFY）作为不变量守护者
 - 错误信息内嵌修复指令 → 智能体可自我纠正
@@ -583,6 +597,7 @@ def monitor_workspaces():
 ```
 
 ### 2. 熵管理 = 垃圾回收
+
 - 智能体会复现仓库中已有的模式——包括坏模式
 - ARCHIVE 阶段定期清理技术债
 - 技术债 = 高息贷款，小额持续偿还
@@ -593,25 +608,30 @@ def monitor_workspaces():
 ```
 
 ### 3. 吞吐量改变合并理念
+
 - PR 生命周期很短
 - 测试偶发失败通过后续重跑解决
 - 智能体吞吐量远超人类注意力时，这是正确选择
 
 ### 4. 人类掌舵，智能体执行
+
 - 人类时间是最稀缺的资源
 - 出问题时，问：缺什么上下文/工具/约束？
 - 工程师角色：设计环境 → 拆解任务 → 验证结果
 
 ### Ralph 循环原则
-| 信条 | 应用 |
-|------|------|
-| Fresh Context | 每个 Workspace 独立上下文 |
-| Disk Is State | 文件是交接机制，Git 是记忆 |
-| Let Ralph Ralph | 坐在循环上，不坐在循环里 |
-| Backpressure | 验证失败 = 门控拒绝 |
+
+| 信条            | 应用                       |
+| --------------- | -------------------------- |
+| Fresh Context   | 每个 Workspace 独立上下文  |
+| Disk Is State   | 文件是交接机制，Git 是记忆 |
+| Let Ralph Ralph | 坐在循环上，不坐在循环里   |
+| Backpressure    | 验证失败 = 门控拒绝        |
 
 ### 关键数据参考
+
 OpenAI Harness Engineering 实践：
+
 - 3 人团队 → 5 个月 → ~100 万行代码 → ~1500 个 PR
 - 人均每天 3.5 个 PR
 - 单次运行可持续 6+ 小时（通常在人类睡眠时间）

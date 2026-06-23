@@ -60,8 +60,8 @@ describe('AiService', () => {
 
     it('should fallback to takeover on AI timeout', async () => {
       // Mock a rejected promise (simulates network error which triggers fallback)
-      (global.fetch as jest.Mock).mockImplementation(() =>
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 100))
+      (global.fetch as jest.Mock).mockImplementation(
+        () => new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 100))
       );
 
       // Service has 5 second timeout

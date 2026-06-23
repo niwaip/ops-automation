@@ -1,5 +1,5 @@
-import type { ApiClient } from "./client.js";
-import type { UserDto } from "../types/user.types.js";
+import type { ApiClient } from './client.js';
+import type { UserDto } from '../types/user.types.js';
 
 export interface RoleDto {
   id: string;
@@ -43,19 +43,18 @@ export interface RegisterRequest {
   username: string;
   password: string;
   email?: string;
-  role: "employee" | "admin" | "agent";
+  role: 'employee' | 'admin' | 'agent';
 }
 
 export const createAuthApi = (client: ApiClient) => ({
   login: async (data: LoginRequest): Promise<LoginResponse> =>
-    client.post<LoginResponse>("/auth/login", data),
+    client.post<LoginResponse>('/auth/login', data),
   register: async (data: RegisterRequest): Promise<LoginResponse> =>
-    client.post<LoginResponse>("/auth/register", data),
+    client.post<LoginResponse>('/auth/register', data),
   refresh: async (refreshToken: string): Promise<RefreshResponse> =>
-    client.post<RefreshResponse>("/auth/refresh", { refreshToken }),
+    client.post<RefreshResponse>('/auth/refresh', { refreshToken }),
   logout: async (): Promise<void> => {
-    await client.post("/auth/logout");
+    await client.post('/auth/logout');
   },
-  me: async (): Promise<MeResponse> =>
-    client.get<MeResponse>("/auth/me"),
+  me: async (): Promise<MeResponse> => client.get<MeResponse>('/auth/me'),
 });

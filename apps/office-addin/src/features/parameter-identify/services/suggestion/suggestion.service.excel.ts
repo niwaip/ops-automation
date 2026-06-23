@@ -5,9 +5,7 @@ import {
   analyzeExcelWorkbookUnderstanding,
   buildExcelGlobalDataDocumentIR,
 } from '../identify/excel/excel-global-understanding';
-import {
-  buildExcelHeuristicSuggestions,
-} from '../identify/excel/excel-heuristic';
+import { buildExcelHeuristicSuggestions } from '../identify/excel/excel-heuristic';
 import {
   buildExcelPairAnalysisInputs,
   buildExcelPairPayload,
@@ -44,7 +42,7 @@ export async function analyzeExcelDocumentWithAI({
     buildExcelHeuristicSuggestions(documentIR, {
       buildExcelColumnMappingsForTable,
     }),
-    'heuristic',
+    'heuristic'
   );
   const pairInputs = buildExcelPairAnalysisInputs(documentIR);
   const globalDataDocumentIR = buildExcelGlobalDataDocumentIR(documentIR);

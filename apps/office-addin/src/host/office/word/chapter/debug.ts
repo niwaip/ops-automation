@@ -8,10 +8,12 @@ import {
   WordSectionDetectorOptions,
 } from './detector';
 
-export function buildWordDocumentStructureDebugText(templateDocumentIr: DocumentIR | Record<string, any> | null): string {
+export function buildWordDocumentStructureDebugText(
+  templateDocumentIr: DocumentIR | Record<string, any> | null
+): string {
   const paragraphs = collectWordSectionParagraphsFromDocumentIr(templateDocumentIr);
   const elements = Array.isArray(templateDocumentIr?.elements)
-    ? templateDocumentIr.elements as Array<Record<string, any>>
+    ? (templateDocumentIr.elements as Array<Record<string, any>>)
     : [];
   const tables = elements.filter((element) => element?.type === 'table');
 
@@ -20,28 +22,33 @@ export function buildWordDocumentStructureDebugText(templateDocumentIr: Document
     `段落数: ${paragraphs.length} | 表格数: ${tables.length}`,
     '',
     '【段落】',
-    paragraphs.map((paragraph) => {
-      const format = paragraph.format || {};
-      return [
-        `#${paragraph.paragraphIndex}`,
-        `styleBuiltIn=${JSON.stringify(String(format.styleBuiltIn || ''))}`,
-        `style=${JSON.stringify(String(format.style || ''))}`,
-        `isListItem=${Boolean(format.isListItem) ? 'yes' : 'no'}`,
-        `listLevel=${typeof format.listLevel === 'number' ? format.listLevel : '-'}`,
-        `listString=${JSON.stringify(String(format.listString || ''))}`,
-        `listId=${typeof format.listId === 'number' ? format.listId : '-'}`,
-        `fontSize=${String(format.fontSize || '') || '-'}`,
-        `bold=${Boolean(format.isBold) ? 'yes' : 'no'}`,
-        `isTitle=${Boolean(format.isTitle) ? 'yes' : 'no'}`,
-        `align=${String(format.alignment || '') || '-'}`,
-        `text=${JSON.stringify(paragraph.text)}`,
-      ].join(' | ');
-    }).join('\n') || '无',
+    paragraphs
+      .map((paragraph) => {
+        const format = paragraph.format || {};
+        return [
+          `#${paragraph.paragraphIndex}`,
+          `styleBuiltIn=${JSON.stringify(String(format.styleBuiltIn || ''))}`,
+          `style=${JSON.stringify(String(format.style || ''))}`,
+          `isListItem=${Boolean(format.isListItem) ? 'yes' : 'no'}`,
+          `listLevel=${typeof format.listLevel === 'number' ? format.listLevel : '-'}`,
+          `listString=${JSON.stringify(String(format.listString || ''))}`,
+          `listId=${typeof format.listId === 'number' ? format.listId : '-'}`,
+          `fontSize=${String(format.fontSize || '') || '-'}`,
+          `bold=${Boolean(format.isBold) ? 'yes' : 'no'}`,
+          `isTitle=${Boolean(format.isTitle) ? 'yes' : 'no'}`,
+          `align=${String(format.alignment || '') || '-'}`,
+          `text=${JSON.stringify(paragraph.text)}`,
+        ].join(' | ');
+      })
+      .join('\n') || '无',
     '',
     '【表格】',
-    tables.map((table: Record<string, any>, index: number) =>
-      `table#${index} | text=${JSON.stringify(String(table.text || ''))}`
-    ).join('\n') || '无',
+    tables
+      .map(
+        (table: Record<string, any>, index: number) =>
+          `table#${index} | text=${JSON.stringify(String(table.text || ''))}`
+      )
+      .join('\n') || '无',
   ].join('\n');
 }
 
@@ -75,29 +82,35 @@ export function buildWordChapterDetectionDebugText(
     `最终章节数: ${sections.length}`,
     '',
     '【逐段判定】',
-    paragraphs.map((paragraph) => {
-      const officeItems = officeCandidateMap.get(paragraph.paragraphIndex) || [];
-      const specialItems = specialCandidateMap.get(paragraph.paragraphIndex) || [];
-      return [
-        `#${paragraph.paragraphIndex}`,
-        `office=${officeItems.map((item) => `L${item.level}`).join('/') || '-'}`,
-        `special=${specialItems.map((item) => `L${item.level}`).join('/') || '-'}`,
-        `styleBuiltIn=${JSON.stringify(String(paragraph.format?.styleBuiltIn || ''))}`,
-        `style=${JSON.stringify(String(paragraph.format?.style || ''))}`,
-        `isListItem=${Boolean(paragraph.format?.isListItem) ? 'yes' : 'no'}`,
-        `listLevel=${typeof paragraph.format?.listLevel === 'number' ? paragraph.format?.listLevel : '-'}`,
-        `listString=${JSON.stringify(String(paragraph.format?.listString || ''))}`,
-        `text=${JSON.stringify(paragraph.text)}`,
-      ].join(' | ');
-    }).join('\n') || '无',
+    paragraphs
+      .map((paragraph) => {
+        const officeItems = officeCandidateMap.get(paragraph.paragraphIndex) || [];
+        const specialItems = specialCandidateMap.get(paragraph.paragraphIndex) || [];
+        return [
+          `#${paragraph.paragraphIndex}`,
+          `office=${officeItems.map((item) => `L${item.level}`).join('/') || '-'}`,
+          `special=${specialItems.map((item) => `L${item.level}`).join('/') || '-'}`,
+          `styleBuiltIn=${JSON.stringify(String(paragraph.format?.styleBuiltIn || ''))}`,
+          `style=${JSON.stringify(String(paragraph.format?.style || ''))}`,
+          `isListItem=${Boolean(paragraph.format?.isListItem) ? 'yes' : 'no'}`,
+          `listLevel=${typeof paragraph.format?.listLevel === 'number' ? paragraph.format?.listLevel : '-'}`,
+          `listString=${JSON.stringify(String(paragraph.format?.listString || ''))}`,
+          `text=${JSON.stringify(paragraph.text)}`,
+        ].join(' | ');
+      })
+      .join('\n') || '无',
     '',
     '【最终章节】',
-    sections.map((section, index) => [
-      `${index + 1}. ${section.sectionTitle}`,
-      `type=${section.regionType || 'chapter'}`,
-      `source=${formatWordHeadingSource(section.detectionSource)}`,
-      `range=#${section.startParagraphIndex}-#${section.endParagraphIndex}`,
-      `headings=${section.headingTexts.map((text) => JSON.stringify(text)).join(' / ') || '-'}`,
-    ].join(' | ')).join('\n') || '无',
+    sections
+      .map((section, index) =>
+        [
+          `${index + 1}. ${section.sectionTitle}`,
+          `type=${section.regionType || 'chapter'}`,
+          `source=${formatWordHeadingSource(section.detectionSource)}`,
+          `range=#${section.startParagraphIndex}-#${section.endParagraphIndex}`,
+          `headings=${section.headingTexts.map((text) => JSON.stringify(text)).join(' / ') || '-'}`,
+        ].join(' | ')
+      )
+      .join('\n') || '无',
   ].join('\n');
 }

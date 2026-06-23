@@ -24,6 +24,7 @@ CONTROL_PLANE_INCREMENTAL_SQL_FILES=(
   "$REPO_ROOT/apps/backend/orchestration/control-plane/prisma/migrations/20260515143000_add_execution_phases/migration.sql"
   "$REPO_ROOT/apps/backend/orchestration/control-plane/prisma/migrations/20260516140000_add_execution_phase_steps/migration.sql"
 )
+BROWSER_TEMPLATE_REPAIR_SQL="$REPO_ROOT/apps/backend/domain/browser-template/prisma/manual-sql/20260608_rebuild_templates_current_schema.sql"
 LEGACY_SQL_FILES=(
   "$REPO_ROOT/docker/sql/migrations/001_init.sql"
   "$REPO_ROOT/docker/sql/seed.sql"
@@ -160,6 +161,12 @@ get_db_params() {
     local pg_user pg_db
     pg_user="$(grep -E '^POSTGRES_USER=' "$env_file" 2>/dev/null | tail -1 | cut -d'=' -f2-)"
     pg_db="$(grep -E '^POSTGRES_DB=' "$env_file" 2>/dev/null | tail -1 | cut -d'=' -f2-)"
+    pg_user="${pg_user%$'\r'}"
+    pg_db="${pg_db%$'\r'}"
+    pg_user="${pg_user%\"}"
+    pg_user="${pg_user#\"}"
+    pg_db="${pg_db%\"}"
+    pg_db="${pg_db#\"}"
     [[ -n "$pg_user" ]] && POSTGRES_USER="$pg_user"
     [[ -n "$pg_db" ]] && POSTGRES_DB="$pg_db"
   fi
@@ -209,6 +216,24 @@ wait_for_postgres() {
   done
 }
 
+run_psql_stdin() {
+  get_db_params
+  run_compose "$INFRA_COMPOSE" exec -T postgres \
+    psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f -
+}
+
+apply_sql_file() {
+  local file_path="$1"
+
+  if [[ ! -f "$file_path" ]]; then
+    log_warn "Skip missing SQL file: $file_path"
+    return 0
+  fi
+
+  log "Applying SQL file: $file_path"
+  run_psql_stdin < "$file_path"
+}
+
 run_platform_job() {
   local command="$1"
   run_compose "$BASE_COMPOSE" run --rm platform sh -lc \
@@ -253,6 +278,11 @@ start_peripheral() {
   run_compose "$EXPERIENCE_COMPOSE" up -d
 }
 
+apply_shared_domain_schema_repairs() {
+  log "Applying shared domain schema repair SQL..."
+  apply_sql_file "$BROWSER_TEMPLATE_REPAIR_SQL"
+}
+
 show_service_status() {
   local env_file="$DOCKER_DIR/.env"
   local host_ip="localhost"
@@ -284,6 +314,7 @@ print_migration_inventory() {
   for sql_file in "${CONTROL_PLANE_INCREMENTAL_SQL_FILES[@]}"; do
     printf '  - Shared incremental SQL: %s\n' "$sql_file"
   done
+  printf '  - Shared domain repair SQL: %s\n' "$BROWSER_TEMPLATE_REPAIR_SQL"
 
   printf '\n[Placeholder migrations not applied automatically]\n'
   printf '  - %s\n' "$REPO_ROOT/apps/backend/domain/browser-template/prisma/migrations/0_baseline/migration.sql"
@@ -414,6 +445,7 @@ database_status_check() {
     "audit_logs"
     "activities"
     "temporal_workflows"
+    "templates"
   )
   local tbl
   for tbl in "${current_tables[@]}"; do
@@ -442,8 +474,27 @@ database_status_check() {
     fi
   done
 
+  printf '\n[Shared domain objects]\n'
+  if table_exists "templates"; then
+    log_ok "templates"
+  else
+    log_err "templates  <- MISSING"
+  fi
+
+  if enum_exists "templates_status_enum"; then
+    log_ok "templates_status_enum"
+  else
+    log_err "templates_status_enum  <- MISSING"
+  fi
+
+  if enum_exists "template_status"; then
+    log_warn "Legacy enum still present: template_status"
+  else
+    log_ok "Legacy enum absent: template_status"
+  fi
+
   printf '\n[Legacy object checks]\n'
-  local legacy_tables=("templates" "sessions" "step_logs" "ai_models" "ai_agents")
+  local legacy_tables=("sessions" "step_logs" "ai_models" "ai_agents")
   for tbl in "${legacy_tables[@]}"; do
     if table_exists "$tbl"; then
       log_warn "Legacy table still present: $tbl"
@@ -451,12 +502,6 @@ database_status_check() {
       log_ok "Legacy table absent: $tbl"
     fi
   done
-
-  if enum_exists "template_status" || enum_exists "templates_status_enum"; then
-    log_warn "Legacy template enum detected"
-  else
-    log_ok "No legacy template enum detected"
-  fi
 
   printf '\n'
 }
@@ -472,11 +517,14 @@ reset_public_schema() {
   fi
 
   start_infra
-  get_db_params
 
   log "Dropping and recreating schema public..."
-  run_compose "$INFRA_COMPOSE" exec -T postgres psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c \
-    "DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO ${POSTGRES_USER}; GRANT ALL ON SCHEMA public TO public;"
+  run_psql_stdin <<SQL
+DROP SCHEMA IF EXISTS public CASCADE;
+CREATE SCHEMA public;
+GRANT ALL ON SCHEMA public TO ${POSTGRES_USER};
+GRANT ALL ON SCHEMA public TO public;
+SQL
 
   log_ok "Database schema reset complete."
 }
@@ -485,6 +533,7 @@ apply_latest_database_schema() {
   printf '\n=== Apply Latest Database Schema ===\n'
   start_infra
   bash "$APPLY_LATEST_DB_SCHEMA_SCRIPT"
+  apply_shared_domain_schema_repairs
   database_status_check
 }
 
@@ -542,14 +591,19 @@ full_initial_deployment() {
   stop_all_compose
 
   start_infra
-  get_db_params
 
   log "Resetting database schema..."
-  run_compose "$INFRA_COMPOSE" exec -T postgres psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c \
-    "DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO ${POSTGRES_USER}; GRANT ALL ON SCHEMA public TO public;"
+  run_psql_stdin <<SQL
+DROP SCHEMA IF EXISTS public CASCADE;
+CREATE SCHEMA public;
+GRANT ALL ON SCHEMA public TO ${POSTGRES_USER};
+GRANT ALL ON SCHEMA public TO public;
+SQL
 
   log "Applying latest schema..."
   bash "$APPLY_LATEST_DB_SCHEMA_SCRIPT"
+
+  apply_shared_domain_schema_repairs
 
   log "Importing current seed data..."
   run_platform_job_with_env \

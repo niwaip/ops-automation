@@ -6,10 +6,14 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 
-export type CapabilitySourceType = 'execution_flow_template' | 'temporal_workflow' | 'browser_recording';
+export type CapabilitySourceType =
+  | 'execution_flow_template'
+  | 'temporal_workflow'
+  | 'browser_recording';
 
 export type CapabilityReleaseStatus =
   | 'draft'
@@ -114,7 +118,6 @@ export class RecorderBridgePublishPayloadDTO {
 
   @IsOptional()
   @IsArray()
-  @IsObject({ each: true })
   executionFlow?: Array<Record<string, unknown>>;
 
   @IsOptional()
@@ -125,6 +128,10 @@ export class RecorderBridgePublishPayloadDTO {
   @IsOptional()
   @IsObject()
   apiEndpoints?: Record<string, unknown>;
+
+  @IsOptional()
+  @IsArray()
+  loopPlanPreview?: Array<Record<string, unknown>>;
 }
 
 export class RecorderBridgeSkillDraftDTO {
@@ -140,6 +147,41 @@ export class RecorderBridgeSkillDraftDTO {
   @ValidateNested()
   @Type(() => RecorderBridgePublishPayloadDTO)
   publishPayload?: RecorderBridgePublishPayloadDTO;
+
+  @IsOptional()
+  @ValidateIf((_, value) => typeof value === 'string')
+  @IsString()
+  @ValidateIf((_, value) => Boolean(value) && typeof value === 'object' && !Array.isArray(value))
+  @IsObject()
+  invocation?: string | Record<string, unknown>;
+
+  @IsOptional()
+  parameterOnly?: boolean;
+
+  @IsOptional()
+  @IsArray()
+  parameters?: Array<Record<string, unknown>>;
+
+  @IsOptional()
+  @IsArray()
+  outputs?: Array<Record<string, unknown>>;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  usageNotes?: string[];
+
+  @IsOptional()
+  @IsString()
+  usageMarkdown?: string;
+
+  @IsOptional()
+  @IsObject()
+  executionPlan?: Record<string, unknown>;
+
+  @IsOptional()
+  @IsArray()
+  commands?: Array<Record<string, unknown>>;
 }
 
 export class RecorderBridgeExportArtifactsDTO {
@@ -156,6 +198,26 @@ export class RecorderBridgeExportArtifactsDTO {
   @ValidateNested()
   @Type(() => RecorderBridgeSkillDraftDTO)
   skillDraft?: RecorderBridgeSkillDraftDTO;
+
+  @IsOptional()
+  @IsString()
+  script?: string;
+
+  @IsOptional()
+  @IsArray()
+  templateSteps?: Array<Record<string, unknown>>;
+
+  @IsOptional()
+  @IsObject()
+  loopDraft?: Record<string, unknown>;
+
+  @IsOptional()
+  @IsArray()
+  loopPlanPreview?: Array<Record<string, unknown>>;
+
+  @IsOptional()
+  @IsObject()
+  scriptValidation?: Record<string, unknown>;
 }
 
 export class BridgeRecorderExportDTO {

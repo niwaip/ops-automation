@@ -16,10 +16,7 @@ describe('LockService', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        LockService,
-        { provide: RedisService, useValue: mockRedisService },
-      ],
+      providers: [LockService, { provide: RedisService, useValue: mockRedisService }],
     }).compile();
 
     service = module.get<LockService>(LockService);
@@ -34,11 +31,7 @@ describe('LockService', () => {
 
       expect(result.success).toBe(true);
       expect(result.session_id).toBe('session-123');
-      expect(redisService.set).toHaveBeenCalledWith(
-        'lock:profile:user-123',
-        'session-123',
-        7200,
-      );
+      expect(redisService.set).toHaveBeenCalledWith('lock:profile:user-123', 'session-123', 7200);
     });
 
     it('should fail to acquire lock when already held', async () => {

@@ -61,19 +61,19 @@ describe('TemporalWorkflowAiDraftService', () => {
     const builtinRegistry = new BuiltinActivityRegistry();
     const workflowNormalizationService = new TemporalWorkflowNormalizationService(
       prisma as any,
-      builtinRegistry,
+      builtinRegistry
     );
     const aiDraftService = new TemporalWorkflowAiDraftService(prisma as any, builtinRegistry);
     const browserDraftService = new TemporalWorkflowBrowserDraftService();
     const codegenService = new TemporalWorkflowCodegenService();
     const sessionService = new TemporalWorkflowSessionService(
       prisma as any,
-      workflowNormalizationService,
+      workflowNormalizationService
     );
     const validationService = new TemporalWorkflowValidationService();
     const activityResolutionService = new TemporalWorkflowActivityResolutionService(
       prisma as any,
-      builtinRegistry,
+      builtinRegistry
     );
     const workflowConfigService = new TemporalWorkflowConfigService();
     const workflowTemplateService = new TemporalWorkflowTemplateService();
@@ -82,7 +82,7 @@ describe('TemporalWorkflowAiDraftService', () => {
       aiDraftService,
       activityResolutionService,
       workflowConfigService,
-      workflowNormalizationService,
+      workflowNormalizationService
     );
     const service = new TemporalWorkflowService(
       prisma as any,
@@ -94,7 +94,7 @@ describe('TemporalWorkflowAiDraftService', () => {
       workflowConfigService,
       workflowNormalizationService,
       workflowTemplateService,
-      workflowSupportService,
+      workflowSupportService
     );
 
     return {
@@ -155,17 +155,21 @@ describe('TemporalWorkflowAiDraftService', () => {
       },
       {
         activities: [],
-      },
+      }
     );
 
     expect(result.isValid).toBe(false);
-    expect(result.errors).toContain('重组嵌套 JSON 的固定规则 JSON 转换存在嵌套 outputSchema，但未提供 fieldMappings。请显式提供 fieldMappings，或改用 builtin:aiStructuredTransform。');
+    expect(result.errors).toContain(
+      '重组嵌套 JSON 的固定规则 JSON 转换存在嵌套 outputSchema，但未提供 fieldMappings。请显式提供 fieldMappings，或改用 builtin:aiStructuredTransform。'
+    );
   });
 
   it('forces AI generation when forceAiGeneration is enabled', async () => {
     const { service, codegenService } = createService();
 
-    jest.spyOn(codegenService as any, 'precompileGeneratedPython').mockReturnValue({ success: true });
+    jest
+      .spyOn(codegenService as any, 'precompileGeneratedPython')
+      .mockReturnValue({ success: true });
     mockedAxios.post.mockResolvedValue({
       data: {
         result: [
@@ -220,7 +224,7 @@ describe('TemporalWorkflowAiDraftService', () => {
         activities: [],
       },
       undefined,
-      true,
+      true
     );
 
     expect(result.success).toBe(true);
@@ -249,7 +253,7 @@ describe('TemporalWorkflowAiDraftService', () => {
     const result = await service.generateStructuredTransformConfig(
       { weatherText: '晴', temperatureC: '20' },
       '请提取天气信息',
-      {},
+      {}
     );
 
     expect(result.success).toBe(true);
@@ -260,8 +264,12 @@ describe('TemporalWorkflowAiDraftService', () => {
   it('prefers AI regeneration over deterministic generation when errorContext is provided', async () => {
     const { service, codegenService, workflowSupportService } = createService();
 
-    jest.spyOn(workflowSupportService, 'buildDeterministicWorkflowCode').mockReturnValue('DETERMINISTIC_CODE');
-    jest.spyOn(codegenService as any, 'precompileGeneratedPython').mockReturnValue({ success: true });
+    jest
+      .spyOn(workflowSupportService, 'buildDeterministicWorkflowCode')
+      .mockReturnValue('DETERMINISTIC_CODE');
+    jest
+      .spyOn(codegenService as any, 'precompileGeneratedPython')
+      .mockReturnValue({ success: true });
     mockedAxios.post.mockResolvedValue({
       data: {
         result: [
@@ -298,7 +306,7 @@ describe('TemporalWorkflowAiDraftService', () => {
         ],
       },
       { activities: [] },
-      'Compilation Error: invalid syntax (activity.py, line 1)',
+      'Compilation Error: invalid syntax (activity.py, line 1)'
     );
 
     expect(mockedAxios.post).toHaveBeenCalled();
@@ -356,7 +364,7 @@ describe('TemporalWorkflowAiDraftService', () => {
         ],
       },
       { activities: [] },
-      'Compilation Error: invalid syntax (activity.py, line 1)',
+      'Compilation Error: invalid syntax (activity.py, line 1)'
     );
 
     expect(result.success).toBe(false);
@@ -370,7 +378,8 @@ describe('TemporalWorkflowAiDraftService', () => {
     const { service, codegenService, workflowSupportService } = createService();
 
     jest.spyOn(workflowSupportService, 'buildDeterministicWorkflowCode').mockReturnValue(null);
-    jest.spyOn(codegenService as any, 'precompileGeneratedPython')
+    jest
+      .spyOn(codegenService as any, 'precompileGeneratedPython')
       .mockReturnValueOnce({
         success: false,
         error: 'SyntaxError: invalid syntax (generated_workflow.py, line 1)',
@@ -432,7 +441,7 @@ describe('TemporalWorkflowAiDraftService', () => {
         ],
       },
       { activities: [] },
-      'Compilation Error: invalid syntax (activity.py, line 1)',
+      'Compilation Error: invalid syntax (activity.py, line 1)'
     );
 
     expect(result.success).toBe(true);
@@ -449,7 +458,9 @@ describe('TemporalWorkflowAiDraftService', () => {
     const { service, codegenService, workflowSupportService } = createService();
 
     jest.spyOn(workflowSupportService, 'buildDeterministicWorkflowCode').mockReturnValue(null);
-    jest.spyOn(codegenService as any, 'precompileGeneratedPython').mockReturnValue({ success: true });
+    jest
+      .spyOn(codegenService as any, 'precompileGeneratedPython')
+      .mockReturnValue({ success: true });
     mockedAxios.post.mockResolvedValue({
       data: {
         result: [
@@ -488,20 +499,26 @@ describe('TemporalWorkflowAiDraftService', () => {
         ],
       },
       { activities: [] },
-      '执行错误: 需要重新生成',
+      '执行错误: 需要重新生成'
     );
 
     const promptPayload = mockedAxios.post.mock.calls[0]?.[1] as any;
-    expect(String(promptPayload?.prompt || '')).toContain('from temporalio.common import RetryPolicy');
+    expect(String(promptPayload?.prompt || '')).toContain(
+      'from temporalio.common import RetryPolicy'
+    );
     expect(String(promptPayload?.prompt || '')).toContain('严禁使用 `activity.RetryPolicy(...)`');
-    expect(String(promptPayload?.prompt || '')).toContain('不要写 `if workflow.unsafe.is_replaying()`');
+    expect(String(promptPayload?.prompt || '')).toContain(
+      '不要写 `if workflow.unsafe.is_replaying()`'
+    );
   });
 
   it('retries once when first AI code uses invalid activity.RetryPolicy namespace', async () => {
     const { service, codegenService, workflowSupportService } = createService();
 
     jest.spyOn(workflowSupportService, 'buildDeterministicWorkflowCode').mockReturnValue(null);
-    jest.spyOn(codegenService as any, 'precompileGeneratedPython').mockReturnValue({ success: true });
+    jest
+      .spyOn(codegenService as any, 'precompileGeneratedPython')
+      .mockReturnValue({ success: true });
     mockedAxios.post
       .mockResolvedValueOnce({
         data: {
@@ -563,7 +580,7 @@ describe('TemporalWorkflowAiDraftService', () => {
         ],
       },
       { activities: [] },
-      '执行错误: Compilation Error: module temporalio.activity has no attribute RetryPolicy',
+      '执行错误: Compilation Error: module temporalio.activity has no attribute RetryPolicy'
     );
 
     expect(result.success).toBe(true);
@@ -579,7 +596,9 @@ describe('TemporalWorkflowAiDraftService', () => {
     const { service, codegenService, workflowSupportService } = createService();
 
     jest.spyOn(workflowSupportService, 'buildDeterministicWorkflowCode').mockReturnValue(null);
-    jest.spyOn(codegenService as any, 'precompileGeneratedPython').mockReturnValue({ success: true });
+    jest
+      .spyOn(codegenService as any, 'precompileGeneratedPython')
+      .mockReturnValue({ success: true });
     mockedAxios.post
       .mockResolvedValueOnce({
         data: {
@@ -632,7 +651,7 @@ describe('TemporalWorkflowAiDraftService', () => {
         ],
       },
       { activities: [] },
-      '执行错误: Compilation Error: module temporalio.workflow has no attribute unsafe',
+      '执行错误: Compilation Error: module temporalio.workflow has no attribute unsafe'
     );
 
     expect(result.success).toBe(true);
@@ -643,7 +662,9 @@ describe('TemporalWorkflowAiDraftService', () => {
     expect(String(secondPromptPayload?.prompt || '')).toContain('workflow.unsafe');
     expect(String(secondPromptPayload?.prompt || '')).toContain('违反 Temporal Python SDK 约束');
     expect(String(secondPromptPayload?.prompt || '')).toContain('删除所有 `workflow.unsafe`');
-    expect(String(secondPromptPayload?.prompt || '')).toContain('不要为了“历史回放安全”手动判断 replay');
+    expect(String(secondPromptPayload?.prompt || '')).toContain(
+      '不要为了“历史回放安全”手动判断 replay'
+    );
   });
 
   it('optimizes builtin httpRequest into bodyMap when AI returns multi-field mappings', async () => {
@@ -697,19 +718,21 @@ describe('TemporalWorkflowAiDraftService', () => {
         urlTemplate: 'https://wttr.in/shanghai?format=j1',
       },
       {},
-      '提取天气描述、气温和体感温度',
+      '提取天气描述、气温和体感温度'
     );
 
     expect(result.success).toBe(true);
-    expect(result.optimizedConfig).toEqual(expect.objectContaining({
-      responseMode: 'bodyMap',
-      responseBodyPath: '',
-      responseFieldMappings: {
-        weatherText: 'current_condition.0.lang_zh.0.value',
-        temperatureC: 'current_condition.0.temp_C',
-        feelsLikeC: 'current_condition.0.FeelsLikeC',
-      },
-    }));
+    expect(result.optimizedConfig).toEqual(
+      expect.objectContaining({
+        responseMode: 'bodyMap',
+        responseBodyPath: '',
+        responseFieldMappings: {
+          weatherText: 'current_condition.0.lang_zh.0.value',
+          temperatureC: 'current_condition.0.temp_C',
+          feelsLikeC: 'current_condition.0.FeelsLikeC',
+        },
+      })
+    );
     expect(result.explanation).toBe('需要多个字段，所以直接返回结构化对象');
   });
 
@@ -783,14 +806,18 @@ describe('TemporalWorkflowAiDraftService', () => {
     });
 
     expect(draft.name).toBe('天气查询工作流');
-    expect(draft.sourceContext).toEqual(expect.objectContaining({
-      sourceType: 'text',
-      userDescription: '创建一个天气查询工作流，输入城市名返回天气信息',
-    }));
+    expect(draft.sourceContext).toEqual(
+      expect.objectContaining({
+        sourceType: 'text',
+        userDescription: '创建一个天气查询工作流，输入城市名返回天气信息',
+      })
+    );
     expect(draft.workflowDsl.steps[0].activityRef).toBe('builtin:httpRequest');
-    expect(draft.workflowDsl.sourceContext).toEqual(expect.objectContaining({
-      sourceType: 'text',
-    }));
+    expect(draft.workflowDsl.sourceContext).toEqual(
+      expect.objectContaining({
+        sourceType: 'text',
+      })
+    );
     expect(draft.activityDsl.activities[0].fn).toBe('httpRequest');
     expect(draft.activityDsl.activities[0].handler).toBe('api');
     expect(mockedAxios.post).toHaveBeenCalled();
@@ -914,9 +941,8 @@ describe('TemporalWorkflowAiDraftService', () => {
       workflowIntentText: '把结果格式化为纯文本消息',
       previousActivityRef: 'builtin:httpRequest',
       sanitizeJsonValue: <T>(value: T) => workflowNormalizationService.sanitizeJsonValue(value),
-      normalizeStructuredTransformConfig: (config, placeholderKeys) => (
-        workflowConfigService.normalizeStructuredTransformConfig(config, placeholderKeys)
-      ),
+      normalizeStructuredTransformConfig: (config, placeholderKeys) =>
+        workflowConfigService.normalizeStructuredTransformConfig(config, placeholderKeys),
     });
     const aiResult = normalizeAiDraftStepInput({
       rawInput: {
@@ -927,12 +953,13 @@ describe('TemporalWorkflowAiDraftService', () => {
       workflowIntentText: '请输出结构化摘要',
       previousActivityRef: 'builtin:httpRequest',
       sanitizeJsonValue: <T>(value: T) => workflowNormalizationService.sanitizeJsonValue(value),
-      normalizeStructuredTransformConfig: (config, placeholderKeys) => (
-        workflowConfigService.normalizeStructuredTransformConfig(config, placeholderKeys)
-      ),
+      normalizeStructuredTransformConfig: (config, placeholderKeys) =>
+        workflowConfigService.normalizeStructuredTransformConfig(config, placeholderKeys),
     });
 
-    expect(fixedResult.__structuredTransform.textTemplate).toBe('Summary: {summary}\nAdvice Text: {adviceText}');
+    expect(fixedResult.__structuredTransform.textTemplate).toBe(
+      'Summary: {summary}\nAdvice Text: {adviceText}'
+    );
     expect(fixedResult.__structuredTransform.fieldMappings).toEqual({
       summary: 'summary',
       adviceText: 'adviceText',
@@ -941,7 +968,9 @@ describe('TemporalWorkflowAiDraftService', () => {
     expect(aiResult.__structuredTransform.outputSchema).toEqual({
       summary: 'string',
     });
-    expect(String(aiResult.__structuredTransform.instructionTemplate || '')).toContain('按 outputSchema 返回结构化 JSON');
+    expect(String(aiResult.__structuredTransform.instructionTemplate || '')).toContain(
+      '按 outputSchema 返回结构化 JSON'
+    );
     expect(String(aiResult.__structuredTransform.instructionTemplate || '')).toContain('summary');
   });
 
@@ -959,9 +988,8 @@ describe('TemporalWorkflowAiDraftService', () => {
       workflowIntentText: '请从输入中提取用户资料，返回字段 userName、userEmail、accountStatus',
       previousActivityRef: 'builtin:httpRequest',
       sanitizeJsonValue: <T>(value: T) => workflowNormalizationService.sanitizeJsonValue(value),
-      normalizeStructuredTransformConfig: (config, placeholderKeys) => (
-        workflowConfigService.normalizeStructuredTransformConfig(config, placeholderKeys)
-      ),
+      normalizeStructuredTransformConfig: (config, placeholderKeys) =>
+        workflowConfigService.normalizeStructuredTransformConfig(config, placeholderKeys),
     });
 
     expect(aiResult.__structuredTransform.outputMode).toBe('json');
@@ -971,7 +999,9 @@ describe('TemporalWorkflowAiDraftService', () => {
       accountStatus: 'string',
     });
     expect(String(aiResult.__structuredTransform.instructionTemplate || '')).toContain('userName');
-    expect(String(aiResult.__structuredTransform.instructionTemplate || '')).toContain('accountStatus');
+    expect(String(aiResult.__structuredTransform.instructionTemplate || '')).toContain(
+      'accountStatus'
+    );
   });
 
   it('resolves httpRequest -> structuredTransform draft from preview sample before materialization', async () => {
@@ -1118,7 +1148,7 @@ describe('TemporalWorkflowAiDraftService', () => {
       expect.objectContaining({
         city: 'sample_city',
       }),
-      expect.stringContaining('ASCII'),
+      expect.stringContaining('ASCII')
     );
     expect(workflowConfigService.generateStructuredTransformConfig).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -1126,18 +1156,19 @@ describe('TemporalWorkflowAiDraftService', () => {
         temperatureC: '24',
       }),
       expect.stringContaining('ASCII'),
-      expect.any(Object),
+      expect.any(Object)
     );
     expect((draft.workflowDsl.steps[0].input as any).__httpRequest.responseMode).toBe('bodyMap');
-    expect((draft.workflowDsl.steps[1].input as any).__structuredTransform.textTemplate).toContain('Weather: {weatherText}');
+    expect((draft.workflowDsl.steps[1].input as any).__structuredTransform.textTemplate).toContain(
+      'Weather: {weatherText}'
+    );
     expect((draft.warnings || []).some((item: string) => item.includes('真实响应样本'))).toBe(true);
   });
 
   it('builds generic sample inputs instead of hardcoded domain values', () => {
     const { workflowNormalizationService } = createService();
-    const buildWorkflowSemanticHint = (...values: unknown[]) => (
-      workflowNormalizationService.buildWorkflowSemanticHint(...values)
-    );
+    const buildWorkflowSemanticHint = (...values: unknown[]) =>
+      workflowNormalizationService.buildWorkflowSemanticHint(...values);
 
     const callbackUrl = buildGenericAiDraftSampleValue({
       key: 'callbackUrl',
@@ -1232,16 +1263,19 @@ describe('TemporalWorkflowAiDraftService', () => {
       },
       pickFirstNonEmptyString,
       uniqueVariables: (variables) => Array.from(new Set(variables)),
-      buildWorkflowSemanticHint: (...values) => workflowNormalizationService.buildWorkflowSemanticHint(...values),
+      buildWorkflowSemanticHint: (...values) =>
+        workflowNormalizationService.buildWorkflowSemanticHint(...values),
     });
 
     expect(seeds).toHaveLength(1);
-    expect(seeds[0]).toEqual(expect.objectContaining({
-      key: 'projectName',
-      displayName: '项目名称',
-      localizedVariants: ['zh', 'en'],
-      renderPath: ['projectName', 'projectName_en'],
-    }));
+    expect(seeds[0]).toEqual(
+      expect.objectContaining({
+        key: 'projectName',
+        displayName: '项目名称',
+        localizedVariants: ['zh', 'en'],
+        renderPath: ['projectName', 'projectName_en'],
+      })
+    );
   });
 
   it('preserves template placeholders even before workflow input params are fully declared', () => {
@@ -1267,24 +1301,29 @@ describe('TemporalWorkflowAiDraftService', () => {
 
   it('keeps bankAccount typed as string when inferring workflow input params', () => {
     const { workflowNormalizationService } = createService();
-    const buildWorkflowSemanticHint = (...values: unknown[]) => (
-      workflowNormalizationService.buildWorkflowSemanticHint(...values)
-    );
+    const buildWorkflowSemanticHint = (...values: unknown[]) =>
+      workflowNormalizationService.buildWorkflowSemanticHint(...values);
 
-    expect(inferWorkflowInputParamType({
-      key: 'payment.bankAccount',
-      description: '乙方指定的银行账户信息，包括开户行和账号',
-      defaultValue: '',
-      exampleValue: '乙方指定银行帐号为',
-      buildWorkflowSemanticHint,
-    })).toBe('string');
-    expect(normalizeWorkflowInputParamType(undefined, 'payment.bankAccount', buildWorkflowSemanticHint)).toBe('string');
-    expect(buildGenericAiDraftSampleValue({
-      key: 'payment.bankAccount',
-      description: '乙方指定的银行账户信息，包括开户行和账号',
-      referenceUrl: '',
-      buildWorkflowSemanticHint,
-    })).toBe('sample_payment_bankaccount');
+    expect(
+      inferWorkflowInputParamType({
+        key: 'payment.bankAccount',
+        description: '乙方指定的银行账户信息，包括开户行和账号',
+        defaultValue: '',
+        exampleValue: '乙方指定银行帐号为',
+        buildWorkflowSemanticHint,
+      })
+    ).toBe('string');
+    expect(
+      normalizeWorkflowInputParamType(undefined, 'payment.bankAccount', buildWorkflowSemanticHint)
+    ).toBe('string');
+    expect(
+      buildGenericAiDraftSampleValue({
+        key: 'payment.bankAccount',
+        description: '乙方指定的银行账户信息，包括开户行和账号',
+        referenceUrl: '',
+        buildWorkflowSemanticHint,
+      })
+    ).toBe('sample_payment_bankaccount');
   });
 
   it('serializes object contextTemplate without destroying placeholders', () => {
@@ -1299,132 +1338,145 @@ describe('TemporalWorkflowAiDraftService', () => {
       },
     });
 
-    expect(normalizedTransformConfig.contextTemplate).toBe('{"city":"{city}","meta":{"format":"{format}"}}');
+    expect(normalizedTransformConfig.contextTemplate).toBe(
+      '{"city":"{city}","meta":{"format":"{format}"}}'
+    );
   });
 
   it('auto-repairs common bodyMap and fixed text transform contract issues in AI draft plan', () => {
     const { aiDraftService } = createService();
 
-    const repaired = repairCommonDraftPlanIssues({
-      workflowName: '天气查询',
-      inputParams: {
-        city: {
-          description: '城市',
-          required: true,
-          defaultValue: '',
+    const repaired = repairCommonDraftPlanIssues(
+      {
+        workflowName: '天气查询',
+        inputParams: {
+          city: {
+            description: '城市',
+            required: true,
+            defaultValue: '',
+          },
         },
+        steps: [
+          {
+            id: 'step_1',
+            name: '查询天气接口',
+            type: 'activity',
+            activityRef: 'builtin:httpRequest',
+            input: {
+              __httpRequest: {
+                method: 'GET',
+                urlTemplate: 'https://wttr.in/{city}',
+                responseMode: 'bodyMap',
+                responseFieldMappings: {
+                  city: 'nearest_area.0.areaName.0.value',
+                  temperature: 'current_condition.0.temp_C',
+                },
+              },
+            },
+          },
+          {
+            id: 'step_2',
+            name: '格式化天气文本',
+            type: 'activity',
+            activityRef: 'builtin:structuredTransform',
+            input: {
+              __structuredTransform: {
+                contentType: 'json',
+                contentTemplate: '{content}',
+                outputMode: 'text',
+                outputSchema: {
+                  result: 'string',
+                },
+                contextTemplate: '',
+                fieldMappings: {},
+                textTemplate:
+                  '城市：{nearest_area.0.areaName.0.value}\n温度：{current_condition.0.temp_C}°C\n请求城市：{city}',
+              },
+            },
+          },
+        ],
       },
-      steps: [
-        {
-          id: 'step_1',
-          name: '查询天气接口',
-          type: 'activity',
-          activityRef: 'builtin:httpRequest',
-          input: {
-            __httpRequest: {
-              method: 'GET',
-              urlTemplate: 'https://wttr.in/{city}',
-              responseMode: 'bodyMap',
-              responseFieldMappings: {
-                city: 'nearest_area.0.areaName.0.value',
-                temperature: 'current_condition.0.temp_C',
-              },
-            },
-          },
-        },
-        {
-          id: 'step_2',
-          name: '格式化天气文本',
-          type: 'activity',
-          activityRef: 'builtin:structuredTransform',
-          input: {
-            __structuredTransform: {
-              contentType: 'json',
-              contentTemplate: '{content}',
-              outputMode: 'text',
-              outputSchema: {
-                result: 'string',
-              },
-              contextTemplate: '',
-              fieldMappings: {},
-              textTemplate: '城市：{nearest_area.0.areaName.0.value}\n温度：{current_condition.0.temp_C}°C\n请求城市：{city}',
-            },
-          },
-        },
-      ],
-    }, {
-      pickFirstNonEmptyString: (...values) => (aiDraftService as any).pickFirstNonEmptyString(...values),
-    });
+      {
+        pickFirstNonEmptyString: (...values) =>
+          (aiDraftService as any).pickFirstNonEmptyString(...values),
+      }
+    );
 
     const transformConfig = (repaired.steps?.[1]?.input as any).__structuredTransform;
     expect(transformConfig.textTemplate).toContain('{city}');
     expect(transformConfig.textTemplate).toContain('{temperature}');
     expect(transformConfig.textTemplate).not.toContain('{nearest_area.0.areaName.0.value}');
     expect(transformConfig.textTemplate).not.toContain('{current_condition.0.temp_C}');
-    expect(transformConfig.fieldMappings).toEqual(expect.objectContaining({
-      city: 'city',
-      temperature: 'temperature',
-    }));
+    expect(transformConfig.fieldMappings).toEqual(
+      expect.objectContaining({
+        city: 'city',
+        temperature: 'temperature',
+      })
+    );
     expect((repaired.warnings || []).join('\n')).toContain('fieldMappings');
   });
 
   it('auto-fills blank fieldMappings from bodyMap aliases during AI draft repair', () => {
     const { aiDraftService } = createService();
 
-    const repaired = repairCommonDraftPlanIssues({
-      workflowName: '天气查询',
-      inputParams: {
-        city: {
-          description: '城市',
-          required: true,
-          defaultValue: '',
+    const repaired = repairCommonDraftPlanIssues(
+      {
+        workflowName: '天气查询',
+        inputParams: {
+          city: {
+            description: '城市',
+            required: true,
+            defaultValue: '',
+          },
         },
+        steps: [
+          {
+            id: 'step_1',
+            name: '查询天气接口',
+            type: 'activity',
+            activityRef: 'builtin:httpRequest',
+            input: {
+              __httpRequest: {
+                method: 'GET',
+                urlTemplate: 'https://wttr.in/{city}',
+                responseMode: 'bodyMap',
+                responseFieldMappings: {
+                  city: 'nearest_area.0.areaName.0.value',
+                  temperature: 'current_condition.0.temp_C',
+                },
+              },
+            },
+          },
+          {
+            id: 'step_2',
+            name: '整理天气结果',
+            type: 'activity',
+            activityRef: 'builtin:structuredTransform',
+            input: {
+              __structuredTransform: {
+                contentType: 'json',
+                contentTemplate: '{content}',
+                outputMode: 'json',
+                outputSchema: {
+                  city: 'string',
+                  temperature: 'string',
+                },
+                contextTemplate: '',
+                fieldMappings: {
+                  city: '',
+                  temperature: '',
+                },
+                textTemplate: '',
+              },
+            },
+          },
+        ],
       },
-      steps: [
-        {
-          id: 'step_1',
-          name: '查询天气接口',
-          type: 'activity',
-          activityRef: 'builtin:httpRequest',
-          input: {
-            __httpRequest: {
-              method: 'GET',
-              urlTemplate: 'https://wttr.in/{city}',
-              responseMode: 'bodyMap',
-              responseFieldMappings: {
-                city: 'nearest_area.0.areaName.0.value',
-                temperature: 'current_condition.0.temp_C',
-              },
-            },
-          },
-        },
-        {
-          id: 'step_2',
-          name: '整理天气结果',
-          type: 'activity',
-          activityRef: 'builtin:structuredTransform',
-          input: {
-            __structuredTransform: {
-              contentType: 'json',
-              contentTemplate: '{content}',
-              outputMode: 'json',
-              outputSchema: {
-                city: 'string',
-                temperature: 'string',
-              },
-              contextTemplate: '',
-              fieldMappings: {
-                city: '',
-                temperature: '',
-              },
-              textTemplate: '',
-            },
-          },
-        },
-      ],
-    }, {
-      pickFirstNonEmptyString: (...values) => (aiDraftService as any).pickFirstNonEmptyString(...values),
-    });
+      {
+        pickFirstNonEmptyString: (...values) =>
+          (aiDraftService as any).pickFirstNonEmptyString(...values),
+      }
+    );
 
     const transformConfig = (repaired.steps?.[1]?.input as any).__structuredTransform;
     expect(transformConfig.fieldMappings).toEqual({
@@ -1491,11 +1543,13 @@ describe('TemporalWorkflowAiDraftService', () => {
       },
       {
         activities: [],
-      },
+      }
     );
 
     expect(result.isValid).toBe(false);
-    expect(result.errors).toContain('整理天气结果 的 fieldMappings 存在空映射: city。空字符串会导致运行时把整块 content 回填到该字段，请显式填写来源路径、别名或删除这些字段。');
+    expect(result.errors).toContain(
+      '整理天气结果 的 fieldMappings 存在空映射: city。空字符串会导致运行时把整块 content 回填到该字段，请显式填写来源路径、别名或删除这些字段。'
+    );
   });
 
   it('uses configurable timeout for AI draft generation', async () => {
@@ -1554,12 +1608,12 @@ describe('TemporalWorkflowAiDraftService', () => {
         ],
         {
           parseJsonFromAiContent: (content: string) => JSON.parse(content),
-        },
+        }
       );
       expect(mockedAxios.post).toHaveBeenCalledWith(
         expect.any(String),
         expect.any(Object),
-        expect.objectContaining({ timeout: 420000 }),
+        expect.objectContaining({ timeout: 420000 })
       );
     } finally {
       if (originalTimeout === undefined) {
@@ -1611,9 +1665,11 @@ describe('TemporalWorkflowAiDraftService', () => {
         },
       ],
       pickFirstNonEmptyString,
-      collectTemplateVariables: (value, target) => workflowConfigService.collectTemplateVariables(value, target),
+      collectTemplateVariables: (value, target) =>
+        workflowConfigService.collectTemplateVariables(value, target),
       normalizeWorkflowInputRenderPath,
-      buildWorkflowSemanticHint: (...values) => workflowNormalizationService.buildWorkflowSemanticHint(...values),
+      buildWorkflowSemanticHint: (...values) =>
+        workflowNormalizationService.buildWorkflowSemanticHint(...values),
     });
 
     expect(normalizedInputParams).toEqual({
@@ -1776,24 +1832,26 @@ describe('TemporalWorkflowAiDraftService', () => {
         },
       },
     });
-    jest.spyOn(workflowConfigService, 'generateAiStructuredTransformDraftConfig').mockResolvedValue({
-      success: true,
-      config: {
-        contentType: 'json',
-        contentTemplate: '{content}',
-        instructionTemplate: '请根据天气信息生成简短总结和出行建议，按 outputSchema 返回 JSON。',
-        outputMode: 'json',
-        outputSchema: {
-          summary: 'string',
-          advice: 'string',
+    jest
+      .spyOn(workflowConfigService, 'generateAiStructuredTransformDraftConfig')
+      .mockResolvedValue({
+        success: true,
+        config: {
+          contentType: 'json',
+          contentTemplate: '{content}',
+          instructionTemplate: '请根据天气信息生成简短总结和出行建议，按 outputSchema 返回 JSON。',
+          outputMode: 'json',
+          outputSchema: {
+            summary: 'string',
+            advice: 'string',
+          },
+          contextTemplate: '',
         },
-        contextTemplate: '',
-      },
-      sampleOutput: {
-        summary: '晴，24C，湿度 70%',
-        advice: '适合外出，可正常安排活动',
-      },
-    });
+        sampleOutput: {
+          summary: '晴，24C，湿度 70%',
+          advice: '适合外出，可正常安排活动',
+        },
+      });
     jest.spyOn(workflowConfigService, 'generateStructuredTransformConfig').mockResolvedValue({
       success: true,
       config: {
@@ -1822,7 +1880,7 @@ describe('TemporalWorkflowAiDraftService', () => {
         humidity: '70',
       }),
       expect.stringContaining('AI 归纳天气'),
-      expect.any(Object),
+      expect.any(Object)
     );
     expect(workflowConfigService.generateStructuredTransformConfig).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -1830,11 +1888,15 @@ describe('TemporalWorkflowAiDraftService', () => {
         advice: '适合外出，可正常安排活动',
       }),
       expect.stringContaining('格式化最终天气文本'),
-      expect.any(Object),
+      expect.any(Object)
     );
     expect((draft.workflowDsl.steps[0].input as any).__httpRequest.responseMode).toBe('bodyMap');
-    expect((draft.workflowDsl.steps[1].input as any).__structuredTransform.instructionTemplate).toContain('出行建议');
-    expect((draft.workflowDsl.steps[2].input as any).__structuredTransform.textTemplate).toContain('Summary: {summary}');
+    expect(
+      (draft.workflowDsl.steps[1].input as any).__structuredTransform.instructionTemplate
+    ).toContain('出行建议');
+    expect((draft.workflowDsl.steps[2].input as any).__structuredTransform.textTemplate).toContain(
+      'Summary: {summary}'
+    );
     expect((draft.warnings || []).some((item: string) => item.includes('AI 转换配置'))).toBe(true);
   });
 
@@ -1890,7 +1952,12 @@ describe('TemporalWorkflowAiDraftService', () => {
             ],
             activities: [
               { activityRef: 'builtin:httpRequest', name: 'HTTP 请求', timeout: '30s', config: {} },
-              { activityRef: 'builtin:structuredTransform', name: '结构化转换', timeout: '90s', config: {} },
+              {
+                activityRef: 'builtin:structuredTransform',
+                name: '结构化转换',
+                timeout: '90s',
+                config: {},
+              },
             ],
           }),
         },
@@ -1935,7 +2002,8 @@ describe('TemporalWorkflowAiDraftService', () => {
                   __structuredTransform: {
                     contentType: 'json',
                     contentTemplate: '{content}',
-                    instructionTemplate: '请根据输入天气结果整理为类似 wttr.in 风格的 ASCII 纯文本天气信息，只返回纯文本，不要 JSON。',
+                    instructionTemplate:
+                      '请根据输入天气结果整理为类似 wttr.in 风格的 ASCII 纯文本天气信息，只返回纯文本，不要 JSON。',
                     outputMode: 'text',
                     outputSchema: {},
                     contextTemplate: '',
@@ -1949,7 +2017,12 @@ describe('TemporalWorkflowAiDraftService', () => {
             ],
             activities: [
               { activityRef: 'builtin:httpRequest', name: 'HTTP 请求', timeout: '30s', config: {} },
-              { activityRef: 'builtin:structuredTransform', name: '结构化转换', timeout: '90s', config: {} },
+              {
+                activityRef: 'builtin:structuredTransform',
+                name: '结构化转换',
+                timeout: '90s',
+                config: {},
+              },
             ],
           }),
         },
@@ -1969,7 +2042,9 @@ describe('TemporalWorkflowAiDraftService', () => {
     const { service, codegenService, workflowSupportService } = createService();
 
     jest.spyOn(workflowSupportService, 'buildDeterministicWorkflowCode').mockReturnValue(null);
-    jest.spyOn(codegenService as any, 'precompileGeneratedPython').mockReturnValue({ success: true });
+    jest
+      .spyOn(codegenService as any, 'precompileGeneratedPython')
+      .mockReturnValue({ success: true });
     mockedAxios.post.mockResolvedValue({
       data: {
         result: [
@@ -2023,7 +2098,7 @@ describe('TemporalWorkflowAiDraftService', () => {
           },
         ],
       },
-      { activities: [] },
+      { activities: [] }
     );
 
     const promptPayload = mockedAxios.post.mock.calls[0]?.[1] as any;
@@ -2031,5 +2106,4 @@ describe('TemporalWorkflowAiDraftService', () => {
     expect(String(promptPayload?.prompt || '')).toContain('这是 builtin:structuredTransform 步骤');
     expect(String(promptPayload?.prompt || '')).toContain('最终返回必须是纯文本');
   });
-
 });

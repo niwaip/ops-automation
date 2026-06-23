@@ -21,10 +21,7 @@ describe('RecognizerService', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        RecognizerService,
-        { provide: ModelService, useValue: modelService },
-      ],
+      providers: [RecognizerService, { provide: ModelService, useValue: modelService }],
     }).compile();
 
     service = module.get<RecognizerService>(RecognizerService);

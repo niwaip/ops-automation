@@ -15,10 +15,7 @@ describe('FreezeService', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        FreezeService,
-        { provide: RedisService, useValue: mockRedisService },
-      ],
+      providers: [FreezeService, { provide: RedisService, useValue: mockRedisService }],
     }).compile();
 
     service = module.get<FreezeService>(FreezeService);

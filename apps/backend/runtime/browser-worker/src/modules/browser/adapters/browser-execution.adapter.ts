@@ -54,7 +54,7 @@ export interface BrowserExecutionAdapter {
   }>;
   executeCommands(
     commands: MCPCommand[],
-    options?: BrowserExecutionOptions,
+    options?: BrowserExecutionOptions
   ): Promise<{ success: boolean; results: any[]; message?: string }>;
   resetBrowser(options?: BrowserExecutionOptions): Promise<void>;
   executeStep(dto: ExecuteStepDto): Promise<ExecuteStepResultDto>;
@@ -62,6 +62,9 @@ export interface BrowserExecutionAdapter {
   assertState(dto: AssertBrowserStateDto): Promise<BrowserPageAssertionResultDto>;
   freeze(dto: FreezeBrowserSessionDto): Promise<BrowserControlStateDto>;
   resume(dto: ResumeBrowserSessionDto): Promise<BrowserControlStateDto>;
-  generateLocator?(targetRef: string, options?: BrowserExecutionOptions): Promise<string | undefined>;
+  generateLocator?(
+    targetRef: string,
+    options?: BrowserExecutionOptions
+  ): Promise<string | undefined>;
   onModuleDestroy?(): Promise<void>;
 }

@@ -1,9 +1,9 @@
-export type ReportFormat = "word" | "excel" | "pdf";
-export type SectionType = "text" | "table" | "image" | "chart";
-export type SectionSource = "step_result" | "ai_analysis" | "static";
-export type ValidationFailAction = "skip" | "notify" | "stop";
-export type NotificationType = "email" | "webhook";
-export type ReportStatus = "pending" | "generating" | "completed" | "failed";
+export type ReportFormat = 'word' | 'excel' | 'pdf';
+export type SectionType = 'text' | 'table' | 'image' | 'chart';
+export type SectionSource = 'step_result' | 'ai_analysis' | 'static';
+export type ValidationFailAction = 'skip' | 'notify' | 'stop';
+export type NotificationType = 'email' | 'webhook';
+export type ReportStatus = 'pending' | 'generating' | 'completed' | 'failed';
 
 export interface StepFilter {
   actions?: string[];
@@ -46,8 +46,8 @@ export interface ReportTemplateConfig {
   title?: string;
   header?: string;
   footer?: string;
-  page_size?: "A4" | "A3" | "Letter";
-  orientation?: "portrait" | "landscape";
+  page_size?: 'A4' | 'A3' | 'Letter';
+  orientation?: 'portrait' | 'landscape';
 }
 
 export interface AIConfig {

@@ -76,7 +76,12 @@ interface ListSectionHeaderProps {
   extra?: React.ReactNode;
 }
 
-export const ListSectionHeader: React.FC<ListSectionHeaderProps> = ({ title, subtitle, tip, extra }) => (
+export const ListSectionHeader: React.FC<ListSectionHeaderProps> = ({
+  title,
+  subtitle,
+  tip,
+  extra,
+}) => (
   <div
     style={{
       display: 'flex',

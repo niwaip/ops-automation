@@ -1,11 +1,17 @@
-import { Injectable, Logger, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import { RedisService } from '../lock/redis.service';
 import { LockService } from '../lock/lock.service';
 import { AllocationService } from '../allocation/allocation.service';
 import { FreezeService } from '../freeze/freeze.service';
 import { TemplateClient, TemplateParamsSchema } from '../template/template.client';
-import { CdpExecutor, TemplateStep } from '../execution/cdp.executor';
+import { CdpExecutor, TemplateLoopDraft, TemplateStep } from '../execution/cdp.executor';
 import {
   Session,
   SessionState,
@@ -23,6 +29,13 @@ const SESSION_TTL_SECONDS = 86400;
 const STEP_MESSAGE_MAX_LENGTH = 12000;
 const STEP_TEXT_MAX_LENGTH = 12000;
 const STEP_HTML_MAX_LENGTH = 120000;
+type SessionBlockingMode = 'confirmation' | 'takeover' | 'forbidden';
+
+type TemplateExecutionPlan = {
+  backend?: string;
+  templateSteps?: TemplateStep[];
+  loopDraft?: TemplateLoopDraft;
+};
 
 // Step result interface
 export interface StepResult {
@@ -35,6 +48,12 @@ export interface StepResult {
   screenshot?: string;
   text?: string;
   html?: string;
+  confirmation_required?: boolean;
+  confirmation_reason?: string;
+  takeover?: boolean;
+  takeover_reason?: string;
+  replay_forbidden?: boolean;
+  replay_forbidden_reason?: string;
   timestamp: number;
 }
 
@@ -48,12 +67,12 @@ export class SessionService {
     private readonly allocationService: AllocationService,
     private readonly freezeService: FreezeService,
     private readonly templateClient: TemplateClient,
-    private readonly cdpExecutor: CdpExecutor,
+    private readonly cdpExecutor: CdpExecutor
   ) {}
 
   private buildParamDefaultBindingMap(
     paramsSchema?: TemplateParamsSchema,
-    requestParams: Record<string, unknown> = {},
+    requestParams: Record<string, unknown> = {}
   ): Map<string, string> {
     const candidates = new Map<string, string[]>();
     const properties = paramsSchema?.properties || {};
@@ -124,7 +143,7 @@ export class SessionService {
         Object.entries(value).map(([key, entryValue]) => [
           key,
           this.rewriteLegacyTemplateValue(entryValue, bindingMap),
-        ]),
+        ])
       );
     }
 
@@ -134,7 +153,7 @@ export class SessionService {
   private normalizeTemplateSteps(
     steps: TemplateStep[],
     paramsSchema?: TemplateParamsSchema,
-    requestParams: Record<string, unknown> = {},
+    requestParams: Record<string, unknown> = {}
   ): TemplateStep[] {
     const bindingMap = this.buildParamDefaultBindingMap(paramsSchema, requestParams);
     if (bindingMap.size === 0) {
@@ -149,7 +168,11 @@ export class SessionService {
     }));
   }
 
-  private truncateField(value: string | undefined, maxLength: number, suffix: string): string | undefined {
+  private truncateField(
+    value: string | undefined,
+    maxLength: number,
+    suffix: string
+  ): string | undefined {
     if (!value || value.length <= maxLength) {
       return value;
     }
@@ -165,7 +188,10 @@ export class SessionService {
     const sanitized = html
       .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
       .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
-      .replace(/data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/g, 'data:image/omitted;base64,[truncated]');
+      .replace(
+        /data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/g,
+        'data:image/omitted;base64,[truncated]'
+      );
 
     if (sanitized.length <= STEP_HTML_MAX_LENGTH) {
       return sanitized;
@@ -181,6 +207,55 @@ export class SessionService {
       text: this.truncateField(step.text, STEP_TEXT_MAX_LENGTH, '[text truncated]'),
       html: this.compactHtml(step.html),
     };
+  }
+
+  private asRecord(value: unknown): Record<string, unknown> | undefined {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return undefined;
+    }
+    return value as Record<string, unknown>;
+  }
+
+  private extractTemplateExecutionPlan(template?: {
+    config?: Record<string, unknown>;
+  } | null): TemplateExecutionPlan | undefined {
+    const executionPlan = this.asRecord(template?.config?.executionPlan);
+    if (!executionPlan) {
+      return undefined;
+    }
+
+    const templateSteps = Array.isArray(executionPlan.templateSteps)
+      ? executionPlan.templateSteps.filter(
+          (step): step is TemplateStep =>
+            Boolean(step) && typeof step === 'object' && !Array.isArray(step)
+        )
+      : undefined;
+    const loopDraft = this.asRecord(executionPlan.loopDraft) as TemplateLoopDraft | undefined;
+    const backend = typeof executionPlan.backend === 'string' ? executionPlan.backend : undefined;
+
+    if (!templateSteps?.length && !loopDraft && !backend) {
+      return undefined;
+    }
+
+    return {
+      ...(backend ? { backend } : {}),
+      ...(templateSteps?.length ? { templateSteps } : {}),
+      ...(loopDraft ? { loopDraft } : {}),
+    };
+  }
+
+  private async clearSessionBlockingState(sessionKey: string): Promise<void> {
+    await Promise.all([
+      this.redisService.hdel(sessionKey, 'blocking_mode'),
+      this.redisService.hdel(sessionKey, 'blocking_reason'),
+    ]);
+  }
+
+  private buildBlockingSessionFields(
+    mode: SessionBlockingMode,
+    reason: string | undefined
+  ): Record<string, string> {
+    return reason ? { blocking_mode: mode, blocking_reason: reason } : { blocking_mode: mode };
   }
 
   /**
@@ -200,7 +275,7 @@ export class SessionService {
       const lockResult = await this.lockService.acquireProfileLock(request.user_id, sessionId);
       if (!lockResult.success) {
         throw new ConflictException(
-          `User ${request.user_id} already has an active session. Lock held by another session.`,
+          `User ${request.user_id} already has an active session. Lock held by another session.`
         );
       }
     }
@@ -254,7 +329,9 @@ export class SessionService {
     const tokenKey = `token:session:${sessionId}`;
     await this.redisService.set(tokenKey, request.user_id, 7200);
 
-    this.logger.log(`Session created: session=${sessionId}, user=${request.user_id}, worker=${workerInfo.worker_id}`);
+    this.logger.log(
+      `Session created: session=${sessionId}, user=${request.user_id}, worker=${workerInfo.worker_id}`
+    );
 
     // Note: Browser will be started when session is started (not at creation time)
     // This allows user to connect to noVNC first and see the browser when execution begins
@@ -294,64 +371,309 @@ export class SessionService {
 
     // Check if session is in IDLE state
     if (currentSession.state !== 'IDLE') {
-      throw new BadRequestException(`Session ${sessionId} is not in IDLE state. Current state: ${currentSession.state}`);
+      throw new BadRequestException(
+        `Session ${sessionId} is not in IDLE state. Current state: ${currentSession.state}`
+      );
     }
 
     // Get template and execute all steps
     const template = await this.templateClient.getTemplate(request.template_id);
-    const totalSteps = template?.steps?.length || 0;
-    const rawExecutionBackend = typeof template?.config?.backend === 'string'
-      ? template.config.backend
-      : 'cli';
+    const executionPlan = this.extractTemplateExecutionPlan(template);
+    const sourceSteps =
+      executionPlan?.templateSteps && executionPlan.templateSteps.length > 0
+        ? executionPlan.templateSteps
+        : template?.steps || [];
+    const totalSteps = sourceSteps.length;
+    const rawExecutionBackend =
+      executionPlan?.backend ||
+      (typeof template?.config?.backend === 'string' ? template.config.backend : 'cli');
     const executionBackend = rawExecutionBackend === 'legacy' ? 'cli' : rawExecutionBackend;
 
-    if (template && template.steps && template.steps.length > 0) {
+    // #region debug-point A:start-session-input
+    (() => {
+      const fs = require('fs');
+      const envPath = '.dbg/session-loop-stall.env';
+      let debugUrl = `http://${process.env.EXTERNAL_HOST || 'host.docker.internal'}:7777/event`;
+      let debugSessionId = 'session-loop-stall';
+      try {
+        const envContent = fs.readFileSync(envPath, 'utf8');
+        debugUrl = envContent.match(/DEBUG_SERVER_URL=(.+)/)?.[1] || debugUrl;
+        debugSessionId = envContent.match(/DEBUG_SESSION_ID=(.+)/)?.[1] || debugSessionId;
+      } catch {}
+      fetch(debugUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: debugSessionId,
+          runId: 'pre-fix',
+          hypothesisId: 'A',
+          location: 'session.service.ts:startSession:input',
+          msg: '[DEBUG] startSession loaded template and execution plan',
+          data: {
+            sessionId,
+            requestTemplateId: request.template_id,
+            templateExists: Boolean(template),
+            templateStepCount: template?.steps?.length || 0,
+            executionPlanStepCount: executionPlan?.templateSteps?.length || 0,
+            sourceStepCount: sourceSteps.length,
+            hasLoopDraft: Boolean(executionPlan?.loopDraft),
+            executionBackend,
+          },
+          ts: Date.now(),
+        }),
+      }).catch(() => {});
+    })();
+    // #endregion
+
+    if (template && sourceSteps.length > 0) {
       const normalizedSteps = this.normalizeTemplateSteps(
-        template.steps as TemplateStep[],
+        sourceSteps as TemplateStep[],
         template.params_schema,
-        request.params || {},
+        request.params || {}
       );
 
       // Execute all steps with parameter substitution
-      this.logger.log(`Executing ${template.steps.length} steps for session ${sessionId} with params: ${JSON.stringify(request.params)}`);
+      this.logger.log(
+        `Executing ${normalizedSteps.length} steps for session ${sessionId} with params: ${JSON.stringify(request.params)}`
+      );
+
+      // #region debug-point B:before-execute-steps
+      (() => {
+        const fs = require('fs');
+        const envPath = '.dbg/session-loop-stall.env';
+        let debugUrl = `http://${process.env.EXTERNAL_HOST || 'host.docker.internal'}:7777/event`;
+        let debugSessionId = 'session-loop-stall';
+        try {
+          const envContent = fs.readFileSync(envPath, 'utf8');
+          debugUrl = envContent.match(/DEBUG_SERVER_URL=(.+)/)?.[1] || debugUrl;
+          debugSessionId = envContent.match(/DEBUG_SESSION_ID=(.+)/)?.[1] || debugSessionId;
+        } catch {}
+        fetch(debugUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: debugSessionId,
+            runId: 'pre-fix',
+            hypothesisId: 'B',
+            location: 'session.service.ts:startSession:beforeExecuteSteps',
+            msg: '[DEBUG] startSession invoking cdpExecutor.executeSteps',
+            data: {
+              sessionId,
+              normalizedStepIds: normalizedSteps.map((step) => step.step_id),
+              hasLoopDraft: Boolean(executionPlan?.loopDraft),
+              loopStepIds: executionPlan?.loopDraft?.eachIteration?.stepIds || [],
+            },
+            ts: Date.now(),
+          }),
+        }).catch(() => {});
+      })();
+      // #endregion
 
       const results = await this.cdpExecutor.executeSteps(
         normalizedSteps,
         sessionId,
         request.params || {},
         executionBackend,
+        {
+          ...(executionPlan?.loopDraft ? { loopDraft: executionPlan.loopDraft } : {}),
+        }
       );
+
+      // #region debug-point B:after-execute-steps
+      (() => {
+        const fs = require('fs');
+        const envPath = '.dbg/session-loop-stall.env';
+        let debugUrl = `http://${process.env.EXTERNAL_HOST || 'host.docker.internal'}:7777/event`;
+        let debugSessionId = 'session-loop-stall';
+        try {
+          const envContent = fs.readFileSync(envPath, 'utf8');
+          debugUrl = envContent.match(/DEBUG_SERVER_URL=(.+)/)?.[1] || debugUrl;
+          debugSessionId = envContent.match(/DEBUG_SESSION_ID=(.+)/)?.[1] || debugSessionId;
+        } catch {}
+        fetch(debugUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: debugSessionId,
+            runId: 'pre-fix',
+            hypothesisId: 'B',
+            location: 'session.service.ts:startSession:afterExecuteSteps',
+            msg: '[DEBUG] startSession received executeSteps results',
+            data: {
+              sessionId,
+              resultCount: results.length,
+              failedCount: results.filter((item) => !item.success).length,
+              firstResult: results[0] || null,
+              lastResult: results[results.length - 1] || null,
+            },
+            ts: Date.now(),
+          }),
+        }).catch(() => {});
+      })();
+      // #endregion
+      // #region debug-point E:template-execution-results
+      (() => {
+        const branchResult = results.find((item) => item?.action === 'branch');
+        const approveResult = results.find(
+          (item) =>
+            item?.step_id === 'step_5' ||
+            (typeof item?.message === 'string' && item.message.includes('承認する'))
+        );
+        fetch('http://192.168.100.143:7777/event', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: 'approval-test-no-approve',
+            runId: 'pre-fix',
+            hypothesisId: 'E',
+            location: 'session.service.ts:326',
+            msg: '[DEBUG] template execution results ready',
+            data: {
+              sessionId,
+              templateId: request.template_id,
+              totalResults: results.length,
+              branchSuccess: branchResult?.success,
+              branchMessage: branchResult?.message,
+              approveStepId: approveResult?.step_id,
+              approveSuccess: approveResult?.success,
+              approveError: approveResult?.error,
+            },
+            ts: Date.now(),
+          }),
+        }).catch(() => {});
+      })();
+      // #endregion
 
       const finalStateResult = await this.cdpExecutor.captureFinalState(
         sessionId,
-        executionBackend,
+        executionBackend
       );
-      if (finalStateResult.success || finalStateResult.screenshot || finalStateResult.html || finalStateResult.text) {
+      if (
+        finalStateResult.success ||
+        finalStateResult.screenshot ||
+        finalStateResult.html ||
+        finalStateResult.text
+      ) {
         results.push(finalStateResult);
       }
 
       // Store step results in Redis
       const stepsKey = `session:${sessionId}:steps`;
-      const stepResults: StepResult[] = results.map((r, i) => ({
-        step_id: r.step_id,
-        step_index: i,
-        action: r.action || normalizedSteps[i].action,
-        success: r.success,
-        error: r.error,
-        message: r.message,
-        screenshot: r.screenshot,
-        text: r.text,
-        html: r.html,
-        timestamp: Date.now(),
-      })).map((step) => this.compactStepResult(step));
+      const stepActionById = new Map(normalizedSteps.map((step) => [step.step_id, step.action]));
+      const stepResults: StepResult[] = results
+        .map((r, i) => ({
+          step_id: r.step_id,
+          step_index: i,
+          action: r.action || stepActionById.get(r.step_id) || 'unknown',
+          success: r.success,
+          error: r.error,
+          message: r.message,
+          screenshot: r.screenshot,
+          text: r.text,
+          html: r.html,
+          confirmation_required: r.confirmation_required,
+          confirmation_reason: r.confirmation_reason,
+          takeover: r.takeover,
+          takeover_reason: r.takeover_reason,
+          replay_forbidden: r.replay_forbidden,
+          replay_forbidden_reason: r.replay_forbidden_reason,
+          timestamp: Date.now(),
+        }))
+        .map((step) => this.compactStepResult(step));
       await this.redisService.set(stepsKey, JSON.stringify(stepResults), SESSION_TTL_SECONDS);
 
-      const failedSteps = results.filter(r => !r.success);
-      if (failedSteps.length > 0) {
-        this.logger.warn(`Some steps failed: ${failedSteps.map(s => s.step_id).join(', ')}`);
+      // #region debug-point D:step-results-stored
+      (() => {
+        const fs = require('fs');
+        const envPath = '.dbg/session-loop-stall.env';
+        let debugUrl = `http://${process.env.EXTERNAL_HOST || 'host.docker.internal'}:7777/event`;
+        let debugSessionId = 'session-loop-stall';
+        try {
+          const envContent = fs.readFileSync(envPath, 'utf8');
+          debugUrl = envContent.match(/DEBUG_SERVER_URL=(.+)/)?.[1] || debugUrl;
+          debugSessionId = envContent.match(/DEBUG_SESSION_ID=(.+)/)?.[1] || debugSessionId;
+        } catch {}
+        fetch(debugUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: debugSessionId,
+            runId: 'pre-fix',
+            hypothesisId: 'D',
+            location: 'session.service.ts:startSession:afterRedisSet',
+            msg: '[DEBUG] startSession stored step results to redis',
+            data: {
+              sessionId,
+              stepsKey,
+              storedStepCount: stepResults.length,
+              firstStoredStep: stepResults[0] || null,
+              lastStoredStep: stepResults[stepResults.length - 1] || null,
+            },
+            ts: Date.now(),
+          }),
+        }).catch(() => {});
+      })();
+      // #endregion
+
+      const confirmationSteps = results.filter((r) => !r.success && r.confirmation_required);
+      const takeoverSteps = results.filter((r) => !r.success && r.takeover);
+      const forbiddenSteps = results.filter((r) => !r.success && r.replay_forbidden);
+      const failedSteps = results.filter((r) => !r.success);
+      if (confirmationSteps.length > 0) {
+        const lastConfirmationStep = confirmationSteps[confirmationSteps.length - 1];
+        const confirmationStepIndex = results.lastIndexOf(lastConfirmationStep);
+        const confirmationReason =
+          lastConfirmationStep.confirmation_reason || lastConfirmationStep.error;
+
+        await this.redisService.hmset(sessionKey, {
+          state: 'HUMAN_CONTROL',
+          control_mode: 'HUMAN_CONTROL',
+          frozen: '1',
+          template_id: request.template_id,
+          params: JSON.stringify(request.params),
+          current_step: lastConfirmationStep.step_id,
+          step_index: String(
+            confirmationStepIndex >= 0 ? confirmationStepIndex : results.length - 1
+          ),
+          last_activity: String(Date.now()),
+          ...this.buildBlockingSessionFields('confirmation', confirmationReason),
+        });
+        await this.freezeService.freezeSession(sessionId, confirmationReason);
+        this.logger.warn(
+          `Session ${sessionId} is waiting for confirmation at step ${lastConfirmationStep.step_id}`
+        );
+      } else if (takeoverSteps.length > 0) {
+        const lastTakeoverStep = takeoverSteps[takeoverSteps.length - 1];
+        const takeoverStepIndex = results.lastIndexOf(lastTakeoverStep);
+        const takeoverReason = lastTakeoverStep.takeover_reason || lastTakeoverStep.error;
+
+        await this.redisService.hmset(sessionKey, {
+          state: 'HUMAN_CONTROL',
+          control_mode: 'HUMAN_CONTROL',
+          frozen: '1',
+          template_id: request.template_id,
+          params: JSON.stringify(request.params),
+          current_step: lastTakeoverStep.step_id,
+          step_index: String(takeoverStepIndex >= 0 ? takeoverStepIndex : results.length - 1),
+          last_activity: String(Date.now()),
+          ...this.buildBlockingSessionFields('takeover', takeoverReason),
+        });
+        await this.freezeService.freezeSession(sessionId, takeoverReason);
+        this.logger.warn(
+          `Session ${sessionId} entered HUMAN_CONTROL at step ${lastTakeoverStep.step_id}`
+        );
+      } else if (failedSteps.length > 0) {
+        this.logger.warn(`Some steps failed: ${failedSteps.map((s) => s.step_id).join(', ')}`);
         // Update session state to ERROR if any step failed
         const lastFailedStep = failedSteps[failedSteps.length - 1];
-        const lastStepIndex = results.findIndex(r => r.step_id === lastFailedStep.step_id);
+        const lastStepIndex = results.lastIndexOf(lastFailedStep);
+        const forbiddenStep =
+          forbiddenSteps.length > 0 ? forbiddenSteps[forbiddenSteps.length - 1] : undefined;
+        const blockingMode: SessionBlockingMode | undefined = forbiddenStep ? 'forbidden' : undefined;
+        const blockingReason =
+          forbiddenStep?.replay_forbidden_reason ||
+          forbiddenStep?.error ||
+          lastFailedStep.error;
 
         await this.redisService.hmset(sessionKey, {
           state: 'ERROR',
@@ -360,7 +682,11 @@ export class SessionService {
           current_step: lastFailedStep.step_id,
           step_index: String(lastStepIndex >= 0 ? lastStepIndex : results.length - 1),
           last_activity: String(Date.now()),
+          ...(blockingMode ? this.buildBlockingSessionFields(blockingMode, blockingReason) : {}),
         });
+        if (!blockingMode) {
+          await this.clearSessionBlockingState(sessionKey);
+        }
 
         this.logger.error(`Session ${sessionId} failed at step ${lastFailedStep.step_id}`);
         if (currentSession.worker_ref) {
@@ -368,6 +694,30 @@ export class SessionService {
         }
       } else {
         this.logger.log(`All ${results.length} steps completed successfully`);
+        // #region debug-point E:template-execution-complete
+        (() => {
+          fetch('http://192.168.100.143:7777/event', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              sessionId: 'approval-test-no-approve',
+              runId: 'pre-fix',
+              hypothesisId: 'E',
+              location: 'session.service.ts:395',
+              msg: '[DEBUG] template session completed',
+              data: {
+                sessionId,
+                templateId: request.template_id,
+                workerRef: currentSession.worker_ref,
+                totalResults: results.length,
+                finalStateStep: finalStateResult.step_id,
+                finalStateSuccess: finalStateResult.success,
+              },
+              ts: Date.now(),
+            }),
+          }).catch(() => {});
+        })();
+        // #endregion
         // Update session state to CLOSED after all steps completed
         await this.redisService.hmset(sessionKey, {
           state: 'CLOSED',
@@ -377,6 +727,7 @@ export class SessionService {
           step_index: String(finalStateResult.success ? results.length - 1 : totalSteps - 1),
           last_activity: String(Date.now()),
         });
+        await this.clearSessionBlockingState(sessionKey);
 
         this.logger.log(`Session ${sessionId} completed all ${results.length} recorded steps`);
         if (currentSession.worker_ref) {
@@ -393,6 +744,7 @@ export class SessionService {
         step_index: '0',
         last_activity: String(Date.now()),
       });
+      await this.clearSessionBlockingState(sessionKey);
     }
 
     this.logger.log(`Session started: session=${sessionId}, template=${request.template_id}`);
@@ -418,7 +770,7 @@ export class SessionService {
     // Check if session is in RUNNING state
     if (currentSession.state !== 'RUNNING') {
       throw new BadRequestException(
-        `Session ${sessionId} is not in RUNNING state. Current state: ${currentSession.state}`,
+        `Session ${sessionId} is not in RUNNING state. Current state: ${currentSession.state}`
       );
     }
 
@@ -430,7 +782,10 @@ export class SessionService {
     }
 
     if (currentSession.worker_ref) {
-      const workerInfo = await this.allocationService.getWorkerInfo(currentSession.worker_ref, true);
+      const workerInfo = await this.allocationService.getWorkerInfo(
+        currentSession.worker_ref,
+        true
+      );
       if (workerInfo?.endpoints?.novnc) {
         await this.redisService.hmset(`session:${sessionId}`, {
           novnc_url: workerInfo.endpoints.novnc,
@@ -461,7 +816,7 @@ export class SessionService {
     // Check if session is in HUMAN_CONTROL state
     if (currentSession.state !== 'HUMAN_CONTROL') {
       throw new BadRequestException(
-        `Session ${sessionId} is not in HUMAN_CONTROL state. Current state: ${currentSession.state}`,
+        `Session ${sessionId} is not in HUMAN_CONTROL state. Current state: ${currentSession.state}`
       );
     }
 
@@ -471,6 +826,15 @@ export class SessionService {
     if (!unfreezeResult.success) {
       throw new BadRequestException(`Failed to unfreeze session ${sessionId}`);
     }
+
+    await this.redisService.hmset(`session:${sessionId}`, {
+      state: 'RUNNING',
+      control_mode: 'AGENT_RUNNING',
+      frozen: '0',
+      current_step: request.step_id,
+      last_activity: String(Date.now()),
+    });
+    await this.clearSessionBlockingState(`session:${sessionId}`);
 
     this.logger.log(`Session continue: session=${sessionId}, step=${request.step_id}`);
 
@@ -571,7 +935,12 @@ export class SessionService {
   /**
    * List sessions with optional filtering
    */
-  async listSessions(options: { page?: number; pageSize?: number; status?: string; search?: string }): Promise<{ sessions: Session[]; total: number; page: number; pageSize: number }> {
+  async listSessions(options: {
+    page?: number;
+    pageSize?: number;
+    status?: string;
+    search?: string;
+  }): Promise<{ sessions: Session[]; total: number; page: number; pageSize: number }> {
     const page = options.page || 1;
     const pageSize = options.pageSize || 10;
     const status = options.status;
@@ -588,7 +957,7 @@ export class SessionService {
     } while (cursor !== '0');
 
     // Filter out non-session keys (like session:*:steps)
-    const filteredKeys = sessionKeys.filter(key => {
+    const filteredKeys = sessionKeys.filter((key) => {
       const parts = key.split(':');
       return parts.length === 2; // Only session:{id} keys
     });
@@ -605,7 +974,8 @@ export class SessionService {
             continue;
           }
           if (search) {
-            const searchStr = `${session.id} ${session.template_id || ''} ${session.user_id}`.toLowerCase();
+            const searchStr =
+              `${session.id} ${session.template_id || ''} ${session.user_id}`.toLowerCase();
             if (!searchStr.includes(search)) {
               continue;
             }
@@ -677,9 +1047,16 @@ export class SessionService {
       params,
       current_step: data.current_step,
       step_index: data.step_index ? parseInt(data.step_index, 10) : undefined,
+      blocking_mode:
+        data.blocking_mode === 'confirmation' ||
+        data.blocking_mode === 'takeover' ||
+        data.blocking_mode === 'forbidden'
+          ? data.blocking_mode
+          : undefined,
+      blocking_reason: data.blocking_reason,
       created_at: parseInt(data.created_at || '0', 10),
       last_activity: parseInt(data.last_activity || '0', 10),
-    };
+    } as Session;
   }
 
   /**
@@ -694,7 +1071,11 @@ export class SessionService {
 
     // Store error in session data
     const errorKey = `session:data:${sessionId}:last_error`;
-    await this.redisService.set(errorKey, JSON.stringify({ class: 'SessionError', message: errorMessage }), 3600);
+    await this.redisService.set(
+      errorKey,
+      JSON.stringify({ class: 'SessionError', message: errorMessage }),
+      3600
+    );
 
     this.logger.error(`Session error: session=${sessionId}, error=${errorMessage}`);
   }

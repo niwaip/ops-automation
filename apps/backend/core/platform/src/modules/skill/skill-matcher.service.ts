@@ -9,7 +9,7 @@ export class SkillMatcherService {
 
   async matchSkill(
     userInput: string,
-    loadSkills: () => Promise<SkillConfigDto[]>,
+    loadSkills: () => Promise<SkillConfigDto[]>
   ): Promise<SkillMatchResult | null> {
     const skills = await loadSkills();
     return this.matchSkillFallback(userInput, skills);
@@ -18,7 +18,7 @@ export class SkillMatcherService {
   async matchSkillWithAI(
     userInput: string,
     userId: string,
-    loadAvailableSkills: (userId: string) => Promise<SkillConfigDto[]>,
+    loadAvailableSkills: (userId: string) => Promise<SkillConfigDto[]>
   ): Promise<SkillMatchResult | null> {
     const availableSkills = await loadAvailableSkills(userId);
 
@@ -63,9 +63,14 @@ ${skillsXml}
       const aiResponse = this.parseAiMatchResponse(response.data.result, availableSkills);
 
       if (aiResponse) {
-        const matchedSkill = availableSkills.find((skill) => skill.name === aiResponse.matchedSkill);
+        const matchedSkill = availableSkills.find(
+          (skill) => skill.name === aiResponse.matchedSkill
+        );
         if (matchedSkill) {
-          const { collectedParams, missingParams } = this.extractParamsFromUserInput(matchedSkill, userInput);
+          const { collectedParams, missingParams } = this.extractParamsFromUserInput(
+            matchedSkill,
+            userInput
+          );
           return {
             skillId: matchedSkill.id,
             skillName: matchedSkill.name,
@@ -82,15 +87,17 @@ ${skillsXml}
             outputParams: matchedSkill.apiEndpoints?.runtimeMetadata?.outputParams,
             usage: response.data.usage,
             debug: {
-              llmCalls: response.data.debug ? [
-                {
-                  stage: 'skills-match',
-                  label: '技能匹配',
-                  modelId: response.data.debug.modelId,
-                  requestMessages: response.data.debug.requestMessages,
-                  responseText: response.data.debug.responseText,
-                },
-              ] : [],
+              llmCalls: response.data.debug
+                ? [
+                    {
+                      stage: 'skills-match',
+                      label: '技能匹配',
+                      modelId: response.data.debug.modelId,
+                      requestMessages: response.data.debug.requestMessages,
+                      responseText: response.data.debug.responseText,
+                    },
+                  ]
+                : [],
             },
           };
         }
@@ -106,21 +113,31 @@ ${skillsXml}
 
   private buildSkillsPromptXml(skills: SkillConfigDto[]): string {
     const getMatchSummary = (skill: SkillConfigDto): string => {
-      const runtimeMetadata = skill.apiEndpoints?.runtimeMetadata as Record<string, unknown> | undefined;
-      const matchSummary = typeof runtimeMetadata?.matchSummary === 'string'
-        ? runtimeMetadata.matchSummary.trim()
-        : '';
+      const runtimeMetadata = skill.apiEndpoints?.runtimeMetadata as
+        | Record<string, unknown>
+        | undefined;
+      const matchSummary =
+        typeof runtimeMetadata?.matchSummary === 'string'
+          ? runtimeMetadata.matchSummary.trim()
+          : '';
       return matchSummary || skill.description || '';
     };
 
-    const lines = skills.map((skill) => `  <skill>
+    const lines = skills
+      .map(
+        (skill) => `  <skill>
     <name>${skill.name}</name>
     <description>${getMatchSummary(skill)}</description>
-  </skill>`).join('\n');
+  </skill>`
+      )
+      .join('\n');
     return `<available_skills>\n${lines}\n</available_skills>`;
   }
 
-  private parseAiMatchResponse(response: string, availableSkills: SkillConfigDto[]): AIMatchResponse | null {
+  private parseAiMatchResponse(
+    response: string,
+    availableSkills: SkillConfigDto[]
+  ): AIMatchResponse | null {
     try {
       const jsonMatch = response.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
@@ -147,7 +164,10 @@ ${skillsXml}
     return null;
   }
 
-  private matchSkillFallback(userInput: string, availableSkills: SkillConfigDto[]): SkillMatchResult | null {
+  private matchSkillFallback(
+    userInput: string,
+    availableSkills: SkillConfigDto[]
+  ): SkillMatchResult | null {
     let bestMatch: SkillConfigDto | null = null;
     let bestScore = 0;
     const matchedKeywords: string[] = [];
@@ -177,7 +197,10 @@ ${skillsXml}
     }
 
     const confidence = Math.min(bestScore / bestMatch.triggerKeywords.length, 1);
-    const { collectedParams, missingParams } = this.extractParamsFromUserInput(bestMatch, userInput);
+    const { collectedParams, missingParams } = this.extractParamsFromUserInput(
+      bestMatch,
+      userInput
+    );
 
     return {
       skillId: bestMatch.id,
@@ -197,7 +220,7 @@ ${skillsXml}
 
   private extractParamsFromUserInput(
     skill: SkillConfigDto,
-    _userInput: string,
+    _userInput: string
   ): { collectedParams: Record<string, unknown>; missingParams: string[] } {
     const collectedParams: Record<string, unknown> = {};
     const requiredParams = skill.paramsSchema?.required || [];

@@ -13,6 +13,28 @@ import {
   NotificationSeverity,
 } from './notification.dto';
 
+type NotificationResultArtifact = {
+  type?: string;
+  name?: string;
+  label?: string;
+  downloadUrl?: string;
+  url?: string;
+  path?: string;
+  mimeType?: string;
+};
+
+type NotificationNormalizedResult = {
+  resultType?: string;
+  title?: string;
+  summary?: string;
+  body?: string;
+  detailText?: string;
+  artifacts?: NotificationResultArtifact[];
+  downloadUrl?: string;
+  temporalLink?: string;
+  hasBusinessResult?: boolean;
+};
+
 type RequestUserContext = {
   id: string;
   role?: string;
@@ -37,19 +59,22 @@ export class NotificationService {
 
   async list(
     query: NotificationListQueryDto,
-    requester?: AuthenticatedRequest['user'] | RequestUserContext,
+    requester?: AuthenticatedRequest['user'] | RequestUserContext
   ): Promise<NotificationListResponseDto> {
     const limit = Math.max(query.limit || 20, 1);
     const shouldIncludeExecution = !query.source || query.source === 'execution';
     const shouldIncludeReport = !query.source || query.source === 'report';
 
     const [executionItems, reportItems] = await Promise.all([
-      shouldIncludeExecution ? this.listExecutionNotifications(limit, requester) : Promise.resolve([]),
+      shouldIncludeExecution
+        ? this.listExecutionNotifications(limit, requester)
+        : Promise.resolve([]),
       shouldIncludeReport ? this.listReportNotifications(limit) : Promise.resolve([]),
     ]);
 
-    const items = [...executionItems, ...reportItems]
-      .sort((left, right) => new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime());
+    const items = [...executionItems, ...reportItems].sort(
+      (left, right) => new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime()
+    );
 
     const filteredItems = query.requiresActionOnly
       ? items.filter((item) => item.requiresAction)
@@ -63,14 +88,14 @@ export class NotificationService {
 
   private async listExecutionNotifications(
     limit: number,
-    requester?: AuthenticatedRequest['user'] | RequestUserContext,
+    requester?: AuthenticatedRequest['user'] | RequestUserContext
   ): Promise<AppNotificationDto[]> {
     const result = await this.executionService.list(
       {
         page: 1,
         pageSize: Math.max(limit * 5, 100),
       },
-      requester,
+      requester
     );
 
     return result.data
@@ -78,7 +103,8 @@ export class NotificationService {
       .map((execution) => {
         const category = this.resolveExecutionCategory(execution.status);
         const severity = this.resolveExecutionSeverity(execution.status);
-        const timestamp = execution.endedAt || execution.updatedAt || execution.startedAt || execution.createdAt;
+        const timestamp =
+          execution.endedAt || execution.updatedAt || execution.startedAt || execution.createdAt;
 
         return {
           id: `execution:${execution.id}`,
@@ -100,10 +126,87 @@ export class NotificationService {
             failureReason: execution.failureReason || undefined,
             takeoverReason: execution.takeoverReason || undefined,
             approvalStatus: execution.approvalStatus as ApprovalStatus | undefined,
+            resultTitle: execution.normalizedResult?.title || undefined,
+            resultSummary:
+              execution.normalizedResult?.envelope?.presentation?.notificationSummary ||
+              execution.normalizedResult?.detailText ||
+              execution.normalizedResult?.summary ||
+              execution.normalizedResult?.body ||
+              undefined,
+            downloadUrl: execution.normalizedResult?.downloadUrl || undefined,
+            temporalLink: execution.normalizedResult?.temporalLink || undefined,
+            hasBusinessResult: execution.normalizedResult?.hasBusinessResult || undefined,
+            normalizedResult: this.pickNotificationNormalizedResult(
+              execution.normalizedResult || undefined
+            ),
           },
         } satisfies AppNotificationDto;
       })
-      .sort((left, right) => new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime());
+      .sort(
+        (left, right) => new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime()
+      );
+  }
+
+  private pickNotificationNormalizedResult(
+    result?: {
+      resultType?: string;
+      title?: string;
+      summary?: string;
+      body?: string;
+      detailText?: string;
+      envelope?: {
+        presentation?: {
+          notificationSummary?: string;
+        };
+      };
+      artifacts?: Array<{
+        type?: string;
+        name?: string;
+        label?: string;
+        downloadUrl?: string;
+        url?: string;
+        path?: string;
+        mimeType?: string;
+      }>;
+      downloadUrl?: string;
+      temporalLink?: string;
+      hasBusinessResult?: boolean;
+    } | null
+  ): NotificationNormalizedResult | undefined {
+    if (!result) {
+      return undefined;
+    }
+
+    const artifacts = (result.artifacts || [])
+      .slice(0, 3)
+      .map((artifact) => ({
+        type: artifact.type,
+        name: artifact.name,
+        label: artifact.label,
+        downloadUrl: artifact.downloadUrl,
+        url: artifact.url,
+        path: artifact.path,
+        mimeType: artifact.mimeType,
+      }))
+      .filter(
+        (artifact) => artifact.downloadUrl || artifact.url || artifact.name || artifact.label
+      );
+
+    const normalizedResult: NotificationNormalizedResult = {
+      resultType: result.resultType || undefined,
+      title: result.title || undefined,
+      summary: result.envelope?.presentation?.notificationSummary || result.summary || undefined,
+      body: result.body || undefined,
+      detailText: result.detailText || undefined,
+      artifacts: artifacts.length > 0 ? artifacts : undefined,
+      downloadUrl: result.downloadUrl || undefined,
+      temporalLink: result.temporalLink || undefined,
+      hasBusinessResult: result.hasBusinessResult || undefined,
+    };
+
+    return Object.values(normalizedResult).some((value) => value !== undefined)
+      ? normalizedResult
+      : undefined;
   }
 
   private async listReportNotifications(limit: number): Promise<AppNotificationDto[]> {
@@ -111,7 +214,7 @@ export class NotificationService {
       `${this.reportServiceUrl}/reports`,
       {
         timeout: 30000,
-      },
+      }
     );
 
     return (response.data.reports || [])
@@ -143,7 +246,9 @@ export class NotificationService {
           },
         } satisfies AppNotificationDto;
       })
-      .sort((left, right) => new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime())
+      .sort(
+        (left, right) => new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime()
+      )
       .slice(0, Math.max(limit * 2, 20));
   }
 

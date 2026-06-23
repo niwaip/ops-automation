@@ -85,17 +85,14 @@ const ReportListPage: React.FC = () => {
       title: 'Completed At',
       dataIndex: 'completed_at',
       key: 'completed_at',
-      render: (date: string) => date ? new Date(date).toLocaleString() : '-',
+      render: (date: string) => (date ? new Date(date).toLocaleString() : '-'),
     },
     {
       title: 'Actions',
       key: 'actions',
       render: (_: unknown, record: Report) => (
         <Space>
-          <Button
-            icon={<EyeOutlined />}
-            onClick={() => navigate(`/reports/${record.id}`)}
-          >
+          <Button icon={<EyeOutlined />} onClick={() => navigate(`/reports/${record.id}`)}>
             View
           </Button>
           <Button

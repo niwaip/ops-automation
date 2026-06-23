@@ -7,12 +7,7 @@ interface UserWebRedirectPageProps {
   targetPath?: string;
 }
 
-const resolveTargetUrl = (
-  pathname: string,
-  search: string,
-  hash: string,
-  targetPath?: string,
-) => {
+const resolveTargetUrl = (pathname: string, search: string, hash: string, targetPath?: string) => {
   const basePath = targetPath ?? pathname;
   return `${buildUserWebUrl(basePath)}${search}${hash}`;
 };
@@ -21,7 +16,7 @@ const UserWebRedirectPage: React.FC<UserWebRedirectPageProps> = ({ targetPath })
   const location = useLocation();
   const targetUrl = useMemo(
     () => resolveTargetUrl(location.pathname, location.search, location.hash, targetPath),
-    [location.hash, location.pathname, location.search, targetPath],
+    [location.hash, location.pathname, location.search, targetPath]
   );
 
   useEffect(() => {

@@ -58,13 +58,17 @@ function inferWordRuleTextLanguageHint(text: string): 'zh' | 'ja' | 'en' | 'mixe
   return 'unknown';
 }
 
-function inferWordLoopHeaderLineLanguageOrder<T extends WordTableCellLike>(headerRow: T[]): Array<'zh' | 'ja'> | null {
+function inferWordLoopHeaderLineLanguageOrder<T extends WordTableCellLike>(
+  headerRow: T[]
+): Array<'zh' | 'ja'> | null {
   let zhJaPairCount = 0;
   let jaZhPairCount = 0;
   const lineStats = new Map<number, { zh: number; ja: number }>();
 
   headerRow.forEach((cell) => {
-    const lineHints = splitRawWordTableCellLines(cell.text).map((line) => inferWordRuleTextLanguageHint(line));
+    const lineHints = splitRawWordTableCellLines(cell.text).map((line) =>
+      inferWordRuleTextLanguageHint(line)
+    );
     if (lineHints[0] === 'zh' && lineHints[1] === 'ja') {
       zhJaPairCount += 1;
     } else if (lineHints[0] === 'ja' && lineHints[1] === 'zh') {
@@ -91,8 +95,10 @@ function inferWordLoopHeaderLineLanguageOrder<T extends WordTableCellLike>(heade
   const firstLine = lineStats.get(0);
   const secondLine = lineStats.get(1);
   if (firstLine && secondLine) {
-    const firstHint = firstLine.zh > firstLine.ja ? 'zh' : (firstLine.ja > firstLine.zh ? 'ja' : undefined);
-    const secondHint = secondLine.zh > secondLine.ja ? 'zh' : (secondLine.ja > secondLine.zh ? 'ja' : undefined);
+    const firstHint =
+      firstLine.zh > firstLine.ja ? 'zh' : firstLine.ja > firstLine.zh ? 'ja' : undefined;
+    const secondHint =
+      secondLine.zh > secondLine.ja ? 'zh' : secondLine.ja > secondLine.zh ? 'ja' : undefined;
     if (firstHint && secondHint && firstHint !== secondHint) {
       return [firstHint, secondHint];
     }
@@ -128,7 +134,7 @@ export function splitWordTableCellLines(text: string): string[] {
 }
 
 export function buildWordTableRows<T extends WordTableCellLike>(
-  tableCells: T[],
+  tableCells: T[]
 ): Array<{ tableIndex: number; rows: T[][] }> {
   const rowsByTable = new Map<number, Map<number, T[]>>();
 
@@ -146,7 +152,9 @@ export function buildWordTableRows<T extends WordTableCellLike>(
       tableIndex,
       rows: Array.from(rowMap.entries())
         .sort((left, right) => left[0] - right[0])
-        .map(([, rowCells]) => [...rowCells].sort((left, right) => left.cellIndex - right.cellIndex)),
+        .map(([, rowCells]) =>
+          [...rowCells].sort((left, right) => left.cellIndex - right.cellIndex)
+        ),
     }));
 }
 
@@ -155,14 +163,20 @@ function isLikelyWordLoopHeaderRow<T extends WordTableCellLike>(row: T[]): boole
   return headerTexts.length >= 2 && headerTexts.every((text) => isLikelyWordTableLabel(text));
 }
 
-function countWordNonEmptyCellsAcrossHeader<T extends WordTableCellLike>(row: T[], headerRow: T[]): number {
+function countWordNonEmptyCellsAcrossHeader<T extends WordTableCellLike>(
+  row: T[],
+  headerRow: T[]
+): number {
   return headerRow.reduce((count, headerCell) => {
     const currentCell = row.find((cell) => cell.cellIndex === headerCell.cellIndex);
     return count + (!isBlankWordTableCellText(currentCell?.text || '') ? 1 : 0);
   }, 0);
 }
 
-function countWordBlankCellsAcrossHeader<T extends WordTableCellLike>(row: T[], headerRow: T[]): number {
+function countWordBlankCellsAcrossHeader<T extends WordTableCellLike>(
+  row: T[],
+  headerRow: T[]
+): number {
   return headerRow.reduce((count, headerCell) => {
     const currentCell = row.find((cell) => cell.cellIndex === headerCell.cellIndex);
     return count + (isBlankWordTableCellText(currentCell?.text || '') ? 1 : 0);
@@ -174,7 +188,10 @@ function isLikelyWordLoopDataRow<T extends WordTableCellLike>(row: T[], headerRo
   return countWordNonEmptyCellsAcrossHeader(row, headerRow) >= requiredNonEmptyCount;
 }
 
-function isLikelyWordLoopTemplateRow<T extends WordTableCellLike>(row: T[], headerRow: T[]): boolean {
+function isLikelyWordLoopTemplateRow<T extends WordTableCellLike>(
+  row: T[],
+  headerRow: T[]
+): boolean {
   const requiredBlankCount = Math.max(2, Math.ceil(headerRow.length * 0.5));
   return countWordBlankCellsAcrossHeader(row, headerRow) >= requiredBlankCount;
 }
@@ -189,13 +206,18 @@ export function isStandardWordLoopTableRows<T extends WordTableCellLike>(rows: T
     return false;
   }
 
-  return rows.slice(1).some((row) =>
-    isLikelyWordLoopDataRow(row, headerRow) || isLikelyWordLoopTemplateRow(row, headerRow)
-  );
+  return rows
+    .slice(1)
+    .some(
+      (row) =>
+        isLikelyWordLoopDataRow(row, headerRow) || isLikelyWordLoopTemplateRow(row, headerRow)
+    );
 }
 
 function splitWordTableParamLabels(text: string): string[] {
-  const rawText = String(text || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const rawText = String(text || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n');
   if (!rawText.trim()) {
     return [];
   }
@@ -212,7 +234,10 @@ function splitWordTableParamLabels(text: string): string[] {
       return [];
     }
     if (/[\/／|｜]/u.test(safePart)) {
-      const splitParts = safePart.split(/[\/／|｜]/u).map((item) => safeWordRuleText(item)).filter(Boolean);
+      const splitParts = safePart
+        .split(/[\/／|｜]/u)
+        .map((item) => safeWordRuleText(item))
+        .filter(Boolean);
       if (splitParts.length >= 2) {
         return splitParts;
       }
@@ -231,7 +256,10 @@ function splitWordTableParamLabels(text: string): string[] {
   return labels.filter((part, index, array) => array.indexOf(part) === index);
 }
 
-function findNearestWordTableLeftLabelCell<T extends WordTableCellLike>(row: T[], cellIndex: number): T | undefined {
+function findNearestWordTableLeftLabelCell<T extends WordTableCellLike>(
+  row: T[],
+  cellIndex: number
+): T | undefined {
   return [...row]
     .filter((item) => item.cellIndex < cellIndex && isLikelyWordTableLabel(item.text, 32))
     .sort((left, right) => right.cellIndex - left.cellIndex)[0];
@@ -240,7 +268,7 @@ function findNearestWordTableLeftLabelCell<T extends WordTableCellLike>(row: T[]
 function pushDetectedWordTableParam(
   params: WordDetectedParam[],
   sampleText: string,
-  param: WordDetectedParam,
+  param: WordDetectedParam
 ): void {
   params.push({
     ...param,
@@ -252,7 +280,7 @@ function pushWordLoopTemplateParams<T extends WordTableCellLike>(
   params: WordDetectedParam[],
   sampleText: string,
   tableIndex: number,
-  headerRow: T[],
+  headerRow: T[]
 ): void {
   const headerLineLanguageOrder = inferWordLoopHeaderLineLanguageOrder(headerRow);
   headerRow.forEach((cell) => {
@@ -261,11 +289,8 @@ function pushWordLoopTemplateParams<T extends WordTableCellLike>(
     labels.forEach((anchorText, labelIndex) => {
       const directLineHint = inferWordRuleTextLanguageHint(rawLines[labelIndex] || '');
       const fallbackLineHint = headerLineLanguageOrder?.[labelIndex];
-      const languageHint = (
-        directLineHint === 'zh' || directLineHint === 'ja'
-          ? directLineHint
-          : fallbackLineHint
-      );
+      const languageHint =
+        directLineHint === 'zh' || directLineHint === 'ja' ? directLineHint : fallbackLineHint;
       const param: WordDetectedParam = {
         id: `table-loop-${tableIndex}-${cell.rowIndex}-${cell.cellIndex}-${labelIndex}`,
         sourceType: 'table-cell',
@@ -306,7 +331,7 @@ function countWordFilledHeaderCells<T extends WordTableCellLike>(row: T[], heade
 export function analyzeWordTableParams(
   tableCells: WordTableCellLike[],
   sampleText = '',
-  includeDebug = false,
+  includeDebug = false
 ): { params: WordDetectedParam[]; debugEntries: WordTableDetectionDebugEntry[] } {
   const params: WordDetectedParam[] = [];
   const debugEntries: WordTableDetectionDebugEntry[] = [];
@@ -349,7 +374,9 @@ export function analyzeWordTableParams(
         const cellText = safeWordRuleText(cell.text);
         if (!isBlankWordTableCellText(cell.text)) {
           if (includeDebug) {
-            cellDiagnostics.push(`row ${rowIndex} col ${cell.cellIndex}: 非空单元格 ${JSON.stringify(cellText)} -> 跳过`);
+            cellDiagnostics.push(
+              `row ${rowIndex} col ${cell.cellIndex}: 非空单元格 ${JSON.stringify(cellText)} -> 跳过`
+            );
           }
           return;
         }
@@ -357,7 +384,9 @@ export function analyzeWordTableParams(
         const leftLabelCell = findNearestWordTableLeftLabelCell(row, cell.cellIndex);
         if (!leftLabelCell) {
           if (includeDebug) {
-            cellDiagnostics.push(`row ${rowIndex} col ${cell.cellIndex}: 空白，但左侧未找到标签 -> 跳过`);
+            cellDiagnostics.push(
+              `row ${rowIndex} col ${cell.cellIndex}: 空白，但左侧未找到标签 -> 跳过`
+            );
           }
           return;
         }
@@ -381,13 +410,14 @@ export function analyzeWordTableParams(
         const rawLines = splitRawWordTableCellLines(leftLabelCell.text);
         labels.forEach((title, titleIndex) => {
           const directLineHint = inferWordRuleTextLanguageHint(rawLines[titleIndex] || '');
-          const languageHint = (
+          const languageHint =
             directLineHint === 'zh' || directLineHint === 'ja'
               ? directLineHint
               : rawLines.length === labels.length && labels.length === 2
-                ? (titleIndex === 0 ? 'zh' : 'ja')
-                : undefined
-          );
+                ? titleIndex === 0
+                  ? 'zh'
+                  : 'ja'
+                : undefined;
           const param: WordDetectedParam = {
             id: `table-cell-${tableIndex}-${cell.rowIndex}-${cell.cellIndex}-${titleIndex}`,
             sourceType: 'table-cell',
@@ -417,9 +447,13 @@ export function analyzeWordTableParams(
 
     const dedupedComparisonParams = comparisonParams.filter((param, index, array) => {
       const key = `${param.sourceType}|${param.tableIndex}|${param.rowIndex}|${param.cellIndex}|${param.underlineType}|${param.paramName}|${param.languageHint || ''}`;
-      return array.findIndex((item) => (
-        `${item.sourceType}|${item.tableIndex}|${item.rowIndex}|${item.cellIndex}|${item.underlineType}|${item.paramName}|${item.languageHint || ''}`
-      ) === key) === index;
+      return (
+        array.findIndex(
+          (item) =>
+            `${item.sourceType}|${item.tableIndex}|${item.rowIndex}|${item.cellIndex}|${item.underlineType}|${item.paramName}|${item.languageHint || ''}` ===
+            key
+        ) === index
+      );
     });
     if (dedupedComparisonParams.length > 0) {
       params.push(...dedupedComparisonParams);
@@ -434,11 +468,10 @@ export function analyzeWordTableParams(
       return;
     }
 
-    const loopMatched = headerIsLoopLike
-      && (
-        isLikelyWordLoopDataRow(firstDataRow, headerRow)
-        || isLikelyWordLoopTemplateRow(firstDataRow, headerRow)
-      );
+    const loopMatched =
+      headerIsLoopLike &&
+      (isLikelyWordLoopDataRow(firstDataRow, headerRow) ||
+        isLikelyWordLoopTemplateRow(firstDataRow, headerRow));
     if (loopMatched) {
       pushWordLoopTemplateParams(params, sampleText, tableIndex, headerRow);
       if (includeDebug) {
@@ -478,7 +511,7 @@ export function analyzeWordTableParams(
 
 export function detectWordTableParams(
   tableCells: WordTableCellLike[],
-  sampleText = '',
+  sampleText = ''
 ): WordDetectedParam[] {
   return analyzeWordTableParams(tableCells, sampleText, false).params;
 }

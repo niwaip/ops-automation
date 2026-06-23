@@ -8,11 +8,7 @@ import { getAuthServiceUrl } from '../../config/service-endpoints';
 import { PlanDraftDTO } from '../../interfaces';
 import { PromptDebugSettingsService } from '../debug-settings/prompt-debug-settings.service';
 import { PlannerService } from '../planner/planner.service';
-import type {
-  ExecutionContext,
-  LLMUsage,
-  StreamEvent,
-} from '../react-engine/interfaces';
+import type { ExecutionContext, LLMUsage, StreamEvent } from '../react-engine/interfaces';
 import { StreamEventType } from '../react-engine/interfaces';
 import { ReActEngineService } from '../react-engine/react-engine.service';
 import type { ChatRequestDTO } from './chat.dto';
@@ -30,19 +26,21 @@ export class ChatOrchestratorService {
     private readonly plannerService: PlannerService,
     private readonly promptDebugSettingsService: PromptDebugSettingsService,
     private readonly waitingInputService: ChatWaitingInputService,
-    private readonly executionStreamService: ChatExecutionStreamService,
+    private readonly executionStreamService: ChatExecutionStreamService
   ) {}
 
   async buildTaskModeContext(
     body: ChatRequestDTO,
     authorization: string | undefined,
     traceId: string,
-    history: ExecutionContext['history'],
+    history: ExecutionContext['history']
   ): Promise<{ context?: ExecutionContext; authError?: StreamEvent }> {
     const resolvedUser = await this.resolveAuthenticatedUser(authorization);
 
     if (!resolvedUser.userId) {
-      this.logger.warn(`Rejecting anonymous task-mode request for session ${body.sessionId || 'default'}`);
+      this.logger.warn(
+        `Rejecting anonymous task-mode request for session ${body.sessionId || 'default'}`
+      );
       return {
         authError: this.buildTaskModeAuthRequiredEvent(),
       };
@@ -64,7 +62,7 @@ export class ChatOrchestratorService {
   async *handleTaskMode(
     body: ChatRequestDTO,
     context: ExecutionContext,
-    authToken?: string,
+    authToken?: string
   ): AsyncGenerator<StreamEvent> {
     const traceId = context.traceId;
     const executionId = body.executionId || context.executionId;
@@ -83,10 +81,7 @@ export class ChatOrchestratorService {
             objective?: string;
             semantic?: WaitingInputSemantic;
           };
-        }>(
-          executionId,
-          this.waitingInputService.buildControlPlaneRequestOptions(authToken, user),
-        );
+        }>(executionId, this.waitingInputService.buildControlPlaneRequestOptions(authToken, user));
 
         if (execution.status === CONTROL_PLANE_EXECUTION_STATUS.WAITING_INPUT && body.message) {
           yield {
@@ -97,7 +92,7 @@ export class ChatOrchestratorService {
           const waitingInputDetails = await this.waitingInputService.loadWaitingInputDetails(
             executionId,
             authToken,
-            user,
+            user
           );
           if (waitingInputDetails.waitingStepId) {
             try {
@@ -112,7 +107,7 @@ export class ChatOrchestratorService {
                   ? execution.normalizedInput.objective
                   : undefined,
                 context.userId,
-                body.modelId,
+                body.modelId
               );
 
               await this.controlPlaneClient.submitExecutionInput(
@@ -122,21 +117,22 @@ export class ChatOrchestratorService {
                   input: waitingInputPayload.input,
                   usage: waitingInputPayload.usage,
                 },
-                this.waitingInputService.buildControlPlaneRequestOptions(authToken, user),
+                this.waitingInputService.buildControlPlaneRequestOptions(authToken, user)
               );
 
-              const latestStateEvent = await this.executionStreamService.buildLatestExecutionStateEvent(
-                executionId,
-                authToken,
-                user,
-              );
+              const latestStateEvent =
+                await this.executionStreamService.buildLatestExecutionStateEvent(
+                  executionId,
+                  authToken,
+                  user
+                );
 
               if (latestStateEvent?.type === StreamEventType.WAITING_INPUT) {
                 const waitingPayload =
-                  latestStateEvent.data
-                  && typeof latestStateEvent.data === 'object'
-                  && !Array.isArray(latestStateEvent.data)
-                    ? latestStateEvent.data as {
+                  latestStateEvent.data &&
+                  typeof latestStateEvent.data === 'object' &&
+                  !Array.isArray(latestStateEvent.data)
+                    ? (latestStateEvent.data as {
                         missingInputs?: Array<{
                           name: string;
                           group_label?: string;
@@ -144,7 +140,7 @@ export class ChatOrchestratorService {
                           needs_confirmation?: boolean;
                         }>;
                         semantic?: WaitingInputSemantic;
-                      }
+                      })
                     : {};
                 const remainingMissingInputs = Array.isArray(waitingPayload.missingInputs)
                   ? waitingPayload.missingInputs
@@ -170,7 +166,11 @@ export class ChatOrchestratorService {
                 content: '信息已提交，任务继续执行。',
               };
 
-              for await (const event of this.executionStreamService.observeExecution(executionId, authToken, user)) {
+              for await (const event of this.executionStreamService.observeExecution(
+                executionId,
+                authToken,
+                user
+              )) {
                 yield event;
               }
               return;
@@ -185,17 +185,21 @@ export class ChatOrchestratorService {
         }
 
         if (
-          execution.status === CONTROL_PLANE_EXECUTION_STATUS.QUEUED
-          || execution.status === CONTROL_PLANE_EXECUTION_STATUS.RUNNING
-          || execution.status === CONTROL_PLANE_EXECUTION_STATUS.PENDING_APPROVAL
-          || execution.status === CONTROL_PLANE_EXECUTION_STATUS.WAITING_INPUT
+          execution.status === CONTROL_PLANE_EXECUTION_STATUS.QUEUED ||
+          execution.status === CONTROL_PLANE_EXECUTION_STATUS.RUNNING ||
+          execution.status === CONTROL_PLANE_EXECUTION_STATUS.PENDING_APPROVAL ||
+          execution.status === CONTROL_PLANE_EXECUTION_STATUS.WAITING_INPUT
         ) {
           yield {
             type: StreamEventType.THOUGHT,
             content: `任务正在执行中 (状态: ${execution.status})，正在为您实时观察进度...`,
           };
 
-          for await (const event of this.executionStreamService.observeExecution(executionId, authToken, user)) {
+          for await (const event of this.executionStreamService.observeExecution(
+            executionId,
+            authToken,
+            user
+          )) {
             yield event;
           }
           return;
@@ -293,13 +297,13 @@ export class ChatOrchestratorService {
                 ...Object.fromEntries(
                   planDraft.required_inputs
                     .filter((input) => !input.missing)
-                    .map((input) => [input.name, input.value]),
+                    .map((input) => [input.name, input.value])
                 ),
               },
               usage: planDraft.usage,
               planDraft: executionPlanDraft,
             },
-            this.waitingInputService.buildControlPlaneRequestOptions(authToken, user),
+            this.waitingInputService.buildControlPlaneRequestOptions(authToken, user)
           );
           const executionStatus = execution.status || CONTROL_PLANE_EXECUTION_STATUS.WAITING_INPUT;
 
@@ -310,14 +314,18 @@ export class ChatOrchestratorService {
                 executionId: execution.id,
                 intro: '已创建等待补充信息的执行单。',
                 missingInputs,
-                semantic: this.waitingInputService.extractExecutionSemantic(execution) || waitingInputSemantic,
+                semantic:
+                  this.waitingInputService.extractExecutionSemantic(execution) ||
+                  waitingInputSemantic,
               }),
               data: {
                 executionId: execution.id,
                 status: CONTROL_PLANE_EXECUTION_STATUS.WAITING_INPUT,
                 hasBusinessResult: false,
                 missingInputs,
-                semantic: this.waitingInputService.extractExecutionSemantic(execution) || waitingInputSemantic,
+                semantic:
+                  this.waitingInputService.extractExecutionSemantic(execution) ||
+                  waitingInputSemantic,
                 plan: planDraft,
                 usage: execution.usage || planDraft.usage,
                 ...(plannerPromptDebug ? { promptDebug: plannerPromptDebug } : {}),
@@ -327,9 +335,10 @@ export class ChatOrchestratorService {
           }
 
           if (executionStatus === CONTROL_PLANE_EXECUTION_STATUS.PENDING_APPROVAL) {
-            const approvalIntro = missingInputs.length > 0
-              ? `任务已创建，已应用部分默认参数，但仍需审批。\n\n当前审批状态: ${execution.approvalStatus || CONTROL_PLANE_APPROVAL_STATUS.PENDING}\n执行单 ID: ${execution.id}`
-              : `任务已创建，等待审批。\n\n当前审批状态: ${execution.approvalStatus || CONTROL_PLANE_APPROVAL_STATUS.PENDING}\n执行单 ID: ${execution.id}`;
+            const approvalIntro =
+              missingInputs.length > 0
+                ? `任务已创建，已应用部分默认参数，但仍需审批。\n\n当前审批状态: ${execution.approvalStatus || CONTROL_PLANE_APPROVAL_STATUS.PENDING}\n执行单 ID: ${execution.id}`
+                : `任务已创建，等待审批。\n\n当前审批状态: ${execution.approvalStatus || CONTROL_PLANE_APPROVAL_STATUS.PENDING}\n执行单 ID: ${execution.id}`;
             yield {
               type: StreamEventType.RESULT,
               content: approvalIntro,
@@ -344,9 +353,10 @@ export class ChatOrchestratorService {
               },
             };
           } else {
-            const startSummary = missingInputs.length > 0
-              ? '已应用默认参数补齐可兜底项，并开始执行。'
-              : planDraft.summary;
+            const startSummary =
+              missingInputs.length > 0
+                ? '已应用默认参数补齐可兜底项，并开始执行。'
+                : planDraft.summary;
             yield {
               type: StreamEventType.RESULT,
               content: `任务已启动。执行单 ID: ${execution.id}\n\n${startSummary}`,
@@ -361,7 +371,11 @@ export class ChatOrchestratorService {
             };
           }
 
-          for await (const event of this.executionStreamService.observeExecution(execution.id, authToken, user)) {
+          for await (const event of this.executionStreamService.observeExecution(
+            execution.id,
+            authToken,
+            user
+          )) {
             yield event;
           }
           return;
@@ -408,13 +422,13 @@ export class ChatOrchestratorService {
               ...Object.fromEntries(
                 planDraft.required_inputs
                   .filter((input) => !input.missing)
-                  .map((input) => [input.name, input.value]),
+                  .map((input) => [input.name, input.value])
               ),
             },
             usage: planDraft.usage,
             planDraft: executionPlanDraft,
           },
-          this.waitingInputService.buildControlPlaneRequestOptions(authToken, user),
+          this.waitingInputService.buildControlPlaneRequestOptions(authToken, user)
         );
 
         yield {
@@ -430,7 +444,11 @@ export class ChatOrchestratorService {
           },
         };
 
-        for await (const event of this.executionStreamService.observeExecution(execution.id, authToken, user)) {
+        for await (const event of this.executionStreamService.observeExecution(
+          execution.id,
+          authToken,
+          user
+        )) {
           yield event;
         }
         return;
@@ -453,28 +471,33 @@ export class ChatOrchestratorService {
   }
 
   private canExposePromptDebug(context: ExecutionContext): boolean {
-    return this.promptDebugSettingsService.isPromptDebugEnabled()
-      && Boolean(context.userRoles?.includes('admin'));
+    return (
+      this.promptDebugSettingsService.isPromptDebugEnabled() &&
+      Boolean(context.userRoles?.includes('admin'))
+    );
   }
 
   private buildPlannerPromptDebug(
     message: string,
-    planDraft: PlanDraftDTO,
+    planDraft: PlanDraftDTO
   ): Record<string, unknown> {
-    const metadata = (planDraft.metadata && typeof planDraft.metadata === 'object')
-      ? planDraft.metadata as Record<string, unknown>
-      : undefined;
-    const debug = (metadata?.debug && typeof metadata.debug === 'object' && !Array.isArray(metadata.debug))
-      ? metadata.debug as Record<string, unknown>
-      : undefined;
+    const metadata =
+      planDraft.metadata && typeof planDraft.metadata === 'object'
+        ? (planDraft.metadata as Record<string, unknown>)
+        : undefined;
+    const debug =
+      metadata?.debug && typeof metadata.debug === 'object' && !Array.isArray(metadata.debug)
+        ? (metadata.debug as Record<string, unknown>)
+        : undefined;
     const llmCalls = Array.isArray(debug?.llmCalls)
       ? debug.llmCalls.filter((item) => item && typeof item === 'object')
       : [];
-    const latestLlmCall = llmCalls.length > 0
-      ? llmCalls[llmCalls.length - 1] as Record<string, unknown>
-      : undefined;
+    const latestLlmCall =
+      llmCalls.length > 0 ? (llmCalls[llmCalls.length - 1] as Record<string, unknown>) : undefined;
     const notes = Array.isArray(debug?.notes)
-      ? debug.notes.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+      ? debug.notes.filter(
+          (item): item is string => typeof item === 'string' && item.trim().length > 0
+        )
       : [];
     const systemLines = [
       'Planner Debug Snapshot',
@@ -490,15 +513,19 @@ export class ChatOrchestratorService {
       debugSource: 'planner',
       systemPrompt: systemLines.join('\n'),
       userPrompt: message,
-      systemPromptSectionKeys: ['planner_mode', 'planner_summary', 'planner_objective', 'planner_steps'],
+      systemPromptSectionKeys: [
+        'planner_mode',
+        'planner_summary',
+        'planner_objective',
+        'planner_steps',
+      ],
       userPromptSectionKeys: ['user_message'],
       modelId: typeof latestLlmCall?.modelId === 'string' ? latestLlmCall.modelId : undefined,
       llmRequestMessages: Array.isArray(latestLlmCall?.requestMessages)
         ? latestLlmCall.requestMessages
         : undefined,
-      llmResponseText: typeof latestLlmCall?.responseText === 'string'
-        ? latestLlmCall.responseText
-        : undefined,
+      llmResponseText:
+        typeof latestLlmCall?.responseText === 'string' ? latestLlmCall.responseText : undefined,
       llmCalls,
       notes,
     };
@@ -519,7 +546,9 @@ export class ChatOrchestratorService {
     };
   }
 
-  private buildExecutionPromptDebug(promptDebug?: Record<string, unknown>): Record<string, unknown> | undefined {
+  private buildExecutionPromptDebug(
+    promptDebug?: Record<string, unknown>
+  ): Record<string, unknown> | undefined {
     if (!promptDebug) {
       return undefined;
     }
@@ -536,7 +565,7 @@ export class ChatOrchestratorService {
   }
 
   private async resolveAuthenticatedUser(
-    authorization?: string,
+    authorization?: string
   ): Promise<{ userId?: string; userRoles?: string[] }> {
     if (!authorization) {
       return {};
@@ -553,7 +582,7 @@ export class ChatOrchestratorService {
         return {};
       }
 
-      const payload = await response.json() as {
+      const payload = (await response.json()) as {
         user?: { id?: string; role?: string };
         roles?: Array<{ name?: string }>;
       };

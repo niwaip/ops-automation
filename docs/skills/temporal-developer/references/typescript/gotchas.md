@@ -172,7 +172,7 @@ export async function longActivity(): Promise<void> {
 
   try {
     await Promise.race([
-      Context.current().cancelled,  // Rejects with CancelledFailure
+      Context.current().cancelled, // Rejects with CancelledFailure
       doExpensiveWork(),
     ]);
   } catch (err) {
@@ -203,7 +203,7 @@ export async function cancellableFetch(url: string): Promise<Uint8Array> {
     if (!(chunk instanceof Buffer)) throw new TypeError('Expected Buffer');
     bytesRead += chunk.length;
     chunks.push(chunk);
-    heartbeat(bytesRead / contentLength);  // Heartbeat to keep cancellation delivery alive
+    heartbeat(bytesRead / contentLength); // Heartbeat to keep cancellation delivery alive
   }
   return Buffer.concat(chunks);
 }
@@ -296,14 +296,16 @@ import { Worker } from '@temporalio/worker';
 import * as fs from 'fs';
 
 test('replay compatibility', async () => {
-  const history = JSON.parse(await fs.promises.readFile('./fixtures/workflow_history.json', 'utf8'));
+  const history = JSON.parse(
+    await fs.promises.readFile('./fixtures/workflow_history.json', 'utf8')
+  );
 
   // Fails if current code is incompatible with history
   await Worker.runReplayHistory(
     {
       workflowsPath: require.resolve('./workflows'),
     },
-    history,
+    history
   );
 });
 ```

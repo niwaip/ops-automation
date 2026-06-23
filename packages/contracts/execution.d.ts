@@ -65,8 +65,7 @@ export declare const EXECUTION_EVENT_TYPE: {
   readonly STEPS_SKIPPED: 'steps.skipped';
 };
 
-export type ExecutionEventType =
-  (typeof EXECUTION_EVENT_TYPE)[keyof typeof EXECUTION_EVENT_TYPE];
+export type ExecutionEventType = (typeof EXECUTION_EVENT_TYPE)[keyof typeof EXECUTION_EVENT_TYPE];
 
 export declare const EXECUTION_EVENT_TYPE_VALUES: ExecutionEventType[];
 

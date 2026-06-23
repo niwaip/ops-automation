@@ -17,7 +17,7 @@ async function bootstrap() {
       transformOptions: {
         enableImplicitConversion: true,
       },
-    }),
+    })
   );
 
   // Enable CORS
@@ -31,7 +31,9 @@ async function bootstrap() {
   // Setup Swagger documentation
   const config = new DocumentBuilder()
     .setTitle('Browser Worker API')
-    .setDescription('Browser Worker Service - Manages browser worker containers with noVNC and CDP support')
+    .setDescription(
+      'Browser Worker Service - Manages browser worker containers with noVNC and CDP support'
+    )
     .setVersion('1.0.0')
     .addTag('workers', 'Worker lifecycle management')
     .addTag('health', 'Health check endpoints')

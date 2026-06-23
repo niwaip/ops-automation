@@ -1,9 +1,9 @@
-import type { AuthSessionPort } from "@ops/user-core";
-import { useAuthStore } from "@/shared/store/authStore";
+import type { AuthSessionPort } from '@ops/user-core';
+import { useAuthStore } from '@/shared/store/authStore';
 
 const redirectToLogin = (): void => {
-  if (typeof window !== "undefined" && window.location.pathname !== "/login") {
-    window.location.assign("/login");
+  if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+    window.location.assign('/login');
   }
 };
 

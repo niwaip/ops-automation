@@ -1,4 +1,15 @@
-import { Body, Controller, Delete, Get, HttpException, HttpStatus, Param, Patch, Post, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpException,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  Res,
+} from '@nestjs/common';
 import { ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { PromptDebugSettingsService } from '../debug-settings/prompt-debug-settings.service';
@@ -19,7 +30,7 @@ import { ModelService } from './model.service';
 export class ModelController {
   constructor(
     private readonly modelService: ModelService,
-    private readonly promptDebugSettingsService: PromptDebugSettingsService,
+    private readonly promptDebugSettingsService: PromptDebugSettingsService
   ) {}
 
   private scorePromptTestModel(model: AIModelDTO): number {
@@ -31,12 +42,12 @@ export class ModelController {
     const isAudioTranscriptionDefault = defaultScope.audio_transcription === true;
 
     return (
-      (defaultScope.admin_task ? 100 : 0)
-      + (defaultScope.global ? 90 : 0)
-      + (defaultScope.admin_chat ? 80 : 0)
-      + (!isAudioTranscriptionDefault ? 40 : 0)
-      + (!hasAudioInput ? 20 : 0)
-      + (model.config?.capability_tier === 'advanced' ? 10 : 0)
+      (defaultScope.admin_task ? 100 : 0) +
+      (defaultScope.global ? 90 : 0) +
+      (defaultScope.admin_chat ? 80 : 0) +
+      (!isAudioTranscriptionDefault ? 40 : 0) +
+      (!hasAudioInput ? 20 : 0) +
+      (model.config?.capability_tier === 'advanced' ? 10 : 0)
     );
   }
 
@@ -46,16 +57,17 @@ export class ModelController {
       return null;
     }
 
-    return [...activeModels]
-      .sort((left, right) => this.scorePromptTestModel(right) - this.scorePromptTestModel(left))[0] || null;
+    return (
+      [...activeModels].sort(
+        (left, right) => this.scorePromptTestModel(right) - this.scorePromptTestModel(left)
+      )[0] || null
+    );
   }
 
   private async resolveTestableModel(id: string): Promise<AIModelDTO | null> {
     if (id === 'default') {
       const defaultModel = await this.resolveDefaultPromptTestModel();
-      return defaultModel
-        ? { ...defaultModel, hasApiKey: defaultModel.hasApiKey !== false }
-        : null;
+      return defaultModel ? { ...defaultModel, hasApiKey: defaultModel.hasApiKey !== false } : null;
     }
 
     const directModel = await this.modelService.getModel(id);
@@ -114,7 +126,7 @@ export class ModelController {
   @ApiOperation({ summary: 'Update a provider config' })
   async updateProviderConfig(
     @Param('id') id: string,
-    @Body() body: UpdateProviderConfigDTO,
+    @Body() body: UpdateProviderConfigDTO
   ): Promise<AIProviderConfigDTO> {
     try {
       const provider = await this.modelService.updateProviderConfig(id, body);
@@ -133,17 +145,17 @@ export class ModelController {
 
   @Post('providers/:id/health')
   @ApiOperation({ summary: 'Check health of a specific provider' })
-  async checkProviderHealth(@Param('id') id: string): Promise<{ success: boolean; response?: string; error?: string }> {
+  async checkProviderHealth(
+    @Param('id') id: string
+  ): Promise<{ success: boolean; response?: string; error?: string }> {
     return this.modelService.checkProviderHealth(id);
   }
 
   @Post('model/call')
   @ApiOperation({ summary: 'Call AI model with a prompt (for skill matching)' })
-  async callModel(@Body() body: {
-    modelId: string;
-    prompt: string;
-    includeDebug?: boolean;
-  }): Promise<{
+  async callModel(
+    @Body() body: { modelId: string; prompt: string; includeDebug?: boolean }
+  ): Promise<{
     result: string;
     usage?: LLMUsage;
     debug?: {
@@ -159,13 +171,15 @@ export class ModelController {
       return {
         result: response.content,
         usage: response.usage,
-        ...(body.includeDebug ? {
-          debug: {
-            modelId,
-            requestMessages: [{ role: 'user', content: body.prompt }],
-            responseText: response.content,
-          },
-        } : {}),
+        ...(body.includeDebug
+          ? {
+              debug: {
+                modelId,
+                requestMessages: [{ role: 'user', content: body.prompt }],
+                responseText: response.content,
+              },
+            }
+          : {}),
       };
     } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
@@ -182,7 +196,7 @@ export class ModelController {
   @Patch('debug-settings')
   @ApiOperation({ summary: 'Update prompt debug settings' })
   async updateDebugSettings(
-    @Body() body: { promptDebugEnabled?: boolean },
+    @Body() body: { promptDebugEnabled?: boolean }
   ): Promise<{ promptDebugEnabled: boolean }> {
     if (typeof body.promptDebugEnabled !== 'boolean') {
       throw new HttpException('promptDebugEnabled must be boolean', HttpStatus.BAD_REQUEST);
@@ -241,7 +255,10 @@ export class ModelController {
 
   @Patch('models/:id')
   @ApiOperation({ summary: 'Update an AI model configuration' })
-  async updateModel(@Param('id') id: string, @Body() body: Partial<CreateModelDTO>): Promise<AIModelDTO> {
+  async updateModel(
+    @Param('id') id: string,
+    @Body() body: Partial<CreateModelDTO>
+  ): Promise<AIModelDTO> {
     const model = await this.modelService.getModel(id);
     if (!model) {
       throw new HttpException('Model not found', HttpStatus.NOT_FOUND);
@@ -261,7 +278,9 @@ export class ModelController {
 
   @Post('models/:id/test-config')
   @ApiOperation({ summary: 'Test model configuration using stored API key' })
-  async testModelConfig(@Param('id') id: string): Promise<{ success: boolean; response?: string; error?: string }> {
+  async testModelConfig(
+    @Param('id') id: string
+  ): Promise<{ success: boolean; response?: string; error?: string }> {
     const model = await this.resolveTestableModel(id);
     if (!model) {
       throw new HttpException('Model not found', HttpStatus.NOT_FOUND);
@@ -277,13 +296,19 @@ export class ModelController {
 
   @Post('models/:id/test')
   @ApiOperation({ summary: 'Test an AI model with a prompt' })
-  async testModel(@Param('id') id: string, @Body() body: { prompt: string }): Promise<{ success: boolean; response?: string; error?: string }> {
+  async testModel(
+    @Param('id') id: string,
+    @Body() body: { prompt: string }
+  ): Promise<{ success: boolean; response?: string; error?: string }> {
     const model = await this.resolveTestableModel(id);
     if (!model) {
       throw new HttpException('Model not found', HttpStatus.NOT_FOUND);
     }
     try {
-      const response = await this.modelService.callModel(model.id, body.prompt || 'Hello, this is a test.');
+      const response = await this.modelService.callModel(
+        model.id,
+        body.prompt || 'Hello, this is a test.'
+      );
       return { success: true, response: response.content };
     } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
@@ -296,7 +321,7 @@ export class ModelController {
   async testModelStream(
     @Param('id') id: string,
     @Body() body: { prompt: string },
-    @Res() res: Response,
+    @Res() res: Response
   ): Promise<void> {
     const model = await this.resolveTestableModel(id);
     if (!model) {
@@ -310,9 +335,13 @@ export class ModelController {
     res.setHeader('X-Accel-Buffering', 'no');
 
     try {
-      await this.modelService.callModelStream(model.id, body.prompt || 'Hello, this is a test.', (chunk: string) => {
-        res.write(`data: ${JSON.stringify({ chunk })}\n\n`);
-      });
+      await this.modelService.callModelStream(
+        model.id,
+        body.prompt || 'Hello, this is a test.',
+        (chunk: string) => {
+          res.write(`data: ${JSON.stringify({ chunk })}\n\n`);
+        }
+      );
       res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
       res.end();
     } catch (error: unknown) {
@@ -325,7 +354,9 @@ export class ModelController {
   @Post('models/test-config')
   @ApiOperation({ summary: 'Test a model configuration before creating' })
   @ApiConsumes('application/json')
-  async testConfig(@Body() body: { endpoint: string; apiKey: string; modelName: string }): Promise<{ success: boolean; response?: string; error?: string }> {
+  async testConfig(
+    @Body() body: { endpoint: string; apiKey: string; modelName: string }
+  ): Promise<{ success: boolean; response?: string; error?: string }> {
     if (!body.endpoint || !body.apiKey || !body.modelName) {
       return { success: false, error: '请填写完整的配置信息：Endpoint、API Key 和模型名称' };
     }

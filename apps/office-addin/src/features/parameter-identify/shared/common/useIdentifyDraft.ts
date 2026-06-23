@@ -57,7 +57,11 @@ interface UseIdentifyDraftOptions {
   templateName: string;
   setTemplateName: (value: string) => void;
   templateConfig: any;
-  addDebugLog: (level: 'info' | 'warn' | 'error' | 'debug', message: string, details?: string) => void;
+  addDebugLog: (
+    level: 'info' | 'warn' | 'error' | 'debug',
+    message: string,
+    details?: string
+  ) => void;
   loadTemplateSource: () => Promise<{ documentContent: string; format: string }>;
   isExcelMode: boolean;
   excelDraftRuntime?: ExcelDraftRuntime;
@@ -66,7 +70,9 @@ interface UseIdentifyDraftOptions {
   setTemplateTermAssetsText: (value: string) => void;
   setTemplateAssetRenderDiagnostics: (value: TemplateRenderDataResponse | null) => void;
   setTemplateAssetNotice: (value: TemplateAssetNotice | null) => void;
-  extractTemplateAssetDraftInfo: (workflow?: TemplateWorkflowSummary | null) => TemplateAssetDraftInfo | null;
+  extractTemplateAssetDraftInfo: (
+    workflow?: TemplateWorkflowSummary | null
+  ) => TemplateAssetDraftInfo | null;
 }
 
 export function useIdentifyDraft({
@@ -100,8 +106,10 @@ export function useIdentifyDraft({
 }: UseIdentifyDraftOptions) {
   const [draftId, setDraftId] = useState<string | null>(null);
   const [draftInfo, setDraftInfo] = useState<DraftInfo | null>(null);
-  const [latestBackendDraftInfo, setLatestBackendDraftInfo] = useState<LatestBackendDraftInfo | null>(null);
-  const [templateAssetDraftInfo, setTemplateAssetDraftInfo] = useState<TemplateAssetDraftInfo | null>(null);
+  const [latestBackendDraftInfo, setLatestBackendDraftInfo] =
+    useState<LatestBackendDraftInfo | null>(null);
+  const [templateAssetDraftInfo, setTemplateAssetDraftInfo] =
+    useState<TemplateAssetDraftInfo | null>(null);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
 
   const resolveDraftParameterCount = (data: {
@@ -116,9 +124,10 @@ export function useIdentifyDraft({
     if (Array.isArray(data.suggestions) && data.suggestions.length > 0) {
       return data.suggestions.length;
     }
-    const skillParameters = data.aiSkillGuide && Array.isArray(data.aiSkillGuide.parameters)
-      ? data.aiSkillGuide.parameters
-      : [];
+    const skillParameters =
+      data.aiSkillGuide && Array.isArray(data.aiSkillGuide.parameters)
+        ? data.aiSkillGuide.parameters
+        : [];
     if (skillParameters.length > 0) {
       return skillParameters.length;
     }
@@ -146,7 +155,11 @@ export function useIdentifyDraft({
     if (shouldRestoreSuggestions && Array.isArray(data.suggestions)) {
       setSuggestions(data.suggestions);
       if (options?.logRestore !== false) {
-        addDebugLog('info', '已从暂存副本恢复参数', `恢复 ${data.suggestions.length} 个参数，后续识别结果会与未覆盖的旧参数合并显示`);
+        addDebugLog(
+          'info',
+          '已从暂存副本恢复参数',
+          `恢复 ${data.suggestions.length} 个参数，后续识别结果会与未覆盖的旧参数合并显示`
+        );
       }
     }
     if (options?.restoreSkillGuide !== false && data.aiSkillGuide) {
@@ -199,7 +212,9 @@ export function useIdentifyDraft({
   };
 
   const parseDraftSequence = (fileName?: string): number => {
-    const match = String(fileName || '').trim().match(/^draft-(\d+)/i);
+    const match = String(fileName || '')
+      .trim()
+      .match(/^draft-(\d+)/i);
     return match ? Number(match[1]) : 0;
   };
 
@@ -209,8 +224,10 @@ export function useIdentifyDraft({
     const templates = Array.isArray(response?.templates) ? response.templates : [];
     const draftTemplates = templates.filter(
       (template) =>
-        String(template.fileName || '').trim().toLowerCase().startsWith('draft-')
-        && template.format === hostDocumentFormat
+        String(template.fileName || '')
+          .trim()
+          .toLowerCase()
+          .startsWith('draft-') && template.format === hostDocumentFormat
     );
     if (draftTemplates.length === 0) {
       return null;
@@ -235,7 +252,10 @@ export function useIdentifyDraft({
       }
       setLatestBackendDraftInfo({
         id: latestBackendDraft.id,
-        fileName: String(latestBackendDraft.fileName || `${latestBackendDraft.id}.${latestBackendDraft.format || hostDocumentFormat}`),
+        fileName: String(
+          latestBackendDraft.fileName ||
+            `${latestBackendDraft.id}.${latestBackendDraft.format || hostDocumentFormat}`
+        ),
         savedAt: String(latestBackendDraft.createdAt || latestBackendDraft.uploadedAt || ''),
       });
     } catch {
@@ -270,16 +290,23 @@ export function useIdentifyDraft({
       if (isExcelMode && excelDraftRuntime) {
         const workbookResult = await excelDraftRuntime.prepareWorkbookForDraft();
         if (workbookResult.renamedSheets.length > 0) {
-          const renameMap = new Map(workbookResult.renamedSheets.map((item) => [item.from, item.to]));
+          const renameMap = new Map(
+            workbookResult.renamedSheets.map((item) => [item.from, item.to])
+          );
           nextSuggestions = suggestions.map((suggestion) => {
             const anchorSheetName = suggestion.details?.excelAnchor?.sheetName;
             const chapter = suggestion.details?.chapter;
-            const renamedSheetName = (anchorSheetName && renameMap.get(anchorSheetName)) || (chapter && renameMap.get(chapter));
+            const renamedSheetName =
+              (anchorSheetName && renameMap.get(anchorSheetName)) ||
+              (chapter && renameMap.get(chapter));
             if (!renamedSheetName) {
               return suggestion;
             }
 
-            const nextElementPath = suggestion.elementPath.replace(/^[^!]+!/, `${renamedSheetName}!`);
+            const nextElementPath = suggestion.elementPath.replace(
+              /^[^!]+!/,
+              `${renamedSheetName}!`
+            );
             return {
               ...suggestion,
               elementPath: nextElementPath,
@@ -336,7 +363,10 @@ export function useIdentifyDraft({
 
       if (result.success) {
         setDraftId(result.templateId || null);
-        const parameterCount = resolveDraftParameterCount({ suggestions: nextSuggestions, aiSkillGuide });
+        const parameterCount = resolveDraftParameterCount({
+          suggestions: nextSuggestions,
+          aiSkillGuide,
+        });
 
         setDraftInfo({
           templateType: selectedTemplateType,
@@ -349,26 +379,32 @@ export function useIdentifyDraft({
           lines: ['当前暂存仅保存模板资产与可选指南，不会直接创建工作流。'],
         });
 
-        localStorage.setItem(draftStorageKey, JSON.stringify({
-          draftId: result.templateId,
-          officeType,
-          documentFormat: hostDocumentFormat,
-          templateType: selectedTemplateType,
-          suggestions: nextSuggestions,
-          aiSkillGuide,
-          aiDescription,
-          aiGeneratedData,
-          templateAssetDraftInfo: undefined,
-          workflowDraftInfo: undefined,
-          templateName,
-          savedAt: new Date().toISOString(),
-        }));
+        localStorage.setItem(
+          draftStorageKey,
+          JSON.stringify({
+            draftId: result.templateId,
+            officeType,
+            documentFormat: hostDocumentFormat,
+            templateType: selectedTemplateType,
+            suggestions: nextSuggestions,
+            aiSkillGuide,
+            aiDescription,
+            aiGeneratedData,
+            templateAssetDraftInfo: undefined,
+            workflowDraftInfo: undefined,
+            templateName,
+            savedAt: new Date().toISOString(),
+          })
+        );
         setTemplateAssetDraftInfo(null);
         setTemplateFieldSpecsDraft([]);
         setTemplateTermAssetsDraft(null);
         setTemplateTermAssetsText('');
       } else {
-        setTemplateAssetNotice({ type: 'error', message: `暂存失败: ${result.error || '未知错误'}` });
+        setTemplateAssetNotice({
+          type: 'error',
+          message: `暂存失败: ${result.error || '未知错误'}`,
+        });
       }
       await refreshLatestBackendDraftInfo();
     } catch (error: any) {
@@ -391,11 +427,16 @@ export function useIdentifyDraft({
             setTemplateAssetNotice({
               type: 'success',
               message: '✅ 已从本地暂存恢复草稿',
-              lines: [`${snapshot.templateType || selectedTemplateType} · ${parameterCount} 参数 · ID: ${String(snapshot.draftId).substring(0, 8)}...`],
+              lines: [
+                `${snapshot.templateType || selectedTemplateType} · ${parameterCount} 参数 · ID: ${String(snapshot.draftId).substring(0, 8)}...`,
+              ],
             });
             return;
           }
-          setTemplateAssetNotice({ type: 'info', message: '没有可恢复的本地最新草稿，后端也没有 draft-* 暂存副本' });
+          setTemplateAssetNotice({
+            type: 'info',
+            message: '没有可恢复的本地最新草稿，后端也没有 draft-* 暂存副本',
+          });
           return;
         }
         effectiveDraftId = latestBackendDraft.id;
@@ -404,17 +445,17 @@ export function useIdentifyDraft({
       carboneAPI.setBaseUrl(apiBaseUrl);
       const template = await carboneAPI.getTemplate(effectiveDraftId);
       const templateSuggestions = Array.isArray(template.suggestions) ? template.suggestions : [];
-      const skill =
-        template.skillId
-          ? await carboneAPI.getSkill(template.skillId).catch(() => aiSkillGuide)
-          : aiSkillGuide;
+      const skill = template.skillId
+        ? await carboneAPI.getSkill(template.skillId).catch(() => aiSkillGuide)
+        : aiSkillGuide;
 
       const restoredDraft: DraftSnapshotData = {
         draftId: template.id,
         templateType: template.config?.templateType || selectedTemplateType,
         suggestions: templateSuggestions,
         aiSkillGuide: skill || aiSkillGuide,
-        templateAssetDraftInfo: extractTemplateAssetDraftInfo(template.templateWorkflow) || undefined,
+        templateAssetDraftInfo:
+          extractTemplateAssetDraftInfo(template.templateWorkflow) || undefined,
         workflowDraftInfo: extractTemplateAssetDraftInfo(template.templateWorkflow) || undefined,
         parameterCount: resolveDraftParameterCount({
           suggestions: templateSuggestions,
@@ -427,11 +468,14 @@ export function useIdentifyDraft({
       };
 
       applyDraftSnapshot(restoredDraft);
-      localStorage.setItem(draftStorageKey, JSON.stringify({
-        ...restoredDraft,
-        officeType,
-        documentFormat: hostDocumentFormat,
-      }));
+      localStorage.setItem(
+        draftStorageKey,
+        JSON.stringify({
+          ...restoredDraft,
+          officeType,
+          documentFormat: hostDocumentFormat,
+        })
+      );
       addDebugLog(
         'info',
         '已从后端恢复草稿',
@@ -439,12 +483,20 @@ export function useIdentifyDraft({
       );
       setTemplateAssetNotice({
         type: 'success',
-        message: draftId || snapshot?.draftId ? '✅ 已从后端恢复当前模板资产暂存' : '✅ 已从后端恢复最新模板资产暂存',
-        lines: [`${restoredDraft.templateType} · ${restoredDraft.parameterCount} 参数 · ID: ${String(effectiveDraftId).substring(0, 8)}...`],
+        message:
+          draftId || snapshot?.draftId
+            ? '✅ 已从后端恢复当前模板资产暂存'
+            : '✅ 已从后端恢复最新模板资产暂存',
+        lines: [
+          `${restoredDraft.templateType} · ${restoredDraft.parameterCount} 参数 · ID: ${String(effectiveDraftId).substring(0, 8)}...`,
+        ],
       });
       await refreshLatestBackendDraftInfo();
     } catch (error: any) {
-      setTemplateAssetNotice({ type: 'error', message: `载入草稿失败: ${error.message || '未知错误'}` });
+      setTemplateAssetNotice({
+        type: 'error',
+        message: `载入草稿失败: ${error.message || '未知错误'}`,
+      });
     }
   };
 

@@ -15,7 +15,8 @@ export const RECOVERY_COPY = {
   panelTitle: '恢复参数和操作区域',
   activeHumanControl: '当前执行处于人工接管状态',
   waitingInputTitle: '该执行正在等待补充输入',
-  waitingInputDesc: '补齐下面参数后可以直接恢复当前执行；也可以先带着参数回到 AI 任务模式，确认后再继续处理。',
+  waitingInputDesc:
+    '补齐下面参数后可以直接恢复当前执行；也可以先带着参数回到 AI 任务模式，确认后再继续处理。',
   waitingInputContinue: '补参并继续执行',
   waitingInputToAi: '补参后转 AI 任务模式',
   currentPhase: '当前阶段',

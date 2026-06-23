@@ -26,7 +26,7 @@ export class PDFGenerator {
     template: ReportTemplateDTO,
     stepResults: StepResult[],
     aiAnalysis: AIAnalysisResult[],
-    config?: ReportTemplateConfig,
+    config?: ReportTemplateConfig
   ): Promise<string> {
     this.logger.log(`Generating PDF document for template: ${template.name}`);
 
@@ -62,7 +62,11 @@ export class PDFGenerator {
 
     // Process each section
     for (const section of template.sections) {
-      doc.addPage().fontSize(18).font('Helvetica-Bold').text(section.format?.title || section.name);
+      doc
+        .addPage()
+        .fontSize(18)
+        .font('Helvetica-Bold')
+        .text(section.format?.title || section.name);
       doc.moveDown(1);
 
       if (section.type === 'text') {
@@ -91,43 +95,38 @@ export class PDFGenerator {
   private processSection(
     section: ReportSection,
     stepResults: StepResult[],
-    aiAnalysis: AIAnalysisResult[],
+    aiAnalysis: AIAnalysisResult[]
   ): string {
     if (section.source === 'static' && section.content) {
       return section.content;
     }
 
     if (section.source === 'ai_analysis') {
-      const analysis = aiAnalysis.find(a => a.section_id === section.id);
+      const analysis = aiAnalysis.find((a) => a.section_id === section.id);
       return analysis?.analysis || 'No analysis available';
     }
 
     if (section.source === 'step_result') {
       const filteredResults = this.filterStepResults(section, stepResults);
-      return filteredResults
-        .map(r => r.text || r.error || 'No content')
-        .join('\n\n');
+      return filteredResults.map((r) => r.text || r.error || 'No content').join('\n\n');
     }
 
     return '';
   }
 
-  private filterStepResults(
-    section: ReportSection,
-    stepResults: StepResult[],
-  ): StepResult[] {
+  private filterStepResults(section: ReportSection, stepResults: StepResult[]): StepResult[] {
     let results = stepResults;
 
     if (section.step_filter) {
       const filter = section.step_filter;
       if (filter.actions) {
-        results = results.filter(r => filter.actions!.includes(r.action));
+        results = results.filter((r) => filter.actions!.includes(r.action));
       }
       if (filter.success_only) {
-        results = results.filter(r => r.success);
+        results = results.filter((r) => r.success);
       }
       if (filter.step_ids) {
-        results = results.filter(r => filter.step_ids!.includes(r.step_id));
+        results = results.filter((r) => filter.step_ids!.includes(r.step_id));
       }
     }
 
@@ -138,7 +137,7 @@ export class PDFGenerator {
     doc: PDFKit.PDFDocument,
     section: ReportSection,
     stepResults: StepResult[],
-    aiAnalysis: AIAnalysisResult[],
+    aiAnalysis: AIAnalysisResult[]
   ): void {
     const columns = section.format?.columns || ['Step', 'Action', 'Result', 'Status'];
     const filteredResults = this.filterStepResults(section, stepResults);
@@ -160,7 +159,10 @@ export class PDFGenerator {
     doc.moveDown(0.5);
 
     // Draw header underline
-    doc.moveTo(50, doc.y).lineTo(doc.page.width - 50, doc.y).stroke();
+    doc
+      .moveTo(50, doc.y)
+      .lineTo(doc.page.width - 50, doc.y)
+      .stroke();
     doc.moveDown(0.5);
 
     // Data rows
@@ -180,7 +182,7 @@ export class PDFGenerator {
   private async addImage(
     doc: PDFKit.PDFDocument,
     section: ReportSection,
-    stepResults: StepResult[],
+    stepResults: StepResult[]
   ): Promise<void> {
     const filteredResults = this.filterStepResults(section, stepResults);
 
@@ -211,9 +213,10 @@ export class PDFGenerator {
   }
 
   private getTableRowData(result: StepResult, columns: string[]): string[] {
-    const timestamp = typeof result.timestamp === 'number'
-      ? new Date(result.timestamp).toISOString()
-      : result.timestamp.toISOString();
+    const timestamp =
+      typeof result.timestamp === 'number'
+        ? new Date(result.timestamp).toISOString()
+        : result.timestamp.toISOString();
 
     const dataMap: Record<string, string> = {
       Step: result.step_id,
@@ -224,6 +227,6 @@ export class PDFGenerator {
       Error: result.error || '',
     };
 
-    return columns.map(col => dataMap[col] || '');
+    return columns.map((col) => dataMap[col] || '');
   }
 }

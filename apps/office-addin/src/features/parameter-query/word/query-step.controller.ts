@@ -17,7 +17,9 @@ type SetState<T> = (value: T | ((current: T) => T)) => void;
 
 interface CreateWordQueryStepControllerOptions {
   compareCandidateSections: CompareCandidateSectionLike[];
-  normalizeCompareHeadingLanguages: (languages: CompareHeadingLanguageSelection[]) => CompareHeadingLanguageSelection[];
+  normalizeCompareHeadingLanguages: (
+    languages: CompareHeadingLanguageSelection[]
+  ) => CompareHeadingLanguageSelection[];
   setSelectedTemplateType: (templateType: 'contract' | 'report') => void;
   setCompareHeadingLanguages: SetState<CompareHeadingLanguageSelection[]>;
   setCollapsedCompareSections: SetState<Record<string, boolean>>;
@@ -42,20 +44,22 @@ interface CreateWordQueryStepControllerOptions {
   setSampleUploadState: (state: SampleUploadStateLike) => void;
 }
 
-function resetWordQueryProgress(options: Pick<
-  CreateWordQueryStepControllerOptions,
-  | 'setCompareResult'
-  | 'setCompareCacheStatus'
-  | 'setCompareCacheUpdatedAt'
-  | 'setUnderstandingResult'
-  | 'setRecognitionResult'
-  | 'setSectionGenerationResults'
-  | 'setSuggestions'
-  | 'setUnderstandingCacheStatus'
-  | 'setUnderstandingCacheUpdatedAt'
-  | 'setRecognitionCacheStatus'
-  | 'setRecognitionCacheUpdatedAt'
->) {
+function resetWordQueryProgress(
+  options: Pick<
+    CreateWordQueryStepControllerOptions,
+    | 'setCompareResult'
+    | 'setCompareCacheStatus'
+    | 'setCompareCacheUpdatedAt'
+    | 'setUnderstandingResult'
+    | 'setRecognitionResult'
+    | 'setSectionGenerationResults'
+    | 'setSuggestions'
+    | 'setUnderstandingCacheStatus'
+    | 'setUnderstandingCacheUpdatedAt'
+    | 'setRecognitionCacheStatus'
+    | 'setRecognitionCacheUpdatedAt'
+  >
+) {
   options.setCompareResult(null);
   options.setCompareCacheStatus(null);
   options.setCompareCacheUpdatedAt(null);
@@ -69,13 +73,15 @@ function resetWordQueryProgress(options: Pick<
   options.setRecognitionCacheUpdatedAt(null);
 }
 
-function clearWordRecognitionCacheMarkers(options: Pick<
-  CreateWordQueryStepControllerOptions,
-  | 'setUnderstandingCacheStatus'
-  | 'setUnderstandingCacheUpdatedAt'
-  | 'setRecognitionCacheStatus'
-  | 'setRecognitionCacheUpdatedAt'
->) {
+function clearWordRecognitionCacheMarkers(
+  options: Pick<
+    CreateWordQueryStepControllerOptions,
+    | 'setUnderstandingCacheStatus'
+    | 'setUnderstandingCacheUpdatedAt'
+    | 'setRecognitionCacheStatus'
+    | 'setRecognitionCacheUpdatedAt'
+  >
+) {
   options.setUnderstandingCacheStatus(null);
   options.setUnderstandingCacheUpdatedAt(null);
   options.setRecognitionCacheStatus(null);

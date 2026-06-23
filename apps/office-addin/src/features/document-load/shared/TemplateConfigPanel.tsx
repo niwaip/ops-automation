@@ -8,11 +8,21 @@ import { useAppStore } from '../../../app/store';
 import { carboneAPI } from '../../../api/carbone-api';
 import { createHostAdapter } from '../../../host/adapters';
 import { exportTemplateSource } from '../../../shared/services/template-source.service';
-import { FORMATTER_OPTIONS, TEMPLATE_TYPE_OPTIONS, getTemplateTypeIcon, type FormatterOption, type TemplateTypeOption } from './TemplateConfigPanel.constants';
+import {
+  FORMATTER_OPTIONS,
+  TEMPLATE_TYPE_OPTIONS,
+  getTemplateTypeIcon,
+  type FormatterOption,
+  type TemplateTypeOption,
+} from './TemplateConfigPanel.constants';
 import { TemplateManager } from './TemplateManager';
 import { useTemplateAssetManager } from './useTemplateWorkflow';
 import { getHostScopedStorageKey } from '../../../shared/utils/host-storage';
-import { getOfficeUploadConfig, isValidOfficeUpload, readFileAsBase64 } from '../../../shared/utils/office-file-upload';
+import {
+  getOfficeUploadConfig,
+  isValidOfficeUpload,
+  readFileAsBase64,
+} from '../../../shared/utils/office-file-upload';
 
 // #region debug-point shared:upload-render-loop-reporter
 const UPLOAD_RENDER_LOOP_DEBUG_URL = 'http://127.0.0.1:7777/event';
@@ -20,7 +30,7 @@ const reportUploadRenderLoop = (
   hypothesisId: 'D' | 'E',
   location: string,
   msg: string,
-  data: Record<string, unknown>,
+  data: Record<string, unknown>
 ) => {
   void fetch(UPLOAD_RENDER_LOOP_DEBUG_URL, {
     method: 'POST',
@@ -39,21 +49,16 @@ const reportUploadRenderLoop = (
 // #endregion
 
 export const TemplateConfigPanel: React.FC = () => {
-  const {
-    officeType,
-    templateConfig,
-    setTemplateConfig,
-    suggestions,
-    apiBaseUrl,
-    addDebugLog,
-  } = useAppStore();
+  const { officeType, templateConfig, setTemplateConfig, suggestions, apiBaseUrl, addDebugLog } =
+    useAppStore();
 
   const hostAdapter = useMemo(() => createHostAdapter(officeType), [officeType]);
   const lastTemplateDownloadUrl = localStorage.getItem(
     getHostScopedStorageKey(officeType, 'lastTemplateDownloadUrl')
   );
 
-  const [templateTypeOptions, setTemplateTypeOptions] = useState<TemplateTypeOption[]>(TEMPLATE_TYPE_OPTIONS);
+  const [templateTypeOptions, setTemplateTypeOptions] =
+    useState<TemplateTypeOption[]>(TEMPLATE_TYPE_OPTIONS);
   const [formatterOptions, setFormatterOptions] = useState<FormatterOption[]>(FORMATTER_OPTIONS);
 
   const [templateName, setTemplateName] = useState<string>('');
@@ -62,7 +67,10 @@ export const TemplateConfigPanel: React.FC = () => {
   const uploadInputId = `${officeType}-template-upload-input`;
 
   const uploadConfig = useMemo(
-    () => getOfficeUploadConfig(officeType === 'excel' ? 'excel' : officeType === 'ppt' ? 'ppt' : 'word'),
+    () =>
+      getOfficeUploadConfig(
+        officeType === 'excel' ? 'excel' : officeType === 'ppt' ? 'ppt' : 'word'
+      ),
     [officeType]
   );
 
@@ -116,19 +124,24 @@ export const TemplateConfigPanel: React.FC = () => {
     const file = event.target.files?.[0];
     if (!file) return;
     // #region debug-point D:upload-handler-start
-    reportUploadRenderLoop('D', 'TemplateConfigPanel:handleFileUpload:start', 'upload handler started', {
-      fileName: file.name,
-      fileSize: file.size,
-    });
+    reportUploadRenderLoop(
+      'D',
+      'TemplateConfigPanel:handleFileUpload:start',
+      'upload handler started',
+      {
+        fileName: file.name,
+        fileSize: file.size,
+      }
+    );
     // #endregion
 
-    setLoadingStates(prev => ({ ...prev, upload: true }));
+    setLoadingStates((prev) => ({ ...prev, upload: true }));
     setStatusMessage('正在读取上传的文档...');
 
     try {
       if (!isValidOfficeUpload(file, uploadConfig)) {
         setStatusMessage(uploadConfig.invalidMessage);
-        setLoadingStates(prev => ({ ...prev, upload: false }));
+        setLoadingStates((prev) => ({ ...prev, upload: false }));
         return;
       }
 
@@ -138,23 +151,33 @@ export const TemplateConfigPanel: React.FC = () => {
       setUploadedFileBase64(base64);
       setStatusMessage(`文档已上传: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`);
       // #region debug-point D:upload-handler-success
-      reportUploadRenderLoop('D', 'TemplateConfigPanel:handleFileUpload:success', 'upload handler completed', {
-        fileName: file.name,
-        fileSize: file.size,
-        base64Length: base64.length,
-      });
+      reportUploadRenderLoop(
+        'D',
+        'TemplateConfigPanel:handleFileUpload:success',
+        'upload handler completed',
+        {
+          fileName: file.name,
+          fileSize: file.size,
+          base64Length: base64.length,
+        }
+      );
       // #endregion
-      setLoadingStates(prev => ({ ...prev, upload: false }));
+      setLoadingStates((prev) => ({ ...prev, upload: false }));
       console.log('文件上传成功，base64长度:', base64.length);
     } catch (error: any) {
       // #region debug-point E:upload-handler-error
-      reportUploadRenderLoop('E', 'TemplateConfigPanel:handleFileUpload:error', 'upload handler failed', {
-        message: error?.message || 'unknown-error',
-      });
+      reportUploadRenderLoop(
+        'E',
+        'TemplateConfigPanel:handleFileUpload:error',
+        'upload handler failed',
+        {
+          message: error?.message || 'unknown-error',
+        }
+      );
       // #endregion
       console.error('文件上传失败:', error);
       setStatusMessage(`文件上传失败: ${error.message}`);
-      setLoadingStates(prev => ({ ...prev, upload: false }));
+      setLoadingStates((prev) => ({ ...prev, upload: false }));
     }
   };
 
@@ -248,15 +271,9 @@ export const TemplateConfigPanel: React.FC = () => {
               color: '#475569',
             }}
           >
-            <div style={{ fontWeight: 600, color: '#0f172a' }}>
-              已上传参考示例文件
-            </div>
-            <div style={{ marginTop: '4px', wordBreak: 'break-all' }}>
-              {uploadedFile.name}
-            </div>
-            <div style={{ marginTop: '4px' }}>
-              {(uploadedFile.size / 1024).toFixed(1)} KB
-            </div>
+            <div style={{ fontWeight: 600, color: '#0f172a' }}>已上传参考示例文件</div>
+            <div style={{ marginTop: '4px', wordBreak: 'break-all' }}>{uploadedFile.name}</div>
+            <div style={{ marginTop: '4px' }}>{(uploadedFile.size / 1024).toFixed(1)} KB</div>
           </div>
         )}
         <div className="quick-actions" style={{ marginTop: '10px' }}>
@@ -323,13 +340,15 @@ export const TemplateConfigPanel: React.FC = () => {
       <div className="config-section">
         <h3>变量映射 ({suggestions.filter((s) => s.applied).length} 个已应用)</h3>
         <div className="variable-list">
-          {suggestions.filter((s) => s.applied).map((s) => (
-            <div key={s.id} className="variable-item">
-              <span className="original">{s.originalText}</span>
-              <span className="arrow">→</span>
-              <span className="mapped">{s.suggestedName}</span>
-            </div>
-          ))}
+          {suggestions
+            .filter((s) => s.applied)
+            .map((s) => (
+              <div key={s.id} className="variable-item">
+                <span className="original">{s.originalText}</span>
+                <span className="arrow">→</span>
+                <span className="mapped">{s.suggestedName}</span>
+              </div>
+            ))}
         </div>
       </div>
 
@@ -368,11 +387,7 @@ export const TemplateConfigPanel: React.FC = () => {
       </div>
 
       <div className="config-section quick-actions">
-        <button
-          className="preview-btn"
-          onClick={handlePreview}
-          disabled={loadingStates.preview}
-        >
+        <button className="preview-btn" onClick={handlePreview} disabled={loadingStates.preview}>
           {loadingStates.preview ? '预览中...' : '快速预览'}
         </button>
         <button

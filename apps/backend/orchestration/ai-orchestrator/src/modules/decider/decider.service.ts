@@ -51,10 +51,7 @@ export class DeciderService {
       'unexpected_ui_state',
       'unknown_page',
     ],
-    skip_errors: [
-      'optional_step_failed',
-      'assertion_failed_non_critical',
-    ],
+    skip_errors: ['optional_step_failed', 'assertion_failed_non_critical'],
     max_retries: 3,
   };
 
@@ -135,7 +132,7 @@ export class DeciderService {
    */
   private async aiBasedDecision(
     dto: DecideFailureDTO,
-    currentRetries: number,
+    currentRetries: number
   ): Promise<DecideFailureResponseDTO | null> {
     const systemPrompt = this.buildDecisionSystemPrompt();
     const userPrompt = this.buildDecisionUserPrompt(dto, currentRetries);
@@ -190,7 +187,10 @@ Response format:
 - Retry Count: ${retries}
 
 Similar Past Failures: ${similarFailures.length} occurrences
-${similarFailures.slice(0, 3).map(f => `- ${f.decision} (${f.outcome})`).join('\n')}
+${similarFailures
+  .slice(0, 3)
+  .map((f) => `- ${f.decision} (${f.outcome})`)
+  .join('\n')}
 
 Make a decision for recovery.`;
   }
@@ -219,15 +219,15 @@ Make a decision for recovery.`;
   /**
    * Rule-based decision making
    */
-  private ruleBasedDecision(
-    dto: DecideFailureDTO,
-    retries: number,
-  ): DecideFailureResponseDTO {
+  private ruleBasedDecision(dto: DecideFailureDTO, retries: number): DecideFailureResponseDTO {
     // Check takeover errors
-    if (this.defaultRules.takeover_errors.some(e =>
-      dto.error_type.toLowerCase().includes(e.toLowerCase()) ||
-      dto.error_message.toLowerCase().includes(e.toLowerCase())
-    )) {
+    if (
+      this.defaultRules.takeover_errors.some(
+        (e) =>
+          dto.error_type.toLowerCase().includes(e.toLowerCase()) ||
+          dto.error_message.toLowerCase().includes(e.toLowerCase())
+      )
+    ) {
       return {
         decision: 'takeover',
         reason: `Error type "${dto.error_type}" requires human intervention`,
@@ -235,10 +235,13 @@ Make a decision for recovery.`;
     }
 
     // Check skip errors
-    if (this.defaultRules.skip_errors.some(e =>
-      dto.error_type.toLowerCase().includes(e.toLowerCase()) ||
-      dto.error_message.toLowerCase().includes(e.toLowerCase())
-    )) {
+    if (
+      this.defaultRules.skip_errors.some(
+        (e) =>
+          dto.error_type.toLowerCase().includes(e.toLowerCase()) ||
+          dto.error_message.toLowerCase().includes(e.toLowerCase())
+      )
+    ) {
       return {
         decision: 'skip',
         reason: `Error type "${dto.error_type}" is non-critical, skipping step`,
@@ -246,10 +249,13 @@ Make a decision for recovery.`;
     }
 
     // Check retryable errors
-    if (this.defaultRules.retryable_errors.some(e =>
-      dto.error_type.toLowerCase().includes(e.toLowerCase()) ||
-      dto.error_message.toLowerCase().includes(e.toLowerCase())
-    )) {
+    if (
+      this.defaultRules.retryable_errors.some(
+        (e) =>
+          dto.error_type.toLowerCase().includes(e.toLowerCase()) ||
+          dto.error_message.toLowerCase().includes(e.toLowerCase())
+      )
+    ) {
       if (retries < this.defaultRules.max_retries) {
         return {
           decision: 'retry',
@@ -286,13 +292,15 @@ Make a decision for recovery.`;
    */
   private classifyAndDecide(
     dto: DecideFailureDTO,
-    classification: string,
+    classification: string
   ): DecideFailureResponseDTO {
     if (classification === 'max_retries_exceeded') {
       // Check if it might be takeover-worthy
-      if (this.defaultRules.takeover_errors.some(e =>
-        dto.error_type.toLowerCase().includes(e.toLowerCase())
-      )) {
+      if (
+        this.defaultRules.takeover_errors.some((e) =>
+          dto.error_type.toLowerCase().includes(e.toLowerCase())
+        )
+      ) {
         return {
           decision: 'takeover',
           reason: 'Max retries exceeded, error requires human intervention',
@@ -311,8 +319,8 @@ Make a decision for recovery.`;
    * Find similar failures from history
    */
   private findSimilarFailures(errorType: string): FailureHistoryRecord[] {
-    return this.failureHistory.filter(
-      (record) => record.error_type.toLowerCase().includes(errorType.toLowerCase()),
+    return this.failureHistory.filter((record) =>
+      record.error_type.toLowerCase().includes(errorType.toLowerCase())
     );
   }
 
@@ -322,7 +330,7 @@ Make a decision for recovery.`;
   recordOutcome(
     dto: DecideFailureDTO,
     decision: 'takeover' | 'retry' | 'skip',
-    outcome: 'success' | 'failed',
+    outcome: 'success' | 'failed'
   ): void {
     this.failureHistory.push({
       session_id: dto.session_id,
@@ -363,10 +371,10 @@ Make a decision for recovery.`;
     successRate: number;
   } {
     const total = this.failureHistory.length;
-    const takeover = this.failureHistory.filter(f => f.decision === 'takeover').length;
-    const retry = this.failureHistory.filter(f => f.decision === 'retry').length;
-    const skip = this.failureHistory.filter(f => f.decision === 'skip').length;
-    const success = this.failureHistory.filter(f => f.outcome === 'success').length;
+    const takeover = this.failureHistory.filter((f) => f.decision === 'takeover').length;
+    const retry = this.failureHistory.filter((f) => f.decision === 'retry').length;
+    const skip = this.failureHistory.filter((f) => f.decision === 'skip').length;
+    const success = this.failureHistory.filter((f) => f.outcome === 'success').length;
 
     return {
       totalFailures: total,

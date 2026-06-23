@@ -153,7 +153,7 @@ describe('ReActEngineService approval resume', () => {
       toolExecutor,
       sessionService,
       capabilityResolver,
-      modelRouterService,
+      modelRouterService
     );
 
     const context: ExecutionContext = {
@@ -170,7 +170,7 @@ describe('ReActEngineService approval resume', () => {
         sessionId: 'session-1',
         approvedToolNames: ['api_call'],
       },
-      context,
+      context
     )) {
       events.push(event);
     }
@@ -181,7 +181,7 @@ describe('ReActEngineService approval resume', () => {
       expect.objectContaining({
         approvedToolNames: ['api_call'],
       }),
-      2,
+      2
     );
     expect(sessionService.deleteSession).toHaveBeenCalledWith('session-1');
     expect(events.some((event) => event.type === StreamEventType.RESULT)).toBe(true);

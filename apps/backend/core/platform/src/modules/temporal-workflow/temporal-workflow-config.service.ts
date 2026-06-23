@@ -9,7 +9,7 @@ export class TemporalWorkflowConfigService {
   async optimizeHttpRequestConfig(
     stepConfig: Record<string, any>,
     inputParams: Record<string, any> = {},
-    userRequest?: string,
+    userRequest?: string
   ): Promise<{
     success: boolean;
     optimizedConfig?: Record<string, any>;
@@ -24,7 +24,12 @@ export class TemporalWorkflowConfigService {
 
     try {
       const previewResult = await this.previewHttpRequestConfig(stepConfig, inputParams);
-      if (!previewResult.success || !previewResult.previewResponse || !previewResult.resolvedRequest || !previewResult.baseConfig) {
+      if (
+        !previewResult.success ||
+        !previewResult.previewResponse ||
+        !previewResult.resolvedRequest ||
+        !previewResult.baseConfig
+      ) {
         return {
           success: false,
           error: previewResult.error || '预览当前 HTTP 配置失败',
@@ -33,7 +38,12 @@ export class TemporalWorkflowConfigService {
       const baseConfig = previewResult.baseConfig;
       const resolvedRequest = previewResult.resolvedRequest;
       const previewResponse = previewResult.previewResponse;
-      const aiResult = await this.requestAiOptimizedHttpConfig(baseConfig, resolvedRequest, previewResponse, userGoal);
+      const aiResult = await this.requestAiOptimizedHttpConfig(
+        baseConfig,
+        resolvedRequest,
+        previewResponse,
+        userGoal
+      );
       const optimizedConfig = this.mergeHttpConfigWithAiResult(baseConfig, aiResult);
 
       return {
@@ -53,7 +63,7 @@ export class TemporalWorkflowConfigService {
 
   async previewHttpRequestConfig(
     stepConfig: Record<string, any>,
-    inputParams: Record<string, any> = {},
+    inputParams: Record<string, any> = {}
   ): Promise<{
     success: boolean;
     baseConfig?: Record<string, any>;
@@ -84,7 +94,7 @@ export class TemporalWorkflowConfigService {
   async generateStructuredTransformConfig(
     sourceSample: Record<string, any> | string,
     userRequest: string,
-    existingConfig?: Record<string, any>,
+    existingConfig?: Record<string, any>
   ): Promise<{
     success: boolean;
     config?: Record<string, any>;
@@ -97,9 +107,11 @@ export class TemporalWorkflowConfigService {
     }
     try {
       const aiResult = await this.requestAiStructuredTransformConfig(
-        typeof existingConfig === 'object' && existingConfig ? this.normalizeStructuredTransformConfig(existingConfig) : {},
+        typeof existingConfig === 'object' && existingConfig
+          ? this.normalizeStructuredTransformConfig(existingConfig)
+          : {},
         sourceSample,
-        userGoal,
+        userGoal
       );
       const normalized = this.normalizeStructuredTransformConfig(aiResult || {});
       return {
@@ -116,7 +128,7 @@ export class TemporalWorkflowConfigService {
   async generateAiStructuredTransformDraftConfig(
     sourceSample: Record<string, any> | string,
     userRequest: string,
-    existingConfig?: Record<string, any>,
+    existingConfig?: Record<string, any>
   ): Promise<{
     success: boolean;
     config?: Record<string, any>;
@@ -130,9 +142,11 @@ export class TemporalWorkflowConfigService {
     }
     try {
       const aiResult = await this.requestAiStructuredTransformDraftConfig(
-        typeof existingConfig === 'object' && existingConfig ? this.normalizeStructuredTransformConfig(existingConfig) : {},
+        typeof existingConfig === 'object' && existingConfig
+          ? this.normalizeStructuredTransformConfig(existingConfig)
+          : {},
         sourceSample,
-        userGoal,
+        userGoal
       );
       const normalized = this.normalizeStructuredTransformConfig(aiResult || {});
       return {
@@ -149,16 +163,17 @@ export class TemporalWorkflowConfigService {
 
   normalizeHttpRequestConfig(
     stepConfig: Record<string, any>,
-    declaredInputKeys: Set<string> = new Set<string>(),
+    declaredInputKeys: Set<string> = new Set<string>()
   ): Record<string, any> {
     void declaredInputKeys;
     const normalizedConfig = this.sanitizeJsonValue(stepConfig || {}) as Record<string, any>;
-    const sanitizeTemplateString = (value: unknown): string => String(value || '')
-      .trim()
-      .replace(/^`+/, '')
-      .replace(/`+$/, '')
-      .replace(/`/g, '')
-      .trim();
+    const sanitizeTemplateString = (value: unknown): string =>
+      String(value || '')
+        .trim()
+        .replace(/^`+/, '')
+        .replace(/`+$/, '')
+        .replace(/`/g, '')
+        .trim();
     const sanitizeTemplateRecord = (value: unknown): Record<string, any> => {
       if (!value || typeof value !== 'object' || Array.isArray(value)) {
         return {};
@@ -167,7 +182,7 @@ export class TemporalWorkflowConfigService {
         Object.entries(value as Record<string, unknown>).map(([key, item]) => [
           sanitizeTemplateString(key),
           typeof item === 'string' ? sanitizeTemplateString(item) : item,
-        ]),
+        ])
       );
     };
 
@@ -192,20 +207,14 @@ export class TemporalWorkflowConfigService {
 
   normalizeStructuredTransformConfig(
     stepConfig: Record<string, any>,
-    declaredInputKeys: Set<string> = new Set<string>(),
+    declaredInputKeys: Set<string> = new Set<string>()
   ): Record<string, any> {
     void declaredInputKeys;
     const normalizedConfig = this.sanitizeJsonValue(stepConfig || {}) as Record<string, any>;
     const sanitizeTemplateString = (value: unknown): string => {
-      const rawValue = typeof value === 'object' && value !== null
-        ? JSON.stringify(value)
-        : String(value || '');
-      return rawValue
-        .trim()
-        .replace(/^`+/, '')
-        .replace(/`+$/, '')
-        .replace(/`/g, '')
-        .trim();
+      const rawValue =
+        typeof value === 'object' && value !== null ? JSON.stringify(value) : String(value || '');
+      return rawValue.trim().replace(/^`+/, '').replace(/`+$/, '').replace(/`/g, '').trim();
     };
     const sanitizeTemplateRecord = (value: unknown): Record<string, any> => {
       if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -215,7 +224,7 @@ export class TemporalWorkflowConfigService {
         Object.entries(value as Record<string, unknown>).map(([key, item]) => [
           sanitizeTemplateString(key),
           typeof item === 'string' ? sanitizeTemplateString(item) : item,
-        ]),
+        ])
       );
     };
 
@@ -225,12 +234,19 @@ export class TemporalWorkflowConfigService {
     return {
       contentType: String(normalizedConfig.contentType || 'text').toLowerCase(),
       contentTemplate: hasTemplatePlaceholder ? normalizedContentTemplate : '{content}',
-      instructionTemplate: sanitizeTemplateString(normalizedConfig.instructionTemplate || normalizedConfig.instruction),
+      instructionTemplate: sanitizeTemplateString(
+        normalizedConfig.instructionTemplate || normalizedConfig.instruction
+      ),
       outputMode: String(normalizedConfig.outputMode || 'json').toLowerCase(),
-      outputSchema: normalizedConfig.outputSchema && typeof normalizedConfig.outputSchema === 'object' && !Array.isArray(normalizedConfig.outputSchema)
-        ? normalizedConfig.outputSchema
-        : {},
-      contextTemplate: sanitizeTemplateString(normalizedConfig.contextTemplate || normalizedConfig.context),
+      outputSchema:
+        normalizedConfig.outputSchema &&
+        typeof normalizedConfig.outputSchema === 'object' &&
+        !Array.isArray(normalizedConfig.outputSchema)
+          ? normalizedConfig.outputSchema
+          : {},
+      contextTemplate: sanitizeTemplateString(
+        normalizedConfig.contextTemplate || normalizedConfig.context
+      ),
       fieldMappings: sanitizeTemplateRecord(normalizedConfig.fieldMappings),
       textTemplate: sanitizeTemplateString(normalizedConfig.textTemplate),
     };
@@ -251,7 +267,9 @@ export class TemporalWorkflowConfigService {
       return target;
     }
     if (value && typeof value === 'object') {
-      Object.values(value as Record<string, unknown>).forEach((item) => this.collectTemplateVariables(item, target));
+      Object.values(value as Record<string, unknown>).forEach((item) =>
+        this.collectTemplateVariables(item, target)
+      );
     }
     return target;
   }
@@ -271,7 +289,7 @@ export class TemporalWorkflowConfigService {
         Object.entries(value as Record<string, unknown>).map(([key, item]) => [
           key,
           this.renderHttpTemplateValue(item, params),
-        ]),
+        ])
       );
     }
     return value;
@@ -281,28 +299,34 @@ export class TemporalWorkflowConfigService {
     if (Array.isArray(value)) {
       return value
         .map((item) => this.pruneHttpTemplateValue(item))
-        .filter((item) => ![undefined, null, '', '{}', '[]'].includes(
-          typeof item === 'string' ? item : JSON.stringify(item),
-        ));
+        .filter(
+          (item) =>
+            ![undefined, null, '', '{}', '[]'].includes(
+              typeof item === 'string' ? item : JSON.stringify(item)
+            )
+        );
     }
     if (value && typeof value === 'object') {
-      return Object.entries(value as Record<string, unknown>).reduce<Record<string, unknown>>((acc, [key, item]) => {
-        const nextValue = this.pruneHttpTemplateValue(item);
-        if (nextValue === undefined || nextValue === null) {
+      return Object.entries(value as Record<string, unknown>).reduce<Record<string, unknown>>(
+        (acc, [key, item]) => {
+          const nextValue = this.pruneHttpTemplateValue(item);
+          if (nextValue === undefined || nextValue === null) {
+            return acc;
+          }
+          if (typeof nextValue === 'string' && !nextValue.trim()) {
+            return acc;
+          }
+          if (typeof nextValue === 'object' && JSON.stringify(nextValue) === '{}') {
+            return acc;
+          }
+          if (Array.isArray(nextValue) && nextValue.length === 0) {
+            return acc;
+          }
+          acc[key] = nextValue;
           return acc;
-        }
-        if (typeof nextValue === 'string' && !nextValue.trim()) {
-          return acc;
-        }
-        if (typeof nextValue === 'object' && JSON.stringify(nextValue) === '{}') {
-          return acc;
-        }
-        if (Array.isArray(nextValue) && nextValue.length === 0) {
-          return acc;
-        }
-        acc[key] = nextValue;
-        return acc;
-      }, {});
+        },
+        {}
+      );
     }
     return value;
   }
@@ -311,7 +335,7 @@ export class TemporalWorkflowConfigService {
     value: unknown,
     prefix = '',
     depth = 0,
-    acc: Array<{ path: string; value: unknown }> = [],
+    acc: Array<{ path: string; value: unknown }> = []
   ): Array<{ path: string; value: unknown }> {
     if (depth > 6) {
       return acc;
@@ -324,10 +348,12 @@ export class TemporalWorkflowConfigService {
       return acc;
     }
     if (value && typeof value === 'object') {
-      Object.entries(value as Record<string, unknown>).slice(0, 24).forEach(([key, item]) => {
-        const nextPath = prefix ? `${prefix}.${key}` : key;
-        this.collectResponseLeafPaths(item, nextPath, depth + 1, acc);
-      });
+      Object.entries(value as Record<string, unknown>)
+        .slice(0, 24)
+        .forEach(([key, item]) => {
+          const nextPath = prefix ? `${prefix}.${key}` : key;
+          this.collectResponseLeafPaths(item, nextPath, depth + 1, acc);
+        });
       return acc;
     }
     if (prefix) {
@@ -338,14 +364,15 @@ export class TemporalWorkflowConfigService {
 
   private buildHttpRequestPreviewInput(
     config: Record<string, any>,
-    inputParams: Record<string, any>,
+    inputParams: Record<string, any>
   ): Record<string, any> {
     const renderedHeaders = this.pruneHttpTemplateValue(
-      this.renderHttpTemplateValue(config.headersTemplate || {}, inputParams),
+      this.renderHttpTemplateValue(config.headersTemplate || {}, inputParams)
     );
-    const normalizedHeaders = renderedHeaders && typeof renderedHeaders === 'object'
-      ? { ...(renderedHeaders as Record<string, any>) }
-      : {};
+    const normalizedHeaders =
+      renderedHeaders && typeof renderedHeaders === 'object'
+        ? { ...(renderedHeaders as Record<string, any>) }
+        : {};
     if (!Object.keys(normalizedHeaders).some((key) => key.toLowerCase() === 'user-agent')) {
       normalizedHeaders['User-Agent'] = 'ops-automation-httpRequest-preview/1.0';
     }
@@ -353,13 +380,13 @@ export class TemporalWorkflowConfigService {
       normalizedHeaders.Accept = 'application/json, text/plain, */*';
     }
     const renderedQuery = this.pruneHttpTemplateValue(
-      this.renderHttpTemplateValue(config.queryTemplate || {}, inputParams),
+      this.renderHttpTemplateValue(config.queryTemplate || {}, inputParams)
     );
     const renderedJson = this.pruneHttpTemplateValue(
-      this.renderHttpTemplateValue(config.jsonTemplate || {}, inputParams),
+      this.renderHttpTemplateValue(config.jsonTemplate || {}, inputParams)
     );
     const renderedData = this.pruneHttpTemplateValue(
-      this.renderHttpTemplateValue(config.dataTemplate || {}, inputParams),
+      this.renderHttpTemplateValue(config.dataTemplate || {}, inputParams)
     );
 
     const requestInput: Record<string, any> = {
@@ -369,23 +396,27 @@ export class TemporalWorkflowConfigService {
       params: renderedQuery && typeof renderedQuery === 'object' ? renderedQuery : {},
       timeout: Number(config.timeout || 30),
     };
-    if (renderedJson && typeof renderedJson === 'object' && Object.keys(renderedJson as Record<string, unknown>).length > 0) {
+    if (
+      renderedJson &&
+      typeof renderedJson === 'object' &&
+      Object.keys(renderedJson as Record<string, unknown>).length > 0
+    ) {
       requestInput.json = renderedJson;
     }
     if (
-      renderedData !== undefined
-      && renderedData !== null
-      && (
-        typeof renderedData !== 'object'
-        || Object.keys(renderedData as Record<string, unknown>).length > 0
-      )
+      renderedData !== undefined &&
+      renderedData !== null &&
+      (typeof renderedData !== 'object' ||
+        Object.keys(renderedData as Record<string, unknown>).length > 0)
     ) {
       requestInput.data = renderedData;
     }
     return requestInput;
   }
 
-  private async executeHttpPreviewRequest(requestInput: Record<string, any>): Promise<Record<string, any>> {
+  private async executeHttpPreviewRequest(
+    requestInput: Record<string, any>
+  ): Promise<Record<string, any>> {
     const method = String(requestInput.method || 'GET').toUpperCase();
     const url = String(requestInput.url || '').trim();
     if (!url) {
@@ -419,8 +450,9 @@ export class TemporalWorkflowConfigService {
         text: typeof response.data === 'string' ? response.data : JSON.stringify(response.data),
       };
     } catch (error: any) {
-      const shouldFallbackToHttp = url.startsWith('https://')
-        && /SSL|EPROTO|certificate|EOF/i.test(String(error?.message || ''));
+      const shouldFallbackToHttp =
+        url.startsWith('https://') &&
+        /SSL|EPROTO|certificate|EOF/i.test(String(error?.message || ''));
       if (!shouldFallbackToHttp) {
         throw error;
       }
@@ -441,7 +473,7 @@ export class TemporalWorkflowConfigService {
     config: Record<string, any>,
     resolvedRequest: Record<string, any>,
     previewResponse: Record<string, any>,
-    userGoal: string,
+    userGoal: string
   ): Promise<Record<string, any>> {
     const aiOrchestratorUrl = getAiOrchestratorUrl();
     const responseBody = previewResponse.body ?? previewResponse;
@@ -471,48 +503,62 @@ export class TemporalWorkflowConfigService {
       `可选叶子路径参考:\n${responseLeafPaths || '(无可用叶子路径)'}`,
     ].join('\n');
 
-    const aiResponse = await axios.post<{ result: string }>(`${aiOrchestratorUrl}/ai/model/call`, {
-      modelId: 'default',
-      prompt,
-    }, { timeout: 180000 });
+    const aiResponse = await axios.post<{ result: string }>(
+      `${aiOrchestratorUrl}/ai/model/call`,
+      {
+        modelId: 'default',
+        prompt,
+      },
+      { timeout: 180000 }
+    );
 
     return this.parseJsonFromAiContent(aiResponse.data?.result || '');
   }
 
   private mergeHttpConfigWithAiResult(
     baseConfig: Record<string, any>,
-    aiResult: Record<string, any>,
+    aiResult: Record<string, any>
   ): Record<string, any> {
     const nextConfig = {
       ...baseConfig,
       ...this.sanitizeJsonValue(aiResult || {}),
     };
-    if (!['body', 'full', 'bodyPath', 'bodyMap'].includes(String(nextConfig.responseMode || 'body'))) {
+    if (
+      !['body', 'full', 'bodyPath', 'bodyMap'].includes(String(nextConfig.responseMode || 'body'))
+    ) {
       nextConfig.responseMode = baseConfig.responseMode || 'body';
     }
     if (typeof nextConfig.responseBodyPath === 'string') {
       nextConfig.responseBodyPath = nextConfig.responseBodyPath.replace(/^body\./, '');
     }
     const normalizedFieldMappings = Object.fromEntries(
-      Object.entries((nextConfig.responseFieldMappings && typeof nextConfig.responseFieldMappings === 'object' && !Array.isArray(nextConfig.responseFieldMappings))
-        ? nextConfig.responseFieldMappings
-        : {})
+      Object.entries(
+        nextConfig.responseFieldMappings &&
+          typeof nextConfig.responseFieldMappings === 'object' &&
+          !Array.isArray(nextConfig.responseFieldMappings)
+          ? nextConfig.responseFieldMappings
+          : {}
+      )
         .map(([key, value]) => [
           String(key || '').trim(),
-          String(value || '').trim().replace(/^body\./, ''),
+          String(value || '')
+            .trim()
+            .replace(/^body\./, ''),
         ])
-        .filter(([key, value]) => key && value),
+        .filter(([key, value]) => key && value)
     );
     nextConfig.responseFieldMappings = normalizedFieldMappings;
     if (nextConfig.responseMode === 'bodyMap') {
       nextConfig.responseBodyPath = '';
       if (Object.keys(normalizedFieldMappings).length === 0) {
-        nextConfig.responseMode = Object.keys(baseConfig.responseFieldMappings || {}).length > 0
-          ? 'bodyMap'
-          : (baseConfig.responseMode || 'body');
-        nextConfig.responseFieldMappings = Object.keys(baseConfig.responseFieldMappings || {}).length > 0
-          ? { ...(baseConfig.responseFieldMappings || {}) }
-          : {};
+        nextConfig.responseMode =
+          Object.keys(baseConfig.responseFieldMappings || {}).length > 0
+            ? 'bodyMap'
+            : baseConfig.responseMode || 'body';
+        nextConfig.responseFieldMappings =
+          Object.keys(baseConfig.responseFieldMappings || {}).length > 0
+            ? { ...(baseConfig.responseFieldMappings || {}) }
+            : {};
       }
     } else {
       nextConfig.responseFieldMappings = {};
@@ -527,13 +573,18 @@ export class TemporalWorkflowConfigService {
   private async requestAiStructuredTransformDraftConfig(
     baseConfig: Record<string, any>,
     sourceSample: Record<string, any> | string,
-    userGoal: string,
+    userGoal: string
   ): Promise<Record<string, any>> {
     const aiOrchestratorUrl = getAiOrchestratorUrl();
-    const body = typeof sourceSample === 'string' ? sourceSample : JSON.stringify(sourceSample, null, 2);
-    const leafPaths = typeof sourceSample === 'object'
-      ? this.collectResponseLeafPaths(sourceSample as Record<string, any>).slice(0, 80).map(({ path, value }) => `${path} = ${JSON.stringify(value)}`).join('\n')
-      : '';
+    const body =
+      typeof sourceSample === 'string' ? sourceSample : JSON.stringify(sourceSample, null, 2);
+    const leafPaths =
+      typeof sourceSample === 'object'
+        ? this.collectResponseLeafPaths(sourceSample as Record<string, any>)
+            .slice(0, 80)
+            .map(({ path, value }) => `${path} = ${JSON.stringify(value)}`)
+            .join('\n')
+        : '';
     const prompt = [
       '你是一个 AI 结构化转换步骤配置助手，需要根据真实样本内容和用户目标，输出 builtin:aiStructuredTransform 的配置 JSON。',
       '目标是为 Temporal Workflow 草稿生成更合理的 AI 转换配置，并给出一个样本输出，供下游步骤继续观察与推导。',
@@ -554,23 +605,32 @@ export class TemporalWorkflowConfigService {
       `真实样本: ${body.slice(0, 20000)}`,
       `可选叶子路径参考:\n${leafPaths || '(无可用叶子路径)'}`,
     ].join('\n');
-    const aiResponse = await axios.post<{ result: string }>(`${aiOrchestratorUrl}/ai/model/call`, {
-      modelId: 'default',
-      prompt,
-    }, { timeout: 180000 });
+    const aiResponse = await axios.post<{ result: string }>(
+      `${aiOrchestratorUrl}/ai/model/call`,
+      {
+        modelId: 'default',
+        prompt,
+      },
+      { timeout: 180000 }
+    );
     return this.parseJsonFromAiContent(aiResponse.data?.result || '');
   }
 
   private async requestAiStructuredTransformConfig(
     baseConfig: Record<string, any>,
     sourceSample: Record<string, any> | string,
-    userGoal: string,
+    userGoal: string
   ): Promise<Record<string, any>> {
     const aiOrchestratorUrl = getAiOrchestratorUrl();
-    const body = typeof sourceSample === 'string' ? sourceSample : JSON.stringify(sourceSample, null, 2);
-    const leafPaths = typeof sourceSample === 'object'
-      ? this.collectResponseLeafPaths(sourceSample as Record<string, any>).slice(0, 80).map(({ path, value }) => `${path} = ${JSON.stringify(value)}`).join('\n')
-      : '';
+    const body =
+      typeof sourceSample === 'string' ? sourceSample : JSON.stringify(sourceSample, null, 2);
+    const leafPaths =
+      typeof sourceSample === 'object'
+        ? this.collectResponseLeafPaths(sourceSample as Record<string, any>)
+            .slice(0, 80)
+            .map(({ path, value }) => `${path} = ${JSON.stringify(value)}`)
+            .join('\n')
+        : '';
     const prompt = [
       '你是一个固定规则结构化转换配置助手，需要根据真实样本内容和用户目标，输出 builtin:structuredTransform（固定规则版）步骤的配置 JSON。',
       '目标是帮助 Temporal Workflow 生成稳定、可审计、默认不依赖 AI 的结构化转换配置。',
@@ -593,21 +653,29 @@ export class TemporalWorkflowConfigService {
       `真实样本: ${body.slice(0, 20000)}`,
       `可选叶子路径参考:\n${leafPaths || '(无可用叶子路径)'}`,
     ].join('\n');
-    const aiResponse = await axios.post<{ result: string }>(`${aiOrchestratorUrl}/ai/model/call`, {
-      modelId: 'default',
-      prompt,
-    }, { timeout: 180000 });
+    const aiResponse = await axios.post<{ result: string }>(
+      `${aiOrchestratorUrl}/ai/model/call`,
+      {
+        modelId: 'default',
+        prompt,
+      },
+      { timeout: 180000 }
+    );
     return this.parseJsonFromAiContent(aiResponse.data?.result || '');
   }
 
   private assertHttpRequestPreviewInputs(
     baseConfig: Record<string, any>,
-    inputParams: Record<string, any>,
+    inputParams: Record<string, any>
   ): void {
     const requiredInputKeys = Array.from(this.collectTemplateVariables(baseConfig));
-    const missingInputKeys = requiredInputKeys.filter((key) => String(inputParams?.[key] ?? '').trim() === '');
+    const missingInputKeys = requiredInputKeys.filter(
+      (key) => String(inputParams?.[key] ?? '').trim() === ''
+    );
     if (missingInputKeys.length > 0) {
-      throw new Error(`请先为这些输入参数提供示例值后再进行 AI 优化: ${missingInputKeys.join('、')}`);
+      throw new Error(
+        `请先为这些输入参数提供示例值后再进行 AI 优化: ${missingInputKeys.join('、')}`
+      );
     }
   }
 
@@ -652,13 +720,16 @@ export class TemporalWorkflowConfigService {
         .filter((item) => item !== undefined) as T;
     }
     if (value && typeof value === 'object') {
-      return Object.entries(value as Record<string, unknown>).reduce<Record<string, unknown>>((acc, [key, item]) => {
-        if (item === undefined) {
+      return Object.entries(value as Record<string, unknown>).reduce<Record<string, unknown>>(
+        (acc, [key, item]) => {
+          if (item === undefined) {
+            return acc;
+          }
+          acc[key] = this.sanitizeJsonValue(item);
           return acc;
-        }
-        acc[key] = this.sanitizeJsonValue(item);
-        return acc;
-      }, {}) as T;
+        },
+        {}
+      ) as T;
     }
     return value;
   }

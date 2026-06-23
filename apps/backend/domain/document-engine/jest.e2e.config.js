@@ -5,5 +5,5 @@ module.exports = {
   rootDir: './src/test/e2e',
   testMatch: ['**/*.e2e-spec.ts'],
   testTimeout: 60000,
-  setupFilesAfterEnv: ['<rootDir>/jest.e2e.setup.ts']
+  setupFilesAfterEnv: ['<rootDir>/jest.e2e.setup.ts'],
 };

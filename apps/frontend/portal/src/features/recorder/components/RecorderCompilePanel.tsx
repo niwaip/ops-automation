@@ -1,10 +1,7 @@
 import React from 'react';
 import { Card, Spin } from 'antd';
 import { TemplatePreview } from '@/features/recorder/components';
-import type {
-  CompiledTemplate,
-  ValidationResult,
-} from '@/services/recorder.service';
+import type { CompiledTemplate, ValidationResult } from '@/services/recorder.service';
 
 interface RecorderCompilePanelProps {
   isDarkTheme: boolean;
@@ -30,7 +27,9 @@ const RecorderCompilePanel: React.FC<RecorderCompilePanelProps> = ({
       <Card
         style={{
           borderRadius: 16,
-          boxShadow: isDarkTheme ? '0 8px 24px rgba(0, 0, 0, 0.24)' : '0 4px 20px rgba(0, 0, 0, 0.08)',
+          boxShadow: isDarkTheme
+            ? '0 8px 24px rgba(0, 0, 0, 0.24)'
+            : '0 4px 20px rgba(0, 0, 0, 0.08)',
         }}
       >
         <Spin tip={compilingLabel}>
@@ -41,12 +40,7 @@ const RecorderCompilePanel: React.FC<RecorderCompilePanelProps> = ({
   }
 
   return (
-    <TemplatePreview
-      template={template}
-      validation={validation}
-      onSave={onSave}
-      saving={saving}
-    />
+    <TemplatePreview template={template} validation={validation} onSave={onSave} saving={saving} />
   );
 };
 

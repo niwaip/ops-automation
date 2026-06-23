@@ -15,9 +15,10 @@ export class AllocationController {
     return {
       available_workers: availableCount,
       status: availableCount > 0 ? 'available' : 'exhausted',
-      message: availableCount > 0
-        ? `${availableCount} workers available`
-        : 'No workers available. Please restart session-broker or release busy workers.',
+      message:
+        availableCount > 0
+          ? `${availableCount} workers available`
+          : 'No workers available. Please restart session-broker or release busy workers.',
     };
   }
 

@@ -1,5 +1,5 @@
-import { createAuthStore } from "@ops/user-core";
-import { genericHost } from "./hosts/generic";
+import { createAuthStore } from '@ops/user-core';
+import { genericHost } from './hosts/generic';
 
 export interface SocialHost {
   name: string;

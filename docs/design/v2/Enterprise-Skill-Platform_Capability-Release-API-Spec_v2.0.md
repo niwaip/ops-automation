@@ -198,7 +198,11 @@ interface CapabilityReleaseDto {
 interface CapabilityBuildDto {
   id: string;
   releaseId: string;
-  buildType: 'config_enhancement' | 'codegen_activity' | 'codegen_workflow' | 'skill_draft_generation';
+  buildType:
+    | 'config_enhancement'
+    | 'codegen_activity'
+    | 'codegen_workflow'
+    | 'skill_draft_generation';
   modelId: string;
   promptVersion: string;
   inputSnapshot: Record<string, unknown>;
@@ -456,10 +460,7 @@ interface DeploymentRecordDto {
       "validationType": "static",
       "score": 92,
       "success": true,
-      "logs": [
-        "[Static] paramsSchema complete",
-        "[Static] step dependencies resolved"
-      ]
+      "logs": ["[Static] paramsSchema complete", "[Static] step dependencies resolved"]
     }
   }
 }
@@ -499,10 +500,7 @@ interface DeploymentRecordDto {
       "validationType": "sandbox",
       "score": 100,
       "success": true,
-      "logs": [
-        "[Sandbox] connected",
-        "[Sandbox] execution succeeded"
-      ],
+      "logs": ["[Sandbox] connected", "[Sandbox] execution succeeded"],
       "resultSnapshot": {
         "answer": "北京天气查询结果 ..."
       }

@@ -2,15 +2,7 @@
  * Carbone Engine - Studio Workflow Controller
  */
 
-import {
-  Body,
-  Controller,
-  Get,
-  HttpException,
-  HttpStatus,
-  Param,
-  Post,
-} from '@nestjs/common';
+import { Body, Controller, Get, HttpException, HttpStatus, Param, Post } from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -58,7 +50,7 @@ export class StudioController extends StudioControllerBase {
     templateRepository: TemplateRepository,
     skillRepository: SkillRepository,
     renderOutputRepository: RenderOutputRepository,
-    templateWorkflowService: TemplateWorkflowService,
+    templateWorkflowService: TemplateWorkflowService
   ) {
     super(
       previewService,
@@ -67,7 +59,7 @@ export class StudioController extends StudioControllerBase {
       templateRepository,
       skillRepository,
       renderOutputRepository,
-      templateWorkflowService,
+      templateWorkflowService
     );
   }
 
@@ -113,14 +105,16 @@ export class StudioController extends StudioControllerBase {
       dto.sampleDocument,
       dto.sourceLanguage || 'zh',
       dto.targetLanguages || [],
-      dto.termAssets,
+      dto.termAssets
     );
 
     return result;
   }
 
   @Post('template/compare')
-  @ApiOperation({ summary: 'Compare template structure with sample document and build candidate fields' })
+  @ApiOperation({
+    summary: 'Compare template structure with sample document and build candidate fields',
+  })
   @ApiBody({ type: TemplateCompareDto })
   async compareTemplateWorkflow(@Body() dto: TemplateCompareDto): Promise<WorkflowCompareResult> {
     if (!this.isPlainObject(dto.templateDocumentIr)) {
@@ -133,14 +127,16 @@ export class StudioController extends StudioControllerBase {
       dto.sourceLanguage || 'zh',
       dto.targetLanguages || [],
       dto.termAssets,
-      dto.workflowId,
+      dto.workflowId
     );
   }
 
   @Post('template/understand')
   @ApiOperation({ summary: 'Understand template and sample document before field recognition' })
   @ApiBody({ type: TemplateUnderstandDto })
-  async understandTemplateWorkflow(@Body() dto: TemplateUnderstandDto): Promise<WorkflowUnderstandResult> {
+  async understandTemplateWorkflow(
+    @Body() dto: TemplateUnderstandDto
+  ): Promise<WorkflowUnderstandResult> {
     if (!this.isPlainObject(dto.templateDocumentIr)) {
       throw new HttpException('templateDocumentIr 不能为空', HttpStatus.BAD_REQUEST);
     }
@@ -151,14 +147,16 @@ export class StudioController extends StudioControllerBase {
       dto.sourceLanguage || 'zh',
       dto.targetLanguages || [],
       dto.termAssets,
-      dto.candidateFields,
+      dto.candidateFields
     );
   }
 
   @Post('template/recognize')
   @ApiOperation({ summary: 'Recognize workflow fields from template and sample document' })
   @ApiBody({ type: TemplateAnalyzeDto })
-  async recognizeTemplateWorkflow(@Body() dto: TemplateAnalyzeDto): Promise<WorkflowRecognizeResult> {
+  async recognizeTemplateWorkflow(
+    @Body() dto: TemplateAnalyzeDto
+  ): Promise<WorkflowRecognizeResult> {
     if (!this.isPlainObject(dto.templateDocumentIr)) {
       throw new HttpException('templateDocumentIr 不能为空', HttpStatus.BAD_REQUEST);
     }
@@ -183,7 +181,7 @@ export class StudioController extends StudioControllerBase {
       dto.termAssets,
       dto.candidateFields,
       dto.prefetchedUnderstanding,
-      skill,
+      skill
     );
   }
 
@@ -209,20 +207,25 @@ export class StudioController extends StudioControllerBase {
       : undefined;
 
     const format = String(existingMeta?.format || 'docx');
-    const workflowResult: WorkflowSaveResult = this.templateWorkflowService.compileAndPersistTemplate(
-      templateId,
-      dto.templateMeta,
-      dto.templateFieldSpecs,
-      dto.saveMode,
-      format,
-    );
+    const workflowResult: WorkflowSaveResult =
+      this.templateWorkflowService.compileAndPersistTemplate(
+        templateId,
+        dto.templateMeta,
+        dto.templateFieldSpecs,
+        dto.saveMode,
+        format
+      );
 
     const nextMeta = this.buildWorkflowMetaDocument(templateId, dto, workflowResult, existingMeta);
 
     fs.writeFileSync(metaPath, JSON.stringify(nextMeta, null, 2));
-    await this.syncTemplateMetaToDb(templateId, nextMeta as Record<string, any> & { format: string }, fs.existsSync(path.join(this.templatesDir, `${templateId}.${nextMeta.format}`))
-      ? path.join(this.templatesDir, `${templateId}.${nextMeta.format}`)
-      : metaPath);
+    await this.syncTemplateMetaToDb(
+      templateId,
+      nextMeta as Record<string, any> & { format: string },
+      fs.existsSync(path.join(this.templatesDir, `${templateId}.${nextMeta.format}`))
+        ? path.join(this.templatesDir, `${templateId}.${nextMeta.format}`)
+        : metaPath
+    );
 
     return {
       templateId: workflowResult.templateId,
@@ -237,7 +240,9 @@ export class StudioController extends StudioControllerBase {
   @Post('template/export')
   @ApiOperation({ summary: 'Export template asset manifest with optional binary' })
   @ApiBody({ type: TemplateAssetExportDto })
-  async exportTemplateAsset(@Body() dto: TemplateAssetExportDto): Promise<TemplateAssetImportPayload> {
+  async exportTemplateAsset(
+    @Body() dto: TemplateAssetExportDto
+  ): Promise<TemplateAssetImportPayload> {
     const meta = await this.getTemplateMetaWithDbFallback(dto.templateId);
     const workflow = this.readWorkflowConfig(meta as Record<string, any>);
     if (!workflow.templateAssetManifest) {
@@ -248,7 +253,10 @@ export class StudioController extends StudioControllerBase {
     if (dto.includeBinary) {
       const templatePath = path.join(this.templatesDir, `${dto.templateId}.${meta.format}`);
       if (!fs.existsSync(templatePath)) {
-        throw new HttpException('TPL_004: 模板二进制文件不存在，无法导出完整资产包', HttpStatus.BAD_REQUEST);
+        throw new HttpException(
+          'TPL_004: 模板二进制文件不存在，无法导出完整资产包',
+          HttpStatus.BAD_REQUEST
+        );
       }
       templateBinary = fs.readFileSync(templatePath).toString('base64');
     }
@@ -286,7 +294,9 @@ export class StudioController extends StudioControllerBase {
       id: templateId,
       type: existingMeta?.type || 'template',
       format,
-      fileName: String(manifest.fileName || existingMeta?.fileName || `imported-${templateId}.${format}`),
+      fileName: String(
+        manifest.fileName || existingMeta?.fileName || `imported-${templateId}.${format}`
+      ),
       hasValidFile: dto.templateBinary ? true : (existingMeta?.hasValidFile ?? false),
       variables: Array.isArray(renderPlan?.bindings)
         ? renderPlan.bindings.map((binding) => binding.variablePath)
@@ -296,7 +306,9 @@ export class StudioController extends StudioControllerBase {
         ...(this.isPlainObject(existingMeta?.templateConfig) ? existingMeta.templateConfig : {}),
         templateWorkflow: {
           workflowVersion: TEMPLATE_WORKFLOW_SCHEMA_VERSION,
-          templateFieldSpecs: Array.isArray(manifest.templateFieldSpecs) ? manifest.templateFieldSpecs : [],
+          templateFieldSpecs: Array.isArray(manifest.templateFieldSpecs)
+            ? manifest.templateFieldSpecs
+            : [],
           carboneBindingPlan: renderPlan,
           renderPlan,
           languageProfile: manifest.languageProfile,
@@ -308,7 +320,9 @@ export class StudioController extends StudioControllerBase {
         templateAssetManifest: manifest,
       },
       configSavedAt: String(manifest.metadata?.generatedAt || new Date().toISOString()),
-      createdAt: existingMeta?.createdAt || String(manifest.metadata?.generatedAt || new Date().toISOString()),
+      createdAt:
+        existingMeta?.createdAt ||
+        String(manifest.metadata?.generatedAt || new Date().toISOString()),
       updatedAt: new Date().toISOString(),
     };
 
@@ -316,7 +330,7 @@ export class StudioController extends StudioControllerBase {
     await this.syncTemplateMetaToDb(
       templateId,
       nextMeta as Record<string, any> & { format: string },
-      fs.existsSync(filePath) ? filePath : metaPath,
+      fs.existsSync(filePath) ? filePath : metaPath
     );
 
     return this.getTemplateMeta(templateId);
@@ -335,18 +349,21 @@ export class StudioController extends StudioControllerBase {
     const meta = await this.getTemplateMetaWithDbFallback(dto.templateId);
     const workflow = this.readWorkflowConfig(meta as Record<string, any>);
     if (workflow.templateFieldSpecs.length === 0) {
-      throw new HttpException('TPL_002: 当前模板尚未保存 TemplateFieldSpec', HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        'TPL_002: 当前模板尚未保存 TemplateFieldSpec',
+        HttpStatus.BAD_REQUEST
+      );
     }
 
-    return await this.templateWorkflowService.renderData(
+    return (await this.templateWorkflowService.renderData(
       dto.userInput,
       workflow.templateFieldSpecs,
       workflow.carboneBindingPlan,
       dto.sourceLanguage || workflow.sourceLanguage || 'zh',
       dto.targetLanguages || workflow.targetLanguages || [],
       dto.userOverrides,
-      dto.termAssets || workflow.termAssets,
-    ) as {
+      dto.termAssets || workflow.termAssets
+    )) as {
       data: Record<string, unknown>;
       sourceTrace: Record<string, unknown>;
       warnings: string[];

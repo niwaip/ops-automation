@@ -10,16 +10,8 @@ import {
   WorkflowBindingPlan,
   WorkflowBindingPlanBinding,
 } from './workflow-assets';
-import {
-  safeText,
-  escapeRegExp,
-} from './document-xml-parser';
-import {
-  parseAmount,
-  parseDate,
-  formatCurrency,
-  formatDate,
-} from './workflow-parser-format';
+import { safeText, escapeRegExp } from './document-xml-parser';
+import { parseAmount, parseDate, formatCurrency, formatDate } from './workflow-parser-format';
 import {
   normalizeTableListRows,
   resolveTabularRowWidth,
@@ -33,19 +25,14 @@ import {
   resolveAssets,
   resolveTemplateFieldLanguage,
 } from './workflow-discover';
-import {
-  tryParseJsonObject,
-} from './workflow-ai';
+import { tryParseJsonObject } from './workflow-ai';
 
 import {
   readLocalizedFieldValue,
   setLocalizedValue,
   getLanguageAliases,
 } from './workflow-translation-helper';
-import {
-  extractFieldValue,
-  parseListValueFromText,
-} from './workflow-input-helper';
+import { extractFieldValue, parseListValueFromText } from './workflow-input-helper';
 
 const logger = new Logger('WorkflowRenderHelper');
 
@@ -79,7 +66,7 @@ function collectLocalizedOverrideFromSiblingKeys(
   userOverrides: Record<string, unknown> | undefined,
   fieldId: string,
   sourceLanguage: string,
-  targetLanguages: string[],
+  targetLanguages: string[]
 ): Record<string, unknown> | undefined {
   if (!userOverrides || typeof userOverrides !== 'object') {
     return undefined;
@@ -106,7 +93,7 @@ export function resolveFieldValue(
   sourceLanguage: string,
   targetLanguages: string[],
   userOverrides?: Record<string, unknown>,
-  assets?: WorkflowResolvedAssets,
+  assets?: WorkflowResolvedAssets
 ): {
   value: Record<string, unknown>;
   sourceTrace: Record<string, unknown>;
@@ -118,8 +105,14 @@ export function resolveFieldValue(
   const missingFields: string[] = [];
   const needsReviewFields: string[] = [];
   const targetLangs = Array.from(new Set([...(spec.targetLanguages || []), ...targetLanguages]));
-  const overrideValue = userOverrides?.[spec.fieldId]
-    ?? collectLocalizedOverrideFromSiblingKeys(userOverrides, spec.fieldId, sourceLanguage, targetLangs);
+  const overrideValue =
+    userOverrides?.[spec.fieldId] ??
+    collectLocalizedOverrideFromSiblingKeys(
+      userOverrides,
+      spec.fieldId,
+      sourceLanguage,
+      targetLangs
+    );
   const sourceValue = extractFieldValue(spec.fieldId, userInput, overrideValue);
   const valueMode = spec.valueMode || 'scalar';
 
@@ -132,21 +125,21 @@ export function resolveFieldValue(
         overrideValue,
         spec,
         sourceLanguage,
-        targetLangs,
+        targetLangs
       );
       sourceTrace.resolution = 'structured_override';
       sourceTrace.valueMode = 'list';
     } else {
       const parsedListValue = parseListValueFromText(
         typeof overrideValue === 'string' ? overrideValue : userInput,
-        spec,
+        spec
       );
       if (parsedListValue && parsedListValue.length > 0) {
         resolvedValue.value = normalizeTableListRows(
           parsedListValue,
           spec,
           sourceLanguage,
-          targetLangs,
+          targetLangs
         );
         sourceTrace.resolution = 'tabular_text_parse';
         sourceTrace.valueMode = 'list';
@@ -191,18 +184,20 @@ export function resolveFieldValue(
 
   if (overrideValue && typeof overrideValue === 'object' && !Array.isArray(overrideValue)) {
     const localizedOverride = overrideValue as Record<string, unknown>;
-    const localizedKeys = Array.from(new Set([
-      'source',
-      'value',
-      ...getLanguageAliases(sourceLanguage),
-      ...targetLangs.flatMap((lang) => getLanguageAliases(lang)),
-    ]));
+    const localizedKeys = Array.from(
+      new Set([
+        'source',
+        'value',
+        ...getLanguageAliases(sourceLanguage),
+        ...targetLangs.flatMap((lang) => getLanguageAliases(lang)),
+      ])
+    );
     const hasLocalizedValue = localizedKeys.some((key) => localizedOverride[key] !== undefined);
     if (hasLocalizedValue) {
       const sourceText = safeText(
-        readLocalizedFieldValue(localizedOverride, sourceLanguage)
-        ?? localizedOverride.source
-        ?? localizedOverride.value,
+        readLocalizedFieldValue(localizedOverride, sourceLanguage) ??
+          localizedOverride.source ??
+          localizedOverride.value
       );
       if (localizedOverride.source !== undefined || sourceText) {
         resolvedValue.source = safeText(localizedOverride.source) || sourceText;
@@ -218,7 +213,7 @@ export function resolveFieldValue(
         setLocalizedValue(
           resolvedValue,
           lang,
-          langText || (lang === sourceLanguage ? sourceText : ''),
+          langText || (lang === sourceLanguage ? sourceText : '')
         );
       }
       sourceTrace.resolution = 'localized_override';
@@ -234,7 +229,8 @@ export function resolveFieldValue(
       : undefined;
     if (termMatch) {
       resolvedValue.source = termMatch.sourceValue;
-      resolvedValue[sourceLanguage] = termMatch.translations[sourceLanguage] || termMatch.sourceValue;
+      resolvedValue[sourceLanguage] =
+        termMatch.translations[sourceLanguage] || termMatch.sourceValue;
       for (const lang of targetLangs) {
         resolvedValue[lang] = termMatch.translations[lang];
       }
@@ -262,7 +258,7 @@ export function resolveFieldValue(
     const matchedEnum = findEnumMatch(
       spec.fieldId,
       safeText(sourceValue),
-      assets || resolveAssets(),
+      assets || resolveAssets()
     );
     if (matchedEnum) {
       resolvedValue.code = matchedEnum.code;
@@ -314,7 +310,12 @@ export function resolveFieldValue(
           fieldId: spec.fieldId,
           sourceValue: sourceValue === undefined ? null : sourceValue,
           normalizedDate: normalizedDate || null,
-          overrideType: overrideValue === undefined ? 'undefined' : Array.isArray(overrideValue) ? 'array' : typeof overrideValue,
+          overrideType:
+            overrideValue === undefined
+              ? 'undefined'
+              : Array.isArray(overrideValue)
+                ? 'array'
+                : typeof overrideValue,
           sourceLanguage,
           targetLanguages: targetLangs,
           policy: spec.policy || null,
@@ -379,17 +380,10 @@ export function resolveFieldValue(
   return { value: resolvedValue, sourceTrace, warnings, missingFields, needsReviewFields };
 }
 
-
 export * from './workflow-translation-helper';
-export {
-  readSelector,
-  extractFieldValue,
-  parseListValueFromText,
-} from './workflow-input-helper';
+export { readSelector, extractFieldValue, parseListValueFromText } from './workflow-input-helper';
 
-export function listBindingVariablePaths(
-  binding: WorkflowBindingPlanBinding,
-): string[] {
+export function listBindingVariablePaths(binding: WorkflowBindingPlanBinding): string[] {
   const variablePath = safeText(binding.variablePath);
   if (!variablePath) {
     return [];
@@ -411,12 +405,7 @@ export function listBindingVariablePaths(
   }
 
   const basePath = variablePath.slice(0, -canonicalSuffix.length);
-  return [
-    variablePath,
-    ...aliases
-      .slice(1)
-      .map((alias) => `${basePath}_${alias}`),
-  ];
+  return [variablePath, ...aliases.slice(1).map((alias) => `${basePath}_${alias}`)];
 }
 
 export function compileBindingPlan(
@@ -424,7 +413,7 @@ export function compileBindingPlan(
   version: number,
   templateFieldSpecs: WorkflowTemplateFieldSpec[],
   sourceLanguage = 'zh',
-  targetLanguages: string[] = [],
+  targetLanguages: string[] = []
 ): WorkflowBindingPlan {
   const bindings: WorkflowBindingPlanBinding[] = [];
   const seen = new Set<string>();
@@ -467,11 +456,13 @@ export function compileBindingPlan(
       continue;
     }
 
-    const languages = Array.from(new Set([
-      spec.sourceLanguage || sourceLanguage,
-      ...(spec.targetLanguages || []),
-      ...targetLanguages,
-    ]));
+    const languages = Array.from(
+      new Set([
+        spec.sourceLanguage || sourceLanguage,
+        ...(spec.targetLanguages || []),
+        ...targetLanguages,
+      ])
+    );
 
     for (const lang of languages) {
       const variablePath = `${spec.fieldId}_${lang}`;

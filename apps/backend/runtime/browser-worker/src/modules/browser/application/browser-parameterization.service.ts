@@ -33,14 +33,12 @@ export class BrowserParameterizationService {
     const value = binding.value;
 
     if (typeof value === 'string') {
-      const candidates = [
-        JSON.stringify(value),
-        `'${this.escapeSingleQuoted(value)}'`,
-      ];
+      const candidates = [JSON.stringify(value), `'${this.escapeSingleQuoted(value)}'`];
 
-      return candidates.reduce((current, literal) => (
-        this.replaceAllLiteral(current, literal, accessor)
-      ), script);
+      return candidates.reduce(
+        (current, literal) => this.replaceAllLiteral(current, literal, accessor),
+        script
+      );
     }
 
     if (typeof value === 'number' || typeof value === 'boolean') {
@@ -63,6 +61,6 @@ export class BrowserParameterizationService {
   }
 
   private escapeSingleQuoted(value: string): string {
-    return value.replace(/\\/g, '\\\\').replace(/'/g, '\\\'');
+    return value.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
   }
 }

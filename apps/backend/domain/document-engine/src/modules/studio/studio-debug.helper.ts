@@ -6,12 +6,13 @@ function isTruthyEnv(value: string | undefined): boolean {
 }
 
 export function isStudioVerboseDebugEnabled(): boolean {
-  return isTruthyEnv(process.env.STUDIO_VERBOSE_DEBUG)
-    || isTruthyEnv(process.env.STUDIO_DEBUG_VERBOSE)
-    || isTruthyEnv(process.env.STUDIO_DEBUG);
+  return (
+    isTruthyEnv(process.env.STUDIO_VERBOSE_DEBUG) ||
+    isTruthyEnv(process.env.STUDIO_DEBUG_VERBOSE) ||
+    isTruthyEnv(process.env.STUDIO_DEBUG)
+  );
 }
 
 export function isStudioSkillDebugEnabled(): boolean {
-  return isTruthyEnv(process.env.STUDIO_SKILL_DEBUG)
-    || isStudioVerboseDebugEnabled();
+  return isTruthyEnv(process.env.STUDIO_SKILL_DEBUG) || isStudioVerboseDebugEnabled();
 }

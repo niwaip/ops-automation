@@ -19,7 +19,7 @@ import type {
 export class TemporalWorkflowNormalizationService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly builtinActivityRegistry: BuiltinActivityRegistry,
+    private readonly builtinActivityRegistry: BuiltinActivityRegistry
   ) {}
 
   sanitizeJsonValue<T>(value: T): T {
@@ -29,13 +29,16 @@ export class TemporalWorkflowNormalizationService {
         .filter((item) => item !== undefined) as T;
     }
     if (value && typeof value === 'object') {
-      return Object.entries(value as Record<string, unknown>).reduce<Record<string, unknown>>((acc, [key, item]) => {
-        if (item === undefined) {
+      return Object.entries(value as Record<string, unknown>).reduce<Record<string, unknown>>(
+        (acc, [key, item]) => {
+          if (item === undefined) {
+            return acc;
+          }
+          acc[key] = this.sanitizeJsonValue(item);
           return acc;
-        }
-        acc[key] = this.sanitizeJsonValue(item);
-        return acc;
-      }, {}) as T;
+        },
+        {}
+      ) as T;
     }
     return value;
   }
@@ -48,21 +51,22 @@ export class TemporalWorkflowNormalizationService {
     workflowDsl: WorkflowDsl,
     workflowName?: string,
     taskQueue?: string,
-    activityDsl?: ActivityDsl,
+    activityDsl?: ActivityDsl
   ): Promise<WorkflowDsl> {
     const normalized = this.sanitizeJsonValue(workflowDsl) as WorkflowDsl;
     const normalizedSteps = await Promise.all(
-      (normalized.steps || []).map((step) => this.normalizeWorkflowStep(step, activityDsl)),
+      (normalized.steps || []).map((step) => this.normalizeWorkflowStep(step, activityDsl))
     );
-    const normalizedInputParams = normalized.inputParams
-      && typeof normalized.inputParams === 'object'
-      && !Array.isArray(normalized.inputParams)
+    const normalizedInputParams =
+      normalized.inputParams &&
+      typeof normalized.inputParams === 'object' &&
+      !Array.isArray(normalized.inputParams)
         ? normalized.inputParams
         : undefined;
     const normalizedInputPolicy = await this.normalizeWorkflowInputPolicy(
       normalized.inputPolicy,
       normalizedInputParams,
-      normalized.sourceContext,
+      normalized.sourceContext
     );
     const finalName = this.normalizeName(workflowName || normalized.name || '未命名工作流');
     return {
@@ -77,30 +81,33 @@ export class TemporalWorkflowNormalizationService {
   }
 
   buildDefaultWorkflowInputPolicyParams(
-    inputParams: Record<string, WorkflowInputParamDefinition> | undefined,
+    inputParams: Record<string, WorkflowInputParamDefinition> | undefined
   ): Record<string, WorkflowParamPolicy> {
-    return Object.entries(inputParams || {}).reduce<Record<string, WorkflowParamPolicy>>((acc, [key, definition]) => {
-      const trimmedKey = String(key || '').trim();
-      if (!trimmedKey) {
+    return Object.entries(inputParams || {}).reduce<Record<string, WorkflowParamPolicy>>(
+      (acc, [key, definition]) => {
+        const trimmedKey = String(key || '').trim();
+        if (!trimmedKey) {
+          return acc;
+        }
+
+        const policy: WorkflowParamPolicy = {
+          enabled: true,
+          requiredMode: definition?.required ? 'always' : 'optional',
+        };
+        const defaultTemplateBinding = resolveSingleWorkflowInputRenderPath(definition?.renderPath);
+        if (defaultTemplateBinding) {
+          policy.templateBinding = defaultTemplateBinding;
+        }
+
+        if (definition?.defaultValue !== undefined && definition.defaultValue !== '') {
+          policy.defaultValue = definition.defaultValue;
+        }
+
+        acc[trimmedKey] = policy;
         return acc;
-      }
-
-      const policy: WorkflowParamPolicy = {
-        enabled: true,
-        requiredMode: definition?.required ? 'always' : 'optional',
-      };
-      const defaultTemplateBinding = resolveSingleWorkflowInputRenderPath(definition?.renderPath);
-      if (defaultTemplateBinding) {
-        policy.templateBinding = defaultTemplateBinding;
-      }
-
-      if (definition?.defaultValue !== undefined && definition.defaultValue !== '') {
-        policy.defaultValue = definition.defaultValue;
-      }
-
-      acc[trimmedKey] = policy;
-      return acc;
-    }, {});
+      },
+      {}
+    );
   }
 
   normalizeName(value?: string): string {
@@ -139,17 +146,21 @@ export class TemporalWorkflowNormalizationService {
   }
 
   uniqueVariables(variables: string[]): string[] {
-    return [...new Set((variables || []).filter((item) => typeof item === 'string' && item.trim()))];
+    return [
+      ...new Set((variables || []).filter((item) => typeof item === 'string' && item.trim())),
+    ];
   }
 
   buildWorkflowSemanticHint(...values: unknown[]): string {
     return values
       .filter((value) => value !== undefined && value !== null)
-      .map((value) => String(value)
-        .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-        .replace(/[^a-zA-Z0-9\u4e00-\u9fa5]+/g, ' ')
-        .trim()
-        .toLowerCase())
+      .map((value) =>
+        String(value)
+          .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+          .replace(/[^a-zA-Z0-9\u4e00-\u9fa5]+/g, ' ')
+          .trim()
+          .toLowerCase()
+      )
       .filter((value) => value.length > 0)
       .join(' ');
   }
@@ -157,17 +168,20 @@ export class TemporalWorkflowNormalizationService {
   private async normalizeWorkflowInputPolicy(
     inputPolicy: WorkflowInputPolicy | Record<string, unknown> | undefined,
     inputParams: Record<string, WorkflowInputParamDefinition> | undefined,
-    sourceContext?: TemporalWorkflowSourceContext,
+    sourceContext?: TemporalWorkflowSourceContext
   ): Promise<WorkflowInputPolicy | undefined> {
     const defaultPolicies = this.buildDefaultWorkflowInputPolicyParams(inputParams);
     const explicitPolicies = this.extractWorkflowInputPolicyParams(inputPolicy, inputParams);
-    const allowedKeys = await this.resolveWorkflowInputPolicyAllowedKeys(inputParams, sourceContext);
+    const allowedKeys = await this.resolveWorkflowInputPolicyAllowedKeys(
+      inputParams,
+      sourceContext
+    );
 
     if (allowedKeys.size > 0) {
       const invalidKeys = Object.keys(explicitPolicies).filter((key) => !allowedKeys.has(key));
       if (invalidKeys.length > 0) {
         throw new BadRequestException(
-          `workflowDsl.inputPolicy.params 包含未注册参数: ${invalidKeys.join(', ')}`,
+          `workflowDsl.inputPolicy.params 包含未注册参数: ${invalidKeys.join(', ')}`
         );
       }
     }
@@ -196,14 +210,17 @@ export class TemporalWorkflowNormalizationService {
 
   private applyInputParamDefinitionToWorkflowPolicy(
     policy: WorkflowParamPolicy,
-    definition?: WorkflowInputParamDefinition,
+    definition?: WorkflowInputParamDefinition
   ): void {
     if (!definition) {
       return;
     }
 
     policy.enabled = true;
-    policy.requiredMode = this.normalizeWorkflowPolicyRequiredMode(policy.requiredMode, definition.required);
+    policy.requiredMode = this.normalizeWorkflowPolicyRequiredMode(
+      policy.requiredMode,
+      definition.required
+    );
 
     const defaultTemplateBinding = resolveSingleWorkflowInputRenderPath(definition.renderPath);
     if (!policy.templateBinding && defaultTemplateBinding) {
@@ -221,7 +238,10 @@ export class TemporalWorkflowNormalizationService {
       return;
     }
 
-    if (definition.localizedDefaultValue && Object.keys(definition.localizedDefaultValue).length > 0) {
+    if (
+      definition.localizedDefaultValue &&
+      Object.keys(definition.localizedDefaultValue).length > 0
+    ) {
       policy.defaultValue = definition.localizedDefaultValue;
       return;
     }
@@ -231,12 +251,17 @@ export class TemporalWorkflowNormalizationService {
 
   normalizeWorkflowPolicyRequiredMode(
     currentMode: WorkflowParamRequiredMode | undefined,
-    required: boolean | undefined,
+    required: boolean | undefined
   ): WorkflowParamRequiredMode {
     if (required === false && currentMode === 'always') {
       return 'optional';
     }
-    if (currentMode === 'always' || currentMode === 'conditional' || currentMode === 'optional' || currentMode === 'system_required') {
+    if (
+      currentMode === 'always' ||
+      currentMode === 'conditional' ||
+      currentMode === 'optional' ||
+      currentMode === 'system_required'
+    ) {
       return currentMode;
     }
     return required ? 'always' : 'optional';
@@ -244,38 +269,45 @@ export class TemporalWorkflowNormalizationService {
 
   private extractWorkflowInputPolicyParams(
     inputPolicy: WorkflowInputPolicy | Record<string, unknown> | undefined,
-    inputParams?: Record<string, WorkflowInputParamDefinition>,
+    inputParams?: Record<string, WorkflowInputParamDefinition>
   ): Record<string, WorkflowParamPolicy> {
     if (!inputPolicy || typeof inputPolicy !== 'object' || Array.isArray(inputPolicy)) {
       return {};
     }
 
     const rawParams =
-      'params' in inputPolicy
-      && inputPolicy.params
-      && typeof inputPolicy.params === 'object'
-      && !Array.isArray(inputPolicy.params)
+      'params' in inputPolicy &&
+      inputPolicy.params &&
+      typeof inputPolicy.params === 'object' &&
+      !Array.isArray(inputPolicy.params)
         ? inputPolicy.params
         : inputPolicy;
 
-    return Object.entries(rawParams).reduce<Record<string, WorkflowParamPolicy>>((acc, [key, value]) => {
-      const trimmedKey = String(key || '').trim();
-      if (!trimmedKey) {
-        return acc;
-      }
+    return Object.entries(rawParams).reduce<Record<string, WorkflowParamPolicy>>(
+      (acc, [key, value]) => {
+        const trimmedKey = String(key || '').trim();
+        if (!trimmedKey) {
+          return acc;
+        }
 
-      const normalizedPolicy = this.normalizeWorkflowParamPolicy(value, trimmedKey, inputParams?.[trimmedKey]);
-      if (normalizedPolicy) {
-        acc[trimmedKey] = normalizedPolicy;
-      }
-      return acc;
-    }, {});
+        const normalizedPolicy = this.normalizeWorkflowParamPolicy(
+          value,
+          trimmedKey,
+          inputParams?.[trimmedKey]
+        );
+        if (normalizedPolicy) {
+          acc[trimmedKey] = normalizedPolicy;
+        }
+        return acc;
+      },
+      {}
+    );
   }
 
   private normalizeWorkflowParamPolicy(
     value: unknown,
     paramName?: string,
-    inputParamDefinition?: WorkflowInputParamDefinition,
+    inputParamDefinition?: WorkflowInputParamDefinition
   ): WorkflowParamPolicy | undefined {
     if (!value || typeof value !== 'object' || Array.isArray(value)) {
       return undefined;
@@ -297,7 +329,7 @@ export class TemporalWorkflowNormalizationService {
     const invalidPolicyKeys = Object.keys(rawPolicy).filter((key) => !allowedPolicyKeys.has(key));
     if (invalidPolicyKeys.length > 0) {
       throw new BadRequestException(
-        `workflowDsl.inputPolicy.params.${paramName || '*'} 包含非法字段: ${invalidPolicyKeys.join(', ')}`,
+        `workflowDsl.inputPolicy.params.${paramName || '*'} 包含非法字段: ${invalidPolicyKeys.join(', ')}`
       );
     }
     const normalizedPolicy: WorkflowParamPolicy = {};
@@ -311,66 +343,100 @@ export class TemporalWorkflowNormalizationService {
     if (typeof rawPolicy.enabled === 'boolean') {
       normalizedPolicy.enabled = rawPolicy.enabled;
     } else if (rawPolicy.enabled !== undefined) {
-      throw new BadRequestException(`workflowDsl.inputPolicy.params.${paramName || '*'}.enabled 必须是 boolean`);
+      throw new BadRequestException(
+        `workflowDsl.inputPolicy.params.${paramName || '*'}.enabled 必须是 boolean`
+      );
     }
     if (
-      typeof rawPolicy.requiredMode === 'string'
-      && allowedRequiredModes.has(rawPolicy.requiredMode as WorkflowParamRequiredMode)
+      typeof rawPolicy.requiredMode === 'string' &&
+      allowedRequiredModes.has(rawPolicy.requiredMode as WorkflowParamRequiredMode)
     ) {
       normalizedPolicy.requiredMode = rawPolicy.requiredMode as WorkflowParamRequiredMode;
     } else if (rawPolicy.requiredMode !== undefined) {
       throw new BadRequestException(
-        `workflowDsl.inputPolicy.params.${paramName || '*'}.requiredMode 非法: ${String(rawPolicy.requiredMode)}`,
+        `workflowDsl.inputPolicy.params.${paramName || '*'}.requiredMode 非法: ${String(rawPolicy.requiredMode)}`
       );
     }
     if (rawPolicy.defaultValue !== undefined) {
-      this.assertWorkflowPolicyDefaultValueCompatible(paramName, rawPolicy.defaultValue, inputParamDefinition?.type);
+      this.assertWorkflowPolicyDefaultValueCompatible(
+        paramName,
+        rawPolicy.defaultValue,
+        inputParamDefinition?.type
+      );
       normalizedPolicy.defaultValue = rawPolicy.defaultValue;
     }
-    if (typeof rawPolicy.defaultValueResolver === 'string' && rawPolicy.defaultValueResolver.trim()) {
+    if (
+      typeof rawPolicy.defaultValueResolver === 'string' &&
+      rawPolicy.defaultValueResolver.trim()
+    ) {
       normalizedPolicy.defaultValueResolver = rawPolicy.defaultValueResolver.trim();
     } else if (rawPolicy.defaultValueResolver !== undefined) {
-      throw new BadRequestException(`workflowDsl.inputPolicy.params.${paramName || '*'}.defaultValueResolver 必须是非空字符串`);
+      throw new BadRequestException(
+        `workflowDsl.inputPolicy.params.${paramName || '*'}.defaultValueResolver 必须是非空字符串`
+      );
     }
     if (Array.isArray(rawPolicy.valueSourcePriority)) {
-      const valueSourcePriority = Array.from(new Set(rawPolicy.valueSourcePriority
-        .map((item) => String(item || '').trim())
-        .filter((item) => item.length > 0)));
+      const valueSourcePriority = Array.from(
+        new Set(
+          rawPolicy.valueSourcePriority
+            .map((item) => String(item || '').trim())
+            .filter((item) => item.length > 0)
+        )
+      );
       if (valueSourcePriority.length > 0) {
         normalizedPolicy.valueSourcePriority = valueSourcePriority;
       }
     } else if (rawPolicy.valueSourcePriority !== undefined) {
-      throw new BadRequestException(`workflowDsl.inputPolicy.params.${paramName || '*'}.valueSourcePriority 必须是字符串数组`);
+      throw new BadRequestException(
+        `workflowDsl.inputPolicy.params.${paramName || '*'}.valueSourcePriority 必须是字符串数组`
+      );
     }
-    if (typeof rawPolicy.confirmationThreshold === 'number' && Number.isFinite(rawPolicy.confirmationThreshold)) {
-      normalizedPolicy.confirmationThreshold = Math.max(0, Math.min(1, rawPolicy.confirmationThreshold));
+    if (
+      typeof rawPolicy.confirmationThreshold === 'number' &&
+      Number.isFinite(rawPolicy.confirmationThreshold)
+    ) {
+      normalizedPolicy.confirmationThreshold = Math.max(
+        0,
+        Math.min(1, rawPolicy.confirmationThreshold)
+      );
     } else if (rawPolicy.confirmationThreshold !== undefined) {
-      throw new BadRequestException(`workflowDsl.inputPolicy.params.${paramName || '*'}.confirmationThreshold 必须是数字`);
+      throw new BadRequestException(
+        `workflowDsl.inputPolicy.params.${paramName || '*'}.confirmationThreshold 必须是数字`
+      );
     }
     if (typeof rawPolicy.previewBlocking === 'boolean') {
       normalizedPolicy.previewBlocking = rawPolicy.previewBlocking;
     } else if (rawPolicy.previewBlocking !== undefined) {
-      throw new BadRequestException(`workflowDsl.inputPolicy.params.${paramName || '*'}.previewBlocking 必须是 boolean`);
+      throw new BadRequestException(
+        `workflowDsl.inputPolicy.params.${paramName || '*'}.previewBlocking 必须是 boolean`
+      );
     }
     if (Array.isArray(rawPolicy.validationRules)) {
-      const validationRules = rawPolicy.validationRules.filter((item): item is Record<string, unknown> => (
-        Boolean(item) && typeof item === 'object' && !Array.isArray(item)
-      ));
+      const validationRules = rawPolicy.validationRules.filter(
+        (item): item is Record<string, unknown> =>
+          Boolean(item) && typeof item === 'object' && !Array.isArray(item)
+      );
       if (validationRules.length > 0) {
         normalizedPolicy.validationRules = validationRules;
       }
     } else if (rawPolicy.validationRules !== undefined) {
-      throw new BadRequestException(`workflowDsl.inputPolicy.params.${paramName || '*'}.validationRules 必须是对象数组`);
+      throw new BadRequestException(
+        `workflowDsl.inputPolicy.params.${paramName || '*'}.validationRules 必须是对象数组`
+      );
     }
     if (typeof rawPolicy.transformRule === 'string' && rawPolicy.transformRule.trim()) {
       normalizedPolicy.transformRule = rawPolicy.transformRule.trim();
     } else if (rawPolicy.transformRule !== undefined) {
-      throw new BadRequestException(`workflowDsl.inputPolicy.params.${paramName || '*'}.transformRule 必须是非空字符串`);
+      throw new BadRequestException(
+        `workflowDsl.inputPolicy.params.${paramName || '*'}.transformRule 必须是非空字符串`
+      );
     }
     if (typeof rawPolicy.templateBinding === 'string' && rawPolicy.templateBinding.trim()) {
       normalizedPolicy.templateBinding = rawPolicy.templateBinding.trim();
     } else if (rawPolicy.templateBinding !== undefined) {
-      throw new BadRequestException(`workflowDsl.inputPolicy.params.${paramName || '*'}.templateBinding 必须是非空字符串`);
+      throw new BadRequestException(
+        `workflowDsl.inputPolicy.params.${paramName || '*'}.templateBinding 必须是非空字符串`
+      );
     }
 
     return Object.keys(normalizedPolicy).length > 0 ? normalizedPolicy : undefined;
@@ -379,7 +445,7 @@ export class TemporalWorkflowNormalizationService {
   private assertWorkflowPolicyDefaultValueCompatible(
     paramName: string | undefined,
     defaultValue: unknown,
-    inputParamType?: WorkflowInputParamType,
+    inputParamType?: WorkflowInputParamType
   ): void {
     if (!inputParamType) {
       return;
@@ -389,19 +455,23 @@ export class TemporalWorkflowNormalizationService {
 
     if (!compatible) {
       throw new BadRequestException(
-        `workflowDsl.inputPolicy.params.${paramName || '*'}.defaultValue 与参数类型 ${inputParamType} 不兼容`,
+        `workflowDsl.inputPolicy.params.${paramName || '*'}.defaultValue 与参数类型 ${inputParamType} 不兼容`
       );
     }
   }
 
   private isWorkflowPolicyDefaultValueCompatible(
     defaultValue: unknown,
-    inputParamType: WorkflowInputParamType,
+    inputParamType: WorkflowInputParamType
   ): boolean {
     if (this.isLocalizedWorkflowDefaultValue(defaultValue)) {
       const localizedValues = Object.values(defaultValue);
-      return localizedValues.length > 0
-        && localizedValues.every((value) => this.isWorkflowPolicyDefaultValueCompatible(value, inputParamType));
+      return (
+        localizedValues.length > 0 &&
+        localizedValues.every((value) =>
+          this.isWorkflowPolicyDefaultValueCompatible(value, inputParamType)
+        )
+      );
     }
 
     return inputParamType === 'string' || inputParamType === 'date'
@@ -419,32 +489,38 @@ export class TemporalWorkflowNormalizationService {
     }
 
     const entries = Object.entries(value);
-    return entries.length > 0
-      && entries.every(([key, entryValue]) => (
-        typeof key === 'string'
-        && key.trim().length > 0
-        && (
-          typeof entryValue === 'string'
-          || typeof entryValue === 'number'
-          || typeof entryValue === 'boolean'
-        )
-      ));
+    return (
+      entries.length > 0 &&
+      entries.every(
+        ([key, entryValue]) =>
+          typeof key === 'string' &&
+          key.trim().length > 0 &&
+          (typeof entryValue === 'string' ||
+            typeof entryValue === 'number' ||
+            typeof entryValue === 'boolean')
+      )
+    );
   }
 
   private async resolveWorkflowInputPolicyAllowedKeys(
     inputParams: Record<string, WorkflowInputParamDefinition> | undefined,
-    sourceContext?: TemporalWorkflowSourceContext,
+    sourceContext?: TemporalWorkflowSourceContext
   ): Promise<Set<string>> {
     const skillId = String(sourceContext?.sourceTemplate?.skillId || '').trim();
     if (skillId) {
-      const skill = await this.prisma.skillConfig.findUnique({
-        where: { id: skillId },
-        select: { paramsSchema: true },
-      }).catch(() => null);
+      const skill = await this.prisma.skillConfig
+        .findUnique({
+          where: { id: skillId },
+          select: { paramsSchema: true },
+        })
+        .catch(() => null);
       const schema = skill?.paramsSchema as Record<string, unknown> | undefined;
-      const properties = schema?.properties && typeof schema.properties === 'object' && !Array.isArray(schema.properties)
-        ? schema.properties as Record<string, unknown>
-        : {};
+      const properties =
+        schema?.properties &&
+        typeof schema.properties === 'object' &&
+        !Array.isArray(schema.properties)
+          ? (schema.properties as Record<string, unknown>)
+          : {};
       const skillKeys = Object.keys(properties);
       if (skillKeys.length > 0) {
         return new Set(skillKeys);
@@ -456,7 +532,7 @@ export class TemporalWorkflowNormalizationService {
 
   private async normalizeWorkflowStep(
     step: WorkflowStep,
-    activityDsl?: ActivityDsl,
+    activityDsl?: ActivityDsl
   ): Promise<WorkflowStep> {
     if (!step || step.type !== 'activity') {
       return step;
@@ -476,13 +552,15 @@ export class TemporalWorkflowNormalizationService {
 
     if (normalizedStep.activityRef?.startsWith('custom:')) {
       const activityId = normalizedStep.activityRef.slice('custom:'.length).trim();
-      const dbActivity = activityId && this.isLikelyUuid(activityId)
-        ? await this.prisma.activity.findUnique({ where: { id: activityId } }).catch(() => null)
-        : null;
+      const dbActivity =
+        activityId && this.isLikelyUuid(activityId)
+          ? await this.prisma.activity.findUnique({ where: { id: activityId } }).catch(() => null)
+          : null;
       return {
         ...normalizedStep,
         activityRef: activityId ? `custom:${activityId}` : undefined,
-        activityName: normalizedStep.activityName || dbActivity?.name || normalizedStep.activityName,
+        activityName:
+          normalizedStep.activityName || dbActivity?.name || normalizedStep.activityName,
       };
     }
 
@@ -496,12 +574,13 @@ export class TemporalWorkflowNormalizationService {
       };
     }
 
-    const activityFromDsl = (activityDsl?.activities || []).find((activity) =>
-      activity.name === legacyIdentifier || activity.fn === legacyIdentifier,
+    const activityFromDsl = (activityDsl?.activities || []).find(
+      (activity) => activity.name === legacyIdentifier || activity.fn === legacyIdentifier
     );
     if (activityFromDsl) {
-      const builtinFromDsl = this.builtinActivityRegistry.getByFn(activityFromDsl.fn)
-        || this.builtinActivityRegistry.findByLegacyIdentifier(activityFromDsl.name);
+      const builtinFromDsl =
+        this.builtinActivityRegistry.getByFn(activityFromDsl.fn) ||
+        this.builtinActivityRegistry.findByLegacyIdentifier(activityFromDsl.name);
       if (builtinFromDsl) {
         return {
           ...normalizedStep,
@@ -509,9 +588,11 @@ export class TemporalWorkflowNormalizationService {
           activityName: normalizedStep.activityName || activityFromDsl.name || builtinFromDsl.name,
         };
       }
-      const dbActivity = await this.prisma.activity.findUnique({
-        where: { name: activityFromDsl.name },
-      }).catch(() => null);
+      const dbActivity = await this.prisma.activity
+        .findUnique({
+          where: { name: activityFromDsl.name },
+        })
+        .catch(() => null);
       if (dbActivity) {
         return {
           ...normalizedStep,
@@ -525,9 +606,11 @@ export class TemporalWorkflowNormalizationService {
       return normalizedStep;
     }
 
-    const dbActivity = await this.prisma.activity.findUnique({
-      where: { name: legacyIdentifier },
-    }).catch(() => null);
+    const dbActivity = await this.prisma.activity
+      .findUnique({
+        where: { name: legacyIdentifier },
+      })
+      .catch(() => null);
     if (dbActivity) {
       return {
         ...normalizedStep,
@@ -540,6 +623,8 @@ export class TemporalWorkflowNormalizationService {
   }
 
   private isLikelyUuid(value: string): boolean {
-    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || '').trim());
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      String(value || '').trim()
+    );
   }
 }

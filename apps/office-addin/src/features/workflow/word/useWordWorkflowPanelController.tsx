@@ -9,8 +9,14 @@ import {
   rebuildCompareSummary,
 } from '../../parameter-query/word';
 import { TemplateUnderstandResponse } from '../../../api/carbone-api';
-import { buildWordKeywordFocusedDebugExcerpt, buildWordParameterDetectionDebugText } from '../../../host/office/word/parameter';
-import { buildWordChapterDetectionDebugText, buildWordDocumentStructureDebugText } from '../../../host/office/word/chapter';
+import {
+  buildWordKeywordFocusedDebugExcerpt,
+  buildWordParameterDetectionDebugText,
+} from '../../../host/office/word/parameter';
+import {
+  buildWordChapterDetectionDebugText,
+  buildWordDocumentStructureDebugText,
+} from '../../../host/office/word/chapter';
 import {
   appendUniqueCandidateIds,
   buildWordSectionBilingualPairList,
@@ -30,11 +36,19 @@ import {
   isWordSuggestionHighQuality,
   selectBestWordSuggestionForCandidate,
 } from '../../parameter-identify/word/identify-suggestion.helpers';
-import { buildWordSectionDocumentContent, buildWordSectionDocumentIR, buildWordSectionExcerpt } from './word-workflow.section.helpers';
+import {
+  buildWordSectionDocumentContent,
+  buildWordSectionDocumentIR,
+  buildWordSectionExcerpt,
+} from './word-workflow.section.helpers';
 import { createWordWorkflowActionControllers } from './word-workflow.controller-actions';
 import { buildWordWorkflowPanelView } from './word-workflow.controller-view';
 import { buildWordWorkflowRequest } from './word-workflow.actions.helpers';
-import { buildPromptTraceDebugText, buildUnderstandingDebugText, buildWordUnderstandingSummaryText } from './word-workflow.debug';
+import {
+  buildPromptTraceDebugText,
+  buildUnderstandingDebugText,
+  buildWordUnderstandingSummaryText,
+} from './word-workflow.debug';
 import {
   buildWordCompareCacheKey,
   buildWordUnderstandingCacheKey,
@@ -151,11 +165,12 @@ export function useWordWorkflowPanelController(options: UseWordWorkflowPanelCont
     saveWordRecognitionCacheEntry,
     removeWordRecognitionCacheEntry,
     isWordRecognitionCacheCompatible,
-    mergeRecognitionResultWithAppliedCache: (nextResult, cachedEntry) => mergeWordRecognitionResultWithAppliedCache(
-      nextResult,
-      cachedEntry,
-      dedupeWordSectionSuggestions,
-    ),
+    mergeRecognitionResultWithAppliedCache: (nextResult, cachedEntry) =>
+      mergeWordRecognitionResultWithAppliedCache(
+        nextResult,
+        cachedEntry,
+        dedupeWordSectionSuggestions
+      ),
     buildWordCompareCacheKey,
     saveWordCompareCacheEntry,
   });
@@ -196,21 +211,25 @@ export function useWordWorkflowPanelController(options: UseWordWorkflowPanelCont
     includeUnderstanding?: boolean;
     useSelectedCompareCandidates?: boolean;
     prefetchedUnderstanding?: TemplateUnderstandResponse | null;
-  }) => buildWordWorkflowRequest({
-    hostAdapter,
-    compareResult: panelState.compareResult,
-    effectiveCompareCandidateFields: derivedState.effectiveCompareCandidateFields,
-    currentCompareSignature: derivedState.currentCompareSignature,
-    sampleUploadState: panelState.sampleUploadState,
-    understandingResult: panelState.understandingResult,
-    workflowSourceLanguage: identifyPanel.workflowState.workflowSourceLanguage,
-    workflowTargetLanguages: identifyPanel.workflowState.workflowTargetLanguages,
-    selectedTemplateType: identifyPanel.workflowState.selectedTemplateType,
-    useMultiStage: identifyPanel.workflowState.useMultiStage,
-    analysisExecutor: identifyPanel.storeState.analysisExecutor,
-    analysisThinkingEnabled: identifyPanel.storeState.analysisThinkingEnabled,
-    buildWordUnderstandingCacheKey,
-  }, requestOptions);
+  }) =>
+    buildWordWorkflowRequest(
+      {
+        hostAdapter,
+        compareResult: panelState.compareResult,
+        effectiveCompareCandidateFields: derivedState.effectiveCompareCandidateFields,
+        currentCompareSignature: derivedState.currentCompareSignature,
+        sampleUploadState: panelState.sampleUploadState,
+        understandingResult: panelState.understandingResult,
+        workflowSourceLanguage: identifyPanel.workflowState.workflowSourceLanguage,
+        workflowTargetLanguages: identifyPanel.workflowState.workflowTargetLanguages,
+        selectedTemplateType: identifyPanel.workflowState.selectedTemplateType,
+        useMultiStage: identifyPanel.workflowState.useMultiStage,
+        analysisExecutor: identifyPanel.storeState.analysisExecutor,
+        analysisThinkingEnabled: identifyPanel.storeState.analysisThinkingEnabled,
+        buildWordUnderstandingCacheKey,
+      },
+      requestOptions
+    );
 
   const workflowActions = createWordWorkflowActionControllers({
     compare: {
@@ -336,12 +355,14 @@ export function useWordWorkflowPanelController(options: UseWordWorkflowPanelCont
       buildWordUnderstandingSummaryText,
       loadWordRecognitionCache,
       saveWordRecognitionCacheEntry,
-      mergeRecognitionResultWithAppliedCache: (nextResult, cachedEntry) => mergeWordRecognitionResultWithAppliedCache(
-        nextResult,
-        cachedEntry,
-        dedupeWordSectionSuggestions,
-      ),
-      persistCompareCacheRecognitionSnapshot: cacheController.persistCompareCacheRecognitionSnapshot,
+      mergeRecognitionResultWithAppliedCache: (nextResult, cachedEntry) =>
+        mergeWordRecognitionResultWithAppliedCache(
+          nextResult,
+          cachedEntry,
+          dedupeWordSectionSuggestions
+        ),
+      persistCompareCacheRecognitionSnapshot:
+        cacheController.persistCompareCacheRecognitionSnapshot,
       buildWordSectionExcerpt,
       buildWordSectionDocumentIR,
       buildWordSectionDocumentContent,
@@ -435,7 +456,9 @@ export function useWordWorkflowPanelController(options: UseWordWorkflowPanelCont
       step2Collapsed: panelState.step2Collapsed,
       setStep2Collapsed: panelState.setStep2Collapsed,
       sampleUploadState: panelState.sampleUploadState,
-      selectedTemplateType: identifyPanel.workflowState.selectedTemplateType as 'contract' | 'report',
+      selectedTemplateType: identifyPanel.workflowState.selectedTemplateType as
+        | 'contract'
+        | 'report',
       effectiveCompareHeadingLanguages: derivedState.effectiveCompareHeadingLanguages,
       handleCompareDocumentTypeChange: workflowActions.handleCompareDocumentTypeChange,
       handleCompareHeadingLanguageToggle: workflowActions.handleCompareHeadingLanguageToggle,

@@ -21,39 +21,40 @@ export interface DocumentStructure {
 }
 
 /**
-   * 直接AI识别请求 - 用于Office插件直接提交文档内容
-   */
-  export interface DirectAIIdentifyRequest {
-    documentContent: string;           // 文档文本内容（从Office获取）
-    documentType: 'docx' | 'xlsx' | 'pptx' | 'text';  // 文档类型
-    templateType?: string;              // 模板类型：report, invoice, contract, certificate 等
-    skillId?: string;                   // AI Skill ID
-    skill?: any;                        // AI Skill 对象
-    context?: string;                   // 上下文信息（如文档用途描述）
-    customRules?: Array<{               // 自定义识别规则
-      pattern: string;
-      targetPath: string;
-      description?: string;
-    }>;
-  }
+ * 直接AI识别请求 - 用于Office插件直接提交文档内容
+ */
+export interface DirectAIIdentifyRequest {
+  documentContent: string; // 文档文本内容（从Office获取）
+  documentType: 'docx' | 'xlsx' | 'pptx' | 'text'; // 文档类型
+  templateType?: string; // 模板类型：report, invoice, contract, certificate 等
+  skillId?: string; // AI Skill ID
+  skill?: any; // AI Skill 对象
+  context?: string; // 上下文信息（如文档用途描述）
+  customRules?: Array<{
+    // 自定义识别规则
+    pattern: string;
+    targetPath: string;
+    description?: string;
+  }>;
+}
 
-  /**
-   * 多阶段处理进度信息
-   */
-  export interface ProcessingProgressInfo {
-    type: 'progress' | 'result' | 'error';
-    stage?: string;       // 处理阶段
-    stageName?: string;   // 阶段名称（中文）
-    progress?: number;    // 进度百分比
-    message?: string;     // 进度消息
-    currentSection?: string;  // 当前处理章节
-    data?: AIIdentifyResponse;  // 最终结果
-    error?: string;       // 错误信息
-  }
+/**
+ * 多阶段处理进度信息
+ */
+export interface ProcessingProgressInfo {
+  type: 'progress' | 'result' | 'error';
+  stage?: string; // 处理阶段
+  stageName?: string; // 阶段名称（中文）
+  progress?: number; // 进度百分比
+  message?: string; // 进度消息
+  currentSection?: string; // 当前处理章节
+  data?: AIIdentifyResponse; // 最终结果
+  error?: string; // 错误信息
+}
 
 export interface AIIdentifyResponse {
   suggestions: AISuggestion[];
-  rawSuggestions?: any[];  // 原始建议数据，包含详细信息
+  rawSuggestions?: any[]; // 原始建议数据，包含详细信息
   documentStructure?: DocumentStructure;
   templateConfig?: any;
   confidence: number;
@@ -66,8 +67,8 @@ export interface AIIdentifyResponse {
   contextAnalysis?: {
     detectedTemplateType: string;
     userIntent: string;
-    usedAI?: boolean;  // 是否使用了AI分析
-    aiServiceUrl?: string;  // AI服务地址
+    usedAI?: boolean; // 是否使用了AI分析
+    aiServiceUrl?: string; // AI服务地址
   };
 }
 
@@ -222,16 +223,18 @@ export interface TemplateAnalyzeResponse {
     targetLanguages: string[];
     documentMode: string;
   };
-  fields: Array<TemplateFieldSpec & {
-    sample?: Record<string, string>;
-    termMatch?: {
-      status: 'matched' | 'unmatched';
-      termId?: string;
-      scope?: 'global' | 'tenant' | 'template';
-    };
-    confidence: number;
-    needsReview: boolean;
-  }>;
+  fields: Array<
+    TemplateFieldSpec & {
+      sample?: Record<string, string>;
+      termMatch?: {
+        status: 'matched' | 'unmatched';
+        termId?: string;
+        scope?: 'global' | 'tenant' | 'template';
+      };
+      confidence: number;
+      needsReview: boolean;
+    }
+  >;
   warnings: string[];
 }
 
@@ -478,7 +481,7 @@ export interface TemplateAssetManifest {
   termAssets?: WorkflowTermAssets;
   metadata: {
     generatedAt: string;
-    source: string;          // 例如 "office-addin"
+    source: string; // 例如 "office-addin"
     addinVersion?: string;
   };
 }
@@ -498,4 +501,3 @@ export interface TemplateAssetImportPayload {
   manifest: TemplateAssetManifest;
   templateBinary?: string; // Base64
 }
-

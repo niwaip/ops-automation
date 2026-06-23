@@ -3,13 +3,39 @@
  * 单条消息渲染组件 - 支持Markdown渲染和思考折叠
  */
 
-import React, { useMemo, useState } from 'react';
-import { Avatar, Button, Modal, Space, Switch, Tag, Typography, message as antdMessage } from 'antd';
-import { UserOutlined, RobotOutlined, FileTextOutlined, DownOutlined, RightOutlined, CopyOutlined, RedoOutlined, CheckOutlined, CloseOutlined, LoadingOutlined, EyeOutlined, DownloadOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  Avatar,
+  Button,
+  Modal,
+  Space,
+  Switch,
+  Tag,
+  Typography,
+  message as antdMessage,
+} from 'antd';
+import {
+  UserOutlined,
+  RobotOutlined,
+  FileTextOutlined,
+  DownOutlined,
+  RightOutlined,
+  CopyOutlined,
+  RedoOutlined,
+  CheckOutlined,
+  CloseOutlined,
+  LoadingOutlined,
+  EyeOutlined,
+  DownloadOutlined,
+  ThunderboltOutlined,
+} from '@ant-design/icons';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { buildBrowserOutputDisplay, extractBrowserExecutionResult } from '@/features/executions/lib/browser';
-import { ChatMessage } from './types';
+import {
+  buildBrowserOutputDisplay,
+  extractBrowserExecutionResult,
+} from '@/features/executions/lib/browser';
+import { ChatMessage, ChatProgressLog } from './types';
 import { useAuthStore } from '@/shared/store/authStore';
 import { replaceLocalhostWithCurrentHost } from '@/shared/lib/publicUrl';
 import {
@@ -18,6 +44,27 @@ import {
   resolveWaitingInputDisplayLabel,
 } from '@/shared/lib/waitingInputDisplay';
 import './ChatMessage.css';
+
+const reportChatFailureLoopDebug = (
+  hypothesisId: string,
+  location: string,
+  msg: string,
+  data: Record<string, unknown>
+) => {
+  fetch('http://127.0.0.1:7777/event', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      sessionId: 'chat-failure-loop-history',
+      runId: 'frontend-chat-message',
+      hypothesisId,
+      location,
+      msg,
+      data,
+      ts: Date.now(),
+    }),
+  }).catch(() => {});
+};
 
 interface ChatMessageProps {
   message: ChatMessage;
@@ -71,7 +118,7 @@ const parseMessageContent = (content: string): { thoughts: string[]; answer: str
     .replace(actionRegex, '')
     .replace(observationRegex, '')
     .replace(thinkTagRegex, '')
-    .replace(/❌ 错误: [^\n]+/g, '')  // 移除错误信息（如果有）
+    .replace(/❌ 错误: [^\n]+/g, '') // 移除错误信息（如果有）
     .trim();
 
   // 如果answer为空但有observation内容，使用observation作为answer
@@ -96,6 +143,7 @@ const formatExecutionStatus = (status?: string): string | null => {
     running: '执行中',
     queued: '排队中',
     pending_approval: '待审批',
+    human_control: '待人工处理',
   };
 
   return statusMap[status] || status;
@@ -146,7 +194,56 @@ const looksLikeVerboseExecutionContent = (text?: string): boolean => {
   const raw = String(text || '').trim();
   if (!raw) return false;
   if (raw.length > 600) return true;
-  return /stepResults|### Ran Playwright code|snapshotId|stdout|executedCommands|任务已完成[,，]?\s*返回结果|```json/i.test(raw);
+  return /stepResults|### Ran Playwright code|snapshotId|stdout|executedCommands|任务已完成[,，]?\s*返回结果|```json/i.test(
+    raw
+  );
+};
+
+const asRecord = (value: unknown): Record<string, unknown> | undefined => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return undefined;
+  }
+  return value as Record<string, unknown>;
+};
+
+const asString = (value: unknown): string | undefined => {
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+};
+
+const summarizeDocumentExecutionResult = (value: unknown, downloadUrl?: string): string | null => {
+  const record = asRecord(value);
+  if (!record) {
+    return null;
+  }
+
+  const status = asString(record.status)?.toLowerCase();
+  const fileName = asString(record.fileName) || asString(record.filename) || asString(record.name);
+  const format = asString(record.format)?.toUpperCase();
+  const isDocumentResult = Boolean(
+    fileName ||
+    format ||
+    downloadUrl ||
+    ['rendered', 'success', 'succeeded', 'completed'].includes(status || '')
+  );
+
+  if (!isDocumentResult) {
+    return null;
+  }
+
+  return [
+    '文档已生成。',
+    ...(fileName ? [`- 文件名：${fileName}`] : []),
+    ...(format ? [`- 格式：${format}`] : []),
+    downloadUrl ? '- 可通过下方按钮下载查看。' : '- 可在执行详情中查看生成结果。',
+  ].join('\n');
+};
+
+const hasBrowserExecutionPayload = (value: unknown): boolean => {
+  const result = extractBrowserExecutionResult(value);
+  if (result && result.stepResults.length > 0) {
+    return true;
+  }
+  return getExecutionStepCount(value) !== undefined;
 };
 
 const summarizeBrowserExecutionResult = (value: unknown): string | null => {
@@ -158,16 +255,16 @@ const summarizeBrowserExecutionResult = (value: unknown): string | null => {
   const lastStep = result.stepResults[result.stepResults.length - 1];
   const lastOutput = buildBrowserOutputDisplay(lastStep?.output || null);
   const snapshotCount = new Set(
-    [
-      result.snapshotId,
-      ...result.stepResults.map((step) => step.snapshotId),
-    ].filter((item): item is string => Boolean(item)),
+    [result.snapshotId, ...result.stepResults.map((step) => step.snapshotId)].filter(
+      (item): item is string => Boolean(item)
+    )
   ).size;
-  const finalStatus = lastOutput.status === 'success'
-    ? '成功'
-    : lastOutput.status === 'failed'
-      ? '失败'
-      : lastOutput.status || '已完成';
+  const finalStatus =
+    lastOutput.status === 'success'
+      ? '成功'
+      : lastOutput.status === 'failed'
+        ? '失败'
+        : lastOutput.status || '已完成';
   const lastAction = lastStep?.name || lastStep?.action || lastOutput.command;
 
   return [
@@ -183,8 +280,11 @@ const summarizeBrowserExecutionResult = (value: unknown): string | null => {
 const compactExecutionText = (text?: string, executionResultData?: unknown): string => {
   const raw = String(text || '').trim();
   if (!raw) return '';
-  if (looksLikeVerboseExecutionContent(raw)) {
-    return summarizeBrowserExecutionResult(executionResultData) || '浏览器执行已完成，详细信息请通过下方链接查看。';
+  if (looksLikeVerboseExecutionContent(raw) && hasBrowserExecutionPayload(executionResultData)) {
+    return (
+      summarizeBrowserExecutionResult(executionResultData) ||
+      '浏览器执行已完成，详细信息请通过下方链接查看。'
+    );
   }
   return raw;
 };
@@ -205,14 +305,27 @@ const isBrowserExecutionResult = (
   executionId: string | undefined,
   answerText: string,
   finalResultData: unknown,
+  options?: {
+    taskStatus?: string;
+    executionStatus?: string;
+    runtimeType?: string;
+  }
 ): boolean => {
   if (!executionId) {
     return false;
   }
-  if (looksLikeVerboseExecutionContent(answerText)) {
+  const normalizedRuntimeType =
+    typeof options?.runtimeType === 'string' ? options.runtimeType.trim().toLowerCase() : '';
+  if (normalizedRuntimeType === 'browser') {
     return true;
   }
-  return getExecutionStepCount(finalResultData) !== undefined;
+  if (options?.taskStatus === 'human_control' || options?.executionStatus === 'human_control') {
+    return true;
+  }
+  if (hasBrowserExecutionPayload(finalResultData)) {
+    return true;
+  }
+  return looksLikeVerboseExecutionContent(answerText) && hasBrowserExecutionPayload(answerText);
 };
 
 const ChatMessageComponent: React.FC<ChatMessageProps> = ({
@@ -235,127 +348,199 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
   const isWaitingInput = isTaskMode && message.metadata?.taskStatus === 'waiting_input';
   const isPendingApproval = isTaskMode && message.metadata?.taskStatus === 'pending_approval';
   const isFailed = isTaskMode && message.metadata?.taskStatus === 'failed';
+  const taskStatus = message.metadata?.taskStatus ? String(message.metadata.taskStatus) : undefined;
+  const isHumanControl =
+    isTaskMode &&
+    (taskStatus === 'human_control' || message.metadata?.executionStatus === 'human_control');
   const finalResult = message.metadata?.finalResult?.trim();
   const finalResultData = message.metadata?.finalResultData;
   const finalSummary = message.metadata?.finalSummary?.trim();
   const errorMessage = message.metadata?.errorMessage?.trim();
-  const errorPreview = getErrorPreview(errorMessage);
+  const failureReason =
+    typeof message.metadata?.failureReason === 'string'
+      ? message.metadata.failureReason.trim()
+      : undefined;
   const hasBusinessResult = message.metadata?.hasBusinessResult;
   const executionId = message.metadata?.executionId;
   const executionStatus = formatExecutionStatus(message.metadata?.executionStatus);
+  const metadataRecord =
+    message.metadata && typeof message.metadata === 'object'
+      ? (message.metadata as Record<string, unknown>)
+      : undefined;
+  const executionRuntimeType =
+    typeof metadataRecord?.runtimeType === 'string' ? metadataRecord.runtimeType : undefined;
   const usage = message.metadata?.usage;
   const promptDebug = message.metadata?.promptDebug;
+  const progressLogs = message.metadata?.progressLogs || [];
   const showThinking = message.metadata?.showThinking !== false;
   const isRunning = isTaskMode && message.metadata?.taskStatus === 'running';
-  const showRunningState = isTaskMode && (isRunning || (Boolean(isStreaming) && !isWaitingInput && !isPendingApproval && !errorMessage));
+  const showRunningState =
+    isTaskMode &&
+    (isRunning || (Boolean(isStreaming) && !isWaitingInput && !isPendingApproval && !errorMessage));
+  const shouldShowTakeoverCard = Boolean((failureReason || errorMessage) && isHumanControl);
   const shouldShowErrorCard = Boolean(
-    errorMessage
-    && (isFailed || (!isWaitingInput && !isPendingApproval && !showRunningState)),
+    !shouldShowTakeoverCard &&
+      (failureReason || errorMessage) &&
+      !isHumanControl &&
+      message.metadata?.executionStatus !== 'human_control' &&
+      (isFailed || (!isWaitingInput && !isPendingApproval && !showRunningState))
   );
   const missingInputs = useMemo(
-    () => dedupeWaitingInputDisplayFields(
-      ((message.metadata?.missingInputs || []) as WaitingInputField[]).filter((item) => item?.missing !== false),
-    ),
-    [message.metadata?.missingInputs],
+    () =>
+      dedupeWaitingInputDisplayFields(
+        ((message.metadata?.missingInputs || []) as WaitingInputField[]).filter(
+          (item) => item?.missing !== false
+        )
+      ),
+    [message.metadata?.missingInputs]
   );
   const missingInputGroups = useMemo(
     () => buildWaitingInputDisplayGroups(missingInputs),
-    [missingInputs],
+    [missingInputs]
   );
   const waitingInputLabels = useMemo(
-    () => missingInputs
-      .map((item) => resolveWaitingInputDisplayLabel(item).trim())
-      .filter(Boolean),
-    [missingInputs],
+    () => missingInputs.map((item) => resolveWaitingInputDisplayLabel(item).trim()).filter(Boolean),
+    [missingInputs]
   );
-  const waitingInputSummary = useMemo(
-    () => {
-      if (!isWaitingInput || waitingInputLabels.length === 0) {
-        return finalSummary;
-      }
-      return '还需要你补充以下信息后，任务才能继续执行。';
-    },
-    [finalSummary, isWaitingInput, waitingInputLabels],
-  );
+  const waitingInputSummary = useMemo(() => {
+    if (!isWaitingInput || waitingInputLabels.length === 0) {
+      return finalSummary;
+    }
+    return '还需要你补充以下信息后，任务才能继续执行。';
+  }, [finalSummary, isWaitingInput, waitingInputLabels]);
   const structuredResultText = useMemo(
     () => toStructuredResultText(finalResultData),
-    [finalResultData],
+    [finalResultData]
   );
   const shouldShowStructuredResult = Boolean(
     structuredResultText &&
     finalResultData &&
     typeof finalResultData !== 'string' &&
-    structuredResultText !== finalResult,
+    structuredResultText !== finalResult
   );
   const canViewPrompt = Boolean(
-    !isUser
-    && isAdmin
-    && promptDebug
-    && (promptDebug.systemPrompt || promptDebug.userPrompt),
+    !isUser && isAdmin && promptDebug && (promptDebug.systemPrompt || promptDebug.userPrompt)
   );
   const hasDetailedLlmCalls = Boolean(promptDebug?.llmCalls?.length);
-  const combinedPromptText = useMemo(
-    () => {
-      if (!promptDebug) {
-        return '';
-      }
-      return [
-        '## Debug Source',
-        promptDebug.debugSource || '',
-        '',
-        '## System Prompt',
-        promptDebug.systemPrompt || '',
-        '',
-        '## User Prompt',
-        promptDebug.userPrompt || '',
-        '',
-        '## Notes',
-        (promptDebug.notes || []).join('\n'),
-        '',
-        '## LLM Request Messages',
-        JSON.stringify(promptDebug.llmRequestMessages || [], null, 2),
-        '',
-        '## LLM Raw Response',
-        promptDebug.llmResponseText || '',
-        '',
-        '## LLM Calls',
-        JSON.stringify(promptDebug.llmCalls || [], null, 2),
-      ].join('\n');
-    },
-    [promptDebug],
-  );
+  const combinedPromptText = useMemo(() => {
+    if (!promptDebug) {
+      return '';
+    }
+    return [
+      '## Debug Source',
+      promptDebug.debugSource || '',
+      '',
+      '## System Prompt',
+      promptDebug.systemPrompt || '',
+      '',
+      '## User Prompt',
+      promptDebug.userPrompt || '',
+      '',
+      '## Notes',
+      (promptDebug.notes || []).join('\n'),
+      '',
+      '## LLM Request Messages',
+      JSON.stringify(promptDebug.llmRequestMessages || [], null, 2),
+      '',
+      '## LLM Raw Response',
+      promptDebug.llmResponseText || '',
+      '',
+      '## LLM Calls',
+      JSON.stringify(promptDebug.llmCalls || [], null, 2),
+    ].join('\n');
+  }, [promptDebug]);
 
   // 解析内容
   const { thoughts, answer } = parseMessageContent(rawContent);
-  const answerWithoutTaskCheckbox = useMemo(
-    () => {
-      const cleaned = answer.replace(/\n?- \[x\]\s*任务完成（可改为未完成）\s*$/m, '').trim();
-      return beautifyText(fixLocalhostLink(cleaned) || '');
-    },
-    [answer],
-  );
+  const answerWithoutTaskCheckbox = useMemo(() => {
+    const cleaned = answer.replace(/\n?- \[x\]\s*任务完成（可改为未完成）\s*$/m, '').trim();
+    return beautifyText(fixLocalhostLink(cleaned) || '');
+  }, [answer]);
   const hasExecutionContext = Boolean(
-    message.metadata?.executionId
-    || message.metadata?.executionStatus
-    || message.metadata?.temporalLink
-    || message.metadata?.taskStatus,
+    message.metadata?.executionId ||
+    message.metadata?.executionStatus ||
+    message.metadata?.temporalLink ||
+    message.metadata?.taskStatus
   );
   const compactAnswer = useMemo(
-    () => (
+    () =>
       hasExecutionContext
         ? compactExecutionText(answerWithoutTaskCheckbox, finalResultData)
-        : answerWithoutTaskCheckbox
-    ),
-    [hasExecutionContext, answerWithoutTaskCheckbox, finalResultData],
+        : answerWithoutTaskCheckbox,
+    [hasExecutionContext, answerWithoutTaskCheckbox, finalResultData]
   );
   const executionStepCount = useMemo(
     () => getExecutionStepCount(finalResultData),
-    [finalResultData],
+    [finalResultData]
   );
   const browserExecutionMode = useMemo(
-    () => isBrowserExecutionResult(executionId, answerWithoutTaskCheckbox, finalResultData),
-    [executionId, answerWithoutTaskCheckbox, finalResultData],
+    () =>
+      isBrowserExecutionResult(executionId, answerWithoutTaskCheckbox, finalResultData, {
+        taskStatus,
+        executionStatus: message.metadata?.executionStatus
+          ? String(message.metadata.executionStatus)
+          : undefined,
+        runtimeType: executionRuntimeType,
+      }),
+    [
+      executionId,
+      answerWithoutTaskCheckbox,
+      finalResultData,
+      taskStatus,
+      message.metadata?.executionStatus,
+      executionRuntimeType,
+    ]
   );
+  useEffect(() => {
+    if (!isTaskMode || !executionId) {
+      return;
+    }
+    reportChatFailureLoopDebug(
+      'H1',
+      'apps/frontend/portal/src/features/chat/ChatMessage.tsx:status-card',
+      'Chat message resolved status card state',
+      {
+        messageId: message.id,
+        executionId,
+        taskStatus,
+        executionStatus: message.metadata?.executionStatus ?? null,
+        runtimeType: executionRuntimeType ?? null,
+        browserExecutionMode,
+        isFailed,
+        isHumanControl,
+        showRunningState,
+        shouldShowTakeoverCard,
+        shouldShowErrorCard,
+        errorMessage: errorMessage ?? null,
+        failureReason: failureReason ?? null,
+      }
+    );
+  }, [
+    browserExecutionMode,
+    errorMessage,
+    executionId,
+    executionRuntimeType,
+    failureReason,
+    isFailed,
+    isHumanControl,
+    isTaskMode,
+    message.id,
+    message.metadata?.executionStatus,
+    shouldShowErrorCard,
+    shouldShowTakeoverCard,
+    showRunningState,
+    taskStatus,
+  ]);
+  const hasStructuredProgressLogs = !isUser && isTaskMode && progressLogs.length > 0;
+  const currentProgressLog = hasStructuredProgressLogs
+    ? progressLogs[progressLogs.length - 1]
+    : undefined;
+
+  useEffect(() => {
+    if (isRunning) {
+      setThoughtsExpanded(true);
+    }
+  }, [isRunning, progressLogs.length, message.id]);
 
   const handleCopy = async () => {
     try {
@@ -424,9 +609,14 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
   // 渲染用量统计
   const renderUsage = () => {
     if (!usage) return null;
-    const { prompt_tokens = 0, completion_tokens = 0, total_tokens = 0, completion_tokens_details } = usage;
+    const {
+      prompt_tokens = 0,
+      completion_tokens = 0,
+      total_tokens = 0,
+      completion_tokens_details,
+    } = usage;
     if (total_tokens === 0) return null;
-    
+
     const reasoning_tokens = completion_tokens_details?.reasoning_tokens;
     return (
       <div className="chat-message-usage">
@@ -436,7 +626,8 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
             <span className="chat-usage-value">{total_tokens}</span>
           </span>
           <span className="chat-usage-detail">
-            输入:{prompt_tokens} 输出:{completion_tokens}{reasoning_tokens ? ` (含推理:${reasoning_tokens})` : ''}
+            输入:{prompt_tokens} 输出:{completion_tokens}
+            {reasoning_tokens ? ` (含推理:${reasoning_tokens})` : ''}
           </span>
         </Space>
       </div>
@@ -445,7 +636,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
 
   // 渲染思考过程（可折叠）
   const renderThoughts = () => {
-    if (!showThinking || thoughts.length === 0 || isUser) return null;
+    if (!showThinking || thoughts.length === 0 || isUser || hasStructuredProgressLogs) return null;
 
     return (
       <div className="chat-thoughts-wrapper">
@@ -462,10 +653,54 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
         {thoughtsExpanded && (
           <div className="chat-thoughts-content">
             {thoughts.map((thought, idx) => (
-              <div key={idx} className="chat-thought-step">{beautifyText(thought, false)}</div>
+              <div key={idx} className="chat-thought-step">
+                {beautifyText(thought, false)}
+              </div>
             ))}
           </div>
         )}
+      </div>
+    );
+  };
+
+  const renderProgressLogs = () => {
+    if (!showThinking || !hasStructuredProgressLogs || !currentProgressLog || !isRunning) {
+      return null;
+    }
+
+    const stageLabelMap: Record<ChatProgressLog['stage'], string> = {
+      thought: '思考',
+      action: '行动',
+      observation: '观察',
+    };
+
+    const stageColorMap: Record<ChatProgressLog['stage'], string> = {
+      thought: 'processing',
+      action: 'blue',
+      observation: 'green',
+    };
+
+    return (
+      <div className="chat-progress-wrapper">
+        <div className="chat-progress-current">
+          <div className="chat-progress-current-header">
+            <div className="chat-progress-current-title-group">
+              {isRunning && (
+                <span className="chat-progress-running-indicator">
+                  <LoadingOutlined className="chat-running-icon" />
+                  <span>执行中</span>
+                </span>
+              )}
+              <span className="chat-thoughts-title">当前步骤</span>
+            </div>
+            <Tag color={stageColorMap[currentProgressLog.stage]}>
+              {stageLabelMap[currentProgressLog.stage]}
+            </Tag>
+          </div>
+          <div className={`chat-progress-current-text ${isRunning ? 'running' : ''}`.trim()}>
+            {currentProgressLog.text}
+          </div>
+        </div>
       </div>
     );
   };
@@ -480,7 +715,15 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
       return null;
     }
 
-    if (!compactAnswer) {
+    if (
+      !compactAnswer ||
+      (hasStructuredProgressLogs &&
+        !finalResult &&
+        !finalSummary &&
+        !isWaitingInput &&
+        !isPendingApproval &&
+        !shouldShowErrorCard)
+    ) {
       return null;
     }
 
@@ -497,7 +740,9 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
                   <code {...props}>{children}</code>
                 </pre>
               ) : (
-                <code className="inline-code" {...props}>{children}</code>
+                <code className="inline-code" {...props}>
+                  {children}
+                </code>
               );
             },
             // 自定义表格样式
@@ -543,7 +788,9 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
               ghost
               size="small"
               icon={<ThunderboltOutlined />}
-              onClick={() => window.open(executionDetailLink || temporalLink, '_blank')}
+              href={executionDetailLink || temporalLink}
+              target="_blank"
+              rel="noopener noreferrer"
             >
               导航到详细页面
             </Button>
@@ -560,7 +807,32 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
       </div>
     );
 
+    if (shouldShowTakeoverCard) {
+      const detailError = errorMessage || failureReason || '任务正在等待人工处理';
+      const previewError = getErrorPreview(detailError);
+      return (
+        <div className="chat-outcome-card waiting">
+          <div className="chat-outcome-title">待人工处理</div>
+          <div className="chat-outcome-meta">
+            {executionStatus && <span>状态：{executionStatus}</span>}
+            {executionId && <span>执行单 ID：{executionId}</span>}
+            {executionStepCount !== undefined && <span>执行步骤数：{executionStepCount}</span>}
+          </div>
+          <div className="chat-outcome-body">{previewError}</div>
+          {(downloadUrl || temporalLink || executionDetailLink) && renderResourceLinks()}
+          {previewError !== detailError ? (
+            <details className="chat-outcome-details">
+              <summary>查看详细信息</summary>
+              <pre className="chat-structured-result chat-error-details">{detailError}</pre>
+            </details>
+          ) : null}
+        </div>
+      );
+    }
+
     if (shouldShowErrorCard) {
+      const detailError = errorMessage || failureReason || '任务执行失败';
+      const previewError = getErrorPreview(detailError);
       return (
         <div className="chat-outcome-card error">
           <div className="chat-outcome-title">任务失败</div>
@@ -569,20 +841,22 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
             {executionId && <span>执行单 ID：{executionId}</span>}
             {executionStepCount !== undefined && <span>执行步骤数：{executionStepCount}</span>}
           </div>
-          <div className="chat-outcome-body">{errorPreview}</div>
-          <details className="chat-outcome-details">
-            <summary>查看详细错误</summary>
-            <pre className="chat-structured-result chat-error-details">{errorMessage}</pre>
-          </details>
+          <div className="chat-outcome-body">{previewError}</div>
+          {(downloadUrl || temporalLink || executionDetailLink) && renderResourceLinks()}
+          {previewError !== detailError ? (
+            <details className="chat-outcome-details">
+              <summary>查看详细错误</summary>
+              <pre className="chat-structured-result chat-error-details">{detailError}</pre>
+            </details>
+          ) : null}
         </div>
       );
     }
 
     if (finalResult) {
-      const fixedFinalResult = compactExecutionText(
-        beautifyText(fixLocalhostLink(finalResult) || ''),
-        finalResultData,
-      );
+      const fixedFinalResult =
+        summarizeDocumentExecutionResult(finalResultData, downloadUrl) ||
+        compactExecutionText(beautifyText(fixLocalhostLink(finalResult) || ''), finalResultData);
       return (
         <div className="chat-outcome-card success">
           <div className="chat-outcome-title">{hasBusinessResult ? '任务结果' : '任务完成'}</div>
@@ -592,9 +866,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
             {executionStepCount !== undefined && <span>执行步骤数：{executionStepCount}</span>}
           </div>
           <div className="chat-outcome-body">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {fixedFinalResult}
-            </ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{fixedFinalResult}</ReactMarkdown>
           </div>
           {(downloadUrl || temporalLink) && renderResourceLinks()}
           {shouldShowStructuredResult && (
@@ -610,10 +882,12 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
     if (finalSummary || waitingInputSummary) {
       const summaryToDisplay = compactExecutionText(
         beautifyText(waitingInputSummary || finalSummary || ''),
-        finalResultData,
+        finalResultData
       );
       return (
-        <div className={`chat-outcome-card ${isWaitingInput || isPendingApproval ? 'waiting' : 'neutral'}`}>
+        <div
+          className={`chat-outcome-card ${isWaitingInput || isPendingApproval ? 'waiting' : 'neutral'}`}
+        >
           <div className={`chat-outcome-title ${showRunningState ? 'running' : ''}`}>
             {showRunningState && <LoadingOutlined className="chat-running-icon" />}
             {isWaitingInput
@@ -621,7 +895,9 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
               : isPendingApproval
                 ? '等待审批'
                 : showRunningState
-                  ? (executionId || executionStatus ? '执行中' : '规划中')
+                  ? executionId || executionStatus
+                    ? '执行中'
+                    : '规划中'
                   : '任务状态'}
           </div>
           <div className="chat-outcome-meta">
@@ -630,9 +906,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
             {executionStepCount !== undefined && <span>执行步骤数：{executionStepCount}</span>}
           </div>
           <div className="chat-outcome-body">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {summaryToDisplay}
-            </ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{summaryToDisplay}</ReactMarkdown>
           </div>
           {(downloadUrl || temporalLink) && renderResourceLinks()}
           {isWaitingInput && missingInputs.length > 0 && (
@@ -651,16 +925,21 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
                       }}
                     >
                       <div style={{ fontWeight: 600, marginBottom: 8 }}>{group.label}</div>
-                      <ul style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-                        columnGap: 16,
-                        rowGap: 6,
-                        paddingLeft: 20,
-                        marginBottom: 0,
-                      }}>
+                      <ul
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                          columnGap: 16,
+                          rowGap: 6,
+                          paddingLeft: 20,
+                          marginBottom: 0,
+                        }}
+                      >
                         {group.items.map((item, index) => (
-                          <li key={`${group.label}-${item.name || 'missing'}-${index}`} style={{ minWidth: 0 }}>
+                          <li
+                            key={`${group.label}-${item.name || 'missing'}-${index}`}
+                            style={{ minWidth: 0 }}
+                          >
                             {resolveWaitingInputDisplayLabel(item)}
                           </li>
                         ))}
@@ -669,14 +948,16 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
                   ))}
                 </div>
               ) : (
-                <ul style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-                  columnGap: 16,
-                  rowGap: 6,
-                  paddingLeft: 20,
-                  marginBottom: 0,
-                }}>
+                <ul
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                    columnGap: 16,
+                    rowGap: 6,
+                    paddingLeft: 20,
+                    marginBottom: 0,
+                  }}
+                >
                   {missingInputs.map((item, index) => (
                     <li key={`${item.name || 'missing'}-${index}`} style={{ minWidth: 0 }}>
                       {resolveWaitingInputDisplayLabel(item)}
@@ -732,7 +1013,13 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
         width={960}
         destroyOnHidden
         footer={[
-          <Button key="copy" icon={<CopyOutlined />} onClick={() => { void handleCopyPrompt(); }}>
+          <Button
+            key="copy"
+            icon={<CopyOutlined />}
+            onClick={() => {
+              void handleCopyPrompt();
+            }}
+          >
             复制 Prompt
           </Button>,
           <Button key="close" type="primary" onClick={() => setPromptViewerOpen(false)}>
@@ -793,7 +1080,9 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
             <>
               <div className="chat-prompt-section">
                 <div className="chat-prompt-section-title">LLM Request Messages</div>
-                <pre className="chat-prompt-pre">{JSON.stringify(promptDebug.llmRequestMessages || [], null, 2)}</pre>
+                <pre className="chat-prompt-pre">
+                  {JSON.stringify(promptDebug.llmRequestMessages || [], null, 2)}
+                </pre>
               </div>
               <div className="chat-prompt-section">
                 <div className="chat-prompt-section-title">LLM Raw Response</div>
@@ -806,8 +1095,12 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
           {(promptDebug.llmCalls || []).map((call, index) => (
             <div className="chat-prompt-section" key={`${call.stage}-${index}`}>
               <div className="chat-prompt-section-title">{`LLM Call ${index + 1}: ${call.label}`}</div>
-              <pre className="chat-prompt-pre">{JSON.stringify(call.requestMessages || [], null, 2)}</pre>
-              <pre className="chat-prompt-pre">{call.responseText || call.note || '当前调用还没有保存 response。'}</pre>
+              <pre className="chat-prompt-pre">
+                {JSON.stringify(call.requestMessages || [], null, 2)}
+              </pre>
+              <pre className="chat-prompt-pre">
+                {call.responseText || call.note || '当前调用还没有保存 response。'}
+              </pre>
             </div>
           ))}
         </div>
@@ -818,12 +1111,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
   return (
     <>
       <div className={`chat-message ${isUser ? 'user' : 'assistant'}`}>
-        {!isUser && (
-          <Avatar
-            icon={<RobotOutlined />}
-            className="chat-message-avatar assistant"
-          />
-        )}
+        {!isUser && <Avatar icon={<RobotOutlined />} className="chat-message-avatar assistant" />}
 
         <div className={`chat-message-stack ${isUser ? 'user' : 'assistant'}`}>
           <div className={`chat-message-content ${isUser ? 'user' : 'assistant'}`}>
@@ -833,18 +1121,13 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
                 等待你输入
               </Tag>
             )}
-            {showRunningState && (
-              <Tag color="processing" className="chat-running-tag">
-                <LoadingOutlined className="chat-running-icon" />
-                执行中
-              </Tag>
-            )}
             {isPendingApproval && (
               <Tag color="orange" className="chat-waiting-tag">
                 等待你审批
               </Tag>
             )}
             {renderOutcomeCard()}
+            {renderProgressLogs()}
             {renderContent()}
             {renderDownloadLink()}
             {renderFiles()}
@@ -890,34 +1173,29 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
                       </Button>
                     )}
                   </div>
-                  {isTaskMode && (answer.includes('任务完成') || message.metadata?.taskStatus === 'completed') && (
-                    <div className="chat-task-switch">
-                      <span>任务完成</span>
-                      <Switch
-                        size="small"
-                        checked={taskCompleted}
-                        onChange={setTaskCompleted}
-                        checkedChildren="是"
-                        unCheckedChildren="否"
-                      />
-                    </div>
-                  )}
+                  {isTaskMode &&
+                    (answer.includes('任务完成') ||
+                      message.metadata?.taskStatus === 'completed') && (
+                      <div className="chat-task-switch">
+                        <span>任务完成</span>
+                        <Switch
+                          size="small"
+                          checked={taskCompleted}
+                          onChange={setTaskCompleted}
+                          checkedChildren="是"
+                          unCheckedChildren="否"
+                        />
+                      </div>
+                    )}
                 </Space>
               </div>
             )}
 
-            <div className="chat-message-time">
-              {message.timestamp.toLocaleTimeString()}
-            </div>
+            <div className="chat-message-time">{message.timestamp.toLocaleTimeString()}</div>
           </div>
         </div>
 
-        {isUser && (
-          <Avatar
-            icon={<UserOutlined />}
-            className="chat-message-avatar user"
-          />
-        )}
+        {isUser && <Avatar icon={<UserOutlined />} className="chat-message-avatar user" />}
       </div>
       {renderPromptDebugModal()}
     </>

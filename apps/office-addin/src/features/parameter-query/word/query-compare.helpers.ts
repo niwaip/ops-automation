@@ -1,5 +1,8 @@
 import type { TemplateCompareResponse, TemplateFieldCandidate } from '../../../api/carbone-api';
-import { extractWordParamName, resolveWordHeaderFieldKey } from '../../../host/office/word/parameter';
+import {
+  extractWordParamName,
+  resolveWordHeaderFieldKey,
+} from '../../../host/office/word/parameter';
 
 export type CompareUnderlineRangeLike = {
   text: string;
@@ -14,14 +17,21 @@ export type WordCandidateHintSummary = {
   fieldIdHint?: string;
   fieldTypeHint?: string;
   generationPolicyHint?: TemplateFieldCandidate['generationPolicyHint'];
-  placeholderPattern: 'inline_ellipsis_gap' | 'underline_or_space_gap' | 'label_only_gap' | 'table_cell_gap';
+  placeholderPattern:
+    | 'inline_ellipsis_gap'
+    | 'underline_or_space_gap'
+    | 'label_only_gap'
+    | 'table_cell_gap';
   promptHint?: string;
 };
 
-const WORD_FIELD_HINT_MAP: Record<string, {
-  fieldTypeHint: string;
-  generationPolicyHint: NonNullable<TemplateFieldCandidate['generationPolicyHint']>;
-}> = {
+const WORD_FIELD_HINT_MAP: Record<
+  string,
+  {
+    fieldTypeHint: string;
+    generationPolicyHint: NonNullable<TemplateFieldCandidate['generationPolicyHint']>;
+  }
+> = {
   contractNo: {
     fieldTypeHint: 'text',
     generationPolicyHint: 'llm_translate',
@@ -58,7 +68,11 @@ const WORD_FIELD_HINT_MAP: Record<string, {
 
 function normalizeWordHintText(...values: Array<unknown>): string {
   return values
-    .map((value) => String(value || '').replace(/\s+/g, ' ').trim())
+    .map((value) =>
+      String(value || '')
+        .replace(/\s+/g, ' ')
+        .trim()
+    )
     .filter(Boolean)
     .join(' ');
 }
@@ -83,19 +97,27 @@ function isMachineGeneratedCompareFieldIdHint(value: string): boolean {
   return /^[A-Za-z][A-Za-z0-9_]*$/.test(String(value || '').trim());
 }
 
-function getCompareCandidateAnchorLabel(candidate: TemplateCompareResponse['candidateFields'][number]): string {
+function getCompareCandidateAnchorLabel(
+  candidate: TemplateCompareResponse['candidateFields'][number]
+): string {
   return extractWordParamName(candidate.localAnchorText || candidate.anchorText || '').trim();
 }
 
-export function inferWordCandidateHints(candidate: Pick<TemplateFieldCandidate, 'anchorText' | 'segmentText' | 'sampleValue' | 'matchReason'>): WordCandidateHintSummary {
+export function inferWordCandidateHints(
+  candidate: Pick<
+    TemplateFieldCandidate,
+    'anchorText' | 'segmentText' | 'sampleValue' | 'matchReason'
+  >
+): WordCandidateHintSummary {
   const combinedText = normalizeWordHintText(
     candidate.anchorText,
     extractWordParamName(candidate.anchorText || ''),
     candidate.segmentText,
     candidate.sampleValue
   );
-  const directFieldIdHint = resolveWordHeaderFieldKey(candidate.anchorText || '')
-    || resolveWordHeaderFieldKey(extractWordParamName(candidate.anchorText || ''));
+  const directFieldIdHint =
+    resolveWordHeaderFieldKey(candidate.anchorText || '') ||
+    resolveWordHeaderFieldKey(extractWordParamName(candidate.anchorText || ''));
   const fieldIdHint = directFieldIdHint;
   const hintConfig = fieldIdHint ? WORD_FIELD_HINT_MAP[fieldIdHint] : undefined;
   const hasInlineEllipsis = /(?:\.{3,}|…+)/u.test(combinedText);
@@ -119,7 +141,9 @@ export function inferWordCandidateHints(candidate: Pick<TemplateFieldCandidate, 
   };
 }
 
-export function getCompareLanguageRelationLabel(candidate: TemplateCompareResponse['candidateFields'][number]): string {
+export function getCompareLanguageRelationLabel(
+  candidate: TemplateCompareResponse['candidateFields'][number]
+): string {
   const relation = candidate.languageRelation;
   if (!relation) {
     return '未标注';
@@ -137,7 +161,9 @@ export function getCompareLanguageRelationLabel(candidate: TemplateCompareRespon
   }
 }
 
-export function formatCompareLocation(candidate: TemplateCompareResponse['candidateFields'][number]): string {
+export function formatCompareLocation(
+  candidate: TemplateCompareResponse['candidateFields'][number]
+): string {
   const location = candidate.location;
   if (!location) {
     return '未标注';
@@ -156,7 +182,9 @@ export function formatCompareLocation(candidate: TemplateCompareResponse['candid
   return parts.join(' | ') || '未标注';
 }
 
-export function getCompareCandidateDisplayName(candidate: TemplateCompareResponse['candidateFields'][number]): string {
+export function getCompareCandidateDisplayName(
+  candidate: TemplateCompareResponse['candidateFields'][number]
+): string {
   const fieldIdHint = String(candidate.fieldIdHint || '').trim();
   const anchorLabel = getCompareCandidateAnchorLabel(candidate);
 
@@ -164,10 +192,7 @@ export function getCompareCandidateDisplayName(candidate: TemplateCompareRespons
     return fieldIdHint;
   }
 
-  return anchorLabel
-    || fieldIdHint
-    || candidate.anchorText
-    || '候选字段';
+  return anchorLabel || fieldIdHint || candidate.anchorText || '候选字段';
 }
 
 export function buildCompareDebugText(
@@ -203,13 +228,16 @@ export function buildCompareDebugText(
         const anchorStart = candidate.location?.anchorStart;
         const anchorEnd = candidate.location?.anchorEnd;
         if (
-          paragraphIndex !== underline.paragraphIndex
-          || typeof anchorStart !== 'number'
-          || typeof anchorEnd !== 'number'
+          paragraphIndex !== underline.paragraphIndex ||
+          typeof anchorStart !== 'number' ||
+          typeof anchorEnd !== 'number'
         ) {
           return false;
         }
-        return Math.max(anchorStart, underline.position.start) <= Math.min(anchorEnd, underline.position.end);
+        return (
+          Math.max(anchorStart, underline.position.start) <=
+          Math.min(anchorEnd, underline.position.end)
+        );
       });
 
       const location = `段落#${underline.paragraphIndex} | 锚点${underline.position.start}-${underline.position.end}`;
@@ -220,29 +248,40 @@ export function buildCompareDebugText(
       }
 
       return `${index + 1}. ${location} | ${underlineMeta} | 命中候选: ${matchedCandidates
-        .map((candidate) => `${getCompareCandidateDisplayName(candidate)}(${formatCompareLocation(candidate)})`)
+        .map(
+          (candidate) =>
+            `${getCompareCandidateDisplayName(candidate)}(${formatCompareLocation(candidate)})`
+        )
         .join(' ; ')} | 片段: ${snippet}`;
     });
 
-    const unmatchedCount = underlines.filter((underline) => !result.candidateFields.some((candidate) => {
-      const paragraphIndex = candidate.location?.paragraphIndex;
-      const anchorStart = candidate.location?.anchorStart;
-      const anchorEnd = candidate.location?.anchorEnd;
-      if (
-        paragraphIndex !== underline.paragraphIndex
-        || typeof anchorStart !== 'number'
-        || typeof anchorEnd !== 'number'
-      ) {
-        return false;
-      }
-      return Math.max(anchorStart, underline.position.start) <= Math.min(anchorEnd, underline.position.end);
-    })).length;
+    const unmatchedCount = underlines.filter(
+      (underline) =>
+        !result.candidateFields.some((candidate) => {
+          const paragraphIndex = candidate.location?.paragraphIndex;
+          const anchorStart = candidate.location?.anchorStart;
+          const anchorEnd = candidate.location?.anchorEnd;
+          if (
+            paragraphIndex !== underline.paragraphIndex ||
+            typeof anchorStart !== 'number' ||
+            typeof anchorEnd !== 'number'
+          ) {
+            return false;
+          }
+          return (
+            Math.max(anchorStart, underline.position.start) <=
+            Math.min(anchorEnd, underline.position.end)
+          );
+        })
+    ).length;
 
     return [
       `共记录 ${underlines.length} 个 underline 锚点，其中未进入候选池 ${unmatchedCount} 个。`,
       ...candidateLines,
       underlines.length > 30 ? `... 其余 ${underlines.length - 30} 个锚点已省略` : undefined,
-    ].filter(Boolean).join('\n');
+    ]
+      .filter(Boolean)
+      .join('\n');
   };
 
   const buildSampleValueDiagnostics = (): string => {
@@ -252,13 +291,15 @@ export function buildCompareDebugText(
 
     return result.candidateFields
       .slice(0, 20)
-      .map((candidate, index) => [
-        `${index + 1}. ${getCompareCandidateDisplayName(candidate)}`,
-        `锚点: ${candidate.anchorText || '无锚点'}`,
-        `参考值: ${candidate.sampleValue || '待补参考值'}`,
-        `参考片段: ${candidate.matchText || candidate.segmentText || '无参考片段'}`,
-        `位置: ${formatCompareLocation(candidate)}`,
-      ].join(' | '))
+      .map((candidate, index) =>
+        [
+          `${index + 1}. ${getCompareCandidateDisplayName(candidate)}`,
+          `锚点: ${candidate.anchorText || '无锚点'}`,
+          `参考值: ${candidate.sampleValue || '待补参考值'}`,
+          `参考片段: ${candidate.matchText || candidate.segmentText || '无参考片段'}`,
+          `位置: ${formatCompareLocation(candidate)}`,
+        ].join(' | ')
+      )
       .join('\n');
   };
 
@@ -268,14 +309,19 @@ export function buildCompareDebugText(
     `compareId: ${result.compareId}`,
     `候选字段: ${result.compareSummary.candidateCount}`,
     `章节数: ${result.compareSummary.sectionCount}`,
-    debugContext ? `下划线锚点: ${debugContext.underlineCount || 0}（字符 ${debugContext.underlineCharCount || 0} / 空格 ${debugContext.underlineSpaceCount || 0}）` : undefined,
-    debugContext ? `段落数: ${debugContext.paragraphCount || 0} | 表格单元格数: ${debugContext.tableCellCount || 0}` : undefined,
+    debugContext
+      ? `下划线锚点: ${debugContext.underlineCount || 0}（字符 ${debugContext.underlineCharCount || 0} / 空格 ${debugContext.underlineSpaceCount || 0}）`
+      : undefined,
+    debugContext
+      ? `段落数: ${debugContext.paragraphCount || 0} | 表格单元格数: ${debugContext.tableCellCount || 0}`
+      : undefined,
     '',
     '【候选池预览】',
     result.candidateFields
       .slice(0, 10)
-      .map((candidate) =>
-        `${candidate.candidateId} | ${candidate.fieldIdHint || inferWordCandidateHints(candidate).fieldIdHint || 'unknown'} | ${candidate.fieldTypeHint || inferWordCandidateHints(candidate).fieldTypeHint || 'text'} | ${candidate.anchorText || '无锚点'} | ${candidate.sampleValue || '无样本值'} | ${formatCompareLocation(candidate)} | ${getCompareLanguageRelationLabel(candidate)} | ${candidate.matchReason || '无命中说明'}`
+      .map(
+        (candidate) =>
+          `${candidate.candidateId} | ${candidate.fieldIdHint || inferWordCandidateHints(candidate).fieldIdHint || 'unknown'} | ${candidate.fieldTypeHint || inferWordCandidateHints(candidate).fieldTypeHint || 'text'} | ${candidate.anchorText || '无锚点'} | ${candidate.sampleValue || '无样本值'} | ${formatCompareLocation(candidate)} | ${getCompareLanguageRelationLabel(candidate)} | ${candidate.matchReason || '无命中说明'}`
       )
       .join('\n') || '无',
     '',
@@ -294,10 +340,15 @@ export function buildCompareDebugText(
 
 export function rebuildCompareSummary(
   currentSummary: TemplateCompareResponse['compareSummary'],
-  candidateFields: TemplateFieldCandidate[],
+  candidateFields: TemplateFieldCandidate[]
 ): TemplateCompareResponse['compareSummary'] {
-  const sectionOrder = new Map(currentSummary.sections.map((section, index) => [section.sectionId, index]));
-  const sectionMap = new Map<string, TemplateCompareResponse['compareSummary']['sections'][number]>();
+  const sectionOrder = new Map(
+    currentSummary.sections.map((section, index) => [section.sectionId, index])
+  );
+  const sectionMap = new Map<
+    string,
+    TemplateCompareResponse['compareSummary']['sections'][number]
+  >();
 
   candidateFields.forEach((candidate) => {
     const sectionId = candidate.sectionId || `__ungrouped__${candidate.sourceBlockId}`;
@@ -329,23 +380,31 @@ export function rebuildCompareSummary(
     if (candidate.compareMode === 'section_loose_compare') {
       currentSection.compareMode = 'section_loose_compare';
     } else if (
-      candidate.compareMode === 'global_probe_fallback'
-      && currentSection.compareMode !== 'section_loose_compare'
+      candidate.compareMode === 'global_probe_fallback' &&
+      currentSection.compareMode !== 'section_loose_compare'
     ) {
       currentSection.compareMode = 'global_probe_fallback';
     }
-    currentSection.looseMatchScore = Math.max(currentSection.looseMatchScore, candidate.sectionMatchScore || 0);
+    currentSection.looseMatchScore = Math.max(
+      currentSection.looseMatchScore,
+      candidate.sectionMatchScore || 0
+    );
     if (candidate.anchorText && !currentSection.topAnchors.includes(candidate.anchorText)) {
       currentSection.topAnchors = [...currentSection.topAnchors, candidate.anchorText].slice(0, 5);
     }
     sectionMap.set(sectionId, currentSection);
   });
 
-  const sections: TemplateCompareResponse['compareSummary']['sections'] = Array.from(sectionMap.values())
+  const sections: TemplateCompareResponse['compareSummary']['sections'] = Array.from(
+    sectionMap.values()
+  )
     .map((section) => {
-      const compareStatus: TemplateCompareResponse['compareSummary']['sections'][number]['compareStatus'] = section.matchedCandidateCount === 0
-        ? 'attention'
-        : (section.matchedCandidateCount === section.candidateCount ? 'aligned' : 'partial');
+      const compareStatus: TemplateCompareResponse['compareSummary']['sections'][number]['compareStatus'] =
+        section.matchedCandidateCount === 0
+          ? 'attention'
+          : section.matchedCandidateCount === section.candidateCount
+            ? 'aligned'
+            : 'partial';
       return {
         ...section,
         compareStatus,

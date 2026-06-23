@@ -6,13 +6,14 @@ describe('RecorderService', () => {
   const createService = (overrides?: {
     eventEmitter?: Record<string, unknown>;
     workerService?: Record<string, unknown>;
-  }) => new RecorderService(
-    (overrides?.eventEmitter || { emit: jest.fn() }) as any,
-    (overrides?.workerService || {
-      getInternalCodegenUrl: jest.fn(),
-      getWorkerByRuntimeSessionId: jest.fn(),
-    }) as any,
-  );
+  }) =>
+    new RecorderService(
+      (overrides?.eventEmitter || { emit: jest.fn() }) as any,
+      (overrides?.workerService || {
+        getInternalCodegenUrl: jest.fn(),
+        getWorkerByRuntimeSessionId: jest.fn(),
+      }) as any
+    );
 
   it('startTakeoverRecording should reuse runtime worker internal codegen endpoint', async () => {
     const workerService = {
@@ -24,10 +25,12 @@ describe('RecorderService', () => {
       .spyOn(service, 'startBrowser')
       .mockResolvedValue({ cdpPort: 9222, noVncPort: 6080 });
 
-    await expect(service.startTakeoverRecording('runtime-1', {
-      startUrl: 'https://example.com/login',
-      reuseExistingPage: true,
-    })).resolves.toEqual({ sessionId: 'runtime-1' });
+    await expect(
+      service.startTakeoverRecording('runtime-1', {
+        startUrl: 'https://example.com/login',
+        reuseExistingPage: true,
+      })
+    ).resolves.toEqual({ sessionId: 'runtime-1' });
 
     expect(startBrowserSpy).toHaveBeenCalledWith('runtime-1', 'https://example.com/login', {
       codegenBaseUrl: 'http://172.20.0.10:3011',
@@ -45,7 +48,7 @@ describe('RecorderService', () => {
     const service = createService({ workerService });
 
     await expect(service.startTakeoverRecording('runtime-missing')).rejects.toThrow(
-      'No browser worker found for runtime session runtime-missing',
+      'No browser worker found for runtime session runtime-missing'
     );
   });
 });

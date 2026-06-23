@@ -15,12 +15,7 @@ interface SkillConfirmProps {
   onCancel: () => void;
 }
 
-const SkillConfirm: React.FC<SkillConfirmProps> = ({
-  skillName,
-  params,
-  onConfirm,
-  onCancel,
-}) => {
+const SkillConfirm: React.FC<SkillConfirmProps> = ({ skillName, params, onConfirm, onCancel }) => {
   // 将参数转换为Descriptions items
   const items = Object.entries(params).map(([key, value]) => ({
     key,
@@ -30,32 +25,16 @@ const SkillConfirm: React.FC<SkillConfirmProps> = ({
 
   return (
     <Card className="skill-confirm-panel" variant="borderless">
-      <Typography.Title level={5}>
-        确认参数 - {skillName}
-      </Typography.Title>
-      <Typography.Text type="secondary">
-        以下参数已识别完成，请确认后执行
-      </Typography.Text>
+      <Typography.Title level={5}>确认参数 - {skillName}</Typography.Title>
+      <Typography.Text type="secondary">以下参数已识别完成，请确认后执行</Typography.Text>
 
-      <Descriptions
-        column={1}
-        size="small"
-        items={items}
-        className="skill-confirm-params"
-      />
+      <Descriptions column={1} size="small" items={items} className="skill-confirm-params" />
 
       <Space className="skill-confirm-actions">
-        <Button
-          type="primary"
-          icon={<CheckOutlined />}
-          onClick={onConfirm}
-        >
+        <Button type="primary" icon={<CheckOutlined />} onClick={onConfirm}>
           确认执行
         </Button>
-        <Button
-          icon={<CloseOutlined />}
-          onClick={onCancel}
-        >
+        <Button icon={<CloseOutlined />} onClick={onCancel}>
           取消
         </Button>
       </Space>

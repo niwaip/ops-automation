@@ -1,4 +1,10 @@
-import { Injectable, Logger, NotFoundException, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import * as http from 'http';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
@@ -34,6 +40,11 @@ interface SessionWorkerOptions {
   headless?: boolean;
 }
 
+interface RequestedHostPortBindings {
+  novncHostPort: string;
+  cdpHostPort: string;
+}
+
 @Injectable()
 export class WorkerService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(WorkerService.name);
@@ -43,7 +54,8 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
     process.env.DOCKER_SOCKET_PATH || process.env.DOCKER_SOCK || DEFAULT_DOCKER_SOCKET_PATH;
   private readonly docker = new Docker({ socketPath: this.dockerSocketPath });
   private readonly dockerNetworkName = process.env.NETWORK_NAME || 'ops-network';
-  private readonly sessionBrowserImage = process.env.SESSION_BROWSER_IMAGE || 'ops-browser-chrome:local';
+  private readonly sessionBrowserImage =
+    process.env.SESSION_BROWSER_IMAGE || 'ops-browser-chrome:local';
   private readonly externalHost = getPublicHost();
   private readonly defaultSessionMode =
     process.env.SESSION_DEFAULT_MODE === 'agent' ? 'agent' : 'interactive';
@@ -61,22 +73,44 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
   private readonly vncPort = process.env.SESSION_VNC_PORT || '5900';
   private readonly chromeDebugPort = process.env.SESSION_CHROME_DEBUG_PORT || '9222';
   private readonly codegenApiPort = process.env.SESSION_CODEGEN_API_PORT || '3011';
+  private readonly novncHostPortRangeStart = this.readPositiveInt(
+    process.env.BROWSER_WORKER_NOVNC_HOST_PORT_START,
+    39000
+  );
+  private readonly novncHostPortRangeEnd = this.readPositiveInt(
+    process.env.BROWSER_WORKER_NOVNC_HOST_PORT_END,
+    39999
+  );
+  private readonly cdpHostPortRangeStart = this.readPositiveInt(
+    process.env.BROWSER_WORKER_CDP_HOST_PORT_START,
+    40000
+  );
+  private readonly cdpHostPortRangeEnd = this.readPositiveInt(
+    process.env.BROWSER_WORKER_CDP_HOST_PORT_END,
+    40999
+  );
+  private readonly hostPortRetryLimit = this.readPositiveInt(
+    process.env.BROWSER_WORKER_HOST_PORT_RETRY_LIMIT,
+    5
+  );
   private readonly orphanSweepEnabled =
     (process.env.BROWSER_WORKER_ORPHAN_SWEEP_ENABLED || 'true').toLowerCase() !== 'false';
   private readonly orphanSweepIntervalMs = this.readPositiveInt(
     process.env.BROWSER_WORKER_ORPHAN_SWEEP_INTERVAL_MS,
-    30000,
+    30000
   );
   private readonly orphanSweepRequestTimeoutMs = this.readPositiveInt(
     process.env.BROWSER_WORKER_ORPHAN_SWEEP_REQUEST_TIMEOUT_MS,
-    3000,
+    3000
   );
   private readonly orphanSweepMinIdleMs = this.readPositiveInt(
     process.env.BROWSER_WORKER_ORPHAN_SWEEP_MIN_IDLE_MS,
-    90000,
+    90000
   );
   private orphanSweepTimer?: NodeJS.Timeout;
   private orphanSweepRunning = false;
+  private novncHostPortCursor = 0;
+  private cdpHostPortCursor = 0;
 
   onModuleInit() {
     this.logger.log(`Using Docker socket path: ${this.dockerSocketPath}`);
@@ -118,15 +152,19 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
       let removedCount = 0;
       for (const containerInfo of containers) {
         // Find the full name (dockerode returns names starting with /)
-        const name = containerInfo.Names.find((n: string) => n.includes('ops-browser-session-'))?.replace(/^\//, '');
+        const name = containerInfo.Names.find((n: string) =>
+          n.includes('ops-browser-session-')
+        )?.replace(/^\//, '');
         if (!name) continue;
 
         const workerId = name.replace('ops-browser-session-', '');
-        
+
         // If it's not in our memory map, it's an orphan from a previous run
         if (!this.workers.has(workerId)) {
-          this.logger.warn(`Found untracked container ${name}, checking if its session still exists...`);
-          
+          this.logger.warn(
+            `Found untracked container ${name}, checking if its session still exists...`
+          );
+
           // Use the workerId as runtimeSessionId (fallback logic in ensureSessionWorker)
           const exists = await this.runtimeSessionExists(workerId);
           if (!exists) {
@@ -170,48 +208,76 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
     const enableCodegen = request.enable_codegen ?? this.defaultEnableCodegen;
     const effectiveEnableCodegen = headless ? false : enableCodegen;
     this.logger.log(`Creating browser worker ${workerId} for user ${request.user_id}`);
+    let container;
+    let inspect;
+    const maxAttempts = this.hostPortRetryLimit;
 
-    const container = await this.docker.createContainer({
-      Image: this.sessionBrowserImage,
-      name: containerName,
-      Cmd: ['/start-recorder.sh'],
-      Env: [
-        `SCREEN_WIDTH=${this.screenWidth}`,
-        `SCREEN_HEIGHT=${this.screenHeight}`,
-        `SCREEN_DEPTH=${this.screenDepth}`,
-        `NOVNC_PORT=${this.novncPort}`,
-        `VNC_PORT=${this.vncPort}`,
-        `CHROME_DEBUG_PORT=${this.chromeDebugPort}`,
-        `CODEGEN_API_PORT=${this.codegenApiPort}`,
-        `SESSION_MODE=${mode}`,
-        `HEADLESS=${headless ? 'true' : 'false'}`,
-        `ENABLE_CODEGEN=${effectiveEnableCodegen ? 'true' : 'false'}`,
-        `CHROME_PROFILE_PATH=${profilePath}`,
-      ],
-      ExposedPorts: {
-        [`${this.novncPort}/tcp`]: {},
-        [`${this.chromeDebugPort}/tcp`]: {},
-      },
-      HostConfig: {
-        AutoRemove: true,
-        PortBindings: {
-          [`${this.novncPort}/tcp`]: [{ HostPort: '' }],
-          [`${this.chromeDebugPort}/tcp`]: [{ HostPort: '' }],
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      const requestedHostPorts = await this.allocateRequestedHostPorts();
+      const containerCreateOptions: any = {
+        Image: this.sessionBrowserImage,
+        name: containerName,
+        Cmd: ['/start-recorder.sh'],
+        Env: [
+          `SCREEN_WIDTH=${this.screenWidth}`,
+          `SCREEN_HEIGHT=${this.screenHeight}`,
+          `SCREEN_DEPTH=${this.screenDepth}`,
+          `NOVNC_PORT=${this.novncPort}`,
+          `VNC_PORT=${this.vncPort}`,
+          `CHROME_DEBUG_PORT=${this.chromeDebugPort}`,
+          `CODEGEN_API_PORT=${this.codegenApiPort}`,
+          `SESSION_MODE=${mode}`,
+          `HEADLESS=${headless ? 'true' : 'false'}`,
+          `ENABLE_CODEGEN=${effectiveEnableCodegen ? 'true' : 'false'}`,
+          `CHROME_PROFILE_PATH=${profilePath}`,
+        ],
+        ExposedPorts: {
+          [`${this.novncPort}/tcp`]: {},
+          [`${this.chromeDebugPort}/tcp`]: {},
         },
-      },
-      NetworkingConfig: {
-        EndpointsConfig: {
-          [this.dockerNetworkName]: {
-            Aliases: [containerName],
+        HostConfig: {
+          AutoRemove: true,
+          PortBindings: {
+            [`${this.novncPort}/tcp`]: [{ HostPort: requestedHostPorts.novncHostPort }],
+            [`${this.chromeDebugPort}/tcp`]: [{ HostPort: requestedHostPorts.cdpHostPort }],
           },
         },
-      },
-    });
+        NetworkingConfig: {
+          EndpointsConfig: {
+            [this.dockerNetworkName]: {
+              Aliases: [containerName],
+            },
+          },
+        },
+      };
 
-    await container.start();
-    const inspect = await container.inspect();
-    const endpoints = this.resolvePublishedEndpoints(inspect);
+      try {
+        container = await this.docker.createContainer(containerCreateOptions);
+        await container.start();
+        inspect = await container.inspect();
+        break;
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        if (container) {
+          await container.remove({ force: true }).catch(() => undefined);
+          container = undefined;
+        }
+        if (this.isHostPortConflictError(errorMessage) && attempt < maxAttempts) {
+          this.logger.warn(
+            `Worker ${workerId} host port allocation conflict on attempt ${attempt}, retrying`
+          );
+          continue;
+        }
+        throw error;
+      }
+    }
+
+    if (!inspect) {
+      throw new Error(`Failed to start browser worker ${workerId}: container was not created`);
+    }
+
     const containerIp = this.resolveContainerIp(inspect);
+    const endpoints = this.resolvePublishedEndpoints(inspect);
     const now = new Date();
     const workerStatus: ManagedWorkerStatus = {
       worker_id: workerId,
@@ -228,7 +294,9 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
       enable_codegen: effectiveEnableCodegen,
       headless,
       internal_cdp_url: `http://${containerIp}:${this.chromeDebugPort}`,
-      internal_codegen_url: effectiveEnableCodegen ? `http://${containerIp}:${this.codegenApiPort}` : undefined,
+      internal_codegen_url: effectiveEnableCodegen
+        ? `http://${containerIp}:${this.codegenApiPort}`
+        : undefined,
     };
 
     this.workers.set(workerId, workerStatus);
@@ -245,8 +313,11 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
       try {
         await container.remove({ force: true });
       } catch (removeError) {
-        const removeErrorMessage = removeError instanceof Error ? removeError.message : String(removeError);
-        this.logger.warn(`Failed to remove errored worker container ${containerName}: ${removeErrorMessage}`);
+        const removeErrorMessage =
+          removeError instanceof Error ? removeError.message : String(removeError);
+        this.logger.warn(
+          `Failed to remove errored worker container ${containerName}: ${removeErrorMessage}`
+        );
       }
       if (runtimeSessionId) {
         this.runtimeSessionIndex.delete(runtimeSessionId);
@@ -257,7 +328,9 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
 
     workerStatus.updated_at = new Date();
     this.workers.set(workerId, workerStatus);
-    this.logger.log(`Worker ${workerId} is now ${workerStatus.status} for runtime ${runtimeSessionId || 'n/a'}`);
+    this.logger.log(
+      `Worker ${workerId} is now ${workerStatus.status} for runtime ${runtimeSessionId || 'n/a'}`
+    );
 
     return {
       worker_id: workerId,
@@ -280,14 +353,37 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
     }
 
     this.logger.log(`Deleting worker ${id}`);
+    // #region debug-point B:delete-worker
+    this.reportDebugEvent('B', 'worker.service.ts:deleteWorker:start', '[DEBUG] deleteWorker start', {
+      workerId: id,
+      containerName: worker.container_name,
+      runtimeSessionId: worker.runtime_session_id,
+    });
+    // #endregion
     worker.status = 'stopping';
     worker.updated_at = new Date();
     this.workers.set(id, worker);
     try {
       const container = this.docker.getContainer(worker.container_name);
       await container.remove({ force: true });
+      // #region debug-point B:delete-worker-result
+      this.reportDebugEvent(
+        'B',
+        'worker.service.ts:deleteWorker:removed',
+        '[DEBUG] deleteWorker container removed',
+        { workerId: id, containerName: worker.container_name }
+      );
+      // #endregion
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
+      // #region debug-point B:delete-worker-error
+      this.reportDebugEvent(
+        'B',
+        'worker.service.ts:deleteWorker:error',
+        '[DEBUG] deleteWorker container removal failed',
+        { workerId: id, containerName: worker.container_name, errorMessage }
+      );
+      // #endregion
       this.logger.warn(`Failed to remove container ${worker.container_name}: ${errorMessage}`);
     }
 
@@ -306,7 +402,7 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
 
   async ensureSessionWorker(
     runtimeSessionId: string,
-    options?: SessionWorkerOptions,
+    options?: SessionWorkerOptions
   ): Promise<WorkerStatusDto> {
     const existingWorkerId = this.runtimeSessionIndex.get(runtimeSessionId);
     if (existingWorkerId) {
@@ -317,7 +413,7 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
         }
 
         this.logger.log(
-          `Recreating worker ${existingWorkerId} for runtime ${runtimeSessionId} to apply updated session options`,
+          `Recreating worker ${existingWorkerId} for runtime ${runtimeSessionId} to apply updated session options`
         );
         await this.deleteWorker(existingWorkerId).catch((error: unknown) => {
           const errorMessage = error instanceof Error ? error.message : String(error);
@@ -325,7 +421,7 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
         });
       } else if (existingWorker) {
         this.logger.warn(
-          `Existing worker ${existingWorkerId} for runtime ${runtimeSessionId} is ${existingWorker.status}, recreating`,
+          `Existing worker ${existingWorkerId} for runtime ${runtimeSessionId} is ${existingWorker.status}, recreating`
         );
         await this.deleteWorker(existingWorkerId).catch((error: unknown) => {
           const errorMessage = error instanceof Error ? error.message : String(error);
@@ -393,13 +489,13 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
 
     try {
       const response = await this.readJson<{ webSocketDebuggerUrl?: string }>(
-        `${cdpHttpUrl}/json/version`,
+        `${cdpHttpUrl}/json/version`
       );
       return response?.webSocketDebuggerUrl;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.warn(
-        `Failed to resolve debugger websocket URL for session ${runtimeSessionId}: ${errorMessage}`,
+        `Failed to resolve debugger websocket URL for session ${runtimeSessionId}: ${errorMessage}`
       );
       return undefined;
     }
@@ -419,7 +515,7 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
 
   private requiresWorkerRecreation(
     worker: ManagedWorkerStatus,
-    options?: SessionWorkerOptions,
+    options?: SessionWorkerOptions
   ): boolean {
     if (!options) {
       return false;
@@ -435,12 +531,15 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
       return true;
     }
 
-    const effectiveRequestedCodegen = typeof options.enableCodegen === 'boolean'
-      ? ((requestedHeadless ?? worker.headless) ? false : options.enableCodegen)
-      : undefined;
+    const effectiveRequestedCodegen =
+      typeof options.enableCodegen === 'boolean'
+        ? (requestedHeadless ?? worker.headless)
+          ? false
+          : options.enableCodegen
+        : undefined;
     if (
-      typeof effectiveRequestedCodegen === 'boolean'
-      && worker.enable_codegen !== effectiveRequestedCodegen
+      typeof effectiveRequestedCodegen === 'boolean' &&
+      worker.enable_codegen !== effectiveRequestedCodegen
     ) {
       return true;
     }
@@ -455,7 +554,8 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
   }
 
   private resolvePublishedEndpoints(inspect: any): WorkerEndpointsDto {
-    const cdpHostPort = inspect?.NetworkSettings?.Ports?.[`${this.chromeDebugPort}/tcp`]?.[0]?.HostPort;
+    const cdpHostPort =
+      inspect?.NetworkSettings?.Ports?.[`${this.chromeDebugPort}/tcp`]?.[0]?.HostPort;
     const novncHostPort = inspect?.NetworkSettings?.Ports?.[`${this.novncPort}/tcp`]?.[0]?.HostPort;
 
     if (!cdpHostPort) {
@@ -529,7 +629,7 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
             reject(
               error instanceof Error
                 ? error
-                : new Error(`Failed to parse JSON response from ${url}`),
+                : new Error(`Failed to parse JSON response from ${url}`)
             );
           }
         });
@@ -569,11 +669,13 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
         const exists = await this.runtimeSessionExists(candidate.runtimeSessionId);
         if (!exists) {
           this.logger.warn(
-            `Removing orphan worker ${candidate.workerId} for missing runtime session ${candidate.runtimeSessionId} (${reason})`,
+            `Removing orphan worker ${candidate.workerId} for missing runtime session ${candidate.runtimeSessionId} (${reason})`
           );
           await this.deleteWorker(candidate.workerId).catch((error: unknown) => {
             const errorMessage = error instanceof Error ? error.message : String(error);
-            this.logger.warn(`Failed to delete orphan worker ${candidate.workerId}: ${errorMessage}`);
+            this.logger.warn(
+              `Failed to delete orphan worker ${candidate.workerId}: ${errorMessage}`
+            );
           });
           removedCount += 1;
         }
@@ -590,32 +692,49 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
   private async runtimeSessionExists(runtimeSessionId: string): Promise<boolean> {
     const sessionUrl = `${this.sessionBrokerUrl}/runtime-sessions/${runtimeSessionId}`;
     const statusCode = await this.readStatusCode(sessionUrl, this.orphanSweepRequestTimeoutMs);
+    // #region debug-point C:orphan-runtime-session-lookup
+    this.reportDebugEvent(
+      'C',
+      'worker.service.ts:runtimeSessionExists',
+      '[DEBUG] orphan runtime session lookup',
+      {
+        runtimeSessionId,
+        statusCode,
+        isUuid:
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+            runtimeSessionId
+          ),
+      }
+    );
+    // #endregion
     if (statusCode === 404) {
-      this.logger.warn(`Runtime session ${runtimeSessionId} not found (404), worker can be removed`);
+      this.logger.warn(
+        `Runtime session ${runtimeSessionId} not found (404), worker can be removed`
+      );
       return false;
     }
     if (statusCode >= 200 && statusCode < 300) {
       try {
         const runtimeSession = await this.readJson<{ state?: string }>(
           sessionUrl,
-          this.orphanSweepRequestTimeoutMs,
+          this.orphanSweepRequestTimeoutMs
         );
         if (runtimeSession.state === 'closed') {
           this.logger.warn(
-            `Runtime session ${runtimeSessionId} is closed, treating worker as orphan`,
+            `Runtime session ${runtimeSessionId} is closed, treating worker as orphan`
           );
           return false;
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         this.logger.warn(
-          `Failed to read runtime session ${runtimeSessionId} payload, keeping worker: ${errorMessage}`,
+          `Failed to read runtime session ${runtimeSessionId} payload, keeping worker: ${errorMessage}`
         );
       }
       return true;
     }
     this.logger.warn(
-      `Runtime session lookup for ${runtimeSessionId} returned status ${statusCode}, keeping worker`,
+      `Runtime session lookup for ${runtimeSessionId} returned status ${statusCode}, keeping worker`
     );
     // On transient failures (network/5xx), avoid false positives.
     return true;
@@ -644,5 +763,112 @@ export class WorkerService implements OnModuleInit, OnModuleDestroy {
       return fallback;
     }
     return Math.floor(parsed);
+  }
+
+  private reportDebugEvent(
+    hypothesisId: 'A' | 'B' | 'C' | 'D',
+    location: string,
+    msg: string,
+    data: Record<string, unknown>
+  ): void {
+    const isContainerRuntime =
+      process.env.DOCKER_ENV === 'true' ||
+      process.env.NODE_ENV === 'production' ||
+      process.env.SESSION_BROKER_URL?.includes('session-broker');
+    const debugServerUrl =
+      process.env.DEBUG_SERVER_URL?.trim() ||
+      (isContainerRuntime ? 'http://host.docker.internal:7777/event' : 'http://127.0.0.1:7777/event');
+    const debugSessionId = process.env.DEBUG_SESSION_ID?.trim() || 'browser-worker-runtime';
+    const debugRunId = process.env.DEBUG_RUN_ID?.trim() || 'default';
+
+    void fetch(debugServerUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId: debugSessionId,
+        runId: debugRunId,
+        hypothesisId,
+        location,
+        msg,
+        data,
+        ts: Date.now(),
+      }),
+    }).catch(() => {});
+  }
+
+  private async allocateRequestedHostPorts(): Promise<RequestedHostPortBindings> {
+    const usedPorts = await this.collectUsedHostPorts();
+    return {
+      novncHostPort: String(
+        this.nextHostPortInRange(
+          'novnc',
+          usedPorts,
+          this.novncHostPortRangeStart,
+          this.novncHostPortRangeEnd
+        )
+      ),
+      cdpHostPort: String(
+        this.nextHostPortInRange(
+          'cdp',
+          usedPorts,
+          this.cdpHostPortRangeStart,
+          this.cdpHostPortRangeEnd
+        )
+      ),
+    };
+  }
+
+  private async collectUsedHostPorts(): Promise<Set<number>> {
+    const containers = await this.docker.listContainers({
+      all: true,
+      filters: {
+        name: ['ops-browser-session-'],
+      },
+    });
+    const used = new Set<number>();
+    for (const containerInfo of containers) {
+      for (const port of containerInfo.Ports || []) {
+        if (typeof port.PublicPort === 'number' && port.PublicPort > 0) {
+          used.add(port.PublicPort);
+        }
+      }
+    }
+    return used;
+  }
+
+  private nextHostPortInRange(
+    kind: 'novnc' | 'cdp',
+    usedPorts: Set<number>,
+    start: number,
+    end: number
+  ): number {
+    const normalizedEnd = end >= start ? end : start;
+    const total = normalizedEnd - start + 1;
+    if (total <= 0) {
+      throw new Error(`Invalid host port range for ${kind}: ${start}-${end}`);
+    }
+    const cursor = kind === 'novnc' ? this.novncHostPortCursor : this.cdpHostPortCursor;
+    for (let offset = 0; offset < total; offset += 1) {
+      const port = start + ((cursor + offset) % total);
+      if (usedPorts.has(port)) {
+        continue;
+      }
+      usedPorts.add(port);
+      if (kind === 'novnc') {
+        this.novncHostPortCursor = (port - start + 1) % total;
+      } else {
+        this.cdpHostPortCursor = (port - start + 1) % total;
+      }
+      return port;
+    }
+    throw new Error(`No free host ports available for ${kind} in range ${start}-${normalizedEnd}`);
+  }
+
+  private isHostPortConflictError(message: string): boolean {
+    const normalized = message.toLowerCase();
+    return (
+      normalized.includes('failed to bind host port') ||
+      normalized.includes('address already in use')
+    );
   }
 }

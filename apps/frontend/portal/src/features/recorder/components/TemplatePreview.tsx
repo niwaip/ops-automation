@@ -106,20 +106,28 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
     return <Tag color={colors[type] || 'default'}>{type}</Tag>;
   };
 
+  const getExecutionPolicyTag = (policy?: string): React.ReactNode => {
+    const normalized = policy || 'auto_execute';
+    const mapping: Record<string, { color: string; label: string }> = {
+      auto_execute: { color: 'green', label: '自动执行' },
+      require_confirmation: { color: 'gold', label: '需确认' },
+      require_takeover: { color: 'orange', label: '人工接管' },
+      forbid_in_replay: { color: 'red', label: '禁止回放' },
+    };
+    const resolved = mapping[normalized] || { color: 'default', label: normalized };
+    return <Tag color={resolved.color}>{resolved.label}</Tag>;
+  };
+
   if (!template) {
     return (
       <Card title={t('recorder:templatePreview')}>
-        <Empty
-          description={t('recorder:noTemplateYet')}
-          image={Empty.PRESENTED_IMAGE_SIMPLE}
-        />
+        <Empty description={t('recorder:noTemplateYet')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
       </Card>
     );
   }
 
   const hasParamsSchema =
-    template.params_schema.properties &&
-    Object.keys(template.params_schema.properties).length > 0;
+    template.params_schema.properties && Object.keys(template.params_schema.properties).length > 0;
 
   const paramsEntries: Array<[string, ParamSchemaItem]> = hasParamsSchema
     ? Object.entries(template.params_schema.properties as Record<string, ParamSchemaItem>)
@@ -156,7 +164,9 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
         )}
         {step.wait && (
           <Descriptions.Item label={t('recorder:wait')}>
-            <Text>{step.wait.type}: {step.wait.value}</Text>
+            <Text>
+              {step.wait.type}: {step.wait.value}
+            </Text>
           </Descriptions.Item>
         )}
         {step.retry && (
@@ -164,9 +174,10 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
             {step.retry.max_attempts} attempts, {step.retry.delay_ms}ms delay
           </Descriptions.Item>
         )}
-        <Descriptions.Item label={t('recorder:onFail')}>
-          {step.on_fail || 'stop'}
+        <Descriptions.Item label="执行策略">
+          {getExecutionPolicyTag(step.execution_policy)}
         </Descriptions.Item>
+        <Descriptions.Item label={t('recorder:onFail')}>{step.on_fail || 'stop'}</Descriptions.Item>
       </Descriptions>
     ),
   }));
@@ -195,9 +206,7 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
             type={validation.valid ? 'success' : 'error'}
             showIcon
             message={
-              validation.valid
-                ? t('recorder:validationPassed')
-                : t('recorder:validationFailed')
+              validation.valid ? t('recorder:validationPassed') : t('recorder:validationFailed')
             }
             description={
               !validation.valid && validation.errors.length > 0 ? (
@@ -237,12 +246,8 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
 
         {/* Template Metadata */}
         <Descriptions size="small" bordered column={2}>
-          <Descriptions.Item label={t('template:name')}>
-            {template.name}
-          </Descriptions.Item>
-          <Descriptions.Item label={t('template:version')}>
-            {template.version}
-          </Descriptions.Item>
+          <Descriptions.Item label={t('template:name')}>{template.name}</Descriptions.Item>
+          <Descriptions.Item label={t('template:version')}>{template.version}</Descriptions.Item>
           <Descriptions.Item label={t('template:status')}>
             <Tag>{template.status}</Tag>
           </Descriptions.Item>
@@ -271,9 +276,7 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
                     <Space>
                       <Text strong>{paramName}</Text>
                       <Tag>{schema.type}</Tag>
-                      {schema.description && (
-                        <Text type="secondary">{schema.description}</Text>
-                      )}
+                      {schema.description && <Text type="secondary">{schema.description}</Text>}
                       {template.params_schema.required.includes(paramName) && (
                         <Tag color="red">{t('recorder:required')}</Tag>
                       )}

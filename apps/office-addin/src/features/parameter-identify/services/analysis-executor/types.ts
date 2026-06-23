@@ -2,7 +2,11 @@ import { DocumentIR, HostType } from '../../../../host/adapters/document-ir';
 
 export type AnalysisExecutorKind = 'studio' | 'chat';
 
-export type AnalysisStage = 'general' | 'excel-global-understanding' | 'excel-pair-analysis' | 'word-section-analysis';
+export type AnalysisStage =
+  | 'general'
+  | 'excel-global-understanding'
+  | 'excel-pair-analysis'
+  | 'word-section-analysis';
 
 export interface WordSectionPromptCandidate {
   candidateId: string;

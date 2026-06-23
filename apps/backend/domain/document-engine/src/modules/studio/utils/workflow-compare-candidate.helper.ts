@@ -59,29 +59,18 @@ import {
   scoreLooseTextMatch,
 } from './workflow-similarity';
 
-import {
-  extractSampleTextRich,
-} from './workflow-xml-text';
+import { extractSampleTextRich } from './workflow-xml-text';
 
-import {
-  normalizeConfidence,
-  findTermMatch,
-} from './workflow-discover';
-import {
-  isSimpleDocumentBilingualPair,
-} from './workflow-language-profile';
+import { normalizeConfidence, findTermMatch } from './workflow-discover';
+import { isSimpleDocumentBilingualPair } from './workflow-language-profile';
 
 export function isLikelyTableHeaderRow(row: string[]): boolean {
-  const cells = row
-    .map((cell) => safeText(cell))
-    .filter(Boolean);
+  const cells = row.map((cell) => safeText(cell)).filter(Boolean);
   if (cells.length < 2) {
     return false;
   }
-  return cells.every((cell) =>
-    isLikelyTableLabel(cell) &&
-    !/[:：]/u.test(cell) &&
-    !safeText(cell).includes('______') // approximate hasBlankPlaceholder
+  return cells.every(
+    (cell) => isLikelyTableLabel(cell) && !/[:：]/u.test(cell) && !safeText(cell).includes('______') // approximate hasBlankPlaceholder
   );
 }
 
@@ -104,15 +93,15 @@ export function isLikelyTableLabel(text: string): boolean {
 
 export function buildCompareCandidateLocation(
   element: WorkflowDocumentElement,
-  anchors: WorkflowAnchor[],
+  anchors: WorkflowAnchor[]
 ): WorkflowCandidateLocation | undefined {
-  const hostData = element.hostData && typeof element.hostData === 'object'
-    ? element.hostData as Record<string, unknown>
-    : {};
+  const hostData =
+    element.hostData && typeof element.hostData === 'object'
+      ? (element.hostData as Record<string, unknown>)
+      : {};
   const anchor = resolveCandidateAnchor(element, anchors);
-  const anchorRef = anchor?.ref && typeof anchor.ref === 'object'
-    ? anchor.ref as Record<string, unknown>
-    : {};
+  const anchorRef =
+    anchor?.ref && typeof anchor.ref === 'object' ? (anchor.ref as Record<string, unknown>) : {};
   const location: WorkflowCandidateLocation = {
     blockType: safeText(element.type) || undefined,
     paragraphIndex: numberOrUndefined(hostData.index ?? anchorRef.paragraphIndex),
@@ -129,7 +118,7 @@ export function buildCompareCandidateLocation(
 
 export function resolveCandidateAnchor(
   element: WorkflowDocumentElement,
-  anchors: WorkflowAnchor[],
+  anchors: WorkflowAnchor[]
 ): WorkflowAnchor | undefined {
   const anchorIds = Array.isArray(element.anchorIds) ? element.anchorIds : [];
   for (const anchorId of anchorIds) {
@@ -139,26 +128,27 @@ export function resolveCandidateAnchor(
     }
   }
 
-  const hostData = element.hostData && typeof element.hostData === 'object'
-    ? element.hostData as Record<string, unknown>
-    : {};
+  const hostData =
+    element.hostData && typeof element.hostData === 'object'
+      ? (element.hostData as Record<string, unknown>)
+      : {};
   const normalizedText = normalizeLookupText(safeText(element.text));
   if (!normalizedText) {
     return undefined;
   }
 
   return anchors.find((anchor) => {
-    const ref = anchor.ref && typeof anchor.ref === 'object'
-      ? anchor.ref as Record<string, unknown>
-      : {};
+    const ref =
+      anchor.ref && typeof anchor.ref === 'object' ? (anchor.ref as Record<string, unknown>) : {};
     const anchorParagraphText = normalizeLookupText(safeText(ref.paragraphText));
     if (anchorParagraphText && anchorParagraphText === normalizedText) {
       return true;
     }
-    const sameTableCell = numberOrUndefined(ref.tableIndex) === numberOrUndefined(hostData.tableIndex)
-      && numberOrUndefined(ref.rowIndex) === numberOrUndefined(hostData.rowIndex)
-      && numberOrUndefined(ref.cellIndex) === numberOrUndefined(hostData.cellIndex)
-      && numberOrUndefined(ref.tableIndex) !== undefined;
+    const sameTableCell =
+      numberOrUndefined(ref.tableIndex) === numberOrUndefined(hostData.tableIndex) &&
+      numberOrUndefined(ref.rowIndex) === numberOrUndefined(hostData.rowIndex) &&
+      numberOrUndefined(ref.cellIndex) === numberOrUndefined(hostData.cellIndex) &&
+      numberOrUndefined(ref.tableIndex) !== undefined;
     return sameTableCell;
   });
 }
@@ -166,7 +156,7 @@ export function resolveCandidateAnchor(
 export function buildCompareCandidateLanguageRelation(
   elements: WorkflowDocumentElement[],
   element: WorkflowDocumentElement,
-  sectionId: string,
+  sectionId: string
 ): WorkflowCandidateLanguageRelation | undefined {
   const currentLanguageHint = detectTextLanguageHint(safeText(element.text));
   if (currentLanguageHint === 'mixed') {
@@ -181,15 +171,17 @@ export function buildCompareCandidateLanguageRelation(
     const nearbyBlocks = [elements[currentIndex - 1], elements[currentIndex + 1]]
       .filter((item): item is WorkflowDocumentElement => Boolean(item))
       .filter((item) => ['paragraph', 'table', 'cell'].includes(String(item.type || '')))
-      .filter((item) => inferSectionInfo(elements, item.id, safeText(item.text)).sectionId === sectionId);
+      .filter(
+        (item) => inferSectionInfo(elements, item.id, safeText(item.text)).sectionId === sectionId
+      );
 
     for (const nearbyBlock of nearbyBlocks) {
       const peerLanguageHint = detectTextLanguageHint(safeText(nearbyBlock.text));
       if (
-        isConcreteLanguageHint(currentLanguageHint)
-        && isConcreteLanguageHint(peerLanguageHint)
-        && currentLanguageHint !== peerLanguageHint
-        && isSimpleDocumentBilingualPair(currentLanguageHint, peerLanguageHint)
+        isConcreteLanguageHint(currentLanguageHint) &&
+        isConcreteLanguageHint(peerLanguageHint) &&
+        currentLanguageHint !== peerLanguageHint &&
+        isSimpleDocumentBilingualPair(currentLanguageHint, peerLanguageHint)
       ) {
         return {
           mode: 'adjacent_bilingual_block',
@@ -215,7 +207,7 @@ export function buildCompareCandidateLanguageRelation(
 }
 
 export function buildTemplateTableMatrices(
-  elements: WorkflowDocumentElement[],
+  elements: WorkflowDocumentElement[]
 ): Map<number, string[][]> {
   const tableMap = new Map<number, string[][]>();
 
@@ -251,7 +243,7 @@ export function buildTemplateTableMatrices(
       continue;
     }
     const rows = content
-      .map((row) => Array.isArray(row) ? row.map((cell) => safeText(cell)) : [])
+      .map((row) => (Array.isArray(row) ? row.map((cell) => safeText(cell)) : []))
       .filter((row) => row.length > 0);
     if (rows.length > 0) {
       tableMap.set(tableIndex, rows);
@@ -283,9 +275,7 @@ export function buildSampleTableMatrices(sampleText: string): string[][][] {
       }
       continue;
     }
-    const row = line
-      .split('\t')
-      .map((cell) => safeText(cell));
+    const row = line.split('\t').map((cell) => safeText(cell));
     if (row.some(Boolean)) {
       currentTable.push(row);
     }
@@ -302,7 +292,7 @@ export function buildMultiAnchorTableCellCompareInputs(
   templateCellText: string,
   sampleCellValue: string,
   rowText: string,
-  sampleRowText: string,
+  sampleRowText: string
 ): Array<{
   compareSegment: string;
   anchorText?: string;
@@ -331,7 +321,7 @@ export function buildMultiAnchorTableCellCompareInputs(
 export function buildTableCompareInputs(
   element: WorkflowDocumentElement,
   templateTableMatrices: Map<number, string[][]>,
-  sampleTableMatrices: string[][][],
+  sampleTableMatrices: string[][][]
 ): {
   skip: boolean;
   inputs: Array<{
@@ -385,9 +375,18 @@ export function buildTableCompareInputs(
       inputs: effectiveAnchors.map((anchorText, anchorIndex) => ({
         compareSegment: `${anchorText}\t${currentText || '______________'}`,
         anchorText,
-        sampleValue: extractTableCellSampleValueByAnchor(sampleCellValue, effectiveAnchors, anchorIndex),
+        sampleValue: extractTableCellSampleValueByAnchor(
+          sampleCellValue,
+          effectiveAnchors,
+          anchorIndex
+        ),
         matchText: sampleRowText || undefined,
-        probeTexts: [anchorText, headerLabel, rowText, tableStructure.headerRow.filter(Boolean).join('\t')],
+        probeTexts: [
+          anchorText,
+          headerLabel,
+          rowText,
+          tableStructure.headerRow.filter(Boolean).join('\t'),
+        ],
         dictionaryText: anchorText,
         dedupeHint: `standard-loop:${tableIndex}:${rowIndex}:${cellIndex}:${anchorIndex}`,
       })),
@@ -406,7 +405,7 @@ export function buildTableCompareInputs(
     currentText,
     sampleCellValue,
     rowText,
-    sampleRowText,
+    sampleRowText
   );
   if (inlineCellInputs.length > 0) {
     return {
@@ -438,7 +437,7 @@ export function buildTableCompareInputs(
       rightLabelCell.text,
       sampleCellValue,
       rowText,
-      sampleRowText,
+      sampleRowText
     );
     if (multiAnchorInputs.length > 0) {
       return {
@@ -474,7 +473,7 @@ export function shouldCreateCompareCandidate(
   anchorText: string,
   matchText: string,
   matchedField?: WorkflowAnalyzeFieldResult,
-  dictionaryHint?: WorkflowFieldDictionaryEntry,
+  dictionaryHint?: WorkflowFieldDictionaryEntry
 ): boolean {
   const normalizedTemplateText = safeText(templateText);
   const hasCompareShape = hasCompareFieldShape(normalizedTemplateText);
@@ -511,17 +510,13 @@ export function describeCompareCandidateReason(
   matchText: string,
   matchedField?: WorkflowAnalyzeFieldResult,
   dictionaryHint?: WorkflowFieldDictionaryEntry,
-  matchedInSection = false,
+  matchedInSection = false
 ): string {
   if (matchText && matchedField) {
-    return matchedInSection
-      ? '章节文本宽松命中 + 规则候选关联'
-      : '全文宽松命中 + 规则候选关联';
+    return matchedInSection ? '章节文本宽松命中 + 规则候选关联' : '全文宽松命中 + 规则候选关联';
   }
   if (matchText && dictionaryHint) {
-    return matchedInSection
-      ? '章节文本宽松命中 + 词典辅助提示'
-      : '全文宽松命中 + 词典辅助提示';
+    return matchedInSection ? '章节文本宽松命中 + 词典辅助提示' : '全文宽松命中 + 词典辅助提示';
   }
   if (matchText) {
     return matchedInSection ? '章节文本宽松命中' : '全文宽松命中';
@@ -540,7 +535,7 @@ export function buildCandidateSampleValue(
   templateText: string,
   matchText: string,
   matchedField: WorkflowAnalyzeFieldResult | undefined,
-  sourceLanguage: string,
+  sourceLanguage: string
 ): string {
   const snippet = safeText(matchText).replace(/\s+/g, ' ').trim();
   if (!snippet) {
@@ -555,7 +550,9 @@ export function buildCandidateSampleValue(
   }
   const normalizedAnchor = safeText(anchorText).replace(/[：:]$/u, '');
   if (normalizedAnchor) {
-    const directMatch = snippet.match(new RegExp(`${escapeRegExp(normalizedAnchor)}[：:]?\\s*([^\\n]{1,80})`, 'u'));
+    const directMatch = snippet.match(
+      new RegExp(`${escapeRegExp(normalizedAnchor)}[：:]?\\s*([^\\n]{1,80})`, 'u')
+    );
     const directValue = safeText(directMatch?.[1]);
     if (directValue) {
       return directValue.slice(0, 80);
@@ -565,22 +562,28 @@ export function buildCandidateSampleValue(
   if (colonValue) {
     return colonValue.slice(0, 80);
   }
-  return snippet.split(/[。；;]/u)[0].slice(0, 80).trim();
+  return snippet
+    .split(/[。；;]/u)[0]
+    .slice(0, 80)
+    .trim();
 }
 
 export function computeCompareCandidateConfidence(
   matchText: string,
   matchedField?: WorkflowAnalyzeFieldResult,
-  dictionaryHint?: WorkflowFieldDictionaryEntry,
+  dictionaryHint?: WorkflowFieldDictionaryEntry
 ): number {
   const normalizedMatchText = safeText(matchText);
   const looseMatchScore = normalizedMatchText
-    ? scoreLooseTextMatch(normalizedMatchText, [
-        safeText(matchedField?.fieldId),
-        safeText(matchedField?.sample?.zh),
-        safeText(dictionaryHint?.fieldId),
-        safeText(dictionaryHint?.description),
-      ].filter(Boolean))
+    ? scoreLooseTextMatch(
+        normalizedMatchText,
+        [
+          safeText(matchedField?.fieldId),
+          safeText(matchedField?.sample?.zh),
+          safeText(dictionaryHint?.fieldId),
+          safeText(dictionaryHint?.description),
+        ].filter(Boolean)
+      )
     : 0;
 
   let confidence = normalizedMatchText ? 0.46 : 0.24;

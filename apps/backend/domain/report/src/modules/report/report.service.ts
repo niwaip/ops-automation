@@ -43,14 +43,12 @@ export class ReportService {
     private readonly templateService: TemplateService,
     private readonly generatorService: GeneratorService,
     private readonly analyzerService: AnalyzerService,
-    private readonly notificationService: NotificationService,
+    private readonly notificationService: NotificationService
   ) {
     this.redis = new Redis({
       host: getRedisHost(),
       port: parseInt(process.env.REDIS_PORT || '6379', 10),
-      ...(process.env.REDIS_PASSWORD
-        ? { password: process.env.REDIS_PASSWORD }
-        : {}),
+      ...(process.env.REDIS_PASSWORD ? { password: process.env.REDIS_PASSWORD } : {}),
     });
     this.sessionBrokerUrl = getSessionBrokerUrl();
   }
@@ -70,7 +68,7 @@ export class ReportService {
     });
 
     // Start generation process asynchronously
-    this.generateReport(saved.id, template, dto.session_id).catch(error => {
+    this.generateReport(saved.id, template, dto.session_id).catch((error) => {
       this.logger.error(`Report generation failed: ${error}`);
       this.updateReportStatus(saved.id, 'failed', error.message);
     });
@@ -81,7 +79,7 @@ export class ReportService {
   private async generateReport(
     reportId: string,
     template: ReportTemplateDTO,
-    sessionId: string,
+    sessionId: string
   ): Promise<void> {
     this.logger.log(`Starting report generation for ${reportId}`);
 
@@ -98,20 +96,23 @@ export class ReportService {
 
       // Run validations
       const validationResults = this.validateSections(template.sections, stepResults, aiAnalysis);
-      this.logger.log(`Validation completed: ${validationResults.filter(v => v.passed).length}/${validationResults.length} passed`);
+      this.logger.log(
+        `Validation completed: ${validationResults.filter((v) => v.passed).length}/${validationResults.length} passed`
+      );
 
       // Send notifications for failed validations
       const notifications = await this.notificationService.sendNotifications(
         template.sections,
         validationResults,
-        sessionId,
+        sessionId
       );
-      this.logger.log(`Notifications sent: ${notifications.filter(n => n.sent).length}`);
+      this.logger.log(`Notifications sent: ${notifications.filter((n) => n.sent).length}`);
 
       // Check if we should stop due to validation failures
       const hasStopFailure = template.sections.some(
-        (s: ReportSection) => s.validation?.on_fail === 'stop' &&
-             validationResults.find(v => v.section_id === s.id && !v.passed),
+        (s: ReportSection) =>
+          s.validation?.on_fail === 'stop' &&
+          validationResults.find((v) => v.section_id === s.id && !v.passed)
       );
 
       if (hasStopFailure) {
@@ -139,7 +140,11 @@ export class ReportService {
       this.logger.log(`Report ${reportId} completed successfully`);
     } catch (error) {
       this.logger.error(`Report generation failed: ${error}`);
-      await this.updateReportStatus(reportId, 'failed', error instanceof Error ? error.message : 'Unknown error');
+      await this.updateReportStatus(
+        reportId,
+        'failed',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
     }
   }
 
@@ -155,8 +160,10 @@ export class ReportService {
         const results: StepResult[] = JSON.parse(data);
         this.logger.log(`Found ${results.length} steps in Redis for session ${sessionId}`);
         return results.sort((a, b) => {
-          const timeA = typeof a.timestamp === 'number' ? a.timestamp : new Date(a.timestamp).getTime();
-          const timeB = typeof b.timestamp === 'number' ? b.timestamp : new Date(b.timestamp).getTime();
+          const timeA =
+            typeof a.timestamp === 'number' ? a.timestamp : new Date(a.timestamp).getTime();
+          const timeB =
+            typeof b.timestamp === 'number' ? b.timestamp : new Date(b.timestamp).getTime();
           return timeA - timeB;
         });
       }
@@ -164,7 +171,7 @@ export class ReportService {
       // Fallback to session broker API
       this.logger.log(`No steps found in Redis, trying session broker API`);
       const response = await axios.get<{ results?: StepResult[] }>(
-        `${this.sessionBrokerUrl}/session/${sessionId}/results`,
+        `${this.sessionBrokerUrl}/session/${sessionId}/results`
       );
       return response.data.results || [];
     } catch (error) {
@@ -176,7 +183,7 @@ export class ReportService {
   private validateSections(
     sections: ReportSection[],
     stepResults: StepResult[],
-    aiAnalysis: any[],
+    aiAnalysis: any[]
   ): ValidationResult[] {
     const results: ValidationResult[] = [];
 
@@ -193,7 +200,7 @@ export class ReportService {
         section.validation.condition,
         section,
         stepResults,
-        aiAnalysis,
+        aiAnalysis
       );
 
       results.push({
@@ -211,7 +218,7 @@ export class ReportService {
     condition: string,
     section: ReportSection,
     stepResults: StepResult[],
-    aiAnalysis: any[],
+    aiAnalysis: any[]
   ): boolean {
     // Simple condition evaluation
     // Supported conditions:
@@ -221,14 +228,14 @@ export class ReportService {
     // - "analysis_contains:keyword"
 
     const filteredSteps = this.filterSteps(section, stepResults);
-    const analysis = aiAnalysis.find(a => a.section_id === section.id);
+    const analysis = aiAnalysis.find((a) => a.section_id === section.id);
 
     try {
       if (condition.startsWith('success_count')) {
         const match = condition.match(/success_count\s*>=\s*(\d+)/);
         if (match) {
           const threshold = parseInt(match[1], 10);
-          const successCount = filteredSteps.filter(s => s.success).length;
+          const successCount = filteredSteps.filter((s) => s.success).length;
           return successCount >= threshold;
         }
       }
@@ -237,13 +244,13 @@ export class ReportService {
         const match = condition.match(/failure_count\s*==\s*(\d+)/);
         if (match) {
           const threshold = parseInt(match[1], 10);
-          const failureCount = filteredSteps.filter(s => !s.success).length;
+          const failureCount = filteredSteps.filter((s) => !s.success).length;
           return failureCount === threshold;
         }
       }
 
       if (condition === 'has_text') {
-        return filteredSteps.some(s => s.text && s.text.length > 0);
+        return filteredSteps.some((s) => s.text && s.text.length > 0);
       }
 
       if (condition.startsWith('analysis_contains:')) {
@@ -265,10 +272,10 @@ export class ReportService {
 
     if (section.step_filter) {
       if (section.step_filter.actions) {
-        results = results.filter(r => section.step_filter!.actions!.includes(r.action));
+        results = results.filter((r) => section.step_filter!.actions!.includes(r.action));
       }
       if (section.step_filter.success_only) {
-        results = results.filter(r => r.success);
+        results = results.filter((r) => r.success);
       }
     }
 
@@ -278,7 +285,7 @@ export class ReportService {
   private async updateReportStatus(
     reportId: string,
     status: ReportStatus,
-    error?: string,
+    error?: string
   ): Promise<void> {
     await this.prisma.report.update({
       where: { id: reportId },

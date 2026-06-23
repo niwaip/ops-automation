@@ -55,34 +55,41 @@ export function classifyToolResultError(result?: ToolResult): ErrorCategory | un
   if (code === 'provider_error' || code === 'model_not_initialized') {
     return 'provider_error';
   }
-  if ([
-    'missing_params',
-    'missing_user_input',
-    'template_ambiguous',
-    'template_mismatch',
-    'param_recover_failed',
-  ].includes(code) || result.requiresUserInput) {
+  if (
+    [
+      'missing_params',
+      'missing_user_input',
+      'template_ambiguous',
+      'template_mismatch',
+      'param_recover_failed',
+    ].includes(code) ||
+    result.requiresUserInput
+  ) {
     return 'user_input_error';
   }
-  if ([
-    'unauthorized_access',
-    'tool_not_allowed',
-    'tool_not_visible_in_capability_snapshot',
-    'template_not_visible_in_capability_snapshot',
-    'skill_not_visible_in_capability_snapshot',
-    'skill_id_required_in_task_mode',
-  ].includes(code)) {
+  if (
+    [
+      'unauthorized_access',
+      'tool_not_allowed',
+      'tool_not_visible_in_capability_snapshot',
+      'template_not_visible_in_capability_snapshot',
+      'skill_not_visible_in_capability_snapshot',
+      'skill_id_required_in_task_mode',
+    ].includes(code)
+  ) {
     return 'tool_auth_error';
   }
-  if ([
-    'render_failed',
-    'param_validation_failed',
-    'service_error',
-    'execution_error',
-    'api_error',
-    'template_fetch_failed',
-    'render_error',
-  ].includes(code)) {
+  if (
+    [
+      'render_failed',
+      'param_validation_failed',
+      'service_error',
+      'execution_error',
+      'api_error',
+      'template_fetch_failed',
+      'render_error',
+    ].includes(code)
+  ) {
     return 'tool_runtime_error';
   }
 
@@ -94,9 +101,8 @@ export function attachErrorCategory(result?: ToolResult): ToolResult | undefined
     return undefined;
   }
 
-  const existingCategory = typeof result.data?.errorCategory === 'string'
-    ? result.data.errorCategory
-    : undefined;
+  const existingCategory =
+    typeof result.data?.errorCategory === 'string' ? result.data.errorCategory : undefined;
   const errorCategory = existingCategory || classifyToolResultError(result);
   if (!errorCategory) {
     return result;
@@ -116,14 +122,16 @@ export function looksLikeParameterIssue(result: ToolResult): boolean {
     result.output || '',
     typeof result.data?.message === 'string' ? result.data.message : '',
     typeof result.data?.error === 'string' ? result.data.error : '',
-  ].join(' ').toLowerCase();
+  ]
+    .join(' ')
+    .toLowerCase();
 
   return (
-    diagnosticText.includes('参数')
-    || diagnosticText.includes('missing')
-    || diagnosticText.includes('invalid')
-    || diagnosticText.includes('validation')
-    || diagnosticText.includes('required')
+    diagnosticText.includes('参数') ||
+    diagnosticText.includes('missing') ||
+    diagnosticText.includes('invalid') ||
+    diagnosticText.includes('validation') ||
+    diagnosticText.includes('required')
   );
 }
 
@@ -149,10 +157,7 @@ export function shouldTriggerDocumentParamRecover(result?: ToolResult): boolean 
   return parameterIssue || looksLikeParameterIssue(result);
 }
 
-export function decideRecoveryAction(
-  toolName: string,
-  result?: ToolResult,
-): RecoveryAction {
+export function decideRecoveryAction(toolName: string, result?: ToolResult): RecoveryAction {
   if (!result || result.success) {
     return { type: 'none' };
   }
@@ -164,9 +169,10 @@ export function decideRecoveryAction(
     };
   }
 
-  const errorCategory = typeof result.data?.errorCategory === 'string'
-    ? result.data.errorCategory
-    : classifyToolResultError(result);
+  const errorCategory =
+    typeof result.data?.errorCategory === 'string'
+      ? result.data.errorCategory
+      : classifyToolResultError(result);
 
   if (errorCategory === 'provider_error' || errorCategory === 'protocol_error') {
     return {
@@ -199,9 +205,10 @@ export function decideModelFallbackStrategy(result?: ToolResult): ModelFallbackS
   }
 
   const code = result.code || '';
-  const errorCategory = typeof result.data?.errorCategory === 'string'
-    ? result.data.errorCategory
-    : classifyToolResultError(result);
+  const errorCategory =
+    typeof result.data?.errorCategory === 'string'
+      ? result.data.errorCategory
+      : classifyToolResultError(result);
 
   if (code === 'model_not_initialized') {
     return {

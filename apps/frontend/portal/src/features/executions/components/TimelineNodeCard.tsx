@@ -96,7 +96,11 @@ const TimelineNodeCard: React.FC<TimelineNodeCardProps> = ({
           }}
         >
           <Space style={{ width: '100%', justifyContent: 'space-between' }} align="start">
-            <Space direction="vertical" size={2} style={{ minWidth: 0, flex: 1, alignItems: 'flex-start', textAlign: 'left' }}>
+            <Space
+              direction="vertical"
+              size={2}
+              style={{ minWidth: 0, flex: 1, alignItems: 'flex-start', textAlign: 'left' }}
+            >
               <div
                 style={{
                   width: '100%',
@@ -107,8 +111,14 @@ const TimelineNodeCard: React.FC<TimelineNodeCardProps> = ({
                   marginBottom: 6,
                 }}
               />
-              <Text strong style={{ width: '100%', textAlign: 'left' }}>{title}</Text>
-              {subtitle ? <Text type="secondary" style={{ width: '100%', textAlign: 'left' }}>{subtitle}</Text> : null}
+              <Text strong style={{ width: '100%', textAlign: 'left' }}>
+                {title}
+              </Text>
+              {subtitle ? (
+                <Text type="secondary" style={{ width: '100%', textAlign: 'left' }}>
+                  {subtitle}
+                </Text>
+              ) : null}
             </Space>
             {details ? (
               <Button

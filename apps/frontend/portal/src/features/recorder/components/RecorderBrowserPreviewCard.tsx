@@ -91,7 +91,9 @@ const RecorderBrowserPreviewCard: React.FC<RecorderBrowserPreviewCardProps> = ({
         />
       ) : (
         <div style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
-          <DesktopOutlined style={{ fontSize: 48, marginBottom: 16, color: 'var(--text-secondary)' }} />
+          <DesktopOutlined
+            style={{ fontSize: 48, marginBottom: 16, color: 'var(--text-secondary)' }}
+          />
           <p style={{ color: 'var(--text-primary)', marginBottom: 8 }}>
             {previewMode === 'shared' ? '手动录制已连接共享浏览器' : startPreviewHint}
           </p>

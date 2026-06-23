@@ -1,5 +1,5 @@
-import { postSseStream as postSseStreamFromCore, type StreamEventPayload } from "@ops/user-core";
-import { browserStreamingTransport } from "@/adapters/streaming/browserStreamingTransport";
+import { postSseStream as postSseStreamFromCore, type StreamEventPayload } from '@ops/user-core';
+import { browserStreamingTransport } from '@/adapters/streaming/browserStreamingTransport';
 
 interface PostSseStreamOptions {
   url: string;

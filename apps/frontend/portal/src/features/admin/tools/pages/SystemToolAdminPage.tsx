@@ -95,7 +95,9 @@ const buildMetadataJson = (value?: string): Record<string, unknown> => {
   return parsed as Record<string, unknown>;
 };
 
-type BoundSkillItem = NonNullable<NonNullable<ToolCatalogItem['usageSummary']>['boundSkills']>[number];
+type BoundSkillItem = NonNullable<
+  NonNullable<ToolCatalogItem['usageSummary']>['boundSkills']
+>[number];
 
 const renderConfirmContent = (lines: string[]) => (
   <div
@@ -129,7 +131,7 @@ const SystemToolAdminPage: React.FC = () => {
   const detailQuery = useQuery(
     ['tool-catalog-detail', selectedToolName],
     () => toolCatalogApi.getByName(selectedToolName!),
-    { enabled: detailVisible && !!selectedToolName },
+    { enabled: detailVisible && !!selectedToolName }
   );
 
   const syncUpdatedToolToCache = (updatedTool: ToolCatalogItem) => {
@@ -141,16 +143,23 @@ const SystemToolAdminPage: React.FC = () => {
         }
         return {
           ...previous,
-          tools: previous.tools.map((tool) => (tool.name === updatedTool.name ? updatedTool : tool)),
+          tools: previous.tools.map((tool) =>
+            tool.name === updatedTool.name ? updatedTool : tool
+          ),
         };
-      },
+      }
     );
     queryClient.setQueryData(['tool-catalog-detail', updatedTool.name], updatedTool);
   };
 
   const updateMutation = useMutation(
-    ({ name, payload }: { name: string; payload: Partial<ToolCatalogItem> & { metadataJson?: Record<string, unknown> } }) =>
-      toolCatalogApi.update(name, payload),
+    ({
+      name,
+      payload,
+    }: {
+      name: string;
+      payload: Partial<ToolCatalogItem> & { metadataJson?: Record<string, unknown> };
+    }) => toolCatalogApi.update(name, payload),
     {
       onSuccess: (updatedTool) => {
         syncUpdatedToolToCache(updatedTool);
@@ -162,7 +171,7 @@ const SystemToolAdminPage: React.FC = () => {
         const errorMessage = error?.response?.data?.message || error?.message || '更新失败';
         message.error(typeof errorMessage === 'string' ? errorMessage : '更新失败');
       },
-    },
+    }
   );
 
   useEffect(() => {
@@ -185,14 +194,18 @@ const SystemToolAdminPage: React.FC = () => {
 
   const categories = useMemo(
     () =>
-      Array.from(new Set((listQuery.data?.tools || []).map((tool) => tool.category).filter(Boolean))).sort(),
-    [listQuery.data?.tools],
+      Array.from(
+        new Set((listQuery.data?.tools || []).map((tool) => tool.category).filter(Boolean))
+      ).sort(),
+    [listQuery.data?.tools]
   );
 
   const runtimeTypes = useMemo(
     () =>
-      Array.from(new Set((listQuery.data?.tools || []).map((tool) => tool.runtimeType).filter(Boolean))).sort(),
-    [listQuery.data?.tools],
+      Array.from(
+        new Set((listQuery.data?.tools || []).map((tool) => tool.runtimeType).filter(Boolean))
+      ).sort(),
+    [listQuery.data?.tools]
   );
 
   const openDetail = (toolName: string) => {
@@ -217,7 +230,7 @@ const SystemToolAdminPage: React.FC = () => {
     tool: ToolCatalogItem,
     payload: Partial<ToolCatalogItem>,
     confirmTitle?: string,
-    confirmContent?: string,
+    confirmContent?: string
   ) => {
     const execute = () => updateMutation.mutateAsync({ name: tool.name, payload });
 
@@ -257,7 +270,7 @@ const SystemToolAdminPage: React.FC = () => {
       const warnings: string[] = [];
       if (detailQuery.data.status !== payload.status && payload.status === 'disabled') {
         warnings.push(
-          `禁用后新快照不再暴露该工具，当前已绑定的 ${detailQuery.data.usageSummary?.boundSkillCount || 0} 个 Skill 的后续发布也会受影响。`,
+          `禁用后新快照不再暴露该工具，当前已绑定的 ${detailQuery.data.usageSummary?.boundSkillCount || 0} 个 Skill 的后续发布也会受影响。`
         );
       }
       if (
@@ -265,7 +278,7 @@ const SystemToolAdminPage: React.FC = () => {
         payload.allowSkillBinding === false
       ) {
         warnings.push(
-          `关闭 Skill 绑定后，将阻断该工具的新绑定；当前已有 ${detailQuery.data.usageSummary?.boundSkillCount || 0} 个 Skill 使用该工具。`,
+          `关闭 Skill 绑定后，将阻断该工具的新绑定；当前已有 ${detailQuery.data.usageSummary?.boundSkillCount || 0} 个 Skill 使用该工具。`
         );
       }
       if (
@@ -412,7 +425,12 @@ const SystemToolAdminPage: React.FC = () => {
       fixed: 'right',
       render: (_, record) => (
         <Space size="small">
-          <Button type="link" size="small" icon={<EditOutlined />} onClick={() => openDetail(record.name)}>
+          <Button
+            type="link"
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => openDetail(record.name)}
+          >
             详情
           </Button>
           {record.status === 'active' ? (
@@ -425,7 +443,7 @@ const SystemToolAdminPage: React.FC = () => {
                   record,
                   { status: 'disabled' },
                   `确认禁用工具「${record.displayName || record.name}」？`,
-                  `禁用后新快照不再暴露该工具，当前已绑定的 ${record.usageSummary?.boundSkillCount || 0} 个 Skill 后续保存/发布可能受影响。`,
+                  `禁用后新快照不再暴露该工具，当前已绑定的 ${record.usageSummary?.boundSkillCount || 0} 个 Skill 后续保存/发布可能受影响。`
                 )
               }
             >
@@ -450,7 +468,7 @@ const SystemToolAdminPage: React.FC = () => {
                 record.allowSkillBinding ? `确认禁止 Skill 绑定「${record.name}」？` : undefined,
                 record.allowSkillBinding
                   ? `后续保存、验证和发布将不再允许新绑定该工具；当前已有 ${record.usageSummary?.boundSkillCount || 0} 个 Skill 正在使用。`
-                  : undefined,
+                  : undefined
               )
             }
           >
@@ -483,9 +501,7 @@ const SystemToolAdminPage: React.FC = () => {
       key: 'isActive',
       width: 100,
       render: (isActive: boolean) => (
-        <Tag color={isActive ? 'success' : 'error'}>
-          {isActive ? '启用' : '禁用'}
-        </Tag>
+        <Tag color={isActive ? 'success' : 'error'}>{isActive ? '启用' : '禁用'}</Tag>
       ),
     },
     {
@@ -494,7 +510,11 @@ const SystemToolAdminPage: React.FC = () => {
       key: 'configStatus',
       width: 110,
       render: (configStatus?: string) => (
-        <Tag color={configStatus === 'valid' ? 'success' : configStatus === 'invalid' ? 'error' : 'default'}>
+        <Tag
+          color={
+            configStatus === 'valid' ? 'success' : configStatus === 'invalid' ? 'error' : 'default'
+          }
+        >
           {configStatus || 'draft'}
         </Tag>
       ),
@@ -516,9 +536,7 @@ const SystemToolAdminPage: React.FC = () => {
       key: 'publishedReleaseStatus',
       width: 140,
       render: (value?: string | null) => (
-        <Tag color={value ? 'blue' : 'default'}>
-          {releaseStatusLabel(value)}
-        </Tag>
+        <Tag color={value ? 'blue' : 'default'}>{releaseStatusLabel(value)}</Tag>
       ),
     },
     {
@@ -527,9 +545,7 @@ const SystemToolAdminPage: React.FC = () => {
       key: 'publishedDeploymentStatus',
       width: 140,
       render: (value?: string | null) => (
-        <Tag color={value ? 'purple' : 'default'}>
-          {value || '未部署'}
-        </Tag>
+        <Tag color={value ? 'purple' : 'default'}>{value || '未部署'}</Tag>
       ),
     },
   ];
@@ -538,316 +554,346 @@ const SystemToolAdminPage: React.FC = () => {
     <>
       {contextHolder}
       <div>
-      <Title level={4}>系统工具管理</Title>
+        <Title level={4}>系统工具管理</Title>
 
-      <Alert
-        type="info"
-        showIcon
-        style={{ marginBottom: 16 }}
-        message="页面用途"
-        description="这里管理系统 Tool Catalog。修改工具状态、Prompt 暴露或 Skill 绑定策略后，会直接影响后续快照生成、Skill 验证与发布阻断。"
-      />
+        <Alert
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+          message="页面用途"
+          description="这里管理系统 Tool Catalog。修改工具状态、Prompt 暴露或 Skill 绑定策略后，会直接影响后续快照生成、Skill 验证与发布阻断。"
+        />
 
-      <Card>
-        <Space direction="vertical" style={{ width: '100%' }} size="middle">
-          {listQuery.isError ? (
+        <Card>
+          <Space direction="vertical" style={{ width: '100%' }} size="middle">
+            {listQuery.isError ? (
+              <Alert
+                type="error"
+                showIcon
+                message="工具目录加载失败"
+                description={
+                  (listQuery.error as any)?.response?.data?.message ||
+                  (listQuery.error as Error)?.message ||
+                  '请检查 auth 服务和 /api/tools 代理是否正常。'
+                }
+              />
+            ) : null}
+
+            <Space style={{ width: '100%', justifyContent: 'space-between' }} align="start">
+              <Space wrap>
+                <Input
+                  placeholder="搜索名称 / 显示名称 / 描述"
+                  prefix={<SearchOutlined />}
+                  value={searchInput}
+                  onChange={(event) => setSearchInput(event.target.value)}
+                  onPressEnter={() => applyFilters({ keyword: searchInput || undefined })}
+                  allowClear
+                  style={{ width: 260 }}
+                />
+                <Button onClick={() => applyFilters({ keyword: searchInput || undefined })}>
+                  搜索
+                </Button>
+                <Select
+                  allowClear
+                  placeholder="状态"
+                  style={{ width: 140 }}
+                  value={filters.status}
+                  onChange={(value) => applyFilters({ status: value })}
+                >
+                  {TOOL_STATUS_OPTIONS.map((option) => (
+                    <Option key={option.value} value={option.value}>
+                      {option.label}
+                    </Option>
+                  ))}
+                </Select>
+                <Select
+                  allowClear
+                  placeholder="类别"
+                  style={{ width: 140 }}
+                  value={filters.category}
+                  onChange={(value) => applyFilters({ category: value })}
+                >
+                  {categories.map((category) => (
+                    <Option key={category} value={category}>
+                      {category}
+                    </Option>
+                  ))}
+                </Select>
+                <Select
+                  allowClear
+                  placeholder="运行类型"
+                  style={{ width: 140 }}
+                  value={filters.runtimeType}
+                  onChange={(value) => applyFilters({ runtimeType: value })}
+                >
+                  {runtimeTypes.map((runtimeType) => (
+                    <Option key={runtimeType} value={runtimeType}>
+                      {runtimeType}
+                    </Option>
+                  ))}
+                </Select>
+                <Select
+                  allowClear
+                  placeholder="Skill 绑定"
+                  style={{ width: 150 }}
+                  value={filters.allowSkillBinding}
+                  onChange={(value) => applyFilters({ allowSkillBinding: value })}
+                >
+                  <Option value>允许绑定</Option>
+                  <Option value={false}>禁止绑定</Option>
+                </Select>
+              </Space>
+
+              <Space>
+                <Button
+                  onClick={() => {
+                    setSearchInput('');
+                    setFilters({});
+                  }}
+                >
+                  重置
+                </Button>
+                <Button icon={<ReloadOutlined />} onClick={() => listQuery.refetch()}>
+                  刷新
+                </Button>
+              </Space>
+            </Space>
+
+            <Divider style={{ margin: 0 }} />
+
+            <Table
+              rowKey="name"
+              loading={listQuery.isLoading}
+              columns={columns}
+              dataSource={listQuery.data?.tools || []}
+              scroll={{ x: 1500 }}
+              pagination={{
+                pageSize: 10,
+                showSizeChanger: true,
+                showTotal: (total) => `共 ${total} 个工具`,
+              }}
+            />
+          </Space>
+        </Card>
+
+        <Drawer
+          title={
+            <Space>
+              <ToolOutlined />
+              <span>工具详情</span>
+            </Space>
+          }
+          width={920}
+          open={detailVisible}
+          onClose={closeDetail}
+          destroyOnHidden
+          styles={{
+            body: {
+              background: 'var(--bg-primary)',
+              overflowY: 'auto',
+            },
+          }}
+          extra={
+            <Space>
+              <Button onClick={closeDetail}>关闭</Button>
+              <Button type="primary" onClick={handleSave} loading={updateMutation.isLoading}>
+                保存
+              </Button>
+            </Space>
+          }
+        >
+          {detailQuery.isError ? (
             <Alert
               type="error"
               showIcon
-              message="工具目录加载失败"
+              message="工具详情加载失败"
               description={
-                (listQuery.error as any)?.response?.data?.message
-                || (listQuery.error as Error)?.message
-                || '请检查 auth 服务和 /api/tools 代理是否正常。'
+                (detailQuery.error as any)?.response?.data?.message ||
+                (detailQuery.error as Error)?.message ||
+                '请稍后重试。'
               }
             />
-          ) : null}
-
-          <Space style={{ width: '100%', justifyContent: 'space-between' }} align="start">
-            <Space wrap>
-              <Input
-                placeholder="搜索名称 / 显示名称 / 描述"
-                prefix={<SearchOutlined />}
-                value={searchInput}
-                onChange={(event) => setSearchInput(event.target.value)}
-                onPressEnter={() => applyFilters({ keyword: searchInput || undefined })}
-                allowClear
-                style={{ width: 260 }}
-              />
-              <Button onClick={() => applyFilters({ keyword: searchInput || undefined })}>搜索</Button>
-              <Select
-                allowClear
-                placeholder="状态"
-                style={{ width: 140 }}
-                value={filters.status}
-                onChange={(value) => applyFilters({ status: value })}
-              >
-                {TOOL_STATUS_OPTIONS.map((option) => (
-                  <Option key={option.value} value={option.value}>
-                    {option.label}
-                  </Option>
-                ))}
-              </Select>
-              <Select
-                allowClear
-                placeholder="类别"
-                style={{ width: 140 }}
-                value={filters.category}
-                onChange={(value) => applyFilters({ category: value })}
-              >
-                {categories.map((category) => (
-                  <Option key={category} value={category}>
-                    {category}
-                  </Option>
-                ))}
-              </Select>
-              <Select
-                allowClear
-                placeholder="运行类型"
-                style={{ width: 140 }}
-                value={filters.runtimeType}
-                onChange={(value) => applyFilters({ runtimeType: value })}
-              >
-                {runtimeTypes.map((runtimeType) => (
-                  <Option key={runtimeType} value={runtimeType}>
-                    {runtimeType}
-                  </Option>
-                ))}
-              </Select>
-              <Select
-                allowClear
-                placeholder="Skill 绑定"
-                style={{ width: 150 }}
-                value={filters.allowSkillBinding}
-                onChange={(value) => applyFilters({ allowSkillBinding: value })}
-              >
-                <Option value>允许绑定</Option>
-                <Option value={false}>禁止绑定</Option>
-              </Select>
-            </Space>
-
-            <Space>
-              <Button
-                onClick={() => {
-                  setSearchInput('');
-                  setFilters({});
-                }}
-              >
-                重置
-              </Button>
-              <Button icon={<ReloadOutlined />} onClick={() => listQuery.refetch()}>
-                刷新
-              </Button>
-            </Space>
-          </Space>
-
-          <Divider style={{ margin: 0 }} />
-
-          <Table
-            rowKey="name"
-            loading={listQuery.isLoading}
-            columns={columns}
-            dataSource={listQuery.data?.tools || []}
-            scroll={{ x: 1500 }}
-            pagination={{
-              pageSize: 10,
-              showSizeChanger: true,
-              showTotal: (total) => `共 ${total} 个工具`,
-            }}
-          />
-        </Space>
-      </Card>
-
-      <Drawer
-        title={
-          <Space>
-            <ToolOutlined />
-            <span>工具详情</span>
-          </Space>
-        }
-        width={920}
-        open={detailVisible}
-        onClose={closeDetail}
-        destroyOnHidden
-        styles={{
-          body: {
-            background: 'var(--bg-primary)',
-            overflowY: 'auto',
-          },
-        }}
-        extra={
-          <Space>
-            <Button onClick={closeDetail}>关闭</Button>
-            <Button type="primary" onClick={handleSave} loading={updateMutation.isLoading}>
-              保存
-            </Button>
-          </Space>
-        }
-      >
-        {detailQuery.isError ? (
-          <Alert
-            type="error"
-            showIcon
-            message="工具详情加载失败"
-            description={
-              (detailQuery.error as any)?.response?.data?.message
-              || (detailQuery.error as Error)?.message
-              || '请稍后重试。'
-            }
-          />
-        ) : detailQuery.data ? (
-          <Space direction="vertical" style={{ width: '100%' }} size="large">
-            <Card size="small">
-              <Descriptions size="small" column={2}>
-                <Descriptions.Item label="工具名称">{detailQuery.data.name}</Descriptions.Item>
-                <Descriptions.Item label="显示名称">{detailQuery.data.displayName}</Descriptions.Item>
-                <Descriptions.Item label="类别">{detailQuery.data.category || '-'}</Descriptions.Item>
-                <Descriptions.Item label="运行类型">{detailQuery.data.runtimeType || '-'}</Descriptions.Item>
-                <Descriptions.Item label="创建时间">
-                  {detailQuery.data.createdAt ? new Date(detailQuery.data.createdAt).toLocaleString() : '-'}
-                </Descriptions.Item>
-                <Descriptions.Item label="更新时间">
-                  {detailQuery.data.updatedAt ? new Date(detailQuery.data.updatedAt).toLocaleString() : '-'}
-                </Descriptions.Item>
-              </Descriptions>
-            </Card>
-
-            <Alert
-              type="warning"
-              showIcon
-              icon={<SafetyCertificateOutlined />}
-              message="高影响字段"
-              description="`status`、`allowSkillBinding`、`promptExposure` 的修改会影响运行时快照、Skill 验证与后续发布。保存时会再次确认。"
-            />
-
-            <Card size="small" title="影响面">
-              <Space direction="vertical" style={{ width: '100%' }} size="middle">
-                <Descriptions size="small" column={1}>
-                  <Descriptions.Item label="当前绑定 Skill 数量">
-                    <Space wrap>
-                      <Tag color={detailQuery.data.usageSummary?.boundSkillCount ? 'processing' : 'default'}>
-                        {detailQuery.data.usageSummary?.boundSkillCount || 0}
-                      </Tag>
-                      {detailQuery.data.usageSummary?.boundSkillCount ? (
-                        <Button
-                          type="link"
-                          size="small"
-                          style={{ padding: 0 }}
-                          onClick={() => navigate(`/admin/skills?q=${encodeURIComponent(detailQuery.data!.name)}`)}
-                        >
-                          查看全部受影响 Skill
-                        </Button>
-                      ) : null}
-                    </Space>
+          ) : detailQuery.data ? (
+            <Space direction="vertical" style={{ width: '100%' }} size="large">
+              <Card size="small">
+                <Descriptions size="small" column={2}>
+                  <Descriptions.Item label="工具名称">{detailQuery.data.name}</Descriptions.Item>
+                  <Descriptions.Item label="显示名称">
+                    {detailQuery.data.displayName}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="类别">
+                    {detailQuery.data.category || '-'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="运行类型">
+                    {detailQuery.data.runtimeType || '-'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="创建时间">
+                    {detailQuery.data.createdAt
+                      ? new Date(detailQuery.data.createdAt).toLocaleString()
+                      : '-'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="更新时间">
+                    {detailQuery.data.updatedAt
+                      ? new Date(detailQuery.data.updatedAt).toLocaleString()
+                      : '-'}
                   </Descriptions.Item>
                 </Descriptions>
-
-                {detailQuery.data.usageSummary?.boundSkills?.length ? (
-                  <Table
-                    size="small"
-                    rowKey="id"
-                    pagination={false}
-                    columns={boundSkillColumns}
-                    dataSource={detailQuery.data.usageSummary.boundSkills}
-                    scroll={{ x: 760 }}
-                  />
-                ) : (
-                  <Text type="secondary">暂无绑定 Skill</Text>
-                )}
-              </Space>
-            </Card>
-
-            <Form form={form} layout="vertical">
-              <Card size="small" title="基础信息">
-                <Form.Item
-                  name="displayName"
-                  label="显示名称"
-                  rules={[{ required: true, message: '请输入显示名称' }]}
-                >
-                  <Input />
-                </Form.Item>
-                <Form.Item name="description" label="描述">
-                  <Input.TextArea rows={3} placeholder="描述该工具的职责和使用边界" />
-                </Form.Item>
               </Card>
 
-              <Card size="small" title="治理策略" style={{ marginTop: 16 }}>
-                <Form.Item name="status" label="状态" rules={[{ required: true }]}>
-                  <Select>
-                    {TOOL_STATUS_OPTIONS.map((option) => (
-                      <Option key={option.value} value={option.value}>
-                        {option.label}
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
+              <Alert
+                type="warning"
+                showIcon
+                icon={<SafetyCertificateOutlined />}
+                message="高影响字段"
+                description="`status`、`allowSkillBinding`、`promptExposure` 的修改会影响运行时快照、Skill 验证与后续发布。保存时会再次确认。"
+              />
 
-                <Form.Item name="riskLevel" label="风险等级" rules={[{ required: true }]}>
-                  <Select>
-                    {TOOL_RISK_OPTIONS.map((option) => (
-                      <Option key={option.value} value={option.value}>
-                        {option.label}
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
+              <Card size="small" title="影响面">
+                <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                  <Descriptions size="small" column={1}>
+                    <Descriptions.Item label="当前绑定 Skill 数量">
+                      <Space wrap>
+                        <Tag
+                          color={
+                            detailQuery.data.usageSummary?.boundSkillCount
+                              ? 'processing'
+                              : 'default'
+                          }
+                        >
+                          {detailQuery.data.usageSummary?.boundSkillCount || 0}
+                        </Tag>
+                        {detailQuery.data.usageSummary?.boundSkillCount ? (
+                          <Button
+                            type="link"
+                            size="small"
+                            style={{ padding: 0 }}
+                            onClick={() =>
+                              navigate(
+                                `/admin/skills?q=${encodeURIComponent(detailQuery.data!.name)}`
+                              )
+                            }
+                          >
+                            查看全部受影响 Skill
+                          </Button>
+                        ) : null}
+                      </Space>
+                    </Descriptions.Item>
+                  </Descriptions>
 
-                <Form.Item name="promptExposure" label="Prompt 暴露策略" rules={[{ required: true }]}>
-                  <Select>
-                    {PROMPT_EXPOSURE_OPTIONS.map((option) => (
-                      <Option key={option.value} value={option.value}>
-                        {option.label}
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-
-                <Form.Item name="allowSkillBinding" label="允许 Skill 绑定" valuePropName="checked">
-                  <Switch checkedChildren="允许" unCheckedChildren="禁止" />
-                </Form.Item>
-
-                <Form.Item
-                  name="defaultRequiresConfirmation"
-                  label="默认需要确认"
-                  valuePropName="checked"
-                >
-                  <Switch checkedChildren="需要" unCheckedChildren="不需要" />
-                </Form.Item>
-
-                <Form.Item
-                  name="defaultRequiresApproval"
-                  label="默认需要审批"
-                  valuePropName="checked"
-                >
-                  <Switch checkedChildren="需要" unCheckedChildren="不需要" />
-                </Form.Item>
+                  {detailQuery.data.usageSummary?.boundSkills?.length ? (
+                    <Table
+                      size="small"
+                      rowKey="id"
+                      pagination={false}
+                      columns={boundSkillColumns}
+                      dataSource={detailQuery.data.usageSummary.boundSkills}
+                      scroll={{ x: 760 }}
+                    />
+                  ) : (
+                    <Text type="secondary">暂无绑定 Skill</Text>
+                  )}
+                </Space>
               </Card>
 
-              <Card size="small" title="扩展元数据" style={{ marginTop: 16 }}>
-                <Form.Item
-                  name="metadataJson"
-                  label="metadataJson"
-                  extra='请输入 JSON 对象，例如 {"owner":"platform-team"}'
-                  rules={[
-                    {
-                      validator: async (_rule, value: string) => {
-                        if (!value?.trim()) {
-                          return;
-                        }
-                        buildMetadataJson(value);
+              <Form form={form} layout="vertical">
+                <Card size="small" title="基础信息">
+                  <Form.Item
+                    name="displayName"
+                    label="显示名称"
+                    rules={[{ required: true, message: '请输入显示名称' }]}
+                  >
+                    <Input />
+                  </Form.Item>
+                  <Form.Item name="description" label="描述">
+                    <Input.TextArea rows={3} placeholder="描述该工具的职责和使用边界" />
+                  </Form.Item>
+                </Card>
+
+                <Card size="small" title="治理策略" style={{ marginTop: 16 }}>
+                  <Form.Item name="status" label="状态" rules={[{ required: true }]}>
+                    <Select>
+                      {TOOL_STATUS_OPTIONS.map((option) => (
+                        <Option key={option.value} value={option.value}>
+                          {option.label}
+                        </Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+
+                  <Form.Item name="riskLevel" label="风险等级" rules={[{ required: true }]}>
+                    <Select>
+                      {TOOL_RISK_OPTIONS.map((option) => (
+                        <Option key={option.value} value={option.value}>
+                          {option.label}
+                        </Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+
+                  <Form.Item
+                    name="promptExposure"
+                    label="Prompt 暴露策略"
+                    rules={[{ required: true }]}
+                  >
+                    <Select>
+                      {PROMPT_EXPOSURE_OPTIONS.map((option) => (
+                        <Option key={option.value} value={option.value}>
+                          {option.label}
+                        </Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+
+                  <Form.Item
+                    name="allowSkillBinding"
+                    label="允许 Skill 绑定"
+                    valuePropName="checked"
+                  >
+                    <Switch checkedChildren="允许" unCheckedChildren="禁止" />
+                  </Form.Item>
+
+                  <Form.Item
+                    name="defaultRequiresConfirmation"
+                    label="默认需要确认"
+                    valuePropName="checked"
+                  >
+                    <Switch checkedChildren="需要" unCheckedChildren="不需要" />
+                  </Form.Item>
+
+                  <Form.Item
+                    name="defaultRequiresApproval"
+                    label="默认需要审批"
+                    valuePropName="checked"
+                  >
+                    <Switch checkedChildren="需要" unCheckedChildren="不需要" />
+                  </Form.Item>
+                </Card>
+
+                <Card size="small" title="扩展元数据" style={{ marginTop: 16 }}>
+                  <Form.Item
+                    name="metadataJson"
+                    label="metadataJson"
+                    extra='请输入 JSON 对象，例如 {"owner":"platform-team"}'
+                    rules={[
+                      {
+                        validator: async (_rule, value: string) => {
+                          if (!value?.trim()) {
+                            return;
+                          }
+                          buildMetadataJson(value);
+                        },
                       },
-                    },
-                  ]}
-                >
-                  <Input.TextArea rows={8} style={{ fontFamily: 'monospace' }} />
-                </Form.Item>
-              </Card>
-            </Form>
-          </Space>
-        ) : (
-          <Card loading={detailQuery.isLoading} />
-        )}
-      </Drawer>
+                    ]}
+                  >
+                    <Input.TextArea rows={8} style={{ fontFamily: 'monospace' }} />
+                  </Form.Item>
+                </Card>
+              </Form>
+            </Space>
+          ) : (
+            <Card loading={detailQuery.isLoading} />
+          )}
+        </Drawer>
       </div>
     </>
   );

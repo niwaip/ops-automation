@@ -13,7 +13,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     const password = process.env.REDIS_PASSWORD || undefined;
 
     this.logger.log(`Connecting to Redis at ${host}:${port}`);
-    
+
     this.client = new Redis({
       host,
       port,

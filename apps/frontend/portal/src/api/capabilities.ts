@@ -1,7 +1,10 @@
 import apiClient from './client';
 import { useAuthStore } from '@/shared/store/authStore';
 
-export type CapabilitySourceType = 'execution_flow_template' | 'temporal_workflow' | 'browser_recording';
+export type CapabilitySourceType =
+  | 'execution_flow_template'
+  | 'temporal_workflow'
+  | 'browser_recording';
 
 export interface CapabilityRelease {
   id: string;
@@ -154,7 +157,7 @@ export const capabilityReleaseApi = {
 
   getReleaseCenterById: async (id: string): Promise<{ release: CapabilityReleaseDetail }> => {
     return apiClient.get<{ release: CapabilityReleaseDetail }>(
-      `/capabilities/release-center/${id}`,
+      `/capabilities/release-center/${id}`
     );
   },
 
@@ -169,18 +172,18 @@ export const capabilityReleaseApi = {
 
   updateSource: async (
     id: string,
-    data: { sourceName?: string; sourcePayload: Record<string, unknown> },
+    data: { sourceName?: string; sourcePayload: Record<string, unknown> }
   ): Promise<{ release: CapabilityReleaseDetail }> => {
     return apiClient.put<{ release: CapabilityReleaseDetail }>(`/capabilities/${id}/source`, data);
   },
 
   build: async (
     id: string,
-    data?: { buildType?: string; modelId?: string; errorContext?: string },
+    data?: { buildType?: string; modelId?: string; errorContext?: string }
   ): Promise<{ release: CapabilityRelease; build: CapabilityBuild }> => {
     return apiClient.post<{ release: CapabilityRelease; build: CapabilityBuild }>(
       `/capabilities/${id}/build`,
-      data,
+      data
     );
   },
 
@@ -191,7 +194,7 @@ export const capabilityReleaseApi = {
       onEvent?: (event: CapabilityBuildStreamEvent) => void;
       onOpen?: () => void;
       onComplete?: () => void;
-    } = {},
+    } = {}
   ): Promise<void> => {
     const token = useAuthStore.getState().accessToken;
     const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api';
@@ -208,7 +211,7 @@ export const capabilityReleaseApi = {
           Accept: 'text/event-stream',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-      },
+      }
     );
 
     if (!response.ok || !response.body) {
@@ -271,11 +274,11 @@ export const capabilityReleaseApi = {
 
   validateStatic: async (
     id: string,
-    data?: { buildId?: string },
+    data?: { buildId?: string }
   ): Promise<{ release: CapabilityRelease; validation: CapabilityValidation }> => {
     return apiClient.post<{ release: CapabilityRelease; validation: CapabilityValidation }>(
       `/capabilities/${id}/validate/static`,
-      data,
+      data
     );
   },
 
@@ -287,22 +290,27 @@ export const capabilityReleaseApi = {
       testUserInput?: string;
       testCases?: string[];
       fn?: string;
-    },
+    }
   ): Promise<{ release: CapabilityRelease; validation: CapabilityValidation }> => {
     return apiClient.post<{ release: CapabilityRelease; validation: CapabilityValidation }>(
       `/capabilities/${id}/validate/sandbox`,
-      data,
+      data
     );
   },
 
   validateSandboxStream: async (
     id: string,
-    data: { buildId?: string; input?: Record<string, unknown>; testUserInput?: string; fn?: string },
+    data: {
+      buildId?: string;
+      input?: Record<string, unknown>;
+      testUserInput?: string;
+      fn?: string;
+    },
     handlers: {
       onEvent?: (event: CapabilityValidationStreamEvent) => void;
       onOpen?: () => void;
       onComplete?: () => void;
-    } = {},
+    } = {}
   ): Promise<void> => {
     const token = useAuthStore.getState().accessToken;
     const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api';
@@ -320,7 +328,7 @@ export const capabilityReleaseApi = {
           Accept: 'text/event-stream',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-      },
+      }
     );
 
     if (!response.ok || !response.body) {
@@ -383,11 +391,11 @@ export const capabilityReleaseApi = {
 
   generateSkillDraft: async (
     id: string,
-    data?: { validationId?: string; modelId?: string },
+    data?: { validationId?: string; modelId?: string }
   ): Promise<{ release: CapabilityRelease; skillDraft: SkillDraft }> => {
     return apiClient.post<{ release: CapabilityRelease; skillDraft: SkillDraft }>(
       `/capabilities/${id}/generate-skill-draft`,
-      data,
+      data
     );
   },
 
@@ -397,26 +405,40 @@ export const capabilityReleaseApi = {
 
   updateSkillDraft: async (
     id: string,
-    data: Partial<Pick<SkillDraft, 'name' | 'description' | 'triggerKeywords' | 'paramsSchema' | 'executionFlowTemplateIds' | 'tools' | 'apiEndpoints'>>,
+    data: Partial<
+      Pick<
+        SkillDraft,
+        | 'name'
+        | 'description'
+        | 'triggerKeywords'
+        | 'paramsSchema'
+        | 'executionFlowTemplateIds'
+        | 'tools'
+        | 'apiEndpoints'
+      >
+    >
   ): Promise<{ skillDraft: SkillDraft }> => {
     return apiClient.put<{ skillDraft: SkillDraft }>(`/capabilities/${id}/skill-draft`, data);
   },
 
   publishSkill: async (
     id: string,
-    data?: { draftId?: string },
+    data?: { draftId?: string }
   ): Promise<{ release: CapabilityRelease; publishedSkillId: string }> => {
     return apiClient.post<{ release: CapabilityRelease; publishedSkillId: string }>(
       `/capabilities/${id}/publish-skill`,
-      data,
+      data
     );
   },
 
   approveRelease: async (
     id: string,
-    data: { decision: 'approved' | 'rejected'; comment?: string },
+    data: { decision: 'approved' | 'rejected'; comment?: string }
   ): Promise<{ release: CapabilityReleaseDetail }> => {
-    return apiClient.post<{ release: CapabilityReleaseDetail }>(`/capabilities/${id}/approve`, data);
+    return apiClient.post<{ release: CapabilityReleaseDetail }>(
+      `/capabilities/${id}/approve`,
+      data
+    );
   },
 
   deploy: async (
@@ -425,17 +447,17 @@ export const capabilityReleaseApi = {
       environment?: 'dev' | 'test' | 'staging' | 'prod';
       strategy?: string;
       configOverrides?: Record<string, unknown>;
-    },
+    }
   ): Promise<{ release: CapabilityRelease; deployment: DeploymentRecord }> => {
     return apiClient.post<{ release: CapabilityRelease; deployment: DeploymentRecord }>(
       `/capabilities/${id}/deploy`,
-      data,
+      data
     );
   },
 
   suggestWizardAssist: async (
     id: string,
-    data?: { environment?: 'dev' | 'test' | 'staging' | 'prod' },
+    data?: { environment?: 'dev' | 'test' | 'staging' | 'prod' }
   ): Promise<{
     explanation: string;
     deployConfig: Record<string, unknown>;
@@ -455,12 +477,17 @@ export const capabilityReleaseApi = {
 
   rollback: async (
     id: string,
-    data?: { targetReleaseId?: string; reason?: string },
-  ): Promise<{ release: CapabilityRelease; deployment: DeploymentRecord; targetReleaseId: string }> => {
-    return apiClient.post<{ release: CapabilityRelease; deployment: DeploymentRecord; targetReleaseId: string }>(
-      `/capabilities/${id}/rollback`,
-      data,
-    );
+    data?: { targetReleaseId?: string; reason?: string }
+  ): Promise<{
+    release: CapabilityRelease;
+    deployment: DeploymentRecord;
+    targetReleaseId: string;
+  }> => {
+    return apiClient.post<{
+      release: CapabilityRelease;
+      deployment: DeploymentRecord;
+      targetReleaseId: string;
+    }>(`/capabilities/${id}/rollback`, data);
   },
 
   archive: async (id: string): Promise<{ success: true; archivedId: string }> => {
@@ -469,7 +496,7 @@ export const capabilityReleaseApi = {
 
   analyzeFailure: async (
     id: string,
-    data: { recordId: string; recordType: 'build' | 'validation' | 'deployment' },
+    data: { recordId: string; recordType: 'build' | 'validation' | 'deployment' }
   ): Promise<{
     analysis: string;
     explanation: string;

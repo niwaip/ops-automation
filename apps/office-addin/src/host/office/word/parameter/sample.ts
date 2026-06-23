@@ -1,7 +1,4 @@
-import {
-  buildWordAnchorCandidates,
-  isExplicitWordParamLabelAnchor,
-} from './anchor';
+import { buildWordAnchorCandidates, isExplicitWordParamLabelAnchor } from './anchor';
 import type { WordDetectedParam } from './types';
 import {
   escapeRegExp,
@@ -11,7 +8,9 @@ import {
 } from '../shared/text';
 
 export function normalizeWordSampleValue(value: string): string {
-  return safeWordRuleText(value).replace(/^[：:\s　]+/u, '').trim();
+  return safeWordRuleText(value)
+    .replace(/^[：:\s　]+/u, '')
+    .trim();
 }
 
 function trimWordSampleValueByNextAnchor(value: string): string {
@@ -38,8 +37,8 @@ function trimWordSampleValueByStatementCue(value: string): string {
   const firstToken = safeWordRuleText(matched[1]);
   const restText = safeWordRuleText(matched[2]);
   if (
-    firstToken.length <= 4
-    && /(?:本协议|双方|甲方|乙方|未尽事宜|协商|解决|签字|盖章)/u.test(restText)
+    firstToken.length <= 4 &&
+    /(?:本协议|双方|甲方|乙方|未尽事宜|协商|解决|签字|盖章)/u.test(restText)
   ) {
     return firstToken;
   }
@@ -83,9 +82,7 @@ export function extractSampleValueFromMatchText(anchorText: string, matchText: s
     }
     matchedExplicitAnchor = true;
     const directValue = trimReferenceValue(
-      snippet
-        .slice(anchorCandidate.length)
-        .replace(/^[：:\s　]+/u, '')
+      snippet.slice(anchorCandidate.length).replace(/^[：:\s　]+/u, '')
     );
     if (directValue) {
       return truncateWordRuleText(directValue, 80);
@@ -106,7 +103,9 @@ export function extractWordTrailingUnitLabel(text: string): string {
     return '';
   }
 
-  const match = normalized.match(/^(个工作日|工作日|日历日|自然日|个月|年|月|日|天|周|次|项|份|页|条|章|节|人|元|岁|号|期|%|％)/u);
+  const match = normalized.match(
+    /^(个工作日|工作日|日历日|自然日|个月|年|月|日|天|周|次|项|份|页|条|章|节|人|元|岁|号|期|%|％)/u
+  );
   return match?.[1] || '';
 }
 
@@ -125,8 +124,10 @@ export function shouldPreferWordTrailingUnitLabel(beforeText: string, afterText:
     return true;
   }
 
-  return normalizedBefore.length <= 4
-    || /(?:起|止|至|于|自|从|到|按|第|订于|签订于|签约于|生效于)$/u.test(normalizedBefore);
+  return (
+    normalizedBefore.length <= 4 ||
+    /(?:起|止|至|于|自|从|到|按|第|订于|签订于|签约于|生效于)$/u.test(normalizedBefore)
+  );
 }
 
 export function extractWordUnitComponentFromSampleText(text: string, unitLabel: string): string {
@@ -135,7 +136,9 @@ export function extractWordUnitComponentFromSampleText(text: string, unitLabel: 
     return '';
   }
 
-  const fullDateMatch = normalized.match(/([0-9０-９]{2,4})\s*年(?:\s*([0-9０-９]{1,2})\s*月(?:\s*([0-9０-９]{1,2})\s*日)?)?/u);
+  const fullDateMatch = normalized.match(
+    /([0-9０-９]{2,4})\s*年(?:\s*([0-9０-９]{1,2})\s*月(?:\s*([0-9０-９]{1,2})\s*日)?)?/u
+  );
   if (fullDateMatch) {
     if (unitLabel === '年') {
       return fullDateMatch[1] || '';
@@ -179,8 +182,8 @@ export function buildWordContextStopCandidates(normalizedSuffix: string): string
     }
     const nextToken = lexicalTokens[index + 1];
     if (
-      nextToken
-      && (isLikelyWordGrammarBoundaryToken(token) || isLikelyWordGrammarBoundaryToken(nextToken))
+      nextToken &&
+      (isLikelyWordGrammarBoundaryToken(token) || isLikelyWordGrammarBoundaryToken(nextToken))
     ) {
       candidates.add(`${token}${nextToken}`);
     }
@@ -190,25 +193,27 @@ export function buildWordContextStopCandidates(normalizedSuffix: string): string
 }
 
 function buildWordRepeatedAnchorStopCandidates(anchorCandidates: string[]): string[] {
-  return Array.from(new Set(
-    anchorCandidates
-      .map((candidate) => safeWordRuleText(candidate))
-      .filter(Boolean)
-      .flatMap((candidate) => {
-        const normalizedCandidate = candidate.replace(/[：:]$/u, '').trim();
-        if (!normalizedCandidate) {
-          return [];
-        }
-        return [
-          normalizedCandidate,
-          `${normalizedCandidate}：`,
-          `${normalizedCandidate}:`,
-        ];
-      })
-  ));
+  return Array.from(
+    new Set(
+      anchorCandidates
+        .map((candidate) => safeWordRuleText(candidate))
+        .filter(Boolean)
+        .flatMap((candidate) => {
+          const normalizedCandidate = candidate.replace(/[：:]$/u, '').trim();
+          if (!normalizedCandidate) {
+            return [];
+          }
+          return [normalizedCandidate, `${normalizedCandidate}：`, `${normalizedCandidate}:`];
+        })
+    )
+  );
 }
 
-export function findEarliestWordStopIndex(text: string, searchStart: number, stopCandidates: string[]): number {
+export function findEarliestWordStopIndex(
+  text: string,
+  searchStart: number,
+  stopCandidates: string[]
+): number {
   const normalizedText = safeWordRuleText(text);
   const compactText = normalizedText.replace(/\s+/g, '');
   const compactPrefix = normalizedText.slice(0, searchStart).replace(/\s+/g, '');
@@ -220,7 +225,10 @@ export function findEarliestWordStopIndex(text: string, searchStart: number, sto
       return;
     }
     const candidateIndex = compactText.indexOf(compactCandidate, compactPrefix.length);
-    if (candidateIndex >= 0 && (earliestCompactIndex < 0 || candidateIndex < earliestCompactIndex)) {
+    if (
+      candidateIndex >= 0 &&
+      (earliestCompactIndex < 0 || candidateIndex < earliestCompactIndex)
+    ) {
       earliestCompactIndex = candidateIndex;
     }
   });
@@ -246,7 +254,7 @@ export function findEarliestWordStopIndex(text: string, searchStart: number, sto
 export function extractWordValueBetweenPrefixAndStops(
   text: string,
   normalizedPrefix: string,
-  stopCandidates: string[],
+  stopCandidates: string[]
 ): string {
   const normalizedText = safeWordRuleText(text);
   if (!normalizedText || !normalizedPrefix || stopCandidates.length === 0) {
@@ -280,7 +288,7 @@ export function extractSampleValueBetweenContext(
   sampleText: string,
   prefix: string,
   suffix: string,
-  extraStopCandidates: string[] = [],
+  extraStopCandidates: string[] = []
 ): { sampleValue?: string; sampleMatchText?: string } {
   if (!prefix || !suffix) {
     return {};
@@ -296,10 +304,12 @@ export function extractSampleValueBetweenContext(
   if (!normalizedPrefix || !normalizedSuffix) {
     return {};
   }
-  const stopCandidates = Array.from(new Set([
-    ...buildWordContextStopCandidates(normalizedSuffix),
-    ...extraStopCandidates.map((candidate) => safeWordRuleText(candidate)).filter(Boolean),
-  ]));
+  const stopCandidates = Array.from(
+    new Set([
+      ...buildWordContextStopCandidates(normalizedSuffix),
+      ...extraStopCandidates.map((candidate) => safeWordRuleText(candidate)).filter(Boolean),
+    ])
+  );
 
   const lines = rawSampleText
     .split(/[\r\n]+/u)
@@ -308,7 +318,11 @@ export function extractSampleValueBetweenContext(
     .slice(0, 400);
 
   for (const line of lines) {
-    const betweenValue = extractWordValueBetweenPrefixAndStops(line, normalizedPrefix, stopCandidates);
+    const betweenValue = extractWordValueBetweenPrefixAndStops(
+      line,
+      normalizedPrefix,
+      stopCandidates
+    );
     if (betweenValue) {
       return {
         sampleValue: truncateWordRuleText(normalizeWordSampleValue(betweenValue), 80),
@@ -318,7 +332,11 @@ export function extractSampleValueBetweenContext(
   }
 
   const normalizedSampleText = safeWordRuleText(rawSampleText);
-  const betweenValue = extractWordValueBetweenPrefixAndStops(normalizedSampleText, normalizedPrefix, stopCandidates);
+  const betweenValue = extractWordValueBetweenPrefixAndStops(
+    normalizedSampleText,
+    normalizedPrefix,
+    stopCandidates
+  );
   return betweenValue
     ? {
         sampleValue: truncateWordRuleText(normalizeWordSampleValue(betweenValue), 80),
@@ -355,7 +373,9 @@ export function trimWordSampleValueBySuffixHints(value: string, suffix: string):
   }, normalizedValue);
 }
 
-export function resolveWordSampleContext(param: Pick<WordDetectedParam, 'paragraphText' | 'start' | 'end' | 'parameterSlot'>): {
+export function resolveWordSampleContext(
+  param: Pick<WordDetectedParam, 'paragraphText' | 'start' | 'end' | 'parameterSlot'>
+): {
   prefix: string;
   suffix: string;
 } {
@@ -403,14 +423,19 @@ export function buildWordCompactTextMap(text: string): {
 }
 
 export function buildWordLcsMatrix(left: string, right: string): number[][] {
-  const matrix = Array.from({ length: left.length + 1 }, () => new Array<number>(right.length + 1).fill(0));
+  const matrix = Array.from({ length: left.length + 1 }, () =>
+    new Array<number>(right.length + 1).fill(0)
+  );
 
   for (let leftIndex = 1; leftIndex <= left.length; leftIndex += 1) {
     for (let rightIndex = 1; rightIndex <= right.length; rightIndex += 1) {
       if (left[leftIndex - 1] === right[rightIndex - 1]) {
         matrix[leftIndex][rightIndex] = matrix[leftIndex - 1][rightIndex - 1] + 1;
       } else {
-        matrix[leftIndex][rightIndex] = Math.max(matrix[leftIndex - 1][rightIndex], matrix[leftIndex][rightIndex - 1]);
+        matrix[leftIndex][rightIndex] = Math.max(
+          matrix[leftIndex - 1][rightIndex],
+          matrix[leftIndex][rightIndex - 1]
+        );
       }
     }
   }
@@ -422,14 +447,17 @@ export function extractWordValueByParagraphDiff(
   paragraphText: string,
   start: number,
   end: number,
-  sampleLine: string,
+  sampleLine: string
 ): string {
-  const templateText = String(paragraphText || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const templateText = String(paragraphText || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n');
   if (!templateText || start < 0 || end < start) {
     return '';
   }
 
-  const templatePrefixCompactLength = buildWordCompactTextMap(templateText.slice(0, start)).compactText.length;
+  const templatePrefixCompactLength = buildWordCompactTextMap(templateText.slice(0, start))
+    .compactText.length;
   const templateMap = buildWordCompactTextMap(templateText);
   const sampleMap = buildWordCompactTextMap(sampleLine);
   if (!templateMap.compactText || !sampleMap.compactText) {
@@ -448,19 +476,21 @@ export function extractWordValueByParagraphDiff(
       sampleCursor -= 1;
       continue;
     }
-    if (lcsMatrix[templateCursor - 1][sampleCursor] >= lcsMatrix[templateCursor][sampleCursor - 1]) {
+    if (
+      lcsMatrix[templateCursor - 1][sampleCursor] >= lcsMatrix[templateCursor][sampleCursor - 1]
+    ) {
       templateCursor -= 1;
     } else {
       sampleCursor -= 1;
     }
   }
 
-  const leftBoundarySampleIndex = templatePrefixCompactLength > 0
-    ? matchedTemplateToSample[templatePrefixCompactLength - 1]
-    : -1;
-  const rightBoundarySampleIndex = templatePrefixCompactLength < matchedTemplateToSample.length
-    ? matchedTemplateToSample[templatePrefixCompactLength]
-    : sampleMap.compactText.length;
+  const leftBoundarySampleIndex =
+    templatePrefixCompactLength > 0 ? matchedTemplateToSample[templatePrefixCompactLength - 1] : -1;
+  const rightBoundarySampleIndex =
+    templatePrefixCompactLength < matchedTemplateToSample.length
+      ? matchedTemplateToSample[templatePrefixCompactLength]
+      : sampleMap.compactText.length;
 
   if (rightBoundarySampleIndex < 0) {
     return '';
@@ -481,19 +511,24 @@ export function extractWordValueByParagraphDiff(
   return safeWordRuleText(sampleMap.normalizedText.slice(originalStart, originalEnd + 1));
 }
 
-export function selectBestWordParagraphDiffCandidate(sampleText: string, paragraphText: string): string {
+export function selectBestWordParagraphDiffCandidate(
+  sampleText: string,
+  paragraphText: string
+): string {
   const templateCompact = buildWordCompactTextMap(paragraphText).compactText;
   if (!templateCompact) {
     return '';
   }
 
-  const candidates = Array.from(new Set(
-    String(sampleText || '')
-      .split(/[\r\n]+/u)
-      .map((line) => safeWordRuleText(line))
-      .filter(Boolean)
-      .concat(safeWordRuleText(sampleText))
-  )).slice(0, 400);
+  const candidates = Array.from(
+    new Set(
+      String(sampleText || '')
+        .split(/[\r\n]+/u)
+        .map((line) => safeWordRuleText(line))
+        .filter(Boolean)
+        .concat(safeWordRuleText(sampleText))
+    )
+  ).slice(0, 400);
 
   let bestCandidate = '';
   let bestScore = 0;
@@ -502,10 +537,14 @@ export function selectBestWordParagraphDiffCandidate(sampleText: string, paragra
     if (!candidateCompact) {
       return;
     }
-    const lcsLength = buildWordLcsMatrix(templateCompact, candidateCompact)[templateCompact.length][candidateCompact.length];
+    const lcsLength = buildWordLcsMatrix(templateCompact, candidateCompact)[templateCompact.length][
+      candidateCompact.length
+    ];
     const similarity = lcsLength / Math.max(templateCompact.length, 1);
-    const lengthPenalty = Math.abs(candidateCompact.length - templateCompact.length) / Math.max(templateCompact.length, 1);
-    const score = similarity - (lengthPenalty * 0.08);
+    const lengthPenalty =
+      Math.abs(candidateCompact.length - templateCompact.length) /
+      Math.max(templateCompact.length, 1);
+    const score = similarity - lengthPenalty * 0.08;
     if (score > bestScore) {
       bestScore = score;
       bestCandidate = candidate;
@@ -517,7 +556,10 @@ export function selectBestWordParagraphDiffCandidate(sampleText: string, paragra
 
 export function findSampleMatchForWordParam(
   sampleText: string,
-  param: Pick<WordDetectedParam, 'anchorText' | 'paragraphText' | 'start' | 'end' | 'sourceType' | 'parameterSlot'>,
+  param: Pick<
+    WordDetectedParam,
+    'anchorText' | 'paragraphText' | 'start' | 'end' | 'sourceType' | 'parameterSlot'
+  >
 ): { sampleValue?: string; sampleMatchText?: string } {
   const rawSampleText = String(sampleText || '');
   const normalizedSampleText = safeWordRuleText(rawSampleText);
@@ -526,9 +568,13 @@ export function findSampleMatchForWordParam(
   }
 
   const anchorCandidates = buildWordAnchorCandidates(param.anchorText);
-  const normalizedAnchors = anchorCandidates.map((item) => normalizeWordLookupText(item)).filter(Boolean);
+  const normalizedAnchors = anchorCandidates
+    .map((item) => normalizeWordLookupText(item))
+    .filter(Boolean);
   const { prefix, suffix } = resolveWordSampleContext(param);
-  const trailingUnitLabel = extractWordTrailingUnitLabel(param.paragraphText.slice(param.end, param.end + 16));
+  const trailingUnitLabel = extractWordTrailingUnitLabel(
+    param.paragraphText.slice(param.end, param.end + 16)
+  );
   const strictUnderlineValue = param.sourceType === 'underline';
   const explicitLabelAnchor = isExplicitWordParamLabelAnchor(param.anchorText);
   const repeatedAnchorStopCandidates = explicitLabelAnchor
@@ -538,13 +584,21 @@ export function findSampleMatchForWordParam(
   if (strictUnderlineValue) {
     const diffCandidate = selectBestWordParagraphDiffCandidate(rawSampleText, param.paragraphText);
     if (diffCandidate) {
-      const diffValue = extractWordValueByParagraphDiff(param.paragraphText, param.start, param.end, diffCandidate);
+      const diffValue = extractWordValueByParagraphDiff(
+        param.paragraphText,
+        param.start,
+        param.end,
+        diffCandidate
+      );
       if (diffValue) {
         const refinedUnitValue = trailingUnitLabel
           ? extractWordUnitComponentFromSampleText(diffCandidate, trailingUnitLabel)
           : '';
         return {
-          sampleValue: truncateWordRuleText(normalizeWordSampleValue(refinedUnitValue || diffValue), 80),
+          sampleValue: truncateWordRuleText(
+            normalizeWordSampleValue(refinedUnitValue || diffValue),
+            80
+          ),
           sampleMatchText: diffCandidate,
         };
       }
@@ -562,11 +616,14 @@ export function findSampleMatchForWordParam(
       sampleText,
       prefix,
       suffix,
-      repeatedAnchorStopCandidates,
+      repeatedAnchorStopCandidates
     );
     if (contextMatch.sampleValue) {
       const refinedUnitValue = trailingUnitLabel
-        ? extractWordUnitComponentFromSampleText(contextMatch.sampleMatchText || contextMatch.sampleValue, trailingUnitLabel)
+        ? extractWordUnitComponentFromSampleText(
+            contextMatch.sampleMatchText || contextMatch.sampleValue,
+            trailingUnitLabel
+          )
         : '';
       return refinedUnitValue
         ? {
@@ -582,7 +639,9 @@ export function findSampleMatchForWordParam(
       const prefixPattern = new RegExp(`${escapeRegExp(prefix)}\\s*(.{1,80})`, 'u');
       const matched = normalizedSampleText.match(prefixPattern);
       const afterPrefixValue = trimWordSampleValueBySuffixHints(
-        safeWordRuleText(matched?.[1]).split(/[，。；\n]/u)[0]?.trim() || '',
+        safeWordRuleText(matched?.[1])
+          .split(/[，。；\n]/u)[0]
+          ?.trim() || '',
         suffix
       );
       if (afterPrefixValue) {
@@ -590,7 +649,10 @@ export function findSampleMatchForWordParam(
           ? extractWordUnitComponentFromSampleText(afterPrefixValue, trailingUnitLabel)
           : '';
         return {
-          sampleValue: truncateWordRuleText(normalizeWordSampleValue(refinedUnitValue || afterPrefixValue), 80),
+          sampleValue: truncateWordRuleText(
+            normalizeWordSampleValue(refinedUnitValue || afterPrefixValue),
+            80
+          ),
           sampleMatchText: matched?.[0] || '',
         };
       }
@@ -628,7 +690,9 @@ export function findSampleMatchForWordParam(
     const prefixPattern = new RegExp(`${escapeRegExp(prefix)}\\s*(.{1,80})`, 'u');
     const matched = normalizedSampleText.match(prefixPattern);
     const afterPrefixValue = trimWordSampleValueBySuffixHints(
-      safeWordRuleText(matched?.[1]).split(/[，。；\n]/u)[0]?.trim() || '',
+      safeWordRuleText(matched?.[1])
+        .split(/[，。；\n]/u)[0]
+        ?.trim() || '',
       suffix
     );
     if (afterPrefixValue) {
@@ -636,7 +700,10 @@ export function findSampleMatchForWordParam(
         ? extractWordUnitComponentFromSampleText(afterPrefixValue, trailingUnitLabel)
         : '';
       return {
-        sampleValue: truncateWordRuleText(normalizeWordSampleValue(refinedUnitValue || afterPrefixValue), 80),
+        sampleValue: truncateWordRuleText(
+          normalizeWordSampleValue(refinedUnitValue || afterPrefixValue),
+          80
+        ),
         sampleMatchText: matched?.[0] || '',
       };
     }

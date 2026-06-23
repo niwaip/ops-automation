@@ -1,8 +1,29 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Card, Typography, Descriptions, Tag, Button, Space, Divider, Collapse, List, Alert, Spin, message, Progress } from 'antd';
+import {
+  Card,
+  Typography,
+  Descriptions,
+  Tag,
+  Button,
+  Space,
+  Divider,
+  Collapse,
+  List,
+  Alert,
+  Spin,
+  message,
+  Progress,
+} from 'antd';
 import { DownloadOutlined, ReloadOutlined } from '@ant-design/icons';
-import { reportApi, Report, ReportStatus, ValidationResult, AIAnalysisResult, NotificationResult } from '@/api/report';
+import {
+  reportApi,
+  Report,
+  ReportStatus,
+  ValidationResult,
+  AIAnalysisResult,
+  NotificationResult,
+} from '@/api/report';
 import { useAuthStore } from '@/shared/store/authStore';
 
 const { Title, Text } = Typography;
@@ -27,10 +48,15 @@ const ReportDetailPage: React.FC = () => {
       setPolling(true);
       const interval = setInterval(() => {
         if (id) {
-          void reportApi.getReportStatus(id)
+          void reportApi
+            .getReportStatus(id)
             .then((status) => {
               if (report) {
-                setReport({ ...report, status: status.status as ReportStatus, error: status.error });
+                setReport({
+                  ...report,
+                  status: status.status as ReportStatus,
+                  error: status.error,
+                });
               }
               if (status.status === 'completed' || status.status === 'failed') {
                 setPolling(false);
@@ -136,11 +162,13 @@ const ReportDetailPage: React.FC = () => {
     <div style={{ padding: '24px' }}>
       <Card>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-          <Title level={4}>
-            Report {report.id.substring(0, 8)}
-          </Title>
+          <Title level={4}>Report {report.id.substring(0, 8)}</Title>
           <Space>
-            <Button icon={<ReloadOutlined />} onClick={() => id && void loadReport(id)} loading={polling}>
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={() => id && void loadReport(id)}
+              loading={polling}
+            >
               Refresh
             </Button>
             <Button
@@ -176,13 +204,16 @@ const ReportDetailPage: React.FC = () => {
         )}
 
         {polling && (
-          <Progress percent={50} status="active" showInfo={false} style={{ marginBottom: '16px' }} />
+          <Progress
+            percent={50}
+            status="active"
+            showInfo={false}
+            style={{ marginBottom: '16px' }}
+          />
         )}
 
         <Descriptions bordered column={2}>
-          <Descriptions.Item label="Status">
-            {getStatusTag(report.status)}
-          </Descriptions.Item>
+          <Descriptions.Item label="Status">{getStatusTag(report.status)}</Descriptions.Item>
           <Descriptions.Item label="Session ID">
             <Tag color="purple">{report.session_id}</Tag>
           </Descriptions.Item>
@@ -200,9 +231,7 @@ const ReportDetailPage: React.FC = () => {
           </Descriptions.Item>
         </Descriptions>
 
-        {report.ai_analysis && report.ai_analysis.length > 0 && (
-          <Divider />
-        )}
+        {report.ai_analysis && report.ai_analysis.length > 0 && <Divider />}
 
         {report.ai_analysis && report.ai_analysis.length > 0 && (
           <>
@@ -222,9 +251,7 @@ const ReportDetailPage: React.FC = () => {
           </>
         )}
 
-        {report.validation_results && report.validation_results.length > 0 && (
-          <Divider />
-        )}
+        {report.validation_results && report.validation_results.length > 0 && <Divider />}
 
         {report.validation_results && report.validation_results.length > 0 && (
           <>
@@ -247,9 +274,7 @@ const ReportDetailPage: React.FC = () => {
           </>
         )}
 
-        {report.notifications && report.notifications.length > 0 && (
-          <Divider />
-        )}
+        {report.notifications && report.notifications.length > 0 && <Divider />}
 
         {report.notifications && report.notifications.length > 0 && (
           <>

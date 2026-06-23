@@ -200,10 +200,12 @@ describe('ModelService provider credential reuse', () => {
       config: {},
     });
 
-    expect(service.getFallbackModelIds(primary.id, {
-      groupOrder: ['same_provider', 'cross_provider'],
-      includeCurrentModel: false,
-    })).toEqual([sameProviderConfig.id, differentProviderConfig.id]);
+    expect(
+      service.getFallbackModelIds(primary.id, {
+        groupOrder: ['same_provider', 'cross_provider'],
+        includeCurrentModel: false,
+      })
+    ).toEqual([sameProviderConfig.id, differentProviderConfig.id]);
   });
 
   it('checks provider health through the bound provider credential', async () => {

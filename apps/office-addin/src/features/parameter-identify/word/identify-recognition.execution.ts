@@ -20,7 +20,9 @@ export async function executeWordRecognitionSections(
 }> {
   const sectionResults: WordSectionGenerationResultLike[] = [];
   const sectionSuggestions: AISuggestion[] = [];
-  const understandingSummaryText = options.buildWordUnderstandingSummaryText(args.prefetchedUnderstanding);
+  const understandingSummaryText = options.buildWordUnderstandingSummaryText(
+    args.prefetchedUnderstanding
+  );
 
   options.addDebugLog(
     'info',
@@ -32,18 +34,38 @@ export async function executeWordRecognitionSections(
       `语言配置: ${options.workflowSourceLanguage} -> ${options.workflowTargetLanguages.join(', ') || '单语言'}`,
       '',
       '章节列表:',
-      ...options.selectedRecognitionSections.map((section) => `- ${section.sectionTitle} | 候选 ${section.candidates.length}`),
+      ...options.selectedRecognitionSections.map(
+        (section) => `- ${section.sectionTitle} | 候选 ${section.candidates.length}`
+      ),
     ].join('\n')
   );
 
   for (const section of options.selectedRecognitionSections) {
     const detectedSection = options.detectedSectionMap.get(section.sectionKey);
-    const excerpt = options.buildWordSectionExcerpt(args.templateDocumentIr, section, detectedSection);
-    const sectionDocumentIr = options.buildWordSectionDocumentIR(args.templateDocumentIr, section, detectedSection);
-    const sectionDocumentContent = options.buildWordSectionDocumentContent(args.templateDocumentIr, section, detectedSection);
+    const excerpt = options.buildWordSectionExcerpt(
+      args.templateDocumentIr,
+      section,
+      detectedSection
+    );
+    const sectionDocumentIr = options.buildWordSectionDocumentIR(
+      args.templateDocumentIr,
+      section,
+      detectedSection
+    );
+    const sectionDocumentContent = options.buildWordSectionDocumentContent(
+      args.templateDocumentIr,
+      section,
+      detectedSection
+    );
     const structuredBilingualGroups = options.buildWordSectionPromptBilingualGroups(section);
-    const candidateFieldList = options.buildWordSectionCandidateList(args.templateDocumentIr, section);
-    const bilingualCandidatePairs = options.buildWordSectionBilingualPairList(args.templateDocumentIr, section);
+    const candidateFieldList = options.buildWordSectionCandidateList(
+      args.templateDocumentIr,
+      section
+    );
+    const bilingualCandidatePairs = options.buildWordSectionBilingualPairList(
+      args.templateDocumentIr,
+      section
+    );
 
     options.addDebugLog(
       'info',
@@ -63,7 +85,9 @@ export async function executeWordRecognitionSections(
       ].join('\n')
     );
 
-    const candidateById = new Map(section.candidates.map((candidate) => [candidate.candidateId, candidate] as const));
+    const candidateById = new Map(
+      section.candidates.map((candidate) => [candidate.candidateId, candidate] as const)
+    );
     const acceptedSuggestionsByCandidateId = new Map<string, AISuggestion>();
     const acceptedCandidateIds = new Set<string>();
     const retryLoopIds: string[] = [];
@@ -83,7 +107,11 @@ export async function executeWordRecognitionSections(
     let lastPromptDebugSummary: string | undefined;
     let lastError: any;
 
-    for (let roundIndex = 1; roundIndex <= options.wordSectionRecognitionMaxRounds; roundIndex += 1) {
+    for (
+      let roundIndex = 1;
+      roundIndex <= options.wordSectionRecognitionMaxRounds;
+      roundIndex += 1
+    ) {
       const currentBatch = options.takeWordRecognitionBatch({
         retryLoopIds,
         unsentLoopIds,
@@ -98,14 +126,25 @@ export async function executeWordRecognitionSections(
 
       executedRounds = roundIndex;
       const batchSection = options.buildWordSectionSubset(section, currentBatch);
-      const batchStructuredCandidates = options.buildWordSectionPromptCandidates(args.templateDocumentIr, batchSection);
+      const batchStructuredCandidates = options.buildWordSectionPromptCandidates(
+        args.templateDocumentIr,
+        batchSection
+      );
       const batchStructuredBilingualGroups = options.filterWordPromptBilingualGroupsByCandidates(
         structuredBilingualGroups,
         currentBatch
       );
-      const batchCandidateFieldList = options.buildWordSectionCandidateList(args.templateDocumentIr, batchSection);
-      const batchBilingualCandidatePairs = options.buildWordSectionBilingualPairList(args.templateDocumentIr, batchSection);
-      const batchContainsLoop = currentBatch.some((candidate) => options.isWordLoopCompareCandidate(candidate));
+      const batchCandidateFieldList = options.buildWordSectionCandidateList(
+        args.templateDocumentIr,
+        batchSection
+      );
+      const batchBilingualCandidatePairs = options.buildWordSectionBilingualPairList(
+        args.templateDocumentIr,
+        batchSection
+      );
+      const batchContainsLoop = currentBatch.some((candidate) =>
+        options.isWordLoopCompareCandidate(candidate)
+      );
 
       options.addDebugLog(
         'info',
@@ -177,7 +216,7 @@ export async function executeWordRecognitionSections(
           args.templateDocumentIr,
           batchSection,
           excerpt,
-          Array.isArray(response?.suggestions) ? response.suggestions as AISuggestion[] : []
+          Array.isArray(response?.suggestions) ? (response.suggestions as AISuggestion[]) : []
         );
         const promptTraceDebugText = options.buildPromptTraceDebugText(
           response?.contextAnalysis?.promptRequestText
@@ -185,28 +224,38 @@ export async function executeWordRecognitionSections(
             : undefined,
           response?.contextAnalysis?.rawAiResponse
             ? String(response.contextAnalysis.rawAiResponse)
-            : undefined,
+            : undefined
         );
 
         const failedCandidateIds: string[] = [];
         currentBatch.forEach((candidate) => {
-          const bestSuggestion = options.selectBestWordSuggestionForCandidate(currentSuggestions, candidate.candidateId);
+          const bestSuggestion = options.selectBestWordSuggestionForCandidate(
+            currentSuggestions,
+            candidate.candidateId
+          );
           if (options.isWordSuggestionHighQuality(bestSuggestion, candidate.candidateId)) {
             acceptedCandidateIds.add(candidate.candidateId);
-            acceptedSuggestionsByCandidateId.set(candidate.candidateId, bestSuggestion as AISuggestion);
+            acceptedSuggestionsByCandidateId.set(
+              candidate.candidateId,
+              bestSuggestion as AISuggestion
+            );
             return;
           }
           failedCandidateIds.push(candidate.candidateId);
         });
 
         if (response?.contextAnalysis?.salvagedMalformedJson) {
-          aggregatedQualityIssues.add(`第 ${roundIndex} 轮 AI 返回存在轻度 JSON 污染，结果已按容错逻辑修复`);
+          aggregatedQualityIssues.add(
+            `第 ${roundIndex} 轮 AI 返回存在轻度 JSON 污染，结果已按容错逻辑修复`
+          );
         }
         if (currentSuggestions.length === 0) {
           aggregatedQualityIssues.add(`第 ${roundIndex} 轮当前批次未返回结构化参数建议`);
         }
         if (failedCandidateIds.length > 0) {
-          aggregatedQualityIssues.add(`第 ${roundIndex} 轮有 ${failedCandidateIds.length} 个候选未通过质量校验`);
+          aggregatedQualityIssues.add(
+            `第 ${roundIndex} 轮有 ${failedCandidateIds.length} 个候选未通过质量校验`
+          );
         }
 
         options.appendUniqueCandidateIds(
@@ -222,10 +271,14 @@ export async function executeWordRecognitionSections(
             `批次候选: ${currentBatch.length}`,
             `本轮通过: ${currentBatch.length - failedCandidateIds.length}`,
             `累计保留: ${acceptedCandidateIds.size}/${section.candidates.length}`,
-            failedCandidateIds.length > 0 ? `待继续识别: ${failedCandidateIds.join(', ')}` : '本轮全部通过质量校验',
+            failedCandidateIds.length > 0
+              ? `待继续识别: ${failedCandidateIds.join(', ')}`
+              : '本轮全部通过质量校验',
             '',
             promptTraceDebugText,
-          ].filter(Boolean).join('\n')
+          ]
+            .filter(Boolean)
+            .join('\n')
         );
       } catch (error: any) {
         lastError = error;
@@ -253,7 +306,7 @@ export async function executeWordRecognitionSections(
             ? String(error.details.rawAiResponse)
             : error?.response?.data?.contextAnalysis?.rawAiResponse
               ? String(error.response.data.contextAnalysis.rawAiResponse)
-              : undefined,
+              : undefined
         );
         aggregatedQualityIssues.add(`第 ${roundIndex} 轮调用执行器失败: ${errorMessage}`);
 
@@ -268,7 +321,9 @@ export async function executeWordRecognitionSections(
             error?.details ? JSON.stringify(error.details, null, 2) : '',
             '',
             errorPromptTraceDebugText,
-          ].filter(Boolean).join('\n')
+          ]
+            .filter(Boolean)
+            .join('\n')
         );
       }
 
@@ -303,14 +358,15 @@ export async function executeWordRecognitionSections(
       promptRequestText: aggregatedPromptRequests.join('\n\n'),
       rawAiResponse: aggregatedRawResponses.join('\n\n'),
       qualityIssues: Array.from(aggregatedQualityIssues),
-      error: !aiCallSucceeded && lastError
-        ? {
-            message: lastError?.message || '章节参数生成失败',
-            reason: lastError?.details?.reason,
-            url: lastError?.details?.url,
-            status: lastError?.details?.status,
-          }
-        : undefined,
+      error:
+        !aiCallSucceeded && lastError
+          ? {
+              message: lastError?.message || '章节参数生成失败',
+              reason: lastError?.details?.reason,
+              url: lastError?.details?.url,
+              status: lastError?.details?.status,
+            }
+          : undefined,
     });
 
     options.addDebugLog(
@@ -349,7 +405,9 @@ export async function executeWordRecognitionSections(
           detailLines.push(`摘要: ${section.promptDebugSummary}`);
         }
         if (section.promptRequestText || section.rawAiResponse) {
-          detailLines.push(options.buildPromptTraceDebugText(section.promptRequestText, section.rawAiResponse));
+          detailLines.push(
+            options.buildPromptTraceDebugText(section.promptRequestText, section.rawAiResponse)
+          );
         }
         if (section.qualityIssues && section.qualityIssues.length > 0) {
           detailLines.push(`质量提示: ${section.qualityIssues.join(' | ')}`);
@@ -376,7 +434,9 @@ export function commitWordRecognitionResult(
     nextSuggestions: AISuggestion[];
   }
 ): RecognitionResultLike {
-  const nextCollapsedRecognitionSections = options.selectedRecognitionSections.reduce<Record<string, boolean>>((acc, section) => {
+  const nextCollapsedRecognitionSections = options.selectedRecognitionSections.reduce<
+    Record<string, boolean>
+  >((acc, section) => {
     acc[section.sectionKey] = options.collapsedRecognitionSections[section.sectionKey] ?? false;
     return acc;
   }, {});
@@ -384,11 +444,14 @@ export function commitWordRecognitionResult(
   const cachedRecognitionEntry = options.recognitionCacheKey
     ? options.loadWordRecognitionCache()[options.recognitionCacheKey]
     : undefined;
-  const mergedRecognitionResult = options.mergeRecognitionResultWithAppliedCache({
-    suggestions: args.nextSuggestions,
-    sectionGenerationResults: args.sectionResults,
-    collapsedSections: nextCollapsedRecognitionSections,
-  }, cachedRecognitionEntry);
+  const mergedRecognitionResult = options.mergeRecognitionResultWithAppliedCache(
+    {
+      suggestions: args.nextSuggestions,
+      sectionGenerationResults: args.sectionResults,
+      collapsedSections: nextCollapsedRecognitionSections,
+    },
+    cachedRecognitionEntry
+  );
 
   options.setRecognitionResult(null);
   options.setSectionGenerationResults(mergedRecognitionResult.sectionGenerationResults);

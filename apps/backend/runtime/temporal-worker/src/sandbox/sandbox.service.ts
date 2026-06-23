@@ -85,7 +85,7 @@ export class SandboxService {
    */
   async executeCodeStreaming(
     request: ExecutionRequest,
-    onLog: (log: string) => void,
+    onLog: (log: string) => void
   ): Promise<{ success: boolean; result?: any; error?: string }> {
     const { code, fn, taskQueue, input = {} } = request;
 
@@ -147,7 +147,7 @@ export class SandboxService {
     code: string,
     fn: string,
     input: Record<string, any>,
-    onLog: (log: string) => void,
+    onLog: (log: string) => void
   ): Promise<any> {
     return new Promise((resolve, reject) => {
       const tempFile = path.join(CACHE_DIR, `execute_${fn}_${Date.now()}.py`);

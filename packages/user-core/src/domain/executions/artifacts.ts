@@ -2,12 +2,18 @@ import type {
   ExecutionPhaseArtifactDto,
   ExecutionPhaseDto,
   ExecutionPhaseStepDto,
-} from "../../types/execution.types.js";
-import { extractBrowserImageSources, extractBrowserImageSrc } from "./browser.js";
-import { asRecord } from "./common.js";
+} from '../../types/execution.types.js';
+import { extractBrowserImageSources, extractBrowserImageSrc } from './browser.js';
+import { asRecord } from './common.js';
 
-export const getPhaseArtifactPayload = (artifact: ExecutionPhaseArtifactDto): Record<string, unknown> | undefined => {
-  if (!artifact.payload || typeof artifact.payload !== "object" || Array.isArray(artifact.payload)) {
+export const getPhaseArtifactPayload = (
+  artifact: ExecutionPhaseArtifactDto
+): Record<string, unknown> | undefined => {
+  if (
+    !artifact.payload ||
+    typeof artifact.payload !== 'object' ||
+    Array.isArray(artifact.payload)
+  ) {
     return undefined;
   }
   return artifact.payload;
@@ -15,10 +21,10 @@ export const getPhaseArtifactPayload = (artifact: ExecutionPhaseArtifactDto): Re
 
 export const getPhaseArtifactPath = (artifact: ExecutionPhaseArtifactDto): string | undefined => {
   const payload = getPhaseArtifactPayload(artifact);
-  if (typeof payload?.snapshotPath === "string" && payload.snapshotPath.trim()) {
+  if (typeof payload?.snapshotPath === 'string' && payload.snapshotPath.trim()) {
     return payload.snapshotPath;
   }
-  if (typeof payload?.artifactPath === "string" && payload.artifactPath.trim()) {
+  if (typeof payload?.artifactPath === 'string' && payload.artifactPath.trim()) {
     return payload.artifactPath;
   }
   return undefined;
@@ -30,11 +36,11 @@ const getBrowserWorkerBaseUrl = (recorderWsUrl?: string): string | undefined => 
   }
   try {
     const runtimeUrl = new URL(recorderWsUrl);
-    runtimeUrl.protocol = runtimeUrl.protocol === "wss:" ? "https:" : "http:";
-    runtimeUrl.pathname = "";
-    runtimeUrl.search = "";
-    runtimeUrl.hash = "";
-    return runtimeUrl.toString().replace(/\/$/, "");
+    runtimeUrl.protocol = runtimeUrl.protocol === 'wss:' ? 'https:' : 'http:';
+    runtimeUrl.pathname = '';
+    runtimeUrl.search = '';
+    runtimeUrl.hash = '';
+    return runtimeUrl.toString().replace(/\/$/, '');
   } catch {
     return undefined;
   }
@@ -42,7 +48,7 @@ const getBrowserWorkerBaseUrl = (recorderWsUrl?: string): string | undefined => 
 
 export const buildBrowserWorkerArtifactUrl = (
   recorderWsUrl: string | undefined,
-  artifactPath?: string,
+  artifactPath?: string
 ): string | undefined => {
   if (!artifactPath) {
     return undefined;
@@ -51,11 +57,11 @@ export const buildBrowserWorkerArtifactUrl = (
   if (!trimmedPath) {
     return undefined;
   }
-  if (/^https?:\/\//i.test(trimmedPath) || trimmedPath.startsWith("data:")) {
+  if (/^https?:\/\//i.test(trimmedPath) || trimmedPath.startsWith('data:')) {
     return trimmedPath;
   }
 
-  const fileName = trimmedPath.split("/").filter(Boolean).pop();
+  const fileName = trimmedPath.split('/').filter(Boolean).pop();
   const browserWorkerBaseUrl = getBrowserWorkerBaseUrl(recorderWsUrl);
   if (!fileName || !browserWorkerBaseUrl) {
     return undefined;
@@ -66,7 +72,7 @@ export const buildBrowserWorkerArtifactUrl = (
 
 export const getPhaseArtifactPreviewSrc = (
   recorderWsUrl: string | undefined,
-  artifact: ExecutionPhaseArtifactDto,
+  artifact: ExecutionPhaseArtifactDto
 ): string | undefined => {
   const payload = getPhaseArtifactPayload(artifact);
   const payloadImageSrc = extractBrowserImageSrc(payload);
@@ -84,12 +90,12 @@ export const getPhaseArtifactPreviewSrc = (
 
 export const extractWorkflowActivitySnapshotSources = (
   recorderWsUrl: string | undefined,
-  phase: ExecutionPhaseDto,
+  phase: ExecutionPhaseDto
 ): string[] => {
   const unique = new Set<string>();
 
   (phase.artifacts || [])
-    .filter((artifact) => artifact.artifactType === "snapshot")
+    .filter((artifact) => artifact.artifactType === 'snapshot')
     .forEach((artifact) => {
       const src = getPhaseArtifactPreviewSrc(recorderWsUrl, artifact);
       if (src) {
@@ -113,7 +119,7 @@ export const extractPhaseStepUrl = (step: ExecutionPhaseStepDto): string | undef
   ];
 
   for (const value of candidates) {
-    if (typeof value === "string" && value.trim()) {
+    if (typeof value === 'string' && value.trim()) {
       return value;
     }
   }
@@ -124,15 +130,15 @@ export const extractPhaseStepUrl = (step: ExecutionPhaseStepDto): string | undef
 export const extractPhaseStepImageSources = (
   recorderWsUrl: string | undefined,
   step: ExecutionPhaseStepDto,
-  artifacts: ExecutionPhaseArtifactDto[],
+  artifacts: ExecutionPhaseArtifactDto[]
 ): string[] => {
   const found = new Set<string>(extractBrowserImageSources(step.output));
   const output = asRecord(step.output);
   const artifactRecord = asRecord(output?.artifact);
   const snapshotRecord = asRecord(output?.snapshot);
   const candidatePaths = [
-    typeof artifactRecord?.path === "string" ? artifactRecord.path : undefined,
-    typeof snapshotRecord?.path === "string" ? snapshotRecord.path : undefined,
+    typeof artifactRecord?.path === 'string' ? artifactRecord.path : undefined,
+    typeof snapshotRecord?.path === 'string' ? snapshotRecord.path : undefined,
   ];
 
   for (const path of candidatePaths) {
@@ -144,7 +150,9 @@ export const extractPhaseStepImageSources = (
 
   if (step.snapshotId) {
     const matchedArtifact = artifacts.find((artifact) => artifact.snapshotId === step.snapshotId);
-    const artifactSrc = matchedArtifact ? getPhaseArtifactPreviewSrc(recorderWsUrl, matchedArtifact) : undefined;
+    const artifactSrc = matchedArtifact
+      ? getPhaseArtifactPreviewSrc(recorderWsUrl, matchedArtifact)
+      : undefined;
     if (artifactSrc) {
       found.add(artifactSrc);
     }
@@ -155,22 +163,25 @@ export const extractPhaseStepImageSources = (
 
 export const getVisiblePhaseSteps = (phase: ExecutionPhaseDto): ExecutionPhaseStepDto[] => {
   const steps = phase.steps || [];
-  if (phase.status !== "completed") {
+  if (phase.status !== 'completed') {
     return steps;
   }
 
-  const lastFailedIndex = steps.reduce((index, step, currentIndex) => (
-    step.status === "failed" ? currentIndex : index
-  ), -1);
+  const lastFailedIndex = steps.reduce(
+    (index, step, currentIndex) => (step.status === 'failed' ? currentIndex : index),
+    -1
+  );
 
   if (lastFailedIndex < 0) {
     return steps;
   }
 
-  const hasLaterCompletedStep = steps.slice(lastFailedIndex + 1).some((step) => step.status === "completed");
+  const hasLaterCompletedStep = steps
+    .slice(lastFailedIndex + 1)
+    .some((step) => step.status === 'completed');
   if (!hasLaterCompletedStep) {
     return steps;
   }
 
-  return steps.filter((step, index) => !(step.status === "failed" && index <= lastFailedIndex));
+  return steps.filter((step, index) => !(step.status === 'failed' && index <= lastFailedIndex));
 };

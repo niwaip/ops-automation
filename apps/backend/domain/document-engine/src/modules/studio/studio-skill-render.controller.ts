@@ -1,17 +1,12 @@
 import { Body, Controller, Post } from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
-import {
-  GenerateRenderDataWithSkillDto,
-  RenderResolvedDto,
-} from './studio.dto';
+import { GenerateRenderDataWithSkillDto, RenderResolvedDto } from './studio.dto';
 import { StudioSkillRenderDataService } from './studio-skill-render-data.service';
 
 @ApiTags('studio')
 @Controller('studio')
 export class StudioSkillRenderController {
-  constructor(
-    private readonly studioSkillRenderDataService: StudioSkillRenderDataService,
-  ) {}
+  constructor(private readonly studioSkillRenderDataService: StudioSkillRenderDataService) {}
 
   @Post('generate-render-data-with-skill')
   @ApiOperation({
@@ -20,9 +15,7 @@ export class StudioSkillRenderController {
       '参考 preview-with-skill 的数据构造逻辑生成标准渲染数据，正式渲染仍应调用 /studio/render-resolved。',
   })
   @ApiBody({ type: GenerateRenderDataWithSkillDto })
-  async generateRenderDataWithSkill(
-    @Body() body: GenerateRenderDataWithSkillDto,
-  ): Promise<{
+  async generateRenderDataWithSkill(@Body() body: GenerateRenderDataWithSkillDto): Promise<{
     success: boolean;
     generatedData?: Record<string, unknown>;
     renderResolvedRequest?: RenderResolvedDto;

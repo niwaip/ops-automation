@@ -35,11 +35,9 @@ const TemplateDetailPage: React.FC = () => {
   const [draftSteps, setDraftSteps] = useState<TemplateStep[]>([]);
   const [form] = Form.useForm();
 
-  const templateQuery = useQuery(
-    ['template', id],
-    () => templateApi.getById(id!),
-    { enabled: !!id }
-  );
+  const templateQuery = useQuery(['template', id], () => templateApi.getById(id!), {
+    enabled: !!id,
+  });
 
   useEffect(() => {
     if (searchParams.get('execute') === 'true' && templateQuery.data?.status === 'PUBLISHED') {
@@ -51,8 +49,10 @@ const TemplateDetailPage: React.FC = () => {
   }, [searchParams, templateQuery.data?.status, templateQuery.data]);
 
   const updateMutation = useMutation(
-    (payload: { id: string; data: { name?: string; description?: string; steps?: TemplateStep[] } }) =>
-      templateApi.update(payload.id, payload.data),
+    (payload: {
+      id: string;
+      data: { name?: string; description?: string; steps?: TemplateStep[] };
+    }) => templateApi.update(payload.id, payload.data),
     {
       onSuccess: () => {
         message.success('模板已更新');
@@ -191,8 +191,8 @@ const TemplateDetailPage: React.FC = () => {
 
   const updateDraftStepField = (
     index: number,
-    key: 'action' | 'step_id',
-    value: string,
+    key: 'action' | 'step_id' | 'execution_policy',
+    value: string
   ) => {
     setDraftSteps((prev) =>
       prev.map((step, idx) => (idx === index ? { ...step, [key]: value } : step))
@@ -208,7 +208,8 @@ const TemplateDetailPage: React.FC = () => {
       ...prev,
       {
         step_id: `step_${prev.length + 1}`,
-        action: 'new_action',
+        action: 'click',
+        execution_policy: 'auto_execute',
       },
     ]);
   };
@@ -229,7 +230,9 @@ const TemplateDetailPage: React.FC = () => {
 
   if (templateQuery.isLoading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
+      <div
+        style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}
+      >
         <Spin size="large" />
       </div>
     );
@@ -300,7 +303,7 @@ const TemplateDetailPage: React.FC = () => {
         <Tabs defaultActiveKey="steps">
           <Tabs.TabPane tab={t('template:templateSteps')} key="steps">
             <TemplateStepsTab
-              steps={isEditMode ? draftSteps : (template.steps || [])}
+              steps={isEditMode ? draftSteps : template.steps || []}
               isEditMode={isEditMode}
               jsonBlockStyle={jsonBlockStyle}
               onAddStep={handleAddDraftStep}
@@ -310,15 +313,11 @@ const TemplateDetailPage: React.FC = () => {
           </Tabs.TabPane>
 
           <Tabs.TabPane tab={t('template:templateParams')} key="params">
-            <pre style={jsonBlockStyle}>
-              {JSON.stringify(template.params_schema, null, 2)}
-            </pre>
+            <pre style={jsonBlockStyle}>{JSON.stringify(template.params_schema, null, 2)}</pre>
           </Tabs.TabPane>
 
           <Tabs.TabPane tab={t('template:templateGuards')} key="guards">
-            <pre style={jsonBlockStyle}>
-              {JSON.stringify(template.guards, null, 2)}
-            </pre>
+            <pre style={jsonBlockStyle}>{JSON.stringify(template.guards, null, 2)}</pre>
           </Tabs.TabPane>
 
           <Tabs.TabPane tab={t('template:templateConfig')} key="config">

@@ -1,4 +1,4 @@
-import { ExecutionEventService } from '../src/modules/execution/execution-event.service';
+import { ExecutionEventService } from '../src/modules/execution/state/execution-event.service';
 import { EXECUTION_EVENT_TYPE } from '../src/modules/execution';
 
 describe('ExecutionEventService', () => {
@@ -18,7 +18,11 @@ describe('ExecutionEventService', () => {
     prisma.executionEvent.create.mockResolvedValue(undefined);
 
     const payload = { hello: 'world' };
-    const event = await service.createEvent('execution-1', EXECUTION_EVENT_TYPE.EXECUTION_CREATED, payload);
+    const event = await service.createEvent(
+      'execution-1',
+      EXECUTION_EVENT_TYPE.EXECUTION_CREATED,
+      payload
+    );
 
     expect(prisma.executionEvent.create).toHaveBeenCalledWith({
       data: {
@@ -48,7 +52,7 @@ describe('ExecutionEventService', () => {
         runtimeSessionId: 'runtime-1',
         stepId: 'step-1',
         eventSource: 'planner',
-      },
+      }
     );
 
     expect(prisma.executionEvent.create).toHaveBeenCalledWith({

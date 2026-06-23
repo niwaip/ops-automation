@@ -10,7 +10,7 @@ import {
   ResumeExecutionDto,
   SubmitInputDto,
   TakeoverExecutionDto,
-} from '../execution/execution.dto';
+} from '../execution';
 import { IncomingHttpHeaders } from 'http';
 
 @Injectable()
@@ -159,7 +159,7 @@ export class McpService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly executionService: ExecutionService,
-    private readonly jwtService: JwtService,
+    private readonly jwtService: JwtService
   ) {}
 
   async initialize() {
@@ -191,14 +191,14 @@ export class McpService {
       return [
         ...McpService.CONTROL_TOOLS,
         ...skills.map((skill: any) => ({
-        name: `skill_${skill.id.replace(/-/g, '_')}`,
-        description: skill.description || skill.name,
-        inputSchema: {
-          type: 'object',
-          properties: skill.config?.paramsSchema?.properties || {},
-          required: skill.config?.paramsSchema?.required || [],
-        },
-      })),
+          name: `skill_${skill.id.replace(/-/g, '_')}`,
+          description: skill.description || skill.name,
+          inputSchema: {
+            type: 'object',
+            properties: skill.config?.paramsSchema?.properties || {},
+            required: skill.config?.paramsSchema?.required || [],
+          },
+        })),
       ];
     } catch (error) {
       const message = error instanceof Error ? error.message : 'unknown error';
@@ -259,7 +259,7 @@ export class McpService {
 
   private async readLatestExecutions(
     uri: string,
-    requester: { id: string; role: string; username: string },
+    requester: { id: string; role: string; username: string }
   ) {
     const executions = await this.prisma.execution.findMany({
       where: requester.role === 'admin' ? undefined : { createdBy: requester.id },
@@ -282,14 +282,18 @@ export class McpService {
         {
           uri,
           mimeType: 'application/json',
-          text: JSON.stringify({
-            executions: executions.map((execution) => ({
-              ...execution,
-              resourceUri: this.buildExecutionUri(execution.id),
-              stepsUri: this.buildExecutionStepsUri(execution.id),
-              eventsUri: this.buildExecutionEventsUri(execution.id),
-            })),
-          }, null, 2),
+          text: JSON.stringify(
+            {
+              executions: executions.map((execution) => ({
+                ...execution,
+                resourceUri: this.buildExecutionUri(execution.id),
+                stepsUri: this.buildExecutionStepsUri(execution.id),
+                eventsUri: this.buildExecutionEventsUri(execution.id),
+              })),
+            },
+            null,
+            2
+          ),
         },
       ],
     };
@@ -298,7 +302,7 @@ export class McpService {
   private async readExecutionDetail(
     uri: string,
     executionId: string,
-    requester: { id: string; role: string; username: string },
+    requester: { id: string; role: string; username: string }
   ) {
     const execution = await this.prisma.execution.findUnique({
       where: { id: executionId },
@@ -348,28 +352,37 @@ export class McpService {
       : null;
 
     const missingRequiredInputs = this.extractMissingRequiredInputs(currentStep?.inputJson);
-    const availableActions = this.buildAvailableActions(execution.status, execution.id, currentStep?.id);
+    const availableActions = this.buildAvailableActions(
+      execution.status,
+      execution.id,
+      currentStep?.id
+    );
 
     return {
       contents: [
         {
           uri,
           mimeType: 'application/json',
-          text: JSON.stringify({
-            execution: {
-              ...execution,
-              stepsUri: this.buildExecutionStepsUri(execution.id),
-              eventsUri: this.buildExecutionEventsUri(execution.id),
-              availableActions,
-              currentInputRequest: missingRequiredInputs.length > 0
-                ? {
-                    stepId: currentStep?.id,
-                    requiredInputs: missingRequiredInputs,
-                    submitTool: 'execution_submit_input',
-                  }
-                : undefined,
+          text: JSON.stringify(
+            {
+              execution: {
+                ...execution,
+                stepsUri: this.buildExecutionStepsUri(execution.id),
+                eventsUri: this.buildExecutionEventsUri(execution.id),
+                availableActions,
+                currentInputRequest:
+                  missingRequiredInputs.length > 0
+                    ? {
+                        stepId: currentStep?.id,
+                        requiredInputs: missingRequiredInputs,
+                        submitTool: 'execution_submit_input',
+                      }
+                    : undefined,
+              },
             },
-          }, null, 2),
+            null,
+            2
+          ),
         },
       ],
     };
@@ -378,7 +391,7 @@ export class McpService {
   private async readExecutionSteps(
     uri: string,
     executionId: string,
-    requester: { id: string; role: string; username: string },
+    requester: { id: string; role: string; username: string }
   ) {
     const execution = await this.prisma.execution.findUnique({
       where: { id: executionId },
@@ -429,7 +442,7 @@ export class McpService {
   private async readExecutionEvents(
     uri: string,
     executionId: string,
-    requester: { id: string; role: string; username: string },
+    requester: { id: string; role: string; username: string }
   ) {
     const execution = await this.prisma.execution.findUnique({
       where: { id: executionId },
@@ -480,7 +493,11 @@ export class McpService {
     return `execution-events://${executionId}`;
   }
 
-  private buildAvailableActions(status: string, executionId: string, currentStepId?: string | null) {
+  private buildAvailableActions(
+    status: string,
+    executionId: string,
+    currentStepId?: string | null
+  ) {
     const actions: Array<Record<string, unknown>> = [];
 
     const cancellableStatuses = new Set([
@@ -550,7 +567,9 @@ export class McpService {
     });
   }
 
-  private async resolveInvoker(headers?: IncomingHttpHeaders): Promise<{ id: string; role: string; username: string }> {
+  private async resolveInvoker(
+    headers?: IncomingHttpHeaders
+  ): Promise<{ id: string; role: string; username: string }> {
     const internalSecret = process.env.INTERNAL_API_SHARED_SECRET || process.env.JWT_SECRET;
     const internalAuth = headers?.['x-internal-auth'];
     const internalUserId = headers?.['x-user-id'];
@@ -566,18 +585,19 @@ export class McpService {
     ) {
       return {
         id: internalUserId,
-        username: typeof internalUsername === 'string' && internalUsername.trim()
-          ? internalUsername
-          : internalUserId,
-        role: typeof internalUserRole === 'string' && internalUserRole.trim()
-          ? internalUserRole
-          : 'employee',
+        username:
+          typeof internalUsername === 'string' && internalUsername.trim()
+            ? internalUsername
+            : internalUserId,
+        role:
+          typeof internalUserRole === 'string' && internalUserRole.trim()
+            ? internalUserRole
+            : 'employee',
       };
     }
 
-    const authorization = typeof headers?.authorization === 'string'
-      ? headers.authorization
-      : undefined;
+    const authorization =
+      typeof headers?.authorization === 'string' ? headers.authorization : undefined;
     if (!authorization) {
       throw new UnauthorizedException('MCP authorization header is required');
     }
@@ -601,7 +621,9 @@ export class McpService {
     }
   }
 
-  private async buildForwardAuthHeaders(headers?: IncomingHttpHeaders): Promise<Record<string, string>> {
+  private async buildForwardAuthHeaders(
+    headers?: IncomingHttpHeaders
+  ): Promise<Record<string, string>> {
     const resolved = await this.resolveInvoker(headers);
     const internalSecret = process.env.INTERNAL_API_SHARED_SECRET || process.env.JWT_SECRET;
     if (internalSecret) {
@@ -624,7 +646,7 @@ export class McpService {
 
   private ensureExecutionReadable(
     createdBy: string,
-    requester: { id: string; role: string },
+    requester: { id: string; role: string }
   ): void {
     if (requester.role === 'admin') {
       return;
@@ -637,11 +659,7 @@ export class McpService {
   /**
    * 执行 MCP 工具调用
    */
-  async callTool(
-    name: string,
-    args: Record<string, unknown> = {},
-    headers?: IncomingHttpHeaders,
-  ) {
+  async callTool(name: string, args: Record<string, unknown> = {}, headers?: IncomingHttpHeaders) {
     try {
       const invoker = await this.resolveInvoker(headers);
       const requester = { id: invoker.id, role: invoker.role };
@@ -670,7 +688,9 @@ export class McpService {
         return this.takeoverExecution(args, invoker, requester);
       }
 
-      const skillId = name.startsWith('skill_') ? name.replace('skill_', '').replace(/_/g, '-') : name;
+      const skillId = name.startsWith('skill_')
+        ? name.replace('skill_', '').replace(/_/g, '-')
+        : name;
       this.logger.log(`MCP Call: ${name} (skillId: ${skillId})`);
       const { _meta, ...input } = args;
 
@@ -681,13 +701,9 @@ export class McpService {
         input,
       };
 
-      const execution = await this.executionService.create(
-        invoker.id,
-        dto,
-        {
-          authToken: typeof headers?.authorization === 'string' ? headers.authorization : undefined,
-        },
-      );
+      const execution = await this.executionService.create(invoker.id, dto, {
+        authToken: typeof headers?.authorization === 'string' ? headers.authorization : undefined,
+      });
 
       return {
         content: [
@@ -738,7 +754,7 @@ export class McpService {
   private async approveExecution(
     args: Record<string, unknown>,
     invoker: { id: string; role: string },
-    requester: { id: string; role: string },
+    requester: { id: string; role: string }
   ) {
     const executionId = typeof args.executionId === 'string' ? args.executionId : '';
     const dto: ApprovalDecisionDto = {
@@ -765,7 +781,7 @@ export class McpService {
   private async rejectExecution(
     args: Record<string, unknown>,
     invoker: { id: string; role: string },
-    requester: { id: string; role: string },
+    requester: { id: string; role: string }
   ) {
     const executionId = typeof args.executionId === 'string' ? args.executionId : '';
     const dto: ApprovalDecisionDto = {
@@ -792,19 +808,25 @@ export class McpService {
   private async submitExecutionInput(
     args: Record<string, unknown>,
     invoker: { id: string; role: string },
-    requester: { id: string; role: string },
+    requester: { id: string; role: string }
   ) {
     const executionId = typeof args.executionId === 'string' ? args.executionId : '';
     const stepId = typeof args.stepId === 'string' ? args.stepId : '';
-    const input = args.input && typeof args.input === 'object' && !Array.isArray(args.input)
-      ? (args.input as Record<string, unknown>)
-      : {};
+    const input =
+      args.input && typeof args.input === 'object' && !Array.isArray(args.input)
+        ? (args.input as Record<string, unknown>)
+        : {};
     const dto: SubmitInputDto = {
       stepId,
       input,
       submittedBy: invoker.id,
     };
-    const execution = await this.executionService.submitInputAndResume(executionId, invoker.id, dto, requester);
+    const execution = await this.executionService.submitInputAndResume(
+      executionId,
+      invoker.id,
+      dto,
+      requester
+    );
 
     return {
       content: [
@@ -824,7 +846,7 @@ export class McpService {
   private async cancelExecution(
     args: Record<string, unknown>,
     invoker: { id: string; role: string },
-    requester: { id: string; role: string },
+    requester: { id: string; role: string }
   ) {
     const executionId = typeof args.executionId === 'string' ? args.executionId : '';
     const execution = await this.executionService.cancel(executionId, invoker.id, requester);
@@ -847,7 +869,7 @@ export class McpService {
   private async resumeExecution(
     args: Record<string, unknown>,
     invoker: { id: string; role: string },
-    requester: { id: string; role: string },
+    requester: { id: string; role: string }
   ) {
     const executionId = typeof args.executionId === 'string' ? args.executionId : '';
     const dto: ResumeExecutionDto = {
@@ -875,7 +897,7 @@ export class McpService {
   private async takeoverExecution(
     args: Record<string, unknown>,
     invoker: { id: string; role: string },
-    requester: { id: string; role: string },
+    requester: { id: string; role: string }
   ) {
     const executionId = typeof args.executionId === 'string' ? args.executionId : '';
     const dto: TakeoverExecutionDto = {

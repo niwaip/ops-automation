@@ -1,9 +1,12 @@
-import { buildOfficeAddinUrl as buildOfficeAddinUrlFromCore, normalizeRuntimeConfig } from "@ops/user-core";
+import {
+  buildOfficeAddinUrl as buildOfficeAddinUrlFromCore,
+  normalizeRuntimeConfig,
+} from '@ops/user-core';
 
 const ensureLeadingSlash = (value: string): string => (value.startsWith('/') ? value : `/${value}`);
 
 export const runtimeConfig = normalizeRuntimeConfig(
-  import.meta.env as Record<string, string | undefined>,
+  import.meta.env as Record<string, string | undefined>
 );
 
 export const buildOfficeAddinUrl = (path: string): string =>

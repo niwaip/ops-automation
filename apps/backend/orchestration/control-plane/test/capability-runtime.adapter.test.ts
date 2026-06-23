@@ -64,7 +64,7 @@ describe('CapabilityRuntimeAdapter', () => {
           executionStepName: '10. click',
           executionStepIndex: 10,
         },
-      },
+      }
     );
   });
 

@@ -3,10 +3,7 @@ export interface DownloadUrlOptions {
   fallbackFilename?: string;
 }
 
-const resolveFilename = (
-  contentDisposition: string | null,
-  fallbackFilename: string,
-): string => {
+const resolveFilename = (contentDisposition: string | null, fallbackFilename: string): string => {
   if (!contentDisposition) {
     return fallbackFilename;
   }
@@ -16,19 +13,19 @@ const resolveFilename = (
     return fallbackFilename;
   }
 
-  return decodeURIComponent(filenameMatch[1].trim().replace(/['"]/g, ""));
+  return decodeURIComponent(filenameMatch[1].trim().replace(/['"]/g, ''));
 };
 
 export const downloadFileFromUrl = async (
   url: string,
-  options: DownloadUrlOptions = {},
+  options: DownloadUrlOptions = {}
 ): Promise<string> => {
   if (
-    typeof window === "undefined"
-    || typeof document === "undefined"
-    || typeof window.URL?.createObjectURL !== "function"
+    typeof window === 'undefined' ||
+    typeof document === 'undefined' ||
+    typeof window.URL?.createObjectURL !== 'function'
   ) {
-    throw new Error("当前环境不支持文件下载");
+    throw new Error('当前环境不支持文件下载');
   }
 
   const response = await fetch(url, {
@@ -36,16 +33,16 @@ export const downloadFileFromUrl = async (
   });
 
   if (!response.ok) {
-    throw new Error("文件下载失败");
+    throw new Error('文件下载失败');
   }
 
   const filename = resolveFilename(
-    response.headers.get("Content-Disposition"),
-    options.fallbackFilename || "download.bin",
+    response.headers.get('Content-Disposition'),
+    options.fallbackFilename || 'download.bin'
   );
   const blob = await response.blob();
   const objectUrl = window.URL.createObjectURL(blob);
-  const link = document.createElement("a");
+  const link = document.createElement('a');
   link.href = objectUrl;
   link.download = filename;
   document.body.appendChild(link);

@@ -14,10 +14,7 @@ describe('ExecutionStateService', () => {
       createEvent: jest.fn(),
     };
 
-    const service = new ExecutionStateService(
-      prisma as never,
-      executionEventService as never,
-    );
+    const service = new ExecutionStateService(prisma as never, executionEventService as never);
 
     return { service, prisma, executionEventService };
   };
@@ -55,7 +52,7 @@ describe('ExecutionStateService', () => {
       {
         oldStatus: 'queued',
         newStatus: 'running',
-      },
+      }
     );
     expect(event.eventType).toBe('execution.status_changed');
   });
@@ -70,9 +67,11 @@ describe('ExecutionStateService', () => {
       endedAt: new Date(),
     });
 
-    await expect(service.updateStatus('execution-2', 'running')).rejects.toThrow(BadRequestException);
     await expect(service.updateStatus('execution-2', 'running')).rejects.toThrow(
-      'Invalid transition from succeeded to running',
+      BadRequestException
+    );
+    await expect(service.updateStatus('execution-2', 'running')).rejects.toThrow(
+      'Invalid transition from succeeded to running'
     );
   });
 
@@ -83,7 +82,7 @@ describe('ExecutionStateService', () => {
 
     await expect(service.updateStatus('missing', 'running')).rejects.toThrow(NotFoundException);
     await expect(service.updateStatus('missing', 'running')).rejects.toThrow(
-      'Execution missing not found',
+      'Execution missing not found'
     );
   });
 });

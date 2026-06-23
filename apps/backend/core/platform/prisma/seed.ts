@@ -9,7 +9,9 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 const TEST_USERNAME = process.env.TEST_USERNAME || 'test';
 const TEST_EMAIL = process.env.TEST_EMAIL || 'test@example.com';
 const TEST_PASSWORD = process.env.TEST_PASSWORD || 'test123';
-const SKIP_TEST_USER = ['1', 'true', 'yes'].includes((process.env.SKIP_TEST_USER || '').toLowerCase());
+const SKIP_TEST_USER = ['1', 'true', 'yes'].includes(
+  (process.env.SKIP_TEST_USER || '').toLowerCase()
+);
 
 async function main() {
   console.info('Seeding database...');

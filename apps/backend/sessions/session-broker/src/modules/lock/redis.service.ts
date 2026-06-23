@@ -109,7 +109,11 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   // Scan for keys matching pattern
-  async scan(cursor: string, pattern: string, count: number): Promise<{ cursor: string; keys: string[] }> {
+  async scan(
+    cursor: string,
+    pattern: string,
+    count: number
+  ): Promise<{ cursor: string; keys: string[] }> {
     const result = await this.client.scan(cursor, 'MATCH', pattern, 'COUNT', count);
     return {
       cursor: result[0],

@@ -33,6 +33,12 @@ load_db_params() {
     local pg_user pg_db
     pg_user="$(grep -E '^POSTGRES_USER=' "$DOCKER_ENV_FILE" 2>/dev/null | tail -1 | cut -d'=' -f2-)"
     pg_db="$(grep -E '^POSTGRES_DB=' "$DOCKER_ENV_FILE" 2>/dev/null | tail -1 | cut -d'=' -f2-)"
+    pg_user="${pg_user%$'\r'}"
+    pg_db="${pg_db%$'\r'}"
+    pg_user="${pg_user%\"}"
+    pg_user="${pg_user#\"}"
+    pg_db="${pg_db%\"}"
+    pg_db="${pg_db#\"}"
     [[ -n "$pg_user" ]] && POSTGRES_USER="$pg_user"
     [[ -n "$pg_db" ]] && POSTGRES_DB="$pg_db"
   fi

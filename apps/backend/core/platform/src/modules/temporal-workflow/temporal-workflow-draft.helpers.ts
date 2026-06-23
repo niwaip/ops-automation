@@ -1,5 +1,8 @@
 import { STRUCTURED_TRANSFORM_STEP_CONFIG_KEY } from './builtin-activity.registry';
-import type { AiDraftActivityResource, AiWorkflowDraftPlan } from './temporal-workflow-draft.service';
+import type {
+  AiDraftActivityResource,
+  AiWorkflowDraftPlan,
+} from './temporal-workflow-draft.service';
 
 type PickFirstNonEmptyString = (...values: unknown[]) => string | undefined;
 
@@ -33,118 +36,130 @@ export function buildAnalyzeAiWorkflowDraftPrompt(args: {
     '11. 只有当用户目标明显需要 AI 语义理解、归纳、自由摘要、模糊分类、无法用固定字段映射或 textTemplate 表达时，才使用 builtin:aiStructuredTransform。',
     '',
     '允许使用的 activity 资源列表（只能从这些 ref 中选择）：',
-    JSON.stringify(activityResources.map((item) => ({
-      ref: item.ref,
-      name: item.name,
-      fn: item.fn,
-      timeout: item.timeout,
-      handler: item.handler,
-      description: item.description || '',
-      config: item.config || {},
-    })), null, 2),
+    JSON.stringify(
+      activityResources.map((item) => ({
+        ref: item.ref,
+        name: item.name,
+        fn: item.fn,
+        timeout: item.timeout,
+        handler: item.handler,
+        description: item.description || '',
+        config: item.config || {},
+      })),
+      null,
+      2
+    ),
     '',
     '重要补充：如果选择 builtin:structuredTransform（固定规则版），必须完整输出 step.input.__structuredTransform，至少包含以下字段：',
-    JSON.stringify({
-      contentType: 'json',
-      contentTemplate: '{content}',
-      outputMode: 'json',
-      outputSchema: {
-        fieldName: 'string',
+    JSON.stringify(
+      {
+        contentType: 'json',
+        contentTemplate: '{content}',
+        outputMode: 'json',
+        outputSchema: {
+          fieldName: 'string',
+        },
+        contextTemplate: '',
+        fieldMappings: {
+          fieldName: 'source.path',
+        },
+        textTemplate: '',
       },
-      contextTemplate: '',
-      fieldMappings: {
-        fieldName: 'source.path',
-      },
-      textTemplate: '',
-    }, null, 2),
+      null,
+      2
+    ),
     '如果用户要求“格式化输出”“ASCII 文本”“类似 wttr.in 风格”，则 builtin:structuredTransform.outputMode 优先为 text，并优先生成 textTemplate，而不是 AI 指令。',
     '如果选择 builtin:aiStructuredTransform，则 __structuredTransform 至少要包含 contentType、contentTemplate、instructionTemplate、outputMode、outputSchema、contextTemplate，并保留清晰的 instructionTemplate。',
     '',
     '返回 JSON 结构要求：',
-    JSON.stringify({
-      workflowName: 'string',
-      workflowDescription: 'string',
-      workflowClassName: 'string',
-      workflowDefnName: 'string',
-      taskQueue: 'SKILL_TASK_QUEUE',
-      inputParams: {
-        exampleParam: {
-          description: '参数说明',
-          required: true,
-          defaultValue: '',
-          source: 'declared',
-          type: 'string',
-          exampleValue: 'sample_exampleParam',
+    JSON.stringify(
+      {
+        workflowName: 'string',
+        workflowDescription: 'string',
+        workflowClassName: 'string',
+        workflowDefnName: 'string',
+        taskQueue: 'SKILL_TASK_QUEUE',
+        inputParams: {
+          exampleParam: {
+            description: '参数说明',
+            required: true,
+            defaultValue: '',
+            source: 'declared',
+            type: 'string',
+            exampleValue: 'sample_exampleParam',
+          },
         },
-      },
-      outputParams: {
-        result: {
-          description: '输出说明',
-          sourceStep: 'step_1',
+        outputParams: {
+          result: {
+            description: '输出说明',
+            sourceStep: 'step_1',
+          },
         },
-      },
-      extraPrompt: '给后续 AI 代码生成的补充说明',
-      warnings: ['可选风险提示'],
-      steps: [
-        {
-          id: 'step_1',
-          name: '步骤名称',
-          type: 'activity',
-          activityRef: 'builtin:httpRequest',
-          activityName: 'HTTP 请求',
-          startToCloseTimeout: '30s',
-          input: {
-            __httpRequest: {
-              method: 'GET',
-              urlTemplate: 'https://example.com',
-              queryTemplate: {},
-              headersTemplate: {},
-              jsonTemplate: {},
-              dataTemplate: {},
-              timeout: 30,
-              responseMode: 'body',
-              responseBodyPath: '',
-              responseFieldMappings: {},
+        extraPrompt: '给后续 AI 代码生成的补充说明',
+        warnings: ['可选风险提示'],
+        steps: [
+          {
+            id: 'step_1',
+            name: '步骤名称',
+            type: 'activity',
+            activityRef: 'builtin:httpRequest',
+            activityName: 'HTTP 请求',
+            startToCloseTimeout: '30s',
+            input: {
+              __httpRequest: {
+                method: 'GET',
+                urlTemplate: 'https://example.com',
+                queryTemplate: {},
+                headersTemplate: {},
+                jsonTemplate: {},
+                dataTemplate: {},
+                timeout: 30,
+                responseMode: 'body',
+                responseBodyPath: '',
+                responseFieldMappings: {},
+              },
             },
           },
-        },
-        {
-          id: 'step_2',
-          name: '结构化转换或格式化输出',
-          type: 'activity',
-          activityRef: 'builtin:structuredTransform',
-          activityName: '结构化转换(固定规则)',
-          startToCloseTimeout: '90s',
-          input: {
-            __structuredTransform: {
-              contentType: 'json',
-              contentTemplate: '{content}',
-              outputMode: 'json',
-              outputSchema: {
-                result: 'string',
+          {
+            id: 'step_2',
+            name: '结构化转换或格式化输出',
+            type: 'activity',
+            activityRef: 'builtin:structuredTransform',
+            activityName: '结构化转换(固定规则)',
+            startToCloseTimeout: '90s',
+            input: {
+              __structuredTransform: {
+                contentType: 'json',
+                contentTemplate: '{content}',
+                outputMode: 'json',
+                outputSchema: {
+                  result: 'string',
+                },
+                contextTemplate: '',
+                fieldMappings: {
+                  result: 'result',
+                },
+                textTemplate: '',
               },
-              contextTemplate: '',
-              fieldMappings: {
-                result: 'result',
-              },
-              textTemplate: '',
             },
           },
-        },
-      ],
-      activities: [
-        {
-          activityRef: 'builtin:httpRequest',
-          name: 'HTTP 请求',
-          timeout: '30s',
-          retryPolicy: {
-            maxRetries: 2,
-            backoffMs: 1000,
+        ],
+        activities: [
+          {
+            activityRef: 'builtin:httpRequest',
+            name: 'HTTP 请求',
+            timeout: '30s',
+            retryPolicy: {
+              maxRetries: 2,
+              backoffMs: 1000,
+            },
+            config: {},
           },
-          config: {},
-        },
-      ],
-    }, null, 2),
+        ],
+      },
+      null,
+      2
+    ),
     '',
     `用户说明: ${description || '无'}`,
     `参考 URL: ${referenceUrl || '无'}`,
@@ -160,7 +175,8 @@ export function buildRepairAiWorkflowDraftPlanPrompt(args: {
   referenceExcerpt: string;
   activityResources: AiDraftActivityResource[];
 }): string {
-  const { currentPlan, issues, description, referenceUrl, referenceExcerpt, activityResources } = args;
+  const { currentPlan, issues, description, referenceUrl, referenceExcerpt, activityResources } =
+    args;
   return [
     '你是一个 Temporal Workflow 草稿修复器。',
     '你的任务不是重写需求，而是根据问题清单修复当前草稿 JSON，使其变成一个可直接进入下一步代码生成的完整 Workflow 草稿。',
@@ -179,14 +195,18 @@ export function buildRepairAiWorkflowDraftPlanPrompt(args: {
     ...issues.map((item, index) => `${index + 1}. ${item}`),
     '',
     '【可用 Activity 资源池】',
-    JSON.stringify(activityResources.map((item) => ({
-      ref: item.ref,
-      name: item.name,
-      fn: item.fn,
-      timeout: item.timeout,
-      description: item.description || '',
-      config: item.config || {},
-    })), null, 2),
+    JSON.stringify(
+      activityResources.map((item) => ({
+        ref: item.ref,
+        name: item.name,
+        fn: item.fn,
+        timeout: item.timeout,
+        description: item.description || '',
+        config: item.config || {},
+      })),
+      null,
+      2
+    ),
     '',
     '【硬性要求】',
     '1. 只输出一个 JSON 对象。',
@@ -222,12 +242,16 @@ export function buildAnalyzeAiWorkflowRefinementPrompt(args: {
     userPrompt,
     '',
     '【可用 Activity 资源池】',
-    JSON.stringify(activityResources.map((r) => ({
-      ref: r.ref,
-      name: r.name,
-      fn: r.fn,
-      description: r.description,
-    })), null, 2),
+    JSON.stringify(
+      activityResources.map((r) => ({
+        ref: r.ref,
+        name: r.name,
+        fn: r.fn,
+        description: r.description,
+      })),
+      null,
+      2
+    ),
     '',
     '输出要求：',
     '1. 只返回一个 JSON 对象，不要输出 Markdown 或任何解释。',
@@ -259,7 +283,7 @@ export function buildAnalyzeAiWorkflowRefinementPrompt(args: {
 export function buildAiDraftStepSampleKey(
   step: NonNullable<AiWorkflowDraftPlan['steps']>[number] | undefined,
   index: number,
-  pickFirstNonEmptyString: PickFirstNonEmptyString,
+  pickFirstNonEmptyString: PickFirstNonEmptyString
 ): string {
   return pickFirstNonEmptyString(step?.id) || `step_${index + 1}`;
 }
@@ -273,12 +297,18 @@ export function buildStructuredTransformPlaceholderKeys(
     if (!config || typeof config !== 'object' || Array.isArray(config)) {
       return;
     }
-    const fieldMappings = config.fieldMappings && typeof config.fieldMappings === 'object' && !Array.isArray(config.fieldMappings)
-      ? config.fieldMappings as Record<string, any>
-      : {};
-    const outputSchema = config.outputSchema && typeof config.outputSchema === 'object' && !Array.isArray(config.outputSchema)
-      ? config.outputSchema as Record<string, any>
-      : {};
+    const fieldMappings =
+      config.fieldMappings &&
+      typeof config.fieldMappings === 'object' &&
+      !Array.isArray(config.fieldMappings)
+        ? (config.fieldMappings as Record<string, any>)
+        : {};
+    const outputSchema =
+      config.outputSchema &&
+      typeof config.outputSchema === 'object' &&
+      !Array.isArray(config.outputSchema)
+        ? (config.outputSchema as Record<string, any>)
+        : {};
     Object.keys(fieldMappings).forEach((key) => placeholderKeys.add(String(key || '').trim()));
     Object.keys(outputSchema).forEach((key) => placeholderKeys.add(String(key || '').trim()));
   });
@@ -293,13 +323,15 @@ export function buildAiDraftResolutionGoal(args: {
   pickFirstNonEmptyString: PickFirstNonEmptyString;
 }): string {
   const { plan, currentStep, previousStep, description, pickFirstNonEmptyString } = args;
-  const currentInput = currentStep?.input && typeof currentStep.input === 'object' && !Array.isArray(currentStep.input)
-    ? currentStep.input as Record<string, any>
-    : {};
-  const transformConfig = currentInput[STRUCTURED_TRANSFORM_STEP_CONFIG_KEY]
-    && typeof currentInput[STRUCTURED_TRANSFORM_STEP_CONFIG_KEY] === 'object'
-    ? currentInput[STRUCTURED_TRANSFORM_STEP_CONFIG_KEY] as Record<string, any>
-    : {};
+  const currentInput =
+    currentStep?.input && typeof currentStep.input === 'object' && !Array.isArray(currentStep.input)
+      ? (currentStep.input as Record<string, any>)
+      : {};
+  const transformConfig =
+    currentInput[STRUCTURED_TRANSFORM_STEP_CONFIG_KEY] &&
+    typeof currentInput[STRUCTURED_TRANSFORM_STEP_CONFIG_KEY] === 'object'
+      ? (currentInput[STRUCTURED_TRANSFORM_STEP_CONFIG_KEY] as Record<string, any>)
+      : {};
   const outputHints = Object.entries(plan.outputParams || {})
     .filter(([, value]) => value?.sourceStep === currentStep?.id)
     .map(([key, value]) => `${key}: ${pickFirstNonEmptyString(value?.description) || '输出字段'}`);
@@ -318,5 +350,7 @@ export function buildAiDraftResolutionGoal(args: {
       ? `已有文本模板: ${pickFirstNonEmptyString(transformConfig.textTemplate)}`
       : '',
     outputHints.length > 0 ? `期望输出:\n${outputHints.join('\n')}` : '',
-  ].filter(Boolean).join('\n');
+  ]
+    .filter(Boolean)
+    .join('\n');
 }

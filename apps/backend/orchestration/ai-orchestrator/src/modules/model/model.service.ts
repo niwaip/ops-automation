@@ -2,15 +2,26 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import { AIModelDTO, AIModelConfig, AIProviderConfigDTO, AIProviderSummaryDTO, CreateModelDTO, CreateProviderConfigDTO, UpdateProviderConfigDTO, APIKeyReference, ChatMessage, LLMResponse, AIProviderModelListDTO } from '../../interfaces';
+import {
+  AIModelDTO,
+  AIModelConfig,
+  AIProviderConfigDTO,
+  AIProviderSummaryDTO,
+  CreateModelDTO,
+  CreateProviderConfigDTO,
+  UpdateProviderConfigDTO,
+  APIKeyReference,
+  ChatMessage,
+  LLMResponse,
+  AIProviderModelListDTO,
+} from '../../interfaces';
 import { OpenAICompatibleClient } from '../../client/openai-compatible';
 import { AnthropicMessagesClient } from '../../client/anthropic-messages';
 import { LLMClient, PromptCachingConfig } from '../../client/llm-client';
 
 // Persistence file paths
-const DEFAULT_DATA_DIR = process.env.NODE_ENV === 'test'
-  ? path.join(process.cwd(), '.tmp', 'ai-models')
-  : '/app/data';
+const DEFAULT_DATA_DIR =
+  process.env.NODE_ENV === 'test' ? path.join(process.cwd(), '.tmp', 'ai-models') : '/app/data';
 const DATA_DIR = process.env.AI_MODELS_DATA_DIR || DEFAULT_DATA_DIR;
 const MODELS_FILE = path.join(DATA_DIR, 'ai-models.json');
 const API_KEYS_FILE = path.join(DATA_DIR, 'ai-api-keys.json');
@@ -63,9 +74,10 @@ export class ModelService implements OnModuleInit {
       ...(config || {}),
     };
 
-    const defaultScope = typeof normalized.default_scope === 'object' && normalized.default_scope
-      ? normalized.default_scope
-      : {};
+    const defaultScope =
+      typeof normalized.default_scope === 'object' && normalized.default_scope
+        ? normalized.default_scope
+        : {};
     normalized.default_scope = {
       global: defaultScope.global === true || normalized.default === true,
       admin_chat: defaultScope.admin_chat === true,
@@ -73,19 +85,22 @@ export class ModelService implements OnModuleInit {
       audio_transcription: defaultScope.audio_transcription === true,
     };
 
-    const routingPreferences = typeof normalized.routing_preferences === 'object' && normalized.routing_preferences
-      ? normalized.routing_preferences
-      : {};
+    const routingPreferences =
+      typeof normalized.routing_preferences === 'object' && normalized.routing_preferences
+        ? normalized.routing_preferences
+        : {};
     normalized.routing_preferences = {
       prefer_for_code: routingPreferences.prefer_for_code === true,
     };
 
-    const invocation = typeof normalized.invocation === 'object' && normalized.invocation
-      ? normalized.invocation
-      : {};
-    const promptCaching = typeof invocation.prompt_caching === 'object' && invocation.prompt_caching
-      ? invocation.prompt_caching
-      : {};
+    const invocation =
+      typeof normalized.invocation === 'object' && normalized.invocation
+        ? normalized.invocation
+        : {};
+    const promptCaching =
+      typeof invocation.prompt_caching === 'object' && invocation.prompt_caching
+        ? invocation.prompt_caching
+        : {};
     normalized.invocation = {
       transport: invocation.transport,
       prompt_caching: {
@@ -96,15 +111,17 @@ export class ModelService implements OnModuleInit {
       },
     };
 
-    normalized.capability_tier = normalized.capability_tier === 'advanced' ? 'advanced' : 'standard';
+    normalized.capability_tier =
+      normalized.capability_tier === 'advanced' ? 'advanced' : 'standard';
     normalized.default = normalized.default_scope.global === true;
 
     return normalized;
   }
 
   private buildClient(model: AIModelDTO, apiKey: string): LLMClient {
-    const transport = model.config.invocation?.transport
-      || (model.provider === 'anthropic' ? 'anthropic_messages' : 'openai_chat_completions');
+    const transport =
+      model.config.invocation?.transport ||
+      (model.provider === 'anthropic' ? 'anthropic_messages' : 'openai_chat_completions');
     const promptCaching = this.getPromptCachingConfigForModel(model);
 
     if (transport === 'anthropic_messages') {
@@ -134,7 +151,8 @@ export class ModelService implements OnModuleInit {
 
     return {
       enabled: configured?.enabled ?? true,
-      mode: configured?.mode || (model.provider === 'anthropic' ? 'anthropic_explicit' : 'openai_auto'),
+      mode:
+        configured?.mode || (model.provider === 'anthropic' ? 'anthropic_explicit' : 'openai_auto'),
       retention: configured?.retention || (model.provider === 'anthropic' ? '5m' : 'in_memory'),
       min_tokens: typeof configured?.min_tokens === 'number' ? configured.min_tokens : 1024,
     };
@@ -142,11 +160,13 @@ export class ModelService implements OnModuleInit {
 
   private getDefaultScopeWeight(model: AIModelDTO): number {
     const scope = model.config.default_scope;
-    return (scope?.global ? 4 : 0)
-      + (scope?.admin_chat ? 3 : 0)
-      + (scope?.admin_task ? 3 : 0)
-      + (scope?.audio_transcription ? 3 : 0)
-      + (model.config.default === true ? 1 : 0);
+    return (
+      (scope?.global ? 4 : 0) +
+      (scope?.admin_chat ? 3 : 0) +
+      (scope?.admin_task ? 3 : 0) +
+      (scope?.audio_transcription ? 3 : 0) +
+      (model.config.default === true ? 1 : 0)
+    );
   }
 
   private getCapabilityWeight(model: AIModelDTO): number {
@@ -206,8 +226,12 @@ export class ModelService implements OnModuleInit {
       }
       if (dto.env_key || dto.secret_type) {
         this.providerApiKeyReferences.set(existing.id, {
-          reference_id: dto.env_key || this.providerApiKeyReferences.get(existing.id)?.reference_id || existing.id,
-          secret_type: dto.secret_type || this.providerApiKeyReferences.get(existing.id)?.secret_type || 'env',
+          reference_id:
+            dto.env_key ||
+            this.providerApiKeyReferences.get(existing.id)?.reference_id ||
+            existing.id,
+          secret_type:
+            dto.secret_type || this.providerApiKeyReferences.get(existing.id)?.secret_type || 'env',
         });
       }
       const updated = {
@@ -246,10 +270,12 @@ export class ModelService implements OnModuleInit {
       provider: model.provider,
       api_endpoint: model.api_endpoint,
       ...(apiKey ? { api_key: apiKey } : {}),
-      ...(modelRef ? {
-        env_key: modelRef.reference_id,
-        secret_type: modelRef.secret_type,
-      } : {}),
+      ...(modelRef
+        ? {
+            env_key: modelRef.reference_id,
+            secret_type: modelRef.secret_type,
+          }
+        : {}),
     });
     if (model.providerConfigId !== providerConfig.id) {
       this.models.set(modelId, {
@@ -261,7 +287,12 @@ export class ModelService implements OnModuleInit {
 
   private clearDefaultScopeOnOtherModels(targetModelId: string, config: AIModelConfig): void {
     const targetScope = config.default_scope;
-    if (!targetScope?.global && !targetScope?.admin_chat && !targetScope?.admin_task && !targetScope?.audio_transcription) {
+    if (
+      !targetScope?.global &&
+      !targetScope?.admin_chat &&
+      !targetScope?.admin_task &&
+      !targetScope?.audio_transcription
+    ) {
       return;
     }
 
@@ -301,7 +332,9 @@ export class ModelService implements OnModuleInit {
     }
   }
 
-  private selectScopedDefaultModel(scope: 'global' | 'admin_chat' | 'admin_task' | 'audio_transcription'): AIModelDTO | null {
+  private selectScopedDefaultModel(
+    scope: 'global' | 'admin_chat' | 'admin_task' | 'audio_transcription'
+  ): AIModelDTO | null {
     const activeModels = this.getActiveModelsWithClients();
     return activeModels.find((model) => model.config.default_scope?.[scope] === true) || null;
   }
@@ -329,7 +362,7 @@ export class ModelService implements OnModuleInit {
 
   private findReusableProviderCredential(
     provider: string,
-    apiEndpoint: string,
+    apiEndpoint: string
   ): { sourceModelId: string; apiKey: string } | null {
     const candidates = Array.from(this.models.values()).filter((model) => {
       return model.provider === provider && model.api_endpoint === apiEndpoint;
@@ -377,21 +410,24 @@ export class ModelService implements OnModuleInit {
     const isAdmin = userRoles.includes('admin');
 
     if (context?.mode === 'audio_transcription') {
-      return this.selectScopedDefaultModel('audio_transcription')
-        || this.getDefaultModel();
+      return this.selectScopedDefaultModel('audio_transcription') || this.getDefaultModel();
     }
 
     if (isAdmin && context?.mode === 'task') {
-      return this.selectScopedDefaultModel('admin_task')
-        || this.selectScopedDefaultModel('admin_chat')
-        || this.selectScopedDefaultModel('global')
-        || this.getDefaultModel();
+      return (
+        this.selectScopedDefaultModel('admin_task') ||
+        this.selectScopedDefaultModel('admin_chat') ||
+        this.selectScopedDefaultModel('global') ||
+        this.getDefaultModel()
+      );
     }
 
     if (isAdmin && context?.mode === 'chat') {
-      return this.selectScopedDefaultModel('admin_chat')
-        || this.selectScopedDefaultModel('global')
-        || this.getDefaultModel();
+      return (
+        this.selectScopedDefaultModel('admin_chat') ||
+        this.selectScopedDefaultModel('global') ||
+        this.getDefaultModel()
+      );
     }
 
     return this.selectScopedDefaultModel('global') || this.getDefaultModel();
@@ -414,7 +450,6 @@ export class ModelService implements OnModuleInit {
 
     // Load persisted models first
     await this.loadPersistedModels();
-
   }
 
   /**
@@ -474,7 +509,6 @@ export class ModelService implements OnModuleInit {
           this.logger.log(`Client initialized for model ${model.name} (${id})`);
         }
       }
-
     } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(`Failed to load persisted models: ${errorMsg}`);
@@ -548,28 +582,32 @@ export class ModelService implements OnModuleInit {
       }
       fs.writeFileSync(PROVIDER_API_KEYS_FILE, JSON.stringify(providerKeysData, null, 2));
 
-      this.logger.log(`Persisted ${modelsData.length} models, ${keysData.length} model API keys and ${providersData.length} providers`);
+      this.logger.log(
+        `Persisted ${modelsData.length} models, ${keysData.length} model API keys and ${providersData.length} providers`
+      );
     } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(`Failed to persist models: ${errorMsg}`);
     }
   }
 
-/**
+  /**
    * List all registered models (only active ones for chat selector)
    */
   async listModels(): Promise<AIModelDTO[]> {
     return Array.from(this.models.values())
-      .filter(m => m.status === 'active')
-      .map(m => ({ ...m, hasApiKey: this.hasConfiguredCredential(m.id) }));
+      .filter((m) => m.status === 'active')
+      .map((m) => ({ ...m, hasApiKey: this.hasConfiguredCredential(m.id) }));
   }
 
   /**
    * List all registered models for admin (including inactive)
    */
   async listModelsForAdmin(): Promise<AIModelDTO[]> {
-    return Array.from(this.models.values())
-      .map(m => ({ ...m, hasApiKey: this.hasConfiguredCredential(m.id) }));
+    return Array.from(this.models.values()).map((m) => ({
+      ...m,
+      hasApiKey: this.hasConfiguredCredential(m.id),
+    }));
   }
 
   listProviderSummaries(): AIProviderSummaryDTO[] {
@@ -603,10 +641,14 @@ export class ModelService implements OnModuleInit {
       existing.activeModelCount += model.status === 'active' ? 1 : 0;
       existing.hasCredential = existing.hasCredential || this.hasConfiguredCredential(model.id);
       existing.advancedModelCount += model.config.capability_tier === 'advanced' ? 1 : 0;
-      const scopeKeys = (['global', 'admin_chat', 'admin_task', 'audio_transcription'] as const).filter((scope) => {
+      const scopeKeys = (
+        ['global', 'admin_chat', 'admin_task', 'audio_transcription'] as const
+      ).filter((scope) => {
         return model.config.default_scope?.[scope] === true;
       });
-      existing.defaultScopes = Array.from(new Set([...existing.defaultScopes, ...scopeKeys] as any));
+      existing.defaultScopes = Array.from(
+        new Set([...existing.defaultScopes, ...scopeKeys] as any)
+      );
       grouped.set(groupKey, existing);
     }
 
@@ -649,7 +691,10 @@ export class ModelService implements OnModuleInit {
     };
   }
 
-  async updateProviderConfig(id: string, updates: UpdateProviderConfigDTO): Promise<AIProviderConfigDTO | null> {
+  async updateProviderConfig(
+    id: string,
+    updates: UpdateProviderConfigDTO
+  ): Promise<AIProviderConfigDTO | null> {
     const existing = this.providers.get(id);
     if (!existing) {
       return null;
@@ -686,7 +731,10 @@ export class ModelService implements OnModuleInit {
       if (model.providerConfigId !== id) {
         continue;
       }
-      if (!model.providerConfigId && (model.provider !== existing.provider || model.api_endpoint !== existing.api_endpoint)) {
+      if (
+        !model.providerConfigId &&
+        (model.provider !== existing.provider || model.api_endpoint !== existing.api_endpoint)
+      ) {
         continue;
       }
 
@@ -700,7 +748,10 @@ export class ModelService implements OnModuleInit {
       this.models.set(modelId, updatedModel);
 
       const modelRef = this.apiKeyReferences.get(modelId);
-      const apiKey = this.resolveProviderCredential(id) || this.apiKeys.get(modelId) || (modelRef ? this.resolveApiKey(modelRef, modelId) : null);
+      const apiKey =
+        this.resolveProviderCredential(id) ||
+        this.apiKeys.get(modelId) ||
+        (modelRef ? this.resolveApiKey(modelRef, modelId) : null);
       if (apiKey) {
         this.clients.set(modelId, this.buildClient(updatedModel, apiKey));
       }
@@ -713,7 +764,9 @@ export class ModelService implements OnModuleInit {
     };
   }
 
-  async checkProviderHealth(id: string): Promise<{ success: boolean; response?: string; error?: string }> {
+  async checkProviderHealth(
+    id: string
+  ): Promise<{ success: boolean; response?: string; error?: string }> {
     const provider = this.providers.get(id);
     if (!provider) {
       return { success: false, error: 'Provider not found' };
@@ -797,7 +850,11 @@ export class ModelService implements OnModuleInit {
   getDefaultModel(): AIModelDTO | null {
     // 1. Try to find the one explicitly marked as default
     for (const model of this.models.values()) {
-      if (model.status === 'active' && model.config.default_scope?.global === true && this.clients.has(model.id)) {
+      if (
+        model.status === 'active' &&
+        model.config.default_scope?.global === true &&
+        this.clients.has(model.id)
+      ) {
         return model;
       }
     }
@@ -860,7 +917,7 @@ export class ModelService implements OnModuleInit {
     strategy?: {
       groupOrder: Array<'same_provider' | 'cross_provider'>;
       includeCurrentModel: boolean;
-    },
+    }
   ): string[] {
     const activeModels = this.getActiveModelsWithClients();
     const currentModel = this.resolveModelEntity(id);
@@ -868,12 +925,22 @@ export class ModelService implements OnModuleInit {
       return this.sortFallbackCandidates(activeModels).map((model) => model.id);
     }
 
-    const sameProviderModels = this.sortFallbackCandidates(activeModels.filter((model) => {
-      return model.id !== currentModel.id && this.getProviderGroupingKey(model) === this.getProviderGroupingKey(currentModel);
-    }));
-    const crossProviderModels = this.sortFallbackCandidates(activeModels.filter((model) => {
-      return model.id !== currentModel.id && this.getProviderGroupingKey(model) !== this.getProviderGroupingKey(currentModel);
-    }));
+    const sameProviderModels = this.sortFallbackCandidates(
+      activeModels.filter((model) => {
+        return (
+          model.id !== currentModel.id &&
+          this.getProviderGroupingKey(model) === this.getProviderGroupingKey(currentModel)
+        );
+      })
+    );
+    const crossProviderModels = this.sortFallbackCandidates(
+      activeModels.filter((model) => {
+        return (
+          model.id !== currentModel.id &&
+          this.getProviderGroupingKey(model) !== this.getProviderGroupingKey(currentModel)
+        );
+      })
+    );
     const groupedCandidates = {
       same_provider: sameProviderModels.map((model) => model.id),
       cross_provider: crossProviderModels.map((model) => model.id),
@@ -918,22 +985,28 @@ export class ModelService implements OnModuleInit {
     let apiKey: string | null = null;
     let apiKeyRef: APIKeyReference = this.buildModelApiKeyRef(id, dto.config);
 
-    const existingProviderConfig = dto.providerConfigId ? this.providers.get(dto.providerConfigId) : null;
+    const existingProviderConfig = dto.providerConfigId
+      ? this.providers.get(dto.providerConfigId)
+      : null;
     const providerConfig = existingProviderConfig
       ? this.upsertProviderConfig({
           provider: existingProviderConfig.provider,
           api_endpoint: existingProviderConfig.api_endpoint,
           ...(dto.api_key ? { api_key: dto.api_key } : {}),
           ...(dto.config?.env_key ? { env_key: dto.config.env_key as string } : {}),
-          ...(dto.config?.secret_type ? { secret_type: dto.config.secret_type as 'vault' | 'env' | 'k8s_secret' } : {}),
+          ...(dto.config?.secret_type
+            ? { secret_type: dto.config.secret_type as 'vault' | 'env' | 'k8s_secret' }
+            : {}),
         })
       : this.upsertProviderConfig({
-      provider: dto.provider,
-      api_endpoint: dto.api_endpoint,
-      ...(dto.api_key ? { api_key: dto.api_key } : {}),
-      ...(dto.config?.env_key ? { env_key: dto.config.env_key as string } : {}),
-      ...(dto.config?.secret_type ? { secret_type: dto.config.secret_type as 'vault' | 'env' | 'k8s_secret' } : {}),
-      });
+          provider: dto.provider,
+          api_endpoint: dto.api_endpoint,
+          ...(dto.api_key ? { api_key: dto.api_key } : {}),
+          ...(dto.config?.env_key ? { env_key: dto.config.env_key as string } : {}),
+          ...(dto.config?.secret_type
+            ? { secret_type: dto.config.secret_type as 'vault' | 'env' | 'k8s_secret' }
+            : {}),
+        });
 
     if (dto.api_key) {
       apiKey = dto.api_key;
@@ -947,12 +1020,19 @@ export class ModelService implements OnModuleInit {
         const providerCredential = this.resolveProviderCredential(providerConfig.id);
         if (providerCredential) {
           apiKey = providerCredential;
-          this.logger.log(`Model ${dto.name} reusing provider credentials from provider ${providerConfig.provider}`);
+          this.logger.log(
+            `Model ${dto.name} reusing provider credentials from provider ${providerConfig.provider}`
+          );
         } else {
-          const reusableCredential = this.findReusableProviderCredential(dto.provider, dto.api_endpoint);
+          const reusableCredential = this.findReusableProviderCredential(
+            dto.provider,
+            dto.api_endpoint
+          );
           if (reusableCredential) {
             apiKey = reusableCredential.apiKey;
-            this.logger.log(`Model ${dto.name} reusing provider credentials from model ${reusableCredential.sourceModelId}`);
+            this.logger.log(
+              `Model ${dto.name} reusing provider credentials from model ${reusableCredential.sourceModelId}`
+            );
           } else {
             apiKey = this.resolveApiKey(apiKeyRef);
           }
@@ -1012,8 +1092,16 @@ export class ModelService implements OnModuleInit {
       throw new Error(`Provider config ${updates.providerConfigId} not found`);
     }
 
-    const targetProvider = requestedProviderConfig?.provider || updates.provider || currentProviderConfig?.provider || model.provider;
-    const targetEndpoint = requestedProviderConfig?.api_endpoint || updates.api_endpoint || currentProviderConfig?.api_endpoint || model.api_endpoint;
+    const targetProvider =
+      requestedProviderConfig?.provider ||
+      updates.provider ||
+      currentProviderConfig?.provider ||
+      model.provider;
+    const targetEndpoint =
+      requestedProviderConfig?.api_endpoint ||
+      updates.api_endpoint ||
+      currentProviderConfig?.api_endpoint ||
+      model.api_endpoint;
     const providerConfig = this.upsertProviderConfig({
       provider: targetProvider,
       api_endpoint: targetEndpoint,
@@ -1057,9 +1145,10 @@ export class ModelService implements OnModuleInit {
     // Reinitialize client if needed
     if (updates.api_endpoint || updates.name || updates.api_key || updates.providerConfigId) {
       const modelRef = this.apiKeyReferences.get(id);
-      const apiKey = this.resolveProviderCredential(providerConfig.id)
-        || this.apiKeys.get(id)
-        || (modelRef ? this.resolveApiKey(modelRef, id) : null);
+      const apiKey =
+        this.resolveProviderCredential(providerConfig.id) ||
+        this.apiKeys.get(id) ||
+        (modelRef ? this.resolveApiKey(modelRef, id) : null);
       if (apiKey) {
         const client = this.buildClient(updatedModel, apiKey);
         this.clients.set(id, client);
@@ -1189,7 +1278,11 @@ export class ModelService implements OnModuleInit {
   /**
    * Call a model with a prompt (supports both UUID and model name)
    */
-  async callModel(id: string, prompt: string, _type: 'reasoning' | 'auxiliary' = 'reasoning'): Promise<LLMResponse> {
+  async callModel(
+    id: string,
+    prompt: string,
+    _type: 'reasoning' | 'auxiliary' = 'reasoning'
+  ): Promise<LLMResponse> {
     const client = this.getClient(id);
     if (!client) {
       throw new Error(`No client initialized for model ${id}`);
@@ -1222,7 +1315,11 @@ export class ModelService implements OnModuleInit {
    * @param prompt Prompt to send
    * @param onChunk Callback for each chunk
    */
-  async callModelStream(id: string, prompt: string, onChunk: (chunk: string) => void): Promise<LLMResponse> {
+  async callModelStream(
+    id: string,
+    prompt: string,
+    onChunk: (chunk: string) => void
+  ): Promise<LLMResponse> {
     const client = this.getClient(id);
     if (!client) {
       throw new Error(`No client initialized for model ${id}`);
@@ -1235,7 +1332,11 @@ export class ModelService implements OnModuleInit {
   /**
    * Call model with streaming support - supports multimodal messages (supports both UUID and model name)
    */
-  async callModelStreamWithMessages(id: string, messages: ChatMessage[], onChunk: (chunk: string) => void): Promise<LLMResponse> {
+  async callModelStreamWithMessages(
+    id: string,
+    messages: ChatMessage[],
+    onChunk: (chunk: string) => void
+  ): Promise<LLMResponse> {
     const client = this.getClient(id);
     if (!client) {
       throw new Error(`No client initialized for model ${id}`);

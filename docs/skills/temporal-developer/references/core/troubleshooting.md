@@ -118,12 +118,10 @@ NondeterminismError?
    ```
 
 3. **Added/removed call**
-
    - Adding new activity mid-workflow
    - Removing activity that was previously called
 
 4. **Using non-deterministic code**
-
    - `datetime.now()` in workflow (use `workflow.now()`)
    - `random.random()` in workflow (use `workflow.random()`)
 
@@ -176,13 +174,13 @@ Workflow status = FAILED?
 
 ### Timeout Types
 
-| Timeout | Scope | What It Limits |
-|---------|-------|----------------|
+| Timeout                    | Scope           | What It Limits                                   |
+| -------------------------- | --------------- | ------------------------------------------------ |
 | `WorkflowExecutionTimeout` | Entire workflow | Total time including retries and continue-as-new |
-| `WorkflowRunTimeout` | Single run | Time for one run (before continue-as-new) |
-| `ScheduleToCloseTimeout` | Activity | Total time including retries |
-| `StartToCloseTimeout` | Activity | Single attempt time |
-| `HeartbeatTimeout` | Activity | Time between heartbeats |
+| `WorkflowRunTimeout`       | Single run      | Time for one run (before continue-as-new)        |
+| `ScheduleToCloseTimeout`   | Activity        | Total time including retries                     |
+| `StartToCloseTimeout`      | Activity        | Single attempt time                              |
+| `HeartbeatTimeout`         | Activity        | Time between heartbeats                          |
 
 ### Diagnosis
 
@@ -307,13 +305,13 @@ temporal workflow reset --workflow-id <id> --event-id <event-id>
 
 ## Quick Reference: Status → Action
 
-| Status | First Check | Common Fix |
-|--------|-------------|------------|
-| RUNNING (stuck) | Worker running? | Start/restart worker |
-| FAILED | Error message | Fix bug, handle error |
-| TIMED_OUT | Which timeout? | Increase timeout or optimize |
-| TERMINATED | Who terminated? | Check audit log |
-| CANCELED | Cancellation source | Expected or investigate |
+| Status          | First Check         | Common Fix                   |
+| --------------- | ------------------- | ---------------------------- |
+| RUNNING (stuck) | Worker running?     | Start/restart worker         |
+| FAILED          | Error message       | Fix bug, handle error        |
+| TIMED_OUT       | Which timeout?      | Increase timeout or optimize |
+| TERMINATED      | Who terminated?     | Check audit log              |
+| CANCELED        | Cancellation source | Expected or investigate      |
 
 ## See Also
 

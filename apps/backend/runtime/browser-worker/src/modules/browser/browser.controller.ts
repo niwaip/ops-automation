@@ -1,4 +1,13 @@
-import { Controller, Post, Body, Get, Param, BadRequestException, NotFoundException, Res } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  Param,
+  BadRequestException,
+  NotFoundException,
+  Res,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import * as fs from 'fs/promises';
 import * as path from 'path';
@@ -24,8 +33,8 @@ import { ExportOptions } from './application/browser-script-export.service';
 @Controller('browser')
 export class BrowserController {
   private readonly artifactDir =
-    process.env.PLAYWRIGHT_CLI_ARTIFACT_DIR?.trim()
-    || path.join(process.cwd(), 'temp', 'playwright-cli-artifacts');
+    process.env.PLAYWRIGHT_CLI_ARTIFACT_DIR?.trim() ||
+    path.join(process.cwd(), 'temp', 'playwright-cli-artifacts');
 
   constructor(private readonly browserService: BrowserService) {}
 
@@ -44,7 +53,7 @@ export class BrowserController {
         enableCodegen?: boolean;
         headless?: boolean;
       };
-    } = {},
+    } = {}
   ): Promise<{ success: boolean; message: string; endpoints?: any }> {
     return this.browserService.initBrowser(body);
   }
@@ -61,7 +70,7 @@ export class BrowserController {
       runtimeSessionId?: string;
       includeArtifacts?: boolean;
       includeSteps?: boolean;
-    },
+    }
   ): Promise<{ success: boolean; results: any[]; message?: string; steps?: BrowserActionStep[] }> {
     return this.browserService.executeCommands(body.commands, body);
   }
@@ -74,7 +83,7 @@ export class BrowserController {
     body: {
       backend?: BrowserExecutionBackendDto;
       runtimeSessionId?: string;
-    } = {},
+    } = {}
   ): Promise<{ success: boolean }> {
     await this.browserService.resetBrowser(body);
     return { success: true };
@@ -90,14 +99,22 @@ export class BrowserController {
 
   @Post('inspect-state')
   @ApiOperation({ summary: 'Inspect current browser page state' })
-  @ApiResponse({ status: 200, type: BrowserPageStateDto, description: 'Current browser page state' })
+  @ApiResponse({
+    status: 200,
+    type: BrowserPageStateDto,
+    description: 'Current browser page state',
+  })
   async inspectState(@Body() dto: InspectBrowserStateDto): Promise<BrowserPageStateDto> {
     return this.browserService.inspectState(dto);
   }
 
   @Post('assert-state')
   @ApiOperation({ summary: 'Assert browser page state and content conditions' })
-  @ApiResponse({ status: 200, type: BrowserPageAssertionResultDto, description: 'Browser assertion result' })
+  @ApiResponse({
+    status: 200,
+    type: BrowserPageAssertionResultDto,
+    description: 'Browser assertion result',
+  })
   async assertState(@Body() dto: AssertBrowserStateDto): Promise<BrowserPageAssertionResultDto> {
     return this.browserService.assertState(dto);
   }
@@ -111,7 +128,11 @@ export class BrowserController {
 
   @Post('resume')
   @ApiOperation({ summary: 'Resume browser execution after human takeover' })
-  @ApiResponse({ status: 200, type: BrowserControlStateDto, description: 'Browser session resumed' })
+  @ApiResponse({
+    status: 200,
+    type: BrowserControlStateDto,
+    description: 'Browser session resumed',
+  })
   async resume(@Body() dto: ResumeBrowserSessionDto): Promise<BrowserControlStateDto> {
     return this.browserService.resume(dto);
   }
@@ -124,7 +145,7 @@ export class BrowserController {
     body: {
       steps: BrowserActionStep[];
       options?: ExportOptions;
-    },
+    }
   ): Promise<{ script: string }> {
     const script = this.browserService.exportScript(body.steps, body.options);
     return { script };
@@ -137,7 +158,7 @@ export class BrowserController {
     @Body()
     body: {
       steps: BrowserActionStep[];
-    },
+    }
   ): Promise<{ schema: Record<string, any> }> {
     const schema = this.browserService.generateParamsSchema(body.steps);
     return { schema };
@@ -147,10 +168,7 @@ export class BrowserController {
   @ApiOperation({ summary: 'Serve browser execution artifacts' })
   @ApiResponse({ status: 200, description: 'Artifact file content' })
   @ApiResponse({ status: 404, description: 'Artifact not found' })
-  async getArtifact(
-    @Param('filename') filename: string,
-    @Res() res: Response,
-  ): Promise<void> {
+  async getArtifact(@Param('filename') filename: string, @Res() res: Response): Promise<void> {
     const normalizedFilename = path.basename(filename || '').trim();
     if (!normalizedFilename || normalizedFilename !== filename) {
       throw new BadRequestException('Invalid artifact filename');

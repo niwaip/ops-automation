@@ -20,31 +20,31 @@ docker/
 
 ### 单元测试 (`ai-identifier.service.spec.ts`)
 
-| 测试模块 | 测试内容 |
-|----------|----------|
-| **流程判断逻辑** | 快速流程 vs 多阶段流程判断 |
-| **下划线信息处理** | mergeUnderlineInfo处理 |
-| **AI响应解析** | JSON解析、markdown清理 |
-| **章节判断** | checkNeedsParameterization |
-| **空白模式提取** | extractBlankPatterns |
-| **章节结构提取** | extractChapterStructure |
-| **进度回调** | progressCallback调用 |
-| **变量路径推断** | inferVariablePath |
-| **字段类型推断** | inferFieldType |
-| **错误处理** | 网络错误重试、fallback |
+| 测试模块           | 测试内容                   |
+| ------------------ | -------------------------- |
+| **流程判断逻辑**   | 快速流程 vs 多阶段流程判断 |
+| **下划线信息处理** | mergeUnderlineInfo处理     |
+| **AI响应解析**     | JSON解析、markdown清理     |
+| **章节判断**       | checkNeedsParameterization |
+| **空白模式提取**   | extractBlankPatterns       |
+| **章节结构提取**   | extractChapterStructure    |
+| **进度回调**       | progressCallback调用       |
+| **变量路径推断**   | inferVariablePath          |
+| **字段类型推断**   | inferFieldType             |
+| **错误处理**       | 网络错误重试、fallback     |
 
 ### E2E测试 (`ai-identify.e2e-spec.ts`)
 
-| 测试模块 | 测试内容 |
-|----------|----------|
-| **POST /studio/direct-ai-identify** | 直接AI识别API |
-| **POST /studio/direct-ai-identify-multistage** | 多阶段AI识别API |
-| **GET /studio/direct-ai-identify-progress** | SSE进度API |
-| **POST /studio/validate-content** | 内容验证API |
-| **POST /studio/preview-content** | 预览内容API |
-| **GET /studio/template-types** | 模板类型列表API |
-| **完整流程** | identify-preview-apply cycle |
-| **性能测试** | 大文档处理、响应时间 |
+| 测试模块                                       | 测试内容                     |
+| ---------------------------------------------- | ---------------------------- |
+| **POST /studio/direct-ai-identify**            | 直接AI识别API                |
+| **POST /studio/direct-ai-identify-multistage** | 多阶段AI识别API              |
+| **GET /studio/direct-ai-identify-progress**    | SSE进度API                   |
+| **POST /studio/validate-content**              | 内容验证API                  |
+| **POST /studio/preview-content**               | 预览内容API                  |
+| **GET /studio/template-types**                 | 模板类型列表API              |
+| **完整流程**                                   | identify-preview-apply cycle |
+| **性能测试**                                   | 大文档处理、响应时间         |
 
 ## 运行测试
 
@@ -174,7 +174,13 @@ const mockContractContent = `
 `;
 
 const mockUnderlineInfo = [
-  { text: '______', underlineType: 'single', paragraphText: '甲方：______', paragraphIndex: 0, position: { start: 3, end: 9 } },
+  {
+    text: '______',
+    underlineType: 'single',
+    paragraphText: '甲方：______',
+    paragraphIndex: 0,
+    position: { start: 3, end: 9 },
+  },
   // ...
 ];
 ```
@@ -182,6 +188,7 @@ const mockUnderlineInfo = [
 ## 注意事项
 
 1. **代码修改后需要重启容器**: 由于代码通过卷加载，修改代码后需要重启容器才能生效
+
    ```bash
    docker restart carbone-engine
    ```

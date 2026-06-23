@@ -57,10 +57,9 @@ export function mapCapabilityRelease(raw: any): CapabilityReleaseDTO {
 }
 
 export function mapCapabilitySourceSnapshot(raw: any): CapabilitySourceSnapshotDTO {
-  const sourcePayload = (
-    parseCapabilityReleaseJson<Record<string, unknown>>(raw.source_payload_json)
-    || {}
-  ) as Record<string, unknown>;
+  const sourcePayload = (parseCapabilityReleaseJson<Record<string, unknown>>(
+    raw.source_payload_json
+  ) || {}) as Record<string, unknown>;
   return {
     id: raw.id,
     releaseId: raw.release_id,
@@ -68,10 +67,10 @@ export function mapCapabilitySourceSnapshot(raw: any): CapabilitySourceSnapshotD
     sourceType: raw.source_type,
     sourceId: raw.source_id,
     workflowArtifactRef:
-      sourcePayload.workflowArtifactRef
-      && typeof sourcePayload.workflowArtifactRef === 'object'
-      && typeof (sourcePayload.workflowArtifactRef as Record<string, unknown>).workflowId === 'string'
-        ? sourcePayload.workflowArtifactRef as CapabilitySourceSnapshotDTO['workflowArtifactRef']
+      sourcePayload.workflowArtifactRef &&
+      typeof sourcePayload.workflowArtifactRef === 'object' &&
+      typeof (sourcePayload.workflowArtifactRef as Record<string, unknown>).workflowId === 'string'
+        ? (sourcePayload.workflowArtifactRef as CapabilitySourceSnapshotDTO['workflowArtifactRef'])
         : null,
     sourcePayload,
     summary: raw.summary,
@@ -132,7 +131,8 @@ export function mapCapabilitySkillDraft(raw: any): SkillDraftDTO {
     description: raw.description,
     triggerKeywords: parseCapabilityReleaseJson<string[]>(raw.trigger_keywords) || [],
     paramsSchema: parseCapabilityReleaseJson(raw.params_schema) || {},
-    executionFlowTemplateIds: parseCapabilityReleaseJson<string[]>(raw.execution_flow_template_ids) || [],
+    executionFlowTemplateIds:
+      parseCapabilityReleaseJson<string[]>(raw.execution_flow_template_ids) || [],
     tools: parseCapabilityReleaseJson<string[]>(raw.tools) || [],
     apiEndpoints: parseCapabilityReleaseJson(raw.api_endpoints) || null,
     draftPayload: parseCapabilityReleaseJson(raw.draft_payload_json) || {},

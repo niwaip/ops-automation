@@ -27,7 +27,7 @@ describe('AIIdentifierService', () => {
         variableName: 'partyA_name',
         significance: '甲方公司名称',
         fieldType: 'text',
-        confidence: 0.95
+        confidence: 0.95,
       },
       {
         index: 2,
@@ -35,9 +35,9 @@ describe('AIIdentifierService', () => {
         variableName: 'partyB_name',
         significance: '乙方公司名称',
         fieldType: 'text',
-        confidence: 0.90
-      }
-    ])
+        confidence: 0.9,
+      },
+    ]),
   };
 
   // Mock 文档理解AI响应
@@ -54,21 +54,21 @@ describe('AIIdentifierService', () => {
           content: '协议双方信息',
           purpose: '明确合同当事人',
           needsParameterization: true,
-          estimatedParams: ['甲方名称', '甲方地址']
+          estimatedParams: ['甲方名称', '甲方地址'],
         },
         {
           name: '第二条 合同生效',
           content: '合同生效条款',
           purpose: '明确生效条件',
           needsParameterization: false,
-          estimatedParams: []
-        }
+          estimatedParams: [],
+        },
       ],
       parties: [
         { role: '甲方', fieldsNeeded: ['名称', '地址', '代表人'] },
-        { role: '乙方', fieldsNeeded: ['名称', '地址', '代表人'] }
-      ]
-    })
+        { role: '乙方', fieldsNeeded: ['名称', '地址', '代表人'] },
+      ],
+    }),
   };
 
   beforeEach(async () => {
@@ -76,7 +76,7 @@ describe('AIIdentifierService', () => {
       parseDocx: jest.fn().mockResolvedValue({
         elements: [],
         tables: [],
-        images: []
+        images: [],
       }),
     };
 
@@ -120,15 +120,15 @@ describe('AIIdentifierService', () => {
           underlineType: 'single',
           paragraphText: '甲方：______',
           paragraphIndex: 0,
-          position: { start: 3, end: 9 }
+          position: { start: 3, end: 9 },
         },
         {
           text: '______',
           underlineType: 'single',
           paragraphText: '乙方：______',
           paragraphIndex: 1,
-          position: { start: 3, end: 9 }
-        }
+          position: { start: 3, end: 9 },
+        },
       ];
 
       const documentContent = '甲方：______\n乙方：______';
@@ -167,16 +167,27 @@ describe('AIIdentifierService', () => {
       mockedAxios.post.mockResolvedValueOnce({
         data: {
           success: true,
-          response: JSON.stringify({ suggestions: [
-            { index: 1, originalText: '______', variablePath: '{d.partyA.name}', variableName: 'partyA_name', fieldType: 'text', significance: '甲方名称', confidence: 0.95 }
-          ]})
-        }
+          response: JSON.stringify({
+            suggestions: [
+              {
+                index: 1,
+                originalText: '______',
+                variablePath: '{d.partyA.name}',
+                variableName: 'partyA_name',
+                fieldType: 'text',
+                significance: '甲方名称',
+                confidence: 0.95,
+              },
+            ],
+          }),
+        },
       });
 
       // Mock 阶段3: 整合确认
       mockedAxios.post.mockResolvedValueOnce({ data: mockAIResponse });
 
-      const documentContent = '第一条 协议双方\n甲方：______\n第二条 合同生效\n本合同自签字之日起生效。';
+      const documentContent =
+        '第一条 协议双方\n甲方：______\n第二条 合同生效\n本合同自签字之日起生效。';
       const templateType = 'contract';
       const progressCallback = jest.fn();
 
@@ -240,13 +251,15 @@ describe('AIIdentifierService', () => {
     it('should correctly process underlineInfo with position via quick flow', async () => {
       mockedAxios.post.mockResolvedValueOnce({ data: mockAIResponse });
 
-      const underlineInfo = [{
-        text: '______',
-        underlineType: 'single',
-        paragraphText: '甲方名称：______',
-        paragraphIndex: 0,
-        position: { start: 8, end: 14 }
-      }];
+      const underlineInfo = [
+        {
+          text: '______',
+          underlineType: 'single',
+          paragraphText: '甲方名称：______',
+          paragraphIndex: 0,
+          position: { start: 8, end: 14 },
+        },
+      ];
 
       const result = await service.identifyFromContentMultiStage(
         '甲方名称：______',
@@ -270,15 +283,15 @@ describe('AIIdentifierService', () => {
           underlineType: 'single',
           paragraphText: '甲方：______ 地址：______',
           paragraphIndex: 0,
-          position: { start: 3, end: 9 }
+          position: { start: 3, end: 9 },
         },
         {
           text: '______',
           underlineType: 'single',
           paragraphText: '甲方：______ 地址：______',
           paragraphIndex: 0,
-          position: { start: 14, end: 20 }
-        }
+          position: { start: 14, end: 20 },
+        },
       ];
 
       const result = await service.identifyFromContentMultiStage(
@@ -297,12 +310,14 @@ describe('AIIdentifierService', () => {
     it('should handle underlineInfo without paragraphIndex', async () => {
       mockedAxios.post.mockResolvedValueOnce({ data: mockAIResponse });
 
-      const underlineInfo = [{
-        text: '______',
-        underlineType: 'single',
-        paragraphText: '甲方：______',
-        position: { start: 3, end: 9 }
-      }];
+      const underlineInfo = [
+        {
+          text: '______',
+          underlineType: 'single',
+          paragraphText: '甲方：______',
+          position: { start: 3, end: 9 },
+        },
+      ];
 
       const result = await service.identifyFromContentMultiStage(
         '甲方：______',
@@ -324,17 +339,20 @@ describe('AIIdentifierService', () => {
     it('should parse JSON array response correctly', async () => {
       const arrayResponse = {
         success: true,
-        response: '[{"index":1,"variablePath":"{d.name}","variableName":"name","significance":"名称","fieldType":"text","confidence":0.9}]'
+        response:
+          '[{"index":1,"variablePath":"{d.name}","variableName":"name","significance":"名称","fieldType":"text","confidence":0.9}]',
       };
       mockedAxios.post.mockResolvedValueOnce({ data: arrayResponse });
 
-      const underlineInfo = [{
-        text: '______',
-        underlineType: 'single',
-        paragraphText: '甲方：______',
-        paragraphIndex: 0,
-        position: { start: 3, end: 9 }
-      }];
+      const underlineInfo = [
+        {
+          text: '______',
+          underlineType: 'single',
+          paragraphText: '甲方：______',
+          paragraphIndex: 0,
+          position: { start: 3, end: 9 },
+        },
+      ];
 
       const result = await service.identifyFromContentMultiStage(
         '甲方：______',
@@ -352,17 +370,19 @@ describe('AIIdentifierService', () => {
     it('should parse JSON object with suggestions field', async () => {
       const objectResponse = {
         success: true,
-        response: '{"suggestions":[{"index":1,"variablePath":"{d.name}","significance":"名称"}]}'
+        response: '{"suggestions":[{"index":1,"variablePath":"{d.name}","significance":"名称"}]}',
       };
       mockedAxios.post.mockResolvedValueOnce({ data: objectResponse });
 
-      const underlineInfo = [{
-        text: '______',
-        underlineType: 'single',
-        paragraphText: '甲方：______',
-        paragraphIndex: 0,
-        position: { start: 3, end: 9 }
-      }];
+      const underlineInfo = [
+        {
+          text: '______',
+          underlineType: 'single',
+          paragraphText: '甲方：______',
+          paragraphIndex: 0,
+          position: { start: 3, end: 9 },
+        },
+      ];
 
       const result = await service.identifyFromContentMultiStage(
         '甲方：______',
@@ -379,17 +399,19 @@ describe('AIIdentifierService', () => {
     it('should handle markdown code block in response', async () => {
       const markdownResponse = {
         success: true,
-        response: '```json\n[{"index":1,"variablePath":"{d.name}","significance":"名称"}]\n```'
+        response: '```json\n[{"index":1,"variablePath":"{d.name}","significance":"名称"}]\n```',
       };
       mockedAxios.post.mockResolvedValueOnce({ data: markdownResponse });
 
-      const underlineInfo = [{
-        text: '______',
-        underlineType: 'single',
-        paragraphText: '甲方：______',
-        paragraphIndex: 0,
-        position: { start: 3, end: 9 }
-      }];
+      const underlineInfo = [
+        {
+          text: '______',
+          underlineType: 'single',
+          paragraphText: '甲方：______',
+          paragraphIndex: 0,
+          position: { start: 3, end: 9 },
+        },
+      ];
 
       const result = await service.identifyFromContentMultiStage(
         '甲方：______',
@@ -406,17 +428,19 @@ describe('AIIdentifierService', () => {
     it('should handle invalid JSON response gracefully', async () => {
       const invalidResponse = {
         success: true,
-        response: 'This is not a valid JSON response'
+        response: 'This is not a valid JSON response',
       };
       mockedAxios.post.mockResolvedValueOnce({ data: invalidResponse });
 
-      const underlineInfo = [{
-        text: '______',
-        underlineType: 'single',
-        paragraphText: '甲方：______',
-        paragraphIndex: 0,
-        position: { start: 3, end: 9 }
-      }];
+      const underlineInfo = [
+        {
+          text: '______',
+          underlineType: 'single',
+          paragraphText: '甲方：______',
+          paragraphIndex: 0,
+          position: { start: 3, end: 9 },
+        },
+      ];
 
       // 重试机制会多次调用
       mockedAxios.post.mockResolvedValue({ data: invalidResponse });
@@ -493,12 +517,7 @@ describe('AIIdentifierService', () => {
 
       const content = '甲方：______ 乙方：______';
 
-      const result = await service.identifyFromContent(
-        content,
-        'docx',
-        'contract',
-        undefined
-      );
+      const result = await service.identifyFromContent(content, 'docx', 'contract', undefined);
 
       // 间接验证：空白被识别
       expect(result.suggestions.length).toBeGreaterThanOrEqual(0);
@@ -509,12 +528,7 @@ describe('AIIdentifierService', () => {
 
       const content = '甲方名称：     乙方名称：     ';
 
-      const result = await service.identifyFromContent(
-        content,
-        'docx',
-        'contract',
-        undefined
-      );
+      const result = await service.identifyFromContent(content, 'docx', 'contract', undefined);
 
       expect(result.suggestions.length).toBeGreaterThanOrEqual(0);
     });
@@ -524,12 +538,7 @@ describe('AIIdentifierService', () => {
 
       const content = '本合同自签字之日起生效。';
 
-      const result = await service.identifyFromContent(
-        content,
-        'docx',
-        'contract',
-        undefined
-      );
+      const result = await service.identifyFromContent(content, 'docx', 'contract', undefined);
 
       expect(result.suggestions).toBeDefined();
     });
@@ -566,13 +575,15 @@ describe('AIIdentifierService', () => {
     it('should call progress callback with correct stages', async () => {
       mockedAxios.post.mockResolvedValueOnce({ data: mockAIResponse });
 
-      const underlineInfo = [{
-        text: '______',
-        underlineType: 'single',
-        paragraphText: '甲方：______',
-        paragraphIndex: 0,
-        position: { start: 3, end: 9 }
-      }];
+      const underlineInfo = [
+        {
+          text: '______',
+          underlineType: 'single',
+          paragraphText: '甲方：______',
+          paragraphIndex: 0,
+          position: { start: 3, end: 9 },
+        },
+      ];
 
       const progressCallback = jest.fn();
 
@@ -597,13 +608,15 @@ describe('AIIdentifierService', () => {
     it('should report 100% progress on completion', async () => {
       mockedAxios.post.mockResolvedValueOnce({ data: mockAIResponse });
 
-      const underlineInfo = [{
-        text: '______',
-        underlineType: 'single',
-        paragraphText: '甲方：______',
-        paragraphIndex: 0,
-        position: { start: 3, end: 9 }
-      }];
+      const underlineInfo = [
+        {
+          text: '______',
+          underlineType: 'single',
+          paragraphText: '甲方：______',
+          paragraphIndex: 0,
+          position: { start: 3, end: 9 },
+        },
+      ];
 
       const progressCallback = jest.fn();
 
@@ -633,13 +646,15 @@ describe('AIIdentifierService', () => {
       // 第二次调用成功
       mockedAxios.post.mockResolvedValueOnce({ data: mockAIResponse });
 
-      const underlineInfo = [{
-        text: '______',
-        underlineType: 'single',
-        paragraphText: '甲方：______',
-        paragraphIndex: 0,
-        position: { start: 3, end: 9 }
-      }];
+      const underlineInfo = [
+        {
+          text: '______',
+          underlineType: 'single',
+          paragraphText: '甲方：______',
+          paragraphIndex: 0,
+          position: { start: 3, end: 9 },
+        },
+      ];
 
       const result = await service.identifyFromContentMultiStage(
         '甲方：______',
@@ -680,13 +695,15 @@ describe('AIIdentifierService', () => {
     it('should return correct AIIdentifyResponse structure', async () => {
       mockedAxios.post.mockResolvedValueOnce({ data: mockAIResponse });
 
-      const underlineInfo = [{
-        text: '______',
-        underlineType: 'single',
-        paragraphText: '甲方：______',
-        paragraphIndex: 0,
-        position: { start: 3, end: 9 }
-      }];
+      const underlineInfo = [
+        {
+          text: '______',
+          underlineType: 'single',
+          paragraphText: '甲方：______',
+          paragraphIndex: 0,
+          position: { start: 3, end: 9 },
+        },
+      ];
 
       const result = await service.identifyFromContentMultiStage(
         '甲方：______',
@@ -708,13 +725,15 @@ describe('AIIdentifierService', () => {
     it('should process underlineInfo and return suggestions', async () => {
       mockedAxios.post.mockResolvedValueOnce({ data: mockAIResponse });
 
-      const underlineInfo = [{
-        text: '______',
-        underlineType: 'single',
-        paragraphText: '甲方：______',
-        paragraphIndex: 0,
-        position: { start: 3, end: 9 }
-      }];
+      const underlineInfo = [
+        {
+          text: '______',
+          underlineType: 'single',
+          paragraphText: '甲方：______',
+          paragraphIndex: 0,
+          position: { start: 3, end: 9 },
+        },
+      ];
 
       const result = await service.identifyFromContentMultiStage(
         '甲方：______',
@@ -901,7 +920,7 @@ describe('AIIdentifierService', () => {
             columnIndex: 0,
           },
         ],
-        'd.items',
+        'd.items'
       );
 
       expect(mappings).toEqual([
@@ -927,7 +946,7 @@ describe('AIIdentifierService', () => {
           ],
           headerRow: '名称 | 状态',
         },
-        'd.items',
+        'd.items'
       );
 
       expect(mappings).toEqual([
@@ -1055,7 +1074,11 @@ describe('AIIdentifierService', () => {
       await service.generateParametersFromDescription('请生成采购合同的默认实例数据', {
         parameters: [
           { name: 'contract.procurementDetails[].seq', dataType: 'number', example: '1' },
-          { name: 'contract.procurementDetails[].materialCode', dataType: 'text', example: 'RB-6A-001' },
+          {
+            name: 'contract.procurementDetails[].materialCode',
+            dataType: 'text',
+            example: 'RB-6A-001',
+          },
         ],
         dataExampleJson: {
           contract: {
@@ -1071,16 +1094,20 @@ describe('AIIdentifierService', () => {
       expect(mockedAxios.post).toHaveBeenLastCalledWith(
         'http://localhost:3007/ai/models/test-model-id/test',
         expect.objectContaining({
-          prompt: expect.stringContaining('优先使用用户描述、参数示例值、参考数据结构中的真实业务值'),
+          prompt: expect.stringContaining(
+            '优先使用用户描述、参数示例值、参考数据结构中的真实业务值'
+          ),
         }),
-        expect.any(Object),
+        expect.any(Object)
       );
       expect(mockedAxios.post).toHaveBeenLastCalledWith(
         'http://localhost:3007/ai/models/test-model-id/test',
         expect.objectContaining({
-          prompt: expect.stringContaining('如果参考数据结构里存在数组/循环字段，除非用户明确要求仅 1 条，否则至少生成 2 条数据'),
+          prompt: expect.stringContaining(
+            '如果参考数据结构里存在数组/循环字段，除非用户明确要求仅 1 条，否则至少生成 2 条数据'
+          ),
         }),
-        expect.any(Object),
+        expect.any(Object)
       );
     });
 
@@ -1158,7 +1185,7 @@ describe('AIIdentifierService', () => {
     it('should handle document without blanks', async () => {
       mockedAxios.post.mockResolvedValueOnce({ data: mockDocumentUnderstandingResponse });
       mockedAxios.post.mockResolvedValue({
-        data: { success: true, response: '{"suggestions":[]}' }
+        data: { success: true, response: '{"suggestions":[]}' },
       });
 
       const result = await service.identifyFromContentMultiStage(
@@ -1185,13 +1212,15 @@ describe('AIIdentifierService', () => {
           templateType,
           undefined,
           undefined,
-          [{
-            text: '______',
-            underlineType: 'single',
-            paragraphText: '测试内容：______',
-            paragraphIndex: 0,
-            position: { start: 8, end: 14 }
-          }]
+          [
+            {
+              text: '______',
+              underlineType: 'single',
+              paragraphText: '测试内容：______',
+              paragraphIndex: 0,
+              position: { start: 8, end: 14 },
+            },
+          ]
         );
 
         expect(result).toBeDefined();

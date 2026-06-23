@@ -3,21 +3,95 @@ import type {
   ExecutionSemantic,
   ExecutionStatus,
   ExecutionStepStatus,
-} from "@ops/contracts";
+} from '@ops/contracts';
 
-export type {
-  ApprovalStatus,
-  ExecutionSemantic,
-  ExecutionStatus,
-  ExecutionStepStatus,
-};
+export type { ApprovalStatus, ExecutionSemantic, ExecutionStatus, ExecutionStepStatus };
+
+export interface WorkflowResultExecution {
+  status?: 'success' | 'partial_success' | 'failed' | 'cancelled';
+  executionId?: string;
+  startedAt?: string;
+  finishedAt?: string;
+  durationMs?: number;
+}
+
+export interface WorkflowResultTrigger {
+  type?: 'manual' | 'schedule' | 'api' | 'resume';
+  scheduleId?: string;
+  scheduledAt?: string;
+  windowStart?: string;
+  windowEnd?: string;
+}
+
+export interface WorkflowResultNextAction {
+  type?: string;
+  label?: string;
+  value?: string;
+}
+
+export interface WorkflowResultArtifact {
+  type?: string;
+  name?: string;
+  label?: string;
+  downloadUrl?: string;
+  url?: string;
+  path?: string;
+  mimeType?: string;
+}
+
+export type WorkflowResultTextFormat = 'plain_text' | 'markdown';
+
+export interface WorkflowResultPresentation {
+  preferAiSummary?: boolean;
+  preferStructuredView?: boolean;
+  chatSummary?: string;
+  notificationSummary?: string;
+  summaryFormat?: WorkflowResultTextFormat;
+  detailText?: string;
+  detailFormat?: WorkflowResultTextFormat;
+}
+
+export interface WorkflowResultBusinessSection {
+  resultType?: string;
+  title?: string;
+  summary?: string;
+  businessData?: unknown;
+  metrics?: Record<string, unknown>;
+  nextActions?: WorkflowResultNextAction[];
+}
+
+export interface WorkflowResultEnvelope {
+  execution?: WorkflowResultExecution;
+  trigger?: WorkflowResultTrigger;
+  result?: WorkflowResultBusinessSection;
+  artifacts?: WorkflowResultArtifact[];
+  presentation?: WorkflowResultPresentation;
+  delivery?: Record<string, unknown>;
+}
+
+export interface NormalizedExecutionResult {
+  envelope: WorkflowResultEnvelope;
+  resultType?: string;
+  title?: string;
+  summary?: string;
+  body?: string;
+  summaryFormat?: WorkflowResultTextFormat;
+  detailText?: string;
+  detailFormat?: WorkflowResultTextFormat;
+  structuredData?: unknown;
+  artifacts: WorkflowResultArtifact[];
+  downloadUrl?: string;
+  temporalLink?: string;
+  hasBusinessResult: boolean;
+  rawResult: unknown;
+}
 
 export interface ExecutionDto {
   id: string;
   skillId: string;
   status: ExecutionStatus;
   runtimeType?: string;
-  riskLevel?: "L0" | "L1" | "L2" | "L3";
+  riskLevel?: 'L0' | 'L1' | 'L2' | 'L3';
   currentStepId?: string;
   runtimeSessionId?: string;
   currentPhaseKey?: string;
@@ -38,6 +112,7 @@ export interface ExecutionDto {
   normalizedInput?: Record<string, unknown>;
   semantic?: ExecutionSemantic;
   result?: Record<string, unknown>;
+  normalizedResult?: NormalizedExecutionResult;
   createdBy?: string;
   createdByName?: string;
   phases?: ExecutionPhaseDto[];

@@ -153,7 +153,10 @@ export const DocumentFileAPI = {
                     binary += String.fromCharCode(bytes[i]);
                   }
                   base64Slice = btoa(binary);
-                  console.log(`slice ${sliceIndex} converted from ArrayBuffer to base64, length:`, base64Slice.length);
+                  console.log(
+                    `slice ${sliceIndex} converted from ArrayBuffer to base64, length:`,
+                    base64Slice.length
+                  );
                 } else if (sliceData && typeof sliceData === 'object') {
                   try {
                     const bytes = new Uint8Array(sliceData as any);
@@ -237,8 +240,11 @@ export async function withWordTargetTableRow<T>(
   context: Word.RequestContext,
   tableIndex: number,
   sourceRowIndex: number,
-  callback: (targetRow: Word.TableRow, metadata: { columnCount: number; targetRowIndex: number }) => Promise<T>,
-  options?: { suppressLocateLog?: boolean },
+  callback: (
+    targetRow: Word.TableRow,
+    metadata: { columnCount: number; targetRowIndex: number }
+  ) => Promise<T>,
+  options?: { suppressLocateLog?: boolean }
 ): Promise<T | null> {
   const tables = context.document.body.tables;
   tables.load('items');
@@ -279,7 +285,7 @@ export async function withWordTargetTableRow<T>(
         `当前总行数: ${rows.items.length}`,
         `列数: ${columnCount}`,
         `源行内容: ${formatWordTableRowSnapshot(sourceCells.items)}`,
-      ].join('\n'),
+      ].join('\n')
     );
   }
 
@@ -299,7 +305,7 @@ export async function withWordTargetTableRow<T>(
         WordAPI.emitDebugLog(
           'debug',
           '循环表格已尝试创建下一行',
-          `表格: ${tableIndex}\n源行: ${sourceRowIndex}\n创建后总行数: ${rows.items.length}`,
+          `表格: ${tableIndex}\n源行: ${sourceRowIndex}\n创建后总行数: ${rows.items.length}`
         );
       }
     } catch (error) {
@@ -307,7 +313,7 @@ export async function withWordTargetTableRow<T>(
       WordAPI.emitDebugLog(
         'warn',
         '循环表格创建下一行失败',
-        `表格: ${tableIndex}\n源行: ${sourceRowIndex}\n${error instanceof Error ? error.message : String(error)}`,
+        `表格: ${tableIndex}\n源行: ${sourceRowIndex}\n${error instanceof Error ? error.message : String(error)}`
       );
     }
   }
@@ -321,7 +327,7 @@ export async function withWordTargetTableRow<T>(
         `源行: ${sourceRowIndex}`,
         `当前总行数: ${rows.items.length}`,
         '已停止应用，避免回退覆盖源行/表头行。',
-      ].join('\n'),
+      ].join('\n')
     );
     return null;
   }
@@ -331,7 +337,7 @@ export async function withWordTargetTableRow<T>(
     WordAPI.emitDebugLog(
       'error',
       '循环表格目标行不存在',
-      `表格: ${tableIndex}\n源行: ${sourceRowIndex}\n目标行: ${targetRowIndex}`,
+      `表格: ${tableIndex}\n源行: ${sourceRowIndex}\n目标行: ${targetRowIndex}`
     );
     return null;
   }
@@ -341,7 +347,7 @@ export async function withWordTargetTableRow<T>(
 
 export async function loadWordTableRowCells(
   context: Word.RequestContext,
-  row: Word.TableRow,
+  row: Word.TableRow
 ): Promise<Word.TableCell[]> {
   const cells = row.cells;
   cells.load('items');
@@ -358,7 +364,9 @@ export async function loadWordTableRowCells(
 
 function formatWordTableCellSnapshot(cell: Word.TableCell): string {
   const cellIndex = Number(cell.cellIndex || 0);
-  const rawText = String(cell.body.text || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const rawText = String(cell.body.text || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n');
   const normalizedText = rawText
     .split('\n')
     .map((line) => line.trim())
@@ -372,7 +380,14 @@ export function formatWordTableCellParagraphSnapshot(paragraphTexts: string[]): 
     return '(no paragraphs)';
   }
   return paragraphTexts
-    .map((text, index) => `p${index}: ${JSON.stringify(String(text || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n'))}`)
+    .map(
+      (text, index) =>
+        `p${index}: ${JSON.stringify(
+          String(text || '')
+            .replace(/\r\n/g, '\n')
+            .replace(/\r/g, '\n')
+        )}`
+    )
     .join('\n');
 }
 
@@ -389,7 +404,7 @@ export function formatWordTableRowSnapshot(cells: Word.TableCell[]): string {
 
 async function loadWordTableCellParagraphs(
   context: Word.RequestContext,
-  cell: Word.TableCell,
+  cell: Word.TableCell
 ): Promise<Array<{ paragraph: Word.Paragraph; text: string }>> {
   const paragraphs = cell.body.paragraphs;
   paragraphs.load('items');
@@ -408,7 +423,7 @@ async function loadWordTableCellParagraphs(
 
 export function getWordTableCellByColumn(
   cells: Word.TableCell[],
-  columnIndex: number,
+  columnIndex: number
 ): Word.TableCell | null {
   if (!cells.length) {
     return null;
@@ -420,7 +435,9 @@ export function getWordTableCellByColumn(
   }
 
   const sorted = [...cells].sort(
-    (left, right) => Math.abs(Number(left.cellIndex || 0) - columnIndex) - Math.abs(Number(right.cellIndex || 0) - columnIndex)
+    (left, right) =>
+      Math.abs(Number(left.cellIndex || 0) - columnIndex) -
+      Math.abs(Number(right.cellIndex || 0) - columnIndex)
   );
   return sorted[0] || null;
 }
@@ -441,23 +458,21 @@ function findWordLastNonEmptyParagraphIndex(paragraphTexts: string[]): number {
 
 function findWordReplacementParagraphIndex(
   paragraphTexts: string[],
-  replacementText: string,
+  replacementText: string
 ): number {
   const normalizedReplacement = String(replacementText || '').trim();
   if (!normalizedReplacement) {
     return findWordFirstNonEmptyParagraphIndex(paragraphTexts);
   }
 
-  const existingIndex = paragraphTexts.findIndex((text) => String(text || '').trim() === normalizedReplacement);
+  const existingIndex = paragraphTexts.findIndex(
+    (text) => String(text || '').trim() === normalizedReplacement
+  );
   if (existingIndex >= 0) {
     return existingIndex;
   }
 
-  const fieldLeaf = normalizedReplacement
-    .replace(/[{}]/g, '')
-    .split('.')
-    .pop()
-    || '';
+  const fieldLeaf = normalizedReplacement.replace(/[{}]/g, '').split('.').pop() || '';
 
   if (/_((cn)|(zh)|(zhcn))$/iu.test(fieldLeaf)) {
     return 0;
@@ -480,7 +495,7 @@ function findWordReplacementParagraphIndex(
 function shouldAppendWordReplacementParagraph(
   paragraphTexts: string[],
   replacementText: string,
-  targetIndex: number,
+  targetIndex: number
 ): boolean {
   const normalizedReplacement = String(replacementText || '').trim();
   if (!normalizedReplacement) {
@@ -504,7 +519,9 @@ function shouldAppendWordReplacementParagraph(
 }
 
 function splitWordReplacementParagraphs(replacementText: string): string[] {
-  const normalizedText = String(replacementText || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const normalizedText = String(replacementText || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n');
   const parts = normalizedText
     .split('\n')
     .map((part) => part.trim())
@@ -540,7 +557,7 @@ export async function replaceWordTableCellTextPreservingParagraphs(
     arrayPath?: string;
     includeStart?: boolean;
     includeEnd?: boolean;
-  },
+  }
 ): Promise<WordTableCellReplacementResult> {
   const normalizedArrayPath = extractWordLoopArrayPath(options.arrayPath || '');
   const startMarker = normalizedArrayPath ? `{#${normalizedArrayPath}}` : '';
@@ -581,12 +598,16 @@ export async function replaceWordTableCellTextPreservingParagraphs(
   const paragraphStates = paragraphEntries.map((entry) => ({
     paragraph: entry.paragraph,
     originalText: entry.text,
-    cleanedText: normalizedArrayPath ? stripWordLoopMarkers(entry.text, normalizedArrayPath) : entry.text,
+    cleanedText: normalizedArrayPath
+      ? stripWordLoopMarkers(entry.text, normalizedArrayPath)
+      : entry.text,
     isStartMarkerOnly: Boolean(startMarker) && isWordMarkerOnlyParagraph(entry.text, startMarker),
     isEndMarkerOnly: Boolean(endMarker) && isWordMarkerOnlyParagraph(entry.text, endMarker),
   }));
 
-  const contentParagraphs = paragraphStates.filter((entry) => !entry.isStartMarkerOnly && !entry.isEndMarkerOnly);
+  const contentParagraphs = paragraphStates.filter(
+    (entry) => !entry.isStartMarkerOnly && !entry.isEndMarkerOnly
+  );
   const contentParagraphTexts = contentParagraphs.map((entry) => entry.cleanedText);
   const beforeParagraphTexts = paragraphEntries.map((entry) => entry.text);
   const contentParagraphTextsBefore = [...contentParagraphTexts];
@@ -595,12 +616,15 @@ export async function replaceWordTableCellTextPreservingParagraphs(
 
   if (typeof options.replacementText === 'string') {
     const replacementParagraphs = splitWordReplacementParagraphs(options.replacementText);
-    targetParagraphIndex = findWordReplacementParagraphIndex(contentParagraphTexts, replacementParagraphs[0] || options.replacementText);
+    targetParagraphIndex = findWordReplacementParagraphIndex(
+      contentParagraphTexts,
+      replacementParagraphs[0] || options.replacementText
+    );
     if (replacementParagraphs.length <= 1) {
       appendNewParagraph = shouldAppendWordReplacementParagraph(
         contentParagraphTexts,
         normalizedReplacement,
-        targetParagraphIndex,
+        targetParagraphIndex
       );
       if (appendNewParagraph) {
         contentParagraphTexts.push(normalizedReplacement);
@@ -630,8 +654,9 @@ export async function replaceWordTableCellTextPreservingParagraphs(
   });
 
   if (contentParagraphTexts.length > contentParagraphs.length) {
-    let insertAnchor: any = contentParagraphs[contentParagraphs.length - 1]?.paragraph
-      || paragraphEntries[paragraphEntries.length - 1]?.paragraph;
+    let insertAnchor: any =
+      contentParagraphs[contentParagraphs.length - 1]?.paragraph ||
+      paragraphEntries[paragraphEntries.length - 1]?.paragraph;
     const cellBody = cell.body as any;
     for (let index = contentParagraphs.length; index < contentParagraphTexts.length; index += 1) {
       const paragraphText = contentParagraphTexts[index];
@@ -664,8 +689,12 @@ export async function replaceWordTableCellTextPreservingParagraphs(
         if (typeof cellBody.insertParagraph === 'function') {
           cellBody.insertParagraph(startMarker, 'Start');
         } else {
-          const firstContentParagraph: any = contentParagraphs[0]?.paragraph || paragraphEntries[0]?.paragraph;
-          if (firstContentParagraph && typeof firstContentParagraph.insertParagraph === 'function') {
+          const firstContentParagraph: any =
+            contentParagraphs[0]?.paragraph || paragraphEntries[0]?.paragraph;
+          if (
+            firstContentParagraph &&
+            typeof firstContentParagraph.insertParagraph === 'function'
+          ) {
             firstContentParagraph.insertParagraph(startMarker, 'Before');
           }
         }
@@ -691,8 +720,9 @@ export async function replaceWordTableCellTextPreservingParagraphs(
         if (typeof cellBody.insertParagraph === 'function') {
           cellBody.insertParagraph(endMarker, 'End');
         } else {
-          const lastContentParagraph: any = contentParagraphs[contentParagraphs.length - 1]?.paragraph
-            || paragraphEntries[paragraphEntries.length - 1]?.paragraph;
+          const lastContentParagraph: any =
+            contentParagraphs[contentParagraphs.length - 1]?.paragraph ||
+            paragraphEntries[paragraphEntries.length - 1]?.paragraph;
           if (lastContentParagraph && typeof lastContentParagraph.insertParagraph === 'function') {
             lastContentParagraph.insertParagraph(endMarker, 'After');
           }

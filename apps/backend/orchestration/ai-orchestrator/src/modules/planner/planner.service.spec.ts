@@ -17,7 +17,7 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
     };
     service = new PlannerService(
       recognizerService as unknown as RecognizerService,
-      modelService as any,
+      modelService as any
     );
   });
 
@@ -88,7 +88,11 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
     });
 
     const plan = await service.generatePlan({
-      request: { user_input: '帮我查一下这个目标的数据', user_id: 'u1', modelId: 'selected-model-id' } as any,
+      request: {
+        user_input: '帮我查一下这个目标的数据',
+        user_id: 'u1',
+        modelId: 'selected-model-id',
+      } as any,
       userId: 'u1',
       authToken: 'Bearer test',
       traceId: 'trace-1',
@@ -151,7 +155,7 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
             }),
           }),
         }),
-      }),
+      })
     );
   });
 
@@ -229,7 +233,9 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
       outputParams: skill.outputParams,
     };
 
-    jest.spyOn(service as any, 'loadAvailableSkills').mockResolvedValue([skill] as AvailableSkillDefinition[]);
+    jest
+      .spyOn(service as any, 'loadAvailableSkills')
+      .mockResolvedValue([skill] as AvailableSkillDefinition[]);
     const hydratedMatch = (service as any).hydrateMatchedSkill(match, [skill]);
     jest.spyOn(service as any, 'matchSkill').mockResolvedValue(hydratedMatch);
     jest.spyOn(recognizerService, 'recognizeParams').mockResolvedValue({
@@ -245,16 +251,18 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
     });
 
     const target = plan.required_inputs.find((item) => item.name === 'target');
-    expect(target).toEqual(expect.objectContaining({
-      required: false,
-      required_mode: 'optional',
-      value: 'workflow-target',
-      source: 'workflow_default',
-      source_priority: ['user_input', 'workflow_default'],
-      missing: false,
-      confirmation_threshold: 0.95,
-      preview_blocking: false,
-    }));
+    expect(target).toEqual(
+      expect.objectContaining({
+        required: false,
+        required_mode: 'optional',
+        value: 'workflow-target',
+        source: 'workflow_default',
+        source_priority: ['user_input', 'workflow_default'],
+        missing: false,
+        confirmation_threshold: 0.95,
+        preview_blocking: false,
+      })
+    );
     expect(plan.required_inputs.some((item) => item.name === 'notes')).toBe(false);
     expect(plan.metadata?.execution_snapshot).toEqual({
       normalizedInputJson: expect.objectContaining({
@@ -331,7 +339,9 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
       outputParams: undefined,
     };
 
-    jest.spyOn(service as any, 'loadAvailableSkills').mockResolvedValue([skill] as AvailableSkillDefinition[]);
+    jest
+      .spyOn(service as any, 'loadAvailableSkills')
+      .mockResolvedValue([skill] as AvailableSkillDefinition[]);
     jest.spyOn(service as any, 'matchSkill').mockResolvedValue(match);
     jest.spyOn(recognizerService, 'recognizeParams').mockResolvedValue({
       params: {
@@ -415,7 +425,9 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
       outputParams: undefined,
     };
 
-    jest.spyOn(service as any, 'loadAvailableSkills').mockResolvedValue([skill] as AvailableSkillDefinition[]);
+    jest
+      .spyOn(service as any, 'loadAvailableSkills')
+      .mockResolvedValue([skill] as AvailableSkillDefinition[]);
     jest.spyOn(service as any, 'matchSkill').mockResolvedValue(match);
     jest.spyOn(recognizerService, 'recognizeParams').mockResolvedValue({
       params: {},
@@ -514,7 +526,7 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
       {
         mode: 'waiting_input_resume',
         target_skill_id: 'skill-contract',
-      },
+      }
     );
 
     expect(matched).toMatchObject({
@@ -582,7 +594,9 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
       outputParams: undefined,
     };
 
-    jest.spyOn(service as any, 'loadAvailableSkills').mockResolvedValue([skill] as AvailableSkillDefinition[]);
+    jest
+      .spyOn(service as any, 'loadAvailableSkills')
+      .mockResolvedValue([skill] as AvailableSkillDefinition[]);
     jest.spyOn(service as any, 'matchSkill').mockResolvedValue(match);
     jest.spyOn(recognizerService, 'recognizeParams').mockResolvedValue({
       params: {
@@ -628,7 +642,7 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
           },
           required: ['signDate'],
         },
-      }),
+      })
     );
   });
 
@@ -692,9 +706,12 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
       outputParams: undefined,
     };
 
-    jest.spyOn(service as any, 'loadAvailableSkills').mockResolvedValue([skill] as AvailableSkillDefinition[]);
+    jest
+      .spyOn(service as any, 'loadAvailableSkills')
+      .mockResolvedValue([skill] as AvailableSkillDefinition[]);
     jest.spyOn(service as any, 'matchSkill').mockResolvedValue(match);
-    jest.spyOn(recognizerService, 'recognizeParams')
+    jest
+      .spyOn(recognizerService, 'recognizeParams')
       .mockResolvedValueOnce({
         params: {
           'info.partyA': '星海智造科技有限公司',
@@ -791,8 +808,15 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
 
     const firstRecognizeCall = recognizerService.recognizeParams.mock.calls[0]?.[0];
     const secondRecognizeCall = recognizerService.recognizeParams.mock.calls[1]?.[0];
-    expect(Object.keys(firstRecognizeCall.params_schema.properties)).toEqual(['info.partyA', 'signDate', 'amount']);
-    expect(Object.keys(secondRecognizeCall.params_schema.properties)).toEqual(['signDate', 'info.partyA']);
+    expect(Object.keys(firstRecognizeCall.params_schema.properties)).toEqual([
+      'info.partyA',
+      'signDate',
+      'amount',
+    ]);
+    expect(Object.keys(secondRecognizeCall.params_schema.properties)).toEqual([
+      'signDate',
+      'info.partyA',
+    ]);
     expect(secondRecognizeCall.params_schema.required).toEqual(['signDate']);
   });
 
@@ -850,7 +874,9 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
       outputParams: undefined,
     };
 
-    jest.spyOn(service as any, 'loadAvailableSkills').mockResolvedValue([skill] as AvailableSkillDefinition[]);
+    jest
+      .spyOn(service as any, 'loadAvailableSkills')
+      .mockResolvedValue([skill] as AvailableSkillDefinition[]);
     jest.spyOn(service as any, 'matchSkill').mockResolvedValue(match);
     jest.spyOn(recognizerService, 'recognizeParams').mockResolvedValue({
       params: {
@@ -862,7 +888,11 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
     });
 
     const plan = await service.generatePlan({
-      request: { user_input: '帮我查工业产值，单位是台', user_id: 'u1', modelId: 'selected-model-id' } as any,
+      request: {
+        user_input: '帮我查工业产值，单位是台',
+        user_id: 'u1',
+        modelId: 'selected-model-id',
+      } as any,
       userId: 'u1',
       authToken: 'Bearer test',
       traceId: 'trace-1',
@@ -946,7 +976,11 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
     });
 
     const plan = await service.generatePlan({
-      request: { user_input: '帮我查一下华东区域工业数据', user_id: 'u1', modelId: 'selected-model-id' } as any,
+      request: {
+        user_input: '帮我查一下华东区域工业数据',
+        user_id: 'u1',
+        modelId: 'selected-model-id',
+      } as any,
       userId: 'u1',
       authToken: 'Bearer test',
       traceId: 'trace-1',
@@ -1019,7 +1053,9 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
       outputParams: undefined,
     };
 
-    jest.spyOn(service as any, 'loadAvailableSkills').mockResolvedValue([skill] as AvailableSkillDefinition[]);
+    jest
+      .spyOn(service as any, 'loadAvailableSkills')
+      .mockResolvedValue([skill] as AvailableSkillDefinition[]);
     jest.spyOn(service as any, 'matchSkill').mockResolvedValue(match);
     jest.spyOn(recognizerService, 'recognizeParams').mockResolvedValue({
       params: {
@@ -1110,7 +1146,9 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
       outputParams: undefined,
     };
 
-    jest.spyOn(service as any, 'loadAvailableSkills').mockResolvedValue([skill] as AvailableSkillDefinition[]);
+    jest
+      .spyOn(service as any, 'loadAvailableSkills')
+      .mockResolvedValue([skill] as AvailableSkillDefinition[]);
     jest.spyOn(service as any, 'matchSkill').mockResolvedValue(match);
     jest.spyOn(recognizerService, 'recognizeParams').mockResolvedValue({
       params: {
@@ -1157,7 +1195,13 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
           'items[].unit': { type: 'string', description: '设备单位', default: '' } as any,
           'items[].unit_price': { type: 'number', description: '设备单价', default: '' } as any,
         },
-        required: ['items[].code', 'items[].name', 'items[].spec', 'items[].quantity', 'items[].subtotal'],
+        required: [
+          'items[].code',
+          'items[].name',
+          'items[].spec',
+          'items[].quantity',
+          'items[].subtotal',
+        ],
       },
       templateId: 'tpl-purchase-contract',
       carboneTemplateId: 'tpl-purchase-contract',
@@ -1190,7 +1234,9 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
       outputParams: undefined,
     };
 
-    jest.spyOn(service as any, 'loadAvailableSkills').mockResolvedValue([skill] as AvailableSkillDefinition[]);
+    jest
+      .spyOn(service as any, 'loadAvailableSkills')
+      .mockResolvedValue([skill] as AvailableSkillDefinition[]);
     jest.spyOn(service as any, 'matchSkill').mockResolvedValue(match);
     jest.spyOn(recognizerService, 'recognizeParams').mockResolvedValue({
       params: {
@@ -1273,7 +1319,9 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
       outputParams: undefined,
     };
 
-    jest.spyOn(service as any, 'loadAvailableSkills').mockResolvedValue([skill] as AvailableSkillDefinition[]);
+    jest
+      .spyOn(service as any, 'loadAvailableSkills')
+      .mockResolvedValue([skill] as AvailableSkillDefinition[]);
     jest.spyOn(service as any, 'matchSkill').mockResolvedValue(match);
     jest.spyOn(recognizerService, 'recognizeParams').mockResolvedValue({
       params: {
@@ -1295,7 +1343,9 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
       traceId: 'trace-1',
     });
 
-    const paymentStage = plan.required_inputs.find((i) => i.name === 'paymentSchedule[].paymentStage');
+    const paymentStage = plan.required_inputs.find(
+      (i) => i.name === 'paymentSchedule[].paymentStage'
+    );
 
     expect(paymentStage?.required).toBe(false);
     expect(paymentStage?.value).toEqual(['2026-06-20']);
@@ -1351,7 +1401,9 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
       outputParams: undefined,
     };
 
-    jest.spyOn(service as any, 'loadAvailableSkills').mockResolvedValue([skill] as AvailableSkillDefinition[]);
+    jest
+      .spyOn(service as any, 'loadAvailableSkills')
+      .mockResolvedValue([skill] as AvailableSkillDefinition[]);
     jest.spyOn(service as any, 'matchSkill').mockResolvedValue(match);
 
     jest.spyOn(recognizerService, 'recognizeParams').mockResolvedValue({
@@ -1421,7 +1473,9 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
       outputParams: undefined,
     };
 
-    jest.spyOn(service as any, 'loadAvailableSkills').mockResolvedValue([skill] as AvailableSkillDefinition[]);
+    jest
+      .spyOn(service as any, 'loadAvailableSkills')
+      .mockResolvedValue([skill] as AvailableSkillDefinition[]);
     jest.spyOn(service as any, 'matchSkill').mockResolvedValue(match);
     jest.spyOn(recognizerService, 'recognizeParams').mockResolvedValue({
       params: {
@@ -1472,7 +1526,12 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
             description: '委托方名称（日文）',
           } as any,
         },
-        required: ['acceptance_days_cn', 'acceptance_days_jp', 'contract_partyA_cn', 'contract_partyA_jp'],
+        required: [
+          'acceptance_days_cn',
+          'acceptance_days_jp',
+          'contract_partyA_cn',
+          'contract_partyA_jp',
+        ],
       },
       templateId: 'tpl-contract',
       carboneTemplateId: 'carbone-tpl-1',
@@ -1509,7 +1568,9 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
       outputParams: undefined,
     };
 
-    jest.spyOn(service as any, 'loadAvailableSkills').mockResolvedValue([skill] as AvailableSkillDefinition[]);
+    jest
+      .spyOn(service as any, 'loadAvailableSkills')
+      .mockResolvedValue([skill] as AvailableSkillDefinition[]);
     jest.spyOn(service as any, 'matchSkill').mockResolvedValue(match);
     jest.spyOn(recognizerService, 'recognizeParams').mockResolvedValue({
       params: {
@@ -1579,7 +1640,12 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
             description: '验收期限天数（英文）',
           } as any,
         },
-        required: ['acceptance_days_cn', 'acceptance_days_en', 'contract_partyA_cn', 'contract_partyA_en'],
+        required: [
+          'acceptance_days_cn',
+          'acceptance_days_en',
+          'contract_partyA_cn',
+          'contract_partyA_en',
+        ],
       },
       templateId: 'tpl-contract-en',
       carboneTemplateId: 'carbone-tpl-en',
@@ -1616,7 +1682,9 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
       outputParams: undefined,
     };
 
-    jest.spyOn(service as any, 'loadAvailableSkills').mockResolvedValue([skill] as AvailableSkillDefinition[]);
+    jest
+      .spyOn(service as any, 'loadAvailableSkills')
+      .mockResolvedValue([skill] as AvailableSkillDefinition[]);
     jest.spyOn(service as any, 'matchSkill').mockResolvedValue(match);
     jest.spyOn(recognizerService, 'recognizeParams').mockResolvedValue({
       params: {
@@ -1708,7 +1776,9 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
       outputParams: undefined,
     };
 
-    jest.spyOn(service as any, 'loadAvailableSkills').mockResolvedValue([skill] as AvailableSkillDefinition[]);
+    jest
+      .spyOn(service as any, 'loadAvailableSkills')
+      .mockResolvedValue([skill] as AvailableSkillDefinition[]);
     jest.spyOn(service as any, 'matchSkill').mockResolvedValue(match);
     jest.spyOn(recognizerService, 'recognizeParams').mockResolvedValue({
       params: {
@@ -1798,7 +1868,9 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
       outputParams: undefined,
     };
 
-    jest.spyOn(service as any, 'loadAvailableSkills').mockResolvedValue([skill] as AvailableSkillDefinition[]);
+    jest
+      .spyOn(service as any, 'loadAvailableSkills')
+      .mockResolvedValue([skill] as AvailableSkillDefinition[]);
     jest.spyOn(service as any, 'matchSkill').mockResolvedValue(match);
     jest.spyOn(recognizerService, 'recognizeParams').mockResolvedValue({
       params: {},
@@ -1806,7 +1878,11 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
     });
 
     const plan = await service.generatePlan({
-      request: { user_input: '帮我生成采购合同', user_id: 'u1', modelId: 'selected-model-id' } as any,
+      request: {
+        user_input: '帮我生成采购合同',
+        user_id: 'u1',
+        modelId: 'selected-model-id',
+      } as any,
       userId: 'u1',
       authToken: 'Bearer test',
       traceId: 'trace-1',
@@ -1827,15 +1903,18 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
           },
           required: ['paymentSchedule[].amount'],
         },
-      }),
+      })
     );
-    const amountResolution = (plan.metadata?.execution_snapshot as any)?.normalizedInputJson?.paramResolution?.['paymentSchedule[].amount'];
-    expect(amountResolution).toEqual(expect.objectContaining({
-      display_name: '付款金额',
-      group_label: '付款计划',
-      render_path: 'payment.schedule.amount',
-      template_binding: 'contract.payment.amount',
-    }));
+    const amountResolution = (plan.metadata?.execution_snapshot as any)?.normalizedInputJson
+      ?.paramResolution?.['paymentSchedule[].amount'];
+    expect(amountResolution).toEqual(
+      expect.objectContaining({
+        display_name: '付款金额',
+        group_label: '付款计划',
+        render_path: 'payment.schedule.amount',
+        template_binding: 'contract.payment.amount',
+      })
+    );
     expect(amountResolution?.displayName).toBeUndefined();
     expect(amountResolution?.groupLabel).toBeUndefined();
     expect(amountResolution?.previewBlocking).toBeUndefined();
@@ -1902,7 +1981,9 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
       outputParams: undefined,
     };
 
-    jest.spyOn(service as any, 'loadAvailableSkills').mockResolvedValue([skill] as AvailableSkillDefinition[]);
+    jest
+      .spyOn(service as any, 'loadAvailableSkills')
+      .mockResolvedValue([skill] as AvailableSkillDefinition[]);
     const hydratedMatch = (service as any).hydrateMatchedSkill(match, [skill]);
     jest.spyOn(service as any, 'matchSkill').mockResolvedValue(hydratedMatch);
     jest.spyOn(recognizerService, 'recognizeParams').mockResolvedValue({
@@ -1918,26 +1999,37 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
     });
 
     const plan = await service.generatePlan({
-      request: { user_input: '帮我生成技术服务合同', user_id: 'u1', modelId: 'selected-model-id' } as any,
+      request: {
+        user_input: '帮我生成技术服务合同',
+        user_id: 'u1',
+        modelId: 'selected-model-id',
+      } as any,
       userId: 'u1',
       authToken: 'Bearer test',
       traceId: 'trace-1',
     });
 
-    expect(hydratedMatch.paramsSchema.properties['contract.partyA']).toEqual(expect.objectContaining({
-      renderPath: ['contract.partyA_cn', 'contract.partyA_jp'],
-    }));
-    const paramResolution = (plan.metadata?.execution_snapshot as any)?.normalizedInputJson?.paramResolution || {};
-    expect(paramResolution['contract.partyA']).toEqual(expect.objectContaining({
-      render_path: ['contract.partyA_cn', 'contract.partyA_jp'],
-      final: true,
-      value: '甲方科技有限公司',
-    }));
-    expect(paramResolution['payment.bankAccount']).toEqual(expect.objectContaining({
-      render_path: 'payment.bankAccount_cn',
-      final: true,
-      value: '789456123012',
-    }));
+    expect(hydratedMatch.paramsSchema.properties['contract.partyA']).toEqual(
+      expect.objectContaining({
+        renderPath: ['contract.partyA_cn', 'contract.partyA_jp'],
+      })
+    );
+    const paramResolution =
+      (plan.metadata?.execution_snapshot as any)?.normalizedInputJson?.paramResolution || {};
+    expect(paramResolution['contract.partyA']).toEqual(
+      expect.objectContaining({
+        render_path: ['contract.partyA_cn', 'contract.partyA_jp'],
+        final: true,
+        value: '甲方科技有限公司',
+      })
+    );
+    expect(paramResolution['payment.bankAccount']).toEqual(
+      expect.objectContaining({
+        render_path: 'payment.bankAccount_cn',
+        final: true,
+        value: '789456123012',
+      })
+    );
   });
 
   it('loads only the targeted skill when target_skill_id is provided', async () => {
@@ -1998,11 +2090,11 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
       expect.objectContaining({
         skill_id: 'skill-contract',
         skill_name: 'contractService',
-      }),
+      })
     );
     expect(axiosGet).toHaveBeenCalledWith(
       expect.stringContaining('/skills/skill-contract'),
-      expect.any(Object),
+      expect.any(Object)
     );
     expect(axiosGet.mock.calls.filter(([url]) => String(url).endsWith('/skills'))).toHaveLength(0);
     expect(axiosPost).not.toHaveBeenCalled();
@@ -2051,7 +2143,9 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
     expect(first[0].paramsSchema.required).toEqual(['subject']);
     expect(axiosGet).toHaveBeenCalledTimes(1);
     expect(axiosGet.mock.calls.filter(([url]) => String(url).endsWith('/skills'))).toHaveLength(1);
-    expect(axiosGet.mock.calls.filter(([url]) => String(url).endsWith('/flows/flow-1'))).toHaveLength(0);
+    expect(
+      axiosGet.mock.calls.filter(([url]) => String(url).endsWith('/flows/flow-1'))
+    ).toHaveLength(0);
   });
 
   it('hydrates API match results with local skill execution metadata when the match payload is sparse', async () => {
@@ -2110,7 +2204,7 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
       'Bearer test',
       'trace-1',
       availableSkills,
-      {},
+      {}
     );
 
     expect(matched).toMatchObject({
@@ -2123,24 +2217,22 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
   });
 
   it('normalizes skill params schema without introducing linked flow fields', () => {
-    const normalized = (service as any).normalizeParamsSchema(
-      {
-        properties: {
-          target: {
-            type: 'string',
-            description: '目标对象',
-            required: false,
-          },
-          units: {
-            type: 'string',
-            description: '单位',
-            required: false,
-            default: 'metric',
-          },
+    const normalized = (service as any).normalizeParamsSchema({
+      properties: {
+        target: {
+          type: 'string',
+          description: '目标对象',
+          required: false,
         },
-        required: [],
+        units: {
+          type: 'string',
+          description: '单位',
+          required: false,
+          default: 'metric',
+        },
       },
-    );
+      required: [],
+    });
 
     expect(normalized.required).toEqual([]);
     expect(normalized.properties.target.required).toBe(false);
@@ -2255,7 +2347,11 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
     });
 
     const plan = await service.generatePlan({
-      request: { user_input: '帮我生成采购合同', user_id: 'u1', modelId: 'selected-model-id' } as any,
+      request: {
+        user_input: '帮我生成采购合同',
+        user_id: 'u1',
+        modelId: 'selected-model-id',
+      } as any,
       userId: 'u1',
       authToken: 'Bearer test',
       traceId: 'trace-1',
@@ -2269,7 +2365,7 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
         requiredFields: 4,
         missingFields: 4,
         arrayGroups: 3,
-      }),
+      })
     );
     expect(plan.semantic?.groupedMissing).toEqual(
       expect.arrayContaining([
@@ -2288,7 +2384,7 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
           label: '付款计划',
           kind: 'array_group',
         }),
-      ]),
+      ])
     );
     expect(recognizerService.recognizeParams).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -2302,7 +2398,7 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
             }),
           }),
         }),
-      }),
+      })
     );
   });
 
@@ -2330,11 +2426,7 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
             required: true,
           } as any,
         },
-        required: [
-          '{#d.items}{/d.items}',
-          'items[].deviceName',
-          'deliveryItems[].date',
-        ],
+        required: ['{#d.items}{/d.items}', 'items[].deviceName', 'deliveryItems[].date'],
       },
       templateId: 'tpl-contract',
       carboneTemplateId: undefined,
@@ -2395,7 +2487,7 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
           key: 'items',
           kind: 'array_group',
         }),
-      ]),
+      ])
     );
   });
 
@@ -2407,7 +2499,7 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
       triggerKeywords: ['合同', '采购'],
       paramsSchema: {
         properties: {
-          '__rowIndex': {
+          __rowIndex: {
             type: 'int',
             description: 'row index technical noise',
             required: true,
@@ -2503,7 +2595,11 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
     });
 
     const plan = await service.generatePlan({
-      request: { user_input: '帮我生成采购合同', user_id: 'u1', modelId: 'selected-model-id' } as any,
+      request: {
+        user_input: '帮我生成采购合同',
+        user_id: 'u1',
+        modelId: 'selected-model-id',
+      } as any,
       userId: 'u1',
       authToken: 'Bearer test',
       traceId: 'trace-1',
@@ -2584,7 +2680,9 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
       outputParams: undefined,
     };
 
-    jest.spyOn(service as any, 'loadAvailableSkills').mockResolvedValue([skill] as AvailableSkillDefinition[]);
+    jest
+      .spyOn(service as any, 'loadAvailableSkills')
+      .mockResolvedValue([skill] as AvailableSkillDefinition[]);
     jest.spyOn(service as any, 'matchSkill').mockResolvedValue(match);
     jest.spyOn(recognizerService, 'recognizeParams').mockResolvedValue({
       params: {},
@@ -2592,7 +2690,11 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
     });
 
     const plan = await service.generatePlan({
-      request: { user_input: '帮我生成采购合同', user_id: 'u1', modelId: 'selected-model-id' } as any,
+      request: {
+        user_input: '帮我生成采购合同',
+        user_id: 'u1',
+        modelId: 'selected-model-id',
+      } as any,
       userId: 'u1',
       authToken: 'Bearer test',
       traceId: 'trace-1',
@@ -2669,7 +2771,9 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
       outputParams: undefined,
     };
 
-    jest.spyOn(service as any, 'loadAvailableSkills').mockResolvedValue([skill] as AvailableSkillDefinition[]);
+    jest
+      .spyOn(service as any, 'loadAvailableSkills')
+      .mockResolvedValue([skill] as AvailableSkillDefinition[]);
     jest.spyOn(service as any, 'matchSkill').mockResolvedValue(match);
     jest.spyOn(recognizerService, 'recognizeParams').mockResolvedValue({
       params: {},
@@ -2677,7 +2781,11 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
     });
 
     const plan = await service.generatePlan({
-      request: { user_input: '帮我生成采购合同', user_id: 'u1', modelId: 'selected-model-id' } as any,
+      request: {
+        user_input: '帮我生成采购合同',
+        user_id: 'u1',
+        modelId: 'selected-model-id',
+      } as any,
       userId: 'u1',
       authToken: 'Bearer test',
       traceId: 'trace-1',
@@ -2746,7 +2854,9 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
       outputParams: undefined,
     };
 
-    jest.spyOn(service as any, 'loadAvailableSkills').mockResolvedValue([skill] as AvailableSkillDefinition[]);
+    jest
+      .spyOn(service as any, 'loadAvailableSkills')
+      .mockResolvedValue([skill] as AvailableSkillDefinition[]);
     jest.spyOn(service as any, 'matchSkill').mockResolvedValue(match);
     jest.spyOn(recognizerService, 'recognizeParams').mockResolvedValue({
       params: {},
@@ -2754,14 +2864,22 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
     });
 
     const plan = await service.generatePlan({
-      request: { user_input: '帮我生成技术服务合同', user_id: 'u1', modelId: 'selected-model-id' } as any,
+      request: {
+        user_input: '帮我生成技术服务合同',
+        user_id: 'u1',
+        modelId: 'selected-model-id',
+      } as any,
       userId: 'u1',
       authToken: 'Bearer test',
       traceId: 'trace-1',
     });
 
-    const delegatedParty = plan.required_inputs.find((item) => item.name === 'delegated_party_name');
-    const finalPaymentRatio = plan.required_inputs.find((item) => item.name === 'final_payment_ratio');
+    const delegatedParty = plan.required_inputs.find(
+      (item) => item.name === 'delegated_party_name'
+    );
+    const finalPaymentRatio = plan.required_inputs.find(
+      (item) => item.name === 'final_payment_ratio'
+    );
 
     expect(delegatedParty?.display_name).toBe('委托方名称');
     expect(finalPaymentRatio?.display_name).toBe('尾款占总价的比例');

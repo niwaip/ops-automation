@@ -1,7 +1,10 @@
 import type { WorkflowStep } from './temporal-workflow.types';
 
 export function normalizeInputParams(
-  inputParams: Array<{ key?: string; value?: string; required?: boolean }> | Record<string, string> | undefined,
+  inputParams:
+    | Array<{ key?: string; value?: string; required?: boolean }>
+    | Record<string, string>
+    | undefined
 ): Array<{ key: string; value: string; required: boolean }> {
   if (!inputParams) {
     return [];
@@ -50,20 +53,18 @@ export function durationToTimedeltaCode(duration: string): string {
 
 export function buildExecuteActivityTimeoutLines(
   step: WorkflowStep,
-  fallbackStartToCloseTimeout: string,
+  fallbackStartToCloseTimeout: string
 ): string[] {
   const lines = [
     `            start_to_close_timeout=${durationToTimedeltaCode(step.startToCloseTimeout || fallbackStartToCloseTimeout)},`,
   ];
   if (step.scheduleToCloseTimeout) {
     lines.push(
-      `            schedule_to_close_timeout=${durationToTimedeltaCode(step.scheduleToCloseTimeout)},`,
+      `            schedule_to_close_timeout=${durationToTimedeltaCode(step.scheduleToCloseTimeout)},`
     );
   }
   if (step.heartbeatTimeout) {
-    lines.push(
-      `            heartbeat_timeout=${durationToTimedeltaCode(step.heartbeatTimeout)},`,
-    );
+    lines.push(`            heartbeat_timeout=${durationToTimedeltaCode(step.heartbeatTimeout)},`);
   }
   return lines;
 }

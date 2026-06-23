@@ -61,19 +61,19 @@ describe('TemporalWorkflowTemplateService', () => {
     const builtinRegistry = new BuiltinActivityRegistry();
     const workflowNormalizationService = new TemporalWorkflowNormalizationService(
       prisma as any,
-      builtinRegistry,
+      builtinRegistry
     );
     const aiDraftService = new TemporalWorkflowAiDraftService(prisma as any, builtinRegistry);
     const browserDraftService = new TemporalWorkflowBrowserDraftService();
     const codegenService = new TemporalWorkflowCodegenService();
     const sessionService = new TemporalWorkflowSessionService(
       prisma as any,
-      workflowNormalizationService,
+      workflowNormalizationService
     );
     const validationService = new TemporalWorkflowValidationService();
     const activityResolutionService = new TemporalWorkflowActivityResolutionService(
       prisma as any,
-      builtinRegistry,
+      builtinRegistry
     );
     const workflowConfigService = new TemporalWorkflowConfigService();
     const workflowTemplateService = new TemporalWorkflowTemplateService();
@@ -82,7 +82,7 @@ describe('TemporalWorkflowTemplateService', () => {
       aiDraftService,
       activityResolutionService,
       workflowConfigService,
-      workflowNormalizationService,
+      workflowNormalizationService
     );
     const service = new TemporalWorkflowService(
       prisma as any,
@@ -94,7 +94,7 @@ describe('TemporalWorkflowTemplateService', () => {
       workflowConfigService,
       workflowNormalizationService,
       workflowTemplateService,
-      workflowSupportService,
+      workflowSupportService
     );
 
     return {
@@ -180,11 +180,13 @@ describe('TemporalWorkflowTemplateService', () => {
 
     const draft = await service.generateTemplateWorkflowDraft({ templateId: 'tpl-tech-service' });
 
-    expect(draft.workflowDsl.inputParams).toEqual(expect.objectContaining({
-      'contract.partyA': expect.objectContaining({
-      renderPath: 'contract.partyA_cn',
-      }),
-    }));
+    expect(draft.workflowDsl.inputParams).toEqual(
+      expect.objectContaining({
+        'contract.partyA': expect.objectContaining({
+          renderPath: 'contract.partyA_cn',
+        }),
+      })
+    );
     expect(draft.workflowDsl.inputPolicy).toEqual({
       params: {
         'contract.partyA': expect.objectContaining({
@@ -240,16 +242,20 @@ describe('TemporalWorkflowTemplateService', () => {
       },
     });
 
-    const draft = await service.generateTemplateWorkflowDraft({ templateId: 'tpl-tech-service-legacy' });
+    const draft = await service.generateTemplateWorkflowDraft({
+      templateId: 'tpl-tech-service-legacy',
+    });
 
-    expect(draft.workflowDsl.inputParams).toEqual(expect.objectContaining({
-      'contract.partyA.name': expect.objectContaining({
-        renderPath: ['contract.partyA.name_cn', 'contract.partyA.name_jp'],
-      }),
-      'otherTerms.title': expect.objectContaining({
-        renderPath: 'otherTerms.title_jp',
-      }),
-    }));
+    expect(draft.workflowDsl.inputParams).toEqual(
+      expect.objectContaining({
+        'contract.partyA.name': expect.objectContaining({
+          renderPath: ['contract.partyA.name_cn', 'contract.partyA.name_jp'],
+        }),
+        'otherTerms.title': expect.objectContaining({
+          renderPath: 'otherTerms.title_jp',
+        }),
+      })
+    );
     expect(draft.workflowDsl.inputPolicy).toEqual({
       params: {
         'contract.partyA.name': expect.objectContaining({
@@ -423,7 +429,9 @@ describe('TemporalWorkflowTemplateService', () => {
       id: 'skill-model-aware',
       parameters: [],
     });
-    const analyzeSpy = jest.spyOn(workflowTemplateService as any, 'analyzeTemplateWorkflow').mockResolvedValue({});
+    const analyzeSpy = jest
+      .spyOn(workflowTemplateService as any, 'analyzeTemplateWorkflow')
+      .mockResolvedValue({});
 
     await service.generateTemplateWorkflowDraft({
       templateId: 'tpl-model-aware',
@@ -432,16 +440,13 @@ describe('TemporalWorkflowTemplateService', () => {
     expect(analyzeSpy).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'tpl-model-aware' }),
       expect.objectContaining({ id: 'skill-model-aware' }),
-      expect.anything(),
+      expect.anything()
     );
   });
 
   it('maps fixed document workflow inputs with templateBinding and renderPath when generating code', async () => {
-    const {
-      builtinRegistry,
-      workflowConfigService,
-      workflowNormalizationService,
-    } = createService();
+    const { builtinRegistry, workflowConfigService, workflowNormalizationService } =
+      createService();
     const workflowDsl = {
       name: '技术服务合同工作流',
       workflowClassName: 'TechnicalServiceContractWorkflow',
@@ -532,7 +537,7 @@ describe('TemporalWorkflowTemplateService', () => {
         builtinActivityRegistry: builtinRegistry,
         workflowConfigService,
         workflowNormalizationService,
-      },
+      }
     );
 
     expect(code).toBeTruthy();
@@ -555,7 +560,9 @@ describe('TemporalWorkflowTemplateService', () => {
     expect(code).toContain('def _normalize_base_url(value: Any) -> str:');
     expect(code).toContain('configured_base_url = _normalize_base_url(');
     expect(code).toContain('default_base_url = _normalize_base_url(');
-    expect(code).toContain('raise ApplicationError("未配置可用的 Carbone 服务地址", non_retryable=True)');
+    expect(code).toContain(
+      'raise ApplicationError("未配置可用的 Carbone 服务地址", non_retryable=True)'
+    );
     expect(code).toContain('/studio/generate-render-data-with-skill');
     expect(code).toContain('/studio/render-resolved');
     expect(code).toContain('"contract.signingDate": {');
@@ -575,12 +582,18 @@ describe('TemporalWorkflowTemplateService', () => {
     const code = builtinRegistry.getByKey('documentRender')?.generatedCode || '';
 
     expect(code).toContain('workflow_input_params = input_data.get("workflowInputParams")');
-    expect(code).toContain('prepare_localized_render_data = input_data.get("prepareLocalizedRenderData")');
-    expect(code).toContain('if (source_language or target_languages) and not should_prepare_localized_render_data:');
+    expect(code).toContain(
+      'prepare_localized_render_data = input_data.get("prepareLocalizedRenderData")'
+    );
+    expect(code).toContain(
+      'if (source_language or target_languages) and not should_prepare_localized_render_data:'
+    );
     expect(code).toContain('def _normalize_base_url(value: Any) -> str:');
     expect(code).toContain('configured_base_url = _normalize_base_url(');
     expect(code).toContain('default_base_url = _normalize_base_url(');
-    expect(code).toContain('raise ApplicationError("未配置可用的 Carbone 服务地址", non_retryable=True)');
+    expect(code).toContain(
+      'raise ApplicationError("未配置可用的 Carbone 服务地址", non_retryable=True)'
+    );
     expect(code).toContain('/studio/generate-render-data-with-skill');
     expect(code).toContain('payload["prepareLocalizedRenderData"] = True');
     expect(code).toContain('payload["workflowInputParams"] = workflow_input_params');
@@ -589,5 +602,4 @@ describe('TemporalWorkflowTemplateService', () => {
     expect(code).toContain('resolved_request_timeout_seconds = 300');
     expect(code).toContain('timeout=resolved_request_timeout_seconds');
   });
-
 });

@@ -1,15 +1,17 @@
 import type { TFunction } from 'i18next';
 import type { MenuProps } from 'antd';
-import { getDefaultOpenKeys, portalNavigationEntries, resolveActiveMenuKey } from '@/app/router/routeManifest';
+import {
+  getDefaultOpenKeys,
+  portalNavigationEntries,
+  resolveActiveMenuKey,
+} from '@/app/router/routeManifest';
 
-const resolveLabel = (
-  t: TFunction<'common'>,
-  item: { labelKey?: string; label?: string },
-) => item.labelKey ? t(item.labelKey) : item.label || '';
+const resolveLabel = (t: TFunction<'common'>, item: { labelKey?: string; label?: string }) =>
+  item.labelKey ? t(item.labelKey) : item.label || '';
 
 export const buildNavigationMenuItems = (
   t: TFunction<'common'>,
-  userRole?: string,
+  userRole?: string
 ): MenuProps['items'] => {
   const rootEntries = portalNavigationEntries.filter((entry) => entry.nav?.group === 'root');
   const adminEntry = portalNavigationEntries.find((entry) => entry.nav?.key === '/admin');

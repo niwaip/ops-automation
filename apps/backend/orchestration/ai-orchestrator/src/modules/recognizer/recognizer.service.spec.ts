@@ -25,10 +25,7 @@ describe('RecognizerService model routing', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        RecognizerService,
-        { provide: ModelService, useValue: modelService },
-      ],
+      providers: [RecognizerService, { provide: ModelService, useValue: modelService }],
     }).compile();
 
     service = module.get<RecognizerService>(RecognizerService);
@@ -124,12 +121,15 @@ describe('RecognizerService model routing', () => {
     });
 
     modelService.resolveModelId.mockResolvedValue(requestedModelId);
-    modelService.getClient.mockImplementation((id: string) => (id === requestedModelId ? requestedClient : null));
+    modelService.getClient.mockImplementation((id: string) =>
+      id === requestedModelId ? requestedClient : null
+    );
     modelService.getDefaultModel.mockReturnValue({ id: 'default-model-id' });
 
     const result = await service.recognizeParams({
       template_id: 'doc-template',
-      user_input: '交付地点为江苏省苏州市工业园区 2 号厂房，到货后先验收，安装调试完成后再做性能验收。',
+      user_input:
+        '交付地点为江苏省苏州市工业园区 2 号厂房，到货后先验收，安装调试完成后再做性能验收。',
       modelId: requestedModelId,
     });
 
@@ -175,7 +175,9 @@ describe('RecognizerService model routing', () => {
     });
 
     modelService.resolveModelId.mockResolvedValue(requestedModelId);
-    modelService.getClient.mockImplementation((id: string) => (id === requestedModelId ? requestedClient : null));
+    modelService.getClient.mockImplementation((id: string) =>
+      id === requestedModelId ? requestedClient : null
+    );
     modelService.getDefaultModel.mockReturnValue({ id: 'default-model-id' });
 
     const result = await service.recognizeParams({
@@ -185,13 +187,17 @@ describe('RecognizerService model routing', () => {
     });
 
     const request = requestedClient.chatCompletion.mock.calls[0]?.[0];
-    const systemPrompt = [request?.assembly?.staticSystem, request?.assembly?.skillContext].filter(Boolean).join('\n\n');
+    const systemPrompt = [request?.assembly?.staticSystem, request?.assembly?.skillContext]
+      .filter(Boolean)
+      .join('\n\n');
     expect(systemPrompt).toContain('禁止根据常见业务惯例');
     expect(systemPrompt).toContain('不要为了让任务继续执行而伪造占位值');
     expect(systemPrompt).toContain('缺失字段交由后续多轮问询补齐');
     expect(systemPrompt).toContain('不要把 is、are、in bilingual layout');
     expect(systemPrompt).toContain('顶层只保留本轮新识别或被用户明确修正的参数键值');
-    expect(systemPrompt).toContain('不要输出 params、confidence、field_confidences、uncertain_fields');
+    expect(systemPrompt).toContain(
+      '不要输出 params、confidence、field_confidences、uncertain_fields'
+    );
     expect(result.field_confidences).toEqual({
       amount: 0.41,
     });
@@ -206,10 +212,7 @@ describe('RecognizerService model routing', () => {
           '<think>先按自己的结构输出</think>',
           '```json',
           JSON.stringify({
-            deliverySchedule: [
-              { arrivalDate: '2026-06-10' },
-              { arrivalDate: '2026-06-20' },
-            ],
+            deliverySchedule: [{ arrivalDate: '2026-06-10' }, { arrivalDate: '2026-06-20' }],
           }),
           '```',
         ].join('\n'),
@@ -232,12 +235,15 @@ describe('RecognizerService model routing', () => {
     });
 
     modelService.resolveModelId.mockResolvedValue(requestedModelId);
-    modelService.getClient.mockImplementation((id: string) => (id === requestedModelId ? requestedClient : null));
+    modelService.getClient.mockImplementation((id: string) =>
+      id === requestedModelId ? requestedClient : null
+    );
     modelService.getDefaultModel.mockReturnValue({ id: 'default-model-id' });
 
     const result = await service.recognizeParams({
       template_id: 'fenced-json-template',
-      user_input: '交付计划分两批：第一批在上海，计划到货日期2026-06-10；第二批在苏州，计划到货日期2026-06-20。',
+      user_input:
+        '交付计划分两批：第一批在上海，计划到货日期2026-06-10；第二批在苏州，计划到货日期2026-06-20。',
       modelId: requestedModelId,
     });
 
@@ -297,10 +303,7 @@ describe('RecognizerService model routing', () => {
               },
             ],
           },
-          uncertain_fields: [
-            'contract.contractNo_cn',
-            'items[].quantity',
-          ],
+          uncertain_fields: ['contract.contractNo_cn', 'items[].quantity'],
           confidence: 0.93,
         }),
         usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
@@ -323,7 +326,9 @@ describe('RecognizerService model routing', () => {
     });
 
     modelService.resolveModelId.mockResolvedValue(requestedModelId);
-    modelService.getClient.mockImplementation((id: string) => (id === requestedModelId ? requestedClient : null));
+    modelService.getClient.mockImplementation((id: string) =>
+      id === requestedModelId ? requestedClient : null
+    );
     modelService.getDefaultModel.mockReturnValue({ id: 'default-model-id' });
 
     const result = await service.recognizeParams({
@@ -348,10 +353,7 @@ describe('RecognizerService model routing', () => {
       'items[].productName_cn': 0.87,
       'items[].quantity': 0.85,
     });
-    expect(result.uncertain_fields).toEqual([
-      'contract.contractNo_cn',
-      'items[].quantity',
-    ]);
+    expect(result.uncertain_fields).toEqual(['contract.contractNo_cn', 'items[].quantity']);
   });
 
   it('builds structured waiting_input resume prompt context without duplicated field list', () => {
@@ -450,7 +452,9 @@ describe('RecognizerService model routing', () => {
 
     expect(prompt.staticSystem).toContain('不要为了让任务继续执行而伪造占位值');
     expect(prompt.staticSystem).toContain('缺失字段交由后续多轮问询补齐');
-    expect(prompt.dynamicUser).toContain('如果关键字段缺失、只有低置信度候选值、或数组行信息不完整');
+    expect(prompt.dynamicUser).toContain(
+      '如果关键字段缺失、只有低置信度候选值、或数组行信息不完整'
+    );
     expect(prompt.dynamicUser).toContain('让系统在下一轮继续追问');
   });
 
@@ -527,7 +531,9 @@ describe('RecognizerService model routing', () => {
     });
 
     modelService.resolveModelId.mockResolvedValue(requestedModelId);
-    modelService.getClient.mockImplementation((id: string) => (id === requestedModelId ? requestedClient : null));
+    modelService.getClient.mockImplementation((id: string) =>
+      id === requestedModelId ? requestedClient : null
+    );
     modelService.getDefaultModel.mockReturnValue({ id: 'default-model-id' });
 
     const result = await service.recognizeParams({
@@ -583,7 +589,9 @@ describe('RecognizerService model routing', () => {
     });
 
     modelService.resolveModelId.mockResolvedValue(requestedModelId);
-    modelService.getClient.mockImplementation((id: string) => (id === requestedModelId ? requestedClient : null));
+    modelService.getClient.mockImplementation((id: string) =>
+      id === requestedModelId ? requestedClient : null
+    );
     modelService.getDefaultModel.mockReturnValue({ id: 'default-model-id' });
 
     const result = await service.recognizeParams({
@@ -630,7 +638,9 @@ describe('RecognizerService model routing', () => {
     });
 
     modelService.resolveModelId.mockResolvedValue(requestedModelId);
-    modelService.getClient.mockImplementation((id: string) => (id === requestedModelId ? requestedClient : null));
+    modelService.getClient.mockImplementation((id: string) =>
+      id === requestedModelId ? requestedClient : null
+    );
     modelService.getDefaultModel.mockReturnValue({ id: 'default-model-id' });
 
     const result = await service.recognizeParams({
@@ -671,7 +681,9 @@ describe('RecognizerService model routing', () => {
     });
 
     modelService.resolveModelId.mockResolvedValue(requestedModelId);
-    modelService.getClient.mockImplementation((id: string) => (id === requestedModelId ? requestedClient : null));
+    modelService.getClient.mockImplementation((id: string) =>
+      id === requestedModelId ? requestedClient : null
+    );
     modelService.getDefaultModel.mockReturnValue({ id: 'default-model-id' });
 
     const result = await service.recognizeParams({
@@ -728,12 +740,15 @@ describe('RecognizerService model routing', () => {
     });
 
     modelService.resolveModelId.mockResolvedValue(requestedModelId);
-    modelService.getClient.mockImplementation((id: string) => (id === requestedModelId ? requestedClient : null));
+    modelService.getClient.mockImplementation((id: string) =>
+      id === requestedModelId ? requestedClient : null
+    );
     modelService.getDefaultModel.mockReturnValue({ id: 'default-model-id' });
 
     const result = await service.recognizeParams({
       template_id: 'installation-date-guard-template',
-      user_input: '首批设备到货日期为 2026-06-20，安装完成日期 N/A，验收方式为到货后验收、安装完成后再做性能验收。',
+      user_input:
+        '首批设备到货日期为 2026-06-20，安装完成日期 N/A，验收方式为到货后验收、安装完成后再做性能验收。',
       modelId: requestedModelId,
     });
 
@@ -776,7 +791,9 @@ describe('RecognizerService model routing', () => {
     });
 
     modelService.resolveModelId.mockResolvedValue(requestedModelId);
-    modelService.getClient.mockImplementation((id: string) => (id === requestedModelId ? requestedClient : null));
+    modelService.getClient.mockImplementation((id: string) =>
+      id === requestedModelId ? requestedClient : null
+    );
     modelService.getDefaultModel.mockReturnValue({ id: 'default-model-id' });
 
     const result = await service.recognizeParams({
@@ -835,7 +852,9 @@ describe('RecognizerService model routing', () => {
     });
 
     modelService.resolveModelId.mockResolvedValue(requestedModelId);
-    modelService.getClient.mockImplementation((id: string) => (id === requestedModelId ? requestedClient : null));
+    modelService.getClient.mockImplementation((id: string) =>
+      id === requestedModelId ? requestedClient : null
+    );
     modelService.getDefaultModel.mockReturnValue({ id: 'default-model-id' });
 
     const result = await service.recognizeParams({
@@ -879,7 +898,9 @@ describe('RecognizerService model routing', () => {
     });
 
     modelService.resolveModelId.mockResolvedValue(requestedModelId);
-    modelService.getClient.mockImplementation((id: string) => (id === requestedModelId ? requestedClient : null));
+    modelService.getClient.mockImplementation((id: string) =>
+      id === requestedModelId ? requestedClient : null
+    );
     modelService.getDefaultModel.mockReturnValue({ id: 'default-model-id' });
 
     const result = await service.recognizeParams({
@@ -920,7 +941,9 @@ describe('RecognizerService model routing', () => {
     });
 
     modelService.resolveModelId.mockResolvedValue(requestedModelId);
-    modelService.getClient.mockImplementation((id: string) => (id === requestedModelId ? requestedClient : null));
+    modelService.getClient.mockImplementation((id: string) =>
+      id === requestedModelId ? requestedClient : null
+    );
     modelService.getDefaultModel.mockReturnValue({ id: 'default-model-id' });
 
     const result = await service.recognizeParams({
@@ -960,7 +983,9 @@ describe('RecognizerService model routing', () => {
     });
 
     modelService.resolveModelId.mockResolvedValue(requestedModelId);
-    modelService.getClient.mockImplementation((id: string) => (id === requestedModelId ? requestedClient : null));
+    modelService.getClient.mockImplementation((id: string) =>
+      id === requestedModelId ? requestedClient : null
+    );
     modelService.getDefaultModel.mockReturnValue({ id: 'default-model-id' });
 
     const result = await service.recognizeParams({
@@ -1003,7 +1028,9 @@ describe('RecognizerService model routing', () => {
     });
 
     modelService.resolveModelId.mockResolvedValue(requestedModelId);
-    modelService.getClient.mockImplementation((id: string) => (id === requestedModelId ? requestedClient : null));
+    modelService.getClient.mockImplementation((id: string) =>
+      id === requestedModelId ? requestedClient : null
+    );
     modelService.getDefaultModel.mockReturnValue({ id: 'default-model-id' });
 
     const result = await service.recognizeParams({
@@ -1046,12 +1073,15 @@ describe('RecognizerService model routing', () => {
     });
 
     modelService.resolveModelId.mockResolvedValue(requestedModelId);
-    modelService.getClient.mockImplementation((id: string) => (id === requestedModelId ? requestedClient : null));
+    modelService.getClient.mockImplementation((id: string) =>
+      id === requestedModelId ? requestedClient : null
+    );
     modelService.getDefaultModel.mockReturnValue({ id: 'default-model-id' });
 
     const result = await service.recognizeParams({
       template_id: 'generic-line-item-template',
-      user_input: '采购标的有两项：1. 六轴机械臂，设备物料编码 RB-01，设备规格型号 M-100，采购数量 2；2. 工业相机，设备物料编码 CAM-02，设备规格型号 V-9，采购数量 4。',
+      user_input:
+        '采购标的有两项：1. 六轴机械臂，设备物料编码 RB-01，设备规格型号 M-100，采购数量 2；2. 工业相机，设备物料编码 CAM-02，设备规格型号 V-9，采购数量 4。',
       modelId: requestedModelId,
     });
 
@@ -1106,7 +1136,10 @@ describe('RecognizerService model routing', () => {
           'deliveryItems[].arrivalDate': { type: 'array', description: '计划到货日期' },
           'deliveryItems[].installationDate': { type: 'array', description: '安装完成日期' },
           'deliveryItems[].acceptanceType': { type: 'array', description: '验收方式' },
-          'paymentSchedule[].paymentStage': { type: 'array', description: '付款阶段标识，如预付款、到货款、验收款、质保金等' },
+          'paymentSchedule[].paymentStage': {
+            type: 'array',
+            description: '付款阶段标识，如预付款、到货款、验收款、质保金等',
+          },
           'paymentSchedule[].paymentCondition': { type: 'array', description: '付款前置条件' },
           'paymentSchedule[].ratio': { type: 'array', description: '付款比例' },
           'paymentSchedule[].amount': { type: 'array', description: '各付款阶段的应付金额' },
@@ -1115,46 +1148,60 @@ describe('RecognizerService model routing', () => {
     });
 
     modelService.resolveModelId.mockResolvedValue(requestedModelId);
-    modelService.getClient.mockImplementation((id: string) => (id === requestedModelId ? requestedClient : null));
+    modelService.getClient.mockImplementation((id: string) =>
+      id === requestedModelId ? requestedClient : null
+    );
     modelService.getDefaultModel.mockReturnValue({ id: 'default-model-id' });
 
     const result = await service.recognizeParams({
       template_id: 'procurement-contract-template',
-      user_input: '请生成一份采购合同。合同编号CGHT-2026-0515，签署日期2026-05-15。甲方为上海星海智造科技有限公司，乙方为苏州远航设备有限公司，币种人民币，项目名称为华东工厂产线升级设备采购，含安装服务，质保期24个月。采购标的有两项：1. 伺服压装机，编码SF-100，规格型号SP-300，单位台，数量2，含税单价85000，含税小计170000；2. 工业视觉检测设备，编码VS-200，规格型号IV-900，单位套，数量1，含税单价120000，含税小计120000。交付计划分两批：第一批在上海市浦东新区川沙路88号A栋，计划到货日期2026-06-10，安装完成日期2026-06-15，验收方式为到货+安装验收；第二批在江苏省苏州市工业园区星湖街288号B栋，计划到货日期2026-06-20，安装完成日期2026-06-25，验收方式为到货+安装验收。付款计划三期：预付款，合同签订后5个工作日支付30%，金额87000；到货款，第一批设备到货并验收后支付40%，金额116000；尾款，全部安装调试完成并终验收合格后支付30%，金额87000。',
+      user_input:
+        '请生成一份采购合同。合同编号CGHT-2026-0515，签署日期2026-05-15。甲方为上海星海智造科技有限公司，乙方为苏州远航设备有限公司，币种人民币，项目名称为华东工厂产线升级设备采购，含安装服务，质保期24个月。采购标的有两项：1. 伺服压装机，编码SF-100，规格型号SP-300，单位台，数量2，含税单价85000，含税小计170000；2. 工业视觉检测设备，编码VS-200，规格型号IV-900，单位套，数量1，含税单价120000，含税小计120000。交付计划分两批：第一批在上海市浦东新区川沙路88号A栋，计划到货日期2026-06-10，安装完成日期2026-06-15，验收方式为到货+安装验收；第二批在江苏省苏州市工业园区星湖街288号B栋，计划到货日期2026-06-20，安装完成日期2026-06-25，验收方式为到货+安装验收。付款计划三期：预付款，合同签订后5个工作日支付30%，金额87000；到货款，第一批设备到货并验收后支付40%，金额116000；尾款，全部安装调试完成并终验收合格后支付30%，金额87000。',
       modelId: requestedModelId,
     });
 
-    expect(result.params).toEqual(expect.objectContaining({
-      'info.partyA': '上海星海智造科技有限公司',
-      'info.partyB': '苏州远航设备有限公司',
-      'info.currency': '人民币',
-      'info.contractNo': 'CGHT-2026-0515',
-      'info.projectName': '华东工厂产线升级设备采购',
-      'info.includeInstall': '是',
-      'info.warrantyPeriod': 24,
-      'items[].sequence_no': [1, 2],
-      'items[].name': ['伺服压装机', '工业视觉检测设备'],
-      'items[].code': ['SF-100', 'VS-200'],
-      'items[].spec': ['SP-300', 'IV-900'],
-      'items[].unit': ['台', '套'],
-      'items[].quantity': [2, 1],
-      'items[].unit_price': [85000, 120000],
-      'items[].subtotal': [170000, 120000],
-      'deliveryItems[].batch': ['第一批', '第二批'],
-      'deliveryItems[].location': ['上海市浦东新区川沙路88号A栋', '江苏省苏州市工业园区星湖街288号B栋'],
-      'deliveryItems[].arrivalDate': ['2026-06-10', '2026-06-20'],
-      'deliveryItems[].installationDate': ['2026-06-15', '2026-06-25'],
-      'deliveryItems[].acceptanceType': ['到货+安装验收', '到货+安装验收'],
-      'paymentSchedule[].paymentStage': ['预付款', '到货款', '尾款'],
-      'paymentSchedule[].paymentCondition': ['合同签订后5个工作日', '第一批设备到货并验收后', '全部安装调试完成并终验收合格后'],
-      'paymentSchedule[].ratio': [30, 40, 30],
-      'paymentSchedule[].amount': [87000, 116000, 87000],
-    }));
-    expect(result.field_confidences).toEqual(expect.objectContaining({
-      'info.partyA': 0.88,
-      'items[].code': 0.86,
-      'deliveryItems[].arrivalDate': 0.86,
-      'paymentSchedule[].amount': 0.86,
-    }));
+    expect(result.params).toEqual(
+      expect.objectContaining({
+        'info.partyA': '上海星海智造科技有限公司',
+        'info.partyB': '苏州远航设备有限公司',
+        'info.currency': '人民币',
+        'info.contractNo': 'CGHT-2026-0515',
+        'info.projectName': '华东工厂产线升级设备采购',
+        'info.includeInstall': '是',
+        'info.warrantyPeriod': 24,
+        'items[].sequence_no': [1, 2],
+        'items[].name': ['伺服压装机', '工业视觉检测设备'],
+        'items[].code': ['SF-100', 'VS-200'],
+        'items[].spec': ['SP-300', 'IV-900'],
+        'items[].unit': ['台', '套'],
+        'items[].quantity': [2, 1],
+        'items[].unit_price': [85000, 120000],
+        'items[].subtotal': [170000, 120000],
+        'deliveryItems[].batch': ['第一批', '第二批'],
+        'deliveryItems[].location': [
+          '上海市浦东新区川沙路88号A栋',
+          '江苏省苏州市工业园区星湖街288号B栋',
+        ],
+        'deliveryItems[].arrivalDate': ['2026-06-10', '2026-06-20'],
+        'deliveryItems[].installationDate': ['2026-06-15', '2026-06-25'],
+        'deliveryItems[].acceptanceType': ['到货+安装验收', '到货+安装验收'],
+        'paymentSchedule[].paymentStage': ['预付款', '到货款', '尾款'],
+        'paymentSchedule[].paymentCondition': [
+          '合同签订后5个工作日',
+          '第一批设备到货并验收后',
+          '全部安装调试完成并终验收合格后',
+        ],
+        'paymentSchedule[].ratio': [30, 40, 30],
+        'paymentSchedule[].amount': [87000, 116000, 87000],
+      })
+    );
+    expect(result.field_confidences).toEqual(
+      expect.objectContaining({
+        'info.partyA': 0.88,
+        'items[].code': 0.86,
+        'deliveryItems[].arrivalDate': 0.86,
+        'paymentSchedule[].amount': 0.86,
+      })
+    );
   });
 });

@@ -7,10 +7,7 @@ import {
   isParagraphLikelyInsideWordTable,
 } from './collect';
 import { buildWordRuleCandidate } from './candidates';
-import {
-  analyzeWordTableParams,
-  detectWordParamsByRules,
-} from './detect-rule-registry';
+import { analyzeWordTableParams, detectWordParamsByRules } from './detect-rule-registry';
 import {
   DEFAULT_WORD_PARAMETER_RULE_PROFILE,
   WORD_DOCUMENT_PARAMETER_RULE_PROFILES,
@@ -30,8 +27,12 @@ import type {
   WordUnderlineLike,
 } from './types';
 
-export function getWordDocumentParameterRuleProfile(templateType: string): WordDocumentParameterRuleProfile {
-  const matchedProfile = templateType ? WORD_DOCUMENT_PARAMETER_RULE_PROFILES[templateType] : undefined;
+export function getWordDocumentParameterRuleProfile(
+  templateType: string
+): WordDocumentParameterRuleProfile {
+  const matchedProfile = templateType
+    ? WORD_DOCUMENT_PARAMETER_RULE_PROFILES[templateType]
+    : undefined;
   if (matchedProfile) {
     return matchedProfile;
   }
@@ -43,14 +44,14 @@ export function getWordDocumentParameterRuleProfile(templateType: string): WordD
 
 export function hasWordCompareCandidateRule(
   profile: WordDocumentParameterRuleProfile,
-  ruleName: WordParameterRuleName,
+  ruleName: WordParameterRuleName
 ): boolean {
   return profile.compareCandidateRules.includes(ruleName);
 }
 
 export function hasWordParameterCheckRule(
   profile: WordDocumentParameterRuleProfile,
-  ruleName: WordParameterRuleName,
+  ruleName: WordParameterRuleName
 ): boolean {
   return profile.parameterCheckRules.includes(ruleName);
 }
@@ -97,7 +98,7 @@ export function buildWordParameterDetectionDebugText(args: {
 
 export function buildWordCompareCandidates(
   documentIr: Record<string, any> | null | undefined,
-  templateType: string,
+  templateType: string
 ): TemplateFieldCandidate[] {
   const ruleProfile = getWordDocumentParameterRuleProfile(templateType);
   if (ruleProfile.compareCandidateRules.length === 0) {
@@ -121,7 +122,7 @@ export function buildWordCompareCandidates(
 }
 
 export function buildWordTableCompareCandidates(
-  documentIr: Record<string, any> | null | undefined,
+  documentIr: Record<string, any> | null | undefined
 ): TemplateFieldCandidate[] {
   const tableParams = analyzeWordTableParams(collectWordTableCells(documentIr)).params;
   return tableParams

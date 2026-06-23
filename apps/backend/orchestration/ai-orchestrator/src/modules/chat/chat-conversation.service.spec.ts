@@ -6,7 +6,9 @@ describe('ChatConversationService', () => {
     const modelService = {
       getClient: jest.fn(),
       getPreferredDefaultModel: jest.fn(() => ({ id: 'preferred-chat-model' })),
-      stripThinkingTags: jest.fn((value: string) => value.replace(/<think>[\s\S]*?<\/think>/g, '').trim()),
+      stripThinkingTags: jest.fn((value: string) =>
+        value.replace(/<think>[\s\S]*?<\/think>/g, '').trim()
+      ),
       callModelStreamWithMessages: jest.fn(),
     };
     const sessionService = {
@@ -20,7 +22,7 @@ describe('ChatConversationService', () => {
     const service = new ChatConversationService(
       modelService as any,
       sessionService as any,
-      chatMediaService as any,
+      chatMediaService as any
     );
 
     return {
@@ -79,7 +81,7 @@ describe('ChatConversationService', () => {
       expect.arrayContaining([
         expect.objectContaining({ role: 'user', content: '帮我总结一下' }),
         expect.objectContaining({ role: 'assistant', content: '这是总结结果' }),
-      ]),
+      ])
     );
   });
 });

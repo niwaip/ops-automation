@@ -10,16 +10,16 @@ import {
   SkillMatchResult,
   ToolDefinition,
 } from './interfaces';
-import {
-  extractLatestDecisionContextFromSummary,
-} from './decision-context-summary';
+import { extractLatestDecisionContextFromSummary } from './decision-context-summary';
 import type { DecisionContextPromptSummary } from './decision-context-summary';
 
 export type { DecisionContextPromptSummary } from './decision-context-summary';
 
 const MAX_PROMPT_INPUT_CHARS = Number(process.env.REACT_PROMPT_INPUT_MAX_CHARS || 4000);
 const MAX_PROMPT_HISTORY_CHARS = Number(process.env.REACT_PROMPT_HISTORY_MAX_CHARS || 1200);
-const MAX_PROMPT_FILE_SECTION_CHARS = Number(process.env.REACT_PROMPT_FILE_SECTION_MAX_CHARS || 400);
+const MAX_PROMPT_FILE_SECTION_CHARS = Number(
+  process.env.REACT_PROMPT_FILE_SECTION_MAX_CHARS || 400
+);
 
 /**
  * ReAct提示词模板
@@ -80,7 +80,7 @@ function clipPromptText(value: string, maxChars: number): string {
   }
 
   const head = value.slice(0, Math.floor(maxChars * 0.7));
-  const tail = value.slice(-(Math.floor(maxChars * 0.2)));
+  const tail = value.slice(-Math.floor(maxChars * 0.2));
   return `${head}\n...[truncated ${value.length - head.length - tail.length} chars]...\n${tail}`;
 }
 
@@ -93,7 +93,7 @@ function sanitizeSensitiveContent(value: string): string {
 function stripProtocolForgery(value: string): string {
   return value.replace(
     /^\s*(Thought|Action|Action Input|Observation|Final Answer)\s*:.*$/gim,
-    '[filtered protocol-like content]',
+    '[filtered protocol-like content]'
   );
 }
 
@@ -108,7 +108,7 @@ function createPromptSection(
   key: string,
   title: string,
   body: string | undefined,
-  source: string,
+  source: string
 ): PromptSection | null {
   if (!body || !body.trim()) {
     return null;
@@ -136,10 +136,12 @@ export function buildSystemPromptSections(
   skill?: SkillMatchResult,
   availableSkills: AvailableSkillDefinition[] = [],
   mode: 'chat' | 'task' = 'chat',
-  capabilitySnapshot?: CapabilitySnapshot,
+  capabilitySnapshot?: CapabilitySnapshot
 ): PromptSection[] {
   let filteredTools = capabilitySnapshot
-    ? tools.filter((tool) => capabilitySnapshot.visibleTools.some((visibleTool) => visibleTool.name === tool.name))
+    ? tools.filter((tool) =>
+        capabilitySnapshot.visibleTools.some((visibleTool) => visibleTool.name === tool.name)
+      )
     : tools;
 
   if (capabilitySnapshot) {
@@ -150,14 +152,20 @@ export function buildSystemPromptSections(
   }
 
   let filteredSkills = capabilitySnapshot
-    ? availableSkills.filter((item) => capabilitySnapshot.visibleSkills.some((visibleSkill) => visibleSkill.skillId === item.skillId))
+    ? availableSkills.filter((item) =>
+        capabilitySnapshot.visibleSkills.some(
+          (visibleSkill) => visibleSkill.skillId === item.skillId
+        )
+      )
     : availableSkills;
 
   if (mode === 'task') {
     // 任务模式下，强制排除通用发现和调用工具，确保模型只能看到并使用技能相关工具
     filteredTools = filteredTools.filter((t) => !['skill_match', 'api_call'].includes(t.name));
   } else if (!skill) {
-    filteredTools = filteredTools.filter((t) => !t.category || t.category === 'discovery' || t.category === 'utility');
+    filteredTools = filteredTools.filter(
+      (t) => !t.category || t.category === 'discovery' || t.category === 'utility'
+    );
   } else if (skill.carboneSkillId) {
     filteredTools = filteredTools.filter((t) => t.name !== 'param_collect');
   }
@@ -177,34 +185,44 @@ export function buildSystemPromptSections(
     })
     .join('\n\n');
 
-  const skillsDescription = filteredSkills.length > 0
-    ? filteredSkills.map((item) => {
-        const executionTool = item.executionType === 'document' ? 'document_render' : 'flow_execute';
-        const runtimeHints: string[] = [];
-        if (item.goal) runtimeHints.push(`goal=${item.goal}`);
-        if (item.expectedResult) runtimeHints.push(`expectedResult=${item.expectedResult}`);
-        return [
-          `- skillId: ${item.skillId}`,
-          `  name: ${item.skillName}`,
-          `  description: ${item.description || '无'}`,
-          item.executionType ? `  executionType: ${item.executionType}` : '',
-          `  triggerKeywords: ${item.triggerKeywords.join(', ') || '无'}`,
-          `  executionTool: ${executionTool}`,
-          `  paramsSchema: ${JSON.stringify(item.paramsSchema, null, 2)}`,
-          runtimeHints.length > 0 ? `  runtimeHints: ${runtimeHints.join('; ')}` : '',
-        ].filter(Boolean).join('\n');
-      }).join('\n\n')
-    : mode === 'task' 
-      ? '- 当前没有可用技能。请直接告知用户暂时无法处理此请求。'
-      : '- 当前没有可用技能，必要时再使用 skill_match 或直接回复用户。';
+  const skillsDescription =
+    filteredSkills.length > 0
+      ? filteredSkills
+          .map((item) => {
+            const executionTool =
+              item.executionType === 'document' ? 'document_render' : 'flow_execute';
+            const runtimeHints: string[] = [];
+            if (item.goal) runtimeHints.push(`goal=${item.goal}`);
+            if (item.expectedResult) runtimeHints.push(`expectedResult=${item.expectedResult}`);
+            return [
+              `- skillId: ${item.skillId}`,
+              `  name: ${item.skillName}`,
+              `  description: ${item.description || '无'}`,
+              item.executionType ? `  executionType: ${item.executionType}` : '',
+              `  triggerKeywords: ${item.triggerKeywords.join(', ') || '无'}`,
+              `  executionTool: ${executionTool}`,
+              `  paramsSchema: ${JSON.stringify(item.paramsSchema, null, 2)}`,
+              runtimeHints.length > 0 ? `  runtimeHints: ${runtimeHints.join('; ')}` : '',
+            ]
+              .filter(Boolean)
+              .join('\n');
+          })
+          .join('\n\n')
+      : mode === 'task'
+        ? '- 当前没有可用技能。请直接告知用户暂时无法处理此请求。'
+        : '- 当前没有可用技能，必要时再使用 skill_match 或直接回复用户。';
 
   const systemSections: Array<PromptSection | null> = [
     createPromptSection('system_policy', 'System Policy', REACT_SYSTEM_POLICY, 'static_policy'),
   ];
   if (capabilitySnapshot) {
     const constraints = [
-      capabilitySnapshot.constraints.forceSkillBoundExecution ? '- 当前为权限约束执行模式：优先围绕已授权 skill 执行，不要自行扩展能力范围。' : '',
-      capabilitySnapshot.constraints.forbidExternalApiInTaskMode ? '- 当前模式禁止直接调用外部通用 API。' : '',
+      capabilitySnapshot.constraints.forceSkillBoundExecution
+        ? '- 当前为权限约束执行模式：优先围绕已授权 skill 执行，不要自行扩展能力范围。'
+        : '',
+      capabilitySnapshot.constraints.forbidExternalApiInTaskMode
+        ? '- 当前模式禁止直接调用外部通用 API。'
+        : '',
       capabilitySnapshot.constraints.disallowToolNames.length > 0
         ? `- 明确禁止使用的工具: ${capabilitySnapshot.constraints.disallowToolNames.join(', ')}`
         : '',
@@ -218,13 +236,22 @@ export function buildSystemPromptSections(
 
     if (constraints.length > 0) {
       systemSections.push(
-        createPromptSection('capability_policy', 'Capability Policy', constraints.join('\n'), 'capability_snapshot'),
+        createPromptSection(
+          'capability_policy',
+          'Capability Policy',
+          constraints.join('\n'),
+          'capability_snapshot'
+        )
       );
     }
   }
 
-  systemSections.push(createPromptSection('tool_spec', 'Tool Spec', toolsDescription, 'tool_registry'));
-  systemSections.push(createPromptSection('skill_index', 'Skill Index', skillsDescription, 'skill_registry'));
+  systemSections.push(
+    createPromptSection('tool_spec', 'Tool Spec', toolsDescription, 'tool_registry')
+  );
+  systemSections.push(
+    createPromptSection('skill_index', 'Skill Index', skillsDescription, 'skill_registry')
+  );
 
   if (skill) {
     let activeSkillSection = `当前匹配的技能: ${skill.skillName}
@@ -246,22 +273,26 @@ Carbone Template ID: ${skill.carboneTemplateId || '无'}
       activeSkillSection += `输出契约: ${JSON.stringify(skill.outputParams, null, 2)}\n`;
     }
 
-    const runtimeMetadata = (skill.apiEndpoints && typeof skill.apiEndpoints === 'object')
-      ? (skill.apiEndpoints as { runtimeMetadata?: Record<string, unknown> }).runtimeMetadata
-      : undefined;
-    const isDocumentSkill = Boolean(skill.carboneSkillId)
-      || runtimeMetadata?.sourceType === 'document';
+    const runtimeMetadata =
+      skill.apiEndpoints && typeof skill.apiEndpoints === 'object'
+        ? (skill.apiEndpoints as { runtimeMetadata?: Record<string, unknown> }).runtimeMetadata
+        : undefined;
+    const isDocumentSkill =
+      Boolean(skill.carboneSkillId) || runtimeMetadata?.sourceType === 'document';
 
     if (isDocumentSkill) {
-      const guideMarkdown = typeof runtimeMetadata?.skillGuideMarkdown === 'string'
-        ? runtimeMetadata.skillGuideMarkdown.trim()
-        : '';
-      const paramCollectionGuidance = typeof runtimeMetadata?.paramCollectionGuidance === 'string'
-        ? runtimeMetadata.paramCollectionGuidance.trim()
-        : '';
-      const validationRules = typeof runtimeMetadata?.validationRules === 'string'
-        ? runtimeMetadata.validationRules.trim()
-        : '';
+      const guideMarkdown =
+        typeof runtimeMetadata?.skillGuideMarkdown === 'string'
+          ? runtimeMetadata.skillGuideMarkdown.trim()
+          : '';
+      const paramCollectionGuidance =
+        typeof runtimeMetadata?.paramCollectionGuidance === 'string'
+          ? runtimeMetadata.paramCollectionGuidance.trim()
+          : '';
+      const validationRules =
+        typeof runtimeMetadata?.validationRules === 'string'
+          ? runtimeMetadata.validationRules.trim()
+          : '';
       const dataExampleJson = runtimeMetadata?.dataExampleJson;
 
       const guideParts: string[] = [];
@@ -275,7 +306,9 @@ Carbone Template ID: ${skill.carboneTemplateId || '无'}
         guideParts.push(`校验规则：\n${clipPromptText(validationRules, 800)}`);
       }
       if (dataExampleJson !== undefined) {
-        guideParts.push(`输出结构模板（dataExampleJson）：\n${clipPromptText(JSON.stringify(dataExampleJson, null, 2), 1200)}`);
+        guideParts.push(
+          `输出结构模板（dataExampleJson）：\n${clipPromptText(JSON.stringify(dataExampleJson, null, 2), 1200)}`
+        );
       }
 
       if (guideParts.length > 0) {
@@ -286,7 +319,9 @@ Carbone Template ID: ${skill.carboneTemplateId || '无'}
       }
     }
 
-    systemSections.push(createPromptSection('active_skill', 'Active Skill', activeSkillSection, 'matched_skill'));
+    systemSections.push(
+      createPromptSection('active_skill', 'Active Skill', activeSkillSection, 'matched_skill')
+    );
   }
 
   return systemSections.filter((section): section is PromptSection => Boolean(section));
@@ -297,10 +332,10 @@ export function buildSystemPrompt(
   skill?: SkillMatchResult,
   availableSkills: AvailableSkillDefinition[] = [],
   mode: 'chat' | 'task' = 'chat',
-  capabilitySnapshot?: CapabilitySnapshot,
+  capabilitySnapshot?: CapabilitySnapshot
 ): string {
   return renderPromptSections(
-    buildSystemPromptSections(tools, skill, availableSkills, mode, capabilitySnapshot),
+    buildSystemPromptSections(tools, skill, availableSkills, mode, capabilitySnapshot)
   );
 }
 
@@ -312,39 +347,54 @@ export function buildUserPromptSections(
   history: ChatMessage[],
   uploadedFiles?: string[],
   contextSummary?: string,
-  decisionContextSummary?: DecisionContextPromptSummary,
+  decisionContextSummary?: DecisionContextPromptSummary
 ): PromptSection[] {
   const sections: Array<PromptSection | null> = [];
   const historicalDecisionContext = extractLatestDecisionContextFromSummary(contextSummary);
-  const effectiveDecisionContext: DecisionContextPromptSummary | undefined = decisionContextSummary
-    || historicalDecisionContext
-    ? {
-        routingState: decisionContextSummary?.routingState || historicalDecisionContext?.routingState,
-        promptAssemblyState: decisionContextSummary?.promptAssemblyState || historicalDecisionContext?.promptAssemblyState,
-      }
-    : undefined;
+  const effectiveDecisionContext: DecisionContextPromptSummary | undefined =
+    decisionContextSummary || historicalDecisionContext
+      ? {
+          routingState:
+            decisionContextSummary?.routingState || historicalDecisionContext?.routingState,
+          promptAssemblyState:
+            decisionContextSummary?.promptAssemblyState ||
+            historicalDecisionContext?.promptAssemblyState,
+        }
+      : undefined;
   const sanitizedUserInput = sanitizePromptContent(userInput, MAX_PROMPT_INPUT_CHARS);
   sections.push(
     createPromptSection(
       'task_input',
       'Task Input',
       sanitizedUserInput || '用户未提供额外文本输入。',
-      'user_input',
-    ),
+      'user_input'
+    )
   );
 
   // 添加历史上下文 (排除当前的ReAct循环历史，只保留之前的对话)
-  const previousHistory = history.filter(m => !m.metadata?.isReAct);
+  const previousHistory = history.filter((m) => !m.metadata?.isReAct);
   if (previousHistory.length > 0) {
     const recentHistory = previousHistory.slice(-5); // 最近5条消息
     const historyText = recentHistory
-      .map((m) => `${m.role}: ${sanitizePromptContent(String(m.content || ''), MAX_PROMPT_HISTORY_CHARS)}`)
+      .map(
+        (m) =>
+          `${m.role}: ${sanitizePromptContent(String(m.content || ''), MAX_PROMPT_HISTORY_CHARS)}`
+      )
       .join('\n');
-    sections.push(createPromptSection('conversation_history', 'Conversation History', historyText, 'chat_history'));
+    sections.push(
+      createPromptSection(
+        'conversation_history',
+        'Conversation History',
+        historyText,
+        'chat_history'
+      )
+    );
   }
 
   if (contextSummary) {
-    sections.push(createPromptSection('task_summary', 'Task Summary', contextSummary, 'context_summary'));
+    sections.push(
+      createPromptSection('task_summary', 'Task Summary', contextSummary, 'context_summary')
+    );
   }
 
   if (effectiveDecisionContext?.routingState) {
@@ -353,8 +403,8 @@ export function buildUserPromptSections(
         'routing_state',
         'Routing State',
         effectiveDecisionContext.routingState,
-        'decision_context.routing',
-      ),
+        'decision_context.routing'
+      )
     );
   }
 
@@ -364,24 +414,26 @@ export function buildUserPromptSections(
         'prompt_assembly_state',
         'Prompt Assembly State',
         effectiveDecisionContext.promptAssemblyState,
-        'decision_context.prompt_assembly',
-      ),
+        'decision_context.prompt_assembly'
+      )
     );
   }
 
   // 添加当前的ReAct循环历史
-  const reActHistory = history.filter(m => m.metadata?.isReAct);
+  const reActHistory = history.filter((m) => m.metadata?.isReAct);
   if (reActHistory.length > 0) {
     const recentReActHistory = reActHistory.slice(-MAX_PROMPT_REACT_HISTORY);
     let recentTrace = '';
-    recentReActHistory.forEach(m => {
+    recentReActHistory.forEach((m) => {
       if (m.role === 'assistant') {
         recentTrace += `${sanitizePromptContent(String(m.content || ''), MAX_PROMPT_HISTORY_CHARS)}\n`;
       } else if (m.role === 'user' && m.content.startsWith('Observation:')) {
         recentTrace += `${sanitizePromptContent(String(m.content || ''), MAX_PROMPT_HISTORY_CHARS)}\n`;
       }
     });
-    sections.push(createPromptSection('recent_trace', 'Recent Trace', recentTrace, 'react_history'));
+    sections.push(
+      createPromptSection('recent_trace', 'Recent Trace', recentTrace, 'react_history')
+    );
   }
 
   // 添加文件信息
@@ -391,8 +443,8 @@ export function buildUserPromptSections(
         'uploaded_files',
         'Uploaded Files',
         clipPromptText(uploadedFiles.join(', '), MAX_PROMPT_FILE_SECTION_CHARS),
-        'uploaded_files',
-      ),
+        'uploaded_files'
+      )
     );
   }
 
@@ -401,8 +453,8 @@ export function buildUserPromptSections(
       'execution_request',
       'Execution Request',
       '请严格按照 ReAct 协议继续当前任务。',
-      'runtime_instruction',
-    ),
+      'runtime_instruction'
+    )
   );
   return sections.filter((section): section is PromptSection => Boolean(section));
 }
@@ -412,10 +464,16 @@ export function buildUserPrompt(
   history: ChatMessage[],
   uploadedFiles?: string[],
   contextSummary?: string,
-  decisionContextSummary?: DecisionContextPromptSummary,
+  decisionContextSummary?: DecisionContextPromptSummary
 ): string {
   return renderPromptSections(
-    buildUserPromptSections(userInput, history, uploadedFiles, contextSummary, decisionContextSummary),
+    buildUserPromptSections(
+      userInput,
+      history,
+      uploadedFiles,
+      contextSummary,
+      decisionContextSummary
+    )
   );
 }
 
@@ -424,7 +482,7 @@ export function buildUserPrompt(
  */
 export function buildParamsConfirmPrompt(
   skillName: string,
-  params: Record<string, unknown>,
+  params: Record<string, unknown>
 ): string {
   const paramsList = Object.entries(params)
     .map(([key, value]) => `- ${key}: ${value}`)
@@ -445,7 +503,6 @@ export function parseActionResponse(response: string): {
   action: string;
   actionInput: Record<string, unknown>;
 } | null {
-
   let cleanedResponse = response
     .replace(/<think>[\s\S]*?<\/think>/gi, '')
     .replace(/<｜[\s\S]*?｜>/g, '')
@@ -456,10 +513,7 @@ export function parseActionResponse(response: string): {
     /^\s*\*\*(Thought|Action|Action Input|Observation|Final Answer)\*\*\s*:/gim,
     '$1:'
   );
-  cleanedResponse = cleanedResponse
-    .replace(/<\/?think>/gi, '')
-    .trim();
-
+  cleanedResponse = cleanedResponse.replace(/<\/?think>/gi, '').trim();
 
   // 提取Thought
   const thoughtMatch = cleanedResponse.match(/Thought:\s*([\s\S]+?)(?=Action:|$)/);
@@ -469,9 +523,10 @@ export function parseActionResponse(response: string): {
   const actionMatch = cleanedResponse.match(/Action:\s*([^\n]+)/);
   const action = actionMatch?.[1]?.trim() ?? '';
 
-
   // 提取Action Input
-  const actionInputMatch = cleanedResponse.match(/Action Input:\s*([\s\S]+?)(?=Observation|Final Answer|$)/);
+  const actionInputMatch = cleanedResponse.match(
+    /Action Input:\s*([\s\S]+?)(?=Observation|Final Answer|$)/
+  );
   let actionInput: Record<string, unknown> = {};
 
   if (actionInputMatch) {
@@ -514,7 +569,7 @@ export function parseActionResponse(response: string): {
 export function buildObservationPrompt(
   observation: string,
   iteration: number,
-  maxIterations: number,
+  maxIterations: number
 ): string {
   return `Observation: ${observation}`;
 }

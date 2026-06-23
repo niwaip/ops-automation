@@ -27,13 +27,13 @@ const isExecutionFlowDocumentRenderEndpoint = (value: unknown): boolean => {
 export class CapabilityReleaseSkillDraftService {
   constructor(
     private readonly capabilityReleaseBrowserRecordingService: CapabilityReleaseBrowserRecordingService,
-    private readonly capabilityReleaseTemporalSchemaService: CapabilityReleaseTemporalSchemaService,
+    private readonly capabilityReleaseTemporalSchemaService: CapabilityReleaseTemporalSchemaService
   ) {}
 
   buildSkillDraftPayload(
     release: CapabilityReleaseDTO,
     snapshot: CapabilitySourceSnapshotDTO,
-    validation: CapabilityValidationDTO,
+    validation: CapabilityValidationDTO
   ) {
     const payload = snapshot.sourcePayload;
     const baseName = this.extractSourceName(payload) || `Release-${release.releaseVersion}`;
@@ -44,47 +44,57 @@ export class CapabilityReleaseSkillDraftService {
         : rawParamsSchema && typeof rawParamsSchema === 'object'
           ? rawParamsSchema
           : {};
-    const workflowDsl = this.parseJson(payload.workflowDsl) as Record<string, unknown> || {};
+    const workflowDsl = (this.parseJson(payload.workflowDsl) as Record<string, unknown>) || {};
     const outputParams = this.parseJson(payload.outputParams) as Record<string, unknown> | null;
-    const resolvedOutputParams = outputParams && Object.keys(outputParams).length > 0
-      ? outputParams
-      : this.capabilityReleaseTemporalSchemaService.buildTemporalOutputParamsFromValidation(validation);
-    const expectedResult = typeof payload.expectedResult === 'string' && payload.expectedResult.trim()
-      ? payload.expectedResult.trim()
-      : this.capabilityReleaseTemporalSchemaService.extractTemporalExpectedResult({
-        ...workflowDsl,
-        outputParams: resolvedOutputParams,
-      }) || undefined;
+    const resolvedOutputParams =
+      outputParams && Object.keys(outputParams).length > 0
+        ? outputParams
+        : this.capabilityReleaseTemporalSchemaService.buildTemporalOutputParamsFromValidation(
+            validation
+          );
+    const expectedResult =
+      typeof payload.expectedResult === 'string' && payload.expectedResult.trim()
+        ? payload.expectedResult.trim()
+        : this.capabilityReleaseTemporalSchemaService.extractTemporalExpectedResult({
+            ...workflowDsl,
+            outputParams: resolvedOutputParams,
+          }) || undefined;
     const workflowSteps = Array.isArray(payload.workflowSteps)
       ? payload.workflowSteps
       : this.buildTemporalWorkflowSteps(workflowDsl);
     const executionFlowKeys = Array.isArray(payload.executionFlowKeys)
       ? payload.executionFlowKeys.filter((item): item is string => typeof item === 'string')
       : [];
-    const description = release.sourceType === 'temporal_workflow'
-      ? this.buildTemporalSkillDescription(payload, baseName)
-      : this.sanitizeSkillNarrative(String(payload.description || payload.goal || `${baseName} 自动生成技能`));
+    const description =
+      release.sourceType === 'temporal_workflow'
+        ? this.buildTemporalSkillDescription(payload, baseName)
+        : this.sanitizeSkillNarrative(
+            String(payload.description || payload.goal || `${baseName} 自动生成技能`)
+          );
     const matchSummary = this.buildSkillMatchSummary(payload, baseName, expectedResult);
     const paramCollectionGuidance = this.buildParamCollectionGuidance(paramsSchema || {});
     const validationRules = this.buildValidationRules(payload);
     const preservedRuntimeMetadata = this.extractRuntimeMetadataFromDraftPayload(payload);
-    const temporalRuntimeMetadata = release.sourceType === 'temporal_workflow'
-      ? this.hydrateTemporalRuntimeMetadata(preservedRuntimeMetadata, workflowDsl)
-      : preservedRuntimeMetadata;
+    const temporalRuntimeMetadata =
+      release.sourceType === 'temporal_workflow'
+        ? this.hydrateTemporalRuntimeMetadata(preservedRuntimeMetadata, workflowDsl)
+        : preservedRuntimeMetadata;
 
-    const finalDescription = description.length > 500 ? description.slice(0, 497) + '...' : description;
+    const finalDescription =
+      description.length > 500 ? description.slice(0, 497) + '...' : description;
 
     if (release.sourceType === 'browser_recording') {
-      const browserExecutionFlow = this.capabilityReleaseBrowserRecordingService.normalizeExecutionFlow(
-        payload.executionFlow,
-      );
+      const browserExecutionFlow =
+        this.capabilityReleaseBrowserRecordingService.normalizeExecutionFlow(payload.executionFlow);
       const tools = this.capabilityReleaseBrowserRecordingService.mergeToolsWithExecutionFlow(
         payload.tools,
-        browserExecutionFlow,
+        browserExecutionFlow
       );
       const apiEndpoints =
-        payload.apiEndpoints && typeof payload.apiEndpoints === 'object' && !Array.isArray(payload.apiEndpoints)
-          ? payload.apiEndpoints as Record<string, unknown>
+        payload.apiEndpoints &&
+        typeof payload.apiEndpoints === 'object' &&
+        !Array.isArray(payload.apiEndpoints)
+          ? (payload.apiEndpoints as Record<string, unknown>)
           : {
               runtimeMetadata: {
                 sourceType: 'browser_recording',
@@ -123,19 +133,25 @@ export class CapabilityReleaseSkillDraftService {
             ...preservedRuntimeMetadata,
             sourceType: 'execution_flow_template',
             sourceTemplate:
-              asRecord(preservedRuntimeMetadata.sourceTemplate)
-              || this.extractExecutionFlowSourceTemplate(payload),
+              asRecord(preservedRuntimeMetadata.sourceTemplate) ||
+              this.extractExecutionFlowSourceTemplate(payload),
             goal: this.pickFirstNonEmptyString(payload.goal, preservedRuntimeMetadata.goal),
-            expectedResult: this.pickFirstNonEmptyString(expectedResult, preservedRuntimeMetadata.expectedResult),
+            expectedResult: this.pickFirstNonEmptyString(
+              expectedResult,
+              preservedRuntimeMetadata.expectedResult
+            ),
             outputParams: resolvedOutputParams || preservedOutputParams || {},
-            matchSummary: this.pickFirstNonEmptyString(preservedRuntimeMetadata.matchSummary, matchSummary),
+            matchSummary: this.pickFirstNonEmptyString(
+              preservedRuntimeMetadata.matchSummary,
+              matchSummary
+            ),
             paramCollectionGuidance: this.pickFirstNonEmptyString(
               preservedRuntimeMetadata.paramCollectionGuidance,
-              paramCollectionGuidance,
+              paramCollectionGuidance
             ),
             validationRules: this.pickFirstNonEmptyString(
               preservedRuntimeMetadata.validationRules,
-              validationRules,
+              validationRules
             ),
           },
         },
@@ -154,26 +170,35 @@ export class CapabilityReleaseSkillDraftService {
       apiEndpoints: {
         runtimeMetadata: {
           ...temporalRuntimeMetadata,
-          matchSummary: this.pickFirstNonEmptyString(temporalRuntimeMetadata.matchSummary, matchSummary),
+          matchSummary: this.pickFirstNonEmptyString(
+            temporalRuntimeMetadata.matchSummary,
+            matchSummary
+          ),
           paramCollectionGuidance: this.pickFirstNonEmptyString(
             temporalRuntimeMetadata.paramCollectionGuidance,
-            paramCollectionGuidance,
+            paramCollectionGuidance
           ),
           validationRules: this.pickFirstNonEmptyString(
             temporalRuntimeMetadata.validationRules,
-            validationRules,
+            validationRules
           ),
           sourceType: 'temporal_workflow',
           sourceTemplate:
-            asRecord(temporalRuntimeMetadata.sourceTemplate)
-            || this.capabilityReleaseTemporalSchemaService.extractTemporalSourceTemplate(
-              this.parseJson(payload.workflowDsl) as Record<string, unknown> || {},
-              this.parseJson(payload.activityDsl) as Record<string, unknown> || {},
+            asRecord(temporalRuntimeMetadata.sourceTemplate) ||
+            this.capabilityReleaseTemporalSchemaService.extractTemporalSourceTemplate(
+              (this.parseJson(payload.workflowDsl) as Record<string, unknown>) || {},
+              (this.parseJson(payload.activityDsl) as Record<string, unknown>) || {}
             ),
           goal: this.pickFirstNonEmptyString(payload.goal, temporalRuntimeMetadata.goal),
-          expectedResult: this.pickFirstNonEmptyString(expectedResult, temporalRuntimeMetadata.expectedResult),
+          expectedResult: this.pickFirstNonEmptyString(
+            expectedResult,
+            temporalRuntimeMetadata.expectedResult
+          ),
           outputParams: resolvedOutputParams || preservedOutputParams || {},
-          taskQueue: this.pickFirstNonEmptyString(payload.taskQueue, temporalRuntimeMetadata.taskQueue),
+          taskQueue: this.pickFirstNonEmptyString(
+            payload.taskQueue,
+            temporalRuntimeMetadata.taskQueue
+          ),
           workflowSteps,
         },
       },
@@ -184,7 +209,7 @@ export class CapabilityReleaseSkillDraftService {
   buildTemporalExecutionFlowKeys(
     workflowName: string,
     workflowDsl: Record<string, unknown>,
-    activityDsl: Record<string, unknown>,
+    activityDsl: Record<string, unknown>
   ): string[] {
     const candidates = new Set<string>();
     [workflowName, workflowDsl.name]
@@ -205,7 +230,7 @@ export class CapabilityReleaseSkillDraftService {
   }
 
   buildTemporalWorkflowSteps(
-    workflowDsl: Record<string, unknown>,
+    workflowDsl: Record<string, unknown>
   ): Array<{ id?: string; name?: string; type?: string; activityName?: string }> {
     const steps = Array.isArray(workflowDsl.steps) ? workflowDsl.steps : [];
     return steps
@@ -219,9 +244,10 @@ export class CapabilityReleaseSkillDraftService {
   }
 
   extractExecutionFlowSourceTemplate(
-    payload: Record<string, unknown>,
+    payload: Record<string, unknown>
   ): Record<string, unknown> | undefined {
-    const declaredSourceTemplate = this.parseJson<Record<string, unknown>>(payload.sourceTemplate) || {};
+    const declaredSourceTemplate =
+      this.parseJson<Record<string, unknown>>(payload.sourceTemplate) || {};
     const steps = this.parseJson<Array<Record<string, unknown>>>(payload.steps) || [];
     const paramsSchema = this.parseJson<Record<string, unknown>>(payload.paramsSchema) || {};
     const paramsProperties =
@@ -229,17 +255,18 @@ export class CapabilityReleaseSkillDraftService {
         ? (paramsSchema.properties as Record<string, unknown>)
         : paramsSchema;
     const renderStep = steps.find((step) => {
-      const api = step?.api && typeof step.api === 'object'
-        ? step.api as Record<string, unknown>
-        : {};
+      const api =
+        step?.api && typeof step.api === 'object' ? (step.api as Record<string, unknown>) : {};
       return isExecutionFlowDocumentRenderEndpoint(api.endpoint);
     });
-    const renderApi = renderStep?.api && typeof renderStep.api === 'object'
-      ? renderStep.api as Record<string, unknown>
-      : {};
-    const renderBody = renderApi.body && typeof renderApi.body === 'object'
-      ? renderApi.body as Record<string, unknown>
-      : {};
+    const renderApi =
+      renderStep?.api && typeof renderStep.api === 'object'
+        ? (renderStep.api as Record<string, unknown>)
+        : {};
+    const renderBody =
+      renderApi.body && typeof renderApi.body === 'object'
+        ? (renderApi.body as Record<string, unknown>)
+        : {};
 
     const sourceTemplate = {
       templateId: this.pickFirstNonEmptyString(
@@ -247,21 +274,21 @@ export class CapabilityReleaseSkillDraftService {
         payload.templateId,
         payload.template_id,
         renderBody.templateId,
-        renderBody.template_id,
+        renderBody.template_id
       ),
       skillId: this.pickFirstNonEmptyString(
         declaredSourceTemplate.skillId,
         payload.skillId,
         payload.skill_id,
         renderBody.skillId,
-        renderBody.skill_id,
+        renderBody.skill_id
       ),
       fileName: this.pickFirstNonEmptyString(
         declaredSourceTemplate.fileName,
         payload.fileName,
         payload.file_name,
         renderBody.fileName,
-        renderBody.file_name,
+        renderBody.file_name
       ),
       format: this.pickFirstNonEmptyString(
         declaredSourceTemplate.format,
@@ -270,20 +297,21 @@ export class CapabilityReleaseSkillDraftService {
         payload.format,
         renderBody.outputFormat,
         renderBody.output_format,
-        renderBody.format,
+        renderBody.format
       ),
       variableCount: this.pickFirstPositiveNumber(
         declaredSourceTemplate.variableCount,
-        Object.keys(paramsProperties).length,
+        Object.keys(paramsProperties).length
       ),
     };
 
-    const isDocumentCategory = typeof payload.category === 'string' && payload.category === 'document';
+    const isDocumentCategory =
+      typeof payload.category === 'string' && payload.category === 'document';
     if (
-      !sourceTemplate.templateId
-      && !sourceTemplate.skillId
-      && !sourceTemplate.fileName
-      && !isDocumentCategory
+      !sourceTemplate.templateId &&
+      !sourceTemplate.skillId &&
+      !sourceTemplate.fileName &&
+      !isDocumentCategory
     ) {
       return undefined;
     }
@@ -293,11 +321,13 @@ export class CapabilityReleaseSkillDraftService {
 
   private buildTemporalSkillDescription(
     payload: Record<string, unknown>,
-    baseName: string,
+    baseName: string
   ): string {
-    const baseDescription = typeof payload.description === 'string' && this.sanitizeSkillNarrative(payload.description).trim()
-      ? this.sanitizeSkillNarrative(payload.description).trim()
-      : `${baseName} 自动生成技能`;
+    const baseDescription =
+      typeof payload.description === 'string' &&
+      this.sanitizeSkillNarrative(payload.description).trim()
+        ? this.sanitizeSkillNarrative(payload.description).trim()
+        : `${baseName} 自动生成技能`;
     return baseDescription;
   }
 
@@ -333,18 +363,17 @@ export class CapabilityReleaseSkillDraftService {
   private buildSkillMatchSummary(
     payload: Record<string, unknown>,
     baseName: string,
-    expectedResult?: string,
+    expectedResult?: string
   ): string {
     const parts: string[] = [];
-    const description = typeof payload.description === 'string'
-      ? this.sanitizeSkillNarrative(payload.description).trim()
-      : '';
-    const goal = typeof payload.goal === 'string'
-      ? this.sanitizeSkillNarrative(payload.goal).trim()
-      : '';
-    const normalizedExpectedResult = typeof expectedResult === 'string'
-      ? this.sanitizeSkillNarrative(expectedResult).trim()
-      : '';
+    const description =
+      typeof payload.description === 'string'
+        ? this.sanitizeSkillNarrative(payload.description).trim()
+        : '';
+    const goal =
+      typeof payload.goal === 'string' ? this.sanitizeSkillNarrative(payload.goal).trim() : '';
+    const normalizedExpectedResult =
+      typeof expectedResult === 'string' ? this.sanitizeSkillNarrative(expectedResult).trim() : '';
 
     if (description) {
       parts.push(description);
@@ -353,10 +382,10 @@ export class CapabilityReleaseSkillDraftService {
     }
 
     if (
-      normalizedExpectedResult
-      && normalizedExpectedResult !== description
-      && normalizedExpectedResult !== goal
-      && normalizedExpectedResult.length <= 80
+      normalizedExpectedResult &&
+      normalizedExpectedResult !== description &&
+      normalizedExpectedResult !== goal &&
+      normalizedExpectedResult.length <= 80
     ) {
       parts.push(`输出：${normalizedExpectedResult}`);
     }
@@ -364,17 +393,19 @@ export class CapabilityReleaseSkillDraftService {
     return parts.join('；').slice(0, 240);
   }
 
-  private buildParamCollectionGuidance(
-    paramsSchema: Record<string, unknown>,
-  ): string | undefined {
-    const schema = paramsSchema && typeof paramsSchema === 'object'
-      ? paramsSchema as Record<string, unknown>
-      : undefined;
-    const properties = schema?.properties && typeof schema.properties === 'object'
-      ? schema.properties as Record<string, unknown>
-      : undefined;
+  private buildParamCollectionGuidance(paramsSchema: Record<string, unknown>): string | undefined {
+    const schema =
+      paramsSchema && typeof paramsSchema === 'object'
+        ? (paramsSchema as Record<string, unknown>)
+        : undefined;
+    const properties =
+      schema?.properties && typeof schema.properties === 'object'
+        ? (schema.properties as Record<string, unknown>)
+        : undefined;
     const required = Array.isArray(schema?.required)
-      ? schema.required.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+      ? schema.required.filter(
+          (item): item is string => typeof item === 'string' && item.trim().length > 0
+        )
       : [];
 
     if (!properties || Object.keys(properties).length === 0) {
@@ -387,33 +418,32 @@ export class CapabilityReleaseSkillDraftService {
     ];
 
     const lines = orderedKeys.map((key) => {
-      const definition = properties[key] && typeof properties[key] === 'object'
-        ? properties[key] as Record<string, unknown>
-        : {};
-      const label = typeof definition.description === 'string' && definition.description.trim()
-        ? definition.description.trim()
-        : key;
+      const definition =
+        properties[key] && typeof properties[key] === 'object'
+          ? (properties[key] as Record<string, unknown>)
+          : {};
+      const label =
+        typeof definition.description === 'string' && definition.description.trim()
+          ? definition.description.trim()
+          : key;
       return `${key}: ${label}${required.includes(key) ? '（必填）' : '（可选）'}`;
     });
 
     return `收集参数时，请优先补齐以下信息：${lines.join('；')}`.slice(0, 600);
   }
 
-  private buildValidationRules(
-    payload: Record<string, unknown>,
-  ): string | undefined {
-    const goal = typeof payload.goal === 'string'
-      ? this.sanitizeSkillNarrative(payload.goal).trim()
-      : '';
+  private buildValidationRules(payload: Record<string, unknown>): string | undefined {
+    const goal =
+      typeof payload.goal === 'string' ? this.sanitizeSkillNarrative(payload.goal).trim() : '';
     return goal || undefined;
   }
 
   private hydrateTemporalRuntimeMetadata(
     runtimeMetadata: Record<string, unknown>,
-    workflowDsl: Record<string, unknown>,
+    workflowDsl: Record<string, unknown>
   ): Record<string, unknown> {
-    const workflowInputPolicy = this.capabilityReleaseTemporalSchemaService
-      .extractTemporalWorkflowInputPolicy(workflowDsl);
+    const workflowInputPolicy =
+      this.capabilityReleaseTemporalSchemaService.extractTemporalWorkflowInputPolicy(workflowDsl);
     const mappingHints = this.buildTemporalWorkflowMappingHints(workflowDsl, workflowInputPolicy);
 
     return {
@@ -433,7 +463,7 @@ export class CapabilityReleaseSkillDraftService {
 
   private buildTemporalWorkflowMappingHints(
     workflowDsl: Record<string, unknown>,
-    workflowInputPolicy?: Record<string, unknown>,
+    workflowInputPolicy?: Record<string, unknown>
   ): Array<Record<string, string>> {
     const inputParams = this.parseJson<Record<string, unknown>>(workflowDsl.inputParams) || {};
     const workflowInputPolicies = asRecord(workflowInputPolicy?.params) || {};
@@ -441,13 +471,13 @@ export class CapabilityReleaseSkillDraftService {
     return Object.entries(inputParams).flatMap(([key, value]) => {
       const definition = asRecord(value) || {};
       const workflowPolicy = asRecord(workflowInputPolicies[key]) || {};
-      const renderPath = this.capabilityReleaseTemporalSchemaService
-        .resolveTemporalWorkflowRenderPath(definition, workflowPolicy);
-      const renderPaths = typeof renderPath === 'string'
-        ? [renderPath]
-        : Array.isArray(renderPath)
-          ? renderPath
-          : [];
+      const renderPath =
+        this.capabilityReleaseTemporalSchemaService.resolveTemporalWorkflowRenderPath(
+          definition,
+          workflowPolicy
+        );
+      const renderPaths =
+        typeof renderPath === 'string' ? [renderPath] : Array.isArray(renderPath) ? renderPath : [];
 
       return renderPaths.map((path) => ({
         parameter: key,
@@ -457,7 +487,7 @@ export class CapabilityReleaseSkillDraftService {
   }
 
   private extractRuntimeMetadataFromDraftPayload(
-    payload: Record<string, unknown>,
+    payload: Record<string, unknown>
   ): Record<string, unknown> {
     return asRecord(asRecord(payload.apiEndpoints)?.runtimeMetadata) || {};
   }

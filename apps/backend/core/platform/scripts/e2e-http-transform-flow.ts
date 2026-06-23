@@ -47,7 +47,7 @@ async function main() {
     {
       contentType: 'json',
       outputMode: 'json',
-    },
+    }
   );
   if (!generatedTransform.success || !generatedTransform.config) {
     throw new Error(`结构化配置生成失败: ${generatedTransform.error || 'unknown error'}`);
@@ -97,7 +97,7 @@ async function main() {
     activityDsl,
     undefined,
     undefined,
-    (log) => generationLogs.push(log),
+    (log) => generationLogs.push(log)
   );
   if (!generated.success || !generated.code) {
     throw new Error(`代码生成失败: ${generated.error || 'unknown error'}`);
@@ -109,18 +109,24 @@ async function main() {
     workflowDsl.workflowClassName || 'WeatherStructuredWorkflow',
     inputParams,
     workflowDsl.taskQueue,
-    (log) => validationLogs.push(log),
+    (log) => validationLogs.push(log)
   );
 
   // eslint-disable-next-line no-console
-  console.log(JSON.stringify({
-    city,
-    generationMode: generated.generationMode,
-    generatedTransformConfig: generatedTransform.config,
-    generationLogs,
-    validation,
-    validationLogs,
-  }, null, 2));
+  console.log(
+    JSON.stringify(
+      {
+        city,
+        generationMode: generated.generationMode,
+        generatedTransformConfig: generatedTransform.config,
+        generationLogs,
+        validation,
+        validationLogs,
+      },
+      null,
+      2
+    )
+  );
 
   if (!validation.success) {
     process.exit(1);

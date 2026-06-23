@@ -3,11 +3,12 @@ import { StreamEventType } from '../react-engine/interfaces';
 import { ChatOrchestratorService } from './chat-orchestrator.service';
 
 describe('ChatOrchestratorService', () => {
-  const createAsyncGenerator = <T>(events: T[]) => async function* () {
-    for (const event of events) {
-      yield event;
-    }
-  };
+  const createAsyncGenerator = <T>(events: T[]) =>
+    async function* () {
+      for (const event of events) {
+        yield event;
+      }
+    };
 
   const createService = () => {
     const controlPlaneClient = {
@@ -47,7 +48,7 @@ describe('ChatOrchestratorService', () => {
       plannerService as any,
       promptDebugSettingsService as any,
       waitingInputService as any,
-      executionStreamService as any,
+      executionStreamService as any
     );
 
     return {
@@ -77,7 +78,7 @@ describe('ChatOrchestratorService', () => {
       },
       'Bearer token-auth-1',
       'trace-auth-1',
-      [],
+      []
     );
 
     expect(fetchSpy).toHaveBeenCalled();
@@ -94,12 +95,8 @@ describe('ChatOrchestratorService', () => {
   });
 
   it('submits waiting_input payload and resumes execution observation', async () => {
-    const {
-      service,
-      controlPlaneClient,
-      waitingInputService,
-      executionStreamService,
-    } = createService();
+    const { service, controlPlaneClient, waitingInputService, executionStreamService } =
+      createService();
 
     controlPlaneClient.getExecution.mockResolvedValue({
       skillId: 'skill-1',
@@ -131,16 +128,18 @@ describe('ChatOrchestratorService', () => {
       status: 'running',
     });
     executionStreamService.buildLatestExecutionStateEvent.mockResolvedValue(null);
-    executionStreamService.observeExecution.mockImplementation(createAsyncGenerator([
-      {
-        type: StreamEventType.RESULT,
-        content: '任务继续执行',
-        data: {
-          executionId: 'execution-1',
-          status: 'running',
+    executionStreamService.observeExecution.mockImplementation(
+      createAsyncGenerator([
+        {
+          type: StreamEventType.RESULT,
+          content: '任务继续执行',
+          data: {
+            executionId: 'execution-1',
+            status: 'running',
+          },
         },
-      },
-    ]));
+      ])
+    );
 
     const events: Array<{ type: StreamEventType; content: string }> = [];
     for await (const event of service.handleTaskMode(
@@ -156,7 +155,7 @@ describe('ChatOrchestratorService', () => {
         history: [],
         executionId: 'execution-1',
       },
-      'Bearer token-1',
+      'Bearer token-1'
     )) {
       events.push({ type: event.type, content: event.content });
     }
@@ -176,7 +175,7 @@ describe('ChatOrchestratorService', () => {
           userId: 'user-1',
           userRoles: ['employee'],
         },
-      },
+      }
     );
     expect(events).toEqual([
       {
@@ -195,12 +194,7 @@ describe('ChatOrchestratorService', () => {
   });
 
   it('creates resumable execution when planner returns missing required inputs', async () => {
-    const {
-      service,
-      plannerService,
-      controlPlaneClient,
-      waitingInputService,
-    } = createService();
+    const { service, plannerService, controlPlaneClient, waitingInputService } = createService();
     const planDraft = {
       plan_id: 'plan-1',
       planner_mode: 'skill',
@@ -255,7 +249,7 @@ describe('ChatOrchestratorService', () => {
         traceId: 'trace-plan-1',
         history: [],
       },
-      'Bearer token-plan-1',
+      'Bearer token-plan-1'
     )) {
       events.push({ type: event.type, content: event.content });
     }
@@ -277,7 +271,7 @@ describe('ChatOrchestratorService', () => {
           userId: 'user-plan-1',
           userRoles: ['employee'],
         },
-      },
+      }
     );
     expect(events).toEqual([
       {

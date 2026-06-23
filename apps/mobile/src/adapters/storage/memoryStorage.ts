@@ -1,4 +1,4 @@
-import type { StoragePort } from "@ops/user-core";
+import type { StoragePort } from '@ops/user-core';
 
 const storage = new Map<string, string>();
 

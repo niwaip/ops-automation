@@ -15,12 +15,10 @@ describe('PlaywrightCliAdapter', () => {
     const generateLocatorSpy = jest
       .spyOn(adapter, 'generateLocator')
       .mockResolvedValue('role=button[name="Executions"]');
-    const handleSimpleCommandSpy = jest
-      .spyOn(adapter, 'handleSimpleCommand')
-      .mockResolvedValue({
-        status: 'success',
-        command: 'click',
-      });
+    const handleSimpleCommandSpy = jest.spyOn(adapter, 'handleSimpleCommand').mockResolvedValue({
+      status: 'success',
+      command: 'click',
+    });
 
     await adapter.runCliAction('click', { target: 'e53' }, 'runtime-1');
 
@@ -35,15 +33,11 @@ describe('PlaywrightCliAdapter', () => {
   it('keeps non-ref selectors unchanged', async () => {
     const adapter = createAdapter();
     jest.spyOn(adapter, 'ensureDirectories').mockResolvedValue(undefined);
-    const generateLocatorSpy = jest
-      .spyOn(adapter, 'generateLocator')
-      .mockResolvedValue('unused');
-    const handleSimpleCommandSpy = jest
-      .spyOn(adapter, 'handleSimpleCommand')
-      .mockResolvedValue({
-        status: 'success',
-        command: 'click',
-      });
+    const generateLocatorSpy = jest.spyOn(adapter, 'generateLocator').mockResolvedValue('unused');
+    const handleSimpleCommandSpy = jest.spyOn(adapter, 'handleSimpleCommand').mockResolvedValue({
+      status: 'success',
+      command: 'click',
+    });
 
     await adapter.runCliAction('click', { selector: '[data-testid="submit"]' }, 'runtime-1');
 
@@ -56,12 +50,10 @@ describe('PlaywrightCliAdapter', () => {
   it('normalizes shorthand role selectors before click execution', async () => {
     const adapter = createAdapter();
     jest.spyOn(adapter, 'ensureDirectories').mockResolvedValue(undefined);
-    const handleSimpleCommandSpy = jest
-      .spyOn(adapter, 'handleSimpleCommand')
-      .mockResolvedValue({
-        status: 'success',
-        command: 'click',
-      });
+    const handleSimpleCommandSpy = jest.spyOn(adapter, 'handleSimpleCommand').mockResolvedValue({
+      status: 'success',
+      command: 'click',
+    });
 
     await adapter.runCliAction('click', { target: 'menuitem[name="Executions"]' }, 'runtime-1');
 
@@ -69,7 +61,7 @@ describe('PlaywrightCliAdapter', () => {
       'menuitem[name="Executions"]',
     ]);
     expect(adapter.normalizeSemanticRoleSelector('menuitem[name="Executions"]')).toBe(
-      'role=menuitem[name="Executions"]',
+      'role=menuitem[name="Executions"]'
     );
   });
 
@@ -77,25 +69,21 @@ describe('PlaywrightCliAdapter', () => {
     const adapter = createAdapter();
     jest.spyOn(adapter, 'ensureDirectories').mockResolvedValue(undefined);
     jest.spyOn(adapter, 'ensureSessionReady').mockResolvedValue(undefined);
-    const execCliSpy = jest
-      .spyOn(adapter, 'execCli')
-      .mockResolvedValue({
-        stdout: 'ok',
-        stderr: '',
-      });
+    const execCliSpy = jest.spyOn(adapter, 'execCli').mockResolvedValue({
+      stdout: 'ok',
+      stderr: '',
+    });
 
-    const result = await adapter.runCliAction(
-      'click',
-      { text: 'RAM登录' },
-      'runtime-1',
-    );
+    const result = await adapter.runCliAction('click', { text: 'RAM登录' }, 'runtime-1');
 
     expect(result.command).toBe('click');
     expect(execCliSpy).toHaveBeenCalledTimes(1);
     expect(execCliSpy.mock.calls[0][0]).toBe('runtime-1');
     expect(execCliSpy.mock.calls[0][1][0]).toBe('run-code');
     expect(execCliSpy.mock.calls[0][1][1]).toContain(`getByText("RAM登录", { exact: false })`);
-    expect(execCliSpy.mock.calls[0][1][1]).toContain(`getByRole('button', { name: "RAM登录", exact: false })`);
+    expect(execCliSpy.mock.calls[0][1][1]).toContain(
+      `getByRole('button', { name: "RAM登录", exact: false })`
+    );
   });
 
   it('falls back from shorthand textbox role selectors to placeholder inputs on fill', async () => {
@@ -105,7 +93,8 @@ describe('PlaywrightCliAdapter', () => {
     const execCliSpy = jest
       .spyOn(adapter, 'execCli')
       .mockResolvedValueOnce({
-        stdout: '### Error\nError: "role=textbox[name="Enter username"]" does not match any elements.',
+        stdout:
+          '### Error\nError: "role=textbox[name="Enter username"]" does not match any elements.',
         stderr: '',
       })
       .mockResolvedValueOnce({
@@ -116,7 +105,7 @@ describe('PlaywrightCliAdapter', () => {
     const result = await adapter.runCliAction(
       'fill',
       { target: 'textbox[name="Enter username"]', value: 'demo' },
-      'runtime-1',
+      'runtime-1'
     );
 
     expect(result.command).toBe('fill');
@@ -136,26 +125,80 @@ describe('PlaywrightCliAdapter', () => {
     const adapter = createAdapter();
     jest.spyOn(adapter, 'ensureDirectories').mockResolvedValue(undefined);
     jest.spyOn(adapter, 'ensureSessionReady').mockResolvedValue(undefined);
-    const execCliSpy = jest
-      .spyOn(adapter, 'execCli')
-      .mockResolvedValue({
-        stdout: 'ok',
-        stderr: '',
-      });
+    const execCliSpy = jest.spyOn(adapter, 'execCli').mockResolvedValue({
+      stdout: 'ok',
+      stderr: '',
+    });
 
     const result = await adapter.runCliAction(
       'wait',
       { selector: 'textbox[name="Enter username"]', duration: 15000 },
-      'runtime-1',
+      'runtime-1'
     );
 
     expect(result.command).toBe('wait');
     expect(execCliSpy).toHaveBeenCalledTimes(1);
     expect(execCliSpy.mock.calls[0][0]).toBe('runtime-1');
     expect(execCliSpy.mock.calls[0][1][0]).toBe('run-code');
-    expect(execCliSpy.mock.calls[0][1][1]).toContain('activePage.locator("role=textbox[name=\\"Enter username\\"]")');
+    expect(execCliSpy.mock.calls[0][1][1]).toContain(
+      'activePage.locator("role=textbox[name=\\"Enter username\\"]")'
+    );
     expect(execCliSpy.mock.calls[0][1][1]).toContain('waitFor({ timeout: 15000 })');
-    expect(execCliSpy.mock.calls[0][1][1]).toContain('Timeout waiting for selector in page and iframes');
+    expect(execCliSpy.mock.calls[0][1][1]).toContain(
+      'Timeout waiting for selector in page and iframes'
+    );
+  });
+
+  it('uses run-code positional selector fallback for nth-match click', async () => {
+    const adapter = createAdapter();
+    jest.spyOn(adapter, 'ensureDirectories').mockResolvedValue(undefined);
+    jest.spyOn(adapter, 'ensureSessionReady').mockResolvedValue(undefined);
+    const execCliSpy = jest.spyOn(adapter, 'execCli').mockResolvedValue({
+      stdout: 'ok',
+      stderr: '',
+    });
+
+    const result = await adapter.runCliAction(
+      'click',
+      { target: ':nth-match([data-ai-action="detail"], 1)' },
+      'runtime-1'
+    );
+
+    expect(result.command).toBe('click');
+    expect(execCliSpy).toHaveBeenCalledTimes(1);
+    expect(execCliSpy.mock.calls[0][0]).toBe('runtime-1');
+    expect(execCliSpy.mock.calls[0][1][0]).toBe('run-code');
+    expect(execCliSpy.mock.calls[0][1][1]).toContain(
+      'scope.locator("[data-ai-action=\\"detail\\"]").nth(0)'
+    );
+    expect(execCliSpy.mock.calls[0][1][1]).toContain('locator.click({ force: true, timeout: 5000 })');
+  });
+
+  it('uses nth locator fallback for nth-match wait selectors', async () => {
+    const adapter = createAdapter();
+    jest.spyOn(adapter, 'ensureDirectories').mockResolvedValue(undefined);
+    jest.spyOn(adapter, 'ensureSessionReady').mockResolvedValue(undefined);
+    const execCliSpy = jest.spyOn(adapter, 'execCli').mockResolvedValue({
+      stdout: 'ok',
+      stderr: '',
+    });
+
+    const result = await adapter.runCliAction(
+      'wait',
+      { selector: ':nth-match([data-ai-action="detail"], 1)', duration: 15000 },
+      'runtime-1'
+    );
+
+    expect(result.command).toBe('wait');
+    expect(execCliSpy).toHaveBeenCalledTimes(1);
+    expect(execCliSpy.mock.calls[0][0]).toBe('runtime-1');
+    expect(execCliSpy.mock.calls[0][1][0]).toBe('run-code');
+    expect(execCliSpy.mock.calls[0][1][1]).toContain(
+      'activePage.locator("[data-ai-action=\\"detail\\"]").nth(0).waitFor({ timeout: 15000 })'
+    );
+    expect(execCliSpy.mock.calls[0][1][1]).toContain(
+      'frame.locator("[data-ai-action=\\"detail\\"]").nth(0).waitFor({ timeout: 15000 })'
+    );
   });
 
   it('fails fast when a runtime target ref cannot be resolved', async () => {
@@ -163,8 +206,8 @@ describe('PlaywrightCliAdapter', () => {
     jest.spyOn(adapter, 'ensureDirectories').mockResolvedValue(undefined);
     jest.spyOn(adapter, 'generateLocator').mockResolvedValue(undefined);
 
-    await expect(
-      adapter.runCliAction('click', { target: 'e53' }, 'runtime-1'),
-    ).rejects.toThrow('Failed to resolve runtime target ref: e53');
+    await expect(adapter.runCliAction('click', { target: 'e53' }, 'runtime-1')).rejects.toThrow(
+      'Failed to resolve runtime target ref: e53'
+    );
   });
 });

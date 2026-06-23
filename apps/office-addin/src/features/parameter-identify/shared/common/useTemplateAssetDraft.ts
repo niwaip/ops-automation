@@ -36,7 +36,11 @@ interface UseTemplateAssetDraftOptions {
   setTemplateTermAssetsText: (value: string) => void;
   setIsSavingTemplateAssetManifest: (value: boolean) => void;
   setTemplateAssetNotice: (value: TemplateAssetNotice | null) => void;
-  addDebugLog: (level: 'info' | 'warn' | 'error' | 'debug', message: string, details?: string) => void;
+  addDebugLog: (
+    level: 'info' | 'warn' | 'error' | 'debug',
+    message: string,
+    details?: string
+  ) => void;
   normalizeLanguageCode: (language?: string) => string;
   extractDocument: () => Promise<any>;
 }
@@ -117,10 +121,20 @@ function inferFieldShape(
     return { type: 'currency_amount', policy: 'format_only', riskLevel: 'high', required: false };
   }
   if (/partya|partyb|company|entity|甲方|乙方|委托方|受托方/.test(keyword)) {
-    return { type: 'legal_entity_name', policy: 'dictionary_first', riskLevel: 'high', required: true };
+    return {
+      type: 'legal_entity_name',
+      policy: 'dictionary_first',
+      riskLevel: 'high',
+      required: true,
+    };
   }
   if (/projectname|项目名称|项目/.test(keyword)) {
-    return { type: 'project_name', policy: 'dictionary_first', riskLevel: 'medium', required: true };
+    return {
+      type: 'project_name',
+      policy: 'dictionary_first',
+      riskLevel: 'medium',
+      required: true,
+    };
   }
   if (/location|place|地点|场所/.test(keyword)) {
     return { type: 'geo_name', policy: 'dictionary_first', riskLevel: 'medium', required: false };
@@ -139,7 +153,11 @@ function extractAnchorPrefix(suggestion: AISuggestion): string {
     suggestion.elementPath,
     suggestion.originalText,
   ]
-    .map((value) => String(value || '').replace(/\s+/g, ' ').trim())
+    .map((value) =>
+      String(value || '')
+        .replace(/\s+/g, ' ')
+        .trim()
+    )
     .filter(Boolean);
 
   const matched = candidates.find((value) => /[:：]$/.test(value)) || candidates[0] || '';
@@ -164,18 +182,18 @@ function buildTemplateAssetSourceBindings(
     sourceBinding.tokenId = `content-control-${wordAnchor.contentControlId}`;
   }
   if (
-    wordAnchor?.type === 'table-cell'
-    && typeof wordAnchor.tableIndex === 'number'
-    && typeof wordAnchor.rowIndex === 'number'
-    && typeof wordAnchor.cellIndex === 'number'
+    wordAnchor?.type === 'table-cell' &&
+    typeof wordAnchor.tableIndex === 'number' &&
+    typeof wordAnchor.rowIndex === 'number' &&
+    typeof wordAnchor.cellIndex === 'number'
   ) {
     sourceBinding.blockId = `table-${wordAnchor.tableIndex}-row-${wordAnchor.rowIndex}-cell-${wordAnchor.cellIndex}`;
   }
   if (
-    wordAnchor?.type === 'text-range'
-    && typeof wordAnchor.paragraphIndex === 'number'
-    && typeof wordAnchor.start === 'number'
-    && typeof wordAnchor.end === 'number'
+    wordAnchor?.type === 'text-range' &&
+    typeof wordAnchor.paragraphIndex === 'number' &&
+    typeof wordAnchor.start === 'number' &&
+    typeof wordAnchor.end === 'number'
   ) {
     sourceBinding.blockId = `paragraph-${wordAnchor.paragraphIndex}`;
     sourceBinding.tokenId = `word-range-${wordAnchor.paragraphIndex}-${wordAnchor.start}-${wordAnchor.end}`;
@@ -229,7 +247,9 @@ function buildTemplateAssetFieldSpecs(
         valueMode: existing?.valueMode || 'scalar',
         type: existing?.type || inferredShape.type,
         sourceLanguage: existing?.sourceLanguage || sourceLanguage,
-        targetLanguages: Array.from(new Set([...(existing?.targetLanguages || []), ...targetLanguages])),
+        targetLanguages: Array.from(
+          new Set([...(existing?.targetLanguages || []), ...targetLanguages])
+        ),
         policy: existing?.policy || inferredShape.policy,
         required: existing?.required ?? inferredShape.required,
         riskLevel: existing?.riskLevel || inferredShape.riskLevel,
@@ -248,9 +268,10 @@ function buildTemplateAssetFieldSpecs(
   return Array.from(fieldMap.values());
 }
 
-function parseTemplateTermAssetsText(
-  rawText: string
-): { value: WorkflowTermAssets | null; error?: string } {
+function parseTemplateTermAssetsText(rawText: string): {
+  value: WorkflowTermAssets | null;
+  error?: string;
+} {
   const trimmed = String(rawText || '').trim();
   if (!trimmed) {
     return { value: null };
@@ -284,7 +305,9 @@ function sanitizeTemplateFieldSpecs(
       fieldId: String(field.fieldId || '').trim(),
       sourceLanguage: normalizeLanguageCode(field.sourceLanguage),
       targetLanguages: Array.from(
-        new Set((field.targetLanguages || []).map((lang) => normalizeLanguageCode(lang)).filter(Boolean))
+        new Set(
+          (field.targetLanguages || []).map((lang) => normalizeLanguageCode(lang)).filter(Boolean)
+        )
       ),
     }))
     .filter((field) => {
@@ -339,7 +362,12 @@ export function useTemplateAssetDraft({
         ? JSON.stringify(templateAssetDraftInfo.termAssets, null, 2)
         : ''
     );
-  }, [templateAssetDraftInfo, setTemplateFieldSpecsDraft, setTemplateTermAssetsDraft, setTemplateTermAssetsText]);
+  }, [
+    templateAssetDraftInfo,
+    setTemplateFieldSpecsDraft,
+    setTemplateTermAssetsDraft,
+    setTemplateTermAssetsText,
+  ]);
 
   useEffect(() => {
     if (!templateAssetDraftInfo) {
@@ -349,7 +377,11 @@ export function useTemplateAssetDraft({
       ? normalizeLanguageCode(templateAssetDraftInfo.sourceLanguage)
       : undefined;
     const normalizedTargetLanguages = Array.from(
-      new Set((templateAssetDraftInfo.targetLanguages || []).map((lang) => normalizeLanguageCode(lang)).filter(Boolean))
+      new Set(
+        (templateAssetDraftInfo.targetLanguages || [])
+          .map((lang) => normalizeLanguageCode(lang))
+          .filter(Boolean)
+      )
     );
     if (templateAssetDraftInfo.sourceLanguage) {
       const nextSourceLanguage = normalizedSourceLanguage || 'zh';
@@ -369,9 +401,10 @@ export function useTemplateAssetDraft({
     setAssetTargetLanguages,
   ]);
 
-  const getEffectiveTemplateTermAssets = (
-    options?: { rawText?: string; fallbackToDraftState?: boolean }
-  ): { value: WorkflowTermAssets | null; error?: string } => {
+  const getEffectiveTemplateTermAssets = (options?: {
+    rawText?: string;
+    fallbackToDraftState?: boolean;
+  }): { value: WorkflowTermAssets | null; error?: string } => {
     const rawText = options?.rawText ?? templateTermAssetsText;
     const parsed = parseTemplateTermAssetsText(rawText);
     if (parsed.error) {
@@ -418,7 +451,12 @@ export function useTemplateAssetDraft({
 
     return {
       templateDocumentIr,
-      fieldSpecs: buildTemplateAssetFieldSpecs(suggestions, analyzeResponse.fields, sourceLanguage, targetLanguages),
+      fieldSpecs: buildTemplateAssetFieldSpecs(
+        suggestions,
+        analyzeResponse.fields,
+        sourceLanguage,
+        targetLanguages
+      ),
       sourceLanguage,
       targetLanguages,
       warnings: analyzeResponse.warnings || [],
@@ -431,28 +469,32 @@ export function useTemplateAssetDraft({
   ): WorkflowTermAssets => {
     const current = getEffectiveTemplateTermAssets().value || {};
     const preferredField = targetFieldId
-      ? templateFieldSpecsDraft.find((field) => field.fieldId === targetFieldId)
-        || templateAssetDraftInfo?.fields.find((field) => field.fieldId === targetFieldId)
+      ? templateFieldSpecsDraft.find((field) => field.fieldId === targetFieldId) ||
+        templateAssetDraftInfo?.fields.find((field) => field.fieldId === targetFieldId)
       : undefined;
-    const dictionaryField = preferredField && preferredField.policy === 'dictionary_first'
-      ? preferredField
-      : templateFieldSpecsDraft.find((field) => field.policy === 'dictionary_first')
-        || templateAssetDraftInfo?.fields.find((field) => field.policy === 'dictionary_first')
-        || preferredField
-        || templateFieldSpecsDraft[0]
-        || templateAssetDraftInfo?.fields[0];
-    const enumField = preferredField && preferredField.policy === 'enum_mapping'
-      ? preferredField
-      : templateFieldSpecsDraft.find((field) => field.policy === 'enum_mapping')
-        || templateAssetDraftInfo?.fields.find((field) => field.policy === 'enum_mapping');
-    const sourceLanguage = dictionaryField?.sourceLanguage
-      || assetSourceLanguage
-      || templateAssetDraftInfo?.sourceLanguage
-      || 'zh';
-    const targetLanguage = dictionaryField?.targetLanguages?.[0]
-      || assetTargetLanguages[0]
-      || templateAssetDraftInfo?.targetLanguages?.[0]
-      || 'ja';
+    const dictionaryField =
+      preferredField && preferredField.policy === 'dictionary_first'
+        ? preferredField
+        : templateFieldSpecsDraft.find((field) => field.policy === 'dictionary_first') ||
+          templateAssetDraftInfo?.fields.find((field) => field.policy === 'dictionary_first') ||
+          preferredField ||
+          templateFieldSpecsDraft[0] ||
+          templateAssetDraftInfo?.fields[0];
+    const enumField =
+      preferredField && preferredField.policy === 'enum_mapping'
+        ? preferredField
+        : templateFieldSpecsDraft.find((field) => field.policy === 'enum_mapping') ||
+          templateAssetDraftInfo?.fields.find((field) => field.policy === 'enum_mapping');
+    const sourceLanguage =
+      dictionaryField?.sourceLanguage ||
+      assetSourceLanguage ||
+      templateAssetDraftInfo?.sourceLanguage ||
+      'zh';
+    const targetLanguage =
+      dictionaryField?.targetLanguages?.[0] ||
+      assetTargetLanguages[0] ||
+      templateAssetDraftInfo?.targetLanguages?.[0] ||
+      'ja';
 
     if (kind === 'fieldDictionary') {
       const fieldId = dictionaryField?.fieldId || 'partyAName';
@@ -478,8 +520,10 @@ export function useTemplateAssetDraft({
 
     if (kind === 'termbase') {
       const fieldId = dictionaryField?.fieldId || 'partyAName';
-      const sourceValue = fieldId === 'projectName' ? '无线网络设备更新' : '广州日产通商贸易有限公司';
-      const translatedValue = fieldId === 'projectName' ? 'テンプレート専用設備更新' : 'テンプレート専用会社名';
+      const sourceValue =
+        fieldId === 'projectName' ? '无线网络设备更新' : '广州日产通商贸易有限公司';
+      const translatedValue =
+        fieldId === 'projectName' ? 'テンプレート専用設備更新' : 'テンプレート専用会社名';
       return {
         ...current,
         termbase: [
@@ -534,11 +578,12 @@ export function useTemplateAssetDraft({
     setTemplateTermAssetsText(JSON.stringify(nextValue, null, 2));
     setTemplateAssetNotice({
       type: 'info',
-      message: kind === 'fieldDictionary'
-        ? `已追加字段词典示例项${targetFieldId ? `: ${targetFieldId}` : ''}`
-        : kind === 'termbase'
-          ? `已追加术语示例项${targetFieldId ? `: ${targetFieldId}` : ''}`
-          : `已追加枚举映射示例项${targetFieldId ? `: ${targetFieldId}` : ''}`,
+      message:
+        kind === 'fieldDictionary'
+          ? `已追加字段词典示例项${targetFieldId ? `: ${targetFieldId}` : ''}`
+          : kind === 'termbase'
+            ? `已追加术语示例项${targetFieldId ? `: ${targetFieldId}` : ''}`
+            : `已追加枚举映射示例项${targetFieldId ? `: ${targetFieldId}` : ''}`,
     });
   };
 
@@ -597,10 +642,12 @@ export function useTemplateAssetDraft({
       carboneAPI.setBaseUrl(apiBaseUrl);
       const templateDocumentIr = await extractDocument();
       const sourceLanguage = normalizeLanguageCode(
-        (templateDocumentIr?.metadata?.language as string | undefined)
-          || templateAssetDraftInfo?.sourceLanguage
+        (templateDocumentIr?.metadata?.language as string | undefined) ||
+          templateAssetDraftInfo?.sourceLanguage
       );
-      const targetLanguages = Array.from(new Set(specs.flatMap((field) => field.targetLanguages || [])));
+      const targetLanguages = Array.from(
+        new Set(specs.flatMap((field) => field.targetLanguages || []))
+      );
       const saveResult = await carboneAPI.saveTemplateWorkflow({
         templateId: draftId,
         templateMeta: {
@@ -630,11 +677,14 @@ export function useTemplateAssetDraft({
 
       const snapshot = readDraftSnapshot(draftStorageKey);
       if (snapshot?.draftId === draftId) {
-        localStorage.setItem(draftStorageKey, JSON.stringify({
-          ...snapshot,
-          templateAssetDraftInfo: nextTemplateAssetDraftInfo,
-          workflowDraftInfo: nextTemplateAssetDraftInfo,
-        }));
+        localStorage.setItem(
+          draftStorageKey,
+          JSON.stringify({
+            ...snapshot,
+            templateAssetDraftInfo: nextTemplateAssetDraftInfo,
+            workflowDraftInfo: nextTemplateAssetDraftInfo,
+          })
+        );
       }
 
       if (!options?.silent) {
@@ -661,18 +711,17 @@ export function useTemplateAssetDraft({
     }
   };
 
-  const handleTemplateFieldSpecChange = (
-    index: number,
-    patch: Partial<TemplateFieldSpec>
-  ) => {
-    setTemplateFieldSpecsDraft((current) => current.map((field, fieldIndex) => (
-      fieldIndex === index
-        ? {
-            ...field,
-            ...patch,
-          }
-        : field
-    )));
+  const handleTemplateFieldSpecChange = (index: number, patch: Partial<TemplateFieldSpec>) => {
+    setTemplateFieldSpecsDraft((current) =>
+      current.map((field, fieldIndex) =>
+        fieldIndex === index
+          ? {
+              ...field,
+              ...patch,
+            }
+          : field
+      )
+    );
   };
 
   const handleTemplateFieldTargetLanguagesChange = (index: number, rawValue: string) => {

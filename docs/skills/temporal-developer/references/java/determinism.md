@@ -30,16 +30,16 @@ The following are forbidden inside workflow code but are appropriate to use in a
 
 ## Safe Builtin Alternatives
 
-| Forbidden | Safe Alternative |
-|-----------|------------------|
-| `Thread.sleep(millis)` | `Workflow.sleep(Duration.ofMillis(millis))` |
-| `UUID.randomUUID()` | `Workflow.randomUUID()` |
-| `Math.random()` | `Workflow.newRandom().nextInt()` |
-| `System.currentTimeMillis()` | `Workflow.currentTimeMillis()` |
-| `new Thread(runnable)` | `Async.function(func)` / `Async.procedure(proc)` |
-| `CompletableFuture<T>` | `Promise<T>` / `CompletablePromise<T>` |
-| `BlockingQueue<T>` | `WorkflowQueue<T>` |
-| `Future<T>` | `Promise<T>` |
+| Forbidden                    | Safe Alternative                                 |
+| ---------------------------- | ------------------------------------------------ |
+| `Thread.sleep(millis)`       | `Workflow.sleep(Duration.ofMillis(millis))`      |
+| `UUID.randomUUID()`          | `Workflow.randomUUID()`                          |
+| `Math.random()`              | `Workflow.newRandom().nextInt()`                 |
+| `System.currentTimeMillis()` | `Workflow.currentTimeMillis()`                   |
+| `new Thread(runnable)`       | `Async.function(func)` / `Async.procedure(proc)` |
+| `CompletableFuture<T>`       | `Promise<T>` / `CompletablePromise<T>`           |
+| `BlockingQueue<T>`           | `WorkflowQueue<T>`                               |
+| `Future<T>`                  | `Promise<T>`                                     |
 
 ## Testing Replay Compatibility
 

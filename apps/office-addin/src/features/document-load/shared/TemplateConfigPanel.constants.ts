@@ -25,11 +25,36 @@ export const getTemplateTypeIcon = (id: string): string => {
 };
 
 export const TEMPLATE_TYPE_OPTIONS: TemplateTypeOption[] = [
-  { id: 'report', name: '报告文档', description: '业务报告、分析报告等', icon: getTemplateTypeIcon('report') },
-  { id: 'invoice', name: '发票账单', description: '发票、收据、账单等', icon: getTemplateTypeIcon('invoice') },
-  { id: 'certificate', name: '证书证明', description: '证书、证明、执照等', icon: getTemplateTypeIcon('certificate') },
-  { id: 'contract', name: '合同协议', description: '合同、协议、备忘录等', icon: getTemplateTypeIcon('contract') },
-  { id: 'letter', name: '信函通知', description: '信函、通知、公告等', icon: getTemplateTypeIcon('letter') },
+  {
+    id: 'report',
+    name: '报告文档',
+    description: '业务报告、分析报告等',
+    icon: getTemplateTypeIcon('report'),
+  },
+  {
+    id: 'invoice',
+    name: '发票账单',
+    description: '发票、收据、账单等',
+    icon: getTemplateTypeIcon('invoice'),
+  },
+  {
+    id: 'certificate',
+    name: '证书证明',
+    description: '证书、证明、执照等',
+    icon: getTemplateTypeIcon('certificate'),
+  },
+  {
+    id: 'contract',
+    name: '合同协议',
+    description: '合同、协议、备忘录等',
+    icon: getTemplateTypeIcon('contract'),
+  },
+  {
+    id: 'letter',
+    name: '信函通知',
+    description: '信函、通知、公告等',
+    icon: getTemplateTypeIcon('letter'),
+  },
 ];
 
 export const FORMATTER_OPTIONS: FormatterOption[] = [

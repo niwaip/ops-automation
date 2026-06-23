@@ -58,7 +58,7 @@ export class RecognizerService {
    * Prefer the caller-selected model, then fall back to the system default.
    */
   private async resolveModelRuntime(
-    requestedModelId?: string,
+    requestedModelId?: string
   ): Promise<{ modelId: string; client: LLMClient } | null> {
     if (requestedModelId) {
       const resolvedModelId = await this.modelService.resolveModelId(requestedModelId);
@@ -71,7 +71,9 @@ export class RecognizerService {
           };
         }
       }
-      this.logger.warn(`Requested recognizer model ${requestedModelId} is unavailable, falling back to default model`);
+      this.logger.warn(
+        `Requested recognizer model ${requestedModelId} is unavailable, falling back to default model`
+      );
     }
 
     const defaultModel = this.modelService.getDefaultModel();
@@ -172,7 +174,9 @@ export class RecognizerService {
           requestMessages: [
             {
               role: 'system',
-              content: [promptAssembly.staticSystem, promptAssembly.skillContext].filter(Boolean).join('\n\n'),
+              content: [promptAssembly.staticSystem, promptAssembly.skillContext]
+                .filter(Boolean)
+                .join('\n\n'),
             },
             {
               role: 'user',
@@ -226,7 +230,7 @@ export class RecognizerService {
   private parseAIResponse(
     response: string,
     properties: Record<string, ParamSchemaProperty>,
-    userInput: string,
+    userInput: string
   ): RecognizeParamsResponseDTO {
     try {
       const jsonCandidate = this.extractJsonCandidate(response);
@@ -238,7 +242,10 @@ export class RecognizerService {
       const params = parsed.params || parsed;
       const confidence = typeof parsed.confidence === 'number' ? parsed.confidence : 0.5;
       const normalizedParams = this.normalizeSchemaCompatibleParams(params, properties);
-      const parsedFieldConfidences = this.normalizeFieldConfidences(parsed.field_confidences, properties);
+      const parsedFieldConfidences = this.normalizeFieldConfidences(
+        parsed.field_confidences,
+        properties
+      );
       const uncertainFields = this.normalizeUncertainFields(parsed.uncertain_fields, properties);
 
       // Validate and filter params against schema
@@ -256,7 +263,7 @@ export class RecognizerService {
       const postProcessed = this.postProcessRecognizedParams(
         validatedParams,
         properties,
-        userInput,
+        userInput
       );
 
       return {
@@ -265,9 +272,11 @@ export class RecognizerService {
         field_confidences: this.completeFieldConfidences(
           postProcessed.params,
           parsedFieldConfidences,
-          postProcessed.supplementedFieldSources,
+          postProcessed.supplementedFieldSources
         ),
-        uncertain_fields: uncertainFields.filter((field) => this.hasRecognizedFieldValue(field, postProcessed.params[field])),
+        uncertain_fields: uncertainFields.filter((field) =>
+          this.hasRecognizedFieldValue(field, postProcessed.params[field])
+        ),
       };
     } catch {
       return this.buildPostProcessedEmptyResponse(properties, userInput);
@@ -276,7 +285,7 @@ export class RecognizerService {
 
   private normalizeSchemaCompatibleParams(
     value: unknown,
-    properties: Record<string, ParamSchemaProperty>,
+    properties: Record<string, ParamSchemaProperty>
   ): Record<string, unknown> {
     if (!value || typeof value !== 'object' || Array.isArray(value)) {
       return {};
@@ -296,7 +305,7 @@ export class RecognizerService {
   private flattenNestedResponse(
     value: unknown,
     prefix = '',
-    acc: Record<string, unknown> = {},
+    acc: Record<string, unknown> = {}
   ): Record<string, unknown> {
     if (value === null || value === undefined) {
       return acc;
@@ -307,7 +316,9 @@ export class RecognizerService {
         return acc;
       }
 
-      const objectItems = value.filter((item): item is Record<string, unknown> => this.isPlainRecord(item));
+      const objectItems = value.filter((item): item is Record<string, unknown> =>
+        this.isPlainRecord(item)
+      );
       if (objectItems.length === value.length) {
         for (const item of objectItems) {
           this.flattenNestedResponse(item, `${prefix}[]`, acc);
@@ -334,11 +345,7 @@ export class RecognizerService {
     return acc;
   }
 
-  private mergeFlattenedValue(
-    acc: Record<string, unknown>,
-    key: string,
-    value: unknown,
-  ): void {
+  private mergeFlattenedValue(acc: Record<string, unknown>, key: string, value: unknown): void {
     if (value === null || value === undefined) {
       return;
     }
@@ -369,7 +376,7 @@ export class RecognizerService {
 
   private resolveSchemaPathKey(
     candidate: string,
-    properties: Record<string, ParamSchemaProperty>,
+    properties: Record<string, ParamSchemaProperty>
   ): string | undefined {
     const normalizedCandidates = [
       candidate,
@@ -377,7 +384,9 @@ export class RecognizerService {
       candidate.replace(/\.(\d+)(?=\.|$)/g, '[]'),
     ];
 
-    return normalizedCandidates.find((item, index) => normalizedCandidates.indexOf(item) === index && Boolean(properties[item]));
+    return normalizedCandidates.find(
+      (item, index) => normalizedCandidates.indexOf(item) === index && Boolean(properties[item])
+    );
   }
 
   private isPlainRecord(value: unknown): value is Record<string, unknown> {
@@ -401,7 +410,7 @@ export class RecognizerService {
 
   private buildPostProcessedEmptyResponse(
     properties: Record<string, ParamSchemaProperty>,
-    userInput: string,
+    userInput: string
   ): RecognizeParamsResponseDTO {
     const postProcessed = this.postProcessRecognizedParams({}, properties, userInput);
     return {
@@ -410,7 +419,7 @@ export class RecognizerService {
       field_confidences: this.completeFieldConfidences(
         postProcessed.params,
         {},
-        postProcessed.supplementedFieldSources,
+        postProcessed.supplementedFieldSources
       ),
       uncertain_fields: [],
     };
@@ -421,7 +430,7 @@ export class RecognizerService {
    */
   private basicPatternMatching(
     input: string,
-    properties: Record<string, ParamSchemaProperty>,
+    properties: Record<string, ParamSchemaProperty>
   ): RecognizeParamsResponseDTO {
     const params: Record<string, unknown> = {};
     const fieldConfidences: Record<string, number> = {};
@@ -432,7 +441,9 @@ export class RecognizerService {
       switch (schema.type) {
         case 'string':
           // Look for quoted strings or common patterns
-          const stringMatch = input.match(new RegExp(`${escapedKey}[\\s]*[=:][\\s]*["']?([^"'\n,]+)["']?`, 'i'));
+          const stringMatch = input.match(
+            new RegExp(`${escapedKey}[\\s]*[=:][\\s]*["']?([^"'\n,]+)["']?`, 'i')
+          );
           if (stringMatch && stringMatch[1]) {
             params[key] = stringMatch[1].trim();
             fieldConfidences[key] = 0.72;
@@ -440,7 +451,9 @@ export class RecognizerService {
           }
           break;
         case 'number':
-          const numberMatch = input.match(new RegExp(`${escapedKey}[\\s]*[=:][\\s]*(\\d+(\\.\\d+)?)`, 'i'));
+          const numberMatch = input.match(
+            new RegExp(`${escapedKey}[\\s]*[=:][\\s]*(\\d+(\\.\\d+)?)`, 'i')
+          );
           if (numberMatch && numberMatch[1]) {
             params[key] = parseFloat(numberMatch[1]);
             fieldConfidences[key] = 0.72;
@@ -448,9 +461,12 @@ export class RecognizerService {
           }
           break;
         case 'boolean':
-          const boolMatch = input.match(new RegExp(`${escapedKey}[\\s]*[=:][\\s]*(true|false|yes|no)`, 'i'));
+          const boolMatch = input.match(
+            new RegExp(`${escapedKey}[\\s]*[=:][\\s]*(true|false|yes|no)`, 'i')
+          );
           if (boolMatch && boolMatch[1]) {
-            params[key] = boolMatch[1].toLowerCase() === 'true' || boolMatch[1].toLowerCase() === 'yes';
+            params[key] =
+              boolMatch[1].toLowerCase() === 'true' || boolMatch[1].toLowerCase() === 'yes';
             fieldConfidences[key] = 0.68;
             matchCount++;
           }
@@ -468,7 +484,7 @@ export class RecognizerService {
       field_confidences: this.completeFieldConfidences(
         postProcessed.params,
         fieldConfidences,
-        postProcessed.supplementedFieldSources,
+        postProcessed.supplementedFieldSources
       ),
       uncertain_fields: [],
     };
@@ -500,15 +516,17 @@ export class RecognizerService {
     key: string,
     value: unknown,
     expectedType: string,
-    schema?: ParamSchemaProperty,
+    schema?: ParamSchemaProperty
   ): boolean {
     const normalizedExpectedType = this.resolveExpectedValueType(key, expectedType, schema);
     if (key.includes('[]') && Array.isArray(value)) {
-      return value.length > 0 && value.every((item) => (
-        item !== null
-        && item !== undefined
-        && this.validateType(item, normalizedExpectedType)
-      ));
+      return (
+        value.length > 0 &&
+        value.every(
+          (item) =>
+            item !== null && item !== undefined && this.validateType(item, normalizedExpectedType)
+        )
+      );
     }
     if (value === null || value === undefined) {
       return false;
@@ -519,8 +537,11 @@ export class RecognizerService {
   private postProcessRecognizedParams(
     params: Record<string, unknown>,
     properties: Record<string, ParamSchemaProperty>,
-    userInput: string,
-  ): { params: Record<string, unknown>; supplementedFieldSources: Map<string, 'explicit' | 'semantic'> } {
+    userInput: string
+  ): {
+    params: Record<string, unknown>;
+    supplementedFieldSources: Map<string, 'explicit' | 'semantic'>;
+  } {
     const normalizedParams: Record<string, unknown> = {};
     const supplementedFieldSources = new Map<string, 'explicit' | 'semantic'>();
 
@@ -529,25 +550,47 @@ export class RecognizerService {
         continue;
       }
 
-      const normalizedValue = this.normalizeRecognizedValue(key, value, properties[key].type, properties[key]);
+      const normalizedValue = this.normalizeRecognizedValue(
+        key,
+        value,
+        properties[key].type,
+        properties[key]
+      );
       if (normalizedValue === undefined) {
         continue;
       }
       const schemaCompatibleValue = this.normalizeSchemaCompatibleValue(
         key,
         normalizedValue,
-        properties[key],
+        properties[key]
       );
       if (schemaCompatibleValue === undefined) {
         continue;
       }
-      if (this.validateRecognizedValue(key, schemaCompatibleValue, properties[key].type, properties[key])) {
+      if (
+        this.validateRecognizedValue(
+          key,
+          schemaCompatibleValue,
+          properties[key].type,
+          properties[key]
+        )
+      ) {
         normalizedParams[key] = schemaCompatibleValue;
       }
     }
 
-    this.reconcileExplicitPatternParams(normalizedParams, properties, userInput, supplementedFieldSources);
-    this.supplementMissingSemanticParams(normalizedParams, properties, userInput, supplementedFieldSources);
+    this.reconcileExplicitPatternParams(
+      normalizedParams,
+      properties,
+      userInput,
+      supplementedFieldSources
+    );
+    this.supplementMissingSemanticParams(
+      normalizedParams,
+      properties,
+      userInput,
+      supplementedFieldSources
+    );
     return {
       params: normalizedParams,
       supplementedFieldSources,
@@ -556,7 +599,7 @@ export class RecognizerService {
 
   private normalizeFieldConfidences(
     value: unknown,
-    properties: Record<string, ParamSchemaProperty>,
+    properties: Record<string, ParamSchemaProperty>
   ): Record<string, number> {
     const normalized = this.normalizeSchemaCompatibleParams(value, properties);
     return Object.entries(normalized).reduce<Record<string, number>>((acc, [key, score]) => {
@@ -571,13 +614,15 @@ export class RecognizerService {
 
   private normalizeUncertainFields(
     value: unknown,
-    properties: Record<string, ParamSchemaProperty>,
+    properties: Record<string, ParamSchemaProperty>
   ): string[] {
     if (!Array.isArray(value)) {
       return [];
     }
     return value
-      .map((item) => (typeof item === 'string' ? this.resolveSchemaPathKey(item, properties) : undefined))
+      .map((item) =>
+        typeof item === 'string' ? this.resolveSchemaPathKey(item, properties) : undefined
+      )
       .filter((item): item is string => typeof item === 'string')
       .filter((item, index, array) => array.indexOf(item) === index);
   }
@@ -587,7 +632,9 @@ export class RecognizerService {
       return Math.max(0, Math.min(1, value));
     }
     if (Array.isArray(value)) {
-      const firstNumeric = value.find((item): item is number => typeof item === 'number' && !Number.isNaN(item));
+      const firstNumeric = value.find(
+        (item): item is number => typeof item === 'number' && !Number.isNaN(item)
+      );
       if (typeof firstNumeric === 'number') {
         return Math.max(0, Math.min(1, firstNumeric));
       }
@@ -598,7 +645,7 @@ export class RecognizerService {
   private completeFieldConfidences(
     params: Record<string, unknown>,
     base: Record<string, number>,
-    supplementedFieldSources: Map<string, 'explicit' | 'semantic'> = new Map(),
+    supplementedFieldSources: Map<string, 'explicit' | 'semantic'> = new Map()
   ): Record<string, number> {
     return Object.keys(params).reduce<Record<string, number>>((acc, key) => {
       if (typeof base[key] === 'number') {
@@ -623,10 +670,14 @@ export class RecognizerService {
     key: string,
     value: unknown,
     expectedType: string,
-    schema?: ParamSchemaProperty,
+    schema?: ParamSchemaProperty
   ): unknown {
     const normalizedExpectedType = this.resolveExpectedValueType(key, expectedType, schema);
-    if (key.includes('[]') && !Array.isArray(value) && this.validateType(value, normalizedExpectedType)) {
+    if (
+      key.includes('[]') &&
+      !Array.isArray(value) &&
+      this.validateType(value, normalizedExpectedType)
+    ) {
       const normalizedScalar = this.normalizeScalarValue(value, normalizedExpectedType);
       return normalizedScalar !== undefined ? [normalizedScalar] : undefined;
     }
@@ -644,17 +695,25 @@ export class RecognizerService {
   private resolveExpectedValueType(
     key: string,
     expectedType: string,
-    schema?: ParamSchemaProperty,
+    schema?: ParamSchemaProperty
   ): string {
     if (expectedType !== 'array') {
       return expectedType;
     }
 
     const signalText = this.buildSignalText(key, schema).toLowerCase();
-    if (/(arrivaldate|installationdate|signdate|date|日期|签署日期|签订日期|到货日期|交付日期|安装完成日期|安装日期)/i.test(signalText)) {
+    if (
+      /(arrivaldate|installationdate|signdate|date|日期|签署日期|签订日期|到货日期|交付日期|安装完成日期|安装日期)/i.test(
+        signalText
+      )
+    ) {
       return 'date';
     }
-    if (/(amount|price|ratio|quantity|count|number|subtotal|total|序号|行号|数量|金额|单价|比例|月数)/i.test(signalText)) {
+    if (
+      /(amount|price|ratio|quantity|count|number|subtotal|total|序号|行号|数量|金额|单价|比例|月数)/i.test(
+        signalText
+      )
+    ) {
       return 'number';
     }
     if (/(boolean|bool|flag|是否|include|包含)/i.test(signalText)) {
@@ -689,7 +748,7 @@ export class RecognizerService {
   private normalizeSchemaCompatibleValue(
     key: string,
     value: unknown,
-    schema: ParamSchemaProperty,
+    schema: ParamSchemaProperty
   ): unknown {
     if (value === undefined || value === null) {
       return undefined;
@@ -729,9 +788,9 @@ export class RecognizerService {
       return false;
     }
 
-    return /验收/.test(normalized) && (
-      /(到货|收货|安装|调试|性能)/.test(normalized)
-      || /(先|后|再|\+)/.test(normalized)
+    return (
+      /验收/.test(normalized) &&
+      (/(到货|收货|安装|调试|性能)/.test(normalized) || /(先|后|再|\+)/.test(normalized))
     );
   }
 
@@ -743,7 +802,7 @@ export class RecognizerService {
     params: Record<string, unknown>,
     properties: Record<string, ParamSchemaProperty>,
     userInput: string,
-    supplementedFieldSources: Map<string, 'explicit' | 'semantic'>,
+    supplementedFieldSources: Map<string, 'explicit' | 'semantic'>
   ): void {
     const propertyEntries = Object.entries(properties);
     if (propertyEntries.length === 0) {
@@ -762,7 +821,10 @@ export class RecognizerService {
       }
 
       const normalized = this.normalizeRecognizedValue(key, inferred, schema.type, schema);
-      if (normalized !== undefined && this.validateRecognizedValue(key, normalized, schema.type, schema)) {
+      if (
+        normalized !== undefined &&
+        this.validateRecognizedValue(key, normalized, schema.type, schema)
+      ) {
         params[key] = normalized;
         supplementedFieldSources.set(key, 'semantic');
       }
@@ -785,9 +847,11 @@ export class RecognizerService {
   private inferFieldValueFromSemanticSignal(
     key: string,
     schema: ParamSchemaProperty,
-    userInput: string,
+    userInput: string
   ): unknown {
-    const extractionHints = Array.isArray(schema.extractionHints) ? schema.extractionHints.join(' ') : '';
+    const extractionHints = Array.isArray(schema.extractionHints)
+      ? schema.extractionHints.join(' ')
+      : '';
     const hintText = `${this.buildSignalText(key, schema)} ${schema.extractionPrompt || ''} ${extractionHints}`;
 
     return inferValueBySemanticSignal({
@@ -807,7 +871,7 @@ export class RecognizerService {
     params: Record<string, unknown>,
     properties: Record<string, ParamSchemaProperty>,
     userInput: string,
-    supplementedFieldSources: Map<string, 'explicit' | 'semantic'>,
+    supplementedFieldSources: Map<string, 'explicit' | 'semantic'>
   ): void {
     for (const [key, schema] of Object.entries(properties)) {
       const explicit = this.inferFieldValueFromExplicitPatterns(key, schema, userInput);
@@ -816,7 +880,10 @@ export class RecognizerService {
       }
 
       const normalized = this.normalizeRecognizedValue(key, explicit, schema.type, schema);
-      if (normalized === undefined || !this.validateRecognizedValue(key, normalized, schema.type, schema)) {
+      if (
+        normalized === undefined ||
+        !this.validateRecognizedValue(key, normalized, schema.type, schema)
+      ) {
         continue;
       }
 
@@ -836,7 +903,7 @@ export class RecognizerService {
   private inferFieldValueFromExplicitPatterns(
     key: string,
     schema: ParamSchemaProperty,
-    userInput: string,
+    userInput: string
   ): unknown {
     const aliases = this.buildFieldAliases(key, schema);
     const isLineItemArrayField = this.isEnumeratedLineItemArrayField(key, schema, aliases);
@@ -854,7 +921,7 @@ export class RecognizerService {
         const itemValues = this.extractEnumeratedItemFieldValues(
           userInput,
           aliases,
-          expectedType === 'date' ? 'date' : expectedType === 'number' ? 'number' : 'string',
+          expectedType === 'date' ? 'date' : expectedType === 'number' ? 'number' : 'string'
         );
         if (itemValues && itemValues.length > 0) {
           return itemValues;
@@ -885,7 +952,7 @@ export class RecognizerService {
           const deliveryValues = this.extractBatchScopedFieldValues(
             userInput,
             aliases,
-            expectedType === 'date' ? 'date' : 'string',
+            expectedType === 'date' ? 'date' : 'string'
           );
           if (deliveryValues && deliveryValues.length > 0) {
             return deliveryValues;
@@ -957,34 +1024,40 @@ export class RecognizerService {
   private isDeliveryScopedArrayField(
     key: string,
     schema: ParamSchemaProperty,
-    aliases: string[],
+    aliases: string[]
   ): boolean {
     if (key.startsWith('deliveryItems[]')) {
       return true;
     }
 
     const semanticRole = normalizeSemanticRole(schema.semanticRole);
-    if (semanticRole && [
-      'delivery_batch',
-      'delivery_location',
-      'acceptance_type',
-      'arrival_date',
-      'installation_date',
-    ].includes(semanticRole)) {
+    if (
+      semanticRole &&
+      [
+        'delivery_batch',
+        'delivery_location',
+        'acceptance_type',
+        'arrival_date',
+        'installation_date',
+      ].includes(semanticRole)
+    ) {
       return true;
     }
 
-    return this.hasAliasKeyword(aliases, ['批次', '地点', '地址', '验收方式', '验收类型'])
-      || this.hasDateLikeAlias(aliases);
+    return (
+      this.hasAliasKeyword(aliases, ['批次', '地点', '地址', '验收方式', '验收类型']) ||
+      this.hasDateLikeAlias(aliases)
+    );
   }
 
   private isEnumeratedLineItemArrayField(
     key: string,
     schema: ParamSchemaProperty,
-    aliases: string[],
+    aliases: string[]
   ): boolean {
     const signalText = this.buildSignalText(key, schema);
-    const hasLineItemContext = /(item|line|row|detail|material|product|sku|物料|设备|明细|标的|清单)/i.test(signalText);
+    const hasLineItemContext =
+      /(item|line|row|detail|material|product|sku|物料|设备|明细|标的|清单)/i.test(signalText);
     const hasLineItemFieldAlias = this.hasAliasKeyword(aliases, [
       '行号',
       '序号',
@@ -1005,7 +1078,7 @@ export class RecognizerService {
   private isPaymentClauseArrayField(
     key: string,
     schema: ParamSchemaProperty,
-    aliases: string[],
+    aliases: string[]
   ): boolean {
     if (key.startsWith('paymentSchedule[]')) {
       return true;
@@ -1188,7 +1261,10 @@ export class RecognizerService {
   private extractBooleanLikeValue(input: string, aliases: string[]): '是' | '否' | undefined {
     const sortedAliases = [...aliases].sort((left, right) => right.length - left.length);
     for (const alias of sortedAliases) {
-      const explicitPattern = new RegExp(`${this.escapeRegExp(alias)}\\s*(?:为|是|[:：=])\\s*(是|否|true|false|yes|no|有|无|包含|不包含|需要|不需要)`, 'i');
+      const explicitPattern = new RegExp(
+        `${this.escapeRegExp(alias)}\\s*(?:为|是|[:：=])\\s*(是|否|true|false|yes|no|有|无|包含|不包含|需要|不需要)`,
+        'i'
+      );
       const explicitMatch = input.match(explicitPattern);
       if (explicitMatch?.[1]) {
         return this.normalizeBooleanLikeValue(explicitMatch[1]);
@@ -1202,7 +1278,11 @@ export class RecognizerService {
         continue;
       }
 
-      if (new RegExp(`(?:不含|不包含|无需|无|不需要).{0,4}${this.escapeRegExp(coreAlias)}`).test(input)) {
+      if (
+        new RegExp(`(?:不含|不包含|无需|无|不需要).{0,4}${this.escapeRegExp(coreAlias)}`).test(
+          input
+        )
+      ) {
         return '否';
       }
       if (new RegExp(`(?:含|包含|有|需要).{0,4}${this.escapeRegExp(coreAlias)}`).test(input)) {
@@ -1235,7 +1315,7 @@ export class RecognizerService {
   private extractFirstLabeledValue(
     input: string,
     labels: string[],
-    valueType: 'string' | 'number' | 'date',
+    valueType: 'string' | 'number' | 'date'
   ): string | number | undefined {
     const values = this.extractAllLabeledValues(input, labels, valueType);
     return Array.isArray(values) && values.length > 0 ? values[0] : undefined;
@@ -1244,13 +1324,16 @@ export class RecognizerService {
   private extractAllLabeledValues(
     input: string,
     labels: string[],
-    valueType: 'string' | 'number' | 'date',
+    valueType: 'string' | 'number' | 'date'
   ): Array<string | number> | undefined {
     const matches: Array<{ index: number; end: number; value: string | number }> = [];
     const occupiedRanges: Array<{ start: number; end: number }> = [];
     const sortedLabels = [...labels].sort((left, right) => right.length - left.length);
     for (const label of sortedLabels) {
-      const pattern = new RegExp(`${this.escapeRegExp(label)}\\s*(?:为|是|[:：=])?\\s*([^，。；;\\n]+)`, 'gi');
+      const pattern = new RegExp(
+        `${this.escapeRegExp(label)}\\s*(?:为|是|[:：=])?\\s*([^，。；;\\n]+)`,
+        'gi'
+      );
       for (const match of input.matchAll(pattern)) {
         const normalized = this.normalizeExtractedMatch(match[1], valueType);
         const start = match.index ?? -1;
@@ -1267,14 +1350,12 @@ export class RecognizerService {
     if (matches.length === 0) {
       return undefined;
     }
-    return matches
-      .sort((left, right) => left.index - right.index)
-      .map((item) => item.value);
+    return matches.sort((left, right) => left.index - right.index).map((item) => item.value);
   }
 
   private normalizeExtractedMatch(
     value: string | undefined,
-    valueType: 'string' | 'number' | 'date',
+    valueType: 'string' | 'number' | 'date'
   ): string | number | undefined {
     const trimmed = String(value || '').trim();
     if (!trimmed) {
@@ -1293,7 +1374,7 @@ export class RecognizerService {
   private extractAllMatches(
     input: string,
     pattern: RegExp,
-    valueType: 'string' | 'number' | 'date' = 'string',
+    valueType: 'string' | 'number' | 'date' = 'string'
   ): Array<string | number> {
     const values: Array<string | number> = [];
     for (const match of input.matchAll(pattern)) {
@@ -1317,7 +1398,7 @@ export class RecognizerService {
     const alternation = dateAliases.map((alias) => this.escapeRegExp(alias)).join('|');
     const pattern = new RegExp(
       `(?:${alternation})\\s*(?:为|是|[:：=])?\\s*(\\d{4}[/-]\\d{1,2}[/-]\\d{1,2}|\\d{4}年\\d{1,2}月\\d{1,2}日?)`,
-      'g',
+      'g'
     );
     const values = this.extractAllMatches(input, pattern, 'date') as string[];
     return values.length > 0 ? values : undefined;
@@ -1325,18 +1406,22 @@ export class RecognizerService {
 
   private extractItemSequenceNumbers(input: string): number[] | undefined {
     const values = this.extractAllMatches(input, /(?:^|[：:；;\n])\s*(\d+)\s*[\.、]/gm, 'number');
-    return values.length > 0 ? values as number[] : undefined;
+    return values.length > 0 ? (values as number[]) : undefined;
   }
 
   private extractEnumeratedItemNames(input: string): string[] | undefined {
-    const names = this.extractAllMatches(input, /(?:^|[：:；;\n])\s*\d+\s*[\.、]\s*([^，。；;\n]+)/gm, 'string');
-    return names.length > 0 ? names as string[] : undefined;
+    const names = this.extractAllMatches(
+      input,
+      /(?:^|[：:；;\n])\s*\d+\s*[\.、]\s*([^，。；;\n]+)/gm,
+      'string'
+    );
+    return names.length > 0 ? (names as string[]) : undefined;
   }
 
   private extractEnumeratedItemFieldValues(
     input: string,
     labels: string[],
-    valueType: 'string' | 'number' | 'date',
+    valueType: 'string' | 'number' | 'date'
   ): Array<string | number> | undefined {
     const blocks = this.extractEnumeratedItemBlocks(input);
     if (blocks.length === 0) {
@@ -1351,7 +1436,8 @@ export class RecognizerService {
   }
 
   private extractEnumeratedItemBlocks(input: string): string[] {
-    const pattern = /(?:^|[：:；;\n])\s*\d+\s*[\.、]\s*([\s\S]*?)(?=(?:^|[：:；;\n])\s*\d+\s*[\.、]\s*|$)/gm;
+    const pattern =
+      /(?:^|[：:；;\n])\s*\d+\s*[\.、]\s*([\s\S]*?)(?=(?:^|[：:；;\n])\s*\d+\s*[\.、]\s*|$)/gm;
     const blocks: string[] = [];
     for (const match of input.matchAll(pattern)) {
       const content = String(match[1] || '').trim();
@@ -1365,7 +1451,7 @@ export class RecognizerService {
   private extractBatchScopedFieldValues(
     input: string,
     labels: string[],
-    valueType: 'string' | 'number' | 'date',
+    valueType: 'string' | 'number' | 'date'
   ): Array<string | number> | undefined {
     const blocks = this.extractBatchBlocks(input);
     if (blocks.length === 0) {
@@ -1380,7 +1466,8 @@ export class RecognizerService {
   }
 
   private extractBatchBlocks(input: string): string[] {
-    const pattern = /(首批|第[一二三四五六七八九十百千万0-9]+批)[\s\S]*?(?=(首批|第[一二三四五六七八九十百千万0-9]+批)|$)/g;
+    const pattern =
+      /(首批|第[一二三四五六七八九十百千万0-9]+批)[\s\S]*?(?=(首批|第[一二三四五六七八九十百千万0-9]+批)|$)/g;
     const blocks: string[] = [];
     for (const match of input.matchAll(pattern)) {
       const content = String(match[0] || '').trim();
@@ -1395,7 +1482,7 @@ export class RecognizerService {
     const values = this.extractAllMatches(
       input,
       /(首批|第[一二三四五六七八九十百千万0-9]+批)(?=在|，计划到货日期|，安装完成日期|，验收方式)/g,
-      'string',
+      'string'
     ) as string[];
     return values.length > 0 ? values : undefined;
   }
@@ -1404,13 +1491,15 @@ export class RecognizerService {
     return this.extractAllMatches(
       input,
       /(?:首批|第[一二三四五六七八九十百千万0-9]+批)[^，。；;\n]*?在\s*([^，。；;\n]+?)(?=，(?:计划到货日期|安装完成日期|验收方式)|；|\n|。)/g,
-      'string',
+      'string'
     ) as string[];
   }
 
   private extractPaymentConditions(input: string): string[] | undefined {
     return this.extractPaymentClauseValues(input, (clause, stage) => {
-      const normalizedClause = clause.startsWith(stage) ? clause.slice(stage.length).trim() : clause;
+      const normalizedClause = clause.startsWith(stage)
+        ? clause.slice(stage.length).trim()
+        : clause;
       const match = normalizedClause.match(/^([^，。；;\n]+?)\s*支付\s*\d+(?:\.\d+)?%/);
       return match?.[1]?.trim();
     });
@@ -1438,7 +1527,7 @@ export class RecognizerService {
 
   private extractPaymentClauseValues<T extends string | number>(
     input: string,
-    mapper: (clause: string, stage: string) => T | undefined,
+    mapper: (clause: string, stage: string) => T | undefined
   ): T[] | undefined {
     const clauses = this.extractPaymentClauses(input);
     const values = clauses
@@ -1448,7 +1537,8 @@ export class RecognizerService {
   }
 
   private extractPaymentClauses(input: string): Array<{ stage: string; clause: string }> {
-    const pattern = /(?:^|[：:；;\n])\s*([^，。；;\n]{2,20})[，,]([^；;\n。]*?(?:支付\s*\d+(?:\.\d+)?%|金额\s*\d+(?:\.\d+)?)[^；;\n。]*)/g;
+    const pattern =
+      /(?:^|[：:；;\n])\s*([^，。；;\n]{2,20})[，,]([^；;\n。]*?(?:支付\s*\d+(?:\.\d+)?%|金额\s*\d+(?:\.\d+)?)[^；;\n。]*)/g;
     const clauses: Array<{ stage: string; clause: string }> = [];
     for (const match of input.matchAll(pattern)) {
       const stage = match[1]?.trim();
@@ -1558,16 +1648,19 @@ export class RecognizerService {
 
   private markRequiredFields(
     properties: Record<string, ParamSchemaProperty>,
-    requiredFields?: string[],
+    requiredFields?: string[]
   ): Record<string, ParamSchemaProperty> {
     const requiredSet = new Set(requiredFields || []);
-    return Object.entries(properties).reduce<Record<string, ParamSchemaProperty>>((acc, [name, schema]) => {
-      acc[name] = {
-        ...schema,
-        required: schema.required === true || requiredSet.has(name),
-      };
-      return acc;
-    }, {});
+    return Object.entries(properties).reduce<Record<string, ParamSchemaProperty>>(
+      (acc, [name, schema]) => {
+        acc[name] = {
+          ...schema,
+          required: schema.required === true || requiredSet.has(name),
+        };
+        return acc;
+      },
+      {}
+    );
   }
 
   private escapeRegExp(value: string): string {
@@ -1577,9 +1670,7 @@ export class RecognizerService {
   /**
    * Batch parameter recognition for multiple inputs
    */
-  async batchRecognizeParams(
-    inputs: RecognizeParamsDTO[],
-  ): Promise<RecognizeParamsResponseDTO[]> {
+  async batchRecognizeParams(inputs: RecognizeParamsDTO[]): Promise<RecognizeParamsResponseDTO[]> {
     return Promise.all(inputs.map((input) => this.recognizeParams(input)));
   }
 }

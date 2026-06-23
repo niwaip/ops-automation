@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mock ERP Portal - 承認管理システム</title>
+  <!-- Google Fonts: Inter & Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Login & MFA Container overlay -->
+  <div id="login-container" class="login-overlay">
+    <!-- Screen 1: Username & Password -->
+    <div class="login-card" id="login-credentials-screen">
+      <div class="login-header">
+        <div class="logo-icon-container" style="display: flex; justify-content: center; margin-bottom: 1rem;">
+          <div class="logo-icon"></div>
+        </div>
+        <h2>Mock ERP Portal</h2>
+        <p>承認管理システムにログイン</p>
+      </div>
+      <form id="login-form" onsubmit="return false;">
+        <div class="form-group" style="margin-bottom: 1.25rem; text-align: left;">
+          <label for="login-username" style="display: block; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">ユーザー名 (Username)</label>
+          <input type="text" id="login-username" required placeholder="admin" value="admin" style="width: 100%; padding: 0.75rem; border-radius: 8px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); color: var(--text-primary); font-size: 0.95rem;">
+        </div>
+        <div class="form-group" style="margin-bottom: 1.5rem; text-align: left;">
+          <label for="login-password" style="display: block; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">パスワード (Password)</label>
+          <input type="password" id="login-password" required placeholder="admin" value="admin" style="width: 100%; padding: 0.75rem; border-radius: 8px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); color: var(--text-primary); font-size: 0.95rem;">
+        </div>
+        <button type="button" class="btn btn-primary btn-lg btn-block" id="btn-submit-login" style="width: 100%; padding: 0.85rem; font-size: 1rem;">ログイン</button>
+      </form>
+      <div class="login-footer" style="margin-top: 1.5rem; text-align: center; font-size: 0.8rem; color: var(--text-muted);">
+        <p>テスト用資格情報: admin / admin</p>
+      </div>
+    </div>
+
+    <!-- Screen 2: MFA Verification -->
+    <div
+      class="login-card hidden"
+      id="login-mfa-screen"
+      data-testid="mfa-screen"
+      data-ai-region="mfa-challenge"
+      data-ai-signal="mfa-required"
+      data-mfa-state="challenge"
+    >
+      <div class="login-header">
+        <div
+          class="mfa-icon"
+          data-testid="mfa-icon"
+          data-ai-role="mfa-marker"
+          data-ai-stable-name="mfa-shield-icon"
+          style="font-size: 2.5rem; margin-bottom: 0.75rem; text-align: center;"
+        >
+          🛡️
+        </div>
+        <h2 data-testid="mfa-title">多要素認証 (MFA)</h2>
+        <p>セキュリティコードの入力が必要です</p>
+      </div>
+      <div
+        class="mfa-indicator"
+        data-testid="mfa-indicator"
+        data-ai-region="mfa-indicator"
+        data-ai-signal="verification-code"
+        style="margin-top: 1rem; margin-bottom: 1.5rem; text-align: left; padding: 1rem; background: rgba(99, 102, 241, 0.05); border-radius: 8px; border: 1px dashed rgba(99, 102, 241, 0.2);"
+      >
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.75rem;">認証用モバイルアプリに表示されているコードを入力してください。</p>
+        <div class="mfa-code-box" style="display: flex; align-items: center; justify-content: space-between;">
+          <span style="font-size: 0.8rem; color: var(--text-muted);">検証用コード (表示中):</span>
+          <strong id="mfa-code-display" data-testid="mfa-code-display" style="font-size: 1.25rem; color: var(--color-warning); letter-spacing: 2px;">000000</strong>
+        </div>
+      </div>
+      <form id="mfa-form" data-testid="mfa-form" onsubmit="return false;">
+        <div class="form-group" style="margin-bottom: 1.5rem; text-align: left;">
+          <label for="login-mfa-code" style="display: block; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">認証コード (6桁)</label>
+          <input type="text" id="login-mfa-code" data-testid="mfa-code-input" data-ai-field="mfaCode" required placeholder="123456" maxlength="6" pattern="\d{6}" style="width: 100%; padding: 0.75rem; border-radius: 8px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); color: var(--text-primary); font-size: 1.2rem; text-align: center; letter-spacing: 4px;">
+        </div>
+        <button type="button" class="btn btn-primary btn-lg btn-block" id="btn-submit-mfa" data-testid="btn-submit-mfa" data-ai-action="submit-mfa" data-ai-stable-name="submit-mfa" style="width: 100%; padding: 0.85rem; font-size: 1rem;">検証してログイン</button>
+      </form>
+      <div class="login-footer" style="margin-top: 1.5rem; text-align: center; font-size: 0.8rem; color: var(--text-muted);">
+        <p>※万能検証コード「123456」でもログインできます</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="app-container hidden" id="main-app-container">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" id="main-sidebar">
+      <div class="sidebar-brand">
+        <div class="logo-icon"></div>
+        <span class="brand-text">Mock ERP Portal</span>
+      </div>
+      
+      <nav class="sidebar-nav">
+        <a href="#dashboard" class="nav-item active" data-tab="dashboard" id="nav-dashboard">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="9" rx="1"></rect>
+            <rect x="14" y="3" width="7" height="5" rx="1"></rect>
+            <rect x="14" y="12" width="7" height="9" rx="1"></rect>
+            <rect x="3" y="16" width="7" height="5" rx="1"></rect>
+          </svg>
+          <span>ダッシュボード</span>
+        </a>
+        <a href="#approvals" class="nav-item" data-tab="approvals" id="nav-approvals">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 11l3 3L22 4"></path>
+            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+          </svg>
+          <span>案件承認管理</span>
+        </a>
+        <a href="#logs" class="nav-item" data-tab="logs" id="nav-logs">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+            <polyline points="10 9 9 9 8 9"></polyline>
+          </svg>
+          <span>監査ログ</span>
+        </a>
+        <a href="#new-request" class="nav-item" data-tab="new-request" id="nav-new-request">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 5v14M5 12h14"></path>
+          </svg>
+          <span>新規案件登録</span>
+        </a>
+        <a href="#settings" class="nav-item" data-tab="settings" id="nav-settings">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+          <span>設定</span>
+        </a>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <div class="user-avatar">AD</div>
+        <div class="user-info">
+          <span class="user-name">Admin User</span>
+          <span class="user-role">管理者</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Workspace -->
+    <main class="main-workspace">
+      <!-- Top Header -->
+      <header class="top-header">
+        <div class="header-search">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" placeholder="プロジェクトコード、キーワードで検索..." id="global-search-input">
+        </div>
+        
+        <div class="header-actions">
+          <!-- Notification Bell -->
+          <div class="bell-container" id="bell-dropdown-trigger">
+            <div class="bell-icon-wrapper">
+              <svg class="bell-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+              </svg>
+              <span class="bell-badge" id="notification-count" style="display: none;">0</span>
+            </div>
+            
+            <!-- Notification Panel Dropdown -->
+            <div class="bell-dropdown" id="bell-dropdown-panel">
+              <div class="dropdown-header">
+                <h3>通知センター</h3>
+                <button class="clear-notifications-btn" id="clear-notifications-btn">すべて既読</button>
+              </div>
+              <div class="dropdown-body" id="notification-list">
+                <div class="empty-notification-state">通知はありません</div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="system-status">
+            <span class="status-dot online"></span>
+            <span>API接続中</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Content Views -->
+      <div class="content-view-container">
+        
+        <!-- View 1: Dashboard -->
+        <section class="tab-view active" id="view-dashboard" data-ai-region="dashboard-overview">
+          <div class="view-header">
+            <h2>システム概要</h2>
+            <p class="view-subtitle">本日の承認状況と重要指標の一覧</p>
+          </div>
+          
+          <!-- Metric Grid -->
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <div class="metric-header">
+                <span class="metric-title">保留中の承認案件</span>
+                <span class="metric-icon pending-icon">⏳</span>
+              </div>
+              <div class="metric-value" id="dashboard-pending-count">0</div>
+              <div class="metric-footer">
+                <span class="footer-trend down">↓ 12% 前日比</span>
+              </div>
+            </div>
+            
+            <div class="metric-card">
+              <div class="metric-header">
+                <span class="metric-title">本日承認済み</span>
+                <span class="metric-icon approved-icon">✅</span>
+              </div>
+              <div class="metric-value" id="dashboard-approved-count">0</div>
+              <div class="metric-footer">
+                <span class="footer-trend up">↑ 8% 前日比</span>
+              </div>
+            </div>
+            
+            <div class="metric-card">
+              <div class="metric-header">
+                <span class="metric-title">平均利益率 (全体)</span>
+                <span class="metric-icon rate-icon">📈</span>
+              </div>
+              <div class="metric-value" id="dashboard-avg-margin">24.2%</div>
+              <div class="metric-footer">
+                <span class="footer-trend positive">目標 20% を超過</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Actions / Status Summary -->
+          <div class="dashboard-details-card">
+            <h3>ショートカット & 操作ガイド</h3>
+            <p>1. 左メニューまたは下のリンクから <strong>「案件承認管理」</strong> に移動してください。</p>
+            <p>2. 各案件の <strong>「毛利率」</strong> 項目を確認し、システム自動承認および人工介入フローのテストを実施できます。</p>
+            <div class="dashboard-action-links">
+              <button class="btn btn-primary" onclick="switchTab('approvals')">承認管理画面へ移動</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- View 2: Project Approvals (List & Detail) -->
+        <section class="tab-view" id="view-approvals" data-ai-region="approval-workspace">
+          <!-- SUBVIEW A: List View -->
+          <div class="subview" id="approvals-list-subview" data-ai-region="approval-list">
+            <div class="view-header">
+              <h2>案件承認管理</h2>
+              <p class="view-subtitle">承認・確認が必要なプロジェクト契約案件の一覧</p>
+            </div>
+            
+            <!-- Filter Actions bar -->
+            <div class="table-actions-bar">
+              <div class="filter-group">
+                <button class="filter-btn active" data-filter="all">すべて</button>
+                <button class="filter-btn" data-filter="pending">保留中</button>
+                <button class="filter-btn" data-filter="approved">承認済み</button>
+                <button class="filter-btn" data-filter="rejected">却下済み</button>
+              </div>
+              <div class="action-group">
+                <button class="btn btn-secondary" id="reset-mock-data-btn">データをリセット</button>
+              </div>
+            </div>
+
+            <!-- List Table -->
+            <div class="table-container">
+              <table class="data-table" id="projects-table">
+                <thead>
+                  <tr>
+                    <th>案件コード</th>
+                    <th>案件名</th>
+                    <th>顧客名</th>
+                    <th>受注金額</th>
+                    <th>毛利率</th>
+                    <th>ステータス</th>
+                    <th class="align-right">操作</th>
+                  </tr>
+                </thead>
+                <tbody id="projects-table-body">
+                  <!-- JS dynamically populates this -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- SUBVIEW B: Detail View -->
+          <div class="subview hidden" id="approvals-detail-subview" data-ai-region="approval-detail">
+            <div class="detail-header-nav">
+              <button class="btn-back" id="btn-back-to-list">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                  <line x1="19" y1="12" x2="5" y2="12"></line>
+                  <polyline points="12 19 5 12 12 5"></polyline>
+                </svg>
+                一覧に戻る
+              </button>
+              <span class="detail-breadcrumb">案件承認管理 / 案件詳細</span>
+            </div>
+
+            <div class="detail-layout">
+              <!-- Detail Cards -->
+              <div class="detail-main-info">
+                <!-- Project Card -->
+                <div class="info-card" data-ai-region="project-summary">
+                  <div class="info-card-header">
+                    <h3 id="detail-project-name">案件名ロード中...</h3>
+                    <span class="badge" id="detail-project-status">-</span>
+                  </div>
+                  
+                  <div class="info-grid">
+                    <div class="info-item">
+                      <span class="info-label">案件コード</span>
+                      <span class="info-value" id="detail-project-code" data-testid="project-code-value" data-ai-field="projectCode">-</span>
+                    </div>
+                    <div class="info-item">
+                      <span class="info-label">顧客名</span>
+                      <span class="info-value" id="detail-customer-name" data-ai-field="customerName">-</span>
+                    </div>
+                    <div class="info-item">
+                      <span class="info-label">受注金額</span>
+                      <span class="info-value" id="detail-amount" data-ai-field="amount">-</span>
+                    </div>
+                    <div class="info-item">
+                      <span class="info-label">粗利益額</span>
+                      <span class="info-value" id="detail-profit" data-ai-field="profit">-</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Gross Margin Metric Card (毛利率) -->
+                <div class="margin-card" id="detail-margin-card" data-ai-region="gross-margin-panel">
+                  <div class="margin-metric-title">案件粗利率（毛利率）</div>
+                  <div class="margin-metric-value" id="detail-gross-margin" data-testid="gross-margin-value" data-field="grossMargin" data-ai-field="grossMargin">-</div>
+                  <div class="margin-metric-rule">※ システム承認自動化基準: <strong>20.0% 以上</strong></div>
+                </div>
+
+                <!-- Human Intervention Alert (人工介入警告領域) -->
+                <div class="takeover-alert-panel hidden" id="takeover-alert-panel" data-ai-region="takeover-alert">
+                  <div class="takeover-alert-icon">⚠️</div>
+                  <div class="takeover-alert-content">
+                    <h4 class="takeover-alert-title">人工介入（承認接管）が必要です</h4>
+                    <p class="takeover-alert-desc" id="takeover-alert-desc">
+                      毛利率がシステム自動承認基準（20.0%）を下回っているため、自動処理が停止されました。
+                      内容を確認の上、手動で「承認」または「却下」を行ってください。
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Action Panel & Audit Log -->
+              <div class="detail-sidebar-info">
+                <!-- Action Card -->
+                <div class="action-card" data-ai-region="decision-actions">
+                  <h3>意思決定操作</h3>
+                  <p class="action-card-help">承認または却下を選択してください。ステータスが更新されます。</p>
+                  
+                  <div class="action-buttons-group">
+                    <button class="btn btn-success btn-lg btn-block" id="btn-approve-project" data-testid="btn-approve" data-ai-action="approve" data-ai-stable-name="approve-project">
+                      承認する (Approve)
+                    </button>
+                    <button class="btn btn-danger btn-lg btn-block" id="btn-reject-project" data-testid="btn-reject" data-ai-action="reject" data-ai-stable-name="reject-project">
+                      却下する (Reject)
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Local Audit History -->
+                <div class="audit-history-card">
+                  <h3>この案件の処理履歴</h3>
+                  <ul class="audit-timeline" id="detail-audit-timeline">
+                    <!-- Dynamic -->
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- View 3: Audit Logs -->
+        <section class="tab-view" id="view-logs">
+          <div class="view-header">
+            <h2>監査ログ</h2>
+            <p class="view-subtitle">システム操作および自動実行ステップの履歴</p>
+          </div>
+          
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>タイムスタンプ</th>
+                  <th>操作者</th>
+                  <th>イベント種別</th>
+                  <th>詳細内容</th>
+                  <th>ステータス</th>
+                </tr>
+              </thead>
+              <tbody id="logs-table-body">
+                <!-- Populated dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- View 4: Settings -->
+        <section class="tab-view" id="view-settings">
+          <div class="view-header">
+            <h2>システム設定</h2>
+            <p class="view-subtitle">シミュレーション設定および自動審査のしきい値</p>
+          </div>
+          
+          <div class="settings-card">
+            <h3>自動承認フィルター設定</h3>
+            <div class="settings-form-row">
+              <label for="setting-threshold">毛利率しきい値 (%)</label>
+              <div class="input-with-unit">
+                <input type="number" id="setting-threshold" value="20.0" step="0.1" min="0" max="100">
+                <span class="unit">%</span>
+              </div>
+            </div>
+            <p class="settings-help-text">毛利率がこの数値を下回る場合、承認フローは一時停止し人工承認（接管）フェーズに入ります。</p>
+            <div class="settings-actions">
+              <button class="btn btn-primary" id="save-settings-btn">設定を保存</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- View 5: New Request -->
+        <section class="tab-view" id="view-new-request" data-ai-region="new-request-form">
+          <div class="view-header">
+            <h2>新規案件登録</h2>
+            <p class="view-subtitle">新しいプロジェクト契約案件の登録と申請を行います</p>
+          </div>
+          
+          <div class="settings-card">
+            <form id="new-request-form" onsubmit="return false;">
+              <div class="settings-form-row">
+                <label for="req-project-code">案件コード</label>
+                <div class="input-container">
+                  <input type="text" id="req-project-code" readonly placeholder="自動生成されます" class="form-input-readonly">
+                </div>
+              </div>
+              
+              <div class="settings-form-row">
+                <label for="req-project-name">案件名 <span class="required-badge">*</span></label>
+                <div class="input-container">
+                  <input type="text" id="req-project-name" required placeholder="案件名を入力してください">
+                </div>
+              </div>
+              
+              <div class="settings-form-row">
+                <label for="req-customer-name">顧客名 <span class="required-badge">*</span></label>
+                <div class="input-container">
+                  <select id="req-customer-name" required>
+                    <option value="">顧客名を選択してください</option>
+                    <option value="大和ロジスティクス株式会社">大和ロジスティクス株式会社</option>
+                    <option value="越境トレード株式会社">越境トレード株式会社</option>
+                    <option value="東京デジタルソリューションズ">東京デジタルソリューションズ</option>
+                    <option value="合同会社ワークスマート">合同会社ワークスマート</option>
+                    <option value="新日本ビルマネジメント株式会社">新日本ビルマネジメント株式会社</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div class="settings-form-row">
+                <label for="req-amount">受注金額 (円) <span class="required-badge">*</span></label>
+                <div class="input-container">
+                  <input type="number" id="req-amount" required min="1" placeholder="受注金額を入力">
+                </div>
+              </div>
+              
+              <div class="settings-form-row">
+                <label for="req-profit">粗利益額 (円) <span class="required-badge">*</span></label>
+                <div class="input-container">
+                  <input type="number" id="req-profit" required min="0" placeholder="粗利益額を入力">
+                </div>
+              </div>
+              
+              <div class="settings-form-row">
+                <label for="req-gross-margin">毛利率 (%)</label>
+                <div class="input-with-unit input-container">
+                  <input type="text" id="req-gross-margin" readonly value="0.0" class="form-input-readonly" data-testid="req-gross-margin-value">
+                  <span class="unit">%</span>
+                </div>
+              </div>
+
+              <div class="settings-form-row">
+                <label>申請部署 <span class="required-badge">*</span></label>
+                <div class="radio-group-container">
+                  <label class="radio-label"><input type="radio" name="req-dept" value="第一営業部" checked> 第一営業部</label>
+                  <label class="radio-label"><input type="radio" name="req-dept" value="第二営業部"> 第二営業部</label>
+                  <label class="radio-label"><input type="radio" name="req-dept" value="ソリューション営業部"> ソリューション営業部</label>
+                </div>
+              </div>
+
+              <div class="settings-form-row">
+                <label for="req-priority">優先度 <span class="required-badge">*</span></label>
+                <div class="input-container">
+                  <select id="req-priority" required>
+                    <option value="normal">通常</option>
+                    <option value="high">高</option>
+                    <option value="critical">緊急</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div class="settings-form-row">
+                <label for="req-notes">備考</label>
+                <div class="input-container">
+                  <textarea id="req-notes" rows="3" placeholder="補足情報があれば入力してください"></textarea>
+                </div>
+              </div>
+
+              <div class="settings-form-row">
+                <label>添付ファイル (契約書など)</label>
+                <div class="upload-dropzone" id="upload-dropzone">
+                  <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="32" height="32">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="17 8 12 3 7 8"></polyline>
+                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                  </svg>
+                  <p>ドラッグ＆ドロップ、またはファイルを選択</p>
+                  <input type="file" id="req-file-input" style="display: none;">
+                  <button type="button" class="btn btn-secondary btn-sm" id="btn-select-file" style="margin-top: 8px;">ファイルを選択</button>
+                  <div class="file-info hidden" id="uploaded-file-info" style="margin-top: 10px;">
+                    <span class="file-name" id="uploaded-file-name" style="font-weight: 600;"></span>
+                    <span class="file-size" id="uploaded-file-size" style="opacity: 0.7; font-size: 0.8rem; margin-left: 8px;"></span>
+                  </div>
+                  <div class="upload-progress-container hidden" id="upload-progress-container" style="width: 100%; margin-top: 10px;">
+                    <div style="background: rgba(255,255,255,0.1); height: 6px; border-radius: 3px; position: relative; overflow: hidden; width: 80%; display: inline-block;">
+                      <div class="upload-progress-bar" id="upload-progress-bar" style="background: var(--color-primary); height: 100%; width: 0%; transition: width 0.15s ease;"></div>
+                    </div>
+                    <span class="upload-progress-text" id="upload-progress-text" style="font-size: 0.8rem; margin-left: 8px; vertical-align: top;">0%</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="settings-actions">
+                <button type="button" class="btn btn-secondary" onclick="switchTab('dashboard')">キャンセル</button>
+                <button type="button" class="btn btn-primary" id="btn-submit-request">申請を提出</button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- JS Code -->
+  <script src="app.js"></script>
+</body>
+</html>

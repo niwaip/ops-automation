@@ -174,7 +174,10 @@ function summarizeHints(runtimeMetadata, limit = 12) {
     if (!parameter) {
       return;
     }
-    const suffix = [description ? `说明：${description}` : undefined, example ? `示例：${example}` : undefined]
+    const suffix = [
+      description ? `说明：${description}` : undefined,
+      example ? `示例：${example}` : undefined,
+    ]
       .filter(Boolean)
       .join('；');
     hints.push(suffix ? `${parameter} -> ${suffix}` : parameter);
@@ -224,13 +227,14 @@ function buildDocumentGuideContext(input) {
 
   const schemaSummary = summarizeSchema(input.paramsSchema);
   const extractionHints = summarizeHints(runtimeMetadata);
-  const synthesizedGuide = schemaSummary.length > 0
-    ? [
-        '请优先依据字段用途、业务分组和示例结构识别参数，再输出当前步骤要求的扁平字段键名。',
-        '参数概览：',
-        ...schemaSummary,
-      ].join('\n')
-    : undefined;
+  const synthesizedGuide =
+    schemaSummary.length > 0
+      ? [
+          '请优先依据字段用途、业务分组和示例结构识别参数，再输出当前步骤要求的扁平字段键名。',
+          '参数概览：',
+          ...schemaSummary,
+        ].join('\n')
+      : undefined;
 
   if (
     overviewParts.length === 0 &&
@@ -258,12 +262,14 @@ function buildDocumentGuideContext(input) {
 
 function formatParamLine(name, schema, promptVariant) {
   const normalizedDefaultValue = normalizePromptDefaultValue(schema.default);
-  const defaultStr = normalizedDefaultValue !== undefined ? ` (默认值: ${normalizedDefaultValue})` : '';
+  const defaultStr =
+    normalizedDefaultValue !== undefined ? ` (默认值: ${normalizedDefaultValue})` : '';
   const hintStr = schema.extractionPrompt ? `；提取提示：${schema.extractionPrompt}` : '';
   const semanticRoleStr = schema.semanticRole ? `；语义角色：${schema.semanticRole}` : '';
-  const semanticHintsStr = Array.isArray(schema.extractionHints) && schema.extractionHints.length > 0
-    ? `；语义提示：${schema.extractionHints.join('、')}`
-    : '';
+  const semanticHintsStr =
+    Array.isArray(schema.extractionHints) && schema.extractionHints.length > 0
+      ? `；语义提示：${schema.extractionHints.join('、')}`
+      : '';
 
   if (promptVariant === 'field-focused') {
     return `- ${name}: ${schema.type}${schema.description ? ` - ${schema.description}` : ''}${hintStr}${semanticHintsStr}`;
@@ -296,7 +302,9 @@ function buildStaticContractSection(experiment) {
 
   if (outputMode === 'params-only') {
     base.push('返回 JSON 对象，顶层只保留已识别参数键值。');
-    base.push('不要输出 params、confidence、field_confidences、uncertain_fields、notes、explanation。');
+    base.push(
+      '不要输出 params、confidence、field_confidences、uncertain_fields、notes、explanation。'
+    );
     base.push('如果没有识别到任何参数，返回空对象 {}。');
   } else {
     base.push('返回 JSON，格式包含 params、confidence、field_confidences、uncertain_fields。');
@@ -321,30 +329,34 @@ function buildSkillKnowledgeSection(templateName, properties, guideContext, expe
     }
     if (promptVariant === 'current' && guideContext.guideMarkdown) {
       guideSections.push(
-        `模板指南摘要：\n${truncateText(guideContext.guideMarkdown, DEFAULT_GUIDE_BUDGET.maxGuideChars, '\n...（模板指南已截断，以上为关键部分）')}`,
+        `模板指南摘要：\n${truncateText(guideContext.guideMarkdown, DEFAULT_GUIDE_BUDGET.maxGuideChars, '\n...（模板指南已截断，以上为关键部分）')}`
       );
     }
     if (promptVariant === 'lean' && guideContext.guideMarkdown) {
       guideSections.push(
-        `模板指南摘录（精简）：\n${truncateText(guideContext.guideMarkdown, 600, '\n...（已精简）')}`,
+        `模板指南摘录（精简）：\n${truncateText(guideContext.guideMarkdown, 600, '\n...（已精简）')}`
       );
     }
     if (promptVariant === 'natural-language' && guideContext.guideMarkdown) {
       guideSections.push(
-        `模板指南摘录（仅保留业务语义）：\n${truncateText(guideContext.guideMarkdown, 450, '\n...（仅保留关键业务语义）')}`,
+        `模板指南摘录（仅保留业务语义）：\n${truncateText(guideContext.guideMarkdown, 450, '\n...（仅保留关键业务语义）')}`
       );
     }
     if (guideContext.validationRules) {
       guideSections.push(`校验规则：\n${guideContext.validationRules}`);
     }
     if (Array.isArray(guideContext.extractionHints) && guideContext.extractionHints.length > 0) {
-      const hints = promptVariant === 'field-focused' ? guideContext.extractionHints.slice(0, 6) : guideContext.extractionHints;
+      const hints =
+        promptVariant === 'field-focused'
+          ? guideContext.extractionHints.slice(0, 6)
+          : guideContext.extractionHints;
       guideSections.push(`补充提示：\n${hints.map((item) => `- ${item}`).join('\n')}`);
     }
     if (guideContext.outputExample) {
-      const maxChars = promptVariant === 'field-focused' ? 800 : DEFAULT_GUIDE_BUDGET.maxExampleChars;
+      const maxChars =
+        promptVariant === 'field-focused' ? 800 : DEFAULT_GUIDE_BUDGET.maxExampleChars;
       guideSections.push(
-        `示例 JSON（仅帮助理解业务结构）：\n${truncateText(JSON.stringify(guideContext.outputExample, null, 2), maxChars, '\n...（示例已截断）')}`,
+        `示例 JSON（仅帮助理解业务结构）：\n${truncateText(JSON.stringify(guideContext.outputExample, null, 2), maxChars, '\n...（示例已截断）')}`
       );
     }
   }
@@ -370,14 +382,16 @@ function buildSkillKnowledgeSection(templateName, properties, guideContext, expe
   }
 
   if (promptVariant === 'natural-language') {
-    sections.push([
-      '自然语言抽取要求：',
-      '- 用户输入往往是叙述句，不是表单。',
-      '- 先按语义理解“谁是甲方/乙方、项目是什么、金额是多少、期限从何时到何时、服务内容有哪些”。',
-      '- 对“50万元”这类表达，按字段要求转换为标准数值。',
-      '- 对“从 A 到 B”这类表达，分别判断是否对应开始日期和结束日期。',
-      '- 服务内容中的并列项可保留自然语言原文，不要为了凑结构改写。',
-    ].join('\n'));
+    sections.push(
+      [
+        '自然语言抽取要求：',
+        '- 用户输入往往是叙述句，不是表单。',
+        '- 先按语义理解“谁是甲方/乙方、项目是什么、金额是多少、期限从何时到何时、服务内容有哪些”。',
+        '- 对“50万元”这类表达，按字段要求转换为标准数值。',
+        '- 对“从 A 到 B”这类表达，分别判断是否对应开始日期和结束日期。',
+        '- 服务内容中的并列项可保留自然语言原文，不要为了凑结构改写。',
+      ].join('\n')
+    );
   }
 
   return sections.join('\n\n');
@@ -417,7 +431,9 @@ function buildDynamicUserContextSection(dto, guideContext, experiment) {
   } else if (context) {
     const lines = Object.entries(context)
       .filter(([, value]) => value !== undefined && value !== null && value !== '')
-      .map(([key, value]) => `${key}: ${typeof value === 'string' ? value : JSON.stringify(value)}`);
+      .map(
+        ([key, value]) => `${key}: ${typeof value === 'string' ? value : JSON.stringify(value)}`
+      );
     if (lines.length > 0) {
       sections.push(`[补充上下文]\n${lines.join('\n')}`);
     }
@@ -446,7 +462,7 @@ function buildDynamicUserContextSection(dto, guideContext, experiment) {
 function buildPromptAssembly(caseData, experiment) {
   const properties = markRequiredFields(
     (caseData.paramsSchema && caseData.paramsSchema.properties) || {},
-    (caseData.paramsSchema && caseData.paramsSchema.required) || [],
+    (caseData.paramsSchema && caseData.paramsSchema.required) || []
   );
 
   const dto = {
@@ -455,8 +471,9 @@ function buildPromptAssembly(caseData, experiment) {
     context: caseData.context,
   };
 
-  const guideContext = caseData.guideContext
-    || (caseData.runtimeMetadata || caseData.goal || caseData.description || caseData.outputParams
+  const guideContext =
+    caseData.guideContext ||
+    (caseData.runtimeMetadata || caseData.goal || caseData.description || caseData.outputParams
       ? buildDocumentGuideContext({
           enabled: true,
           description: caseData.description,
@@ -470,7 +487,12 @@ function buildPromptAssembly(caseData, experiment) {
 
   return {
     staticSystem: buildStaticContractSection(experiment),
-    skillContext: buildSkillKnowledgeSection(caseData.templateName || dto.template_id, properties, guideContext, experiment),
+    skillContext: buildSkillKnowledgeSection(
+      caseData.templateName || dto.template_id,
+      properties,
+      guideContext,
+      experiment
+    ),
     dynamicUser: buildDynamicUserContextSection(dto, guideContext, experiment),
   };
 }
@@ -484,7 +506,7 @@ function markRequiredFields(properties, required) {
         ...schema,
         required: requiredSet.has(key) || schema.required === true,
       },
-    ]),
+    ])
   );
 }
 
@@ -499,15 +521,22 @@ function parseRecognizerJson(text) {
     const parsed = JSON.parse(candidate);
     return { ok: true, parsed };
   } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : String(error), raw: candidate };
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+      raw: candidate,
+    };
   }
 }
 
 function diffExpected(expected, actual) {
   const expectedParams = (expected && expected.params) || {};
-  const actualParams = actual && typeof actual === 'object'
-    ? (actual.params && typeof actual.params === 'object' ? actual.params : actual)
-    : {};
+  const actualParams =
+    actual && typeof actual === 'object'
+      ? actual.params && typeof actual.params === 'object'
+        ? actual.params
+        : actual
+      : {};
   const missingKeys = [];
   const mismatchedKeys = [];
   const unexpectedKeys = [];
@@ -553,13 +582,13 @@ function buildOutputModeList(name) {
 function buildExperiments(variantName, outputModeName) {
   const promptVariants = buildVariantList(variantName);
   const outputModes = buildOutputModeList(outputModeName);
-  return promptVariants.flatMap((promptVariant) => (
+  return promptVariants.flatMap((promptVariant) =>
     outputModes.map((outputMode) => ({
       promptVariant,
       outputMode,
       label: `${promptVariant} + ${outputMode}`,
     }))
-  ));
+  );
 }
 
 function checkOutputContract(parsedPayload, experiment, properties) {
@@ -575,8 +604,14 @@ function checkOutputContract(parsedPayload, experiment, properties) {
   const topLevelKeys = Object.keys(parsedPayload);
 
   if (experiment.outputMode === 'params-only') {
-    const forbiddenKeys = ['params', 'confidence', 'field_confidences', 'uncertain_fields', 'notes', 'explanation']
-      .filter((key) => key in parsedPayload);
+    const forbiddenKeys = [
+      'params',
+      'confidence',
+      'field_confidences',
+      'uncertain_fields',
+      'notes',
+      'explanation',
+    ].filter((key) => key in parsedPayload);
     if (forbiddenKeys.length > 0) {
       issues.push(`出现禁止字段: ${forbiddenKeys.join(', ')}`);
     }
@@ -585,7 +620,11 @@ function checkOutputContract(parsedPayload, experiment, properties) {
       issues.push(`出现 schema 外字段: ${unknownKeys.join(', ')}`);
     }
   } else {
-    if (!parsedPayload.params || typeof parsedPayload.params !== 'object' || Array.isArray(parsedPayload.params)) {
+    if (
+      !parsedPayload.params ||
+      typeof parsedPayload.params !== 'object' ||
+      Array.isArray(parsedPayload.params)
+    ) {
       issues.push('缺少 params 对象');
     }
     ['confidence', 'field_confidences', 'uncertain_fields'].forEach((key) => {
@@ -623,7 +662,10 @@ function computeExperimentScore(modelResponse, experiment, caseData) {
 
   if (modelResponse.diff) {
     const { missingKeys, mismatchedKeys, unexpectedKeys } = modelResponse.diff;
-    score += Math.max(0, 40 - missingKeys.length * 8 - mismatchedKeys.length * 8 - unexpectedKeys.length * 4);
+    score += Math.max(
+      0,
+      40 - missingKeys.length * 8 - mismatchedKeys.length * 8 - unexpectedKeys.length * 4
+    );
   } else {
     score += 25;
   }
@@ -632,8 +674,10 @@ function computeExperimentScore(modelResponse, experiment, caseData) {
 }
 
 function summarizePromptStats(messages) {
-  const systemChars = messages[0] && typeof messages[0].content === 'string' ? messages[0].content.length : 0;
-  const userChars = messages[1] && typeof messages[1].content === 'string' ? messages[1].content.length : 0;
+  const systemChars =
+    messages[0] && typeof messages[0].content === 'string' ? messages[0].content.length : 0;
+  const userChars =
+    messages[1] && typeof messages[1].content === 'string' ? messages[1].content.length : 0;
   return {
     systemChars,
     userChars,
@@ -642,41 +686,52 @@ function summarizePromptStats(messages) {
 }
 
 function printExperimentSummary(results, caseData) {
-  const summary = results.map((result) => {
-    const promptStats = summarizePromptStats(result.requestMessages);
-    const parsed = result.modelResponse && result.modelResponse.parsed;
-    const contractCheck = parsed && parsed.ok
-      ? checkOutputContract(
-          parsed.parsed,
-          result.experiment,
-          (caseData.paramsSchema && caseData.paramsSchema.properties) || {},
-        )
-      : undefined;
-    return {
-      label: result.experiment.label,
-      promptVariant: result.experiment.promptVariant,
-      outputMode: result.experiment.outputMode,
-      promptChars: promptStats.totalChars,
-      parseOk: Boolean(parsed && parsed.ok),
-      score: computeExperimentScore(result.modelResponse, result.experiment, caseData),
-      contractPassed: contractCheck ? contractCheck.passed : undefined,
-      contractIssues: contractCheck && contractCheck.issues.length > 0 ? contractCheck.issues : undefined,
-      diff: result.modelResponse && result.modelResponse.diff
-        ? {
-            missing: result.modelResponse.diff.missingKeys.length,
-            mismatched: result.modelResponse.diff.mismatchedKeys.length,
-            unexpected: result.modelResponse.diff.unexpectedKeys.length,
-          }
-        : undefined,
-      usage: result.modelResponse && result.modelResponse.usage ? result.modelResponse.usage : undefined,
-      error: result.modelResponse && result.modelResponse.error ? result.modelResponse.error : undefined,
-    };
-  }).sort((a, b) => {
-    if ((b.score || 0) !== (a.score || 0)) {
-      return (b.score || 0) - (a.score || 0);
-    }
-    return a.promptChars - b.promptChars;
-  });
+  const summary = results
+    .map((result) => {
+      const promptStats = summarizePromptStats(result.requestMessages);
+      const parsed = result.modelResponse && result.modelResponse.parsed;
+      const contractCheck =
+        parsed && parsed.ok
+          ? checkOutputContract(
+              parsed.parsed,
+              result.experiment,
+              (caseData.paramsSchema && caseData.paramsSchema.properties) || {}
+            )
+          : undefined;
+      return {
+        label: result.experiment.label,
+        promptVariant: result.experiment.promptVariant,
+        outputMode: result.experiment.outputMode,
+        promptChars: promptStats.totalChars,
+        parseOk: Boolean(parsed && parsed.ok),
+        score: computeExperimentScore(result.modelResponse, result.experiment, caseData),
+        contractPassed: contractCheck ? contractCheck.passed : undefined,
+        contractIssues:
+          contractCheck && contractCheck.issues.length > 0 ? contractCheck.issues : undefined,
+        diff:
+          result.modelResponse && result.modelResponse.diff
+            ? {
+                missing: result.modelResponse.diff.missingKeys.length,
+                mismatched: result.modelResponse.diff.mismatchedKeys.length,
+                unexpected: result.modelResponse.diff.unexpectedKeys.length,
+              }
+            : undefined,
+        usage:
+          result.modelResponse && result.modelResponse.usage
+            ? result.modelResponse.usage
+            : undefined,
+        error:
+          result.modelResponse && result.modelResponse.error
+            ? result.modelResponse.error
+            : undefined,
+      };
+    })
+    .sort((a, b) => {
+      if ((b.score || 0) !== (a.score || 0)) {
+        return (b.score || 0) - (a.score || 0);
+      }
+      return a.promptChars - b.promptChars;
+    });
 
   printSection('EXPERIMENT SUMMARY', JSON.stringify(summary, null, 2));
 
@@ -691,12 +746,18 @@ function printExperimentSummary(results, caseData) {
             `score=${best.score}`,
             typeof best.promptChars === 'number' ? `promptChars=${best.promptChars}` : undefined,
             best.contractPassed === true ? 'outputContract=passed' : undefined,
-            best.diff ? `diff(missing=${best.diff.missing}, mismatched=${best.diff.mismatched}, unexpected=${best.diff.unexpected})` : undefined,
-          ].filter(Boolean).join(' ; ')
+            best.diff
+              ? `diff(missing=${best.diff.missing}, mismatched=${best.diff.mismatched}, unexpected=${best.diff.unexpected})`
+              : undefined,
+          ]
+            .filter(Boolean)
+            .join(' ; ')
         : [
             '未实际调用模型，当前仅按 prompt 长度与结构可读性给出初步建议',
             typeof best.promptChars === 'number' ? `promptChars=${best.promptChars}` : undefined,
-          ].filter(Boolean).join(' ; '),
+          ]
+            .filter(Boolean)
+            .join(' ; '),
     };
     printSection('RECOMMENDATION', JSON.stringify(recommendation, null, 2));
   }
@@ -708,7 +769,9 @@ async function callOpenAICompatible(messages, options) {
   const model = options.model || process.env.OPENAI_MODEL || '';
 
   if (!baseUrl || !apiKey || !model) {
-    throw new Error('缺少模型配置。请提供 --base-url --api-key --model，或设置 OPENAI_BASE_URL / OPENAI_API_KEY / OPENAI_MODEL');
+    throw new Error(
+      '缺少模型配置。请提供 --base-url --api-key --model，或设置 OPENAI_BASE_URL / OPENAI_API_KEY / OPENAI_MODEL'
+    );
   }
 
   const response = await fetch(`${baseUrl}/chat/completions`, {
@@ -734,9 +797,10 @@ async function callOpenAICompatible(messages, options) {
   const payload = await response.json();
   return {
     raw: payload,
-    content: payload && payload.choices && payload.choices[0] && payload.choices[0].message
-      ? payload.choices[0].message.content
-      : '',
+    content:
+      payload && payload.choices && payload.choices[0] && payload.choices[0].message
+        ? payload.choices[0].message.content
+        : '',
     usage: payload.usage,
   };
 }
@@ -800,12 +864,14 @@ async function main() {
       try {
         const modelResult = await callOpenAICompatible(requestMessages, args);
         const parsed = parseRecognizerJson(modelResult.content);
-        const diff = caseData.expected ? diffExpected(caseData.expected, parsed.ok ? parsed.parsed : {}) : undefined;
+        const diff = caseData.expected
+          ? diffExpected(caseData.expected, parsed.ok ? parsed.parsed : {})
+          : undefined;
         const contractCheck = parsed.ok
           ? checkOutputContract(
               parsed.parsed,
               experiment,
-              (caseData.paramsSchema && caseData.paramsSchema.properties) || {},
+              (caseData.paramsSchema && caseData.paramsSchema.properties) || {}
             )
           : undefined;
 
@@ -819,15 +885,27 @@ async function main() {
 
         printSection(`VARIANT ${experiment.label} / MODEL RAW RESPONSE`, modelResult.content);
         if (parsed.ok) {
-          printSection(`VARIANT ${experiment.label} / PARSED JSON`, JSON.stringify(parsed.parsed, null, 2));
+          printSection(
+            `VARIANT ${experiment.label} / PARSED JSON`,
+            JSON.stringify(parsed.parsed, null, 2)
+          );
         } else {
-          printSection(`VARIANT ${experiment.label} / PARSE ERROR`, JSON.stringify(parsed, null, 2));
+          printSection(
+            `VARIANT ${experiment.label} / PARSE ERROR`,
+            JSON.stringify(parsed, null, 2)
+          );
         }
         if (diff) {
-          printSection(`VARIANT ${experiment.label} / EXPECTED DIFF`, JSON.stringify(diff, null, 2));
+          printSection(
+            `VARIANT ${experiment.label} / EXPECTED DIFF`,
+            JSON.stringify(diff, null, 2)
+          );
         }
         if (contractCheck) {
-          printSection(`VARIANT ${experiment.label} / OUTPUT CONTRACT CHECK`, JSON.stringify(contractCheck, null, 2));
+          printSection(
+            `VARIANT ${experiment.label} / OUTPUT CONTRACT CHECK`,
+            JSON.stringify(contractCheck, null, 2)
+          );
         }
       } catch (error) {
         result.modelResponse = {
@@ -845,15 +923,22 @@ async function main() {
   if (args.outputPath) {
     const absoluteOutputPath = path.resolve(process.cwd(), args.outputPath);
     ensureDir(path.dirname(absoluteOutputPath));
-    fs.writeFileSync(absoluteOutputPath, JSON.stringify({
-      generatedAt: new Date().toISOString(),
-      casePath: absoluteCasePath,
-      args: {
-        ...args,
-        apiKey: args.apiKey ? '***' : undefined,
-      },
-      results,
-    }, null, 2));
+    fs.writeFileSync(
+      absoluteOutputPath,
+      JSON.stringify(
+        {
+          generatedAt: new Date().toISOString(),
+          casePath: absoluteCasePath,
+          args: {
+            ...args,
+            apiKey: args.apiKey ? '***' : undefined,
+          },
+          results,
+        },
+        null,
+        2
+      )
+    );
     console.log(`\n已写入: ${absoluteOutputPath}`);
   }
 }
