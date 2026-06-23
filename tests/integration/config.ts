@@ -41,7 +41,9 @@ export const SERVICE_CONFIG = {
 // Database configuration
 export const DB_CONFIG = {
   DATABASE_URL: process.env.DATABASE_URL || 'postgresql://ops:ops_secret@localhost:5432/ops',
-  REDIS_URL: process.env.REDIS_URL || 'redis://localhost:6379',
+  REDIS_URL:
+    process.env.REDIS_URL ||
+    `redis://:${process.env.REDIS_PASSWORD || 'redis_secret'}@localhost:${process.env.REDIS_PORT || '6379'}`,
 };
 
 // Test timeout settings

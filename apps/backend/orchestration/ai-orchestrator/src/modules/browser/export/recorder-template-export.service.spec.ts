@@ -6,7 +6,7 @@ jest.mock(
   { virtual: true }
 );
 
-import { RecorderLoopService } from '../loop/recorder-loop.service';
+import { RecorderLoopService } from '../loop';
 import { RecorderTemplateExportService } from './recorder-template-export.service';
 
 describe('RecorderTemplateExportService', () => {

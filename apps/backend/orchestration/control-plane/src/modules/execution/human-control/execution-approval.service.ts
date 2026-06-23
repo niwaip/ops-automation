@@ -5,13 +5,14 @@ import { EXECUTION_EVENT_TYPE } from '../contracts/execution-event-type';
 import { EXECUTION_STATUS, ExecutionStatus } from '../contracts/execution-status';
 import { CreateExecutionEventOptions } from '../state/execution-event.service';
 import { ApprovalDecisionDto, ExecutionDto } from '../state/execution.dto';
+import { ensureExecutionPermission } from '../shared/execution-permission.util';
 
 interface RequestUserContext {
   id: string;
   role?: string;
 }
 
-interface ExecutionApprovalHooks {
+export interface ExecutionApprovalHooks {
   getExecutionDto: (id: string, requester?: RequestUserContext) => Promise<ExecutionDto>;
   emitEvent: (
     executionId: string,
@@ -44,7 +45,7 @@ export class ExecutionApprovalService {
       throw new NotFoundException(`Execution ${id} not found`);
     }
 
-    this.ensureExecutionPermission(execution.createdBy, requester || { id: userId });
+    ensureExecutionPermission(execution.createdBy, requester || { id: userId });
 
     if (execution.status !== EXECUTION_STATUS.PENDING_APPROVAL) {
       throw new BadRequestException(
@@ -89,7 +90,7 @@ export class ExecutionApprovalService {
       throw new NotFoundException(`Execution ${id} not found`);
     }
 
-    this.ensureExecutionPermission(execution.createdBy, requester || { id: userId });
+    ensureExecutionPermission(execution.createdBy, requester || { id: userId });
 
     if (execution.status !== EXECUTION_STATUS.PENDING_APPROVAL) {
       throw new BadRequestException(
@@ -114,20 +115,5 @@ export class ExecutionApprovalService {
 
     this.logger.log(`Execution ${id} rejected`);
     return hooks.getExecutionDto(id, requester || { id: userId });
-  }
-
-  private ensureExecutionPermission(
-    executionOwnerId: string,
-    requester?: RequestUserContext
-  ): void {
-    if (!requester?.id) {
-      return;
-    }
-    if (requester.role === 'admin') {
-      return;
-    }
-    if (requester.id !== executionOwnerId) {
-      throw new NotFoundException('Execution not found');
-    }
   }
 }

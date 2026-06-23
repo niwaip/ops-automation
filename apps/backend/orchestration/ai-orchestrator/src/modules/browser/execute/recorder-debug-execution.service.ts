@@ -3,14 +3,14 @@ import axios from 'axios';
 import * as fs from 'fs/promises';
 import { getBrowserWorkerUrl } from '../../../config/service-endpoints';
 import { BrowserActionValidatorService, BrowserCommand, BrowserCommandCandidate } from '../intent';
-import { RecorderDebugChatSupportService } from './recorder-debug-chat-support.service';
-import { RecorderObservationService } from '../observe/recorder-observation.service';
 import {
+  RecorderObservationService,
   RecorderSnapshotService,
+  RecorderStructureProbeService,
   SnapshotNode,
   SnapshotResolutionState,
-} from '../observe/recorder-snapshot.service';
-import { RecorderStructureProbeService } from '../observe/recorder-structure-probe.service';
+} from '../observe';
+import { RecorderDebugChatSupportService } from './recorder-debug-chat-support.service';
 import type { BrowserExecuteResponse, RecorderDebugObservation } from './recorder-debug.types';
 
 interface PreparedBrowserCommand {

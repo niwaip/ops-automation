@@ -121,6 +121,29 @@ export class ExecutionReconcileService {
     ].join('\n');
   }
 
+  mergeManualPatchSteps(
+    originalCommands: BrowserCommand[],
+    patchSteps: ReconcileAfterTakeoverRequest['patchSteps'],
+    failedCommand?: ReconcileAfterTakeoverRequest['failedCommand']
+  ): BrowserCommand[] {
+    const patchCommands = patchSteps
+      .map((step) => this.mapPatchStepToCommand(step))
+      .filter((command): command is BrowserCommand => Boolean(command));
+    const failedIndex = failedCommand
+      ? originalCommands.findIndex((command) => this.isSameCommand(command, failedCommand))
+      : -1;
+
+    if (failedIndex < 0) {
+      return [...patchCommands, ...originalCommands];
+    }
+
+    return [
+      ...originalCommands.slice(0, failedIndex),
+      ...patchCommands,
+      ...originalCommands.slice(failedIndex + 1),
+    ];
+  }
+
   private async tryModelDecision(
     input: ReconcileAfterTakeoverRequest
   ): Promise<HeuristicDecision | null> {

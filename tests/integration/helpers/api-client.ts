@@ -98,6 +98,6 @@ export class ApiClient {
 // Pre-configured clients for each service
 export const authClient = new ApiClient('AUTH');
 export const sessionClient = new ApiClient('SESSION_BROKER');
-export const templateClient = new ApiClient('TEMPLATE');
+export const templateClient = new ApiClient('BROWSER_TEMPLATE');
 export const aiClient = new ApiClient('AI_ORCHESTRATOR');
 export const replayClient = new ApiClient('REPLAY_ENGINE');

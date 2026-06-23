@@ -4,7 +4,7 @@ import {
   BROWSER_RECORDING_EXECUTION_PLAN_VERSION,
   buildBrowserRecordingExecutionPlan,
 } from './browser-recording-execution-plan';
-import { RecorderLoopDraftState, TemplateStepLike } from '../loop/recorder-loop.types';
+import { RecorderLoopDraftState, TemplateStepLike } from '../loop';
 
 type ExportBackendLike = 'cli' | 'chrome-devtools' | 'mcp';
 

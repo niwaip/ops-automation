@@ -1,7 +1,7 @@
 import { createService, resetRecorderDebugTestEnv } from '../execute/recorder-debug.test-helper';
 import { RecorderLoopService } from './recorder-loop.service';
-import { RecorderParameterService } from '../intent';
-import { RecorderTemplateExportService } from '../export/recorder-template-export.service';
+import { RecorderParameterService } from '../intent/recorder-parameter.service';
+import { RecorderTemplateExportService } from '../export';
 
 describe('RecorderDebugService', () => {
   beforeEach(() => {
@@ -498,7 +498,10 @@ describe('RecorderDebugService', () => {
       updatedAt: new Date().toISOString(),
     };
 
-    const artifacts = await (service as any).buildExportArtifacts(session, '登录系统并进入首页');
+    const artifacts = await (service as any).recorderExportAssemblyService.buildExportArtifacts(
+      session,
+      '登录系统并进入首页'
+    );
 
     expect(artifacts.templateSteps).toEqual(
       expect.arrayContaining([
@@ -671,7 +674,10 @@ describe('RecorderDebugService', () => {
       updatedAt: new Date().toISOString(),
     };
 
-    const artifacts = await (service as any).buildExportArtifacts(session, '根据毛利率执行审批');
+    const artifacts = await (service as any).recorderExportAssemblyService.buildExportArtifacts(
+      session,
+      '根据毛利率执行审批'
+    );
 
     expect(analyzeBranchCondition).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -873,7 +879,10 @@ describe('RecorderDebugService', () => {
       updatedAt: new Date().toISOString(),
     };
 
-    const artifacts = await (service as any).buildExportArtifacts(session, '循环审批待处理案件');
+    const artifacts = await (service as any).recorderExportAssemblyService.buildExportArtifacts(
+      session,
+      '循环审批待处理案件'
+    );
 
     expect(artifacts.templateSteps).toEqual(
       expect.arrayContaining([
@@ -1026,7 +1035,7 @@ describe('RecorderDebugService', () => {
       updatedAt: new Date().toISOString(),
     };
 
-    const artifacts = await (service as any).buildExportArtifacts(
+    const artifacts = await (service as any).recorderExportAssemblyService.buildExportArtifacts(
       session,
       '循环处理未承认数据，毛利率大于20%自动承认，否则人工介入'
     );
@@ -1167,7 +1176,7 @@ describe('RecorderDebugService', () => {
       updatedAt: new Date().toISOString(),
     };
 
-    const artifacts = await (service as any).buildExportArtifacts(
+    const artifacts = await (service as any).recorderExportAssemblyService.buildExportArtifacts(
       session,
       '循环处理 approvals 页面全部未承认数据，逐条承认后返回一览，直到没有保留中数据'
     );
@@ -1299,7 +1308,10 @@ describe('RecorderDebugService', () => {
       updatedAt: new Date().toISOString(),
     };
 
-    const artifacts = await (service as any).buildExportArtifacts(session, '循环审批待处理案件');
+    const artifacts = await (service as any).recorderExportAssemblyService.buildExportArtifacts(
+      session,
+      '循环审批待处理案件'
+    );
 
     expect(artifacts.templateSteps).toEqual(
       expect.arrayContaining([
@@ -1500,7 +1512,7 @@ describe('RecorderDebugService', () => {
       updatedAt: new Date().toISOString(),
     };
 
-    const artifacts = await (service as any).buildExportArtifacts(
+    const artifacts = await (service as any).recorderExportAssemblyService.buildExportArtifacts(
       session,
       '点击第一条数据，进入详细 / 点击承认 / 返回未承认一览'
     );

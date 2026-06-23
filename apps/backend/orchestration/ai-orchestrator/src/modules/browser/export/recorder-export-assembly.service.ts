@@ -5,12 +5,14 @@ import { BrowserCommand } from '../intent';
 import { buildBrowserRecordingExecutionPlan } from './browser-recording-execution-plan';
 import type { BrowserRecordingExecutionPlanLike } from './browser-recording-execution-plan';
 import { RecorderExportService } from './recorder-export.service';
-import { RecorderLoopService } from '../loop/recorder-loop.service';
-import { RecorderLoopDraftState } from '../loop/recorder-loop.types';
+import {
+  RecorderLoopDraftState,
+  RecorderLoopService,
+  RecorderManualInterventionRecord,
+} from '../loop';
 import { RecorderParameterService } from '../intent';
 import { RecorderScriptExportService } from './recorder-script-export.service';
 import { RecorderTemplateExportService } from './recorder-template-export.service';
-import type { RecorderManualInterventionRecord } from '../loop/recorder-loop.types';
 
 type ExportBackendLike = 'cli' | 'chrome-devtools' | 'mcp';
 

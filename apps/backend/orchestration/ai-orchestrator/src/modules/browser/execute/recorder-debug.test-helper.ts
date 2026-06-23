@@ -37,27 +37,35 @@ jest.mock(
 );
 
 import { RecorderDebugService } from './recorder-debug.service';
+import { RecorderDebugBranchFacade } from './recorder-debug-branch.facade';
+import { RecorderDebugObservationFacade } from './recorder-debug-observation.facade';
+import { RecorderDebugSessionFacade } from './recorder-debug-session.facade';
 import { BrowserActionValidatorService } from '../intent/atomic-parsers/browser-action-validator.service';
 import { BrowserExecutionControllerService } from './browser-execution-controller.service';
 import { RecorderDebugChatExecutionService } from './recorder-debug-chat-execution.service';
 import { RecorderDebugChatFlowService } from './recorder-debug-chat-flow.service';
 import { RecorderDebugChatSupportService } from './recorder-debug-chat-support.service';
-import { RecorderConditionalBranchService } from '../loop/recorder-conditional-branch.service';
+import { RecorderConditionalBranchService, RecorderLoopService } from '../loop';
 import { RecorderDebugExecutionService } from './recorder-debug-execution.service';
-import { RecorderDebugObservationRefreshService } from '../observe/recorder-debug-observation-refresh.service';
+import {
+  RecorderDebugObservationRefreshService,
+  RecorderObservationService,
+  RecorderSnapshotService,
+  RecorderStructureProbeService,
+} from '../observe';
 import { RecorderDebugResponseService } from './recorder-debug-response.service';
-import { RecorderDebugSessionCoordinatorService } from '../session/recorder-debug-session-coordinator.service';
-import { RecorderDebugSessionStoreService } from '../session/recorder-debug-session-store.service';
-import { RecorderExportAssemblyService } from '../export/recorder-export-assembly.service';
+import {
+  RecorderDebugSessionCoordinatorService,
+  RecorderDebugSessionStoreService,
+} from '../session';
+import {
+  RecorderExportAssemblyService,
+  RecorderExportService,
+  RecorderScriptExportService,
+  RecorderTemplateExportService,
+} from '../export';
 import { RecorderDisambiguationService } from '../intent/recorder-disambiguation.service';
-import { RecorderExportService } from '../export/recorder-export.service';
-import { RecorderLoopService } from '../loop/recorder-loop.service';
-import { RecorderObservationService } from '../observe/recorder-observation.service';
 import { RecorderParameterService } from '../intent/recorder-parameter.service';
-import { RecorderScriptExportService } from '../export/recorder-script-export.service';
-import { RecorderSnapshotService } from '../observe/recorder-snapshot.service';
-import { RecorderStructureProbeService } from '../observe/recorder-structure-probe.service';
-import { RecorderTemplateExportService } from '../export/recorder-template-export.service';
 
 export const createService = (overrides?: {
   browserCommandService?: Record<string, unknown>;
@@ -66,6 +74,9 @@ export const createService = (overrides?: {
   redisService?: Record<string, unknown>;
   recorderDebugSessionCoordinatorService?: RecorderDebugSessionCoordinatorService;
   recorderDebugSessionStoreService?: RecorderDebugSessionStoreService;
+  recorderDebugSessionFacade?: RecorderDebugSessionFacade;
+  recorderDebugBranchFacade?: RecorderDebugBranchFacade;
+  recorderDebugObservationFacade?: RecorderDebugObservationFacade;
   executionReconcileService?: Record<string, unknown>;
   branchAnalysisService?: Record<string, unknown>;
   recorderLoopService?: RecorderLoopService;
@@ -113,6 +124,41 @@ export const createService = (overrides?: {
       overrides?.recorderDebugSessionStoreService ||
         new RecorderDebugSessionStoreService((overrides?.redisService || {}) as any)
     );
+  const recorderDebugObservationRefreshService =
+    overrides?.recorderDebugObservationRefreshService || new RecorderDebugObservationRefreshService();
+  const recorderDebugObservationFacade =
+    overrides?.recorderDebugObservationFacade ||
+    new RecorderDebugObservationFacade(
+      (overrides?.modelService || {}) as any,
+      recorderObservationService
+    );
+  const recorderDebugChatExecutionService =
+    overrides?.recorderDebugChatExecutionService
+      ? Object.assign(
+          new RecorderDebugChatExecutionService(browserExecutionControllerService),
+          overrides.recorderDebugChatExecutionService
+        )
+      : new RecorderDebugChatExecutionService(browserExecutionControllerService);
+  const recorderDebugSessionFacade =
+    overrides?.recorderDebugSessionFacade ||
+    new RecorderDebugSessionFacade(
+      recorderDebugSessionCoordinatorService,
+      recorderDebugObservationRefreshService,
+      recorderLoopService
+    );
+  const recorderConditionalBranchService =
+    overrides?.recorderConditionalBranchService ||
+    new RecorderConditionalBranchService((overrides?.branchAnalysisService || {}) as any);
+  const recorderDebugBranchFacade =
+    overrides?.recorderDebugBranchFacade ||
+    new RecorderDebugBranchFacade(
+      recorderConditionalBranchService,
+      recorderDebugChatExecutionService,
+      overrides?.recorderDebugResponseService || new RecorderDebugResponseService(),
+      recorderDebugSessionFacade
+    );
+  const recorderDebugResponseService =
+    overrides?.recorderDebugResponseService || new RecorderDebugResponseService();
 
   return new RecorderDebugService(
     (overrides?.browserCommandService || {}) as any,
@@ -120,10 +166,8 @@ export const createService = (overrides?: {
       ({
         createErrorLog: jest.fn().mockResolvedValue(undefined),
       } as any)),
-    (overrides?.modelService || {}) as any,
-    overrides?.recorderConditionalBranchService ||
-      new RecorderConditionalBranchService((overrides?.branchAnalysisService || {}) as any),
-    recorderDebugSessionCoordinatorService,
+    recorderDebugBranchFacade,
+    recorderDebugSessionFacade,
     (overrides?.executionReconcileService || {}) as any,
     recorderLoopService,
     overrides?.recorderExportAssemblyService ||
@@ -145,8 +189,7 @@ export const createService = (overrides?: {
         recorderDebugChatSupportService,
         browserActionValidatorService
       ),
-    overrides?.recorderDebugChatExecutionService ||
-      new RecorderDebugChatExecutionService(browserExecutionControllerService),
+    recorderDebugChatExecutionService,
     overrides?.recorderDebugExecutionService ||
       new RecorderDebugExecutionService(
         browserActionValidatorService,
@@ -155,9 +198,8 @@ export const createService = (overrides?: {
         recorderSnapshotService,
         recorderStructureProbeService
       ),
-    overrides?.recorderDebugObservationRefreshService ||
-      new RecorderDebugObservationRefreshService(),
-    overrides?.recorderDebugResponseService || new RecorderDebugResponseService(),
+    recorderDebugResponseService,
+    recorderDebugObservationFacade,
     recorderObservationService
   );
 };

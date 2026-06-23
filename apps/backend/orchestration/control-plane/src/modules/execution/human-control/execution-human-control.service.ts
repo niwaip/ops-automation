@@ -8,7 +8,7 @@ import {
   isTerminalExecutionStatus,
 } from '../state/execution-transition-policy';
 import { ExecutionPhaseService } from '../state/execution-phase.service';
-import { ExecutionStepService } from '../step-runner/execution-step.service';
+import { ExecutionStepService } from '../step-runner/steps/execution-step.service';
 import { CreateExecutionEventOptions } from '../state/execution-event.service';
 import {
   ExecutionDto,
@@ -16,6 +16,7 @@ import {
   ResumeExecutionDto,
   TakeoverExecutionDto,
 } from '../state/execution.dto';
+import { ensureExecutionPermission } from '../shared/execution-permission.util';
 
 interface RequestUserContext {
   id: string;
@@ -44,7 +45,7 @@ interface ExecutionStepPhaseMetadata {
   phaseType: string;
 }
 
-interface ExecutionHumanControlHooks {
+export interface ExecutionHumanControlHooks {
   getExecutionDto: (id: string, requester?: RequestUserContext) => Promise<ExecutionDto>;
   emitEvent: (
     executionId: string,
@@ -123,7 +124,7 @@ export class ExecutionHumanControlService {
     requester?: RequestUserContext
   ): Promise<ExecutionDto> {
     const execution = await this.getExecutionOrThrow(id);
-    this.ensureExecutionPermission(execution.createdBy, requester || { id: userId });
+    ensureExecutionPermission(execution.createdBy, requester || { id: userId });
 
     if (
       !canTransitionExecutionStatus(
@@ -179,7 +180,7 @@ export class ExecutionHumanControlService {
     requester?: RequestUserContext
   ): Promise<ExecutionDto> {
     const execution = await this.getExecutionOrThrow(id);
-    this.ensureExecutionPermission(execution.createdBy, requester || { id: userId });
+    ensureExecutionPermission(execution.createdBy, requester || { id: userId });
 
     if (execution.status !== EXECUTION_STATUS.HUMAN_CONTROL) {
       throw new BadRequestException(
@@ -225,7 +226,7 @@ export class ExecutionHumanControlService {
     requester?: RequestUserContext
   ): Promise<ExecutionDto> {
     const execution = await this.getExecutionOrThrow(executionId);
-    this.ensureExecutionPermission(execution.createdBy, requester || { id: userId });
+    ensureExecutionPermission(execution.createdBy, requester || { id: userId });
 
     if (isTerminalExecutionStatus(execution.status as ExecutionStatus)) {
       throw new BadRequestException(
@@ -275,7 +276,7 @@ export class ExecutionHumanControlService {
     requester?: RequestUserContext
   ): Promise<ExecutionDto> {
     const execution = await this.getExecutionOrThrow(executionId);
-    this.ensureExecutionPermission(execution.createdBy, requester || { id: userId });
+    ensureExecutionPermission(execution.createdBy, requester || { id: userId });
 
     if (execution.status !== EXECUTION_STATUS.HUMAN_CONTROL) {
       throw new BadRequestException(
@@ -319,7 +320,7 @@ export class ExecutionHumanControlService {
     requester?: RequestUserContext
   ): Promise<ExecutionDto> {
     const execution = await this.getExecutionOrThrow(executionId);
-    this.ensureExecutionPermission(execution.createdBy, requester || { id: userId });
+    ensureExecutionPermission(execution.createdBy, requester || { id: userId });
 
     if (execution.status !== EXECUTION_STATUS.HUMAN_CONTROL) {
       throw new BadRequestException(
@@ -604,22 +605,6 @@ export class ExecutionHumanControlService {
     }
     return undefined;
   }
-
-  private ensureExecutionPermission(
-    executionOwnerId: string,
-    requester?: RequestUserContext
-  ): void {
-    if (!requester?.id) {
-      return;
-    }
-    if (requester.role === 'admin') {
-      return;
-    }
-    if (requester.id !== executionOwnerId) {
-      throw new NotFoundException('Execution not found');
-    }
-  }
-
   private normalizeTakeoverRequestedBy(userId?: string | null): string | null {
     const value = String(userId || '').trim();
     if (!value) {

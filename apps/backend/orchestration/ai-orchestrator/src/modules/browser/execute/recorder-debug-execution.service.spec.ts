@@ -16,9 +16,11 @@ import { BrowserActionValidatorService } from '../intent';
 import { RecorderDebugChatSupportService } from './recorder-debug-chat-support.service';
 import { RecorderDebugExecutionService } from './recorder-debug-execution.service';
 import { RecorderDisambiguationService } from '../intent';
-import { RecorderObservationService } from '../observe/recorder-observation.service';
-import { RecorderSnapshotService } from '../observe/recorder-snapshot.service';
-import { RecorderStructureProbeService } from '../observe/recorder-structure-probe.service';
+import {
+  RecorderObservationService,
+  RecorderSnapshotService,
+  RecorderStructureProbeService,
+} from '../observe';
 
 describe('RecorderDebugExecutionService', () => {
   const createService = () =>

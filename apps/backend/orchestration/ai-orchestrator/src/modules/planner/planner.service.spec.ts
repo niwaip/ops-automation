@@ -1,10 +1,32 @@
 import axios from 'axios';
+import { PlanGeneratorService, PlanSemanticService } from './plan';
+import {
+  ParamBilingualService,
+  ParamContextMergeService,
+  ParamPolicyService,
+  ParamRecognizerService,
+  ParamRequiredInputPresentationService,
+  ParamSchemaService,
+  ParamValueService,
+} from './params';
 import { PlannerService } from './planner.service';
+import { SkillCacheService, SkillMatcherService } from './skill';
 import { RecognizerService } from '../recognizer/recognizer.service';
 import { AvailableSkillDefinition, SkillMatchResult } from '../react-engine/interfaces';
 
 describe('PlannerService - required inputs without hardcoded defaults', () => {
   let service: PlannerService;
+  let skillCacheService: SkillCacheService;
+  let skillMatcherService: SkillMatcherService;
+  let planSemanticService: PlanSemanticService;
+  let planGeneratorService: PlanGeneratorService;
+  let paramSchemaService: ParamSchemaService;
+  let paramContextMergeService: ParamContextMergeService;
+  let paramBilingualService: ParamBilingualService;
+  let paramPolicyService: ParamPolicyService;
+  let paramValueService: ParamValueService;
+  let paramRequiredInputPresentationService: ParamRequiredInputPresentationService;
+  let paramRecognizerService: ParamRecognizerService;
   let recognizerService: { recognizeParams: jest.Mock };
   let modelService: { callModel: jest.Mock };
 
@@ -15,9 +37,31 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
     modelService = {
       callModel: jest.fn(),
     };
+    skillCacheService = new SkillCacheService();
+    skillMatcherService = new SkillMatcherService(skillCacheService);
+    planSemanticService = new PlanSemanticService();
+    planGeneratorService = new PlanGeneratorService();
+    paramSchemaService = new ParamSchemaService();
+    paramContextMergeService = new ParamContextMergeService();
+    paramBilingualService = new ParamBilingualService(modelService as any);
+    paramPolicyService = new ParamPolicyService();
+    paramValueService = new ParamValueService();
+    paramRequiredInputPresentationService = new ParamRequiredInputPresentationService();
+    paramRecognizerService = new ParamRecognizerService(
+      paramSchemaService,
+      paramContextMergeService,
+      paramBilingualService,
+      paramPolicyService,
+      paramValueService,
+      paramRequiredInputPresentationService
+    );
     service = new PlannerService(
       recognizerService as unknown as RecognizerService,
-      modelService as any
+      skillCacheService,
+      skillMatcherService,
+      planSemanticService,
+      planGeneratorService,
+      paramRecognizerService
     );
   });
 
@@ -236,7 +280,7 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
     jest
       .spyOn(service as any, 'loadAvailableSkills')
       .mockResolvedValue([skill] as AvailableSkillDefinition[]);
-    const hydratedMatch = (service as any).hydrateMatchedSkill(match, [skill]);
+    const hydratedMatch = skillMatcherService.hydrateMatchedSkill(match, [skill]) || match;
     jest.spyOn(service as any, 'matchSkill').mockResolvedValue(hydratedMatch);
     jest.spyOn(recognizerService, 'recognizeParams').mockResolvedValue({
       params: {},
@@ -1984,7 +2028,7 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
     jest
       .spyOn(service as any, 'loadAvailableSkills')
       .mockResolvedValue([skill] as AvailableSkillDefinition[]);
-    const hydratedMatch = (service as any).hydrateMatchedSkill(match, [skill]);
+    const hydratedMatch = skillMatcherService.hydrateMatchedSkill(match, [skill]) || match;
     jest.spyOn(service as any, 'matchSkill').mockResolvedValue(hydratedMatch);
     jest.spyOn(recognizerService, 'recognizeParams').mockResolvedValue({
       params: {
@@ -2217,7 +2261,7 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
   });
 
   it('normalizes skill params schema without introducing linked flow fields', () => {
-    const normalized = (service as any).normalizeParamsSchema({
+    const normalized = skillCacheService.normalizeParamsSchema({
       properties: {
         target: {
           type: 'string',
@@ -2235,10 +2279,10 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
     });
 
     expect(normalized.required).toEqual([]);
-    expect(normalized.properties.target.required).toBe(false);
-    expect(normalized.properties.target.description).toBe('目标对象');
-    expect(normalized.properties.units.required).toBe(false);
-    expect(normalized.properties.units.default).toBe('metric');
+    expect(normalized.properties.target?.required).toBe(false);
+    expect(normalized.properties.target?.description).toBe('目标对象');
+    expect(normalized.properties.units?.required).toBe(false);
+    expect(normalized.properties.units?.default).toBe('metric');
   });
 
   it('adds semantic grouping and removes loop markers for complex document plans', async () => {
@@ -2711,11 +2755,11 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
   });
 
   it('does not classify plain string fields with list-like suffixes as array groups', () => {
-    expect((service as any).extractArrayGroupKey('statusList', 'string')).toBeUndefined();
-    expect((service as any).extractArrayGroupKey('reportDetails', 'string')).toBeUndefined();
-    expect((service as any).extractArrayGroupKey('agendaItems', 'string')).toBeUndefined();
-    expect((service as any).extractArrayGroupKey('statusList', 'array')).toBe('statusList');
-    expect((service as any).extractArrayGroupKey('items[].name', 'string')).toBe('items');
+    expect(planSemanticService.extractArrayGroupKey('statusList', 'string')).toBeUndefined();
+    expect(planSemanticService.extractArrayGroupKey('reportDetails', 'string')).toBeUndefined();
+    expect(planSemanticService.extractArrayGroupKey('agendaItems', 'string')).toBeUndefined();
+    expect(planSemanticService.extractArrayGroupKey('statusList', 'array')).toBe('statusList');
+    expect(planSemanticService.extractArrayGroupKey('items[].name', 'string')).toBe('items');
   });
 
   it('falls back to concise Chinese labels when schema display name is still a machine path', async () => {

@@ -1,5 +1,5 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { ExecutionStateService } from '../src/modules/execution/execution-state.service';
+import { ExecutionStateService } from '../src/modules/execution/state/execution-state.service';
 
 describe('ExecutionStateService', () => {
   const createService = () => {

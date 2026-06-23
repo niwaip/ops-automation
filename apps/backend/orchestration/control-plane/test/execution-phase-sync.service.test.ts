@@ -112,4 +112,90 @@ describe('ExecutionPhaseSyncService', () => {
       expect.any(Array)
     );
   });
+
+  it('persists runtime artifacts when syncing a successful skill runtime phase', async () => {
+    const { service, executionPhaseService } = createService();
+
+    await service.syncPhaseAfterStepResult(
+      'execution-1',
+      'runtime-1',
+      {
+        success: true,
+        status: 'completed',
+        output: {
+          ok: true,
+        },
+        snapshot: {
+          id: 'snapshot-2',
+          type: 'browser',
+          metadata: {
+            artifactPath: '/tmp/snapshot-2.png',
+          },
+        },
+        artifacts: [
+          {
+            type: 'snapshot',
+            id: 'snapshot-1',
+            metadata: {
+              command: 'screenshot',
+              artifactPath: '/tmp/snapshot-1.png',
+              pageFingerprint: 'fp-1',
+            },
+          },
+          {
+            type: 'snapshot',
+            id: 'snapshot-2',
+            metadata: {
+              command: 'screenshot',
+              artifactPath: '/tmp/snapshot-2.png',
+            },
+          },
+        ],
+      } as never,
+      {
+        phaseKey: 'phase_01_execute_skill',
+        phaseName: '执行技能',
+        phaseType: 'skill',
+      },
+      {
+        id: 'step-1',
+        action: 'execute_skill',
+      }
+    );
+
+    expect(executionPhaseService.markCompleted).toHaveBeenCalledWith(
+      'execution-1',
+      'phase_01_execute_skill',
+      expect.objectContaining({
+        runtimeSessionId: 'runtime-1',
+      })
+    );
+    expect(executionPhaseService.appendArtifacts).toHaveBeenCalledWith(
+      'execution-1',
+      'phase_01_execute_skill',
+      [
+        {
+          artifactType: 'snapshot',
+          snapshotId: 'snapshot-1',
+          pageUrl: null,
+          pageFingerprint: 'fp-1',
+          payload: {
+            command: 'screenshot',
+            artifactPath: '/tmp/snapshot-1.png',
+            pageFingerprint: 'fp-1',
+          },
+        },
+        {
+          artifactType: 'snapshot',
+          snapshotId: 'snapshot-2',
+          pageUrl: null,
+          pageFingerprint: null,
+          payload: {
+            command: 'screenshot',
+            artifactPath: '/tmp/snapshot-2.png',
+          },
+        },
+      ]
+    );
+  });
 });

@@ -5,9 +5,9 @@ import { EXECUTION_EVENT_TYPE } from '../contracts/execution-event-type';
 import { EXECUTION_STATUS, ExecutionStatus } from '../contracts/execution-status';
 import { CreateExecutionEventOptions } from '../state/execution-event.service';
 import { ExecutionInputResolutionService } from '../human-control/execution-input-resolution.service';
-import { ExecutionStepService } from '../step-runner/execution-step.service';
+import { ExecutionStepService } from '../step-runner/steps/execution-step.service';
 
-interface ExecutionFailureHooks {
+export interface ExecutionFailureHooks {
   emitEvent: (
     executionId: string,
     eventType: (typeof EXECUTION_EVENT_TYPE)[keyof typeof EXECUTION_EVENT_TYPE],

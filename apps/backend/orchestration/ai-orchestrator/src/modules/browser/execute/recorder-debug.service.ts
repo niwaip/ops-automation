@@ -1,5 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
-import axios from 'axios';
+import { Injectable } from '@nestjs/common';
 import { getBrowserWorkerUrl } from '../../../config/service-endpoints';
 import { BrowserSemanticsClient } from '../../../client/browser-semantics.client';
 import type { BrowserCommand, BrowserCommandCandidate } from '../intent';
@@ -9,10 +8,13 @@ import {
   ReconcileAfterTakeoverRequest,
   ReconcileAfterTakeoverResponse,
 } from './execution-reconcile.service';
-import { ModelService } from '../../model/model.service';
-import { RecorderLoopService } from '../loop/recorder-loop.service';
-import { RecorderExportAssemblyService } from '../export/recorder-export-assembly.service';
+import { RecorderExportAssemblyService } from '../export';
+import {
+  RecorderLoopService,
+  RecorderManualInterventionToken,
+} from '../loop';
 import { RecorderDebugChatSupportService } from './recorder-debug-chat-support.service';
+import { RecorderDebugBranchFacade } from './recorder-debug-branch.facade';
 import { RecorderDebugChatExecutionService } from './recorder-debug-chat-execution.service';
 import { RecorderDebugChatFlowService } from './recorder-debug-chat-flow.service';
 import { RecorderDebugExecutionService } from './recorder-debug-execution.service';
@@ -26,21 +28,17 @@ import type {
   RecorderLoopDraft,
   RecorderLoopDraftRequest,
 } from './recorder-debug.types';
-import { RecorderDebugObservationRefreshService } from '../observe/recorder-debug-observation-refresh.service';
+import {
+  RecorderObservationService,
+  SnapshotNode,
+  SnapshotResolutionState,
+} from '../observe';
 import { RecorderDebugResponseService } from './recorder-debug-response.service';
-import { RecorderDebugSessionCoordinatorService } from '../session/recorder-debug-session-coordinator.service';
-import { RecorderConditionalBranchService } from '../loop/recorder-conditional-branch.service';
-import { RecorderObservationService } from '../observe/recorder-observation.service';
-import { SnapshotNode, SnapshotResolutionState } from '../observe/recorder-snapshot.service';
-import type { RecorderManualInterventionToken } from '../loop/recorder-loop.types';
+import { RecorderDebugObservationFacade } from './recorder-debug-observation.facade';
+import { RecorderDebugSessionFacade } from './recorder-debug-session.facade';
 
 export type RecorderDebugBackend = 'cli' | 'chrome-devtools' | 'mcp';
 export type RecorderDebugTurnRole = 'user' | 'assistant' | 'system';
-
-interface BrowserInitResponse {
-  success: boolean;
-  message: string;
-}
 
 interface RecorderControlTokenState {
   cleanedMessage: string;
@@ -55,7 +53,6 @@ interface RecorderControlTokenState {
 
 @Injectable()
 export class RecorderDebugService {
-  private readonly logger = new Logger(RecorderDebugService.name);
   private readonly browserWorkerUrl = getBrowserWorkerUrl();
   private readonly sessionTtlSeconds = parseInt(
     process.env.CHAT_SESSION_TTL_SECONDS || '259200',
@@ -66,9 +63,8 @@ export class RecorderDebugService {
   constructor(
     private readonly browserCommandService: BrowserCommandService,
     private readonly browserSemanticsClient: BrowserSemanticsClient,
-    private readonly modelService: ModelService,
-    private readonly recorderConditionalBranchService: RecorderConditionalBranchService,
-    private readonly recorderDebugSessionCoordinatorService: RecorderDebugSessionCoordinatorService,
+    private readonly recorderDebugBranchFacade: RecorderDebugBranchFacade,
+    private readonly recorderDebugSessionFacade: RecorderDebugSessionFacade,
     private readonly executionReconcileService: ExecutionReconcileService,
     private readonly recorderLoopService: RecorderLoopService,
     private readonly recorderExportAssemblyService: RecorderExportAssemblyService,
@@ -76,8 +72,8 @@ export class RecorderDebugService {
     private readonly recorderDebugChatFlowService: RecorderDebugChatFlowService,
     private readonly recorderDebugChatExecutionService: RecorderDebugChatExecutionService,
     private readonly recorderDebugExecutionService: RecorderDebugExecutionService,
-    private readonly recorderDebugObservationRefreshService: RecorderDebugObservationRefreshService,
     private readonly recorderDebugResponseService: RecorderDebugResponseService,
+    private readonly recorderDebugObservationFacade: RecorderDebugObservationFacade,
     private readonly recorderObservationService: RecorderObservationService
   ) {}
 
@@ -99,13 +95,19 @@ export class RecorderDebugService {
 
     await this.ensureBrowserReady(session);
     const observation = await this.observePageSafely(session);
-    session.lastObservation = observation;
-    session.currentPageUrl = observation.currentPageUrl || session.currentPageUrl;
-    this.applyRecorderControlTokensBeforeExecution(session, controlTokenState, observation);
+    this.recorderDebugSessionFacade.syncObservationToSession(session, observation);
+    this.recorderDebugSessionFacade.applyRecorderControlTokensBeforeExecution(
+      session,
+      controlTokenState,
+      observation
+    );
 
     const effectiveMessage = controlTokenState.cleanedMessage.trim();
     if (!effectiveMessage && controlTokenState.rawTokens.length > 0) {
-      this.applyRecorderControlTokensAfterExecution(session, controlTokenState);
+      this.recorderDebugSessionFacade.applyRecorderControlTokensAfterExecution(
+        session,
+        controlTokenState
+      );
       const reply = this.buildControlTokenAckReply(session, controlTokenState);
       const response = this.recorderDebugResponseService.createAndRecordChatResponse({
         session,
@@ -166,7 +168,11 @@ export class RecorderDebugService {
 
     let response: RecorderDebugChatResponse;
     if (flow.kind === 'export') {
-      const exportArtifacts = await this.buildExportArtifacts(session, effectiveMessage);
+      const exportArtifacts =
+        (await this.recorderExportAssemblyService.buildExportArtifacts(
+          session,
+          effectiveMessage
+        )) as unknown as RecorderDebugExportArtifacts;
       response = this.recorderDebugResponseService.createAndRecordChatResponse({
         session,
         reply: '已根据当前对话与执行历史生成 CLI 脚本和内部 skill 草稿。',
@@ -213,7 +219,10 @@ export class RecorderDebugService {
         mergeObservationWithExecution: (currentObservation, execution) =>
           this.mergeObservationWithExecution(currentObservation, execution),
         applyRecorderControlTokensAfterExecution: (currentSession, state) =>
-          this.applyRecorderControlTokensAfterExecution(currentSession, state),
+          this.recorderDebugSessionFacade.applyRecorderControlTokensAfterExecution(
+            currentSession,
+            state
+          ),
       });
 
       if (executionOutcome.kind === 'ambiguous') {
@@ -272,13 +281,19 @@ export class RecorderDebugService {
 
   async exportArtifacts(
     request: Omit<RecorderDebugChatRequest, 'message'> & { userGoal?: string }
-  ) {
+  ): Promise<{
+    sessionId: string;
+    runtimeSessionId: string;
+    exportArtifacts: RecorderDebugExportArtifacts;
+    currentPageUrl?: string;
+  }> {
     const sessionId = request.sessionId || `recorder-debug-${Date.now()}`;
     const session = await this.loadOrCreateSession(sessionId, request);
-    const exportArtifacts = await this.buildExportArtifacts(
-      session,
-      request.userGoal || '浏览器调试任务'
-    );
+    const exportArtifacts =
+      (await this.recorderExportAssemblyService.buildExportArtifacts(
+        session,
+        request.userGoal || '浏览器调试任务'
+      )) as unknown as RecorderDebugExportArtifacts;
     this.recorderDebugResponseService.pushAssistantTurn(session, {
       reply: '已导出 CLI 脚本和内部 skill 草稿。',
       exportArtifacts,
@@ -295,7 +310,7 @@ export class RecorderDebugService {
   }
 
   async resetSession(sessionId: string): Promise<void> {
-    await this.recorderDebugSessionCoordinatorService.deleteSession(sessionId);
+    await this.recorderDebugSessionFacade.deleteSession(sessionId);
   }
 
   async upsertLoopDraft(request: RecorderLoopDraftRequest): Promise<{
@@ -303,7 +318,7 @@ export class RecorderDebugService {
     runtimeSessionId: string;
     loopDraft: RecorderLoopDraft;
   }> {
-    return this.recorderDebugSessionCoordinatorService.upsertLoopDraft<
+    return this.recorderDebugSessionFacade.upsertLoopDraft<
       RecorderLoopDraft,
       RecorderDebugSession
     >({
@@ -315,16 +330,14 @@ export class RecorderDebugService {
   }
 
   async clearLoopDraft(sessionId: string): Promise<void> {
-    await this.recorderDebugSessionCoordinatorService.clearLoopDraft({
+    await this.recorderDebugSessionFacade.clearLoopDraft({
       sessionId,
       ttlSeconds: this.sessionTtlSeconds,
     });
   }
 
   async getSession(sessionId: string): Promise<RecorderDebugSession> {
-    return this.recorderDebugSessionCoordinatorService.getSessionOrThrow<RecorderDebugSession>(
-      sessionId
-    );
+    return this.recorderDebugSessionFacade.getSessionOrThrow<RecorderDebugSession>(sessionId);
   }
 
   async reconcileAfterTakeover(
@@ -342,90 +355,18 @@ export class RecorderDebugService {
     patchSteps: ReconcileAfterTakeoverRequest['patchSteps'],
     failedCommand?: ReconcileAfterTakeoverRequest['failedCommand']
   ): BrowserCommand[] {
-    const failedIndex = failedCommand
-      ? originalCommands.findIndex((command) => {
-          if (command.tool !== failedCommand.tool) {
-            return false;
-          }
-          if (command.description && failedCommand.description) {
-            return command.description === failedCommand.description;
-          }
-          return (
-            JSON.stringify(command.params || {}) === JSON.stringify(failedCommand.params || {})
-          );
-        })
-      : -1;
-
-    const mappedPatchCommands: BrowserCommand[] = [];
-    for (const step of patchSteps) {
-      if (step.action === 'navigate' && typeof step.params?.url === 'string') {
-        mappedPatchCommands.push({
-          tool: 'navigate',
-          params: { url: step.params.url },
-          description: step.scriptFragment || '手动补录导航',
-        });
-        continue;
-      }
-      if (step.action === 'click') {
-        mappedPatchCommands.push({
-          tool: 'click',
-          params: { ...(step.params || {}) },
-          description: step.scriptFragment || '手动补录点击',
-        });
-        continue;
-      }
-      if (step.action === 'hover') {
-        mappedPatchCommands.push({
-          tool: 'hover',
-          params: { ...(step.params || {}) },
-          description: step.scriptFragment || '手动补录悬停',
-        });
-        continue;
-      }
-      if (step.action === 'fill' && step.params?.value !== undefined) {
-        mappedPatchCommands.push({
-          tool: 'fill',
-          params: { ...(step.params || {}) },
-          description: step.scriptFragment || '手动补录输入',
-        });
-        continue;
-      }
-      if (
-        (step.action === 'press' || step.action === 'press_key') &&
-        typeof step.params?.key === 'string'
-      ) {
-        mappedPatchCommands.push({
-          tool: 'press_key',
-          params: { key: step.params.key },
-          description: step.scriptFragment || '手动补录按键',
-        });
-        continue;
-      }
-      if (step.action === 'switch_latest_tab' || step.action === 'focus_latest_page') {
-        mappedPatchCommands.push({
-          tool: 'switch_latest_tab',
-          params: {},
-          description: step.scriptFragment || '手动补录切换最新标签页',
-        });
-      }
-    }
-
-    if (failedIndex < 0) {
-      return [...mappedPatchCommands, ...originalCommands];
-    }
-
-    return [
-      ...originalCommands.slice(0, failedIndex),
-      ...mappedPatchCommands,
-      ...originalCommands.slice(failedIndex + 1),
-    ];
+    return this.executionReconcileService.mergeManualPatchSteps(
+      originalCommands,
+      patchSteps,
+      failedCommand
+    );
   }
 
   private async loadOrCreateSession(
     sessionId: string,
     request: Omit<RecorderDebugChatRequest, 'message'>
   ): Promise<RecorderDebugSession> {
-    return this.recorderDebugSessionCoordinatorService.loadOrCreateSession<
+    return this.recorderDebugSessionFacade.loadOrCreateSession<
       RecorderDebugSession,
       RecorderDebugBackend
     >({
@@ -438,32 +379,17 @@ export class RecorderDebugService {
   }
 
   private async loadSession(sessionId: string): Promise<RecorderDebugSession | null> {
-    return this.recorderDebugSessionCoordinatorService.loadSession<RecorderDebugSession>(sessionId);
+    return this.recorderDebugSessionFacade.loadSession<RecorderDebugSession>(sessionId);
   }
 
   private async saveSession(session: RecorderDebugSession): Promise<void> {
-    await this.recorderDebugSessionCoordinatorService.saveSession(session, this.sessionTtlSeconds);
+    await this.recorderDebugSessionFacade.saveSession(session, this.sessionTtlSeconds);
   }
 
   private extractRecorderControlTokens(message: string): RecorderControlTokenState {
     return this.recorderLoopService.extractRecorderControlTokens(
       message
     ) as RecorderControlTokenState;
-  }
-
-  private applyRecorderControlTokensBeforeExecution(
-    session: RecorderDebugSession,
-    state: RecorderControlTokenState,
-    observation?: RecorderDebugObservation
-  ): void {
-    this.recorderLoopService.applyRecorderControlTokensBeforeExecution(session, state, observation);
-  }
-
-  private applyRecorderControlTokensAfterExecution(
-    session: RecorderDebugSession,
-    state: RecorderControlTokenState
-  ): void {
-    this.recorderLoopService.applyRecorderControlTokensAfterExecution(session, state);
   }
 
   private buildControlTokenAckReply(
@@ -488,39 +414,17 @@ export class RecorderDebugService {
   }
 
   private async ensureBrowserReady(session: RecorderDebugSession): Promise<void> {
-    if (session.browserInitialized) {
-      return;
-    }
-
-    try {
-      const response = await axios.post<BrowserInitResponse>(
-        `${this.browserWorkerUrl}/browser/init`,
-        {
-          backend: session.backend,
-          runtimeSessionId: session.runtimeSessionId,
-          sessionPreferences: {
-            mode: 'interactive',
-            enableCodegen: true,
-            headless: false,
-          },
-        },
-        {
-          timeout: 60000,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
-
-      session.browserInitialized = response.data.success;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      await this.reportRecorderDebugError({
-        session,
-        sourceStage: 'browser-init',
-        errorType: 'BROWSER_INIT_FAILED',
-        errorMessage,
-      });
-      throw error;
-    }
+    await this.recorderDebugSessionFacade.ensureBrowserReady({
+      session,
+      browserWorkerUrl: this.browserWorkerUrl,
+      reportError: async ({ session: failedSession, sourceStage, errorType, errorMessage }) =>
+        this.reportRecorderDebugError({
+          session: failedSession,
+          sourceStage,
+          errorType,
+          errorMessage,
+        }),
+    });
   }
 
   private async observePage(session: RecorderDebugSession): Promise<RecorderDebugObservation> {
@@ -539,22 +443,18 @@ export class RecorderDebugService {
     session: RecorderDebugSession,
     fallback?: RecorderDebugObservation
   ): Promise<RecorderDebugObservation> {
-    return this.recorderDebugObservationRefreshService.observePageSafely({
+    return this.recorderDebugSessionFacade.observePageSafely({
       session,
       fallback,
       observePage: async (currentSession) => this.observePage(currentSession),
-      onObserveFailed: ({ session: failedSession, errorMessage }) => {
-        this.logger.warn(
-          `observePage failed for session ${failedSession.sessionId}: ${errorMessage}`
-        );
-        void this.reportRecorderDebugError({
+      reportError: async ({ session: failedSession, sourceStage, errorType, errorMessage }) =>
+        this.reportRecorderDebugError({
           session: failedSession,
-          sourceStage: 'observe-page',
-          errorType: 'OBSERVE_PAGE_FAILED',
+          sourceStage,
+          errorType,
           errorMessage,
           observation: failedSession.lastObservation || fallback,
-        });
-      },
+        }),
     });
   }
 
@@ -566,8 +466,9 @@ export class RecorderDebugService {
   }
 
   private async refreshObservationAfterExecution(session: RecorderDebugSession): Promise<void> {
-    await this.recorderDebugObservationRefreshService.refreshObservationAfterExecution({
+    await this.recorderDebugSessionFacade.refreshObservationAfterExecution({
       session,
+      ttlSeconds: this.sessionTtlSeconds,
       observePageSafely: async (currentSession, fallback) =>
         this.observePageSafely(currentSession, fallback),
       loadSession: async (sessionId) => this.loadSession(sessionId),
@@ -640,35 +541,11 @@ export class RecorderDebugService {
   }
 
   private buildRecorderObservationSummary(observation?: RecorderDebugObservation): string | undefined {
-    if (!observation) {
-      return undefined;
-    }
-
-    return [
-      observation.title ? `title=${observation.title}` : '',
-      observation.currentPageUrl ? `url=${observation.currentPageUrl}` : '',
-      observation.text ? `text=${observation.text.slice(0, 400)}` : '',
-    ]
-      .filter(Boolean)
-      .join(' | ');
+    return this.recorderDebugObservationFacade.buildRecorderObservationSummary(observation);
   }
 
   private inferRecorderPageType(observation?: RecorderDebugObservation): string | undefined {
-    if (!observation) {
-      return undefined;
-    }
-
-    const combinedText = [observation.title || '', observation.text || ''].join(' ').toLowerCase();
-    if (/(登录|登入|log\s*in|sign\s*in|ログイン)/i.test(combinedText)) {
-      return 'login';
-    }
-    if (/(详情|明细|detail)/i.test(combinedText)) {
-      return 'detail';
-    }
-    if (/(列表|一览|list|approval)/i.test(combinedText)) {
-      return 'list';
-    }
-    return undefined;
+    return this.recorderDebugObservationFacade.inferRecorderPageType(observation);
   }
 
   private extractHostFromUrl(url?: string): string | undefined {
@@ -690,18 +567,22 @@ export class RecorderDebugService {
     controlTokenState: RecorderControlTokenState;
     request: RecorderDebugChatRequest;
   }): Promise<RecorderDebugChatResponse | null> {
-    const stagedMessage = this.splitNavigateThenActionMessage(input.effectiveMessage);
+    const stagedMessage = this.recorderDebugChatExecutionService.splitNavigateThenActionMessage(
+      input.effectiveMessage
+    );
     if (!stagedMessage) {
       return null;
     }
 
     const navigateParsed = await this.browserCommandService.parseCommand({
       input: stagedMessage.navigateMessage,
-      context: this.buildBrowserCommandParseContext(
-        input.session,
-        input.observation,
-        input.controlTokenState
-      ),
+      context: this.recorderDebugChatExecutionService.buildBrowserCommandParseContext({
+        session: input.session,
+        observation: input.observation,
+        controlTokenState: input.controlTokenState,
+        buildObservedElementDescriptions: (items) => this.buildObservedElementDescriptions(items),
+        buildRecorderControlHints: (session, state) => this.buildRecorderControlHints(session, state),
+      }),
     });
     if (
       !navigateParsed.success ||
@@ -721,9 +602,10 @@ export class RecorderDebugService {
         )
       : this.mergeObservationWithExecution(input.observation, navigateExecution);
 
-    input.session.lastObservation = postNavigateObservation;
-    input.session.currentPageUrl =
-      postNavigateObservation.currentPageUrl || input.session.currentPageUrl;
+    this.recorderDebugSessionFacade.syncObservationToSession(
+      input.session,
+      postNavigateObservation
+    );
     input.session.executedCommands.push(
       ...(navigateExecution.executedCommands || navigateParsed.commands)
     );
@@ -742,7 +624,10 @@ export class RecorderDebugService {
         commands: navigateParsed.commands,
         execution: navigateExecution,
       });
-      this.applyRecorderControlTokensAfterExecution(input.session, input.controlTokenState);
+      this.recorderDebugSessionFacade.applyRecorderControlTokensAfterExecution(
+        input.session,
+        input.controlTokenState
+      );
       return this.recorderDebugResponseService.createAndRecordChatResponse({
         session: input.session,
         reply: `${navigateParsed.explanation}\n执行失败：${
@@ -800,9 +685,12 @@ export class RecorderDebugService {
         mergeObservationWithExecution: (currentObservation, execution) =>
           this.mergeObservationWithExecution(currentObservation, execution),
         applyRecorderControlTokensAfterExecution: (currentSession, state) =>
-          this.applyRecorderControlTokensAfterExecution(currentSession, state),
+          this.recorderDebugSessionFacade.applyRecorderControlTokensAfterExecution(
+            currentSession,
+            state
+          ),
       });
-      const mergedExecution = this.mergeBrowserExecuteResponses(
+      const mergedExecution = this.recorderDebugChatExecutionService.mergeBrowserExecuteResponses(
         navigateExecution,
         executionOutcome.execution
       );
@@ -829,13 +717,17 @@ export class RecorderDebugService {
       });
     }
 
-    this.applyRecorderControlTokensAfterExecution(input.session, input.controlTokenState);
+    this.recorderDebugSessionFacade.applyRecorderControlTokensAfterExecution(
+      input.session,
+      input.controlTokenState
+    );
 
     if (followUpFlow.kind === 'export') {
-      const exportArtifacts = await this.buildExportArtifacts(
-        input.session,
-        stagedMessage.followUpMessage
-      );
+      const exportArtifacts =
+        (await this.recorderExportAssemblyService.buildExportArtifacts(
+          input.session,
+          stagedMessage.followUpMessage
+        )) as unknown as RecorderDebugExportArtifacts;
       return this.recorderDebugResponseService.createAndRecordChatResponse({
         session: input.session,
         reply: `${navigationPreface}\n已根据当前对话与执行历史生成 CLI 脚本和内部 skill 草稿。`,
@@ -891,78 +783,6 @@ export class RecorderDebugService {
     });
   }
 
-  private splitNavigateThenActionMessage(
-    effectiveMessage: string
-  ): { navigateMessage: string; followUpMessage: string } | null {
-    const lines = effectiveMessage
-      .split('\n')
-      .map((line) => line.trim())
-      .filter(Boolean);
-    if (lines.length < 2) {
-      return null;
-    }
-
-    const navigateMessage = lines[0] || '';
-    const followUpMessage = lines.slice(1).join('\n').trim();
-    if (!followUpMessage) {
-      return null;
-    }
-    if (!/(打开|进入|访问|前往|go to|open|visit|https?:\/\/|www\.)/i.test(navigateMessage)) {
-      return null;
-    }
-
-    return {
-      navigateMessage,
-      followUpMessage,
-    };
-  }
-
-  private buildBrowserCommandParseContext(
-    session: RecorderDebugSession,
-    observation: RecorderDebugObservation,
-    controlTokenState: RecorderControlTokenState
-  ): Record<string, unknown> {
-    return {
-      currentPageUrl: session.currentPageUrl,
-      backend: session.backend,
-      lastObservationText: observation.text,
-      availableInputs: this.buildObservedElementDescriptions(observation.inputs),
-      availableButtons: this.buildObservedElementDescriptions(observation.buttons),
-      availableCandidates: observation.candidates || [],
-      controlHints: this.buildRecorderControlHints(session, controlTokenState),
-    };
-  }
-
-  private mergeBrowserExecuteResponses(
-    first: BrowserExecuteResponse,
-    second?: BrowserExecuteResponse
-  ): BrowserExecuteResponse {
-    if (!second) {
-      return first;
-    }
-
-    const message = [first.message, second.message].filter(Boolean).join(' | ') || undefined;
-    const merged: BrowserExecuteResponse = {
-      success: first.success && second.success,
-      results: [...(first.results || []), ...(second.results || [])],
-      ...(message ? { message } : {}),
-      steps: [...(first.steps || []), ...(second.steps || [])],
-      executedCommands: [
-        ...(first.executedCommands || []),
-        ...(second.executedCommands || []),
-      ],
-    };
-
-    if (!merged.steps?.length) {
-      delete merged.steps;
-    }
-    if (!merged.executedCommands?.length) {
-      delete merged.executedCommands;
-    }
-
-    return merged;
-  }
-
   buildCandidatesAndTrace(observation: RecorderDebugObservation): {
     candidates: BrowserCommandCandidate[];
     trace: Array<{
@@ -982,40 +802,12 @@ export class RecorderDebugService {
     userRoles: string[],
     modelId?: string
   ): Promise<string> {
-    const structuredSummary = this.buildObservationSummary(observation);
-    const preferredModel =
-      modelId ||
-      this.modelService.getPreferredDefaultModel({
-        mode: 'chat',
-        userRoles,
-      })?.id;
-
-    if (!preferredModel) {
-      return structuredSummary;
-    }
-
-    try {
-      const response = await this.modelService.callModel(
-        preferredModel,
-        [
-          'You are helping a user debug a React page through browser observations.',
-          'Answer in concise Chinese.',
-          'If the user asks what parameters are needed, focus on the visible inputs, buttons, and current page context.',
-          `User question: ${userMessage}`,
-          `Page observation:\n${structuredSummary}`,
-        ].join('\n\n')
-      );
-      return response.content || structuredSummary;
-    } catch (error) {
-      this.logger.warn(
-        `Failed to generate recorder debug description: ${error instanceof Error ? error.message : 'unknown error'}`
-      );
-      return structuredSummary;
-    }
-  }
-
-  private buildObservationSummary(observation: RecorderDebugObservation): string {
-    return this.recorderObservationService.buildObservationSummary(observation);
+    return this.recorderDebugObservationFacade.describePage({
+      userMessage,
+      observation,
+      userRoles,
+      modelId,
+    });
   }
 
   private async handleConditionalBranchChat(input: {
@@ -1024,109 +816,31 @@ export class RecorderDebugService {
     effectiveMessage: string;
     controlTokenState: RecorderControlTokenState;
   }): Promise<RecorderDebugChatResponse> {
-    const ackReply = this.buildControlTokenAckReply(input.session, input.controlTokenState);
-    const planned = await this.recorderConditionalBranchService.plan({
-      runtimeSessionId: input.session.runtimeSessionId,
-      currentPageUrl: input.session.currentPageUrl,
-      effectiveMessage: input.effectiveMessage,
-      observation: input.observation,
-      executeBrowserCommands: async (commands, options) =>
-        this.executeBrowserCommands(input.session, commands, {
-          timeoutMs: options?.timeoutMs,
-          skipValidation: options?.skipValidation,
-        }),
-    });
-
-    if (!planned.command) {
-      const reply = [
-        ackReply,
-        `已记录条件说明：${input.effectiveMessage}`,
-        planned.matched === false
-          ? '当前页面未命中条件，本轮先不执行承认动作，导出时仍会保留条件分支。'
-          : planned.matched === null
-            ? '当前页面暂时无法可靠判断条件是否命中，本轮先保留条件分支，不直接执行浏览器动作。'
-            : '当前页面缺少可立即执行的下一步动作，本轮先保留条件分支，导出时继续生成 branch。',
-      ].join('\n');
-      return this.recorderDebugResponseService.createAndRecordChatResponse({
-        session: input.session,
-        reply,
-        status: 'answer',
-        observation: input.observation,
-        controlTokenState: input.controlTokenState,
-      });
-    }
-
-    const parsed = {
-      success: true,
-      commands: [planned.command],
-      explanation: `已记录条件分歧；当前页面命中条件，继续执行：${planned.command.description || '下一步动作'}`,
-    };
-    const executionOutcome = await this.recorderDebugChatExecutionService.executeAndResolve({
-      session: input.session,
-      effectiveMessage: input.effectiveMessage,
-      parsed,
-      observation: input.observation,
-      controlTokenState: input.controlTokenState,
-      executeBrowserCommands: async (currentSession, commands, options) =>
-        this.executeBrowserCommands(currentSession, commands, {
-          ...options,
-          skipValidation: true,
-        }),
-      observePageSafely: async (currentSession, fallback) =>
-        this.observePageSafely(currentSession, fallback),
-      parseRecoveryCommand: async ({ input: recoveryInput, observation, failureContext }) =>
+    return this.recorderDebugBranchFacade.handleConditionalBranchChat({
+      ...input,
+      ackReply: this.buildControlTokenAckReply(input.session, input.controlTokenState),
+      executeBrowserCommands: (session, commands, options) =>
+        this.executeBrowserCommands(session, commands, options),
+      observePageSafely: (session, fallback) => this.observePageSafely(session, fallback),
+      parseRecoveryCommand: ({ input: recoveryInput, observation, failureContext }) =>
         this.browserCommandService.parseCommand({
           input: recoveryInput,
           context: {
+            ...this.recorderDebugChatExecutionService.buildBrowserCommandParseContext({
+              session: input.session,
+              observation,
+              controlTokenState: input.controlTokenState,
+              buildObservedElementDescriptions: (items) => this.buildObservedElementDescriptions(items),
+              buildRecorderControlHints: (session, state) =>
+                this.buildRecorderControlHints(session, state),
+            }),
             forceAI: true,
-            currentPageUrl: observation.currentPageUrl || input.session.currentPageUrl,
-            backend: input.session.backend,
-            lastObservationText: observation.text,
-            availableInputs: this.buildObservedElementDescriptions(observation.inputs),
-            availableButtons: this.buildObservedElementDescriptions(observation.buttons),
-            availableCandidates: observation.candidates || [],
-            controlHints: this.buildRecorderControlHints(input.session, input.controlTokenState),
             lastFailureContext: failureContext,
           },
         }),
       mergeObservationWithExecution: (currentObservation, execution) =>
         this.mergeObservationWithExecution(currentObservation, execution),
-      applyRecorderControlTokensAfterExecution: (currentSession, state) =>
-        this.applyRecorderControlTokensAfterExecution(currentSession, state),
-    });
-
-    const replyPrefix = `${ackReply}\n已记录条件说明：${input.effectiveMessage}`;
-    if (executionOutcome.kind === 'ambiguous') {
-      return this.recorderDebugResponseService.createAndRecordChatResponse({
-        session: input.session,
-        reply: `${replyPrefix}\n${executionOutcome.reply}`,
-        status: 'question',
-        observation: executionOutcome.nextObservation,
-        commands: parsed.commands,
-        execution: executionOutcome.execution,
-        controlTokenState: input.controlTokenState,
-      });
-    }
-
-    return this.recorderDebugResponseService.createAndRecordChatResponse({
-      session: input.session,
-      reply: `${replyPrefix}\n${executionOutcome.reply}`,
-      status: 'executed',
-      observation: executionOutcome.nextObservation,
-      commands: parsed.commands,
-      execution: executionOutcome.execution,
-      controlTokenState: input.controlTokenState,
-    });
-  }
-
-  private async buildExportArtifacts(
-    session: RecorderDebugSession,
-    userGoal: string
-  ): Promise<RecorderDebugExportArtifacts> {
-    return this.recorderExportAssemblyService.buildExportArtifacts(
-      session,
-      userGoal
-    ) as unknown as Promise<RecorderDebugExportArtifacts>;
+    }) as Promise<RecorderDebugChatResponse>;
   }
 
   inferSuggestedParameters(

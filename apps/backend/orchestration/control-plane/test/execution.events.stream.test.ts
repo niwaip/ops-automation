@@ -3,14 +3,10 @@ import {
   ExecutionStreamEventPayload,
 } from '../src/modules/execution/state/execution-event.service';
 import { EXECUTION_EVENT_TYPE } from '../src/modules/execution';
-import { ExecutionService } from '../src/modules/execution/execution.service';
+import { ExecutionStreamService } from '../src/modules/execution/lifecycle/execution-stream.service';
 
-describe('ExecutionService event stream', () => {
+describe('ExecutionStreamService', () => {
   it('filters subscription by executionId and emits events with typed eventType', async () => {
-    const prisma = {
-      executionEvent: { create: jest.fn() },
-    };
-
     const mockedEventService = {
       createEvent: jest.fn(
         async (
@@ -26,17 +22,17 @@ describe('ExecutionService event stream', () => {
       ),
     } as unknown as ExecutionEventService;
 
-    const service = new ExecutionService(prisma as never, mockedEventService);
+    const service = new ExecutionStreamService(mockedEventService);
     const received: ExecutionStreamEventPayload[] = [];
 
     const sub = service.subscribeToEvents('execution-1', (event) => {
       received.push(event);
     });
 
-    await (service as any).createEvent('execution-2', EXECUTION_EVENT_TYPE.EXECUTION_CREATED, {
+    await service.createEvent('execution-2', EXECUTION_EVENT_TYPE.EXECUTION_CREATED, {
       ok: false,
     });
-    await (service as any).createEvent('execution-1', EXECUTION_EVENT_TYPE.EXECUTION_CREATED, {
+    await service.createEvent('execution-1', EXECUTION_EVENT_TYPE.EXECUTION_CREATED, {
       ok: true,
     });
 

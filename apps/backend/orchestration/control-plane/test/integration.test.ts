@@ -1,23 +1,15 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
 import { AuditService, InMemoryAuditStorage } from '../src/modules/audit/audit.service';
 import { ProxyService } from '../src/modules/proxy/proxy.service';
-import { ProxyController } from '../src/modules/proxy/proxy.controller';
 import { AuthMiddleware, AuthenticatedRequest } from '../src/modules/auth/auth.middleware';
 import { UnauthorizedException } from '@nestjs/common';
 
 describe('Control Plane Integration Tests', () => {
   describe('TC01 - Auth Service Login', () => {
     let proxyService: ProxyService;
-    let proxyController: ProxyController;
-    let auditService: AuditService;
-    let auditStorage: InMemoryAuditStorage;
 
-    beforeEach(async () => {
-      auditStorage = new InMemoryAuditStorage();
-      auditService = new AuditService(auditStorage);
+    beforeEach(() => {
       proxyService = new ProxyService();
-      proxyController = new ProxyController(proxyService, auditService);
     });
 
     it('should return token on successful login', async () => {
@@ -37,19 +29,19 @@ describe('Control Plane Integration Tests', () => {
     });
 
     it('should route to template service correctly', async () => {
-      const serviceUrl = proxyService.getServiceUrl('template');
+      const serviceUrl = proxyService.getServiceUrl('browser-template');
       expect(serviceUrl).toBeDefined();
-      expect(serviceUrl).toContain('3002');
+      expect(serviceUrl).toContain('3005');
     });
 
     it('should have all required services configured', () => {
       const serviceNames = proxyService.getServiceNames();
+      expect(serviceNames).toContain('platform');
       expect(serviceNames).toContain('auth');
-      expect(serviceNames).toContain('template');
+      expect(serviceNames).toContain('browser-template');
       expect(serviceNames).toContain('session');
       expect(serviceNames).toContain('ai');
       expect(serviceNames).toContain('worker');
-      expect(serviceNames).toContain('replay');
     });
   });
 
@@ -59,7 +51,7 @@ describe('Control Plane Integration Tests', () => {
 
     beforeEach(() => {
       auditStorage = new InMemoryAuditStorage();
-      auditService = new AuditService(auditStorage);
+      auditService = new AuditService({} as any, auditStorage);
     });
 
     it('should record audit log for API calls', async () => {
@@ -76,12 +68,12 @@ describe('Control Plane Integration Tests', () => {
 
       const logs = await auditService.queryLogs();
       expect(logs.length).toBe(1);
-      expect(logs[0].user_id).toBe('user-123');
+      expect(logs[0].userId).toBe('user-123');
       expect(logs[0].action).toBe('GET:/api/templates');
       expect(logs[0].resource).toBe('/api/templates');
-      expect(logs[0].ip_address).toBe('192.168.1.1');
-      expect(logs[0].details.statusCode).toBe(200);
-      expect(logs[0].details.durationMs).toBe(150);
+      expect(logs[0].ipAddress).toBe('192.168.1.1');
+      expect(logs[0].statusCode).toBe(200);
+      expect(logs[0].durationMs).toBe(150);
     });
 
     it('should sanitize sensitive data in audit logs', async () => {
@@ -97,17 +89,17 @@ describe('Control Plane Integration Tests', () => {
       );
 
       const logs = await auditService.queryLogs();
-      expect(logs[0].details.requestBody.password).toBe('[REDACTED]');
-      expect(logs[0].details.responseBody.accessToken).toBe('[REDACTED]');
-      expect(logs[0].details.responseBody.refreshToken).toBe('[REDACTED]');
+      expect(logs[0].requestBody?.password).toBe('[REDACTED]');
+      expect(logs[0].responseBody?.accessToken).toBe('[REDACTED]');
+      expect(logs[0].responseBody?.refreshToken).toBe('[REDACTED]');
     });
 
-    it('should query logs by user_id', async () => {
+    it('should query logs by userId', async () => {
       await auditService.logApiCall('user-1', 'GET', '/api/templates', 200, '192.168.1.1', 100);
       await auditService.logApiCall('user-2', 'GET', '/api/sessions', 200, '192.168.1.2', 200);
       await auditService.logApiCall('user-1', 'POST', '/api/sessions', 201, '192.168.1.1', 300);
 
-      const user1Logs = await auditService.queryLogs({ user_id: 'user-1' });
+      const user1Logs = await auditService.queryLogs({ userId: 'user-1' });
       expect(user1Logs.length).toBe(2);
     });
 
@@ -119,34 +111,24 @@ describe('Control Plane Integration Tests', () => {
       const logs = await auditService.queryLogs();
       expect(logs.length).toBe(1);
       expect(logs[0].action).toBe('auth:login');
-      expect(logs[0].details.success).toBe(true);
+      expect(logs[0].statusCode).toBe(200);
     });
   });
 
   describe('Auth Middleware', () => {
     let authMiddleware: AuthMiddleware;
-    let jwtService: JwtService;
+    let jwtService: { verifyAsync: jest.Mock };
 
-    beforeEach(async () => {
-      const module: TestingModule = await Test.createTestingModule({
-        providers: [
-          JwtService,
-          {
-            provide: JwtService,
-            useValue: {
-              verifyAsync: jest.fn(),
-            },
-          },
-        ],
-      }).compile();
-
-      jwtService = module.get<JwtService>(JwtService);
-      authMiddleware = new AuthMiddleware(jwtService);
+    beforeEach(() => {
+      jwtService = {
+        verifyAsync: jest.fn(),
+      };
+      authMiddleware = new AuthMiddleware(jwtService as unknown as JwtService);
     });
 
     it('should throw UnauthorizedException when no authorization header', async () => {
-      const req = {} as AuthenticatedRequest;
-      const res = {} as Response;
+      const req = { headers: {} } as AuthenticatedRequest;
+      const res = {} as any;
       const next = jest.fn();
 
       await expect(authMiddleware.use(req, res, next)).rejects.toThrow(UnauthorizedException);
@@ -156,10 +138,10 @@ describe('Control Plane Integration Tests', () => {
       const req = {
         headers: { authorization: 'Bearer invalid-token' },
       } as AuthenticatedRequest;
-      const res = {} as Response;
+      const res = {} as any;
       const next = jest.fn();
 
-      jest.spyOn(jwtService, 'verifyAsync').mockRejectedValue(new Error('Invalid token'));
+      jwtService.verifyAsync.mockRejectedValue(new Error('Invalid token'));
 
       await expect(authMiddleware.use(req, res, next)).rejects.toThrow(UnauthorizedException);
     });
@@ -169,10 +151,12 @@ describe('Control Plane Integration Tests', () => {
         headers: { authorization: 'Bearer valid-token' },
         ip: '192.168.1.1',
       } as AuthenticatedRequest;
-      const res = {} as Response;
+      const res = {} as any;
       const next = jest.fn();
+      const previousSecret = process.env.JWT_SECRET;
+      process.env.JWT_SECRET = 'test-secret';
 
-      jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({
+      jwtService.verifyAsync.mockResolvedValue({
         sub: 'user-123',
         username: 'testuser',
         role: 'employee',
@@ -181,10 +165,13 @@ describe('Control Plane Integration Tests', () => {
       await authMiddleware.use(req, res, next);
 
       expect(req.user).toBeDefined();
-      expect(req.user.id).toBe('user-123');
-      expect(req.user.username).toBe('testuser');
-      expect(req.user.role).toBe('employee');
+      expect(req.user).toEqual({
+        id: 'user-123',
+        username: 'testuser',
+        role: 'employee',
+      });
       expect(next).toHaveBeenCalled();
+      process.env.JWT_SECRET = previousSecret;
     });
   });
 });

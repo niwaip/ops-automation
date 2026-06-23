@@ -1,51 +1,50 @@
 import {
   Injectable,
-  Logger,
-  NotFoundException,
-  BadRequestException,
   Inject,
   Optional,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
-import { Subject, filter } from 'rxjs';
-import { APPROVAL_STATUS } from './contracts/approval-status';
-import { EXECUTION_STATUS, ExecutionStatus } from './contracts/execution-status';
+import { ExecutionStatus } from './contracts/execution-status';
 import { EXECUTION_EVENT_TYPE } from './contracts/execution-event-type';
-import { EXECUTION_STEP_STATUS } from './contracts/execution-step-status';
+import { ExecutionCreateService } from './creation/execution-create.service';
 import {
   CreateExecutionEventOptions,
   ExecutionEventService,
   ExecutionStreamEventPayload,
 } from './state/execution-event.service';
 import { ExecutionFailureService } from './recovery/execution-failure.service';
-import { ExecutionFlowRunnerService } from './step-runner/execution-flow-runner.service';
+import { ExecutionFlowRunnerService } from './step-runner/flow/execution-flow-runner.service';
 import { ExecutionPhaseService } from './state/execution-phase.service';
 import { ExecutionPhaseSyncService } from './state/execution-phase-sync.service';
-import {
-  mapExecutionPhaseToDto,
-  mapExecutionStepToDto,
-  mapExecutionToDto,
-} from './state/execution.mapper';
 import { WorkflowActivityProgressService } from './state/workflow-activity-progress.service';
-import { buildPlannedExecutionSteps } from './step-runner/execution-plan-step.builder';
-import { canTransitionExecutionStatus } from './state/execution-transition-policy';
+import {
+  ExecutionLifecycleService,
+  RequestUserContext,
+} from './lifecycle/execution-lifecycle.service';
+import { ExecutionStreamService } from './lifecycle/execution-stream.service';
 import { ExecutionStateService } from './state/execution-state.service';
-import { ExecutionStepExecutorService } from './step-runner/execution-step-executor.service';
-import { ExecutionStepService } from './step-runner/execution-step.service';
+import { ExecutionQueryService } from './query/execution-query.service';
+import { ExecutionApplicationHooksService } from './shared/execution-application-hooks.service';
+import { resolveExecutionServiceDependencies } from './shared/execution-service-dependencies';
+import { ExecutionServiceHooksFacade } from './shared/execution-service-hooks.facade';
+import { ExecutionBrowserReadService } from './step-runner/browser/execution-browser-read.service';
+import { ExecutionStepExecutorService } from './step-runner/flow/execution-step-executor.service';
+import { ExecutionRuntimeHooksService } from './step-runner/runtime/execution-runtime-hooks.service';
+import { ExecutionRuntimeControlService } from './step-runner/runtime/execution-runtime-control.service';
+import { ExecutionSystemSkillResultService } from './step-runner/runtime/execution-system-skill-result.service';
+import { ExecutionStepService } from './step-runner/steps/execution-step.service';
 import { ExecutionApprovalService } from './human-control/execution-approval.service';
 import { ExecutionHumanControlService } from './human-control/execution-human-control.service';
 import {
   ExecutionInputResolutionService,
-  SubmitInputResolutionResult,
 } from './human-control/execution-input-resolution.service';
-import { ExecutionPlanNormalizationService } from './step-runner/execution-plan-normalization.service';
+import { ExecutionSubmitInputService } from './human-control/execution-submit-input.service';
+import { ExecutionPlanNormalizationService } from './step-runner/planning/execution-plan-normalization.service';
+import { ExecutionStartService } from './step-runner/flow/execution-start.service';
 import {
   CreateExecutionDto,
   ExecutionDto,
-  ExecutionParamSource,
-  ExecutionParamResolutionEntry,
-  ExecutionRequiredInput,
   ExecutionStepDto,
   TakeoverExecutionDto,
   ResumeExecutionDto,
@@ -56,178 +55,73 @@ import {
   ApprovalDecisionDto,
   UpdateWorkflowActivityProgressDto,
 } from './state/execution.dto';
-import { ExecutionPlanningService } from './step-runner/execution-planning.service';
+import { ExecutionPlanningService } from './step-runner/planning/execution-planning.service';
 import { ExecutionRuntimeSessionService } from './adapters/execution-runtime-session.service';
 import { RuntimePhaseInvokeResult, RuntimeStepInvokeResult } from './adapters/runtime-adapter.interface';
-import { RuntimeExecutionOrchestrator } from './step-runner/runtime-execution.orchestrator';
-import { RuntimeResultInterpreter } from './step-runner/runtime-result.interpreter';
-import { RuntimeStepRequestFactory } from './step-runner/runtime-step-request.factory';
-import { BrowserPhaseExecutor } from './step-runner/browser-phase.executor';
+import { RuntimeExecutionOrchestrator } from './step-runner/runtime/runtime-execution.orchestrator';
+import { RuntimeResultInterpreter } from './step-runner/runtime/runtime-result.interpreter';
+import { RuntimeStepRequestFactory } from './step-runner/runtime/runtime-step-request.factory';
+import { BrowserPhaseExecutor } from './step-runner/browser/browser-phase.executor';
 import { BrowserRuntimeAdapter } from './adapters/browser-runtime.adapter';
-import { BROWSER_ACTIONS, BROWSER_RUNTIME } from './step-runner/browser-execution-constants';
 import {
   ExecutionBrowserOrchestrationService,
   ExecutionStepPhaseMetadata,
-} from './step-runner/execution-browser-orchestration.service';
-import type { BrowserPhaseCheck } from './state/execution.dto';
+} from './step-runner/browser/execution-browser-orchestration.service';
 
-interface LLMUsage {
-  prompt_tokens: number;
-  completion_tokens: number;
-  total_tokens: number;
-  completion_tokens_details?: {
-    reasoning_tokens?: number;
-  };
-}
-
-interface RequestUserContext {
-  id: string;
-  role?: string;
-}
-
-interface PlannerRequiredInput extends ExecutionRequiredInput {}
-
-interface RuntimeDefaultResolution {
-  input: Record<string, unknown>;
-  sources: Record<string, ExecutionParamSource>;
-}
-
-interface PlannerSkillMatch {
-  skill_id: string;
-  skill_name: string;
-  confidence: number;
-  match_reason?: string;
-}
-
-interface PlannerSemanticGroupedMissing {
-  key: string;
-  label: string;
-  kind: 'field' | 'array_group';
-  blocking: boolean;
-  required: boolean;
-  fieldNames: string[];
-  missingFieldNames: string[];
-  description?: string;
-}
-
-interface PlannerSemantic {
-  enabled: boolean;
-  mode: 'field_level' | 'complex_document';
-  previewReady: boolean;
-  finalReady: boolean;
-  fallbackToFieldLevel: boolean;
-  summary?: string;
-  groupedMissing: PlannerSemanticGroupedMissing[];
-  complexity: {
-    category: 'simple' | 'complex_document';
-    totalFields: number;
-    requiredFields: number;
-    missingFields: number;
-    arrayGroups: number;
-    reasonCodes: string[];
-  };
-}
-
-interface PlannerPlanDraft {
-  plan_id: string;
-  planner_mode: 'skill' | 'fallback';
-  objective: string;
-  summary: string;
-  skill_match?: PlannerSkillMatch;
-  steps: Array<{
-    id: string;
-    title: string;
-    description: string;
-    kind: 'skill' | 'tool' | 'human_input' | 'execution';
-    tool_name?: string;
-    status: 'planned';
-    phase_key?: string;
-    phase_name?: string;
-    phase_type?: string;
-    commands?: Array<{
-      step_id?: string;
-      capability_type?: string;
-      action: string;
-      input?: Record<string, unknown>;
-      metadata?: Record<string, unknown>;
-    }>;
-    precheck?: BrowserPhaseCheck;
-    postcheck?: BrowserPhaseCheck;
-    recovery_policy?: {
-      max_auto_retries?: number;
-      allow_ai_recovery?: boolean;
-      allow_human_takeover?: boolean;
-      model_id?: string;
-    };
-  }>;
-  required_inputs: PlannerRequiredInput[];
-  risk_summary: {
-    level: 'low' | 'medium' | 'high';
-    requires_human_review: boolean;
-    items: string[];
-  };
-  semantic?: PlannerSemantic;
-  metadata?: Record<string, unknown>;
-  usage?: LLMUsage;
-}
-
-interface SubmitInputContext {
-  execution: any;
-  effectiveRequester: RequestUserContext;
-  normalized: Record<string, unknown>;
-  requiredInputs: PlannerRequiredInput[];
-  currentParamResolution: Record<string, ExecutionParamResolutionEntry>;
-  missingInputs: PlannerRequiredInput[];
-}
-
-const hasMethod = (value: unknown, methodName: string): boolean =>
-  Boolean(value) &&
-  typeof value === 'object' &&
-  typeof (value as Record<string, unknown>)[methodName] === 'function';
+type ExecutionEventType =
+  (typeof EXECUTION_EVENT_TYPE)[keyof typeof EXECUTION_EVENT_TYPE];
+type WorkflowActivityPhaseDefinitionsLoader = (
+  capabilityId: string,
+  parentPhaseKey: string
+) => Promise<unknown>;
 
 @Injectable()
 export class ExecutionService {
-  private readonly logger = new Logger(ExecutionService.name);
-
-  private readonly eventSubject = new Subject<ExecutionStreamEventPayload>();
-  private readonly executionEventService: ExecutionEventService;
   private readonly executionFailureService: ExecutionFailureService;
   private readonly executionFlowRunnerService: ExecutionFlowRunnerService;
-  private readonly executionPhaseService: ExecutionPhaseService;
   private readonly executionPhaseSyncService: ExecutionPhaseSyncService;
   private readonly executionStateService: ExecutionStateService;
-  private readonly executionStepService: ExecutionStepService;
+  private readonly executionLifecycleService: ExecutionLifecycleService;
+  private readonly executionStreamService: ExecutionStreamService;
+  private readonly executionQueryService: ExecutionQueryService;
+  private readonly executionApplicationHooksService: ExecutionApplicationHooksService;
   private readonly executionApprovalService: ExecutionApprovalService;
   private readonly executionHumanControlService: ExecutionHumanControlService;
-  private readonly executionInputResolutionService: ExecutionInputResolutionService;
+  private readonly executionCreateService: ExecutionCreateService;
+  private readonly executionSubmitInputService: ExecutionSubmitInputService;
+  private readonly executionStartService: ExecutionStartService;
   private readonly executionPlanningService: ExecutionPlanningService;
-  private readonly executionPlanNormalizationService: ExecutionPlanNormalizationService;
   private readonly executionBrowserOrchestrationService: ExecutionBrowserOrchestrationService;
   private readonly executionRuntimeSessionService: ExecutionRuntimeSessionService;
   private readonly executionStepExecutorService: ExecutionStepExecutorService;
+  private readonly executionRuntimeHooksService: ExecutionRuntimeHooksService;
+  private readonly executionRuntimeControlService: ExecutionRuntimeControlService;
+  private readonly executionSystemSkillResultService: ExecutionSystemSkillResultService;
   private readonly workflowActivityProgressService: WorkflowActivityProgressService;
-  private readonly browserRuntimeAdapter: BrowserRuntimeAdapter;
+  private readonly executionBrowserReadService: ExecutionBrowserReadService;
+  private readonly executionServiceHooksFacade: ExecutionServiceHooksFacade;
 
   constructor(
-    private readonly prisma: PrismaService,
+    prisma: PrismaService,
     @Optional()
     @Inject(RuntimeExecutionOrchestrator)
-    private readonly runtimeExecutionOrchestrator?:
-      | RuntimeExecutionOrchestrator
-      | ExecutionEventService,
+    runtimeExecutionOrchestrator?: RuntimeExecutionOrchestrator | ExecutionEventService,
     @Optional()
     @Inject(RuntimeResultInterpreter)
-    private readonly runtimeResultInterpreter?: RuntimeResultInterpreter,
+    runtimeResultInterpreter?: RuntimeResultInterpreter,
     @Optional()
     @Inject(RuntimeStepRequestFactory)
-    private readonly runtimeStepRequestFactory?: RuntimeStepRequestFactory,
+    runtimeStepRequestFactory?: RuntimeStepRequestFactory,
     executionEventService?: ExecutionEventService,
     executionFailureService?: ExecutionFailureService,
     executionPhaseService?: ExecutionPhaseService,
     executionPhaseSyncService?: ExecutionPhaseSyncService,
     executionStateService?: ExecutionStateService,
     executionStepService?: ExecutionStepService,
+    executionCreateService?: ExecutionCreateService,
     executionInputResolutionService?: ExecutionInputResolutionService,
+    executionSubmitInputService?: ExecutionSubmitInputService,
+    executionStartService?: ExecutionStartService,
     executionPlanNormalizationService?: ExecutionPlanNormalizationService,
     browserPhaseExecutor?: BrowserPhaseExecutor,
     executionHumanControlService?: ExecutionHumanControlService,
@@ -236,11 +130,20 @@ export class ExecutionService {
     executionRuntimeSessionService?: ExecutionRuntimeSessionService,
     executionFlowRunnerService?: ExecutionFlowRunnerService,
     executionStepExecutorService?: ExecutionStepExecutorService,
+    executionApplicationHooksService?: ExecutionApplicationHooksService,
+    executionRuntimeHooksService?: ExecutionRuntimeHooksService,
+    executionRuntimeControlService?: ExecutionRuntimeControlService,
+    executionSystemSkillResultService?: ExecutionSystemSkillResultService,
     executionBrowserOrchestrationService?: ExecutionBrowserOrchestrationService,
     browserRuntimeAdapter?: BrowserRuntimeAdapter,
-    workflowActivityProgressService?: WorkflowActivityProgressService
+    workflowActivityProgressService?: WorkflowActivityProgressService,
+    executionQueryService?: ExecutionQueryService,
+    executionLifecycleService?: ExecutionLifecycleService,
+    executionBrowserReadService?: ExecutionBrowserReadService,
+    executionStreamService?: ExecutionStreamService
   ) {
-    const dependencyCandidates = [
+    const resolved = resolveExecutionServiceDependencies({
+      prisma,
       runtimeExecutionOrchestrator,
       runtimeResultInterpreter,
       runtimeStepRequestFactory,
@@ -250,7 +153,10 @@ export class ExecutionService {
       executionPhaseSyncService,
       executionStateService,
       executionStepService,
+      executionCreateService,
       executionInputResolutionService,
+      executionSubmitInputService,
+      executionStartService,
       executionPlanNormalizationService,
       browserPhaseExecutor,
       executionHumanControlService,
@@ -259,238 +165,82 @@ export class ExecutionService {
       executionRuntimeSessionService,
       executionFlowRunnerService,
       executionStepExecutorService,
+      executionApplicationHooksService,
+      executionRuntimeHooksService,
+      executionRuntimeControlService,
+      executionSystemSkillResultService,
       executionBrowserOrchestrationService,
       browserRuntimeAdapter,
       workflowActivityProgressService,
-    ];
-    const pickDependency = <T>(
-      explicit: T | undefined,
-      predicate: (value: unknown) => boolean
-    ): T | undefined => {
-      if (predicate(explicit)) {
-        return explicit;
+      executionQueryService,
+      executionLifecycleService,
+      executionBrowserReadService,
+      executionStreamService,
+    });
+
+    this.executionFailureService = resolved.executionFailureService;
+    this.executionFlowRunnerService = resolved.executionFlowRunnerService;
+    this.executionPhaseSyncService = resolved.executionPhaseSyncService;
+    this.executionStateService = resolved.executionStateService;
+    this.executionLifecycleService = resolved.executionLifecycleService;
+    this.executionStreamService = resolved.executionStreamService;
+    this.executionQueryService = resolved.executionQueryService;
+    this.executionApplicationHooksService = resolved.executionApplicationHooksService;
+    this.executionApprovalService = resolved.executionApprovalService;
+    this.executionHumanControlService = resolved.executionHumanControlService;
+    this.executionCreateService = resolved.executionCreateService;
+    this.executionSubmitInputService = resolved.executionSubmitInputService;
+    this.executionStartService = resolved.executionStartService;
+    this.executionPlanningService = resolved.executionPlanningService;
+    void this.executionPlanningService;
+    void this.getFailureHooks;
+    void this.getStepExecutorHooks;
+    this.executionBrowserOrchestrationService = resolved.executionBrowserOrchestrationService;
+    this.executionRuntimeSessionService = resolved.executionRuntimeSessionService;
+    this.executionStepExecutorService = resolved.executionStepExecutorService;
+    this.executionRuntimeHooksService = resolved.executionRuntimeHooksService;
+    this.executionRuntimeControlService = resolved.executionRuntimeControlService;
+    this.executionSystemSkillResultService = resolved.executionSystemSkillResultService;
+    this.workflowActivityProgressService = resolved.workflowActivityProgressService;
+    this.executionBrowserReadService = resolved.executionBrowserReadService;
+    this.executionServiceHooksFacade = new ExecutionServiceHooksFacade(
+      {
+        executionApplicationHooksService: this.executionApplicationHooksService,
+        executionBrowserOrchestrationService: this.executionBrowserOrchestrationService,
+        executionBrowserReadService: this.executionBrowserReadService,
+        executionFailureService: this.executionFailureService,
+        executionFlowRunnerService: this.executionFlowRunnerService,
+        executionRuntimeControlService: this.executionRuntimeControlService,
+        executionRuntimeHooksService: this.executionRuntimeHooksService,
+        executionRuntimeSessionService: this.executionRuntimeSessionService,
+        executionStepExecutorService: this.executionStepExecutorService,
+        executionSystemSkillResultService: this.executionSystemSkillResultService,
+        executionPhaseSyncService: this.executionPhaseSyncService,
+      },
+      {
+        getExecutionDto: this.getExecutionDtoCallback(),
+        getExecutionDtoById: this.getExecutionDtoByIdCallback(),
+        emitEvent: this.getEmitEventCallback(),
+        updateStatus: this.getUpdateStatusCallback(),
+        startExecution: this.getStartExecutionCallback(),
+        advanceExecutionFlow: this.getAdvanceExecutionFlowCallback(),
+        failExecutionFromRuntimeStep: this.getFailExecutionFromRuntimeStepCallback(),
+        requestSystemTakeover: this.getRequestSystemTakeoverCallback(),
+        enterRuntimeWaitingInput: this.getEnterRuntimeWaitingInputCallback(),
+        enterPendingApprovalFromRuntimeStep:
+          this.getEnterPendingApprovalFromRuntimeStepCallback(),
+        handleBrowserStepResult: this.getHandleBrowserStepResultCallback(),
+        handleBrowserPhaseStepResult: this.getHandleBrowserPhaseStepResultCallback(),
+        handleSystemSkillStepResult: this.getHandleSystemSkillStepResultCallback(),
+        enterWaitingInput: this.getEnterWaitingInputCallback(),
+        getWorkflowActivityPhaseDefinitionsLoader: () =>
+          this.getWorkflowActivityPhaseDefinitionsLoader(),
       }
-      return dependencyCandidates.find((candidate) => predicate(candidate)) as T | undefined;
-    };
-
-    const resolvedExecutionEventService = pickDependency<ExecutionEventService>(
-      executionEventService,
-      (value) => hasMethod(value, 'createEvent')
     );
-    const resolvedExecutionFailureService = pickDependency<ExecutionFailureService>(
-      executionFailureService,
-      (value) => hasMethod(value, 'enterRuntimeWaitingInput') && hasMethod(value, 'skipSingleStep')
-    );
-    const resolvedExecutionPhaseService = pickDependency<ExecutionPhaseService>(
-      executionPhaseService,
-      (value) =>
-        hasMethod(value, 'listByExecutionId') ||
-        hasMethod(value, 'createOrUpdatePhase') ||
-        hasMethod(value, 'markCompleted') ||
-        hasMethod(value, 'markRunning') ||
-        hasMethod(value, 'getByExecutionIdAndPhaseKey') ||
-        hasMethod(value, 'markWaitingTakeover') ||
-        hasMethod(value, 'createTakeoverRecord')
-    );
-    const resolvedExecutionPhaseSyncService = pickDependency<ExecutionPhaseSyncService>(
-      executionPhaseSyncService,
-      (value) =>
-        hasMethod(value, 'syncPhaseAfterStepResult') &&
-        hasMethod(value, 'completeActivePhasesOnExecutionSuccess')
-    );
-    const resolvedExecutionStateService = pickDependency<ExecutionStateService>(
-      executionStateService,
-      (value) => hasMethod(value, 'updateStatus')
-    );
-    const resolvedExecutionStepService = pickDependency<ExecutionStepService>(
-      executionStepService,
-      (value) =>
-        hasMethod(value, 'getById') ||
-        hasMethod(value, 'createManyPlannedSteps') ||
-        hasMethod(value, 'findNextPendingStep') ||
-        hasMethod(value, 'finishRuntimeStep') ||
-        hasMethod(value, 'requeueFailedStep') ||
-        hasMethod(value, 'findPendingBrowserGotoStep') ||
-        hasMethod(value, 'setCurrentStep')
-    );
-    const resolvedExecutionInputResolutionService = pickDependency<ExecutionInputResolutionService>(
-      executionInputResolutionService,
-      (value) => hasMethod(value, 'resolveSubmitInputState')
-    );
-    const resolvedExecutionPlanNormalizationService =
-      pickDependency<ExecutionPlanNormalizationService>(
-        executionPlanNormalizationService,
-        (value) => hasMethod(value, 'shouldSkipPlannerForExplicitStructuredInput')
-      );
-    const resolvedBrowserPhaseExecutor = pickDependency<BrowserPhaseExecutor>(
-      browserPhaseExecutor,
-      (value) => hasMethod(value, 'execute')
-    );
-    const resolvedExecutionHumanControlService = pickDependency<ExecutionHumanControlService>(
-      executionHumanControlService,
-      (value) => hasMethod(value, 'takeover') && hasMethod(value, 'resumePhaseTakeover')
-    );
-    const resolvedExecutionApprovalService = pickDependency<ExecutionApprovalService>(
-      executionApprovalService,
-      (value) => hasMethod(value, 'approve') && hasMethod(value, 'reject')
-    );
-    const resolvedExecutionPlanningService = pickDependency<ExecutionPlanningService>(
-      executionPlanningService,
-      (value) =>
-        hasMethod(value, 'generatePlanDraft') && hasMethod(value, 'assertSkillAccessibleByUser')
-    );
-    const resolvedExecutionRuntimeSessionService = pickDependency<ExecutionRuntimeSessionService>(
-      executionRuntimeSessionService,
-      (value) => hasMethod(value, 'allocateRuntimeSession') && hasMethod(value, 'closeQuietly')
-    );
-    const resolvedExecutionFlowRunnerService = pickDependency<ExecutionFlowRunnerService>(
-      executionFlowRunnerService,
-      (value) => hasMethod(value, 'advanceExecutionFlow')
-    );
-    const resolvedExecutionStepExecutorService = pickDependency<ExecutionStepExecutorService>(
-      executionStepExecutorService,
-      (value) =>
-        hasMethod(value, 'executeBrowserGotoStep') && hasMethod(value, 'executeSystemSkillStep')
-    );
-    const resolvedExecutionBrowserOrchestrationService =
-      pickDependency<ExecutionBrowserOrchestrationService>(
-        executionBrowserOrchestrationService,
-        (value) =>
-          hasMethod(value, 'bootstrapBrowserExecution') &&
-          hasMethod(value, 'handleBrowserPhaseStepResult')
-      );
-    const resolvedBrowserRuntimeAdapter = pickDependency<BrowserRuntimeAdapter>(
-      browserRuntimeAdapter,
-      (value) =>
-        hasMethod(value, 'invokeStep') &&
-        hasMethod(value, 'inspectState') &&
-        hasMethod(value, 'assertState')
-    );
-    const resolvedWorkflowActivityProgressService = pickDependency<WorkflowActivityProgressService>(
-      workflowActivityProgressService,
-      (value) => hasMethod(value, 'sync')
-    );
-
-    this.executionEventService = resolvedExecutionEventService || new ExecutionEventService(prisma);
-    this.executionStepService = resolvedExecutionStepService || new ExecutionStepService(prisma);
-    this.executionFlowRunnerService =
-      resolvedExecutionFlowRunnerService ||
-      new ExecutionFlowRunnerService(prisma, this.executionStepService);
-    this.executionPhaseService = resolvedExecutionPhaseService || new ExecutionPhaseService(prisma);
-    this.executionPhaseSyncService =
-      resolvedExecutionPhaseSyncService ||
-      new ExecutionPhaseSyncService(prisma, this.executionPhaseService);
-    this.executionStateService =
-      resolvedExecutionStateService ||
-      new ExecutionStateService(prisma, this.executionEventService);
-    this.executionApprovalService =
-      resolvedExecutionApprovalService || new ExecutionApprovalService(prisma);
-    this.executionHumanControlService =
-      resolvedExecutionHumanControlService ||
-      new ExecutionHumanControlService(
-        prisma,
-        this.executionPhaseService,
-        this.executionStepService
-      );
-    this.executionInputResolutionService =
-      resolvedExecutionInputResolutionService || new ExecutionInputResolutionService();
-    this.executionFailureService =
-      resolvedExecutionFailureService ||
-      new ExecutionFailureService(
-        prisma,
-        this.executionStepService,
-        this.executionInputResolutionService
-      );
-    this.executionPlanNormalizationService =
-      resolvedExecutionPlanNormalizationService ||
-      new ExecutionPlanNormalizationService(this.executionInputResolutionService);
-    this.executionPlanningService =
-      resolvedExecutionPlanningService ||
-      new ExecutionPlanningService(prisma, this.executionPlanNormalizationService);
-    this.executionBrowserOrchestrationService =
-      resolvedExecutionBrowserOrchestrationService ||
-      new ExecutionBrowserOrchestrationService(
-        prisma,
-        this.executionStepService,
-        this.executionPhaseSyncService,
-        this.executionFailureService,
-        this.runtimeExecutionOrchestrator as RuntimeExecutionOrchestrator,
-        this.runtimeResultInterpreter,
-        this.runtimeStepRequestFactory
-      );
-    this.executionRuntimeSessionService =
-      resolvedExecutionRuntimeSessionService || new ExecutionRuntimeSessionService();
-    this.executionStepExecutorService =
-      resolvedExecutionStepExecutorService ||
-      new ExecutionStepExecutorService(
-        this.executionStepService,
-        this.runtimeExecutionOrchestrator as RuntimeExecutionOrchestrator,
-        this.runtimeStepRequestFactory,
-        resolvedBrowserPhaseExecutor
-      );
-    this.workflowActivityProgressService =
-      resolvedWorkflowActivityProgressService ||
-      new WorkflowActivityProgressService(this.executionPhaseService);
-    this.browserRuntimeAdapter = resolvedBrowserRuntimeAdapter || new BrowserRuntimeAdapter();
   }
 
   subscribeToEvents(executionId: string, callback: (event: ExecutionStreamEventPayload) => void) {
-    const subscription = this.eventSubject
-      .pipe(filter((e) => e.executionId === executionId))
-      .subscribe(callback);
-    return subscription;
-  }
-
-  private async createEvent(
-    executionId: string,
-    eventType: (typeof EXECUTION_EVENT_TYPE)[keyof typeof EXECUTION_EVENT_TYPE],
-    payload: any,
-    options: CreateExecutionEventOptions = {}
-  ): Promise<void> {
-    const event = await this.executionEventService.createEvent(
-      executionId,
-      eventType,
-      this.asJsonValue(payload),
-      options
-    );
-
-    this.eventSubject.next(event);
-  }
-
-  private normalizeIdempotencyKey(idempotencyKey?: string): string | undefined {
-    if (typeof idempotencyKey !== 'string') {
-      return undefined;
-    }
-
-    const normalized = idempotencyKey.trim();
-    return normalized.length > 0 ? normalized : undefined;
-  }
-
-  private async findExistingExecutionIdByIdempotencyKey(
-    userId: string,
-    idempotencyKey: string
-  ): Promise<string | undefined> {
-    const rows = await this.prisma.$queryRawUnsafe<Array<{ execution_id: string }>>(
-      `
-        SELECT e.id AS execution_id
-        FROM executions e
-        INNER JOIN execution_events ev
-          ON ev.execution_id = e.id
-        WHERE e.created_by = $1::uuid
-          AND ev.event_type = $2
-          AND ev.payload_json->>'idempotencyKey' = $3
-        ORDER BY ev.created_at DESC
-        LIMIT 1
-      `,
-      userId,
-      EXECUTION_EVENT_TYPE.EXECUTION_CREATED,
-      idempotencyKey
-    );
-
-    const executionId = rows[0]?.execution_id;
-    return typeof executionId === 'string' && executionId.trim().length > 0
-      ? executionId
-      : undefined;
+    return this.executionStreamService.subscribeToEvents(executionId, callback);
   }
 
   async create(
@@ -498,320 +248,19 @@ export class ExecutionService {
     dto: CreateExecutionDto,
     options?: { authToken?: string }
   ): Promise<ExecutionDto> {
-    const resolvedSkillId = dto.capabilityId || dto.skillId;
-    const resolvedSkillVersion = dto.capabilityVersion || dto.skillVersion;
-
-    if (!resolvedSkillId) {
-      throw new BadRequestException('skillId or capabilityId is required');
-    }
-
-    await this.assertSkillAccessibleByUser(resolvedSkillId, options?.authToken, {
-      id: userId,
-      role: 'employee',
-    });
-
-    const resolvedDto: CreateExecutionDto = {
-      ...dto,
-      skillId: resolvedSkillId,
-      capabilityId: dto.capabilityId || resolvedSkillId,
-      skillVersion: resolvedSkillVersion,
-      capabilityVersion: dto.capabilityVersion || resolvedSkillVersion,
-      idempotencyKey: this.normalizeIdempotencyKey(dto.idempotencyKey),
-    };
-
-    if (resolvedDto.idempotencyKey) {
-      const existingExecutionId = await this.findExistingExecutionIdByIdempotencyKey(
-        userId,
-        resolvedDto.idempotencyKey
-      );
-      if (existingExecutionId) {
-        this.logger.log(
-          `Reusing existing execution ${existingExecutionId} for idempotency key ${resolvedDto.idempotencyKey}`
-        );
-        return this.getById(existingExecutionId);
-      }
-    }
-
-    const runtimeDefaultResolution = await this.fetchSkillDefaultResolution(
-      resolvedSkillId,
-      options?.authToken,
-      { id: userId, role: 'employee' }
-    );
-    const runtimeDefaultInput = runtimeDefaultResolution.input;
-
-    const providedPlanDraft =
-      resolvedDto.planDraft &&
-      typeof resolvedDto.planDraft === 'object' &&
-      !Array.isArray(resolvedDto.planDraft)
-        ? (resolvedDto.planDraft as unknown as PlannerPlanDraft)
-        : undefined;
-    const shouldUseDirectExecutionPlan =
-      !providedPlanDraft &&
-      this.executionPlanNormalizationService.shouldSkipPlannerForExplicitStructuredInput(
-        resolvedDto
-      );
-    const shouldGeneratePlanDraft = !providedPlanDraft && !shouldUseDirectExecutionPlan;
-    const generatedPlanDraft =
-      providedPlanDraft ||
-      (shouldGeneratePlanDraft
-        ? await this.generatePlanDraft(userId, resolvedDto, options?.authToken)
-        : undefined);
-    const effectiveGeneratedPlanDraft =
-      generatedPlanDraft ||
-      (shouldUseDirectExecutionPlan
-        ? this.executionPlanNormalizationService.buildDirectExecutionPlanDraft(
-            resolvedDto,
-            resolvedSkillId
-          )
-        : undefined);
-    const reconciledPlanDraft = this.executionPlanNormalizationService.reconcilePlanDraftWithInput(
-      generatedPlanDraft as unknown as any,
-      resolvedDto.input
-    ) as unknown as PlannerPlanDraft | undefined;
-    const reconciledDirectPlanDraft =
-      !reconciledPlanDraft && effectiveGeneratedPlanDraft
-        ? (this.executionPlanNormalizationService.reconcilePlanDraftWithInput(
-            effectiveGeneratedPlanDraft as unknown as any,
-            resolvedDto.input
-          ) as unknown as PlannerPlanDraft | undefined)
-        : reconciledPlanDraft;
-    const defaultedPlanDraft =
-      this.executionPlanNormalizationService.applyRuntimeDefaultsToPlanDraft(
-        reconciledDirectPlanDraft as unknown as any,
-        runtimeDefaultInput,
-        runtimeDefaultResolution.sources
-      ) as unknown as PlannerPlanDraft | undefined;
-    const planDraft = await this.rewriteBrowserRecordingPlanDraftWithActivities(
-      defaultedPlanDraft,
-      resolvedSkillId,
-      resolvedDto.input,
-      runtimeDefaultInput
-    );
-    const plannedCapabilityId = planDraft?.skill_match?.skill_id;
-    const effectiveSkillId = plannedCapabilityId || resolvedSkillId;
-    const effectiveSkillVersion = resolvedSkillVersion;
-    const normalizedInput = this.executionPlanNormalizationService.buildNormalizedInput(
-      resolvedDto,
-      planDraft as unknown as any,
-      runtimeDefaultInput,
-      runtimeDefaultResolution.sources,
-      (draftDto) => this.executionPlanNormalizationService.buildPlannerUserInput(draftDto)
-    );
-
-    // 注入 usage 到 normalizedInput 中以便持久化
-    const usage = planDraft?.usage || resolvedDto.usage;
-    if (usage) {
-      (normalizedInput as any).__usage = usage;
-    }
-
-    const executionRuntimeType = this.executionPlanNormalizationService.resolveExecutionRuntimeType(
-      resolvedDto.runtimeType,
-      planDraft as unknown as any,
-      normalizedInput
-    );
-    const execution = await this.prisma.execution.create({
-      data: {
-        createdBy: userId,
-        skillId: effectiveSkillId,
-        skillVersion: effectiveSkillVersion,
-        status: planDraft?.risk_summary.requires_human_review
-          ? EXECUTION_STATUS.PENDING_APPROVAL
-          : EXECUTION_STATUS.QUEUED,
-        runtimeType: executionRuntimeType,
-        inputJson: this.asJsonValue(resolvedDto.input),
-        normalizedInputJson: this.asJsonValue(normalizedInput),
-        riskLevel: this.executionPlanNormalizationService.mapPlannerRiskLevel(
-          planDraft as unknown as any
-        ),
-        requiresApproval: planDraft?.risk_summary.requires_human_review || false,
-        approvalStatus: planDraft?.risk_summary.requires_human_review
-          ? APPROVAL_STATUS.PENDING
-          : APPROVAL_STATUS.NOT_REQUIRED,
-        takeoverRequired: false,
-      },
-    });
-
-    // Create execution event
-    await this.createEvent(execution.id, EXECUTION_EVENT_TYPE.EXECUTION_CREATED, {
-      userId,
-      skillId: effectiveSkillId,
-      capabilityId: plannedCapabilityId || resolvedDto.capabilityId || resolvedSkillId,
-      capabilityVersion: effectiveSkillVersion || resolvedDto.capabilityVersion || null,
-      ...(resolvedDto.idempotencyKey ? { idempotencyKey: resolvedDto.idempotencyKey } : {}),
-    });
-
-    if (planDraft) {
-      await this.createEvent(execution.id, EXECUTION_EVENT_TYPE.EXECUTION_PLAN_GENERATED, {
-        planId: planDraft.plan_id,
-        plannerMode: planDraft.planner_mode,
-        summary: planDraft.summary,
-        skillMatch: planDraft.skill_match,
-        capabilityMatch: planDraft.skill_match
-          ? {
-              capabilityId: planDraft.skill_match.skill_id,
-              capabilityName: planDraft.skill_match.skill_name,
-              confidence: planDraft.skill_match.confidence,
-              matchReason: planDraft.skill_match.match_reason,
-            }
-          : undefined,
-        riskSummary: planDraft.risk_summary,
-        semantic: planDraft.semantic
-          ? {
-              mode: planDraft.semantic.mode,
-              previewReady: planDraft.semantic.previewReady,
-              finalReady: planDraft.semantic.finalReady,
-              groupedMissingCount: planDraft.semantic.groupedMissing.length,
-            }
-          : undefined,
-      });
-    }
-
-    await this.createPlannedSteps(execution.id, normalizedInput, planDraft);
-
-    const hasMissingRequiredInputs = Boolean(
-      planDraft?.required_inputs?.some(
-        (item) =>
-          item.required && this.executionInputResolutionService.isBlockingRequiredInput(item)
-      )
-    );
-
-    this.logger.log(`Execution created: ${execution.id}`);
-
-    if (!execution.requiresApproval) {
-      if (hasMissingRequiredInputs) {
-        const waitingInputStep = await this.executionStepService.findPendingInputCollectionStep(
-          execution.id
-        );
-
-        if (waitingInputStep) {
-          await this.enterWaitingInput(execution as any, waitingInputStep.id);
-          return this.getById(execution.id);
-        }
-      }
-
-      // Trigger execution start (async)
-      this.startExecution(execution.id).catch((err) => {
-        const msg = err instanceof Error ? err.message : String(err);
-        this.logger.error(`Failed to start execution ${execution.id}: ${msg}`);
-      });
-    }
-
-    return this.getById(execution.id);
-  }
-
-  private async startExecution(executionId: string): Promise<void> {
-    this.logger.log(`Starting execution ${executionId}`);
-    const execution = await this.prisma.execution.findUnique({
-      where: { id: executionId },
-    });
-
-    if (!execution) {
-      this.logger.error(`Execution ${executionId} not found during startExecution`);
-      throw new NotFoundException(`Execution ${executionId} not found`);
-    }
-
-    // Update status to running
-    await this.updateStatus(executionId, EXECUTION_STATUS.RUNNING);
-
-    if (execution.runtimeType !== BROWSER_RUNTIME.TYPE) {
-      await this.createEvent(execution.id, EXECUTION_EVENT_TYPE.RUNTIME_SKIPPED, {
-        runtimeType: execution.runtimeType,
-        mode: BROWSER_RUNTIME.NON_BROWSER_MODE,
-      });
-      await this.advanceExecutionFlow(execution.id, execution.id);
-      this.logger.log(
-        `Skipped browser runtime allocation for execution ${executionId} (runtime: ${execution.runtimeType})`
-      );
-      return;
-    }
-
-    try {
-      this.logger.log(
-        `Allocating runtime session for execution ${executionId} (type: ${execution.runtimeType})`
-      );
-      const runtimeSession = await this.executionRuntimeSessionService.allocateRuntimeSession({
-        userId: execution.createdBy,
-        executionId: execution.id,
-        runtimeType: execution.runtimeType,
-      });
-      this.logger.log(`Runtime session allocated: ${runtimeSession.id}`);
-
-      // Create event (RuntimeSession record is created by runtime-session service)
-      await this.createEvent(execution.id, EXECUTION_EVENT_TYPE.RUNTIME_ALLOCATED, {
-        runtimeSessionId: runtimeSession.id,
-      });
-
-      await this.bootstrapBrowserExecution(execution as any, runtimeSession.id);
-      this.logger.log(`Runtime allocated and bootstrap complete for execution ${executionId}`);
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      this.logger.error(`Failed to allocate runtime for execution ${executionId}: ${errorMsg}`);
-      await this.updateStatus(executionId, EXECUTION_STATUS.FAILED);
-      await this.prisma.execution.update({
-        where: { id: executionId },
-        data: {
-          failureReason: `Failed to allocate runtime session: ${errorMsg}`,
-          failureCode: 'RUNTIME_ALLOCATION_FAILED',
-        },
-      });
-    }
+    return this.executionCreateService.create(userId, dto, this.getCreateHooks(), options);
   }
 
   async getById(id: string, requester?: RequestUserContext): Promise<ExecutionDto> {
-    const execution = await this.prisma.execution.findUnique({
-      where: { id },
-    });
-
-    if (!execution) {
-      throw new NotFoundException(`Execution ${id} not found`);
-    }
-
-    this.ensureExecutionPermission(execution.createdBy, requester);
-
-    const runtimeSession = await this.prisma.runtimeSession.findFirst({
-      where: { executionId: id },
-      orderBy: { createdAt: 'desc' },
-      select: { id: true },
-    });
-    const phases = await this.executionPhaseService.listByExecutionId(id);
-
-    return this.toDto({
-      ...execution,
-      runtimeSessionId: runtimeSession?.id || null,
-      phases,
-    });
+    return this.executionQueryService.getById(id, requester);
   }
 
   async getSteps(id: string, requester?: RequestUserContext): Promise<ExecutionStepDto[]> {
-    const execution = await this.prisma.execution.findUnique({
-      where: { id },
-    });
-
-    if (!execution) {
-      throw new NotFoundException(`Execution ${id} not found`);
-    }
-
-    this.ensureExecutionPermission(execution.createdBy, requester);
-
-    const steps = await this.executionStepService.listByExecutionId(id);
-
-    return steps.map((s) => this.toStepDto(s));
+    return this.executionQueryService.getSteps(id, requester);
   }
 
   async getPhases(id: string, requester?: RequestUserContext) {
-    const execution = await this.prisma.execution.findUnique({
-      where: { id },
-    });
-
-    if (!execution) {
-      throw new NotFoundException(`Execution ${id} not found`);
-    }
-
-    this.ensureExecutionPermission(execution.createdBy, requester);
-
-    return (await this.executionPhaseService.listByExecutionId(id))
-      .map((phase) => mapExecutionPhaseToDto(phase))
-      .filter((phase): phase is NonNullable<ExecutionDto['phases']>[number] => Boolean(phase));
+    return this.executionQueryService.getPhases(id, requester);
   }
 
   async updateWorkflowActivityProgress(
@@ -819,16 +268,11 @@ export class ExecutionService {
     dto: UpdateWorkflowActivityProgressDto,
     requester?: RequestUserContext
   ): Promise<void> {
-    const execution = await this.prisma.execution.findUnique({
-      where: { id: executionId },
-    });
-
-    if (!execution) {
-      throw new NotFoundException(`Execution ${executionId} not found`);
-    }
-
-    this.ensureExecutionPermission(execution.createdBy, requester);
-    await this.workflowActivityProgressService.sync(executionId, dto);
+    await this.workflowActivityProgressService.updateWorkflowActivityProgress(
+      executionId,
+      dto,
+      requester
+    );
   }
 
   async takeover(
@@ -957,776 +401,238 @@ export class ExecutionService {
     dto: SubmitInputDto,
     requester?: RequestUserContext
   ): Promise<ExecutionDto> {
-    const context = await this.loadSubmitInputContext(id, userId, dto, requester);
-    const resolution = this.executionInputResolutionService.resolveSubmitInputState(
-      {
-        normalized: context.normalized,
-        requiredInputs: context.requiredInputs,
-        currentParamResolution: context.currentParamResolution,
-        missingInputs: context.missingInputs,
-      },
-      {
-        input: dto.input,
-        currentUsage: context.normalized.__usage as unknown as LLMUsage | undefined,
-        submittedUsage: dto.usage as unknown as LLMUsage | undefined,
-        reconcileSemantic: (semantic, requiredInputs) =>
-          this.executionPlanNormalizationService.reconcilePlanSemantic(
-            semantic as Record<string, unknown> | undefined,
-            requiredInputs as ExecutionRequiredInput[]
-          ) as unknown as Record<string, unknown> | undefined,
-      }
-    );
-
-    await this.persistSubmitInputState(id, dto.stepId, resolution);
-
-    return this.finishSubmitInputAndResume(
+    return this.executionSubmitInputService.submitInputAndResume(
       id,
       userId,
-      dto.stepId,
-      context.effectiveRequester,
-      resolution
+      dto,
+      this.getSubmitInputHooks(),
+      requester
     );
-  }
-
-  private async loadSubmitInputContext(
-    id: string,
-    userId: string,
-    dto: SubmitInputDto,
-    requester?: RequestUserContext
-  ): Promise<SubmitInputContext> {
-    const execution = await this.prisma.execution.findUnique({
-      where: { id },
-    });
-
-    if (!execution) {
-      throw new NotFoundException(`Execution ${id} not found`);
-    }
-
-    const effectiveRequester = requester || { id: userId };
-    this.ensureExecutionPermission(execution.createdBy, effectiveRequester);
-
-    if (execution.status !== EXECUTION_STATUS.WAITING_INPUT) {
-      throw new BadRequestException(
-        `Execution ${id} is not in ${EXECUTION_STATUS.WAITING_INPUT} status`
-      );
-    }
-
-    const step = await this.executionStepService.getById(dto.stepId);
-    if (!step || step.executionId !== id || step.type !== 'input_collection') {
-      throw new BadRequestException('Invalid step ID for input submission');
-    }
-
-    const normalized = (execution.normalizedInputJson as Record<string, unknown>) || {};
-    const requiredInputs = this.executionInputResolutionService.getRequiredInputs(execution);
-    const currentParamResolution =
-      this.executionInputResolutionService.getParamResolution(execution);
-    const missingInputs = requiredInputs.filter((item) =>
-      this.executionInputResolutionService.isBlockingRequiredInput(item)
-    );
-
-    if (missingInputs.length === 0) {
-      throw new BadRequestException(`Execution ${id} has no missing input to submit`);
-    }
-
-    return {
-      execution,
-      effectiveRequester,
-      normalized,
-      requiredInputs,
-      currentParamResolution,
-      missingInputs,
-    };
-  }
-
-  private async persistSubmitInputState(
-    executionId: string,
-    stepId: string,
-    resolution: SubmitInputResolutionResult
-  ): Promise<void> {
-    await this.prisma.$transaction([
-      this.prisma.executionStep.update({
-        where: { id: stepId },
-        data: {
-          status: resolution.canResumeExecution
-            ? EXECUTION_STEP_STATUS.SUCCEEDED
-            : EXECUTION_STEP_STATUS.WAITING_INPUT,
-          inputJson: this.asJsonValue({
-            requiredInputs: resolution.updatedRequiredInputs.filter((item) => item.missing),
-          }),
-          outputJson: this.asJsonValue(resolution.mergedSubmittedInput),
-          endedAt: resolution.canResumeExecution ? new Date() : null,
-        },
-      }),
-      this.prisma.execution.update({
-        where: { id: executionId },
-        data: {
-          normalizedInputJson: this.asJsonValue(resolution.updatedNormalized),
-          status: resolution.canResumeExecution
-            ? EXECUTION_STATUS.QUEUED
-            : EXECUTION_STATUS.WAITING_INPUT,
-        },
-      }),
-    ]);
-  }
-
-  private async finishSubmitInputAndResume(
-    executionId: string,
-    userId: string,
-    stepId: string,
-    requester: RequestUserContext,
-    resolution: SubmitInputResolutionResult
-  ): Promise<ExecutionDto> {
-    const runtimeSession = await this.prisma.runtimeSession.findFirst({
-      where: { executionId },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    await this.createEvent(
-      executionId,
-      resolution.canResumeExecution
-        ? EXECUTION_EVENT_TYPE.EXECUTION_INPUT_SUBMITTED
-        : EXECUTION_EVENT_TYPE.EXECUTION_PARTIAL_INPUT_SUBMITTED,
-      {
-        stepId,
-        input: resolution.normalizedSubmittedInput,
-        remainingMissing: resolution.remainingMissingInputs.map((item) => item.name),
-      }
-    );
-
-    if (!resolution.canResumeExecution) {
-      this.logger.log(
-        `Partial input submitted for execution ${executionId}; remaining: ${resolution.remainingMissingInputs.length}`
-      );
-      return this.getById(executionId, requester);
-    }
-
-    if (!runtimeSession) {
-      await this.startExecution(executionId);
-      this.logger.log(
-        `Input submitted for execution ${executionId}; runtime session will be allocated on start`
-      );
-      return this.getById(executionId, requester);
-    }
-
-    await this.updateStatus(executionId, EXECUTION_STATUS.RUNNING);
-
-    await this.createEvent(
-      executionId,
-      EXECUTION_EVENT_TYPE.EXECUTION_RESUMED,
-      {
-        userId,
-        reason: 'input_submitted',
-      },
-      {
-        runtimeSessionId: runtimeSession.id,
-        stepId,
-      }
-    );
-
-    this.advanceExecutionFlow(executionId, runtimeSession.id).catch((err) => {
-      const message = err instanceof Error ? err.message : String(err);
-      this.logger.error(`Failed to asynchronously resume execution ${executionId}: ${message}`);
-    });
-    this.logger.log(`Input submitted and execution ${executionId} resumed from step ${stepId}`);
-    return this.getById(executionId, requester);
   }
 
   async cancel(id: string, userId: string, requester?: RequestUserContext): Promise<ExecutionDto> {
-    const execution = await this.prisma.execution.findUnique({
-      where: { id },
-    });
-
-    if (!execution) {
-      throw new NotFoundException(`Execution ${id} not found`);
-    }
-
-    this.ensureExecutionPermission(execution.createdBy, requester || { id: userId });
-
-    if (
-      !canTransitionExecutionStatus(execution.status as ExecutionStatus, EXECUTION_STATUS.CANCELLED)
-    ) {
-      throw new BadRequestException(`Cannot cancel from status ${execution.status}`);
-    }
-
-    await this.updateStatus(id, EXECUTION_STATUS.CANCELLED);
-
-    // Close runtime session
-    const runtimeSession = await this.prisma.runtimeSession.findFirst({
-      where: { executionId: id },
-    });
-
-    if (runtimeSession) {
-      try {
-        await this.closeRuntimeSessionQuietly(runtimeSession.id, id, 'execution_cancelled');
-      } catch (error) {
-        this.logger.error(`Failed to close runtime session for execution ${id}`);
-      }
-    }
-
-    // Create event
-    await this.createEvent(id, EXECUTION_EVENT_TYPE.EXECUTION_CANCELLED, { userId });
-
-    this.logger.log(`Execution ${id} cancelled`);
-
-    return this.getById(id, requester || { id: userId });
+    return this.executionLifecycleService.cancel(id, userId, this.getLifecycleHooks(), requester);
   }
 
   async list(
     dto: ListExecutionsDto,
     requester?: RequestUserContext
   ): Promise<{ data: ExecutionDto[]; total: number; page: number; pageSize: number }> {
-    const page = dto.page || 1;
-    const pageSize = dto.pageSize || 10;
-    const skip = (page - 1) * pageSize;
-
-    const where: Record<string, unknown> = {};
-    if (dto.status) {
-      where.status = dto.status;
-    }
-    if (dto.skillId) {
-      where.skillId = dto.skillId;
-    }
-    if (requester?.id && requester.role !== 'admin') {
-      where.createdBy = requester.id;
-    }
-
-    const [executions, total] = await Promise.all([
-      this.prisma.execution.findMany({
-        where,
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take: pageSize,
-      }),
-      this.prisma.execution.count({ where }),
-    ]);
-
-    const runtimeSessions =
-      executions.length > 0
-        ? await this.prisma.runtimeSession.findMany({
-            where: {
-              executionId: {
-                in: executions.map((execution) => execution.id),
-              },
-            },
-            orderBy: { createdAt: 'desc' },
-            select: { id: true, executionId: true },
-          })
-        : [];
-    const runtimeSessionIdByExecutionId = new Map<string, string>();
-    runtimeSessions.forEach((runtimeSession) => {
-      if (!runtimeSessionIdByExecutionId.has(runtimeSession.executionId)) {
-        runtimeSessionIdByExecutionId.set(runtimeSession.executionId, runtimeSession.id);
-      }
-    });
-
-    return {
-      data: executions.map((execution) =>
-        this.toDto({
-          ...execution,
-          runtimeSessionId: runtimeSessionIdByExecutionId.get(execution.id) || null,
-        })
-      ),
-      total,
-      page,
-      pageSize,
-    };
+    return this.executionQueryService.list(dto, requester);
   }
 
   private async updateStatus(id: string, newStatus: ExecutionStatus): Promise<void> {
     const event = await this.executionStateService.updateStatus(id, newStatus);
-    this.eventSubject.next(event);
+    this.executionStreamService.publishEvent(event);
   }
 
-  private getHumanControlHooks() {
-    return {
-      getExecutionDto: (id: string, requester?: RequestUserContext) => this.getById(id, requester),
-      emitEvent: (
-        executionId: string,
-        eventType: (typeof EXECUTION_EVENT_TYPE)[keyof typeof EXECUTION_EVENT_TYPE],
-        payload: unknown,
-        options: CreateExecutionEventOptions = {}
-      ) => this.createEvent(executionId, eventType, payload, options),
-      updateStatus: (id: string, newStatus: ExecutionStatus) => this.updateStatus(id, newStatus),
-      freezeRuntimeSessionQuietly: (
-        runtimeSessionId: string | null | undefined,
-        executionId: string,
-        reason: string
-      ) => this.freezeRuntimeSessionQuietly(runtimeSessionId, executionId, reason),
-      resumeRuntimeSessionQuietly: (
-        runtimeSessionId: string | null | undefined,
-        executionId: string,
-        stepId?: string
-      ) => this.resumeRuntimeSessionQuietly(runtimeSessionId, executionId, stepId),
-      advanceExecutionFlow: (executionId: string, runtimeSessionId: string) =>
-        this.advanceExecutionFlow(executionId, runtimeSessionId),
-    };
+  private getExecutionDtoCallback() {
+    return (id: string, requester?: RequestUserContext) => this.getById(id, requester);
   }
 
-  private getApprovalHooks() {
-    return {
-      getExecutionDto: (id: string, requester?: RequestUserContext) => this.getById(id, requester),
-      emitEvent: (
-        executionId: string,
-        eventType: (typeof EXECUTION_EVENT_TYPE)[keyof typeof EXECUTION_EVENT_TYPE],
-        payload: unknown,
-        options: CreateExecutionEventOptions = {}
-      ) => this.createEvent(executionId, eventType, payload, options),
-      updateStatus: (id: string, newStatus: ExecutionStatus) => this.updateStatus(id, newStatus),
-      startExecution: (executionId: string) => this.startExecution(executionId),
-    };
+  private getExecutionDtoByIdCallback() {
+    return (id: string) => this.getById(id);
   }
 
-  private getFailureHooks() {
-    return {
-      emitEvent: (
-        executionId: string,
-        eventType: (typeof EXECUTION_EVENT_TYPE)[keyof typeof EXECUTION_EVENT_TYPE],
-        payload: unknown,
-        options: CreateExecutionEventOptions = {}
-      ) => this.createEvent(executionId, eventType, payload, options),
-      updateStatus: (id: string, newStatus: ExecutionStatus) => this.updateStatus(id, newStatus),
-      closeRuntimeSessionQuietly: (runtimeSessionId: string, executionId: string, reason: string) =>
-        this.closeRuntimeSessionQuietly(runtimeSessionId, executionId, reason),
-    };
+  private getEmitEventCallback() {
+    return (
+      executionId: string,
+      eventType: ExecutionEventType,
+      payload: unknown,
+      options: CreateExecutionEventOptions = {}
+    ) =>
+      this.executionStreamService.createEvent(
+        executionId,
+        eventType,
+        this.asJsonValue(payload),
+        options
+      );
   }
 
-  private getBrowserOrchestrationHooks() {
-    return {
-      emitEvent: (
-        executionId: string,
-        eventType: (typeof EXECUTION_EVENT_TYPE)[keyof typeof EXECUTION_EVENT_TYPE],
-        payload: unknown,
-        options: CreateExecutionEventOptions = {}
-      ) => this.createEvent(executionId, eventType, payload, options),
-      advanceExecutionFlow: (executionId: string, runtimeSessionId: string) =>
-        this.advanceExecutionFlow(executionId, runtimeSessionId),
-      enterRuntimeWaitingInput: (
-        executionId: string,
-        runtimeSessionId: string,
-        stepId: string,
-        requiredInputs: unknown[],
-        reason?: string
-      ) =>
-        this.enterRuntimeWaitingInput(
-          executionId,
-          runtimeSessionId,
-          stepId,
-          requiredInputs,
-          reason
-        ),
-      enterPendingApprovalFromRuntimeStep: (executionId: string, reason: string) =>
-        this.enterPendingApprovalFromRuntimeStep(executionId, reason),
-      failExecutionFromRuntimeStep: (input: {
+  private getUpdateStatusCallback() {
+    return (id: string, newStatus: ExecutionStatus) => this.updateStatus(id, newStatus);
+  }
+
+  private getStartExecutionCallback() {
+    return (executionId: string) =>
+      this.executionStartService.startExecution(executionId, this.getStartHooks());
+  }
+
+  private getAdvanceExecutionFlowCallback() {
+    return (executionId: string, runtimeSessionId: string) =>
+      this.advanceExecutionFlow(executionId, runtimeSessionId);
+  }
+
+  private getFailExecutionFromRuntimeStepCallback() {
+    return (
+      input: {
         executionId: string;
         stepId: string;
         failureReason: string;
         failureCode: string;
         runtimeSessionId?: string;
-      }) => this.failExecutionFromRuntimeStep(input),
-      syncPhaseAfterStepResult: (
-        executionId: string,
-        runtimeSessionId: string,
-        result: RuntimeStepInvokeResult,
-        phaseMetadata?: ExecutionStepPhaseMetadata,
-        step?: Record<string, unknown> | null
-      ) =>
-        this.syncPhaseAfterStepResult(executionId, runtimeSessionId, result, phaseMetadata, step),
-      takeover: (executionId: string, reason: string) =>
-        this.takeover(
-          executionId,
-          'system',
-          { reason },
-          {
-            id: 'system',
-            role: 'admin',
-          }
-        ).then(() => undefined),
-      failureHooks: this.getFailureHooks(),
-    };
+      },
+      failureHooks: Parameters<
+        ExecutionRuntimeControlService['failExecutionFromRuntimeStep']
+      >[1]
+    ) => this.executionRuntimeControlService.failExecutionFromRuntimeStep(input, failureHooks);
+  }
+
+  private getRequestSystemTakeoverCallback() {
+    return (
+      executionId: string,
+      reason: string,
+      humanControlHooks: Parameters<
+        ExecutionRuntimeControlService['requestSystemTakeover']
+      >[2]
+    ) => this.executionRuntimeControlService.requestSystemTakeover(executionId, reason, humanControlHooks);
+  }
+
+  private getEnterRuntimeWaitingInputCallback() {
+    return (
+      executionId: string,
+      runtimeSessionId: string,
+      stepId: string,
+      requiredInputs: unknown[],
+      reason: string | undefined,
+      failureHooks: Parameters<
+        ExecutionRuntimeControlService['enterRuntimeWaitingInput']
+      >[5]
+    ) =>
+      this.executionRuntimeControlService.enterRuntimeWaitingInput(
+        executionId,
+        runtimeSessionId,
+        stepId,
+        requiredInputs,
+        reason,
+        failureHooks
+      );
+  }
+
+  private getEnterPendingApprovalFromRuntimeStepCallback() {
+    return (
+      executionId: string,
+      reason: string,
+      failureHooks: Parameters<
+        ExecutionRuntimeControlService['enterPendingApprovalFromRuntimeStep']
+      >[2]
+    ) =>
+      this.executionRuntimeControlService.enterPendingApprovalFromRuntimeStep(
+        executionId,
+        reason,
+        failureHooks
+      );
+  }
+
+  private getHandleBrowserStepResultCallback() {
+    return (
+      executionId: string,
+      runtimeSessionId: string,
+      stepId: string,
+      result: RuntimeStepInvokeResult,
+      browserOrchestrationHooks: ReturnType<typeof this.getBrowserOrchestrationHooks>,
+      phaseMetadata?: ExecutionStepPhaseMetadata,
+      step?: Record<string, unknown> | null
+    ) =>
+      this.executionBrowserOrchestrationService.handleBrowserStepResult(
+        executionId,
+        runtimeSessionId,
+        stepId,
+        result,
+        browserOrchestrationHooks,
+        phaseMetadata,
+        step
+      );
+  }
+
+  private getHandleBrowserPhaseStepResultCallback() {
+    return (
+      executionId: string,
+      runtimeSessionId: string,
+      stepId: string,
+      result: RuntimePhaseInvokeResult,
+      browserOrchestrationHooks: ReturnType<typeof this.getBrowserOrchestrationHooks>
+    ) =>
+      this.executionBrowserOrchestrationService.handleBrowserPhaseStepResult(
+        executionId,
+        runtimeSessionId,
+        stepId,
+        result,
+        browserOrchestrationHooks
+      );
+  }
+
+  private getHandleSystemSkillStepResultCallback() {
+    return (
+      executionId: string,
+      runtimeSessionId: string,
+      stepId: string,
+      result: RuntimeStepInvokeResult,
+      capabilityId: string,
+      phaseMetadata?: ExecutionStepPhaseMetadata,
+      step?: Record<string, unknown> | null
+    ) =>
+      this.handleSystemSkillStepResult(
+        executionId,
+        runtimeSessionId,
+        stepId,
+        result,
+        capabilityId,
+        phaseMetadata,
+        step
+      );
+  }
+
+  private getEnterWaitingInputCallback() {
+    return (
+      execution: Record<string, unknown>,
+      stepId: string,
+      failureHooks: Parameters<ExecutionFailureService['enterWaitingInput']>[2]
+    ) => this.executionFailureService.enterWaitingInput(execution, stepId, failureHooks);
+  }
+
+  private getLifecycleHooks() {
+    return this.executionServiceHooksFacade.getLifecycleHooks();
+  }
+
+  private getCreateHooks() {
+    return this.executionServiceHooksFacade.getCreateHooks();
+  }
+
+  private getSubmitInputHooks() {
+    return this.executionServiceHooksFacade.getSubmitInputHooks();
+  }
+
+  private getStartHooks() {
+    return this.executionServiceHooksFacade.getStartHooks();
+  }
+
+  private getHumanControlHooks() {
+    return this.executionServiceHooksFacade.getHumanControlHooks();
+  }
+
+  private getApprovalHooks() {
+    return this.executionServiceHooksFacade.getApprovalHooks();
+  }
+
+  private getFailureHooks() {
+    return this.executionServiceHooksFacade.getFailureHooks();
+  }
+
+  private getBrowserOrchestrationHooks() {
+    return this.executionServiceHooksFacade.getBrowserOrchestrationHooks();
   }
 
   private getStepExecutorHooks() {
-    return {
-      extractStepPhaseMetadata: (step?: Record<string, unknown> | null) =>
-        this.executionBrowserOrchestrationService.extractStepPhaseMetadata(step),
-      markPhaseRunningForStep: (
-        executionId: string,
-        runtimeSessionId: string,
-        phaseMetadata?: ExecutionStepPhaseMetadata,
-        step?: Record<string, unknown> | null
-      ) =>
-        this.executionPhaseSyncService.markPhaseRunningForStep(
-          executionId,
-          runtimeSessionId,
-          phaseMetadata,
-          step
-        ),
-      emitEvent: (
-        executionId: string,
-        eventType: (typeof EXECUTION_EVENT_TYPE)[keyof typeof EXECUTION_EVENT_TYPE],
-        payload: unknown,
-        options: CreateExecutionEventOptions = {}
-      ) => this.createEvent(executionId, eventType, payload, options),
-      handleBrowserStepResult: (
-        executionId: string,
-        runtimeSessionId: string,
-        stepId: string,
-        result: RuntimeStepInvokeResult,
-        phaseMetadata?: ExecutionStepPhaseMetadata,
-        step?: Record<string, unknown> | null
-      ) =>
-        this.handleBrowserStepResult(
-          executionId,
-          runtimeSessionId,
-          stepId,
-          result,
-          phaseMetadata,
-          step
-        ),
-      extractStepBrowserPhaseConfig: (step?: Record<string, unknown> | null) =>
-        this.executionBrowserOrchestrationService.extractStepBrowserPhaseConfig(step),
-      skipSingleStep: (stepId: string, executionId: string, reason: string) =>
-        this.executionFailureService.skipSingleStep(
-          stepId,
-          executionId,
-          reason,
-          this.getFailureHooks()
-        ),
-      advanceExecutionFlow: (executionId: string, runtimeSessionId: string) =>
-        this.advanceExecutionFlow(executionId, runtimeSessionId),
-      buildBrowserPhasePolicyContext: (execution: Record<string, unknown>) =>
-        this.executionBrowserOrchestrationService.buildBrowserPhasePolicyContext(execution),
-      buildBrowserPhaseTraceContext: (execution: Record<string, unknown>) =>
-        this.executionBrowserOrchestrationService.buildBrowserPhaseTraceContext(execution),
-      extractBrowserPhaseInput: (step?: Record<string, unknown> | null) =>
-        this.executionBrowserOrchestrationService.extractBrowserPhaseInput(step),
-      handleBrowserPhaseStepResult: (
-        executionId: string,
-        runtimeSessionId: string,
-        stepId: string,
-        result: RuntimePhaseInvokeResult
-      ) => this.handleBrowserPhaseStepResult(executionId, runtimeSessionId, stepId, result),
-      initializeWorkflowActivityPhasesForSkillExecution: (
-        executionId: string,
-        runtimeSessionId: string,
-        capabilityId: string,
-        phaseMetadata?: ExecutionStepPhaseMetadata,
-        step?: Record<string, unknown> | null
-      ) =>
-        this.executionPhaseSyncService.initializeWorkflowActivityPhasesForSkillExecution(
-          executionId,
-          runtimeSessionId,
-          capabilityId,
-          phaseMetadata,
-          step
-        ),
-      handleSystemSkillStepResult: (
-        executionId: string,
-        runtimeSessionId: string,
-        stepId: string,
-        result: RuntimeStepInvokeResult,
-        capabilityId: string,
-        phaseMetadata?: ExecutionStepPhaseMetadata,
-        step?: Record<string, unknown> | null
-      ) =>
-        this.handleSystemSkillStepResult(
-          executionId,
-          runtimeSessionId,
-          stepId,
-          result,
-          capabilityId,
-          phaseMetadata,
-          step
-        ),
-    };
-  }
-
-  private async closeRuntimeSessionQuietly(
-    runtimeSessionId: string,
-    executionId: string,
-    reason: string
-  ): Promise<void> {
-    await this.executionRuntimeSessionService.closeQuietly(runtimeSessionId, executionId, reason);
-  }
-
-  private async freezeRuntimeSessionQuietly(
-    runtimeSessionId: string | null | undefined,
-    executionId: string,
-    reason: string
-  ): Promise<void> {
-    await this.executionRuntimeSessionService.freezeQuietly(runtimeSessionId, executionId, reason);
-  }
-
-  private async resumeRuntimeSessionQuietly(
-    runtimeSessionId: string | null | undefined,
-    executionId: string,
-    stepId?: string
-  ): Promise<void> {
-    await this.executionRuntimeSessionService.resumeQuietly(runtimeSessionId, executionId, stepId);
-  }
-
-  private async bootstrapBrowserExecution(
-    execution: Record<string, unknown>,
-    runtimeSessionId: string
-  ): Promise<void> {
-    await this.executionBrowserOrchestrationService.bootstrapBrowserExecution(
-      execution,
-      runtimeSessionId,
-      this.getBrowserOrchestrationHooks()
-    );
-  }
-
-  private async handleBrowserStepResult(
-    executionId: string,
-    runtimeSessionId: string,
-    stepId: string,
-    result: RuntimeStepInvokeResult,
-    phaseMetadata?: ExecutionStepPhaseMetadata,
-    step?: Record<string, unknown> | null
-  ): Promise<void> {
-    await this.executionBrowserOrchestrationService.handleBrowserStepResult(
-      executionId,
-      runtimeSessionId,
-      stepId,
-      result,
-      this.getBrowserOrchestrationHooks(),
-      phaseMetadata,
-      step
-    );
-  }
-
-  private toDto(execution: any): ExecutionDto {
-    return mapExecutionToDto(execution);
-  }
-
-  private toStepDto(step: Record<string, unknown>): ExecutionStepDto {
-    return mapExecutionStepToDto(step);
+    return this.executionServiceHooksFacade.getStepExecutorHooks();
   }
 
   private asJsonValue(value: unknown): Prisma.JsonValue {
     return value as Prisma.JsonValue;
   }
 
-  private async assertSkillAccessibleByUser(
-    skillId: string,
-    authToken?: string,
-    requester?: RequestUserContext
-  ): Promise<void> {
-    await this.executionPlanningService.assertSkillAccessibleByUser(skillId, authToken, requester);
-  }
-
-  private async fetchSkillDefaultResolution(
-    skillId: string,
-    authToken?: string,
-    requester?: RequestUserContext
-  ): Promise<RuntimeDefaultResolution> {
-    return this.executionPlanningService.fetchSkillDefaultResolution(
-      skillId,
-      authToken,
-      requester
-    ) as Promise<RuntimeDefaultResolution>;
-  }
-
-  private ensureExecutionPermission(
-    executionOwnerId: string,
-    requester?: RequestUserContext
-  ): void {
-    if (!requester?.id) {
-      return;
-    }
-    if (requester.role === 'admin') {
-      return;
-    }
-    if (requester.id !== executionOwnerId) {
-      throw new NotFoundException('Execution not found');
-    }
-  }
-
-  private async generatePlanDraft(
-    userId: string,
-    dto: CreateExecutionDto,
-    authToken?: string
-  ): Promise<PlannerPlanDraft | undefined> {
-    return this.executionPlanningService.generatePlanDraft(userId, dto, authToken) as Promise<
-      PlannerPlanDraft | undefined
-    >;
-  }
-
-  private async rewriteBrowserRecordingPlanDraftWithActivities(
-    planDraft: PlannerPlanDraft | undefined,
-    fallbackCapabilityId?: string,
-    input?: Record<string, unknown>,
-    runtimeDefaultInput?: Record<string, unknown>
-  ): Promise<PlannerPlanDraft | undefined> {
-    return this.executionPlanningService.rewriteBrowserRecordingPlanDraftWithActivities(
-      planDraft,
-      fallbackCapabilityId,
-      input,
-      runtimeDefaultInput
-    ) as Promise<PlannerPlanDraft | undefined>;
-  }
-
   private async advanceExecutionFlow(executionId: string, runtimeSessionId: string): Promise<void> {
-    await this.executionFlowRunnerService.advanceExecutionFlow(executionId, runtimeSessionId, {
-      completeActivePhasesOnExecutionSuccess: (targetExecutionId, targetRuntimeSessionId) =>
-        this.completeActivePhasesOnExecutionSuccess(targetExecutionId, targetRuntimeSessionId),
-      updateStatus: (targetExecutionId, newStatus) =>
-        this.updateStatus(targetExecutionId, newStatus),
-      closeRuntimeSessionQuietly: (targetRuntimeSessionId, targetExecutionId, reason) =>
-        this.closeRuntimeSessionQuietly(targetRuntimeSessionId, targetExecutionId, reason),
-      extractStepUrl: (step, execution) => this.extractStepUrl(step, execution),
-      skipSingleStep: (stepId, targetExecutionId, reason) =>
-        this.executionFailureService.skipSingleStep(
-          stepId,
-          targetExecutionId,
-          reason,
-          this.getFailureHooks()
-        ),
-      executeBrowserGotoStep: (execution, targetRuntimeSessionId, stepId, url) =>
-        this.executeBrowserGotoStep(execution, targetRuntimeSessionId, stepId, url),
-      enterWaitingInput: (execution, stepId) => this.enterWaitingInput(execution, stepId),
-      executeBrowserPhaseStep: (execution, targetRuntimeSessionId, stepId) =>
-        this.executeBrowserPhaseStep(execution, targetRuntimeSessionId, stepId),
-      executeSystemSkillStep: (execution, targetRuntimeSessionId, stepId) =>
-        this.executeSystemSkillStep(execution, targetRuntimeSessionId, stepId),
-      readBrowserTextBySelector: (targetRuntimeSessionId, selector) =>
-        this.readBrowserTextBySelector(targetRuntimeSessionId, selector),
-    });
-  }
-
-  private async readBrowserTextBySelector(
-    runtimeSessionId: string,
-    selector: string
-  ): Promise<string | undefined> {
-    const result = await this.browserRuntimeAdapter.invokeStep({
-      requestId: `loop-stop:${runtimeSessionId}:${Date.now()}`,
-      executionId: runtimeSessionId,
-      stepId: `loop-stop:${runtimeSessionId}`,
-      runtimeType: BROWSER_RUNTIME.TYPE,
-      runtimeSessionId,
-      capabilityType: BROWSER_RUNTIME.CAPABILITY_TYPE,
-      action: BROWSER_ACTIONS.GET_TEXT,
-      input: {
-        target: selector,
-        args: {
-          selector,
-          method: 'textContent',
-        },
-      },
-    });
-    const output = result.output || {};
-    const data = output.data && typeof output.data === 'object' ? output.data : undefined;
-    const parsedValue = this.extractBrowserTextResult([
-      data && (data as Record<string, unknown>).text,
-      output.text,
-      output.stdout,
-      output.value,
-    ]);
-    return parsedValue ?? '';
-  }
-
-  private extractBrowserTextResult(candidates: unknown[]): string | undefined {
-    const rawValue = this.readNonEmptyString(...candidates);
-    if (!rawValue) {
-      return undefined;
-    }
-
-    const resultBlockMatch = rawValue.match(/### Result\s*\n([\s\S]*?)\n### Ran Playwright code/);
-    const candidate = resultBlockMatch?.[1]?.trim() || rawValue.trim();
-    if (!candidate) {
-      return undefined;
-    }
-    if (candidate.startsWith('"') && candidate.endsWith('"')) {
-      try {
-        const parsed = JSON.parse(candidate);
-        if (typeof parsed === 'string') {
-          return parsed.trim();
-        }
-      } catch {
-        return candidate.slice(1, -1).trim();
-      }
-    }
-    return candidate;
-  }
-
-  private async createPlannedSteps(
-    executionId: string,
-    normalizedInput: Record<string, unknown>,
-    planDraft?: PlannerPlanDraft
-  ): Promise<void> {
-    const { steps, bootstrapUrl } = buildPlannedExecutionSteps(
-      executionId,
-      normalizedInput,
-      planDraft
-    );
-
-    if (steps.length === 0) {
-      return;
-    }
-
-    await this.executionStepService.createManyPlannedSteps(steps);
-
-    await this.createEvent(executionId, EXECUTION_EVENT_TYPE.EXECUTION_STEPS_PLANNED, {
-      stepCount: steps.length,
-      bootstrapUrl,
-      plannerStepCount: planDraft?.steps.length || 0,
-    });
-  }
-
-  private async executeBrowserGotoStep(
-    execution: Record<string, unknown>,
-    runtimeSessionId: string,
-    stepId: string,
-    url: string
-  ): Promise<void> {
-    await this.executionStepExecutorService.executeBrowserGotoStep(
-      execution,
-      runtimeSessionId,
-      stepId,
-      url,
-      this.getStepExecutorHooks()
-    );
-  }
-
-  private async executeBrowserPhaseStep(
-    execution: Record<string, unknown>,
-    runtimeSessionId: string,
-    stepId: string
-  ): Promise<void> {
-    await this.executionStepExecutorService.executeBrowserPhaseStep(
-      execution,
-      runtimeSessionId,
-      stepId,
-      this.getStepExecutorHooks()
-    );
-  }
-
-  private async executeSystemSkillStep(
-    execution: Record<string, unknown>,
-    runtimeSessionId: string,
-    stepId: string
-  ): Promise<void> {
-    await this.executionStepExecutorService.executeSystemSkillStep(
-      execution,
-      runtimeSessionId,
-      stepId,
-      this.getStepExecutorHooks()
-    );
-  }
-
-  private async handleBrowserPhaseStepResult(
-    executionId: string,
-    runtimeSessionId: string,
-    stepId: string,
-    result: RuntimePhaseInvokeResult
-  ): Promise<void> {
-    await this.executionBrowserOrchestrationService.handleBrowserPhaseStepResult(
-      executionId,
-      runtimeSessionId,
-      stepId,
-      result,
-      this.getBrowserOrchestrationHooks()
-    );
+    await this.executionServiceHooksFacade.advanceExecutionFlow(executionId, runtimeSessionId);
   }
 
   private async handleSystemSkillStepResult(
@@ -1738,231 +644,32 @@ export class ExecutionService {
     phaseMetadata?: ExecutionStepPhaseMetadata,
     step?: Record<string, unknown> | null
   ): Promise<void> {
-    await this.runtimeResultInterpreter.handleSkillRuntimeResult(
-      {
-        executionId,
-        runtimeSessionId,
-        stepId,
-        emitEvent: (eventType, payload) =>
-          this.createEvent(executionId, eventType, payload, {
-            runtimeSessionId,
-            stepId,
-          }),
-        advanceExecutionFlow: () => this.advanceExecutionFlow(executionId, runtimeSessionId),
-        failExecution: (failureReason, failureCode) =>
-          this.failExecutionFromRuntimeStep({
-            executionId,
-            stepId,
-            failureReason,
-            failureCode,
-            runtimeSessionId,
-          }),
-        takeover: async (reason) => {
-          await this.takeover(
-            executionId,
-            'system',
-            {
-              reason,
-            },
-            {
-              id: 'system',
-              role: 'admin',
-            }
-          );
-        },
-        enterWaitingInput: (requiredInputs, reason) =>
-          this.enterRuntimeWaitingInput(
-            executionId,
-            runtimeSessionId,
-            stepId,
-            requiredInputs,
-            reason
-          ),
-        enterPendingApproval: (reason) =>
-          this.enterPendingApprovalFromRuntimeStep(executionId, reason),
-      },
-      result
-    );
-    await this.syncPhaseAfterStepResult(executionId, runtimeSessionId, result, phaseMetadata, step);
-    await this.syncWorkflowActivityPhasesAfterSkillResult(
-      executionId,
-      runtimeSessionId,
-      capabilityId,
-      result,
-      phaseMetadata
-    );
-  }
-
-  private readNonEmptyString(...values: unknown[]): string | undefined {
-    for (const value of values) {
-      if (typeof value === 'string' && value.trim()) {
-        return value.trim();
-      }
-    }
-    return undefined;
-  }
-
-  private extractStepUrl(
-    step: Record<string, unknown>,
-    execution: Record<string, unknown>
-  ): string | undefined {
-    return this.executionBrowserOrchestrationService.extractStepUrl(step, execution);
-  }
-
-  private async enterRuntimeWaitingInput(
-    executionId: string,
-    runtimeSessionId: string,
-    stepId: string,
-    requiredInputs: unknown[],
-    reason?: string
-  ): Promise<void> {
-    await this.executionFailureService.enterRuntimeWaitingInput(
+    await this.executionServiceHooksFacade.handleSystemSkillStepResult(
       executionId,
       runtimeSessionId,
       stepId,
-      requiredInputs,
-      reason,
-      this.getFailureHooks()
-    );
-  }
-
-  private async enterPendingApprovalFromRuntimeStep(
-    executionId: string,
-    reason: string
-  ): Promise<void> {
-    await this.executionFailureService.enterPendingApprovalFromRuntimeStep(
-      executionId,
-      reason,
-      this.getFailureHooks()
-    );
-  }
-
-  private async failExecutionFromRuntimeStep(input: {
-    executionId: string;
-    stepId: string;
-    failureReason: string;
-    failureCode: string;
-    runtimeSessionId?: string;
-  }): Promise<void> {
-    await this.prisma.execution.update({
-      where: { id: input.executionId },
-      data: {
-        failureReason: input.failureReason,
-        failureCode: input.failureCode,
-      },
-    });
-    await this.skipPendingSteps(
-      input.executionId,
-      input.stepId,
-      'Execution failed before remaining planned steps were executed'
-    );
-    await this.updateStatus(input.executionId, EXECUTION_STATUS.FAILED);
-    if (input.runtimeSessionId) {
-      await this.closeRuntimeSessionQuietly(
-        input.runtimeSessionId,
-        input.executionId,
-        'runtime_step_failed'
-      );
-    }
-  }
-
-  private async enterWaitingInput(
-    execution: Record<string, unknown>,
-    stepId: string
-  ): Promise<void> {
-    await this.executionFailureService.enterWaitingInput(execution, stepId, this.getFailureHooks());
-  }
-
-  private async skipPendingSteps(
-    executionId: string,
-    currentStepId: string,
-    reason: string
-  ): Promise<void> {
-    await this.executionFailureService.skipPendingSteps(
-      executionId,
-      currentStepId,
-      reason,
-      this.getFailureHooks()
-    );
-  }
-
-  private async syncPhaseAfterStepResult(
-    executionId: string,
-    runtimeSessionId: string,
-    result: RuntimeStepInvokeResult,
-    phaseMetadata?: ExecutionStepPhaseMetadata,
-    step?: Record<string, unknown> | null
-  ): Promise<void> {
-    await this.executionPhaseSyncService.syncPhaseAfterStepResult(
-      executionId,
-      runtimeSessionId,
       result,
+      capabilityId,
       phaseMetadata,
       step
     );
   }
 
-  private async completeActivePhasesOnExecutionSuccess(
-    executionId: string,
-    runtimeSessionId: string
-  ): Promise<void> {
-    await this.executionPhaseSyncService.completeActivePhasesOnExecutionSuccess(
-      executionId,
-      runtimeSessionId
-    );
-  }
-
-  private async syncWorkflowActivityPhasesAfterSkillResult(
-    executionId: string,
-    runtimeSessionId: string,
-    capabilityId: string,
-    result: RuntimeStepInvokeResult,
-    phaseMetadata?: ExecutionStepPhaseMetadata
-  ): Promise<void> {
-    const phaseSyncService = this.executionPhaseSyncService as unknown as {
-      syncWorkflowActivityPhasesAfterSkillResult: (
-        executionId: string,
-        runtimeSessionId: string,
-        capabilityId: string,
-        result: RuntimeStepInvokeResult,
-        phaseMetadata?: ExecutionStepPhaseMetadata
-      ) => Promise<void>;
-      loadWorkflowActivityPhaseDefinitions?: (
-        capabilityId: string,
-        parentPhaseKey: string
-      ) => Promise<unknown>;
-    };
-    const currentLoader = this.loadWorkflowActivityPhaseDefinitions;
-    const prototypeLoader = ExecutionService.prototype.loadWorkflowActivityPhaseDefinitions;
-    const shouldBridgeLoader = currentLoader !== prototypeLoader;
-    const originalLoader = phaseSyncService.loadWorkflowActivityPhaseDefinitions;
-    if (shouldBridgeLoader) {
-      phaseSyncService.loadWorkflowActivityPhaseDefinitions = (
-        targetCapabilityId: string,
-        parentPhaseKey: string
-      ) => currentLoader.call(this, targetCapabilityId, parentPhaseKey);
-    }
-
-    try {
-      await phaseSyncService.syncWorkflowActivityPhasesAfterSkillResult(
-        executionId,
-        runtimeSessionId,
-        capabilityId,
-        result,
-        phaseMetadata
-      );
-    } finally {
-      if (shouldBridgeLoader) {
-        phaseSyncService.loadWorkflowActivityPhaseDefinitions = originalLoader;
+  private getWorkflowActivityPhaseDefinitionsLoader():
+    | WorkflowActivityPhaseDefinitionsLoader
+    | undefined {
+    const currentLoader = (
+      this as {
+        loadWorkflowActivityPhaseDefinitions?: WorkflowActivityPhaseDefinitionsLoader;
       }
-    }
-  }
+    ).loadWorkflowActivityPhaseDefinitions;
 
-  private async loadWorkflowActivityPhaseDefinitions(capabilityId: string, parentPhaseKey: string) {
-    return (this.executionPhaseSyncService as any).loadWorkflowActivityPhaseDefinitions(
-      capabilityId,
-      parentPhaseKey
-    );
+    if (typeof currentLoader !== 'function') {
+      return undefined;
+    }
+
+    return (capabilityId: string, parentPhaseKey: string) =>
+      currentLoader.call(this, capabilityId, parentPhaseKey);
   }
 
   async delete(
@@ -1970,28 +677,7 @@ export class ExecutionService {
     userId: string,
     requester?: RequestUserContext
   ): Promise<{ success: boolean }> {
-    const execution = await this.prisma.execution.findUnique({
-      where: { id },
-    });
-
-    if (!execution) {
-      throw new NotFoundException(`Execution with ID "${id}" not found`);
-    }
-
-    this.ensureExecutionPermission(execution.createdBy, requester || { id: userId });
-
-    await this.executionStepService.deleteByExecutionId(id);
-
-    await this.prisma.executionEvent.deleteMany({
-      where: { executionId: id },
-    });
-
-    await this.prisma.execution.delete({
-      where: { id },
-    });
-
-    this.logger.log(`Execution ${id} deleted by user ${userId}`);
-    return { success: true };
+    return this.executionLifecycleService.delete(id, userId, requester);
   }
 
   async cleanupBeforeDate(
@@ -1999,71 +685,6 @@ export class ExecutionService {
     userId: string,
     requester?: RequestUserContext
   ): Promise<{ success: boolean; deletedCount: number; beforeDate: string }> {
-    const cutoff = this.parseCleanupCutoff(beforeDate);
-    const effectiveRequester = requester || { id: userId };
-    const where: Prisma.ExecutionWhereInput = {
-      createdAt: { lt: cutoff },
-    };
-
-    if (effectiveRequester.role !== 'admin') {
-      where.createdBy = effectiveRequester.id;
-    }
-
-    const executions = await this.prisma.execution.findMany({
-      where,
-      select: { id: true },
-    });
-
-    const MAX_CLEANUP_LIMIT = Number(process.env.MAX_CLEANUP_LIMIT || 1000);
-    if (executions.length > MAX_CLEANUP_LIMIT) {
-      throw new BadRequestException(
-        `Cannot cleanup more than ${MAX_CLEANUP_LIMIT} executions in a single operation. ` +
-          `Found ${executions.length} matching records. Please refine the date cutoff.`
-      );
-    }
-
-    if (executions.length === 0) {
-      return {
-        success: true,
-        deletedCount: 0,
-        beforeDate,
-      };
-    }
-
-    const executionIds = executions.map((execution) => execution.id);
-
-    await this.prisma.$transaction([
-      this.prisma.executionStep.deleteMany({
-        where: { executionId: { in: executionIds } },
-      }),
-      this.prisma.executionEvent.deleteMany({
-        where: { executionId: { in: executionIds } },
-      }),
-      this.prisma.execution.deleteMany({
-        where: { id: { in: executionIds } },
-      }),
-    ]);
-
-    this.logger.log(
-      `Deleted ${executionIds.length} executions before ${beforeDate} by user ${userId}`
-    );
-    return {
-      success: true,
-      deletedCount: executionIds.length,
-      beforeDate,
-    };
-  }
-
-  private parseCleanupCutoff(beforeDate: string): Date {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(beforeDate)) {
-      throw new BadRequestException('beforeDate must use YYYY-MM-DD format');
-    }
-
-    const cutoff = new Date(`${beforeDate}T00:00:00`);
-    if (Number.isNaN(cutoff.getTime())) {
-      throw new BadRequestException('beforeDate is invalid');
-    }
-
-    return cutoff;
+    return this.executionLifecycleService.cleanupBeforeDate(beforeDate, userId, requester);
   }
 }

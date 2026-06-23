@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { BrowserSemanticsClient } from '../../../client/browser-semantics.client';
 import { RecorderDebugChatSupportService } from './recorder-debug-chat-support.service';
 import type { BrowserExecuteResponse, RecorderDebugObservation } from './recorder-debug.types';
-import type { RecorderManualInterventionToken } from '../loop/recorder-loop.types';
+import type { RecorderManualInterventionToken } from '../loop';
 import type {
   BrowserCommand,
   BrowserCommandFailureContext,

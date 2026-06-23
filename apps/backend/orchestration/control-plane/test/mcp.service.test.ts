@@ -7,10 +7,6 @@ const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 describe('McpService', () => {
   const prisma = {
-    user: {
-      findUnique: jest.fn(),
-      findFirst: jest.fn(),
-    },
     execution: {
       findMany: jest.fn(),
     },
@@ -19,62 +15,71 @@ describe('McpService', () => {
   const executionService = {
     create: jest.fn(),
   } as any;
+  const jwtService = {
+    verifyAsync: jest.fn(),
+  } as any;
 
   let service: McpService;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new McpService(prisma, executionService);
+    jwtService.verifyAsync.mockResolvedValue({
+      sub: 'user-1',
+      role: 'employee',
+      username: 'alice',
+    });
+    service = new McpService(prisma, executionService, jwtService);
   });
 
   it('lists MCP tools from published skills', async () => {
     mockedAxios.get.mockResolvedValueOnce({
-      data: [
-        {
-          id: 'skill-123',
-          name: 'Demo Skill',
-          description: 'Demo description',
-          config: {
-            paramsSchema: {
-              properties: {
-                url: {
-                  type: 'string',
-                  description: 'Target URL',
+      data: {
+        skills: [
+          {
+            id: 'skill-123',
+            name: 'Demo Skill',
+            description: 'Demo description',
+            config: {
+              paramsSchema: {
+                properties: {
+                  url: {
+                    type: 'string',
+                    description: 'Target URL',
+                  },
                 },
+                required: ['url'],
               },
-              required: ['url'],
             },
           },
-        },
-      ],
+        ],
+      },
     } as any);
 
-    const result = await service.listTools();
+    const result = await service.listTools({
+      authorization: 'Bearer token-1',
+    });
 
-    expect(result).toEqual([
-      {
-        name: 'skill_skill_123',
-        description: 'Demo description',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            url: {
-              type: 'string',
-              description: 'Target URL',
+    expect(result).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: 'skill_skill_123',
+          description: 'Demo description',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              url: {
+                type: 'string',
+                description: 'Target URL',
+              },
             },
+            required: ['url'],
           },
-          required: ['url'],
-        },
-      },
-    ]);
+        }),
+      ])
+    );
   });
 
   it('creates a real execution when MCP tool is called', async () => {
-    prisma.user.findUnique.mockResolvedValueOnce({
-      id: 'user-1',
-      role: 'employee',
-      username: 'alice',
-    });
     executionService.create.mockResolvedValueOnce({
       id: 'exec-1',
       status: 'queued',
@@ -84,12 +89,12 @@ describe('McpService', () => {
 
     const result = await service.callTool('skill_skill_123', {
       url: 'https://example.com',
-      _meta: {
-        userId: 'user-1',
-        runtimeType: 'browser',
-      },
+      _meta: {},
+    }, {
+      authorization: 'Bearer token-1',
     });
 
+    expect(jwtService.verifyAsync).toHaveBeenCalledWith('token-1', expect.any(Object));
     expect(executionService.create).toHaveBeenCalledWith(
       'user-1',
       {
@@ -101,7 +106,7 @@ describe('McpService', () => {
         },
       },
       {
-        authToken: undefined,
+        authToken: 'Bearer token-1',
       }
     );
     expect(result).toMatchObject({

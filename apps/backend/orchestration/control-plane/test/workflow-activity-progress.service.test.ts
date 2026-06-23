@@ -1,7 +1,47 @@
 import { WorkflowActivityProgressService } from '../src/modules/execution';
 
 describe('WorkflowActivityProgressService', () => {
+  it('loads execution, checks permission, and delegates progress sync', async () => {
+    const prisma = {
+      execution: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'execution-1',
+          createdBy: 'user-1',
+        }),
+      },
+    };
+    const executionPhaseService = {
+      listByExecutionId: jest.fn().mockResolvedValue([]),
+      createOrUpdatePhase: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const service = new WorkflowActivityProgressService(prisma as never, executionPhaseService as never);
+    const syncSpy = jest.spyOn(service, 'sync').mockResolvedValue(undefined);
+
+    await service.updateWorkflowActivityProgress(
+      'execution-1',
+      {
+        parentPhaseKey: 'phase_parent',
+        activityOrder: 2,
+      },
+      { id: 'user-1' }
+    );
+
+    expect(prisma.execution.findUnique).toHaveBeenCalledWith({
+      where: { id: 'execution-1' },
+    });
+    expect(syncSpy).toHaveBeenCalledWith('execution-1', {
+      parentPhaseKey: 'phase_parent',
+      activityOrder: 2,
+    });
+  });
+
   it('completes previous running workflow activity phases and marks current phase running', async () => {
+    const prisma = {
+      execution: {
+        findUnique: jest.fn(),
+      },
+    };
     const executionPhaseService = {
       listByExecutionId: jest.fn().mockResolvedValue([
         {
@@ -38,7 +78,7 @@ describe('WorkflowActivityProgressService', () => {
       createOrUpdatePhase: jest.fn().mockResolvedValue(undefined),
     };
 
-    const service = new WorkflowActivityProgressService(executionPhaseService as never);
+    const service = new WorkflowActivityProgressService(prisma as never, executionPhaseService as never);
     await service.sync('execution-1', {
       parentPhaseKey: 'phase_parent',
       activityOrder: 2,

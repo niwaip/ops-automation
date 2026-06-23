@@ -1,4 +1,4 @@
-import type { RecorderManualInterventionSignal } from '../loop/recorder-loop.types';
+import type { RecorderManualInterventionSignal } from '../loop';
 
 export const BROWSER_RECORDING_EXECUTION_PLAN_VERSION = 'browser-recording-ir/v1';
 

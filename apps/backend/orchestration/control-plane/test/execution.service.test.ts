@@ -17,156 +17,6 @@ jest.mock('axios');
 
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 
-describe('ExecutionService.fetchSkillDefaultResolution', () => {
-  beforeEach(() => {
-    mockedAxios.get.mockReset();
-  });
-
-  it('merges defaults from skill schema and linked flow template schemas', async () => {
-    mockedAxios.get
-      .mockResolvedValueOnce({
-        data: {
-          paramsSchema: {
-            properties: {
-              prompt: { type: 'string' },
-              username: { type: 'string', default: 'skill-user' },
-            },
-          },
-          executionFlowTemplateIds: ['flow-1'],
-        },
-      } as never)
-      .mockResolvedValueOnce({
-        data: {
-          paramsSchema: {
-            properties: {
-              username: { type: 'string', default: 'flow-user' },
-              loginCredential: { type: 'string', default: 'secret' },
-              retryCount: { type: 'number', default: 3 },
-            },
-          },
-        },
-      } as never);
-
-    const service = new ExecutionService({} as never, {} as never, {} as never, {} as never);
-
-    await expect(
-      (service as any).fetchSkillDefaultResolution('skill-1', 'Bearer token-1')
-    ).resolves.toEqual({
-      input: {
-        username: 'flow-user',
-        loginCredential: 'secret',
-        retryCount: 3,
-      },
-      sources: {
-        username: 'default',
-        loginCredential: 'default',
-        retryCount: 'default',
-      },
-    });
-    expect(mockedAxios.get).toHaveBeenNthCalledWith(1, expect.stringContaining('/skills/skill-1'), {
-      headers: { Authorization: 'Bearer token-1' },
-      timeout: 10000,
-    });
-    expect(mockedAxios.get).toHaveBeenNthCalledWith(2, expect.stringContaining('/flows/flow-1'), {
-      headers: { Authorization: 'Bearer token-1' },
-      timeout: 10000,
-    });
-  });
-
-  it('uses internal auth headers when no bearer token is available', async () => {
-    const originalInternalSecret = process.env.INTERNAL_API_SHARED_SECRET;
-    process.env.INTERNAL_API_SHARED_SECRET = 'internal-secret';
-    mockedAxios.get.mockResolvedValue({
-      data: {
-        paramsSchema: {
-          properties: {
-            startUrl: { type: 'string', default: 'http://example.test/login' },
-          },
-        },
-        executionFlowTemplateIds: [],
-      },
-    } as never);
-
-    try {
-      const service = new ExecutionService({} as never, {} as never, {} as never, {} as never);
-
-      await expect(
-        (service as any).fetchSkillDefaultResolution('skill-1', undefined, {
-          id: 'user-1',
-          role: 'admin',
-        })
-      ).resolves.toEqual({
-        input: {
-          startUrl: 'http://example.test/login',
-        },
-        sources: {
-          startUrl: 'default',
-        },
-      });
-      expect(mockedAxios.get).toHaveBeenCalledWith(expect.stringContaining('/skills/skill-1'), {
-        headers: {
-          'X-Internal-Auth': 'internal-secret',
-          'X-User-Id': 'user-1',
-          'X-User-Role': 'admin',
-        },
-        timeout: 10000,
-      });
-    } finally {
-      if (originalInternalSecret === undefined) {
-        delete process.env.INTERNAL_API_SHARED_SECRET;
-      } else {
-        process.env.INTERNAL_API_SHARED_SECRET = originalInternalSecret;
-      }
-    }
-  });
-
-  it('distinguishes workflow policy defaults from schema defaults', async () => {
-    mockedAxios.get
-      .mockResolvedValueOnce({
-        data: {
-          paramsSchema: {
-            properties: {
-              username: { type: 'string', default: 'skill-user' },
-            },
-          },
-          executionFlowTemplateIds: ['flow-1'],
-        },
-      } as never)
-      .mockResolvedValueOnce({
-        data: {
-          paramsSchema: {
-            properties: {
-              username: { type: 'string', default: 'flow-user' },
-              loginCredential: { type: 'string', default: 'schema-secret' },
-            },
-          },
-          inputPolicy: {
-            params: {
-              loginCredential: {
-                defaultValue: 'policy-secret',
-              },
-            },
-          },
-        },
-      } as never);
-
-    const service = new ExecutionService({} as never, {} as never, {} as never, {} as never);
-
-    await expect(
-      (service as any).fetchSkillDefaultResolution('skill-1', 'Bearer token-1')
-    ).resolves.toEqual({
-      input: {
-        username: 'flow-user',
-        loginCredential: 'policy-secret',
-      },
-      sources: {
-        username: 'default',
-        loginCredential: 'workflow_default',
-      },
-    });
-  });
-});
-
 describe('ExecutionService.submitInputAndResume', () => {
   const baseExecution = {
     id: 'execution-1',
@@ -852,12 +702,17 @@ describe('ExecutionService.submitInputAndResume', () => {
     prisma.executionEvent.create.mockResolvedValue(undefined);
     prisma.runtimeSession.findFirst.mockResolvedValue(null);
     jest.spyOn(service, 'getById').mockResolvedValue(result as never);
-    jest.spyOn(service as any, 'startExecution').mockResolvedValue(undefined);
+    jest
+      .spyOn((service as any).executionStartService, 'startExecution')
+      .mockResolvedValue(undefined);
 
     const response = await service.submitInputAndResume('execution-1', 'user-1', dto);
 
     expect((service as any).updateStatus).not.toHaveBeenCalled();
-    expect((service as any).startExecution).toHaveBeenCalledWith('execution-1');
+    expect((service as any).executionStartService.startExecution).toHaveBeenCalledWith(
+      'execution-1',
+      expect.any(Object)
+    );
     expect(response).toBe(result);
   });
 
@@ -915,13 +770,13 @@ describe('ExecutionService waiting_input semantic passthrough', () => {
     const service = new ExecutionService(prisma as never, {} as never, {} as never, {} as never);
     const serviceInternals = service as any;
     jest.spyOn(serviceInternals, 'updateStatus').mockResolvedValue(undefined);
-    jest.spyOn(serviceInternals, 'createEvent').mockResolvedValue(undefined);
+    jest.spyOn(serviceInternals.executionStreamService, 'createEvent').mockResolvedValue(undefined);
 
-    return { service, prisma };
+    return { service, prisma, serviceInternals };
   };
 
   it('includes semantic snapshot in runtime waiting_input events when available', async () => {
-    const { service, prisma } = createService();
+    const { prisma, serviceInternals } = createService();
     const semantic = {
       enabled: true,
       mode: 'complex_document',
@@ -934,15 +789,16 @@ describe('ExecutionService waiting_input semantic passthrough', () => {
       normalizedInputJson: { semantic },
     });
 
-    await (service as any).enterRuntimeWaitingInput(
+    await serviceInternals.executionRuntimeControlService.enterRuntimeWaitingInput(
       'execution-1',
       'runtime-1',
       'step-1',
       [{ name: 'url', type: 'string' }],
-      'missing fields'
+      'missing fields',
+      serviceInternals.getFailureHooks()
     );
 
-    expect((service as any).createEvent).toHaveBeenCalledWith(
+    expect(serviceInternals.executionStreamService.createEvent).toHaveBeenCalledWith(
       'execution-1',
       EXECUTION_EVENT_TYPE.STEP_WAITING_INPUT,
       expect.objectContaining({
@@ -983,7 +839,9 @@ describe('ExecutionService approval flow', () => {
     const service = new ExecutionService(prisma as never, {} as never, {} as never, {} as never);
     const serviceInternals = service as any;
     jest.spyOn(serviceInternals, 'updateStatus').mockResolvedValue(undefined);
-    jest.spyOn(serviceInternals, 'startExecution').mockResolvedValue(undefined);
+    jest
+      .spyOn(serviceInternals.executionStartService, 'startExecution')
+      .mockResolvedValue(undefined);
 
     return { service, prisma };
   };
@@ -1021,7 +879,10 @@ describe('ExecutionService approval flow', () => {
       'execution-approve',
       EXECUTION_STATUS.QUEUED
     );
-    expect((service as any).startExecution).toHaveBeenCalledWith('execution-approve');
+    expect((service as any).executionStartService.startExecution).toHaveBeenCalledWith(
+      'execution-approve',
+      expect.any(Object)
+    );
     expect(response).toBe(result);
   });
 
@@ -1216,7 +1077,7 @@ describe('ExecutionService.startExecution runtime selection', () => {
     const service = new ExecutionService(prisma as never, {} as never, {} as never, {} as never);
     const serviceInternals = service as any;
     jest.spyOn(serviceInternals, 'updateStatus').mockResolvedValue(undefined);
-    jest.spyOn(serviceInternals, 'createEvent').mockResolvedValue(undefined);
+    jest.spyOn(serviceInternals.executionStreamService, 'createEvent').mockResolvedValue(undefined);
     jest.spyOn(serviceInternals, 'advanceExecutionFlow').mockResolvedValue(undefined);
 
     return { service, prisma };
@@ -1224,26 +1085,30 @@ describe('ExecutionService.startExecution runtime selection', () => {
 
   it('skips browser runtime allocation for non-browser execution', async () => {
     const { service, prisma } = createService();
+    const serviceInternals = service as any;
 
     prisma.execution.findUnique.mockResolvedValue({
       id: 'execution-non-browser',
       runtimeType: 'sandbox',
       createdBy: 'user-1',
     });
-
-    await (service as any).startExecution('execution-non-browser');
+    await serviceInternals.executionStartService.startExecution(
+      'execution-non-browser',
+      serviceInternals.getStartHooks()
+    );
 
     expect((service as any).updateStatus).toHaveBeenCalledWith(
       'execution-non-browser',
       EXECUTION_STATUS.RUNNING
     );
-    expect((service as any).createEvent).toHaveBeenCalledWith(
+    expect((service as any).executionStreamService.createEvent).toHaveBeenCalledWith(
       'execution-non-browser',
       EXECUTION_EVENT_TYPE.RUNTIME_SKIPPED,
       {
         runtimeType: 'sandbox',
         mode: 'non_browser_runtime',
-      }
+      },
+      {}
     );
     expect((service as any).advanceExecutionFlow).toHaveBeenCalledWith(
       'execution-non-browser',
@@ -1279,13 +1144,13 @@ describe('ExecutionService.bootstrapBrowserExecution', () => {
     const serviceInternals = service as any;
     jest.spyOn(serviceInternals, 'advanceExecutionFlow').mockResolvedValue(undefined);
 
-    return { service, prisma };
+    return { service, prisma, serviceInternals };
   };
 
   it('skips runtime bootstrap goto for direct skill execution mode', async () => {
-    const { service, prisma } = createService();
+    const { prisma, serviceInternals } = createService();
 
-    await (service as any).bootstrapBrowserExecution(
+    await serviceInternals.executionBrowserOrchestrationService.bootstrapBrowserExecution(
       {
         id: 'execution-browser-skill-1',
         runtimeType: 'browser',
@@ -1302,12 +1167,13 @@ describe('ExecutionService.bootstrapBrowserExecution', () => {
           query: 'mcp',
         },
       },
-      'runtime-browser-skill-1'
+      'runtime-browser-skill-1',
+      serviceInternals.getBrowserOrchestrationHooks()
     );
 
     expect(prisma.executionStep.findFirst).not.toHaveBeenCalled();
     expect(prisma.executionStep.create).not.toHaveBeenCalled();
-    expect((service as any).advanceExecutionFlow).toHaveBeenCalledWith(
+    expect(serviceInternals.advanceExecutionFlow).toHaveBeenCalledWith(
       'execution-browser-skill-1',
       'runtime-browser-skill-1'
     );
@@ -1324,6 +1190,7 @@ describe('ExecutionService runtime session close on terminal state', () => {
       executionStep: {
         findNextPendingStep: jest.fn(),
         findFirst: jest.fn(),
+        findMany: jest.fn().mockResolvedValue([]),
       },
       executionEvent: {
         create: jest.fn(),
@@ -1338,11 +1205,14 @@ describe('ExecutionService runtime session close on terminal state', () => {
     const service = new ExecutionService(prisma as never, {} as never, {} as never, {} as never);
     const internals = service as any;
     jest.spyOn(internals, 'updateStatus').mockResolvedValue(undefined);
-    jest.spyOn(internals, 'closeRuntimeSessionQuietly').mockResolvedValue(undefined);
-    jest.spyOn(internals, 'completeActivePhasesOnExecutionSuccess').mockResolvedValue(undefined);
-    jest.spyOn(internals, 'skipPendingSteps').mockResolvedValue(undefined);
+    jest
+      .spyOn(internals.executionPhaseSyncService, 'completeActivePhasesOnExecutionSuccess')
+      .mockResolvedValue(undefined);
+    jest
+      .spyOn(internals.executionRuntimeSessionService, 'closeQuietly')
+      .mockResolvedValue(undefined);
 
-    return { service, prisma };
+    return { service, prisma, internals };
   };
 
   it('closes runtime session when execution has no pending step and is marked succeeded', async () => {
@@ -1359,11 +1229,11 @@ describe('ExecutionService runtime session close on terminal state', () => {
       'execution-terminal-1',
       EXECUTION_STATUS.SUCCEEDED
     );
-    expect((service as any).completeActivePhasesOnExecutionSuccess).toHaveBeenCalledWith(
+    expect((service as any).executionPhaseSyncService.completeActivePhasesOnExecutionSuccess).toHaveBeenCalledWith(
       'execution-terminal-1',
       'runtime-terminal-1'
     );
-    expect((service as any).closeRuntimeSessionQuietly).toHaveBeenCalledWith(
+    expect((service as any).executionRuntimeSessionService.closeQuietly).toHaveBeenCalledWith(
       'runtime-terminal-1',
       'execution-terminal-1',
       'execution_succeeded'
@@ -1371,16 +1241,19 @@ describe('ExecutionService runtime session close on terminal state', () => {
   });
 
   it('closes runtime session when runtime step failure marks execution failed', async () => {
-    const { service, prisma } = createService();
+    const { prisma, internals } = createService();
     prisma.execution.update.mockResolvedValue(undefined);
 
-    await (service as any).failExecutionFromRuntimeStep({
-      executionId: 'execution-terminal-2',
-      stepId: 'step-1',
-      failureReason: 'boom',
-      failureCode: 'ERR',
-      runtimeSessionId: 'runtime-terminal-2',
-    });
+    await internals.executionRuntimeControlService.failExecutionFromRuntimeStep(
+      {
+        executionId: 'execution-terminal-2',
+        stepId: 'step-1',
+        failureReason: 'boom',
+        failureCode: 'ERR',
+        runtimeSessionId: 'runtime-terminal-2',
+      },
+      internals.getFailureHooks()
+    );
 
     expect(prisma.execution.update).toHaveBeenCalledWith({
       where: { id: 'execution-terminal-2' },
@@ -1389,11 +1262,11 @@ describe('ExecutionService runtime session close on terminal state', () => {
         failureCode: 'ERR',
       },
     });
-    expect((service as any).updateStatus).toHaveBeenCalledWith(
+    expect(internals.updateStatus).toHaveBeenCalledWith(
       'execution-terminal-2',
       EXECUTION_STATUS.FAILED
     );
-    expect((service as any).closeRuntimeSessionQuietly).toHaveBeenCalledWith(
+    expect(internals.executionRuntimeSessionService.closeQuietly).toHaveBeenCalledWith(
       'runtime-terminal-2',
       'execution-terminal-2',
       'runtime_step_failed'
@@ -1427,20 +1300,24 @@ describe('ExecutionService.create planner draft reuse', () => {
 
     const service = new ExecutionService(prisma as never, {} as never, {} as never, {} as never);
     const serviceInternals = service as any;
-    jest.spyOn(serviceInternals, 'assertSkillAccessibleByUser').mockResolvedValue(undefined);
+    const planningService = serviceInternals.executionPlanningService;
+    const executionCreateService = serviceInternals.executionCreateService;
+    jest.spyOn(planningService, 'assertSkillAccessibleByUser').mockResolvedValue(undefined);
     jest
-      .spyOn(serviceInternals, 'fetchSkillDefaultResolution')
+      .spyOn(planningService, 'fetchSkillDefaultResolution')
       .mockResolvedValue({ input: {}, sources: {} });
-    jest.spyOn(serviceInternals, 'generatePlanDraft').mockResolvedValue(undefined);
-    jest.spyOn(serviceInternals, 'createPlannedSteps').mockResolvedValue(undefined);
-    jest.spyOn(serviceInternals, 'startExecution').mockResolvedValue(undefined);
+    jest.spyOn(planningService, 'generatePlanDraft').mockResolvedValue(undefined);
+    jest.spyOn(executionCreateService, 'createPlannedSteps').mockResolvedValue(undefined);
+    jest
+      .spyOn(serviceInternals.executionStartService, 'startExecution')
+      .mockResolvedValue(undefined);
     jest.spyOn(serviceInternals, 'getById').mockResolvedValue({ id: 'execution-create-1' });
 
-    return { service, prisma };
+    return { service, prisma, planningService, executionCreateService };
   };
 
   it('reuses provided planDraft and skips planner callback during create', async () => {
-    const { service, prisma } = createService();
+    const { service, prisma, planningService } = createService();
 
     const providedPlanDraft = {
       plan_id: 'plan-1',
@@ -1490,7 +1367,7 @@ describe('ExecutionService.create planner draft reuse', () => {
       }
     );
 
-    expect((service as any).generatePlanDraft).not.toHaveBeenCalled();
+    expect(planningService.generatePlanDraft).not.toHaveBeenCalled();
     expect(prisma.execution.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         skillId: 'skill-1',
@@ -1501,7 +1378,7 @@ describe('ExecutionService.create planner draft reuse', () => {
   });
 
   it('skips planner rematch when caller explicitly selects a skill and submits structured input', async () => {
-    const { service, prisma } = createService();
+    const { service, prisma, planningService, executionCreateService } = createService();
 
     prisma.execution.create.mockResolvedValue({
       id: 'execution-create-structured-1',
@@ -1525,8 +1402,8 @@ describe('ExecutionService.create planner draft reuse', () => {
       }
     );
 
-    expect((service as any).generatePlanDraft).not.toHaveBeenCalled();
-    expect((service as any).createPlannedSteps).toHaveBeenCalledWith(
+    expect(planningService.generatePlanDraft).not.toHaveBeenCalled();
+    expect(executionCreateService.createPlannedSteps).toHaveBeenCalledWith(
       'execution-create-structured-1',
       expect.objectContaining({
         plannerMode: 'skill',
@@ -1541,6 +1418,12 @@ describe('ExecutionService.create planner draft reuse', () => {
             status: 'planned',
           }),
         ],
+      }),
+      expect.objectContaining({
+        emitEvent: expect.any(Function),
+        enterWaitingInput: expect.any(Function),
+        getExecutionDto: expect.any(Function),
+        startExecution: expect.any(Function),
       })
     );
     expect(prisma.execution.create).toHaveBeenCalledWith({
@@ -1973,7 +1856,7 @@ describe('ExecutionService.create planner draft reuse', () => {
   });
 
   it('applies runtime defaults after planning so browser steps can execute without treating defaults as user input', async () => {
-    const { service, prisma } = createService();
+    const { service, prisma, planningService } = createService();
 
     const providedPlanDraft = {
       plan_id: 'plan-browser-defaults-1',
@@ -2085,7 +1968,7 @@ describe('ExecutionService.create planner draft reuse', () => {
         },
       },
     ]);
-    (service as any).fetchSkillDefaultResolution.mockResolvedValue({
+    planningService.fetchSkillDefaultResolution.mockResolvedValue({
       input: {
         startUrl: 'http://example.test/login',
         username: 'tester',
@@ -2202,11 +2085,14 @@ describe('ExecutionService.create planner draft reuse', () => {
         ]),
       }),
     ]);
-    expect((service as any).startExecution).toHaveBeenCalledWith('execution-create-1');
+    expect((service as any).executionStartService.startExecution).toHaveBeenCalledWith(
+      'execution-create-1',
+      expect.any(Object)
+    );
   });
 
   it('keeps confirmation-required defaults in waiting_input instead of auto-starting execution', async () => {
-    const { service, prisma } = createService();
+    const { service, prisma, planningService } = createService();
 
     const providedPlanDraft = {
       plan_id: 'plan-browser-confirmation-1',
@@ -2247,7 +2133,7 @@ describe('ExecutionService.create planner draft reuse', () => {
       },
     };
 
-    (service as any).fetchSkillDefaultResolution.mockResolvedValue({
+    planningService.fetchSkillDefaultResolution.mockResolvedValue({
       input: {
         loginCredential: 'test123',
       },
@@ -2267,7 +2153,10 @@ describe('ExecutionService.create planner draft reuse', () => {
       type: 'input_collection',
       status: 'pending',
     });
-    jest.spyOn(service as any, 'enterWaitingInput').mockResolvedValue(undefined);
+    const serviceInternals = service as any;
+    jest
+      .spyOn(serviceInternals.executionFailureService, 'enterWaitingInput')
+      .mockResolvedValue(undefined);
 
     await service.create(
       'user-1',
@@ -2310,15 +2199,20 @@ describe('ExecutionService.create planner draft reuse', () => {
         }),
       ])
     );
-    expect((service as any).enterWaitingInput).toHaveBeenCalledWith(
+    expect((service as any).executionFailureService.enterWaitingInput).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'execution-create-confirmation' }),
-      'step-waiting-input'
+      'step-waiting-input',
+      expect.objectContaining({
+        emitEvent: expect.any(Function),
+        updateStatus: expect.any(Function),
+        closeRuntimeSessionQuietly: expect.any(Function),
+      })
     );
-    expect((service as any).startExecution).not.toHaveBeenCalled();
+    expect((service as any).executionStartService.startExecution).not.toHaveBeenCalled();
   });
 
   it('treats explicit user input as confirmation and clears confirmation gating during create', async () => {
-    const { service, prisma } = createService();
+    const { service, prisma, planningService } = createService();
 
     const providedPlanDraft = {
       plan_id: 'plan-browser-confirmation-2',
@@ -2359,7 +2253,7 @@ describe('ExecutionService.create planner draft reuse', () => {
       },
     };
 
-    (service as any).fetchSkillDefaultResolution.mockResolvedValue({
+    planningService.fetchSkillDefaultResolution.mockResolvedValue({
       input: {
         loginCredential: 'test123',
       },
@@ -2411,11 +2305,14 @@ describe('ExecutionService.create planner draft reuse', () => {
         }),
       ])
     );
-    expect((service as any).startExecution).toHaveBeenCalledWith('execution-create-confirmed');
+    expect((service as any).executionStartService.startExecution).toHaveBeenCalledWith(
+      'execution-create-confirmed',
+      expect.any(Object)
+    );
   });
 
   it('resolves browser template placeholders written as brace variants', async () => {
-    const { service, prisma } = createService();
+    const { service, prisma, planningService } = createService();
 
     const providedPlanDraft = {
       plan_id: 'plan-browser-placeholder-variants-1',
@@ -2525,7 +2422,7 @@ describe('ExecutionService.create planner draft reuse', () => {
         },
       },
     ]);
-    (service as any).fetchSkillDefaultResolution.mockResolvedValue({
+    planningService.fetchSkillDefaultResolution.mockResolvedValue({
       input: {
         startUrl: 'http://example.test/login',
         username: 'tester',
@@ -2595,7 +2492,7 @@ describe('ExecutionService.create planner draft reuse', () => {
   });
 
   it('reuses existing execution when the same idempotencyKey is provided', async () => {
-    const { service, prisma } = createService();
+    const { service, prisma, planningService } = createService();
 
     const existingExecution = {
       id: 'execution-existing-1',
@@ -2621,7 +2518,7 @@ describe('ExecutionService.create planner draft reuse', () => {
     );
 
     expect(prisma.execution.create).not.toHaveBeenCalled();
-    expect((service as any).generatePlanDraft).not.toHaveBeenCalled();
+    expect(planningService.generatePlanDraft).not.toHaveBeenCalled();
     expect(response).toBe(existingExecution);
   });
 });
@@ -2885,12 +2782,15 @@ describe('ExecutionService phase sync during system execution', () => {
       undefined,
       executionStepService as never
     );
-    jest.spyOn(service as any, 'createEvent').mockResolvedValue(undefined);
+    jest
+      .spyOn((service as any).executionStreamService, 'createEvent')
+      .mockResolvedValue(undefined);
 
-    await (service as any).executeSystemSkillStep(
+    await (service as any).executionStepExecutorService.executeSystemSkillStep(
       { id: 'execution-1', skillId: 'skill-1', runtimeType: 'browser' },
       'runtime-1',
-      'step-1'
+      'step-1',
+      (service as any).getStepExecutorHooks()
     );
 
     expect(executionPhaseService.markRunning).toHaveBeenCalledWith(
@@ -3028,12 +2928,15 @@ describe('ExecutionService phase sync during system execution', () => {
       undefined,
       executionStepService as never
     );
-    jest.spyOn(service as any, 'createEvent').mockResolvedValue(undefined);
+    jest
+      .spyOn((service as any).executionStreamService, 'createEvent')
+      .mockResolvedValue(undefined);
 
-    await (service as any).executeSystemSkillStep(
+    await (service as any).executionStepExecutorService.executeSystemSkillStep(
       { id: 'execution-1', skillId: 'skill-1', runtimeType: 'browser' },
       'runtime-1',
-      'step-1'
+      'step-1',
+      (service as any).getStepExecutorHooks()
     );
 
     expect(executionPhaseService.appendSteps).toHaveBeenCalledWith(
@@ -3205,12 +3108,15 @@ describe('ExecutionService phase sync during system execution', () => {
       undefined,
       executionStepService as never
     );
-    jest.spyOn(service as any, 'createEvent').mockResolvedValue(undefined);
+    jest
+      .spyOn((service as any).executionStreamService, 'createEvent')
+      .mockResolvedValue(undefined);
 
-    await (service as any).executeSystemSkillStep(
+    await (service as any).executionStepExecutorService.executeSystemSkillStep(
       { id: 'execution-1', skillId: 'published-skill-1', runtimeType: 'browser' },
       'runtime-1',
-      'step-1'
+      'step-1',
+      (service as any).getStepExecutorHooks()
     );
 
     expect(executionPhaseService.createOrUpdatePhase).toHaveBeenCalledWith(
@@ -3341,216 +3247,85 @@ describe('ExecutionService phase sync during system execution', () => {
     );
   });
 
-  it('marks the currently running workflow activity as failed when skill runtime fails without phaseResults', async () => {
-    const prisma = {};
-    const executionPhaseService = {
-      listByExecutionId: jest.fn().mockResolvedValue([
-        {
-          phase_key: 'phase_01_execute_skill__activity_01_open',
-          phase_name: '1. 页面打开',
-          phase_type: 'workflow_activity',
-          status: 'completed',
-          input_json: {
-            parentPhaseKey: 'phase_01_execute_skill',
-            order: 1,
-          },
-        },
-        {
-          phase_key: 'phase_01_execute_skill__activity_02_process',
-          phase_name: '2. 页面处理',
-          phase_type: 'workflow_activity',
-          status: 'running',
-          input_json: {
-            parentPhaseKey: 'phase_01_execute_skill',
-            order: 2,
-          },
-        },
-      ]),
-      createOrUpdatePhase: jest.fn().mockResolvedValue(undefined),
+  it('forwards an instance-level workflow activity phase loader override to system skill result hooks', async () => {
+    const prisma = {
+      execution: {
+        update: jest.fn().mockResolvedValue(undefined),
+      },
     };
-
-    const service = new ExecutionService(
-      prisma as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      undefined,
-      executionPhaseService as never,
-      undefined,
-      {} as never
-    );
-
-    jest.spyOn(service as any, 'loadWorkflowActivityPhaseDefinitions').mockResolvedValue([
-      {
-        phaseKey: 'phase_01_execute_skill__activity_01_open',
-        phaseName: '1. 页面打开',
-        phaseType: 'workflow_activity',
-        activityName: '1. 页面打开',
-        parentPhaseKey: 'phase_01_execute_skill',
-        order: 1,
-      },
-      {
-        phaseKey: 'phase_01_execute_skill__activity_02_process',
-        phaseName: '2. 页面处理',
-        phaseType: 'workflow_activity',
-        activityName: '2. 页面处理',
-        parentPhaseKey: 'phase_01_execute_skill',
-        order: 2,
-      },
-    ]);
-
-    await (service as any).syncWorkflowActivityPhasesAfterSkillResult(
-      'execution-1',
-      'runtime-1',
-      'published-skill-1',
-      {
-        success: false,
-        status: 'failed',
-        errorCode: 'CAPABILITY_RUNTIME_FAILED',
-        errorMessage: 'browser-worker 执行失败',
-        output: {
-          temporalLink: 'http://temporal.local/workflow/1',
-        },
-        rawResult: {
-          output: {
-            temporalLink: 'http://temporal.local/workflow/1',
-          },
-        },
-      },
-      {
-        phaseKey: 'phase_01_execute_skill',
-        phaseName: '执行技能',
-        phaseType: 'system_skill',
-      }
-    );
-
-    expect(executionPhaseService.createOrUpdatePhase).toHaveBeenCalledWith(
-      expect.objectContaining({
-        executionId: 'execution-1',
-        phaseKey: 'phase_01_execute_skill__activity_02_process',
-        phaseName: '2. 页面处理',
-        status: 'failed',
-        errorCode: 'CAPABILITY_RUNTIME_FAILED',
-      })
-    );
-  });
-
-  it('marks workflow activity as waiting_takeover when phaseResults return takeover_required', async () => {
-    const prisma = {};
+    const runtimeResultInterpreter = {
+      handleSkillRuntimeResult: jest.fn().mockResolvedValue(undefined),
+      handleBrowserStepResult: jest.fn().mockResolvedValue(undefined),
+    };
+    const runtimeStepRequestFactory = {
+      resolveExecutionCapabilityId: jest.fn().mockReturnValue('capability-1'),
+      resolveExecutionCapabilityVersion: jest.fn().mockReturnValue('v1'),
+      resolveExecutionInput: jest.fn().mockReturnValue({ username: 'test' }),
+      buildSkillRuntimeRequest: jest.fn(),
+    };
     const executionPhaseService = {
-      createOrUpdatePhase: jest.fn().mockResolvedValue(undefined),
+      listByExecutionId: jest.fn(),
+      markRunning: jest.fn().mockResolvedValue(undefined),
       markCompleted: jest.fn().mockResolvedValue(undefined),
+      createOrUpdatePhase: jest.fn().mockResolvedValue(undefined),
       replaceArtifacts: jest.fn().mockResolvedValue(undefined),
-      replaceSteps: jest.fn().mockResolvedValue(undefined),
+      appendSteps: jest.fn().mockResolvedValue(undefined),
+    };
+    const executionStepService = {
+      getById: jest.fn(),
+      setCurrentStep: jest.fn(),
+      startStep: jest.fn(),
     };
 
     const service = new ExecutionService(
       prisma as never,
       {} as never,
-      {} as never,
-      {} as never,
+      runtimeResultInterpreter as never,
+      runtimeStepRequestFactory as never,
       undefined,
       executionPhaseService as never,
       undefined,
-      {} as never
+      executionStepService as never
     );
+    const serviceInternals = service as any;
+    const overriddenLoader = jest.fn().mockResolvedValue([{ phaseKey: 'phase_01_skill__activity_01' }]);
+    serviceInternals.loadWorkflowActivityPhaseDefinitions = overriddenLoader;
+    jest
+      .spyOn(serviceInternals.executionSystemSkillResultService, 'handleSystemSkillStepResult')
+      .mockImplementation(async (...args: unknown[]) => {
+        const hooks = args[1] as {
+          loadWorkflowActivityPhaseDefinitions?: (
+            capabilityId: string,
+            parentPhaseKey: string
+          ) => Promise<unknown>;
+        };
+        await hooks.loadWorkflowActivityPhaseDefinitions?.('capability-1', 'phase_01_skill');
+      });
 
-    jest.spyOn(service as any, 'loadWorkflowActivityPhaseDefinitions').mockResolvedValue([
-      {
-        phaseKey: 'phase_01_execute_skill__activity_01_open',
-        phaseName: '1. 页面打开',
-        phaseType: 'workflow_activity',
-        activityName: '1. 页面打开',
-        parentPhaseKey: 'phase_01_execute_skill',
-        order: 1,
-      },
-      {
-        phaseKey: 'phase_01_execute_skill__activity_02_process',
-        phaseName: '2. 页面处理',
-        phaseType: 'workflow_activity',
-        activityName: '2. 页面处理',
-        parentPhaseKey: 'phase_01_execute_skill',
-        order: 2,
-      },
-    ]);
-
-    await (service as any).syncWorkflowActivityPhasesAfterSkillResult(
+    await serviceInternals.handleSystemSkillStepResult(
       'execution-1',
       'runtime-1',
-      'published-skill-1',
+      'step-1',
       {
-        success: false,
-        status: 'takeover_required',
-        errorCode: 'BROWSER_WORKER_EXECUTION_FAILED',
-        errorMessage: '浏览器页面未进入预期状态',
-        requiresTakeover: true,
-        output: {
-          phaseResults: [
-            {
-              result: {
-                status: 'completed',
-                results: [{ status: 'success', command: 'navigate' }],
-              },
-              stepName: '1. 页面打开',
-              activityName: '1. 页面打开',
-            },
-            {
-              result: {
-                status: 'takeover_required',
-                errorCode: 'BROWSER_WORKER_EXECUTION_FAILED',
-                errorMessage: '浏览器页面未进入预期状态',
-                results: [{ status: 'error', command: 'fill', message: 'selector not found' }],
-              },
-              stepName: '2. 页面处理',
-              activityName: '2. 页面处理',
-            },
-          ],
-        },
+        success: true,
+        status: 'completed',
+        output: { ok: true },
       },
+      'capability-1',
       {
-        phaseKey: 'phase_01_execute_skill',
+        phaseKey: 'phase_01_skill',
         phaseName: '执行技能',
         phaseType: 'system_skill',
-      }
+      },
+      { id: 'step-1' }
     );
 
-    expect(executionPhaseService.markCompleted).toHaveBeenCalledWith(
-      'execution-1',
-      'phase_01_execute_skill__activity_01_open',
-      expect.objectContaining({
-        phaseName: '1. 页面打开',
-      })
-    );
-    expect(executionPhaseService.createOrUpdatePhase).toHaveBeenCalledWith(
-      expect.objectContaining({
-        executionId: 'execution-1',
-        phaseKey: 'phase_01_execute_skill__activity_02_process',
-        phaseName: '2. 页面处理',
-        status: 'waiting_takeover',
-        errorCode: 'BROWSER_WORKER_EXECUTION_FAILED',
-        errorMessage: '浏览器页面未进入预期状态',
-        completedAt: null,
-      })
-    );
+    expect(overriddenLoader).toHaveBeenCalledWith('capability-1', 'phase_01_skill');
   });
+
 });
 
 describe('ExecutionService browser phase execution', () => {
-  it('extracts plain selector text from markdown wrapped browser read output', () => {
-    const service = new ExecutionService({} as never, {} as never, {} as never, {} as never);
-
-    expect(
-      (service as any).extractBrowserTextResult([
-        '### Result\n""\n### Ran Playwright code\n```js\nconsole.log("demo");\n```',
-      ])
-    ).toBe('');
-    expect(
-      (service as any).extractBrowserTextResult([
-        '### Result\n"保留中"\n### Ran Playwright code\n```js\nconsole.log("demo");\n```',
-      ])
-    ).toBe('保留中');
-  });
-
   it('routes execute_browser_phase planner steps through BrowserPhaseExecutor in the main flow', async () => {
     const prisma = {
       execution: {
@@ -3578,14 +3353,18 @@ describe('ExecutionService browser phase execution', () => {
       undefined,
       executionStepService as never
     );
-    jest.spyOn(service as any, 'executeBrowserPhaseStep').mockResolvedValue(undefined);
+    const serviceInternals = service as any;
+    jest
+      .spyOn(serviceInternals.executionStepExecutorService, 'executeBrowserPhaseStep')
+      .mockResolvedValue(undefined);
 
     await (service as any).advanceExecutionFlow('execution-1', 'runtime-1');
 
-    expect((service as any).executeBrowserPhaseStep).toHaveBeenCalledWith(
+    expect(serviceInternals.executionStepExecutorService.executeBrowserPhaseStep).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'execution-1' }),
       'runtime-1',
-      'step-browser-phase'
+      'step-browser-phase',
+      expect.any(Object)
     );
   });
 
@@ -3697,13 +3476,17 @@ describe('ExecutionService browser phase execution', () => {
       undefined,
       browserPhaseExecutor as never
     );
-    jest.spyOn(service as any, 'createEvent').mockResolvedValue(undefined);
-    jest.spyOn(service as any, 'advanceExecutionFlow').mockResolvedValue(undefined);
-    jest.spyOn(service as any, 'enterRuntimeWaitingInput').mockResolvedValue(undefined);
-    jest.spyOn(service as any, 'enterPendingApprovalFromRuntimeStep').mockResolvedValue(undefined);
-    jest.spyOn(service as any, 'failExecutionFromRuntimeStep').mockResolvedValue(undefined);
+    const serviceInternals = service as any;
+    const runtimeControlService = serviceInternals.executionRuntimeControlService;
+    jest.spyOn(serviceInternals.executionStreamService, 'createEvent').mockResolvedValue(undefined);
+    jest.spyOn(serviceInternals, 'advanceExecutionFlow').mockResolvedValue(undefined);
+    jest.spyOn(runtimeControlService, 'enterRuntimeWaitingInput').mockResolvedValue(undefined);
+    jest
+      .spyOn(runtimeControlService, 'enterPendingApprovalFromRuntimeStep')
+      .mockResolvedValue(undefined);
+    jest.spyOn(runtimeControlService, 'failExecutionFromRuntimeStep').mockResolvedValue(undefined);
 
-    await (service as any).executeBrowserPhaseStep(
+    await (service as any).executionStepExecutorService.executeBrowserPhaseStep(
       {
         id: 'execution-1',
         skillId: 'skill-login',
@@ -3719,7 +3502,8 @@ describe('ExecutionService browser phase execution', () => {
         },
       },
       'runtime-1',
-      'step-browser-phase'
+      'step-browser-phase',
+      serviceInternals.getStepExecutorHooks()
     );
 
     expect(browserPhaseExecutor.execute).toHaveBeenCalledWith({
@@ -3795,8 +3579,8 @@ describe('ExecutionService browser phase execution', () => {
         }),
       })
     );
-    expect((service as any).advanceExecutionFlow).toHaveBeenCalledWith('execution-1', 'runtime-1');
-    expect((service as any).failExecutionFromRuntimeStep).not.toHaveBeenCalled();
+    expect(serviceInternals.advanceExecutionFlow).toHaveBeenCalledWith('execution-1', 'runtime-1');
+    expect(runtimeControlService.failExecutionFromRuntimeStep).not.toHaveBeenCalled();
   });
 
   it('takes over browser phase failures instead of failing execution when phase result requires takeover', async () => {
@@ -3862,14 +3646,18 @@ describe('ExecutionService browser phase execution', () => {
       undefined,
       browserPhaseExecutor as never
     );
-    jest.spyOn(service as any, 'createEvent').mockResolvedValue(undefined);
-    jest.spyOn(service as any, 'advanceExecutionFlow').mockResolvedValue(undefined);
-    jest.spyOn(service as any, 'enterRuntimeWaitingInput').mockResolvedValue(undefined);
-    jest.spyOn(service as any, 'enterPendingApprovalFromRuntimeStep').mockResolvedValue(undefined);
-    jest.spyOn(service as any, 'failExecutionFromRuntimeStep').mockResolvedValue(undefined);
-    jest.spyOn(service as any, 'takeover').mockResolvedValue(undefined);
+    const serviceInternals = service as any;
+    const runtimeControlService = serviceInternals.executionRuntimeControlService;
+    jest.spyOn(serviceInternals.executionStreamService, 'createEvent').mockResolvedValue(undefined);
+    jest.spyOn(serviceInternals, 'advanceExecutionFlow').mockResolvedValue(undefined);
+    jest.spyOn(runtimeControlService, 'enterRuntimeWaitingInput').mockResolvedValue(undefined);
+    jest
+      .spyOn(runtimeControlService, 'enterPendingApprovalFromRuntimeStep')
+      .mockResolvedValue(undefined);
+    jest.spyOn(runtimeControlService, 'failExecutionFromRuntimeStep').mockResolvedValue(undefined);
+    jest.spyOn(runtimeControlService, 'requestSystemTakeover').mockResolvedValue(undefined);
 
-    await (service as any).executeBrowserPhaseStep(
+    await (service as any).executionStepExecutorService.executeBrowserPhaseStep(
       {
         id: 'execution-1',
         skillId: 'skill-login',
@@ -3878,7 +3666,8 @@ describe('ExecutionService browser phase execution', () => {
         requiresApproval: false,
       },
       'runtime-1',
-      'step-browser-phase'
+      'step-browser-phase',
+      serviceInternals.getStepExecutorHooks()
     );
 
     expect(executionStepService.finishRuntimeStep).toHaveBeenCalledWith(
@@ -3895,114 +3684,22 @@ describe('ExecutionService browser phase execution', () => {
         }),
       })
     );
-    expect((service as any).takeover).toHaveBeenCalledWith(
+    expect(runtimeControlService.requestSystemTakeover).toHaveBeenCalledWith(
       'execution-1',
-      'system',
-      {
-        reason: 'selector not found',
-      },
-      {
-        id: 'system',
-        role: 'admin',
-      }
+      'selector not found',
+      expect.objectContaining({
+        getExecutionDto: expect.any(Function),
+        emitEvent: expect.any(Function),
+        updateStatus: expect.any(Function),
+        freezeRuntimeSessionQuietly: expect.any(Function),
+        resumeRuntimeSessionQuietly: expect.any(Function),
+        advanceExecutionFlow: expect.any(Function),
+      })
     );
-    expect((service as any).failExecutionFromRuntimeStep).not.toHaveBeenCalled();
-    expect((service as any).advanceExecutionFlow).not.toHaveBeenCalled();
+    expect(runtimeControlService.failExecutionFromRuntimeStep).not.toHaveBeenCalled();
+    expect(serviceInternals.advanceExecutionFlow).not.toHaveBeenCalled();
   });
 
-  it('persists browser phase stepResults to execution result when phase succeeds', async () => {
-    const prisma = {
-      execution: {
-        findUnique: jest.fn().mockResolvedValue({
-          resultJson: {
-            temporalLink: 'https://temporal.example/workflow/1',
-          },
-        }),
-        update: jest.fn().mockResolvedValue(undefined),
-      },
-    };
-    const executionStepService = {
-      finishRuntimeStep: jest.fn().mockResolvedValue(undefined),
-    };
-
-    const service = new ExecutionService(
-      prisma as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      undefined,
-      undefined,
-      undefined,
-      executionStepService as never
-    );
-    jest.spyOn(service as any, 'createEvent').mockResolvedValue(undefined);
-    jest.spyOn(service as any, 'advanceExecutionFlow').mockResolvedValue(undefined);
-    jest.spyOn(service as any, 'takeover').mockResolvedValue(undefined);
-    jest.spyOn(service as any, 'failExecutionFromRuntimeStep').mockResolvedValue(undefined);
-
-    await (service as any).handleBrowserPhaseStepResult(
-      'execution-1',
-      'runtime-1',
-      'step-browser-phase',
-      {
-        success: true,
-        status: 'completed',
-        output: {
-          command: 'wait',
-          pageUrl: 'http://localhost:5173/dashboard',
-        },
-        stepResults: [
-          {
-            stepId: '3__command_03',
-            command: 'screenshot',
-            output: {
-              command: 'screenshot',
-              screenshot: 'data:image/png;base64,AAA',
-            },
-          },
-        ],
-        artifacts: [
-          {
-            type: 'browser_artifact',
-            id: 'snapshot-1',
-            metadata: {
-              artifactPath: '/tmp/snapshot-1.png',
-            },
-          },
-        ],
-        snapshotId: 'snapshot-1',
-        pageUrl: 'http://localhost:5173/dashboard',
-        pageFingerprint: 'fingerprint-1',
-      }
-    );
-
-    expect(prisma.execution.update).toHaveBeenCalledWith({
-      where: { id: 'execution-1' },
-      data: expect.objectContaining({
-        resultJson: expect.objectContaining({
-          temporalLink: 'https://temporal.example/workflow/1',
-          status: 'completed',
-          runtimeSessionId: 'runtime-1',
-          backend: 'browser',
-          stepResults: [
-            expect.objectContaining({
-              stepId: '3__command_03',
-              command: 'screenshot',
-              output: expect.objectContaining({
-                screenshot: 'data:image/png;base64,AAA',
-              }),
-            }),
-          ],
-          artifacts: [
-            expect.objectContaining({
-              id: 'snapshot-1',
-            }),
-          ],
-        }),
-      }),
-    });
-    expect((service as any).advanceExecutionFlow).toHaveBeenCalledWith('execution-1', 'runtime-1');
-  });
 });
 
 describe('ExecutionService phase takeover lifecycle', () => {

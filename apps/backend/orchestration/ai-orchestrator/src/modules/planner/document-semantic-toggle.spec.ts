@@ -87,9 +87,41 @@ describe('PlannerService document semantic bypass toggle', () => {
     jest.resetModules();
 
     const { PlannerService } = require('./planner.service');
+    const { PlanGeneratorService, PlanSemanticService } = require('./plan');
+    const {
+      ParamBilingualService,
+      ParamContextMergeService,
+      ParamPolicyService,
+      ParamRecognizerService,
+      ParamRequiredInputPresentationService,
+      ParamSchemaService,
+      ParamValueService,
+    } = require('./params');
+    const { SkillCacheService, SkillMatcherService } = require('./skill');
     const recognizerService = { recognizeParams: jest.fn() };
     const modelService = { callModel: jest.fn() };
-    const service = new PlannerService(recognizerService as any, modelService as any);
+    const skillCacheService = new SkillCacheService();
+    const paramSchemaService = new ParamSchemaService();
+    const paramContextMergeService = new ParamContextMergeService();
+    const paramBilingualService = new ParamBilingualService(modelService as any);
+    const paramPolicyService = new ParamPolicyService();
+    const paramValueService = new ParamValueService();
+    const paramRequiredInputPresentationService = new ParamRequiredInputPresentationService();
+    const service = new PlannerService(
+      recognizerService as any,
+      skillCacheService,
+      new SkillMatcherService(skillCacheService),
+      new PlanSemanticService(),
+      new PlanGeneratorService(),
+      new ParamRecognizerService(
+        paramSchemaService,
+        paramContextMergeService,
+        paramBilingualService,
+        paramPolicyService,
+        paramValueService,
+        paramRequiredInputPresentationService
+      )
+    );
 
     const skill = buildSkill();
     const match = buildMatch(skill);

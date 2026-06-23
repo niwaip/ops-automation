@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import {
   RecorderControlTokenStateLike,
   RecorderLoopRuntimeStateLike,
-} from '../loop/recorder-loop.types';
+} from '../loop';
 
 type RecorderDebugStatus = 'executed' | 'answer' | 'question' | 'completed';
 

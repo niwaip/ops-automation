@@ -1,4 +1,4 @@
-import { ExecutionFlowRunnerService } from '../src/modules/execution/step-runner/execution-flow-runner.service';
+import { ExecutionFlowRunnerService } from '../src/modules/execution/step-runner/flow/execution-flow-runner.service';
 
 describe('ExecutionFlowRunnerService', () => {
   const createService = () => {

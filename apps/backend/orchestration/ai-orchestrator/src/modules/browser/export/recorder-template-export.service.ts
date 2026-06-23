@@ -2,12 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { BranchAnalysisService } from '../../branch-analysis/branch-analysis.service';
 import { BrowserCommand } from '../intent';
 import type { BrowserCommandCandidate } from '../intent';
-import { RecorderLoopService } from '../loop/recorder-loop.service';
-import type {
+import {
   RecorderLoopDraftState,
+  RecorderLoopService,
   RecorderManualInterventionRecord,
   RecorderManualInterventionSignal,
-} from '../loop/recorder-loop.types';
+} from '../loop';
 
 interface ObservationLike {
   currentPageUrl?: string;

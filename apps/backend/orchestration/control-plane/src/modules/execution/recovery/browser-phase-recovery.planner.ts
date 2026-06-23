@@ -3,7 +3,7 @@ import axios from 'axios';
 import { RECOVERY_MESSAGES, RECOVERY_ACTIONS } from './recovery-constants';
 import { getAiOrchestratorUrl } from '../../../config/service-endpoints';
 import type { RuntimePhaseInvokeResult } from '../adapters/runtime-adapter.interface';
-import type { BrowserPhaseCommand } from '../step-runner/browser-phase.types';
+import type { BrowserPhaseCommand } from '../step-runner/browser/browser-phase.types';
 
 export interface BrowserPhaseRecoveryPolicy {
   maxAutoRetries?: number;

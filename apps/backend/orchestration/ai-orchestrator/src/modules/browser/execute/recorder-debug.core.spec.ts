@@ -1,5 +1,5 @@
 import { createService, resetRecorderDebugTestEnv } from './recorder-debug.test-helper';
-import { RecorderObservationService } from '../observe/recorder-observation.service';
+import { RecorderObservationService } from '../observe';
 
 describe('RecorderDebugService', () => {
   beforeEach(() => {

@@ -1,4 +1,4 @@
-import { RuntimeExecutionOrchestrator } from '../src/modules/execution/step-runner/runtime-execution.orchestrator';
+import { RuntimeExecutionOrchestrator } from '../src/modules/execution/step-runner/runtime/runtime-execution.orchestrator';
 
 describe('RuntimeExecutionOrchestrator.executePhase', () => {
   it('executes all step requests and returns completed result when all succeed', async () => {

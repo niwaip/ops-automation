@@ -13,7 +13,7 @@ import {
   BROWSER_RUNTIME,
   BROWSER_SESSION_PREFERENCES,
   BROWSER_WORKER_ENDPOINTS,
-} from '../step-runner/browser-execution-constants';
+} from '../step-runner/browser/browser-execution-constants';
 
 interface LegacyBrowserExecuteStepRequest {
   executionId: string;

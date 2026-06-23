@@ -320,4 +320,65 @@ describe('ExecutionReconcileService', () => {
       })
     );
   });
+
+  it('mergeManualPatchSteps should replace the failed command with mapped patch commands', () => {
+    const service = createService();
+
+    expect(
+      service.mergeManualPatchSteps(
+        [
+          { tool: 'navigate', params: { url: 'https://example.com/login' }, description: '打开登录页' },
+          { tool: 'click', params: { text: '登录' }, description: '点击登录' },
+          { tool: 'click', params: { text: '订单管理' }, description: '点击订单管理' },
+        ],
+        [
+          {
+            action: 'click',
+            locator: { strategy: 'role', value: 'button', role: 'button', name: '平台登录' },
+            source: 'manual_takeover',
+          },
+          {
+            action: 'press_key',
+            params: { key: 'Enter' },
+            scriptFragment: '手动回车确认',
+            source: 'manual_takeover',
+          },
+        ],
+        { tool: 'click', params: { text: '登录' }, description: '点击登录' }
+      )
+    ).toEqual([
+      { tool: 'navigate', params: { url: 'https://example.com/login' }, description: '打开登录页' },
+      { tool: 'click', params: { target: 'button[name="平台登录"]' }, description: '手动补录: click' },
+      { tool: 'press_key', params: { key: 'Enter' }, description: '手动回车确认' },
+      { tool: 'click', params: { text: '订单管理' }, description: '点击订单管理' },
+    ]);
+  });
+
+  it('mergeManualPatchSteps should prepend mapped patch commands when failed command is missing', () => {
+    const service = createService();
+
+    expect(
+      service.mergeManualPatchSteps(
+        [{ tool: 'click', params: { text: '继续处理' }, description: '点击继续处理' }],
+        [
+          {
+            action: 'focus_latest_page',
+            params: {},
+            source: 'manual_takeover',
+          },
+          {
+            action: 'fill',
+            locator: { strategy: 'label', value: '用户名' },
+            params: { value: 'demo' },
+            source: 'manual_takeover',
+          },
+        ],
+        { tool: 'click', params: { text: '不存在的动作' }, description: '不存在的动作' }
+      )
+    ).toEqual([
+      { tool: 'switch_latest_tab', params: {}, description: '手动补录: focus_latest_page' },
+      { tool: 'fill', params: { value: 'demo', target: 'label=用户名' }, description: '手动补录: fill' },
+      { tool: 'click', params: { text: '继续处理' }, description: '点击继续处理' },
+    ]);
+  });
 });

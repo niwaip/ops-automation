@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { CapabilityRuntimeAdapter } from '../src/modules/execution/capability-runtime.adapter';
+import { CapabilityRuntimeAdapter } from '../src/modules/execution/adapters/capability-runtime.adapter';
 
 jest.mock('axios');
 

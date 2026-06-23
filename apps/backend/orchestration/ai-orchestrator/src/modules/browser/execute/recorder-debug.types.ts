@@ -6,7 +6,7 @@ import type {
 import type {
   RecorderLoopRuntimeStateLike,
   RecorderManualInterventionRecord,
-} from '../loop/recorder-loop.types';
+} from '../loop';
 
 export interface BrowserExecuteResponse {
   success: boolean;

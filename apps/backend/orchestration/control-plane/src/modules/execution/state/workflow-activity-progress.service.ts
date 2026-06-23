@@ -1,14 +1,40 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../../prisma/prisma.service';
 import { UpdateWorkflowActivityProgressDto } from './execution.dto';
 import { ExecutionPhaseService } from './execution-phase.service';
+import { ensureExecutionPermission } from '../shared/execution-permission.util';
 
 type ExecutionPhaseRecord = Record<string, unknown>;
+type RequestUserContext = {
+  id: string;
+  role?: string;
+};
 
 @Injectable()
 export class WorkflowActivityProgressService {
   private readonly logger = new Logger(WorkflowActivityProgressService.name);
 
-  constructor(private readonly executionPhaseService: ExecutionPhaseService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly executionPhaseService: ExecutionPhaseService
+  ) {}
+
+  async updateWorkflowActivityProgress(
+    executionId: string,
+    dto: UpdateWorkflowActivityProgressDto,
+    requester?: RequestUserContext
+  ): Promise<void> {
+    const execution = await this.prisma.execution.findUnique({
+      where: { id: executionId },
+    });
+
+    if (!execution) {
+      throw new NotFoundException(`Execution ${executionId} not found`);
+    }
+
+    ensureExecutionPermission(execution.createdBy, requester);
+    await this.sync(executionId, dto);
+  }
 
   async sync(executionId: string, dto: UpdateWorkflowActivityProgressDto): Promise<void> {
     const phases = await this.executionPhaseService.listByExecutionId(executionId);
