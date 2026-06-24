@@ -1,4 +1,4 @@
-import { BrowserRecordingExecutionPlanValidatorService } from '../src/modules/capability-release/browser-recording-execution-plan-validator.service';
+import { BrowserRecordingExecutionPlanValidatorService } from '../src/release-manager/validator';
 
 describe('BrowserRecordingExecutionPlanValidatorService', () => {
   const service = new BrowserRecordingExecutionPlanValidatorService();

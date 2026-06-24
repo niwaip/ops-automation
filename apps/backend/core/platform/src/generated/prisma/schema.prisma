@@ -1,0 +1,612 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User role type matching PostgreSQL enum
+enum UserRoleType {
+  employee
+  admin
+  agent
+}
+
+enum OrganizationType {
+  enterprise
+  subsidiary
+  partner
+}
+
+enum MembershipStatus {
+  active
+  invited
+  suspended
+  left
+}
+
+enum IdentityProviderType {
+  microsoft_oidc
+  oidc
+  saml
+}
+
+// Users Table
+model User {
+  id           String       @id @default(uuid()) @db.Uuid
+  username     String       @unique @db.VarChar(255)
+  passwordHash String       @map("password_hash") @db.VarChar(255)
+  email        String?      @unique @db.VarChar(255)
+  role         UserRoleType @default(employee)
+
+  // LDAP/AD extension fields (reserved for future integration)
+  ldapDn      String? @map("ldap_dn") @db.VarChar(255)
+  adSid       String? @map("ad_sid") @db.VarChar(255)
+  externalId  String? @map("external_id") @db.VarChar(255)
+  activeOrgId String? @map("active_org_id") @db.Uuid
+
+  // Account status
+  isActive    Boolean   @default(true) @map("is_active")
+  lastLoginAt DateTime? @map("last_login_at") @db.Timestamptz
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  userRoles        UserRole[]
+  assignedRoles    UserRole[]       @relation("AssignedBy")
+  orgMemberships   OrgMembership[]
+  assignedOrgRoles OrgRoleBinding[] @relation("OrgRoleAssignedBy")
+  activeOrg        Organization?    @relation("ActiveOrganization", fields: [activeOrgId], references: [id], onDelete: SetNull)
+  chatSessions     ChatSession[]
+
+  @@index([username])
+  @@index([role])
+  @@index([email])
+  @@index([isActive])
+  @@index([activeOrgId])
+  @@map("users")
+}
+
+// Roles Table
+model Role {
+  id          String  @id @default(uuid()) @db.Uuid
+  name        String  @unique @db.VarChar(255)
+  description String? @db.VarChar(500)
+  permissions Json    @default("{}")
+  isSystem    Boolean @default(false) @map("is_system")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  userRoles        UserRole[]
+  skillPermissions SkillPermission[] // Skills granted to this role
+  orgRoleBindings  OrgRoleBinding[]
+
+  @@index([name])
+  @@index([permissions])
+  @@map("roles")
+}
+
+// User Roles Junction Table
+model UserRole {
+  userId     String   @map("user_id") @db.Uuid
+  roleId     String   @map("role_id") @db.Uuid
+  assignedAt DateTime @default(now()) @map("assigned_at") @db.Timestamptz
+  assignedBy String?  @map("assigned_by") @db.Uuid
+
+  user     User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role     Role  @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  assigner User? @relation("AssignedBy", fields: [assignedBy], references: [id])
+
+  @@id([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+model Organization {
+  id          String           @id @default(uuid()) @db.Uuid
+  name        String           @db.VarChar(255)
+  code        String           @unique @db.VarChar(100)
+  type        OrganizationType @default(enterprise)
+  description String?          @db.VarChar(500)
+  isActive    Boolean          @default(true) @map("is_active")
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  departments       Department[]
+  teams             Team[]
+  memberships       OrgMembership[]
+  roleBindings      OrgRoleBinding[]
+  identityProviders IdentityProviderConfig[]
+  activeUsers       User[]                   @relation("ActiveOrganization")
+
+  @@index([code])
+  @@index([isActive])
+  @@map("organizations")
+}
+
+model Department {
+  id            String   @id @default(uuid()) @db.Uuid
+  orgId         String   @map("org_id") @db.Uuid
+  parentId      String?  @map("parent_id") @db.Uuid
+  name          String   @db.VarChar(255)
+  code          String?  @db.VarChar(100)
+  managerUserId String?  @map("manager_user_id") @db.Uuid
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  organization Organization    @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  parent       Department?     @relation("DepartmentTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children     Department[]    @relation("DepartmentTree")
+  teams        Team[]
+  memberships  OrgMembership[]
+
+  @@unique([orgId, name])
+  @@index([orgId])
+  @@index([parentId])
+  @@map("departments")
+}
+
+model Team {
+  id           String   @id @default(uuid()) @db.Uuid
+  orgId        String   @map("org_id") @db.Uuid
+  departmentId String?  @map("department_id") @db.Uuid
+  name         String   @db.VarChar(255)
+  code         String?  @db.VarChar(100)
+  leadUserId   String?  @map("lead_user_id") @db.Uuid
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  organization Organization     @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  department   Department?      @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  members      TeamMembership[]
+
+  @@unique([orgId, name])
+  @@index([orgId])
+  @@index([departmentId])
+  @@map("teams")
+}
+
+model OrgMembership {
+  id           String           @id @default(uuid()) @db.Uuid
+  userId       String           @map("user_id") @db.Uuid
+  orgId        String           @map("org_id") @db.Uuid
+  departmentId String?          @map("department_id") @db.Uuid
+  title        String?          @db.VarChar(255)
+  status       MembershipStatus @default(active)
+  joinedAt     DateTime?        @map("joined_at") @db.Timestamptz
+  createdAt    DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization    Organization     @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  department      Department?      @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  teamMemberships TeamMembership[]
+  roleBindings    OrgRoleBinding[]
+
+  @@unique([userId, orgId])
+  @@index([orgId, status])
+  @@index([departmentId])
+  @@map("org_memberships")
+}
+
+model TeamMembership {
+  id              String   @id @default(uuid()) @db.Uuid
+  orgMembershipId String   @map("org_membership_id") @db.Uuid
+  teamId          String   @map("team_id") @db.Uuid
+  role            String?  @db.VarChar(100)
+  isPrimary       Boolean  @default(false) @map("is_primary")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  orgMembership OrgMembership @relation(fields: [orgMembershipId], references: [id], onDelete: Cascade)
+  team          Team          @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([orgMembershipId, teamId])
+  @@index([teamId])
+  @@map("team_memberships")
+}
+
+model OrgRoleBinding {
+  id           String   @id @default(uuid()) @db.Uuid
+  orgId        String   @map("org_id") @db.Uuid
+  membershipId String   @map("membership_id") @db.Uuid
+  roleId       String   @map("role_id") @db.Uuid
+  scopeType    String   @default("organization") @map("scope_type") @db.VarChar(50)
+  scopeRefId   String?  @map("scope_ref_id") @db.Uuid
+  assignedBy   String?  @map("assigned_by") @db.Uuid
+  assignedAt   DateTime @default(now()) @map("assigned_at") @db.Timestamptz
+
+  organization Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  membership   OrgMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  role         Role          @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  assigner     User?         @relation("OrgRoleAssignedBy", fields: [assignedBy], references: [id], onDelete: SetNull)
+
+  @@unique([membershipId, roleId, scopeType, scopeRefId])
+  @@index([orgId, roleId])
+  @@index([assignedBy])
+  @@map("org_role_bindings")
+}
+
+model IdentityProviderConfig {
+  id              String               @id @default(uuid()) @db.Uuid
+  orgId           String               @map("org_id") @db.Uuid
+  name            String               @db.VarChar(255)
+  providerType    IdentityProviderType @map("provider_type")
+  tenantId        String?              @map("tenant_id") @db.VarChar(255)
+  issuer          String?              @db.VarChar(500)
+  clientId        String               @map("client_id") @db.VarChar(255)
+  clientSecretEnc String?              @map("client_secret_enc") @db.Text
+  discoveryUrl    String?              @map("discovery_url") @db.VarChar(500)
+  authUrl         String?              @map("auth_url") @db.VarChar(500)
+  tokenUrl        String?              @map("token_url") @db.VarChar(500)
+  jwksUrl         String?              @map("jwks_url") @db.VarChar(500)
+  scopes          Json                 @default("[]")
+  isEnabled       Boolean              @default(true) @map("is_enabled")
+  createdAt       DateTime             @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime             @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, name])
+  @@index([orgId, providerType, isEnabled])
+  @@map("identity_provider_configs")
+}
+
+// Execution Flow Template - Reusable workflow templates for Skills
+// Similar to Claude Code skills, provides step-by-step guidance for AI execution
+model ExecutionFlowTemplate {
+  id             String  @id @default(uuid()) @db.Uuid
+  name           String  @unique @db.VarChar(255)
+  description    String? @db.VarChar(500)
+  goal           String? @db.VarChar(1000)
+  expectedResult String? @map("expected_result") @db.VarChar(1000)
+  paramsSchema   Json    @default("{}") @map("params_schema")
+  category       String  @default("document") @db.VarChar(50) // document | analysis | automation | custom
+
+  // Flow definition - array of steps with detailed configuration
+  // Each step can be: text (instruction), script, tool, or api
+  // Example: [{type: "text", content: "分析用户需求..."}, {type: "api", endpoint: "...", method: "POST"}]
+  steps Json @default("[]")
+
+  // Default execution flow keys (for quick selection in Skills)
+  // Example: ["skill_match", "param_collect", "waiting_input", "document_render"]
+  executionFlowKeys Json @default("[]") @map("execution_flow_keys")
+
+  // AI validation result (populated after validation)
+  // {isValid: boolean, suggestions: string[], validatedAt: datetime}
+  validation Json? @map("validation")
+
+  // Usage count for popularity tracking
+  usageCount Int @default(0) @map("usage_count")
+
+  // Template metadata
+  isPublic  Boolean @default(true) @map("is_public")
+  createdBy String? @map("created_by") @db.Uuid
+
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([name])
+  @@index([category])
+  @@index([isPublic])
+  @@index([isActive])
+  @@index([usageCount])
+  @@map("execution_flow_templates")
+}
+
+// Skill Configuration Table
+model SkillConfig {
+  id                       String   @id @default(uuid()) @db.Uuid
+  name                     String   @unique @db.VarChar(255)
+  description              String?  @db.VarChar(500)
+  triggerKeywords          Json     @default("[]") @map("trigger_keywords")
+  paramsSchema             Json     @default("{}") @map("params_schema")
+  templateId               String?  @map("template_id") @db.VarChar(255)
+  carboneTemplateId        String?  @map("carbone_template_id") @db.VarChar(255)
+  carboneSkillId           String?  @map("carbone_skill_id") @db.VarChar(255)
+  apiEndpoints             Json?    @map("api_endpoints")
+  executionFlow            Json     @default("[]") @map("execution_flow")
+  executionFlowTemplateIds Json     @default("[]") @map("execution_flow_template_ids") // 支持关联多个流程模板ID
+  tools                    Json     @default("[]")
+  configStatus             String   @default("draft") @map("config_status") @db.VarChar(32)
+  lastValidationSummary    Json?    @map("last_validation_summary")
+  isActive                 Boolean  @default(true) @map("is_active")
+  createdAt                DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  permissions  SkillPermission[] // Roles granted access to this skill
+  toolBindings SkillToolBinding[]
+
+  @@index([name])
+  @@index([isActive])
+  @@index([configStatus])
+  @@map("skill_configs")
+}
+
+// Skill Permission Table - Controls which roles can use which skills
+model SkillPermission {
+  skillId   String   @map("skill_id") @db.Uuid
+  roleId    String   @map("role_id") @db.Uuid
+  grantedAt DateTime @default(now()) @map("granted_at") @db.Timestamptz
+  grantedBy String?  @map("granted_by") @db.Uuid
+
+  skill SkillConfig @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  role  Role        @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([skillId, roleId])
+  @@index([skillId])
+  @@index([roleId])
+  @@map("skill_permissions")
+}
+
+model ToolCatalog {
+  id                          String   @id @default(uuid()) @db.Uuid
+  name                        String   @unique @db.VarChar(100)
+  displayName                 String   @map("display_name") @db.VarChar(100)
+  description                 String?  @db.VarChar(500)
+  category                    String?  @db.VarChar(50)
+  runtimeType                 String?  @map("runtime_type") @db.VarChar(50)
+  status                      String   @default("active") @db.VarChar(20)
+  riskLevel                   String   @default("L0") @map("risk_level") @db.VarChar(10)
+  allowSkillBinding           Boolean  @default(true) @map("allow_skill_binding")
+  promptExposure              String   @default("prompt_and_runtime") @map("prompt_exposure") @db.VarChar(30)
+  defaultRequiresConfirmation Boolean  @default(false) @map("default_requires_confirmation")
+  defaultRequiresApproval     Boolean  @default(false) @map("default_requires_approval")
+  metadataJson                Json     @default("{}") @map("metadata_json")
+  createdAt                   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([status])
+  @@index([category, status])
+  @@index([runtimeType, status])
+  @@map("tool_catalogs")
+}
+
+model SkillToolBinding {
+  id            String   @id @default(uuid()) @db.Uuid
+  skillId       String   @map("skill_id") @db.Uuid
+  toolName      String   @map("tool_name") @db.VarChar(100)
+  bindingSource String   @default("declared") @map("binding_source") @db.VarChar(30)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  skill SkillConfig @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@unique([skillId, toolName])
+  @@index([toolName])
+  @@map("skill_tool_bindings")
+}
+
+// Chat Session Table
+model ChatSession {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  title     String?  @db.VarChar(255)
+  modelId   String?  @map("model_id") @db.VarChar(255)
+  status    String   @default("active") @db.VarChar(50) // active | archived
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  messages ChatMessage[]
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@map("chat_sessions")
+}
+
+// Chat Message Table
+model ChatMessage {
+  id        String   @id @default(uuid()) @db.Uuid
+  sessionId String   @map("session_id") @db.Uuid
+  role      String   @db.VarChar(20) // user | assistant | system
+  content   String   @db.Text
+  metadata  Json?    @map("metadata")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  session ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([role])
+  @@map("chat_messages")
+}
+
+// ============================================
+// Enterprise Skill Platform Core Models
+// ============================================
+
+// Execution - Skill execution instance (business truth source)
+model Execution {
+  id                  String    @id @default(uuid()) @db.Uuid
+  orgId               String?   @map("org_id") @db.Uuid
+  createdBy           String    @map("created_by") @db.Uuid
+  skillId             String    @map("skill_id") @db.Uuid
+  skillVersion        String?   @map("skill_version") @db.VarChar(50)
+  status              String    @db.VarChar(50) // queued, running, pending_approval, human_control, succeeded, failed, cancelled
+  runtimeType         String    @default("browser") @map("runtime_type") @db.VarChar(50)
+  riskLevel           String    @default("L0") @map("risk_level") @db.VarChar(10)
+  inputJson           Json?     @map("input_json")
+  normalizedInputJson Json?     @map("normalized_input_json")
+  resultJson          Json?     @map("result_json")
+  failureReason       String?   @map("failure_reason") @db.Text
+  failureCode         String?   @map("failure_code") @db.VarChar(50)
+  currentStepId       String?   @map("current_step_id") @db.Uuid
+  requiresApproval    Boolean   @default(false) @map("requires_approval")
+  approvalStatus      String?   @map("approval_status") @db.VarChar(50)
+  takeoverRequired    Boolean   @default(false) @map("takeover_required")
+  takeoverReason      String?   @map("takeover_reason") @db.Text
+  startedAt           DateTime? @map("started_at") @db.Timestamptz
+  endedAt             DateTime? @map("ended_at") @db.Timestamptz
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  steps           ExecutionStep[]
+  runtimeSessions RuntimeSession[]
+  events          ExecutionEvent[]
+
+  @@index([createdBy, createdAt(sort: Desc)])
+  @@index([skillId, createdAt(sort: Desc)])
+  @@index([status, createdAt(sort: Desc)])
+  @@map("executions")
+}
+
+// RuntimeSession - Runtime resource session (resource truth source)
+model RuntimeSession {
+  id                 String    @id @default(uuid()) @db.Uuid
+  executionId        String?   @map("execution_id") @db.Uuid
+  runtimeType        String    @default("browser") @map("runtime_type") @db.VarChar(50)
+  workerId           String?   @map("worker_id") @db.VarChar(255)
+  profileId          String?   @map("profile_id") @db.VarChar(255)
+  state              String    @db.VarChar(50) // allocating, ready, busy, frozen, closed, error
+  controlMode        String    @default("AGENT_RUNNING") @map("control_mode") @db.VarChar(50)
+  leaseExpiresAt     DateTime? @map("lease_expires_at") @db.Timestamptz
+  connectionInfoJson Json?     @map("connection_info_json")
+  capabilitiesJson   Json?     @default("[]") @map("capabilities_json")
+  healthStatus       String?   @map("health_status") @db.VarChar(50)
+  freezeReason       String?   @map("freeze_reason") @db.Text
+  lastActivityAt     DateTime? @map("last_activity_at") @db.Timestamptz
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  closedAt           DateTime? @map("closed_at") @db.Timestamptz
+
+  // Relations
+  execution Execution? @relation(fields: [executionId], references: [id])
+
+  @@index([executionId])
+  @@index([state, updatedAt(sort: Desc)])
+  @@index([workerId, state])
+  @@index([profileId, state])
+  @@map("runtime_sessions")
+}
+
+// ExecutionStep - Minimum observable action in Execution
+model ExecutionStep {
+  id                String    @id @default(uuid()) @db.Uuid
+  executionId       String    @map("execution_id") @db.Uuid
+  stepIndex         Int       @map("step_index")
+  name              String?   @db.VarChar(255)
+  type              String    @db.VarChar(50) // browser_action, assertion, input_collection, system
+  status            String    @db.VarChar(50) // pending, running, succeeded, failed, skipped
+  action            String?   @db.VarChar(100)
+  targetJson        Json?     @map("target_json")
+  inputJson         Json?     @map("input_json")
+  outputJson        Json?     @map("output_json")
+  assertionJson     Json?     @map("assertion_json")
+  errorMessage      String?   @map("error_message") @db.Text
+  errorCode         String?   @map("error_code") @db.VarChar(50)
+  retryCount        Int       @default(0) @map("retry_count")
+  snapshotId        String?   @map("snapshot_id") @db.VarChar(255)
+  takeoverTriggered Boolean   @default(false) @map("takeover_triggered")
+  startedAt         DateTime? @map("started_at") @db.Timestamptz
+  endedAt           DateTime? @map("ended_at") @db.Timestamptz
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  execution Execution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+
+  @@unique([executionId, stepIndex])
+  @@index([executionId, status])
+  @@map("execution_steps")
+}
+
+// ExecutionEvent - Key state transition events
+model ExecutionEvent {
+  id               String   @id @default(uuid()) @db.Uuid
+  executionId      String   @map("execution_id") @db.Uuid
+  runtimeSessionId String?  @map("runtime_session_id") @db.Uuid
+  stepId           String?  @map("step_id") @db.Uuid
+  eventType        String   @map("event_type") @db.VarChar(100)
+  eventSource      String?  @map("event_source") @db.VarChar(50)
+  payloadJson      Json?    @map("payload_json")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  execution Execution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+
+  @@index([executionId, createdAt(sort: Desc)])
+  @@map("execution_events")
+}
+
+// AuditLog - Persistent audit records
+model AuditLog {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String?  @map("user_id") @db.Uuid
+  action       String   @db.VarChar(255)
+  resource     String   @db.VarChar(255)
+  ipAddress    String?  @map("ip_address") @db.VarChar(50)
+  statusCode   Int?     @map("status_code")
+  durationMs   Int?     @map("duration_ms")
+  requestBody  Json?    @map("request_body")
+  responseBody Json?    @map("response_body")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([action, createdAt(sort: Desc)])
+  @@index([resource, createdAt(sort: Desc)])
+  @@map("audit_logs")
+}
+
+// Temporal Activity - Reusable activity definitions for Temporal workflows
+// Activities are non-deterministic side effects that can be retried
+model Activity {
+  id            String   @id @default(uuid()) @db.Uuid
+  name          String   @unique @db.VarChar(255)
+  fn            String   @db.VarChar(255) // Function name reference
+  timeout       String   @default("30s") @db.VarChar(50)
+  retryPolicy   Json?    @map("retry_policy")
+  handler       String   @db.VarChar(50) // api | carbone | browser | script
+  config        Json     @default("{}")
+  generatedCode String?  @map("generated_code") @db.Text
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([name])
+  @@index([handler])
+  @@index([isActive])
+  @@map("activities")
+}
+
+// Temporal Workflow - Workflow definitions with DSL
+model TemporalWorkflow {
+  id                   String    @id @default(uuid()) @db.Uuid
+  name                 String    @db.VarChar(255)
+  description          String?   @db.VarChar(500)
+  taskQueue            String    @db.VarChar(255)
+  workflowDsl          Json      @map("workflow_dsl")
+  activityDsl          Json      @map("activity_dsl")
+  generatedCode        String?   @map("generated_code") @db.Text
+  artifactVersion      Int       @default(0) @map("artifact_version")
+  artifactHash         String?   @map("artifact_hash") @db.VarChar(128)
+  validationStatus     String    @default("draft") @map("validation_status") @db.VarChar(32)
+  validationScore      Int       @default(0) @map("validation_score")
+  validationResultJson Json?     @map("validation_result_json")
+  validatedAt          DateTime? @map("validated_at") @db.Timestamptz
+  isActive             Boolean   @default(true) @map("is_active")
+  deployedAt           DateTime? @map("deployed_at") @db.Timestamptz
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt            DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([name])
+  @@index([taskQueue])
+  @@index([isActive])
+  @@index([validationStatus])
+  @@index([validatedAt])
+  @@map("temporal_workflows")
+}

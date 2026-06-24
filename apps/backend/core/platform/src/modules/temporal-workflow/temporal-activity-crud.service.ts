@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { Activity } from '@prisma/client';
+import { Activity } from '../../prisma';
 import { BuiltinActivityRegistry } from './builtin-activity.registry';
 import { ActivityFormData, BuiltinActivityDTO } from './temporal-activity.types';
 

@@ -9,10 +9,9 @@ import {
   getControlPlaneApiUrl,
   getTemporalUiUrl,
 } from '../../config/service-endpoints';
-import { ActivityService } from '../temporal-workflow/temporal-activity.service';
-import { SkillService } from '../skill/skill.service';
-import { ToolCatalogService } from '../skill/tool-catalog.service';
-import { ToolPromptExposure } from '../skill/interfaces';
+import { SkillService, ToolPromptExposure } from '../../skill-registry/registry';
+import { ToolCatalogService } from '../../skill-registry/binding';
+import { ActivityService } from '../../workflow-registry/activity-template';
 import { BrowserRecordingActionPolicyService } from './browser-recording-action-policy.service';
 import { BrowserRecordingExecutionPlanValidatorService } from './browser-recording-execution-plan-validator.service';
 import { CapabilityReleaseBrowserRecordingService } from './capability-release-browser-recording.service';

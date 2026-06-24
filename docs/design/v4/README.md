@@ -13,6 +13,8 @@
 
 ### 2. 目标态设计
 
+- 编排层重建设计书：[Enterprise-Skill-Platform_Orchestration-Reconstruction-Blueprint_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Orchestration-Reconstruction-Blueprint_v4.0.md)
+  - 适合回答：目录重构基本完成后，编排层下一阶段应如何从“目录分层”走向“职责分层”，以及 `execution.service.ts`、`RecorderDebugService`、`planner`、`react-engine` 的目标治理方向。
 - Browser Loop Workflow 控制改造：[Enterprise-Skill-Platform_Browser-Loop-Workflow-Control-Plan_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Browser-Loop-Workflow-Control-Plan_v4.0.md)
   - 适合回答：loop 为什么要提升为 workflow 可见模型，以及最终的 loop-aware plan 应该长什么样。
 - Browser Phase 执行与恢复：[Enterprise-Skill-Platform_Browser-Phase-Execution-and-Recovery_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Browser-Phase-Execution-and-Recovery_v4.0.md)
@@ -35,6 +37,24 @@
 - 迁移计划：[Enterprise-Skill-Platform_Migration-Plan_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Migration-Plan_v4.0.md)
 - 开发 Backlog：[Enterprise-Skill-Platform_Development-Backlog_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Development-Backlog_v4.0.md)
 - Story Breakdown：[Enterprise-Skill-Platform_Story-Breakdown_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Story-Breakdown_v4.0.md)
+- 编排层重建实施 Backlog：[Enterprise-Skill-Platform_Orchestration-Reconstruction-Implementation-Backlog_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Orchestration-Reconstruction-Implementation-Backlog_v4.0.md)
+  - 适合回答：编排层下一阶段应该按什么批次实施、每批改什么、验证什么、如何控制回归范围。
+- 编排层 Batch R1 详细方案：[Enterprise-Skill-Platform_Orchestration-Batch-R1-Execution-Query-Refactor-Plan_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Orchestration-Batch-R1-Execution-Query-Refactor-Plan_v4.0.md)
+  - 适合回答：`execution.service.ts` 的查询读路径第一刀应该怎么拆、先迁哪些方法、验证哪些接口和页面。
+- 编排层 Batch R4 详细方案：[Enterprise-Skill-Platform_Orchestration-Batch-R4-Execution-Module-Export-Convergence-Plan_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Orchestration-Batch-R4-Execution-Module-Export-Convergence-Plan_v4.0.md)
+  - 适合回答：`ExecutionModule exports` 应该如何收敛、先审计哪些外部消费点、如何避免收缩后模块注入回归。
+- 编排层 Batch R5 详细方案：[Enterprise-Skill-Platform_Orchestration-Batch-R5-Browser-Submodule-Gateway-Plan_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Orchestration-Batch-R5-Browser-Submodule-Gateway-Plan_v4.0.md)
+  - 适合回答：`browser/observe`、`loop`、`export`、`session` 应该如何补齐目录网关，以及哪些 import 应优先收敛。
+- 编排层 Batch R6 详细方案：[Enterprise-Skill-Platform_Orchestration-Batch-R6-Recorder-Debug-Session-Facade-Plan_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Orchestration-Batch-R6-Recorder-Debug-Session-Facade-Plan_v4.0.md)
+  - 适合回答：`RecorderDebugService` 的第一刀瘦身应该先拆哪类职责，以及 `recorder-debug-session.facade.ts` 应该承接什么能力。
+- 编排层 Batch R7 详细方案：[Enterprise-Skill-Platform_Orchestration-Batch-R7-Recorder-Debug-Facade-Slimming-Plan_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Orchestration-Batch-R7-Recorder-Debug-Facade-Slimming-Plan_v4.0.md)
+  - 适合回答：`RecorderDebugService` 在抽出 session facade 之后，下一步应该如何继续收敛成薄 Facade，以及哪些 helper 最适合继续下沉。
+- 编排层 Batch R8 详细方案：[Enterprise-Skill-Platform_Orchestration-Batch-R8-Planner-Skill-Read-Path-Refactor-Plan_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Orchestration-Batch-R8-Planner-Skill-Read-Path-Refactor-Plan_v4.0.md)
+  - 适合回答：`planner.service.ts` 的第一刀为什么应优先拆技能读取/缓存/匹配读路径，以及首轮 PR 应如何控制范围。
+- 编排层 Batch R9 详细方案：[Enterprise-Skill-Platform_Orchestration-Batch-R9-Planner-Plan-Generation-Refactor-Plan_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Orchestration-Batch-R9-Planner-Plan-Generation-Refactor-Plan_v4.0.md)
+  - 适合回答：`planner.service.ts` 在收敛 skill 读路径之后，下一步应如何拆出 plan generation 与 document semantic shaping。
+- 编排层 Batch R10 详细方案：[Enterprise-Skill-Platform_Orchestration-Batch-R10-Planner-Param-Recognition-Refactor-Plan_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Orchestration-Batch-R10-Planner-Param-Recognition-Refactor-Plan_v4.0.md)
+  - 适合回答：`planner.service.ts` 最复杂的参数识别、waiting-input 恢复与 `required_inputs` 计算，应该如何单独拆到 `params/`。
 - 浏览器语义规则版本化与模块重组实施 Backlog：[Enterprise-Skill-Platform_Browser-Semantic-Rule-Versioning-and-Module-Reorg-Implementation-Backlog_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Browser-Semantic-Rule-Versioning-and-Module-Reorg-Implementation-Backlog_v4.0.md)
   - 适合回答：测试网站、规则版本化、浏览器目录重组应该先做什么、分几期做、每期验收什么。
 
@@ -74,3 +94,23 @@
    [Enterprise-Skill-Platform_Browser-Loop-Workflow-Control-Plan_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Browser-Loop-Workflow-Control-Plan_v4.0.md)
 11. phase / 接管恢复设计：
    [Enterprise-Skill-Platform_Browser-Phase-Execution-and-Recovery_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Browser-Phase-Execution-and-Recovery_v4.0.md)
+12. 编排层重建设计书：
+   [Enterprise-Skill-Platform_Orchestration-Reconstruction-Blueprint_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Orchestration-Reconstruction-Blueprint_v4.0.md)
+13. 编排层重建实施 Backlog：
+   [Enterprise-Skill-Platform_Orchestration-Reconstruction-Implementation-Backlog_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Orchestration-Reconstruction-Implementation-Backlog_v4.0.md)
+14. 编排层 Batch R1 详细方案：
+   [Enterprise-Skill-Platform_Orchestration-Batch-R1-Execution-Query-Refactor-Plan_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Orchestration-Batch-R1-Execution-Query-Refactor-Plan_v4.0.md)
+15. 编排层 Batch R4 详细方案：
+   [Enterprise-Skill-Platform_Orchestration-Batch-R4-Execution-Module-Export-Convergence-Plan_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Orchestration-Batch-R4-Execution-Module-Export-Convergence-Plan_v4.0.md)
+16. 编排层 Batch R5 详细方案：
+   [Enterprise-Skill-Platform_Orchestration-Batch-R5-Browser-Submodule-Gateway-Plan_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Orchestration-Batch-R5-Browser-Submodule-Gateway-Plan_v4.0.md)
+17. 编排层 Batch R6 详细方案：
+   [Enterprise-Skill-Platform_Orchestration-Batch-R6-Recorder-Debug-Session-Facade-Plan_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Orchestration-Batch-R6-Recorder-Debug-Session-Facade-Plan_v4.0.md)
+18. 编排层 Batch R7 详细方案：
+   [Enterprise-Skill-Platform_Orchestration-Batch-R7-Recorder-Debug-Facade-Slimming-Plan_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Orchestration-Batch-R7-Recorder-Debug-Facade-Slimming-Plan_v4.0.md)
+19. 编排层 Batch R8 详细方案：
+   [Enterprise-Skill-Platform_Orchestration-Batch-R8-Planner-Skill-Read-Path-Refactor-Plan_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Orchestration-Batch-R8-Planner-Skill-Read-Path-Refactor-Plan_v4.0.md)
+20. 编排层 Batch R9 详细方案：
+   [Enterprise-Skill-Platform_Orchestration-Batch-R9-Planner-Plan-Generation-Refactor-Plan_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Orchestration-Batch-R9-Planner-Plan-Generation-Refactor-Plan_v4.0.md)
+21. 编排层 Batch R10 详细方案：
+   [Enterprise-Skill-Platform_Orchestration-Batch-R10-Planner-Param-Recognition-Refactor-Plan_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Orchestration-Batch-R10-Planner-Param-Recognition-Refactor-Plan_v4.0.md)

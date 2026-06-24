@@ -1,18 +1,22 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Res } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { ActivityService } from './temporal-activity.service';
+import { TemporalActivityValidationHttpService } from './temporal-activity-validation-http.service';
 import {
   ActivityFormData,
   ActivityValidationResult,
   BuiltinActivityDTO,
   GenerateCodeResult,
 } from './temporal-activity.types';
-import { Activity } from '@prisma/client';
+import { Activity } from '../../prisma';
 
 @ApiTags('Activities')
 @Controller('activities')
 export class ActivityController {
-  constructor(private readonly activityService: ActivityService) {}
+  constructor(
+    private readonly activityService: ActivityService,
+    private readonly validationHttpService: TemporalActivityValidationHttpService
+  ) {}
 
   @Get('builtin')
   @ApiOperation({ summary: 'List all builtin activities' })
@@ -62,7 +66,7 @@ export class ActivityController {
   @Post('validate')
   @ApiOperation({ summary: 'Validate activity configuration' })
   async validate(@Body() config: ActivityFormData): Promise<ActivityValidationResult> {
-    return this.activityService.validate(config);
+    return this.validationHttpService.validateRequest(config);
   }
 
   @Post('generate-code')

@@ -1,8 +1,8 @@
 import axios from 'axios';
 import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
-import { CapabilityReleaseService } from '../src/modules/capability-release/capability-release.service';
-import { BridgeRecorderExportDTO } from '../src/modules/capability-release/interfaces';
+import { CapabilityReleaseService } from '../src/release-manager/release';
+import { BridgeRecorderExportDTO } from '../src/release-manager';
 
 jest.mock('axios');
 
@@ -44,10 +44,12 @@ describe('CapabilityReleaseService', () => {
       {} as any, // capabilityReleaseAssistService
       {} as any, // capabilityReleasePublishService
       {} as any, // capabilityReleaseRuntimeService
+      {} as any, // capabilityReleaseManifestService
       {
         generateSkillDraft: jest.fn(),
       } as any, // capabilityReleaseSkillDraftService
-      {} as any // capabilityReleaseTemporalSchemaService
+      {} as any, // capabilityReleaseTemporalSchemaService
+      {} as any // temporalWorkflowService
     );
 
     return { service, prisma, skillService, toolCatalogService, activityService };

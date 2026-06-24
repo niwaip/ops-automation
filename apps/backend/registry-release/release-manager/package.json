@@ -1,0 +1,19 @@
+{
+  "name": "@ops/release-manager",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Registry-release release-manager shared exports",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@ops/platform": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.0"
+  }
+}

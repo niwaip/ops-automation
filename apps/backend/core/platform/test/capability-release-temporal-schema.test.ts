@@ -1,8 +1,8 @@
 import axios from 'axios';
 import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
-import { CapabilityReleaseTemporalSchemaService } from '../src/modules/capability-release/capability-release-temporal-schema.service';
-import { BridgeRecorderExportDTO } from '../src/modules/capability-release/interfaces';
+import { CapabilityReleaseTemporalSchemaService } from '../src/release-manager/compiler';
+import { BridgeRecorderExportDTO } from '../src/release-manager';
 
 jest.mock('axios');
 

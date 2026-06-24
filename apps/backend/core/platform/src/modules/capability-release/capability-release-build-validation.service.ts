@@ -1,8 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
-import { ExecutionFlowTemplateService } from '../execution-flow/execution-flow-template.service';
-import { TemporalWorkflowService } from '../temporal-workflow/temporal-workflow.service';
+import { ExecutionFlowValidationFacadeService } from '../../workflow-registry/validation';
+import { TemporalWorkflowService } from '../../workflow-registry/workflow-template';
 import { CapabilityReleaseBrowserRecordingService } from './capability-release-browser-recording.service';
 import { CapabilityReleaseRuntimeService } from './capability-release-runtime.service';
 import { CapabilityReleaseSkillDraftService } from './capability-release-skill-draft.service';
@@ -48,7 +48,7 @@ export class CapabilityReleaseBuildValidationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly temporalWorkflowService: TemporalWorkflowService,
-    private readonly executionFlowTemplateService: ExecutionFlowTemplateService,
+    private readonly executionFlowValidationFacade: ExecutionFlowValidationFacadeService,
     private readonly capabilityReleaseRuntimeService: CapabilityReleaseRuntimeService,
     private readonly capabilityReleaseBrowserRecordingService: CapabilityReleaseBrowserRecordingService,
     private readonly capabilityReleaseSkillDraftService: CapabilityReleaseSkillDraftService,
@@ -582,7 +582,7 @@ export class CapabilityReleaseBuildValidationService {
         resultSnapshot = result.resultSnapshot;
         errorSummary = result.errorSummary;
       } else if (templateId) {
-        const validation = await this.executionFlowTemplateService.validateTemplate(
+        const validation = await this.executionFlowValidationFacade.validateTemplate(
           templateId,
           undefined,
           dto.input,
@@ -752,7 +752,7 @@ export class CapabilityReleaseBuildValidationService {
           runtime: 'flow_runtime',
           note: '当前模板型能力通过同步校验结果回放日志',
         });
-        const validation = await this.executionFlowTemplateService.validateTemplate(
+        const validation = await this.executionFlowValidationFacade.validateTemplate(
           templateId,
           undefined,
           dto.input,

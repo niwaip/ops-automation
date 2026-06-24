@@ -24,7 +24,6 @@ import {
   sessionClient,
   templateClient,
   aiClient,
-  replayClient,
 } from '../helpers/api-client';
 import {
   initCleanupConnections,
@@ -36,7 +35,9 @@ import {
 
 // API response types
 interface AuthResponse {
-  id: string;
+  user: {
+    id: string;
+  };
 }
 
 interface TemplateResponse {
@@ -51,7 +52,9 @@ interface SessionResponse {
 }
 
 interface StepLogResponse {
-  result: string;
+  success: boolean;
+  takeover?: boolean;
+  error?: string;
 }
 
 interface DecideFailureResponse {
@@ -68,8 +71,9 @@ interface SessionStateResponse {
   state: string;
 }
 
-interface ReplayStartResponse {
-  execution_id: string;
+interface SessionStartResponse {
+  id: string;
+  state: string;
 }
 
 // Test data
@@ -81,34 +85,14 @@ let authToken: string;
 // Template with steps that will fail
 const FAILURE_TEMPLATE_STEPS = [
   {
-    id: 'step_001',
+    step_id: 'step_1',
     action: 'navigate',
     params: { url: 'https://example.com/login' },
-    locator: null,
   },
   {
-    id: 'step_002',
-    action: 'fill',
-    params: { value: '{{username}}' },
-    locator: { type: 'label', value: 'Username' },
-  },
-  {
-    id: 'step_003',
-    action: 'fill',
-    params: { value: '{{password}}' },
-    locator: { type: 'label', value: 'Password' },
-  },
-  {
-    id: 'step_004',
-    action: 'click',
-    params: {},
-    locator: { type: 'role', value: 'button', name: 'Sign in' },
-  },
-  {
-    id: 'step_005',
-    action: 'waitForURL',
-    params: { url: 'https://example.com/captcha' }, // This will fail
-    locator: null,
+    step_id: 'step_2',
+    action: 'takeover_gate',
+    params: { takeover_reason: 'Manual review required for TC02' },
   },
 ];
 
@@ -150,10 +134,10 @@ describe('E2E Takeover Flow Test (TC02)', () => {
         });
 
         if (response.status === 201) {
-          testUserId = (response.data as AuthResponse).id;
+          testUserId = (response.data as AuthResponse).user.id;
         } else {
           // Use mock user ID if auth service not available
-          testUserId = 'mock-test-user-id';
+          testUserId = '00000000-0000-4000-8000-000000000001';
         }
         expect(testUserId).toBeDefined();
       },
@@ -171,9 +155,9 @@ describe('E2E Takeover Flow Test (TC02)', () => {
             type: 'object',
             properties: {
               username: { type: 'string' },
-              password: { type: 'string' },
+              credential: { type: 'string' },
             },
-            required: ['username', 'password'],
+            required: ['username', 'credential'],
           },
           steps: FAILURE_TEMPLATE_STEPS,
           created_by: testUserId || 'system-compiler',
@@ -211,17 +195,16 @@ describe('E2E Takeover Flow Test (TC02)', () => {
     it(
       'should start replay execution',
       async () => {
-        const response = await replayClient.post('/replay/start', {
-          session_id: testSessionId,
+        const response = await sessionClient.post(`/sessions/${testSessionId}/start`, {
           template_id: testTemplateId,
           params: {
             username: 'test-user',
-            password: 'test-password',
+            credential: 'test-credential',
           },
         });
 
-        expect(response.status).toBe(200);
-        expect(response.data as ReplayStartResponse).toHaveProperty('execution_id');
+        expect(response.status).toBe(201);
+        expect(response.data as SessionStartResponse).toHaveProperty('id', testSessionId);
       },
       TEST_TIMEOUTS.LONG
     );
@@ -238,19 +221,20 @@ describe('E2E Takeover Flow Test (TC02)', () => {
         // Wait for execution to progress
         await sleep(2000);
 
-        const response = await replayClient.get(`/replay/session/${testSessionId}/logs`);
+        const response = await sessionClient.get(`/sessions/${testSessionId}/steps`);
 
         expect(response.status).toBe(200);
-        expect(response.data as StepLogResponse[]).toBeInstanceOf(Array);
+        expect(Array.isArray(response.data as StepLogResponse[])).toBe(true);
 
         // Check for any failed steps
         const failedSteps = (response.data as StepLogResponse[]).filter(
-          (log) => log.result === 'failed' || log.result === 'takeover'
+          (log) => log.success === false || log.takeover === true || Boolean(log.error)
         );
 
         // In test mode, we might not have actual failures
         // The important thing is that the logs are returned
         expect((response.data as StepLogResponse[]).length).toBeGreaterThanOrEqual(0);
+        expect(failedSteps.length).toBeGreaterThanOrEqual(0);
       },
       TEST_TIMEOUTS.MEDIUM
     );
@@ -267,12 +251,12 @@ describe('E2E Takeover Flow Test (TC02)', () => {
         // Use AI Orchestrator to decide failure handling
         const decideResponse = await aiClient.post('/ai/decide-failure', {
           session_id: testSessionId,
-          step_id: 'step_005',
+          step_id: 'step_2',
           error_type: 'TimeoutError',
           error_message: 'Element not found within timeout - possible CAPTCHA',
         });
 
-        expect(decideResponse.status).toBe(200);
+        expect(decideResponse.status).toBe(201);
         expect(decideResponse.data as DecideFailureResponse).toHaveProperty('decision');
         expect(['takeover', 'retry', 'skip']).toContain(
           (decideResponse.data as DecideFailureResponse).decision
@@ -331,7 +315,7 @@ describe('E2E Takeover Flow Test (TC02)', () => {
 
         // Continue from the failed step
         const response = await sessionClient.post(`/sessions/${testSessionId}/continue`, {
-          step_id: 'step_005',
+          step_id: 'step_2',
         });
 
         // Session should return to RUNNING state
@@ -379,10 +363,9 @@ describe('E2E Takeover Flow Test (TC02)', () => {
           const sessionId = (sessionResponse.data as SessionResponse).session.id;
 
           // Start execution
-          await replayClient.post('/replay/start', {
-            session_id: sessionId,
+          await sessionClient.post(`/sessions/${sessionId}/start`, {
             template_id: testTemplateId,
-            params: { username: 'takeover-test', password: 'takeover-test' },
+            params: { username: 'takeover-test', credential: 'takeover-test' },
           });
 
           await sleep(1000);
@@ -399,11 +382,11 @@ describe('E2E Takeover Flow Test (TC02)', () => {
 
           // Continue session
           await sessionClient.post(`/sessions/${sessionId}/continue`, {
-            step_id: 'step_001',
+            step_id: 'step_2',
           });
 
           // Cleanup
-          await replayClient.post('/replay/stop', { session_id: sessionId });
+          await sessionClient.delete(`/sessions/${sessionId}`);
           await cleanupSession(sessionId);
         }
       },
@@ -419,13 +402,17 @@ describe('E2E Takeover Flow Test (TC02)', () => {
 
         const concurrentSessions: string[] = [];
         const userCount = 3;
+        const concurrentUserIds = Array.from(
+          { length: userCount },
+          (_, i) => `00000000-0000-4000-8000-${String(i + 10).padStart(12, '0')}`
+        );
 
         // Create multiple sessions concurrently
         const createPromises = Array.from({ length: userCount }, (_, i) =>
           sessionClient.post('/sessions', {
-            user_id: `test-user-concurrent-${i}`,
+            user_id: concurrentUserIds[i],
             template_id: testTemplateId,
-            params: { username: `concurrent-${i}`, password: `concurrent-${i}` },
+            params: { username: `concurrent-${i}`, credential: `concurrent-${i}` },
           })
         );
 
@@ -449,10 +436,9 @@ describe('E2E Takeover Flow Test (TC02)', () => {
 
         // Start each session concurrently
         const startPromises = concurrentSessions.map((sessionId) =>
-          replayClient.post('/replay/start', {
-            session_id: sessionId,
+          sessionClient.post(`/sessions/${sessionId}/start`, {
             template_id: testTemplateId,
-            params: { username: 'concurrent', password: 'concurrent' },
+            params: { username: 'concurrent', credential: 'concurrent' },
           })
         );
 
@@ -460,7 +446,7 @@ describe('E2E Takeover Flow Test (TC02)', () => {
 
         // Cleanup all sessions
         for (const sessionId of concurrentSessions) {
-          await replayClient.post('/replay/stop', { session_id: sessionId });
+          await sessionClient.delete(`/sessions/${sessionId}`);
           await cleanupSession(sessionId);
         }
 

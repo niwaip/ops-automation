@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
-import { ExecutionFlowTemplateService } from '../execution-flow/execution-flow-template.service';
-import { TemporalWorkflowService } from '../temporal-workflow/temporal-workflow.service';
+import { ExecutionFlowValidationFacadeService } from '../../workflow-registry/validation';
+import { TemporalWorkflowService } from '../../workflow-registry/workflow-template';
 import type { CapabilityReleaseDeploymentAccessors } from './capability-release-deployment.service';
 import { CapabilityReleaseBrowserRecordingService } from './capability-release-browser-recording.service';
 import { CapabilityReleaseTemporalSchemaService } from './capability-release-temporal-schema.service';
@@ -17,7 +17,7 @@ export class CapabilityReleaseDeploymentSmokeService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly temporalWorkflowService: TemporalWorkflowService,
-    private readonly executionFlowTemplateService: ExecutionFlowTemplateService,
+    private readonly executionFlowValidationFacade: ExecutionFlowValidationFacadeService,
     private readonly capabilityReleaseBrowserRecordingService: CapabilityReleaseBrowserRecordingService,
     private readonly capabilityReleaseTemporalSchemaService: CapabilityReleaseTemporalSchemaService
   ) {}
@@ -139,7 +139,7 @@ export class CapabilityReleaseDeploymentSmokeService {
         resultSnapshot = result.resultSnapshot;
         errorSummary = result.errorSummary;
       } else if (templateId) {
-        const validation = await this.executionFlowTemplateService.validateTemplate(
+        const validation = await this.executionFlowValidationFacade.validateTemplate(
           templateId,
           undefined,
           smokeInput,

@@ -1,3 +1,5 @@
+import type { ArtifactRef } from '@ops/backend-runtime-capability-contract';
+
 /**
  * Studio模块共享类型定义
  * 此文件用于确保所有分支的类型定义一致性
@@ -115,6 +117,7 @@ export interface RenderResponse {
   fileName: string;
   format: string;
   size?: number;
+  artifacts?: ArtifactRef[];
 }
 
 export interface AIIdentifyResponse {

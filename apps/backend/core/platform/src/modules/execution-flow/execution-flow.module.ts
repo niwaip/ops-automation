@@ -7,6 +7,9 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { ExecutionFlowTemplateController } from './execution-flow.controller';
 import { ExecutionFlowTemplateService } from './execution-flow-template.service';
+import { ExecutionFlowValidationHttpService } from './execution-flow-validation-http.service';
+import { ExecutionFlowValidationService } from './execution-flow-validation.service';
+import { ExecutionFlowValidationFacadeService } from './execution-flow-validation-facade.service';
 import { PrismaModule } from '../../prisma/prisma.module';
 
 @Module({
@@ -20,7 +23,17 @@ import { PrismaModule } from '../../prisma/prisma.module';
     }),
   ],
   controllers: [ExecutionFlowTemplateController],
-  providers: [ExecutionFlowTemplateService],
-  exports: [ExecutionFlowTemplateService],
+  providers: [
+    ExecutionFlowTemplateService,
+    ExecutionFlowValidationHttpService,
+    ExecutionFlowValidationService,
+    ExecutionFlowValidationFacadeService,
+  ],
+  exports: [
+    ExecutionFlowTemplateService,
+    ExecutionFlowValidationHttpService,
+    ExecutionFlowValidationService,
+    ExecutionFlowValidationFacadeService,
+  ],
 })
 export class ExecutionFlowModule {}

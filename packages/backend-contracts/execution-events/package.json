@@ -1,0 +1,8 @@
+{
+  "name": "@ops/backend-execution-events",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shared execution event contract definitions",
+  "main": "index.js",
+  "types": "index.d.ts"
+}

@@ -1,12 +1,17 @@
 /**
- * Skill Module Index
+ * skill -> skill-registry
+ *
+ * This module remains in core/platform physically, but its logical ownership is
+ * the future skill-registry under registry-release. New registration logic
+ * should enter the grouped boundaries below instead of expanding release or
+ * workflow responsibilities here.
  */
 
-export { SkillModule } from './skill.module';
-export { SkillService } from './skill.service';
-export { SkillController } from './skill.controller';
-export { SkillToolBindingService } from './skill-tool-binding.service';
-export { SkillEnrichmentService } from './skill-enrichment.service';
-export { SkillAccessService } from './skill-access.service';
-export { SkillMatcherService } from './skill-matcher.service';
-export { SkillValidationService } from './skill-validation.service';
+export * from './interfaces';
+export * from './skill.module';
+export * from './registry';
+export * from './binding';
+export * from './access';
+export * from './matching';
+export * from './enrichment';
+export * from './validation';

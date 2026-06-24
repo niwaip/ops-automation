@@ -5,6 +5,8 @@ import { AuthService } from '../src/modules/auth/auth.service';
 import { PrismaService } from '../src/prisma/prisma.service';
 import * as bcrypt from 'bcryptjs';
 import { LoginDto, RegisterDto } from '../src/dto';
+import { PlatformIdentityAccessAuthRepository } from '../src/governance/identity-access/auth-repository.service';
+import { IDENTITY_ACCESS_AUTH_REPOSITORY } from '@ops/identity-access';
 
 // Type for mocked Prisma service
 type MockPrismaService = {
@@ -67,6 +69,11 @@ describe('AuthService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
+        PlatformIdentityAccessAuthRepository,
+        {
+          provide: IDENTITY_ACCESS_AUTH_REPOSITORY,
+          useExisting: PlatformIdentityAccessAuthRepository,
+        },
         { provide: PrismaService, useValue: prisma },
         { provide: JwtService, useValue: jwtService },
       ],

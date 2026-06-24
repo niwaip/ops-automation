@@ -2,7 +2,12 @@
 
 const fs = require('fs');
 const path = require('path');
-const { PrismaClient, TemplateFormat, TemplateType, Prisma } = require('@prisma/client');
+const {
+  PrismaClient,
+  TemplateFormat,
+  TemplateType,
+  Prisma,
+} = require('../src/generated/prisma');
 
 const args = new Set(process.argv.slice(2));
 const dryRun = args.has('--dry-run');

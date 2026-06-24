@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Minimal live smoke test for V4 runtime layer:
-# browser-worker / carbone-engine / temporal / temporal-ui / temporal-sandbox-agent
+# browser-worker / carbone-engine / temporal / temporal-ui / sandbox-worker
 
 set -euo pipefail
 
@@ -29,7 +29,7 @@ CHROME_CONTAINER="${CHROME_CONTAINER:-ops-browser-chrome}"
 CARBONE_CONTAINER="${CARBONE_CONTAINER:-carbone-engine}"
 TEMPORAL_CONTAINER="${TEMPORAL_CONTAINER:-ops-temporal}"
 TEMPORAL_UI_CONTAINER="${TEMPORAL_UI_CONTAINER:-ops-temporal-ui}"
-SANDBOX_CONTAINER="${SANDBOX_CONTAINER:-ops-temporal-sandbox-agent}"
+SANDBOX_CONTAINER="${SANDBOX_CONTAINER:-ops-sandbox-worker}"
 
 log() {
   echo "[runtime-smoke] $*"
@@ -89,7 +89,7 @@ main() {
   retry "carbone-engine running" 36 5 container_running "$CARBONE_CONTAINER" || fail "carbone-engine not ready"
   retry "temporal running" 36 5 container_running "$TEMPORAL_CONTAINER" || fail "temporal not ready"
   retry "temporal-ui running" 36 5 container_running "$TEMPORAL_UI_CONTAINER" || fail "temporal-ui not ready"
-  retry "temporal-sandbox-agent running" 36 5 container_running "$SANDBOX_CONTAINER" || fail "temporal-sandbox-agent not ready"
+  retry "sandbox-worker running" 36 5 container_running "$SANDBOX_CONTAINER" || fail "sandbox-worker not ready"
 
   log "Runtime smoke passed"
   log "Stop runtime with:"

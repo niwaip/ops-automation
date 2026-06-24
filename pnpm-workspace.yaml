@@ -1,7 +1,15 @@
 packages:
+  # Compatibility globs for the target backend planes.
+  - 'apps/backend/governance/*'
+  - 'apps/backend/intelligence/*'
+  - 'apps/backend/registry-release/*'
+  - 'apps/backend/execution-control/*'
+  - 'apps/backend/capabilities/*'
+  - 'apps/backend/runtimes/*'
+  # Keep legacy broad globs during migration.
   - 'apps/*'
   - 'apps/*/*'
   - 'apps/*/*/*'
   - 'tests/*'
   - 'packages/*'
-
+  - 'packages/*/*'

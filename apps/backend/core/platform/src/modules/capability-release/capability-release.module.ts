@@ -1,21 +1,28 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PrismaModule } from '../../prisma/prisma.module';
-import { ExecutionFlowModule } from '../execution-flow/execution-flow.module';
-import { TemporalWorkflowModule } from '../temporal-workflow/temporal-workflow.module';
-import { SkillModule } from '../skill/skill.module';
-import { CapabilityReleaseBrowserRecordingService } from './capability-release-browser-recording.service';
-import { BrowserRecordingActionPolicyService } from './browser-recording-action-policy.service';
-import { BrowserRecordingExecutionPlanValidatorService } from './browser-recording-execution-plan-validator.service';
+import { SkillModule } from '../../skill-registry/registry';
+import { ExecutionFlowModule } from '../../workflow-registry/flow-template';
+import { TemporalWorkflowModule } from '../../workflow-registry/workflow-template';
+import {
+  CapabilityReleaseBrowserRecordingService,
+  CapabilityReleaseBuildValidationService,
+  CapabilityReleaseTemporalSchemaService,
+} from './compiler';
+import {
+  BrowserRecordingActionPolicyService,
+  BrowserRecordingExecutionPlanValidatorService,
+} from './validator';
 import { CapabilityReleaseAssistService } from './capability-release-assist.service';
-import { CapabilityReleaseBuildValidationService } from './capability-release-build-validation.service';
-import { CapabilityReleaseDeploymentSmokeService } from './capability-release-deployment-smoke.service';
-import { CapabilityReleaseDeploymentService } from './capability-release-deployment.service';
-import { CapabilityReleasePublishService } from './capability-release-publish.service';
-import { CapabilityReleaseRuntimeService } from './capability-release-runtime.service';
+import {
+  CapabilityReleaseDeploymentSmokeService,
+  CapabilityReleaseDeploymentService,
+  CapabilityReleasePublishService,
+  CapabilityReleaseRuntimeService,
+} from './publisher';
 import { CapabilityReleaseSkillDraftService } from './capability-release-skill-draft.service';
-import { CapabilityReleaseTemporalSchemaService } from './capability-release-temporal-schema.service';
 import { CapabilityReleaseController } from './capability-release.controller';
+import { CapabilityReleaseManifestService } from './capability-release-manifest.service';
 import { CapabilityReleaseService } from './capability-release.service';
 
 @Module({
@@ -34,6 +41,7 @@ import { CapabilityReleaseService } from './capability-release.service';
   controllers: [CapabilityReleaseController],
   providers: [
     CapabilityReleaseService,
+    CapabilityReleaseManifestService,
     CapabilityReleaseTemporalSchemaService,
     CapabilityReleaseBrowserRecordingService,
     BrowserRecordingActionPolicyService,
@@ -46,6 +54,6 @@ import { CapabilityReleaseService } from './capability-release.service';
     CapabilityReleaseRuntimeService,
     CapabilityReleaseSkillDraftService,
   ],
-  exports: [CapabilityReleaseService],
+  exports: [CapabilityReleaseService, CapabilityReleaseManifestService],
 })
 export class CapabilityReleaseModule {}

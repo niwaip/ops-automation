@@ -332,9 +332,9 @@ CapabilityReleaseRuntimeService.executeBrowserRecordingPublishedSkill()
 - 发起 chat / export / save / publish 等交互。
 - 承接录制态与模板保存态的前端逻辑。
 
-### 4.2 录制编排层
+### 4.2 录制后端编排层
 
-- `apps/backend/orchestration/ai-orchestrator/src/modules/browser-command/recorder-debug.service.ts`
+- `apps/backend/intelligence/ai-orchestrator/src/modules/browser/execute/recorder-debug.service.ts`
 
 职责：
 
@@ -383,7 +383,7 @@ CapabilityReleaseRuntimeService.executeBrowserRecordingPublishedSkill()
 
 ### 4.6 浏览器执行层
 
-- `apps/backend/runtime/browser-worker/src/modules/browser/...`
+- `apps/backend/runtimes/browser-worker/src/modules/browser/...`
 
 职责：
 
@@ -668,19 +668,19 @@ trace 字段已经在 export、publish、runtime 中存在，但还没有形成�
 ### 11.1 录制与导出
 
 - `apps/frontend/portal/src/features/recorder/components/AIControls.tsx`
-- `apps/backend/orchestration/ai-orchestrator/src/modules/browser-command/recorder-debug.service.ts`
-- `apps/backend/orchestration/ai-orchestrator/src/modules/browser-command/recorder-debug-chat-flow.service.ts`
-- `apps/backend/orchestration/ai-orchestrator/src/modules/browser-command/recorder-debug-execution.service.ts`
-- `apps/backend/orchestration/ai-orchestrator/src/modules/browser-command/browser-command.service.ts`
-- `apps/backend/orchestration/ai-orchestrator/src/modules/browser-command/browser-action-validator.service.ts`
-- `apps/backend/orchestration/ai-orchestrator/src/modules/browser-command/recorder-structure-probe.service.ts`
-- `apps/backend/orchestration/ai-orchestrator/src/modules/browser-command/recorder-observation.service.ts`
-- `apps/backend/orchestration/ai-orchestrator/src/modules/browser-command/recorder-snapshot.service.ts`
-- `apps/backend/orchestration/ai-orchestrator/src/modules/browser-command/recorder-disambiguation.service.ts`
-- `apps/backend/orchestration/ai-orchestrator/src/modules/browser-command/recorder-export-assembly.service.ts`
-- `apps/backend/orchestration/ai-orchestrator/src/modules/browser-command/recorder-template-export.service.ts`
-- `apps/backend/orchestration/ai-orchestrator/src/modules/browser-command/recorder-export.service.ts`
-- `apps/backend/orchestration/ai-orchestrator/src/modules/browser-command/recorder-loop.service.ts`
+- `apps/backend/intelligence/ai-orchestrator/src/modules/browser/execute/recorder-debug.service.ts`
+- `apps/backend/intelligence/ai-orchestrator/src/modules/browser/execute/recorder-debug-chat-flow.service.ts`
+- `apps/backend/intelligence/ai-orchestrator/src/modules/browser/execute/recorder-debug-execution.service.ts`
+- `apps/backend/intelligence/ai-orchestrator/src/modules/browser/intent/browser-command.service.ts`
+- `apps/backend/intelligence/ai-orchestrator/src/modules/browser/intent/atomic-parsers/browser-action-validator.service.ts`
+- `apps/backend/intelligence/ai-orchestrator/src/modules/browser/observe/recorder-structure-probe.service.ts`
+- `apps/backend/intelligence/ai-orchestrator/src/modules/browser/observe/recorder-observation.service.ts`
+- `apps/backend/intelligence/ai-orchestrator/src/modules/browser/observe/recorder-snapshot.service.ts`
+- `apps/backend/intelligence/ai-orchestrator/src/modules/browser/intent/recorder-disambiguation.service.ts`
+- `apps/backend/intelligence/ai-orchestrator/src/modules/browser/export/recorder-export-assembly.service.ts`
+- `apps/backend/intelligence/ai-orchestrator/src/modules/browser/export/recorder-template-export.service.ts`
+- `apps/backend/intelligence/ai-orchestrator/src/modules/browser/export/recorder-export.service.ts`
+- `apps/backend/intelligence/ai-orchestrator/src/modules/browser/loop/recorder-loop.service.ts`
 
 ### 11.2 发布与运行时
 
@@ -689,16 +689,16 @@ trace 字段已经在 export、publish、runtime 中存在，但还没有形成�
 - `apps/backend/core/platform/src/modules/capability-release/capability-release-runtime.service.ts`
 - `apps/backend/core/platform/src/modules/capability-release/capability-release-browser-recording.service.ts`
 - `apps/backend/core/platform/src/modules/capability-release/browser-recording-execution-plan-validator.service.ts`
-- `apps/backend/orchestration/ai-orchestrator/src/modules/browser-command/browser-recording-execution-plan.ts`
+- `apps/backend/intelligence/ai-orchestrator/src/modules/browser/export/browser-recording-execution-plan.ts`
 
 ### 11.3 浏览器执行、控制平面与展示
 
-- `apps/backend/runtime/browser-worker/src/modules/browser/adapters/playwright-cli.adapter.ts`
-- `apps/backend/orchestration/control-plane/src/modules/execution/execution-planning.service.ts`
-- `apps/backend/orchestration/control-plane/src/modules/execution/execution-plan-normalization.service.ts`
-- `apps/backend/orchestration/control-plane/src/modules/execution/browser-loop-workflow-plan.builder.ts`
-- `apps/backend/orchestration/control-plane/src/modules/execution/execution-human-control.service.ts`
-- `apps/backend/orchestration/control-plane/src/modules/execution/runtime-execution.orchestrator.ts`
+- `apps/backend/runtimes/browser-worker/src/modules/browser/adapters/playwright-cli.adapter.ts`
+- `apps/backend/execution-control/control-plane/src/modules/execution/step-runner/planning/execution-planning.service.ts`
+- `apps/backend/execution-control/control-plane/src/modules/execution/step-runner/planning/execution-plan-normalization.service.ts`
+- `apps/backend/execution-control/control-plane/src/modules/execution/step-runner/browser/browser-loop-workflow-plan.builder.ts`
+- `apps/backend/execution-control/control-plane/src/modules/execution/human-control/execution-human-control.service.ts`
+- `apps/backend/execution-control/control-plane/src/modules/execution/step-runner/runtime/runtime-execution.orchestrator.ts`
 - `apps/frontend/portal/src/features/executions/pages/ExecutionDetailPage.tsx`
 
 ---

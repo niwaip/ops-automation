@@ -12,8 +12,8 @@ BASE_COMPOSE="docker-compose.base.yml"
 PLATFORM_SCHEMA="./prisma/schema.prisma"
 
 CONTROL_PLANE_INCREMENTAL_SQL_FILES=(
-  "$REPO_ROOT/apps/backend/orchestration/control-plane/prisma/migrations/20260515143000_add_execution_phases/migration.sql"
-  "$REPO_ROOT/apps/backend/orchestration/control-plane/prisma/migrations/20260516140000_add_execution_phase_steps/migration.sql"
+  "$REPO_ROOT/apps/backend/execution-control/control-plane/prisma/migrations/20260515143000_add_execution_phases/migration.sql"
+  "$REPO_ROOT/apps/backend/execution-control/control-plane/prisma/migrations/20260516140000_add_execution_phase_steps/migration.sql"
 )
 
 log() {

@@ -60,6 +60,6 @@ describe('service-endpoints', () => {
   it('uses the docker service hostname for workflow validation inside docker', () => {
     process.env.DOCKER_ENV = 'true';
 
-    expect(getWorkflowValidationAgentUrl()).toBe('http://temporal-sandbox-agent:8090');
+    expect(getWorkflowValidationAgentUrl()).toBe('http://sandbox-worker:8090');
   });
 });

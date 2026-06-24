@@ -25,6 +25,7 @@ import { DocumentStructureService } from './document-structure.service';
 import { TemplateRepository } from './template.repository';
 import { SkillRepository } from './skill.repository';
 import { RenderOutputRepository } from './render-output.repository';
+import { buildDocumentRenderArtifacts } from './document-artifact.helper';
 import { RenderResponse } from './studio.types';
 import { TemplateWorkflowService } from './template-workflow.service';
 import { PreviewDto, RenderResolvedDto, ValidateDto } from './studio.dto';
@@ -271,6 +272,17 @@ export class StudioRenderController extends StudioControllerBase {
         downloadUrl: `/studio/download/${outputId}`,
         fileName: outputFileName,
         format: outputFormat,
+        size: outputBuffer.length,
+        artifacts: buildDocumentRenderArtifacts({
+          outputId,
+          downloadUrl: `/studio/download/${outputId}`,
+          fileName: outputFileName,
+          format: outputFormat,
+          sizeBytes: outputBuffer.length,
+          templateId: input.templateId,
+          skillId: input.skillId,
+          publishedSkillId: input.publishedSkillId,
+        }),
       };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';

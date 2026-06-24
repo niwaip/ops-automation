@@ -1,10 +1,10 @@
 import axios from 'axios';
-import { BrowserRecordingActionPolicyService } from '../src/modules/capability-release/browser-recording-action-policy.service';
-import { BrowserRecordingExecutionPlanValidatorService } from '../src/modules/capability-release/browser-recording-execution-plan-validator.service';
+import { BrowserRecordingActionPolicyService } from '../src/release-manager/validator';
+import { BrowserRecordingExecutionPlanValidatorService } from '../src/release-manager/validator';
 import {
   CapabilityReleaseRuntimeAccessors,
   CapabilityReleaseRuntimeService,
-} from '../src/modules/capability-release/capability-release-runtime.service';
+} from '../src/release-manager/publisher';
 
 jest.mock('axios');
 

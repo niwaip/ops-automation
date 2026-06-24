@@ -1,5 +1,5 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../../prisma';
 import { CreateReportTemplateDTO, UpdateReportTemplateDTO } from './template.dto';
 import {
   AIConfig,

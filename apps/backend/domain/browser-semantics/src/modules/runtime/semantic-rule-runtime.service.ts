@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { SemanticRuleSet, SemanticRuleTargeting } from '@prisma/client';
+import type { SemanticRuleSet, SemanticRuleTargeting } from '../../prisma';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ResolveRuntimeSemanticRuleSetQueryDto } from './semantic-rule-runtime.dto';
 

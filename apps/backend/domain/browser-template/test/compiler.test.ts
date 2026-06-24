@@ -267,6 +267,11 @@ describe('TemplateValidator', () => {
         locator: { type: 'role' as LocatorType, value: 'button' },
       },
     ],
+    guards: [],
+    config: {},
+    created_by: 'test-user',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
     metadata: {
       created_by: 'test-user',
       created_at: new Date().toISOString(),

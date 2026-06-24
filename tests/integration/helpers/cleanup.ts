@@ -13,6 +13,41 @@ import { DB_CONFIG } from '../config';
 let pgPool: Pool | null = null;
 let redisClient: Redis | null = null;
 
+async function tableExists(tableName: string): Promise<boolean> {
+  if (!pgPool) {
+    throw new Error('Cleanup connections not initialized');
+  }
+
+  const result = await pgPool.query(
+    `
+      SELECT EXISTS (
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = $1
+      ) AS exists
+    `,
+    [tableName]
+  );
+
+  return result.rows[0]?.exists === true;
+}
+
+async function deleteIfTableExists(query: string, tableName: string, params: unknown[] = []): Promise<void> {
+  if (!(await tableExists(tableName))) {
+    return;
+  }
+
+  await pgPool!.query(query, params);
+}
+
+async function truncateIfTableExists(tableName: string): Promise<void> {
+  if (!(await tableExists(tableName))) {
+    return;
+  }
+
+  await pgPool!.query(`TRUNCATE TABLE ${tableName} CASCADE`);
+}
+
 /**
  * Initialize database connections for cleanup
  */
@@ -44,10 +79,10 @@ export async function cleanupSession(sessionId: string): Promise<void> {
   }
 
   // Delete step logs first (cascade)
-  await pgPool.query('DELETE FROM step_logs WHERE session_id = $1', [sessionId]);
+  await deleteIfTableExists('DELETE FROM step_logs WHERE session_id = $1', 'step_logs', [sessionId]);
 
   // Delete session
-  await pgPool.query('DELETE FROM sessions WHERE id = $1', [sessionId]);
+  await deleteIfTableExists('DELETE FROM sessions WHERE id = $1', 'sessions', [sessionId]);
 
   // Clear Redis session data
   if (redisClient) {
@@ -65,7 +100,7 @@ export async function cleanupTemplate(templateId: string): Promise<void> {
     throw new Error('Cleanup connections not initialized');
   }
 
-  await pgPool.query('DELETE FROM templates WHERE id = $1', [templateId]);
+  await deleteIfTableExists('DELETE FROM templates WHERE id = $1', 'templates', [templateId]);
 }
 
 /**
@@ -77,16 +112,18 @@ export async function cleanupUser(userId: string): Promise<void> {
   }
 
   // Delete sessions first
-  const sessions = await pgPool.query('SELECT id FROM sessions WHERE user_id = $1', [userId]);
-  for (const session of sessions.rows) {
-    await cleanupSession(session.id);
+  if (await tableExists('sessions')) {
+    const sessions = await pgPool.query('SELECT id FROM sessions WHERE user_id = $1', [userId]);
+    for (const session of sessions.rows) {
+      await cleanupSession(session.id);
+    }
   }
 
   // Delete user roles
-  await pgPool.query('DELETE FROM user_roles WHERE user_id = $1', [userId]);
+  await deleteIfTableExists('DELETE FROM user_roles WHERE user_id = $1', 'user_roles', [userId]);
 
   // Delete user
-  await pgPool.query('DELETE FROM users WHERE id = $1', [userId]);
+  await deleteIfTableExists('DELETE FROM users WHERE id = $1', 'users', [userId]);
 }
 
 /**
@@ -97,7 +134,7 @@ export async function cleanupAIAgent(agentId: string): Promise<void> {
     throw new Error('Cleanup connections not initialized');
   }
 
-  await pgPool.query('DELETE FROM ai_agents WHERE id = $1', [agentId]);
+  await deleteIfTableExists('DELETE FROM ai_agents WHERE id = $1', 'ai_agents', [agentId]);
 }
 
 /**
@@ -109,10 +146,10 @@ export async function cleanupAIModel(modelId: string): Promise<void> {
   }
 
   // Delete agents first
-  await pgPool.query('DELETE FROM ai_agents WHERE model_id = $1', [modelId]);
+  await deleteIfTableExists('DELETE FROM ai_agents WHERE model_id = $1', 'ai_agents', [modelId]);
 
   // Delete model
-  await pgPool.query('DELETE FROM ai_models WHERE id = $1', [modelId]);
+  await deleteIfTableExists('DELETE FROM ai_models WHERE id = $1', 'ai_models', [modelId]);
 }
 
 /**
@@ -124,21 +161,26 @@ export async function cleanupAllTestData(): Promise<void> {
   }
 
   // Delete test sessions (those with test- prefix in worker_ref or error_message)
-  const testSessions = await pgPool.query(
-    "SELECT id FROM sessions WHERE worker_ref LIKE 'test-%' OR error_message LIKE 'test-%'"
-  );
-  for (const session of testSessions.rows) {
-    await cleanupSession(session.id);
+  if (await tableExists('sessions')) {
+    const testSessions = await pgPool.query(
+      "SELECT id FROM sessions WHERE worker_ref LIKE 'test-%' OR error_message LIKE 'test-%'"
+    );
+    for (const session of testSessions.rows) {
+      await cleanupSession(session.id);
+    }
   }
 
   // Delete test templates
-  await pgPool.query("DELETE FROM templates WHERE name LIKE 'test-template-%'");
+  await deleteIfTableExists(
+    "DELETE FROM templates WHERE name LIKE 'test-template-%'",
+    'templates'
+  );
 
   // Delete test users
-  await pgPool.query("DELETE FROM users WHERE username LIKE 'test-user-%'");
+  await deleteIfTableExists("DELETE FROM users WHERE username LIKE 'test-user-%'", 'users');
 
   // Delete test AI models
-  await pgPool.query("DELETE FROM ai_models WHERE name LIKE 'test-model-%'");
+  await deleteIfTableExists("DELETE FROM ai_models WHERE name LIKE 'test-model-%'", 'ai_models');
 
   // Clear all test Redis keys
   if (redisClient) {
@@ -158,14 +200,14 @@ export async function resetDatabase(): Promise<void> {
   }
 
   // Truncate tables (except system data)
-  await pgPool.query('TRUNCATE TABLE step_logs CASCADE');
-  await pgPool.query('TRUNCATE TABLE sessions CASCADE');
-  await pgPool.query('TRUNCATE TABLE templates CASCADE');
-  await pgPool.query('TRUNCATE TABLE user_roles CASCADE');
-  await pgPool.query('TRUNCATE TABLE users CASCADE');
-  await pgPool.query('TRUNCATE TABLE ai_agents CASCADE');
-  await pgPool.query('TRUNCATE TABLE ai_models CASCADE');
-  await pgPool.query('TRUNCATE TABLE roles CASCADE');
+  await truncateIfTableExists('step_logs');
+  await truncateIfTableExists('sessions');
+  await truncateIfTableExists('templates');
+  await truncateIfTableExists('user_roles');
+  await truncateIfTableExists('users');
+  await truncateIfTableExists('ai_agents');
+  await truncateIfTableExists('ai_models');
+  await truncateIfTableExists('roles');
 
   // Flush Redis
   if (redisClient) {

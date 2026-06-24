@@ -6,13 +6,13 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { createHash } from 'crypto';
-import { Prisma, TemporalWorkflow } from '@prisma/client';
+import { Prisma, TemporalWorkflow } from '../../prisma';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TemporalWorkflowAiDraftService } from './temporal-workflow-draft.service';
 import { TemporalWorkflowBrowserDraftService } from './temporal-workflow-browser-draft.service';
 import { TemporalWorkflowCodegenService } from './temporal-workflow-codegen.service';
 import { TemporalWorkflowSessionService } from './temporal-workflow-session.service';
-import { TemporalWorkflowValidationService } from './temporal-workflow-validation.service';
+import { TemporalWorkflowValidationFacadeService } from './temporal-workflow-validation-facade.service';
 import { TemporalWorkflowConfigService } from './temporal-workflow-config.service';
 import { TemporalWorkflowNormalizationService } from './temporal-workflow-normalization.service';
 import { TemporalWorkflowTemplateService } from './temporal-workflow-template.service';
@@ -57,7 +57,7 @@ export class TemporalWorkflowService implements OnModuleInit {
     private readonly browserDraftService: TemporalWorkflowBrowserDraftService,
     private readonly codegenService: TemporalWorkflowCodegenService,
     private readonly sessionService: TemporalWorkflowSessionService,
-    private readonly validationService: TemporalWorkflowValidationService,
+    private readonly validationFacade: TemporalWorkflowValidationFacadeService,
     private readonly workflowConfigService: TemporalWorkflowConfigService,
     private readonly workflowNormalizationService: TemporalWorkflowNormalizationService,
     private readonly workflowTemplateService: TemporalWorkflowTemplateService,
@@ -529,7 +529,7 @@ export class TemporalWorkflowService implements OnModuleInit {
     taskQueue?: string,
     timeout?: string
   ): Promise<{ success: boolean; logs: string[]; result?: any; error?: string; score: number }> {
-    return this.validationService.validateWorkflowReal(code, fn, input, taskQueue, timeout);
+    return this.validationFacade.validateWorkflowReal(code, fn, input, taskQueue, timeout);
   }
 
   async validateWorkflowRealStreaming(
@@ -547,7 +547,7 @@ export class TemporalWorkflowService implements OnModuleInit {
     error?: string;
     score: number;
   }> {
-    return this.validationService.validateWorkflowRealStreaming(
+    return this.validationFacade.validateWorkflowRealStreaming(
       code,
       fn,
       input,

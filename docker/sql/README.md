@@ -68,8 +68,8 @@ docker/sql/exports/platform-initial-data-<timestamp>.sql
 
 ### Shared incremental SQL
 
-- `apps/backend/orchestration/control-plane/prisma/migrations/20260515143000_add_execution_phases/migration.sql`
-- `apps/backend/orchestration/control-plane/prisma/migrations/20260516140000_add_execution_phase_steps/migration.sql`
+- `apps/backend/execution-control/control-plane/prisma/migrations/20260515143000_add_execution_phases/migration.sql`
+- `apps/backend/execution-control/control-plane/prisma/migrations/20260516140000_add_execution_phase_steps/migration.sql`
 
 ### Placeholder migrations
 
@@ -77,7 +77,7 @@ These files are placeholders only and are not part of automatic bootstrap:
 
 - `apps/backend/domain/browser-template/prisma/migrations/0_baseline/migration.sql`
 - `apps/backend/domain/report/prisma/migrations/0_baseline/migration.sql`
-- `apps/backend/runtime/replay-worker/prisma/migrations/0_baseline/migration.sql`
+- `apps/backend/runtimes/replay-worker/prisma/migrations/0_baseline/migration.sql`
 
 ## Deprecated files
 

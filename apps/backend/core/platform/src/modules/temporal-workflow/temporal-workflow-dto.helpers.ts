@@ -1,4 +1,4 @@
-import { TemporalWorkflow } from '@prisma/client';
+import { TemporalWorkflow } from '../../prisma';
 import {
   DEFAULT_TEMPLATE_WORKFLOW_DSL,
   type ActivityDsl,

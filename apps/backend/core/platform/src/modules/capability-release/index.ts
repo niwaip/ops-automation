@@ -1,14 +1,16 @@
-export * from './capability-release.module';
+/**
+ * capability-release -> release-manager
+ *
+ * Keep the root export surface aligned to the future release-manager ownership
+ * instead of exposing every implementation file as a flat bag of symbols.
+ */
+
+export * from './release';
+export * from './compiler';
+export * from './publisher';
+export * from './validator';
+export * from './audit';
 export * from './capability-release-assist.service';
-export * from './capability-release-browser-recording.service';
-export * from './capability-release-build-validation.service';
-export * from './capability-release.constants';
-export * from './capability-release-deployment-smoke.service';
-export * from './capability-release-deployment.service';
-export * from './capability-release.mapper';
-export * from './capability-release-publish.service';
-export * from './capability-release-runtime.service';
 export * from './capability-release-skill-draft.service';
-export * from './capability-release-temporal-schema.service';
-export * from './capability-release.service';
+export * from './capability-release.constants';
 export * from './interfaces';

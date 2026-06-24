@@ -67,6 +67,7 @@ services:
   platform:
     <<: *common-node-service
     container_name: ops-platform
+    working_dir: /workspace
     environment:
       <<: *common-env
       DOCKER_ENV: true
@@ -74,14 +75,24 @@ services:
       JWT_SECRET: ${JWT_SECRET:-ops_local_dev_jwt_secret_2026_06_02_8f4a6c9d7b1e53aa}
       INTERNAL_API_SHARED_SECRET: ${INTERNAL_API_SHARED_SECRET:-ops_internal_shared_secret_change_me}
       AI_ORCHESTRATOR_URL: http://${AI_ORCHESTRATOR_HOST:-ai-orchestrator}:${AI_ORCHESTRATOR_PORT:-3007}
-      SANDBOX_AGENT_URL: http://temporal-sandbox-agent:8090
-      TEMPORAL_SANDBOX_AGENT_URL: http://temporal-sandbox-agent:8090
-      ACTIVITY_VALIDATION_AGENT_URL: http://temporal-sandbox-agent:8090
+      SANDBOX_AGENT_URL: http://sandbox-worker:8090
+      TEMPORAL_SANDBOX_AGENT_URL: http://sandbox-worker:8090
+      ACTIVITY_VALIDATION_AGENT_URL: http://sandbox-worker:8090
+    command: >
+      sh -c "corepack enable
+      && corepack prepare pnpm@8.12.0 --activate
+      && pnpm config set registry https://registry.npmmirror.com
+      && pnpm install --no-frozen-lockfile
+      && pnpm --filter @ops/platform run build
+      && rm -rf /workspace/apps/backend/core/platform/dist/generated
+      && mkdir -p /workspace/apps/backend/core/platform/dist/generated
+      && cp -R /workspace/apps/backend/core/platform/src/generated/prisma /workspace/apps/backend/core/platform/dist/generated/prisma
+      && pnpm --filter @ops/platform run start"
     ports:
       - "${PLATFORM_PORT:-3001}:${PLATFORM_PORT:-3001}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/backend/core/platform:/app
-      - auth_node_modules:/app/node_modules
+      - ${PROJECT_ROOT:-..}:/workspace
+      - auth_node_modules:/workspace/node_modules
     depends_on:
       postgres:
         condition: service_healthy
@@ -91,14 +102,17 @@ services:
   session-broker:
     <<: *common-node-service
     container_name: ops-session-broker
-    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && rm -f tsconfig.tsbuildinfo && npx tsc && node dist/main.js"
+    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && rm -f tsconfig.tsbuildinfo && npm run build && rm -rf /app/dist/generated && mkdir -p /app/dist/generated && cp -R /app/src/generated/prisma /app/dist/generated/prisma && node dist/main.js"
     environment:
       <<: *common-env
       PORT: ${SESSION_BROKER_PORT:-3002}
+      DOCKER_ENV: true
+      BROWSER_WORKER_URL: http://${BROWSER_WORKER_HOST:-browser-worker}:${BROWSER_WORKER_PORT:-3004}
     ports:
       - "${SESSION_BROKER_PORT:-3002}:${SESSION_BROKER_PORT:-3002}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/backend/sessions/session-broker:/app
+      - ${PROJECT_ROOT:-..}/apps/backend/execution-control/session-broker:/app
+      - ${PROJECT_ROOT:-..}/packages/backend-contracts:/packages/backend-contracts
       - session_broker_node_modules:/app/node_modules
     depends_on:
       postgres:
@@ -109,7 +123,7 @@ services:
   control-plane:
     <<: *common-node-service
     container_name: ops-control-plane
-    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && npx prisma generate && npm run dev"
+    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && npx prisma generate && npm run build && rm -rf /app/dist/generated && mkdir -p /app/dist/generated && cp -R /app/src/generated/prisma /app/dist/generated/prisma && npm run start"
     environment:
       <<: *common-env
       DOCKER_ENV: true
@@ -130,8 +144,9 @@ services:
     ports:
       - "${CONTROL_PLANE_PORT:-3003}:${CONTROL_PLANE_PORT:-3003}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/backend/orchestration/control-plane:/app
+      - ${PROJECT_ROOT:-..}/apps/backend/execution-control/control-plane:/app
       - ${PROJECT_ROOT:-..}/packages/contracts:/packages/contracts
+      - ${PROJECT_ROOT:-..}/packages/backend-contracts:/packages/backend-contracts
       - control_plane_node_modules:/app/node_modules
     depends_on:
       postgres:
@@ -172,7 +187,8 @@ services:
     ports:
       - "${BROWSER_WORKER_PORT:-3004}:${BROWSER_WORKER_PORT:-3004}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/backend/runtime/browser-worker:/app
+      - ${PROJECT_ROOT:-..}/apps/backend/runtimes/browser-worker:/app
+      - ${PROJECT_ROOT:-..}/packages/backend-contracts:/packages/backend-contracts
       - browser_worker_node_modules:/app/node_modules
       - ${PROJECT_ROOT:-..}/apps/backend/var/browser-profiles:/backend-var/browser-profiles
       - ${PROJECT_ROOT:-..}/apps/backend/var/tmp/browser-worker:/backend-var/tmp/browser-worker
@@ -205,6 +221,9 @@ services:
       done
       && [ $$j -lt 5 ]
       && npm run build
+      && rm -rf /app/dist/generated
+      && mkdir -p /app/dist/generated
+      && cp -R /app/src/generated/prisma /app/dist/generated/prisma
       && npm run start"
     environment:
       <<: *common-env
@@ -290,7 +309,7 @@ services:
     ports:
       - "${AI_ORCHESTRATOR_PORT:-3007}:${AI_ORCHESTRATOR_PORT:-3007}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/backend/orchestration/ai-orchestrator:/app
+      - ${PROJECT_ROOT:-..}/apps/backend/intelligence/ai-orchestrator:/app
       - ${PROJECT_ROOT:-..}/packages/contracts:/packages/contracts
       - ai_orchestrator_node_modules:/app/node_modules
       - ${PROJECT_ROOT:-..}/apps/backend/var/cache/ai-orchestrator:/app/data
@@ -338,6 +357,9 @@ services:
     environment:
       NODE_ENV: development
       DOCKER_ENV: true
+      AUTH_SERVICE_HOST: platform
+      PLATFORM_HOST: platform
+      BROWSER_TEMPLATE_HOST: browser-template
       VITE_API_BASE_URL: /api
       VITE_CONTROL_PLANE_API_URL: http://${HOST_IP:-localhost}:${CONTROL_PLANE_PORT:-3003}/api
       VITE_HOST_IP: ${HOST_IP:-localhost}
