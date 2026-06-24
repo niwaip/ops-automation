@@ -75,7 +75,7 @@ export class PlaywrightCompiler {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         description,
-        intent, // Store original intent for reference
+        intent: intent || undefined, // Store original intent for reference
       },
     };
 

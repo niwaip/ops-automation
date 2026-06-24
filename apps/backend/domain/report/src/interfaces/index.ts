@@ -1,3 +1,5 @@
+import type { ArtifactRef } from '@ops/backend-runtime-capability-contract';
+
 // Report Template Types
 export type ReportFormat = 'word' | 'excel' | 'pdf';
 export type SectionType = 'text' | 'table' | 'image' | 'chart';
@@ -151,6 +153,7 @@ export interface ReportDTO {
   session_id: string;
   status: ReportStatus;
   result_file?: string;
+  artifacts?: ArtifactRef[];
   ai_analysis?: AIAnalysisResult[];
   validation_results?: ValidationResult[];
   notifications?: NotificationResult[];

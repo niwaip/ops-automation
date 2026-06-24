@@ -1,8 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
-import { SkillService } from '../skill/skill.service';
-import { TemporalWorkflowService } from '../temporal-workflow/temporal-workflow.service';
+import { SkillService } from '../../skill-registry/registry';
+import { TemporalWorkflowService } from '../../workflow-registry/workflow-template';
 import { CAPABILITY_RELEASE_ERROR_CODE } from './capability-release.constants';
 import { CapabilityReleaseDeploymentSmokeService } from './capability-release-deployment-smoke.service';
 import { mapCapabilityDeployment } from './capability-release.mapper';

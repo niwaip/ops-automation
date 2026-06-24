@@ -1,4 +1,4 @@
-import { CapabilityReleaseBrowserRecordingService } from '../src/modules/capability-release/capability-release-browser-recording.service';
+import { CapabilityReleaseBrowserRecordingService } from '../src/release-manager/compiler';
 
 describe('CapabilityReleaseBrowserRecordingService', () => {
   const createService = () => new CapabilityReleaseBrowserRecordingService();

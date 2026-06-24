@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Prisma, TemplateFormat, TemplateType } from '@prisma/client';
+import { Prisma, TemplateFormat, TemplateType } from '../../prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TemplateResponse } from './studio.types';
 

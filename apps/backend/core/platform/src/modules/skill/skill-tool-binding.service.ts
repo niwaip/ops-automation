@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
-import { ExecutionFlowTemplateService } from '../execution-flow/execution-flow-template.service';
+import { ExecutionFlowTemplateService } from '../../workflow-registry/flow-template';
 import {
   CreateSkillDTO,
   SkillToolBinding,

@@ -1,0 +1,38 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// RuntimeSession - Runtime resource session (resource truth source)
+model RuntimeSession {
+  id                 String    @id @default(uuid()) @db.Uuid
+  executionId        String?   @map("execution_id") @db.Uuid
+  runtimeType        String    @default("browser") @map("runtime_type") @db.VarChar(50)
+  workerId           String?   @map("worker_id") @db.VarChar(255)
+  profileId          String?   @map("profile_id") @db.VarChar(255)
+  state              String    @db.VarChar(50) // allocating, ready, busy, frozen, closed, error
+  controlMode        String    @default("AGENT_RUNNING") @map("control_mode") @db.VarChar(50)
+  leaseExpiresAt     DateTime? @map("lease_expires_at") @db.Timestamptz
+  connectionInfoJson Json?     @map("connection_info_json")
+  capabilitiesJson   Json?     @default("[]") @map("capabilities_json")
+  healthStatus       String?   @map("health_status") @db.VarChar(50)
+  freezeReason       String?   @map("freeze_reason") @db.Text
+  lastActivityAt     DateTime? @map("last_activity_at") @db.Timestamptz
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  closedAt           DateTime? @map("closed_at") @db.Timestamptz
+
+  @@index([executionId])
+  @@index([state, updatedAt(sort: Desc)])
+  @@index([workerId, state])
+  @@index([profileId, state])
+  @@map("runtime_sessions")
+}

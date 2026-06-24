@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
-import { SkillService } from '../skill/skill.service';
+import { SkillService } from '../../skill-registry/registry';
 import { BrowserRecordingExecutionPlanValidatorService } from './browser-recording-execution-plan-validator.service';
 import { CAPABILITY_RELEASE_ERROR_CODE } from './capability-release.constants';
 import { CapabilityReleaseBrowserRecordingService } from './capability-release-browser-recording.service';

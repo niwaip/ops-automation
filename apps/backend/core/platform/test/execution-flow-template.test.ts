@@ -1,4 +1,4 @@
-import { ExecutionFlowTemplateService } from '../src/modules/execution-flow/execution-flow-template.service';
+import { ExecutionFlowTemplateService } from '../src/workflow-registry/flow-template';
 
 describe('ExecutionFlowTemplateService', () => {
   const createService = () => {
@@ -6,9 +6,15 @@ describe('ExecutionFlowTemplateService', () => {
       $queryRawUnsafe: jest.fn(),
       $executeRawUnsafe: jest.fn(),
     };
+    const executionFlowValidationService = {
+      validateTemplate: jest.fn(),
+    };
 
-    const service = new ExecutionFlowTemplateService(prisma as any);
-    return { service, prisma };
+    const service = new ExecutionFlowTemplateService(
+      prisma as any,
+      executionFlowValidationService as any
+    );
+    return { service, prisma, executionFlowValidationService };
   };
 
   beforeEach(() => {

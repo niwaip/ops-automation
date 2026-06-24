@@ -1,0 +1,49 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum StepResult {
+  success
+  failed
+  retry
+  takeover
+
+  @@map("step_result")
+}
+
+model StepLog {
+  id                String   @id(map: "step_logs_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  sessionId         String   @map("session_id") @db.Uuid
+  stepId            String   @map("step_id") @db.VarChar(255)
+  stepIndex         Int      @map("step_index")
+  action            String   @db.VarChar(255)
+  locatorType       String?  @map("locator_type") @db.VarChar(50)
+  locatorValue      String?  @map("locator_value") @db.VarChar(500)
+  locatorSummary    String?  @map("locator_summary") @db.VarChar(500)
+  startedAt         DateTime @default(now()) @map("started_at") @db.Timestamptz(6)
+  completedAt       DateTime? @map("completed_at") @db.Timestamptz(6)
+  durationMs        Int?     @map("duration_ms")
+  result            StepResult
+  errorClass        String?  @map("error_class") @db.VarChar(255)
+  errorMessage      String?  @map("error_message") @db.VarChar(1000)
+  retryCount        Int      @default(0) @map("retry_count")
+  retryReason       String?  @map("retry_reason") @db.VarChar(500)
+  takeoverTriggered Boolean  @default(false) @map("takeover_triggered")
+  takeoverReason    String?  @map("takeover_reason") @db.VarChar(500)
+  screenshotRef     String?  @map("screenshot_ref") @db.VarChar(500)
+  traceRef          String?  @map("trace_ref") @db.VarChar(500)
+  context           Json     @default("{}")
+
+  @@index([result], map: "idx_step_logs_result")
+  @@index([sessionId], map: "idx_step_logs_session")
+  @@index([stepId], map: "idx_step_logs_step_id")
+  @@index([sessionId, startedAt(sort: Desc)], map: "idx_step_logs_session_time")
+  @@index([takeoverTriggered], map: "idx_step_logs_takeover")
+  @@map("step_logs")
+}

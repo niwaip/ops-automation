@@ -85,7 +85,7 @@ export const getWorkflowValidationAgentUrl = (): string => {
   }
 
   if (isContainerRuntime()) {
-    return 'http://temporal-sandbox-agent:8090';
+    return 'http://sandbox-worker:8090';
   }
 
   return 'http://localhost:8090';

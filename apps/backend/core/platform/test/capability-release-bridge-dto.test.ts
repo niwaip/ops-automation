@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
-import { BridgeRecorderExportDTO } from '../src/modules/capability-release/interfaces';
+import { BridgeRecorderExportDTO } from '../src/release-manager';
 
 describe('BridgeRecorderExportDTO', () => {
   it('accepts recorder export arrays under implicit conversion', () => {

@@ -63,12 +63,12 @@ get_service_port() {
 
 get_service_dir() {
     case "$1" in
-        "ai-orchestrator") echo "apps/backend/orchestration/ai-orchestrator" ;;
+        "ai-orchestrator") echo "apps/backend/intelligence/ai-orchestrator" ;;
         "platform") echo "apps/backend/core/platform" ;;
         "auth") echo "apps/backend/core/platform" ;;
-        "session-broker") echo "apps/backend/sessions/session-broker" ;;
-        "control-plane") echo "apps/backend/orchestration/control-plane" ;;
-        "browser-worker") echo "apps/backend/runtime/browser-worker" ;;
+        "session-broker") echo "apps/backend/execution-control/session-broker" ;;
+        "control-plane") echo "apps/backend/execution-control/control-plane" ;;
+        "browser-worker") echo "apps/backend/runtimes/browser-worker" ;;
         "browser-template") echo "apps/backend/domain/browser-template" ;;
         "portal") echo "apps/frontend/portal" ;;
         *) echo "" ;;

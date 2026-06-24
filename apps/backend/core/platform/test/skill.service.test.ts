@@ -1,6 +1,6 @@
-import { SkillService } from '../src/modules/skill/skill.service';
+import { SkillEnrichmentService } from '../src/skill-registry/enrichment';
 
-describe('SkillService workflow input policy enrichment', () => {
+describe('SkillEnrichmentService workflow input policy enrichment', () => {
   const createService = () => {
     const prisma = {
       skillConfig: {
@@ -10,16 +10,12 @@ describe('SkillService workflow input policy enrichment', () => {
     const executionFlowService = {
       getTemplate: jest.fn(),
     };
-    const toolCatalogService = {} as any;
+    const skillToolBindingService = {} as any;
 
-    const service = new SkillService(
+    const service = new SkillEnrichmentService(
       prisma as any,
       executionFlowService as any,
-      toolCatalogService,
-      {} as any, // temporalWorkflowService
-      {} as any, // capabilityReleaseRuntimeService
-      {} as any, // userFeatureService
-      {} as any // skillEnrichmentService
+      skillToolBindingService
     );
     return { service, prisma, executionFlowService };
   };

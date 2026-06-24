@@ -21,8 +21,8 @@ INFRA_COMPOSE="docker-compose.yml"
 PLATFORM_BASELINE_MIGRATION="20260608_init_platform_baseline"
 PLATFORM_SCHEMA="./prisma/schema.prisma"
 CONTROL_PLANE_INCREMENTAL_SQL_FILES=(
-  "$REPO_ROOT/apps/backend/orchestration/control-plane/prisma/migrations/20260515143000_add_execution_phases/migration.sql"
-  "$REPO_ROOT/apps/backend/orchestration/control-plane/prisma/migrations/20260516140000_add_execution_phase_steps/migration.sql"
+  "$REPO_ROOT/apps/backend/execution-control/control-plane/prisma/migrations/20260515143000_add_execution_phases/migration.sql"
+  "$REPO_ROOT/apps/backend/execution-control/control-plane/prisma/migrations/20260516140000_add_execution_phase_steps/migration.sql"
 )
 BROWSER_TEMPLATE_REPAIR_SQL="$REPO_ROOT/apps/backend/domain/browser-template/prisma/manual-sql/20260608_rebuild_templates_current_schema.sql"
 LEGACY_SQL_FILES=(
@@ -319,7 +319,7 @@ print_migration_inventory() {
   printf '\n[Placeholder migrations not applied automatically]\n'
   printf '  - %s\n' "$REPO_ROOT/apps/backend/domain/browser-template/prisma/migrations/0_baseline/migration.sql"
   printf '  - %s\n' "$REPO_ROOT/apps/backend/domain/report/prisma/migrations/0_baseline/migration.sql"
-  printf '  - %s\n' "$REPO_ROOT/apps/backend/runtime/replay-worker/prisma/migrations/0_baseline/migration.sql"
+  printf '  - %s\n' "$REPO_ROOT/apps/backend/runtimes/replay-worker/prisma/migrations/0_baseline/migration.sql"
 
   printf '\n[Legacy SQL entrypoints]\n'
   for sql_file in "${LEGACY_SQL_FILES[@]}"; do

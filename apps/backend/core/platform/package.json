@@ -18,6 +18,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@ops/identity-access": "workspace:*",
+    "@ops/organization": "workspace:*",
+    "@ops/backend-release-manifest": "file:../../../../packages/backend-contracts/release-manifest",
     "@nestjs/common": "^10.3.0",
     "@nestjs/core": "^10.3.0",
     "@nestjs/jwt": "^10.2.0",

@@ -1,0 +1,125 @@
+import { Module } from '@nestjs/common';
+import { BrowserSemanticsClient } from '../../client/browser-semantics.client';
+import { ModelModule } from '../model/model.module';
+import { RedisModule } from '../redis/redis.module';
+import { BranchAnalysisModule } from '../branch-analysis/branch-analysis.module';
+import { BrowserCommandController, RecorderDebugController } from './gateway';
+import {
+  RecorderDebugSessionCoordinatorService,
+  RecorderDebugSessionStoreService,
+} from './session';
+import {
+  RecorderDebugObservationRefreshService,
+  RecorderObservationService,
+  RecorderSnapshotService,
+  RecorderStructureProbeService,
+} from './observe';
+import {
+  BrowserActionValidatorService,
+  BrowserCandidateContextFormatter,
+  BrowserCommandActionService,
+  BrowserCommandAtomicService,
+  BrowserCommandClickContextService,
+  BrowserCommandContextNormalizerService,
+  BrowserCommandFieldFillService,
+  BrowserCommandLoginService,
+  BrowserCommandNavigationService,
+  BrowserCommandReadService,
+  BrowserCommandSearchService,
+  BrowserCommandSemanticLogService,
+  BrowserCommandSemanticRuntimeService,
+  BrowserCommandSequentialService,
+  BrowserCommandService,
+  BrowserExecutionPlannerService,
+  BrowserPlannerPromptBuilder,
+  BrowserPlannerResponseParser,
+  RecorderDisambiguationService,
+  RecorderParameterService,
+} from './intent';
+import {
+  BrowserExecutionControllerService,
+  ExecutionReconcileService,
+  RecorderDebugBranchFacade,
+  RecorderDebugChatExecutionService,
+  RecorderDebugChatFlowService,
+  RecorderDebugChatSupportService,
+  RecorderDebugExecutionService,
+  RecorderDebugObservationFacade,
+  RecorderDebugResponseService,
+  RecorderDebugService,
+  RecorderDebugSessionFacade,
+} from './execute';
+import {
+  RecorderConditionalBranchService,
+  RecorderLoopExportService,
+  RecorderLoopLocatorService,
+  RecorderLoopService,
+  RecorderLoopStateService,
+} from './loop';
+import {
+  RecorderExportAssemblyService,
+  RecorderExportService,
+  RecorderScriptExportService,
+  RecorderTemplateExportService,
+} from './export';
+
+@Module({
+  imports: [ModelModule, RedisModule, BranchAnalysisModule],
+  controllers: [BrowserCommandController, RecorderDebugController],
+  providers: [
+    BrowserCommandService,
+    BrowserCommandLoginService,
+    BrowserCommandNavigationService,
+    BrowserCommandReadService,
+    BrowserCommandActionService,
+    BrowserCommandSearchService,
+    BrowserCommandFieldFillService,
+    BrowserCommandAtomicService,
+    BrowserCommandSequentialService,
+    BrowserCommandSemanticLogService,
+    BrowserCommandSemanticRuntimeService,
+    BrowserCommandContextNormalizerService,
+    BrowserCommandClickContextService,
+    BrowserSemanticsClient,
+    BrowserCandidateContextFormatter,
+    BrowserPlannerPromptBuilder,
+    BrowserPlannerResponseParser,
+    BrowserExecutionControllerService,
+    BrowserExecutionPlannerService,
+    RecorderDebugBranchFacade,
+    RecorderDebugObservationFacade,
+    RecorderDebugSessionFacade,
+    RecorderDebugService,
+    RecorderDebugChatSupportService,
+    RecorderDebugChatExecutionService,
+    RecorderDebugChatFlowService,
+    RecorderConditionalBranchService,
+    RecorderDebugExecutionService,
+    RecorderDebugObservationRefreshService,
+    RecorderDebugResponseService,
+    RecorderDebugSessionCoordinatorService,
+    RecorderDebugSessionStoreService,
+    RecorderExportAssemblyService,
+    RecorderLoopStateService,
+    RecorderLoopLocatorService,
+    RecorderLoopExportService,
+    RecorderLoopService,
+    RecorderExportService,
+    RecorderDisambiguationService,
+    RecorderObservationService,
+    RecorderSnapshotService,
+    RecorderStructureProbeService,
+    BrowserActionValidatorService,
+    RecorderParameterService,
+    RecorderScriptExportService,
+    RecorderTemplateExportService,
+    ExecutionReconcileService,
+  ],
+  exports: [
+    BrowserCommandService,
+    RecorderDebugService,
+    RecorderLoopService,
+    ExecutionReconcileService,
+  ],
+})
+export class BrowserModule {}

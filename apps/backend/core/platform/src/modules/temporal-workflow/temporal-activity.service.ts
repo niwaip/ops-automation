@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Activity } from '@prisma/client';
+import { Activity } from '../../prisma';
 import {
   ActivityFormData,
   ActivityValidationResult,
@@ -7,7 +7,7 @@ import {
   BuiltinActivityDTO,
 } from './temporal-activity.types';
 import { ActivityCrudService } from './temporal-activity-crud.service';
-import { ActivityValidationService } from './temporal-activity-validation.service';
+import { TemporalActivityValidationFacadeService } from './temporal-activity-validation-facade.service';
 import { ActivityCodegenService } from './temporal-activity-codegen.service';
 import { ActivityExecutionService } from './temporal-activity-execution.service';
 
@@ -15,7 +15,7 @@ import { ActivityExecutionService } from './temporal-activity-execution.service'
 export class ActivityService {
   constructor(
     private readonly crud: ActivityCrudService,
-    private readonly validation: ActivityValidationService,
+    private readonly validationFacade: TemporalActivityValidationFacadeService,
     private readonly codegen: ActivityCodegenService,
     private readonly execution: ActivityExecutionService
   ) {}
@@ -53,7 +53,7 @@ export class ActivityService {
   }
 
   async validate(config: ActivityFormData): Promise<ActivityValidationResult> {
-    return this.validation.validate(config);
+    return this.validationFacade.validate(config);
   }
 
   async generateCode(config: ActivityFormData, errorContext?: string): Promise<GenerateCodeResult> {

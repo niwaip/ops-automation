@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Res, Request } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { Response } from 'express';
+import { TemporalWorkflowValidationHttpService } from './temporal-workflow-validation-http.service';
 import {
   TemporalWorkflowService,
   CreateTemporalWorkflowDTO,
@@ -20,12 +21,15 @@ import {
   GenerateTemplateWorkflowDraftDTO,
   TemporalWorkflowArtifactDTO,
 } from './temporal-workflow.service';
-import { TemporalWorkflow } from '@prisma/client';
+import { TemporalWorkflow } from '../../prisma';
 
 @ApiTags('Temporal Workflows')
 @Controller('temporal')
 export class TemporalWorkflowController {
-  constructor(private readonly temporalWorkflowService: TemporalWorkflowService) {}
+  constructor(
+    private readonly temporalWorkflowService: TemporalWorkflowService,
+    private readonly validationHttpService: TemporalWorkflowValidationHttpService
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'List all temporal workflows' })
@@ -362,13 +366,7 @@ export class TemporalWorkflowController {
       timeout?: string;
     }
   ): Promise<{ success: boolean; logs: string[]; result?: any; error?: string; score: number }> {
-    return this.temporalWorkflowService.validateWorkflowReal(
-      data.code,
-      data.fn,
-      data.input,
-      data.taskQueue,
-      data.timeout
-    );
+    return this.validationHttpService.validateWorkflowRealRequest(data);
   }
 
   @Post(':id/validate-saved-artifact')
@@ -414,36 +412,6 @@ export class TemporalWorkflowController {
     },
     @Res() res: Response
   ): Promise<void> {
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-    res.setHeader('X-Accel-Buffering', 'no');
-
-    try {
-      const result = await this.temporalWorkflowService.validateWorkflowRealStreaming(
-        data.code,
-        data.fn,
-        data.input,
-        data.taskQueue,
-        data.timeout,
-        (log: string) => {
-          res.write(`data: ${JSON.stringify({ type: 'log', content: log })}\n\n`);
-        }
-      );
-
-      if (result.success) {
-        res.write(
-          `data: ${JSON.stringify({ type: 'done', success: true, score: result.score, result: result.result, traceback: result.traceback })}\n\n`
-        );
-      } else {
-        res.write(
-          `data: ${JSON.stringify({ type: 'done', success: false, error: result.error, score: result.score, result: result.result, traceback: result.traceback, logs: result.logs })}\n\n`
-        );
-      }
-    } catch (error: any) {
-      res.write(`data: ${JSON.stringify({ type: 'error', content: error.message })}\n\n`);
-    }
-
-    res.end();
+    return this.validationHttpService.validateWorkflowRealStreamRequest(data, res);
   }
 }

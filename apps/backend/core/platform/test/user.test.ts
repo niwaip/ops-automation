@@ -3,6 +3,8 @@ import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { UserService } from '../src/modules/user/user.service';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { UpdateUserRolesDto } from '../src/dto';
+import { PlatformIdentityAccessUserManagementRepository } from '../src/governance/identity-access/user-management-repository.service';
+import { IDENTITY_ACCESS_USER_MANAGEMENT_REPOSITORY } from '@ops/identity-access';
 
 // Type for mocked Prisma service
 type MockPrismaService = {
@@ -61,7 +63,15 @@ describe('UserService', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [UserService, { provide: PrismaService, useValue: prisma }],
+      providers: [
+        UserService,
+        PlatformIdentityAccessUserManagementRepository,
+        {
+          provide: IDENTITY_ACCESS_USER_MANAGEMENT_REPOSITORY,
+          useExisting: PlatformIdentityAccessUserManagementRepository,
+        },
+        { provide: PrismaService, useValue: prisma },
+      ],
     }).compile();
 
     service = module.get(UserService);

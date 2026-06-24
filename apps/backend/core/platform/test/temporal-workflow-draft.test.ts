@@ -16,14 +16,17 @@ import { TemporalWorkflowNormalizationService } from '../src/modules/temporal-wo
 import { pickFirstNonEmptyString } from '../src/modules/temporal-workflow/temporal-workflow-service.utils';
 import { TemporalWorkflowSessionService } from '../src/modules/temporal-workflow/temporal-workflow-session.service';
 import { TemporalWorkflowSupportService } from '../src/modules/temporal-workflow/temporal-workflow-support.service';
-import { TemporalWorkflowService } from '../src/modules/temporal-workflow/temporal-workflow.service';
+import { TemporalWorkflowService } from '../src/workflow-registry/workflow-template';
 import {
   buildTemplateWorkflowParamSeeds,
   normalizeWorkflowInputParamType,
   normalizeWorkflowInputRenderPath,
 } from '../src/modules/temporal-workflow/temporal-workflow-template.helpers';
 import { TemporalWorkflowTemplateService } from '../src/modules/temporal-workflow/temporal-workflow-template.service';
-import { TemporalWorkflowValidationService } from '../src/modules/temporal-workflow/temporal-workflow-validation.service';
+import {
+  TemporalWorkflowValidationFacadeService,
+  TemporalWorkflowValidationService,
+} from '../src/workflow-registry/validation';
 import { BuiltinActivityRegistry } from '../src/modules/temporal-workflow/builtin-activity.registry';
 
 jest.mock('axios');
@@ -84,13 +87,14 @@ describe('TemporalWorkflowAiDraftService', () => {
       workflowConfigService,
       workflowNormalizationService
     );
+    const validationFacade = new TemporalWorkflowValidationFacadeService(validationService);
     const service = new TemporalWorkflowService(
       prisma as any,
       aiDraftService,
       browserDraftService,
       codegenService,
       sessionService,
-      validationService,
+      validationFacade,
       workflowConfigService,
       workflowNormalizationService,
       workflowTemplateService,
@@ -169,6 +173,9 @@ describe('TemporalWorkflowAiDraftService', () => {
 
     jest
       .spyOn(codegenService as any, 'precompileGeneratedPython')
+      .mockReturnValue({ success: true });
+    jest
+      .spyOn(codegenService as any, 'validateGeneratedWorkflowOutputContract')
       .mockReturnValue({ success: true });
     mockedAxios.post.mockResolvedValue({
       data: {
@@ -270,6 +277,9 @@ describe('TemporalWorkflowAiDraftService', () => {
     jest
       .spyOn(codegenService as any, 'precompileGeneratedPython')
       .mockReturnValue({ success: true });
+    jest
+      .spyOn(codegenService as any, 'validateGeneratedWorkflowOutputContract')
+      .mockReturnValue({ success: true });
     mockedAxios.post.mockResolvedValue({
       data: {
         result: [
@@ -325,6 +335,9 @@ describe('TemporalWorkflowAiDraftService', () => {
       success: false,
       error: 'SyntaxError: invalid syntax (generated_workflow.py, line 1)',
     });
+    jest
+      .spyOn(codegenService as any, 'validateGeneratedWorkflowOutputContract')
+      .mockReturnValue({ success: true });
     mockedAxios.post.mockResolvedValue({
       data: {
         result: [
@@ -387,6 +400,9 @@ describe('TemporalWorkflowAiDraftService', () => {
       .mockReturnValueOnce({
         success: true,
       });
+    jest
+      .spyOn(codegenService as any, 'validateGeneratedWorkflowOutputContract')
+      .mockReturnValue({ success: true });
     mockedAxios.post
       .mockResolvedValueOnce({
         data: {
@@ -519,6 +535,9 @@ describe('TemporalWorkflowAiDraftService', () => {
     jest
       .spyOn(codegenService as any, 'precompileGeneratedPython')
       .mockReturnValue({ success: true });
+    jest
+      .spyOn(codegenService as any, 'validateGeneratedWorkflowOutputContract')
+      .mockReturnValue({ success: true });
     mockedAxios.post
       .mockResolvedValueOnce({
         data: {
@@ -598,6 +617,9 @@ describe('TemporalWorkflowAiDraftService', () => {
     jest.spyOn(workflowSupportService, 'buildDeterministicWorkflowCode').mockReturnValue(null);
     jest
       .spyOn(codegenService as any, 'precompileGeneratedPython')
+      .mockReturnValue({ success: true });
+    jest
+      .spyOn(codegenService as any, 'validateGeneratedWorkflowOutputContract')
       .mockReturnValue({ success: true });
     mockedAxios.post
       .mockResolvedValueOnce({

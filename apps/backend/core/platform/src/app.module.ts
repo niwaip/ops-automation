@@ -2,16 +2,16 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
-import { AuthModule } from './modules/auth/auth.module';
-import { UserModule } from './modules/user/user.module';
-import { SkillModule } from './modules/skill/skill.module';
-import { ExecutionFlowModule } from './modules/execution-flow/execution-flow.module';
-import { TemporalWorkflowModule } from './modules/temporal-workflow/temporal-workflow.module';
-import { CapabilityReleaseModule } from './modules/capability-release/capability-release.module';
-import { OrganizationModule } from './modules/organization/organization.module';
+import { AuthModule } from './modules/auth';
+import { UserModule } from './modules/user';
+import { SkillModule } from './skill-registry/registry';
+import { ExecutionFlowModule } from './workflow-registry/flow-template';
+import { TemporalWorkflowModule } from './workflow-registry/workflow-template';
+import { CapabilityReleaseModule } from './release-manager/release';
+import { OrganizationModule } from './modules/organization';
 import { PrismaModule } from './prisma/prisma.module';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { RbacGuard } from './guards/rbac.guard';
+import { IdentityAccessBridgeModule } from './governance/identity-access/identity-access-bridge.module';
+import { JwtAuthGuard, RbacGuard } from './guards';
 
 @Module({
   imports: [
@@ -28,27 +28,18 @@ import { RbacGuard } from './guards/rbac.guard';
 
     // Prisma module for database
     PrismaModule,
+    IdentityAccessBridgeModule,
 
-    // Auth module
+    // Governance modules
     AuthModule,
-
-    // User module
     UserModule,
-
-    // Skill module
-    SkillModule,
-
-    // Execution Flow Template module
-    ExecutionFlowModule,
-
-    // Temporal Workflow module
-    TemporalWorkflowModule,
-
-    // Capability Release module
-    CapabilityReleaseModule,
-
-    // Organization module
     OrganizationModule,
+
+    // Registry-release modules
+    SkillModule,
+    ExecutionFlowModule,
+    TemporalWorkflowModule,
+    CapabilityReleaseModule,
   ],
   providers: [
     // Global JWT guard - applied to all routes by default

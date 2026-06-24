@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
-import { TemporalWorkflowService } from '../temporal-workflow/temporal-workflow.service';
+import { TemporalWorkflowService } from '../../workflow-registry/workflow-template';
 import {
   CapabilityReleaseBuildValidationAccessors,
   CapabilityReleaseBuildValidationService,
@@ -30,6 +30,7 @@ import {
   CapabilityReleaseRuntimeExecutionOptions,
   CapabilityReleaseRuntimeService,
 } from './capability-release-runtime.service';
+import { CapabilityReleaseManifestService } from './capability-release-manifest.service';
 import { CapabilityReleaseSkillDraftService } from './capability-release-skill-draft.service';
 import { CapabilityReleaseTemporalSchemaService } from './capability-release-temporal-schema.service';
 import {
@@ -71,6 +72,7 @@ import {
   ValidateCapabilityDTO,
   WorkflowArtifactRefDTO,
 } from './interfaces';
+import type { ReleaseManifest } from '@ops/backend-release-manifest';
 
 @Injectable()
 export class CapabilityReleaseService implements OnModuleInit {
@@ -83,6 +85,7 @@ export class CapabilityReleaseService implements OnModuleInit {
     private readonly capabilityReleaseAssistService: CapabilityReleaseAssistService,
     private readonly capabilityReleasePublishService: CapabilityReleasePublishService,
     private readonly capabilityReleaseRuntimeService: CapabilityReleaseRuntimeService,
+    private readonly capabilityReleaseManifestService: CapabilityReleaseManifestService,
     private readonly capabilityReleaseSkillDraftService: CapabilityReleaseSkillDraftService,
     private readonly capabilityReleaseTemporalSchemaService: CapabilityReleaseTemporalSchemaService,
     private readonly temporalWorkflowService: TemporalWorkflowService
@@ -197,6 +200,11 @@ export class CapabilityReleaseService implements OnModuleInit {
     }
 
     return this.getCapabilityDetail(id);
+  }
+
+  async getReleaseManifest(id: string): Promise<ReleaseManifest> {
+    const detail = await this.getPublishedCapabilityDetail(id);
+    return this.capabilityReleaseManifestService.buildManifest(detail);
   }
 
   async archiveCapability(

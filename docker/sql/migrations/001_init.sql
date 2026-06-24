@@ -8,8 +8,8 @@
 --   3. Platform baseline:
 --      apps/backend/core/platform/prisma/migrations/20260608_init_platform_baseline/migration.sql
 --   4. Shared incremental SQL:
---      apps/backend/orchestration/control-plane/prisma/migrations/20260515143000_add_execution_phases/migration.sql
---      apps/backend/orchestration/control-plane/prisma/migrations/20260516140000_add_execution_phase_steps/migration.sql
+--      apps/backend/execution-control/control-plane/prisma/migrations/20260515143000_add_execution_phases/migration.sql
+--      apps/backend/execution-control/control-plane/prisma/migrations/20260516140000_add_execution_phase_steps/migration.sql
 
 DO $$
 BEGIN

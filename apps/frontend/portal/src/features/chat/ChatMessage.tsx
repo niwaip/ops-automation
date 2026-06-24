@@ -45,27 +45,6 @@ import {
 } from '@/shared/lib/waitingInputDisplay';
 import './ChatMessage.css';
 
-const reportChatFailureLoopDebug = (
-  hypothesisId: string,
-  location: string,
-  msg: string,
-  data: Record<string, unknown>
-) => {
-  fetch('http://127.0.0.1:7777/event', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      sessionId: 'chat-failure-loop-history',
-      runId: 'frontend-chat-message',
-      hypothesisId,
-      location,
-      msg,
-      data,
-      ts: Date.now(),
-    }),
-  }).catch(() => {});
-};
-
 interface ChatMessageProps {
   message: ChatMessage;
   isStreaming?: boolean;
@@ -491,46 +470,6 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
       executionRuntimeType,
     ]
   );
-  useEffect(() => {
-    if (!isTaskMode || !executionId) {
-      return;
-    }
-    reportChatFailureLoopDebug(
-      'H1',
-      'apps/frontend/portal/src/features/chat/ChatMessage.tsx:status-card',
-      'Chat message resolved status card state',
-      {
-        messageId: message.id,
-        executionId,
-        taskStatus,
-        executionStatus: message.metadata?.executionStatus ?? null,
-        runtimeType: executionRuntimeType ?? null,
-        browserExecutionMode,
-        isFailed,
-        isHumanControl,
-        showRunningState,
-        shouldShowTakeoverCard,
-        shouldShowErrorCard,
-        errorMessage: errorMessage ?? null,
-        failureReason: failureReason ?? null,
-      }
-    );
-  }, [
-    browserExecutionMode,
-    errorMessage,
-    executionId,
-    executionRuntimeType,
-    failureReason,
-    isFailed,
-    isHumanControl,
-    isTaskMode,
-    message.id,
-    message.metadata?.executionStatus,
-    shouldShowErrorCard,
-    shouldShowTakeoverCard,
-    showRunningState,
-    taskStatus,
-  ]);
   const hasStructuredProgressLogs = !isUser && isTaskMode && progressLogs.length > 0;
   const currentProgressLog = hasStructuredProgressLogs
     ? progressLogs[progressLogs.length - 1]

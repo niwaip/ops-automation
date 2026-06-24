@@ -341,7 +341,7 @@ main() {
   retry "portal container running" 36 5 container_running "ops-portal" || fail "portal container not ready"
   retry "temporal container running" 36 5 container_running "ops-temporal" || fail "temporal container not ready"
   retry "temporal-ui container running" 36 5 container_running "ops-temporal-ui" || fail "temporal-ui container not ready"
-  retry "temporal-sandbox-agent container running" 36 5 container_running "ops-temporal-sandbox-agent" || fail "temporal-sandbox-agent container not ready"
+  retry "sandbox-worker container running" 36 5 container_running "ops-sandbox-worker" || fail "sandbox-worker container not ready"
 
   retry "admin login" 24 5 platform_login || fail "admin login unavailable"
   token="$(extract_token)"

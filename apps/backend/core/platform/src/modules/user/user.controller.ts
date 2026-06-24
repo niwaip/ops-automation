@@ -1,7 +1,6 @@
-import { Controller, Get, Put, Param, Body, Query, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Put, Param, Body, Query, Request } from '@nestjs/common';
+import { RequireAdmin, SkipRbac, UpdateUserRolesDto, UserQueryDto } from '@ops/identity-access';
 import { UserService } from './user.service';
-import { UpdateUserRolesDto, UserQueryDto } from '../../dto';
-import { RequireAdmin, SkipRbac } from '../../decorators';
 
 @Controller('users')
 export class UserController {

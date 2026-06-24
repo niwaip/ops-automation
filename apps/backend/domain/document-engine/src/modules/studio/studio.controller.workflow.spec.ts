@@ -525,6 +525,16 @@ describe('StudioController template workflow', () => {
       'render-before-translate.docx'
     );
     expect(result.downloadUrl).toMatch(/^\/studio\/download\//);
+    expect(result.artifacts).toEqual([
+      expect.objectContaining({
+        type: 'document',
+        url: result.downloadUrl,
+        metadata: expect.objectContaining({
+          format: 'docx',
+          templateId,
+        }),
+      }),
+    ]);
   });
 
   it('uses outputName and localized render data in render-resolved', async () => {
@@ -591,6 +601,18 @@ describe('StudioController template workflow', () => {
     );
     expect(result.fileName).toMatch(/^统一入口合同_\d{12}\.docx$/);
     expect(result.downloadUrl).toMatch(/^\/studio\/download\//);
+    expect(result.artifacts).toEqual([
+      expect.objectContaining({
+        type: 'document',
+        name: result.fileName,
+        url: result.downloadUrl,
+        metadata: expect.objectContaining({
+          format: 'docx',
+          templateId,
+          publishedSkillId: 'published-skill-1',
+        }),
+      }),
+    ]);
   });
 
   it('falls back to templateId when embedded carbone skillId is stale in render-resolved', async () => {

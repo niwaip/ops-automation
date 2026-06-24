@@ -20,7 +20,9 @@
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true,
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@ops/identity-access": ["../../governance/identity-access/dist"],
+      "@ops/organization": ["../../governance/organization/dist"]
     }
   },
   "include": ["src/**/*"],

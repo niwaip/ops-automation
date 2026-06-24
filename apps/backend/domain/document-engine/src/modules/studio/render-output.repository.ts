@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Prisma, TemplateFormat } from '@prisma/client';
+import { Prisma, TemplateFormat } from '../../prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
 type OutputMetaDocument = {

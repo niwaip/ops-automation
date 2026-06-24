@@ -1,14 +1,14 @@
 import { Controller, Post, Get, Body, Request, Query, Param } from '@nestjs/common';
-import { AuthService } from './auth.service';
 import {
   LoginDto,
+  Public,
   RegisterDto,
   RefreshTokenDto,
   SsoCallbackDto,
   SsoStartQueryDto,
   SwitchOrgDto,
-} from '../../dto';
-import { Public } from '../../decorators';
+} from '@ops/identity-access';
+import { AuthService } from './auth.service';
 
 @Controller('auth')
 export class AuthController {

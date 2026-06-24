@@ -5,7 +5,6 @@ import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bodyParser: false });
-
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -31,7 +30,6 @@ async function bootstrap() {
 
   const port = process.env.PLATFORM_PORT || process.env.AUTH_PORT || 3001;
   await app.listen(port, '0.0.0.0');
-
   console.log(`[Platform Service] Running on port ${port} (IPv4)`);
 }
 

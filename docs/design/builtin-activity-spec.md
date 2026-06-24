@@ -1015,7 +1015,7 @@ workflow output 的设计应遵循：
 
 当前项目中，后端聊天链路的统一收口点应放在：
 
-- `apps/backend/orchestration/ai-orchestrator/src/modules/chat/`
+- `apps/backend/intelligence/ai-orchestrator/src/modules/chat/`
 
 特别是：
 

@@ -1,5 +1,5 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../../prisma';
 import Redis from 'ioredis';
 import axios from 'axios';
 import { TemplateService } from '../template/template.service';
@@ -17,6 +17,7 @@ import {
   ReportTemplateDTO,
 } from '../../interfaces';
 import { PrismaService } from '../../prisma/prisma.service';
+import { buildReportArtifacts } from './report-artifact.helper';
 
 type ReportRecord = {
   id: string;
@@ -331,6 +332,12 @@ export class ReportService {
       session_id: entity.sessionId,
       status: entity.status as ReportStatus,
       result_file: entity.resultFile || undefined,
+      artifacts: buildReportArtifacts({
+        reportId: entity.id,
+        templateId: entity.templateId,
+        sessionId: entity.sessionId,
+        resultFile: entity.resultFile,
+      }),
       ai_analysis: entity.aiAnalysis as ReportDTO['ai_analysis'],
       validation_results: entity.validationResults as ReportDTO['validation_results'],
       notifications: entity.notifications as ReportDTO['notifications'],
