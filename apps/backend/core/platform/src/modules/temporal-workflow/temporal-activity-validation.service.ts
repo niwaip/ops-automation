@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ActivityFormData, ActivityValidationResult } from './temporal-activity.types';
-import { normalizeInputParams } from './temporal-activity-execution.helpers';
+import { normalizeInputParams } from './temporal-activity-input-params.utils';
 
 @Injectable()
 export class ActivityValidationService {

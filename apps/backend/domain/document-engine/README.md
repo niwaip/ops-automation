@@ -7,19 +7,19 @@ Fast and powerful report generator - Visual Template Editor Service
 ### Docker Deployment
 
 ```bash
-# 生产模式
-docker compose -f docker-compose.carbone.yml up -d
+# 在仓库根目录启动当前 worktree 绑定的 document-engine/carbone-engine
+./docker/start-smart.sh docker-compose.carbone.yml up -d carbone-engine
 
 # 开发模式
-docker compose -f docker-compose.carbone.yml --profile dev up -d
+./docker/start-smart.sh docker-compose.carbone.yml --profile dev up -d carbone-engine-dev
 ```
 
 ### Local Development
 
 ```bash
-cd services/carbone-engine
-npm install
-npm run dev
+cd apps/backend/capabilities/document-domain
+pnpm install
+pnpm run dev
 ```
 
 ## API Endpoints
@@ -44,9 +44,19 @@ npm run dev
 
 ## Document Domain Role
 
-This service remains physically under `apps/backend/domain/document-engine`, but
-its logical ownership has shifted to the future
+This legacy directory is now a historical residue for the document-domain
+migration. The active runtime package root, compose working directory, and local
+development entry have been switched to
 `apps/backend/capabilities/document-domain`.
+
+The active workspace shell for the legacy `carbone-engine` package name now
+lives at `apps/backend/capabilities/document-domain/carbone-engine-compat`.
+Routine `pnpm --filter carbone-engine ...` verification resolves there and then
+forwards to `@ops/document-domain`, so this legacy directory no longer needs to
+stay as an active workspace package.
+
+The real Docker startup entry must use `./docker/start-smart.sh` from the
+repository root so the current worktree is mounted correctly.
 
 ### Current Logical Mapping
 
@@ -56,13 +66,14 @@ its logical ownership has shifted to the future
 
 ### Document-Domain Alignment
 
-- `document-engine` should be read as the `template / render / runtime-facade`
-  side of the future `document-domain`.
+- `document-engine` should now be read as the compatibility view of the
+  `template / render / runtime-facade` side of `document-domain`.
 - Report-specific task orchestration, analysis, and notifications remain with
   the companion `domain/report` service during the transition.
-- New document-domain features should prefer the shared
-  `apps/backend/capabilities/document-domain` logical view instead of treating
-  this service as a standalone island.
+- New document-domain features must land in
+  `apps/backend/capabilities/document-domain` instead of expanding this legacy
+  directory.
+- This directory now keeps only this README as a historical migration note.
 
 ### Out Of Scope
 
@@ -137,14 +148,17 @@ Chain formatters with `:`:
 ## Testing
 
 ```bash
+# Containerized AI identifier test
+./docker/start-smart.sh docker-compose.test.yml run --rm carbone-engine-test
+
 # Unit tests
-npm run test
+pnpm --filter carbone-engine test
 
 # E2E tests
-npm run test:e2e
+pnpm --filter carbone-engine test:e2e
 
 # Test coverage
-npm run test -- --coverage
+pnpm --filter carbone-engine test -- --coverage
 ```
 
 ## License

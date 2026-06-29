@@ -1,0 +1,98 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TemplateFormat {
+  docx
+  xlsx
+  pptx
+  html
+}
+
+enum TemplateType {
+  template
+  marked_template
+}
+
+model Template {
+  id               String         @id @default(uuid()) @db.Uuid
+  type             TemplateType   @default(template)
+  originalId       String?        @map("original_id") @db.Uuid
+  fileName         String         @map("file_name") @db.VarChar(500)
+  filePath         String         @map("file_path") @db.VarChar(1000)
+  format           TemplateFormat
+  size             Int?
+  variables        String[]       @default([])
+  loops            Json           @default("[]")
+  markings         Json?
+  ignoredElements  Json?          @map("ignored_elements")
+  elementGroups    Json?          @map("element_groups")
+  ignoredGroups    Json?          @map("ignored_groups")
+  markingsSavedAt  DateTime?      @map("markings_saved_at") @db.Timestamptz
+  templateConfig   Json?          @map("template_config")
+  configSavedAt    DateTime?      @map("config_saved_at") @db.Timestamptz
+  suggestions      Json?
+  verifyResult     Json?          @map("verify_result")
+  hasValidFile     Boolean?       @map("has_valid_file")
+  createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+
+  original            Template?       @relation("TemplateOriginalToMarked", fields: [originalId], references: [id])
+  markedCopies        Template[]      @relation("TemplateOriginalToMarked")
+  skill               Skill?          @relation("TemplateToSkill")
+  renderOutputs       RenderOutput[]  @relation("RenderOutputTemplate")
+  markedRenderOutputs RenderOutput[]  @relation("RenderOutputMarkedTemplate")
+
+  @@index([type])
+  @@index([originalId])
+  @@map("carbone_templates")
+}
+
+model Skill {
+  id            String         @id @db.Uuid
+  templateId    String         @unique @map("template_id") @db.Uuid
+  parameters    Json           @default("[]")
+  dataExample   Json?          @map("data_example")
+  rawSkill      Json?          @map("raw_skill")
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+
+  template      Template       @relation("TemplateToSkill", fields: [templateId], references: [id])
+  renderOutputs RenderOutput[]
+
+  @@index([templateId])
+  @@map("carbone_skills")
+}
+
+model RenderOutput {
+  id               String          @id @db.Uuid
+  templateId       String?         @map("template_id") @db.Uuid
+  markedTemplateId String?         @map("marked_template_id") @db.Uuid
+  skillId          String?         @map("skill_id") @db.Uuid
+  fileName         String          @map("file_name") @db.VarChar(500)
+  filePath         String          @map("file_path") @db.VarChar(1000)
+  format           TemplateFormat
+  size             Int?
+  params           Json?
+  sampleData       Json?           @map("sample_data")
+  simulatedData    Json?           @map("simulated_data")
+  debugLogs        Json?           @map("debug_logs")
+  renderedAt       DateTime        @default(now()) @map("rendered_at") @db.Timestamptz
+  expiresAt        DateTime?       @map("expires_at") @db.Timestamptz
+
+  template         Template?       @relation("RenderOutputTemplate", fields: [templateId], references: [id])
+  markedTemplate   Template?       @relation("RenderOutputMarkedTemplate", fields: [markedTemplateId], references: [id])
+  skill            Skill?          @relation(fields: [skillId], references: [id])
+
+  @@index([templateId])
+  @@index([markedTemplateId])
+  @@index([skillId])
+  @@index([expiresAt])
+  @@map("carbone_render_outputs")
+}

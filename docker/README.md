@@ -62,6 +62,12 @@ cp env/.env.example .env
 # 启动全栈开发环境
 ./docker/start-smart.sh docker-compose.full.yml up -d
 
+# 启动独立 document-domain / carbone-engine
+./docker/start-smart.sh docker-compose.carbone.yml up -d carbone-engine
+
+# 运行 document-domain 测试容器
+./docker/start-smart.sh docker-compose.test.yml run --rm carbone-engine-test
+
 # 启动 V4 最小核心
 ./docker/start-smart.sh docker-compose.core.yml up -d
 

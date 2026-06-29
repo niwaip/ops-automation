@@ -20,6 +20,8 @@
 - HTTP API 与启动编排已分别下沉到 `src/api`、`src/worker`
 - `workflows.py` 已收敛为兼容导出层，真实实现下沉到 `src/workflows`
 - `sandbox_executor.py` 已收敛为兼容导出层，真实实现下沉到 `src/execution`
+- 上游 URL 配置已切换为优先使用 `SANDBOX_WORKER_URL`，并兼容历史 `WORKFLOW_VALIDATION_AGENT_URL`、`ACTIVITY_VALIDATION_AGENT_URL`、`TEMPORAL_SANDBOX_AGENT_URL`、`SANDBOX_AGENT_URL`
+- Worker 队列配置已切换为优先使用 `SANDBOX_WORKER_TASK_QUEUE`，并兼容历史 `SANDBOX_TASK_QUEUE`
 
 后续仍要继续完成的拆分：
 

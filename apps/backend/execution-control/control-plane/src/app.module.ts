@@ -8,6 +8,7 @@ import { PrismaModule } from './modules/prisma/prisma.module';
 import { AuthMiddleware } from './modules/auth/auth.middleware';
 import { McpModule } from './modules/mcp/mcp.module';
 import { JwtSecretGuard } from './modules/auth/jwt-secret.guard';
+import { SchedulerModule } from './modules/scheduler/scheduler.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { JwtSecretGuard } from './modules/auth/jwt-secret.guard';
     ExecutionModule,
     NotificationModule,
     McpModule,
+    SchedulerModule,
   ],
   providers: [JwtSecretGuard],
 })

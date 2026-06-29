@@ -8,7 +8,7 @@ import { PassportModule } from '@nestjs/passport';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { SkillService } from './skill.service';
 import { SkillController } from './skill.controller';
-import { ExecutionFlowModule } from '../../workflow-registry/flow-template';
+import { ExecutionFlowModule } from '../execution-flow/execution-flow.module';
 import { ToolCatalogService } from './tool-catalog.service';
 import { ToolCatalogController } from './tool-catalog.controller';
 import { SkillToolBindingService } from './skill-tool-binding.service';

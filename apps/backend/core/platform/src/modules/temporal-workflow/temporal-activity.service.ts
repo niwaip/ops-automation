@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Activity } from '../../prisma';
+import { Activity } from '../../prisma/client';
 import {
   ActivityFormData,
   ActivityValidationResult,
@@ -9,15 +9,13 @@ import {
 import { ActivityCrudService } from './temporal-activity-crud.service';
 import { TemporalActivityValidationFacadeService } from './temporal-activity-validation-facade.service';
 import { ActivityCodegenService } from './temporal-activity-codegen.service';
-import { ActivityExecutionService } from './temporal-activity-execution.service';
 
 @Injectable()
 export class ActivityService {
   constructor(
     private readonly crud: ActivityCrudService,
     private readonly validationFacade: TemporalActivityValidationFacadeService,
-    private readonly codegen: ActivityCodegenService,
-    private readonly execution: ActivityExecutionService
+    private readonly codegen: ActivityCodegenService
   ) {}
 
   listBuiltin(): BuiltinActivityDTO[] {
@@ -58,42 +56,5 @@ export class ActivityService {
 
   async generateCode(config: ActivityFormData, errorContext?: string): Promise<GenerateCodeResult> {
     return this.codegen.generateCode(config, errorContext);
-  }
-
-  async executeCode(
-    code: string,
-    fn: string,
-    taskQueue: string,
-    input?: Record<string, any>
-  ): Promise<{
-    success: boolean;
-    result?: any;
-    error?: string;
-  }> {
-    return this.execution.executeCode(code, fn, taskQueue, input);
-  }
-
-  async executeCodeInTemporalSandbox(
-    code: string,
-    fn: string,
-    taskQueue: string,
-    input?: Record<string, any>
-  ): Promise<{
-    success: boolean;
-    result?: any;
-    error?: string;
-  }> {
-    return this.execution.executeCodeInTemporalSandbox(code, fn, taskQueue, input);
-  }
-
-  async executeCodeStreaming(
-    code: string,
-    fn: string,
-    taskQueue: string,
-    input: Record<string, any> | undefined,
-    onLog: (log: string) => void,
-    options: any = {}
-  ): Promise<any> {
-    return this.execution.executeCodeStreaming(code, fn, taskQueue, input, onLog, options);
   }
 }

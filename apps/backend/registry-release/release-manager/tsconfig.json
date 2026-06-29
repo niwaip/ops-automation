@@ -21,7 +21,8 @@
     "paths": {
       "@/*": ["../../core/platform/src/*"],
       "@ops/identity-access": ["../../governance/identity-access/dist"],
-      "@ops/organization": ["../../governance/organization/dist"]
+      "@ops/organization": ["../../governance/organization/dist"],
+      "@ops/skill-registry/*": ["../skill-registry/dist/registry-release/skill-registry/src/*/index.d.ts"]
     }
   },
   "include": ["src/**/*"],

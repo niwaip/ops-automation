@@ -1,0 +1,35 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "module": "commonjs",
+    "declaration": true,
+    "removeComments": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "target": "ES2021",
+    "sourceMap": true,
+    "outDir": "./dist",
+    "rootDir": ".",
+    "incremental": true,
+    "skipLibCheck": true,
+    "strictNullChecks": true,
+    "noImplicitAny": true,
+    "strictBindCallApply": true,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true,
+    "esModuleInterop": true,
+    "paths": {
+      "@ops/backend-runtime-capability-contract": [
+        "../../../../packages/backend-contracts/runtime-capability-contract/index.d.ts"
+      ],
+      "express": ["./node_modules/@types/express"],
+      "@nestjs/common": ["./node_modules/@nestjs/common"],
+      "@nestjs/swagger": ["./node_modules/@nestjs/swagger"],
+      "class-transformer": ["./node_modules/class-transformer"],
+      "class-validator": ["./node_modules/class-validator"]
+    }
+  },
+  "include": ["./**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

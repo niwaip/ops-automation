@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '../../../prisma';
+import { Prisma } from '../../../prisma/client';
 import { RECOVERY_MESSAGES } from '../../recovery/recovery-constants';
 import { BROWSER_ERROR_CODES, BROWSER_MESSAGES } from '../browser/browser-execution-constants';
 import { PrismaService } from '../../../prisma/prisma.service';

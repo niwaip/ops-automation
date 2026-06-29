@@ -1,4 +1,4 @@
-import { SkillEnrichmentService } from '../src/skill-registry/enrichment';
+import { SkillEnrichmentService } from '../src/modules/skill/skill-enrichment.service';
 
 describe('SkillEnrichmentService workflow input policy enrichment', () => {
   const createService = () => {

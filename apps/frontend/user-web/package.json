@@ -13,7 +13,6 @@
   },
   "dependencies": {
     "@ant-design/icons": "^5.2.6",
-    "@ops/contracts": "file:../../../packages/contracts",
     "@ops/user-core": "file:../../../packages/user-core",
     "antd": "^5.12.0",
     "axios": "^1.6.2",

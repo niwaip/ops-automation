@@ -1,17 +1,17 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
+import { AuthModule, JwtAuthGuard, RbacGuard, UserModule } from '@ops/identity-access';
+import { OrganizationModule } from '@ops/organization';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
-import { AuthModule } from './modules/auth';
-import { UserModule } from './modules/user';
-import { SkillModule } from './skill-registry/registry';
-import { ExecutionFlowModule } from './workflow-registry/flow-template';
-import { TemporalWorkflowModule } from './workflow-registry/workflow-template';
-import { CapabilityReleaseModule } from './release-manager/release';
-import { OrganizationModule } from './modules/organization';
+import { CapabilityReleaseModule } from '@ops/release-manager/release';
+import { SkillModule } from './modules/skill/skill.module';
+import { ExecutionFlowModule } from './modules/execution-flow/execution-flow.module';
+import { TemporalWorkflowModule } from './modules/temporal-workflow/temporal-workflow.module';
+import { ReleaseManagerRuntimeAdapterModule } from './release-manager/platform/release-manager-runtime-adapter.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { IdentityAccessBridgeModule } from './governance/identity-access/identity-access-bridge.module';
-import { JwtAuthGuard, RbacGuard } from './guards';
+import { OrganizationBridgeModule } from './governance/organization/organization-bridge.module';
 
 @Module({
   imports: [
@@ -29,6 +29,7 @@ import { JwtAuthGuard, RbacGuard } from './guards';
     // Prisma module for database
     PrismaModule,
     IdentityAccessBridgeModule,
+    OrganizationBridgeModule,
 
     // Governance modules
     AuthModule,
@@ -39,6 +40,7 @@ import { JwtAuthGuard, RbacGuard } from './guards';
     SkillModule,
     ExecutionFlowModule,
     TemporalWorkflowModule,
+    ReleaseManagerRuntimeAdapterModule,
     CapabilityReleaseModule,
   ],
   providers: [

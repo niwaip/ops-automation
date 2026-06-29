@@ -18,11 +18,8 @@ import {
   ForbiddenException,
   Res,
 } from '@nestjs/common';
+import { JwtAuthGuard, Public, Roles, RolesGuard } from '@ops/identity-access';
 import { Response } from 'express';
-import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
-import { RolesGuard } from '../../guards/roles.guard';
-import { Roles } from '../../decorators/roles.decorator';
-import { Public } from '../../decorators';
 import { SkillService } from './skill.service';
 import {
   CreateSkillDTO,

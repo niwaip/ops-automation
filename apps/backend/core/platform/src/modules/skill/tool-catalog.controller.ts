@@ -1,7 +1,5 @@
 import { Controller, Get, Param, Patch, Body, Query, UseGuards } from '@nestjs/common';
-import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
-import { RolesGuard } from '../../guards/roles.guard';
-import { Roles } from '../../decorators/roles.decorator';
+import { JwtAuthGuard, Roles, RolesGuard } from '@ops/identity-access';
 import { ToolCatalogService } from './tool-catalog.service';
 import { UpdateToolCatalogDTO } from './interfaces';
 

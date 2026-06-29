@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
-import { JwtAuthGuard } from '../src/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '@ops/identity-access';
 
 describe('JwtAuthGuard', () => {
   let guard: JwtAuthGuard;

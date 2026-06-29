@@ -11,7 +11,11 @@ import { LockService } from '../lock/lock.service';
 import { AllocationService } from '../allocation/allocation.service';
 import { FreezeService } from '../freeze/freeze.service';
 import { TemplateClient, TemplateParamsSchema } from '../template/template.client';
-import { CdpExecutor, TemplateLoopDraft, TemplateStep } from '../worker-routing';
+import {
+  CdpExecutor,
+  type TemplateLoopDraft,
+  type TemplateStep,
+} from '../execution/cdp.executor';
 import {
   Session,
   SessionState,
@@ -22,7 +26,7 @@ import {
   TakeoverSessionRequest,
   ContinueSessionRequest,
   WorkerEndpoints,
-} from '../../interfaces';
+} from '../../interfaces/session.interface';
 
 // Session TTL: 86400 seconds (24 hours)
 const SESSION_TTL_SECONDS = 86400;

@@ -1,4 +1,4 @@
-import { TemporalWorkflow } from '../../prisma';
+import { TemporalWorkflow } from '../../prisma/client';
 import {
   DEFAULT_TEMPLATE_WORKFLOW_DSL,
   type ActivityDsl,
@@ -12,7 +12,7 @@ import {
   parseJson,
   pickFirstNonEmptyString,
   pickFirstPositiveNumber,
-} from './temporal-workflow-service.utils';
+} from './temporal-workflow-json.utils';
 
 export function toTemporalWorkflowDto(workflow: TemporalWorkflow): TemporalWorkflowDTO {
   const workflowDsl = parseJson<WorkflowDsl>(workflow.workflowDsl) || DEFAULT_TEMPLATE_WORKFLOW_DSL;

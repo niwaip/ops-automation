@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { ChatMessage, ChatSession } from '../../prisma';
+import { ChatMessage, ChatSession } from '../../prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TemporalWorkflowNormalizationService } from './temporal-workflow-normalization.service';
 import type {

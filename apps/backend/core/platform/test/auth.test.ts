@@ -1,12 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
 import { UnauthorizedException, ConflictException } from '@nestjs/common';
-import { AuthService } from '../src/modules/auth/auth.service';
+import { LoginDto, RegisterDto } from '@ops/identity-access';
 import { PrismaService } from '../src/prisma/prisma.service';
 import * as bcrypt from 'bcryptjs';
-import { LoginDto, RegisterDto } from '../src/dto';
 import { PlatformIdentityAccessAuthRepository } from '../src/governance/identity-access/auth-repository.service';
-import { IDENTITY_ACCESS_AUTH_REPOSITORY } from '@ops/identity-access';
+import {
+  IDENTITY_ACCESS_AUTH_REPOSITORY,
+  IdentityAccessAuthService as AuthService,
+} from '@ops/identity-access';
 
 // Type for mocked Prisma service
 type MockPrismaService = {

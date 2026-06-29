@@ -70,107 +70,7 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
-  apps/backend/core/platform:
-    dependencies:
-      '@nestjs/common':
-        specifier: ^10.3.0
-        version: 10.4.22(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@nestjs/core':
-        specifier: ^10.3.0
-        version: 10.4.22(@nestjs/common@10.4.22)(@nestjs/platform-express@10.4.22)(@nestjs/websockets@11.1.17)(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@nestjs/jwt':
-        specifier: ^10.2.0
-        version: 10.2.0(@nestjs/common@10.4.22)
-      '@nestjs/passport':
-        specifier: ^10.0.3
-        version: 10.0.3(@nestjs/common@10.4.22)(passport@0.7.0)
-      '@nestjs/platform-express':
-        specifier: ^10.3.0
-        version: 10.4.22(@nestjs/common@10.4.22)(@nestjs/core@10.4.22)
-      '@nestjs/swagger':
-        specifier: ^7.4.2
-        version: 7.4.2(@nestjs/common@10.4.22)(@nestjs/core@10.4.22)(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)
-      '@ops/backend-release-manifest':
-        specifier: file:../../../../packages/backend-contracts/release-manifest
-        version: file:packages/backend-contracts/release-manifest
-      '@ops/identity-access':
-        specifier: workspace:*
-        version: link:../../governance/identity-access
-      '@ops/organization':
-        specifier: workspace:*
-        version: link:../../governance/organization
-      '@prisma/client':
-        specifier: ^5.22.0
-        version: 5.22.0(prisma@5.22.0)
-      axios:
-        specifier: ^1.15.0
-        version: 1.17.0(debug@4.4.3)
-      bcryptjs:
-        specifier: ^2.4.3
-        version: 2.4.3
-      class-transformer:
-        specifier: ^0.5.1
-        version: 0.5.1
-      class-validator:
-        specifier: ^0.14.0
-        version: 0.14.4
-      passport:
-        specifier: ^0.7.0
-        version: 0.7.0
-      passport-jwt:
-        specifier: ^4.0.1
-        version: 4.0.1
-      reflect-metadata:
-        specifier: ^0.2.1
-        version: 0.2.2
-      rxjs:
-        specifier: ^7.8.1
-        version: 7.8.2
-      ts-node:
-        specifier: ^10.9.2
-        version: 10.9.2(@swc/core@1.15.40)(@types/node@20.19.37)(typescript@5.9.3)
-    devDependencies:
-      '@nestjs/cli':
-        specifier: ^10.2.0
-        version: 10.4.9
-      '@nestjs/schematics':
-        specifier: ^10.0.0
-        version: 10.2.3(typescript@5.9.3)
-      '@nestjs/testing':
-        specifier: ^10.3.0
-        version: 10.4.22(@nestjs/common@10.4.22)(@nestjs/core@10.4.22)(@nestjs/platform-express@10.4.22)
-      '@types/axios':
-        specifier: ^0.9.36
-        version: 0.9.36
-      '@types/bcryptjs':
-        specifier: ^2.4.6
-        version: 2.4.6
-      '@types/express':
-        specifier: ^4.17.21
-        version: 4.17.25
-      '@types/jest':
-        specifier: ^29.5.0
-        version: 29.5.14
-      '@types/node':
-        specifier: ^20.10.0
-        version: 20.19.37
-      '@types/passport-jwt':
-        specifier: ^4.0.1
-        version: 4.0.1
-      jest:
-        specifier: ^29.7.0
-        version: 29.7.0(@types/node@20.19.37)(ts-node@10.9.2)
-      prisma:
-        specifier: ^5.22.0
-        version: 5.22.0
-      ts-jest:
-        specifier: ^29.1.0
-        version: 29.4.6(@babel/core@7.29.0)(jest@29.7.0)(typescript@5.9.3)
-      typescript:
-        specifier: ^5.3.0
-        version: 5.9.3
-
-  apps/backend/domain/browser-semantics:
+  apps/backend/capabilities/browser-domain/semantics:
     dependencies:
       '@nestjs/common':
         specifier: ^10.3.0
@@ -240,7 +140,7 @@ importers:
         specifier: ^5.3.0
         version: 5.9.3
 
-  apps/backend/domain/browser-template:
+  apps/backend/capabilities/browser-domain/templates:
     dependencies:
       '@nestjs/common':
         specifier: ^10.3.0
@@ -310,7 +210,7 @@ importers:
         specifier: ^5.3.0
         version: 5.9.3
 
-  apps/backend/domain/document-engine:
+  apps/backend/capabilities/document-domain:
     dependencies:
       '@nestjs/common':
         specifier: ^10.0.0
@@ -419,7 +319,9 @@ importers:
         specifier: ^5.0.0
         version: 5.9.3
 
-  apps/backend/domain/report:
+  apps/backend/capabilities/document-domain/carbone-engine-compat: {}
+
+  apps/backend/capabilities/document-domain/report:
     dependencies:
       '@nestjs/common':
         specifier: ^10.3.0
@@ -434,7 +336,7 @@ importers:
         specifier: ^7.2.0
         version: 7.4.2(@nestjs/common@10.4.22)(@nestjs/core@10.4.22)(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)
       '@ops/backend-runtime-capability-contract':
-        specifier: file:../../../../packages/backend-contracts/runtime-capability-contract
+        specifier: file:../../../../../packages/backend-contracts/runtime-capability-contract
         version: file:packages/backend-contracts/runtime-capability-contract
       '@prisma/client':
         specifier: ^6.8.2
@@ -510,6 +412,109 @@ importers:
         specifier: ^5.3.0
         version: 5.9.3
 
+  apps/backend/core/platform:
+    dependencies:
+      '@nestjs/common':
+        specifier: ^10.3.0
+        version: 10.4.22(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/core':
+        specifier: ^10.3.0
+        version: 10.4.22(@nestjs/common@10.4.22)(@nestjs/platform-express@10.4.22)(@nestjs/websockets@11.1.17)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/jwt':
+        specifier: ^10.2.0
+        version: 10.2.0(@nestjs/common@10.4.22)
+      '@nestjs/passport':
+        specifier: ^10.0.3
+        version: 10.0.3(@nestjs/common@10.4.22)(passport@0.7.0)
+      '@nestjs/platform-express':
+        specifier: ^10.3.0
+        version: 10.4.22(@nestjs/common@10.4.22)(@nestjs/core@10.4.22)
+      '@nestjs/swagger':
+        specifier: ^7.4.2
+        version: 7.4.2(@nestjs/common@10.4.22)(@nestjs/core@10.4.22)(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)
+      '@ops/backend-release-manifest':
+        specifier: file:../../../../packages/backend-contracts/release-manifest
+        version: file:packages/backend-contracts/release-manifest
+      '@ops/identity-access':
+        specifier: workspace:*
+        version: link:../../governance/identity-access
+      '@ops/organization':
+        specifier: workspace:*
+        version: link:../../governance/organization
+      '@ops/release-manager':
+        specifier: workspace:*
+        version: link:../../registry-release/release-manager
+      '@prisma/client':
+        specifier: ^5.22.0
+        version: 5.22.0(prisma@5.22.0)
+      axios:
+        specifier: ^1.15.0
+        version: 1.17.0(debug@4.4.3)
+      bcryptjs:
+        specifier: ^2.4.3
+        version: 2.4.3
+      class-transformer:
+        specifier: ^0.5.1
+        version: 0.5.1
+      class-validator:
+        specifier: ^0.14.0
+        version: 0.14.4
+      passport:
+        specifier: ^0.7.0
+        version: 0.7.0
+      passport-jwt:
+        specifier: ^4.0.1
+        version: 4.0.1
+      reflect-metadata:
+        specifier: ^0.2.1
+        version: 0.2.2
+      rxjs:
+        specifier: ^7.8.1
+        version: 7.8.2
+      ts-node:
+        specifier: ^10.9.2
+        version: 10.9.2(@swc/core@1.15.40)(@types/node@20.19.37)(typescript@5.9.3)
+    devDependencies:
+      '@nestjs/cli':
+        specifier: ^10.2.0
+        version: 10.4.9
+      '@nestjs/schematics':
+        specifier: ^10.0.0
+        version: 10.2.3(typescript@5.9.3)
+      '@nestjs/testing':
+        specifier: ^10.3.0
+        version: 10.4.22(@nestjs/common@10.4.22)(@nestjs/core@10.4.22)(@nestjs/platform-express@10.4.22)
+      '@types/axios':
+        specifier: ^0.9.36
+        version: 0.9.36
+      '@types/bcryptjs':
+        specifier: ^2.4.6
+        version: 2.4.6
+      '@types/express':
+        specifier: ^4.17.21
+        version: 4.17.25
+      '@types/jest':
+        specifier: ^29.5.0
+        version: 29.5.14
+      '@types/node':
+        specifier: ^20.10.0
+        version: 20.19.37
+      '@types/passport-jwt':
+        specifier: ^4.0.1
+        version: 4.0.1
+      jest:
+        specifier: ^29.7.0
+        version: 29.7.0(@types/node@20.19.37)(ts-node@10.9.2)
+      prisma:
+        specifier: ^5.22.0
+        version: 5.22.0
+      ts-jest:
+        specifier: ^29.1.0
+        version: 29.4.6(@babel/core@7.29.0)(jest@29.7.0)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.3.0
+        version: 5.9.3
+
   apps/backend/execution-control/control-plane:
     dependencies:
       '@nestjs/common':
@@ -530,12 +535,15 @@ importers:
       '@nestjs/swagger':
         specifier: ^7.2.0
         version: 7.4.2(@nestjs/common@10.4.22)(@nestjs/core@10.4.22)(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)
+      '@ops/backend-error-codes':
+        specifier: file:../../../../packages/backend-contracts/error-codes
+        version: file:packages/backend-contracts/error-codes
+      '@ops/backend-execution-core':
+        specifier: file:../../../../packages/backend-contracts/execution-core
+        version: file:packages/backend-contracts/execution-core
       '@ops/backend-runtime-capability-contract':
         specifier: file:../../../../packages/backend-contracts/runtime-capability-contract
         version: file:packages/backend-contracts/runtime-capability-contract
-      '@ops/contracts':
-        specifier: file:../../../../packages/contracts
-        version: file:packages/contracts
       '@prisma/client':
         specifier: ^5.22.0
         version: 5.22.0(prisma@5.22.0)
@@ -548,6 +556,9 @@ importers:
       class-validator:
         specifier: ^0.14.1
         version: 0.14.4
+      cron-parser:
+        specifier: ^4.9.0
+        version: 4.9.0
       passport:
         specifier: ^0.7.0
         version: 0.7.0
@@ -668,6 +679,15 @@ importers:
         specifier: ^5.3.0
         version: 5.9.3
 
+  apps/backend/governance/audit-policy:
+    devDependencies:
+      '@types/node':
+        specifier: ^20.10.0
+        version: 20.19.37
+      typescript:
+        specifier: ^5.3.0
+        version: 5.9.3
+
   apps/backend/governance/identity-access:
     dependencies:
       '@nestjs/common':
@@ -756,9 +776,6 @@ importers:
       '@ops/backend-agent-profile':
         specifier: file:../../../../packages/backend-contracts/agent-profile
         version: file:packages/backend-contracts/agent-profile
-      '@ops/contracts':
-        specifier: file:../../../../packages/contracts
-        version: file:packages/contracts
       '@prisma/client':
         specifier: ^5.22.0
         version: 5.22.0(prisma@5.22.0)
@@ -886,12 +903,64 @@ importers:
         specifier: ^5.3.0
         version: 5.9.3
 
+  apps/backend/intelligence/master-planner:
+    devDependencies:
+      '@types/node':
+        specifier: ^20.10.0
+        version: 20.19.37
+      typescript:
+        specifier: ^5.3.0
+        version: 5.9.3
+
+  apps/backend/registry-release/agent-catalog:
+    dependencies:
+      '@ops/backend-agent-profile':
+        specifier: workspace:*
+        version: link:../../../../packages/backend-contracts/agent-profile
+    devDependencies:
+      '@types/node':
+        specifier: ^20.10.0
+        version: 20.19.37
+      typescript:
+        specifier: ^5.3.0
+        version: 5.9.3
+
   apps/backend/registry-release/release-manager:
     dependencies:
-      '@ops/platform':
+      '@nestjs/common':
+        specifier: ^10.3.0
+        version: 10.4.22(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/jwt':
+        specifier: ^10.2.0
+        version: 10.2.0(@nestjs/common@10.4.22)
+      '@nestjs/passport':
+        specifier: ^10.0.3
+        version: 10.0.3(@nestjs/common@10.4.22)(passport@0.7.0)
+      '@nestjs/swagger':
+        specifier: ^7.4.2
+        version: 7.4.2(@nestjs/common@10.4.22)(@nestjs/core@10.4.22)(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)
+      '@ops/backend-release-manifest':
+        specifier: file:../../../../packages/backend-contracts/release-manifest
+        version: file:packages/backend-contracts/release-manifest
+      '@ops/identity-access':
         specifier: workspace:*
-        version: link:../../core/platform
+        version: link:../../governance/identity-access
+      '@ops/organization':
+        specifier: workspace:*
+        version: link:../../governance/organization
+      '@ops/skill-registry':
+        specifier: workspace:*
+        version: link:../skill-registry
+      class-transformer:
+        specifier: ^0.5.1
+        version: 0.5.1
+      class-validator:
+        specifier: ^0.14.0
+        version: 0.14.4
     devDependencies:
+      '@types/express':
+        specifier: ^4.17.21
+        version: 4.17.25
       '@types/node':
         specifier: ^20.10.0
         version: 20.19.37
@@ -904,6 +973,15 @@ importers:
       '@ops/platform':
         specifier: workspace:*
         version: link:../../core/platform
+    devDependencies:
+      '@types/node':
+        specifier: ^20.10.0
+        version: 20.19.37
+      typescript:
+        specifier: ^5.3.0
+        version: 5.9.3
+
+  apps/backend/registry-release/template-registry:
     devDependencies:
       '@types/node':
         specifier: ^20.10.0
@@ -1159,9 +1237,6 @@ importers:
       '@ant-design/icons':
         specifier: ^5.2.6
         version: 5.6.1(react-dom@18.3.1)(react@18.3.1)
-      '@ops/contracts':
-        specifier: file:../../../packages/contracts
-        version: file:packages/contracts
       '@ops/user-core':
         specifier: file:../../../packages/user-core
         version: file:packages/user-core(@types/react@18.3.28)(react@18.3.1)(typescript@5.9.3)
@@ -1253,9 +1328,6 @@ importers:
       '@ant-design/icons':
         specifier: ^5.2.6
         version: 5.6.1(react-dom@18.3.1)(react@18.3.1)
-      '@ops/contracts':
-        specifier: file:../../../packages/contracts
-        version: file:packages/contracts
       '@ops/user-core':
         specifier: file:../../../packages/user-core
         version: file:packages/user-core(@types/react@18.3.28)(react@18.3.1)(typescript@5.9.3)
@@ -1396,6 +1468,10 @@ importers:
 
   packages/backend-contracts/common-dto: {}
 
+  packages/backend-contracts/error-codes: {}
+
+  packages/backend-contracts/execution-core: {}
+
   packages/backend-contracts/execution-events: {}
 
   packages/backend-contracts/release-manifest: {}
@@ -1406,9 +1482,9 @@ importers:
 
   packages/user-core:
     dependencies:
-      '@ops/contracts':
-        specifier: file:../contracts
-        version: file:packages/contracts
+      '@ops/backend-execution-core':
+        specifier: file:../backend-contracts/execution-core
+        version: file:packages/backend-contracts/execution-core
       axios:
         specifier: ^1.6.2
         version: 1.17.0(debug@4.4.3)
@@ -7524,6 +7600,13 @@ packages:
   /create-require@1.1.1:
     resolution: {integrity: sha512-dcKFX3jn0MpIaXjisoRvexIJVEKzaq7z2rZKxf+MSr9TkdmHmsU4m2lcLojrj/FHl8mk5VxMmYA+ftRkP/3oKQ==}
 
+  /cron-parser@4.9.0:
+    resolution: {integrity: sha512-p0SaNjrHOnQeR8/VnfGbmg9te2kfyYSQ7Sc/j/6DtPL3JQvKxmjO9TSjNFpujqV3vEYYBvNNvXSxzyksBWAx1Q==}
+    engines: {node: '>=12.0.0'}
+    dependencies:
+      luxon: 3.7.2
+    dev: false
+
   /cross-spawn@7.0.6:
     resolution: {integrity: sha512-uV2QOWP2nWzsy2aMp8aRibhi9dlzF5Hgh5SHaB9OiTGEyDTiJJyx0uy51QXdyWbtAHNua4XJzUKca3OzKUd3vA==}
     engines: {node: '>= 8'}
@@ -10692,6 +10775,11 @@ packages:
     dependencies:
       yallist: 3.1.1
     dev: true
+
+  /luxon@3.7.2:
+    resolution: {integrity: sha512-vtEhXh/gNjI9Yg1u4jX/0YVPMvxzHuGgCm6tC5kZyb08yjGWGnqAjGJvcXbqQR2P3MyMEFnRbpcdFS6PBcLqew==}
+    engines: {node: '>=12'}
+    dev: false
 
   /magic-string@0.30.8:
     resolution: {integrity: sha512-ISQTe55T2ao7XtlAStud6qwYPZjE4GK1S/BeVPus4jrq6JuOnQ00YKQC581RWhR122W7msZV263KzVeLoqidyQ==}
@@ -15531,6 +15619,16 @@ packages:
     name: '@ops/backend-agent-profile'
     dev: false
 
+  file:packages/backend-contracts/error-codes:
+    resolution: {directory: packages/backend-contracts/error-codes, type: directory}
+    name: '@ops/backend-error-codes'
+    dev: false
+
+  file:packages/backend-contracts/execution-core:
+    resolution: {directory: packages/backend-contracts/execution-core, type: directory}
+    name: '@ops/backend-execution-core'
+    dev: false
+
   file:packages/backend-contracts/release-manifest:
     resolution: {directory: packages/backend-contracts/release-manifest, type: directory}
     name: '@ops/backend-release-manifest'
@@ -15553,6 +15651,7 @@ packages:
     peerDependencies:
       typescript: ^5.3.3
     dependencies:
+      '@ops/backend-execution-core': file:packages/backend-contracts/execution-core
       '@ops/contracts': file:packages/contracts
       axios: 1.17.0(debug@4.4.3)
       typescript: 5.9.3

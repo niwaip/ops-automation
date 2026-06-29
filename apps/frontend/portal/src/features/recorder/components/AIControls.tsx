@@ -2553,7 +2553,7 @@ const AIControls: React.FC<AIControlsProps> = ({
       artifacts.skillDraft?.description ||
       artifacts.guidance ||
       '由录制流程自动生成的浏览器执行模板';
-    return artifacts.loopDraft ? `${baseDescription}（包含循环处理草稿）` : baseDescription;
+    return baseDescription;
   };
 
   const buildTemplateNameFromArtifacts = (artifacts: RecorderDebugExportArtifacts) => {

@@ -17,7 +17,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@ops/contracts": "file:../../../../packages/contracts",
+    "@ops/backend-error-codes": "file:../../../../packages/backend-contracts/error-codes",
+    "@ops/backend-execution-core": "file:../../../../packages/backend-contracts/execution-core",
     "@ops/backend-runtime-capability-contract": "file:../../../../packages/backend-contracts/runtime-capability-contract",
     "@nestjs/common": "^10.3.0",
     "@nestjs/core": "^10.3.0",
@@ -34,6 +35,7 @@
     "prisma": "^5.22.0",
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.0",
+    "cron-parser": "^4.9.0",
     "uuid": "^9.0.0"
   },
   "devDependencies": {

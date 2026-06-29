@@ -23,7 +23,7 @@
 
 ## 当前逻辑分组
 
-- 根入口：优先通过 `modules/execution-flow/index.ts` 访问稳定导出面
-- `registry/`: Flow 模板注册入口
-- `template/`: Flow 模板服务
+- `modules/execution-flow/index.ts` 根聚合 barrel 已在后续 Phase E 删除；当前应直接通过本目录下的真实实现文件或仍保留的稳定子层消费
+- `registry/index.ts` 过渡 barrel 已在后续 Phase E 删除；`ExecutionFlowModule`、控制器与接口类型当前直接由 `execution-flow.module.ts`、`execution-flow.controller.ts` 与 `interfaces.ts` 承接
+- Flow 模板服务：当前由本目录下真实实现文件承接，旧根入口与 `template/index.ts` compat 壳已在后续 Phase E 删除
 - `validation/`: Flow 模板验证结果类型与验证 facade

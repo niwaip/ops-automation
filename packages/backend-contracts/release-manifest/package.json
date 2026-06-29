@@ -2,7 +2,27 @@
   "name": "@ops/backend-release-manifest",
   "version": "0.1.0",
   "private": true,
+  "type": "commonjs",
   "description": "Shared release manifest contract definitions",
-  "main": "index.js",
-  "types": "index.d.ts"
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    }
+  },
+  "files": [
+    "src",
+    "index.js",
+    "index.d.ts",
+    "index.d.ts.map",
+    "index.js.map",
+    "README.md",
+    "tsconfig.json"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  }
 }

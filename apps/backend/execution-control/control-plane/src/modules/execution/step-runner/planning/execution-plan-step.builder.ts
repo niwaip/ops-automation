@@ -1,4 +1,4 @@
-import { Prisma } from '../../../prisma';
+import { Prisma } from '../../../prisma/client';
 import type { BrowserPhaseRecoveryPolicy } from '../../recovery/browser-phase-recovery.planner';
 import type { BrowserPhaseCheck } from '../../state/execution.dto';
 import { BROWSER_ACTIONS, BROWSER_RUNTIME } from '../browser/browser-execution-constants';

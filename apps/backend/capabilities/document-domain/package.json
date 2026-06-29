@@ -1,0 +1,67 @@
+{
+  "name": "@ops/document-domain",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Document domain runtime package root for the carbone-engine migration",
+  "main": "dist/backend/capabilities/document-domain/index.js",
+  "types": "dist/backend/capabilities/document-domain/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/backend/capabilities/document-domain/index.d.ts",
+      "default": "./dist/backend/capabilities/document-domain/index.js"
+    }
+  },
+  "scripts": {
+    "prisma:generate": "prisma generate --schema template/prisma/schema.prisma",
+    "build": "prisma generate --schema template/prisma/schema.prisma && rm -rf dist/backend/capabilities/document-domain dist/backend/domain/document-engine && tsc -p tsconfig.json && rm -rf dist/backend/capabilities/document-domain/template/generated dist/backend/capabilities/document-domain/report/generated && mkdir -p dist/backend/capabilities/document-domain/template/generated dist/backend/capabilities/document-domain/report/generated && cp -R template/generated/prisma dist/backend/capabilities/document-domain/template/generated/prisma && cp -R report/generated/prisma dist/backend/capabilities/document-domain/report/generated/prisma",
+    "dev": "prisma generate --schema template/prisma/schema.prisma && ts-node-dev --project tsconfig.json --respawn --transpile-only main.ts",
+    "start": "node dist/backend/capabilities/document-domain/main.js",
+    "start:prod": "node dist/backend/capabilities/document-domain/main.js",
+    "test": "jest",
+    "test:e2e": "prisma generate --schema template/prisma/schema.prisma && node scripts/run-legacy-document-engine-e2e.js",
+    "migrate:sidecar-to-db": "node scripts/migrate-sidecar-to-db.js",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@ops/backend-runtime-capability-contract": "file:../../../../packages/backend-contracts/runtime-capability-contract",
+    "@nestjs/common": "^10.0.0",
+    "@nestjs/core": "^10.0.0",
+    "@nestjs/platform-express": "^10.0.0",
+    "@nestjs/swagger": "^7.0.0",
+    "@prisma/client": "^6.19.3",
+    "axios": "^1.6.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.0",
+    "dayjs": "^1.11.11",
+    "express": "^4.18.0",
+    "jszip": "^3.10.1",
+    "mammoth": "^1.6.0",
+    "reflect-metadata": "^0.1.13",
+    "rxjs": "^7.8.0",
+    "uuid": "^9.0.0",
+    "xlsx": "^0.18.5",
+    "xml2js": "^0.6.2",
+    "yauzl": "^2.10.0",
+    "yazl": "^2.5.1"
+  },
+  "devDependencies": {
+    "@nestjs/testing": "^10.0.0",
+    "@types/express": "^4.17.0",
+    "@types/jest": "^29.0.0",
+    "@types/jszip": "^3.4.0",
+    "@types/node": "^20.0.0",
+    "@types/supertest": "^6.0.3",
+    "@types/uuid": "^9.0.0",
+    "@types/yauzl": "^2.10.0",
+    "eslint": "^8.0.0",
+    "jest": "^29.0.0",
+    "prisma": "^6.19.3",
+    "supertest": "^6.3.0",
+    "ts-jest": "^29.0.0",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

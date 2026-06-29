@@ -1,17 +1,7 @@
-import { TemporalWorkflowService } from '../src/modules/temporal/temporal-workflow.service';
-import { BuiltinActivityRegistry } from '../src/modules/temporal/builtin-activity.registry';
+import { createTemporalWorkflowScriptService } from './temporal-workflow-script-harness';
 
 async function main() {
-  const prisma: any = {
-    temporalWorkflow: {},
-    activity: {
-      findMany: async () => [],
-      findFirst: async () => null,
-      findUnique: async () => null,
-    },
-  };
-  const builtin = new BuiltinActivityRegistry();
-  const service = new TemporalWorkflowService(prisma, builtin);
+  const service = createTemporalWorkflowScriptService();
 
   const description =
     process.env.WORKFLOW_DESCRIPTION ||

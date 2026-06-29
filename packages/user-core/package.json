@@ -42,7 +42,7 @@
     "check:boundaries": "node ./scripts/check-boundaries.mjs"
   },
   "dependencies": {
-    "@ops/contracts": "file:../contracts",
+    "@ops/backend-execution-core": "file:../backend-contracts/execution-core",
     "axios": "^1.6.2",
     "zustand": "^4.4.7"
   },

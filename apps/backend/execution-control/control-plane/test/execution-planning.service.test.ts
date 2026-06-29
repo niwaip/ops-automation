@@ -275,4 +275,94 @@ describe('ExecutionPlanningService', () => {
       'AND cr.archived_at IS NULL'
     );
   });
+
+  it('falls back to direct_skill when browser loop draft has no executable iteration steps', async () => {
+    process.env.BROWSER_LOOP_WORKFLOW_ENABLED = 'true';
+
+    const prisma = {
+      $queryRawUnsafe: jest.fn().mockResolvedValue([
+        {
+          source_type: 'browser_recording',
+          source_payload_json: {
+            apiEndpoints: {
+              runtimeMetadata: {
+                executionPlan: {
+                  loopDraft: {
+                    mode: 'repeat_until',
+                    target: {
+                      scope: 'current_list',
+                      currentPageUrl: 'https://example.test/approvals',
+                    },
+                    onNoProgress: 'takeover',
+                    maxIterations: 100,
+                  },
+                  templateSteps: [
+                    {
+                      step_id: 'step_1',
+                      action: 'navigate',
+                      params: {
+                        url: 'https://example.test/approvals',
+                      },
+                      description: '打开审批页',
+                    },
+                    {
+                      step_id: 'step_2',
+                      action: 'click',
+                      locator: {
+                        type: 'role',
+                        value: 'button[name="保留中"]',
+                      },
+                      description: '点击筛选按钮',
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        },
+      ]),
+    };
+
+    const service = createService(prisma);
+
+    const result = await service.rewriteBrowserRecordingPlanDraftWithActivities(
+      {
+        plan_id: 'plan-browser-loop-empty-1',
+        planner_mode: 'skill',
+        objective: '查看待处理数据',
+        summary: '浏览器录制技能',
+        skill_match: {
+          skill_id: 'skill-browser-loop-empty-1',
+          skill_name: '查看待处理数据',
+          confidence: 1,
+        },
+        steps: [],
+        required_inputs: [],
+        risk_summary: {
+          level: 'low',
+          requires_human_review: false,
+          items: ['no_material_risk_detected'],
+        },
+      },
+      'skill-browser-loop-empty-1',
+      {
+        username: 'tester',
+      },
+      {}
+    );
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        planner_mode: 'skill',
+        runtime_source_type: 'browser_recording',
+        steps: [
+          expect.objectContaining({
+            id: 'execute_selected_skill',
+            kind: 'skill',
+          }),
+        ],
+      })
+    );
+    expect(result?.loop_workflow).toBeUndefined();
+  });
 });

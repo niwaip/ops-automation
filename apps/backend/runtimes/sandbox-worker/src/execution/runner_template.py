@@ -33,7 +33,7 @@ class MockActivityInfo:
         self.activity_type = 'SandboxActivity'
         self.workflow_type = 'AgentSessionWorkflow'
         self.workflow_namespace = 'default'
-        self.task_queue = 'sandbox-agent-task-queue'
+        self.task_queue = 'sandbox-worker-task-queue'
         self.is_cancelled = False
         self.is_replaying = False
         self.run_id = 'sandbox-run-id'

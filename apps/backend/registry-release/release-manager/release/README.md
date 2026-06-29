@@ -2,13 +2,13 @@
 
 当前目录代表未来 `registry-release/release-manager/release` 的逻辑子层视图。
 
-当前仓库里，相关实现仍主要物理位于：
+当前仓库里，相关实现当前主要收口到：
 
-- `apps/backend/core/platform/src/modules/capability-release/release`
-- `apps/backend/core/platform/src/modules/capability-release/capability-release.controller.ts`
-- `apps/backend/core/platform/src/modules/capability-release/capability-release.service.ts`
-- `apps/backend/core/platform/src/modules/capability-release/capability-release-manifest.service.ts`
-- `apps/backend/core/platform/src/modules/capability-release/capability-release-manifest.mapper.ts`
+- `apps/backend/registry-release/release-manager/src/release`
+
+旧兼容入口已在后续 Phase E 中完成删除：
+
+- `apps/backend/core/platform/src/modules/capability-release/*`
 
 本目录在当前批次的职责，是把当前发布主入口、Manifest 装配与发布态详情聚合逻辑，
 统一解释为 `release-manager` 内部的 `release` 子层。
@@ -91,16 +91,10 @@ skill-registry
 
 当前对应关系如下：
 
-- `capability-release/release/index.ts`
-  - 对应未来 `release` 子层稳定出口
-- `capability-release.controller.ts`
-  - 对应未来 `release` 子层控制器入口
-- `capability-release.service.ts`
-  - 对应未来 `release` 子层主流程编排
-- `capability-release-manifest.service.ts`
-  - 对应未来 `release` 子层 Manifest 装配
-- `capability-release-manifest.mapper.ts`
-  - 对应未来 `release` 子层 Manifest 映射
+- `apps/backend/registry-release/release-manager/src/release`
+  - 对应当前 `release` 子层稳定出口
+- `modules/capability-release/*`
+  - 旧物理路径已在后续 Phase E 中删除
 
 ## 当前结论
 
@@ -109,4 +103,5 @@ skill-registry
 - `release` 统一承接发布主入口与 Manifest 装配
 - `release` 继续作为注册侧进入执行链前的主流程收口层
 - 构建、校验、部署、审计继续留在各自子层
-- 当前先固定逻辑边界，不在本批次引入物理迁移
+- `release` 子层的主要协作者实现已稳定落在 `apps/backend/registry-release/release-manager/src/release`
+- 旧 `modules/capability-release/*` 物理路径已在后续 Phase E 中删除

@@ -20,6 +20,7 @@
     "noFallthroughCasesInSwitch": true,
     "paths": {
       "@/*": ["../../core/platform/src/*"],
+      "@ops/platform/dist/*": ["../../core/platform/dist/*"],
       "@ops/identity-access": ["../../governance/identity-access/dist"],
       "@ops/organization": ["../../governance/organization/dist"]
     }

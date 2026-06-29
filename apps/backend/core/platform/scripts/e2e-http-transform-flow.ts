@@ -1,17 +1,11 @@
-import {
+import type {
   ActivityDsl,
-  TemporalWorkflowService,
   WorkflowDsl,
-} from '../src/modules/temporal/temporal-workflow.service';
-import { BuiltinActivityRegistry } from '../src/modules/temporal/builtin-activity.registry';
+} from '../src/modules/temporal-workflow/temporal-workflow.service';
+import { createTemporalWorkflowScriptService } from './temporal-workflow-script-harness';
 
 async function main() {
-  const prisma: any = {
-    temporalWorkflow: {},
-    activity: {},
-  };
-  const builtin = new BuiltinActivityRegistry();
-  const service = new TemporalWorkflowService(prisma, builtin);
+  const service = createTemporalWorkflowScriptService();
 
   const city = process.env.CITY || '上海';
   const inputParams = {

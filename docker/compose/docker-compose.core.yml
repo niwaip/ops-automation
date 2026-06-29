@@ -57,8 +57,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:-ops_local_dev_jwt_secret_2026_06_02_8f4a6c9d7b1e53aa}
       PORT: ${PLATFORM_PORT:-3001}
       EXTERNAL_HOST: ${HOST_IP:-localhost}
-      SANDBOX_AGENT_URL: http://sandbox-worker:8090
-      TEMPORAL_SANDBOX_AGENT_URL: http://sandbox-worker:8090
+      SANDBOX_WORKER_URL: http://sandbox-worker:8090
       ACTIVITY_VALIDATION_AGENT_URL: http://sandbox-worker:8090
     ports:
       - "${PLATFORM_PORT:-3001}:${PLATFORM_PORT:-3001}"

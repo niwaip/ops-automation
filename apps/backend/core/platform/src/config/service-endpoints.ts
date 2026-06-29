@@ -75,6 +75,7 @@ export const getControlPlaneApiUrl = (): string => {
 
 export const getWorkflowValidationAgentUrl = (): string => {
   const configured = readConfiguredUrl(
+    process.env.SANDBOX_WORKER_URL,
     process.env.WORKFLOW_VALIDATION_AGENT_URL,
     process.env.ACTIVITY_VALIDATION_AGENT_URL,
     process.env.TEMPORAL_SANDBOX_AGENT_URL,

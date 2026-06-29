@@ -239,6 +239,8 @@ exports.Prisma.ExecutionScalarFieldEnum = {
   takeoverRequired: 'takeoverRequired',
   takeoverStatus: 'takeoverStatus',
   takeoverReason: 'takeoverReason',
+  triggerType: 'triggerType',
+  scheduleId: 'scheduleId',
   startedAt: 'startedAt',
   endedAt: 'endedAt',
   createdAt: 'createdAt',
@@ -375,6 +377,23 @@ exports.Prisma.AuditLogScalarFieldEnum = {
   createdAt: 'createdAt'
 };
 
+exports.Prisma.SkillScheduleScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  description: 'description',
+  skillId: 'skillId',
+  skillVersion: 'skillVersion',
+  inputJson: 'inputJson',
+  cronExpression: 'cronExpression',
+  timezone: 'timezone',
+  isActive: 'isActive',
+  lastRunAt: 'lastRunAt',
+  nextRunAt: 'nextRunAt',
+  createdBy: 'createdBy',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -427,7 +446,8 @@ exports.Prisma.ModelName = {
   RuntimeSession: 'RuntimeSession',
   ExecutionStep: 'ExecutionStep',
   ExecutionEvent: 'ExecutionEvent',
-  AuditLog: 'AuditLog'
+  AuditLog: 'AuditLog',
+  SkillSchedule: 'SkillSchedule'
 };
 
 /**

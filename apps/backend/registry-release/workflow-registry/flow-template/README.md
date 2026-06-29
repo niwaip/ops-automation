@@ -5,7 +5,6 @@
 当前仓库里，相关实现仍主要物理位于：
 
 - `apps/backend/core/platform/src/modules/execution-flow/registry`
-- `apps/backend/core/platform/src/modules/execution-flow/template`
 - `apps/backend/core/platform/src/modules/execution-flow/execution-flow.controller.ts`
 - `apps/backend/core/platform/src/modules/execution-flow/execution-flow.module.ts`
 - `apps/backend/core/platform/src/modules/execution-flow/execution-flow-template.service.ts`
@@ -79,8 +78,8 @@ workflow-registry/flow-template
 
 - `execution-flow/registry/index.ts`
   - 对应未来 `flow-template` 子层的注册面稳定出口
-- `execution-flow/template/index.ts`
-  - 对应未来 `flow-template` 子层的模板服务稳定出口
+- `execution-flow/execution-flow-template.service.ts`
+  - 对应未来 `flow-template` 子层的模板服务稳定出口；旧 `execution-flow/template/index.ts` compat 壳已在后续 Phase E 删除
 - `ExecutionFlowModule`
   - 对应未来 `flow-template` 子层模块级收口
 - `ExecutionFlowTemplateController`
@@ -89,6 +88,10 @@ workflow-registry/flow-template
   - 对应未来 `flow-template` 子层模板服务与模板生命周期能力
 - `CreateExecutionFlowTemplateDTO` / `UpdateExecutionFlowTemplateDTO` / `ExecutionFlowTemplateDTO`
   - 对应未来 `flow-template` 子层模板 DTO
+- `core/platform/src/modules/execution-flow/registry`
+  - 该过渡 barrel 已在后续 Phase E 删除；`flow-template` 子层当前直接对齐 `core/platform/src/modules/execution-flow/execution-flow.module.ts`、`execution-flow.controller.ts`、`interfaces.ts` 与相关真实实现文件，旧 `core/platform/src/workflow-registry/flow-template` facade 也已删除
+- `apps/backend/registry-release/workflow-registry/src/flow-template`
+  - 当前已统一只转发稳定的 platform 真实实现文件，不再直接指向旧 facade 或 compat 壳
 
 ## 当前结论
 
@@ -97,4 +100,7 @@ workflow-registry/flow-template
 - `flow-template` 统一承接 Execution Flow 模板注册入口、模板服务与模板 DTO
 - `flow-template` 继续作为注册侧进入发布链之前的 Flow 模板收口层
 - 统一校验、Temporal 模板、代码生成继续留在各自子层
+- 当前已开始由目标包本身承接最小稳定 helper：
+  - Flow 分类元信息读取
+  - Flow 中工具名汇总
 - 当前先固定逻辑边界，不在本批次引入物理迁移

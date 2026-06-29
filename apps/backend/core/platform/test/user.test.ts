@@ -1,10 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
-import { UserService } from '../src/modules/user/user.service';
+import { UpdateUserRolesDto } from '@ops/identity-access';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { UpdateUserRolesDto } from '../src/dto';
 import { PlatformIdentityAccessUserManagementRepository } from '../src/governance/identity-access/user-management-repository.service';
-import { IDENTITY_ACCESS_USER_MANAGEMENT_REPOSITORY } from '@ops/identity-access';
+import {
+  IDENTITY_ACCESS_USER_MANAGEMENT_REPOSITORY,
+  IdentityAccessUserService as UserService,
+} from '@ops/identity-access';
 
 // Type for mocked Prisma service
 type MockPrismaService = {

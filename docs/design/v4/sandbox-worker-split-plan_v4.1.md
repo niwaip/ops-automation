@@ -26,7 +26,7 @@
 
 - `temporal-worker` 同时承载真正的 Temporal Worker 与沙箱 HTTP 接口，运行时语义混杂。
 - 存在两套执行入口与两套“缓存/执行/流式输出”实现，后续维护会继续分叉。
-- 上游仍保留 `SANDBOX_AGENT_URL` 这一历史兼容命名，但当前目标目录已统一为 `apps/backend/runtimes/sandbox-worker`。
+- 历史上游曾使用 `SANDBOX_AGENT_URL` / `TEMPORAL_SANDBOX_AGENT_URL` 等命名，但当前目标目录与默认配置已统一收口到 `apps/backend/runtimes/sandbox-worker`。
 
 ## 2. 现状盘点
 
@@ -56,7 +56,7 @@
   - `POST /validate-workflow/stream`
   - `GET /health`
 - 作为 Python Temporal worker，监听：
-  - `SANDBOX_TASK_QUEUE`
+  - `SANDBOX_WORKER_TASK_QUEUE`
   - `ACTIVITY_VALIDATION_TASK_QUEUE`
 - 通过 `sandbox_executor.py` 执行真正的 Python 沙箱逻辑
 
@@ -64,6 +64,8 @@
 
 - 该兼容转发层已从仓库中移除
 - 主实现已统一收敛到 `apps/backend/runtimes/sandbox-worker`
+- 默认队列命名已切换为 `sandbox-worker-task-queue`
+- 历史 `SANDBOX_TASK_QUEUE` 与 `sandbox-agent-task-queue` 仅保留兼容读取
 
 ## 3. 目标态
 
@@ -174,12 +176,17 @@ apps/backend/runtimes/sandbox-worker/
 当前已出现的队列：
 
 - `sandbox-agent-task-queue`
+- `sandbox-worker-task-queue`
 - `activity-validation-task-queue`
 
-建议目标态命名保留兼容，但通过集中配置显式声明：
+当前目标态命名为“新名优先、旧名兼容”，通过集中配置显式声明：
+
+- `SANDBOX_WORKER_TASK_QUEUE`
+- `ACTIVITY_VALIDATION_TASK_QUEUE`
+
+兼容读取：
 
 - `SANDBOX_TASK_QUEUE`
-- `ACTIVITY_VALIDATION_TASK_QUEUE`
 
 后续如补 Workflow 专用验证队列，也应集中到 `worker/task-queues.py` 之类的单点配置中，避免散落在业务代码里。
 
@@ -191,7 +198,7 @@ apps/backend/runtimes/sandbox-worker/
 
 原因：
 
-- 上游 `core/platform` 当前已经通过 `SANDBOX_AGENT_URL` / `TEMPORAL_SANDBOX_AGENT_URL` 接入它
+- 上游 `core/platform` 当前已经优先通过 `SANDBOX_WORKER_URL` 接入它，并兼容 `WORKFLOW_VALIDATION_AGENT_URL` / `ACTIVITY_VALIDATION_AGENT_URL` / `TEMPORAL_SANDBOX_AGENT_URL` / `SANDBOX_AGENT_URL`
 - 其功能覆盖面已经超过 `temporal-worker/src/sandbox/*`
 - 已承担 Activity / Workflow validation 的真实执行链路
 
@@ -263,3 +270,4 @@ apps/backend/runtimes/sandbox-worker/
 - `runtime/sandbox-agent/*` 已完成移除
 - `temporal-worker/src/sandbox/*` 已完成移除
 - `sandbox-worker` 成为唯一保留的沙箱运行时实现
+- 默认环境变量与默认 task queue 命名已切到 `sandbox-worker` 平面，旧命名仅保留兼容读取

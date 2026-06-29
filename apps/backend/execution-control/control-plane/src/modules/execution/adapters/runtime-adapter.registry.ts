@@ -1,5 +1,5 @@
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
-import { ERROR_CODES } from '@ops/contracts';
+import { ERROR_CODES } from '@ops/backend-error-codes';
 import { BrowserRuntimeAdapter } from './browser-runtime.adapter';
 import { CapabilityRuntimeAdapter } from './capability-runtime.adapter';
 import { DocumentRuntimeAdapter } from './document-runtime.adapter';

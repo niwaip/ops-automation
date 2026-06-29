@@ -1,6 +1,7 @@
 # V4 Runtime Group
 # 承载运行时资源与执行器：
 # browser-worker / temporal / sandbox-worker
+# 必须从仓库根目录通过 `./docker/start-smart.sh` 启动，确保挂载当前 worktree
 
 services:
   browser-worker:
@@ -34,38 +35,38 @@ services:
       context: ../..
       dockerfile: docker/carbone-engine/Dockerfile
     container_name: carbone-engine
-    working_dir: /app
+    working_dir: /workspace/apps/backend/capabilities/document-domain
     command: >
-      sh -c "npm config set registry https://registry.npmmirror.com
-      && npm config set fetch-retries 5
-      && npm config set fetch-retry-mintimeout 20000
-      && npm config set fetch-retry-maxtimeout 120000
-      && i=0
+      sh -c "i=0
       && until [ $$i -ge 5 ]; do
-        npm install --include=dev && break;
+        npm install --workspaces=false --include=dev --package-lock=false && break;
         i=$$((i+1));
         echo 'npm install failed, retrying in 10s...';
         sleep 10;
       done
       && [ $$i -lt 5 ]
       && npm run build
-      && npm run start"
+      && npm run start:prod"
     environment:
       NODE_ENV: production
+      NPM_CONFIG_REGISTRY: https://registry.npmmirror.com
+      NPM_CONFIG_FETCH_RETRIES: 5
+      NPM_CONFIG_FETCH_RETRY_MINTIMEOUT: 20000
+      NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT: 120000
       DATABASE_URL: postgresql://${POSTGRES_USER:-ops}:${POSTGRES_PASSWORD:-ops_secret}@postgres:5432/${POSTGRES_DB:-ops}
       PORT: ${CARBONE_ENGINE_PORT:-3009}
-      TEMPLATES_DIR: /app/templates
-      OUTPUTS_DIR: /app/outputs
+      TEMPLATES_DIR: /workspace/apps/backend/var/templates/document-engine
+      OUTPUTS_DIR: /workspace/apps/backend/var/outputs/document-engine
       LIBREOFFICE_PATH: /usr/bin/soffice
       TMP_DIR: /tmp/carbone-preview
       AI_ORCHESTRATOR_URL: http://${AI_ORCHESTRATOR_HOST:-ai-orchestrator}:${AI_ORCHESTRATOR_PORT:-3007}
     ports:
       - "${CARBONE_ENGINE_PORT:-3009}:${CARBONE_ENGINE_PORT:-3009}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/backend/domain/document-engine:/app
-      - carbone_engine_node_modules:/app/node_modules
-      - ${PROJECT_ROOT:-..}/apps/backend/var/templates/document-engine:/app/templates
-      - ${PROJECT_ROOT:-..}/apps/backend/var/outputs/document-engine:/app/outputs
+      - ${PROJECT_ROOT:-..}:/workspace
+      - carbone_engine_node_modules:/workspace/apps/backend/capabilities/document-domain/node_modules
+      - ${PROJECT_ROOT:-..}/apps/backend/var/templates/document-engine:/workspace/apps/backend/var/templates/document-engine
+      - ${PROJECT_ROOT:-..}/apps/backend/var/outputs/document-engine:/workspace/apps/backend/var/outputs/document-engine
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:${CARBONE_ENGINE_PORT:-3009}/api"]
       interval: 30s
@@ -148,7 +149,7 @@ services:
       TEMPORAL_NAMESPACE: default
       AUTH_SERVICE_URL: http://${PLATFORM_SERVICE_HOST:-platform}:${PLATFORM_PORT:-3001}
       AI_ORCHESTRATOR_URL: http://${AI_ORCHESTRATOR_HOST:-ai-orchestrator}:${AI_ORCHESTRATOR_PORT:-3007}
-      SANDBOX_TASK_QUEUE: sandbox-agent-task-queue
+      SANDBOX_WORKER_TASK_QUEUE: sandbox-worker-task-queue
       ACTIVITY_VALIDATION_TASK_QUEUE: activity-validation-task-queue
       SANDBOX_HTTP_PORT: 8090
       CARBONE_SERVICE_URL: http://${CARBONE_ENGINE_HOST:-carbone-engine}:${CARBONE_ENGINE_PORT:-3009}

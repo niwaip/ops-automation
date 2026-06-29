@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AllocationService } from './allocation.service';
 import { AllocationController } from './allocation.controller';
-import { LockModule } from '../lock';
+import { LockModule } from '../lock/lock.module';
 
 @Module({
   imports: [LockModule],

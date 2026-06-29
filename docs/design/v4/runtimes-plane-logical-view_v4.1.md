@@ -180,17 +180,17 @@ apps/backend/runtimes/
 
 当前运行时平面的主要问题不是 worker 数量不清，而是边界混杂：
 
-1. `sandbox-worker` 仍处于部分命名兼容期
+1. `sandbox-worker` 仍保留少量历史命名兼容读取
 2. Docker 与文档中仍保留少量历史路径描述
 
 结论：
 
 - `browser-worker`、`replay-worker`、`temporal-worker` 可视为已成型运行时单元
-- `sandbox-worker` 已完成物理路径归位，但仍处于兼容期
+- `sandbox-worker` 已完成物理路径归位，默认 URL / task queue 命名也已切到新平面
 - `browser-worker` 已开始进入 `runtime/* -> runtimes/*` 的实际归位阶段
 - `replay-worker` 已开始进入 `runtime/* -> runtimes/*` 的实际归位阶段
 - `temporal-worker` 已开始进入 `runtime/* -> runtimes/*` 的实际归位阶段
-- `sandbox` 已从 `temporal-worker` 中完全剥离，后续迁移重点转为清理历史命名与剩余路径兼容描述
+- `sandbox` 已从 `temporal-worker` 中完全剥离，后续迁移重点转为继续压缩剩余历史命名与路径说明
 
 ## 5. 与后续批次的关系
 
@@ -216,7 +216,8 @@ Docker 路径兼容性检查时，需要重点关注：
 - `docker/start-smart.sh` 继续通过 `PROJECT_ROOT` 绑定当前 worktree。
 - 主要 compose 挂载路径已经切到 `execution-control/*`、`intelligence/*`、`runtimes/*` 等新平面。
 - 本轮已清理 Docker 侧残留的旧 `orchestration/control-plane` 注释路径。
-- 历史兼容命名如 `SANDBOX_AGENT_URL`、`sandbox-agent-task-queue` 仍保留，但实际目标已指向 `sandbox-worker`。
+- `sandbox-worker` 默认配置已切到 `SANDBOX_WORKER_URL` 与 `SANDBOX_WORKER_TASK_QUEUE`。
+- 历史兼容命名如 `SANDBOX_AGENT_URL`、`TEMPORAL_SANDBOX_AGENT_URL`、`SANDBOX_TASK_QUEUE`、`sandbox-agent-task-queue` 仍保留读取兼容，但不再作为默认配置输出。
 
 ## 6. 本批次结论
 

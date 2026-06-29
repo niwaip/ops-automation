@@ -1,0 +1,23 @@
+{
+  "name": "@ops/agent-catalog",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Registry-release agent-catalog shared exports",
+  "exports": {
+    "./agent-profile": {
+      "types": "./dist/agent-profile/index.d.ts",
+      "default": "./dist/agent-profile/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@ops/backend-agent-profile": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.0"
+  }
+}

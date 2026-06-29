@@ -6,7 +6,7 @@ import {
 import {
   extractBrowserActivityPlaceholders,
   normalizeBrowserActivitySteps,
-} from './temporal-workflow-browser.helpers';
+} from './browser-bridge/temporal-workflow-browser.helpers';
 import type { ActivityDsl } from './temporal-workflow.types';
 
 type NormalizedInputParam = { key: string; value: string; required: boolean };

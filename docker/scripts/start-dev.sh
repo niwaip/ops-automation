@@ -56,6 +56,8 @@ get_service_port() {
         "control-plane") echo "${CONTROL_PLANE_PORT:-3003}" ;;
         "browser-worker") echo "${BROWSER_WORKER_PORT:-3004}" ;;
         "browser-template") echo "${BROWSER_TEMPLATE_PORT:-3005}" ;;
+        "carbone-engine"|"document-engine") echo "${CARBONE_ENGINE_PORT:-3009}" ;;
+        "report") echo "${REPORT_PORT:-3008}" ;;
         "portal") echo "${PORTAL_PORT:-5173}" ;;
         *) echo "" ;;
     esac
@@ -69,14 +71,16 @@ get_service_dir() {
         "session-broker") echo "apps/backend/execution-control/session-broker" ;;
         "control-plane") echo "apps/backend/execution-control/control-plane" ;;
         "browser-worker") echo "apps/backend/runtimes/browser-worker" ;;
-        "browser-template") echo "apps/backend/domain/browser-template" ;;
+        "browser-template") echo "apps/backend/capabilities/browser-domain/templates" ;;
+        "carbone-engine"|"document-engine") echo "apps/backend/capabilities/document-domain" ;;
+        "report") echo "apps/backend/capabilities/document-domain/report" ;;
         "portal") echo "apps/frontend/portal" ;;
         *) echo "" ;;
     esac
 }
 
 # Services to start (NestJS services only, portal is separate)
-NEST_SERVICES="ai-orchestrator platform session-broker control-plane browser-template browser-worker"
+NEST_SERVICES="ai-orchestrator platform session-broker control-plane browser-template browser-worker report document-engine"
 
 # Log directory
 LOG_DIR="$PROJECT_ROOT/docker/logs"

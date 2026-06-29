@@ -75,8 +75,8 @@ docker/sql/exports/platform-initial-data-<timestamp>.sql
 
 These files are placeholders only and are not part of automatic bootstrap:
 
-- `apps/backend/domain/browser-template/prisma/migrations/0_baseline/migration.sql`
-- `apps/backend/domain/report/prisma/migrations/0_baseline/migration.sql`
+- `apps/backend/capabilities/browser-domain/templates/prisma/migrations/0_baseline/migration.sql`
+- `apps/backend/capabilities/document-domain/report/prisma/migrations/0_baseline/migration.sql`
 - `apps/backend/runtimes/replay-worker/prisma/migrations/0_baseline/migration.sql`
 
 ## Deprecated files

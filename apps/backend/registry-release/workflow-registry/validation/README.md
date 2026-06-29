@@ -78,13 +78,19 @@ execution-flow / temporal-workflow
 当前对应关系如下：
 
 - `execution-flow/validation/index.ts`
-  - 对应未来 Flow 模板验证 facade 稳定出口
+  - 该过渡 barrel 已在后续 Phase E 删除；Flow 模板验证 facade 当前直接对齐 `execution-flow-validation.service.ts`、`execution-flow-validation-http.service.ts` 与 `execution-flow-validation-facade.service.ts`
 - `ValidationResult` / `StepAnalysis`
   - 对应未来 Flow 模板验证结果类型
-- `ExecutionFlowTemplateService`
-  - 当前经 `execution-flow/validation` 暴露的 Flow 模板验证 facade
-- `temporal-workflow/validation/index.ts`
-  - 对应未来 Workflow / Activity 校验稳定出口
+- `ExecutionFlowValidationService` / `ExecutionFlowValidationHttpService` / `ExecutionFlowValidationFacadeService`
+  - 当前直接对应 Flow 模板验证服务、HTTP 校验入口与 facade
+- `temporal-workflow-validation.service.ts` / `temporal-workflow-validation-facade.service.ts`
+  - 对应未来 Workflow 设计时校验 facade 与服务
+- `temporal-activity-validation.service.ts` / `temporal-activity-validation-facade.service.ts`
+  - 对应未来 Activity 结构与配置校验 facade 与服务
+- `workflow-registry/validation/temporal-workflow-artifact-validation.service.ts`
+  - 对应未来 Workflow artifact 校验服务
+- `workflow-registry/validation/temporal-workflow-dsl-validation.service.ts`
+  - 对应未来 Workflow DSL 校验服务
 - `TemporalWorkflowValidationService`
   - 对应未来 Workflow 设计时校验服务
 - `ActivityValidationService`
@@ -99,4 +105,8 @@ execution-flow / temporal-workflow
 - `validation` 统一承接 Flow / Workflow / Activity 的设计时校验 facade、服务与类型
 - `validation` 继续作为注册侧进入发布链之前的校验收口层
 - 模板注册与代码生成继续留在各自子层
+- 当前已开始由目标包本身承接最小稳定 helper：
+  - Execution Flow 校验通过判定
+  - Temporal Workflow 校验消息汇总
+  - Activity 校验消息汇总
 - 当前先固定逻辑边界，不在本批次引入物理迁移

@@ -10,7 +10,7 @@ import {
   TemporalWorkflowActivityResolutionService,
   type TemporalWorkflowActivityResolutionSupport,
 } from './temporal-workflow-activity-resolution.service';
-import type { TemporalWorkflowBrowserDraftSupport } from './temporal-workflow-browser-draft.service';
+import type { TemporalWorkflowBrowserDraftSupport } from './browser-bridge/temporal-workflow-browser-draft.service';
 import type { TemporalWorkflowCodegenSupport } from './temporal-workflow-codegen.service';
 import type {
   AiDraftActivityResource,
@@ -22,13 +22,13 @@ import {
   buildDeterministicActivityCodeForWorkflow,
   buildDeterministicWorkflowCodeForWorkflow,
 } from './temporal-workflow-deterministic-builder';
-import { TemporalWorkflowConfigService } from './temporal-workflow-config.service';
+import { TemporalWorkflowConfigService } from '../../workflow-registry/workflow-template/temporal-workflow-config.service';
 import { TemporalWorkflowNormalizationService } from './temporal-workflow-normalization.service';
 import {
-  fetchReferenceUrlExcerpt,
   parseJsonFromAiContent,
   pickFirstNonEmptyString,
-} from './temporal-workflow-service.utils';
+} from './temporal-workflow-json.utils';
+import { fetchReferenceUrlExcerpt } from './temporal-workflow-reference-url.utils';
 import {
   createTemporalWorkflowActivityResolutionSupport,
   createTemporalWorkflowAiDraftSupport,
@@ -39,7 +39,7 @@ import {
 } from './temporal-workflow-support.factory';
 import type { ActivityDsl, TemporalValidationResult, WorkflowDsl } from './temporal-workflow.types';
 import type { TemporalWorkflowSessionSupport } from './temporal-workflow-session.service';
-import type { TemporalWorkflowTemplateSupport } from './temporal-workflow-template.service';
+import type { TemporalWorkflowTemplateSupport } from '../../workflow-registry/workflow-template/temporal-workflow-template.service';
 
 @Injectable()
 export class TemporalWorkflowSupportService {
