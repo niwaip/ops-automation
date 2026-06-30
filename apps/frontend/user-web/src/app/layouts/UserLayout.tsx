@@ -1,6 +1,5 @@
 import {
   BellOutlined,
-  ExportOutlined,
   BgColorsOutlined,
   MessageOutlined,
   DashboardOutlined,
@@ -33,8 +32,6 @@ import { preferencesStore } from '../../adapters/preferences/preferencesStore';
 import './UserLayout.css';
 
 const { Header, Content, Sider } = Layout;
-const { Text } = Typography;
-
 export function UserLayout() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -127,7 +124,7 @@ export function UserLayout() {
         >
           <div className="user-shell-logo-inner" style={{ gap: sidebarCollapsed ? 0 : 12 }}>
             <div className="user-shell-logo-mark">U</div>
-            {!sidebarCollapsed ? <div className="user-shell-logo-text">User Web</div> : null}
+            {!sidebarCollapsed ? <div className="user-shell-logo-text">企业AI门户</div> : null}
           </div>
         </div>
         <Menu
@@ -137,7 +134,7 @@ export function UserLayout() {
           selectedKeys={[selectedMenuKey]}
           onClick={({ key }) => navigate(key)}
           items={[
-            { key: '/dashboard', icon: <DashboardOutlined />, label: '仪表盘' },
+            { key: '/dashboard', icon: <DashboardOutlined />, label: '工作台' },
             { key: '/chat', icon: <MessageOutlined />, label: 'AI 对话' },
             { key: '/executions', icon: <OrderedListOutlined />, label: '执行列表' },
             { key: '/published-skills', icon: <ThunderboltOutlined />, label: '已发布技能' },
@@ -169,9 +166,8 @@ export function UserLayout() {
             />
             <Space size={8}>
               <Tag color="blue" style={{ marginInlineEnd: 0, borderRadius: 999 }}>
-                用户工作台
+                工作台
               </Tag>
-              <Text type="secondary">统一沿用 portal 的视觉壳，聚焦普通用户主链路。</Text>
             </Space>
           </div>
           <div className="user-shell-header-right">
@@ -296,19 +292,6 @@ export function UserLayout() {
                 style={{ color: 'var(--text-secondary)', borderRadius: 10, height: 36, width: 36 }}
               />
             </Dropdown>
-            <Button
-              type="text"
-              icon={<ExportOutlined />}
-              onClick={() => navigate('/chat')}
-              style={{
-                color: 'var(--text-secondary)',
-                borderRadius: 10,
-                height: 36,
-                padding: '0 12px',
-              }}
-            >
-              AI 对话
-            </Button>
             <Button
               type="text"
               icon={<BgColorsOutlined />}

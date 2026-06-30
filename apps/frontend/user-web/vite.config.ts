@@ -66,6 +66,25 @@ export default defineConfig({
         ),
         changeOrigin: true,
       },
+      '/api/runtime-sessions': {
+        target: getProxyTarget(
+          'ops-session-broker',
+          3002,
+          ['SESSION_BROKER_HOST'],
+          ['SESSION_BROKER_PORT']
+        ),
+        changeOrigin: true,
+        rewrite: (requestPath) => requestPath.replace(/^\/api/, ''),
+      },
+      '/api/schedules': {
+        target: getProxyTarget(
+          'ops-control-plane',
+          3003,
+          ['CONTROL_PLANE_HOST'],
+          ['CONTROL_PLANE_PORT']
+        ),
+        changeOrigin: true,
+      },
       '/api/reports': {
         target: getProxyTarget('ops-report', 3008, ['REPORT_HOST'], ['REPORT_PORT']),
         changeOrigin: true,
@@ -82,9 +101,13 @@ export default defineConfig({
         rewrite: (requestPath) => requestPath.replace(/^\/api/, ''),
       },
       '/api/notifications': {
-        target: getProxyTarget('ops-platform', 3001, ['PLATFORM_HOST'], ['PLATFORM_PORT']),
+        target: getProxyTarget(
+          'ops-control-plane',
+          3003,
+          ['CONTROL_PLANE_HOST'],
+          ['CONTROL_PLANE_PORT']
+        ),
         changeOrigin: true,
-        rewrite: (requestPath) => requestPath.replace(/^\/api/, ''),
       },
       '/api/ai': {
         target: getProxyTarget(

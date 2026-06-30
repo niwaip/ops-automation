@@ -16,21 +16,9 @@ const DashboardPage = lazy(() =>
 const ChatPage = lazy(() =>
   import('../../features/chat/pages/ChatPage').then((module) => ({ default: module.ChatPage }))
 );
-const ExecutionListPage = lazy(() =>
-  import('../../features/executions/pages/ExecutionListPage').then((module) => ({
-    default: module.ExecutionListPage,
-  }))
-);
-const ExecutionCreatePage = lazy(() =>
-  import('../../features/executions/pages/ExecutionCreatePage').then((module) => ({
-    default: module.ExecutionCreatePage,
-  }))
-);
-const ExecutionDetailPage = lazy(() =>
-  import('../../features/executions/pages/ExecutionDetailPage').then((module) => ({
-    default: module.ExecutionDetailPage,
-  }))
-);
+const ExecutionListPage = lazy(() => import('../../features/executions/pages/ExecutionListPage'));
+const ExecutionCreatePage = lazy(() => import('../../features/executions/pages/ExecutionCreatePage'));
+const ExecutionDetailPage = lazy(() => import('../../features/executions/pages/ExecutionDetailPage'));
 const NotificationsPage = lazy(() =>
   import('../../features/notifications/pages/NotificationsPage').then((module) => ({
     default: module.NotificationsPage,
@@ -97,7 +85,7 @@ export function AppRoutes() {
           <Route path="/login" element={<LoginPage />} />
           <Route element={<ProtectedOutlet />}>
             <Route element={<UserLayout />}>
-              <Route index element={<Navigate to="/executions" replace />} />
+              <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/chat" element={<ChatPage />} />
               <Route path="/executions" element={<ExecutionListPage />} />

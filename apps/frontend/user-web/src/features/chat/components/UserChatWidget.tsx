@@ -1,6 +1,7 @@
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense } from 'react';
 import { CloseOutlined, MessageOutlined } from '@ant-design/icons';
 import { Badge, Button, Skeleton } from 'antd';
+import { useChatStore } from '@/features/chat';
 import './UserChatWidget.css';
 
 const EmbeddedChatPage = lazy(() =>
@@ -8,7 +9,8 @@ const EmbeddedChatPage = lazy(() =>
 );
 
 export function UserChatWidget() {
-  const [open, setOpen] = useState(false);
+  const open = useChatStore((state) => state.isOpen);
+  const setOpen = useChatStore((state) => state.setOpen);
 
   return (
     <>
@@ -19,7 +21,7 @@ export function UserChatWidget() {
             shape="circle"
             size="large"
             icon={<MessageOutlined />}
-            onClick={() => setOpen((current) => !current)}
+            onClick={() => setOpen(!open)}
             className="chat-trigger-button"
           />
         </Badge>

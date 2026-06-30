@@ -49,6 +49,7 @@ import {
 } from '@ops/user-core';
 import { apiClient, chatApi, executionApi } from '../../../api';
 import { UserChatComposer } from '../components/UserChatComposer';
+import { useChatStore } from '../chatStore';
 import { authStore } from '../../../adapters/auth/authStore';
 import { browserStreamingTransport } from '../../../adapters/streaming/browserStreamingTransport';
 import './ChatPage.css';
@@ -629,6 +630,9 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
   const { message: toast } = App.useApp();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const prefetchedDraftMessage = useChatStore((state) => state.draftMessage);
+  const prefetchedChatMode = useChatStore((state) => state.chatMode);
+  const clearDraftContext = useChatStore((state) => state.clearDraftContext);
   const [draft, setDraft] = useState('');
   const [selectedModel, setSelectedModel] = useState<string>('default');
   const [chatMode, setChatMode] = useState<'chat' | 'task'>('chat');
@@ -647,6 +651,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
   >({});
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const activeMessages = selectedSessionId ? sessionMessages[selectedSessionId] || [] : [];
+  const showSessionSidebar = !embedded && !isSessionListCollapsed;
   const selectedSessionNeedsRefresh = useMemo(
     () =>
       activeMessages.some(
@@ -710,6 +715,15 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
       setIsSessionListCollapsed(true);
     }
   }, [embedded]);
+
+  useEffect(() => {
+    if (!prefetchedDraftMessage) {
+      return;
+    }
+    setDraft(prefetchedDraftMessage);
+    setChatMode(prefetchedChatMode);
+    clearDraftContext();
+  }, [clearDraftContext, prefetchedChatMode, prefetchedDraftMessage]);
 
   useEffect(() => {
     if (!selectedSessionId && sessions[0]?.id) {
@@ -1252,10 +1266,23 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     const structuredResult = toStructuredResultText(
       message.metadata?.normalizedResult?.structuredData ?? message.metadata?.finalResultData
     );
+    const normalizedSummary = message.metadata?.normalizedResult?.summary?.trim();
+    const normalizedDetail = message.metadata?.normalizedResult?.detailText?.trim();
+    const primaryStructuredResult =
+      status === 'completed' && structuredResult && structuredResult !== errorMessage
+        ? structuredResult
+        : null;
+    const supplementalResult =
+      primaryStructuredResult && finalResult && finalResult !== primaryStructuredResult
+        ? finalResult
+        : primaryStructuredResult && normalizedDetail && normalizedDetail !== primaryStructuredResult
+          ? normalizedDetail
+          : null;
     const hasOutcome = Boolean(
       status === 'completed' ||
       status === 'failed' ||
       finalResult ||
+      primaryStructuredResult ||
       resultTitle ||
       (finalSummary &&
         status !== 'running' &&
@@ -1299,7 +1326,16 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
             {finalSummary}
           </Typography.Paragraph>
         ) : null}
-        {finalResult ? <pre className="user-chat-outcome-pre">{finalResult}</pre> : null}
+        {!finalSummary && normalizedSummary && normalizedSummary !== primaryStructuredResult ? (
+          <Typography.Paragraph className="user-chat-outcome-summary">
+            {normalizedSummary}
+          </Typography.Paragraph>
+        ) : null}
+        {primaryStructuredResult ? (
+          <pre className="user-chat-outcome-pre structured">{primaryStructuredResult}</pre>
+        ) : finalResult ? (
+          <pre className="user-chat-outcome-pre">{finalResult}</pre>
+        ) : null}
         {failureReason && failureReason !== finalSummary && failureReason !== finalResult ? (
           <pre className="user-chat-outcome-pre error">{failureReason}</pre>
         ) : null}
@@ -1349,7 +1385,14 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
             })}
           </Space>
         ) : null}
+        {supplementalResult ? (
+          <details className="user-chat-outcome-details">
+            <summary>查看补充说明</summary>
+            <pre className="user-chat-outcome-pre">{supplementalResult}</pre>
+          </details>
+        ) : null}
         {structuredResult &&
+        structuredResult !== primaryStructuredResult &&
         structuredResult !== finalResult &&
         structuredResult !== errorMessage ? (
           <details className="user-chat-outcome-details">
@@ -1366,7 +1409,8 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     if (
       message.role !== 'assistant' ||
       message.metadata?.mode !== 'task' ||
-      progressLogs.length === 0
+      progressLogs.length === 0 ||
+      message.metadata?.taskStatus !== 'running'
     ) {
       return null;
     }
@@ -1382,20 +1426,30 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
       action: 'blue',
       observation: 'green',
     };
+    const currentProgress = progressLogs[progressLogs.length - 1];
+
+    if (!currentProgress) {
+      return null;
+    }
 
     return (
       <div className="user-chat-progress-card">
-        <div className="user-chat-progress-header">
-          <Typography.Text strong>执行过程</Typography.Text>
-          <Tag>{progressLogs.length} 条</Tag>
+        <div className="user-chat-progress-current-header">
+          <Space size={8} align="center">
+            <ReloadOutlined spin className="user-chat-progress-running-icon" />
+            <Typography.Text strong>当前步骤</Typography.Text>
+          </Space>
+          <Space size={8} wrap>
+            <Tag>{progressLogs.length} 条</Tag>
+            <Tag color={stageColorMap[currentProgress.stage]}>
+              {stageLabelMap[currentProgress.stage]}
+            </Tag>
+          </Space>
         </div>
-        <div className="user-chat-progress-list">
-          {progressLogs.map((item, index) => (
-            <div key={`${message.id}-progress-${index}`} className="user-chat-progress-item">
-              <Tag color={stageColorMap[item.stage]}>{stageLabelMap[item.stage]}</Tag>
-              <Typography.Text>{item.text}</Typography.Text>
-            </div>
-          ))}
+        <div className="user-chat-progress-current">
+          <Typography.Text className="user-chat-progress-current-text">
+            {currentProgress.text}
+          </Typography.Text>
         </div>
       </div>
     );
@@ -1525,7 +1579,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     <div
       className={`user-chat-page${embedded ? ' embedded' : ''}${isSessionListCollapsed ? ' sidebar-collapsed' : ''}`}
     >
-      {!isSessionListCollapsed ? (
+      {showSessionSidebar ? (
         <Card className="user-chat-sidebar">
           <div className="user-chat-sidebar-header">
             <div>
@@ -1586,35 +1640,62 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
       <div className="user-chat-main">
         <Card className={`user-chat-status-panel${embedded ? ' embedded' : ''}`}>
           <Space direction="vertical" size={12} style={{ width: '100%' }}>
-            <div className="user-chat-status-heading">
-              <Space align="start" size={12}>
-                <Button
-                  type="text"
-                  icon={isSessionListCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-                  onClick={() => setIsSessionListCollapsed((current) => !current)}
-                  className="user-chat-sidebar-toggle"
-                  title={isSessionListCollapsed ? '展开会话列表' : '折叠会话列表'}
-                />
-                <div>
-                  <Typography.Title level={embedded ? 4 : 3} style={{ margin: 0 }}>
+            {embedded ? (
+              <div className="user-chat-embedded-header">
+                <div className="user-chat-embedded-title-block">
+                  <Typography.Title level={4} style={{ margin: 0 }}>
                     AI 对话
                   </Typography.Title>
-                  <Typography.Paragraph type="secondary" style={{ margin: '4px 0 0' }}>
-                    {embedded
-                      ? '复用悬浮窗布局壳，消息与任务逻辑保持 user-web 实现。'
-                      : '网页对话页已对齐悬浮对话框视觉，并支持语音输入与会话折叠。'}
-                  </Typography.Paragraph>
+                  <Typography.Text type="secondary">
+                    复用 5173 的沉浸式聊天窗体，保留任务模式、语音输入和模型切换能力。
+                  </Typography.Text>
                 </div>
-              </Space>
-              {selectedSession ? (
-                <Tag className="user-chat-current-session-tag">
-                  {selectedSession.title || '新对话'}
-                </Tag>
-              ) : null}
-            </div>
-            {lastEvent ? (
-              <Tag color={getEventTagColor(lastEvent.type)}>最近事件: {lastEvent.type}</Tag>
-            ) : null}
+                <Space size={[8, 8]} wrap className="user-chat-embedded-actions">
+                  {selectedSession ? (
+                    <Tag className="user-chat-current-session-tag">
+                      {selectedSession.title || '新对话'}
+                    </Tag>
+                  ) : null}
+                  {lastEvent ? (
+                    <Tag color={getEventTagColor(lastEvent.type)}>最近事件: {lastEvent.type}</Tag>
+                  ) : null}
+                  <Button onClick={() => navigate('/chat')}>打开完整页</Button>
+                  <Button type="primary" icon={<PlusOutlined />} onClick={handleCreateSession}>
+                    新建会话
+                  </Button>
+                </Space>
+              </div>
+            ) : (
+              <>
+                <div className="user-chat-status-heading">
+                  <Space align="start" size={12}>
+                    <Button
+                      type="text"
+                      icon={isSessionListCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+                      onClick={() => setIsSessionListCollapsed((current) => !current)}
+                      className="user-chat-sidebar-toggle"
+                      title={isSessionListCollapsed ? '展开会话列表' : '折叠会话列表'}
+                    />
+                    <div>
+                      <Typography.Title level={3} style={{ margin: 0 }}>
+                        AI 对话
+                      </Typography.Title>
+                      <Typography.Paragraph type="secondary" style={{ margin: '4px 0 0' }}>
+                        网页对话页已对齐悬浮对话框视觉，并支持语音输入与会话折叠。
+                      </Typography.Paragraph>
+                    </div>
+                  </Space>
+                  {selectedSession ? (
+                    <Tag className="user-chat-current-session-tag">
+                      {selectedSession.title || '新对话'}
+                    </Tag>
+                  ) : null}
+                </div>
+                {lastEvent ? (
+                  <Tag color={getEventTagColor(lastEvent.type)}>最近事件: {lastEvent.type}</Tag>
+                ) : null}
+              </>
+            )}
             {modelsQuery.error ? (
               <Alert
                 type="error"

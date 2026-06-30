@@ -160,6 +160,15 @@ export default defineConfig({
         ),
         changeOrigin: true,
       },
+      '/api/schedules': {
+        target: getProxyTarget(
+          'ops-control-plane',
+          3003,
+          ['CONTROL_PLANE_HOST'],
+          ['CONTROL_PLANE_PORT']
+        ),
+        changeOrigin: true,
+      },
       '/api/report-templates': {
         target: getProxyTarget('ops-report', 3008, ['REPORT_HOST'], ['REPORT_PORT']),
         changeOrigin: true,
