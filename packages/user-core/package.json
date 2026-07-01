@@ -42,6 +42,7 @@
     "check:boundaries": "node ./scripts/check-boundaries.mjs"
   },
   "dependencies": {
+    "@ops/backend-ai-chat-protocol": "file:../backend-contracts/ai-chat-protocol",
     "@ops/backend-execution-core": "file:../backend-contracts/execution-core",
     "axios": "^1.6.2",
     "zustand": "^4.4.7"

@@ -1,9 +1,9 @@
 param(
-    [string]$HostName = "192.168.100.143",
+    [string]$HostName = "localhost",
     [int]$AddinPort = 3000,
     [int]$ApiPort = 3443,
     [string]$AddinDir = "C:\OfficeAddins",
-    [ValidateSet("Menu", "InstallCertificate", "CheckCertificate", "InstallWord", "InstallExcel", "InstallPpt", "Diagnose")]
+    [ValidateSet("Menu", "InstallCertificate", "CheckCertificate", "InstallWord", "InstallExcel", "InstallWordExcel", "InstallPpt", "Diagnose")]
     [string]$Action = "Menu",
     [ValidateSet("word", "excel", "ppt")]
     [string]$App = "word",
@@ -434,16 +434,92 @@ function Show-InstallSummary {
     Write-Host ""
 }
 
+function Get-AppRegistrationSnapshot {
+    param([string]$AppName)
+
+    $appConfig = Get-AppConfig -Name $AppName
+    $manifestPath = Get-AppManifestPath -AppConfig $appConfig
+    $devPath = "HKCU:\SOFTWARE\Microsoft\Office\16.0\WEF\Developer"
+    $wefPath = "HKCU:\SOFTWARE\Microsoft\Office\16.0\WEF"
+    $manifestId = $null
+    $manifestReg = $null
+    $compatManifestReg = $null
+
+    if (Test-Path $manifestPath) {
+        $manifestId = Get-ManifestId -ManifestPath $manifestPath
+        if ($manifestId) {
+            $compatManifestPath = Join-Path $devPath $manifestId
+            $manifestReg = Get-RegistryValue -Path $devPath -Name $manifestId
+            $compatManifestReg = Get-RegistryDefaultValue -Path $compatManifestPath
+        }
+    }
+
+    $legacyManifestReg = Get-RegistryValue -Path $devPath -Name $appConfig.RegistryName
+    $devLocation = Get-RegistryValue -Path $wefPath -Name "DevelopmentLocation"
+    $registeredById = $manifestId -and (($manifestReg -ieq $manifestPath) -or ($compatManifestReg -ieq $manifestPath))
+    $registeredByLegacy = ($legacyManifestReg -ieq $manifestPath)
+
+    return [PSCustomObject]@{
+        AppName = $AppName
+        Label = $appConfig.Label
+        ManifestFile = $appConfig.ManifestFile
+        ManifestPath = $manifestPath
+        ManifestId = $manifestId
+        ManifestExists = Test-Path $manifestPath
+        RegisteredById = [bool]$registeredById
+        RegisteredByLegacy = [bool]$registeredByLegacy
+        DevelopmentLocation = $devLocation
+        DevelopmentLocationMatches = ($devLocation -ieq $AddinDir)
+    }
+}
+
+function Show-BatchInstallSummary {
+    param([object[]]$Snapshots)
+
+    Write-Host ""
+    Write-Host "=== Batch Install Summary ===" -ForegroundColor Magenta
+    foreach ($snapshot in $Snapshots) {
+        $status = if ($snapshot.RegisteredById) {
+            "OK (GUID)"
+        } elseif ($snapshot.RegisteredByLegacy) {
+            "OK (legacy alias)"
+        } else {
+            "MISSING"
+        }
+
+        Write-Host "$($snapshot.Label):"
+        Write-Host "  Manifest      : $($snapshot.ManifestPath)"
+        Write-Host "  Manifest Id   : $($snapshot.ManifestId)"
+        Write-Host "  Registration  : $status"
+    }
+
+    $allDevLocationOk = ($Snapshots | Where-Object { -not $_.DevelopmentLocationMatches }).Count -eq 0
+    if ($allDevLocationOk -and $Snapshots.Count -gt 0) {
+        Write-Ok "DevelopmentLocation points to $AddinDir"
+    } else {
+        Write-Warn "DevelopmentLocation is not aligned with $AddinDir"
+    }
+    Write-Host ""
+}
+
 function Install-OfficeAddin {
     param(
         [string]$AppName,
-        [switch]$LaunchOffice
+        [switch]$LaunchOffice,
+        [switch]$SuppressExplorer,
+        [switch]$SuppressNextActions,
+        [string]$PreinstalledCertPath = ""
     )
 
     $appConfig = Get-AppConfig -Name $AppName
     $manifestUrl = Get-AppManifestUrl -AppConfig $appConfig
     $manifestPath = Get-AppManifestPath -AppConfig $appConfig
-    $certPath = Install-Certificate
+    if (-not [string]::IsNullOrWhiteSpace($PreinstalledCertPath) -and (Test-Path $PreinstalledCertPath)) {
+        $certPath = $PreinstalledCertPath
+        Write-Info "Reusing certificate: $certPath"
+    } else {
+        $certPath = Install-Certificate
+    }
     $devPath = "HKCU:\SOFTWARE\Microsoft\Office\16.0\WEF\Developer"
     $wefPath = "HKCU:\SOFTWARE\Microsoft\Office\16.0\WEF"
 
@@ -508,19 +584,60 @@ function Install-OfficeAddin {
 
     Show-InstallSummary -AppConfig $appConfig -ManifestPath $manifestPath -CertPath $certPath -RegistryEntryName $manifestId -RegistryValue $manifestReg -DevLocation $devLocation -CompatRegistryValue $compatManifestReg -LegacyRegistryValue $legacyManifestReg
 
-    Write-Info "Opening add-in directory"
-    Start-Process explorer.exe $AddinDir
+    if (-not $SuppressExplorer) {
+        Write-Info "Opening add-in directory"
+        Start-Process explorer.exe $AddinDir
+    }
 
     if ($LaunchOffice) {
         Write-Info "Opening $($appConfig.Label)"
         Start-Process $appConfig.Executable
     }
 
+    if (-not $SuppressNextActions) {
+        Write-Host ""
+        Write-Host "=== Next Actions ===" -ForegroundColor Magenta
+        Write-Host "1) Confirm the sideload entry exists under HKCU\SOFTWARE\Microsoft\Office\16.0\WEF\Developer using manifest Id $manifestId"
+        Write-Host "2) Open $($appConfig.Label) and check My Add-ins / Shared Folder."
+        Write-Host "3) If the add-in still does not appear, choose menu 7 for deep diagnosis."
+    }
+}
+
+function Install-WordExcelAddins {
+    param([switch]$LaunchWord, [switch]$LaunchExcel)
+
+    Write-Info "Installing Word + Excel add-ins in one pass"
+    $sharedCertPath = Install-Certificate
+
+    Install-OfficeAddin -AppName "word" -PreinstalledCertPath $sharedCertPath -SuppressExplorer -SuppressNextActions
+    Install-OfficeAddin -AppName "excel" -PreinstalledCertPath $sharedCertPath -SuppressExplorer -SuppressNextActions
+
+    $snapshots = @(
+        Get-AppRegistrationSnapshot -AppName "word"
+        Get-AppRegistrationSnapshot -AppName "excel"
+    )
+    Show-BatchInstallSummary -Snapshots $snapshots
+
+    Write-Info "Opening add-in directory"
+    Start-Process explorer.exe $AddinDir
+
+    if ($LaunchWord) {
+        $wordConfig = Get-AppConfig -Name "word"
+        Write-Info "Opening $($wordConfig.Label)"
+        Start-Process $wordConfig.Executable
+    }
+
+    if ($LaunchExcel) {
+        $excelConfig = Get-AppConfig -Name "excel"
+        Write-Info "Opening $($excelConfig.Label)"
+        Start-Process $excelConfig.Executable
+    }
+
     Write-Host ""
     Write-Host "=== Next Actions ===" -ForegroundColor Magenta
-    Write-Host "1) Confirm the sideload entry exists under HKCU\SOFTWARE\Microsoft\Office\16.0\WEF\Developer using manifest Id $manifestId"
-    Write-Host "2) Open $($appConfig.Label) and check My Add-ins / Shared Folder."
-    Write-Host "3) If the add-in still does not appear, choose menu 6 for deep diagnosis."
+    Write-Host "1) Open Word and verify the Word add-in appears under My Add-ins / Shared Folder."
+    Write-Host "2) Open Excel and verify the Excel add-in appears under My Add-ins / Shared Folder."
+    Write-Host "3) If either host still misses the add-in, choose menu 7 for deep diagnosis."
 }
 
 function Show-PolicyValues {
@@ -762,7 +879,8 @@ function Show-Menu {
         Write-Host "3. Install Word"
         Write-Host "4. Install Excel"
         Write-Host "5. Install PowerPoint"
-        Write-Host "6. Deep diagnosis"
+        Write-Host "6. Install Word + Excel"
+        Write-Host "7. Deep diagnosis"
         Write-Host "0. Exit"
         Write-Host ""
 
@@ -793,6 +911,12 @@ function Show-Menu {
                     Pause-ForMenu
                 }
                 "6" {
+                    $openWord = Read-YesNo -Prompt "Open Word after install?" -DefaultYes $true
+                    $openExcel = Read-YesNo -Prompt "Open Excel after install?" -DefaultYes $true
+                    Install-WordExcelAddins -LaunchWord:$openWord -LaunchExcel:$openExcel
+                    Pause-ForMenu
+                }
+                "7" {
                     $targetApp = Read-AppChoice
                     Show-Diagnosis -AppName $targetApp
                     Pause-ForMenu
@@ -827,6 +951,9 @@ switch ($Action) {
     }
     "InstallExcel" {
         Install-OfficeAddin -AppName "excel" -LaunchOffice:$OpenOffice
+    }
+    "InstallWordExcel" {
+        Install-WordExcelAddins -LaunchWord:$OpenOffice -LaunchExcel:$OpenOffice
     }
     "InstallPpt" {
         Install-OfficeAddin -AppName "ppt" -LaunchOffice:$OpenOffice

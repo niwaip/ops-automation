@@ -1237,6 +1237,12 @@ importers:
       '@ant-design/icons':
         specifier: ^5.2.6
         version: 5.6.1(react-dom@18.3.1)(react@18.3.1)
+      '@ops/backend-ai-chat-protocol':
+        specifier: file:../../../packages/backend-contracts/ai-chat-protocol
+        version: file:packages/backend-contracts/ai-chat-protocol
+      '@ops/backend-execution-core':
+        specifier: file:../../../packages/backend-contracts/execution-core
+        version: file:packages/backend-contracts/execution-core
       '@ops/user-core':
         specifier: file:../../../packages/user-core
         version: file:packages/user-core(@types/react@18.3.28)(react@18.3.1)(typescript@5.9.3)
@@ -1328,6 +1334,12 @@ importers:
       '@ant-design/icons':
         specifier: ^5.2.6
         version: 5.6.1(react-dom@18.3.1)(react@18.3.1)
+      '@ops/backend-ai-chat-protocol':
+        specifier: file:../../../packages/backend-contracts/ai-chat-protocol
+        version: file:packages/backend-contracts/ai-chat-protocol
+      '@ops/backend-execution-core':
+        specifier: file:../../../packages/backend-contracts/execution-core
+        version: file:packages/backend-contracts/execution-core
       '@ops/user-core':
         specifier: file:../../../packages/user-core
         version: file:packages/user-core(@types/react@18.3.28)(react@18.3.1)(typescript@5.9.3)
@@ -1478,6 +1490,8 @@ importers:
 
   packages/backend-contracts/agent-profile: {}
 
+  packages/backend-contracts/ai-chat-protocol: {}
+
   packages/backend-contracts/common-dto: {}
 
   packages/backend-contracts/error-codes: {}
@@ -1494,6 +1508,9 @@ importers:
 
   packages/user-core:
     dependencies:
+      '@ops/backend-ai-chat-protocol':
+        specifier: file:../backend-contracts/ai-chat-protocol
+        version: file:packages/backend-contracts/ai-chat-protocol
       '@ops/backend-execution-core':
         specifier: file:../backend-contracts/execution-core
         version: file:packages/backend-contracts/execution-core
@@ -15631,6 +15648,11 @@ packages:
     name: '@ops/backend-agent-profile'
     dev: false
 
+  file:packages/backend-contracts/ai-chat-protocol:
+    resolution: {directory: packages/backend-contracts/ai-chat-protocol, type: directory}
+    name: '@ops/backend-ai-chat-protocol'
+    dev: false
+
   file:packages/backend-contracts/error-codes:
     resolution: {directory: packages/backend-contracts/error-codes, type: directory}
     name: '@ops/backend-error-codes'
@@ -15663,6 +15685,7 @@ packages:
     peerDependencies:
       typescript: ^5.3.3
     dependencies:
+      '@ops/backend-ai-chat-protocol': file:packages/backend-contracts/ai-chat-protocol
       '@ops/backend-execution-core': file:packages/backend-contracts/execution-core
       '@ops/contracts': file:packages/contracts
       axios: 1.17.0(debug@4.4.3)

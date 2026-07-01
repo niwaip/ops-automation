@@ -441,37 +441,42 @@
 .chat-action-buttons {
   display: flex;
   align-items: center;
-  gap: 2px;
-  background: #f8fafc;
-  padding: 3px;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  gap: 4px;
+  background: transparent;
+  padding: 0;
+  border-radius: 999px;
+  border: none;
+  box-shadow: none;
 }
 
 [data-theme='dark'] .chat-action-buttons {
-  background: #1e293b;
-  border-color: #334155;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
 }
 
 .chat-action-btn {
+  width: 28px !important;
+  min-width: 28px !important;
   height: 28px !important;
   font-size: 12px !important;
   color: #64748b !important;
-  padding: 0 10px !important;
-  border-radius: 8px !important;
+  padding: 0 !important;
+  border-radius: 999px !important;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
-  display: flex !important;
+  display: inline-flex !important;
   align-items: center !important;
+  justify-content: center !important;
   font-weight: 500 !important;
-  background: transparent !important;
+  background: rgba(148, 163, 184, 0.08) !important;
+  border: 1px solid rgba(148, 163, 184, 0.14) !important;
 }
 
 .chat-action-btn:hover {
   color: #4f46e5 !important;
   background: #ffffff !important;
-  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.15) !important;
+  border-color: rgba(99, 102, 241, 0.16) !important;
+  box-shadow: 0 4px 10px rgba(99, 102, 241, 0.12) !important;
 }
 
 [data-theme='dark'] .chat-action-btn:hover {
@@ -486,7 +491,7 @@
 
 .chat-action-btn .anticon {
   font-size: 14px;
-  margin-right: 4px;
+  margin-right: 0;
 }
 
 @keyframes chatSpin {

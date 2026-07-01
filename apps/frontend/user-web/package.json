@@ -13,6 +13,8 @@
   },
   "dependencies": {
     "@ant-design/icons": "^5.2.6",
+    "@ops/backend-ai-chat-protocol": "file:../../../packages/backend-contracts/ai-chat-protocol",
+    "@ops/backend-execution-core": "file:../../../packages/backend-contracts/execution-core",
     "@ops/user-core": "file:../../../packages/user-core",
     "antd": "^5.12.0",
     "axios": "^1.6.2",

@@ -70,6 +70,7 @@ docker/sql/exports/platform-initial-data-<timestamp>.sql
 
 - `apps/backend/execution-control/control-plane/prisma/migrations/20260515143000_add_execution_phases/migration.sql`
 - `apps/backend/execution-control/control-plane/prisma/migrations/20260516140000_add_execution_phase_steps/migration.sql`
+- `apps/backend/execution-control/control-plane/prisma/migrations/20260625000000_add_scheduler/migration.sql`
 
 ### Placeholder migrations
 

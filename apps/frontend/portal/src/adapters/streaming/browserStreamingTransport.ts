@@ -14,9 +14,9 @@ export const browserStreamingTransport: StreamingTransportPort = {
     token,
     requireDoneEvent = false,
     onEvent,
-  }: PostSseStreamRequest): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
+  }: PostSseStreamRequest) {
+    const xhr = new XMLHttpRequest();
+    const promise = new Promise<void>((resolve, reject) => {
       let processedLength = 0;
       let lineBuffer = '';
       let hasDoneEvent = false;
@@ -104,5 +104,10 @@ export const browserStreamingTransport: StreamingTransportPort = {
       xhr.onerror = () => reject(new Error('Network error'));
       xhr.send(JSON.stringify(payload));
     });
+
+    return {
+      promise,
+      abort: () => xhr?.abort?.(),
+    };
   },
 };

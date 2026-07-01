@@ -6,7 +6,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 
-echo "[DEPRECATED] 建议优先使用 ./docker/scripts/start-smart.sh docker-compose.addin.yml up -d"
+echo "[DEPRECATED] 建议优先使用 ./docker/start-smart.sh docker-compose.addin.yml up -d"
 echo "[DEPRECATED] 如需自动部署 Manifest，可继续使用当前脚本。"
 echo ""
 

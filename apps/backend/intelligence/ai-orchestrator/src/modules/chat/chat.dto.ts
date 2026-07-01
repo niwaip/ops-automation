@@ -31,6 +31,31 @@ export interface ChatResponseDTO {
   metadata?: Record<string, unknown>;
 }
 
+export interface ChatHistoryMessageDTO {
+  id: string;
+  sessionId: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp: string;
+}
+
+export interface ChatSessionDTO {
+  id: string;
+  title?: string;
+  modelId?: string;
+  status: 'active' | 'archived';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ChatSessionsResponseDTO {
+  sessions: ChatSessionDTO[];
+}
+
+export interface ChatHistoryResponseDTO {
+  messages: ChatHistoryMessageDTO[];
+}
+
 export interface ChatUploadFileResponseDTO {
   fileId: string;
   fileName: string;

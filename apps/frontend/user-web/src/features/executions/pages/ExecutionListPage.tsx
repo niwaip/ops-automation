@@ -37,7 +37,6 @@ import {
   PlusOutlined,
   ReloadOutlined,
   DownloadOutlined,
-  PlayCircleOutlined,
   RobotOutlined,
   InfoCircleOutlined,
   DeleteOutlined,
@@ -60,6 +59,7 @@ import { useChatStore } from '@/features/chat';
 import { ListSectionHeader } from '@/components/page/PageScaffold';
 import LiveSessionPreviewCard from '@/components/runtime/LiveSessionPreviewCard';
 import InlineRecoveryPanel from '@/features/executions/components/InlineRecoveryPanel';
+import WaitingInputActionPanel from '@/features/executions/components/WaitingInputActionPanel';
 import { RECOVERY_COPY } from '@/features/executions/components/recoveryOptions';
 import {
   extractBrowserExecutionResult,
@@ -76,7 +76,6 @@ import { hasMeaningfulExecutionResult, tryParseJsonValue } from '@/features/exec
 import { beautifyText } from '@/features/executions/lib/detailView';
 import {
   normalizeRequiredInputValues,
-  renderRequiredInputField,
   type RequiredInputField,
 } from '@/features/executions/lib/inputFields';
 import {
@@ -115,7 +114,6 @@ import {
 } from '@/shared/lib/executionStatusMeta';
 import {
   buildWaitingInputDisplayGroups,
-  resolveWaitingInputDisplayLabel,
 } from '@/shared/lib/waitingInputDisplay';
 import { usePreferencesStore } from '@/shared/store/preferencesStore';
 import dayjs, { Dayjs } from 'dayjs';
@@ -1469,206 +1467,47 @@ const ExecutionListPage: React.FC = () => {
                           ),
                           style: detailPanelStyle,
                           children: (
-                            <>
-                              <Alert
-                                type="warning"
-                                showIcon
-                                style={{ marginBottom: 16 }}
-                                message={RECOVERY_COPY.waitingInputTitle}
-                                description={RECOVERY_COPY.waitingInputDesc}
-                              />
-                              <Form form={resumeForm} layout="vertical">
-                                <div
-                                  style={{
-                                    display: 'grid',
-                                    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-                                    gap: 12,
-                                    marginBottom: 16,
-                                  }}
+                            <WaitingInputActionPanel
+                              title={RECOVERY_COPY.waitingInputTitle}
+                              summaryText={RECOVERY_COPY.waitingInputDesc}
+                              requiredInputs={requiredInputs}
+                              requiredInputGroups={requiredInputGroups}
+                              form={resumeForm}
+                              submitLoading={submitInputMutation.isLoading}
+                              onSubmit={(values) => {
+                                try {
+                                  const payload = normalizeRequiredInputValues(
+                                    values,
+                                    requiredInputs,
+                                    { treatArrayAsJson: true }
+                                  );
+                                  submitInputMutation.mutate({ payload });
+                                } catch (error) {
+                                  void message.error(
+                                    error instanceof Error
+                                      ? error.message
+                                      : RECOVERY_COPY.resumeErrorPrefix
+                                  );
+                                }
+                              }}
+                              onReset={() => resumeForm.resetFields()}
+                              submitLabel={RECOVERY_COPY.waitingInputContinue}
+                              resetLabel="重置"
+                              provideFieldPrefix="请输入"
+                              sourceLabel="来源"
+                              enterJsonString="请输入 JSON 字符串"
+                              enterFieldPrefix="请输入"
+                              confirmTagLabel="待确认"
+                              extraActions={
+                                <Button
+                                  icon={<RobotOutlined />}
+                                  loading={submitInputMutation.isLoading}
+                                  onClick={() => void handleResumeExecution(true)}
                                 >
-                                  {requiredInputGroups.length > 0
-                                    ? requiredInputGroups.map((group) => (
-                                        <div
-                                          key={group.label}
-                                          style={{
-                                            padding: 14,
-                                            borderRadius: 14,
-                                            border: '1px solid var(--bg-secondary)',
-                                            background: 'var(--bg-card)',
-                                            boxShadow: 'var(--shadow-sm)',
-                                          }}
-                                        >
-                                          <Text
-                                            strong
-                                            style={{ display: 'block', marginBottom: 12 }}
-                                          >
-                                            {group.label}
-                                          </Text>
-                                          <div
-                                            style={{
-                                              display: 'grid',
-                                              gridTemplateColumns:
-                                                'repeat(auto-fit, minmax(240px, 1fr))',
-                                              gap: 12,
-                                            }}
-                                          >
-                                            {group.items.map((field) => (
-                                              <div
-                                                key={field.name}
-                                                style={{
-                                                  padding: 14,
-                                                  borderRadius: 12,
-                                                  border: '1px solid var(--bg-secondary)',
-                                                  background: 'var(--bg-primary)',
-                                                }}
-                                              >
-                                                <Space
-                                                  size={[6, 6]}
-                                                  wrap
-                                                  style={{ marginBottom: 8 }}
-                                                >
-                                                  <Text strong>
-                                                    {resolveWaitingInputDisplayLabel(field)}
-                                                  </Text>
-                                                  <Tag style={{ marginInlineEnd: 0 }}>
-                                                    {field.type}
-                                                  </Tag>
-                                                  <Tag
-                                                    color={field.required ? 'error' : 'default'}
-                                                    style={{ marginInlineEnd: 0 }}
-                                                  >
-                                                    {field.required ? '必填' : '可选'}
-                                                  </Tag>
-                                                  {field.needs_confirmation ? (
-                                                    <Tag
-                                                      color="gold"
-                                                      style={{ marginInlineEnd: 0 }}
-                                                    >
-                                                      待确认
-                                                    </Tag>
-                                                  ) : null}
-                                                </Space>
-                                                <Text
-                                                  type="secondary"
-                                                  style={{
-                                                    display: 'block',
-                                                    fontSize: 12,
-                                                    minHeight: 36,
-                                                    marginBottom: 10,
-                                                  }}
-                                                >
-                                                  {field.description || `来源: ${field.source}`}
-                                                </Text>
-                                                <Form.Item
-                                                  name={field.name}
-                                                  style={{ marginBottom: 8 }}
-                                                  rules={[
-                                                    {
-                                                      required: field.required,
-                                                      message: `请输入 ${resolveWaitingInputDisplayLabel(field)}`,
-                                                    },
-                                                  ]}
-                                                  valuePropName={
-                                                    field.type.toLowerCase() === 'boolean'
-                                                      ? 'checked'
-                                                      : 'value'
-                                                  }
-                                                >
-                                                  {renderRequiredInputField(field, {
-                                                    treatArrayAsJson: true,
-                                                  })}
-                                                </Form.Item>
-                                                <Text type="secondary" style={{ fontSize: 11 }}>
-                                                  来源: {field.source}
-                                                </Text>
-                                              </div>
-                                            ))}
-                                          </div>
-                                        </div>
-                                      ))
-                                    : requiredInputs.map((field) => (
-                                        <div
-                                          key={field.name}
-                                          style={{
-                                            padding: 14,
-                                            borderRadius: 14,
-                                            border: '1px solid var(--bg-secondary)',
-                                            background: 'var(--bg-card)',
-                                            boxShadow: 'var(--shadow-sm)',
-                                          }}
-                                        >
-                                          <Space size={[6, 6]} wrap style={{ marginBottom: 8 }}>
-                                            <Text strong>
-                                              {resolveWaitingInputDisplayLabel(field)}
-                                            </Text>
-                                            <Tag style={{ marginInlineEnd: 0 }}>{field.type}</Tag>
-                                            <Tag
-                                              color={field.required ? 'error' : 'default'}
-                                              style={{ marginInlineEnd: 0 }}
-                                            >
-                                              {field.required ? '必填' : '可选'}
-                                            </Tag>
-                                            {field.needs_confirmation ? (
-                                              <Tag color="gold" style={{ marginInlineEnd: 0 }}>
-                                                待确认
-                                              </Tag>
-                                            ) : null}
-                                          </Space>
-                                          <Text
-                                            type="secondary"
-                                            style={{
-                                              display: 'block',
-                                              fontSize: 12,
-                                              minHeight: 36,
-                                              marginBottom: 10,
-                                            }}
-                                          >
-                                            {field.description || `来源: ${field.source}`}
-                                          </Text>
-                                          <Form.Item
-                                            name={field.name}
-                                            style={{ marginBottom: 8 }}
-                                            rules={[
-                                              {
-                                                required: field.required,
-                                                message: `请输入 ${resolveWaitingInputDisplayLabel(field)}`,
-                                              },
-                                            ]}
-                                            valuePropName={
-                                              field.type.toLowerCase() === 'boolean'
-                                                ? 'checked'
-                                                : 'value'
-                                            }
-                                          >
-                                            {renderRequiredInputField(field, {
-                                              treatArrayAsJson: true,
-                                            })}
-                                          </Form.Item>
-                                          <Text type="secondary" style={{ fontSize: 11 }}>
-                                            来源: {field.source}
-                                          </Text>
-                                        </div>
-                                      ))}
-                                </div>
-                                <Space wrap>
-                                  <Button
-                                    type="primary"
-                                    icon={<PlayCircleOutlined />}
-                                    loading={submitInputMutation.isLoading}
-                                    onClick={() => void handleResumeExecution(false)}
-                                  >
-                                    {RECOVERY_COPY.waitingInputContinue}
-                                  </Button>
-                                  <Button
-                                    icon={<RobotOutlined />}
-                                    loading={submitInputMutation.isLoading}
-                                    onClick={() => void handleResumeExecution(true)}
-                                  >
-                                    {RECOVERY_COPY.waitingInputToAi}
-                                  </Button>
-                                </Space>
-                              </Form>
-                            </>
+                                  {RECOVERY_COPY.waitingInputToAi}
+                                </Button>
+                              }
+                            />
                           ),
                         },
                       ]

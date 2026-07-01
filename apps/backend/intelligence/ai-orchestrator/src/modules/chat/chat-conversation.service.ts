@@ -1,12 +1,29 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ChatMessage as MultimodalChatMessage, ContentBlock } from '../../interfaces';
 import { ModelService } from '../model/model.service';
-import { SessionService } from '../redis/session.service';
+import { ChatSessionData, SessionService } from '../redis/session.service';
 import { StreamEventType } from '../react-engine/interfaces';
 import type { StreamEvent } from '../react-engine/interfaces';
 import type { ExecutionContext } from '../react-engine/interfaces';
 import type { ChatRequestDTO, ChatResponseDTO } from './chat.dto';
 import { ChatMediaService } from './chat-media.service';
+
+interface ChatSessionListItem {
+  id: string;
+  title?: string;
+  modelId?: string;
+  status: 'active' | 'archived';
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface ChatHistoryItem {
+  id: string;
+  sessionId: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp: string;
+}
 
 @Injectable()
 export class ChatConversationService {
@@ -83,7 +100,13 @@ export class ChatConversationService {
       },
     });
 
-    await this.persistConversation(sessionId, userMessageForHistory, historyAssistantContent);
+    const session = await this.persistConversation(
+      sessionId,
+      userMessageForHistory,
+      historyAssistantContent,
+      modelId
+    );
+    emit(this.buildSessionPatchEvent(sessionId, session));
   }
 
   async chat(body: ChatRequestDTO): Promise<ChatResponseDTO> {
@@ -109,10 +132,11 @@ export class ChatConversationService {
     const visibleContent = this.getVisibleChatContent(response.content, thinkingEnabled);
     const historyAssistantContent = this.modelService.stripThinkingTags(response.content);
 
-    await this.persistConversation(
+    const session = await this.persistConversation(
       sessionId,
       this.normalizeContentToText(userContent),
-      historyAssistantContent
+      historyAssistantContent,
+      modelId
     );
 
     return {
@@ -129,6 +153,7 @@ export class ChatConversationService {
             rateLimit: response.rateLimit,
           },
         },
+        this.buildSessionPatchEvent(sessionId, session),
       ],
     };
   }
@@ -139,6 +164,21 @@ export class ChatConversationService {
       role: message.role as 'user' | 'assistant' | 'system',
       content: message.content,
       timestamp: message.timestamp ? new Date(message.timestamp) : new Date(),
+    }));
+  }
+
+  async listSessions(): Promise<ChatSessionListItem[]> {
+    return this.sessionService.listChatSessions();
+  }
+
+  async getChatHistory(sessionId: string): Promise<ChatHistoryItem[]> {
+    const chatSession = await this.sessionService.getChatSession(sessionId);
+    return (chatSession?.history || []).map((message, index) => ({
+      id: message.id || `${sessionId}-${index}`,
+      sessionId,
+      role: message.role,
+      content: message.content,
+      timestamp: message.timestamp,
     }));
   }
 
@@ -163,9 +203,10 @@ export class ChatConversationService {
   private async persistConversation(
     sessionId: string,
     userContent: string,
-    assistantContent: string
-  ): Promise<void> {
-    await this.sessionService.appendChatMessages(sessionId, [
+    assistantContent: string,
+    modelId?: string
+  ): Promise<NonNullable<ChatSessionData['session']> | undefined> {
+    const nextSession = await this.sessionService.appendChatMessages(sessionId, [
       {
         role: 'user',
         content: userContent,
@@ -176,7 +217,35 @@ export class ChatConversationService {
         content: assistantContent,
         timestamp: new Date().toISOString(),
       },
-    ]);
+    ], {
+      modelId: modelId && modelId !== 'default' ? modelId : undefined,
+      title: this.buildSessionTitle(userContent),
+    });
+    return nextSession.session;
+  }
+
+  private buildSessionPatchEvent(
+    sessionId: string,
+    session?: NonNullable<ChatSessionData['session']>
+  ): StreamEvent {
+    return {
+      type: StreamEventType.SESSION_PATCH,
+      sessionId,
+      content: 'Session updated',
+      data: {
+        title: session?.title,
+        status: session?.status || 'active',
+        updatedAt: session?.updatedAt || new Date().toISOString(),
+      },
+    };
+  }
+
+  private buildSessionTitle(content: string): string | undefined {
+    const normalized = content.replace(/\s+/g, ' ').trim();
+    if (!normalized) {
+      return undefined;
+    }
+    return normalized.slice(0, 24);
   }
 
   private normalizeContentToText(content: string | ContentBlock[]): string {

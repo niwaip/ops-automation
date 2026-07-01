@@ -1,62 +1,52 @@
 /**
  * Chat Types
- * 前端聊天相关类型定义
+ * portal 仅保留 UI 侧需要的轻量适配，协议定义统一复用 user-core。
  */
+
+import type {
+  AIModel,
+  ChatContentPart,
+  ChatContextStrategy,
+  ChatMessage as CoreChatMessage,
+  ChatProgressLog,
+  ChatRequest as CoreChatRequest,
+  ChatSession as CoreChatSession,
+  ChatTaskStatus,
+  ExecutionResultPayload,
+  LLMRateLimit,
+  LLMUsage,
+  NormalizedChatExecutionResult,
+  PromptDebugLLMCall,
+  PromptDebugPayload,
+  StreamEvent as CoreStreamEvent,
+  StreamEventType as CoreStreamEventType,
+} from '@ops/user-core';
+import { StreamEventType as CoreStreamEventTypeValue } from '@ops/user-core';
 
 /**
  * 流式事件类型
  */
-export enum StreamEventType {
-  THOUGHT = 'thought',
-  ACTION = 'action',
-  OBSERVATION = 'observation',
-  RESULT = 'result',
-  WAITING_INPUT = 'waiting_input',
-  ERROR = 'error',
-  PARAMS_CONFIRM = 'params_confirm',
-  FILE_UPLOAD = 'file_upload',
-  PENDING_APPROVAL = 'pending_approval',
-}
+export const StreamEventType = CoreStreamEventTypeValue;
+export type StreamEventType = CoreStreamEventType;
 
 /**
  * 流式事件
  */
-export interface StreamEvent {
-  type: StreamEventType;
-  content: string;
-  data?: Record<string, unknown>;
-  iteration?: number;
-}
+export interface StreamEvent extends CoreStreamEvent {}
 
-export interface PromptDebugPayload {
-  systemPrompt: string;
-  userPrompt: string;
-  debugSource?: 'planner' | 'react-engine';
-  systemPromptSectionKeys?: string[];
-  systemPromptSectionSources?: string[];
-  userPromptSectionKeys?: string[];
-  userPromptSectionSources?: string[];
-  modelId?: string;
-  llmRequestMessages?: Array<{
-    role: 'system' | 'user' | 'assistant';
-    content: string;
-  }>;
-  llmResponseText?: string;
-  llmCalls?: PromptDebugLLMCall[];
-  notes?: string[];
-}
-
-export interface PromptDebugLLMCall {
-  stage: string;
-  label: string;
-  modelId?: string;
-  requestMessages?: Array<{
-    role: 'system' | 'user' | 'assistant';
-    content: string;
-  }>;
-  responseText?: string;
-  note?: string;
-}
+export type {
+  AIModel,
+  ChatContentPart,
+  ChatContextStrategy,
+  ChatProgressLog,
+  ChatTaskStatus,
+  ExecutionResultPayload,
+  LLMRateLimit,
+  LLMUsage,
+  NormalizedChatExecutionResult,
+  PromptDebugLLMCall,
+  PromptDebugPayload,
+};
 
 export interface PromptDebugRecord {
   id: string;
@@ -77,117 +67,21 @@ export interface PromptDebugRecord {
   updatedAt: string;
 }
 
-export interface ChatProgressLog {
-  stage: 'thought' | 'action' | 'observation';
-  text: string;
-}
-
-export interface LLMUsage {
-  prompt_tokens: number;
-  completion_tokens: number;
-  total_tokens: number;
-  completion_tokens_details?: {
-    reasoning_tokens?: number;
-  };
-}
-
-export interface LLMRateLimit {
-  requests_limit?: number;
-  requests_remaining?: number;
-  requests_reset?: string;
-  tokens_limit?: number;
-  tokens_remaining?: number;
-  tokens_reset?: string;
-}
-
 /**
  * 聊天消息
+ * UI 层仍使用 Date，避免一次性改动 portal 展示逻辑。
  */
-export interface ChatMessage {
-  id: string;
-  sessionId: string;
-  role: 'user' | 'assistant' | 'system';
-  content: string;
+export type ChatMessage = Omit<CoreChatMessage, 'timestamp'> & {
   timestamp: Date;
-  metadata?: {
-    mode?: 'chat' | 'task';
-    showThinking?: boolean;
-    usage?: LLMUsage;
-    rateLimit?: LLMRateLimit;
-    skillUsed?: string;
-    params?: Record<string, unknown>;
-    files?: string[];
-    fileUrl?: string;
-    downloadUrl?: string;
-    temporalLink?: string;
-    missingInputs?: Array<{
-      name?: string;
-      description?: string;
-      missing?: boolean;
-    }>;
-    taskStatus?:
-      | 'waiting_input'
-      | 'pending_approval'
-      | 'running'
-      | 'completed'
-      | 'failed'
-      | 'human_control';
-    executionId?: string;
-    executionStatus?: string;
-    finalResult?: string;
-    finalResultData?: unknown;
-    finalSummary?: string;
-    progressLogs?: ChatProgressLog[];
-    errorMessage?: string;
-    failureReason?: string;
-    hasBusinessResult?: boolean;
-    promptDebug?: PromptDebugPayload;
-  };
-  isStreaming?: boolean;
-}
+};
 
 /**
  * 聊天会话
  */
-export interface ChatSession {
-  id: string;
-  title?: string;
-  modelId?: string;
-  status: 'active' | 'archived';
+export type ChatSession = Omit<CoreChatSession, 'createdAt' | 'updatedAt'> & {
   createdAt: Date;
   updatedAt: Date;
-}
-
-/**
- * Skill匹配结果
- */
-export interface SkillMatchResult {
-  skillId: string;
-  skillName: string;
-  matchedKeywords: string[];
-  confidence: number;
-  collectedParams: Record<string, unknown>;
-  missingParams: string[];
-  paramsSchema: ParamsSchema;
-}
-
-/**
- * 参数Schema
- */
-export interface ParamsSchema {
-  properties: Record<string, ParamProperty>;
-  required: string[];
-}
-
-/**
- * 参数属性
- */
-export interface ParamProperty {
-  type: 'string' | 'number' | 'date' | 'array' | 'boolean';
-  description: string;
-  required: boolean;
-  default?: unknown;
-}
+};
 
 /**
  * 上传文件信息
@@ -195,7 +89,7 @@ export interface ParamProperty {
 export interface UploadedFile {
   fileId: string;
   fileName: string;
-  mimeType: string;
+  mimeType?: string;
   size: number;
   file?: File;
   content?: string; // base64编码的文件内容
@@ -204,32 +98,6 @@ export interface UploadedFile {
 /**
  * Chat请求DTO
  */
-export interface ChatRequest {
-  message: string;
-  sessionId?: string;
-  userId?: string;
-  executionId?: string;
-  userRoles?: string[];
-  modelId?: string;
+export type ChatRequest = Omit<CoreChatRequest, 'files'> & {
   files?: UploadedFile[];
-  config?: {
-    mode?: 'chat' | 'task'; // 聊天模式：chat(普通) 或 task(ReAct引擎)
-    maxIterations?: number;
-    thinking?: boolean;
-    webSearch?: boolean;
-  };
-}
-
-/**
- * AI模型信息
- */
-export interface AIModel {
-  id: string;
-  name: string;
-  provider: string;
-  config?: {
-    display_name?: string;
-    description?: string;
-  };
-  status: 'active' | 'inactive';
-}
+};

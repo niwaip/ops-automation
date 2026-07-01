@@ -1,14 +1,13 @@
 import {
-  CheckOutlined,
   ClockCircleOutlined,
-  CopyOutlined,
+  LoadingOutlined,
   MessageOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   PlusOutlined,
-  ReloadOutlined,
   RightOutlined,
-  WarningOutlined,
+  RobotOutlined,
+  UserOutlined,
 } from '@ant-design/icons';
 import {
   Alert,
@@ -27,7 +26,6 @@ import {
   Typography,
 } from 'antd';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
 import {
   buildExecutionWaitingInputGroups,
@@ -37,7 +35,7 @@ import {
   isJsonLikeInputType,
   isNumericInputType,
   normalizeExecutionWaitingInputValues,
-  StreamEventType,
+  reduceChatStreamEvent,
   resolveWaitingInputDisplayLabel,
   type ExecutionDto,
   type AIModel,
@@ -45,13 +43,32 @@ import {
   type ChatProgressLog,
   type ChatRequest,
   type ChatSession,
-  type StreamEvent,
 } from '@ops/user-core';
 import { apiClient, chatApi, executionApi } from '../../../api';
 import { UserChatComposer } from '../components/UserChatComposer';
 import { useChatStore } from '../chatStore';
 import { authStore } from '../../../adapters/auth/authStore';
 import { browserStreamingTransport } from '../../../adapters/streaming/browserStreamingTransport';
+import SharedChatMessageActions from '@chat-web/components/ChatMessageActions';
+import SharedContentPartsRenderer from '@chat-web/components/ContentPartsRenderer';
+import { findDeeplinkByLabel, resolveTaskParts } from '@chat-web/lib/contentParts';
+import {
+  buildApprovedAssistantDraftMeta,
+  buildApprovedTaskPatch,
+  buildRejectedTaskPatch,
+  buildResumedHumanControlTaskPatch,
+  buildSubmittedInputTaskPatch,
+} from '@chat-web/controller/taskActionController';
+import {
+  buildChatRequest,
+  buildResumeExecutionRequest,
+} from '@chat-web/controller/chatRequestController';
+import { resumeHumanControlExecution } from '@chat-web/controller/humanControlController';
+import SharedMessageContentRenderer from '@chat-web/components/MessageContentRenderer';
+import SharedThoughtProcessPanel from '@chat-web/components/ThoughtProcessPanel';
+import SharedTaskOutcomeCard from '@chat-web/components/TaskOutcomeCard';
+import SharedTaskProgressCard from '@chat-web/components/TaskProgressCard';
+import '../ChatMessage.css';
 import './ChatPage.css';
 
 const { TextArea } = Input;
@@ -82,143 +99,6 @@ const formatRelativeTime = (value?: string): string => {
     hour: '2-digit',
     minute: '2-digit',
   }).format(date);
-};
-
-const asRecord = (value: unknown): Record<string, unknown> | undefined => {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return undefined;
-  }
-  return value as Record<string, unknown>;
-};
-
-const asString = (value: unknown): string | undefined =>
-  typeof value === 'string' && value.trim() ? value : undefined;
-
-const normalizeMissingInputs = (
-  value: unknown
-): NonNullable<NonNullable<ChatMessage['metadata']>['missingInputs']> | undefined => {
-  if (!Array.isArray(value)) {
-    return undefined;
-  }
-
-  const items = value.reduce<NonNullable<NonNullable<ChatMessage['metadata']>['missingInputs']>>(
-    (acc, item) => {
-      const record = asRecord(item);
-      if (!record) {
-        return acc;
-      }
-      acc.push({
-        name: asString(record.name),
-        description: asString(record.description),
-        missing: typeof record.missing === 'boolean' ? record.missing : undefined,
-      });
-      return acc;
-    },
-    []
-  );
-
-  return items.length > 0 ? items : undefined;
-};
-
-const normalizeUsage = (
-  value: unknown
-): NonNullable<NonNullable<ChatMessage['metadata']>['usage']> | undefined => {
-  const record = asRecord(value);
-  if (
-    !record ||
-    typeof record.prompt_tokens !== 'number' ||
-    typeof record.completion_tokens !== 'number' ||
-    typeof record.total_tokens !== 'number'
-  ) {
-    return undefined;
-  }
-
-  const completionDetails = asRecord(record.completion_tokens_details);
-  return {
-    prompt_tokens: record.prompt_tokens,
-    completion_tokens: record.completion_tokens,
-    total_tokens: record.total_tokens,
-    completion_tokens_details:
-      completionDetails && typeof completionDetails.reasoning_tokens === 'number'
-        ? { reasoning_tokens: completionDetails.reasoning_tokens }
-        : undefined,
-  };
-};
-
-const normalizeRateLimit = (
-  value: unknown
-): NonNullable<NonNullable<ChatMessage['metadata']>['rateLimit']> | undefined => {
-  const record = asRecord(value);
-  if (!record) {
-    return undefined;
-  }
-
-  return {
-    requests_limit: typeof record.requests_limit === 'number' ? record.requests_limit : undefined,
-    requests_remaining:
-      typeof record.requests_remaining === 'number' ? record.requests_remaining : undefined,
-    requests_reset: asString(record.requests_reset),
-    tokens_limit: typeof record.tokens_limit === 'number' ? record.tokens_limit : undefined,
-    tokens_remaining:
-      typeof record.tokens_remaining === 'number' ? record.tokens_remaining : undefined,
-    tokens_reset: asString(record.tokens_reset),
-  };
-};
-
-const normalizeResultArtifacts = (
-  value: unknown
-): NonNullable<NonNullable<ChatMessage['metadata']>['artifacts']> | undefined => {
-  if (!Array.isArray(value)) {
-    return undefined;
-  }
-
-  const artifacts = value.reduce<NonNullable<NonNullable<ChatMessage['metadata']>['artifacts']>>(
-    (acc, item) => {
-      const record = asRecord(item);
-      if (!record) {
-        return acc;
-      }
-      acc.push({
-        type: asString(record.type),
-        name: asString(record.name),
-        label: asString(record.label),
-        downloadUrl: asString(record.downloadUrl),
-        url: asString(record.url),
-        path: asString(record.path),
-        mimeType: asString(record.mimeType),
-      });
-      return acc;
-    },
-    []
-  );
-
-  return artifacts.length > 0 ? artifacts : undefined;
-};
-
-const normalizeNormalizedResult = (
-  value: unknown
-): NonNullable<NonNullable<ChatMessage['metadata']>['normalizedResult']> | undefined => {
-  const record = asRecord(value);
-  if (!record) {
-    return undefined;
-  }
-
-  return {
-    resultType: asString(record.resultType),
-    title: asString(record.title),
-    summary: asString(record.summary),
-    body: asString(record.body),
-    summaryFormat: record.summaryFormat === 'markdown' ? 'markdown' : 'plain_text',
-    detailText: asString(record.detailText),
-    detailFormat: record.detailFormat === 'markdown' ? 'markdown' : 'plain_text',
-    structuredData: record.structuredData,
-    artifacts: normalizeResultArtifacts(record.artifacts),
-    downloadUrl: asString(record.downloadUrl),
-    temporalLink: asString(record.temporalLink),
-    hasBusinessResult: record.hasBusinessResult === true,
-    envelope: asRecord(record.envelope),
-    rawResult: record.rawResult,
-  };
 };
 
 const summarizeSessionTitle = (message: string): string => {
@@ -288,6 +168,8 @@ const getMessageStatusLabel = (status?: ChatTaskStatus): string | null => {
       return '待补输入';
     case 'pending_approval':
       return '待审批';
+    case 'human_control':
+      return '人工处理';
     case 'running':
       return '进行中';
     case 'completed':
@@ -304,6 +186,8 @@ const getStatusTagColor = (status?: ChatTaskStatus): string | undefined => {
     case 'waiting_input':
     case 'pending_approval':
       return 'warning';
+    case 'human_control':
+      return 'gold';
     case 'running':
       return 'processing';
     case 'completed':
@@ -315,31 +199,55 @@ const getStatusTagColor = (status?: ChatTaskStatus): string | undefined => {
   }
 };
 
-const resolveSpecialStateTitle = (message: ChatMessage): string | null => {
-  switch (message.metadata?.taskStatus) {
+const normalizeTaskStatus = (value?: string): ChatTaskStatus | undefined => {
+  switch (value) {
     case 'waiting_input':
-      return '等待你补充输入';
     case 'pending_approval':
-      return '等待你审批';
+    case 'human_control':
     case 'running':
-      return '任务正在执行';
+    case 'completed':
+    case 'failed':
+      return value;
     default:
-      return null;
+      return undefined;
   }
 };
 
-const getEventTagColor = (eventType: StreamEvent['type']): string => {
-  switch (eventType) {
-    case StreamEventType.RESULT:
-      return 'success';
-    case StreamEventType.ERROR:
-      return 'error';
-    case StreamEventType.WAITING_INPUT:
-    case StreamEventType.PENDING_APPROVAL:
-      return 'warning';
-    default:
-      return 'processing';
+const hasTerminalTaskOutcome = (message: ChatMessage): boolean => {
+  if (message.role !== 'assistant' || message.metadata?.mode !== 'task' || message.isStreaming) {
+    return false;
   }
+
+  const normalizedResult = message.metadata?.normalizedResult;
+  return Boolean(
+    message.metadata?.finalResult?.trim() ||
+      message.metadata?.errorMessage?.trim() ||
+      message.metadata?.failureReason?.trim() ||
+      message.metadata?.hasBusinessResult ||
+      normalizedResult?.structuredData ||
+      normalizedResult?.summary?.trim() ||
+      normalizedResult?.detailText?.trim() ||
+      message.metadata?.finalResultData ||
+      /任务完成/.test(message.content)
+  );
+};
+
+const resolveMessageTaskStatus = (message: ChatMessage): ChatTaskStatus | undefined => {
+  const metadataStatus = message.metadata?.taskStatus;
+  const partsStatus = normalizeTaskStatus(resolveTaskParts(message.contentParts).taskStatus);
+  const terminalStatus = [metadataStatus, partsStatus].find(
+    (status): status is ChatTaskStatus => Boolean(status && status !== 'running')
+  );
+
+  if (terminalStatus) {
+    return terminalStatus;
+  }
+
+  if (hasTerminalTaskOutcome(message)) {
+    return 'completed';
+  }
+
+  return metadataStatus || partsStatus;
 };
 
 const toStructuredResultText = (value: unknown): string | null => {
@@ -356,80 +264,21 @@ const toStructuredResultText = (value: unknown): string | null => {
   }
 };
 
-const compactText = (value: string, maxLength = 120): string => {
-  const normalized = value.replace(/\s+/g, ' ').trim();
-  if (normalized.length <= maxLength) {
-    return normalized;
-  }
-  return `${normalized.slice(0, maxLength - 1).trim()}…`;
-};
-
-const sanitizeDisplayUrl = (value?: string): string | undefined => {
-  if (!value) {
-    return undefined;
-  }
-  return value.replace(/`/g, '').trim();
-};
-
-const buildTaskProgressLog = (
-  event: StreamEvent,
-  data: Record<string, unknown> | undefined,
-  normalizedResult:
-    | NonNullable<NonNullable<ChatMessage['metadata']>['normalizedResult']>
-    | undefined
-): ChatProgressLog | undefined => {
-  if (event.type === StreamEventType.THOUGHT) {
-    const text = compactText(event.content.replace(/[🚀📥]/g, '').trim(), 100);
-    return text ? { stage: 'thought', text } : undefined;
-  }
-
-  if (event.type === StreamEventType.ACTION) {
-    const text = compactText(event.content, 100);
-    return text ? { stage: 'action', text } : undefined;
-  }
-
-  if (event.type !== StreamEventType.OBSERVATION) {
-    return undefined;
-  }
-
-  const result = asRecord(data?.result);
-  const command = asString(result?.command);
-  const pageTitle = asString(result?.pageTitle);
-  const pageUrl = sanitizeDisplayUrl(asString(result?.pageUrl));
-  const resultData = asRecord(result?.data);
-  const duration = typeof resultData?.duration === 'number' ? resultData.duration : undefined;
-  const summary =
-    normalizedResult?.summary || normalizedResult?.detailText || normalizedResult?.body;
-
-  const parts = ['步骤执行成功'];
-  if (command) {
-    parts.push(`命令：${command}`);
-  }
-  if (pageTitle) {
-    parts.push(`页面：${pageTitle}`);
-  } else if (pageUrl) {
-    parts.push(`页面：${pageUrl}`);
-  }
-  if (typeof duration === 'number' && Number.isFinite(duration) && duration > 0) {
-    parts.push(`耗时 ${duration} ms`);
-  }
-  if (summary) {
-    const compactSummary = compactText(summary, 80);
-    if (compactSummary && compactSummary !== '步骤执行成功') {
-      parts.push(compactSummary);
-    }
-  }
-
-  return {
-    stage: 'observation',
-    text: compactText(parts.join('，'), 160),
-  };
-};
+const formatMessageTimestamp = (timestamp: string): string =>
+  new Date(timestamp).toLocaleString('zh-CN', {
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 
 const parseMessageContent = (content: string): { thoughts: string[]; answer: string } => {
   const thoughts: string[] = [];
   let answer = content;
 
+  // Legacy fallback for older assistant text payloads. This duplicate parser
+  // can be removed after all backends emit dedicated thought/action/
+  // observation events and user-web fully switches to those fields.
   const thoughtRegex = /【思考】([^\n]*(?:\n(?!【)[^\n]*)*)/g;
   const actionRegex = /【行动】([^\n]*(?:\n(?!【)[^\n]*)*)/g;
   const observationRegex = /【观察】([^\n]*(?:\n(?!【)[^\n]*)*)/g;
@@ -479,6 +328,14 @@ interface WaitingInputInlineFormProps {
 
 interface ChatPageProps {
   embedded?: boolean;
+}
+
+interface ChatWaitingInputField {
+  name?: string;
+  description?: string;
+  group_label?: string;
+  display_name?: string;
+  missing?: boolean;
 }
 
 function WaitingInputInlineForm(props: WaitingInputInlineFormProps) {
@@ -628,7 +485,6 @@ function WaitingInputInlineForm(props: WaitingInputInlineFormProps) {
 
 export function ChatPage({ embedded = false }: ChatPageProps) {
   const { message: toast } = App.useApp();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const prefetchedDraftMessage = useChatStore((state) => state.draftMessage);
   const prefetchedChatMode = useChatStore((state) => state.chatMode);
@@ -637,18 +493,19 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
   const [selectedModel, setSelectedModel] = useState<string>('default');
   const [chatMode, setChatMode] = useState<'chat' | 'task'>('chat');
   const [isStreaming, setIsStreaming] = useState(false);
-  const [lastEvent, setLastEvent] = useState<StreamEvent | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [abortStreaming, setAbortStreaming] = useState<(() => void) | null>(null);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
-  const [isSessionListCollapsed, setIsSessionListCollapsed] = useState(embedded);
+  const [isSessionListCollapsed, setIsSessionListCollapsed] = useState(true);
   const [draftSessions, setDraftSessions] = useState<ChatSession[]>([]);
   const [sessionOverrides, setSessionOverrides] = useState<Record<string, Partial<ChatSession>>>(
     {}
   );
   const [sessionMessages, setSessionMessages] = useState<Record<string, ChatMessage[]>>({});
   const [actionLoadingByMessage, setActionLoadingByMessage] = useState<
-    Record<string, 'approve' | 'reject' | undefined>
+    Record<string, 'approve' | 'reject' | 'resume' | undefined>
   >({});
+  const [expandedThoughtMessageId, setExpandedThoughtMessageId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const activeMessages = selectedSessionId ? sessionMessages[selectedSessionId] || [] : [];
   const showSessionSidebar = !embedded && !isSessionListCollapsed;
@@ -658,9 +515,9 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
         (message) =>
           message.role === 'assistant' &&
           (message.isStreaming ||
-            message.metadata?.taskStatus === 'running' ||
-            message.metadata?.taskStatus === 'waiting_input' ||
-            message.metadata?.taskStatus === 'pending_approval')
+            resolveMessageTaskStatus(message) === 'running' ||
+            resolveMessageTaskStatus(message) === 'waiting_input' ||
+            resolveMessageTaskStatus(message) === 'pending_approval')
       ),
     [activeMessages]
   );
@@ -876,107 +733,24 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
   ) => {
     const token = await getAccessToken();
     let accumulatedContent = '';
-
-    await chatApi.stream(browserStreamingTransport, token, request, (event) => {
-      const data = asRecord(event.data);
-      const normalizedResult = normalizeNormalizedResult(data?.normalizedResult);
-      const progressLog =
-        request.config?.mode === 'task'
-          ? buildTaskProgressLog(event, data, normalizedResult)
-          : undefined;
-      const taskStatus = (() => {
-        switch (event.type) {
-          case StreamEventType.WAITING_INPUT:
-            return 'waiting_input' as const;
-          case StreamEventType.PENDING_APPROVAL:
-            return 'pending_approval' as const;
-          case StreamEventType.ERROR:
-            return 'failed' as const;
-          case StreamEventType.RESULT:
-            return request.config?.mode === 'task' ? ('completed' as const) : undefined;
-          default:
-            return request.config?.mode === 'task' ? ('running' as const) : undefined;
-        }
-      })();
-
-      if (
-        event.type === StreamEventType.THOUGHT ||
-        event.type === StreamEventType.ACTION ||
-        event.type === StreamEventType.OBSERVATION
-      ) {
-        if (request.config?.mode !== 'task') {
-          const prefix =
-            event.type === StreamEventType.THOUGHT
-              ? '【思考】'
-              : event.type === StreamEventType.ACTION
-                ? '【行动】'
-                : '【观察】';
-          accumulatedContent = `${accumulatedContent}${accumulatedContent ? '\n' : ''}${prefix}${event.content}`;
-        }
-      } else if (event.type === StreamEventType.RESULT && request.config?.mode === 'chat') {
-        accumulatedContent = event.content;
-      } else if (event.type === StreamEventType.ERROR) {
-        accumulatedContent = accumulatedContent || event.content;
-      }
-
-      if (progressLog) {
-        appendProgressLog(sessionId, assistantMessageId, progressLog);
-      }
-
-      setLastEvent(event);
-      updateMessage(sessionId, assistantMessageId, {
-        content: accumulatedContent,
-        isStreaming:
-          event.type !== StreamEventType.RESULT &&
-          event.type !== StreamEventType.ERROR &&
-          event.type !== StreamEventType.WAITING_INPUT &&
-          event.type !== StreamEventType.PENDING_APPROVAL,
-        metadata: {
-          mode: request.config?.mode,
-          showThinking: request.config?.thinking,
-          taskStatus,
-          executionId: asString(data?.executionId),
-          executionStatus: asString(data?.status),
-          resultType: asString(data?.resultType) || normalizedResult?.resultType,
-          resultTitle: asString(data?.resultTitle) || normalizedResult?.title,
-          usage: normalizeUsage(data?.usage),
-          rateLimit: normalizeRateLimit(data?.rateLimit),
-          finalSummary:
-            event.type === StreamEventType.WAITING_INPUT ||
-            event.type === StreamEventType.PENDING_APPROVAL ||
-            event.type === StreamEventType.RESULT
-              ? asString(data?.resultSummary) ||
-                normalizedResult?.detailText ||
-                normalizedResult?.summary ||
-                normalizedResult?.body ||
-                event.content
-              : undefined,
-          finalResult:
-            event.type === StreamEventType.RESULT && request.config?.mode === 'task'
-              ? normalizedResult?.detailText ||
-                normalizedResult?.body ||
-                normalizedResult?.summary ||
-                event.content
-              : undefined,
-          finalResultData:
-            event.type === StreamEventType.RESULT
-              ? (normalizedResult?.structuredData ?? data?.result ?? data)
-              : undefined,
-          errorMessage: event.type === StreamEventType.ERROR ? event.content : undefined,
-          failureReason:
-            event.type === StreamEventType.ERROR
-              ? asString(data?.failureReason) || event.content
-              : undefined,
-          missingInputs: normalizeMissingInputs(data?.missingInputs),
-          hasBusinessResult:
-            normalizedResult?.hasBusinessResult === true || data?.hasBusinessResult === true,
-          downloadUrl: asString(data?.downloadUrl) || normalizedResult?.downloadUrl,
-          temporalLink: asString(data?.temporalLink) || normalizedResult?.temporalLink,
-          artifacts: normalizeResultArtifacts(data?.artifacts) || normalizedResult?.artifacts,
-          normalizedResult,
-        },
+    const streamHandle = chatApi.stream(browserStreamingTransport, token, request, (event) => {
+      const reduced = reduceChatStreamEvent({
+        event,
+        accumulatedContent,
+        mode: request.config?.mode,
       });
+      accumulatedContent = reduced.accumulatedContent;
+
+      if (reduced.progressLog) {
+        appendProgressLog(sessionId, assistantMessageId, reduced.progressLog);
+      }
+      if (reduced.sessionPatch) {
+        updateSessionMeta(sessionId, reduced.sessionPatch);
+      }
+      updateMessage(sessionId, assistantMessageId, reduced.messagePatch);
     });
+    setAbortStreaming(() => streamHandle.abort);
+    await streamHandle.promise;
   };
 
   const runAssistantRequest = async (
@@ -1002,7 +776,14 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
       });
     } finally {
       setIsStreaming(false);
+      setAbortStreaming(null);
     }
+  };
+
+  const handleStopStreaming = () => {
+    abortStreaming?.();
+    setAbortStreaming(null);
+    setIsStreaming(false);
   };
 
   const handleSend = () => {
@@ -1045,25 +826,21 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     });
     setDraft('');
     setError(null);
-    setLastEvent(null);
     setIsStreaming(true);
 
-    const request: ChatRequest = {
+    const request: ChatRequest = buildChatRequest({
       message: content,
       sessionId: session.id,
       modelId: resolvedModelId,
-      config: {
-        mode: chatMode,
-        thinking: chatMode === 'task',
-      },
-    };
+      mode: chatMode,
+      thinking: chatMode === 'task',
+    });
 
     void runAssistantRequest(session, request, assistantMessageId);
   };
 
   const handleCreateSession = () => {
     setError(null);
-    setLastEvent(null);
     createDraftSession();
   };
 
@@ -1075,12 +852,10 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     try {
       const execution = await executionApi.approve(executionId);
       updateMessage(selectedSession.id, messageId, {
-        metadata: {
-          taskStatus: 'running',
+        metadata: buildApprovedTaskPatch({
           executionId,
           executionStatus: execution.status,
-          finalSummary: '审批已通过，任务继续执行中。',
-        },
+        }),
       });
       void toast.success('已批准任务，继续观察执行结果');
 
@@ -1092,13 +867,10 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
         content: '',
         timestamp: toChatTimestamp(),
         isStreaming: true,
-        metadata: {
-          mode: 'task',
-          taskStatus: 'running',
+        metadata: buildApprovedAssistantDraftMeta({
           executionId,
           executionStatus: execution.status,
-          finalSummary: '已批准，正在继续执行...',
-        },
+        }),
       };
       updateSessionMessages(selectedSession.id, (messages) =>
         upsertMessage(messages, assistantMessage)
@@ -1106,16 +878,13 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
       setIsStreaming(true);
       void runAssistantRequest(
         selectedSession,
-        {
-          message: '继续执行',
+        buildResumeExecutionRequest({
           sessionId: selectedSession.id,
           executionId,
           modelId: selectedModel && selectedModel !== 'default' ? selectedModel : undefined,
-          config: {
-            mode: 'task',
-            thinking: true,
-          },
-        },
+          mode: 'task',
+          thinking: true,
+        }),
         assistantMessageId
       );
     } catch (approveError) {
@@ -1133,12 +902,10 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     try {
       const execution = await executionApi.reject(executionId);
       updateMessage(selectedSession.id, messageId, {
-        metadata: {
-          taskStatus: 'failed',
+        metadata: buildRejectedTaskPatch({
           executionId,
           executionStatus: execution.status,
-          errorMessage: '审批已驳回，任务不会继续执行。',
-        },
+        }),
       });
       await syncRelatedQueries(selectedSession.id);
       void toast.success('已驳回任务');
@@ -1149,226 +916,203 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     }
   };
 
-  const renderStateCard = (message: ChatMessage) => {
-    const title = resolveSpecialStateTitle(message);
-    if (!title || message.role !== 'assistant') {
-      return null;
+  const handleResumeHumanControl = async (messageId: string, executionId: string) => {
+    if (!selectedSession) {
+      return;
     }
-
-    const status = message.metadata?.taskStatus;
-    const executionId = message.metadata?.executionId;
-    const missingInputs = message.metadata?.missingInputs || [];
-    const canReview = Boolean(executionId);
-
-    return (
-      <div className={`user-chat-state-card status-${status || 'default'}`}>
-        <Space align="start" size={12}>
-          {status === 'waiting_input' || status === 'pending_approval' ? (
-            <ClockCircleOutlined className="user-chat-state-icon" />
-          ) : status === 'failed' ? (
-            <WarningOutlined className="user-chat-state-icon" />
-          ) : status === 'completed' ? (
-            <CheckOutlined className="user-chat-state-icon" />
-          ) : (
-            <ReloadOutlined className="user-chat-state-icon" />
-          )}
-          <div className="user-chat-state-main">
-            <Typography.Text strong>{title}</Typography.Text>
-            <Typography.Paragraph type="secondary" style={{ marginBottom: 8 }}>
-              {message.metadata?.errorMessage ||
-                message.metadata?.finalSummary ||
-                message.metadata?.finalResult ||
-                '该任务有新的状态变化。'}
-            </Typography.Paragraph>
-            {status === 'waiting_input' && missingInputs.length > 0 ? (
-              <div className="user-chat-missing-inputs">
-                {missingInputs.map((item, index) => (
-                  <Tag key={`${item.name || 'missing'}-${index}`}>
-                    {resolveWaitingInputDisplayLabel({
-                      name: item.name || item.description || `field-${index + 1}`,
-                      description: item.description,
-                    })}
-                  </Tag>
-                ))}
-              </div>
-            ) : null}
-            {status === 'waiting_input' && executionId ? (
-              <WaitingInputInlineForm
-                executionId={executionId}
-                sessionId={selectedSession?.id}
-                onSubmitted={(execution) => {
-                  if (!selectedSession?.id) {
-                    return;
-                  }
-                  updateMessage(selectedSession.id, message.id, {
-                    metadata: {
-                      taskStatus: 'running',
-                      executionId: execution.id,
-                      executionStatus: execution.status,
-                      finalSummary: '输入已提交，任务继续执行中。',
-                      missingInputs: undefined,
-                    },
-                  });
-                }}
-              />
-            ) : null}
-            <Space wrap>
-              {status === 'pending_approval' && executionId ? (
-                <>
-                  <Button
-                    type="primary"
-                    size="small"
-                    loading={actionLoadingByMessage[message.id] === 'approve'}
-                    onClick={() => {
-                      void handleApprove(message.id, executionId);
-                    }}
-                  >
-                    批准继续
-                  </Button>
-                  <Button
-                    danger
-                    size="small"
-                    loading={actionLoadingByMessage[message.id] === 'reject'}
-                    onClick={() => {
-                      void handleReject(message.id, executionId);
-                    }}
-                  >
-                    驳回
-                  </Button>
-                </>
-              ) : null}
-              {canReview ? (
-                <Button size="small" onClick={() => navigate(`/executions/${executionId}`)}>
-                  去执行详情
-                </Button>
-              ) : null}
-            </Space>
-          </div>
-        </Space>
-      </div>
-    );
+    setActionLoadingByMessage((current) => ({ ...current, [messageId]: 'resume' }));
+    try {
+      const execution = await executionApi.getById(executionId);
+      const resumedExecution = await resumeHumanControlExecution({
+        executionId,
+        execution,
+        executionApi,
+      });
+      updateMessage(selectedSession.id, messageId, {
+        metadata: buildResumedHumanControlTaskPatch({
+          executionId,
+          executionStatus: resumedExecution.status,
+        }),
+      });
+      await syncRelatedQueries(selectedSession.id);
+      void toast.success('已同意人工处理结果，任务继续执行中');
+    } catch (resumeError) {
+      void toast.error(
+        resumeError instanceof Error ? resumeError.message : '继续执行失败'
+      );
+    } finally {
+      setActionLoadingByMessage((current) => ({ ...current, [messageId]: undefined }));
+    }
   };
 
-  const renderOutcomeCard = (message: ChatMessage) => {
-    if (message.role !== 'assistant') {
+  const renderTaskCard = (message: ChatMessage) => {
+    if (message.role !== 'assistant' || message.metadata?.mode !== 'task') {
       return null;
     }
 
-    const status = message.metadata?.taskStatus;
+    const taskParts = resolveTaskParts(message.contentParts);
+    const status = resolveMessageTaskStatus(message);
+    const executionId = message.metadata?.executionId || taskParts.executionId;
     const finalResult = message.metadata?.finalResult?.trim();
     const finalSummary = message.metadata?.finalSummary?.trim();
     const errorMessage = message.metadata?.errorMessage?.trim();
     const failureReason = message.metadata?.failureReason?.trim();
-    const executionId = message.metadata?.executionId;
     const resultTitle = message.metadata?.resultTitle?.trim();
-    const artifacts =
-      message.metadata?.artifacts || message.metadata?.normalizedResult?.artifacts || [];
-    const structuredResult = toStructuredResultText(
-      message.metadata?.normalizedResult?.structuredData ?? message.metadata?.finalResultData
-    );
     const normalizedSummary = message.metadata?.normalizedResult?.summary?.trim();
     const normalizedDetail = message.metadata?.normalizedResult?.detailText?.trim();
+    const structuredResult = toStructuredResultText(
+      message.metadata?.normalizedResult?.structuredData ??
+        message.metadata?.finalResultData ??
+        taskParts.structuredResultData
+    );
+    const partDownloadUrl =
+      findDeeplinkByLabel(taskParts.deeplinks, /下载|download/i) || taskParts.deeplinks[0]?.url;
+    const partDetailUrl = findDeeplinkByLabel(taskParts.deeplinks, /详情|detail|执行/i);
     const primaryStructuredResult =
       status === 'completed' && structuredResult && structuredResult !== errorMessage
         ? structuredResult
         : null;
+    const displayFinalResult =
+      status === 'completed'
+        ? finalResult ||
+          finalSummary ||
+          normalizedSummary ||
+          primaryStructuredResult ||
+          normalizedDetail ||
+          undefined
+        : undefined;
     const supplementalResult =
-      primaryStructuredResult && finalResult && finalResult !== primaryStructuredResult
+      displayFinalResult && finalResult && finalResult !== displayFinalResult
         ? finalResult
-        : primaryStructuredResult && normalizedDetail && normalizedDetail !== primaryStructuredResult
+        : displayFinalResult && normalizedDetail && normalizedDetail !== displayFinalResult
           ? normalizedDetail
           : null;
-    const hasOutcome = Boolean(
-      status === 'completed' ||
-      status === 'failed' ||
-      finalResult ||
-      primaryStructuredResult ||
-      resultTitle ||
-      (finalSummary &&
-        status !== 'running' &&
-        status !== 'waiting_input' &&
-        status !== 'pending_approval') ||
-      failureReason ||
-      errorMessage ||
-      message.metadata?.downloadUrl ||
-      message.metadata?.temporalLink ||
-      artifacts.length > 0
+    const missingInputs = (message.metadata?.missingInputs || []) as ChatWaitingInputField[];
+    const waitingInputItems = missingInputs.map((item, index) => ({
+      key: `${item.name || 'missing'}-${index}`,
+      label: resolveWaitingInputDisplayLabel({
+        name: item.name || item.description || `field-${index + 1}`,
+        description: item.description,
+        group_label: item.group_label,
+        display_name: item.display_name,
+      }),
+    }));
+    const waitingInputGroupMap = missingInputs.reduce<Map<string, typeof waitingInputItems>>(
+      (groups, item, index) => {
+        const label = item.group_label?.trim() || '待补字段';
+        const groupItems = groups.get(label) || [];
+        groupItems.push({
+          key: `${label}-${item.name || 'missing'}-${index}`,
+          label: resolveWaitingInputDisplayLabel({
+            name: item.name || item.description || `field-${index + 1}`,
+            description: item.description,
+            group_label: item.group_label,
+            display_name: item.display_name,
+          }),
+        });
+        groups.set(label, groupItems);
+        return groups;
+      },
+      new Map()
+    );
+    const waitingInputGroups = [...waitingInputGroupMap.entries()].map(([label, items]) => ({
+      label,
+      items,
+    }));
+    const artifacts =
+      message.metadata?.artifacts || message.metadata?.normalizedResult?.artifacts || [];
+    const hasTaskCard = Boolean(
+      status ||
+        displayFinalResult ||
+        finalSummary ||
+        normalizedSummary ||
+        errorMessage ||
+        failureReason ||
+        resultTitle ||
+        executionId ||
+        message.metadata?.downloadUrl ||
+        partDownloadUrl ||
+        message.metadata?.temporalLink ||
+        partDetailUrl ||
+        primaryStructuredResult ||
+        artifacts.length > 0 ||
+        waitingInputItems.length > 0
     );
 
-    if (!hasOutcome) {
+    if (!hasTaskCard) {
       return null;
     }
 
-    const outcomeTone = status === 'failed' || errorMessage ? 'error' : 'success';
-    const title =
-      status === 'failed' || errorMessage
-        ? '任务结果异常'
-        : message.metadata?.hasBusinessResult
-          ? '任务结果'
-          : '任务完成';
-
     return (
-      <div className={`user-chat-outcome-card ${outcomeTone}`}>
-        <div className="user-chat-outcome-header">
-          <Space direction="vertical" size={2}>
-            <Typography.Text strong>{title}</Typography.Text>
-            {resultTitle ? <Typography.Text type="secondary">{resultTitle}</Typography.Text> : null}
-          </Space>
-          <Space size={8} wrap>
-            {status ? (
-              <Tag color={getStatusTagColor(status)}>{getMessageStatusLabel(status)}</Tag>
-            ) : null}
-            {executionId ? <Tag>{executionId}</Tag> : null}
-          </Space>
-        </div>
-        {finalSummary ? (
-          <Typography.Paragraph className="user-chat-outcome-summary">
-            {finalSummary}
-          </Typography.Paragraph>
-        ) : null}
-        {!finalSummary && normalizedSummary && normalizedSummary !== primaryStructuredResult ? (
-          <Typography.Paragraph className="user-chat-outcome-summary">
-            {normalizedSummary}
-          </Typography.Paragraph>
-        ) : null}
-        {primaryStructuredResult ? (
-          <pre className="user-chat-outcome-pre structured">{primaryStructuredResult}</pre>
-        ) : finalResult ? (
-          <pre className="user-chat-outcome-pre">{finalResult}</pre>
-        ) : null}
-        {failureReason && failureReason !== finalSummary && failureReason !== finalResult ? (
-          <pre className="user-chat-outcome-pre error">{failureReason}</pre>
-        ) : null}
-        {errorMessage &&
-        errorMessage !== failureReason &&
-        errorMessage !== finalSummary &&
-        errorMessage !== finalResult ? (
-          <pre className="user-chat-outcome-pre error">{errorMessage}</pre>
-        ) : null}
-        {message.metadata?.downloadUrl || message.metadata?.temporalLink || executionId ? (
-          <Space wrap className="user-chat-outcome-actions">
-            {message.metadata?.downloadUrl ? (
-              <Button
-                size="small"
-                type="primary"
-                ghost
-                href={message.metadata.downloadUrl}
-                target="_blank"
-              >
-                下载结果
-              </Button>
-            ) : null}
-            {message.metadata?.temporalLink ? (
-              <Button size="small" href={message.metadata.temporalLink} target="_blank">
-                查看运行详情
-              </Button>
-            ) : null}
-            {executionId ? (
-              <Button size="small" onClick={() => navigate(`/executions/${executionId}`)}>
-                去执行详情
-              </Button>
-            ) : null}
-          </Space>
+      <>
+        <SharedTaskOutcomeCard
+          executionStatus={getMessageStatusLabel(status) || null}
+          executionId={executionId}
+          downloadUrl={message.metadata?.downloadUrl || partDownloadUrl}
+          temporalLink={message.metadata?.temporalLink || partDetailUrl}
+          executionDetailLink={executionId ? `/executions/${executionId}` : undefined}
+          browserExecutionMode={false}
+          shouldShowTakeoverCard={status === 'human_control'}
+          shouldShowErrorCard={status === 'failed'}
+          errorMessage={errorMessage}
+          failureReason={failureReason}
+          finalResult={displayFinalResult}
+          hasBusinessResult={message.metadata?.hasBusinessResult}
+          shouldShowStructuredResult={Boolean(
+            structuredResult &&
+              displayFinalResult &&
+              structuredResult !== displayFinalResult &&
+              structuredResult !== errorMessage
+          )}
+          structuredResultText={structuredResult}
+          waitingInputSummary={
+            status === 'waiting_input'
+              ? finalSummary || '还需要你补充以下信息后，任务才能继续执行。'
+              : undefined
+          }
+          isWaitingInput={status === 'waiting_input'}
+          isPendingApproval={status === 'pending_approval'}
+          showRunningState={status === 'running'}
+          summaryToDisplay={finalSummary || normalizedSummary || resultTitle || undefined}
+          waitingInputGroups={waitingInputGroups}
+          waitingInputItems={waitingInputItems}
+          approvalAction={(() => {
+            const action = actionLoadingByMessage[message.id];
+            return action === 'approve' || action === 'reject' ? action : null;
+          })()}
+          takeoverAction={actionLoadingByMessage[message.id] === 'resume' ? 'resume' : null}
+          onApproveExecution={() => {
+            if (executionId) {
+              void handleApprove(message.id, executionId);
+            }
+          }}
+          onRejectExecution={() => {
+            if (executionId) {
+              void handleReject(message.id, executionId);
+            }
+          }}
+          onResumeExecution={() => {
+            if (executionId) {
+              void handleResumeHumanControl(message.id, executionId);
+            }
+          }}
+        />
+        {status === 'waiting_input' && executionId ? (
+          <WaitingInputInlineForm
+            executionId={executionId}
+            sessionId={selectedSession?.id}
+            onSubmitted={(execution) => {
+              if (!selectedSession?.id) {
+                return;
+              }
+              updateMessage(selectedSession.id, message.id, {
+                metadata: buildSubmittedInputTaskPatch({
+                  executionId: execution.id,
+                  executionStatus: execution.status,
+                }),
+              });
+            }}
+          />
         ) : null}
         {artifacts.length > 0 ? (
           <Space wrap className="user-chat-outcome-actions">
@@ -1391,41 +1135,22 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
             <pre className="user-chat-outcome-pre">{supplementalResult}</pre>
           </details>
         ) : null}
-        {structuredResult &&
-        structuredResult !== primaryStructuredResult &&
-        structuredResult !== finalResult &&
-        structuredResult !== errorMessage ? (
-          <details className="user-chat-outcome-details">
-            <summary>查看结构化结果</summary>
-            <pre className="user-chat-outcome-pre">{structuredResult}</pre>
-          </details>
-        ) : null}
-      </div>
+      </>
     );
   };
 
   const renderProgressCard = (message: ChatMessage) => {
     const progressLogs = message.metadata?.progressLogs || [];
+    const status = resolveMessageTaskStatus(message);
     if (
       message.role !== 'assistant' ||
       message.metadata?.mode !== 'task' ||
       progressLogs.length === 0 ||
-      message.metadata?.taskStatus !== 'running'
+      status !== 'running'
     ) {
       return null;
     }
 
-    const stageLabelMap: Record<ChatProgressLog['stage'], string> = {
-      thought: '思考',
-      action: '行动',
-      observation: '观察',
-    };
-
-    const stageColorMap: Record<ChatProgressLog['stage'], string> = {
-      thought: 'processing',
-      action: 'blue',
-      observation: 'green',
-    };
     const currentProgress = progressLogs[progressLogs.length - 1];
 
     if (!currentProgress) {
@@ -1433,38 +1158,25 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     }
 
     return (
-      <div className="user-chat-progress-card">
-        <div className="user-chat-progress-current-header">
-          <Space size={8} align="center">
-            <ReloadOutlined spin className="user-chat-progress-running-icon" />
-            <Typography.Text strong>当前步骤</Typography.Text>
-          </Space>
-          <Space size={8} wrap>
-            <Tag>{progressLogs.length} 条</Tag>
-            <Tag color={stageColorMap[currentProgress.stage]}>
-              {stageLabelMap[currentProgress.stage]}
-            </Tag>
-          </Space>
-        </div>
-        <div className="user-chat-progress-current">
-          <Typography.Text className="user-chat-progress-current-text">
-            {currentProgress.text}
-          </Typography.Text>
-        </div>
-      </div>
+      <SharedTaskProgressCard currentProgressLog={currentProgress} isRunning />
     );
   };
 
   const renderMessage = (message: ChatMessage) => {
-    const statusLabel = getMessageStatusLabel(message.metadata?.taskStatus);
-    const statusColor = getStatusTagColor(message.metadata?.taskStatus);
-    const showStateCard = Boolean(resolveSpecialStateTitle(message));
-    const outcomeCard = renderOutcomeCard(message);
+    const resolvedTaskStatus = resolveMessageTaskStatus(message);
+    const statusLabel = getMessageStatusLabel(resolvedTaskStatus);
+    const statusColor = getStatusTagColor(resolvedTaskStatus);
+    const taskCard = renderTaskCard(message);
     const progressCard = renderProgressCard(message);
     const parsedContent = parseMessageContent(message.content);
     const plainContent = (
       message.role === 'assistant' ? parsedContent.answer : message.content
     ).trim();
+    const hasRenderableContentParts = Boolean(
+      message.contentParts?.some((part) =>
+        ['text', 'markdown', 'structured_result', 'deeplink', 'file_ref'].includes(part.type)
+      )
+    );
     const thoughtLogs = message.role === 'assistant' ? parsedContent.thoughts : [];
     const hasProgressLogs = Boolean(message.metadata?.progressLogs?.length);
     const showThoughtLogs = Boolean(
@@ -1474,14 +1186,17 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
       thoughtLogs.length > 0
     );
     const shouldShowMessageContent = Boolean(
-      plainContent &&
-      plainContent !== message.metadata?.finalResult?.trim() &&
-      plainContent !== message.metadata?.errorMessage?.trim() &&
+      (hasRenderableContentParts ||
+        (plainContent &&
+          plainContent !== message.metadata?.finalResult?.trim() &&
+          plainContent !== message.metadata?.errorMessage?.trim())) &&
       !(message.metadata?.mode === 'task' && hasProgressLogs)
     );
     const usage = message.metadata?.usage;
     const rateLimit = message.metadata?.rateLimit;
     const showMessageActions = message.role === 'assistant';
+    const senderLabel = message.role === 'user' ? '你' : 'AI';
+    const senderIcon = message.role === 'user' ? <UserOutlined /> : <RobotOutlined />;
 
     const handleCopyMessage = async () => {
       const copyTarget = [
@@ -1505,86 +1220,123 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     return (
       <List.Item key={message.id} className={`user-chat-message-row role-${message.role}`}>
         <div className={`user-chat-message-bubble role-${message.role}`}>
-          <Space className="user-chat-message-meta" size={8} wrap>
-            <Tag color={message.role === 'user' ? 'blue' : 'green'}>
-              {message.role === 'user' ? '你' : 'AI'}
-            </Tag>
-            <Typography.Text type="secondary">
-              {new Date(message.timestamp).toLocaleString()}
-            </Typography.Text>
-            {message.isStreaming ? <Tag color="processing">生成中</Tag> : null}
-            {statusLabel && statusColor ? <Tag color={statusColor}>{statusLabel}</Tag> : null}
-          </Space>
-          {showStateCard ? renderStateCard(message) : null}
-          {outcomeCard}
+          {taskCard}
           {progressCard}
           {showThoughtLogs ? (
-            <details className="user-chat-thoughts">
-              <summary>查看思考过程（{thoughtLogs.length} 条）</summary>
-              <div className="user-chat-thoughts-list">
-                {thoughtLogs.map((item, index) => (
-                  <div key={`${message.id}-thought-${index}`} className="user-chat-thought-item">
-                    {item}
-                  </div>
-                ))}
-              </div>
-            </details>
+            <SharedThoughtProcessPanel
+              thoughts={thoughtLogs}
+              expanded={expandedThoughtMessageId === message.id}
+              onToggle={() =>
+                setExpandedThoughtMessageId((current) => (current === message.id ? null : message.id))
+              }
+            />
           ) : null}
           {shouldShowMessageContent ? (
-            <Typography.Paragraph className="user-chat-message-content">
-              {plainContent}
-            </Typography.Paragraph>
-          ) : null}
-          {showMessageActions ? (
-            <div className="user-chat-message-actions">
-              <Space size={12} wrap>
-                <Button
-                  type="text"
-                  size="small"
-                  icon={<CopyOutlined />}
-                  onClick={() => {
-                    void handleCopyMessage();
-                  }}
-                >
-                  复制
-                </Button>
-                {usage ? (
-                  <Typography.Text type="secondary" className="user-chat-usage-text">
-                    Tokens: {usage.total_tokens} / 输入 {usage.prompt_tokens} / 输出{' '}
-                    {usage.completion_tokens}
-                    {usage.completion_tokens_details?.reasoning_tokens
-                      ? ` / 推理 ${usage.completion_tokens_details.reasoning_tokens}`
-                      : ''}
-                  </Typography.Text>
-                ) : null}
-                {rateLimit?.requests_remaining !== undefined ? (
-                  <Typography.Text type="secondary" className="user-chat-usage-text">
-                    请求剩余: {rateLimit.requests_remaining}
-                  </Typography.Text>
-                ) : null}
-                {rateLimit?.tokens_remaining !== undefined ? (
-                  <Typography.Text type="secondary" className="user-chat-usage-text">
-                    Token 剩余: {rateLimit.tokens_remaining}
-                  </Typography.Text>
-                ) : null}
-              </Space>
+            <div className="user-chat-message-content">
+              {hasRenderableContentParts ? (
+                <SharedContentPartsRenderer
+                  parts={message.contentParts}
+                  isStreaming={Boolean(message.isStreaming)}
+                  renderStructuredResult={message.metadata?.mode !== 'task'}
+                  renderDeeplink={message.metadata?.mode !== 'task'}
+                />
+              ) : (
+                <SharedMessageContentRenderer
+                  content={plainContent}
+                  mode={message.role === 'assistant' ? 'markdown' : 'plain'}
+                  isStreaming={Boolean(message.isStreaming)}
+                />
+              )}
             </div>
           ) : null}
+          <div className={`user-chat-message-footer role-${message.role}`}>
+            <div className={`user-chat-message-meta role-${message.role}`}>
+              <span className="user-chat-message-meta-item user-chat-message-meta-sender">
+                {senderIcon}
+                <span>{senderLabel}</span>
+              </span>
+              <span className="user-chat-message-meta-item user-chat-message-meta-time">
+                <ClockCircleOutlined />
+                <span>{formatMessageTimestamp(message.timestamp)}</span>
+              </span>
+              {message.isStreaming ? (
+                <span className="user-chat-message-meta-item user-chat-message-meta-status status-processing">
+                  <LoadingOutlined spin />
+                  <span>生成中</span>
+                </span>
+              ) : null}
+              {statusLabel && statusColor ? (
+                <span className={`user-chat-message-meta-item user-chat-message-meta-status status-${statusColor}`}>
+                  <span className="user-chat-message-status-dot" />
+                  <span>{statusLabel}</span>
+                </span>
+              ) : null}
+            </div>
+            {showMessageActions ? (
+              <div className="user-chat-message-actions">
+                <SharedChatMessageActions
+                  usage={usage}
+                  onCopy={() => {
+                    void handleCopyMessage();
+                  }}
+                  extraContent={
+                    <>
+                      {rateLimit?.requests_remaining !== undefined ? (
+                        <Typography.Text type="secondary" className="user-chat-usage-text">
+                          请求剩余: {rateLimit.requests_remaining}
+                        </Typography.Text>
+                      ) : null}
+                      {rateLimit?.tokens_remaining !== undefined ? (
+                        <Typography.Text type="secondary" className="user-chat-usage-text">
+                          Token 剩余: {rateLimit.tokens_remaining}
+                        </Typography.Text>
+                      ) : null}
+                    </>
+                  }
+                />
+              </div>
+            ) : null}
+          </div>
         </div>
       </List.Item>
     );
   };
 
+  const showEmbeddedAlertPanel = Boolean(
+    embedded &&
+      (modelsQuery.error ||
+        sessionsQuery.error ||
+        selectedSessionHistoryQuery.error ||
+        error)
+  );
+
   return (
-    <div
-      className={`user-chat-page${embedded ? ' embedded' : ''}${isSessionListCollapsed ? ' sidebar-collapsed' : ''}`}
-    >
+    <div className={`user-chat-page${embedded ? ' embedded' : ''}`}>
+      {!embedded && isSessionListCollapsed ? (
+        <div className="user-chat-sidebar-rail">
+          <Button
+            type="text"
+            icon={<MenuUnfoldOutlined />}
+            onClick={() => setIsSessionListCollapsed(false)}
+            className="user-chat-sidebar-toggle"
+            title="展开会话管理"
+          />
+          <Button
+            type="primary"
+            shape="circle"
+            icon={<PlusOutlined />}
+            onClick={handleCreateSession}
+            title="新建会话"
+          />
+        </div>
+      ) : null}
+
       {showSessionSidebar ? (
         <Card className="user-chat-sidebar">
           <div className="user-chat-sidebar-header">
             <div>
               <Typography.Title level={4} style={{ margin: 0 }}>
-                会话列表
+                会话管理
               </Typography.Title>
               <Typography.Text type="secondary">查看历史记录并切换任务上下文</Typography.Text>
             </div>
@@ -1594,7 +1346,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
                 icon={<MenuFoldOutlined />}
                 onClick={() => setIsSessionListCollapsed(true)}
                 className="user-chat-sidebar-toggle"
-                title="折叠会话列表"
+                title="收起会话管理"
               />
               <Button type="primary" icon={<PlusOutlined />} onClick={handleCreateSession}>
                 新建会话
@@ -1638,64 +1390,47 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
       ) : null}
 
       <div className="user-chat-main">
-        <Card className={`user-chat-status-panel${embedded ? ' embedded' : ''}`}>
-          <Space direction="vertical" size={12} style={{ width: '100%' }}>
-            {embedded ? (
-              <div className="user-chat-embedded-header">
-                <div className="user-chat-embedded-title-block">
-                  <Typography.Title level={4} style={{ margin: 0 }}>
-                    AI 对话
-                  </Typography.Title>
-                  <Typography.Text type="secondary">
-                    复用 5173 的沉浸式聊天窗体，保留任务模式、语音输入和模型切换能力。
-                  </Typography.Text>
-                </div>
-                <Space size={[8, 8]} wrap className="user-chat-embedded-actions">
-                  {selectedSession ? (
-                    <Tag className="user-chat-current-session-tag">
-                      {selectedSession.title || '新对话'}
-                    </Tag>
-                  ) : null}
-                  {lastEvent ? (
-                    <Tag color={getEventTagColor(lastEvent.type)}>最近事件: {lastEvent.type}</Tag>
-                  ) : null}
-                  <Button onClick={() => navigate('/chat')}>打开完整页</Button>
-                  <Button type="primary" icon={<PlusOutlined />} onClick={handleCreateSession}>
-                    新建会话
-                  </Button>
-                </Space>
-              </div>
-            ) : (
-              <>
-                <div className="user-chat-status-heading">
-                  <Space align="start" size={12}>
-                    <Button
-                      type="text"
-                      icon={isSessionListCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-                      onClick={() => setIsSessionListCollapsed((current) => !current)}
-                      className="user-chat-sidebar-toggle"
-                      title={isSessionListCollapsed ? '展开会话列表' : '折叠会话列表'}
-                    />
-                    <div>
-                      <Typography.Title level={3} style={{ margin: 0 }}>
-                        AI 对话
-                      </Typography.Title>
-                      <Typography.Paragraph type="secondary" style={{ margin: '4px 0 0' }}>
-                        网页对话页已对齐悬浮对话框视觉，并支持语音输入与会话折叠。
-                      </Typography.Paragraph>
-                    </div>
-                  </Space>
-                  {selectedSession ? (
-                    <Tag className="user-chat-current-session-tag">
-                      {selectedSession.title || '新对话'}
-                    </Tag>
-                  ) : null}
-                </div>
-                {lastEvent ? (
-                  <Tag color={getEventTagColor(lastEvent.type)}>最近事件: {lastEvent.type}</Tag>
-                ) : null}
-              </>
-            )}
+        {showEmbeddedAlertPanel ? (
+          <Card className={`user-chat-status-panel${embedded ? ' embedded' : ''}`}>
+            <Space direction="vertical" size={12} style={{ width: '100%' }}>
+              {modelsQuery.error ? (
+                <Alert
+                  type="error"
+                  showIcon
+                  message={
+                    modelsQuery.error instanceof Error
+                      ? modelsQuery.error.message
+                      : '模型列表加载失败'
+                  }
+                />
+              ) : null}
+              {sessionsQuery.error ? (
+                <Alert
+                  type="error"
+                  showIcon
+                  message={
+                    sessionsQuery.error instanceof Error
+                      ? sessionsQuery.error.message
+                      : '会话列表加载失败'
+                  }
+                />
+              ) : null}
+              {selectedSessionHistoryQuery.error ? (
+                <Alert
+                  type="warning"
+                  showIcon
+                  message={
+                    selectedSessionHistoryQuery.error instanceof Error
+                      ? selectedSessionHistoryQuery.error.message
+                      : '历史消息加载失败'
+                  }
+                />
+              ) : null}
+              {error ? <Alert type="error" showIcon message={error} /> : null}
+            </Space>
+          </Card>
+        ) : (
+          <div className="user-chat-alert-stack">
             {modelsQuery.error ? (
               <Alert
                 type="error"
@@ -1730,8 +1465,8 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
               />
             ) : null}
             {error ? <Alert type="error" showIcon message={error} /> : null}
-          </Space>
-        </Card>
+          </div>
+        )}
 
         <Card className="user-chat-thread" styles={{ body: { paddingBottom: 8 } }}>
           {selectedSessionHistoryQuery.isLoading && activeMessages.length === 0 ? (
@@ -1748,6 +1483,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
           draft={draft}
           onDraftChange={setDraft}
           onSend={handleSend}
+          onStop={handleStopStreaming}
           onNewSession={handleCreateSession}
           chatMode={chatMode}
           onChatModeChange={setChatMode}
@@ -1760,6 +1496,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
           placeholder={placeholder}
         />
       </div>
+
     </div>
   );
 }

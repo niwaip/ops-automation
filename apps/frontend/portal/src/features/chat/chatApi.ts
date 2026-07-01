@@ -1,20 +1,10 @@
 /**
  * Chat API
- * 聊天API调用封装
+ * portal 侧仅保留上传/转写与 Date 适配，协议归一化复用 user-core。
  */
 
 import { createChatApi } from '@ops/user-core';
-import {
-  StreamEvent,
-  ChatRequest,
-  AIModel,
-  UploadedFile,
-  StreamEventType,
-  ChatMessage,
-  LLMRateLimit,
-  LLMUsage,
-  PromptDebugPayload,
-} from './types';
+import { StreamEvent, ChatRequest, AIModel, UploadedFile } from './types';
 import { browserStreamingTransport } from '@/adapters/streaming/browserStreamingTransport';
 import { apiClient, ensureFreshAccessToken, refreshAccessToken } from '@/shared/api/http/client';
 import { runtimeConfig } from '@/shared/config/runtime';
@@ -33,260 +23,6 @@ const asRecord = (value: unknown): Record<string, unknown> | undefined => {
 
 const asString = (value: unknown): string | undefined =>
   typeof value === 'string' && value.trim() ? value : undefined;
-
-const asStringArray = (value: unknown): string[] | undefined => {
-  if (!Array.isArray(value)) {
-    return undefined;
-  }
-
-  return value.filter((item): item is string => typeof item === 'string');
-};
-
-const isStreamEventType = (value: unknown): value is StreamEventType =>
-  typeof value === 'string' && Object.values(StreamEventType).includes(value as StreamEventType);
-
-const normalizeUsage = (value: unknown): LLMUsage | undefined => {
-  const record = asRecord(value);
-  if (
-    !record ||
-    typeof record.prompt_tokens !== 'number' ||
-    typeof record.completion_tokens !== 'number' ||
-    typeof record.total_tokens !== 'number'
-  ) {
-    return undefined;
-  }
-
-  const completionTokenDetails = asRecord(record.completion_tokens_details);
-  return {
-    prompt_tokens: record.prompt_tokens,
-    completion_tokens: record.completion_tokens,
-    total_tokens: record.total_tokens,
-    completion_tokens_details:
-      completionTokenDetails && typeof completionTokenDetails.reasoning_tokens === 'number'
-        ? { reasoning_tokens: completionTokenDetails.reasoning_tokens }
-        : undefined,
-  };
-};
-
-const normalizeRateLimit = (value: unknown): LLMRateLimit | undefined => {
-  const record = asRecord(value);
-  if (!record) {
-    return undefined;
-  }
-
-  return {
-    requests_limit: typeof record.requests_limit === 'number' ? record.requests_limit : undefined,
-    requests_remaining:
-      typeof record.requests_remaining === 'number' ? record.requests_remaining : undefined,
-    requests_reset: asString(record.requests_reset),
-    tokens_limit: typeof record.tokens_limit === 'number' ? record.tokens_limit : undefined,
-    tokens_remaining:
-      typeof record.tokens_remaining === 'number' ? record.tokens_remaining : undefined,
-    tokens_reset: asString(record.tokens_reset),
-  };
-};
-
-const normalizePromptDebugPayload = (value: unknown): PromptDebugPayload | undefined => {
-  const record = asRecord(value);
-  if (!record) {
-    return undefined;
-  }
-
-  const systemPrompt = asString(record?.systemPrompt);
-  const userPrompt = asString(record?.userPrompt);
-  if (!systemPrompt || !userPrompt) {
-    return undefined;
-  }
-
-  const llmRequestMessages: PromptDebugPayload['llmRequestMessages'] = Array.isArray(
-    record.llmRequestMessages
-  )
-    ? record.llmRequestMessages.reduce<NonNullable<PromptDebugPayload['llmRequestMessages']>>(
-        (acc, item) => {
-          const message = asRecord(item);
-          const role = message?.role;
-          const content = asString(message?.content);
-          if ((role === 'system' || role === 'user' || role === 'assistant') && content) {
-            acc.push({ role, content });
-          }
-          return acc;
-        },
-        []
-      )
-    : undefined;
-  const llmCalls: PromptDebugPayload['llmCalls'] = Array.isArray(record.llmCalls)
-    ? record.llmCalls.reduce<NonNullable<PromptDebugPayload['llmCalls']>>((acc, item) => {
-        const call = asRecord(item);
-        const stage = asString(call?.stage);
-        const label = asString(call?.label);
-        if (!call || !stage || !label) {
-          return acc;
-        }
-
-        const requestMessages = Array.isArray(call.requestMessages)
-          ? call.requestMessages.reduce<
-              NonNullable<NonNullable<PromptDebugPayload['llmCalls']>[number]['requestMessages']>
-            >((messages, messageItem) => {
-              const message = asRecord(messageItem);
-              const role = message?.role;
-              const content = asString(message?.content);
-              if ((role === 'system' || role === 'user' || role === 'assistant') && content) {
-                messages.push({ role, content });
-              }
-              return messages;
-            }, [])
-          : undefined;
-
-        acc.push({
-          stage,
-          label,
-          modelId: asString(call.modelId),
-          requestMessages,
-          responseText: asString(call.responseText),
-          note: asString(call.note),
-        });
-        return acc;
-      }, [])
-    : undefined;
-
-  return {
-    systemPrompt,
-    userPrompt,
-    debugSource:
-      record.debugSource === 'planner' || record.debugSource === 'react-engine'
-        ? record.debugSource
-        : undefined,
-    systemPromptSectionKeys: asStringArray(record.systemPromptSectionKeys),
-    systemPromptSectionSources: asStringArray(record.systemPromptSectionSources),
-    userPromptSectionKeys: asStringArray(record.userPromptSectionKeys),
-    userPromptSectionSources: asStringArray(record.userPromptSectionSources),
-    modelId: asString(record.modelId),
-    llmRequestMessages,
-    llmResponseText: asString(record.llmResponseText),
-    llmCalls,
-    notes: asStringArray(record.notes),
-  };
-};
-
-const normalizeMessageMetadata = (value: unknown): ChatMessage['metadata'] | undefined => {
-  const record = asRecord(value);
-  if (!record) {
-    return undefined;
-  }
-
-  const missingInputs: NonNullable<ChatMessage['metadata']>['missingInputs'] = Array.isArray(
-    record.missingInputs
-  )
-    ? record.missingInputs.reduce<
-        NonNullable<NonNullable<ChatMessage['metadata']>['missingInputs']>
-      >((acc, item) => {
-        const input = asRecord(item);
-        if (!input) {
-          return acc;
-        }
-        acc.push({
-          name: asString(input.name),
-          description: asString(input.description),
-          missing: typeof input.missing === 'boolean' ? input.missing : undefined,
-        });
-        return acc;
-      }, [])
-    : undefined;
-  const mode = record.mode === 'chat' || record.mode === 'task' ? record.mode : undefined;
-  const taskStatus = record.taskStatus;
-  const progressLogs: NonNullable<ChatMessage['metadata']>['progressLogs'] = Array.isArray(
-    record.progressLogs
-  )
-    ? record.progressLogs.reduce<NonNullable<NonNullable<ChatMessage['metadata']>['progressLogs']>>(
-        (acc, item) => {
-          const progress = asRecord(item);
-          const stage = progress?.stage;
-          const text = asString(progress?.text);
-          if ((stage === 'thought' || stage === 'action' || stage === 'observation') && text) {
-            acc.push({ stage, text });
-          }
-          return acc;
-        },
-        []
-      )
-    : undefined;
-
-  return {
-    mode,
-    showThinking: typeof record.showThinking === 'boolean' ? record.showThinking : undefined,
-    usage: normalizeUsage(record.usage),
-    rateLimit: normalizeRateLimit(record.rateLimit),
-    skillUsed: asString(record.skillUsed),
-    params: asRecord(record.params),
-    files: asStringArray(record.files),
-    fileUrl: asString(record.fileUrl),
-    downloadUrl: asString(record.downloadUrl),
-    temporalLink: asString(record.temporalLink),
-    missingInputs,
-    taskStatus:
-      taskStatus === 'waiting_input' ||
-      taskStatus === 'pending_approval' ||
-      taskStatus === 'running' ||
-      taskStatus === 'completed' ||
-      taskStatus === 'failed' ||
-      taskStatus === 'human_control'
-        ? taskStatus
-        : undefined,
-    executionId: asString(record.executionId),
-    executionStatus: asString(record.executionStatus),
-    finalResult: asString(record.finalResult),
-    finalResultData: record.finalResultData,
-    finalSummary: asString(record.finalSummary),
-    progressLogs,
-    errorMessage: asString(record.errorMessage),
-    hasBusinessResult:
-      typeof record.hasBusinessResult === 'boolean' ? record.hasBusinessResult : undefined,
-    promptDebug: normalizePromptDebugPayload(record.promptDebug),
-  };
-};
-
-const normalizeChatMessage = (value: unknown): ChatMessage | null => {
-  const record = asRecord(value);
-  if (!record) {
-    return null;
-  }
-
-  const id = asString(record?.id);
-  const role = record?.role;
-  const content = typeof record?.content === 'string' ? record.content : '';
-  if (!id || (role !== 'user' && role !== 'assistant' && role !== 'system')) {
-    return null;
-  }
-
-  const timestampValue = record.timestamp ?? record.createdAt ?? Date.now();
-  const timestamp =
-    timestampValue instanceof Date ? timestampValue : new Date(String(timestampValue));
-
-  return {
-    id,
-    sessionId: asString(record.sessionId) ?? '',
-    role,
-    content,
-    timestamp: Number.isNaN(timestamp.getTime()) ? new Date() : timestamp,
-    metadata: normalizeMessageMetadata(record.metadata),
-    isStreaming: typeof record.isStreaming === 'boolean' ? record.isStreaming : undefined,
-  };
-};
-
-const normalizeStreamEvent = (value: unknown): StreamEvent | null => {
-  const record = asRecord(value);
-  const type = record?.type;
-  if (!record || !isStreamEventType(type) || typeof record.content !== 'string') {
-    return null;
-  }
-
-  return {
-    type,
-    content: record.content,
-    data: asRecord(record.data),
-    iteration: typeof record.iteration === 'number' ? record.iteration : undefined,
-  };
-};
 
 const coreChatApi = createChatApi(apiClient, runtimeConfig);
 
@@ -347,22 +83,17 @@ export function streamChat(
   onError?: (error: Error) => void,
   onComplete?: () => void
 ): () => void {
-  const abortController = new AbortController();
+  const streamHandle = coreChatApi.stream(
+    browserStreamingTransport,
+    useAuthStore.getState().accessToken,
+    request,
+    (event) => onEvent(event as StreamEvent)
+  );
 
   // 异步执行流式请求
   void (async () => {
     try {
-      await coreChatApi.stream(
-        browserStreamingTransport,
-        useAuthStore.getState().accessToken,
-        request,
-        (rawEvent) => {
-          const event = normalizeStreamEvent(rawEvent);
-          if (event) {
-            onEvent(event);
-          }
-        }
-      );
+      await streamHandle.promise;
       onComplete?.();
     } catch (error) {
       // 如果是中止错误，不触发 onError
@@ -376,7 +107,7 @@ export function streamChat(
 
   // 返回中止函数
   return () => {
-    abortController.abort();
+    streamHandle.abort();
   };
 }
 
@@ -458,20 +189,5 @@ export async function transcribeAudio(file: Blob | File, modelId: string): Promi
   } catch (error) {
     console.error('Failed to transcribe audio:', error);
     throw error;
-  }
-}
-
-/**
- * 获取聊天历史
- */
-export async function getChatHistory(sessionId: string): Promise<ChatMessage[]> {
-  try {
-    const messages = await coreChatApi.getChatHistory(sessionId);
-    return messages
-      .map((message) => normalizeChatMessage(message))
-      .filter((message): message is ChatMessage => message !== null);
-  } catch (error) {
-    console.error('Failed to get chat history:', error);
-    return [];
   }
 }

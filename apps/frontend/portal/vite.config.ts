@@ -37,12 +37,38 @@ const resolveDependencyEntry = (relativePath: string): string => {
   return path.resolve(__dirname, '../../../', relativePath);
 };
 
+const isDockerEnv = Boolean(process.env.DOCKER_ENV);
+
+const resolveUserCoreEntry = (): string =>
+  isDockerEnv
+    ? resolveDependencyEntry('./node_modules/@ops/user-core/dist/index.js')
+    : path.resolve(__dirname, '../../../packages/user-core/src/index.ts');
+
+const resolveChatWebEntry = (): string => path.resolve(__dirname, '../shared/chat-web');
+const resolveAppRootEntry = (): string => path.resolve(__dirname, '.');
+
 export default defineConfig({
   plugins: [react()],
+  optimizeDeps: {
+    exclude: ['@ops/user-core', '@ops/backend-ai-chat-protocol', '@ops/backend-execution-core'],
+    esbuildOptions: {
+      preserveSymlinks: true,
+    },
+  },
   resolve: {
+    preserveSymlinks: true,
     alias: {
       '@': path.resolve(__dirname, './src'),
-      '@ops/user-core': path.resolve(__dirname, '../../../packages/user-core/src/index.ts'),
+      '@chat-web': resolveChatWebEntry(),
+      '@ops/user-core': resolveUserCoreEntry(),
+      '@ops/backend-ai-chat-protocol': path.resolve(
+        __dirname,
+        '../../../packages/backend-contracts/ai-chat-protocol/src/index.ts'
+      ),
+      '@ops/backend-execution-core': path.resolve(
+        __dirname,
+        '../../../packages/backend-contracts/execution-core/src/index.ts'
+      ),
       axios: resolveDependencyEntry('./node_modules/axios/index.js'),
       'zustand/vanilla': resolveDependencyEntry('./node_modules/zustand/vanilla.js'),
     },
@@ -50,6 +76,9 @@ export default defineConfig({
   server: {
     port: 5173,
     host: '0.0.0.0',
+    fs: {
+      allow: [resolveAppRootEntry(), resolveChatWebEntry()],
+    },
     allowedHosts: ['portal', 'ops-portal', 'host.docker.internal'],
     // Force disable cache for development
     headers: {

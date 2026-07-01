@@ -15,9 +15,11 @@ Carbone Office Add-in Wizard
    3 = Install Word add-in
    4 = Install Excel add-in
    5 = Install PowerPoint add-in
-   6 = Deep diagnosis
+   6 = Install Word + Excel
+   7 = Deep diagnosis
 
 5. Notes
    - The wizard downloads the latest certificate and manifest from the running add-in service.
+   - If -HostName is omitted, the script defaults to localhost. Use an explicit LAN host only when remote access is required.
    - The host used in Office must exist in the certificate SAN.
    - Old scripts are still present only as compatibility wrappers.

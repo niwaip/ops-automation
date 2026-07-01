@@ -340,7 +340,7 @@ export class ChatOrchestratorService {
                 ? `任务已创建，已应用部分默认参数，但仍需审批。\n\n当前审批状态: ${execution.approvalStatus || CONTROL_PLANE_APPROVAL_STATUS.PENDING}\n执行单 ID: ${execution.id}`
                 : `任务已创建，等待审批。\n\n当前审批状态: ${execution.approvalStatus || CONTROL_PLANE_APPROVAL_STATUS.PENDING}\n执行单 ID: ${execution.id}`;
             yield {
-              type: StreamEventType.RESULT,
+              type: StreamEventType.PENDING_APPROVAL,
               content: approvalIntro,
               data: {
                 executionId: execution.id,

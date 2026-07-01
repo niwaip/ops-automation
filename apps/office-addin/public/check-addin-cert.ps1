@@ -1,5 +1,5 @@
 param(
-    [string]$HostName = "192.168.100.143",
+    [string]$HostName = "localhost",
     [int]$AddinPort = 3000,
     [int]$ApiPort = 3443,
     [string]$OutputDir = "$env:TEMP\ops-addin-cert-check",

@@ -83,7 +83,6 @@ import {
 } from '../lib/detailView';
 import {
   normalizeRequiredInputValues,
-  renderRequiredInputField,
   type RequiredInputField,
 } from '../lib/inputFields';
 import { renderJsonValue } from '../lib/json';
@@ -111,10 +110,10 @@ import {
 } from '@/shared/lib/executionStatusMeta';
 import {
   buildWaitingInputDisplayGroups,
-  resolveWaitingInputDisplayLabel,
 } from '@/shared/lib/waitingInputDisplay';
 import LiveSessionPreviewCard from '../../../components/runtime/LiveSessionPreviewCard';
 import InlineRecoveryPanel from '../components/InlineRecoveryPanel';
+import WaitingInputActionPanel from '../components/WaitingInputActionPanel';
 import { usePreferencesStore } from '@/shared/store/preferencesStore';
 
 const { Title, Text } = Typography;
@@ -699,9 +698,14 @@ const ExecutionDetailPage: React.FC = () => {
     () => sortedExecutionPhases.length === 0,
     [sortedExecutionPhases]
   );
-  const semanticOverviewCard: React.ReactNode = semantic ? (
+  const semanticOverviewCard: React.ReactNode =
+    semantic && execution?.status !== 'waiting_input' ? (
     <SemanticOverviewCard semantic={semantic} text={text} />
-  ) : null;
+    ) : null;
+  const waitingInputSummary =
+    typeof semantic?.summary === 'string' && semantic.summary.trim()
+      ? semantic.summary.trim()
+      : text.waitingInputDesc;
   const { data: runtimeSession } = useQuery(
     ['execution-runtime-session', executionRuntimeSessionId],
     () => runtimeSessionApi.getByIdOrExecutionId(executionRuntimeSessionId!, execution?.id),
@@ -863,6 +867,12 @@ const ExecutionDetailPage: React.FC = () => {
     return meaningfulEntries[meaningfulEntries.length - 1];
   }, [sortedExecutionPhases]);
   const shouldShowCurrentPhaseInfo = Boolean(
+    execution &&
+    (execution.status === 'running' ||
+      execution.status === 'human_control' ||
+      execution.status === 'failed')
+  );
+  const shouldShowLiveProgressInfo = Boolean(
     execution &&
     (execution.status === 'running' ||
       execution.status === 'human_control' ||
@@ -1468,12 +1478,12 @@ const ExecutionDetailPage: React.FC = () => {
                 {`${loopSummary.manualHandledCount} ${isEnglish ? 'items' : '条'}`}
               </Descriptions.Item>
             ) : null}
-            {currentPhase ? (
+            {shouldShowLiveProgressInfo && currentPhase ? (
               <Descriptions.Item label={text.currentPhase}>
                 {formatPhaseDisplayName(currentPhase, isEnglish, activityProgressCurrent + 1)}
               </Descriptions.Item>
             ) : null}
-            {currentExecutionStep ? (
+            {shouldShowLiveProgressInfo && currentExecutionStep ? (
               <Descriptions.Item label={text.currentStepLabel}>
                 {currentExecutionStep.name || `${text.step} ${currentExecutionStep.stepIndex + 1}`}
               </Descriptions.Item>
@@ -2033,141 +2043,32 @@ const ExecutionDetailPage: React.FC = () => {
           </Space>
         </Card>
       ) : execution.status === 'waiting_input' && waitingInputStep ? (
-        <Card
+        <WaitingInputActionPanel
           title={text.operationsArea}
-          size="small"
-          style={{ marginBottom: 16 }}
-          styles={{ body: { padding: 16 } }}
-        >
-          <Alert
-            type="warning"
-            showIcon
-            style={{ marginBottom: 16 }}
-            message={text.waitingInput}
-            description={
-              <Space direction="vertical" size={8}>
-                <Text>{text.waitingInputDesc}</Text>
-                {semantic?.summary ? (
-                  <Text type="secondary">{`${text.waitingInputSemanticHint}: ${semantic.summary}`}</Text>
-                ) : null}
-              </Space>
+          cardSize="small"
+          summaryText={waitingInputSummary}
+          requiredInputs={requiredInputs}
+          requiredInputGroups={requiredInputGroups}
+          form={form}
+          submitLoading={submitInputMutation.isLoading}
+          onSubmit={(values) => {
+            try {
+              handleSubmitInput(
+                normalizeRequiredInputValues(values, requiredInputs, { treatArrayAsJson: true })
+              );
+            } catch (error) {
+              void message.error(error instanceof Error ? error.message : text.invalidJson);
             }
-          />
-          <Form
-            form={form}
-            layout="vertical"
-            initialValues={requiredInputs.reduce<Record<string, unknown>>((acc, field) => {
-              acc[field.name] = field.value;
-              return acc;
-            }, {})}
-            onFinish={(values: Record<string, unknown>) => {
-              try {
-                handleSubmitInput(
-                  normalizeRequiredInputValues(values, requiredInputs, { treatArrayAsJson: true })
-                );
-              } catch (error) {
-                void message.error(error instanceof Error ? error.message : text.invalidJson);
-              }
-            }}
-          >
-            {requiredInputGroups.length > 0 ? (
-              <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                {requiredInputGroups.map((group) => (
-                  <Card
-                    key={group.label}
-                    size="small"
-                    title={group.label}
-                    style={{ borderRadius: 12, background: 'var(--bg-card)' }}
-                  >
-                    {group.items.map((field) => (
-                      <React.Fragment key={field.name}>
-                        <Form.Item
-                          name={field.name}
-                          label={`${resolveWaitingInputDisplayLabel(field)} (${field.type})`}
-                          extra={field.description || `${text.source}: ${field.source}`}
-                          rules={[
-                            {
-                              required: field.required,
-                              message: `${text.provideField} ${resolveWaitingInputDisplayLabel(field)}`,
-                            },
-                          ]}
-                          valuePropName={
-                            field.type.toLowerCase() === 'boolean' ? 'checked' : 'value'
-                          }
-                        >
-                          {renderRequiredInputField(field, {
-                            jsonPlaceholder: text.enterJsonString,
-                            textPlaceholderPrefix: text.enterField,
-                            treatArrayAsJson: true,
-                          })}
-                        </Form.Item>
-                        {field.needs_confirmation ? (
-                          <Tag color="gold" style={{ marginBottom: 12 }}>
-                            待确认
-                          </Tag>
-                        ) : null}
-                      </React.Fragment>
-                    ))}
-                  </Card>
-                ))}
-              </Space>
-            ) : (
-              requiredInputs.map((field) => (
-                <React.Fragment key={field.name}>
-                  <Form.Item
-                    name={field.name}
-                    label={`${resolveWaitingInputDisplayLabel(field)} (${field.type})`}
-                    extra={field.description || `${text.source}: ${field.source}`}
-                    rules={[
-                      {
-                        required: field.required,
-                        message: `${text.provideField} ${resolveWaitingInputDisplayLabel(field)}`,
-                      },
-                    ]}
-                    valuePropName={field.type.toLowerCase() === 'boolean' ? 'checked' : 'value'}
-                  >
-                    {renderRequiredInputField(field, {
-                      jsonPlaceholder: text.enterJsonString,
-                      textPlaceholderPrefix: text.enterField,
-                      treatArrayAsJson: true,
-                    })}
-                  </Form.Item>
-                  {field.needs_confirmation ? (
-                    <Tag color="gold" style={{ marginBottom: 12 }}>
-                      待确认
-                    </Tag>
-                  ) : null}
-                </React.Fragment>
-              ))
-            )}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                flexWrap: 'wrap',
-                gap: 12,
-                paddingTop: 12,
-                borderTop: '1px solid var(--bg-secondary)',
-              }}
-            >
-              <Text type="secondary" style={{ fontSize: 13 }}>
-                {text.waitingInputDesc}
-              </Text>
-              <Space wrap size={[8, 8]}>
-                <Button
-                  type="primary"
-                  icon={<ThunderboltOutlined />}
-                  htmlType="submit"
-                  loading={submitInputMutation.isLoading}
-                >
-                  {text.submitAndResume}
-                </Button>
-                <Button onClick={() => form.resetFields()}>{text.reset}</Button>
-              </Space>
-            </div>
-          </Form>
-        </Card>
+          }}
+          onReset={() => form.resetFields()}
+          submitLabel={text.submitAndResume}
+          resetLabel={text.reset}
+          provideFieldPrefix={text.provideField}
+          sourceLabel={text.source}
+          enterJsonString={text.enterJsonString}
+          enterFieldPrefix={text.enterField}
+          confirmTagLabel={isEnglish ? 'Needs confirmation' : '待确认'}
+        />
       ) : (
         <Card
           title={text.operationsArea}
@@ -2179,6 +2080,48 @@ const ExecutionDetailPage: React.FC = () => {
         </Card>
       )
     ) : null;
+  const nonBrowserExecutionInfoCard: React.ReactNode = !isBrowserExecution ? (
+    <Card style={{ marginBottom: 16 }}>
+      <Descriptions column={2}>
+        <Descriptions.Item label={text.status}>
+          <Tag color={statusColors[execution.status]}>{statusLabels[execution.status]}</Tag>
+        </Descriptions.Item>
+        <Descriptions.Item label={text.createdAt}>
+          {new Date(execution.createdAt).toLocaleString()}
+        </Descriptions.Item>
+        {execution.startedAt ? (
+          <Descriptions.Item label={text.startedAt}>
+            {new Date(execution.startedAt).toLocaleString()}
+          </Descriptions.Item>
+        ) : null}
+        {execution.endedAt ? (
+          <Descriptions.Item label={text.endedAt}>
+            {new Date(execution.endedAt).toLocaleString()}
+          </Descriptions.Item>
+        ) : null}
+        {execution.failureReason ? (
+          <Descriptions.Item label={text.failureReason} span={2}>
+            <Text type="danger">{execution.failureReason}</Text>
+          </Descriptions.Item>
+        ) : null}
+        {execution.failureCode ? (
+          <Descriptions.Item label={text.failureCode}>
+            <Text type="danger">{execution.failureCode}</Text>
+          </Descriptions.Item>
+        ) : null}
+        {executionInfoTemporalLink ? (
+          <Descriptions.Item label={isEnglish ? 'Temporal Link' : 'Temporal 链接'} span={2}>
+            <a href={executionInfoTemporalLink} target="_blank" rel="noopener noreferrer">
+              <Space>
+                <ThunderboltOutlined />
+                {executionInfoTemporalLink}
+              </Space>
+            </a>
+          </Descriptions.Item>
+        ) : null}
+      </Descriptions>
+    </Card>
+  ) : null;
 
   return (
     <div style={{ padding: 16 }}>
@@ -2203,6 +2146,8 @@ const ExecutionDetailPage: React.FC = () => {
       </div>
 
       {isBrowserExecution ? browserSummaryCard : null}
+
+      {nonBrowserExecutionInfoCard}
 
       {/* Takeover Alert */}
       {!isBrowserExecution && execution.status === 'human_control' ? (
@@ -2285,199 +2230,31 @@ const ExecutionDetailPage: React.FC = () => {
       ) : null}
 
       {!isBrowserExecution && execution.status === 'waiting_input' && waitingInputStep ? (
-        <Card title={text.missingInputRequired} style={{ marginBottom: 16 }}>
-          <Alert
-            type="warning"
-            showIcon
-            style={{ marginBottom: 16 }}
-            message={text.waitingInput}
-            description={
-              <Space direction="vertical" size={8}>
-                <Text>{text.waitingInputDesc}</Text>
-                {semantic?.summary ? (
-                  <Text type="secondary">{`${text.waitingInputSemanticHint}: ${semantic.summary}`}</Text>
-                ) : null}
-              </Space>
+        <WaitingInputActionPanel
+          title={text.missingInputRequired}
+          summaryText={waitingInputSummary}
+          requiredInputs={requiredInputs}
+          requiredInputGroups={requiredInputGroups}
+          form={form}
+          submitLoading={submitInputMutation.isLoading}
+          onSubmit={(values) => {
+            try {
+              handleSubmitInput(
+                normalizeRequiredInputValues(values, requiredInputs, { treatArrayAsJson: true })
+              );
+            } catch (error) {
+              void message.error(error instanceof Error ? error.message : text.invalidJson);
             }
-          />
-          <Form
-            form={form}
-            layout="vertical"
-            initialValues={requiredInputs.reduce<Record<string, unknown>>((acc, field) => {
-              acc[field.name] = field.value;
-              return acc;
-            }, {})}
-            onFinish={(values: Record<string, unknown>) => {
-              try {
-                handleSubmitInput(
-                  normalizeRequiredInputValues(values, requiredInputs, { treatArrayAsJson: true })
-                );
-              } catch (error) {
-                void message.error(error instanceof Error ? error.message : text.invalidJson);
-              }
-            }}
-          >
-            {requiredInputGroups.length > 0 ? (
-              <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                {requiredInputGroups.map((group) => (
-                  <Card
-                    key={group.label}
-                    size="small"
-                    title={group.label}
-                    style={{ borderRadius: 12, background: 'var(--bg-card)' }}
-                  >
-                    {group.items.map((field) => (
-                      <React.Fragment key={field.name}>
-                        <Form.Item
-                          name={field.name}
-                          label={`${resolveWaitingInputDisplayLabel(field)} (${field.type})`}
-                          extra={field.description || `${text.source}: ${field.source}`}
-                          rules={[
-                            {
-                              required: field.required,
-                              message: `${text.provideField} ${resolveWaitingInputDisplayLabel(field)}`,
-                            },
-                          ]}
-                          valuePropName={
-                            field.type.toLowerCase() === 'boolean' ? 'checked' : 'value'
-                          }
-                        >
-                          {renderRequiredInputField(field, {
-                            jsonPlaceholder: text.enterJsonString,
-                            textPlaceholderPrefix: text.enterField,
-                            treatArrayAsJson: true,
-                          })}
-                        </Form.Item>
-                        {field.needs_confirmation ? (
-                          <Tag color="gold" style={{ marginBottom: 12 }}>
-                            待确认
-                          </Tag>
-                        ) : null}
-                      </React.Fragment>
-                    ))}
-                  </Card>
-                ))}
-              </Space>
-            ) : (
-              requiredInputs.map((field) => (
-                <React.Fragment key={field.name}>
-                  <Form.Item
-                    name={field.name}
-                    label={`${resolveWaitingInputDisplayLabel(field)} (${field.type})`}
-                    extra={field.description || `${text.source}: ${field.source}`}
-                    rules={[
-                      {
-                        required: field.required,
-                        message: `${text.provideField} ${resolveWaitingInputDisplayLabel(field)}`,
-                      },
-                    ]}
-                    valuePropName={field.type.toLowerCase() === 'boolean' ? 'checked' : 'value'}
-                  >
-                    {renderRequiredInputField(field, {
-                      jsonPlaceholder: text.enterJsonString,
-                      textPlaceholderPrefix: text.enterField,
-                      treatArrayAsJson: true,
-                    })}
-                  </Form.Item>
-                  {field.needs_confirmation ? (
-                    <Tag color="gold" style={{ marginBottom: 12 }}>
-                      待确认
-                    </Tag>
-                  ) : null}
-                </React.Fragment>
-              ))
-            )}
-            <Space>
-              <Button type="primary" htmlType="submit" loading={submitInputMutation.isLoading}>
-                {text.submitAndResume}
-              </Button>
-              <Button onClick={() => form.resetFields()}>{text.reset}</Button>
-            </Space>
-          </Form>
-        </Card>
-      ) : null}
-
-      {/* Execution Info */}
-      {!isBrowserExecution ? (
-        <Card style={{ marginBottom: 16 }}>
-        <Descriptions column={2}>
-          <Descriptions.Item label={text.status}>
-            <Tag color={statusColors[execution.status]}>{statusLabels[execution.status]}</Tag>
-          </Descriptions.Item>
-          <Descriptions.Item label={isEnglish ? 'Skill' : '技能'}>
-            <Space direction="vertical" size={0}>
-              <Text>{getSkillDisplayName(execution.skillId)}</Text>
-              {getSkillDisplayName(execution.skillId) !== execution.skillId ? (
-                <Text type="secondary">{`${text.skillId}: ${execution.skillId}`}</Text>
-              ) : null}
-            </Space>
-          </Descriptions.Item>
-          <Descriptions.Item label={isEnglish ? 'Browser Session' : '浏览器会话'}>
-            {executionRuntimeSessionId ? (
-              <Space wrap>
-                <Text copyable={{ text: executionRuntimeSessionId }}>
-                  {executionRuntimeSessionId}
-                </Text>
-                {stableRuntimeSessionNovncUrl ? (
-                  <Button
-                    type="link"
-                    style={{ paddingInline: 0 }}
-                    onClick={() =>
-                      window.open(
-                        fixLocalhostLink(stableRuntimeSessionNovncUrl),
-                        '_blank',
-                        'noopener,noreferrer'
-                      )
-                    }
-                  >
-                    {isEnglish ? 'Open Live View' : '打开实时画面'}
-                  </Button>
-                ) : null}
-              </Space>
-            ) : (
-              '-'
-            )}
-          </Descriptions.Item>
-          <Descriptions.Item label={text.runtimeType}>{displayRuntimeType}</Descriptions.Item>
-          <Descriptions.Item label={text.riskLevel}>{execution.riskLevel}</Descriptions.Item>
-          <Descriptions.Item label={text.approvalStatus}>
-            {execution.approvalStatus || '-'}
-          </Descriptions.Item>
-          <Descriptions.Item label={text.createdAt}>
-            {new Date(execution.createdAt).toLocaleString()}
-          </Descriptions.Item>
-          {execution.startedAt ? (
-            <Descriptions.Item label={text.startedAt}>
-              {new Date(execution.startedAt).toLocaleString()}
-            </Descriptions.Item>
-          ) : null}
-          {execution.endedAt ? (
-            <Descriptions.Item label={text.endedAt}>
-              {new Date(execution.endedAt).toLocaleString()}
-            </Descriptions.Item>
-          ) : null}
-          {execution.failureReason ? (
-            <Descriptions.Item label={text.failureReason} span={2}>
-              <Text type="danger">{execution.failureReason}</Text>
-            </Descriptions.Item>
-          ) : null}
-          {execution.failureCode ? (
-            <Descriptions.Item label={text.failureCode}>
-              <Text type="danger">{execution.failureCode}</Text>
-            </Descriptions.Item>
-          ) : null}
-          {executionInfoTemporalLink ? (
-            <Descriptions.Item label={isEnglish ? 'Temporal Link' : 'Temporal 链接'} span={2}>
-              <a href={executionInfoTemporalLink} target="_blank" rel="noopener noreferrer">
-                <Space>
-                  <ThunderboltOutlined />
-                  {executionInfoTemporalLink}
-                </Space>
-              </a>
-            </Descriptions.Item>
-          ) : null}
-        </Descriptions>
-        </Card>
+          }}
+          onReset={() => form.resetFields()}
+          submitLabel={text.submitAndResume}
+          resetLabel={text.reset}
+          provideFieldPrefix={text.provideField}
+          sourceLabel={text.source}
+          enterJsonString={text.enterJsonString}
+          enterFieldPrefix={text.enterField}
+          confirmTagLabel={isEnglish ? 'Needs confirmation' : '待确认'}
+        />
       ) : null}
 
       {isBrowserExecution &&

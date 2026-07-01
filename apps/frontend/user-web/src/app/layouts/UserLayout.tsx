@@ -3,7 +3,6 @@ import {
   BgColorsOutlined,
   MessageOutlined,
   DashboardOutlined,
-  FileTextOutlined,
   GlobalOutlined,
   LogoutOutlined,
   MenuFoldOutlined,
@@ -35,6 +34,7 @@ const { Header, Content, Sider } = Layout;
 export function UserLayout() {
   const navigate = useNavigate();
   const location = useLocation();
+  const isChatRoute = location.pathname.startsWith('/chat');
   const user = useStore(authStore, (state) => state.user);
   const notifications = useStore(notificationStore, (state) => state.items);
   const unreadNotificationCount = useStore(
@@ -138,8 +138,6 @@ export function UserLayout() {
             { key: '/chat', icon: <MessageOutlined />, label: 'AI 对话' },
             { key: '/executions', icon: <OrderedListOutlined />, label: '执行列表' },
             { key: '/published-skills', icon: <ThunderboltOutlined />, label: '已发布技能' },
-            { key: '/notifications', icon: <BellOutlined />, label: '通知中心' },
-            { key: '/reports', icon: <FileTextOutlined />, label: '报告' },
           ]}
         />
       </Sider>
@@ -333,7 +331,7 @@ export function UserLayout() {
             </Dropdown>
           </div>
         </Header>
-        <Content className="user-shell-content">
+        <Content className={`user-shell-content${isChatRoute ? ' user-shell-content-chat' : ''}`}>
           <Outlet />
         </Content>
         <UserChatWidget />

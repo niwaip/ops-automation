@@ -414,8 +414,11 @@ export function DashboardPage() {
           },
         };
 
-        await chatApi.stream(browserStreamingTransport, token, request, (event) => {
-          const data = event.data || {};
+        const streamHandle = chatApi.stream(browserStreamingTransport, token, request, (event) => {
+          const data =
+            event.data && typeof event.data === 'object' && !Array.isArray(event.data)
+              ? (event.data as Record<string, unknown>)
+              : {};
           if (event.type === StreamEventType.RESULT) {
             finalContent =
               event.content ||
@@ -441,6 +444,7 @@ export function DashboardPage() {
             finalContent = data.resultSummary;
           }
         });
+        await streamHandle.promise;
 
         const normalizedContent = finalContent.trim();
         if (!normalizedContent) {

@@ -49,7 +49,7 @@ echo ""
 # 检查服务是否运行
 if ! curl -k -s "$ADDIN_BASE_URL/health" > /dev/null 2>&1; then
     echo "❌ Office Add-in 服务未运行"
-    echo "请先运行: $SCRIPT_DIR/start-cn.sh"
+    echo "请先在仓库根目录运行: ./docker/start-smart.sh docker-compose.addin.yml up -d"
     exit 1
 fi
 
