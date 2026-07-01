@@ -178,7 +178,7 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
   streamingEvents: [],
   draftMessage: '',
   draftExecutionId: null,
-  chatMode: 'chat', // 默认普通聊天模式
+  chatMode: 'task', // 默认任务模式
   enableThinking: true,
   enableWebSearch: false,
   uploadedFiles: [],

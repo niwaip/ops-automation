@@ -44,6 +44,7 @@ import { aiApi } from '@/api/ai';
 import type { UploadProps } from 'antd';
 import { Modal, Upload } from 'antd';
 import { useAuthStore } from '@/shared/store/authStore';
+import './ExecutionCreatePage.css';
 
 const { Title, Text } = Typography;
 const { Panel } = Collapse;
@@ -728,7 +729,7 @@ const ExecutionCreatePage: React.FC = () => {
   };
 
   return (
-    <div style={containerStyle}>
+    <div className="execution-create-page" style={containerStyle}>
       <div style={{ marginBottom: 16 }}>
         <Space align="center" style={{ marginBottom: 8 }}>
           <Button size="small" icon={<ArrowLeftOutlined />} onClick={() => navigate('/executions')}>
@@ -769,7 +770,11 @@ const ExecutionCreatePage: React.FC = () => {
           flex: 1,
         }}
       >
-        <Card style={panelCardStyle} styles={{ body: { maxHeight: '100%', overflowY: 'auto' } }}>
+        <Card
+          className="execution-create-form-card"
+          style={panelCardStyle}
+          styles={{ body: { maxHeight: '100%', overflowY: 'auto' } }}
+        >
           {publishedSkillsQuery.isLoading || authorizedSkillsQuery.isLoading ? (
             <div style={{ display: 'flex', justifyContent: 'center', padding: '48px 0' }}>
               <Spin tip="正在加载已发布技能..." />
@@ -1270,6 +1275,7 @@ const ExecutionCreatePage: React.FC = () => {
         </Card>
 
         <Space
+          className="execution-create-scroll-region"
           direction="vertical"
           size="middle"
           style={{ width: '100%', minHeight: 0, overflowY: 'auto' }}

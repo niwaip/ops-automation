@@ -34,7 +34,7 @@ const buildSessionId = (): string => {
 export const useChatStore = create<ChatStoreState>((set) => ({
   currentSession: null,
   isOpen: false,
-  chatMode: 'chat',
+  chatMode: 'task',
   draftMessage: '',
   draftExecutionId: null,
   createSession: () =>
@@ -62,6 +62,6 @@ export const useChatStore = create<ChatStoreState>((set) => ({
     set({
       draftMessage: '',
       draftExecutionId: null,
-      chatMode: 'chat',
+      chatMode: 'task',
     }),
 }));

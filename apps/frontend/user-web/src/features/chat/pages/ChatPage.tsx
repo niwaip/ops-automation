@@ -15,13 +15,10 @@ import {
   Button,
   Card,
   Empty,
-  Form,
   Input,
-  InputNumber,
   List,
   Skeleton,
   Space,
-  Switch,
   Tag,
   Typography,
 } from 'antd';
@@ -30,11 +27,6 @@ import { useMutation, useQuery, useQueryClient } from 'react-query';
 import {
   buildExecutionWaitingInputGroups,
   getExecutionWaitingInputFields,
-  getExecutionWaitingInputStep,
-  isBooleanInputType,
-  isJsonLikeInputType,
-  isNumericInputType,
-  normalizeExecutionWaitingInputValues,
   reduceChatStreamEvent,
   resolveWaitingInputDisplayLabel,
   type ExecutionDto,
@@ -57,7 +49,6 @@ import {
   buildApprovedTaskPatch,
   buildRejectedTaskPatch,
   buildResumedHumanControlTaskPatch,
-  buildSubmittedInputTaskPatch,
 } from '@chat-web/controller/taskActionController';
 import {
   buildChatRequest,
@@ -82,6 +73,22 @@ const buildSessionId = (): string => {
     return crypto.randomUUID();
   }
   return `chat-session-${buildMessageId()}`;
+};
+
+const getLatestWaitingInputExecutionId = (messages: ChatMessage[]): string | undefined => {
+  const assistantMessages = messages.filter((message) => message.role === 'assistant');
+  for (let index = assistantMessages.length - 1; index >= 0; index -= 1) {
+    const message = assistantMessages[index];
+    if (resolveMessageTaskStatus(message) !== 'waiting_input') {
+      continue;
+    }
+    const executionId =
+      message.metadata?.executionId || resolveTaskParts(message.contentParts).executionId;
+    if (executionId) {
+      return executionId;
+    }
+  }
+  return undefined;
 };
 
 const formatRelativeTime = (value?: string): string => {
@@ -307,180 +314,8 @@ const parseMessageContent = (content: string): { thoughts: string[]; answer: str
   return { thoughts, answer };
 };
 
-function renderInlineRequiredInputField(name: string, type: string, description?: string) {
-  if (isNumericInputType(type)) {
-    return <InputNumber style={{ width: '100%' }} placeholder={`请输入 ${description || name}`} />;
-  }
-  if (isBooleanInputType(type)) {
-    return <Switch />;
-  }
-  if (isJsonLikeInputType(type)) {
-    return <TextArea rows={3} placeholder="请输入 JSON 字符串" />;
-  }
-  return <Input placeholder={description || `请输入 ${name}`} />;
-}
-
-interface WaitingInputInlineFormProps {
-  executionId: string;
-  sessionId?: string;
-  onSubmitted: (execution: ExecutionDto) => void;
-}
-
 interface ChatPageProps {
   embedded?: boolean;
-}
-
-interface ChatWaitingInputField {
-  name?: string;
-  description?: string;
-  group_label?: string;
-  display_name?: string;
-  missing?: boolean;
-}
-
-function WaitingInputInlineForm(props: WaitingInputInlineFormProps) {
-  const { executionId, sessionId, onSubmitted } = props;
-  const queryClient = useQueryClient();
-  const { message: toast } = App.useApp();
-  const [form] = Form.useForm<{ input: Record<string, unknown> }>();
-
-  const executionQuery = useQuery(
-    ['chat-inline-execution', executionId],
-    () => executionApi.getById(executionId),
-    { enabled: Boolean(executionId) }
-  );
-  const stepsQuery = useQuery(
-    ['chat-inline-execution-steps', executionId],
-    () => executionApi.getSteps(executionId),
-    { enabled: Boolean(executionId) }
-  );
-
-  const requiredInputs = useMemo(
-    () =>
-      executionQuery.data && stepsQuery.data
-        ? getExecutionWaitingInputFields(executionQuery.data, stepsQuery.data)
-        : [],
-    [executionQuery.data, stepsQuery.data]
-  );
-  const waitingInputStep = useMemo(
-    () =>
-      executionQuery.data && stepsQuery.data
-        ? getExecutionWaitingInputStep(executionQuery.data, stepsQuery.data)
-        : undefined,
-    [executionQuery.data, stepsQuery.data]
-  );
-  const waitingInputGroups = useMemo(
-    () =>
-      executionQuery.data && stepsQuery.data
-        ? buildExecutionWaitingInputGroups(executionQuery.data, stepsQuery.data)
-        : [],
-    [executionQuery.data, stepsQuery.data]
-  );
-
-  useEffect(() => {
-    if (requiredInputs.length === 0) {
-      return;
-    }
-    form.setFieldsValue({
-      input: Object.fromEntries(
-        requiredInputs.map((field) => [
-          field.name,
-          field.value ?? (isBooleanInputType(field.type) ? false : undefined),
-        ])
-      ),
-    });
-  }, [form, requiredInputs]);
-
-  const submitInputMutation = useMutation(
-    async (values: Record<string, unknown>) => {
-      if (!waitingInputStep) {
-        throw new Error('当前没有可提交的待补输入步骤');
-      }
-      return executionApi.submitInput(executionId, {
-        stepId: waitingInputStep.id,
-        input: normalizeExecutionWaitingInputValues(values, requiredInputs),
-      });
-    },
-    {
-      onSuccess: async (execution) => {
-        void toast.success('输入已提交，执行继续处理中');
-        await Promise.all([
-          queryClient.invalidateQueries(['chat-inline-execution', executionId]),
-          queryClient.invalidateQueries(['chat-inline-execution-steps', executionId]),
-          queryClient.invalidateQueries(['user-web-chat-sessions']),
-          queryClient.invalidateQueries(['user-web-chat-history', sessionId]),
-          queryClient.invalidateQueries(['user-web-executions']),
-          queryClient.invalidateQueries(['user-web-notifications']),
-        ]);
-        onSubmitted(execution);
-      },
-      onError: (submitError) => {
-        void toast.error(submitError instanceof Error ? submitError.message : '提交输入失败');
-      },
-    }
-  );
-
-  if (executionQuery.isLoading || stepsQuery.isLoading) {
-    return <Skeleton active paragraph={{ rows: 4 }} />;
-  }
-
-  if (!executionQuery.data || requiredInputs.length === 0) {
-    return null;
-  }
-
-  const groups =
-    waitingInputGroups.length > 0
-      ? waitingInputGroups
-      : [{ label: '待补字段', items: requiredInputs }];
-
-  return (
-    <Form
-      form={form}
-      layout="vertical"
-      onFinish={(values) => {
-        submitInputMutation.mutate(values.input || {});
-      }}
-    >
-      <div className="user-chat-inline-form">
-        {groups.map((group) => (
-          <div key={group.label} className="user-chat-inline-group">
-            <Typography.Text strong>{group.label}</Typography.Text>
-            {group.items.map((field) => (
-              <Form.Item
-                key={field.name}
-                label={resolveWaitingInputDisplayLabel(field)}
-                name={['input', field.name]}
-                valuePropName={isBooleanInputType(field.type) ? 'checked' : 'value'}
-                extra={field.description || field.type}
-                rules={[
-                  { required: true, message: `请填写 ${resolveWaitingInputDisplayLabel(field)}` },
-                ]}
-              >
-                {renderInlineRequiredInputField(field.name, field.type, field.description)}
-              </Form.Item>
-            ))}
-          </div>
-        ))}
-        <Space>
-          <Button
-            onClick={() => {
-              form.resetFields();
-            }}
-          >
-            重置
-          </Button>
-          <Button
-            type="primary"
-            htmlType="submit"
-            loading={submitInputMutation.isLoading}
-            disabled={!waitingInputStep}
-          >
-            提交并继续
-          </Button>
-        </Space>
-      </div>
-    </Form>
-  );
 }
 
 export function ChatPage({ embedded = false }: ChatPageProps) {
@@ -488,8 +323,10 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
   const queryClient = useQueryClient();
   const prefetchedDraftMessage = useChatStore((state) => state.draftMessage);
   const prefetchedChatMode = useChatStore((state) => state.chatMode);
+  const prefetchedDraftExecutionId = useChatStore((state) => state.draftExecutionId);
   const clearDraftContext = useChatStore((state) => state.clearDraftContext);
   const [draft, setDraft] = useState('');
+  const [pendingExecutionId, setPendingExecutionId] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState<string>('default');
   const [chatMode, setChatMode] = useState<'chat' | 'task'>('chat');
   const [isStreaming, setIsStreaming] = useState(false);
@@ -579,8 +416,14 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     }
     setDraft(prefetchedDraftMessage);
     setChatMode(prefetchedChatMode);
+    setPendingExecutionId(prefetchedDraftExecutionId);
     clearDraftContext();
-  }, [clearDraftContext, prefetchedChatMode, prefetchedDraftMessage]);
+  }, [
+    clearDraftContext,
+    prefetchedChatMode,
+    prefetchedDraftExecutionId,
+    prefetchedDraftMessage,
+  ]);
 
   useEffect(() => {
     if (!selectedSessionId && sessions[0]?.id) {
@@ -618,9 +461,16 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
   }, [activeMessages, isStreaming]);
 
   const placeholder = useMemo(
-    () =>
-      chatMode === 'task' ? '例如：帮我总结这个执行的结果，并给出下一步建议' : '输入你想咨询的问题',
-    [chatMode]
+    () => {
+      const waitingExecutionId = getLatestWaitingInputExecutionId(activeMessages);
+      if (waitingExecutionId || pendingExecutionId) {
+        return '请直接在聊天框补充所需信息，Enter 发送后会继续当前任务';
+      }
+      return chatMode === 'task'
+        ? '例如：帮我总结这个执行的结果，并给出下一步建议'
+        : '输入你想咨询的问题';
+    },
+    [activeMessages, chatMode, pendingExecutionId]
   );
 
   const updateSessionMessages = (
@@ -794,6 +644,8 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
 
     const resolvedModelId =
       selectedModel && selectedModel !== 'default' ? selectedModel : undefined;
+    const continuedExecutionId =
+      pendingExecutionId || getLatestWaitingInputExecutionId(activeMessages);
 
     const session = ensureSession();
     const now = toChatTimestamp();
@@ -831,10 +683,15 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     const request: ChatRequest = buildChatRequest({
       message: content,
       sessionId: session.id,
+      executionId: continuedExecutionId || undefined,
       modelId: resolvedModelId,
       mode: chatMode,
       thinking: chatMode === 'task',
     });
+
+    if (pendingExecutionId) {
+      setPendingExecutionId(null);
+    }
 
     void runAssistantRequest(session, request, assistantMessageId);
   };
@@ -987,7 +844,13 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
         : displayFinalResult && normalizedDetail && normalizedDetail !== displayFinalResult
           ? normalizedDetail
           : null;
-    const missingInputs = (message.metadata?.missingInputs || []) as ChatWaitingInputField[];
+    const missingInputs = (message.metadata?.missingInputs || []) as {
+      name?: string;
+      description?: string;
+      group_label?: string;
+      display_name?: string;
+      missing?: boolean;
+    }[];
     const waitingInputItems = missingInputs.map((item, index) => ({
       key: `${item.name || 'missing'}-${index}`,
       label: resolveWaitingInputDisplayLabel({
@@ -1067,7 +930,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
           structuredResultText={structuredResult}
           waitingInputSummary={
             status === 'waiting_input'
-              ? finalSummary || '还需要你补充以下信息后，任务才能继续执行。'
+              ? finalSummary || '还需要你补充以下信息，请直接在下方聊天框回复，任务会继续执行。'
               : undefined
           }
           isWaitingInput={status === 'waiting_input'}
@@ -1097,23 +960,6 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
             }
           }}
         />
-        {status === 'waiting_input' && executionId ? (
-          <WaitingInputInlineForm
-            executionId={executionId}
-            sessionId={selectedSession?.id}
-            onSubmitted={(execution) => {
-              if (!selectedSession?.id) {
-                return;
-              }
-              updateMessage(selectedSession.id, message.id, {
-                metadata: buildSubmittedInputTaskPatch({
-                  executionId: execution.id,
-                  executionStatus: execution.status,
-                }),
-              });
-            }}
-          />
-        ) : null}
         {artifacts.length > 0 ? (
           <Space wrap className="user-chat-outcome-actions">
             {artifacts.map((artifact, index) => {
@@ -1142,11 +988,30 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
   const renderProgressCard = (message: ChatMessage) => {
     const progressLogs = message.metadata?.progressLogs || [];
     const status = resolveMessageTaskStatus(message);
+    const taskParts = resolveTaskParts(message.contentParts);
+    const finalResult = message.metadata?.finalResult?.trim();
+    const finalSummary = message.metadata?.finalSummary?.trim();
+    const errorMessage = message.metadata?.errorMessage?.trim();
+    const failureReason = message.metadata?.failureReason?.trim();
+    const normalizedSummary = message.metadata?.normalizedResult?.summary?.trim();
+    const structuredResult = toStructuredResultText(
+      message.metadata?.normalizedResult?.structuredData ??
+        message.metadata?.finalResultData ??
+        taskParts.structuredResultData
+    );
     if (
       message.role !== 'assistant' ||
       message.metadata?.mode !== 'task' ||
       progressLogs.length === 0 ||
-      status !== 'running'
+      status !== 'running' ||
+      Boolean(
+        finalResult ||
+          finalSummary ||
+          normalizedSummary ||
+          errorMessage ||
+          failureReason ||
+          structuredResult
+      )
     ) {
       return null;
     }

@@ -34,6 +34,7 @@ import {
   buildApprovedTaskPatch,
   buildRejectedTaskPatch,
   buildResumedHumanControlTaskPatch,
+  buildSubmittedInputTaskPatch,
 } from '@chat-web/controller/taskActionController';
 import {
   buildChatRequest,
@@ -103,6 +104,30 @@ const asPromptDebugPayload = (value: unknown): PromptDebugPayload | undefined =>
 
 const asMode = (value: unknown): 'chat' | 'task' | undefined =>
   value === 'chat' || value === 'task' ? value : undefined;
+
+const isWaitingExecutionMessage = (message: ChatMessageItem): boolean =>
+  message.role === 'assistant' &&
+  (message.metadata?.taskStatus === 'waiting_input' ||
+    message.metadata?.executionStatus === 'waiting_input');
+
+const resolveContinuationTaskStatus = (
+  taskStatus: ChatTaskStatus | undefined,
+  executionStatus: ExecutionStatus | undefined
+): ChatTaskStatus | undefined => {
+  if (executionStatus === 'waiting_input') {
+    return 'waiting_input';
+  }
+  if (executionStatus === 'pending_approval') {
+    return 'pending_approval';
+  }
+  if (executionStatus === 'human_control') {
+    return 'human_control';
+  }
+  if (executionStatus === 'succeeded' || executionStatus === 'failed' || executionStatus === 'cancelled') {
+    return taskStatus === 'failed' ? 'failed' : 'completed';
+  }
+  return taskStatus;
+};
 
 const summarizeSessionTitle = (content: string): string | undefined => {
   const normalized = content.replace(/\s+/g, ' ').trim();
@@ -231,12 +256,17 @@ const ChatWindow: React.FC = () => {
     addMessage(assistantMessage);
 
     // 只有等待补充输入的场景，才延续上一次执行单
-    const lastAssistantMessage = [...messages].reverse().find((m) => m.role === 'assistant');
-    const executionId =
-      draftExecutionId ||
-      (lastAssistantMessage?.metadata?.taskStatus === 'waiting_input'
-        ? lastAssistantMessage.metadata.executionId
-        : undefined);
+    const waitingAssistantMessage = [...messages].reverse().find(isWaitingExecutionMessage);
+    const executionId = draftExecutionId || waitingAssistantMessage?.metadata?.executionId;
+    if (executionId && waitingAssistantMessage?.id) {
+      updateMessageMetadataById(
+        waitingAssistantMessage.id,
+        buildSubmittedInputTaskPatch({
+          executionId,
+          executionStatus: 'running',
+        })
+      );
+    }
 
     startAssistantStream(
       assistantMessageId,
@@ -395,9 +425,20 @@ const ChatWindow: React.FC = () => {
         } else {
           applyReducedMessagePatch(reduced.messagePatch as Partial<ChatMessageItem>);
 
-          const nextTaskStatus =
-            reduced.messagePatch.metadata?.taskStatus ||
-            (executionStatus === 'human_control' ? 'human_control' : undefined);
+          const nextTaskStatus = resolveContinuationTaskStatus(
+            reduced.messagePatch.metadata?.taskStatus,
+            executionStatus
+          );
+          if (nextTaskStatus === 'waiting_input' && executionId) {
+            setDraftExecutionId(executionId);
+          } else if (
+            nextTaskStatus === 'completed' ||
+            nextTaskStatus === 'failed' ||
+            nextTaskStatus === 'pending_approval' ||
+            nextTaskStatus === 'human_control'
+          ) {
+            setDraftExecutionId(null);
+          }
           updateMessageMetadataById(assistantMessageId, {
             promptDebug: asPromptDebugPayload(dataRecord.promptDebug),
             executionId,
@@ -416,6 +457,7 @@ const ChatWindow: React.FC = () => {
         setStreaming(false);
         setAbortStreaming(null);
         setPendingParamsConfirm(null, null);
+        setDraftExecutionId(null);
       },
       () => {
         setStreaming(false);

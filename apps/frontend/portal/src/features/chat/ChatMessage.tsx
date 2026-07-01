@@ -64,6 +64,33 @@ const normalizeComparableText = (value?: string): string =>
     .trim()
     .toLowerCase();
 
+const resolveTaskStatusFromExecutionStatus = (
+  executionStatus?: string
+): 'waiting_input' | 'pending_approval' | 'human_control' | 'failed' | 'completed' | 'running' | undefined => {
+  switch (executionStatus) {
+    case 'waiting_input':
+      return 'waiting_input';
+    case 'pending_approval':
+      return 'pending_approval';
+    case 'human_control':
+      return 'human_control';
+    case 'failed':
+    case 'cancelled':
+    case 'rolled_back':
+      return 'failed';
+    case 'succeeded':
+    case 'completed':
+      return 'completed';
+    case 'draft':
+    case 'queued':
+    case 'running':
+    case 'paused':
+      return 'running';
+    default:
+      return undefined;
+  }
+};
+
 const ChatMessageComponent: React.FC<ChatMessageProps> = ({
   message,
   isStreaming,
@@ -83,7 +110,14 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
   const isTaskMode = message.metadata?.mode === 'task';
   const taskParts = useMemo(() => resolveTaskParts(message.contentParts), [message.contentParts]);
   const rawContent = isStreaming && streamingContent ? streamingContent : message.content;
-  const taskStatus = message.metadata?.taskStatus || taskParts.taskStatus;
+  const taskStatus =
+    resolveTaskStatusFromExecutionStatus(
+      typeof message.metadata?.executionStatus === 'string'
+        ? message.metadata.executionStatus
+        : undefined
+    ) ||
+    message.metadata?.taskStatus ||
+    taskParts.taskStatus;
   const isWaitingInput = isTaskMode && taskStatus === 'waiting_input';
   const isPendingApproval = isTaskMode && taskStatus === 'pending_approval';
   const isFailed = isTaskMode && taskStatus === 'failed';
@@ -160,10 +194,15 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
     [missingInputs]
   );
   const waitingInputSummary = useMemo(() => {
-    if (!isWaitingInput || waitingInputLabels.length === 0) {
+    if (!isWaitingInput) {
       return finalSummary;
     }
-    return '还需要你补充以下信息后，任务才能继续执行。';
+    if (waitingInputLabels.length === 0) {
+      return (
+        finalSummary || '还需要你补充信息，请直接在下方聊天框回复，任务会继续执行。'
+      );
+    }
+    return '还需要你补充以下信息，请直接在下方聊天框回复，任务会继续执行。';
   }, [finalSummary, isWaitingInput, waitingInputLabels]);
   const structuredResultText = useMemo(
     () => toStructuredResultText(finalResultData),
@@ -285,6 +324,17 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
     }
     return sanitizedOutcomeSummary;
   }, [compactAnswer, sanitizedOutcomeSummary]);
+  const shouldShowProgressCard = Boolean(
+    showThinking &&
+      hasStructuredProgressLogs &&
+      isRunning &&
+      !isWaitingInput &&
+      !isPendingApproval &&
+      !outcomeFinalResult &&
+      !outcomeSummary &&
+      !shouldShowErrorCard &&
+      !shouldShowTakeoverCard
+  );
 
   useEffect(() => {
     if (isRunning) {
@@ -376,12 +426,16 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
       return <MessageContentRenderer content={answerWithoutTaskCheckbox} mode="plain" />;
     }
 
+    const hasStructuredWaitingInputCard = Boolean(
+      isWaitingInput && (waitingInputItems.length > 0 || outcomeSummary)
+    );
+
     if (
       isTaskMode &&
       (Boolean(outcomeFinalResult) ||
         Boolean(outcomeSummary) ||
         showRunningState ||
-        isWaitingInput ||
+        hasStructuredWaitingInputCard ||
         isPendingApproval ||
         shouldShowErrorCard ||
         shouldShowTakeoverCard)
@@ -486,7 +540,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
                 void handleResumeExecution();
               }}
             />
-            {showThinking && hasStructuredProgressLogs ? (
+            {shouldShowProgressCard ? (
               <TaskProgressCard currentProgressLog={currentProgressLog} isRunning={isRunning} />
             ) : null}
             {renderContent()}

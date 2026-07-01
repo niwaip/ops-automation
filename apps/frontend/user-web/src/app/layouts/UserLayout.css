@@ -1,4 +1,6 @@
 .user-shell {
+  --chat-widget-safe-space: calc(96px + env(safe-area-inset-bottom));
+  --chat-widget-safe-inline: 88px;
   min-height: 100vh;
 }
 
@@ -138,7 +140,8 @@
 
 .user-shell-content {
   margin: 24px;
-  padding: 0;
+  padding: 0 var(--chat-widget-safe-inline) var(--chat-widget-safe-space) 0;
+  box-sizing: border-box;
   min-height: 0;
   height: calc(100vh - 64px - 48px);
   display: flex;
@@ -170,6 +173,11 @@
 }
 
 @media (max-width: 960px) {
+  .user-shell {
+    --chat-widget-safe-space: calc(84px + env(safe-area-inset-bottom));
+    --chat-widget-safe-inline: 0px;
+  }
+
   .user-shell-header-left .ant-typography {
     display: none;
   }

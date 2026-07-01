@@ -94,7 +94,7 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
 }) => {
   const showDownloadButton = Boolean(downloadUrl && !browserExecutionMode);
   const showDetailButton = Boolean(executionDetailLink || temporalLink);
-  const bodySummary = summaryToDisplay;
+  const bodySummary = waitingInputSummary || summaryToDisplay;
 
   const renderResourceLinks = () => (
     <div className="chat-outcome-actions" style={{ marginTop: 12 }}>
