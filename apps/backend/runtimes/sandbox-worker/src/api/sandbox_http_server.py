@@ -64,7 +64,7 @@ class TemporalSandboxServer:
                     AgentSessionWorkflow.run,
                     session_id,
                     id=workflow_id,
-                    task_queue='sandbox-agent-task-queue',
+                    task_queue='sandbox-worker-task-queue',
                 )
 
             signal = ExecutionSignalInput(
@@ -224,8 +224,8 @@ class TemporalSandboxServer:
             await emit({'type': 'log', 'content': message})
 
         try:
-            await emit_log(f'[SandboxAgent] 开始执行: {workflow_id}')
-            await emit_log(f'[SandboxAgent] 函数入口: {fn_name}')
+            await emit_log(f'[SandboxWorker] 开始执行: {workflow_id}')
+            await emit_log(f'[SandboxWorker] 函数入口: {fn_name}')
 
             from sandbox_executor import execute_in_sandbox_streaming
 

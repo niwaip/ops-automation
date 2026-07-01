@@ -1,8 +1,16 @@
 import axios from 'axios';
 import { TemporalWorkflowActivityResolutionService } from '../src/modules/temporal-workflow/temporal-workflow-activity-resolution.service';
-import { TemporalWorkflowBrowserDraftService } from '../src/modules/temporal-workflow/temporal-workflow-browser-draft.service';
+import { TemporalWorkflowBrowserDraftService } from '../src/modules/temporal-workflow/browser-bridge/temporal-workflow-browser-draft.service';
 import { TemporalWorkflowCodegenService } from '../src/modules/temporal-workflow/temporal-workflow-codegen.service';
-import { TemporalWorkflowConfigService } from '../src/modules/temporal-workflow/temporal-workflow-config.service';
+import { TemporalWorkflowService } from '../src/modules/temporal-workflow/temporal-workflow.service';
+import { TemporalWorkflowArtifactService } from '../src/workflow-registry/workflow-template/temporal-workflow-artifact.service';
+import { TemporalWorkflowConfigOrchestrationService } from '../src/workflow-registry/workflow-template/temporal-workflow-config-orchestration.service';
+import { TemporalWorkflowConfigService } from '../src/workflow-registry/workflow-template/temporal-workflow-config.service';
+import { TemporalWorkflowDraftOrchestrationService } from '../src/workflow-registry/workflow-template/temporal-workflow-draft-orchestration.service';
+import { TemporalWorkflowManagementService } from '../src/workflow-registry/workflow-template/temporal-workflow-management.service';
+import { TemporalWorkflowSessionOrchestrationService } from '../src/workflow-registry/workflow-template/temporal-workflow-session-orchestration.service';
+import { TemporalWorkflowSessionSupportFactoryService } from '../src/workflow-registry/workflow-template/temporal-workflow-session-support-factory.service';
+import { TemporalWorkflowTemplateService } from '../src/workflow-registry/workflow-template/temporal-workflow-template.service';
 import { buildDeterministicWorkflowCodeForWorkflow } from '../src/modules/temporal-workflow/temporal-workflow-deterministic-builder';
 import { TemporalWorkflowAiDraftService } from '../src/modules/temporal-workflow/temporal-workflow-draft.service';
 import {
@@ -13,20 +21,19 @@ import {
 } from '../src/modules/temporal-workflow/temporal-workflow-draft.normalizers';
 import { repairCommonDraftPlanIssues } from '../src/modules/temporal-workflow/temporal-workflow-draft-plan.helpers';
 import { TemporalWorkflowNormalizationService } from '../src/modules/temporal-workflow/temporal-workflow-normalization.service';
-import { pickFirstNonEmptyString } from '../src/modules/temporal-workflow/temporal-workflow-service.utils';
+import { pickFirstNonEmptyString } from '../src/modules/temporal-workflow/temporal-workflow-json.utils';
 import { TemporalWorkflowSessionService } from '../src/modules/temporal-workflow/temporal-workflow-session.service';
 import { TemporalWorkflowSupportService } from '../src/modules/temporal-workflow/temporal-workflow-support.service';
-import { TemporalWorkflowService } from '../src/workflow-registry/workflow-template';
 import {
   buildTemplateWorkflowParamSeeds,
   normalizeWorkflowInputParamType,
   normalizeWorkflowInputRenderPath,
 } from '../src/modules/temporal-workflow/temporal-workflow-template.helpers';
-import { TemporalWorkflowTemplateService } from '../src/modules/temporal-workflow/temporal-workflow-template.service';
-import {
-  TemporalWorkflowValidationFacadeService,
-  TemporalWorkflowValidationService,
-} from '../src/workflow-registry/validation';
+import { TemporalWorkflowValidationFacadeService } from '../src/modules/temporal-workflow/temporal-workflow-validation-facade.service';
+import { TemporalWorkflowValidationService } from '../src/modules/temporal-workflow/temporal-workflow-validation.service';
+import { TemporalWorkflowArtifactValidationService } from '../src/workflow-registry/validation/temporal-workflow-artifact-validation.service';
+import { TemporalWorkflowDslValidationService } from '../src/workflow-registry/validation/temporal-workflow-dsl-validation.service';
+import { TemporalWorkflowCodegenOrchestrationService } from '../src/workflow-registry/codegen/temporal-workflow-codegen-orchestration.service';
 import { BuiltinActivityRegistry } from '../src/modules/temporal-workflow/builtin-activity.registry';
 
 jest.mock('axios');
@@ -80,6 +87,15 @@ describe('TemporalWorkflowCodegenService', () => {
     );
     const workflowConfigService = new TemporalWorkflowConfigService();
     const workflowTemplateService = new TemporalWorkflowTemplateService();
+    const workflowArtifactService = new TemporalWorkflowArtifactService(prisma as any);
+    const workflowConfigOrchestrationService = new TemporalWorkflowConfigOrchestrationService(
+      workflowConfigService
+    );
+    const workflowManagementService = new TemporalWorkflowManagementService(
+      prisma as any,
+      workflowNormalizationService,
+      workflowArtifactService
+    );
     const workflowSupportService = new TemporalWorkflowSupportService(
       builtinRegistry,
       aiDraftService,
@@ -87,18 +103,43 @@ describe('TemporalWorkflowCodegenService', () => {
       workflowConfigService,
       workflowNormalizationService
     );
-    const validationFacade = new TemporalWorkflowValidationFacadeService(validationService);
-    const service = new TemporalWorkflowService(
-      prisma as any,
+    const workflowDraftOrchestrationService = new TemporalWorkflowDraftOrchestrationService(
       aiDraftService,
       browserDraftService,
-      codegenService,
-      sessionService,
-      validationFacade,
-      workflowConfigService,
-      workflowNormalizationService,
-      workflowTemplateService,
+      workflowSupportService,
+      workflowTemplateService
+    );
+    const workflowSessionSupportFactoryService = new TemporalWorkflowSessionSupportFactoryService(
       workflowSupportService
+    );
+    const workflowSessionOrchestrationService = new TemporalWorkflowSessionOrchestrationService(
+      sessionService,
+      workflowSessionSupportFactoryService
+    );
+    const validationFacade = new TemporalWorkflowValidationFacadeService(validationService);
+    const workflowArtifactValidationService = new TemporalWorkflowArtifactValidationService(
+      prisma as any,
+      validationFacade,
+      workflowArtifactService
+    );
+    const workflowDslValidationService = new TemporalWorkflowDslValidationService(
+      workflowSupportService
+    );
+    const workflowCodegenOrchestrationService = new TemporalWorkflowCodegenOrchestrationService(
+      prisma as any,
+      codegenService,
+      workflowArtifactService,
+      workflowSupportService
+    );
+    const service = new TemporalWorkflowService(
+      workflowCodegenOrchestrationService,
+      workflowArtifactService,
+      workflowConfigOrchestrationService,
+      workflowDraftOrchestrationService,
+      workflowManagementService,
+      workflowSessionOrchestrationService,
+      workflowArtifactValidationService,
+      workflowDslValidationService
     );
 
     return {
@@ -114,6 +155,7 @@ describe('TemporalWorkflowCodegenService', () => {
       workflowConfigService,
       workflowNormalizationService,
       workflowTemplateService,
+      workflowArtifactService,
       workflowSupportService,
     };
   };

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import {
   IDENTITY_ACCESS_AUTH_REPOSITORY,
   IDENTITY_ACCESS_USER_READER,
@@ -11,6 +11,7 @@ import { PlatformIdentityAccessUserReader } from './identity-access-user-reader.
 import { PlatformRbacPermissionReader } from './rbac-permission-reader.service';
 import { PlatformIdentityAccessUserManagementRepository } from './user-management-repository.service';
 
+@Global()
 @Module({
   imports: [PrismaModule],
   providers: [

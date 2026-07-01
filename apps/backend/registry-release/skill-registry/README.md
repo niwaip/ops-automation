@@ -105,6 +105,11 @@ skill-registry
 - `skill/validation`
   - 对应未来 `validation`
 
+当前已开始由目标包本身承接的最小源码能力：
+
+- `src/registry`
+  - 已承接激活可见性判定与 trigger keywords 汇总 helper，不再只是整层透传
+
 ## 当前结论
 
 本轮之后，`skill` 的统一逻辑归属已进一步显式化：
@@ -114,3 +119,5 @@ skill-registry
 - 发布门禁继续属于 `release-manager`
 - 执行语义继续属于 `control-plane` 与 runtime worker
 - 当前先固定统一逻辑视图，不在本批次引入物理迁移
+- 包侧根入口 `src/index.ts` 聚合 barrel 已在后续 Phase E 删除；`access`、`binding`、`enrichment`、`matching`、`validation` 五个零消费者叶子入口也已在后续 Phase E 删除；当前只保留 `registry/index.ts` 作为最小逻辑视图占位
+- `registry` 已开始由目标包承接最小稳定 helper，纯 re-export 状态已继续收口；其余五个零消费者叶子入口已不再保留包侧薄壳

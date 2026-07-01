@@ -43,23 +43,23 @@ import {
   buildFixedStructuredTransformWorkflowCode as buildFixedStructuredTransformWorkflowCodeHelper,
   buildFixedBuiltinWorkflowCode as buildFixedBuiltinWorkflowCodeHelper,
 } from './temporal-workflow-fixed-workflow-code.helpers';
-import { TemporalWorkflowConfigService } from './temporal-workflow-config.service';
+import { TemporalWorkflowConfigService } from '../../workflow-registry/workflow-template/temporal-workflow-config.service';
 import { TemporalWorkflowNormalizationService } from './temporal-workflow-normalization.service';
 import { resolveDocumentWorkflowBindingPaths } from './temporal-workflow-template.helpers';
+import { pickFirstNonEmptyString } from './temporal-workflow-json.utils';
+import {
+  buildExecuteActivityTimeoutLines,
+  buildPythonJsonLiteral,
+  durationToTimedeltaCode,
+  normalizeInputParams,
+  toPythonLiteral,
+} from './temporal-workflow-python.utils';
 import type {
   ActivityDefinition,
   ActivityDsl,
   WorkflowDsl,
   WorkflowStep,
 } from './temporal-workflow.types';
-import {
-  buildExecuteActivityTimeoutLines,
-  buildPythonJsonLiteral,
-  durationToTimedeltaCode,
-  normalizeInputParams,
-  pickFirstNonEmptyString,
-  toPythonLiteral,
-} from './temporal-workflow-service.utils';
 
 interface DeterministicBuilderDependencies {
   builtinActivityRegistry: BuiltinActivityRegistry;

@@ -34,6 +34,20 @@
 
 ### 3. 迁移与待办
 
+- 后端迁移设计书：[Enterprise-Skill-Platform_Backend-Migration-Design_v4.1.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Backend-Migration-Design_v4.1.md)
+  - 适合回答：当前后端迁移的真实基线是什么、应按什么原则推进、哪些模块先拆职责再搬目录、未来 90 天的实施顺序是什么。
+- `release-manager / capability-release` 拆分方案：[release-manager-capability-release-split-plan_v4.1.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/release-manager-capability-release-split-plan_v4.1.md)
+  - 适合回答：`capability-release` 应如何先在原目录拆成 `release / compiler / validator / publisher / audit`，以及首轮 PR 应该先动哪一刀。
+- `release-manager / capability-release` 第一批 PR 任务分解：[release-manager-capability-release-pr-breakdown_v4.1.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/release-manager-capability-release-pr-breakdown_v4.1.md)
+  - 适合回答：`capability-release` 第一批 PR 应按什么顺序拆、每个 PR 改哪些文件、验证哪些测试、如何设置回滚点。
+- `release-manager` 结构验收记录：[release-manager-structure-acceptance-record_v4.1.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/release-manager-structure-acceptance-record_v4.1.md)
+  - 适合回答：当前 `release-manager` 结构承接已经落到哪一层、这一批验证了什么、还有哪些遗留问题尚未进入更高风险切换。
+- 后端目标平面结构验收记录：[backend-structure-acceptance-record_v4.1.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/backend-structure-acceptance-record_v4.1.md)
+  - 适合回答：当前 `governance / intelligence / registry-release` 目标平面的结构落地到了哪一层、哪些子层已脱离纯壳、哪些问题仍停留在真实实现迁移阶段。
+- `workflow-registry / temporal-workflow` 拆分方案：[workflow-registry-temporal-workflow-split-plan_v4.1.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/workflow-registry-temporal-workflow-split-plan_v4.1.md)
+  - 适合回答：`temporal-workflow` 中哪些逻辑仍属于设计时注册面，哪些应外移到 `browser-domain`、`release-manager` 或运行时平面，以及第一刀该如何拆。
+- `browser-domain / ai-orchestrator browser` 拆分方案：[browser-domain-ai-orchestrator-browser-split-plan_v4.1.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/browser-domain-ai-orchestrator-browser-split-plan_v4.1.md)
+  - 适合回答：`ai-orchestrator/modules/browser` 应如何先和主 Planner 解耦，再按 `recorder / observation / session / export / runtime-facade / intent` 收敛成可迁移结构。
 - 迁移计划：[Enterprise-Skill-Platform_Migration-Plan_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Migration-Plan_v4.0.md)
 - 开发 Backlog：[Enterprise-Skill-Platform_Development-Backlog_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Development-Backlog_v4.0.md)
 - Story Breakdown：[Enterprise-Skill-Platform_Story-Breakdown_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Story-Breakdown_v4.0.md)

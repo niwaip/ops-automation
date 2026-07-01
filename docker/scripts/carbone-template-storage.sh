@@ -29,6 +29,7 @@ DEFAULT_OUTPUT_VOLUME="${DEFAULT_OUTPUT_VOLUME:-docker_carbone_outputs}"
 usage() {
   cat <<EOF
 Usage:
+  # Run from the repository root or export PROJECT_ROOT to the current worktree root first
   ./docker/scripts/carbone-template-storage.sh status
   ./docker/scripts/carbone-template-storage.sh backup [archive_path]
   ./docker/scripts/carbone-template-storage.sh restore <archive_path> [--force]

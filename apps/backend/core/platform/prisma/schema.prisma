@@ -449,6 +449,8 @@ model Execution {
   approvalStatus      String?           @map("approval_status") @db.VarChar(50)
   takeoverRequired    Boolean           @default(false) @map("takeover_required")
   takeoverReason      String?           @map("takeover_reason") @db.Text
+  triggerType         String?           @map("trigger_type") @db.VarChar(50)
+  scheduleId          String?           @map("schedule_id") @db.Uuid
   startedAt           DateTime?         @map("started_at") @db.Timestamptz
   endedAt             DateTime?         @map("ended_at") @db.Timestamptz
   createdAt           DateTime          @default(now()) @map("created_at") @db.Timestamptz
@@ -610,3 +612,25 @@ model TemporalWorkflow {
   @@index([validatedAt])
   @@map("temporal_workflows")
 }
+
+// Skill Schedule Configuration
+model SkillSchedule {
+  id             String    @id @default(uuid()) @db.Uuid
+  name           String    @db.VarChar(255)
+  description    String?   @db.VarChar(500)
+  skillId        String    @map("skill_id") @db.Uuid
+  skillVersion   String?   @map("skill_version") @db.VarChar(50)
+  inputJson      Json      @default("{}") @map("input_json")
+  cronExpression String    @map("cron_expression") @db.VarChar(100)
+  timezone       String    @default("UTC") @db.VarChar(50)
+  isActive       Boolean   @default(true) @map("is_active")
+  lastRunAt      DateTime? @map("last_run_at") @db.Timestamptz
+  nextRunAt      DateTime  @map("next_run_at") @db.Timestamptz
+  createdBy      String    @map("created_by") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([isActive, nextRunAt])
+  @@map("skill_schedules")
+}
+

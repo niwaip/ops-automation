@@ -1,7 +1,8 @@
 # browser-template -> browser-domain/templates
 
-当前服务仍物理位于 `apps/backend/domain/browser-template`，但逻辑归属已经切换为未来
+当前服务的主运行 package 已迁到
 `apps/backend/capabilities/browser-domain/templates`。
+本目录现在仅保留本 README 作为历史迁移说明锚点，不再承载运行时代码、生成产物或 Prisma 相关文件。
 
 ## 该模块负责
 

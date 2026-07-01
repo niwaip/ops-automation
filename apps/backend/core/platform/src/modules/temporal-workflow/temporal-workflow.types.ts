@@ -1,4 +1,4 @@
-import { TemporalWorkflow } from '../../prisma';
+import { TemporalWorkflow } from '../../prisma/client';
 
 export interface WorkflowSignalHandler {
   name: string;

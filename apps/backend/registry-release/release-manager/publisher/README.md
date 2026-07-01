@@ -2,13 +2,14 @@
 
 当前目录代表未来 `registry-release/release-manager/publisher` 的逻辑子层视图。
 
-当前仓库里，相关实现仍主要物理位于：
+当前仓库里，相关实现当前主要收口到：
+
+- `apps/backend/registry-release/release-manager/src/publisher`
+
+旧兼容入口已在首批 Phase E 中删除：
 
 - `apps/backend/core/platform/src/modules/capability-release/publisher`
-- `apps/backend/core/platform/src/modules/capability-release/capability-release-deployment.service.ts`
-- `apps/backend/core/platform/src/modules/capability-release/capability-release-deployment-smoke.service.ts`
-- `apps/backend/core/platform/src/modules/capability-release/capability-release-publish.service.ts`
-- `apps/backend/core/platform/src/modules/capability-release/capability-release-runtime.service.ts`
+- 该旧兼容目录与根入口已在后续 Phase E 中完成删除
 
 本目录在当前批次的职责，是把当前发布后的部署、运行时绑定、发布动作与 smoke 校验逻辑，
 统一解释为 `release-manager` 内部的 `publisher` 子层。
@@ -110,4 +111,4 @@ skill-registry / workflow-registry
 - `publisher` 统一承接发布动作、部署绑定、运行时绑定与 smoke 校验
 - `publisher` 继续作为 Release Manifest 进入执行链前的桥接层
 - 主入口、构建、校验、审计继续留在各自子层
-- 当前先固定逻辑边界，不在本批次引入物理迁移
+- `core/platform/src/modules/capability-release/publisher/*` 已在首批 Phase E 中删除

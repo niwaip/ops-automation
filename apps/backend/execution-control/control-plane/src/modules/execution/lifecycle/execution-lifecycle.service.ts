@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { Prisma } from '../../prisma';
+import { Prisma } from '../../prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EXECUTION_EVENT_TYPE } from '../contracts/execution-event-type';
 import { EXECUTION_STATUS, ExecutionStatus } from '../contracts/execution-status';

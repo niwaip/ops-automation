@@ -19,7 +19,7 @@ import {
   ContinueSessionRequestDto,
   DeleteSessionResponseDto,
   SessionDto,
-} from '../../dto';
+} from '../../dto/session.dto';
 
 @ApiTags('sessions')
 @Controller('sessions')

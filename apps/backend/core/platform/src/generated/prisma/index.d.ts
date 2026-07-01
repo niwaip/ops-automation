@@ -133,6 +133,11 @@ export type Activity = $Result.DefaultSelection<Prisma.$ActivityPayload>
  * 
  */
 export type TemporalWorkflow = $Result.DefaultSelection<Prisma.$TemporalWorkflowPayload>
+/**
+ * Model SkillSchedule
+ * 
+ */
+export type SkillSchedule = $Result.DefaultSelection<Prisma.$SkillSchedulePayload>
 
 /**
  * Enums
@@ -554,6 +559,16 @@ export class PrismaClient<
     * ```
     */
   get temporalWorkflow(): Prisma.TemporalWorkflowDelegate<ExtArgs>;
+
+  /**
+   * `prisma.skillSchedule`: Exposes CRUD operations for the **SkillSchedule** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more SkillSchedules
+    * const skillSchedules = await prisma.skillSchedule.findMany()
+    * ```
+    */
+  get skillSchedule(): Prisma.SkillScheduleDelegate<ExtArgs>;
 }
 
 export namespace Prisma {
@@ -1018,7 +1033,8 @@ export namespace Prisma {
     ExecutionEvent: 'ExecutionEvent',
     AuditLog: 'AuditLog',
     Activity: 'Activity',
-    TemporalWorkflow: 'TemporalWorkflow'
+    TemporalWorkflow: 'TemporalWorkflow',
+    SkillSchedule: 'SkillSchedule'
   };
 
   export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -1034,7 +1050,7 @@ export namespace Prisma {
 
   export type TypeMap<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, ClientOptions = {}> = {
     meta: {
-      modelProps: "user" | "role" | "userRole" | "organization" | "department" | "team" | "orgMembership" | "teamMembership" | "orgRoleBinding" | "identityProviderConfig" | "executionFlowTemplate" | "skillConfig" | "skillPermission" | "toolCatalog" | "skillToolBinding" | "chatSession" | "chatMessage" | "execution" | "runtimeSession" | "executionStep" | "executionEvent" | "auditLog" | "activity" | "temporalWorkflow"
+      modelProps: "user" | "role" | "userRole" | "organization" | "department" | "team" | "orgMembership" | "teamMembership" | "orgRoleBinding" | "identityProviderConfig" | "executionFlowTemplate" | "skillConfig" | "skillPermission" | "toolCatalog" | "skillToolBinding" | "chatSession" | "chatMessage" | "execution" | "runtimeSession" | "executionStep" | "executionEvent" | "auditLog" | "activity" | "temporalWorkflow" | "skillSchedule"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -2715,6 +2731,76 @@ export namespace Prisma {
           count: {
             args: Prisma.TemporalWorkflowCountArgs<ExtArgs>
             result: $Utils.Optional<TemporalWorkflowCountAggregateOutputType> | number
+          }
+        }
+      }
+      SkillSchedule: {
+        payload: Prisma.$SkillSchedulePayload<ExtArgs>
+        fields: Prisma.SkillScheduleFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.SkillScheduleFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SkillSchedulePayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.SkillScheduleFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SkillSchedulePayload>
+          }
+          findFirst: {
+            args: Prisma.SkillScheduleFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SkillSchedulePayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.SkillScheduleFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SkillSchedulePayload>
+          }
+          findMany: {
+            args: Prisma.SkillScheduleFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SkillSchedulePayload>[]
+          }
+          create: {
+            args: Prisma.SkillScheduleCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SkillSchedulePayload>
+          }
+          createMany: {
+            args: Prisma.SkillScheduleCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.SkillScheduleCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SkillSchedulePayload>[]
+          }
+          delete: {
+            args: Prisma.SkillScheduleDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SkillSchedulePayload>
+          }
+          update: {
+            args: Prisma.SkillScheduleUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SkillSchedulePayload>
+          }
+          deleteMany: {
+            args: Prisma.SkillScheduleDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.SkillScheduleUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.SkillScheduleUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SkillSchedulePayload>
+          }
+          aggregate: {
+            args: Prisma.SkillScheduleAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateSkillSchedule>
+          }
+          groupBy: {
+            args: Prisma.SkillScheduleGroupByArgs<ExtArgs>
+            result: $Utils.Optional<SkillScheduleGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.SkillScheduleCountArgs<ExtArgs>
+            result: $Utils.Optional<SkillScheduleCountAggregateOutputType> | number
           }
         }
       }
@@ -20652,6 +20738,8 @@ export namespace Prisma {
     approvalStatus: string | null
     takeoverRequired: boolean | null
     takeoverReason: string | null
+    triggerType: string | null
+    scheduleId: string | null
     startedAt: Date | null
     endedAt: Date | null
     createdAt: Date | null
@@ -20674,6 +20762,8 @@ export namespace Prisma {
     approvalStatus: string | null
     takeoverRequired: boolean | null
     takeoverReason: string | null
+    triggerType: string | null
+    scheduleId: string | null
     startedAt: Date | null
     endedAt: Date | null
     createdAt: Date | null
@@ -20699,6 +20789,8 @@ export namespace Prisma {
     approvalStatus: number
     takeoverRequired: number
     takeoverReason: number
+    triggerType: number
+    scheduleId: number
     startedAt: number
     endedAt: number
     createdAt: number
@@ -20723,6 +20815,8 @@ export namespace Prisma {
     approvalStatus?: true
     takeoverRequired?: true
     takeoverReason?: true
+    triggerType?: true
+    scheduleId?: true
     startedAt?: true
     endedAt?: true
     createdAt?: true
@@ -20745,6 +20839,8 @@ export namespace Prisma {
     approvalStatus?: true
     takeoverRequired?: true
     takeoverReason?: true
+    triggerType?: true
+    scheduleId?: true
     startedAt?: true
     endedAt?: true
     createdAt?: true
@@ -20770,6 +20866,8 @@ export namespace Prisma {
     approvalStatus?: true
     takeoverRequired?: true
     takeoverReason?: true
+    triggerType?: true
+    scheduleId?: true
     startedAt?: true
     endedAt?: true
     createdAt?: true
@@ -20868,6 +20966,8 @@ export namespace Prisma {
     approvalStatus: string | null
     takeoverRequired: boolean
     takeoverReason: string | null
+    triggerType: string | null
+    scheduleId: string | null
     startedAt: Date | null
     endedAt: Date | null
     createdAt: Date
@@ -20910,6 +21010,8 @@ export namespace Prisma {
     approvalStatus?: boolean
     takeoverRequired?: boolean
     takeoverReason?: boolean
+    triggerType?: boolean
+    scheduleId?: boolean
     startedAt?: boolean
     endedAt?: boolean
     createdAt?: boolean
@@ -20939,6 +21041,8 @@ export namespace Prisma {
     approvalStatus?: boolean
     takeoverRequired?: boolean
     takeoverReason?: boolean
+    triggerType?: boolean
+    scheduleId?: boolean
     startedAt?: boolean
     endedAt?: boolean
     createdAt?: boolean
@@ -20964,6 +21068,8 @@ export namespace Prisma {
     approvalStatus?: boolean
     takeoverRequired?: boolean
     takeoverReason?: boolean
+    triggerType?: boolean
+    scheduleId?: boolean
     startedAt?: boolean
     endedAt?: boolean
     createdAt?: boolean
@@ -21004,6 +21110,8 @@ export namespace Prisma {
       approvalStatus: string | null
       takeoverRequired: boolean
       takeoverReason: string | null
+      triggerType: string | null
+      scheduleId: string | null
       startedAt: Date | null
       endedAt: Date | null
       createdAt: Date
@@ -21422,6 +21530,8 @@ export namespace Prisma {
     readonly approvalStatus: FieldRef<"Execution", 'String'>
     readonly takeoverRequired: FieldRef<"Execution", 'Boolean'>
     readonly takeoverReason: FieldRef<"Execution", 'String'>
+    readonly triggerType: FieldRef<"Execution", 'String'>
+    readonly scheduleId: FieldRef<"Execution", 'String'>
     readonly startedAt: FieldRef<"Execution", 'DateTime'>
     readonly endedAt: FieldRef<"Execution", 'DateTime'>
     readonly createdAt: FieldRef<"Execution", 'DateTime'>
@@ -27945,6 +28055,988 @@ export namespace Prisma {
 
 
   /**
+   * Model SkillSchedule
+   */
+
+  export type AggregateSkillSchedule = {
+    _count: SkillScheduleCountAggregateOutputType | null
+    _min: SkillScheduleMinAggregateOutputType | null
+    _max: SkillScheduleMaxAggregateOutputType | null
+  }
+
+  export type SkillScheduleMinAggregateOutputType = {
+    id: string | null
+    name: string | null
+    description: string | null
+    skillId: string | null
+    skillVersion: string | null
+    cronExpression: string | null
+    timezone: string | null
+    isActive: boolean | null
+    lastRunAt: Date | null
+    nextRunAt: Date | null
+    createdBy: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type SkillScheduleMaxAggregateOutputType = {
+    id: string | null
+    name: string | null
+    description: string | null
+    skillId: string | null
+    skillVersion: string | null
+    cronExpression: string | null
+    timezone: string | null
+    isActive: boolean | null
+    lastRunAt: Date | null
+    nextRunAt: Date | null
+    createdBy: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type SkillScheduleCountAggregateOutputType = {
+    id: number
+    name: number
+    description: number
+    skillId: number
+    skillVersion: number
+    inputJson: number
+    cronExpression: number
+    timezone: number
+    isActive: number
+    lastRunAt: number
+    nextRunAt: number
+    createdBy: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type SkillScheduleMinAggregateInputType = {
+    id?: true
+    name?: true
+    description?: true
+    skillId?: true
+    skillVersion?: true
+    cronExpression?: true
+    timezone?: true
+    isActive?: true
+    lastRunAt?: true
+    nextRunAt?: true
+    createdBy?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type SkillScheduleMaxAggregateInputType = {
+    id?: true
+    name?: true
+    description?: true
+    skillId?: true
+    skillVersion?: true
+    cronExpression?: true
+    timezone?: true
+    isActive?: true
+    lastRunAt?: true
+    nextRunAt?: true
+    createdBy?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type SkillScheduleCountAggregateInputType = {
+    id?: true
+    name?: true
+    description?: true
+    skillId?: true
+    skillVersion?: true
+    inputJson?: true
+    cronExpression?: true
+    timezone?: true
+    isActive?: true
+    lastRunAt?: true
+    nextRunAt?: true
+    createdBy?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type SkillScheduleAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which SkillSchedule to aggregate.
+     */
+    where?: SkillScheduleWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of SkillSchedules to fetch.
+     */
+    orderBy?: SkillScheduleOrderByWithRelationInput | SkillScheduleOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: SkillScheduleWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` SkillSchedules from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` SkillSchedules.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned SkillSchedules
+    **/
+    _count?: true | SkillScheduleCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: SkillScheduleMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: SkillScheduleMaxAggregateInputType
+  }
+
+  export type GetSkillScheduleAggregateType<T extends SkillScheduleAggregateArgs> = {
+        [P in keyof T & keyof AggregateSkillSchedule]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateSkillSchedule[P]>
+      : GetScalarType<T[P], AggregateSkillSchedule[P]>
+  }
+
+
+
+
+  export type SkillScheduleGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: SkillScheduleWhereInput
+    orderBy?: SkillScheduleOrderByWithAggregationInput | SkillScheduleOrderByWithAggregationInput[]
+    by: SkillScheduleScalarFieldEnum[] | SkillScheduleScalarFieldEnum
+    having?: SkillScheduleScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: SkillScheduleCountAggregateInputType | true
+    _min?: SkillScheduleMinAggregateInputType
+    _max?: SkillScheduleMaxAggregateInputType
+  }
+
+  export type SkillScheduleGroupByOutputType = {
+    id: string
+    name: string
+    description: string | null
+    skillId: string
+    skillVersion: string | null
+    inputJson: JsonValue
+    cronExpression: string
+    timezone: string
+    isActive: boolean
+    lastRunAt: Date | null
+    nextRunAt: Date
+    createdBy: string
+    createdAt: Date
+    updatedAt: Date
+    _count: SkillScheduleCountAggregateOutputType | null
+    _min: SkillScheduleMinAggregateOutputType | null
+    _max: SkillScheduleMaxAggregateOutputType | null
+  }
+
+  type GetSkillScheduleGroupByPayload<T extends SkillScheduleGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<SkillScheduleGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof SkillScheduleGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], SkillScheduleGroupByOutputType[P]>
+            : GetScalarType<T[P], SkillScheduleGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type SkillScheduleSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    name?: boolean
+    description?: boolean
+    skillId?: boolean
+    skillVersion?: boolean
+    inputJson?: boolean
+    cronExpression?: boolean
+    timezone?: boolean
+    isActive?: boolean
+    lastRunAt?: boolean
+    nextRunAt?: boolean
+    createdBy?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["skillSchedule"]>
+
+  export type SkillScheduleSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    name?: boolean
+    description?: boolean
+    skillId?: boolean
+    skillVersion?: boolean
+    inputJson?: boolean
+    cronExpression?: boolean
+    timezone?: boolean
+    isActive?: boolean
+    lastRunAt?: boolean
+    nextRunAt?: boolean
+    createdBy?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["skillSchedule"]>
+
+  export type SkillScheduleSelectScalar = {
+    id?: boolean
+    name?: boolean
+    description?: boolean
+    skillId?: boolean
+    skillVersion?: boolean
+    inputJson?: boolean
+    cronExpression?: boolean
+    timezone?: boolean
+    isActive?: boolean
+    lastRunAt?: boolean
+    nextRunAt?: boolean
+    createdBy?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+
+  export type $SkillSchedulePayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "SkillSchedule"
+    objects: {}
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      name: string
+      description: string | null
+      skillId: string
+      skillVersion: string | null
+      inputJson: Prisma.JsonValue
+      cronExpression: string
+      timezone: string
+      isActive: boolean
+      lastRunAt: Date | null
+      nextRunAt: Date
+      createdBy: string
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["skillSchedule"]>
+    composites: {}
+  }
+
+  type SkillScheduleGetPayload<S extends boolean | null | undefined | SkillScheduleDefaultArgs> = $Result.GetResult<Prisma.$SkillSchedulePayload, S>
+
+  type SkillScheduleCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<SkillScheduleFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: SkillScheduleCountAggregateInputType | true
+    }
+
+  export interface SkillScheduleDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['SkillSchedule'], meta: { name: 'SkillSchedule' } }
+    /**
+     * Find zero or one SkillSchedule that matches the filter.
+     * @param {SkillScheduleFindUniqueArgs} args - Arguments to find a SkillSchedule
+     * @example
+     * // Get one SkillSchedule
+     * const skillSchedule = await prisma.skillSchedule.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends SkillScheduleFindUniqueArgs>(args: SelectSubset<T, SkillScheduleFindUniqueArgs<ExtArgs>>): Prisma__SkillScheduleClient<$Result.GetResult<Prisma.$SkillSchedulePayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+
+    /**
+     * Find one SkillSchedule that matches the filter or throw an error with `error.code='P2025'` 
+     * if no matches were found.
+     * @param {SkillScheduleFindUniqueOrThrowArgs} args - Arguments to find a SkillSchedule
+     * @example
+     * // Get one SkillSchedule
+     * const skillSchedule = await prisma.skillSchedule.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends SkillScheduleFindUniqueOrThrowArgs>(args: SelectSubset<T, SkillScheduleFindUniqueOrThrowArgs<ExtArgs>>): Prisma__SkillScheduleClient<$Result.GetResult<Prisma.$SkillSchedulePayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+
+    /**
+     * Find the first SkillSchedule that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SkillScheduleFindFirstArgs} args - Arguments to find a SkillSchedule
+     * @example
+     * // Get one SkillSchedule
+     * const skillSchedule = await prisma.skillSchedule.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends SkillScheduleFindFirstArgs>(args?: SelectSubset<T, SkillScheduleFindFirstArgs<ExtArgs>>): Prisma__SkillScheduleClient<$Result.GetResult<Prisma.$SkillSchedulePayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+
+    /**
+     * Find the first SkillSchedule that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SkillScheduleFindFirstOrThrowArgs} args - Arguments to find a SkillSchedule
+     * @example
+     * // Get one SkillSchedule
+     * const skillSchedule = await prisma.skillSchedule.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends SkillScheduleFindFirstOrThrowArgs>(args?: SelectSubset<T, SkillScheduleFindFirstOrThrowArgs<ExtArgs>>): Prisma__SkillScheduleClient<$Result.GetResult<Prisma.$SkillSchedulePayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+
+    /**
+     * Find zero or more SkillSchedules that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SkillScheduleFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all SkillSchedules
+     * const skillSchedules = await prisma.skillSchedule.findMany()
+     * 
+     * // Get first 10 SkillSchedules
+     * const skillSchedules = await prisma.skillSchedule.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const skillScheduleWithIdOnly = await prisma.skillSchedule.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends SkillScheduleFindManyArgs>(args?: SelectSubset<T, SkillScheduleFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SkillSchedulePayload<ExtArgs>, T, "findMany">>
+
+    /**
+     * Create a SkillSchedule.
+     * @param {SkillScheduleCreateArgs} args - Arguments to create a SkillSchedule.
+     * @example
+     * // Create one SkillSchedule
+     * const SkillSchedule = await prisma.skillSchedule.create({
+     *   data: {
+     *     // ... data to create a SkillSchedule
+     *   }
+     * })
+     * 
+     */
+    create<T extends SkillScheduleCreateArgs>(args: SelectSubset<T, SkillScheduleCreateArgs<ExtArgs>>): Prisma__SkillScheduleClient<$Result.GetResult<Prisma.$SkillSchedulePayload<ExtArgs>, T, "create">, never, ExtArgs>
+
+    /**
+     * Create many SkillSchedules.
+     * @param {SkillScheduleCreateManyArgs} args - Arguments to create many SkillSchedules.
+     * @example
+     * // Create many SkillSchedules
+     * const skillSchedule = await prisma.skillSchedule.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends SkillScheduleCreateManyArgs>(args?: SelectSubset<T, SkillScheduleCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many SkillSchedules and returns the data saved in the database.
+     * @param {SkillScheduleCreateManyAndReturnArgs} args - Arguments to create many SkillSchedules.
+     * @example
+     * // Create many SkillSchedules
+     * const skillSchedule = await prisma.skillSchedule.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many SkillSchedules and only return the `id`
+     * const skillScheduleWithIdOnly = await prisma.skillSchedule.createManyAndReturn({ 
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends SkillScheduleCreateManyAndReturnArgs>(args?: SelectSubset<T, SkillScheduleCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SkillSchedulePayload<ExtArgs>, T, "createManyAndReturn">>
+
+    /**
+     * Delete a SkillSchedule.
+     * @param {SkillScheduleDeleteArgs} args - Arguments to delete one SkillSchedule.
+     * @example
+     * // Delete one SkillSchedule
+     * const SkillSchedule = await prisma.skillSchedule.delete({
+     *   where: {
+     *     // ... filter to delete one SkillSchedule
+     *   }
+     * })
+     * 
+     */
+    delete<T extends SkillScheduleDeleteArgs>(args: SelectSubset<T, SkillScheduleDeleteArgs<ExtArgs>>): Prisma__SkillScheduleClient<$Result.GetResult<Prisma.$SkillSchedulePayload<ExtArgs>, T, "delete">, never, ExtArgs>
+
+    /**
+     * Update one SkillSchedule.
+     * @param {SkillScheduleUpdateArgs} args - Arguments to update one SkillSchedule.
+     * @example
+     * // Update one SkillSchedule
+     * const skillSchedule = await prisma.skillSchedule.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends SkillScheduleUpdateArgs>(args: SelectSubset<T, SkillScheduleUpdateArgs<ExtArgs>>): Prisma__SkillScheduleClient<$Result.GetResult<Prisma.$SkillSchedulePayload<ExtArgs>, T, "update">, never, ExtArgs>
+
+    /**
+     * Delete zero or more SkillSchedules.
+     * @param {SkillScheduleDeleteManyArgs} args - Arguments to filter SkillSchedules to delete.
+     * @example
+     * // Delete a few SkillSchedules
+     * const { count } = await prisma.skillSchedule.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends SkillScheduleDeleteManyArgs>(args?: SelectSubset<T, SkillScheduleDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more SkillSchedules.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SkillScheduleUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many SkillSchedules
+     * const skillSchedule = await prisma.skillSchedule.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends SkillScheduleUpdateManyArgs>(args: SelectSubset<T, SkillScheduleUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one SkillSchedule.
+     * @param {SkillScheduleUpsertArgs} args - Arguments to update or create a SkillSchedule.
+     * @example
+     * // Update or create a SkillSchedule
+     * const skillSchedule = await prisma.skillSchedule.upsert({
+     *   create: {
+     *     // ... data to create a SkillSchedule
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the SkillSchedule we want to update
+     *   }
+     * })
+     */
+    upsert<T extends SkillScheduleUpsertArgs>(args: SelectSubset<T, SkillScheduleUpsertArgs<ExtArgs>>): Prisma__SkillScheduleClient<$Result.GetResult<Prisma.$SkillSchedulePayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+
+
+    /**
+     * Count the number of SkillSchedules.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SkillScheduleCountArgs} args - Arguments to filter SkillSchedules to count.
+     * @example
+     * // Count the number of SkillSchedules
+     * const count = await prisma.skillSchedule.count({
+     *   where: {
+     *     // ... the filter for the SkillSchedules we want to count
+     *   }
+     * })
+    **/
+    count<T extends SkillScheduleCountArgs>(
+      args?: Subset<T, SkillScheduleCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], SkillScheduleCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a SkillSchedule.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SkillScheduleAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends SkillScheduleAggregateArgs>(args: Subset<T, SkillScheduleAggregateArgs>): Prisma.PrismaPromise<GetSkillScheduleAggregateType<T>>
+
+    /**
+     * Group by SkillSchedule.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SkillScheduleGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends SkillScheduleGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: SkillScheduleGroupByArgs['orderBy'] }
+        : { orderBy?: SkillScheduleGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, SkillScheduleGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetSkillScheduleGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the SkillSchedule model
+   */
+  readonly fields: SkillScheduleFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for SkillSchedule.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__SkillScheduleClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the SkillSchedule model
+   */ 
+  interface SkillScheduleFieldRefs {
+    readonly id: FieldRef<"SkillSchedule", 'String'>
+    readonly name: FieldRef<"SkillSchedule", 'String'>
+    readonly description: FieldRef<"SkillSchedule", 'String'>
+    readonly skillId: FieldRef<"SkillSchedule", 'String'>
+    readonly skillVersion: FieldRef<"SkillSchedule", 'String'>
+    readonly inputJson: FieldRef<"SkillSchedule", 'Json'>
+    readonly cronExpression: FieldRef<"SkillSchedule", 'String'>
+    readonly timezone: FieldRef<"SkillSchedule", 'String'>
+    readonly isActive: FieldRef<"SkillSchedule", 'Boolean'>
+    readonly lastRunAt: FieldRef<"SkillSchedule", 'DateTime'>
+    readonly nextRunAt: FieldRef<"SkillSchedule", 'DateTime'>
+    readonly createdBy: FieldRef<"SkillSchedule", 'String'>
+    readonly createdAt: FieldRef<"SkillSchedule", 'DateTime'>
+    readonly updatedAt: FieldRef<"SkillSchedule", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * SkillSchedule findUnique
+   */
+  export type SkillScheduleFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SkillSchedule
+     */
+    select?: SkillScheduleSelect<ExtArgs> | null
+    /**
+     * Filter, which SkillSchedule to fetch.
+     */
+    where: SkillScheduleWhereUniqueInput
+  }
+
+  /**
+   * SkillSchedule findUniqueOrThrow
+   */
+  export type SkillScheduleFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SkillSchedule
+     */
+    select?: SkillScheduleSelect<ExtArgs> | null
+    /**
+     * Filter, which SkillSchedule to fetch.
+     */
+    where: SkillScheduleWhereUniqueInput
+  }
+
+  /**
+   * SkillSchedule findFirst
+   */
+  export type SkillScheduleFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SkillSchedule
+     */
+    select?: SkillScheduleSelect<ExtArgs> | null
+    /**
+     * Filter, which SkillSchedule to fetch.
+     */
+    where?: SkillScheduleWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of SkillSchedules to fetch.
+     */
+    orderBy?: SkillScheduleOrderByWithRelationInput | SkillScheduleOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for SkillSchedules.
+     */
+    cursor?: SkillScheduleWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` SkillSchedules from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` SkillSchedules.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of SkillSchedules.
+     */
+    distinct?: SkillScheduleScalarFieldEnum | SkillScheduleScalarFieldEnum[]
+  }
+
+  /**
+   * SkillSchedule findFirstOrThrow
+   */
+  export type SkillScheduleFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SkillSchedule
+     */
+    select?: SkillScheduleSelect<ExtArgs> | null
+    /**
+     * Filter, which SkillSchedule to fetch.
+     */
+    where?: SkillScheduleWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of SkillSchedules to fetch.
+     */
+    orderBy?: SkillScheduleOrderByWithRelationInput | SkillScheduleOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for SkillSchedules.
+     */
+    cursor?: SkillScheduleWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` SkillSchedules from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` SkillSchedules.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of SkillSchedules.
+     */
+    distinct?: SkillScheduleScalarFieldEnum | SkillScheduleScalarFieldEnum[]
+  }
+
+  /**
+   * SkillSchedule findMany
+   */
+  export type SkillScheduleFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SkillSchedule
+     */
+    select?: SkillScheduleSelect<ExtArgs> | null
+    /**
+     * Filter, which SkillSchedules to fetch.
+     */
+    where?: SkillScheduleWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of SkillSchedules to fetch.
+     */
+    orderBy?: SkillScheduleOrderByWithRelationInput | SkillScheduleOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing SkillSchedules.
+     */
+    cursor?: SkillScheduleWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` SkillSchedules from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` SkillSchedules.
+     */
+    skip?: number
+    distinct?: SkillScheduleScalarFieldEnum | SkillScheduleScalarFieldEnum[]
+  }
+
+  /**
+   * SkillSchedule create
+   */
+  export type SkillScheduleCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SkillSchedule
+     */
+    select?: SkillScheduleSelect<ExtArgs> | null
+    /**
+     * The data needed to create a SkillSchedule.
+     */
+    data: XOR<SkillScheduleCreateInput, SkillScheduleUncheckedCreateInput>
+  }
+
+  /**
+   * SkillSchedule createMany
+   */
+  export type SkillScheduleCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many SkillSchedules.
+     */
+    data: SkillScheduleCreateManyInput | SkillScheduleCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * SkillSchedule createManyAndReturn
+   */
+  export type SkillScheduleCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SkillSchedule
+     */
+    select?: SkillScheduleSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * The data used to create many SkillSchedules.
+     */
+    data: SkillScheduleCreateManyInput | SkillScheduleCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * SkillSchedule update
+   */
+  export type SkillScheduleUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SkillSchedule
+     */
+    select?: SkillScheduleSelect<ExtArgs> | null
+    /**
+     * The data needed to update a SkillSchedule.
+     */
+    data: XOR<SkillScheduleUpdateInput, SkillScheduleUncheckedUpdateInput>
+    /**
+     * Choose, which SkillSchedule to update.
+     */
+    where: SkillScheduleWhereUniqueInput
+  }
+
+  /**
+   * SkillSchedule updateMany
+   */
+  export type SkillScheduleUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update SkillSchedules.
+     */
+    data: XOR<SkillScheduleUpdateManyMutationInput, SkillScheduleUncheckedUpdateManyInput>
+    /**
+     * Filter which SkillSchedules to update
+     */
+    where?: SkillScheduleWhereInput
+  }
+
+  /**
+   * SkillSchedule upsert
+   */
+  export type SkillScheduleUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SkillSchedule
+     */
+    select?: SkillScheduleSelect<ExtArgs> | null
+    /**
+     * The filter to search for the SkillSchedule to update in case it exists.
+     */
+    where: SkillScheduleWhereUniqueInput
+    /**
+     * In case the SkillSchedule found by the `where` argument doesn't exist, create a new SkillSchedule with this data.
+     */
+    create: XOR<SkillScheduleCreateInput, SkillScheduleUncheckedCreateInput>
+    /**
+     * In case the SkillSchedule was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<SkillScheduleUpdateInput, SkillScheduleUncheckedUpdateInput>
+  }
+
+  /**
+   * SkillSchedule delete
+   */
+  export type SkillScheduleDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SkillSchedule
+     */
+    select?: SkillScheduleSelect<ExtArgs> | null
+    /**
+     * Filter which SkillSchedule to delete.
+     */
+    where: SkillScheduleWhereUniqueInput
+  }
+
+  /**
+   * SkillSchedule deleteMany
+   */
+  export type SkillScheduleDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which SkillSchedules to delete
+     */
+    where?: SkillScheduleWhereInput
+  }
+
+  /**
+   * SkillSchedule without action
+   */
+  export type SkillScheduleDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SkillSchedule
+     */
+    select?: SkillScheduleSelect<ExtArgs> | null
+  }
+
+
+  /**
    * Enums
    */
 
@@ -28239,6 +29331,8 @@ export namespace Prisma {
     approvalStatus: 'approvalStatus',
     takeoverRequired: 'takeoverRequired',
     takeoverReason: 'takeoverReason',
+    triggerType: 'triggerType',
+    scheduleId: 'scheduleId',
     startedAt: 'startedAt',
     endedAt: 'endedAt',
     createdAt: 'createdAt',
@@ -28364,6 +29458,26 @@ export namespace Prisma {
   };
 
   export type TemporalWorkflowScalarFieldEnum = (typeof TemporalWorkflowScalarFieldEnum)[keyof typeof TemporalWorkflowScalarFieldEnum]
+
+
+  export const SkillScheduleScalarFieldEnum: {
+    id: 'id',
+    name: 'name',
+    description: 'description',
+    skillId: 'skillId',
+    skillVersion: 'skillVersion',
+    inputJson: 'inputJson',
+    cronExpression: 'cronExpression',
+    timezone: 'timezone',
+    isActive: 'isActive',
+    lastRunAt: 'lastRunAt',
+    nextRunAt: 'nextRunAt',
+    createdBy: 'createdBy',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type SkillScheduleScalarFieldEnum = (typeof SkillScheduleScalarFieldEnum)[keyof typeof SkillScheduleScalarFieldEnum]
 
 
   export const SortOrder: {
@@ -29978,6 +31092,8 @@ export namespace Prisma {
     approvalStatus?: StringNullableFilter<"Execution"> | string | null
     takeoverRequired?: BoolFilter<"Execution"> | boolean
     takeoverReason?: StringNullableFilter<"Execution"> | string | null
+    triggerType?: StringNullableFilter<"Execution"> | string | null
+    scheduleId?: UuidNullableFilter<"Execution"> | string | null
     startedAt?: DateTimeNullableFilter<"Execution"> | Date | string | null
     endedAt?: DateTimeNullableFilter<"Execution"> | Date | string | null
     createdAt?: DateTimeFilter<"Execution"> | Date | string
@@ -30006,6 +31122,8 @@ export namespace Prisma {
     approvalStatus?: SortOrderInput | SortOrder
     takeoverRequired?: SortOrder
     takeoverReason?: SortOrderInput | SortOrder
+    triggerType?: SortOrderInput | SortOrder
+    scheduleId?: SortOrderInput | SortOrder
     startedAt?: SortOrderInput | SortOrder
     endedAt?: SortOrderInput | SortOrder
     createdAt?: SortOrder
@@ -30037,6 +31155,8 @@ export namespace Prisma {
     approvalStatus?: StringNullableFilter<"Execution"> | string | null
     takeoverRequired?: BoolFilter<"Execution"> | boolean
     takeoverReason?: StringNullableFilter<"Execution"> | string | null
+    triggerType?: StringNullableFilter<"Execution"> | string | null
+    scheduleId?: UuidNullableFilter<"Execution"> | string | null
     startedAt?: DateTimeNullableFilter<"Execution"> | Date | string | null
     endedAt?: DateTimeNullableFilter<"Execution"> | Date | string | null
     createdAt?: DateTimeFilter<"Execution"> | Date | string
@@ -30065,6 +31185,8 @@ export namespace Prisma {
     approvalStatus?: SortOrderInput | SortOrder
     takeoverRequired?: SortOrder
     takeoverReason?: SortOrderInput | SortOrder
+    triggerType?: SortOrderInput | SortOrder
+    scheduleId?: SortOrderInput | SortOrder
     startedAt?: SortOrderInput | SortOrder
     endedAt?: SortOrderInput | SortOrder
     createdAt?: SortOrder
@@ -30096,6 +31218,8 @@ export namespace Prisma {
     approvalStatus?: StringNullableWithAggregatesFilter<"Execution"> | string | null
     takeoverRequired?: BoolWithAggregatesFilter<"Execution"> | boolean
     takeoverReason?: StringNullableWithAggregatesFilter<"Execution"> | string | null
+    triggerType?: StringNullableWithAggregatesFilter<"Execution"> | string | null
+    scheduleId?: UuidNullableWithAggregatesFilter<"Execution"> | string | null
     startedAt?: DateTimeNullableWithAggregatesFilter<"Execution"> | Date | string | null
     endedAt?: DateTimeNullableWithAggregatesFilter<"Execution"> | Date | string | null
     createdAt?: DateTimeWithAggregatesFilter<"Execution"> | Date | string
@@ -30688,6 +31812,103 @@ export namespace Prisma {
     deployedAt?: DateTimeNullableWithAggregatesFilter<"TemporalWorkflow"> | Date | string | null
     createdAt?: DateTimeWithAggregatesFilter<"TemporalWorkflow"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"TemporalWorkflow"> | Date | string
+  }
+
+  export type SkillScheduleWhereInput = {
+    AND?: SkillScheduleWhereInput | SkillScheduleWhereInput[]
+    OR?: SkillScheduleWhereInput[]
+    NOT?: SkillScheduleWhereInput | SkillScheduleWhereInput[]
+    id?: UuidFilter<"SkillSchedule"> | string
+    name?: StringFilter<"SkillSchedule"> | string
+    description?: StringNullableFilter<"SkillSchedule"> | string | null
+    skillId?: UuidFilter<"SkillSchedule"> | string
+    skillVersion?: StringNullableFilter<"SkillSchedule"> | string | null
+    inputJson?: JsonFilter<"SkillSchedule">
+    cronExpression?: StringFilter<"SkillSchedule"> | string
+    timezone?: StringFilter<"SkillSchedule"> | string
+    isActive?: BoolFilter<"SkillSchedule"> | boolean
+    lastRunAt?: DateTimeNullableFilter<"SkillSchedule"> | Date | string | null
+    nextRunAt?: DateTimeFilter<"SkillSchedule"> | Date | string
+    createdBy?: UuidFilter<"SkillSchedule"> | string
+    createdAt?: DateTimeFilter<"SkillSchedule"> | Date | string
+    updatedAt?: DateTimeFilter<"SkillSchedule"> | Date | string
+  }
+
+  export type SkillScheduleOrderByWithRelationInput = {
+    id?: SortOrder
+    name?: SortOrder
+    description?: SortOrderInput | SortOrder
+    skillId?: SortOrder
+    skillVersion?: SortOrderInput | SortOrder
+    inputJson?: SortOrder
+    cronExpression?: SortOrder
+    timezone?: SortOrder
+    isActive?: SortOrder
+    lastRunAt?: SortOrderInput | SortOrder
+    nextRunAt?: SortOrder
+    createdBy?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type SkillScheduleWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: SkillScheduleWhereInput | SkillScheduleWhereInput[]
+    OR?: SkillScheduleWhereInput[]
+    NOT?: SkillScheduleWhereInput | SkillScheduleWhereInput[]
+    name?: StringFilter<"SkillSchedule"> | string
+    description?: StringNullableFilter<"SkillSchedule"> | string | null
+    skillId?: UuidFilter<"SkillSchedule"> | string
+    skillVersion?: StringNullableFilter<"SkillSchedule"> | string | null
+    inputJson?: JsonFilter<"SkillSchedule">
+    cronExpression?: StringFilter<"SkillSchedule"> | string
+    timezone?: StringFilter<"SkillSchedule"> | string
+    isActive?: BoolFilter<"SkillSchedule"> | boolean
+    lastRunAt?: DateTimeNullableFilter<"SkillSchedule"> | Date | string | null
+    nextRunAt?: DateTimeFilter<"SkillSchedule"> | Date | string
+    createdBy?: UuidFilter<"SkillSchedule"> | string
+    createdAt?: DateTimeFilter<"SkillSchedule"> | Date | string
+    updatedAt?: DateTimeFilter<"SkillSchedule"> | Date | string
+  }, "id">
+
+  export type SkillScheduleOrderByWithAggregationInput = {
+    id?: SortOrder
+    name?: SortOrder
+    description?: SortOrderInput | SortOrder
+    skillId?: SortOrder
+    skillVersion?: SortOrderInput | SortOrder
+    inputJson?: SortOrder
+    cronExpression?: SortOrder
+    timezone?: SortOrder
+    isActive?: SortOrder
+    lastRunAt?: SortOrderInput | SortOrder
+    nextRunAt?: SortOrder
+    createdBy?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: SkillScheduleCountOrderByAggregateInput
+    _max?: SkillScheduleMaxOrderByAggregateInput
+    _min?: SkillScheduleMinOrderByAggregateInput
+  }
+
+  export type SkillScheduleScalarWhereWithAggregatesInput = {
+    AND?: SkillScheduleScalarWhereWithAggregatesInput | SkillScheduleScalarWhereWithAggregatesInput[]
+    OR?: SkillScheduleScalarWhereWithAggregatesInput[]
+    NOT?: SkillScheduleScalarWhereWithAggregatesInput | SkillScheduleScalarWhereWithAggregatesInput[]
+    id?: UuidWithAggregatesFilter<"SkillSchedule"> | string
+    name?: StringWithAggregatesFilter<"SkillSchedule"> | string
+    description?: StringNullableWithAggregatesFilter<"SkillSchedule"> | string | null
+    skillId?: UuidWithAggregatesFilter<"SkillSchedule"> | string
+    skillVersion?: StringNullableWithAggregatesFilter<"SkillSchedule"> | string | null
+    inputJson?: JsonWithAggregatesFilter<"SkillSchedule">
+    cronExpression?: StringWithAggregatesFilter<"SkillSchedule"> | string
+    timezone?: StringWithAggregatesFilter<"SkillSchedule"> | string
+    isActive?: BoolWithAggregatesFilter<"SkillSchedule"> | boolean
+    lastRunAt?: DateTimeNullableWithAggregatesFilter<"SkillSchedule"> | Date | string | null
+    nextRunAt?: DateTimeWithAggregatesFilter<"SkillSchedule"> | Date | string
+    createdBy?: UuidWithAggregatesFilter<"SkillSchedule"> | string
+    createdAt?: DateTimeWithAggregatesFilter<"SkillSchedule"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"SkillSchedule"> | Date | string
   }
 
   export type UserCreateInput = {
@@ -32255,6 +33476,8 @@ export namespace Prisma {
     approvalStatus?: string | null
     takeoverRequired?: boolean
     takeoverReason?: string | null
+    triggerType?: string | null
+    scheduleId?: string | null
     startedAt?: Date | string | null
     endedAt?: Date | string | null
     createdAt?: Date | string
@@ -32283,6 +33506,8 @@ export namespace Prisma {
     approvalStatus?: string | null
     takeoverRequired?: boolean
     takeoverReason?: string | null
+    triggerType?: string | null
+    scheduleId?: string | null
     startedAt?: Date | string | null
     endedAt?: Date | string | null
     createdAt?: Date | string
@@ -32311,6 +33536,8 @@ export namespace Prisma {
     approvalStatus?: NullableStringFieldUpdateOperationsInput | string | null
     takeoverRequired?: BoolFieldUpdateOperationsInput | boolean
     takeoverReason?: NullableStringFieldUpdateOperationsInput | string | null
+    triggerType?: NullableStringFieldUpdateOperationsInput | string | null
+    scheduleId?: NullableStringFieldUpdateOperationsInput | string | null
     startedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     endedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -32339,6 +33566,8 @@ export namespace Prisma {
     approvalStatus?: NullableStringFieldUpdateOperationsInput | string | null
     takeoverRequired?: BoolFieldUpdateOperationsInput | boolean
     takeoverReason?: NullableStringFieldUpdateOperationsInput | string | null
+    triggerType?: NullableStringFieldUpdateOperationsInput | string | null
+    scheduleId?: NullableStringFieldUpdateOperationsInput | string | null
     startedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     endedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -32367,6 +33596,8 @@ export namespace Prisma {
     approvalStatus?: string | null
     takeoverRequired?: boolean
     takeoverReason?: string | null
+    triggerType?: string | null
+    scheduleId?: string | null
     startedAt?: Date | string | null
     endedAt?: Date | string | null
     createdAt?: Date | string
@@ -32392,6 +33623,8 @@ export namespace Prisma {
     approvalStatus?: NullableStringFieldUpdateOperationsInput | string | null
     takeoverRequired?: BoolFieldUpdateOperationsInput | boolean
     takeoverReason?: NullableStringFieldUpdateOperationsInput | string | null
+    triggerType?: NullableStringFieldUpdateOperationsInput | string | null
+    scheduleId?: NullableStringFieldUpdateOperationsInput | string | null
     startedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     endedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -32417,6 +33650,8 @@ export namespace Prisma {
     approvalStatus?: NullableStringFieldUpdateOperationsInput | string | null
     takeoverRequired?: BoolFieldUpdateOperationsInput | boolean
     takeoverReason?: NullableStringFieldUpdateOperationsInput | string | null
+    triggerType?: NullableStringFieldUpdateOperationsInput | string | null
+    scheduleId?: NullableStringFieldUpdateOperationsInput | string | null
     startedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     endedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -33116,6 +34351,125 @@ export namespace Prisma {
     validatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     isActive?: BoolFieldUpdateOperationsInput | boolean
     deployedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type SkillScheduleCreateInput = {
+    id?: string
+    name: string
+    description?: string | null
+    skillId: string
+    skillVersion?: string | null
+    inputJson?: JsonNullValueInput | InputJsonValue
+    cronExpression: string
+    timezone?: string
+    isActive?: boolean
+    lastRunAt?: Date | string | null
+    nextRunAt: Date | string
+    createdBy: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type SkillScheduleUncheckedCreateInput = {
+    id?: string
+    name: string
+    description?: string | null
+    skillId: string
+    skillVersion?: string | null
+    inputJson?: JsonNullValueInput | InputJsonValue
+    cronExpression: string
+    timezone?: string
+    isActive?: boolean
+    lastRunAt?: Date | string | null
+    nextRunAt: Date | string
+    createdBy: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type SkillScheduleUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    skillId?: StringFieldUpdateOperationsInput | string
+    skillVersion?: NullableStringFieldUpdateOperationsInput | string | null
+    inputJson?: JsonNullValueInput | InputJsonValue
+    cronExpression?: StringFieldUpdateOperationsInput | string
+    timezone?: StringFieldUpdateOperationsInput | string
+    isActive?: BoolFieldUpdateOperationsInput | boolean
+    lastRunAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    nextRunAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type SkillScheduleUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    skillId?: StringFieldUpdateOperationsInput | string
+    skillVersion?: NullableStringFieldUpdateOperationsInput | string | null
+    inputJson?: JsonNullValueInput | InputJsonValue
+    cronExpression?: StringFieldUpdateOperationsInput | string
+    timezone?: StringFieldUpdateOperationsInput | string
+    isActive?: BoolFieldUpdateOperationsInput | boolean
+    lastRunAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    nextRunAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type SkillScheduleCreateManyInput = {
+    id?: string
+    name: string
+    description?: string | null
+    skillId: string
+    skillVersion?: string | null
+    inputJson?: JsonNullValueInput | InputJsonValue
+    cronExpression: string
+    timezone?: string
+    isActive?: boolean
+    lastRunAt?: Date | string | null
+    nextRunAt: Date | string
+    createdBy: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type SkillScheduleUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    skillId?: StringFieldUpdateOperationsInput | string
+    skillVersion?: NullableStringFieldUpdateOperationsInput | string | null
+    inputJson?: JsonNullValueInput | InputJsonValue
+    cronExpression?: StringFieldUpdateOperationsInput | string
+    timezone?: StringFieldUpdateOperationsInput | string
+    isActive?: BoolFieldUpdateOperationsInput | boolean
+    lastRunAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    nextRunAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    createdBy?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type SkillScheduleUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    skillId?: StringFieldUpdateOperationsInput | string
+    skillVersion?: NullableStringFieldUpdateOperationsInput | string | null
+    inputJson?: JsonNullValueInput | InputJsonValue
+    cronExpression?: StringFieldUpdateOperationsInput | string
+    timezone?: StringFieldUpdateOperationsInput | string
+    isActive?: BoolFieldUpdateOperationsInput | boolean
+    lastRunAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    nextRunAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    createdBy?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -34374,6 +35728,8 @@ export namespace Prisma {
     approvalStatus?: SortOrder
     takeoverRequired?: SortOrder
     takeoverReason?: SortOrder
+    triggerType?: SortOrder
+    scheduleId?: SortOrder
     startedAt?: SortOrder
     endedAt?: SortOrder
     createdAt?: SortOrder
@@ -34396,6 +35752,8 @@ export namespace Prisma {
     approvalStatus?: SortOrder
     takeoverRequired?: SortOrder
     takeoverReason?: SortOrder
+    triggerType?: SortOrder
+    scheduleId?: SortOrder
     startedAt?: SortOrder
     endedAt?: SortOrder
     createdAt?: SortOrder
@@ -34418,6 +35776,8 @@ export namespace Prisma {
     approvalStatus?: SortOrder
     takeoverRequired?: SortOrder
     takeoverReason?: SortOrder
+    triggerType?: SortOrder
+    scheduleId?: SortOrder
     startedAt?: SortOrder
     endedAt?: SortOrder
     createdAt?: SortOrder
@@ -34766,6 +36126,55 @@ export namespace Prisma {
   export type TemporalWorkflowSumOrderByAggregateInput = {
     artifactVersion?: SortOrder
     validationScore?: SortOrder
+  }
+
+  export type SkillScheduleCountOrderByAggregateInput = {
+    id?: SortOrder
+    name?: SortOrder
+    description?: SortOrder
+    skillId?: SortOrder
+    skillVersion?: SortOrder
+    inputJson?: SortOrder
+    cronExpression?: SortOrder
+    timezone?: SortOrder
+    isActive?: SortOrder
+    lastRunAt?: SortOrder
+    nextRunAt?: SortOrder
+    createdBy?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type SkillScheduleMaxOrderByAggregateInput = {
+    id?: SortOrder
+    name?: SortOrder
+    description?: SortOrder
+    skillId?: SortOrder
+    skillVersion?: SortOrder
+    cronExpression?: SortOrder
+    timezone?: SortOrder
+    isActive?: SortOrder
+    lastRunAt?: SortOrder
+    nextRunAt?: SortOrder
+    createdBy?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type SkillScheduleMinOrderByAggregateInput = {
+    id?: SortOrder
+    name?: SortOrder
+    description?: SortOrder
+    skillId?: SortOrder
+    skillVersion?: SortOrder
+    cronExpression?: SortOrder
+    timezone?: SortOrder
+    isActive?: SortOrder
+    lastRunAt?: SortOrder
+    nextRunAt?: SortOrder
+    createdBy?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
   }
 
   export type UserRoleCreateNestedManyWithoutUserInput = {
@@ -39985,6 +41394,8 @@ export namespace Prisma {
     approvalStatus?: string | null
     takeoverRequired?: boolean
     takeoverReason?: string | null
+    triggerType?: string | null
+    scheduleId?: string | null
     startedAt?: Date | string | null
     endedAt?: Date | string | null
     createdAt?: Date | string
@@ -40012,6 +41423,8 @@ export namespace Prisma {
     approvalStatus?: string | null
     takeoverRequired?: boolean
     takeoverReason?: string | null
+    triggerType?: string | null
+    scheduleId?: string | null
     startedAt?: Date | string | null
     endedAt?: Date | string | null
     createdAt?: Date | string
@@ -40055,6 +41468,8 @@ export namespace Prisma {
     approvalStatus?: NullableStringFieldUpdateOperationsInput | string | null
     takeoverRequired?: BoolFieldUpdateOperationsInput | boolean
     takeoverReason?: NullableStringFieldUpdateOperationsInput | string | null
+    triggerType?: NullableStringFieldUpdateOperationsInput | string | null
+    scheduleId?: NullableStringFieldUpdateOperationsInput | string | null
     startedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     endedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -40082,6 +41497,8 @@ export namespace Prisma {
     approvalStatus?: NullableStringFieldUpdateOperationsInput | string | null
     takeoverRequired?: BoolFieldUpdateOperationsInput | boolean
     takeoverReason?: NullableStringFieldUpdateOperationsInput | string | null
+    triggerType?: NullableStringFieldUpdateOperationsInput | string | null
+    scheduleId?: NullableStringFieldUpdateOperationsInput | string | null
     startedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     endedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -40109,6 +41526,8 @@ export namespace Prisma {
     approvalStatus?: string | null
     takeoverRequired?: boolean
     takeoverReason?: string | null
+    triggerType?: string | null
+    scheduleId?: string | null
     startedAt?: Date | string | null
     endedAt?: Date | string | null
     createdAt?: Date | string
@@ -40136,6 +41555,8 @@ export namespace Prisma {
     approvalStatus?: string | null
     takeoverRequired?: boolean
     takeoverReason?: string | null
+    triggerType?: string | null
+    scheduleId?: string | null
     startedAt?: Date | string | null
     endedAt?: Date | string | null
     createdAt?: Date | string
@@ -40179,6 +41600,8 @@ export namespace Prisma {
     approvalStatus?: NullableStringFieldUpdateOperationsInput | string | null
     takeoverRequired?: BoolFieldUpdateOperationsInput | boolean
     takeoverReason?: NullableStringFieldUpdateOperationsInput | string | null
+    triggerType?: NullableStringFieldUpdateOperationsInput | string | null
+    scheduleId?: NullableStringFieldUpdateOperationsInput | string | null
     startedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     endedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -40206,6 +41629,8 @@ export namespace Prisma {
     approvalStatus?: NullableStringFieldUpdateOperationsInput | string | null
     takeoverRequired?: BoolFieldUpdateOperationsInput | boolean
     takeoverReason?: NullableStringFieldUpdateOperationsInput | string | null
+    triggerType?: NullableStringFieldUpdateOperationsInput | string | null
+    scheduleId?: NullableStringFieldUpdateOperationsInput | string | null
     startedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     endedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -40233,6 +41658,8 @@ export namespace Prisma {
     approvalStatus?: string | null
     takeoverRequired?: boolean
     takeoverReason?: string | null
+    triggerType?: string | null
+    scheduleId?: string | null
     startedAt?: Date | string | null
     endedAt?: Date | string | null
     createdAt?: Date | string
@@ -40260,6 +41687,8 @@ export namespace Prisma {
     approvalStatus?: string | null
     takeoverRequired?: boolean
     takeoverReason?: string | null
+    triggerType?: string | null
+    scheduleId?: string | null
     startedAt?: Date | string | null
     endedAt?: Date | string | null
     createdAt?: Date | string
@@ -40303,6 +41732,8 @@ export namespace Prisma {
     approvalStatus?: NullableStringFieldUpdateOperationsInput | string | null
     takeoverRequired?: BoolFieldUpdateOperationsInput | boolean
     takeoverReason?: NullableStringFieldUpdateOperationsInput | string | null
+    triggerType?: NullableStringFieldUpdateOperationsInput | string | null
+    scheduleId?: NullableStringFieldUpdateOperationsInput | string | null
     startedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     endedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -40330,6 +41761,8 @@ export namespace Prisma {
     approvalStatus?: NullableStringFieldUpdateOperationsInput | string | null
     takeoverRequired?: BoolFieldUpdateOperationsInput | boolean
     takeoverReason?: NullableStringFieldUpdateOperationsInput | string | null
+    triggerType?: NullableStringFieldUpdateOperationsInput | string | null
+    scheduleId?: NullableStringFieldUpdateOperationsInput | string | null
     startedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     endedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -41599,6 +43032,10 @@ export namespace Prisma {
      * @deprecated Use TemporalWorkflowDefaultArgs instead
      */
     export type TemporalWorkflowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = TemporalWorkflowDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use SkillScheduleDefaultArgs instead
+     */
+    export type SkillScheduleArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = SkillScheduleDefaultArgs<ExtArgs>
 
   /**
    * Batch Payload for updateMany & deleteMany & createMany

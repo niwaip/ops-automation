@@ -3,10 +3,30 @@
   "version": "1.0.0",
   "private": true,
   "description": "Registry-release workflow-registry shared exports",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "exports": {
+    "./flow-template": {
+      "types": "./dist/flow-template/index.d.ts",
+      "default": "./dist/flow-template/index.js"
+    },
+    "./workflow-template": {
+      "types": "./dist/workflow-template/index.d.ts",
+      "default": "./dist/workflow-template/index.js"
+    },
+    "./activity-template": {
+      "types": "./dist/activity-template/index.d.ts",
+      "default": "./dist/activity-template/index.js"
+    },
+    "./validation": {
+      "types": "./dist/validation/index.d.ts",
+      "default": "./dist/validation/index.js"
+    },
+    "./codegen": {
+      "types": "./dist/codegen/index.d.ts",
+      "default": "./dist/codegen/index.js"
+    }
+  },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "rm -rf dist && pnpm --filter @ops/platform run build && tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {

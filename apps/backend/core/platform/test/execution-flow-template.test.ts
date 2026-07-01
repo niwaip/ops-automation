@@ -1,4 +1,4 @@
-import { ExecutionFlowTemplateService } from '../src/workflow-registry/flow-template';
+import { ExecutionFlowTemplateService } from '../src/modules/execution-flow/execution-flow-template.service';
 
 describe('ExecutionFlowTemplateService', () => {
   const createService = () => {

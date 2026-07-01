@@ -28,7 +28,6 @@ import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { templateApi, type Template, type TemplateStatus } from '@/api/template';
 import { sessionApi } from '@/api/session';
-import { userApi } from '@/api/auth';
 
 const { Option } = Select;
 const { Text, Title } = Typography;
@@ -36,11 +35,6 @@ const { Text, Title } = Typography;
 type TemplateRow = Template & {
   created_by_username?: string;
 };
-
-const isUuidLike = (value: string): boolean =>
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    String(value || '').trim()
-  );
 
 const TemplateListPage: React.FC = () => {
   const { t } = useTranslation(['common', 'template']);
@@ -64,28 +58,10 @@ const TemplateListPage: React.FC = () => {
         status: statusFilter,
         search: searchText,
       });
-      const templates = result.templates || [];
-      const creatorIds = Array.from(
-        new Set(templates.map((template) => template.created_by).filter(Boolean))
-      );
-
-      const userNamePairs = await Promise.all(
-        creatorIds.map(async (userId) => {
-          if (!isUuidLike(userId)) {
-            return [userId, userId] as const;
-          }
-          try {
-            const user = await userApi.getById(userId);
-            return [userId, user.username] as const;
-          } catch {
-            return [userId, userId] as const;
-          }
-        })
-      );
-      const userNameMap = new Map<string, string>(userNamePairs);
-      const enrichedTemplates: TemplateRow[] = templates.map((template) => ({
+      const enrichedTemplates: TemplateRow[] = (result.templates || []).map((template) => ({
         ...template,
-        created_by_username: userNameMap.get(template.created_by) || template.created_by,
+        // `created_by` in browser-template is a free-form provenance string, not a user FK.
+        created_by_username: template.created_by?.trim() || '-',
       }));
 
       return {
@@ -97,11 +73,11 @@ const TemplateListPage: React.FC = () => {
 
   const deleteMutation = useMutation(templateApi.delete, {
     onSuccess: () => {
-      message.success(t('common:success'));
-      queryClient.invalidateQueries(['templates']);
+      void message.success(t('common:success'));
+      void queryClient.invalidateQueries(['templates']);
     },
     onError: () => {
-      message.error(t('common:error'));
+      void message.error(t('common:error'));
     },
   });
 
@@ -125,13 +101,13 @@ const TemplateListPage: React.FC = () => {
         );
 
       if (!sessions.length) {
-        message.info('该模板暂无会话历史');
+        void message.info('该模板暂无会话历史');
         return;
       }
 
       navigate(`/sessions/${sessions[0].id}`);
     } catch {
-      message.error('获取最新会话失败');
+      void message.error('获取最新会话失败');
     } finally {
       setOpeningHistoryTemplateId(null);
     }
@@ -209,7 +185,9 @@ const TemplateListPage: React.FC = () => {
             size="small"
             icon={<ClockCircleOutlined />}
             loading={openingHistoryTemplateId === record.id}
-            onClick={() => handleOpenLatestSession(record.id)}
+            onClick={() => {
+              void handleOpenLatestSession(record.id);
+            }}
           >
             最新会话
           </Button>
@@ -259,7 +237,12 @@ const TemplateListPage: React.FC = () => {
             </Select>
           </Space>
           <Space>
-            <Button icon={<ReloadOutlined />} onClick={() => templatesQuery.refetch()}>
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={() => {
+                void templatesQuery.refetch();
+              }}
+            >
               {t('common:refresh')}
             </Button>
             <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/recorder')}>

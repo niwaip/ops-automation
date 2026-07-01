@@ -8,6 +8,8 @@
 > - [Enterprise-Skill-Platform_Project-Architecture-Restructuring-Migration-Checklist_v4.1.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Project-Architecture-Restructuring-Migration-Checklist_v4.1.md)
 >
 > 目标不是再解释架构原则，而是把“目标态”转成能直接排期、分批开发、逐项验收的任务清单。
+>
+> 历史状态说明：本文保留 2026-06-23 的 backlog 语义与当时的旧路径引用，用于追踪分批实施顺序；截至当前 Phase D，`modules/capability-release/*` 已不再承载真实实现，稳定实现与默认消费入口已收口到 `core/platform/src/release-manager/*` 与 `@ops/release-manager/*`。
 
 ---
 
@@ -94,14 +96,14 @@
 目标：
 
 1. 明确 `core/platform` 中哪些模块属于治理、注册、发布。
-2. 为 `skill`、`execution-flow`、`temporal-workflow`、`capability-release` 补齐稳定导出入口。
+2. 为 `temporal-workflow`、`capability-release` 等仍需保留兼容锚点的模块补齐稳定导出入口，并避免继续扩张 `skill` / `execution-flow` 的过渡根 barrel。
 3. 降低外部模块对内部实现文件的直接深层引用。
 
 建议文件：
 
-1. `apps/backend/core/platform/src/modules/skill/index.ts`
-2. `apps/backend/core/platform/src/modules/execution-flow/index.ts`
-3. `apps/backend/core/platform/src/modules/temporal-workflow/index.ts`
+1. `apps/backend/core/platform/src/modules/skill/*` 真实实现文件与仍保留的稳定子层
+2. `apps/backend/core/platform/src/modules/execution-flow/*` 真实实现文件与仍保留的稳定子层
+3. `apps/backend/core/platform/src/modules/temporal-workflow/*` 分组入口与真实实现文件（旧 `index.ts` 根 barrel 已在后续 Phase E 删除）
 4. `apps/backend/core/platform/src/modules/capability-release/index.ts`
 5. `apps/backend/core/platform/src/app.module.ts`
 
@@ -271,13 +273,13 @@ packages/backend-contracts/
 
 当前进展：
 
-1. `skill` 已通过本地 README 与稳定 `index.ts` 明确切换到 `skill-registry` 逻辑归属，并显式形成 `registry / binding / access / matching / enrichment / validation` 分层。
+1. `skill` 已通过本地 README 与稳定入口明确切换到 `skill-registry` 逻辑归属，并显式形成 `registry / binding / access / matching / enrichment / validation` 分层；其中包侧 `access / binding / enrichment / matching / validation` 五个零消费者叶子入口已在后续 Phase E 删除，当前仅保留 `registry/index.ts` 作为最小逻辑视图占位。
 2. 已新增 `apps/backend/registry-release/skill-registry/README.md`，把当前 `skill` 模块统一解释为设计时 Skill 注册资产，并明确它与 `workflow-registry`、`release-manager`、`control-plane` 的边界。
 3. `execution-flow` 已通过本地 README 与稳定 `index.ts` 明确切换到 `workflow-registry` 逻辑归属，并显式形成 `registry / template / validation` 分层。
-4. `temporal-workflow` 已通过本地 README 与稳定 `index.ts` 明确切换到 `workflow-registry` 逻辑归属，并显式形成 `workflow / activity / codegen / validation` 分层。
+4. `temporal-workflow` 已通过本地 README 与 `workflow-registry/{workflow-template,codegen,validation}` 稳定入口明确切换到 `workflow-registry` 逻辑归属，并显式形成 `workflow / activity / codegen / validation` 分层。
 5. 已新增 `apps/backend/registry-release/workflow-registry/README.md`，把 `execution-flow` 与 `temporal-workflow` 统一解释为同一类设计时工作流注册资产，并明确它们与 `release-manager`、`control-plane`、runtime worker 的边界。
 6. 已新增 `apps/backend/registry-release/workflow-registry/validation/README.md`，把 `execution-flow/validation` 与 `temporal-workflow/validation` 的校验 facade、校验服务与相关类型统一解释为 `workflow-registry/validation` 子层。
-7. 已新增 `apps/backend/registry-release/workflow-registry/flow-template/README.md`，把 `execution-flow/registry`、`execution-flow/template`、模板控制器、模块与模板 DTO 统一解释为 `workflow-registry/flow-template` 子层。
+7. 已新增 `apps/backend/registry-release/workflow-registry/flow-template/README.md`，把 `execution-flow/registry`、`execution-flow-template.service.ts`、模板控制器、模块与模板 DTO 统一解释为 `workflow-registry/flow-template` 子层；旧 `execution-flow/template/index.ts` compat 壳已在后续 Phase E 删除。
 8. `capability-release` 已通过本地 README 与稳定 `index.ts` 明确切换到 `release-manager` 逻辑归属，并显式形成 `release / compiler / validator / publisher / audit` 分层。
 9. 已新增 `apps/backend/registry-release/release-manager/README.md`，把当前 `capability-release` 模块统一解释为发布侧中心，并明确它与 `skill-registry`、`workflow-registry`、`control-plane`、runtime worker 的边界。
 10. 已新增 `apps/backend/registry-release/release-manager/release/README.md`，把发布主入口、Manifest 装配与主流程收口逻辑统一解释为 `release-manager/release` 子层。
@@ -390,6 +392,7 @@ packages/backend-contracts/
 1. 已确认 `browser-template` 当前属于“设计时模板资产 + 本地过渡发布接口”。
 2. 已确认 `browser-semantics` 当前属于“设计时规则集 + 本地发布态 + 稳定运行时解析”。
 3. 已在 `apps/backend/capabilities/browser-domain/README.md` 补充域级发布边界说明，明确模板与语义规则的局部发布门禁后续收敛到 `release-manager`。
+4. `browser-semantics` 的真实运行包根目录已迁到 `apps/backend/capabilities/browser-domain/semantics`，旧 `apps/backend/domain/browser-semantics` 物理路径已在后续收口中完成删除。
 
 验收：
 
@@ -440,10 +443,22 @@ packages/backend-contracts/
 1. 已在 `apps/backend/capabilities/document-domain/README.md` 建立统一文档域归属说明。
 2. 已给出 `template / render / report / runtime-facade` 的结构草图。
 3. 已明确 `document-engine` 主要承接 `template / render / runtime-facade`，`report` 主要承接 `report` 并局部复用 `template / render`。
+4. `report` 的真实运行包根目录已迁到 `apps/backend/capabilities/document-domain/report`，旧 `apps/backend/domain/report` 物理路径已在后续收口中完成删除。
+5. `document-engine` 已完成 `docker-compose.carbone.yml`、`docker-compose.runtime.yml`、`docker-compose.test.yml` 的 worktree 入口收口，独立 `carbone-engine` 服务已通过 `./docker/start-smart.sh docker-compose.carbone.yml up -d carbone-engine` 健康验证。
+6. 已在 `apps/backend/capabilities/document-domain` 补出最小运行包根：`package.json`、`tsconfig.json`、`main.ts`、`app.module.ts` 与本地 `service-endpoints`，并通过 `pnpm --filter @ops/document-domain typecheck` 与 `build` 验证。
+7. `docker-compose.carbone.yml` 的独立 `carbone-engine` 入口已切到 `apps/backend/capabilities/document-domain`，同时保留对旧 `domain/document-engine` 实现与 Prisma 产物的过渡依赖。
+8. `docker-compose.runtime.yml` 的 `carbone-engine` 入口已切到 `apps/backend/capabilities/document-domain`，并通过 `./docker/start-smart.sh docker-compose.runtime.yml up -d carbone-engine` 健康验证。
+9. `docker-compose.test.yml` 已切到“新包根承载依赖、旧测试文件继续执行”的过渡模式，并验证可稳定跑到当前既有的 4 个 `AIIdentifierService` 失败用例。
+10. `docker-compose.full.yml` 中的 `carbone-engine` 入口也已切到 `apps/backend/capabilities/document-domain`，并通过 `./docker/start-smart.sh docker-compose.full.yml up -d carbone-engine` 健康验证。
+11. 历史 `carbone-engine` 包名的默认 `typecheck/build/test/test:e2e/migrate:sidecar-to-db` 脚本当前由 `apps/backend/capabilities/document-domain/carbone-engine-compat` 承接并转发到 `@ops/document-domain`，避免日常验证继续编译旧 compat shell 源码树。
+12. `apps/backend/domain/document-engine` 目录内的 `package.json`、`package-lock.json`、`src/`、`prisma/` 与 `tsconfig.json` 已移除；旧目录当前仅保留历史 `README.md` 作为迁移说明锚点。
 
 验收：
 
 1. 文档域新增功能不再在多个旧服务之间随机分散。
+2. 文档域后续 Phase D 物理迁移前，`report` 与 `document-engine` 的真实启动入口和残留目录语义已可区分。
+3. `document-engine` 已具备独立于旧包根的最小运行包壳，旧目录也已退出活动 `pnpm-workspace` package 集合并移除 package manifests；后续可以继续分批切换剩余历史脚本与测试入口。
+4. 文档域迁移的当前剩余风险已从“容器入口与挂载问题”收敛为“旧实现桥接与既有测试失败用例”。
 
 ### 7.5 Batch C5：统一文档产物语义
 
@@ -583,7 +598,8 @@ packages/backend-contracts/
    - `apps/backend/runtimes/browser-worker`
    - `apps/backend/runtimes/sandbox-worker`
 3. 本轮已清理 `docker/sql/migrations/001_init.sql` 中残留的旧 `apps/backend/orchestration/control-plane/*` 注释路径，且旧物理目录已从仓库中移除。
-4. 仍存在 `SANDBOX_AGENT_URL`、`TEMPORAL_SANDBOX_AGENT_URL`、`sandbox-agent-task-queue` 等历史兼容命名，但当前指向对象已是 `sandbox-worker`，这批不直接改协议名。
+4. `sandbox-worker` 默认配置已切到 `SANDBOX_WORKER_URL` 与 `SANDBOX_WORKER_TASK_QUEUE`。
+5. 历史兼容命名如 `SANDBOX_AGENT_URL`、`TEMPORAL_SANDBOX_AGENT_URL`、`SANDBOX_TASK_QUEUE`、`sandbox-agent-task-queue` 仍保留读取兼容，但不再作为 compose 默认输出。
 
 验收：
 

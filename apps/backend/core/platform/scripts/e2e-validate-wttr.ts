@@ -1,21 +1,14 @@
 import axios from 'axios';
-import {
-  TemporalWorkflowService,
+import type {
   ActivityDsl,
   WorkflowDsl,
-} from '../src/modules/temporal/temporal-workflow.service';
-import { BuiltinActivityRegistry } from '../src/modules/temporal/builtin-activity.registry';
+} from '../src/modules/temporal-workflow/temporal-workflow.service';
+import { createTemporalWorkflowScriptService } from './temporal-workflow-script-harness';
 
 async function main() {
   const previewFull = process.env.PREVIEW_FULL === 'true';
   const previewBodyMap = process.env.PREVIEW_BODY_MAP === 'true';
-  // Minimal prisma mock - generateWorkflowCode for builtin httpRequest won't hit DB
-  const prisma: any = {
-    temporalWorkflow: {},
-    activity: {},
-  };
-  const builtin = new BuiltinActivityRegistry();
-  const service = new TemporalWorkflowService(prisma, builtin);
+  const service = createTemporalWorkflowScriptService();
 
   // Build a simple workflow using builtin httpRequest with step-level config
   const workflowDsl: WorkflowDsl = {
@@ -71,9 +64,11 @@ async function main() {
 
   // Call sandbox agent for real validation
   const agentUrl =
+    process.env.SANDBOX_WORKER_URL ||
     process.env.WORKFLOW_VALIDATION_AGENT_URL ||
     process.env.ACTIVITY_VALIDATION_AGENT_URL ||
     process.env.TEMPORAL_SANDBOX_AGENT_URL ||
+    process.env.SANDBOX_AGENT_URL ||
     'http://localhost:8090';
 
   const payload = {

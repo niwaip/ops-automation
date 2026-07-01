@@ -8,6 +8,8 @@
   - 认证、登录、令牌、权限、守卫、策略
 - `organization`
   - 组织、部门、用户归属、治理侧读写边界
+- `audit-policy`
+  - 审计记录、平台级策略、发布合规与风险约束
 
 ## 当前状态
 
@@ -24,10 +26,10 @@
 - `auth` response 契约
 - `user` 查询/角色变更/启停用主体
 - `user` 请求 DTO 与列表响应契约
-- `auth.controller`、`auth.module` 与旧 DTO/response 转发等外层壳目前继续物理留在 `apps/backend/core/platform`
-- `user.controller`、`user.module` 与旧 DTO/response 转发兼容入口目前继续物理留在 `apps/backend/core/platform`
+- `auth.controller`、`auth.module`、`user.controller`、`user.module` 已迁入 `governance/identity-access`
 - `organization.service` 主体与组织请求 DTO 已进入 `governance/organization`
-- `organization.controller`、`organization.module` 与旧 DTO 兼容入口目前继续物理留在 `apps/backend/core/platform`
+- `organization.controller`、`organization.module` 已迁入 `governance/organization`
+- `core/platform` 当前仅保留治理侧 bridge module 与 runtime provider 绑定
 
 ## 迁移约束
 

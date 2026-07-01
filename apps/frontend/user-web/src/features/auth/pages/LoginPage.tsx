@@ -38,7 +38,7 @@ export function LoginPage() {
     onSuccess: (response) => {
       authStore.getState().login(response.accessToken, response.refreshToken, response.user);
       void message.success('登录成功');
-      navigate('/executions');
+      navigate('/dashboard');
     },
     onError: (error) => {
       void message.error(error instanceof Error ? error.message : '登录失败');
@@ -209,7 +209,7 @@ export function LoginPage() {
               letterSpacing: '-0.5px',
             }}
           >
-            User Web
+            企业AI门户
           </h1>
         </div>
         <p

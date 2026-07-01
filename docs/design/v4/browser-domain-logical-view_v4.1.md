@@ -42,7 +42,8 @@ capabilities/browser-domain/
 
 ## 3. 当前迁移约束
 
-- `browser-template`、`browser-semantics`、`ai-orchestrator/modules/browser` 暂不做物理搬迁。
+- `browser-template` 的真实运行包根目录已迁到 `apps/backend/capabilities/browser-domain/templates`，旧目录 `apps/backend/domain/browser-template` 的 `src/` 已移除，当前仅保留 `README.md` 作为迁移说明锚点；`ai-orchestrator/modules/browser` 仍暂不做物理搬迁。
+- `browser-semantics` 的真实运行包根目录已迁到 `apps/backend/capabilities/browser-domain/semantics`，旧物理路径已在后续收口中完成删除。
 - 新增浏览器域需求必须先判断属于 `templates`、`semantics`、`recorder` 或 `runtime-facade`。
 - 浏览器域新增需求不应再被当作三套彼此独立的系统处理。
 

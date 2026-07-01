@@ -1,7 +1,7 @@
 """
-Temporal Sandbox Agent - Client Module
+Sandbox worker client module.
 
-Provides an API for the auth service to interact with the sandbox agent
+Provides an API for upstream services to interact with sandbox-worker
 via Temporal workflows.
 """
 
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 class TemporalSandboxClient:
     """
-    Client for interacting with the Temporal Sandbox Agent.
+    Client for interacting with sandbox-worker.
 
     Provides methods to:
     1. Start an execution session (creates workflow if not exists)
@@ -68,7 +68,7 @@ class TemporalSandboxClient:
             AgentSessionWorkflow.run,
             session_id,
             id=self._workflow_id,
-            task_queue="sandbox-agent-task-queue",
+            task_queue="sandbox-worker-task-queue",
         )
 
         logger.info(f"Workflow started: {handle.id}")

@@ -3,21 +3,41 @@
 当前目录作为文档能力域的目标逻辑路径，用来统一承接以下现态模块：
 
 - `apps/backend/domain/document-engine`
-- `apps/backend/domain/report`
+- 历史 `apps/backend/domain/report`
 
 ## 模块归属说明
 
 - `template`
   - 对应当前 `domain/document-engine` 中的 Studio 模板上传、变量发现、模板元数据和工作流辅助编排
-  - 也承接当前 `domain/report` 中偏报表模板管理的一侧
+  - 也承接历史 `domain/report` 中偏报表模板管理的一侧
 - `render`
   - 对应当前 `domain/document-engine` 的预览、校验与正式渲染能力
-  - 也承接当前 `domain/report` 的 Word / Excel / PDF 生成流水线
+  - 也承接历史 `domain/report` 的 Word / Excel / PDF 生成流水线
 - `report`
-  - 对应当前 `domain/report` 中的报表任务 API、分析、通知和结果编排
+  - 真实运行根目录已位于 `capabilities/document-domain/report`
+  - 负责报表任务 API、分析、通知和结果编排
 - `runtime-facade`
   - 表示文档域面向执行链路的稳定运行时入口
   - 当前主要落在 `document-engine` 的 `/studio/render-resolved`
+
+## 当前物理状态
+
+- `report` 已完成首轮真实运行包根目录迁移，当前应从
+  `apps/backend/capabilities/document-domain/report` 启动。
+- 历史 `apps/backend/domain/report` 物理路径已在后续收口中完成删除。
+- `document-engine` 的主运行入口已经切到
+  `apps/backend/capabilities/document-domain`，本地开发脚本、
+  `docker-compose.carbone.yml` 与测试容器默认都从该目录启动。
+- `apps/backend/domain/document-engine` 当前已退出活动 `pnpm-workspace`
+  package 集合，旧目录内的 `package.json` / `package-lock.json`、
+  `src/`、`prisma/` 与 `tsconfig.json` 都已移除；当前仅保留历史
+  `README.md` 作为迁移说明锚点，不再作为默认运行包根目录。
+- 历史 `carbone-engine` 包名仍暂时保留用于兼容 `pnpm --filter carbone-engine ...`
+  一类命令；当前由 `apps/backend/capabilities/document-domain/carbone-engine-compat`
+  这个轻量 shell 承接，再转发到 `@ops/document-domain`，包括 `test:e2e` 与
+  `migrate:sidecar-to-db` 这类历史入口。
+- `document-engine/carbone-engine` 的 Docker 启动入口必须统一从仓库根目录
+  通过 `./docker/start-smart.sh` 执行，保证当前 worktree 挂载正确。
 
 ## 该能力域负责
 
@@ -32,7 +52,7 @@
 - 平台级统一发布门禁
 - 浏览器录制、语义规则与浏览器运行时能力
 
-## 内部结构草图
+## 当前结构
 
 ```text
 apps/backend/capabilities/document-domain/
@@ -40,8 +60,13 @@ apps/backend/capabilities/document-domain/
 ├── render/           # 预览、校验、正式渲染与生成流水线
 ├── report/           # 报表任务、分析、通知与结果编排
 ├── runtime-facade/   # 面向执行链路的稳定运行时入口
+├── index.ts          # 文档能力域稳定根入口
 └── README.md
 ```
+
+当前批次中，`report` 与 `document-engine` 都已经完成首轮运行包根目录迁移；
+`document-engine` 的旧目录当前只剩历史说明文档，不再承载本地源码、脚本或
+Prisma 配置。
 
 ## 当前迁移原则
 

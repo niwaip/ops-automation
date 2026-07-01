@@ -29,7 +29,10 @@ def load_config() -> SandboxWorkerConfig:
     return SandboxWorkerConfig(
         temporal_address=temporal_address,
         temporal_namespace=os.getenv('TEMPORAL_NAMESPACE', 'default'),
-        task_queue=os.getenv('SANDBOX_TASK_QUEUE', 'sandbox-agent-task-queue'),
+        task_queue=os.getenv(
+            'SANDBOX_WORKER_TASK_QUEUE',
+            os.getenv('SANDBOX_TASK_QUEUE', 'sandbox-worker-task-queue'),
+        ),
         validation_task_queue=os.getenv(
             'ACTIVITY_VALIDATION_TASK_QUEUE',
             'activity-validation-task-queue',

@@ -599,6 +599,8 @@ Capability Release 当前已存在：
 
 ## 9. 最小实现清单
 
+> 历史状态说明：本节来自 `v4.0` 阶段的最小落地清单，保留旧 `platform / capability-release` 路径用于回看当时的发布闭环设计；截至当前 Phase D，相关旧路径已退化为兼容壳，稳定实现与默认消费入口已收口到 `core/platform/src/release-manager/*` 与 `@ops/release-manager/*`。
+
 如果目标是尽快打通“录制 -> 发布”为一条最小闭环，建议最先改以下位置：
 
 ### 9.1 ai-orchestrator

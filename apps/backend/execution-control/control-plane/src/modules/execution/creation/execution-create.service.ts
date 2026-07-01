@@ -215,6 +215,8 @@ export class ExecutionCreateService {
           ? APPROVAL_STATUS.PENDING
           : APPROVAL_STATUS.NOT_REQUIRED,
         takeoverRequired: false,
+        triggerType: resolvedDto.triggerType,
+        scheduleId: resolvedDto.scheduleId,
       },
     });
 

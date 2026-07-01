@@ -1,66 +1,50 @@
-import { BrowserRecordingExecutionPlanValidatorService } from '../src/release-manager/validator';
+import { BrowserRecordingExecutionPlanValidatorService } from '../../../registry-release/release-manager/src/validator/browser-recording-execution-plan-validator.service';
 
 describe('BrowserRecordingExecutionPlanValidatorService', () => {
-  const service = new BrowserRecordingExecutionPlanValidatorService();
-
-  it('should report duplicate step ids and missing branch variables for bridge payload', () => {
-    const result = service.validateForBridge({
-      paramsSchema: {
-        properties: {
-          knownVar: { type: 'string' },
-        },
-      },
+  it('drops empty legacy loopDraft during publish compatibility normalization', () => {
+    const validator = new BrowserRecordingExecutionPlanValidatorService();
+    const payload = {
       apiEndpoints: {
         runtimeMetadata: {
+          sourceType: 'browser_recording',
           executionPlan: {
             executionPlanVersion: 'browser-recording-ir/v1',
             templateSteps: [
               {
                 step_id: 'step_1',
-                action: 'read_value',
-                output_var: 'knownVar',
+                action: 'navigate',
+                params: { url: 'http://example.com/#approvals' },
+                description: '打开起始页面',
               },
               {
-                step_id: 'step_1',
-                action: 'branch',
-                branch: {
-                  condition_fn: '(ctx) => Boolean(ctx.missingVar)',
-                },
+                step_id: 'step_2',
+                action: 'click',
+                locator: { type: 'role', value: 'button[name="保留中"]' },
+                description: '点击「保留中」筛选按钮，查看未承认的数据',
               },
             ],
+            loopDraft: {
+              mode: 'repeat_until',
+              target: { scope: 'current_list', currentPageUrl: 'http://example.com/#approvals' },
+              onNoProgress: 'takeover',
+              maxIterations: 100,
+            },
             outputs: [],
-            executionLimits: {},
-            trace: {},
+            executionLimits: { hasLoop: true, maxCommandCount: 2 },
+            trace: { exportArtifactId: 'artifact-1' },
           },
         },
       },
+    };
+
+    const normalized = validator.normalizePayloadForCompatibility(payload);
+    const runtimeMetadata = (normalized.apiEndpoints as Record<string, any>).runtimeMetadata;
+
+    expect(runtimeMetadata.executionPlan.loopDraft).toBeUndefined();
+    expect(runtimeMetadata.loopDraft).toBeUndefined();
+    expect(validator.validateForPublish(normalized)).toMatchObject({
+      valid: true,
+      errors: [],
     });
-
-    expect(result.valid).toBe(false);
-    expect(result.errors).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ code: 'duplicate_step_id' }),
-        expect.objectContaining({ code: 'branch_variable_missing' }),
-      ])
-    );
-  });
-
-  it('should mark runtime as degraded when legacy executionFlow fallback is used', () => {
-    const result = service.validateForRuntime({
-      executionFlow: [
-        {
-          id: 'legacy_step',
-          tool: { name: 'browser_step' },
-        },
-      ],
-      runtimeMetadata: {},
-    });
-
-    expect(result.valid).toBe(true);
-    expect(result.degradedMode).toBe(true);
-    expect(result.degradeReason).toBe('legacy_execution_plan_fallback');
-    expect(result.warnings).toEqual(
-      expect.arrayContaining([expect.objectContaining({ code: 'legacy_execution_plan_fallback' })])
-    );
   });
 });

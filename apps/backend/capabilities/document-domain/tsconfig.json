@@ -1,0 +1,42 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "module": "commonjs",
+    "declaration": true,
+    "removeComments": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "target": "ES2022",
+    "sourceMap": true,
+    "outDir": "./dist",
+    "rootDir": "../../..",
+    "incremental": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "esModuleInterop": true,
+    "moduleResolution": "node",
+    "paths": {
+      "@ops/backend-runtime-capability-contract": ["./node_modules/@ops/backend-runtime-capability-contract"],
+      "@nestjs/common": ["./node_modules/@nestjs/common"],
+      "@nestjs/swagger": ["./node_modules/@nestjs/swagger"],
+      "class-transformer": ["./node_modules/class-transformer"],
+      "class-validator": ["./node_modules/class-validator"]
+    }
+  },
+  "include": [
+    "index.ts",
+    "main.ts",
+    "app.module.ts",
+    "config/**/*.ts",
+    "template/**/*.ts",
+    "render/**/*.ts",
+    "runtime-facade/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.spec.ts"
+  ]
+}

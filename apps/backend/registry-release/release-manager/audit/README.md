@@ -2,12 +2,18 @@
 
 当前目录代表未来 `registry-release/release-manager/audit` 的逻辑子层视图。
 
-当前仓库里，相关实现仍主要物理位于：
+当前仓库里，相关实现当前主要收口到：
+
+- `apps/backend/registry-release/release-manager/src/audit`
+
+共享 DTO / mapper 仍通过稳定导出面暴露：
+
+- `@ops/release-manager`
+
+旧兼容入口已在首批 Phase E 中删除：
 
 - `apps/backend/core/platform/src/modules/capability-release/audit`
-- `apps/backend/core/platform/src/modules/capability-release/capability-release.mapper.ts`
-- `apps/backend/core/platform/src/modules/capability-release/interfaces.ts`
-- `apps/backend/core/platform/src/modules/capability-release/capability-release.service.ts`
+- 该旧兼容目录与根入口已在后续 Phase E 中完成删除
 
 本目录在当前批次的职责，是把当前发布侧审计事件映射、审计结果 DTO 与审计语义收口逻辑，
 统一解释为 `release-manager` 内部的 `audit` 子层。
@@ -76,8 +82,8 @@ release-manager/release
 
 当前对应关系如下：
 
-- `capability-release/audit/index.ts`
-  - 对应未来 `audit` 子层稳定出口
+- `capability-release-audit.service.ts`
+  - 对应未来 `audit` 子层的本地服务实现出口
 - `mapCapabilityAuditEvent()`
   - 对应未来发布侧审计事件映射
 - `ReleaseAuditEventDTO`
@@ -91,5 +97,6 @@ release-manager/release
 
 - `audit` 统一承接发布侧审计语义、事件映射与审计结果收口
 - `audit` 继续作为发布链的查询与可观测语义补充层
+- 包侧 `@ops/release-manager/audit` 与 `src/audit/index.ts` compat 子入口已在后续 Phase E 删除，当前审计相关符号由目标包真实实现文件承接，根入口仅保留 `interfaces` DTO/type 出口
 - 主入口、构建、校验、发布后桥接继续留在各自子层
-- 当前先固定逻辑边界，不在本批次引入物理迁移
+- `core/platform/src/modules/capability-release/audit/*` 已在首批 Phase E 中删除

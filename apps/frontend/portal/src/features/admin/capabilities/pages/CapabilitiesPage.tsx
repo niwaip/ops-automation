@@ -734,6 +734,25 @@ const asRecordArray = (value: unknown): Array<Record<string, unknown>> =>
       )
     : [];
 
+const hasConcreteBrowserLoopDraft = (value: unknown): value is Record<string, unknown> => {
+  const loopDraft = asRecord(value);
+  const eachIteration = asRecord(loopDraft?.eachIteration);
+  const stepIds = Array.isArray(eachIteration?.stepIds)
+    ? eachIteration.stepIds.filter(
+        (stepId): stepId is string => typeof stepId === 'string' && stepId.trim().length > 0
+      )
+    : [];
+  return stepIds.length > 0;
+};
+
+const stripLoopDraftSuffix = (value?: string): string | undefined => {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+  const normalized = value.replace(/（包含循环处理草稿）\s*$/u, '').trim();
+  return normalized || undefined;
+};
+
 const resolveBrowserWorkflowTemplateId = (workflow: TemporalWorkflowDTO): string | undefined => {
   const sourceTemplate =
     workflow.sourceTemplate ||
@@ -755,27 +774,39 @@ const extractBrowserTemplateRuntimeMetadata = (
       : executionPlanTemplateSteps.length > 0
         ? executionPlanTemplateSteps
         : asRecordArray(template.steps);
-  const configLoopDraft =
-    asRecord(config.loopDraft) || asRecord(configExecutionPlan.loopDraft) || undefined;
-  const configLoopPlanPreview =
+  const rawConfigLoopDraft =
+    asRecord(configExecutionPlan.loopDraft) || asRecord(config.loopDraft) || undefined;
+  const configLoopDraft = hasConcreteBrowserLoopDraft(rawConfigLoopDraft)
+    ? rawConfigLoopDraft
+    : undefined;
+  const rawConfigLoopPlanPreview =
     asRecordArray(config.loopPlanPreview).length > 0
       ? asRecordArray(config.loopPlanPreview)
       : asRecordArray(configExecutionPlan.loopPlanPreview);
+  const configLoopPlanPreview = configLoopDraft ? rawConfigLoopPlanPreview : [];
   const executionPlan =
     Object.keys(configExecutionPlan).length > 0
-      ? {
-          ...configExecutionPlan,
-          ...(executionPlanTemplateSteps.length > 0
-            ? {}
-            : configTemplateSteps.length > 0
-              ? { templateSteps: configTemplateSteps }
-              : {}),
-          ...(configExecutionPlan.loopDraft
-            ? {}
-            : configLoopDraft
-              ? { loopDraft: configLoopDraft }
-              : {}),
-        }
+      ? (() => {
+          const nextExecutionPlan: Record<string, unknown> = {
+            ...configExecutionPlan,
+            ...(executionPlanTemplateSteps.length > 0
+              ? {}
+              : configTemplateSteps.length > 0
+                ? { templateSteps: configTemplateSteps }
+                : {}),
+          };
+          if (configLoopDraft) {
+            nextExecutionPlan.loopDraft = configLoopDraft;
+          } else {
+            delete nextExecutionPlan.loopDraft;
+          }
+          if (configLoopPlanPreview.length > 0) {
+            nextExecutionPlan.loopPlanPreview = configLoopPlanPreview;
+          } else {
+            delete nextExecutionPlan.loopPlanPreview;
+          }
+          return nextExecutionPlan;
+        })()
       : {};
 
   return {
@@ -824,6 +855,8 @@ const buildBrowserRecordingSourcePayload = async (
   workflow: TemporalWorkflowDTO
 ): Promise<Record<string, unknown>> => {
   const workflowSteps = extractBrowserWorkflowSteps(workflow);
+  const workflowDescription = stripLoopDraftSuffix(workflow.description || '') || '';
+  const workflowGoal = stripLoopDraftSuffix(workflow.description || workflow.name) || workflow.name;
   const inferredParams: Record<string, WorkflowInputParamDefinition> = {};
   const normalizedSteps = workflowSteps.map((step, index) => {
     const config =
@@ -889,8 +922,8 @@ const buildBrowserRecordingSourcePayload = async (
   const sourcePayload: Record<string, unknown> = {
     id: workflow.id,
     name: workflow.name,
-    description: workflow.description || '',
-    goal: workflow.description || workflow.name,
+    description: workflowDescription,
+    goal: workflowGoal,
     sourceType: 'browser_recording',
     sourceTemplate: {
       workflowId: workflow.id,
@@ -910,7 +943,7 @@ const buildBrowserRecordingSourcePayload = async (
       runtimeMetadata: {
         sourceType: 'browser_recording',
         backend: 'cli',
-        goal: workflow.description || workflow.name,
+        goal: workflowGoal,
       },
     },
   };

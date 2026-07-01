@@ -40,4 +40,4 @@ export const canTransitionExecutionStatus = (
   nextStatus: ExecutionStatus
 ): boolean => EXECUTION_STATUS_TRANSITIONS[currentStatus].includes(nextStatus);
 
-export { isTerminalExecutionStatus } from '@ops/contracts';
+export { isTerminalExecutionStatus } from '@ops/backend-execution-core';

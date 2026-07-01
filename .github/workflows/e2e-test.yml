@@ -75,7 +75,7 @@ jobs:
           # Start all services in background
           node apps/backend/core/platform/dist/main.js &
           node apps/backend/sessions/session-broker/dist/main.js &
-          node apps/backend/domain/browser-template/dist/main.js &
+          node apps/backend/capabilities/browser-domain/templates/dist/main.js &
           node apps/backend/orchestration/ai-orchestrator/dist/main.js &
           node apps/backend/runtime/replay-worker/dist/main.js &
 

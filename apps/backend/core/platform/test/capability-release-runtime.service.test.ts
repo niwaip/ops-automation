@@ -1,10 +1,15 @@
 import axios from 'axios';
-import { BrowserRecordingActionPolicyService } from '../src/release-manager/validator';
-import { BrowserRecordingExecutionPlanValidatorService } from '../src/release-manager/validator';
-import {
-  CapabilityReleaseRuntimeAccessors,
-  CapabilityReleaseRuntimeService,
-} from '../src/release-manager/publisher';
+import { BrowserRecordingActionPolicyService } from '../../../registry-release/release-manager/src/validator/browser-recording-action-policy.service';
+import { BrowserRecordingExecutionPlanValidatorService } from '../../../registry-release/release-manager/src/validator/browser-recording-execution-plan-validator.service';
+import { CapabilityReleaseBrowserRuntimeExecutorService } from '../../../registry-release/release-manager/src/publisher/capability-release-browser-runtime-executor.service';
+import { CapabilityReleaseBrowserRuntimeLoopExecutorService } from '../../../registry-release/release-manager/src/publisher/capability-release-browser-runtime-loop-executor.service';
+import { CapabilityReleaseBrowserRuntimeResultService } from '../../../registry-release/release-manager/src/publisher/capability-release-browser-runtime-result.service';
+import { CapabilityReleaseBrowserRuntimeService } from '../../../registry-release/release-manager/src/publisher/capability-release-browser-runtime.service';
+import { CapabilityReleaseBrowserRuntimeStepExecutorService } from '../../../registry-release/release-manager/src/publisher/capability-release-browser-runtime-step-executor.service';
+import { CapabilityReleaseBrowserRuntimeSupportService } from '../../../registry-release/release-manager/src/publisher/capability-release-browser-runtime-support.service';
+import { CapabilityReleaseDocumentRuntimeService } from '../../../registry-release/release-manager/src/publisher/capability-release-document-runtime.service';
+import { CapabilityReleaseRuntimeService, type CapabilityReleaseRuntimeAccessors } from '../../../registry-release/release-manager/src/publisher/capability-release-runtime.service';
+import { ReleaseRuntimeBindingService } from '../../../registry-release/release-manager/src/publisher/release-runtime-binding.service';
 
 jest.mock('axios');
 
@@ -18,12 +23,6 @@ describe('CapabilityReleaseRuntimeService', () => {
     const activityService = {
       executeCodeInTemporalSandbox: jest.fn(),
       executeCodeStreaming: jest.fn(),
-    };
-    const skillService = {
-      getSkillToolBindings: jest.fn(),
-    };
-    const toolCatalogService = {
-      getCatalogItemsByNames: jest.fn(),
     };
     const browserRecordingActionPolicyService = new BrowserRecordingActionPolicyService();
     const browserRecordingExecutionPlanValidatorService = {
@@ -46,16 +45,42 @@ describe('CapabilityReleaseRuntimeService', () => {
     const capabilityReleaseSkillDraftService = {
       extractExecutionFlowSourceTemplate: jest.fn(),
     };
+    const releaseRuntimeBindingService = {
+      getPublishedSkillRuntimeContext: jest.fn(),
+      getReleaseByPublishedSkillOrThrow: jest.fn(),
+    };
 
-    const service = new CapabilityReleaseRuntimeService(
-      prisma as any,
-      activityService as any,
-      skillService as any,
-      toolCatalogService as any,
-      browserRecordingActionPolicyService as BrowserRecordingActionPolicyService,
+    const capabilityReleaseBrowserRuntimeSupportService =
+      new CapabilityReleaseBrowserRuntimeSupportService();
+    const capabilityReleaseBrowserRuntimeStepExecutorService =
+      new CapabilityReleaseBrowserRuntimeStepExecutorService(
+        browserRecordingActionPolicyService as BrowserRecordingActionPolicyService,
+        capabilityReleaseBrowserRuntimeSupportService
+      );
+    const capabilityReleaseBrowserRuntimeLoopExecutorService =
+      new CapabilityReleaseBrowserRuntimeLoopExecutorService(
+        capabilityReleaseBrowserRuntimeStepExecutorService,
+        capabilityReleaseBrowserRuntimeSupportService
+      );
+    const capabilityReleaseBrowserRuntimeResultService =
+      new CapabilityReleaseBrowserRuntimeResultService();
+    const capabilityReleaseBrowserRuntimeExecutorService =
+      new CapabilityReleaseBrowserRuntimeExecutorService(
+        capabilityReleaseBrowserRuntimeStepExecutorService,
+        capabilityReleaseBrowserRuntimeLoopExecutorService
+      );
+    const capabilityReleaseBrowserRuntimeService = new CapabilityReleaseBrowserRuntimeService(
       browserRecordingExecutionPlanValidatorService as unknown as BrowserRecordingExecutionPlanValidatorService,
       capabilityReleaseBrowserRecordingService as any,
-      capabilityReleaseSkillDraftService as any
+      capabilityReleaseBrowserRuntimeExecutorService,
+      capabilityReleaseBrowserRuntimeResultService,
+      capabilityReleaseBrowserRuntimeSupportService
+    );
+    const service = new CapabilityReleaseRuntimeService(
+      activityService as any,
+      releaseRuntimeBindingService as unknown as ReleaseRuntimeBindingService,
+      new CapabilityReleaseDocumentRuntimeService(capabilityReleaseSkillDraftService as any),
+      capabilityReleaseBrowserRuntimeService
     );
 
     const accessors: CapabilityReleaseRuntimeAccessors = {
@@ -71,6 +96,7 @@ describe('CapabilityReleaseRuntimeService', () => {
       browserRecordingExecutionPlanValidatorService,
       capabilityReleaseBrowserRecordingService,
       capabilityReleaseSkillDraftService,
+      releaseRuntimeBindingService,
       accessors,
     };
   };
@@ -86,10 +112,9 @@ describe('CapabilityReleaseRuntimeService', () => {
   });
 
   it('posts to render-resolved with templateId when template binding is available', async () => {
-    const { service, prisma, accessors } = createService();
+    const { service, accessors, releaseRuntimeBindingService } = createService();
 
-    prisma.$queryRawUnsafe.mockResolvedValueOnce([{ id: 'release-row-1' }]);
-    jest.spyOn(service as any, 'mapRelease').mockReturnValue({
+    releaseRuntimeBindingService.getReleaseByPublishedSkillOrThrow.mockResolvedValue({
       id: 'release-1',
       sourceType: 'execution_flow_template',
     });
@@ -168,19 +193,41 @@ describe('CapabilityReleaseRuntimeService', () => {
         downloadUrl: 'http://localhost:3009/studio/download/doc-1',
       })
     );
-    expect(String(prisma.$queryRawUnsafe.mock.calls[0]?.[0] || '')).toContain(
-      'CASE WHEN archived_at IS NULL THEN 0 ELSE 1 END'
+  });
+
+  it('delegates published skill runtime context resolution to runtime binding service', async () => {
+    const { service, releaseRuntimeBindingService } = createService();
+
+    releaseRuntimeBindingService.getPublishedSkillRuntimeContext.mockResolvedValue({
+      publishedSkillId: 'skill-ctx-1',
+      releaseId: 'release-ctx-1',
+      sourceType: 'execution_flow_template',
+      runtimeType: 'flow_runtime',
+      runtimeSource: 'deployment',
+      allowedToolNames: ['api_call'],
+      toolPolicies: [],
+      environment: 'dev',
+      deploymentId: 'deployment-ctx-1',
+    });
+
+    const result = await service.getPublishedSkillRuntimeContext('skill-ctx-1');
+
+    expect(releaseRuntimeBindingService.getPublishedSkillRuntimeContext).toHaveBeenCalledWith(
+      'skill-ctx-1'
     );
-    expect(String(prisma.$queryRawUnsafe.mock.calls[0]?.[0] || '')).not.toContain(
-      'AND archived_at IS NULL'
+    expect(result).toEqual(
+      expect.objectContaining({
+        releaseId: 'release-ctx-1',
+        runtimeType: 'flow_runtime',
+        runtimeSource: 'deployment',
+      })
     );
   });
 
   it('posts both templateId and source skillId to render-resolved when both bindings exist', async () => {
-    const { service, prisma, accessors } = createService();
+    const { service, accessors, releaseRuntimeBindingService } = createService();
 
-    prisma.$queryRawUnsafe.mockResolvedValueOnce([{ id: 'release-row-1' }]);
-    jest.spyOn(service as any, 'mapRelease').mockReturnValue({
+    releaseRuntimeBindingService.getReleaseByPublishedSkillOrThrow.mockResolvedValue({
       id: 'release-1',
       sourceType: 'execution_flow_template',
     });
@@ -275,10 +322,9 @@ describe('CapabilityReleaseRuntimeService', () => {
   });
 
   it('posts source skillId to render-resolved when templateId is unavailable', async () => {
-    const { service, prisma, accessors } = createService();
+    const { service, accessors, releaseRuntimeBindingService } = createService();
 
-    prisma.$queryRawUnsafe.mockResolvedValueOnce([{ id: 'release-row-1' }]);
-    jest.spyOn(service as any, 'mapRelease').mockReturnValue({
+    releaseRuntimeBindingService.getReleaseByPublishedSkillOrThrow.mockResolvedValue({
       id: 'release-1',
       sourceType: 'execution_flow_template',
     });
@@ -360,10 +406,9 @@ describe('CapabilityReleaseRuntimeService', () => {
   });
 
   it('forwards localized render context and output name to render-resolved', async () => {
-    const { service, prisma, accessors } = createService();
+    const { service, accessors, releaseRuntimeBindingService } = createService();
 
-    prisma.$queryRawUnsafe.mockResolvedValueOnce([{ id: 'release-row-1' }]);
-    jest.spyOn(service as any, 'mapRelease').mockReturnValue({
+    releaseRuntimeBindingService.getReleaseByPublishedSkillOrThrow.mockResolvedValue({
       id: 'release-1',
       sourceType: 'execution_flow_template',
     });
@@ -464,11 +509,10 @@ describe('CapabilityReleaseRuntimeService', () => {
   });
 
   it('returns takeover_required when published browser recording template branch mismatches', async () => {
-    const { service, prisma, accessors, capabilityReleaseBrowserRecordingService } =
+    const { service, accessors, capabilityReleaseBrowserRecordingService, releaseRuntimeBindingService } =
       createService();
 
-    prisma.$queryRawUnsafe.mockResolvedValueOnce([{ id: 'release-row-browser-1' }]);
-    jest.spyOn(service as any, 'mapRelease').mockReturnValue({
+    releaseRuntimeBindingService.getReleaseByPublishedSkillOrThrow.mockResolvedValue({
       id: 'release-browser-1',
       sourceType: 'browser_recording',
     });
@@ -638,11 +682,10 @@ describe('CapabilityReleaseRuntimeService', () => {
   });
 
   it('requires takeover before executing high-risk browser recording actions at runtime', async () => {
-    const { service, prisma, accessors, capabilityReleaseBrowserRecordingService } =
+    const { service, accessors, capabilityReleaseBrowserRecordingService, releaseRuntimeBindingService } =
       createService();
 
-    prisma.$queryRawUnsafe.mockResolvedValueOnce([{ id: 'release-row-browser-risk-1' }]);
-    jest.spyOn(service as any, 'mapRelease').mockReturnValue({
+    releaseRuntimeBindingService.getReleaseByPublishedSkillOrThrow.mockResolvedValue({
       id: 'release-browser-risk-1',
       sourceType: 'browser_recording',
     });
@@ -747,11 +790,10 @@ describe('CapabilityReleaseRuntimeService', () => {
   });
 
   it('blocks forbidden browser recording actions before runtime execution', async () => {
-    const { service, prisma, accessors, capabilityReleaseBrowserRecordingService } =
+    const { service, accessors, capabilityReleaseBrowserRecordingService, releaseRuntimeBindingService } =
       createService();
 
-    prisma.$queryRawUnsafe.mockResolvedValueOnce([{ id: 'release-row-browser-risk-2' }]);
-    jest.spyOn(service as any, 'mapRelease').mockReturnValue({
+    releaseRuntimeBindingService.getReleaseByPublishedSkillOrThrow.mockResolvedValue({
       id: 'release-browser-risk-2',
       sourceType: 'browser_recording',
     });
@@ -852,11 +894,10 @@ describe('CapabilityReleaseRuntimeService', () => {
   });
 
   it('executes browser recording loop plan until stop condition is satisfied', async () => {
-    const { service, prisma, accessors, capabilityReleaseBrowserRecordingService } =
+    const { service, accessors, capabilityReleaseBrowserRecordingService, releaseRuntimeBindingService } =
       createService();
 
-    prisma.$queryRawUnsafe.mockResolvedValueOnce([{ id: 'release-row-browser-loop-1' }]);
-    jest.spyOn(service as any, 'mapRelease').mockReturnValue({
+    releaseRuntimeBindingService.getReleaseByPublishedSkillOrThrow.mockResolvedValue({
       id: 'release-browser-loop-1',
       sourceType: 'browser_recording',
     });

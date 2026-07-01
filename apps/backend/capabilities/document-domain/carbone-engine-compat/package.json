@@ -1,0 +1,17 @@
+{
+  "name": "carbone-engine",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Compatibility shell package forwarding legacy carbone-engine commands to @ops/document-domain",
+  "scripts": {
+    "prisma:generate": "pnpm --filter @ops/document-domain run prisma:generate",
+    "build": "pnpm --filter @ops/document-domain run build",
+    "dev": "pnpm --filter @ops/document-domain run dev",
+    "start": "pnpm --filter @ops/document-domain run start",
+    "migrate:sidecar-to-db": "pnpm --filter @ops/document-domain run migrate:sidecar-to-db",
+    "test": "pnpm --filter @ops/document-domain run test",
+    "test:e2e": "pnpm --filter @ops/document-domain run test:e2e",
+    "test:watch": "pnpm --filter @ops/document-domain run test -- --watch",
+    "typecheck": "pnpm --filter @ops/document-domain run typecheck"
+  }
+}

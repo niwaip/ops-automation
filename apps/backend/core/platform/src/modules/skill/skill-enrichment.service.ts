@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import { getCarboneServiceUrl } from '../../config/service-endpoints';
 import { PrismaService } from '../../prisma/prisma.service';
-import { ExecutionFlowTemplateService } from '../../workflow-registry/flow-template';
+import { ExecutionFlowTemplateService } from '../execution-flow/execution-flow-template.service';
 import {
   SkillConfigDto,
   SkillRuntimeMetadata,

@@ -4,7 +4,7 @@ import {
   Optional,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Prisma } from '../prisma';
+import { Prisma } from '../prisma/client';
 import { ExecutionStatus } from './contracts/execution-status';
 import { EXECUTION_EVENT_TYPE } from './contracts/execution-event-type';
 import { ExecutionCreateService } from './creation/execution-create.service';

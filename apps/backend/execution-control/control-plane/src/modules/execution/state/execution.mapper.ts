@@ -11,7 +11,7 @@ import {
 import { ApprovalStatus } from '../contracts/approval-status';
 import { ExecutionStatus } from '../contracts/execution-status';
 import { ExecutionStepStatus } from '../contracts/execution-step-status';
-import type { ExecutionSemantic } from '@ops/contracts';
+import type { ExecutionSemantic } from '@ops/backend-execution-core';
 import { resolveExecutionNormalizedResult } from './execution-result-normalizer';
 
 const asRecord = (value: unknown): Record<string, unknown> | null => {
@@ -208,6 +208,8 @@ export const mapExecutionToDto = (execution: Record<string, unknown>): Execution
       | string
       | null,
     takeoverStatus: (execution.takeoverStatus || execution.takeover_status) as string | null,
+    triggerType: (execution.triggerType || execution.trigger_type) as string | null,
+    scheduleId: (execution.scheduleId || execution.schedule_id) as string | null,
     requiresApproval: execution.requiresApproval as boolean,
     approvalStatus: execution.approvalStatus as ApprovalStatus | null,
     takeoverRequired: execution.takeoverRequired as boolean,

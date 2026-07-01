@@ -1,7 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { RedisService } from '../lock/redis.service';
 import { getBrowserWorkerUrl } from '../../config/service-endpoints';
-import { WorkerEndpoints, WorkerInfo } from '../../interfaces';
+import { WorkerEndpoints, WorkerInfo } from '../../interfaces/session.interface';
 
 @Injectable()
 export class AllocationService implements OnModuleInit {

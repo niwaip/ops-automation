@@ -1,11 +1,10 @@
 import * as http from 'node:http';
 
-import {
+import type {
   ActivityDsl,
-  TemporalWorkflowService,
   WorkflowDsl,
-} from '../src/modules/temporal/temporal-workflow.service';
-import { BuiltinActivityRegistry } from '../src/modules/temporal/builtin-activity.registry';
+} from '../src/modules/temporal-workflow/temporal-workflow.service';
+import { createTemporalWorkflowScriptService } from './temporal-workflow-script-harness';
 
 const WTTR_SAMPLE = {
   current_condition: [
@@ -116,12 +115,7 @@ async function main() {
     process.env.WORKFLOW_HTTP_RUNTIME_HOST ||
     process.env.WORKFLOW_HTTP_MOCK_HOST ||
     'host.docker.internal';
-  const prisma: any = {
-    temporalWorkflow: {},
-    activity: {},
-  };
-  const builtin = new BuiltinActivityRegistry();
-  const service = new TemporalWorkflowService(prisma, builtin);
+  const service = createTemporalWorkflowScriptService();
   const httpStepConfig = {
     method: 'GET',
     urlTemplate: `http://${runtimeHost}:${mock.port}/wttr/{city}`,

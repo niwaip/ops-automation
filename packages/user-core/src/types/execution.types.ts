@@ -3,7 +3,7 @@ import type {
   ExecutionSemantic,
   ExecutionStatus,
   ExecutionStepStatus,
-} from '@ops/contracts';
+} from '@ops/backend-execution-core';
 
 export type { ApprovalStatus, ExecutionSemantic, ExecutionStatus, ExecutionStepStatus };
 

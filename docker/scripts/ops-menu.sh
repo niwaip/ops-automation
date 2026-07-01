@@ -25,7 +25,7 @@ CONTROL_PLANE_INCREMENTAL_SQL_FILES=(
   "$REPO_ROOT/apps/backend/execution-control/control-plane/prisma/migrations/20260516140000_add_execution_phase_steps/migration.sql"
   "$REPO_ROOT/apps/backend/execution-control/control-plane/prisma/migrations/20260625000000_add_scheduler/migration.sql"
 )
-BROWSER_TEMPLATE_REPAIR_SQL="$REPO_ROOT/apps/backend/domain/browser-template/prisma/manual-sql/20260608_rebuild_templates_current_schema.sql"
+BROWSER_TEMPLATE_REPAIR_SQL="$REPO_ROOT/apps/backend/capabilities/browser-domain/templates/prisma/manual-sql/20260608_rebuild_templates_current_schema.sql"
 LEGACY_SQL_FILES=(
   "$REPO_ROOT/docker/sql/migrations/001_init.sql"
   "$REPO_ROOT/docker/sql/seed.sql"
@@ -318,8 +318,8 @@ print_migration_inventory() {
   printf '  - Shared domain repair SQL: %s\n' "$BROWSER_TEMPLATE_REPAIR_SQL"
 
   printf '\n[Placeholder migrations not applied automatically]\n'
-  printf '  - %s\n' "$REPO_ROOT/apps/backend/domain/browser-template/prisma/migrations/0_baseline/migration.sql"
-  printf '  - %s\n' "$REPO_ROOT/apps/backend/domain/report/prisma/migrations/0_baseline/migration.sql"
+  printf '  - %s\n' "$REPO_ROOT/apps/backend/capabilities/browser-domain/templates/prisma/migrations/0_baseline/migration.sql"
+  printf '  - %s\n' "$REPO_ROOT/apps/backend/capabilities/document-domain/report/prisma/migrations/0_baseline/migration.sql"
   printf '  - %s\n' "$REPO_ROOT/apps/backend/runtimes/replay-worker/prisma/migrations/0_baseline/migration.sql"
 
   printf '\n[Legacy SQL entrypoints]\n'

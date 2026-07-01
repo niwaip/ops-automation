@@ -504,7 +504,7 @@ export function buildFixedHttpRequestWorkflowCode(args: {
   return [
     'import re',
     'from datetime import timedelta',
-    'from typing import Any, Dict',
+    'from typing import Any, Dict, List',
     '',
     'from temporalio import workflow',
     'from temporalio.exceptions import ApplicationError',
@@ -672,7 +672,7 @@ export function buildFixedStructuredTransformWorkflowCode(args: {
   return [
     'import re',
     'from datetime import timedelta',
-    'from typing import Any, Dict',
+    'from typing import Any, Dict, List',
     '',
     'from temporalio import workflow',
     'from temporalio.exceptions import ApplicationError',
@@ -821,7 +821,7 @@ export function buildFixedHttpRequestStructuredTransformWorkflowCode(args: {
   return [
     'import re',
     'from datetime import timedelta',
-    'from typing import Any, Dict',
+    'from typing import Any, Dict, List',
     '',
     'from temporalio import workflow',
     'from temporalio.exceptions import ApplicationError',
@@ -1083,7 +1083,7 @@ export function buildFixedBuiltinWorkflowCode(args: {
     'import re',
     'import json',
     'from datetime import timedelta',
-    'from typing import Any, Dict',
+    'from typing import Any, Dict, List',
     '',
     'from temporalio import workflow',
     'from temporalio.exceptions import ApplicationError',

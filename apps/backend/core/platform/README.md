@@ -11,17 +11,14 @@
 ## 当前真实归属
 
 - `governance`
-  - `modules/auth`
-  - `modules/organization`
-  - `modules/user`
-  - `guards/*`
-  - `decorators/*`
-  - `strategies/*`
+  - `src/governance/identity-access/*`
+  - `src/governance/organization/*`
 - `registry-release`
   - `modules/skill`
   - `modules/execution-flow`
   - `modules/temporal-workflow`
-  - `modules/capability-release`
+  - `src/release-manager`
+  - `modules/capability-release`（兼容层）
 
 ## 当前规则
 
@@ -37,7 +34,8 @@
   - `src/modules/skill/README.md`
   - `src/modules/execution-flow/README.md`
   - `src/modules/temporal-workflow/README.md`
-  - `src/modules/capability-release/README.md`
+  - `src/release-manager/platform/release-manager-runtime-adapter.module.ts`
+  - `../registry-release/release-manager/README.md`
 
 ## 后续方向
 

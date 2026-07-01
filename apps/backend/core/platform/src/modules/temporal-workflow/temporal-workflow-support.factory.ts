@@ -10,10 +10,10 @@ import {
 } from './temporal-workflow-draft.normalizers';
 import type { TemporalWorkflowActivityResolutionSupport } from './temporal-workflow-activity-resolution.service';
 import type { TemporalWorkflowAiDraftSupport } from './temporal-workflow-draft.service';
-import type { TemporalWorkflowBrowserDraftSupport } from './temporal-workflow-browser-draft.service';
+import type { TemporalWorkflowBrowserDraftSupport } from './browser-bridge/temporal-workflow-browser-draft.service';
 import type { TemporalWorkflowCodegenSupport } from './temporal-workflow-codegen.service';
 import type { TemporalWorkflowSessionSupport } from './temporal-workflow-session.service';
-import type { TemporalWorkflowTemplateSupport } from './temporal-workflow-template.service';
+import type { TemporalWorkflowTemplateSupport } from '../../workflow-registry/workflow-template/temporal-workflow-template.service';
 import type { ActivityDsl, WorkflowDsl } from './temporal-workflow.types';
 
 interface AiDraftSupportDependencies {

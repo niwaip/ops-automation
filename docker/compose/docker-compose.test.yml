@@ -1,4 +1,5 @@
 # AI识别测试环境
+# 必须从仓库根目录通过 start-smart.sh 启动，确保挂载当前 worktree
 # 使用方法: ./docker/start-smart.sh docker-compose.test.yml up --abort-on-container-exit carbone-engine-test
 # 或者: ./docker/start-smart.sh docker-compose.test.yml run --rm carbone-engine-test
 
@@ -21,11 +22,14 @@ services:
   carbone-engine-test:
     image: node:20-bullseye
     container_name: carbone-engine-test
-    working_dir: /app
+    working_dir: /workspace/apps/backend/capabilities/document-domain
     command: >
-      sh -c "npm config set registry https://registry.npmmirror.com && npm install --include=dev && npm run test -- --testPathPattern='ai-identifier.service.spec' --coverage=false --detectOpenHandles"
+      sh -c "npm install --workspaces=false --include=dev --package-lock=false
+      && npm run prisma:generate
+      && npm run test -- --runInBand --coverage=false --detectOpenHandles"
     environment:
       - NODE_ENV=test
+      - NPM_CONFIG_REGISTRY=https://registry.npmmirror.com
       - PORT=3009
       - TEMPLATES_DIR=/tmp/test_templates
       - OUTPUTS_DIR=/tmp/test_outputs
@@ -34,8 +38,8 @@ services:
     ports:
       - "13009:3009"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/backend/domain/document-engine:/app
-      - carbone_test_node_modules:/app/node_modules
+      - ${PROJECT_ROOT:-..}:/workspace
+      - carbone_test_node_modules:/workspace/apps/backend/capabilities/document-domain/node_modules
     depends_on:
       - mock-ai-server
 

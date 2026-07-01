@@ -21,7 +21,7 @@ import {
   GenerateTemplateWorkflowDraftDTO,
   TemporalWorkflowArtifactDTO,
 } from './temporal-workflow.service';
-import { TemporalWorkflow } from '../../prisma';
+import { TemporalWorkflow } from '../../prisma/client';
 
 @ApiTags('Temporal Workflows')
 @Controller('temporal')

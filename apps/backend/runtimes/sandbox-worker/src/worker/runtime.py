@@ -18,7 +18,7 @@ logger = configure_logging()
 async def main():
     config = load_config()
 
-    logger.info('Starting Temporal Sandbox Agent')
+    logger.info('Starting sandbox-worker runtime')
     logger.info(f'Temporal Address: {config.temporal_address}')
     logger.info(f'Namespace: {config.temporal_namespace}')
     logger.info(f'Task Queue: {config.task_queue}')

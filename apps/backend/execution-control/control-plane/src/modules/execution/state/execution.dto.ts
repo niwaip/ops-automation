@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsDateString, IsInt, IsObject, IsOptional, IsString, Min } from 'class-validator';
 import { Type } from 'class-transformer';
-import type { ExecutionSemantic } from '@ops/contracts';
+import type { ExecutionSemantic } from '@ops/backend-execution-core';
 import { ApprovalStatus, APPROVAL_STATUS_VALUES } from '../contracts/approval-status';
 import { ExecutionStatus, EXECUTION_STATUS_VALUES } from '../contracts/execution-status';
 import {
@@ -233,6 +233,16 @@ export class CreateExecutionDto {
   @IsOptional()
   @IsObject()
   planDraft?: Record<string, unknown>;
+
+  @ApiProperty({ description: 'Trigger type (manual, schedule, etc.)', required: false })
+  @IsOptional()
+  @IsString()
+  triggerType?: string;
+
+  @ApiProperty({ description: 'ID of the schedule that triggered this execution', required: false })
+  @IsOptional()
+  @IsString()
+  scheduleId?: string;
 }
 
 export class ExecutionDto {
@@ -284,6 +294,14 @@ export class ExecutionDto {
   @ApiProperty({ required: false })
   @IsOptional()
   takeoverStatus?: string | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  triggerType?: string | null;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  scheduleId?: string | null;
 
   @ApiProperty({ default: false, required: false })
   @IsOptional()

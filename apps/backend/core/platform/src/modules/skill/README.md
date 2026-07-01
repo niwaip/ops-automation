@@ -1,7 +1,8 @@
 # skill -> skill-registry
 
 当前目录仍物理位于 `core/platform`，但逻辑归属已经切换为未来的
-`registry-release/skill-registry`。
+`registry-release/skill-registry`。旧 `core/platform/src/skill-registry/*` 纯 facade
+已在后续 Phase E 删除，平台内消费方现直接依赖本目录下的稳定子层。
 
 ## 该模块负责
 
@@ -24,10 +25,6 @@
 
 ## 当前逻辑分组
 
-- 根入口：优先通过 `modules/skill/index.ts` 访问稳定导出面
+- `modules/skill/index.ts` 根聚合 barrel 已在后续 Phase E 删除；当前应直接通过本目录下的真实实现文件或仍保留的稳定子层消费
 - `registry/`: Skill 注册与查询入口
-- `binding/`: Skill 与工具目录绑定
-- `access/`: Skill 授权、角色绑定与可见性判断
-- `matching/`: Skill 匹配与 AI 匹配返回契约
-- `enrichment/`: Skill 发布态补充与运行时元数据富化
-- `validation/`: 注册期校验与匹配辅助
+- Skill 与工具目录绑定、访问控制、匹配、富化、校验能力当前均由本目录下真实实现文件承接；旧根入口与 `access`、`binding`、`matching`、`enrichment`、`validation` 分组 `index.ts` compat 壳已在后续 Phase E 删除

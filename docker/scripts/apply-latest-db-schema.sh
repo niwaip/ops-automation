@@ -14,6 +14,7 @@ PLATFORM_SCHEMA="./prisma/schema.prisma"
 CONTROL_PLANE_INCREMENTAL_SQL_FILES=(
   "$REPO_ROOT/apps/backend/execution-control/control-plane/prisma/migrations/20260515143000_add_execution_phases/migration.sql"
   "$REPO_ROOT/apps/backend/execution-control/control-plane/prisma/migrations/20260516140000_add_execution_phase_steps/migration.sql"
+  "$REPO_ROOT/apps/backend/execution-control/control-plane/prisma/migrations/20260625000000_add_scheduler/migration.sql"
 )
 
 log() {
@@ -61,8 +62,8 @@ wait_for_postgres() {
 
 run_platform_job() {
   local command="$1"
-  run_compose "$BASE_COMPOSE" run --rm platform sh -lc \
-    "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && ${command}"
+  run_compose "$BASE_COMPOSE" run --rm platform sh -c \
+    "corepack enable && COREPACK_NPM_REGISTRY=https://registry.npmmirror.com corepack prepare pnpm@8.12.0 --activate && pnpm config set registry https://registry.npmmirror.com && pnpm install --no-frozen-lockfile && cd apps/backend/core/platform && ${command}"
 }
 
 run_psql() {

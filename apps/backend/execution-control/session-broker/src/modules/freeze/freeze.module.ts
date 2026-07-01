@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { FreezeService } from './freeze.service';
-import { LockModule } from '../lock';
+import { LockModule } from '../lock/lock.module';
 
 @Module({
   imports: [LockModule],

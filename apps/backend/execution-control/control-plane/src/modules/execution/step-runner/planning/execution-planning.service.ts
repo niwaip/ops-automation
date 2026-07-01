@@ -4,7 +4,10 @@ import { getAiOrchestratorUrl, getAuthServiceUrl } from '../../../../config/serv
 import { PrismaService } from '../../../prisma/prisma.service';
 import { CreateExecutionDto } from '../../state/execution.dto';
 import { ExecutionPlanNormalizationService } from './execution-plan-normalization.service';
-import type { BrowserLoopDraftLike } from '../browser/browser-loop-workflow-plan.builder';
+import {
+  partitionBrowserTemplateStepsForLoopWorkflow,
+  type BrowserLoopDraftLike,
+} from '../browser/browser-loop-workflow-plan.builder';
 
 @Injectable()
 export class ExecutionPlanningService {
@@ -320,6 +323,20 @@ export class ExecutionPlanningService {
         loopDraft &&
         loopTemplateSteps.length > 0
       ) {
+        const loopPartition = partitionBrowserTemplateStepsForLoopWorkflow({
+          templateSteps: loopTemplateSteps,
+          loopDraft,
+          loopId: `${capabilityId}_loop`,
+        });
+        if (loopPartition.iterationSteps.length === 0) {
+          this.logger.warn(
+            `Browser recording loop draft for capability ${capabilityId} has no executable iteration steps; falling back to direct skill replay`
+          );
+          return {
+            mode: 'direct_skill',
+            steps: [],
+          };
+        }
         return {
           mode: 'browser_loop_workflow',
           steps: [],

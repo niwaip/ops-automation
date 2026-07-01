@@ -1,14 +1,102 @@
 import axios from 'axios';
 import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
-import { CapabilityReleaseService } from '../src/release-manager/release';
-import { BridgeRecorderExportDTO } from '../src/release-manager';
-import { CapabilityReleaseTemporalSchemaService, CapabilityReleaseBrowserRecordingService, CapabilityReleaseBuildValidationService } from '../src/modules/capability-release/compiler';
-import { BrowserRecordingActionPolicyService, BrowserRecordingExecutionPlanValidatorService } from '../src/modules/capability-release/validator';
-import { CapabilityReleaseDeploymentSmokeService, CapabilityReleaseDeploymentService, CapabilityReleasePublishService, CapabilityReleaseRuntimeService } from '../src/modules/capability-release/publisher';
-import { CapabilityReleaseAssistService } from '../src/modules/capability-release/capability-release-assist.service';
-import { CapabilityReleaseSkillDraftService } from '../src/modules/capability-release/capability-release-skill-draft.service';
-import { CapabilityReleaseManifestService } from '../src/modules/capability-release/capability-release-manifest.service';
+import {
+  BridgeRecorderExportDTO,
+} from '../../../registry-release/release-manager/src/interfaces';
+import { CapabilityReleaseAssistService } from '../../../registry-release/release-manager/src/capability-release-assist.service';
+import { CapabilityReleaseSkillDraftService } from '../../../registry-release/release-manager/src/capability-release-skill-draft.service';
+import {
+  BrowserRecordingFlowNormalizerService,
+} from '../../../registry-release/release-manager/src/compiler/browser-recording-flow-normalizer.service';
+import {
+  BrowserRecordingRuntimeLoopPlannerService,
+} from '../../../registry-release/release-manager/src/compiler/browser-recording-runtime-loop-planner.service';
+import {
+  BrowserRecordingRuntimePlannerService,
+} from '../../../registry-release/release-manager/src/compiler/browser-recording-runtime-planner.service';
+import {
+  BrowserRecordingRuntimeStepBuilderService,
+} from '../../../registry-release/release-manager/src/compiler/browser-recording-runtime-step-builder.service';
+import { CapabilityReleaseBrowserRecordingService } from '../../../registry-release/release-manager/src/compiler/capability-release-browser-recording.service';
+import {
+  CapabilityReleaseBuildValidationService,
+} from '../../../registry-release/release-manager/src/compiler/capability-release-build-validation.service';
+import {
+  CapabilityReleaseRecorderBridgeCompilerService,
+} from '../../../registry-release/release-manager/src/compiler/capability-release-recorder-bridge-compiler.service';
+import { CapabilityReleaseTemporalSchemaService } from '../../../registry-release/release-manager/src/compiler/capability-release-temporal-schema.service';
+import { BrowserRecordingActionPolicyService } from '../../../registry-release/release-manager/src/validator/browser-recording-action-policy.service';
+import {
+  CapabilityReleasePublishValidatorService,
+} from '../../../registry-release/release-manager/src/validator/capability-release-publish-validator.service';
+import {
+  CapabilityReleaseBrowserRuntimeExecutorService,
+} from '../../../registry-release/release-manager/src/publisher/capability-release-browser-runtime-executor.service';
+import {
+  CapabilityReleaseBrowserRuntimeLoopExecutorService,
+} from '../../../registry-release/release-manager/src/publisher/capability-release-browser-runtime-loop-executor.service';
+import {
+  CapabilityReleaseBrowserRuntimeResultService,
+} from '../../../registry-release/release-manager/src/publisher/capability-release-browser-runtime-result.service';
+import {
+  CapabilityReleaseBrowserRuntimeService,
+} from '../../../registry-release/release-manager/src/publisher/capability-release-browser-runtime.service';
+import {
+  CapabilityReleaseBrowserRuntimeStepExecutorService,
+} from '../../../registry-release/release-manager/src/publisher/capability-release-browser-runtime-step-executor.service';
+import {
+  CapabilityReleaseBrowserRuntimeSupportService,
+} from '../../../registry-release/release-manager/src/publisher/capability-release-browser-runtime-support.service';
+import {
+  CapabilityReleaseDeploymentSmokeService,
+} from '../../../registry-release/release-manager/src/publisher/capability-release-deployment-smoke.service';
+import {
+  CapabilityReleaseDeploymentService,
+} from '../../../registry-release/release-manager/src/publisher/capability-release-deployment.service';
+import {
+  CapabilityReleaseDocumentRuntimeService,
+} from '../../../registry-release/release-manager/src/publisher/capability-release-document-runtime.service';
+import {
+  CapabilityReleasePublishService,
+} from '../../../registry-release/release-manager/src/publisher/capability-release-publish.service';
+import {
+  CapabilityReleasePublishWriterService,
+} from '../../../registry-release/release-manager/src/publisher/capability-release-publish-writer.service';
+import {
+  CapabilityReleaseRuntimeService,
+} from '../../../registry-release/release-manager/src/publisher/capability-release-runtime.service';
+import { CapabilityReleaseSkillPublisherService } from '../../../registry-release/release-manager/src/publisher/capability-release-skill-publisher.service';
+import { ReleaseRuntimeBindingService } from '../../../registry-release/release-manager/src/publisher/release-runtime-binding.service';
+import {
+  ReleaseAccessorBindingsService,
+  ReleaseAccessorDepsService,
+  ReleaseAccessorSourceService,
+  ReleaseFacadeAccessorFactoryService,
+  ReleaseAccessorFactoryService,
+  ReleaseAuditAccessorDepsService,
+  ReleaseDraftQueryBridgeService,
+  ReleaseFacadeAccessorsService,
+  ReleaseDraftQuerySourceService,
+  ReleaseFacadeAccessorBindingsService,
+  ReleaseFacadeContextService,
+  ReleaseLifecycleService,
+  ReleaseManagementAccessorSourceService,
+  ReleaseManagementFacadeContextService,
+  ReleaseManagementFacadeAccessorsService,
+  ReleaseQueryService,
+  ReleaseRuntimeAccessorFactoryService,
+  ReleaseRuntimeAccessorSourceService,
+  ReleaseRuntimeFacadeContextService,
+  ReleaseRuntimeFacadeAccessorsService,
+  ReleaseRuntimeAccessorBindingsService,
+  ReleaseSupportAccessorDepsService,
+  ReleaseSupportService,
+} from '../../../registry-release/release-manager/src/release';
+import {
+  CapabilityReleaseManifestService,
+  CapabilityReleaseService,
+} from '../../../registry-release/release-manager/src/release';
 
 jest.mock('axios');
 
@@ -33,6 +121,8 @@ describe('CapabilityReleaseService', () => {
     const activityService = {
       executeCodeInTemporalSandbox: jest.fn(),
       executeCodeStreaming: jest.fn(),
+    };
+    const temporalWorkflowService = {
       getArtifact: jest.fn(),
     };
     const skillService = {
@@ -45,28 +135,140 @@ describe('CapabilityReleaseService', () => {
     };
 
     const temporalSchemaService = new CapabilityReleaseTemporalSchemaService();
-    const browserRecordingService = new CapabilityReleaseBrowserRecordingService();
+    const browserRecordingFlowNormalizerService = new BrowserRecordingFlowNormalizerService();
+    const browserRecordingRuntimeStepBuilderService =
+      new BrowserRecordingRuntimeStepBuilderService(browserRecordingFlowNormalizerService);
+    const browserRecordingRuntimeLoopPlannerService =
+      new BrowserRecordingRuntimeLoopPlannerService();
+    const browserRecordingRuntimePlannerService = new BrowserRecordingRuntimePlannerService(
+      browserRecordingRuntimeStepBuilderService,
+      browserRecordingRuntimeLoopPlannerService
+    );
+    const browserRecordingService = new CapabilityReleaseBrowserRecordingService(
+      browserRecordingFlowNormalizerService,
+      browserRecordingRuntimePlannerService
+    );
     const executionFlowValidationFacade = { validateTemplate: jest.fn() };
     const browserRecordingActionPolicyService = new BrowserRecordingActionPolicyService();
     const browserRecordingExecutionPlanValidatorService = {
       validateForBridge: jest.fn().mockReturnValue({ valid: true }),
       validateForRuntime: jest.fn().mockReturnValue({ valid: true, errors: [], warnings: [] }),
       validateForPublish: jest.fn().mockReturnValue({ valid: true }),
+      normalizePayloadForCompatibility: jest.fn().mockImplementation((payload) => payload),
     };
     
     const skillDraftService = new CapabilityReleaseSkillDraftService(
       browserRecordingService,
       temporalSchemaService
     );
-    const runtimeService = new CapabilityReleaseRuntimeService(
+    const releaseRuntimeBindingService = new ReleaseRuntimeBindingService(
       prisma as any,
-      activityService as any,
       skillService as any,
-      toolCatalogService as any,
-      browserRecordingActionPolicyService,
+      toolCatalogService as any
+    );
+    const releaseQueryService = new ReleaseQueryService(prisma as any);
+    const releaseSupportService = new ReleaseSupportService(
+      prisma as any,
+      temporalWorkflowService as any
+    );
+    const releaseDraftService = {
+      createCapability: jest.fn(),
+      updateSource: jest.fn(),
+    };
+    const releaseRuntimeAccessorFactoryService = new ReleaseRuntimeAccessorFactoryService();
+    const releaseFacadeAccessorFactoryService = new ReleaseFacadeAccessorFactoryService();
+    const releaseAccessorFactoryService = new ReleaseAccessorFactoryService(
+      releaseRuntimeAccessorFactoryService,
+      releaseFacadeAccessorFactoryService
+    );
+    const releaseLifecycleService = new ReleaseLifecycleService(prisma as any);
+    const releaseDraftQueryBridgeService = new ReleaseDraftQueryBridgeService(
+      releaseDraftService as any,
+      releaseQueryService
+    );
+    const releaseRuntimeAccessorBindingsService = new ReleaseRuntimeAccessorBindingsService();
+    const releaseFacadeAccessorBindingsService = new ReleaseFacadeAccessorBindingsService();
+    const releaseAccessorBindingsService = new ReleaseAccessorBindingsService(
+      releaseRuntimeAccessorBindingsService,
+      releaseFacadeAccessorBindingsService
+    );
+    const releaseAuditAccessorDepsService = new ReleaseAuditAccessorDepsService({
+      insertAuditEvent: jest.fn(),
+    } as any);
+    const releaseSupportAccessorDepsService = new ReleaseSupportAccessorDepsService(
+      releaseAccessorBindingsService,
+      releaseSupportService
+    );
+    const releaseDraftQuerySourceService = new ReleaseDraftQuerySourceService(
+      releaseAuditAccessorDepsService as any,
+      releaseDraftQueryBridgeService,
+      releaseSupportAccessorDepsService
+    );
+    const releaseAccessorSourceService = new ReleaseAccessorSourceService(
+      new ReleaseRuntimeAccessorSourceService(releaseSupportAccessorDepsService),
+      new ReleaseManagementAccessorSourceService(
+        releaseAuditAccessorDepsService as any,
+        releaseDraftQuerySourceService,
+        releaseSupportAccessorDepsService
+      )
+    );
+    const releaseAccessorDepsService = new ReleaseAccessorDepsService(
+      releaseSupportAccessorDepsService
+    );
+    const releaseFacadeAccessorsService = new ReleaseFacadeAccessorsService(
+      new ReleaseRuntimeFacadeAccessorsService(
+        releaseAccessorFactoryService,
+        releaseAccessorDepsService
+      ),
+      new ReleaseManagementFacadeAccessorsService(
+        releaseAccessorFactoryService,
+        releaseAccessorDepsService
+      )
+    );
+    const releaseFacadeContextService = new ReleaseFacadeContextService(
+      new ReleaseRuntimeFacadeContextService(
+        releaseFacadeAccessorsService,
+        releaseAccessorSourceService
+      ),
+      new ReleaseManagementFacadeContextService(
+        new ReleaseManagementFacadeAccessorsService(
+          releaseAccessorFactoryService,
+          releaseAccessorDepsService
+        ),
+        releaseAccessorSourceService
+      )
+    );
+    const capabilityReleaseBrowserRuntimeSupportService =
+      new CapabilityReleaseBrowserRuntimeSupportService();
+    const capabilityReleaseBrowserRuntimeStepExecutorService =
+      new CapabilityReleaseBrowserRuntimeStepExecutorService(
+        browserRecordingActionPolicyService,
+        capabilityReleaseBrowserRuntimeSupportService
+      );
+    const capabilityReleaseBrowserRuntimeLoopExecutorService =
+      new CapabilityReleaseBrowserRuntimeLoopExecutorService(
+        capabilityReleaseBrowserRuntimeStepExecutorService,
+        capabilityReleaseBrowserRuntimeSupportService
+      );
+    const capabilityReleaseBrowserRuntimeResultService =
+      new CapabilityReleaseBrowserRuntimeResultService();
+    const capabilityReleaseBrowserRuntimeExecutorService =
+      new CapabilityReleaseBrowserRuntimeExecutorService(
+        capabilityReleaseBrowserRuntimeStepExecutorService,
+        capabilityReleaseBrowserRuntimeLoopExecutorService
+      );
+    const capabilityReleaseBrowserRuntimeService = new CapabilityReleaseBrowserRuntimeService(
       browserRecordingExecutionPlanValidatorService as any,
       browserRecordingService,
-      skillDraftService
+      capabilityReleaseBrowserRuntimeExecutorService,
+      capabilityReleaseBrowserRuntimeResultService,
+      capabilityReleaseBrowserRuntimeSupportService
+    );
+    const runtimeService = new CapabilityReleaseRuntimeService(
+      activityService as any,
+      releaseRuntimeBindingService,
+      new CapabilityReleaseDocumentRuntimeService(skillDraftService),
+      capabilityReleaseBrowserRuntimeService
     );
     const buildValidationService = new CapabilityReleaseBuildValidationService(
       prisma as any,
@@ -76,6 +278,21 @@ describe('CapabilityReleaseService', () => {
       browserRecordingService,
       skillDraftService,
       temporalSchemaService
+    );
+    const recorderBridgeCompilerService = new CapabilityReleaseRecorderBridgeCompilerService(
+      browserRecordingFlowNormalizerService
+    );
+    const publishValidatorService = new CapabilityReleasePublishValidatorService(
+      skillService as any,
+      browserRecordingFlowNormalizerService,
+      browserRecordingExecutionPlanValidatorService as any,
+      temporalSchemaService
+    );
+    const publishWriterService = new CapabilityReleasePublishWriterService(prisma as any);
+    const skillPublisherService = new CapabilityReleaseSkillPublisherService(
+      prisma as any,
+      skillService as any,
+      publishWriterService
     );
     const deploymentSmokeService = new CapabilityReleaseDeploymentSmokeService(
       prisma as any,
@@ -94,38 +311,54 @@ describe('CapabilityReleaseService', () => {
       prisma as any
     );
     const publishService = new CapabilityReleasePublishService(
-      prisma as any,
-      skillService as any,
-      browserRecordingService,
+      recorderBridgeCompilerService,
       browserRecordingExecutionPlanValidatorService as any,
-      temporalSchemaService
+      publishValidatorService,
+      publishWriterService,
+      skillPublisherService
     );
     const manifestService = new CapabilityReleaseManifestService();
 
     const service = new CapabilityReleaseService(
-      prisma as any,
       buildValidationService,
       deploymentService,
       assistService,
       publishService,
       runtimeService,
+      releaseDraftService as any,
+      releaseFacadeContextService,
+      releaseLifecycleService,
+      releaseQueryService,
       manifestService,
       skillDraftService,
       temporalSchemaService,
-      activityService as any
+      {} as any
     );
 
-    return { service, prisma, skillService, toolCatalogService, activityService };
+    return {
+      service,
+      prisma,
+      skillService,
+      toolCatalogService,
+      activityService,
+      temporalWorkflowService,
+      releaseRuntimeBindingService,
+      releaseDraftService,
+      releaseQueryService,
+      releaseFacadeContextService,
+    };
   };
 
   it('archives the release and deactivates its published skill', async () => {
-    const { service, prisma } = createService();
+    const { service, prisma, releaseFacadeContextService } = createService();
 
-    jest.spyOn(service as any, 'getReleaseOrThrow').mockResolvedValue({
+    jest.spyOn((releaseFacadeContextService as any), 'getReleaseOrThrow').mockResolvedValue({
       id: 'release-1',
       publishedSkillId: 'skill-1',
     });
-    jest.spyOn(service as any, 'insertAuditEvent').mockResolvedValue(undefined);
+    jest
+      .spyOn((releaseFacadeContextService as any), 'insertAuditEvent')
+      .mockResolvedValue(undefined);
 
     const result = await service.archiveCapability('release-1', 'user-1');
 
@@ -140,7 +373,7 @@ describe('CapabilityReleaseService', () => {
       expect.stringContaining('UPDATE skill_configs'),
       'skill-1'
     );
-    expect((service as any).insertAuditEvent).toHaveBeenCalledWith(
+    expect((releaseFacadeContextService as any).insertAuditEvent).toHaveBeenCalledWith(
       'release-1',
       'published_skill_deactivated',
       'user-1',
@@ -148,25 +381,83 @@ describe('CapabilityReleaseService', () => {
       '归档 Release 时停用已发布 Skill: skill-1',
       { publishedSkillId: 'skill-1' }
     );
-    expect((service as any).insertAuditEvent).toHaveBeenCalledWith(
+    expect((releaseFacadeContextService as any).insertAuditEvent).toHaveBeenCalledWith(
       'release-1',
       'release_archived',
       'user-1',
       true,
-      '归档 Capability'
+      '归档 Capability',
+      undefined
     );
   });
 
+  it('delegates capability draft creation to release draft service', async () => {
+    const { service, releaseDraftService, releaseFacadeContextService } = createService();
+    const draftResult = {
+      release: {
+        id: 'release-create-1',
+      },
+      builds: [],
+      validations: [],
+    };
+
+    jest
+      .spyOn(releaseDraftService, 'createCapability')
+      .mockResolvedValue(draftResult as any);
+
+    const result = await service.createCapability(
+      {
+        sourceType: 'execution_flow_template',
+        sourceId: 'template-1',
+      },
+      'user-1'
+    );
+
+    expect(releaseDraftService.createCapability).toHaveBeenCalledWith(
+      {
+        sourceType: 'execution_flow_template',
+        sourceId: 'template-1',
+      },
+      'user-1',
+      expect.objectContaining({
+        getReleaseOrThrow: expect.any(Function),
+        insertAuditEvent: expect.any(Function),
+      })
+    );
+    expect(result).toBe(draftResult);
+  });
+
+  it('delegates current skill draft lookup to release query service', async () => {
+    const { service, releaseQueryService, releaseFacadeContextService } = createService();
+    const currentDraft = {
+      id: 'draft-current-1',
+      name: 'current draft',
+    };
+
+    jest.spyOn(releaseQueryService, 'getCurrentSkillDraft').mockResolvedValue(currentDraft as any);
+
+    const result = await service.getCurrentSkillDraft('release-current-1');
+
+    expect(releaseQueryService.getCurrentSkillDraft).toHaveBeenCalledWith(
+      'release-current-1',
+      expect.objectContaining({
+        getReleaseOrThrow: expect.any(Function),
+        getSkillDraftOrThrow: expect.any(Function),
+      })
+    );
+    expect(result).toBe(currentDraft);
+  });
+
   it('requires a real temporal build instead of reusing snapshot generated code', async () => {
-    const { service, prisma } = createService();
+    const { prisma, releaseFacadeContextService, temporalWorkflowService } = createService();
 
     prisma.$queryRawUnsafe.mockResolvedValueOnce([]);
-    jest.spyOn((service as any).temporalWorkflowService, 'getArtifact').mockRejectedValue(
+    jest.spyOn(temporalWorkflowService, 'getArtifact').mockRejectedValue(
       new Error('当前 Release 缺少真实构建产物，请先执行一次构建 / 代码生成')
     );
 
     await expect(
-      (service as any).resolveTemporalExecutableBuildOrThrow(
+      (releaseFacadeContextService as any).resolveTemporalExecutableBuildOrThrow(
         {
           id: 'release-1',
           currentBuildId: null,
@@ -188,7 +479,7 @@ describe('CapabilityReleaseService', () => {
   });
 
   it('prefers declared temporal input param types over description heuristics', () => {
-    const { service } = createService();
+    const { service, releaseFacadeContextService } = createService();
 
     const schema = (service as any).capabilityReleaseTemporalSchemaService.buildTemporalParamsSchema({
       inputParams: {
@@ -249,7 +540,7 @@ describe('CapabilityReleaseService', () => {
   });
 
   it('normalizes camelCase url smoke inputs into valid urls', () => {
-    const { service } = createService();
+    const { service, releaseFacadeContextService } = createService();
 
     const normalized = (service as any).capabilityReleaseTemporalSchemaService.buildSuggestedInputFromSchema({
       properties: {
@@ -265,7 +556,7 @@ describe('CapabilityReleaseService', () => {
   });
 
   it('prefers temporal workflow input defaults when building deploy smoke input', () => {
-    const { service } = createService();
+    const { service, releaseFacadeContextService } = createService();
 
     const smokeInput = (service as any).capabilityReleaseTemporalSchemaService.buildSmokeTestInput(
       {
@@ -318,7 +609,7 @@ describe('CapabilityReleaseService', () => {
   });
 
   it('prefers fixed source-level test input when building deploy smoke input', () => {
-    const { service } = createService();
+    const { service, releaseFacadeContextService } = createService();
 
     const smokeInput = (service as any).capabilityReleaseTemporalSchemaService.buildSmokeTestInput(
       {
@@ -351,7 +642,7 @@ describe('CapabilityReleaseService', () => {
   });
 
   it('prefers environment-specific fixed test input over global test input', () => {
-    const { service } = createService();
+    const { service, releaseFacadeContextService } = createService();
 
     const smokeInput = (service as any).capabilityReleaseTemporalSchemaService.buildSmokeTestInput(
       {
@@ -390,7 +681,7 @@ describe('CapabilityReleaseService', () => {
   });
 
   it('omits empty placeholder defaults from published temporal params schema', () => {
-    const { service } = createService();
+    const { service, releaseFacadeContextService } = createService();
 
     const schema = (service as any).capabilityReleaseTemporalSchemaService.buildTemporalParamsSchema({
       inputParams: {
@@ -425,7 +716,7 @@ describe('CapabilityReleaseService', () => {
   });
 
   it('keeps L1 presentation metadata in published temporal params schema without leaking policy fields', () => {
-    const { service } = createService();
+    const { service, releaseFacadeContextService } = createService();
 
     const schema = (service as any).capabilityReleaseTemporalSchemaService.buildTemporalParamsSchema({
       inputParams: {
@@ -468,7 +759,7 @@ describe('CapabilityReleaseService', () => {
   });
 
   it('preserves temporal renderPath metadata and falls back to inputPolicy templateBinding', () => {
-    const { service } = createService();
+    const { service, releaseFacadeContextService } = createService();
 
     const schema = (service as any).capabilityReleaseTemporalSchemaService.buildTemporalParamsSchema({
       inputParams: {
@@ -507,7 +798,7 @@ describe('CapabilityReleaseService', () => {
   });
 
   it('derives temporal optional defaults from localizedDefaultValue when plain defaultValue is empty', () => {
-    const { service } = createService();
+    const { service, releaseFacadeContextService } = createService();
 
     const schema = (service as any).capabilityReleaseTemporalSchemaService.buildTemporalParamsSchema({
       inputParams: {
@@ -548,7 +839,7 @@ describe('CapabilityReleaseService', () => {
   });
 
   it('prefers workflow inputPolicy defaultValue when building temporal release params schema', () => {
-    const { service } = createService();
+    const { service, releaseFacadeContextService } = createService();
 
     const schema = (service as any).capabilityReleaseTemporalSchemaService.buildTemporalParamsSchema({
       inputParams: {
@@ -605,7 +896,7 @@ describe('CapabilityReleaseService', () => {
   });
 
   it('does not infer bankAccount as number when deriving temporal release params schema', () => {
-    const { service } = createService();
+    const { service, releaseFacadeContextService } = createService();
 
     const schema = (service as any).capabilityReleaseTemporalSchemaService.buildTemporalParamsSchema({
       inputParams: {
@@ -636,7 +927,7 @@ describe('CapabilityReleaseService', () => {
   });
 
   it('lets workflow inputPolicy requiredMode override temporal inputParams required flags', () => {
-    const { service } = createService();
+    const { service, releaseFacadeContextService } = createService();
 
     const schema = (service as any).capabilityReleaseTemporalSchemaService.buildTemporalParamsSchema({
       inputParams: {
@@ -678,7 +969,7 @@ describe('CapabilityReleaseService', () => {
   });
 
   it('preserves document runtime mapping metadata when building execution flow skill drafts', () => {
-    const { service } = createService();
+    const { service, releaseFacadeContextService } = createService();
 
     const payload = (service as any).capabilityReleaseSkillDraftService.buildSkillDraftPayload(
       {
@@ -751,7 +1042,7 @@ describe('CapabilityReleaseService', () => {
   });
 
   it('preserves document runtime mapping metadata when building temporal workflow skill drafts', () => {
-    const { service } = createService();
+    const { service, releaseFacadeContextService } = createService();
 
     const payload = (service as any).capabilityReleaseSkillDraftService.buildSkillDraftPayload(
       {
@@ -814,7 +1105,7 @@ describe('CapabilityReleaseService', () => {
   });
 
   it('derives temporal workflow runtime mapping metadata from workflowDsl when draft payload lacks runtime metadata', () => {
-    const { service } = createService();
+    const { service, releaseFacadeContextService } = createService();
 
     const payload = (service as any).capabilityReleaseSkillDraftService.buildSkillDraftPayload(
       {
@@ -903,7 +1194,7 @@ describe('CapabilityReleaseService', () => {
   });
 
   it('drops stale raw required fields when workflow inputPolicy downgrades temporal params to optional', () => {
-    const { service } = createService();
+    const { service, releaseFacadeContextService } = createService();
 
     const schema = (service as any).capabilityReleaseTemporalSchemaService.resolveEffectiveTemporalParamsSchema({
       workflowDsl: {
@@ -960,7 +1251,7 @@ describe('CapabilityReleaseService', () => {
   });
 
   it('falls back to concise description labels when declared displayName is still machine-like', () => {
-    const { service } = createService();
+    const { service, releaseFacadeContextService } = createService();
 
     const schema = (service as any).capabilityReleaseTemporalSchemaService.buildTemporalParamsSchema({
       inputParams: {
@@ -989,11 +1280,11 @@ describe('CapabilityReleaseService', () => {
   });
 
   it('persists generateSkillDraft paramsSchema using workflow inputPolicy requiredMode for temporal releases', async () => {
-    const { service, prisma } = createService();
+    const { service, prisma, releaseFacadeContextService } = createService();
 
     prisma.$executeRawUnsafe.mockResolvedValue(undefined);
     jest
-      .spyOn(service as any, 'getReleaseOrThrow')
+      .spyOn(releaseFacadeContextService as any, 'getReleaseOrThrow')
       .mockResolvedValueOnce({
         id: 'release-temporal-1',
         sourceType: 'temporal_workflow',
@@ -1009,7 +1300,7 @@ describe('CapabilityReleaseService', () => {
         status: 'pending_approval',
         approvalStatus: 'pending',
       });
-    jest.spyOn(service as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
+    jest.spyOn(releaseFacadeContextService as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
       id: 'snapshot-temporal-1',
       sourcePayload: {
         name: '技术服务合同渲染工作流',
@@ -1060,19 +1351,19 @@ describe('CapabilityReleaseService', () => {
         workflowSteps: [{ id: 'render', name: '渲染合同' }],
       },
     });
-    jest.spyOn(service as any, 'getLatestSuccessfulValidationOrThrow').mockResolvedValue({
+    jest.spyOn(releaseFacadeContextService as any, 'getLatestSuccessfulValidationOrThrow').mockResolvedValue({
       id: 'validation-1',
       buildId: 'build-1',
       resultSnapshot: null,
     });
-    jest.spyOn(service as any, 'getSkillDraftOrThrow').mockResolvedValue({
+    jest.spyOn(releaseFacadeContextService as any, 'getSkillDraftOrThrow').mockResolvedValue({
       id: 'draft-generated-1',
       paramsSchema: {
         required: ['contract.signingDate'],
       },
       draftPayload: {},
     });
-    jest.spyOn(service as any, 'insertAuditEvent').mockResolvedValue(undefined);
+    jest.spyOn(releaseFacadeContextService as any, 'insertAuditEvent').mockResolvedValue(undefined);
 
     const result = await service.generateSkillDraft('release-temporal-1', {}, 'user-1');
 
@@ -1103,16 +1394,16 @@ describe('CapabilityReleaseService', () => {
   });
 
   it('blocks publishing when tool validation fails', async () => {
-    const { service, skillService } = createService();
+    const { service, skillService, releaseFacadeContextService } = createService();
 
-    jest.spyOn(service as any, 'getReleaseOrThrow').mockResolvedValue({
+    jest.spyOn(releaseFacadeContextService as any, 'getReleaseOrThrow').mockResolvedValue({
       id: 'release-1',
       approvalStatus: 'approved',
       status: 'approved',
       currentSkillDraftId: 'draft-1',
       publishedSkillId: null,
     });
-    jest.spyOn(service as any, 'getSkillDraftOrThrow').mockResolvedValue({
+    jest.spyOn(releaseFacadeContextService as any, 'getSkillDraftOrThrow').mockResolvedValue({
       id: 'draft-1',
       tools: ['api_call'],
       executionFlowTemplateIds: ['tpl-1'],
@@ -1123,7 +1414,7 @@ describe('CapabilityReleaseService', () => {
         executionFlowTemplateIds: ['tpl-1'],
       },
     });
-    jest.spyOn(service as any, 'insertAuditEvent').mockResolvedValue(undefined);
+    jest.spyOn(releaseFacadeContextService as any, 'insertAuditEvent').mockResolvedValue(undefined);
     skillService.validateSkillToolsPayload.mockResolvedValue({
       isValid: false,
       declaredTools: ['api_call'],
@@ -1149,7 +1440,7 @@ describe('CapabilityReleaseService', () => {
         message: '发布前工具校验失败',
       }),
     });
-    expect((service as any).insertAuditEvent).toHaveBeenCalledWith(
+    expect((releaseFacadeContextService as any).insertAuditEvent).toHaveBeenCalledWith(
       'release-1',
       'skill_publish_blocked_by_tool_validation',
       'user-1',
@@ -1164,9 +1455,9 @@ describe('CapabilityReleaseService', () => {
   });
 
   it('blocks publishing template workflows when document mappings are still empty', async () => {
-    const { service, skillService } = createService();
+    const { service, skillService, releaseFacadeContextService } = createService();
 
-    jest.spyOn(service as any, 'getReleaseOrThrow').mockResolvedValue({
+    jest.spyOn(releaseFacadeContextService as any, 'getReleaseOrThrow').mockResolvedValue({
       id: 'release-template-1',
       approvalStatus: 'approved',
       status: 'approved',
@@ -1174,7 +1465,7 @@ describe('CapabilityReleaseService', () => {
       currentSkillDraftId: 'draft-template-1',
       publishedSkillId: null,
     });
-    jest.spyOn(service as any, 'getSkillDraftOrThrow').mockResolvedValue({
+    jest.spyOn(releaseFacadeContextService as any, 'getSkillDraftOrThrow').mockResolvedValue({
       id: 'draft-template-1',
       tools: [],
       executionFlowTemplateIds: [],
@@ -1184,7 +1475,7 @@ describe('CapabilityReleaseService', () => {
         tools: [],
       },
     });
-    jest.spyOn(service as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
+    jest.spyOn(releaseFacadeContextService as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
       sourcePayload: {
         sourceTemplate: {
           templateId: 'tpl-tech-service',
@@ -1204,7 +1495,7 @@ describe('CapabilityReleaseService', () => {
         },
       },
     });
-    jest.spyOn(service as any, 'insertAuditEvent').mockResolvedValue(undefined);
+    jest.spyOn(releaseFacadeContextService as any, 'insertAuditEvent').mockResolvedValue(undefined);
     skillService.validateSkillToolsPayload.mockResolvedValue({
       isValid: true,
       declaredTools: [],
@@ -1229,7 +1520,7 @@ describe('CapabilityReleaseService', () => {
         }),
       }),
     });
-    expect((service as any).insertAuditEvent).toHaveBeenCalledWith(
+    expect((releaseFacadeContextService as any).insertAuditEvent).toHaveBeenCalledWith(
       'release-template-1',
       'skill_publish_blocked_by_document_mapping',
       'user-1',
@@ -1245,9 +1536,9 @@ describe('CapabilityReleaseService', () => {
   });
 
   it('normalizes legacy browser_execute tool names when publishing browser recording skills', async () => {
-    const { service, skillService, prisma } = createService();
+    const { service, skillService, prisma, releaseFacadeContextService } = createService();
 
-    jest.spyOn(service as any, 'getReleaseOrThrow').mockResolvedValue({
+    jest.spyOn(releaseFacadeContextService as any, 'getReleaseOrThrow').mockResolvedValue({
       id: 'release-browser-1',
       approvalStatus: 'approved',
       status: 'approved',
@@ -1256,7 +1547,7 @@ describe('CapabilityReleaseService', () => {
       currentSkillDraftId: 'draft-browser-1',
       publishedSkillId: null,
     });
-    jest.spyOn(service as any, 'getSkillDraftOrThrow').mockResolvedValue({
+    jest.spyOn(releaseFacadeContextService as any, 'getSkillDraftOrThrow').mockResolvedValue({
       id: 'draft-browser-1',
       tools: ['skill_match', 'browser_execute'],
       executionFlowTemplateIds: [],
@@ -1275,8 +1566,8 @@ describe('CapabilityReleaseService', () => {
         executionFlowTemplateIds: [],
       },
     });
-    jest.spyOn(service as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({ id: 'snapshot-1', payload: {} });
-    jest.spyOn(service as any, 'insertAuditEvent').mockResolvedValue(undefined);
+    jest.spyOn(releaseFacadeContextService as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({ id: 'snapshot-1', payload: {} });
+    jest.spyOn(releaseFacadeContextService as any, 'insertAuditEvent').mockResolvedValue(undefined);
     prisma.$queryRawUnsafe.mockResolvedValue([]);
     skillService.validateSkillToolsPayload.mockResolvedValue({
       isValid: true,
@@ -1319,9 +1610,9 @@ describe('CapabilityReleaseService', () => {
   });
 
   it('rejects publishing when release approval is pending', async () => {
-    const { service } = createService();
+    const { service, releaseFacadeContextService } = createService();
 
-    jest.spyOn(service as any, 'getReleaseOrThrow').mockResolvedValue({
+    jest.spyOn(releaseFacadeContextService as any, 'getReleaseOrThrow').mockResolvedValue({
       id: 'release-pending',
       approvalStatus: 'pending',
       status: 'pending_approval',
@@ -1337,9 +1628,9 @@ describe('CapabilityReleaseService', () => {
   });
 
   it('rejects publishing when release approval is rejected', async () => {
-    const { service } = createService();
+    const { service, releaseFacadeContextService } = createService();
 
-    jest.spyOn(service as any, 'getReleaseOrThrow').mockResolvedValue({
+    jest.spyOn(releaseFacadeContextService as any, 'getReleaseOrThrow').mockResolvedValue({
       id: 'release-rejected',
       approvalStatus: 'rejected',
       status: 'draft',
@@ -1355,10 +1646,10 @@ describe('CapabilityReleaseService', () => {
   });
 
   it('allows pre-publish deploy for non-temporal releases to validate runtime wiring', async () => {
-    const { service } = createService();
+    const { service, releaseFacadeContextService } = createService();
 
     jest
-      .spyOn(service as any, 'getReleaseOrThrow')
+      .spyOn(releaseFacadeContextService as any, 'getReleaseOrThrow')
       .mockResolvedValueOnce({
         id: 'release-no-skill',
         sourceType: 'browser_recording',
@@ -1373,14 +1664,14 @@ describe('CapabilityReleaseService', () => {
         status: 'deployed',
         sourceId: 'template-1',
       });
-    jest.spyOn(service as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
+    jest.spyOn(releaseFacadeContextService as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
       id: 'snapshot-1',
       sourcePayload: {},
     });
     jest.spyOn((service as any).capabilityReleaseBuildValidationService, 'resolveBuildForValidation').mockResolvedValue(undefined);
     jest.spyOn((service as any).capabilityReleaseDeploymentService, 'finishDeployment').mockResolvedValue(undefined);
-    jest.spyOn(service as any, 'insertAuditEvent').mockResolvedValue(undefined);
-    jest.spyOn(service as any, 'getBuildOrThrow').mockResolvedValue({
+    jest.spyOn(releaseFacadeContextService as any, 'insertAuditEvent').mockResolvedValue(undefined);
+    jest.spyOn(releaseFacadeContextService as any, 'getBuildOrThrow').mockResolvedValue({
       id: 'build-1',
       releaseId: 'release-no-skill',
       status: 'succeeded',
@@ -1392,7 +1683,7 @@ describe('CapabilityReleaseService', () => {
       validationId: 'validation-smoke-1',
       errorSummary: null,
     });
-    jest.spyOn(service as any, 'getDeploymentOrThrow').mockResolvedValue({
+    jest.spyOn(releaseFacadeContextService as any, 'getDeploymentOrThrow').mockResolvedValue({
       id: 'deployment-1',
       releaseId: 'release-no-skill',
       status: 'succeeded',
@@ -1428,9 +1719,9 @@ describe('CapabilityReleaseService', () => {
   });
 
   it('rejects deploy when release is already deploying', async () => {
-    const { service } = createService();
+    const { service, releaseFacadeContextService } = createService();
 
-    jest.spyOn(service as any, 'getReleaseOrThrow').mockResolvedValue({
+    jest.spyOn(releaseFacadeContextService as any, 'getReleaseOrThrow').mockResolvedValue({
       id: 'release-deploying',
       sourceType: 'browser_recording',
       publishedSkillId: 'skill-1',
@@ -1446,10 +1737,10 @@ describe('CapabilityReleaseService', () => {
   });
 
   it('uses snapshot validation for browser recording sandbox validation', async () => {
-    const { service } = createService();
+    const { service, releaseFacadeContextService } = createService();
 
     jest
-      .spyOn(service as any, 'getReleaseOrThrow')
+      .spyOn(releaseFacadeContextService as any, 'getReleaseOrThrow')
       .mockResolvedValueOnce({
         id: 'release-browser-validate-1',
         sourceType: 'browser_recording',
@@ -1460,7 +1751,7 @@ describe('CapabilityReleaseService', () => {
         sourceType: 'browser_recording',
         status: 'draft_ready',
       });
-    jest.spyOn(service as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
+    jest.spyOn(releaseFacadeContextService as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
       id: 'snapshot-1',
       sourcePayload: {
         steps: [{ id: 'step_1', name: '打开页面' }],
@@ -1475,8 +1766,8 @@ describe('CapabilityReleaseService', () => {
       .mockReturnValue(false);
     jest.spyOn((service as any).capabilityReleaseBuildValidationService, 'createValidationRecord').mockResolvedValue('validation-1');
     jest.spyOn((service as any).capabilityReleaseBuildValidationService, 'finishValidation').mockResolvedValue(undefined);
-    jest.spyOn(service as any, 'insertAuditEvent').mockResolvedValue(undefined);
-    jest.spyOn(service as any, 'getValidationOrThrow').mockResolvedValue({
+    jest.spyOn(releaseFacadeContextService as any, 'insertAuditEvent').mockResolvedValue(undefined);
+    jest.spyOn(releaseFacadeContextService as any, 'getValidationOrThrow').mockResolvedValue({
       id: 'validation-1',
       success: true,
       score: 100,
@@ -1512,21 +1803,57 @@ describe('CapabilityReleaseService', () => {
   });
 
   it('returns runtime tool policies from tool catalog metadata', async () => {
-    const { service, prisma, skillService, toolCatalogService } = createService();
+    const { service, prisma, skillService, toolCatalogService, releaseFacadeContextService } = createService();
 
     prisma.$queryRawUnsafe
-      .mockResolvedValueOnce([{ id: 'release-row-1' }])
-      .mockResolvedValueOnce([{ id: 'deployment-row-1' }]);
-    jest.spyOn((service as any).capabilityReleaseRuntimeService, 'mapRelease').mockReturnValue({
-      id: 'release-1',
-      sourceType: 'execution_flow_template',
-      lastDeploymentId: null,
-    });
-    jest.spyOn((service as any).capabilityReleaseRuntimeService, 'mapDeployment').mockReturnValue({
-      id: 'deployment-1',
-      runtimeType: 'flow_runtime',
-      environment: 'dev',
-    });
+      .mockResolvedValueOnce([
+        {
+          id: 'release-1',
+          source_type: 'execution_flow_template',
+          source_status: 'ready',
+          release_version: 1,
+          status: 'published',
+          approval_status: 'approved',
+          deployment_status: 'succeeded',
+          current_source_snapshot_id: null,
+          current_build_id: null,
+          latest_successful_build_id: null,
+          latest_validation_id: null,
+          latest_successful_validation_id: null,
+          current_skill_draft_id: null,
+          published_skill_id: 'skill-1',
+          last_deployment_id: null,
+          last_deployment_environment: null,
+          rollback_of_release_id: null,
+          created_by: null,
+          created_at: new Date('2026-01-01T00:00:00.000Z'),
+          updated_at: new Date('2026-01-01T00:00:00.000Z'),
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: 'deployment-1',
+          release_id: 'release-1',
+          published_skill_id: 'skill-1',
+          environment: 'dev',
+          runtime_type: 'flow_runtime',
+          artifact_uri: null,
+          artifact_hash: null,
+          worker_version: null,
+          reload_strategy: null,
+          request_payload_json: null,
+          result_snapshot_json: null,
+          logs_json: '[]',
+          status: 'succeeded',
+          success: true,
+          smoke_validation_id: null,
+          rollback_target_release_id: null,
+          started_at: null,
+          finished_at: null,
+          created_by: null,
+          created_at: new Date('2026-01-01T00:00:00.000Z'),
+        },
+      ]);
     skillService.getSkillToolBindings.mockResolvedValue({
       validation: {
         effectiveTools: ['api_call', 'user_ask'],
@@ -1577,7 +1904,7 @@ describe('CapabilityReleaseService', () => {
   });
 
   it('extracts document source template metadata from execution flow payload', () => {
-    const { service } = createService();
+    const { service, releaseFacadeContextService } = createService();
 
     const sourceTemplate = (service as any).capabilityReleaseSkillDraftService.extractExecutionFlowSourceTemplate({
       category: 'document',
@@ -1612,14 +1939,13 @@ describe('CapabilityReleaseService', () => {
   });
 
   it('executes published document skill via render-resolved when templateId is available', async () => {
-    const { service, prisma } = createService();
+    const { service, releaseRuntimeBindingService, releaseFacadeContextService } = createService();
 
-    prisma.$queryRawUnsafe.mockResolvedValueOnce([{ id: 'release-row-1' }]);
-    jest.spyOn((service as any).capabilityReleaseRuntimeService, 'mapRelease').mockReturnValue({
+    jest.spyOn(releaseRuntimeBindingService, 'getReleaseByPublishedSkillOrThrow').mockResolvedValue({
       id: 'release-1',
       sourceType: 'execution_flow_template',
-    });
-    jest.spyOn(service as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
+    } as any);
+    jest.spyOn(releaseFacadeContextService as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
       id: 'snapshot-1',
       sourcePayload: {
         category: 'document',
@@ -1629,7 +1955,7 @@ describe('CapabilityReleaseService', () => {
         },
       },
     });
-    jest.spyOn(service as any, 'insertAuditEvent').mockResolvedValue(undefined);
+    jest.spyOn(releaseFacadeContextService as any, 'insertAuditEvent').mockResolvedValue(undefined);
     mockedAxios.post
       .mockResolvedValueOnce({
         data: {
@@ -1703,14 +2029,13 @@ describe('CapabilityReleaseService', () => {
   });
 
   it('executes published document skill via render-resolved when only source skillId is available', async () => {
-    const { service, prisma } = createService();
+    const { service, releaseRuntimeBindingService, releaseFacadeContextService } = createService();
 
-    prisma.$queryRawUnsafe.mockResolvedValueOnce([{ id: 'release-row-1' }]);
-    jest.spyOn((service as any).capabilityReleaseRuntimeService, 'mapRelease').mockReturnValue({
+    jest.spyOn(releaseRuntimeBindingService, 'getReleaseByPublishedSkillOrThrow').mockResolvedValue({
       id: 'release-1',
       sourceType: 'execution_flow_template',
-    });
-    jest.spyOn(service as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
+    } as any);
+    jest.spyOn(releaseFacadeContextService as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
       id: 'snapshot-1',
       sourcePayload: {
         category: 'document',
@@ -1727,7 +2052,7 @@ describe('CapabilityReleaseService', () => {
         ],
       },
     });
-    jest.spyOn(service as any, 'insertAuditEvent').mockResolvedValue(undefined);
+    jest.spyOn(releaseFacadeContextService as any, 'insertAuditEvent').mockResolvedValue(undefined);
     mockedAxios.post
       .mockResolvedValueOnce({
         data: {
@@ -1791,20 +2116,19 @@ describe('CapabilityReleaseService', () => {
   });
 
   it('executes document skill and wraps non-object response from carbone engine', async () => {
-    const { service, prisma } = createService();
+    const { service, releaseRuntimeBindingService, releaseFacadeContextService } = createService();
 
-    prisma.$queryRawUnsafe.mockResolvedValueOnce([{ id: 'release-row-1' }]);
-    jest.spyOn((service as any).capabilityReleaseRuntimeService, 'mapRelease').mockReturnValue({
+    jest.spyOn(releaseRuntimeBindingService, 'getReleaseByPublishedSkillOrThrow').mockResolvedValue({
       id: 'release-1',
       sourceType: 'execution_flow_template',
-    });
-    jest.spyOn(service as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
+    } as any);
+    jest.spyOn(releaseFacadeContextService as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
       id: 'snapshot-1',
       sourcePayload: {
         sourceTemplate: JSON.stringify({ templateId: 'tpl-1' }),
       },
     });
-    jest.spyOn(service as any, 'insertAuditEvent').mockResolvedValue(undefined);
+    jest.spyOn(releaseFacadeContextService as any, 'insertAuditEvent').mockResolvedValue(undefined);
 
     // Carbone engine returns a plain string for some reason (hypothetical)
     mockedAxios.post
@@ -1825,14 +2149,13 @@ describe('CapabilityReleaseService', () => {
   });
 
   it('executes temporal workflow and wraps string result into object', async () => {
-    const { service, prisma, activityService } = createService();
+    const { service, activityService, releaseRuntimeBindingService, releaseFacadeContextService } = createService();
 
-    prisma.$queryRawUnsafe.mockResolvedValueOnce([{ id: 'release-row-1' }]);
-    jest.spyOn((service as any).capabilityReleaseRuntimeService, 'mapRelease').mockReturnValue({
+    jest.spyOn(releaseRuntimeBindingService, 'getReleaseByPublishedSkillOrThrow').mockResolvedValue({
       id: 'release-1',
       sourceType: 'temporal_workflow',
-    });
-    jest.spyOn(service as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
+    } as any);
+    jest.spyOn(releaseFacadeContextService as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
       id: 'snapshot-1',
       sourcePayload: {
         workflowDsl: {
@@ -1840,11 +2163,11 @@ describe('CapabilityReleaseService', () => {
         },
       },
     });
-    jest.spyOn(service as any, 'resolveTemporalExecutableBuildOrThrow').mockResolvedValue({
+    jest.spyOn(releaseFacadeContextService as any, 'resolveTemporalExecutableBuildOrThrow').mockResolvedValue({
       id: 'build-1',
       generatedCode: 'PYTHON_CODE',
     });
-    jest.spyOn(service as any, 'insertAuditEvent').mockResolvedValue(undefined);
+    jest.spyOn(releaseFacadeContextService as any, 'insertAuditEvent').mockResolvedValue(undefined);
 
     jest
       .spyOn(activityService, 'executeCodeStreaming')
@@ -1891,14 +2214,13 @@ describe('CapabilityReleaseService', () => {
   });
 
   it('treats rendered temporal workflow output as success', async () => {
-    const { service, prisma, activityService } = createService();
+    const { service, activityService, releaseRuntimeBindingService, releaseFacadeContextService } = createService();
 
-    prisma.$queryRawUnsafe.mockResolvedValueOnce([{ id: 'release-row-1' }]);
-    jest.spyOn((service as any).capabilityReleaseRuntimeService, 'mapRelease').mockReturnValue({
+    jest.spyOn(releaseRuntimeBindingService, 'getReleaseByPublishedSkillOrThrow').mockResolvedValue({
       id: 'release-1',
       sourceType: 'temporal_workflow',
-    });
-    jest.spyOn(service as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
+    } as any);
+    jest.spyOn(releaseFacadeContextService as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
       id: 'snapshot-1',
       sourcePayload: {
         workflowDsl: {
@@ -1906,11 +2228,11 @@ describe('CapabilityReleaseService', () => {
         },
       },
     });
-    jest.spyOn(service as any, 'resolveTemporalExecutableBuildOrThrow').mockResolvedValue({
+    jest.spyOn(releaseFacadeContextService as any, 'resolveTemporalExecutableBuildOrThrow').mockResolvedValue({
       id: 'build-1',
       generatedCode: 'PYTHON_CODE',
     });
-    jest.spyOn(service as any, 'insertAuditEvent').mockResolvedValue(undefined);
+    jest.spyOn(releaseFacadeContextService as any, 'insertAuditEvent').mockResolvedValue(undefined);
 
     jest.spyOn(activityService, 'executeCodeStreaming').mockResolvedValue({
       success: true,
@@ -1939,17 +2261,16 @@ describe('CapabilityReleaseService', () => {
   });
 
   it('pushes workflow activity progress to control-plane while executing temporal workflow', async () => {
-    const { service, prisma, activityService } = createService();
+    const { service, activityService, releaseRuntimeBindingService, releaseFacadeContextService } = createService();
 
     process.env.INTERNAL_API_SHARED_SECRET = 'internal-secret';
     mockedAxios.post.mockResolvedValue({ data: { ok: true } } as any);
 
-    prisma.$queryRawUnsafe.mockResolvedValueOnce([{ id: 'release-row-1' }]);
-    jest.spyOn((service as any).capabilityReleaseRuntimeService, 'mapRelease').mockReturnValue({
+    jest.spyOn(releaseRuntimeBindingService, 'getReleaseByPublishedSkillOrThrow').mockResolvedValue({
       id: 'release-1',
       sourceType: 'temporal_workflow',
-    });
-    jest.spyOn(service as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
+    } as any);
+    jest.spyOn(releaseFacadeContextService as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
       id: 'snapshot-1',
       sourcePayload: {
         workflowDsl: {
@@ -1957,11 +2278,11 @@ describe('CapabilityReleaseService', () => {
         },
       },
     });
-    jest.spyOn(service as any, 'resolveTemporalExecutableBuildOrThrow').mockResolvedValue({
+    jest.spyOn(releaseFacadeContextService as any, 'resolveTemporalExecutableBuildOrThrow').mockResolvedValue({
       id: 'build-1',
       generatedCode: 'PYTHON_CODE',
     });
-    jest.spyOn(service as any, 'insertAuditEvent').mockResolvedValue(undefined);
+    jest.spyOn(releaseFacadeContextService as any, 'insertAuditEvent').mockResolvedValue(undefined);
 
     jest
       .spyOn(activityService, 'executeCodeStreaming')
@@ -2018,14 +2339,13 @@ describe('CapabilityReleaseService', () => {
   });
 
   it('executes published browser recording skill via browser worker with shared runtime session', async () => {
-    const { service, prisma } = createService();
+    const { service, releaseRuntimeBindingService, releaseFacadeContextService } = createService();
 
-    prisma.$queryRawUnsafe.mockResolvedValueOnce([{ id: 'release-row-1' }]);
-    jest.spyOn((service as any).capabilityReleaseRuntimeService, 'mapRelease').mockReturnValue({
+    jest.spyOn(releaseRuntimeBindingService, 'getReleaseByPublishedSkillOrThrow').mockResolvedValue({
       id: 'release-browser-runtime-1',
       sourceType: 'browser_recording',
-    });
-    jest.spyOn(service as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
+    } as any);
+    jest.spyOn(releaseFacadeContextService as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
       id: 'snapshot-browser-1',
       sourcePayload: {
         executionFlow: [
@@ -2050,7 +2370,7 @@ describe('CapabilityReleaseService', () => {
         ],
       },
     });
-    jest.spyOn(service as any, 'insertAuditEvent').mockResolvedValue(undefined);
+    jest.spyOn(releaseFacadeContextService as any, 'insertAuditEvent').mockResolvedValue(undefined);
     mockedAxios.post
       .mockResolvedValueOnce({ data: { success: true, message: 'initialized' } } as any)
       .mockResolvedValueOnce({ data: { success: true, output: { status: 'navigated' } } } as any)
@@ -2113,14 +2433,13 @@ describe('CapabilityReleaseService', () => {
   });
 
   it('executes only the requested browser recording step without reinitializing an existing session', async () => {
-    const { service, prisma } = createService();
+    const { service, releaseRuntimeBindingService, releaseFacadeContextService } = createService();
 
-    prisma.$queryRawUnsafe.mockResolvedValueOnce([{ id: 'release-row-1' }]);
-    jest.spyOn((service as any).capabilityReleaseRuntimeService, 'mapRelease').mockReturnValue({
+    jest.spyOn(releaseRuntimeBindingService, 'getReleaseByPublishedSkillOrThrow').mockResolvedValue({
       id: 'release-browser-runtime-target-step',
       sourceType: 'browser_recording',
-    });
-    jest.spyOn(service as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
+    } as any);
+    jest.spyOn(releaseFacadeContextService as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
       id: 'snapshot-browser-target-step',
       sourcePayload: {
         executionFlow: [
@@ -2154,7 +2473,7 @@ describe('CapabilityReleaseService', () => {
         ],
       },
     });
-    jest.spyOn(service as any, 'insertAuditEvent').mockResolvedValue(undefined);
+    jest.spyOn(releaseFacadeContextService as any, 'insertAuditEvent').mockResolvedValue(undefined);
     mockedAxios.post.mockResolvedValueOnce({
       data: { success: true, output: { status: 'clicked' } },
     } as any);
@@ -2214,14 +2533,13 @@ describe('CapabilityReleaseService', () => {
   });
 
   it('normalizes waitForSelector browser recording steps into wait with selector args', async () => {
-    const { service, prisma } = createService();
+    const { service, releaseRuntimeBindingService, releaseFacadeContextService } = createService();
 
-    prisma.$queryRawUnsafe.mockResolvedValueOnce([{ id: 'release-row-1' }]);
-    jest.spyOn((service as any).capabilityReleaseRuntimeService, 'mapRelease').mockReturnValue({
+    jest.spyOn(releaseRuntimeBindingService, 'getReleaseByPublishedSkillOrThrow').mockResolvedValue({
       id: 'release-browser-runtime-wait-selector',
       sourceType: 'browser_recording',
-    });
-    jest.spyOn(service as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
+    } as any);
+    jest.spyOn(releaseFacadeContextService as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
       id: 'snapshot-browser-wait-selector',
       sourcePayload: {
         executionFlow: [
@@ -2240,7 +2558,7 @@ describe('CapabilityReleaseService', () => {
         ],
       },
     });
-    jest.spyOn(service as any, 'insertAuditEvent').mockResolvedValue(undefined);
+    jest.spyOn(releaseFacadeContextService as any, 'insertAuditEvent').mockResolvedValue(undefined);
     mockedAxios.post
       .mockResolvedValueOnce({ data: { success: true, message: 'initialized' } } as any)
       .mockResolvedValueOnce({
@@ -2278,14 +2596,13 @@ describe('CapabilityReleaseService', () => {
   });
 
   it('preserves browser recording runtime session when a failed step requires takeover', async () => {
-    const { service, prisma } = createService();
+    const { service, releaseRuntimeBindingService, releaseFacadeContextService } = createService();
 
-    prisma.$queryRawUnsafe.mockResolvedValueOnce([{ id: 'release-row-1' }]);
-    jest.spyOn((service as any).capabilityReleaseRuntimeService, 'mapRelease').mockReturnValue({
+    jest.spyOn(releaseRuntimeBindingService, 'getReleaseByPublishedSkillOrThrow').mockResolvedValue({
       id: 'release-browser-runtime-1',
       sourceType: 'browser_recording',
-    });
-    jest.spyOn(service as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
+    } as any);
+    jest.spyOn(releaseFacadeContextService as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
       id: 'snapshot-browser-1',
       sourcePayload: {
         executionFlow: [
@@ -2310,7 +2627,7 @@ describe('CapabilityReleaseService', () => {
         ],
       },
     });
-    jest.spyOn(service as any, 'insertAuditEvent').mockResolvedValue(undefined);
+    jest.spyOn(releaseFacadeContextService as any, 'insertAuditEvent').mockResolvedValue(undefined);
     mockedAxios.post
       .mockResolvedValueOnce({ data: { success: true, message: 'initialized' } } as any)
       .mockResolvedValueOnce({ data: { success: true, output: { status: 'navigated' } } } as any)
@@ -2351,20 +2668,20 @@ describe('CapabilityReleaseService', () => {
   });
 
   it('bridges recorder export into release and skill draft', async () => {
-    const { service, prisma } = createService();
+    const { service, prisma, releaseDraftService, releaseFacadeContextService } = createService();
 
-    jest.spyOn(service as any, 'createCapability').mockResolvedValue({
+    jest.spyOn(releaseDraftService, 'createCapability').mockResolvedValue({
       release: { id: 'release-bridge-1' },
-    });
-    jest.spyOn(service as any, 'getReleaseOrThrow').mockResolvedValue({
+    } as any);
+    jest.spyOn(releaseFacadeContextService as any, 'getReleaseOrThrow').mockResolvedValue({
       id: 'release-bridge-1',
       sourceType: 'browser_recording',
     });
-    jest.spyOn(service as any, 'getSkillDraftOrThrow').mockResolvedValue({
+    jest.spyOn(releaseFacadeContextService as any, 'getSkillDraftOrThrow').mockResolvedValue({
       id: 'draft-bridge-1',
       name: 'recorder-skill',
     });
-    jest.spyOn(service as any, 'insertAuditEvent').mockResolvedValue(undefined);
+    jest.spyOn(releaseFacadeContextService as any, 'insertAuditEvent').mockResolvedValue(undefined);
 
     const result = await service.bridgeRecorderExport(
       {
@@ -2408,12 +2725,16 @@ describe('CapabilityReleaseService', () => {
     const insertedDraftPayload = JSON.parse(prisma.$executeRawUnsafe.mock.calls[0][11]);
 
 
-    expect((service as any).createCapability).toHaveBeenCalledWith(
+    expect(releaseDraftService.createCapability).toHaveBeenCalledWith(
       expect.objectContaining({
         sourceType: 'browser_recording',
         sourceName: 'recorder-skill',
       }),
-      'user-1'
+      'user-1',
+      expect.objectContaining({
+        getReleaseOrThrow: expect.any(Function),
+        insertAuditEvent: expect.any(Function),
+      })
     );
     expect(prisma.$executeRawUnsafe).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO skill_drafts'),
@@ -2474,9 +2795,9 @@ describe('CapabilityReleaseService', () => {
   });
 
   it('rejects bridge when target release type is not browser_recording', async () => {
-    const { service } = createService();
+    const { service, releaseFacadeContextService } = createService();
 
-    jest.spyOn(service as any, 'getReleaseOrThrow').mockResolvedValue({
+    jest.spyOn(releaseFacadeContextService as any, 'getReleaseOrThrow').mockResolvedValue({
       id: 'release-2',
       sourceType: 'temporal_workflow',
     });
@@ -2503,7 +2824,7 @@ describe('CapabilityReleaseService', () => {
   });
 
   it('rejects bridge when publishPayload is missing', async () => {
-    const { service } = createService();
+    const { service, releaseFacadeContextService } = createService();
 
     await expect(
       service.bridgeRecorderExport({
@@ -2551,15 +2872,15 @@ describe('CapabilityReleaseService', () => {
   });
 
   it('rejects rollback target when target release equals current release', async () => {
-    const { service } = createService();
+    const { service, releaseFacadeContextService } = createService();
 
-    jest.spyOn(service as any, 'getReleaseOrThrow').mockResolvedValue({ id: 'release-1' });
+    jest.spyOn(releaseFacadeContextService as any, 'getReleaseOrThrow').mockResolvedValue({ id: 'release-1' });
 
     await expect(
       ((service as any).capabilityReleaseDeploymentService as any).getRollbackTargetOrThrow(
         { id: 'release-1', sourceId: 'src-1', sourceName: 's', sourceType: 'browser_recording' },
         'release-1',
-        (service as any).getDeploymentAccessors()
+        releaseFacadeContextService.createDeploymentAccessors()
       )
     ).rejects.toMatchObject({
       response: expect.objectContaining({
@@ -2570,7 +2891,7 @@ describe('CapabilityReleaseService', () => {
   });
 
   it('rejects rollback inference when current release has no source identifiers', async () => {
-    const { service } = createService();
+    const { service, releaseFacadeContextService } = createService();
 
     await expect(
       ((service as any).capabilityReleaseDeploymentService as any).getRollbackTargetOrThrow(
@@ -2581,7 +2902,7 @@ describe('CapabilityReleaseService', () => {
           sourceType: 'browser_recording',
         },
         undefined,
-        (service as any).getDeploymentAccessors()
+        releaseFacadeContextService.createDeploymentAccessors()
       )
     ).rejects.toMatchObject({
       response: expect.objectContaining({

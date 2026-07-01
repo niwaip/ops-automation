@@ -7,6 +7,7 @@ import { notificationStore } from '../adapters/notifications/notificationStore';
 
 const ACTIVE_POLLING_INTERVAL_MS = 10000;
 const IDLE_POLLING_INTERVAL_MS = 60000;
+const NOTIFICATION_POLLING_ENABLED = false;
 
 export function UserRuntimeEffects() {
   const isAuthenticated = useStore(authStore, (state) => state.isAuthenticated);
@@ -21,9 +22,15 @@ export function UserRuntimeEffects() {
 
   const { refetch } = useQuery(
     ['user-web-notifications'],
-    () => notificationApi.list({ limit: 100 }),
+    async () => {
+      try {
+        return await notificationApi.list({ limit: 100 });
+      } catch {
+        return { items: [], total: 0 };
+      }
+    },
     {
-      enabled: hasSession,
+      enabled: hasSession && NOTIFICATION_POLLING_ENABLED,
       refetchInterval: () => {
         if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
           return false;
@@ -46,7 +53,7 @@ export function UserRuntimeEffects() {
   }, [hasSession, resetNotifications]);
 
   useEffect(() => {
-    if (!hasSession || typeof window === 'undefined') {
+    if (!NOTIFICATION_POLLING_ENABLED || !hasSession || typeof window === 'undefined') {
       return;
     }
 

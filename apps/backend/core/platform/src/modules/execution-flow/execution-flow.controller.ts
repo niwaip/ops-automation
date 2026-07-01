@@ -17,10 +17,7 @@ import {
   UseGuards,
   Request,
 } from '@nestjs/common';
-import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
-import { RolesGuard } from '../../guards/roles.guard';
-import { Roles } from '../../decorators/roles.decorator';
-import { Public } from '../../decorators/permissions.decorator';
+import { JwtAuthGuard, Public, Roles, RolesGuard } from '@ops/identity-access';
 import { ExecutionFlowTemplateService } from './execution-flow-template.service';
 import { ExecutionFlowValidationHttpService } from './execution-flow-validation-http.service';
 import {

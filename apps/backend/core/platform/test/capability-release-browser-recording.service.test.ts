@@ -1,7 +1,25 @@
-import { CapabilityReleaseBrowserRecordingService } from '../src/release-manager/compiler';
+import { BrowserRecordingFlowNormalizerService } from '../../../registry-release/release-manager/src/compiler/browser-recording-flow-normalizer.service';
+import { BrowserRecordingRuntimeLoopPlannerService } from '../../../registry-release/release-manager/src/compiler/browser-recording-runtime-loop-planner.service';
+import { BrowserRecordingRuntimePlannerService } from '../../../registry-release/release-manager/src/compiler/browser-recording-runtime-planner.service';
+import { BrowserRecordingRuntimeStepBuilderService } from '../../../registry-release/release-manager/src/compiler/browser-recording-runtime-step-builder.service';
+import { CapabilityReleaseBrowserRecordingService } from '../../../registry-release/release-manager/src/compiler/capability-release-browser-recording.service';
 
 describe('CapabilityReleaseBrowserRecordingService', () => {
-  const createService = () => new CapabilityReleaseBrowserRecordingService();
+  const createService = () => {
+    const flowNormalizerService = new BrowserRecordingFlowNormalizerService();
+    const runtimeStepBuilderService = new BrowserRecordingRuntimeStepBuilderService(
+      flowNormalizerService
+    );
+    const runtimeLoopPlannerService = new BrowserRecordingRuntimeLoopPlannerService();
+
+    return new CapabilityReleaseBrowserRecordingService(
+      flowNormalizerService,
+      new BrowserRecordingRuntimePlannerService(
+        runtimeStepBuilderService,
+        runtimeLoopPlannerService
+      )
+    );
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();

@@ -4,6 +4,7 @@
 
 当前已包含：
 
+- `master-planner`
 - `ai-orchestrator`
 - `codegen-agent`
 - `browser-nl-agent`
