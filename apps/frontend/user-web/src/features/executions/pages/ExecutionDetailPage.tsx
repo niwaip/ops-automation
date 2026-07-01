@@ -18,7 +18,6 @@ import {
   Alert,
   Table,
   Steps,
-  Form,
   Timeline,
   Image,
   Carousel,
@@ -318,7 +317,6 @@ const ExecutionDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [form] = Form.useForm();
   const language = usePreferencesStore((state) => state.language);
   const isEnglish = language === 'en-US';
   const text = {
@@ -2049,7 +2047,6 @@ const ExecutionDetailPage: React.FC = () => {
           summaryText={waitingInputSummary}
           requiredInputs={requiredInputs}
           requiredInputGroups={requiredInputGroups}
-          form={form}
           submitLoading={submitInputMutation.isLoading}
           onSubmit={(values) => {
             try {
@@ -2060,7 +2057,6 @@ const ExecutionDetailPage: React.FC = () => {
               void message.error(error instanceof Error ? error.message : text.invalidJson);
             }
           }}
-          onReset={() => form.resetFields()}
           submitLabel={text.submitAndResume}
           resetLabel={text.reset}
           provideFieldPrefix={text.provideField}
@@ -2235,7 +2231,6 @@ const ExecutionDetailPage: React.FC = () => {
           summaryText={waitingInputSummary}
           requiredInputs={requiredInputs}
           requiredInputGroups={requiredInputGroups}
-          form={form}
           submitLoading={submitInputMutation.isLoading}
           onSubmit={(values) => {
             try {
@@ -2246,7 +2241,6 @@ const ExecutionDetailPage: React.FC = () => {
               void message.error(error instanceof Error ? error.message : text.invalidJson);
             }
           }}
-          onReset={() => form.resetFields()}
           submitLabel={text.submitAndResume}
           resetLabel={text.reset}
           provideFieldPrefix={text.provideField}

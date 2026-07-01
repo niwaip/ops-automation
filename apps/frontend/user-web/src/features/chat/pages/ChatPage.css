@@ -296,8 +296,8 @@
   padding: 8px 10px 10px;
   border-top: 1px solid rgba(148, 163, 184, 0.12);
   background: rgba(255, 255, 255, 0.28);
-  flex-wrap: nowrap;
-  overflow-x: auto;
+  flex-wrap: wrap;
+  overflow-x: visible;
 }
 
 [data-theme="dark"] .user-chat-input-toolbar {
@@ -308,6 +308,10 @@
 .user-chat-input-toolbar-spacer {
   flex: 1;
   min-width: 12px;
+}
+
+.user-chat-input-toolbar > * {
+  min-width: 0;
 }
 
 .user-chat-input-shortcut-hint {

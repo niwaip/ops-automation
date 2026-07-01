@@ -5,6 +5,11 @@
   padding-bottom: 8px;
 }
 
+.workbench-page > .workbench-hero,
+.workbench-page > .workbench-layout {
+  flex: none;
+}
+
 .workbench-hero {
   position: relative;
   overflow: hidden;

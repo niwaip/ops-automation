@@ -36,7 +36,6 @@ import {
   UploadOutlined,
 } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
-import { useTranslation } from 'react-i18next';
 import { executionApi } from '@/api/execution';
 import { scheduleApi } from '@/api/schedules';
 import { capabilityReleaseApi } from '@/api/capabilities';
@@ -308,7 +307,6 @@ const normalizeInputValues = (
 
 const ExecutionCreatePage: React.FC = () => {
   const { message } = App.useApp();
-  const { t } = useTranslation('common');
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
@@ -330,7 +328,8 @@ const ExecutionCreatePage: React.FC = () => {
   const containerStyle: React.CSSProperties = {
     height: '100%',
     minHeight: 0,
-    overflow: 'hidden',
+    overflowX: 'hidden',
+    overflowY: 'auto',
     display: 'flex',
     flexDirection: 'column',
   };
@@ -737,7 +736,7 @@ const ExecutionCreatePage: React.FC = () => {
           </Button>
         </Space>
         <Title level={4} style={{ margin: 0 }}>
-          {t('newExecution')}
+          新建执行
         </Title>
       </div>
 
@@ -1061,7 +1060,7 @@ const ExecutionCreatePage: React.FC = () => {
                       loading={createMutation.isLoading || scheduleMutation.isLoading}
                       disabled={!selectedSkillId}
                     >
-                      {executionMode === 'schedule' ? '创建定时任务' : t('create')}
+                      {executionMode === 'schedule' ? '创建定时任务' : '创建执行'}
                     </Button>
                   </div>
                 </div>
@@ -1257,14 +1256,14 @@ const ExecutionCreatePage: React.FC = () => {
                     ])
                   }
                 >
-                  {t('reset')}
+                  重置
                 </Button>
                 {executionMode !== 'schedule' && selectedSkillId ? (
                   <Button onClick={() => form.setFieldValue('executionMode', 'schedule')}>
                     去配置定时任务
                   </Button>
                 ) : null}
-                <Button onClick={() => navigate('/executions')}>{t('cancel')}</Button>
+                <Button onClick={() => navigate('/executions')}>取消</Button>
               </Space>
             </Form>
           )}

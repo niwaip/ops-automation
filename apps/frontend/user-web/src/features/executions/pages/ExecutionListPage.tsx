@@ -24,7 +24,6 @@ import {
   Descriptions,
   Empty,
   Spin,
-  Form,
   Alert,
   message,
   Tooltip,
@@ -32,6 +31,7 @@ import {
   Modal,
   DatePicker,
 } from 'antd';
+import type { FormInstance } from 'antd/es/form';
 import {
   SearchOutlined,
   PlusOutlined,
@@ -355,7 +355,6 @@ const ExecutionListPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
-  const [resumeForm] = Form.useForm<ResumeFormValues>();
   const {
     currentSession,
     createSession,
@@ -613,20 +612,6 @@ const ExecutionListPage: React.FC = () => {
     return skillNameMap.get(skillId) || skillId;
   };
 
-  useEffect(() => {
-    if (requiredInputs.length === 0) {
-      resumeForm.resetFields();
-      return;
-    }
-
-    resumeForm.setFieldsValue(
-      requiredInputs.reduce<ResumeFormValues>((acc, field) => {
-        acc[field.name] = toResumeFormValue(field.value);
-        return acc;
-      }, {} as ResumeFormValues)
-    );
-  }, [requiredInputs, resumeForm, selectedExecutionId]);
-
   const openAiTaskMode = (draft: string, executionId: string) => {
     if (!currentSession) {
       createSession();
@@ -733,13 +718,21 @@ const ExecutionListPage: React.FC = () => {
     }
   );
 
-  const handleResumeExecution = async (openInAi: boolean) => {
+  const handleResumeExecution = async (
+    openInAi: boolean,
+    form?: FormInstance<ResumeFormValues>
+  ) => {
     if (!selectedExecution || !waitingInputStep) {
       return;
     }
 
     try {
-      const values = await resumeForm.validateFields();
+      const values =
+        (await form?.validateFields()) ||
+        requiredInputs.reduce<ResumeFormValues>((acc, field) => {
+          acc[field.name] = toResumeFormValue(field.value);
+          return acc;
+        }, {} as ResumeFormValues);
       const payload = normalizeRequiredInputValues(values, requiredInputs, {
         treatArrayAsJson: true,
       });
@@ -1472,7 +1465,6 @@ const ExecutionListPage: React.FC = () => {
                               summaryText={RECOVERY_COPY.waitingInputDesc}
                               requiredInputs={requiredInputs}
                               requiredInputGroups={requiredInputGroups}
-                              form={resumeForm}
                               submitLoading={submitInputMutation.isLoading}
                               onSubmit={(values) => {
                                 try {
@@ -1490,7 +1482,6 @@ const ExecutionListPage: React.FC = () => {
                                   );
                                 }
                               }}
-                              onReset={() => resumeForm.resetFields()}
                               submitLabel={RECOVERY_COPY.waitingInputContinue}
                               resetLabel="重置"
                               provideFieldPrefix="请输入"
@@ -1498,15 +1489,15 @@ const ExecutionListPage: React.FC = () => {
                               enterJsonString="请输入 JSON 字符串"
                               enterFieldPrefix="请输入"
                               confirmTagLabel="待确认"
-                              extraActions={
+                              extraActions={(form) => (
                                 <Button
                                   icon={<RobotOutlined />}
                                   loading={submitInputMutation.isLoading}
-                                  onClick={() => void handleResumeExecution(true)}
+                                  onClick={() => void handleResumeExecution(true, form)}
                                 >
                                   {RECOVERY_COPY.waitingInputToAi}
                                 </Button>
-                              }
+                              )}
                             />
                           ),
                         },

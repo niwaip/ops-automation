@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Button, Card, Form, Space, Tag, Typography } from 'antd';
 import type { FormInstance } from 'antd/es/form';
 import { ThunderboltOutlined } from '@ant-design/icons';
@@ -18,10 +18,10 @@ interface WaitingInputActionPanelProps {
   summaryText?: string;
   requiredInputs: RequiredInputField[];
   requiredInputGroups: WaitingInputDisplayGroup<RequiredInputField>[];
-  form: FormInstance;
+  form?: FormInstance;
   submitLoading?: boolean;
   onSubmit: (values: Record<string, unknown>) => void;
-  onReset: () => void;
+  onReset?: () => void;
   submitLabel: string;
   resetLabel: string;
   provideFieldPrefix: string;
@@ -29,7 +29,7 @@ interface WaitingInputActionPanelProps {
   enterJsonString: string;
   enterFieldPrefix: string;
   confirmTagLabel: string;
-  extraActions?: React.ReactNode;
+  extraActions?: React.ReactNode | ((form: FormInstance) => React.ReactNode);
   cardSize?: 'default' | 'small';
 }
 
@@ -96,6 +96,8 @@ const WaitingInputActionPanel: React.FC<WaitingInputActionPanelProps> = ({
   extraActions,
   cardSize = 'default',
 }) => {
+  const [internalForm] = Form.useForm();
+  const resolvedForm = form ?? internalForm;
   const fieldRenderProps = {
     provideFieldPrefix,
     sourceLabel,
@@ -103,6 +105,15 @@ const WaitingInputActionPanel: React.FC<WaitingInputActionPanelProps> = ({
     enterFieldPrefix,
     confirmTagLabel,
   } as const;
+
+  useEffect(() => {
+    if (requiredInputs.length === 0) {
+      resolvedForm.resetFields();
+      return;
+    }
+
+    resolvedForm.setFieldsValue(buildInitialValues(requiredInputs));
+  }, [requiredInputs, resolvedForm]);
 
   return (
     <Card title={title} size={cardSize} style={{ marginBottom: 16 }} styles={{ body: { padding: 16 } }}>
@@ -120,7 +131,7 @@ const WaitingInputActionPanel: React.FC<WaitingInputActionPanelProps> = ({
         </div>
       ) : null}
       <Form
-        form={form}
+        form={resolvedForm}
         layout="vertical"
         initialValues={buildInitialValues(requiredInputs)}
         onFinish={(values) => onSubmit(values as Record<string, unknown>)}
@@ -194,8 +205,15 @@ const WaitingInputActionPanel: React.FC<WaitingInputActionPanelProps> = ({
           >
             {submitLabel}
           </Button>
-          {extraActions}
-          <Button onClick={onReset}>{resetLabel}</Button>
+          {typeof extraActions === 'function' ? extraActions(resolvedForm) : extraActions}
+          <Button
+            onClick={() => {
+              resolvedForm.resetFields();
+              onReset?.();
+            }}
+          >
+            {resetLabel}
+          </Button>
         </div>
       </Form>
     </Card>

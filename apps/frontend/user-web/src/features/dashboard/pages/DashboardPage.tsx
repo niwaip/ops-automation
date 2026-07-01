@@ -140,6 +140,28 @@ const sanitizeDisplayName = (value?: string): string => {
   return value.replace(/-[a-f0-9]{8}(?=(\s|$))/gi, '').trim();
 };
 
+const prettifyFailureReason = (value?: string): string => {
+  const reason = value?.trim();
+  if (!reason) {
+    return '';
+  }
+
+  if (/status code 404/i.test(reason)) {
+    return '相关资源不存在，请打开详情查看具体失败步骤。';
+  }
+  if (/status code 40[13]/i.test(reason)) {
+    return '请求未通过权限校验，请打开详情确认权限与登录态。';
+  }
+  if (/status code 5\d\d/i.test(reason)) {
+    return '下游服务处理失败，请稍后重试或打开详情排查。';
+  }
+  if (/ECONNREFUSED|ERR_CONNECTION|Network Error|getaddrinfo|ENOTFOUND/i.test(reason)) {
+    return '网络或依赖服务暂时不可用，请打开详情查看调用链路。';
+  }
+
+  return reason;
+};
+
 const parseTodoDraftIntoTasks = (value: string): string[] => {
   const normalized = value
     .replace(/\r/g, '\n')
@@ -364,7 +386,7 @@ export function DashboardPage() {
 
   const getExecutionDisplayDescription = (execution: ExecutionDto): string => {
     if (execution.failureReason?.trim()) {
-      return execution.failureReason;
+      return prettifyFailureReason(execution.failureReason);
     }
     if (execution.takeoverReason?.trim()) {
       return execution.takeoverReason;
