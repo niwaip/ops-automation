@@ -1342,6 +1342,9 @@ export class ModelService implements OnModuleInit {
       throw new Error(`No client initialized for model ${id}`);
     }
 
-    return client.chatCompletionStream(messages, onChunk);
+    const result = await client.chatCompletionStream(messages, onChunk);
+    result.content = this.stripThinkingTags(result.content);
+
+    return result;
   }
 }
