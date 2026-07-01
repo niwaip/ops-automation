@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Card,
@@ -24,7 +24,7 @@ import {
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation } from 'react-query';
-import { templateApi, Template } from '@/api/template';
+import { templateApi, Template, TemplateStatus } from '@/api/template';
 import { aiApi, RecognizeParamsResponse } from '@/api/ai';
 import { sessionApi, workerApi } from '@/api/session';
 import { runtimeConfig } from '@/shared/config/runtime';
@@ -54,6 +54,21 @@ const getTemplatePropertyDescription = (template: Template | undefined, name: st
   return properties[name]?.description;
 };
 
+const getTemplateDefaultParams = (template?: Template): Record<string, unknown> => {
+  const properties = (template?.params_schema?.properties ?? {}) as Record<
+    string,
+    {
+      default?: unknown;
+    }
+  >;
+
+  return Object.fromEntries(
+    Object.entries(properties)
+      .filter(([, schema]) => schema.default !== undefined)
+      .map(([name, schema]) => [name, schema.default])
+  );
+};
+
 const { TextArea } = Input;
 const { Option } = Select;
 const { Title, Text } = Typography;
@@ -75,6 +90,8 @@ const ACTION_DESCRIPTIONS: Record<string, string> = {
   type_text: '输入文本',
 };
 
+const EXECUTABLE_TEMPLATE_STATUSES: TemplateStatus[] = ['DRAFT', 'REVIEW', 'PUBLISHED'];
+
 const SessionStartPage: React.FC = () => {
   const { t } = useTranslation(['common', 'session', 'template']);
   const navigate = useNavigate();
@@ -90,8 +107,16 @@ const SessionStartPage: React.FC = () => {
   const rightSpan = hasExecuted ? 14 : 10;
 
   const templatesQuery = useQuery(
-    ['templates', { status: 'PUBLISHED' }],
-    () => templateApi.list({ status: 'PUBLISHED' }),
+    ['templates', { executableOnly: true }],
+    async () => {
+      const result = await templateApi.list({ page: 1, pageSize: 200 });
+      return {
+        ...result,
+        templates: (result.templates || []).filter((template) =>
+          EXECUTABLE_TEMPLATE_STATUSES.includes(template.status)
+        ),
+      };
+    },
     { staleTime: 30000 }
   );
 
@@ -100,6 +125,14 @@ const SessionStartPage: React.FC = () => {
     () => templateApi.getById(selectedTemplateId!),
     { enabled: !!selectedTemplateId }
   );
+
+  const selectedTemplate = selectedTemplateQuery.data;
+  const defaultParams = useMemo(() => getTemplateDefaultParams(selectedTemplate), [selectedTemplate]);
+
+  useEffect(() => {
+    setRecognizedParams(null);
+    setEditedParams(defaultParams);
+  }, [defaultParams, selectedTemplateId]);
 
   const recognizeMutation = useMutation(
     () =>
@@ -111,7 +144,10 @@ const SessionStartPage: React.FC = () => {
     {
       onSuccess: (data) => {
         setRecognizedParams(data);
-        setEditedParams(data.params);
+        setEditedParams({
+          ...defaultParams,
+          ...(data.params || {}),
+        });
         void message.success(t('session:recognizeSuccess'));
       },
       onError: () => {
@@ -122,7 +158,10 @@ const SessionStartPage: React.FC = () => {
 
   const executeMutation = useMutation(
     async () => {
-      const finalParams = Object.keys(editedParams).length > 0 ? editedParams : {};
+      const finalParams = {
+        ...defaultParams,
+        ...editedParams,
+      };
 
       const result = await sessionApi.create({
         user_id: user?.id || '',
@@ -182,8 +221,6 @@ const SessionStartPage: React.FC = () => {
     setHasExecuted(true);
     executeMutation.mutate();
   };
-
-  const selectedTemplate = selectedTemplateQuery.data;
   const isLoading =
     templatesQuery.isLoading ||
     recognizeMutation.isLoading ||
@@ -244,6 +281,7 @@ const SessionStartPage: React.FC = () => {
                     value={selectedTemplateId}
                     onChange={setSelectedTemplateId}
                     loading={templatesQuery.isLoading}
+                    getPopupContainer={(triggerNode) => triggerNode.parentElement || document.body}
                     showSearch
                     size="large"
                     filterOption={(input, option) =>

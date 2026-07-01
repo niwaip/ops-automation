@@ -4,6 +4,7 @@ import {
   PlusOutlined,
   RobotOutlined,
   SendOutlined,
+  StopOutlined,
 } from '@ant-design/icons';
 import { Button, Input, Select, Segmented, Typography, message as antdMessage } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -83,6 +84,7 @@ interface UserChatComposerProps {
   draft: string;
   onDraftChange: (value: string) => void;
   onSend: () => void;
+  onStop?: () => void;
   onNewSession: () => void;
   chatMode: 'chat' | 'task';
   onChatModeChange: (mode: 'chat' | 'task') => void;
@@ -100,6 +102,7 @@ export function UserChatComposer(props: UserChatComposerProps) {
     draft,
     onDraftChange,
     onSend,
+    onStop,
     onNewSession,
     chatMode,
     onChatModeChange,
@@ -213,7 +216,7 @@ export function UserChatComposer(props: UserChatComposerProps) {
         <div className="user-chat-input-editor">
           <TextArea
             ref={inputRef}
-            rows={4}
+            rows={2}
             value={draft}
             onChange={(event) => onDraftChange(event.target.value)}
             placeholder={placeholder}
@@ -272,7 +275,9 @@ export function UserChatComposer(props: UserChatComposerProps) {
             className="user-chat-input-language-select"
           />
           <div className="user-chat-input-toolbar-spacer" />
-          <Typography.Text type="secondary">Enter 发送，Shift + Enter 换行</Typography.Text>
+          <Typography.Text type="secondary" className="user-chat-input-shortcut-hint">
+            Enter 发送，Shift + Enter 换行
+          </Typography.Text>
           <Button
             size="small"
             icon={<AudioOutlined />}
@@ -295,12 +300,17 @@ export function UserChatComposer(props: UserChatComposerProps) {
           <Button
             type="primary"
             size="small"
-            icon={<SendOutlined />}
-            onClick={() => void onSend()}
-            loading={isStreaming}
-            disabled={disabled || isTranscribing || !draft.trim()}
+            icon={isStreaming ? <StopOutlined /> : <SendOutlined />}
+            onClick={() => {
+              if (isStreaming) {
+                onStop?.();
+                return;
+              }
+              void onSend();
+            }}
+            disabled={disabled || isTranscribing || (!isStreaming && !draft.trim())}
           >
-            发送
+            {isStreaming ? '停止' : '发送'}
           </Button>
         </div>
       </div>

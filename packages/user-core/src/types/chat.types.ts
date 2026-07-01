@@ -1,21 +1,28 @@
-export enum StreamEventType {
-  THOUGHT = 'thought',
-  ACTION = 'action',
-  OBSERVATION = 'observation',
-  RESULT = 'result',
-  WAITING_INPUT = 'waiting_input',
-  ERROR = 'error',
-  PARAMS_CONFIRM = 'params_confirm',
-  FILE_UPLOAD = 'file_upload',
-  PENDING_APPROVAL = 'pending_approval',
-}
+import type {
+  ChannelCapability,
+  ChatContentPart,
+  ChatContextStrategy,
+  ChatTaskStatus,
+  ExecutionResultPayload,
+  UnifiedStreamEvent,
+  UnifiedStreamEventType,
+  UnifiedTaskAction,
+} from '@ops/backend-ai-chat-protocol';
+import { STREAM_EVENT_TYPE } from '@ops/backend-ai-chat-protocol';
 
-export interface StreamEvent {
-  type: StreamEventType;
-  content: string;
-  data?: Record<string, unknown>;
-  iteration?: number;
-}
+export const StreamEventType = STREAM_EVENT_TYPE;
+export type StreamEventType = UnifiedStreamEventType;
+
+export interface StreamEvent extends UnifiedStreamEvent {}
+export type {
+  ChannelCapability,
+  ChatContentPart,
+  ChatContextStrategy,
+  ChatTaskStatus,
+  ExecutionResultPayload,
+  UnifiedStreamEventType,
+  UnifiedTaskAction,
+};
 
 export interface PromptDebugPayload {
   systemPrompt: string;
@@ -70,7 +77,7 @@ export interface NormalizedChatExecutionResult {
   summaryFormat?: 'plain_text' | 'markdown';
   detailText?: string;
   detailFormat?: 'plain_text' | 'markdown';
-  structuredData?: unknown;
+  structuredData?: ExecutionResultPayload | unknown;
   artifacts?: ChatResultArtifact[];
   downloadUrl?: string;
   temporalLink?: string;
@@ -102,6 +109,8 @@ export interface ChatMessage {
   sessionId: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
+  contentParts?: ChatContentPart[];
+  fallbackText?: string;
   timestamp: string;
   metadata?: {
     mode?: 'chat' | 'task';
@@ -119,13 +128,13 @@ export interface ChatMessage {
       description?: string;
       missing?: boolean;
     }>;
-    taskStatus?: 'waiting_input' | 'pending_approval' | 'running' | 'completed' | 'failed';
+    taskStatus?: ChatTaskStatus;
     executionId?: string;
     executionStatus?: string;
     resultType?: string;
     resultTitle?: string;
     finalResult?: string;
-    finalResultData?: unknown;
+    finalResultData?: ExecutionResultPayload | unknown;
     finalSummary?: string;
     progressLogs?: ChatProgressLog[];
     errorMessage?: string;
@@ -143,6 +152,8 @@ export interface ChatSession {
   title?: string;
   modelId?: string;
   status: 'active' | 'archived';
+  contextStrategy?: ChatContextStrategy;
+  contextWindowTokens?: number;
   createdAt: string;
   updatedAt: string;
 }

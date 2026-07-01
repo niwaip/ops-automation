@@ -18,8 +18,14 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
-      "@ops/contracts": ["../../../packages/contracts/index.d.ts"],
-      "@ops/user-core": ["../../../packages/user-core/src/index.ts"]
+      "@chat-web/*": ["../shared/chat-web/*"],
+      "@ops/user-core": ["../../../packages/user-core/src/index.ts"],
+      "@ops/backend-ai-chat-protocol": [
+        "../../../packages/backend-contracts/ai-chat-protocol/src/index.ts"
+      ],
+      "@ops/backend-execution-core": [
+        "../../../packages/backend-contracts/execution-core/src/index.ts"
+      ]
     }
   },
   "include": ["src"],

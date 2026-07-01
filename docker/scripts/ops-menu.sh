@@ -23,6 +23,7 @@ PLATFORM_SCHEMA="./prisma/schema.prisma"
 CONTROL_PLANE_INCREMENTAL_SQL_FILES=(
   "$REPO_ROOT/apps/backend/execution-control/control-plane/prisma/migrations/20260515143000_add_execution_phases/migration.sql"
   "$REPO_ROOT/apps/backend/execution-control/control-plane/prisma/migrations/20260516140000_add_execution_phase_steps/migration.sql"
+  "$REPO_ROOT/apps/backend/execution-control/control-plane/prisma/migrations/20260625000000_add_scheduler/migration.sql"
 )
 BROWSER_TEMPLATE_REPAIR_SQL="$REPO_ROOT/apps/backend/domain/browser-template/prisma/manual-sql/20260608_rebuild_templates_current_schema.sql"
 LEGACY_SQL_FILES=(

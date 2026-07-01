@@ -64,7 +64,7 @@ npm run build
 
 ```bash
 # 示例：覆盖 localhost、本机回环、本机局域网 IP 和稳定开发域名
-export OFFICE_ADDIN_TLS_HOSTS=localhost,127.0.0.1,192.168.100.143,addin.dev.local
+export OFFICE_ADDIN_TLS_HOSTS=localhost,127.0.0.1,your-lan-host-or-ip,addin.dev.local
 ./docker/office-addin/generate-certs.sh
 ```
 
@@ -107,6 +107,8 @@ Windows 用户下载 `office-addin-wizard.ps1` 后执行：
 powershell -ExecutionPolicy Bypass -File .\office-addin-wizard.ps1 -HostName <OFFICE_ADDIN_PUBLIC_HOST>
 ```
 
+如果不传 `-HostName`，当前脚本默认使用 `localhost`；只有局域网或远程访问时，才显式传入外部访问主机。
+
 该向导统一处理：
 
 - 证书安装
@@ -120,10 +122,10 @@ powershell -ExecutionPolicy Bypass -File .\office-addin-wizard.ps1 -HostName <OF
 如果需要让其他设备通过局域网访问，建议在 `docker/.env` 里设置：
 
 ```bash
-HOST_IP=192.168.100.143
-OFFICE_ADDIN_PUBLIC_HOST=192.168.100.143
-CARBONE_API_PUBLIC_HOST=192.168.100.143
-OFFICE_ADDIN_TLS_HOSTS=localhost,127.0.0.1,192.168.100.143
+HOST_IP=your-lan-host-or-ip
+OFFICE_ADDIN_PUBLIC_HOST=your-lan-host-or-ip
+CARBONE_API_PUBLIC_HOST=your-lan-host-or-ip
+OFFICE_ADDIN_TLS_HOSTS=localhost,127.0.0.1,your-lan-host-or-ip
 ```
 
 服务将启动：
@@ -295,11 +297,10 @@ manifest-ppt.xml                  # PowerPoint 加载项清单
 
 ## 后端服务
 
-需要启动官方 Carbone Docker 服务:
+需要先通过仓库根目录的统一入口启动 Add-in 环境:
 
 ```bash
-cd docker
-docker-compose up -d
+./docker/start-smart.sh docker-compose.addin.yml up -d
 ```
 
 后端 API 地址:

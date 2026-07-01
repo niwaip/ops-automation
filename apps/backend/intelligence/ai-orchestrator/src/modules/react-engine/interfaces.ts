@@ -16,7 +16,10 @@ export enum StreamEventType {
   OBSERVATION = 'observation',
   RESULT = 'result',
   WAITING_INPUT = 'waiting_input',
+  PENDING_APPROVAL = 'pending_approval',
+  HUMAN_CONTROL = 'human_control',
   ERROR = 'error',
+  SESSION_PATCH = 'session_patch',
   PARAMS_CONFIRM = 'params_confirm',
   ACTION_CONFIRM = 'action_confirm',
   FILE_UPLOAD = 'file_upload',
@@ -59,6 +62,9 @@ export interface StreamEvent {
   content: string;
   data?: Record<string, unknown>;
   iteration?: number;
+  seq?: number;
+  protocolVersion?: '1';
+  sessionId?: string;
 }
 
 export interface RoutingMeta {

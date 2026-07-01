@@ -103,6 +103,7 @@ interface ChatActions {
   // 会话管理
   createSession: () => void;
   setCurrentSession: (session: ChatSession) => void;
+  updateSessionMeta: (sessionId: string, patch: Partial<ChatSession>) => void;
   loadSessions: () => void;
 
   // 消息管理
@@ -207,6 +208,22 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
 
   setCurrentSession: (session) => {
     set({ currentSession: session, messages: [], draftExecutionId: null });
+  },
+
+  updateSessionMeta: (sessionId, patch) => {
+    const sanitizedPatch = Object.fromEntries(
+      Object.entries(patch).filter(([, value]) => value !== undefined)
+    ) as Partial<ChatSession>;
+
+    set((state) => ({
+      currentSession:
+        state.currentSession?.id === sessionId
+          ? { ...state.currentSession, ...sanitizedPatch }
+          : state.currentSession,
+      sessions: state.sessions.map((session) =>
+        session.id === sessionId ? { ...session, ...sanitizedPatch } : session
+      ),
+    }));
   },
 
   loadSessions: () => {

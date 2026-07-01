@@ -8,6 +8,11 @@ export interface PostSseStreamRequest {
   onEvent: (event: StreamEventPayload) => void;
 }
 
+export interface SseStreamHandle {
+  promise: Promise<void>;
+  abort: () => void;
+}
+
 export interface StreamingTransportPort {
-  postSseStream(request: PostSseStreamRequest): Promise<void>;
+  postSseStream(request: PostSseStreamRequest): SseStreamHandle;
 }

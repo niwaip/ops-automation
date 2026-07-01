@@ -12,4 +12,4 @@ interface PostSseStreamOptions {
 export type { StreamEventPayload };
 
 export const postSseStream = (options: PostSseStreamOptions): Promise<void> =>
-  postSseStreamFromCore(browserStreamingTransport, options);
+  postSseStreamFromCore(browserStreamingTransport, options).promise;

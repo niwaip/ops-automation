@@ -1,4 +1,14 @@
-import { Body, Controller, Post, Req, Res, UploadedFile, UseInterceptors } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Req,
+  Res,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
 import { ApiConsumes, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Request, Response } from 'express';
@@ -6,14 +16,24 @@ import { getOrCreateTraceId } from '../../common/trace.util';
 import { StreamEventType } from '../react-engine/interfaces';
 import type { StreamEvent } from '../react-engine/interfaces';
 import type {
+  ChatHistoryResponseDTO,
   ChatAudioTranscriptionResponseDTO,
   ChatRequestDTO,
   ChatResponseDTO,
+  ChatSessionsResponseDTO,
   ChatUploadFileResponseDTO,
 } from './chat.dto';
 import { ChatConversationService } from './chat-conversation.service';
 import { ChatMediaService } from './chat-media.service';
 import { ChatOrchestratorService } from './chat-orchestrator.service';
+
+type SseEventPayload = {
+  type: string;
+  content: string;
+  data?: unknown;
+  sessionId?: string;
+  [key: string]: unknown;
+};
 
 @ApiTags('AI-Chat')
 @Controller('ai')
@@ -26,6 +46,51 @@ export class ChatController {
 
   private writeSse(res: Response, payload: Record<string, unknown>): void {
     res.write(`data: ${JSON.stringify(payload)}\n\n`);
+  }
+
+  private enrichStreamEvent(
+    event: SseEventPayload,
+    options: {
+      sessionId: string;
+      traceId: string;
+      seq: number;
+    }
+  ): SseEventPayload {
+    const data =
+      event.data && typeof event.data === 'object' && !Array.isArray(event.data)
+        ? (event.data as Record<string, unknown>)
+        : undefined;
+
+    return {
+      ...event,
+      seq: options.seq,
+      protocolVersion: '1',
+      sessionId:
+        typeof event.sessionId === 'string' && event.sessionId.trim()
+          ? event.sessionId
+          : options.sessionId,
+      traceId: options.traceId,
+      data: {
+        ...(data || {}),
+        traceId: options.traceId,
+      },
+    };
+  }
+
+  @Get('chat/sessions')
+  @ApiOperation({ summary: 'List chat sessions' })
+  @ApiResponse({ status: 200, description: 'Chat sessions loaded successfully' })
+  async listSessions(): Promise<ChatSessionsResponseDTO> {
+    const sessions = await this.chatConversationService.listSessions();
+    return { sessions };
+  }
+
+  @Get('chat/history/:sessionId')
+  @ApiOperation({ summary: 'Get chat history by session ID' })
+  @ApiResponse({ status: 200, description: 'Chat history loaded successfully' })
+  async getChatHistory(@Param('sessionId') sessionId: string): Promise<ChatHistoryResponseDTO> {
+    const messages = await this.chatConversationService.getChatHistory(sessionId);
+    return { messages };
   }
 
   @Post('chat/stream')
@@ -41,21 +106,30 @@ export class ChatController {
     res.setHeader('X-Accel-Buffering', 'no');
 
     const traceId = getOrCreateTraceId(body.traceId || req.traceId);
+    const sessionId = body.sessionId || 'default';
     const mode: 'chat' | 'task' = body.config?.mode || 'chat';
+    let seq = 0;
+    const emit = (event: SseEventPayload) => {
+      seq += 1;
+      this.writeSse(
+        res,
+        this.enrichStreamEvent(event, {
+          sessionId,
+          traceId,
+          seq,
+        })
+      );
+    };
 
     try {
       if (mode === 'chat') {
         await this.chatConversationService.streamChat(body, (event) => {
-          this.writeSse(res, {
-            ...event,
-            traceId,
-          });
+          emit(event as unknown as SseEventPayload);
         });
 
-        this.writeSse(res, {
+        emit({
           type: 'done',
           content: 'Stream completed',
-          traceId,
         });
         res.end();
         return;
@@ -72,14 +146,13 @@ export class ChatController {
       );
 
       if (!taskModeContext.context) {
-        this.writeSse(res, {
-          ...taskModeContext.authError,
-          traceId,
-          data: {
-            ...(taskModeContext.authError?.data || {}),
-            traceId,
-          },
-        });
+        const authError: SseEventPayload = taskModeContext.authError
+          ? (taskModeContext.authError as unknown as SseEventPayload)
+          : {
+              type: StreamEventType.ERROR,
+              content: '任务模式需要登录后使用，请重新登录后重试。',
+            };
+        emit(authError);
         res.end();
         return;
       }
@@ -89,16 +162,15 @@ export class ChatController {
         taskModeContext.context,
         req.headers.authorization
       )) {
-        this.writeSse(res, { ...event, traceId });
+        emit(event as unknown as SseEventPayload);
       }
-      this.writeSse(res, { type: 'done', content: 'Stream completed', traceId });
+      emit({ type: 'done', content: 'Stream completed' });
       res.end();
     } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      this.writeSse(res, {
+      emit({
         type: StreamEventType.ERROR,
         content: errorMsg,
-        traceId,
       });
       res.end();
     }
@@ -111,19 +183,20 @@ export class ChatController {
     @Req() req: Request & { traceId?: string }
   ): Promise<ChatResponseDTO> {
     const traceId = getOrCreateTraceId(body.traceId || req.traceId);
+    const sessionId = body.sessionId || 'default';
     const mode: 'chat' | 'task' = body.config?.mode || 'task';
 
     if (mode === 'chat') {
       const chatResponse = await this.chatConversationService.chat(body);
       return {
         ...chatResponse,
-        events: chatResponse.events.map((event) => ({
-          ...event,
-          data: {
-            ...(event.data || {}),
+        events: chatResponse.events.map((event, index) =>
+          this.enrichStreamEvent(event as unknown as SseEventPayload, {
+            sessionId,
             traceId,
-          },
-        })),
+            seq: index + 1,
+          }) as unknown as StreamEvent
+        ),
       };
     }
 
@@ -146,13 +219,11 @@ export class ChatController {
       return {
         response: authError.content,
         events: [
-          {
-            ...authError,
-            data: {
-              ...(authError.data || {}),
-              traceId,
-            },
-          },
+          this.enrichStreamEvent(authError as unknown as SseEventPayload, {
+            sessionId,
+            traceId,
+            seq: 1,
+          }) as unknown as StreamEvent,
         ],
       };
     }
@@ -160,22 +231,24 @@ export class ChatController {
     const events: StreamEvent[] = [];
     let finalResponse = '';
 
+    let seq = 0;
     for await (const event of this.chatOrchestratorService.handleTaskMode(
       body,
       taskModeContext.context,
       req.headers.authorization
     )) {
-      const eventWithTrace = {
-        ...event,
-        data: {
-          ...(event.data || {}),
-          traceId,
-        },
-      };
+      seq += 1;
+      const eventWithTrace = this.enrichStreamEvent(event as unknown as SseEventPayload, {
+        sessionId,
+        traceId,
+        seq,
+      }) as unknown as StreamEvent;
       events.push(eventWithTrace);
       if (
         event.type === StreamEventType.RESULT ||
         event.type === StreamEventType.WAITING_INPUT ||
+        event.type === StreamEventType.PENDING_APPROVAL ||
+        event.type === StreamEventType.HUMAN_CONTROL ||
         event.type === StreamEventType.ERROR
       ) {
         finalResponse = event.content;

@@ -199,7 +199,7 @@ export class ChatExecutionStreamService {
 
       if (status === CONTROL_PLANE_EXECUTION_STATUS.PENDING_APPROVAL) {
         return {
-          type: StreamEventType.RESULT,
+          type: StreamEventType.PENDING_APPROVAL,
           content: `任务需要审批后才能继续执行。\n\n当前审批状态: ${execution.approvalStatus || CONTROL_PLANE_APPROVAL_STATUS.PENDING}\n执行单 ID: ${executionId}`,
           data: {
             executionId,
@@ -217,7 +217,7 @@ export class ChatExecutionStreamService {
             ? execution.takeoverReason.trim()
             : '任务正在等待人工处理。';
         return {
-          type: StreamEventType.RESULT,
+          type: StreamEventType.HUMAN_CONTROL,
           content: takeoverReason,
           data: {
             executionId,
@@ -404,7 +404,7 @@ export class ChatExecutionStreamService {
 
         if (payload.newStatus === CONTROL_PLANE_EXECUTION_STATUS.PENDING_APPROVAL) {
           return {
-            type: StreamEventType.RESULT,
+            type: StreamEventType.PENDING_APPROVAL,
             content: `任务需要审批后才能继续执行。\n\n当前审批状态: ${CONTROL_PLANE_APPROVAL_STATUS.PENDING}\n执行单 ID: ${event.executionId}`,
             data: {
               executionId: event.executionId,
@@ -417,7 +417,7 @@ export class ChatExecutionStreamService {
 
         if (payload.newStatus === CONTROL_PLANE_EXECUTION_STATUS.HUMAN_CONTROL) {
           return {
-            type: StreamEventType.RESULT,
+            type: StreamEventType.HUMAN_CONTROL,
             content:
               this.readString(payload.takeoverReason) ||
               this.readString(payload.reason) ||
@@ -462,7 +462,7 @@ export class ChatExecutionStreamService {
       case CONTROL_PLANE_EVENT_TYPE.STEP_FAILED:
         if (payload.shouldTakeover || payload.phaseStatus === 'takeover_required') {
           return {
-            type: StreamEventType.ERROR,
+            type: StreamEventType.HUMAN_CONTROL,
             content: `步骤执行失败: ${payload.error || '未知错误'}`,
             data: {
               stepId: payload.stepId,

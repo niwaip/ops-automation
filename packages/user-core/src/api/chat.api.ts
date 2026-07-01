@@ -5,14 +5,39 @@ import type {
   ChatMessage,
   ChatRequest,
   ChatSession,
+  ChatContextStrategy,
+  ChatContentPart,
   StreamEvent,
 } from '../types/chat.types.js';
 import type { ApiClient } from './client.js';
 import { postSseStream } from './streaming.api.js';
 
-const resolveAiPath = (runtimeConfig: RuntimeConfigPort, path: string): string => {
-  const baseUrl = runtimeConfig.aiApiBaseUrl?.trim() || '/api/ai';
-  return `${baseUrl.replace(/\/+$/, '')}${path}`;
+const trimTrailingSlash = (value: string): string => value.replace(/\/+$/, '');
+
+const isAbsoluteUrl = (value: string): boolean => /^https?:\/\//i.test(value);
+
+const resolveAiTransportPath = (runtimeConfig: RuntimeConfigPort, path: string): string => {
+  const baseUrl = trimTrailingSlash(runtimeConfig.aiApiBaseUrl?.trim() || '/api/ai');
+  return `${baseUrl}${path}`;
+};
+
+const resolveAiClientPath = (runtimeConfig: RuntimeConfigPort, path: string): string => {
+  const aiBaseUrl = trimTrailingSlash(runtimeConfig.aiApiBaseUrl?.trim() || '/api/ai');
+  const apiBaseUrl = trimTrailingSlash(runtimeConfig.apiBaseUrl?.trim() || '/api');
+
+  if (isAbsoluteUrl(aiBaseUrl)) {
+    return `${aiBaseUrl}${path}`;
+  }
+
+  if (aiBaseUrl === apiBaseUrl) {
+    return path;
+  }
+
+  if (aiBaseUrl.startsWith(`${apiBaseUrl}/`)) {
+    return `${aiBaseUrl.slice(apiBaseUrl.length)}${path}`;
+  }
+
+  return `${aiBaseUrl}${path}`;
 };
 
 const normalizeTimestamp = (value: unknown): string => {
@@ -24,6 +49,17 @@ const normalizeTimestamp = (value: unknown): string => {
   }
 
   return new Date().toISOString();
+};
+
+const normalizeContentParts = (value: unknown): ChatContentPart[] | undefined => {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+
+  return value.filter(
+    (item): item is ChatContentPart =>
+      Boolean(item) && typeof item === 'object' && 'type' in (item as Record<string, unknown>)
+  );
 };
 
 const normalizeChatMessage = (raw: unknown): ChatMessage | null => {
@@ -47,6 +83,8 @@ const normalizeChatMessage = (raw: unknown): ChatMessage | null => {
     sessionId: candidate.sessionId,
     role,
     content: candidate.content,
+    contentParts: normalizeContentParts(candidate.contentParts),
+    fallbackText: typeof candidate.fallbackText === 'string' ? candidate.fallbackText : undefined,
     timestamp: normalizeTimestamp(
       candidate.timestamp ?? candidate.createdAt ?? candidate.updatedAt
     ),
@@ -76,6 +114,17 @@ const normalizeChatSession = (raw: unknown): ChatSession | null => {
     title: typeof candidate.title === 'string' ? candidate.title : undefined,
     modelId: typeof candidate.modelId === 'string' ? candidate.modelId : undefined,
     status: candidate.status,
+      contextStrategy:
+        candidate.contextStrategy === 'sliding_window' ||
+        candidate.contextStrategy === 'summary_compress' ||
+        candidate.contextStrategy === 'retrieval_augment' ||
+        candidate.contextStrategy === 'full'
+          ? (candidate.contextStrategy as ChatContextStrategy)
+          : undefined,
+      contextWindowTokens:
+        typeof candidate.contextWindowTokens === 'number'
+          ? candidate.contextWindowTokens
+          : undefined,
     createdAt: normalizeTimestamp(candidate.createdAt),
     updatedAt: normalizeTimestamp(candidate.updatedAt),
   };
@@ -126,18 +175,21 @@ const normalizeStreamEvent = (raw: unknown): StreamEvent | null => {
         ? (candidate.data as Record<string, unknown>)
         : undefined,
     iteration: typeof candidate.iteration === 'number' ? candidate.iteration : undefined,
+    seq: typeof candidate.seq === 'number' ? candidate.seq : undefined,
+    protocolVersion: candidate.protocolVersion === '1' ? '1' : undefined,
+    sessionId: typeof candidate.sessionId === 'string' ? candidate.sessionId : undefined,
   };
 };
 
 export const createChatApi = (client: ApiClient, runtimeConfig: RuntimeConfigPort) => ({
-  stream: async (
+  stream: (
     transport: StreamingTransportPort,
     token: string | null | undefined,
     request: ChatRequest,
     onEvent: (event: StreamEvent) => void
-  ): Promise<void> =>
+  ) =>
     postSseStream(transport, {
-      url: resolveAiPath(runtimeConfig, '/chat/stream'),
+      url: resolveAiTransportPath(runtimeConfig, '/chat/stream'),
       payload: {
         ...request,
         files: request.files?.map(({ fileId, fileName, mimeType, size }) => ({
@@ -157,7 +209,7 @@ export const createChatApi = (client: ApiClient, runtimeConfig: RuntimeConfigPor
     }),
   getAvailableModels: async (): Promise<AIModel[]> => {
     const response = await client.get<{ models?: unknown[] }>(
-      resolveAiPath(runtimeConfig, '/models')
+      resolveAiClientPath(runtimeConfig, '/models')
     );
     return (response.models || [])
       .map((item) => normalizeAIModel(item))
@@ -165,7 +217,7 @@ export const createChatApi = (client: ApiClient, runtimeConfig: RuntimeConfigPor
   },
   getChatHistory: async (sessionId: string): Promise<ChatMessage[]> => {
     const response = await client.get<{ messages?: unknown[] }>(
-      resolveAiPath(runtimeConfig, `/chat/history/${encodeURIComponent(sessionId)}`)
+      resolveAiClientPath(runtimeConfig, `/chat/history/${encodeURIComponent(sessionId)}`)
     );
     return (response.messages || [])
       .map((item) => normalizeChatMessage(item))
@@ -173,7 +225,7 @@ export const createChatApi = (client: ApiClient, runtimeConfig: RuntimeConfigPor
   },
   listSessions: async (): Promise<ChatSession[]> => {
     const response = await client.get<{ sessions?: unknown[] }>(
-      resolveAiPath(runtimeConfig, '/chat/sessions')
+      resolveAiClientPath(runtimeConfig, '/chat/sessions')
     );
     return (response.sessions || [])
       .map((item) => normalizeChatSession(item))

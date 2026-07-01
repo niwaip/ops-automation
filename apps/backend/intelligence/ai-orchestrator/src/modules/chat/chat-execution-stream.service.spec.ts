@@ -158,4 +158,51 @@ describe('ChatExecutionStreamService', () => {
       },
     });
   });
+
+  it('emits protocol-level pending approval event from latest execution state', async () => {
+    const { service, controlPlaneClient } = createService();
+
+    controlPlaneClient.getExecution.mockResolvedValue({
+      id: 'execution-approval-1',
+      status: CONTROL_PLANE_EXECUTION_STATUS.PENDING_APPROVAL,
+      approvalStatus: 'pending',
+    });
+
+    await expect(service.buildLatestExecutionStateEvent('execution-approval-1')).resolves.toEqual({
+      type: StreamEventType.PENDING_APPROVAL,
+      content:
+        '任务需要审批后才能继续执行。\n\n当前审批状态: pending\n执行单 ID: execution-approval-1',
+      data: {
+        executionId: 'execution-approval-1',
+        status: CONTROL_PLANE_EXECUTION_STATUS.PENDING_APPROVAL,
+        approvalStatus: 'pending',
+        hasBusinessResult: false,
+        usage: undefined,
+      },
+    });
+  });
+
+  it('emits protocol-level human control event from execution status change', () => {
+    const { service } = createService();
+
+    const streamEvent = (service as any).mapExecutionEventToStreamEvent({
+      executionId: 'execution-human-1',
+      eventType: CONTROL_PLANE_EVENT_TYPE.EXECUTION_STATUS_CHANGED,
+      payload: {
+        newStatus: CONTROL_PLANE_EXECUTION_STATUS.HUMAN_CONTROL,
+        takeoverReason: '需要人工处理 MFA 验证',
+      },
+    });
+
+    expect(streamEvent).toEqual({
+      type: StreamEventType.HUMAN_CONTROL,
+      content: '需要人工处理 MFA 验证',
+      data: {
+        executionId: 'execution-human-1',
+        status: CONTROL_PLANE_EXECUTION_STATUS.HUMAN_CONTROL,
+        hasBusinessResult: false,
+        takeoverReason: '需要人工处理 MFA 验证',
+      },
+    });
+  });
 });

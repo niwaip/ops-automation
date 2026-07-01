@@ -6,6 +6,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Spin, Button, Empty, Typography, message as antdMessage } from 'antd';
 import { CloseOutlined } from '@ant-design/icons';
+import { reduceChatStreamEvent } from '@ops/user-core';
 import { useChatStore } from './chatStore';
 import { useAuthStore } from '@/shared/store/authStore';
 import ChatMessage from './ChatMessage';
@@ -18,8 +19,6 @@ import type {
   ChatMessage as ChatMessageItem,
   ChatProgressLog,
   ChatRequest,
-  LLMRateLimit,
-  LLMUsage,
   PromptDebugRecord,
   PromptDebugPayload,
   StreamEvent,
@@ -30,6 +29,17 @@ import {
   RELEVANT_EXECUTION_STATUSES,
 } from '@/shared/notifications/executionNotifications';
 import { useNotificationStore } from '@/shared/store/notificationStore';
+import {
+  buildApprovedAssistantDraftMeta,
+  buildApprovedTaskPatch,
+  buildRejectedTaskPatch,
+  buildResumedHumanControlTaskPatch,
+} from '@chat-web/controller/taskActionController';
+import {
+  buildChatRequest,
+  buildResumeExecutionRequest,
+} from '@chat-web/controller/chatRequestController';
+import { resumeHumanControlExecution } from '@chat-web/controller/humanControlController';
 import { v4 as uuidv4 } from 'uuid';
 import './ChatWindow.css';
 
@@ -91,107 +101,23 @@ const asPromptDebugPayload = (value: unknown): PromptDebugPayload | undefined =>
     : undefined;
 };
 
-const asUsage = (value: unknown): LLMUsage | undefined => {
-  const record = asRecord(value);
-  if (
-    !record ||
-    typeof record.prompt_tokens !== 'number' ||
-    typeof record.completion_tokens !== 'number' ||
-    typeof record.total_tokens !== 'number'
-  ) {
-    return undefined;
-  }
-
-  return value as LLMUsage;
-};
-
-const asRateLimit = (value: unknown): LLMRateLimit | undefined => {
-  const record = asRecord(value);
-  return record ? (value as LLMRateLimit) : undefined;
-};
-
 const asMode = (value: unknown): 'chat' | 'task' | undefined =>
   value === 'chat' || value === 'task' ? value : undefined;
 
-const compactText = (value: string, maxLength = 120): string => {
-  const normalized = value.replace(/\s+/g, ' ').trim();
-  if (normalized.length <= maxLength) {
-    return normalized;
-  }
-  return `${normalized.slice(0, maxLength - 1).trim()}…`;
-};
-
-const sanitizeDisplayUrl = (value?: string): string | undefined => {
-  if (!value) {
+const summarizeSessionTitle = (content: string): string | undefined => {
+  const normalized = content.replace(/\s+/g, ' ').trim();
+  if (!normalized) {
     return undefined;
   }
-  return value.replace(/`/g, '').trim();
+  return normalized.slice(0, 24);
 };
 
-const asMissingInputs = (value: unknown): MissingInputItem[] | undefined => {
-  if (!Array.isArray(value)) {
+const asDate = (value: unknown): Date | undefined => {
+  if (typeof value !== 'string' || !value.trim()) {
     return undefined;
   }
-
-  const items = value.reduce<MissingInputItem[]>((acc, item) => {
-    const record = asRecord(item);
-    if (!record) {
-      return acc;
-    }
-
-    acc.push({
-      name: asString(record.name),
-      description: asString(record.description),
-      missing: typeof record.missing === 'boolean' ? record.missing : undefined,
-    });
-    return acc;
-  }, []);
-
-  return items.length > 0 ? items : undefined;
-};
-
-const buildTaskProgressLog = (
-  event: StreamEvent,
-  data: Record<string, unknown>
-): ChatProgressLog | undefined => {
-  if (event.type === StreamEventType.THOUGHT) {
-    const text = compactText(event.content.replace(/[🚀📥]/g, '').trim(), 100);
-    return text ? { stage: 'thought', text } : undefined;
-  }
-
-  if (event.type === StreamEventType.ACTION) {
-    const text = compactText(event.content, 100);
-    return text ? { stage: 'action', text } : undefined;
-  }
-
-  if (event.type !== StreamEventType.OBSERVATION) {
-    return undefined;
-  }
-
-  const result = asRecord(data.result);
-  const command = asString(result?.command);
-  const pageTitle = asString(result?.pageTitle);
-  const pageUrl = sanitizeDisplayUrl(asString(result?.pageUrl));
-  const resultData = asRecord(result?.data);
-  const duration = typeof resultData?.duration === 'number' ? resultData.duration : undefined;
-  const parts = ['步骤执行成功'];
-
-  if (command) {
-    parts.push(`命令：${command}`);
-  }
-  if (pageTitle) {
-    parts.push(`页面：${pageTitle}`);
-  } else if (pageUrl) {
-    parts.push(`页面：${pageUrl}`);
-  }
-  if (typeof duration === 'number' && Number.isFinite(duration) && duration > 0) {
-    parts.push(`耗时 ${duration} ms`);
-  }
-
-  return {
-    stage: 'observation',
-    text: compactText(parts.join('，'), 160),
-  };
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
 };
 
 const ChatWindow: React.FC = () => {
@@ -218,6 +144,7 @@ const ChatWindow: React.FC = () => {
     addStreamEvent,
     clearStreaming,
     createSession,
+    updateSessionMeta,
     setSelectedModel,
     setAvailableModels,
     setPendingParamsConfirm,
@@ -234,41 +161,6 @@ const ChatWindow: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   // 本地流式内容状态，用于实时显示
   const [localStreamingContent, setLocalStreamingContent] = useState('');
-
-  const resolveTaskStatus = (
-    eventType: StreamEventType,
-    status?: string
-  ): 'waiting_input' | 'pending_approval' | 'running' | 'completed' | 'failed' | 'human_control' => {
-    if (eventType === StreamEventType.ERROR) {
-      return 'failed';
-    }
-
-    if (eventType === StreamEventType.WAITING_INPUT || status === 'waiting_input') {
-      return 'waiting_input';
-    }
-
-    if (eventType === StreamEventType.PENDING_APPROVAL || status === 'pending_approval') {
-      return 'pending_approval';
-    }
-
-    if (status === 'human_control') {
-      return 'human_control';
-    }
-
-    if (status && ['queued', 'running'].includes(status)) {
-      return 'running';
-    }
-
-    if (eventType === StreamEventType.RESULT) {
-      return 'completed';
-    }
-
-    if (status && ['succeeded', 'failed', 'cancelled'].includes(status)) {
-      return status === 'failed' ? 'failed' : 'completed';
-    }
-
-    return 'running';
-  };
 
   // 加载可用模型
   useEffect(() => {
@@ -287,6 +179,7 @@ const ChatWindow: React.FC = () => {
 
   // 发送消息
   const handleSendMessage = (content: string) => {
+    const currentSessionId = currentSession?.id;
     // 获取当前的uploadedFiles（从store实时获取）
     const currentUploadedFiles = useChatStore.getState().uploadedFiles;
     if (!content.trim() && currentUploadedFiles.length === 0) return;
@@ -306,6 +199,13 @@ const ChatWindow: React.FC = () => {
       },
     };
     addMessage(userMessage);
+    if (currentSessionId) {
+      updateSessionMeta(currentSessionId, {
+        title: summarizeSessionTitle(content),
+        updatedAt: new Date(),
+        modelId: selectedModel || undefined,
+      });
+    }
 
     // 添加占位assistant消息
     const assistantMessageId = uuidv4();
@@ -338,20 +238,21 @@ const ChatWindow: React.FC = () => {
         ? lastAssistantMessage.metadata.executionId
         : undefined);
 
-    startAssistantStream(assistantMessageId, {
-      message: content,
-      sessionId: currentSession?.id,
-      userId: user?.id || undefined,
-      executionId,
-      userRoles: user?.role ? [user.role] : undefined,
-      modelId: selectedModel || undefined,
-      files: filesToSend,
-      config: {
+    startAssistantStream(
+      assistantMessageId,
+      buildChatRequest({
+        message: content,
+        sessionId: currentSession?.id,
+        userId: user?.id || undefined,
+        executionId,
+        userRoles: user?.role ? [user.role] : undefined,
+        modelId: selectedModel || undefined,
+        files: filesToSend,
         mode: chatMode,
         thinking: enableThinking,
         webSearch: enableWebSearch,
-      },
-    });
+      })
+    );
 
     if (draftExecutionId) {
       setDraftExecutionId(null);
@@ -377,14 +278,15 @@ const ChatWindow: React.FC = () => {
     setLocalStreamingContent('');
 
     let accumulatedContent = '';
-    const showThinking = request.config?.thinking !== false;
-    const isChatRequest = request.config?.mode === 'chat';
     const syncPromptDebug = (
       event: StreamEvent,
       taskStatus: ChatTaskStatus | undefined,
       sourceEventType: StreamEventType
     ) => {
-      const data = event.data ?? {};
+      const data =
+        event.data && typeof event.data === 'object' && !Array.isArray(event.data)
+          ? (event.data as Record<string, unknown>)
+          : {};
       const promptDebug = asPromptDebugPayload(data.promptDebug);
       if (!promptDebug) {
         return;
@@ -400,22 +302,64 @@ const ChatWindow: React.FC = () => {
       });
     };
 
+    const applyReducedMessagePatch = (messagePatch: Partial<ChatMessageItem>) => {
+      if (typeof messagePatch.content === 'string') {
+        updateMessageById(
+          assistantMessageId,
+          messagePatch.content,
+          messagePatch.isStreaming
+        );
+      }
+
+      if (messagePatch.metadata) {
+        updateMessageMetadataById(assistantMessageId, {
+          mode: messagePatch.metadata.mode,
+          showThinking: messagePatch.metadata.showThinking,
+          usage: messagePatch.metadata.usage,
+          rateLimit: messagePatch.metadata.rateLimit,
+          downloadUrl: messagePatch.metadata.downloadUrl,
+          temporalLink: messagePatch.metadata.temporalLink,
+          missingInputs: messagePatch.metadata.missingInputs as MissingInputItem[] | undefined,
+          taskStatus: messagePatch.metadata.taskStatus,
+          executionId: messagePatch.metadata.executionId,
+          executionStatus: messagePatch.metadata.executionStatus,
+          resultType: messagePatch.metadata.resultType,
+          resultTitle: messagePatch.metadata.resultTitle,
+          finalResult: messagePatch.metadata.finalResult,
+          finalResultData: messagePatch.metadata.finalResultData,
+          finalSummary: messagePatch.metadata.finalSummary,
+          errorMessage: messagePatch.metadata.errorMessage,
+          failureReason: messagePatch.metadata.failureReason,
+          hasBusinessResult: messagePatch.metadata.hasBusinessResult,
+          normalizedResult: messagePatch.metadata.normalizedResult,
+        });
+      }
+    };
+
     const abortStreaming = streamChat(
       request,
       (event) => {
         addStreamEvent(event);
-        const data = event.data ?? {};
-        const progressLog =
-          request.config?.mode === 'task' ? buildTaskProgressLog(event, data) : undefined;
+        const dataRecord =
+          event.data && typeof event.data === 'object' && !Array.isArray(event.data)
+            ? (event.data as Record<string, unknown>)
+            : {};
 
-        const executionId = asString(data.executionId);
-        const executionStatus = asExecutionStatus(data.status);
+        const reduced = reduceChatStreamEvent({
+          event: event as Parameters<typeof reduceChatStreamEvent>[0]['event'],
+          accumulatedContent,
+          mode: request.config?.mode,
+        });
+        accumulatedContent = reduced.accumulatedContent;
+
+        const executionId = asString(dataRecord.executionId);
+        const executionStatus = asExecutionStatus(dataRecord.status);
         if (executionId && executionStatus && RELEVANT_EXECUTION_STATUSES.has(executionStatus)) {
           const notification = toExecutionNotification({
             id: executionId,
-            skillId: asString(data.skillId) ?? '',
+            skillId: asString(dataRecord.skillId) ?? '',
             status: executionStatus,
-            approvalStatus: asApprovalStatus(data.approvalStatus),
+            approvalStatus: asApprovalStatus(dataRecord.approvalStatus),
             failureReason: executionStatus === 'failed' ? event.content : undefined,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
@@ -429,153 +373,41 @@ const ChatWindow: React.FC = () => {
           }
         }
 
-        if (event.type === StreamEventType.THOUGHT) {
-          if (showThinking && !progressLog) {
-            accumulatedContent += `【思考】${event.content}\n`;
-          }
-          if (progressLog) {
-            appendProgressLog(assistantMessageId, progressLog);
-          }
-          updateMessageMetadataById(assistantMessageId, {
-            mode: request.config?.mode,
-            showThinking,
-            taskStatus: 'running',
-            executionId,
-            executionStatus,
-            errorMessage: '',
-            promptDebug: asPromptDebugPayload(data.promptDebug),
-          });
-          syncPromptDebug(event, 'running', StreamEventType.THOUGHT);
-        } else if (event.type === StreamEventType.ACTION) {
-          if (showThinking && !progressLog) {
-            accumulatedContent += `【行动】${event.content}\n`;
-          }
-          if (progressLog) {
-            appendProgressLog(assistantMessageId, progressLog);
-          }
-          updateMessageMetadataById(assistantMessageId, {
-            mode: request.config?.mode,
-            showThinking,
-            taskStatus: 'running',
-            executionId,
-            executionStatus,
-            errorMessage: '',
-            promptDebug: asPromptDebugPayload(data.promptDebug),
-          });
-          syncPromptDebug(event, 'running', StreamEventType.ACTION);
-        } else if (
-          event.type === StreamEventType.OBSERVATION &&
-          data.hasBusinessResult !== true &&
-          !asString(data.downloadUrl)
-        ) {
-          if (isChatRequest) {
-            accumulatedContent = event.content;
-          } else if (showThinking && !progressLog) {
-            accumulatedContent += `【观察】${event.content}\n`;
-          }
-          if (progressLog) {
-            appendProgressLog(assistantMessageId, progressLog);
-          }
-          updateMessageMetadataById(assistantMessageId, {
-            mode: request.config?.mode,
-            showThinking,
-            finalSummary: isChatRequest || progressLog ? '' : accumulatedContent,
-            errorMessage: '',
-            promptDebug: asPromptDebugPayload(data.promptDebug),
-          });
-          syncPromptDebug(event, undefined, StreamEventType.OBSERVATION);
-        } else if (
-          event.type === StreamEventType.RESULT ||
-          event.type === StreamEventType.WAITING_INPUT ||
-          event.type === StreamEventType.PENDING_APPROVAL ||
-          (event.type === StreamEventType.OBSERVATION &&
-            (data.hasBusinessResult === true || Boolean(asString(data.downloadUrl))))
-        ) {
-          const hasBusinessResult = data.hasBusinessResult === true;
-          const missingInputs = asMissingInputs(data.missingInputs);
-          const eventMode = asMode(data.mode) ?? request.config?.mode;
+        if (reduced.progressLog) {
+          appendProgressLog(assistantMessageId, reduced.progressLog);
+        }
 
-          if (eventMode === 'chat' && event.type === StreamEventType.RESULT) {
-            accumulatedContent = event.content;
-            updateMessageMetadataById(assistantMessageId, {
-              mode: 'chat',
-              showThinking,
-              taskStatus: undefined,
-              executionId: undefined,
-              executionStatus: undefined,
-              finalResult: '',
-              finalResultData: data,
-              usage: asUsage(data.usage),
-              rateLimit: asRateLimit(data.rateLimit),
-              finalSummary: '',
-              downloadUrl: undefined,
-              hasBusinessResult: false,
-              missingInputs: undefined,
-              errorMessage: '',
-              promptDebug: asPromptDebugPayload(data.promptDebug),
-            });
-            syncPromptDebug(event, undefined, StreamEventType.RESULT);
-          } else {
-            const nextTaskStatus = resolveTaskStatus(event.type, executionStatus);
-            if (event.type === StreamEventType.RESULT) {
-              accumulatedContent = ''; // 结果事件清空累积内容
-            }
-
-            // 提取结果数据
-            const downloadUrl = asString(data.downloadUrl);
-            updateMessageMetadataById(assistantMessageId, {
-              mode: eventMode,
-              showThinking,
-              taskStatus: nextTaskStatus,
-              executionId,
-              executionStatus,
-              finalResult:
-                event.type === StreamEventType.RESULT && hasBusinessResult ? event.content : '',
-              finalResultData:
-                event.type === StreamEventType.RESULT ? (data.result ?? data) : undefined,
-              usage: asUsage(data.usage),
-              rateLimit: asRateLimit(data.rateLimit),
-              finalSummary:
-                event.type === StreamEventType.WAITING_INPUT || !hasBusinessResult
-                  ? event.content
-                  : '',
-              downloadUrl: downloadUrl || undefined,
-              hasBusinessResult,
-              missingInputs,
-              errorMessage: '',
-              promptDebug: asPromptDebugPayload(data.promptDebug),
-            });
-            syncPromptDebug(event, nextTaskStatus, event.type);
-          }
-        } else if (event.type === StreamEventType.ERROR) {
-          if (event.content) {
-            accumulatedContent += isChatRequest ? event.content : `${event.content}\n`;
-          }
-          const shouldTakeover = data.shouldTakeover === true || executionStatus === 'human_control';
-          const nextTaskStatus = shouldTakeover ? 'human_control' : 'failed';
-          updateMessageMetadataById(assistantMessageId, {
-            mode: request.config?.mode,
-            showThinking,
-            taskStatus: nextTaskStatus,
-            executionId,
-            executionStatus,
-            finalResultData: undefined,
-            usage: asUsage(data.usage),
-            errorMessage: event.content,
-            promptDebug: asPromptDebugPayload(data.promptDebug),
+        if (reduced.sessionPatch && request.sessionId) {
+          updateSessionMeta(request.sessionId, {
+            title: reduced.sessionPatch.title,
+            updatedAt: asDate(reduced.sessionPatch.updatedAt),
+            status: reduced.sessionPatch.status,
           });
-          syncPromptDebug(event, nextTaskStatus, StreamEventType.ERROR);
-        } else if (event.type === StreamEventType.PARAMS_CONFIRM) {
-          const skill = asRecord(data.skill);
+        }
+
+        if (event.type === StreamEventType.PARAMS_CONFIRM) {
+          const skill = asRecord(dataRecord.skill);
           setPendingParamsConfirm(
-            asRecord(data.params) ?? null,
+            asRecord(dataRecord.params) ?? null,
             asString(skill?.skillName) ?? null
           );
           syncPromptDebug(event, 'running', StreamEventType.PARAMS_CONFIRM);
+        } else {
+          applyReducedMessagePatch(reduced.messagePatch as Partial<ChatMessageItem>);
+
+          const nextTaskStatus =
+            reduced.messagePatch.metadata?.taskStatus ||
+            (executionStatus === 'human_control' ? 'human_control' : undefined);
+          updateMessageMetadataById(assistantMessageId, {
+            promptDebug: asPromptDebugPayload(dataRecord.promptDebug),
+            executionId,
+            executionStatus,
+            ...(nextTaskStatus ? { taskStatus: nextTaskStatus } : {}),
+          });
+          syncPromptDebug(event, nextTaskStatus, event.type);
         }
 
         setLocalStreamingContent(accumulatedContent);
-        updateMessageById(assistantMessageId, accumulatedContent, true);
       },
       (error) => {
         const errorMsg = `错误: ${error.message}`;
@@ -602,13 +434,13 @@ const ChatWindow: React.FC = () => {
   const handleApproveExecution = async (messageId: string, executionId: string) => {
     const execution = await executionApi.approve(executionId);
 
-    updateMessageMetadataById(messageId, {
-      taskStatus: 'running',
-      executionId,
-      executionStatus: execution.status,
-      finalSummary: '审批已通过，任务继续执行中。',
-      errorMessage: '',
-    });
+    updateMessageMetadataById(
+      messageId,
+      buildApprovedTaskPatch({
+        executionId,
+        executionStatus: execution.status,
+      })
+    );
 
     void antdMessage.success('已批准任务，正在继续执行');
 
@@ -620,45 +452,61 @@ const ChatWindow: React.FC = () => {
       content: '',
       timestamp: new Date(),
       isStreaming: true,
-      metadata: {
-        taskStatus: 'running',
+      metadata: buildApprovedAssistantDraftMeta({
         executionId,
         executionStatus: execution.status,
-        finalResult: '',
-        finalResultData: undefined,
-        finalSummary: '审批已通过，正在观察执行进度...',
-        errorMessage: '',
-      },
+        runningSummary: '审批已通过，正在观察执行进度...',
+        mode: chatMode,
+      }),
     });
 
-    startAssistantStream(assistantMessageId, {
-      message: '继续执行',
-      sessionId: currentSession?.id,
-      userId: user?.id || undefined,
-      executionId,
-      userRoles: user?.role ? [user.role] : undefined,
-      modelId: selectedModel || undefined,
-      files: [],
-      config: {
+    startAssistantStream(
+      assistantMessageId,
+      buildResumeExecutionRequest({
+        sessionId: currentSession?.id,
+        userId: user?.id || undefined,
+        executionId,
+        userRoles: user?.role ? [user.role] : undefined,
+        modelId: selectedModel || undefined,
+        files: [],
         mode: chatMode,
         thinking: enableThinking,
         webSearch: enableWebSearch,
-      },
-    });
+      })
+    );
   };
 
   const handleRejectExecution = async (messageId: string, executionId: string) => {
     const execution = await executionApi.reject(executionId);
 
-    updateMessageMetadataById(messageId, {
-      taskStatus: 'failed',
-      executionId,
-      executionStatus: execution.status,
-      finalSummary: '',
-      errorMessage: '审批已驳回，任务已取消。',
-    });
+    updateMessageMetadataById(
+      messageId,
+      buildRejectedTaskPatch({
+        executionId,
+        executionStatus: execution.status,
+      })
+    );
 
     void antdMessage.success('已驳回任务');
+  };
+
+  const handleResumeExecution = async (messageId: string, executionId: string) => {
+    const execution = await executionApi.getById(executionId);
+    const resumedExecution = await resumeHumanControlExecution({
+      executionId,
+      execution,
+      executionApi,
+    });
+
+    updateMessageMetadataById(
+      messageId,
+      buildResumedHumanControlTaskPatch({
+        executionId,
+        executionStatus: resumedExecution.status,
+      })
+    );
+
+    void antdMessage.success('已同意人工处理结果，任务继续执行中');
   };
 
   const handleRetryMessage = (messageId: string) => {
@@ -723,6 +571,7 @@ const ChatWindow: React.FC = () => {
               onRetry={msg.role === 'assistant' ? handleRetryMessage : undefined}
               onApproveExecution={msg.role === 'assistant' ? handleApproveExecution : undefined}
               onRejectExecution={msg.role === 'assistant' ? handleRejectExecution : undefined}
+              onResumeExecution={msg.role === 'assistant' ? handleResumeExecution : undefined}
             />
           ))}
           {isLoading && messages.length === 0 && (

@@ -4,16 +4,16 @@
 
 ```bash
 # 使用 Smart Launcher 启动 Add-in 环境
-./docker/scripts/start-smart.sh docker-compose.addin.yml up -d
+./docker/start-smart.sh docker-compose.addin.yml up -d
 ```
 
 如果需要从局域网其他机器访问，请先在 `docker/.env` 中设置：
 
 ```bash
-HOST_IP=192.168.100.143
-OFFICE_ADDIN_PUBLIC_HOST=192.168.100.143
-CARBONE_API_PUBLIC_HOST=192.168.100.143
-OFFICE_ADDIN_TLS_HOSTS=localhost,127.0.0.1,192.168.100.143
+HOST_IP=your-lan-host-or-ip
+OFFICE_ADDIN_PUBLIC_HOST=your-lan-host-or-ip
+CARBONE_API_PUBLIC_HOST=your-lan-host-or-ip
+OFFICE_ADDIN_TLS_HOSTS=localhost,127.0.0.1,your-lan-host-or-ip
 ```
 
 此命令会：
@@ -41,6 +41,8 @@ https://${OFFICE_ADDIN_PUBLIC_HOST:-localhost}:3000/wizard
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\office-addin-wizard.ps1 -HostName ${OFFICE_ADDIN_PUBLIC_HOST:-localhost}
 ```
+
+如果不传 `-HostName`，当前脚本默认使用 `localhost`；只有局域网或远程访问时，才显式传入外部访问主机。
 
 4. 按菜单选择：
    - `1` 证书安装
@@ -134,7 +136,7 @@ office-addin-debugging start /tmp/manifest-ppt.xml
 npm install -g office-addin-debugging
 
 # 启动并自动 sideload
-cd services/office-addin
+cd apps/office-addin
 npm run sideload:word
 ```
 
@@ -205,7 +207,7 @@ certutil -addstore "Root" docker\office-addin\certs\server.crt
 **示例：**
 
 ```bash
-export OFFICE_ADDIN_TLS_HOSTS=localhost,127.0.0.1,192.168.100.143,addin.dev.local
+export OFFICE_ADDIN_TLS_HOSTS=localhost,127.0.0.1,your-lan-host-or-ip,addin.dev.local
 ./docker/office-addin/generate-certs.sh
 ```
 

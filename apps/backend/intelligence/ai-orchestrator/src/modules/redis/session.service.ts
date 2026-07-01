@@ -9,7 +9,16 @@ export interface SessionData {
 }
 
 export interface ChatSessionData {
+  session?: {
+    id: string;
+    title?: string;
+    modelId?: string;
+    status: 'active' | 'archived';
+    createdAt: string;
+    updatedAt: string;
+  };
   history: Array<{
+    id?: string;
     role: 'user' | 'assistant';
     content: string;
     timestamp: string;
@@ -37,6 +46,73 @@ export class SessionService {
 
   private getChatSessionKey(sessionId: string): string {
     return `chat_session:${sessionId}`;
+  }
+
+  private getDefaultChatSessionMeta(
+    sessionId: string,
+    existing?: ChatSessionData['session']
+  ): NonNullable<ChatSessionData['session']> {
+    const now = new Date().toISOString();
+    return {
+      id: sessionId,
+      status: 'active',
+      createdAt: existing?.createdAt || now,
+      updatedAt: existing?.updatedAt || existing?.createdAt || now,
+      title: existing?.title,
+      modelId: existing?.modelId,
+    };
+  }
+
+  private createMessageId(
+    sessionId: string,
+    message: ChatSessionData['history'][number],
+    index: number
+  ): string {
+    const safeTimestamp = (message.timestamp || new Date().toISOString()).replace(/[^0-9TZ]/g, '');
+    return `${sessionId}-${safeTimestamp}-${index}`;
+  }
+
+  private buildChatSessionTitle(
+    existingTitle: string | undefined,
+    history: ChatSessionData['history']
+  ): string | undefined {
+    if (existingTitle?.trim()) {
+      return existingTitle.trim();
+    }
+    const firstUserMessage = history.find((message) => message.role === 'user');
+    const normalized = firstUserMessage?.content?.replace(/\s+/g, ' ').trim();
+    if (!normalized) {
+      return undefined;
+    }
+    return normalized.slice(0, 24);
+  }
+
+  private normalizeChatSession(
+    sessionId: string,
+    data: ChatSessionData | null
+  ): ChatSessionData | null {
+    if (!data) {
+      return null;
+    }
+
+    const history = (data.history || []).map((message, index) => ({
+      ...message,
+      id: message.id || this.createMessageId(sessionId, message, index),
+    }));
+    const baseSession = this.getDefaultChatSessionMeta(sessionId, data.session);
+    const firstTimestamp = history[0]?.timestamp;
+    const lastTimestamp = history[history.length - 1]?.timestamp;
+
+    return {
+      history,
+      session: {
+        ...baseSession,
+        createdAt: data.session?.createdAt || firstTimestamp || baseSession.createdAt,
+        updatedAt: data.session?.updatedAt || lastTimestamp || baseSession.updatedAt,
+        title: this.buildChatSessionTitle(data.session?.title, history),
+        modelId: data.session?.modelId,
+      },
+    };
   }
 
   private cleanupChatHistory(history: ChatSessionData['history']): ChatSessionData['history'] {
@@ -92,7 +168,7 @@ export class SessionService {
       const key = this.getChatSessionKey(sessionId);
       const data = await this.redisService.get(key);
       if (!data) return null;
-      return JSON.parse(data) as ChatSessionData;
+      return this.normalizeChatSession(sessionId, JSON.parse(data) as ChatSessionData);
     } catch (error) {
       this.logger.error(`Failed to get chat session ${sessionId}:`, error);
       return null;
@@ -102,9 +178,28 @@ export class SessionService {
   async saveChatSession(sessionId: string, data: ChatSessionData): Promise<void> {
     try {
       const key = this.getChatSessionKey(sessionId);
+      const normalized = this.normalizeChatSession(sessionId, data);
+      if (!normalized) {
+        return;
+      }
       const cleanedData: ChatSessionData = {
-        history: this.cleanupChatHistory(data.history || []),
+        session: {
+          ...this.getDefaultChatSessionMeta(sessionId, normalized.session),
+          ...normalized.session,
+          title: this.buildChatSessionTitle(normalized.session?.title, normalized.history),
+        },
+        history: this.cleanupChatHistory(normalized.history || []),
       };
+      if (cleanedData.history.length > 0) {
+        const firstHistoryMessage = cleanedData.history[0];
+        cleanedData.session = {
+          ...cleanedData.session!,
+          createdAt: cleanedData.session?.createdAt || firstHistoryMessage?.timestamp || new Date().toISOString(),
+          updatedAt:
+            cleanedData.history[cleanedData.history.length - 1]?.timestamp ||
+            cleanedData.session!.updatedAt,
+        };
+      }
       await this.redisService.set(key, JSON.stringify(cleanedData), this.chatSessionTTL);
       this.logger.debug(`Saved chat session ${sessionId}, history=${cleanedData.history.length}`);
     } catch (error) {
@@ -114,15 +209,59 @@ export class SessionService {
 
   async appendChatMessages(
     sessionId: string,
-    messages: ChatSessionData['history']
+    messages: ChatSessionData['history'],
+    sessionPatch?: Partial<NonNullable<ChatSessionData['session']>>
   ): Promise<ChatSessionData> {
     const existing = await this.getChatSession(sessionId);
-    const merged = [...(existing?.history || []), ...messages];
+    const normalizedMessages = messages.map((message, index) => ({
+      ...message,
+      id:
+        message.id ||
+        this.createMessageId(sessionId, message, (existing?.history?.length || 0) + index),
+    }));
+    const merged = [...(existing?.history || []), ...normalizedMessages];
+    const cleanedHistory = this.cleanupChatHistory(merged);
+    const baseSession = this.getDefaultChatSessionMeta(sessionId, existing?.session);
     const next: ChatSessionData = {
+      session: {
+        ...baseSession,
+        ...sessionPatch,
+        createdAt: existing?.session?.createdAt || cleanedHistory[0]?.timestamp || baseSession.createdAt,
+        updatedAt:
+          cleanedHistory[cleanedHistory.length - 1]?.timestamp ||
+          sessionPatch?.updatedAt ||
+          baseSession.updatedAt,
+        title: this.buildChatSessionTitle(
+          sessionPatch?.title || existing?.session?.title,
+          cleanedHistory
+        ),
+      },
       history: this.cleanupChatHistory(merged),
     };
     await this.saveChatSession(sessionId, next);
     return next;
+  }
+
+  async listChatSessions(): Promise<Array<NonNullable<ChatSessionData['session']>>> {
+    try {
+      const keys = await this.redisService.keys(this.getChatSessionKey('*'));
+      const sessions = await Promise.all(
+        keys.map(async (key) => {
+          const sessionId = key.replace(/^chat_session:/, '');
+          const data = await this.getChatSession(sessionId);
+          return data?.session || null;
+        })
+      );
+      return sessions
+        .filter((item): item is NonNullable<ChatSessionData['session']> => Boolean(item))
+        .sort(
+          (left, right) =>
+            new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime()
+        );
+    } catch (error) {
+      this.logger.error('Failed to list chat sessions:', error);
+      return [];
+    }
   }
 
   async deleteChatSession(sessionId: string): Promise<void> {

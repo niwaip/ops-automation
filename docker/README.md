@@ -20,7 +20,7 @@ Docker 体系负责整个仓库的基础设施、后端服务及测试环境的�
 
 本项目推荐唯一的智能启动入口：
 
-- **`docker/start-smart.sh`** (软链至 `scripts/start-smart.sh`)
+- **`docker/start-smart.sh`** (包装入口，转发至 `scripts/start-smart.sh`)
 
 该脚本能自动感知 VibeKanban worktree 环境，并正确挂载当前目录的代码。
 
