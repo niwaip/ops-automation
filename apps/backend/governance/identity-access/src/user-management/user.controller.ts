@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Put, Query, Request } from '@nestjs/common';
 import { RequireAdmin, SkipRbac } from '../decorators';
-import type { UpdateUserRolesDto, UserQueryDto } from '../contracts';
+import { UpdateUserRolesDto, UserQueryDto } from '../contracts';
 import { IdentityAccessUserService } from './identity-access-user.service';
 
 @Controller('users')

@@ -67,7 +67,19 @@ docker-compose.override.yml
 
 # Generated files
 *.generated.ts
+.cache/
+.data/
+
+# Turbo
+.turbo/
+
+# Docker
+docker-compose.override.yml
+
+# Generated files
+*.generated.ts
 .generated/
+generated/
 vite.config.js
 vite.config.d.ts
 
@@ -75,16 +87,15 @@ vite.config.d.ts
 services/ai-orchestrator/data/
 # Carbone Engine uploaded templates (runtime data)
 services/carbone-engine/templates/
-templates/
+/templates/
 # Carbone Engine outputs (generated documents)
 services/carbone-engine/outputs/
-outputs/
+/outputs/
 # Generated test files in root
 保密协议*.docx
 confidential_agreement*.docx
 doc-preview-*.png
 Template*Workflow.json
-# Playwright MCP test files
 .playwright-mcp/
 *.png
 test_contract.docx

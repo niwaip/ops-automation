@@ -1,0 +1,3 @@
+-- Baseline placeholder for browser-template.
+-- Do not apply or resolve this migration until shared-database migration
+-- ownership and rollout order are confirmed across Prisma services.

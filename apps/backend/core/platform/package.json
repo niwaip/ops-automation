@@ -6,7 +6,7 @@
   "main": "dist/main.js",
   "types": "dist/main.d.ts",
   "scripts": {
-    "build": "prisma generate && pnpm --filter @ops/release-manager run build && nest build",
+    "build": "prisma generate && pnpm --filter @ops/identity-access run build && pnpm --filter @ops/organization run build && pnpm --filter @ops/release-manager run build && nest build",
     "dev": "nest start --watch",
     "start": "node dist/main.js",
     "start:prod": "node dist/main.js",
