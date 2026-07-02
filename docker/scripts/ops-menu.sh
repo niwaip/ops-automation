@@ -8,6 +8,8 @@ SMART_SCRIPT="$SCRIPT_DIR/start-smart.sh"
 APPLY_LATEST_DB_SCHEMA_SCRIPT="$SCRIPT_DIR/apply-latest-db-schema.sh"
 EXPORT_INITIAL_DATA_SCRIPT="$SCRIPT_DIR/export-initial-data.sh"
 DEFAULT_ADMIN_PASSWORD="${DEFAULT_ADMIN_PASSWORD:-admin123}"
+DEFAULT_ADMIN_USERNAME="${DEFAULT_ADMIN_USERNAME:-admin}"
+DEFAULT_ADMIN_EMAIL="${DEFAULT_ADMIN_EMAIL:-admin@example.com}"
 DOCKER_ENV_FILE="$DOCKER_DIR/.env"
 DOCKER_ENV_TEMPLATE="$DOCKER_DIR/env/.env.example"
 
@@ -46,6 +48,10 @@ log_warn() {
 
 log_err() {
   printf '  \033[31m[ERR] %s\033[0m\n' "$1"
+}
+
+sql_escape_literal() {
+  printf "%s" "$1" | sed "s/'/''/g"
 }
 
 run_compose() {
@@ -546,15 +552,8 @@ apply_latest_database_schema() {
 
 seed_platform_data() {
   printf '\n=== Import Seed Data ===\n'
-  read_admin_password || return 1
   start_infra
-
-  log "Importing current platform seed data..."
-  run_platform_job_with_env \
-    "npm run seed" \
-    -e ADMIN_PASSWORD="$ADMIN_PASSWORD_VALUE"
-
-  log_ok "Seed data import complete."
+  seed_platform_accounts_sql
 }
 
 export_initial_data() {
@@ -572,8 +571,8 @@ export_initial_data() {
 reset_admin_password() {
   read_admin_password || return 1
   start_infra
-  run_platform_job_with_admin_password "$ADMIN_PASSWORD_VALUE"
-  log "Admin password reset complete. Username: admin"
+  ADMIN_PASSWORD="$ADMIN_PASSWORD_VALUE" seed_platform_accounts_sql
+  log "Admin password reset complete. Username: ${ADMIN_USERNAME:-$DEFAULT_ADMIN_USERNAME}"
 }
 
 full_initial_deployment() {
@@ -583,7 +582,7 @@ full_initial_deployment() {
   printf '  1. Stop running compose stacks\n'
   printf '  2. Reset the public schema\n'
   printf '  3. Apply the latest baseline + incremental migrations\n'
-  printf '  4. Import current seed data\n'
+  printf '  4. Create default login account with SQL\n'
   printf '  5. Export initial data snapshot\n'
   printf '  6. Start core and peripheral services\n\n'
 
@@ -591,8 +590,6 @@ full_initial_deployment() {
     log "Cancelled."
     return 0
   fi
-
-  read_admin_password || return 1
 
   log "Stopping running compose stacks..."
   stop_all_compose
@@ -612,10 +609,7 @@ SQL
 
   apply_shared_domain_schema_repairs
 
-  log "Importing current seed data..."
-  run_platform_job_with_env \
-    "npm run seed" \
-    -e ADMIN_PASSWORD="$ADMIN_PASSWORD_VALUE"
+  seed_platform_accounts_sql
 
   log "Exporting initial data snapshot..."
   bash "$EXPORT_INITIAL_DATA_SCRIPT" "$INITIAL_DATA_EXPORT_PATH_DEFAULT"
@@ -633,6 +627,62 @@ SQL
   log "Initial data export: ${INITIAL_DATA_EXPORT_PATH_DEFAULT}"
 }
 
+seed_platform_accounts_sql() {
+  local admin_username admin_email admin_password
+  local admin_username_sql admin_email_sql admin_password_sql
+
+  admin_username="${ADMIN_USERNAME:-$DEFAULT_ADMIN_USERNAME}"
+  admin_email="${ADMIN_EMAIL:-$DEFAULT_ADMIN_EMAIL}"
+  admin_password="${ADMIN_PASSWORD:-$DEFAULT_ADMIN_PASSWORD}"
+
+  admin_username_sql="$(sql_escape_literal "$admin_username")"
+  admin_email_sql="$(sql_escape_literal "$admin_email")"
+  admin_password_sql="$(sql_escape_literal "$admin_password")"
+
+  log "Creating minimal platform accounts with SQL..."
+  run_psql_stdin <<SQL
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+INSERT INTO roles (name, description, permissions, is_system)
+VALUES
+  ('admin', '系统管理员', '{"all_skills": true}'::json, true),
+  ('employee', '普通员工', '{}'::json, true),
+  ('agent', '自动化代理', '{"replay_start": true, "replay_stop": true, "agent_create": true}'::json, true)
+ON CONFLICT (name) DO UPDATE
+SET
+  description = EXCLUDED.description,
+  permissions = EXCLUDED.permissions,
+  is_system = EXCLUDED.is_system,
+  updated_at = NOW();
+
+INSERT INTO users (username, password_hash, email, role, is_active)
+VALUES (
+  '${admin_username_sql}',
+  crypt('${admin_password_sql}', gen_salt('bf')),
+  '${admin_email_sql}',
+  'admin'::"UserRoleType",
+  true
+)
+ON CONFLICT (username) DO UPDATE
+SET
+  password_hash = crypt('${admin_password_sql}', gen_salt('bf')),
+  email = EXCLUDED.email,
+  role = EXCLUDED.role,
+  is_active = true,
+  updated_at = NOW();
+
+INSERT INTO user_roles (user_id, role_id)
+SELECT u.id, r.id
+FROM users u
+JOIN roles r ON r.name = 'admin'
+WHERE u.username = '${admin_username_sql}'
+ON CONFLICT (user_id, role_id) DO NOTHING;
+SQL
+
+  log_ok "SQL account initialization complete."
+  log "Admin login ensured. Username: ${admin_username} Password: ${admin_password}"
+}
+
 database_menu() {
   local choice
 
@@ -644,7 +694,7 @@ database_menu() {
     printf '2. Migration inventory check\n'
     printf '3. Reset public schema (drop all tables)\n'
     printf '4. Apply latest database schema\n'
-    printf '5. Import current seed data\n'
+    printf '5. Create default login account (SQL)\n'
     printf '6. Export initial data snapshot\n'
     printf '7. Initial full deployment\n'
     printf '0. Back\n'
@@ -681,7 +731,7 @@ main_menu() {
     printf '2. Database init menu\n'
     printf '3. Generate default docker .env\n'
     printf '4. Service status check\n'
-    printf '5. Reset admin password\n'
+    printf '5. Reset admin password (SQL)\n'
     printf '0. Exit\n'
     read -r -p "Select: " choice
 
