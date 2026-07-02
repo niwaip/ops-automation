@@ -17,8 +17,9 @@ import {
   PublishTemplateDto,
   CompileScriptDto,
   ValidateTemplateDto,
+  ListTemplatesQueryDto,
 } from './template.dto';
-import { TemplateJSON, ListTemplatesQuery, ValidationResult } from './types/template.types';
+import { TemplateJSON, ValidationResult } from './types/template.types';
 import { PlaywrightCompiler } from './compiler/playwright-to-json';
 import { TemplateValidator } from './validators/template.validator';
 
@@ -31,7 +32,7 @@ export class TemplateController {
   ) {}
 
   @Get()
-  async list(@Query() query: ListTemplatesQuery) {
+  async list(@Query() query: ListTemplatesQueryDto) {
     return this.templateService.list(query);
   }
 

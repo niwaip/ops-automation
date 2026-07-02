@@ -8,8 +8,10 @@ import {
   Matches,
   IsNotEmpty,
   IsObject,
+  IsInt,
+  Min,
 } from 'class-validator';
-import { TemplateStatus, TemplateStep, ParamsSchema } from './types/template.types';
+import { TemplateStatus, TemplateStep, ParamsSchema, ListTemplatesQuery } from './types/template.types';
 
 export class CreateTemplateDto {
   @IsString()
@@ -114,4 +116,34 @@ export class ValidateTemplateDto {
   guards?: Record<string, unknown>[];
   config?: Record<string, unknown>;
   created_by: string;
+}
+
+export class ListTemplatesQueryDto implements ListTemplatesQuery {
+  @IsOptional()
+  status?: TemplateStatus;
+
+  @IsOptional()
+  excludeDraft?: boolean | string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number = 1;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  limit?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  pageSize?: number;
+
+  @IsOptional()
+  @IsString()
+  search?: string;
 }
