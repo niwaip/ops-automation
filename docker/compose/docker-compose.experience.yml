@@ -22,7 +22,6 @@ services:
     volumes:
       - ${PROJECT_ROOT:-..}/apps/frontend/portal:/app
       - ${PROJECT_ROOT:-..}/apps/frontend/shared:/shared
-      - ${PROJECT_ROOT:-..}/packages/contracts:/packages/contracts
       - ${PROJECT_ROOT:-..}/packages/backend-contracts:/packages/backend-contracts
       - ${PROJECT_ROOT:-..}/packages/user-core:/packages/user-core
       - ${PROJECT_ROOT:-..}/tsconfig.base.json:/tsconfig.base.json:ro
@@ -48,7 +47,6 @@ services:
     volumes:
       - ${PROJECT_ROOT:-..}/apps/frontend/user-web:/app
       - ${PROJECT_ROOT:-..}/apps/frontend/shared:/shared
-      - ${PROJECT_ROOT:-..}/packages/contracts:/packages/contracts
       - ${PROJECT_ROOT:-..}/packages/backend-contracts:/packages/backend-contracts
       - ${PROJECT_ROOT:-..}/packages/user-core:/packages/user-core
       - ${PROJECT_ROOT:-..}/tsconfig.base.json:/tsconfig.base.json:ro

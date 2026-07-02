@@ -133,6 +133,11 @@ CHROME_COMMON_ARGS=(
     --disable-background-timer-throttling
     --disable-backgrounding-occluded-windows
     --disable-renderer-backgrounding
+    --ignore-certificate-errors
+    --allow-insecure-localhost
+    --disable-client-side-phishing-detection
+    --test-type
+    --safebrowsing-disable-download-protection
     --disable-features=TranslateUI,VizDisplayCompositor,HttpsUpgrades,HTTPS-FirstBalancedModeAutoEnable,HTTPS-FirstModeV2ForEngagedSites
     --disable-ipc-flooding-protection
     --remote-debugging-port=${INTERNAL_CDP_PORT}

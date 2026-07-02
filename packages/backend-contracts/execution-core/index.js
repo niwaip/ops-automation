@@ -64,4 +64,3 @@ exports.EXECUTION_EVENT_TYPE_VALUES = Object.values(exports.EXECUTION_EVENT_TYPE
 function isTerminalExecutionStatus(status) {
     return exports.TERMINAL_EXECUTION_STATUSES.includes(status);
 }
-//# sourceMappingURL=index.js.map
