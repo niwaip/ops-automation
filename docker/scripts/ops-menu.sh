@@ -364,11 +364,14 @@ platform_schema_is_aligned() {
     "audit_logs"
     "activities"
     "temporal_workflows"
+    "skill_schedules"
   )
   local -a required_columns=(
     "executions:current_phase_key"
     "executions:current_phase_status"
     "executions:takeover_status"
+    "executions:trigger_type"
+    "executions:schedule_id"
   )
   local table
   local entry
@@ -446,6 +449,7 @@ database_status_check() {
     "audit_logs"
     "activities"
     "temporal_workflows"
+    "skill_schedules"
     "templates"
   )
   local tbl
@@ -462,6 +466,8 @@ database_status_check() {
     "executions:current_phase_key"
     "executions:current_phase_status"
     "executions:takeover_status"
+    "executions:trigger_type"
+    "executions:schedule_id"
   )
   local entry
   local col

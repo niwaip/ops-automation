@@ -39,10 +39,31 @@ const resolveDependencyEntry = (relativePath: string): string => {
 
 const isDockerEnv = Boolean(process.env.DOCKER_ENV);
 
-const resolveUserCoreEntry = (): string =>
-  isDockerEnv
-    ? resolveDependencyEntry('./node_modules/@ops/user-core/dist/index.js')
-    : path.resolve(__dirname, '../../../packages/user-core/src/index.ts');
+const resolveWorkspacePath = (mountedPath: string, repoRelativePath: string): string => {
+  if (existsSync(mountedPath)) {
+    return mountedPath;
+  }
+  return path.resolve(__dirname, repoRelativePath);
+};
+
+const resolveUserCoreRootEntry = (): string =>
+  resolveWorkspacePath('/packages/user-core', '../../../packages/user-core');
+
+const resolveUserCoreSourceEntry = (): string =>
+  resolveWorkspacePath('/packages/user-core/src/index.ts', '../../../packages/user-core/src/index.ts');
+
+const resolveUserCoreEntry = (): string => {
+  if (!isDockerEnv) {
+    return resolveUserCoreSourceEntry();
+  }
+
+  const dockerDistEntry = resolveDependencyEntry('./node_modules/@ops/user-core/dist/index.js');
+  if (existsSync(dockerDistEntry)) {
+    return dockerDistEntry;
+  }
+
+  return resolveUserCoreSourceEntry();
+};
 
 const resolveChatWebEntry = (): string => path.resolve(__dirname, '../shared/chat-web');
 const resolveAppRootEntry = (): string => path.resolve(__dirname, '.');
@@ -77,7 +98,7 @@ export default defineConfig({
     port: 5173,
     host: '0.0.0.0',
     fs: {
-      allow: [resolveAppRootEntry(), resolveChatWebEntry()],
+      allow: [resolveAppRootEntry(), resolveChatWebEntry(), resolveUserCoreRootEntry()],
     },
     allowedHosts: ['portal', 'ops-portal', 'host.docker.internal'],
     // Force disable cache for development
