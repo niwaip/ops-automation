@@ -123,3 +123,11 @@ apps/backend/runtime/browser-worker/.playwright-cli/page-*.yml
 
 # Backend runtime data
 apps/backend/var/
+
+# Browser E2E temporary artifacts (must not be committed)
+.tmp-*.json
+.tmp-browser-e2e-*.json
+
+# identity-access compiled artifacts in src/ (runtime uses dist/)
+apps/backend/governance/identity-access/src/**/*.js
+apps/backend/governance/identity-access/src/**/*.js.map
