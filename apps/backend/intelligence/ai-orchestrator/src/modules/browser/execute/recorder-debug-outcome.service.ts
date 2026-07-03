@@ -329,23 +329,52 @@ export class RecorderDebugOutcomeService {
   ): NonNullable<RecorderObservationDiff['regionChanges']> {
     const beforeRegions = Array.isArray(beforeObservation.regions) ? beforeObservation.regions : [];
     const afterRegions = Array.isArray(afterObservation.regions) ? afterObservation.regions : [];
+    const beforeByRegionId = new Map(
+      beforeRegions.map((region) => [region.regionId, region] as const)
+    );
+    const afterByRegionId = new Map(
+      afterRegions.map((region) => [region.regionId, region] as const)
+    );
+    const regionIds = new Set([...beforeByRegionId.keys(), ...afterByRegionId.keys()]);
     const changes: NonNullable<RecorderObservationDiff['regionChanges']> = [];
 
-    const maxLength = Math.max(beforeRegions.length, afterRegions.length);
-    for (let index = 0; index < maxLength; index += 1) {
-      const beforeRegion = beforeRegions[index] || {};
-      const afterRegion = afterRegions[index] || {};
-      const beforeText = typeof beforeRegion.text === 'string' ? beforeRegion.text : undefined;
-      const afterText = typeof afterRegion.text === 'string' ? afterRegion.text : undefined;
-      if ((beforeText || '') === (afterText || '')) {
-        continue;
+    for (const regionId of regionIds) {
+      const before = beforeByRegionId.get(regionId);
+      const after = afterByRegionId.get(regionId);
+      const beforeVisible = before?.visible ?? true;
+      const afterVisible = after?.visible ?? true;
+      const beforeText = before?.text || '';
+      const afterText = after?.text || '';
+      const beforeEntryCount = before?.entryCount;
+      const afterEntryCount = after?.entryCount;
+
+      if (beforeVisible !== afterVisible) {
+        changes.push({
+          regionId,
+          changeType: 'visibility',
+          before: beforeVisible,
+          after: afterVisible,
+        });
       }
-      changes.push({
-        regionId: this.resolveRegionId(afterRegion, index) || this.resolveRegionId(beforeRegion, index),
-        changeType: 'content',
-        before: beforeText,
-        after: afterText,
-      });
+      if (beforeText !== afterText) {
+        changes.push({
+          regionId,
+          changeType: 'content',
+          ...(beforeText ? { before: beforeText } : {}),
+          ...(afterText ? { after: afterText } : {}),
+        });
+      }
+      if (
+        (beforeEntryCount !== undefined || afterEntryCount !== undefined) &&
+        (beforeEntryCount ?? 0) !== (afterEntryCount ?? 0)
+      ) {
+        changes.push({
+          regionId,
+          changeType: 'entry-count',
+          ...(beforeEntryCount !== undefined ? { before: beforeEntryCount } : {}),
+          ...(afterEntryCount !== undefined ? { after: afterEntryCount } : {}),
+        });
+      }
     }
 
     return changes;
@@ -409,15 +438,6 @@ export class RecorderDebugOutcomeService {
       .filter((item) => item !== undefined && item !== null)
       .join('|');
     return createHash('sha1').update(raw || 'node').digest('hex').slice(0, 12);
-  }
-
-  private resolveRegionId(region: Record<string, unknown>, index: number): string {
-    const raw = [
-      typeof region.regionId === 'string' ? region.regionId : undefined,
-      typeof region.region === 'string' ? region.region : undefined,
-      typeof region.regionType === 'string' ? region.regionType : undefined,
-    ].find((item) => Boolean(item));
-    return raw || `region-${index + 1}`;
   }
 
   private isDetailOpenGoal(value: string | undefined): boolean {

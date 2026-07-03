@@ -23,7 +23,7 @@ export interface RecorderDebugObservation {
   inputs: Array<Record<string, unknown>>;
   buttons: Array<Record<string, unknown>>;
   rows?: Array<Record<string, unknown>>;
-  regions?: Array<Record<string, unknown>>;
+  regions?: RecorderObservedRegion[];
   pageSemantics?: Record<string, unknown>;
   candidates?: BrowserCommandCandidate[];
   candidateTrace?: Array<{
@@ -96,6 +96,17 @@ export interface RecorderObservedNode {
   regionId?: string;
   ordinal?: number;
   attributes?: Record<string, string | boolean | number>;
+}
+
+export interface RecorderObservedRegion {
+  regionId: string;
+  label?: string;
+  nodeRefs?: string[];
+  text?: string;
+  entryCount?: number;
+  visible?: boolean;
+  fields?: Array<Record<string, unknown>>;
+  actions?: Array<Record<string, unknown>>;
 }
 
 export interface RecorderPageFact {

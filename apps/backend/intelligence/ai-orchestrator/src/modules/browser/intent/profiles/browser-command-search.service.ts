@@ -491,7 +491,7 @@ export class BrowserCommandSearchService {
               description: `打开第${resultIndex}个搜索结果`,
             },
             explanation: `将打开第${resultIndex}个搜索结果`,
-            matchedTerm: { term: match[1] },
+            matchedTerm: { term: match[1] || '' },
             resultIndex: resultIndex,
           }),
         };

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { BrowserCommandCandidate } from '../intent';
+import type { RecorderObservedRegion } from '../execute/recorder-debug.types';
 
 interface RecorderObservationTraceEntry {
   candidateId: string;
@@ -23,7 +24,7 @@ interface RecorderObservationLike {
   inputs: Array<Record<string, unknown>>;
   buttons: Array<Record<string, unknown>>;
   rows?: Array<Record<string, unknown>>;
-  regions?: Array<Record<string, unknown>>;
+  regions?: RecorderObservedRegion[];
   pageSemantics?: Record<string, unknown>;
   candidates?: BrowserCommandCandidate[];
   candidateTrace?: RecorderObservationTraceEntry[];
@@ -236,11 +237,11 @@ export class RecorderObservationService {
     }
 
     for (const region of observation.regions || []) {
-      push(this.buildCandidate(nextCandidateId('region'), 'region', 'region', region), [
+      push(this.buildCandidate(nextCandidateId('region'), 'region', 'region', region as unknown as Record<string, unknown>), [
         'region_container',
       ]);
-      const regionName = typeof region.region === 'string' ? region.region : undefined;
-      const regionType = typeof region.regionType === 'string' ? region.regionType : undefined;
+      const regionName = region.regionId;
+      const regionType = region.label;
       const fields = Array.isArray(region.fields)
         ? region.fields.filter(
             (item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object'

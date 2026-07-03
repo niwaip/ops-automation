@@ -44,6 +44,7 @@ export interface BrowserCommandCandidate {
   entityId?: string;
   semanticPath?: string[];
   priority?: number;
+  score?: number;
   ref?: string;
   role?: string;
   elementId?: string;

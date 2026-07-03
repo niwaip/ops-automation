@@ -121,7 +121,7 @@ function buildChecks(
   if (verifier === 'fill') {
     checks.push({
       code: 'target_visible',
-      passed: input.grounding?.chosenTarget ? targetVisible : 'unknown',
+      passed: typeof targetVisible === 'boolean' ? targetVisible : 'unknown',
       message: targetVisible ? '输入目标仍可见。' : '输入目标可见性不明确。',
       weight: 1,
       evidencePath: 'grounding.chosenTarget',
