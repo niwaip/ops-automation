@@ -52,6 +52,7 @@ import {
   RecorderDebugService,
   RecorderDebugSessionFacade,
 } from './execute';
+import { RecorderHistoryCompressionService } from './execute/recorder';
 import {
   RecorderConditionalBranchService,
   RecorderLoopExportService,
@@ -120,6 +121,7 @@ import {
     RecorderScriptExportService,
     RecorderTemplateExportService,
     ExecutionReconcileService,
+    RecorderHistoryCompressionService,
   ],
   exports: [
     BrowserCommandService,

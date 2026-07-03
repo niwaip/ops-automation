@@ -409,6 +409,8 @@ export interface RecorderDebugTurn {
   exportArtifacts?: RecorderDebugExportArtifacts;
   loopDraft?: RecorderLoopDraft;
   loopState?: RecorderLoopRuntimeStateLike;
+  compressed?: boolean;
+  compressedReason?: string;
 }
 
 export interface RecorderDebugSession {

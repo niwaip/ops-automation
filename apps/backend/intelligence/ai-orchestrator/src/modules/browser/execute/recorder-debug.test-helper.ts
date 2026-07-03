@@ -56,6 +56,7 @@ import {
 } from '../observe';
 import { RecorderDebugResponseService } from './recorder-debug-response.service';
 import { RecorderDebugOutcomeService } from './recorder-debug-outcome.service';
+import { RecorderHistoryCompressionService } from './recorder';
 import {
   RecorderDebugSessionCoordinatorService,
   RecorderDebugSessionStoreService,
@@ -141,9 +142,13 @@ export const createService = (overrides?: {
       recorderObservationService
     );
   const recorderDebugOutcomeService = new RecorderDebugOutcomeService();
+  const recorderHistoryCompressionService = new RecorderHistoryCompressionService();
   const recorderDebugResponseService =
     overrides?.recorderDebugResponseService ||
-    new RecorderDebugResponseService(recorderDebugOutcomeService);
+    new RecorderDebugResponseService(
+      recorderDebugOutcomeService,
+      recorderHistoryCompressionService
+    );
   const recorderDebugChatExecutionService =
     overrides?.recorderDebugChatExecutionService
       ? Object.assign(

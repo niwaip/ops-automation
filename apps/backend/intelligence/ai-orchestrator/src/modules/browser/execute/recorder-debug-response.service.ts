@@ -4,6 +4,7 @@ import {
   RecorderLoopRuntimeStateLike,
 } from '../loop';
 import { RecorderDebugOutcomeService } from './recorder-debug-outcome.service';
+import { RecorderHistoryCompressionService } from './recorder';
 
 type RecorderDebugStatus = 'executed' | 'answer' | 'question' | 'completed';
 
@@ -20,7 +21,10 @@ type RecorderDebugSessionLike = {
 
 @Injectable()
 export class RecorderDebugResponseService {
-  constructor(private readonly recorderDebugOutcomeService: RecorderDebugOutcomeService) {}
+  constructor(
+    private readonly recorderDebugOutcomeService: RecorderDebugOutcomeService,
+    private readonly historyCompressionService: RecorderHistoryCompressionService
+  ) {}
 
   createAndRecordChatResponse(input: {
     session: RecorderDebugSessionLike;
@@ -137,7 +141,19 @@ export class RecorderDebugResponseService {
   }
 
   finalizeSession(session: RecorderDebugSessionLike, maxHistory: number): void {
-    session.history = session.history.slice(-maxHistory);
+    // v4.1 §15: compress older turns to outcome summaries instead of dropping them outright.
+    // The most recent `maxHistory` turns stay uncompressed for fresh context; older turns
+    // are reduced to {role, content, timestamp, outcome (diff + toolExecution only)}.
+    this.historyCompressionService.compressHistory(session.history, {
+      retainRecentTurnCount: maxHistory,
+    });
+    // Absolute cap to prevent unbounded growth: keep last 3x maxHistory turns (recent +
+    // compressed). Load-bearing turns (exportArtifacts / loopDraft / loopState) are
+    // preserved by compressHistory and may survive past the slice boundary.
+    const absoluteCap = Math.max(maxHistory * 3, maxHistory);
+    if (session.history.length > absoluteCap) {
+      session.history = session.history.slice(-absoluteCap);
+    }
     session.updatedAt = new Date().toISOString();
   }
 
