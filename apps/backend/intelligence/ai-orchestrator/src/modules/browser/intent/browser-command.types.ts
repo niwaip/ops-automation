@@ -13,6 +13,9 @@ export interface BrowserCommand {
     confidence?: number;
     matchedCandidateId?: string;
     resolutionMode?: string;
+    ref?: string;
+    contextLabel?: string;
+    regionId?: string;
   };
 }
 

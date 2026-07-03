@@ -443,4 +443,73 @@ describe('RecorderTemplateExportService', () => {
       })
     );
   });
+
+  it('preserves grounding metadata (ref/role/name/contextLabel/regionId) on template step locator', () => {
+    const service = new RecorderTemplateExportService({} as any, new RecorderLoopService());
+
+    const step = service.buildTemplateStepFromRecordedCommand(
+      {
+        tool: 'click',
+        params: { target: 'e42' },
+        description: '打开 gross-margin 详情',
+        locator: {
+          strategy: 'role',
+          value: 'button',
+          role: 'button',
+          name: 'gross-margin',
+          ref: 'e42',
+          contextLabel: 'margin-row-3',
+          regionId: 'gross-margin-panel',
+          generatedBy: 'system',
+        },
+      } as any,
+      'step_2'
+    );
+
+    expect(step?.locator).toEqual(
+      expect.objectContaining({
+        type: 'role',
+        value: 'button[name="gross-margin"]',
+        ref: 'e42',
+        role: 'button',
+        name: 'gross-margin',
+        contextLabel: 'margin-row-3',
+        regionId: 'gross-margin-panel',
+      })
+    );
+  });
+
+  it('preserves grounding metadata on template step locator when falling back to selector branch', () => {
+    const service = new RecorderTemplateExportService({} as any, new RecorderLoopService());
+
+    const step = service.buildTemplateStepFromRecordedCommand(
+      {
+        tool: 'click',
+        params: { selector: 'button.action-btn' },
+        description: '点击操作按钮',
+        locator: {
+          strategy: 'css',
+          value: 'button.action-btn',
+          ref: 'e99',
+          role: 'button',
+          name: 'action',
+          contextLabel: 'action-bar',
+          regionId: 'action-region',
+        },
+      } as any,
+      'step_3'
+    );
+
+    expect(step?.locator).toEqual(
+      expect.objectContaining({
+        type: 'css',
+        value: 'button.action-btn',
+        ref: 'e99',
+        role: 'button',
+        name: 'action',
+        contextLabel: 'action-bar',
+        regionId: 'action-region',
+      })
+    );
+  });
 });

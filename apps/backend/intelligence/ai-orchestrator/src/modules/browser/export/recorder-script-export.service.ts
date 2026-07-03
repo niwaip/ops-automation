@@ -106,6 +106,10 @@ export class RecorderScriptExportService {
 
     executionPlan.commands.forEach((command, index) => {
       lines.push(`  // Step ${index + 1}: ${command.description || command.tool}`);
+      const groundingComment = this.buildGroundingComment(command.locator);
+      if (groundingComment) {
+        lines.push(`  // grounding: ${groundingComment}`);
+      }
       lines.push(...this.buildPlaywrightCommandLines(command, parameters, index + 1, index));
       if (command.tool !== 'wait') {
         lines.push('  await page.waitForTimeout(DEFAULT_WAIT_MS);');
@@ -352,5 +356,28 @@ export class RecorderScriptExportService {
       return String(value);
     }
     return JSON.stringify(typeof value === 'string' ? value : '');
+  }
+
+  buildGroundingComment(locator: BrowserCommand['locator']): string {
+    if (!locator) {
+      return '';
+    }
+    const parts: string[] = [];
+    if (typeof locator.ref === 'string' && locator.ref.trim()) {
+      parts.push(`ref=${locator.ref.trim()}`);
+    }
+    if (typeof locator.role === 'string' && locator.role.trim()) {
+      parts.push(`role=${locator.role.trim()}`);
+    }
+    if (typeof locator.name === 'string' && locator.name.trim()) {
+      parts.push(`name=${locator.name.trim()}`);
+    }
+    if (typeof locator.contextLabel === 'string' && locator.contextLabel.trim()) {
+      parts.push(`context=${locator.contextLabel.trim()}`);
+    }
+    if (typeof locator.regionId === 'string' && locator.regionId.trim()) {
+      parts.push(`region=${locator.regionId.trim()}`);
+    }
+    return parts.join(', ');
   }
 }

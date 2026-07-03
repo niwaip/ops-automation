@@ -31,6 +31,25 @@ interface ObservationLike {
   links: string[];
 }
 
+interface GroundedTargetLike {
+  ref?: string;
+  role?: string;
+  name?: string;
+  text?: string;
+  contextLabel?: string;
+  regionId?: string;
+  locator?: {
+    strategy?: string;
+    value?: string;
+  };
+}
+
+interface OutcomeLike {
+  grounding?: {
+    chosenTarget?: GroundedTargetLike;
+  };
+}
+
 interface SessionLike {
   runtimeSessionId: string;
   backend: ExportBackendLike;
@@ -42,6 +61,8 @@ interface SessionLike {
     role: 'user' | 'assistant' | 'system';
     content: string;
     observation?: ObservationLike;
+    commands?: BrowserCommand[];
+    outcome?: OutcomeLike;
   }>;
   executedCommands: BrowserCommand[];
 }
@@ -143,8 +164,12 @@ export class RecorderExportAssemblyService {
 
   async buildExportArtifacts(session: SessionLike, userGoal: string): Promise<ExportArtifactsLike> {
     const exportArtifactId = randomUUID();
+    const enrichedCommands = this.enrichCommandsWithGrounding(
+      session.executedCommands,
+      session
+    );
     const sanitizedCommands = this.recorderTemplateExportService.sanitizeRecordedCommandsForExport(
-      session.executedCommands
+      enrichedCommands
     );
     const rawTemplateSteps = (await this.recorderTemplateExportService.buildTemplateStepsForExport(
       session,
@@ -183,7 +208,13 @@ export class RecorderExportAssemblyService {
       sanitizedCommands,
       session.lastObservation
     ) as SkillOutputLike[];
-    const metadata = await this.generateExportMetadata(session, userGoal, parameters, outputs);
+    const metadata = await this.generateExportMetadata(
+      session,
+      userGoal,
+      parameters,
+      outputs,
+      enrichedCommands
+    );
     const publishPayload = this.recorderExportService.buildSkillPublishPayload({
       userGoal,
       backend: session.backend,
@@ -302,15 +333,55 @@ export class RecorderExportAssemblyService {
     };
   }
 
+  private enrichCommandsWithGrounding(
+    commands: BrowserCommand[],
+    session: SessionLike
+  ): BrowserCommand[] {
+    const groundingByCommand = new Map<BrowserCommand, GroundedTargetLike>();
+    for (const turn of session.history) {
+      const chosenTarget = turn.outcome?.grounding?.chosenTarget;
+      const firstCommand = turn.commands?.[0];
+      if (!chosenTarget || !firstCommand) {
+        continue;
+      }
+      groundingByCommand.set(firstCommand, chosenTarget);
+    }
+
+    if (groundingByCommand.size === 0) {
+      return commands;
+    }
+
+    return commands.map((command) => {
+      const target = groundingByCommand.get(command);
+      if (!target) {
+        return command;
+      }
+      const existingLocator = command.locator || {};
+      const enrichedLocator = {
+        ...existingLocator,
+        ...(target.ref ? { ref: target.ref } : {}),
+        ...(target.role ? { role: target.role } : {}),
+        ...(target.name ? { name: target.name } : {}),
+        ...(target.contextLabel ? { contextLabel: target.contextLabel } : {}),
+        ...(target.regionId ? { regionId: target.regionId } : {}),
+      };
+      return {
+        ...command,
+        locator: enrichedLocator,
+      };
+    });
+  }
+
   private async generateExportMetadata(
     session: SessionLike,
     userGoal: string,
     parameters: SkillParameterLike[],
-    outputs: SkillOutputLike[]
+    outputs: SkillOutputLike[],
+    enrichedCommands: BrowserCommand[]
   ): Promise<ExportMetadataLike> {
     const fallback = this.recorderExportService.buildFallbackExportMetadata(
       userGoal,
-      this.recorderTemplateExportService.sanitizeRecordedCommandsForExport(session.executedCommands),
+      this.recorderTemplateExportService.sanitizeRecordedCommandsForExport(enrichedCommands),
       parameters
     );
     const preferredModel = this.modelService.getPreferredDefaultModel({
@@ -323,7 +394,7 @@ export class RecorderExportAssemblyService {
     }
 
     const commandSummary = this.recorderTemplateExportService
-      .sanitizeRecordedCommandsForExport(session.executedCommands)
+      .sanitizeRecordedCommandsForExport(enrichedCommands)
       .map((command, index) => ({
       step: index + 1,
       tool: command.tool,

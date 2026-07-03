@@ -52,6 +52,11 @@ interface TemplateStepArtifactLike {
   locator?: {
     type: string;
     value: string;
+    ref?: string;
+    role?: string;
+    name?: string;
+    contextLabel?: string;
+    regionId?: string;
   };
   params?: Record<string, string | number>;
   output_var?: string;
@@ -529,12 +534,12 @@ export class RecorderTemplateExportService {
   ): TemplateStepArtifactLike['locator'] | undefined {
     const targetLocator = this.toTemplateLocatorFromTarget(command.params.target);
     if (targetLocator) {
-      return targetLocator;
+      return this.withGroundingMetadata(targetLocator, command.locator);
     }
 
     const resolvedRefLocator = this.resolveTemplateLocatorFromRecordedRef(command, session);
     if (resolvedRefLocator) {
-      return resolvedRefLocator;
+      return this.withGroundingMetadata(resolvedRefLocator, command.locator);
     }
 
     if (command.locator?.strategy && command.locator.value) {
@@ -546,27 +551,68 @@ export class RecorderTemplateExportService {
 
     if (typeof command.params.selector === 'string' && command.params.selector.trim()) {
       if (this.isEphemeralRuntimeHandle(command.params.selector)) {
-        return this.toTemplateLocatorFromDescription(command.description);
+        const fromDescription = this.toTemplateLocatorFromDescription(command.description);
+        return this.withGroundingMetadata(fromDescription, command.locator);
       }
-      return {
-        type: this.inferTemplateLocatorType(command.params.selector),
-        value: command.params.selector,
-      };
+      return this.withGroundingMetadata(
+        {
+          type: this.inferTemplateLocatorType(command.params.selector),
+          value: command.params.selector,
+        },
+        command.locator
+      );
     }
 
     if (typeof command.params.text === 'string' && command.params.text.trim()) {
       if (this.isEphemeralRuntimeHandle(command.params.text)) {
-        return this.toTemplateLocatorFromDescription(command.description);
+        const fromDescription = this.toTemplateLocatorFromDescription(command.description);
+        return this.withGroundingMetadata(fromDescription, command.locator);
       }
-      return this.buildTemplateLocatorFromLabel(command.params.text, command.description);
+      const fromLabel = this.buildTemplateLocatorFromLabel(command.params.text, command.description);
+      return this.withGroundingMetadata(fromLabel, command.locator);
     }
 
     const descriptionLocator = this.toTemplateLocatorFromDescription(command.description);
     if (descriptionLocator) {
-      return descriptionLocator;
+      return this.withGroundingMetadata(descriptionLocator, command.locator);
     }
 
     return undefined;
+  }
+
+  private withGroundingMetadata(
+    locator: TemplateStepArtifactLike['locator'] | undefined,
+    sourceLocator: BrowserCommand['locator'] | undefined
+  ): TemplateStepArtifactLike['locator'] | undefined {
+    if (!locator || !sourceLocator) {
+      return locator;
+    }
+    const groundingFields: Pick<
+      NonNullable<TemplateStepArtifactLike['locator']>,
+      'ref' | 'role' | 'name' | 'contextLabel' | 'regionId'
+    > = {};
+    if (typeof sourceLocator.ref === 'string' && sourceLocator.ref.trim()) {
+      groundingFields.ref = sourceLocator.ref.trim();
+    }
+    if (typeof sourceLocator.role === 'string' && sourceLocator.role.trim()) {
+      groundingFields.role = sourceLocator.role.trim();
+    }
+    if (typeof sourceLocator.name === 'string' && sourceLocator.name.trim()) {
+      groundingFields.name = sourceLocator.name.trim();
+    }
+    if (typeof sourceLocator.contextLabel === 'string' && sourceLocator.contextLabel.trim()) {
+      groundingFields.contextLabel = sourceLocator.contextLabel.trim();
+    }
+    if (typeof sourceLocator.regionId === 'string' && sourceLocator.regionId.trim()) {
+      groundingFields.regionId = sourceLocator.regionId.trim();
+    }
+    if (Object.keys(groundingFields).length === 0) {
+      return locator;
+    }
+    return {
+      ...locator,
+      ...groundingFields,
+    };
   }
 
   matchesBranchNextAction(
@@ -864,6 +910,26 @@ export class RecorderTemplateExportService {
       return undefined;
     }
 
+    const groundingFields: Pick<
+      NonNullable<TemplateStepArtifactLike['locator']>,
+      'ref' | 'role' | 'name' | 'contextLabel' | 'regionId'
+    > = {};
+    if (typeof locator.ref === 'string' && locator.ref.trim()) {
+      groundingFields.ref = locator.ref.trim();
+    }
+    if (typeof locator.role === 'string' && locator.role.trim()) {
+      groundingFields.role = locator.role.trim();
+    }
+    if (typeof locator.name === 'string' && locator.name.trim()) {
+      groundingFields.name = locator.name.trim();
+    }
+    if (typeof locator.contextLabel === 'string' && locator.contextLabel.trim()) {
+      groundingFields.contextLabel = locator.contextLabel.trim();
+    }
+    if (typeof locator.regionId === 'string' && locator.regionId.trim()) {
+      groundingFields.regionId = locator.regionId.trim();
+    }
+
     if (
       strategy === 'role' &&
       typeof locator.role === 'string' &&
@@ -875,6 +941,7 @@ export class RecorderTemplateExportService {
       return {
         type,
         value: `${locator.role.trim()}[name="${escapedName}"]`,
+        ...groundingFields,
       };
     }
 
@@ -885,6 +952,7 @@ export class RecorderTemplateExportService {
     return {
       type,
       value,
+      ...groundingFields,
     };
   }
 
