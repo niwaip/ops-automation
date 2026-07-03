@@ -191,6 +191,7 @@ export enum StepAction {
   LIST_SEARCH_RESULTS = 'list_search_results',
   CLICK_RESULT = 'click_result',
   SWITCH_LATEST_TAB = 'switch_latest_tab',
+  CLOSE_TAB = 'close_tab',
   FOCUS_LATEST_PAGE = 'focus_latest_page',
 }
 

@@ -16,6 +16,7 @@ import {
 import { ArrowLeftOutlined, LinkOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useQuery } from 'react-query';
 import { apiClient } from '@/shared/api/http/client';
+import RecorderOutcomeDetailCard from '../components/RecorderOutcomeDetailCard';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -41,6 +42,8 @@ interface RecorderDebugObservation {
   text?: string;
   inputs: Array<Record<string, unknown>>;
   buttons: Array<Record<string, unknown>>;
+  rows?: Array<Record<string, unknown>>;
+  regions?: Array<Record<string, unknown>>;
   headings: string[];
   links: string[];
   suggestedParameters: Array<{
@@ -50,6 +53,17 @@ interface RecorderDebugObservation {
     reason: string;
   }>;
   snapshotPath?: string;
+  snapshotId?: string;
+  snapshotVersion?: number;
+  snapshotContentHash?: string;
+  observationFingerprint?: string;
+  reuseEligibility?: 'fresh' | 'stale' | 'reobserve-required';
+  staleReason?: string;
+  capturedAt?: string;
+  page?: Record<string, unknown>;
+  textState?: Record<string, unknown>;
+  interactiveState?: Record<string, unknown>;
+  facts?: Array<Record<string, unknown>>;
 }
 
 interface BrowserExecuteResponse {
@@ -155,9 +169,60 @@ interface RecorderDebugTurn {
   commands?: MCPCommand[];
   execution?: BrowserExecuteResponse;
   observation?: RecorderDebugObservation;
+  outcomeVersion?: 'v1';
+  outcome?: RecorderOutcome;
   exportArtifacts?: RecorderDebugExportArtifacts;
   loopDraft?: RecorderLoopDraft;
   loopState?: RecorderLoopState;
+}
+
+type RecorderOutcomeKind = 'action' | 'answer' | 'question';
+type RecorderOutcomeStatus = 'succeeded' | 'partial' | 'blocked' | 'failed' | 'unknown';
+
+interface RecorderVerificationCheck {
+  code: string;
+  passed: boolean | 'partial' | 'unknown';
+  message: string;
+  required?: boolean;
+  weight?: number;
+  evidencePath?: string;
+}
+
+interface RecorderVerification {
+  verifier: string;
+  routeReason: 'actionType' | 'goal-pattern' | 'command-family' | 'fallback';
+  level: 'tool' | 'page' | 'goal';
+  success: boolean | 'partial' | 'unknown';
+  confidence: number;
+  checks: RecorderVerificationCheck[];
+  failureReason?: string;
+}
+
+interface RecorderOutcome {
+  kind: RecorderOutcomeKind;
+  status: RecorderOutcomeStatus;
+  intent?: Record<string, unknown>;
+  evidence?: {
+    before?: RecorderDebugObservation;
+    after?: RecorderDebugObservation;
+    diff?: Record<string, unknown>;
+    toolExecution?: Record<string, unknown>;
+  };
+  grounding?: Record<string, unknown>;
+  verification: RecorderVerification;
+  summary: {
+    userVisible: string;
+    compact: string;
+    nextHint?: string;
+  };
+  artifacts?: {
+    snapshotIdBefore?: string;
+    snapshotIdAfter?: string;
+    snapshotPathBefore?: string;
+    snapshotPathAfter?: string;
+    screenshotBefore?: string;
+    screenshotAfter?: string;
+  };
 }
 
 interface RecorderDebugSession {
@@ -240,6 +305,20 @@ const ObservationSummaryCard: React.FC<{
       <Descriptions size="small" column={1} bordered>
         <Descriptions.Item label="页面 URL">{observation.currentPageUrl || '-'}</Descriptions.Item>
         <Descriptions.Item label="页面标题">{observation.title || '-'}</Descriptions.Item>
+        <Descriptions.Item label="Snapshot ID">{observation.snapshotId || '-'}</Descriptions.Item>
+        <Descriptions.Item label="Snapshot Version">
+          {observation.snapshotVersion ?? '-'}
+        </Descriptions.Item>
+        <Descriptions.Item label="Snapshot Hash">
+          {observation.snapshotContentHash || '-'}
+        </Descriptions.Item>
+        <Descriptions.Item label="可复用状态">
+          {observation.reuseEligibility || '-'}
+        </Descriptions.Item>
+        <Descriptions.Item label="失效原因">{observation.staleReason || '-'}</Descriptions.Item>
+        <Descriptions.Item label="采样时间">
+          {formatTimestamp(observation.capturedAt)}
+        </Descriptions.Item>
         <Descriptions.Item label="快照路径">{observation.snapshotPath || '-'}</Descriptions.Item>
       </Descriptions>
       {observation.suggestedParameters.length > 0 ? (
@@ -323,6 +402,9 @@ const RecorderDebugDetailPage: React.FC = () => {
   );
 
   const session = sessionQuery.data;
+  const latestAssistantOutcomeTurn = [...(session?.history || [])]
+    .reverse()
+    .find((turn) => turn.role === 'assistant' && turn.outcome);
 
   if (sessionQuery.isLoading) {
     return (
@@ -418,6 +500,19 @@ const RecorderDebugDetailPage: React.FC = () => {
         <ObservationSummaryCard title="最近页面观察" observation={session.lastObservation} />
       ) : null}
 
+      {latestAssistantOutcomeTurn?.outcome ? (
+        <RecorderOutcomeDetailCard
+          title="最近 Outcome"
+          outcome={latestAssistantOutcomeTurn.outcome}
+          raw={{
+            reply: latestAssistantOutcomeTurn.content,
+            observation: latestAssistantOutcomeTurn.observation,
+            execution: latestAssistantOutcomeTurn.execution,
+            commands: latestAssistantOutcomeTurn.commands,
+          }}
+        />
+      ) : null}
+
       <Card title="循环录制草稿">
         {session.loopDraft ? (
           <Space direction="vertical" size="middle" style={{ width: '100%' }}>
@@ -479,6 +574,25 @@ const RecorderDebugDetailPage: React.FC = () => {
                   key: `observation-${index}`,
                   label: '页面观察',
                   children: <CodeBlock value={turn.observation} />,
+                });
+              }
+
+              if (turn.outcome) {
+                collapseItems.push({
+                  key: `outcome-${index}`,
+                  label: 'Outcome / Verification',
+                  children: (
+                    <RecorderOutcomeDetailCard
+                      title="Turn Outcome"
+                      outcome={turn.outcome}
+                      raw={{
+                        reply: turn.content,
+                        observation: turn.observation,
+                        execution: turn.execution,
+                        commands: turn.commands,
+                      }}
+                    />
+                  ),
                 });
               }
 

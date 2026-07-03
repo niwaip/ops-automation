@@ -309,6 +309,8 @@ export class ChromeDevtoolsCliAdapter implements BrowserExecutionAdapter {
       case 'switch_latest_tab':
       case 'focus_latest_page':
         return this.handleSwitchLatestTab(sessionId);
+      case 'close_tab':
+        return this.handleCloseTab(sessionId);
       default:
         throw new Error(`Unsupported Chrome DevTools CLI action: ${action}`);
     }
@@ -370,6 +372,22 @@ export class ChromeDevtoolsCliAdapter implements BrowserExecutionAdapter {
       stdout: result.stdout,
       stderr: result.stderr,
       data: { uid, value },
+    };
+  }
+
+  private async handleCloseTab(sessionId: string): Promise<DevtoolsActionResult> {
+    await this.ensurePageSelected(sessionId);
+    const result = await this.execCli(sessionId, ['close-tab']);
+    const session = this.getOrCreateSession(sessionId);
+    // Force target refresh on next action
+    session.currentPageIndex = -1;
+
+    return {
+      status: 'success',
+      command: 'close_tab',
+      stdout: result.stdout,
+      stderr: result.stderr,
+      data: { closed: true },
     };
   }
 

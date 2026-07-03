@@ -106,6 +106,21 @@ export class CodegenScriptParserService {
       );
     }
 
+    const pageCloseMatch = line.match(
+      new RegExp(`^await\\s+${this.escapeForRegex(pageAlias)}\\.close\\(\\);?$`)
+    );
+    if (pageCloseMatch) {
+      return this.buildStep(
+        index,
+        'close_tab',
+        {
+          params: {},
+          scriptFragment: line,
+        },
+        context
+      );
+    }
+
     const pageClickMatch = line.match(
       new RegExp(
         `^await\\s+${this.escapeForRegex(pageAlias)}\\.click\\((['"])([\\s\\S]*?)\\1\\);?$`

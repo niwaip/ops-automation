@@ -178,6 +178,12 @@ export class RecorderScriptExportService {
           '  page = context.pages().at(-1) || page;',
           '  await page.bringToFront().catch(() => {});',
         ];
+      case 'close_tab':
+        return [
+          '  await page.close().catch(() => {});',
+          '  page = context.pages().at(-1) || page;',
+          '  if (page) await page.bringToFront().catch(() => {});',
+        ];
       case 'click':
         if (command.locator) {
           return [

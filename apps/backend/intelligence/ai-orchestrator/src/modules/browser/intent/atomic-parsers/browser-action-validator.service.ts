@@ -29,6 +29,7 @@ const SAFE_TOOLS = new Set([
 const CAUTION_TOOLS = new Set([
   'navigate',
   'switch_latest_tab',
+  'close_tab',
   'click',
   'fill',
   'type_text',

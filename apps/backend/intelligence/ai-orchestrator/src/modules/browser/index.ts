@@ -15,6 +15,7 @@ export {
   RecorderDebugChatFlowService,
   RecorderDebugChatSupportService,
   RecorderDebugExecutionService,
+  RecorderDebugOutcomeService,
   RecorderDebugResponseService,
   RecorderDebugService,
 } from './recorder';

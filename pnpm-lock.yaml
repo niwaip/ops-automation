@@ -1504,8 +1504,6 @@ importers:
 
   packages/backend-contracts/runtime-capability-contract: {}
 
-  packages/contracts: {}
-
   packages/user-core:
     dependencies:
       '@ops/backend-ai-chat-protocol':

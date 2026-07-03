@@ -42,6 +42,219 @@ export interface RecorderDebugObservation {
     reason: string;
   }>;
   snapshotPath?: string;
+  observationVersion?: 'v1';
+  snapshotId?: string;
+  snapshotVersion?: number;
+  snapshotContentHash?: string;
+  observationFingerprint?: string;
+  reuseEligibility?: 'fresh' | 'stale' | 'reobserve-required';
+  staleReason?: string;
+  capturedAt?: string;
+  page?: RecorderObservationPageState;
+  textState?: RecorderObservationTextState;
+  interactiveState?: RecorderObservationInteractiveState;
+  facts?: RecorderPageFact[];
+}
+
+export interface RecorderObservationPageState {
+  url?: string;
+  title?: string;
+  snapshotId?: string;
+  snapshotVersion?: number;
+  snapshotContentHash?: string;
+  observationFingerprint?: string;
+  snapshotPath?: string;
+  capturedAt?: string;
+  reuseEligibility?: 'fresh' | 'stale' | 'reobserve-required';
+  staleReason?: string;
+}
+
+export interface RecorderObservationTextState {
+  visibleText?: string;
+  salientTexts?: string[];
+  headings?: string[];
+  links?: string[];
+}
+
+export interface RecorderObservationInteractiveState {
+  inputs: RecorderObservedNode[];
+  buttons: RecorderObservedNode[];
+  candidates?: RecorderObservedNode[];
+}
+
+export interface RecorderObservedNode {
+  ref?: string;
+  diffKey?: string;
+  role?: string;
+  name?: string;
+  text?: string;
+  contextLabel?: string;
+  selected?: boolean;
+  disabled?: boolean;
+  visible?: boolean;
+  value?: string;
+  regionId?: string;
+  ordinal?: number;
+  attributes?: Record<string, string | boolean | number>;
+}
+
+export interface RecorderPageFact {
+  type: string;
+  value?: string | number | boolean;
+  confidence?: number;
+  source?: 'structure' | 'text' | 'visual';
+}
+
+export interface RecorderNodeStateChange {
+  diffKey: string;
+  refBefore?: string;
+  refAfter?: string;
+  fieldsChanged: Array<'selected' | 'disabled' | 'value' | 'visible' | 'text'>;
+  before?: Partial<RecorderObservedNode>;
+  after?: Partial<RecorderObservedNode>;
+}
+
+export interface RecorderTextChange {
+  key: string;
+  before?: string;
+  after?: string;
+}
+
+export interface RecorderRegionStateChange {
+  regionId: string;
+  changeType: 'content' | 'visibility' | 'entry-count';
+  before?: string | number | boolean;
+  after?: string | number | boolean;
+}
+
+export interface RecorderObservationDiff {
+  urlChanged?: boolean;
+  titleChanged?: boolean;
+  interactiveNodeChanges?: RecorderNodeStateChange[];
+  salientTextChanges?: RecorderTextChange[];
+  regionChanges?: RecorderRegionStateChange[];
+}
+
+export interface RecorderGroundedTarget {
+  ref?: string;
+  role?: string;
+  name?: string;
+  text?: string;
+  contextLabel?: string;
+  locator?: {
+    strategy?: string;
+    value?: string;
+  };
+  regionId?: string;
+  confidence?: number;
+}
+
+export type RecorderTargetResolution =
+  | 'snapshot-ref'
+  | 'semantic-match'
+  | 'relative-position'
+  | 'vision-region'
+  | 'manual';
+
+export interface RecorderGrounding {
+  targetCandidates?: RecorderGroundedTarget[];
+  chosenTarget?: RecorderGroundedTarget;
+  targetResolution?: RecorderTargetResolution;
+}
+
+export interface RecorderIntent {
+  intentId?: string;
+  parentIntentId?: string;
+  taskSessionId?: string;
+  userGoal: string;
+  normalizedGoal?: string;
+  actionType?: 'observe' | 'navigate' | 'click' | 'fill' | 'select' | 'extract' | 'loop' | 'export';
+  targetHint?: string;
+}
+
+export interface RecorderBrowserExecutionSummary {
+  success: boolean;
+  message?: string;
+  commandCount: number;
+  executedCommandCount: number;
+  commands?: BrowserCommand[];
+  results?: Array<Record<string, any>>;
+}
+
+export interface RecorderEvidence {
+  before?: RecorderDebugObservation;
+  after?: RecorderDebugObservation;
+  diff?: RecorderObservationDiff;
+  toolExecution?: RecorderBrowserExecutionSummary;
+}
+
+export type RecorderVerifierType =
+  | 'click'
+  | 'fill'
+  | 'navigate'
+  | 'select'
+  | 'detail-open'
+  | 'form-submit'
+  | 'observation-answer';
+
+export interface RecorderVerificationCheck {
+  code:
+    | 'tool_command_succeeded'
+    | 'url_changed'
+    | 'node_state_changed'
+    | 'target_visible'
+    | 'target_selected'
+    | 'detail_panel_changed'
+    | 'input_value_written'
+    | 'list_count_changed'
+    | 'blocking_overlay_detected'
+    | 'confirmation_required'
+    | 'intent_alignment';
+  passed: boolean | 'partial' | 'unknown';
+  message: string;
+  required?: boolean;
+  weight?: number;
+  evidencePath?: string;
+}
+
+export interface RecorderVerification {
+  verifier: RecorderVerifierType;
+  routeReason: 'actionType' | 'goal-pattern' | 'command-family' | 'fallback';
+  level: 'tool' | 'page' | 'goal';
+  success: boolean | 'partial' | 'unknown';
+  confidence: number;
+  checks: RecorderVerificationCheck[];
+  failureReason?: string;
+}
+
+export interface RecorderSummary {
+  userVisible: string;
+  compact: string;
+  nextHint?: string;
+}
+
+export interface RecorderArtifacts {
+  snapshotIdBefore?: string;
+  snapshotIdAfter?: string;
+  snapshotPathBefore?: string;
+  snapshotPathAfter?: string;
+  screenshotBefore?: string;
+  screenshotAfter?: string;
+}
+
+export type RecorderOutcomeKind = 'action' | 'answer' | 'question';
+
+export type RecorderOutcomeStatus = 'succeeded' | 'partial' | 'blocked' | 'failed' | 'unknown';
+
+export interface RecorderOutcome {
+  kind: RecorderOutcomeKind;
+  status: RecorderOutcomeStatus;
+  intent: RecorderIntent;
+  evidence: RecorderEvidence;
+  grounding?: RecorderGrounding;
+  verification: RecorderVerification;
+  summary: RecorderSummary;
+  artifacts?: RecorderArtifacts;
 }
 
 export interface RecorderDebugPendingDisambiguationCandidate {
@@ -179,6 +392,8 @@ export interface RecorderDebugTurn {
   commands?: BrowserCommand[];
   execution?: BrowserExecuteResponse;
   observation?: RecorderDebugObservation;
+  outcomeVersion?: 'v1';
+  outcome?: RecorderOutcome;
   exportArtifacts?: RecorderDebugExportArtifacts;
   loopDraft?: RecorderLoopDraft;
   loopState?: RecorderLoopRuntimeStateLike;
@@ -221,6 +436,8 @@ export interface RecorderDebugChatResponse {
   observation?: RecorderDebugObservation;
   commands?: BrowserCommand[];
   execution?: BrowserExecuteResponse;
+  outcomeVersion?: 'v1';
+  outcome?: RecorderOutcome;
   exportArtifacts?: RecorderDebugExportArtifacts;
   loopDraft?: RecorderLoopDraft;
   loopState?: RecorderLoopRuntimeStateLike;

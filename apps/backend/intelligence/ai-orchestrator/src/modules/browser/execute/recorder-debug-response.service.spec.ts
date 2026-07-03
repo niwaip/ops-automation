@@ -7,10 +7,11 @@ jest.mock(
 );
 
 import { RecorderDebugResponseService } from './recorder-debug-response.service';
+import { RecorderDebugOutcomeService } from './recorder-debug-outcome.service';
 
 describe('RecorderDebugResponseService', () => {
   it('createAndRecordChatResponse should append assistant turn while returning chat response', () => {
-    const service = new RecorderDebugResponseService();
+    const service = new RecorderDebugResponseService(new RecorderDebugOutcomeService());
     const session: any = {
       sessionId: 'session-1',
       runtimeSessionId: 'runtime-1',
@@ -50,6 +51,10 @@ describe('RecorderDebugResponseService', () => {
         reply: '已执行完成',
         status: 'executed',
         browserReady: true,
+        outcomeVersion: 'v1',
+        outcome: expect.objectContaining({
+          kind: 'action',
+        }),
         loopDraft: expect.objectContaining({
           target: expect.objectContaining({ scope: 'current_list' }),
         }),
@@ -65,6 +70,10 @@ describe('RecorderDebugResponseService', () => {
       expect.objectContaining({
         role: 'assistant',
         content: '已执行完成',
+        outcomeVersion: 'v1',
+        outcome: expect.objectContaining({
+          kind: 'action',
+        }),
         commands: [{ tool: 'click', params: { text: '登录' } }],
         loopDraft: expect.objectContaining({
           target: expect.objectContaining({ scope: 'current_list' }),
@@ -79,7 +88,7 @@ describe('RecorderDebugResponseService', () => {
   });
 
   it('createAndRecordChatResponse should preserve candidate-first locator metadata in commands', () => {
-    const service = new RecorderDebugResponseService();
+    const service = new RecorderDebugResponseService(new RecorderDebugOutcomeService());
     const session: any = {
       sessionId: 'session-2',
       runtimeSessionId: 'runtime-2',
@@ -125,7 +134,7 @@ describe('RecorderDebugResponseService', () => {
   });
 
   it('createAndRecordChatResponse should expose existing loop capture state even without new control tokens', () => {
-    const service = new RecorderDebugResponseService();
+    const service = new RecorderDebugResponseService(new RecorderDebugOutcomeService());
     const session: any = {
       sessionId: 'session-3',
       runtimeSessionId: 'runtime-3',
@@ -164,6 +173,11 @@ describe('RecorderDebugResponseService', () => {
         hasLoopStart: false,
         hasLoopEnd: false,
         isLoopCaptureActive: false,
+      })
+    );
+    expect(response.outcome).toEqual(
+      expect.objectContaining({
+        kind: 'answer',
       })
     );
   });

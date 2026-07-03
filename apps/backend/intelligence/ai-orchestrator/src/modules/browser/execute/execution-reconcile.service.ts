@@ -407,6 +407,12 @@ export class ExecutionReconcileService {
           params: {},
           description,
         };
+      case 'close_tab':
+        return {
+          tool: 'close_tab',
+          params: {},
+          description,
+        };
       case 'type_text':
         if (typeof params.text !== 'string') {
           return null;

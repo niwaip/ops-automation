@@ -485,6 +485,9 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
         case 'focus_latest_page':
           result = await this.handleSwitchLatestTab(sessionId);
           break;
+        case 'close_tab':
+          result = await this.handleCloseTab(sessionId);
+          break;
         default:
           throw new Error(`Unsupported Playwright CLI action: ${action}`);
       }
@@ -1231,7 +1234,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     try {
       fillResult = await this.execCli(sessionId, [
         'run-code',
-        this.buildSearchScript(query, false),
+        this.buildSearchScript(sessionId, query, false),
       ]);
       this.assertNoCliError(fillResult, 'Search input detection failed');
     } catch (error: unknown) {
@@ -1258,7 +1261,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
 
     let fillResult: CliExecResult;
     try {
-      fillResult = await this.execCli(sessionId, ['run-code', this.buildSearchScript(query, true)]);
+      fillResult = await this.execCli(sessionId, ['run-code', this.buildSearchScript(sessionId, query, true)]);
       this.assertNoCliError(fillResult, 'Smart search input detection failed');
     } catch (error: unknown) {
       const message =
@@ -1302,7 +1305,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     const limit = this.readOptionalNumberParam(params, ['limit', 'max']) ?? 8;
     const result = await this.execCli(sessionId, [
       'run-code',
-      this.buildListSearchResultsScript(limit),
+      this.buildListSearchResultsScript(sessionId, limit),
     ]);
     this.assertNoCliError(result, 'List search results failed');
     const meta = this.parseJsonStdout<{
@@ -1343,13 +1346,18 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     };
   }
 
-  private buildSearchScript(query: string, allowLooseFallback: boolean): string {
+  private buildSearchScript(sessionId: string, query: string, allowLooseFallback: boolean): string {
     const minScore = allowLooseFallback ? 25 : 60;
     const errorMessage = allowLooseFallback
       ? 'No searchable input found on current page'
       : 'No explicit search entry found on current page';
+    const session = this.getOrCreateSession(sessionId);
+    const activePageExpr = session.preferLatestTab
+      ? '(page.context().pages().length ? page.context().pages()[page.context().pages().length - 1] : page)'
+      : 'page';
     return `async page => {
-      return await page.evaluate(({ query, minScore, errorMessage, allowLooseFallback }) => {
+      const activePage = ${activePageExpr};
+      return await activePage.evaluate(({ query, minScore, errorMessage, allowLooseFallback }) => {
         const isVisible = element => {
           if (!(element instanceof HTMLElement)) {
             return false;
@@ -1648,7 +1656,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
       await this.handleListSearchResults(sessionId, { limit: Math.max(index, 8) });
     }
 
-    const script = this.buildClickSearchResultScript(index);
+    const script = this.buildClickSearchResultScript(sessionId, index);
 
     const result = await this.execCli(sessionId, ['run-code', script]);
     this.assertNoCliError(result, 'Click search result failed');
@@ -1681,15 +1689,20 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     };
   }
 
-  private buildListSearchResultsScript(limit: number): string {
+  private buildListSearchResultsScript(sessionId: string, limit: number): string {
+    const session = this.getOrCreateSession(sessionId);
+    const activePageExpr = session.preferLatestTab
+      ? '(page.context().pages().length ? page.context().pages()[page.context().pages().length - 1] : page)'
+      : 'page';
     const normalizedLimit = Math.max(1, Math.min(limit, 20));
     return `async page => {
+      const activePage = ${activePageExpr};
       const settleTimeout = ${this.cliPageSettleTimeoutMs};
-      await page.waitForLoadState('domcontentloaded', { timeout: settleTimeout }).catch(() => {});
-      await page.waitForLoadState('networkidle', { timeout: settleTimeout }).catch(() => {});
-      await page.waitForTimeout(500).catch(() => {});
+      await activePage.waitForLoadState('domcontentloaded', { timeout: settleTimeout }).catch(() => {});
+      await activePage.waitForLoadState('networkidle', { timeout: settleTimeout }).catch(() => {});
+      await activePage.waitForTimeout(500).catch(() => {});
 
-      return await page.evaluate(({ limit }) => {
+      return await activePage.evaluate(({ limit }) => {
         const FLAG_ATTR = 'data-ops-search-result-rank';
         document.querySelectorAll(\`[\${FLAG_ATTR}]\`).forEach((node) => {
           node.removeAttribute(FLAG_ATTR);
@@ -1790,17 +1803,22 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     }`;
   }
 
-  private buildClickSearchResultScript(index: number): string {
+  private buildClickSearchResultScript(sessionId: string, index: number): string {
+    const session = this.getOrCreateSession(sessionId);
+    const activePageExpr = session.preferLatestTab
+      ? '(page.context().pages().length ? page.context().pages()[page.context().pages().length - 1] : page)'
+      : 'page';
     const normalizedIndex = Math.max(index, 1);
     return `async page => {
+      const activePage = ${activePageExpr};
       const settleTimeout = ${this.cliPageSettleTimeoutMs};
-      await page.waitForLoadState('domcontentloaded', { timeout: settleTimeout }).catch(() => {});
-      const originalUrl = await page.url();
-      const originalTitle = await page.title().catch(() => '');
-      await page.waitForLoadState('networkidle', { timeout: settleTimeout }).catch(() => {});
-      await page.waitForTimeout(300).catch(() => {});
+      await activePage.waitForLoadState('domcontentloaded', { timeout: settleTimeout }).catch(() => {});
+      const originalUrl = await activePage.url();
+      const originalTitle = await activePage.title().catch(() => '');
+      await activePage.waitForLoadState('networkidle', { timeout: settleTimeout }).catch(() => {});
+      await activePage.waitForTimeout(300).catch(() => {});
 
-      let selected = await page.evaluate(({ targetIndex }) => {
+      let selected = await activePage.evaluate(({ targetIndex }) => {
         const target = document.querySelector(\`[data-ops-search-result-rank="\${targetIndex}"]\`);
         if (!(target instanceof HTMLAnchorElement)) {
           return null;
@@ -1813,7 +1831,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
       }, { targetIndex: ${normalizedIndex} });
 
       if (!selected) {
-        selected = JSON.parse(await page.evaluate(${JSON.stringify(`({ targetIndex }) => {
+        selected = JSON.parse(await activePage.evaluate(${JSON.stringify(`({ targetIndex }) => {
           const FLAG_ATTR = 'data-ops-search-result-rank';
           document.querySelectorAll(\`[\${FLAG_ATTR}]\`).forEach((node) => {
             node.removeAttribute(FLAG_ATTR);
@@ -1869,10 +1887,12 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
         }`)})( { targetIndex: ${normalizedIndex} } ));
       }
 
-      const target = page.locator('[data-ops-search-result-rank="${normalizedIndex}"]').first();
-      const popupPromise = page.context().waitForEvent('page', { timeout: 3000 }).catch(() => null);
+      // Use activePage (which may be the latest tab) as the locator target
+      const target = activePage.locator('[data-ops-search-result-rank="${normalizedIndex}"]').first();
+      const pageCountBefore = page.context().pages().length;
+      const popupPromise = page.context().waitForEvent('page', { timeout: 5000 }).catch(() => null);
       await target.scrollIntoViewIfNeeded().catch(() => {});
-      await page.waitForTimeout(200).catch(() => {});
+      await activePage.waitForTimeout(200).catch(() => {});
       await target.click({ force: true });
       const popup = await popupPromise;
       if (popup) {
@@ -1890,17 +1910,37 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
         });
       }
 
-      await page.waitForLoadState('domcontentloaded', { timeout: settleTimeout }).catch(() => {});
-      await page.waitForTimeout(500).catch(() => {});
-      await page.evaluate(() => { window.focus(); }).catch(() => {});
-      await page.waitForTimeout(300).catch(() => {});
-      await page.bringToFront().catch(() => {});
+      // Wait for any in-page or new-tab navigation to settle
+      await activePage.waitForLoadState('domcontentloaded', { timeout: settleTimeout }).catch(() => {});
+      await activePage.waitForTimeout(500).catch(() => {});
+      await activePage.evaluate(() => { window.focus(); }).catch(() => {});
+      await activePage.waitForTimeout(300).catch(() => {});
+      await activePage.bringToFront().catch(() => {});
 
-      const landedUrl = await page.url();
-      const title = await page.title().catch(() => '');
+      const landedUrl = await activePage.url();
+      const title = await activePage.title().catch(() => '');
       const navigationConfirmed = landedUrl !== originalUrl || title !== originalTitle;
 
+      // Even if the current page URL did not change, a new tab may have been opened
+      // without firing the 'page' popup event (e.g. Baidu search results use window.open
+      // with a short delay, or the click triggered a context-level navigation).
       if (!navigationConfirmed) {
+        const allPages = page.context().pages();
+        if (allPages.length > pageCountBefore) {
+          // A new tab was opened without a popup event — switch to it
+          const newTab = allPages[allPages.length - 1];
+          await newTab.waitForLoadState('domcontentloaded', { timeout: settleTimeout }).catch(() => {});
+          await newTab.bringToFront().catch(() => {});
+          return JSON.stringify({
+            openedNewPage: true,
+            landedUrl: await newTab.url(),
+            title: await newTab.title().catch(() => ''),
+            pageCount: allPages.length,
+            ...selected,
+            navigationConfirmed: true,
+          });
+        }
+        // Truly no navigation occurred
         throw new Error(\`Click did not navigate away from current page; host=\${selected.host}; target=\${selected.selectedText}; href=\${selected.selectedHref}\`);
       }
 
@@ -1958,6 +1998,61 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
       stdout: result.stdout,
       stderr: result.stderr,
       data: switchMeta || { switched: true },
+    };
+  }
+
+  private async handleCloseTab(sessionId: string): Promise<CliActionResult> {
+    await this.ensureSessionReady(sessionId);
+    const session = this.getOrCreateSession(sessionId);
+    const activePageExpr = session.preferLatestTab
+      ? '(page.context().pages().length ? page.context().pages()[page.context().pages().length - 1] : page)'
+      : 'page';
+
+    const script = `async page => {
+      const pages = page.context().pages();
+      if (!pages.length) {
+        throw new Error('No pages found in current browser context');
+      }
+
+      const activePage = ${activePageExpr};
+      if (!activePage.isClosed()) {
+        await activePage.close().catch(() => {});
+      }
+      
+      const remainingPages = page.context().pages();
+      const latestPage = remainingPages.length > 0 ? remainingPages[remainingPages.length - 1] : null;
+      if (latestPage) {
+        await latestPage.bringToFront().catch(() => {});
+      }
+
+      return JSON.stringify({
+        pageCount: remainingPages.length,
+        closed: true,
+        landedUrl: latestPage ? latestPage.url() : '',
+        title: latestPage ? await latestPage.title().catch(() => '') : '',
+      });
+    }`;
+
+    const result = await this.execCli(sessionId, ['run-code', script]);
+    this.assertNoCliError(result, 'Close tab failed');
+    const closeMeta = this.parseJsonStdout<{
+      pageCount?: number;
+      closed?: boolean;
+      landedUrl?: string;
+      title?: string;
+    }>(result.stdout);
+
+    if (typeof closeMeta?.landedUrl === 'string' && closeMeta.landedUrl.trim()) {
+      session.lastUrl = closeMeta.landedUrl.trim();
+    }
+    session.preferLatestTab = true;
+
+    return {
+      status: 'success',
+      command: 'close_tab',
+      stdout: result.stdout,
+      stderr: result.stderr,
+      data: closeMeta || { closed: true },
     };
   }
 

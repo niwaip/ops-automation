@@ -368,7 +368,7 @@ export class BrowserCommandSearchService {
 
   private extractQueryAndRemaining(rawRest: string): { query: string; remaining: string } | null {
     const match = rawRest.match(
-      /^(.+?)(?=\s*(?:并|然后|再|后|接着)?\s*(?:点击|选择|click)\s*(?:第?[一二三四五六七八九十\d]+|first|second|third|fourth|fifth)\s*(?:个?结果|条?结果|搜索结果|result)?$|$)/i
+      /^(.+?)(?=\s*(?:并|然后|再|后|接着)?\s*(?:点击|选择|打开|click|open)\s*(?:第?[一二三四五六七八九十\d]+|first|second|third|fourth|fifth)\s*(?:个?结果|条?结果|搜索结果|检索结果|result)?$|$)/i
     );
     if (!match?.[1]) {
       return null;
@@ -401,7 +401,7 @@ export class BrowserCommandSearchService {
   private parseClickResult(input: string, profile: SearchProfile): ClickResultMatch | null {
     for (const entry of this.sortTerms(profile.clickResultTerms)) {
       const pattern = new RegExp(
-        `^${this.escapeRegex(entry.term)}\\s*(第?[一二三四五六七八九十\\d]+|first|second|third|fourth|fifth)\\s*(?:个?结果|条?结果|搜索结果|result)?$`,
+        `^${this.escapeRegex(entry.term)}\\s*(第?[一二三四五六七八九十\\d]+|first|second|third|fourth|fifth)\\s*(?:个?结果|条?结果|搜索结果|检索结果|result)?$`,
         'i'
       );
       const match = input.match(pattern);

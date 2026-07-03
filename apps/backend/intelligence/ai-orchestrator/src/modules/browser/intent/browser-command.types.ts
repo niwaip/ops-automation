@@ -86,6 +86,7 @@ export type BrowserPlanAction =
   | 'list_search_results'
   | 'click_result'
   | 'switch_latest_tab'
+  | 'close_tab'
   | 'fill'
   | 'screenshot'
   | 'snapshot'

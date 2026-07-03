@@ -123,6 +123,59 @@ interface RecorderDebugObservation {
     reason: string;
   }>;
   snapshotPath?: string;
+  snapshotId?: string;
+  snapshotVersion?: number;
+  snapshotContentHash?: string;
+  reuseEligibility?: 'fresh' | 'stale' | 'reobserve-required';
+  staleReason?: string;
+}
+
+type RecorderOutcomeKind = 'action' | 'answer' | 'question';
+type RecorderOutcomeStatus = 'succeeded' | 'partial' | 'blocked' | 'failed' | 'unknown';
+
+interface RecorderVerificationCheck {
+  code: string;
+  passed: boolean | 'partial' | 'unknown';
+  message: string;
+  required?: boolean;
+  weight?: number;
+  evidencePath?: string;
+}
+
+interface RecorderVerification {
+  verifier: string;
+  routeReason: 'actionType' | 'goal-pattern' | 'command-family' | 'fallback';
+  level: 'tool' | 'page' | 'goal';
+  success: boolean | 'partial' | 'unknown';
+  confidence: number;
+  checks: RecorderVerificationCheck[];
+  failureReason?: string;
+}
+
+interface RecorderOutcome {
+  kind: RecorderOutcomeKind;
+  status: RecorderOutcomeStatus;
+  summary: {
+    userVisible: string;
+    compact: string;
+    nextHint?: string;
+  };
+  verification: RecorderVerification;
+  evidence?: {
+    before?: RecorderDebugObservation;
+    after?: RecorderDebugObservation;
+    diff?: Record<string, unknown>;
+    toolExecution?: Record<string, unknown>;
+  };
+  grounding?: Record<string, unknown>;
+  artifacts?: {
+    snapshotIdBefore?: string;
+    snapshotIdAfter?: string;
+    snapshotPathBefore?: string;
+    snapshotPathAfter?: string;
+    screenshotBefore?: string;
+    screenshotAfter?: string;
+  };
 }
 
 type LoopScope = 'current_list' | 'current_table' | 'current_cards';
@@ -265,6 +318,8 @@ interface RecorderDebugChatResponse {
   exportArtifacts?: RecorderDebugExportArtifacts;
   loopDraft?: RecorderLoopDraft;
   loopState?: RecorderLoopState;
+  outcomeVersion?: 'v1';
+  outcome?: RecorderOutcome;
 }
 
 interface TemplateInfo {
@@ -340,6 +395,8 @@ interface CommandHistoryResult {
   exportArtifacts?: RecorderDebugExportArtifacts;
   loopDraft?: RecorderLoopDraft;
   loopState?: RecorderLoopState;
+  outcomeVersion?: 'v1';
+  outcome?: RecorderOutcome;
 }
 
 // Command history entry
@@ -359,6 +416,23 @@ interface CommandHistoryEntry {
   rawParam?: string;
 }
 
+const getFailedExecutionMessage = (payload?: BrowserCommandExecutionResponse): string => {
+  const firstFailedResult = payload?.results?.find((item) => item.status === 'error');
+  return firstFailedResult?.message || payload?.message || '页面操作执行失败';
+};
+
+const isExecutionFailed = (payload?: BrowserCommandExecutionResponse): boolean => {
+  if (!payload) {
+    return true;
+  }
+  if (payload.success === false) {
+    return true;
+  }
+  return (
+    Array.isArray(payload.results) && payload.results.some((item) => item.status === 'error')
+  );
+};
+
 const buildCompactAiReply = (
   reply: string | undefined,
   resultPayload: {
@@ -367,9 +441,18 @@ const buildCompactAiReply = (
     exportArtifacts?: unknown;
     loopDraft?: unknown;
     loopState?: unknown;
+    outcome?: RecorderOutcome;
   }
 ): string => {
   const replyText = String(reply || '');
+  const outcomeSummary =
+    resultPayload.outcome?.summary?.compact || resultPayload.outcome?.summary?.userVisible;
+  if (typeof outcomeSummary === 'string' && outcomeSummary.trim().length > 0) {
+    return outcomeSummary.trim();
+  }
+  if (resultPayload.outcome?.verification?.failureReason) {
+    return `录制执行未完全通过验证：${resultPayload.outcome.verification.failureReason}`;
+  }
   const hasBrowserExecutionPayload = Boolean(
     resultPayload.execution ||
       resultPayload.observation ||
@@ -382,6 +465,11 @@ const buildCompactAiReply = (
     /stepResults|### Ran Playwright code|stdout|snapshotId|backend/i.test(replyText) ||
     /任务已完成[,，]?\s*返回结果/.test(replyText);
   if (hasBrowserExecutionPayload) {
+    const execution = resultPayload.execution as BrowserCommandExecutionResponse | undefined;
+    if (execution && isExecutionFailed(execution)) {
+      const reason = getFailedExecutionMessage(execution);
+      return `录制执行失败：${reason}`;
+    }
     return '浏览器执行已完成，详细信息请点击下方“查看详情”或“打开链接”。';
   }
   if (looksLikeVerboseExecutionReply) {
@@ -405,6 +493,11 @@ const buildCompactHistoryBubbleText = (entry: CommandHistoryEntry): string => {
       entry.result.status)
   );
   if (entry.type === 'ai' && hasExecutionLikeResult) {
+    const execution = entry.result?.execution as BrowserCommandExecutionResponse | undefined;
+    if (execution && isExecutionFailed(execution)) {
+      const reason = getFailedExecutionMessage(execution);
+      return `录制执行失败：${reason}`;
+    }
     return (
       entry.result?.execution ||
       entry.result?.observation ||
@@ -424,6 +517,7 @@ const buildCompactHistoryBubbleText = (entry: CommandHistoryEntry): string => {
           exportArtifacts: entry.result?.exportArtifacts,
           loopDraft: entry.result?.loopDraft,
           loopState: entry.result?.loopState,
+          outcome: entry.result?.outcome,
         })
       : String(entry.content || '');
 
@@ -480,6 +574,58 @@ const buildLoopSummaryText = (
   }
 
   return parts.length > 0 ? parts.join('；') : '已更新循环录制状态';
+};
+
+const getOutcomeStatusMeta = (
+  status?: RecorderOutcomeStatus
+): { color: string; label: string } => {
+  switch (status) {
+    case 'succeeded':
+      return { color: 'success', label: '已成功' };
+    case 'partial':
+      return { color: 'processing', label: '部分成功' };
+    case 'blocked':
+      return { color: 'warning', label: '被阻塞' };
+    case 'failed':
+      return { color: 'error', label: '已失败' };
+    default:
+      return { color: 'default', label: '待确认' };
+  }
+};
+
+const getOutcomeKindLabel = (kind?: RecorderOutcomeKind): string => {
+  switch (kind) {
+    case 'action':
+      return '动作结果';
+    case 'answer':
+      return '观察回答';
+    case 'question':
+      return '追问澄清';
+    default:
+      return '结果';
+  }
+};
+
+const getVerificationMeta = (
+  success?: RecorderVerification['success']
+): { color: string; label: string } => {
+  if (success === true) {
+    return { color: 'success', label: '验证通过' };
+  }
+  if (success === false) {
+    return { color: 'error', label: '验证失败' };
+  }
+  if (success === 'partial') {
+    return { color: 'processing', label: '部分验证' };
+  }
+  return { color: 'default', label: '验证未知' };
+};
+
+const formatRecorderConfidence = (value?: number): string => {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    return '-';
+  }
+  return `${Math.round(value * 100)}%`;
 };
 
 const createRuntimeSessionId = () =>
@@ -1252,22 +1398,7 @@ const AIControls: React.FC<AIControlsProps> = ({
 
   const getScreenshotModeLabel = () => (autoAppendScreenshots ? '含自动截图' : '不含自动截图');
 
-  const getFailedExecutionMessage = (payload?: BrowserCommandExecutionResponse): string => {
-    const firstFailedResult = payload?.results?.find((item) => item.status === 'error');
-    return firstFailedResult?.message || payload?.message || '页面操作执行失败';
-  };
 
-  const isExecutionFailed = (payload?: BrowserCommandExecutionResponse): boolean => {
-    if (!payload) {
-      return true;
-    }
-    if (payload.success === false) {
-      return true;
-    }
-    return (
-      Array.isArray(payload.results) && payload.results.some((item) => item.status === 'error')
-    );
-  };
 
   const isStaleRecorderRuntimeFailure = (
     execution?: BrowserCommandExecutionResponse,
@@ -1579,6 +1710,8 @@ const AIControls: React.FC<AIControlsProps> = ({
           exportArtifacts: data.exportArtifacts,
           loopDraft: data.loopDraft,
           loopState: data.loopState,
+          outcomeVersion: data.outcomeVersion,
+          outcome: data.outcome,
         };
         setRecorderDebugSessionId(data.sessionId);
         setRecorderDebugRuntimeSessionId(data.runtimeSessionId);
@@ -1603,9 +1736,6 @@ const AIControls: React.FC<AIControlsProps> = ({
           data.execution &&
           isExecutionFailed(data.execution as BrowserCommandExecutionResponse)
         ) {
-          const failureReason = getFailedExecutionMessage(
-            data.execution as BrowserCommandExecutionResponse
-          );
           if (
             isStaleRecorderRuntimeFailure(
               data.execution as BrowserCommandExecutionResponse,
@@ -1621,11 +1751,9 @@ const AIControls: React.FC<AIControlsProps> = ({
             );
           }
           setTakeoverState(createIdleTakeoverState());
-          void message.warning(`录制执行失败：${failureReason}`);
         } else {
           setTakeoverState(createIdleTakeoverState());
         }
-        void message.success('对话已处理');
       } catch (error: unknown) {
         setHistory((prev) => [
           ...prev.filter((h) => h.id !== parsingId),
@@ -3196,11 +3324,71 @@ const AIControls: React.FC<AIControlsProps> = ({
                                     </Text>
                                   </div>
                                 ) : null}
+                                {entry.result.outcome ? (
+                                  <div
+                                    style={{
+                                      marginBottom: 8,
+                                      padding: '8px 10px',
+                                      borderRadius: 8,
+                                      background: isDarkTheme ? '#0f172a' : '#f8fafc',
+                                      border: isDarkTheme
+                                        ? '1px solid #334155'
+                                        : '1px solid #e2e8f0',
+                                    }}
+                                  >
+                                    <Space wrap size={[4, 6]} style={{ marginBottom: 6 }}>
+                                      <Tag color={getOutcomeStatusMeta(entry.result.outcome.status).color}>
+                                        {getOutcomeStatusMeta(entry.result.outcome.status).label}
+                                      </Tag>
+                                      <Tag>{getOutcomeKindLabel(entry.result.outcome.kind)}</Tag>
+                                      <Tag
+                                        color={
+                                          getVerificationMeta(
+                                            entry.result.outcome.verification?.success
+                                          ).color
+                                        }
+                                      >
+                                        {
+                                          getVerificationMeta(
+                                            entry.result.outcome.verification?.success
+                                          ).label
+                                        }
+                                      </Tag>
+                                      <Tag color="blue">
+                                        置信度{' '}
+                                        {formatRecorderConfidence(
+                                          entry.result.outcome.verification?.confidence
+                                        )}
+                                      </Tag>
+                                      <Tag>
+                                        Verifier:{' '}
+                                        {entry.result.outcome.verification?.verifier || 'unknown'}
+                                      </Tag>
+                                    </Space>
+                                    <div style={{ marginBottom: 4 }}>
+                                      <Text style={{ fontSize: 12 }}>
+                                        {entry.result.outcome.summary?.userVisible ||
+                                          entry.result.outcome.summary?.compact ||
+                                          entry.content}
+                                      </Text>
+                                    </div>
+                                    {entry.result.outcome.verification?.failureReason ? (
+                                      <Text type="danger" style={{ fontSize: 12 }}>
+                                        失败原因：{entry.result.outcome.verification.failureReason}
+                                      </Text>
+                                    ) : entry.result.outcome.summary?.nextHint ? (
+                                      <Text type="secondary" style={{ fontSize: 12 }}>
+                                        下一步建议：{entry.result.outcome.summary.nextHint}
+                                      </Text>
+                                    ) : null}
+                                  </div>
+                                ) : null}
                                 {(entry.result.execution ||
                                   entry.result.observation ||
                                   entry.result.exportArtifacts ||
                                   entry.result.loopDraft ||
-                                  entry.result.loopState) && (
+                                  entry.result.loopState ||
+                                  entry.result.outcome) && (
                                   <div
                                     style={{
                                       marginBottom: 8,
@@ -3224,9 +3412,13 @@ const AIControls: React.FC<AIControlsProps> = ({
                                     >
                                       <div>
                                         <div>
-                                          {entry.result.execution?.success === false
-                                            ? '浏览器执行失败'
-                                            : '浏览器执行详情已生成'}
+                                          {entry.result.outcome
+                                            ? `结果协议已生成：${
+                                                getOutcomeStatusMeta(entry.result.outcome.status).label
+                                              }`
+                                            : entry.result.execution?.success === false
+                                              ? '浏览器执行失败'
+                                              : '浏览器执行详情已生成'}
                                         </div>
                                         <div
                                           style={{
@@ -3234,7 +3426,13 @@ const AIControls: React.FC<AIControlsProps> = ({
                                             color: isDarkTheme ? '#94a3b8' : '#64748b',
                                           }}
                                         >
-                                          {entry.commands?.length
+                                          {entry.result.outcome
+                                            ? `${getVerificationMeta(
+                                                entry.result.outcome.verification?.success
+                                              ).label} · 置信度 ${formatRecorderConfidence(
+                                                entry.result.outcome.verification?.confidence
+                                              )}`
+                                            : entry.commands?.length
                                             ? `命令数 ${entry.commands.length}`
                                             : buildLoopSummaryText(
                                                   entry.result.loopDraft,

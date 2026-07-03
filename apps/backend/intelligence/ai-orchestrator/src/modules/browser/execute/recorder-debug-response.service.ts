@@ -3,6 +3,7 @@ import {
   RecorderControlTokenStateLike,
   RecorderLoopRuntimeStateLike,
 } from '../loop';
+import { RecorderDebugOutcomeService } from './recorder-debug-outcome.service';
 
 type RecorderDebugStatus = 'executed' | 'answer' | 'question' | 'completed';
 
@@ -19,10 +20,14 @@ type RecorderDebugSessionLike = {
 
 @Injectable()
 export class RecorderDebugResponseService {
+  constructor(private readonly recorderDebugOutcomeService: RecorderDebugOutcomeService) {}
+
   createAndRecordChatResponse(input: {
     session: RecorderDebugSessionLike;
     reply: string;
     status: RecorderDebugStatus;
+    userGoal?: string;
+    beforeObservation?: any;
     observation?: any;
     commands?: any;
     execution?: any;
@@ -31,7 +36,10 @@ export class RecorderDebugResponseService {
   }): any {
     const response = this.createChatResponse(input);
     this.pushAssistantTurn(input.session, {
+      status: input.status,
       reply: input.reply,
+      userGoal: input.userGoal,
+      beforeObservation: input.beforeObservation,
       observation: input.observation,
       commands: input.commands,
       execution: input.execution,
@@ -53,6 +61,8 @@ export class RecorderDebugResponseService {
     >;
     reply: string;
     status: RecorderDebugStatus;
+    userGoal?: string;
+    beforeObservation?: any;
     observation?: any;
     commands?: any;
     execution?: any;
@@ -60,6 +70,15 @@ export class RecorderDebugResponseService {
     controlTokenState?: RecorderControlTokenStateLike;
   }): any {
     const loopState = this.buildLoopState(input.session, input.controlTokenState);
+    const outcome = this.recorderDebugOutcomeService.buildOutcome({
+      status: input.status,
+      reply: input.reply,
+      userGoal: input.userGoal,
+      beforeObservation: input.beforeObservation,
+      observation: input.observation,
+      commands: input.commands,
+      execution: input.execution,
+    });
     return {
       sessionId: input.session.sessionId,
       runtimeSessionId: input.session.runtimeSessionId,
@@ -70,6 +89,8 @@ export class RecorderDebugResponseService {
       ...(input.observation ? { observation: input.observation } : {}),
       ...(input.commands ? { commands: input.commands } : {}),
       ...(input.execution ? { execution: input.execution } : {}),
+      outcomeVersion: 'v1',
+      outcome,
       ...(input.exportArtifacts ? { exportArtifacts: input.exportArtifacts } : {}),
       ...(input.session.loopDraft ? { loopDraft: input.session.loopDraft } : {}),
       ...(loopState ? { loopState } : {}),
@@ -79,7 +100,10 @@ export class RecorderDebugResponseService {
   pushAssistantTurn(
     session: RecorderDebugSessionLike,
     input: {
+      status?: RecorderDebugStatus;
       reply: string;
+      userGoal?: string;
+      beforeObservation?: any;
       observation?: any;
       commands?: any;
       execution?: any;
@@ -88,6 +112,15 @@ export class RecorderDebugResponseService {
     }
   ): void {
     const loopState = this.buildLoopState(session, input.controlTokenState);
+    const outcome = this.recorderDebugOutcomeService.buildOutcome({
+      status: input.status || 'answer',
+      reply: input.reply,
+      userGoal: input.userGoal,
+      beforeObservation: input.beforeObservation,
+      observation: input.observation,
+      commands: input.commands,
+      execution: input.execution,
+    });
     session.history.push({
       role: 'assistant',
       content: input.reply,
@@ -95,6 +128,8 @@ export class RecorderDebugResponseService {
       ...(input.commands ? { commands: input.commands } : {}),
       ...(input.execution ? { execution: input.execution } : {}),
       ...(input.observation ? { observation: input.observation } : {}),
+      outcomeVersion: 'v1',
+      outcome,
       ...(input.exportArtifacts ? { exportArtifacts: input.exportArtifacts } : {}),
       ...(session.loopDraft ? { loopDraft: session.loopDraft } : {}),
       ...(loopState ? { loopState } : {}),

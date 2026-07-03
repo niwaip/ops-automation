@@ -143,6 +143,22 @@ export class RecorderStructureProbeService {
         const value = element.getAttribute(name);
         return value ? value.trim() : undefined;
       };
+      const getBooleanAttr = (element, name) => {
+        if (!(element instanceof HTMLElement)) {
+          return undefined;
+        }
+        const value = element.getAttribute(name);
+        if (value === null) {
+          return undefined;
+        }
+        if (value === '' || value === 'true') {
+          return true;
+        }
+        if (value === 'false') {
+          return false;
+        }
+        return undefined;
+      };
       const getDatasetAttr = (element, key) => {
         if (!(element instanceof HTMLElement)) {
           return undefined;
@@ -190,6 +206,13 @@ export class RecorderStructureProbeService {
           dataTestId: getDataAttr(element, 'data-testid') || getDataAttr(element, 'data-test-id'),
           region: getDatasetAttr(element, 'aiRegion'),
           stableName: getDatasetAttr(element, 'aiStableName'),
+          visible: true,
+          disabled: 'disabled' in element ? Boolean(element.disabled) : undefined,
+          checked: element instanceof HTMLInputElement ? Boolean(element.checked) : undefined,
+          selected: element instanceof HTMLOptionElement ? Boolean(element.selected) : undefined,
+          ariaSelected: getBooleanAttr(element, 'aria-selected'),
+          ariaPressed: getBooleanAttr(element, 'aria-pressed'),
+          dataState: getDataAttr(element, 'data-state'),
         }));
 
       const buttons = uniqueElements(queryAllAcrossRoots('button, a, [role="button"], [role="link"], [data-ai-action]'))
@@ -205,6 +228,12 @@ export class RecorderStructureProbeService {
           action: getDatasetAttr(element, 'aiAction'),
           region: getDatasetAttr(element, 'aiRegion'),
           stableName: getDatasetAttr(element, 'aiStableName'),
+          visible: true,
+          disabled: 'disabled' in element ? Boolean(element.disabled) : undefined,
+          selected: getBooleanAttr(element, 'aria-selected'),
+          ariaSelected: getBooleanAttr(element, 'aria-selected'),
+          ariaPressed: getBooleanAttr(element, 'aria-pressed'),
+          dataState: getDataAttr(element, 'data-state'),
           rowIndex: (() => {
             const raw = getDatasetAttr(element, 'aiRowIndex');
             const parsed = raw ? Number.parseInt(raw, 10) : NaN;
