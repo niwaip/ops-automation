@@ -340,6 +340,119 @@ describe('BrowserExecutionControllerService', () => {
     );
   });
 
+  it('mergeExecutionResponses does not surface initial failure message or error results when recovery succeeds', async () => {
+    // Regression: when the initial command fails (e.g. "search" couldn't find the search
+    // entrance) and the recovery command succeeds (e.g. "smart_search"), the merged
+    // execution result used to carry initialExecution.message ("One or more CLI commands
+    // failed...") and initial error results alongside `success: true` — contradicting
+    // itself and confusing the displayed execution result / outcome toolExecution.
+    const { service } = createService();
+    const session: any = {
+      currentPageUrl: 'https://www.baidu.com/',
+      backend: 'cli',
+      executedCommands: [],
+    };
+    const observation: any = {
+      currentPageUrl: 'https://www.baidu.com/',
+      inputs: [],
+      buttons: [],
+      headings: [],
+      links: [],
+      suggestedParameters: [],
+    };
+    const parsed = {
+      success: true,
+      commands: [{ tool: 'search', params: { query: 'mcp' }, description: '搜索 mcp' }],
+      explanation: '在百度首页搜索 mcp',
+    };
+
+    const executeBrowserCommands = jest
+      .fn()
+      // Initial: search failed — no search entrance recognized
+      .mockResolvedValueOnce({
+        success: false,
+        results: [
+          {
+            command: 'search',
+            status: 'error',
+            message: '未识别到明确的搜索入口，请改用"智搜"或指定搜索框',
+          },
+        ],
+        message: 'One or more CLI commands failed. First failure: search: 未识别到明确的搜索入口',
+        steps: [
+          {
+            status: 'error',
+            action: 'search',
+            params: { query: 'mcp' },
+            error: {
+              message: '未识别到明确的搜索入口，请改用"智搜"或指定搜索框',
+              code: 'search_entrance_not_found',
+              retryable: true,
+            },
+          },
+        ],
+        executedCommands: parsed.commands,
+      })
+      // Recovery: smart_search succeeded
+      .mockResolvedValueOnce({
+        success: true,
+        results: [
+          {
+            command: 'smart_search',
+            status: 'success',
+            stdout: '### Result\n"search-input-filled"',
+          },
+        ],
+        steps: [],
+        executedCommands: [
+          { tool: 'smart_search', params: { query: 'mcp' }, description: '使用智搜搜索 mcp' },
+        ],
+      });
+    const observePageSafely = jest
+      .fn()
+      .mockResolvedValueOnce({ ...observation, text: 'recovery observation' })
+      .mockResolvedValueOnce({ ...observation, currentPageUrl: 'https://www.baidu.com/s?wd=mcp', text: 'search results' });
+    const parseRecoveryCommand = jest.fn().mockResolvedValue({
+      success: true,
+      commands: [{ tool: 'smart_search', params: { query: 'mcp' }, description: '使用智搜搜索 mcp' }],
+      explanation: '使用智搜搜索 mcp',
+    });
+
+    const result = await service.executeAndResolve({
+      session,
+      effectiveMessage: '搜索 mcp',
+      parsed,
+      observation,
+      controlTokenState: {
+        cleanedMessage: '搜索 mcp',
+        rawTokens: [],
+        hasLoopStart: false,
+        hasLoopEnd: false,
+        hasConditionalBranch: false,
+        manualInterventions: [],
+        manualInterventionLabels: [],
+      },
+      executeBrowserCommands,
+      observePageSafely,
+      parseRecoveryCommand,
+      mergeObservationWithExecution: jest.fn().mockImplementation((current, exec) => ({
+        ...current,
+        currentPageUrl: exec.success ? 'https://www.baidu.com/s?wd=mcp' : 'https://www.baidu.com/',
+      })),
+      applyRecorderControlTokensAfterExecution: jest.fn(),
+    });
+
+    // Recovery succeeded → overall success
+    expect(result.execution.success).toBe(true);
+    // Message must NOT contain the initial failure text
+    expect(result.execution.message).not.toContain('One or more CLI commands failed');
+    expect(result.execution.message).not.toContain('未识别到明确的搜索入口');
+    // Results must NOT contain the initial error entry
+    const resultStatuses = (result.execution.results || []).map((r: any) => r.status);
+    expect(resultStatuses).not.toContain('error');
+    expect(resultStatuses).toContain('success');
+  });
+
   it('preflights recovery on login gate before executing non-login target click', async () => {
     const { service } = createService();
     const session: any = {
