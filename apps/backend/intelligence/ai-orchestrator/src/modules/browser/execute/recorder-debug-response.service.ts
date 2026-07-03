@@ -4,7 +4,11 @@ import {
   RecorderLoopRuntimeStateLike,
 } from '../loop';
 import { RecorderDebugOutcomeService } from './recorder-debug-outcome.service';
-import { RecorderHistoryCompressionService } from './recorder';
+// Direct import (not via ./recorder barrel) to avoid circular re-export:
+//   recorder-debug-response.service -> ./recorder barrel -> ../recorder-debug-response.service
+// The barrel's `export * from '../recorder-debug-response.service'` line creates a cycle
+// that breaks SWC-emitted design:paramtypes metadata for the 2nd constructor param.
+import { RecorderHistoryCompressionService } from './recorder/recorder-history-compression.service';
 
 type RecorderDebugStatus = 'executed' | 'answer' | 'question' | 'completed';
 
