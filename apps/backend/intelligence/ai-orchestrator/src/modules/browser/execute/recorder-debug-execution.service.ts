@@ -703,7 +703,20 @@ export class RecorderDebugExecutionService {
         source: 'text',
       });
     }
+    if (this.detectModalOpen(observation)) {
+      facts.push({
+        type: 'modal-open',
+        value: true,
+        confidence: 0.7,
+        source: 'text',
+      });
+    }
     return facts;
+  }
+
+  private detectModalOpen(observation: RecorderDebugObservation): boolean {
+    const text = `${observation.title || ''} ${observation.text || ''}`;
+    return /(确认要|确定要|是否确认|是否删除|modal|dialog|popup|overlay)/i.test(text);
   }
 
   private buildDiffKey(input: {

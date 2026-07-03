@@ -65,6 +65,9 @@ function routeVerifier(
   if (shouldUseDetailOpenVerifier(intent, commands)) {
     return { verifier: 'detail-open', routeReason: 'goal-pattern' };
   }
+  if (shouldUseFormSubmitVerifier(intent, commands)) {
+    return { verifier: 'form-submit', routeReason: 'goal-pattern' };
+  }
   if (intent.actionType === 'select') {
     return { verifier: 'select', routeReason: 'goal-pattern' };
   }
@@ -181,6 +184,43 @@ function buildChecks(
     return checks;
   }
 
+  if (verifier === 'form-submit') {
+    checks.push({
+      code: 'url_changed',
+      level: 'page',
+      passed:
+        typeof input.diff?.urlChanged === 'boolean' || typeof input.diff?.titleChanged === 'boolean'
+          ? Boolean(input.diff?.urlChanged || input.diff?.titleChanged)
+          : 'unknown',
+      message:
+        input.diff?.urlChanged || input.diff?.titleChanged
+          ? '提交后页面已发生路由或标题变化。'
+          : '未观察到提交后的页面路由或标题变化。',
+      weight: 2,
+      evidencePath: 'evidence.diff.urlChanged',
+    });
+    checks.push({
+      code: 'node_state_changed',
+      level: 'page',
+      passed: changed ? true : input.execution?.success ? 'unknown' : false,
+      message: changed ? '提交后页面已观察到状态变化。' : '尚未观察到明确的页面变化。',
+      required: true,
+      weight: 3,
+      evidencePath: 'evidence.diff',
+    });
+    checks.push({
+      code: 'confirmation_required',
+      level: 'goal',
+      passed: hasBlockingOverlay(input.observation) ? false : true,
+      message: hasBlockingOverlay(input.observation)
+        ? '检测到阻塞型确认弹窗，需用户确认后才能继续。'
+        : '未检测到阻塞型确认弹窗。',
+      weight: 2,
+      evidencePath: 'evidence.after.facts',
+    });
+    return checks;
+  }
+
   if (verifier === 'select') {
     checks.push({
       code: 'target_visible',
@@ -211,6 +251,26 @@ function buildChecks(
       weight: 2,
       evidencePath: 'evidence.diff.regionChanges',
     });
+    checks.push({
+      code: 'list_count_changed',
+      level: 'page',
+      passed: hasListCountChange(input.diff) ? true : input.execution?.success ? 'unknown' : false,
+      message: hasListCountChange(input.diff)
+        ? '观察到列表条目数量变化。'
+        : '尚未观察到列表条目数量变化。',
+      weight: 1,
+      evidencePath: 'evidence.diff.regionChanges',
+    });
+    checks.push({
+      code: 'blocking_overlay_detected',
+      level: 'page',
+      passed: hasBlockingOverlay(input.observation) ? false : true,
+      message: hasBlockingOverlay(input.observation)
+        ? '检测到阻塞型弹窗，可能影响后续交互。'
+        : '未检测到阻塞型弹窗。',
+      weight: 1,
+      evidencePath: 'evidence.after.facts',
+    });
     return checks;
   }
 
@@ -230,6 +290,16 @@ function buildChecks(
       required: true,
       weight: 2,
       evidencePath: 'evidence.diff',
+    });
+    checks.push({
+      code: 'blocking_overlay_detected',
+      level: 'page',
+      passed: hasBlockingOverlay(input.observation) ? false : true,
+      message: hasBlockingOverlay(input.observation)
+        ? '检测到阻塞型弹窗，可能影响后续交互。'
+        : '未检测到阻塞型弹窗。',
+      weight: 1,
+      evidencePath: 'evidence.after.facts',
     });
     return checks;
   }
@@ -440,6 +510,49 @@ function shouldUseDetailOpenVerifier(intent: RecorderIntent, commands: BrowserCo
 
 function isDetailOpenGoal(value: string | undefined): boolean {
   return /(详情|詳細|detail|明细)/i.test(value || '');
+}
+
+function shouldUseFormSubmitVerifier(intent: RecorderIntent, commands: BrowserCommand[]): boolean {
+  const submitTools = new Set(['click', 'fill', 'type_text', 'press_key']);
+  if (!commands.some((command) => submitTools.has(command.tool))) {
+    return false;
+  }
+  const submitSignals = [
+    intent.userGoal,
+    intent.normalizedGoal,
+    intent.actionType,
+    ...commands.map((command) => command.description),
+    ...commands.map((command) =>
+      typeof command.params?.target === 'string' ? command.params.target : undefined
+    ),
+    ...commands.map((command) =>
+      typeof command.params?.text === 'string' ? command.params.text : undefined
+    ),
+    ...commands.map((command) =>
+      typeof command.locator?.value === 'string' ? command.locator.value : undefined
+    ),
+  ]
+    .filter((value): value is string => Boolean(value))
+    .join(' ');
+  return isFormSubmitGoal(submitSignals);
+}
+
+function isFormSubmitGoal(value: string | undefined): boolean {
+  return /(提交|submit|保存|save|搜索|查询|search|登录|login|登入|注册|register|确认提交)/i.test(
+    value || ''
+  );
+}
+
+function hasBlockingOverlay(observation: RecorderDebugObservation | undefined): boolean {
+  return Boolean(
+    observation?.facts?.some((fact) => fact.type === 'modal-open' && fact.value === true)
+  );
+}
+
+function hasListCountChange(diff: RecorderObservationDiff | undefined): boolean {
+  return Boolean(
+    diff?.regionChanges?.some((change) => change.changeType === 'entry-count')
+  );
 }
 
 function isGroundedTargetVisible(
