@@ -33,12 +33,12 @@ export function buildRecorderVerification(
   const checks = buildChecks(routed.verifier, input);
   const confidence = calculateConfidence(checks);
   const hasRequiredFailure = checks.some((check) => check.required && check.passed === false);
-  const success = resolveVerificationSuccess(input.kind, input.status, checks, hasRequiredFailure);
+  const { success, level } = resolveVerificationSuccess(input.kind, input.status, checks);
 
   return {
     verifier: routed.verifier,
     routeReason: routed.routeReason,
-    level: input.kind === 'action' ? 'goal' : 'page',
+    level,
     success,
     confidence: hasRequiredFailure ? Math.min(confidence, 0.49) : confidence,
     checks,
@@ -98,6 +98,7 @@ function buildChecks(
   const checks: RecorderVerificationCheck[] = [
     {
       code: 'tool_command_succeeded',
+      level: 'tool',
       passed: Boolean(input.execution?.success),
       message: input.execution?.success ? '浏览器命令执行成功。' : '浏览器命令未成功执行。',
       required: true,
@@ -109,6 +110,7 @@ function buildChecks(
   if (verifier === 'navigate') {
     checks.push({
       code: 'url_changed',
+      level: 'page',
       passed: Boolean(input.diff?.urlChanged || input.diff?.titleChanged),
       message: input.diff?.urlChanged ? '页面 URL 已变化。' : '页面 URL 未变化或变化不明确。',
       required: true,
@@ -121,6 +123,7 @@ function buildChecks(
   if (verifier === 'fill') {
     checks.push({
       code: 'target_visible',
+      level: 'page',
       passed: typeof targetVisible === 'boolean' ? targetVisible : 'unknown',
       message: targetVisible ? '输入目标仍可见。' : '输入目标可见性不明确。',
       weight: 1,
@@ -128,6 +131,7 @@ function buildChecks(
     });
     checks.push({
       code: 'input_value_written',
+      level: 'page',
       passed: inputWriteState,
       message:
         inputWriteState === true
@@ -145,6 +149,7 @@ function buildChecks(
   if (verifier === 'detail-open') {
     checks.push({
       code: 'target_visible',
+      level: 'page',
       passed: typeof targetVisible === 'boolean' ? targetVisible : 'unknown',
       message: targetVisible ? '详情入口在执行前后可被定位。' : '详情入口可见性不明确。',
       weight: 1,
@@ -152,6 +157,7 @@ function buildChecks(
     });
     checks.push({
       code: 'url_changed',
+      level: 'page',
       passed:
         typeof input.diff?.urlChanged === 'boolean' || typeof input.diff?.titleChanged === 'boolean'
           ? Boolean(input.diff?.urlChanged || input.diff?.titleChanged)
@@ -165,6 +171,7 @@ function buildChecks(
     });
     checks.push({
       code: 'detail_panel_changed',
+      level: 'page',
       passed: detailChanged ? true : input.observation ? false : 'unknown',
       message: detailChanged ? '详情区域或详情页关键信息已变化。' : '尚未观察到明确的详情区域变化。',
       required: true,
@@ -177,12 +184,14 @@ function buildChecks(
   if (verifier === 'select') {
     checks.push({
       code: 'target_visible',
+      level: 'page',
       passed: typeof targetVisible === 'boolean' ? targetVisible : 'unknown',
       message: targetVisible ? '候选目标仍可见。' : '候选目标可见性不明确。',
       weight: 1,
     });
     checks.push({
       code: 'target_selected',
+      level: 'page',
       passed: targetSelectedState,
       message:
         targetSelectedState === true
@@ -196,6 +205,7 @@ function buildChecks(
     });
     checks.push({
       code: 'detail_panel_changed',
+      level: 'page',
       passed: detailChanged ? true : 'unknown',
       message: detailChanged ? '详情区域或关键信息已变化。' : '详情区域变化不明确。',
       weight: 2,
@@ -207,12 +217,14 @@ function buildChecks(
   if (verifier === 'click') {
     checks.push({
       code: 'target_visible',
+      level: 'page',
       passed: typeof targetVisible === 'boolean' ? targetVisible : 'unknown',
       message: targetVisible ? '点击目标可见。' : '点击目标可见性不明确。',
       weight: 1,
     });
     checks.push({
       code: 'node_state_changed',
+      level: 'page',
       passed: changed ? true : input.execution?.success ? 'unknown' : false,
       message: changed ? '页面已观察到状态变化。' : '尚未观察到明确的页面变化。',
       required: true,
@@ -224,6 +236,7 @@ function buildChecks(
 
   checks.push({
     code: 'intent_alignment',
+    level: 'goal',
     passed: input.observation ? true : 'unknown',
     message: input.observation ? '当前回答基于最新 observation。' : '缺少最新 observation 作为回答依据。',
     weight: 2,
@@ -235,25 +248,41 @@ function buildChecks(
 function resolveVerificationSuccess(
   kind: 'action' | 'answer' | 'question',
   status: RecorderDebugStatus,
-  checks: RecorderVerificationCheck[],
-  hasRequiredFailure: boolean
-): RecorderVerification['success'] {
+  checks: RecorderVerificationCheck[]
+): { success: RecorderVerification['success']; level: RecorderVerification['level'] } {
   if (kind === 'question') {
-    return 'unknown';
+    return { success: 'unknown', level: 'goal' };
   }
   if (status === 'question') {
-    return false;
+    return { success: false, level: 'goal' };
   }
-  if (hasRequiredFailure) {
-    return false;
+
+  const layers: Array<RecorderVerification['level']> = ['tool', 'page', 'goal'];
+  for (const layer of layers) {
+    const layerChecks = checks.filter((check) => (check.level || 'goal') === layer);
+    if (layerChecks.length === 0) {
+      continue;
+    }
+    const layerHasRequiredFailure = layerChecks.some(
+      (check) => check.required && check.passed === false
+    );
+    const layerAllPassed = layerChecks.every((check) => check.passed === true);
+    const layerHasUnknown = layerChecks.some(
+      (check) => check.passed === 'unknown' || check.passed === 'partial'
+    );
+
+    if (layerHasRequiredFailure) {
+      return { success: false, level: layer };
+    }
+    if (!layerAllPassed && layerHasUnknown) {
+      return { success: 'partial', level: layer };
+    }
+    if (!layerAllPassed) {
+      return { success: false, level: layer };
+    }
   }
-  if (checks.every((check) => check.passed === true)) {
-    return true;
-  }
-  if (checks.some((check) => check.passed === 'unknown' || check.passed === 'partial')) {
-    return 'partial';
-  }
-  return true;
+
+  return { success: true, level: 'goal' };
 }
 
 function calculateConfidence(checks: RecorderVerificationCheck[]): number {

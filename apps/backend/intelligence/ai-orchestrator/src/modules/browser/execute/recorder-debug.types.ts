@@ -226,6 +226,7 @@ export interface RecorderVerificationCheck {
   required?: boolean;
   weight?: number;
   evidencePath?: string;
+  level?: 'tool' | 'page' | 'goal';
 }
 
 export interface RecorderVerification {
