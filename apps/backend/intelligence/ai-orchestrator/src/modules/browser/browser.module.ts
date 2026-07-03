@@ -12,6 +12,8 @@ import {
   RecorderDebugObservationRefreshService,
   RecorderObservationService,
   RecorderSnapshotService,
+  RecorderSnapshotReuseService,
+  RecorderTargetResolutionReuseService,
   RecorderStructureProbeService,
 } from './observe';
 import {
@@ -110,6 +112,8 @@ import {
     RecorderDisambiguationService,
     RecorderObservationService,
     RecorderSnapshotService,
+    RecorderSnapshotReuseService,
+    RecorderTargetResolutionReuseService,
     RecorderStructureProbeService,
     BrowserActionValidatorService,
     RecorderParameterService,

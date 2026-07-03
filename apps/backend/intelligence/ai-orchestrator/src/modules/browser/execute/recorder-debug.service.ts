@@ -94,7 +94,9 @@ export class RecorderDebugService {
     });
 
     await this.ensureBrowserReady(session);
-    const observation = await this.observePageSafely(session);
+    const observation = await this.observePageSafely(session, undefined, {
+      preferCachedObservation: true,
+    });
     this.recorderDebugSessionFacade.syncObservationToSession(session, observation);
     this.recorderDebugSessionFacade.applyRecorderControlTokensBeforeExecution(
       session,
@@ -458,11 +460,13 @@ export class RecorderDebugService {
 
   private async observePageSafely(
     session: RecorderDebugSession,
-    fallback?: RecorderDebugObservation
+    fallback?: RecorderDebugObservation,
+    options?: { preferCachedObservation?: boolean }
   ): Promise<RecorderDebugObservation> {
     return this.recorderDebugSessionFacade.observePageSafely({
       session,
       fallback,
+      preferCachedObservation: options?.preferCachedObservation,
       observePage: async (currentSession) => this.observePage(currentSession),
       reportError: async ({ session: failedSession, sourceStage, errorType, errorMessage }) =>
         this.reportRecorderDebugError({

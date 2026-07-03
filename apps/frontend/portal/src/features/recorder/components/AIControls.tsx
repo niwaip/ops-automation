@@ -46,6 +46,7 @@ import {
   VideoCameraOutlined,
   BugOutlined,
   ReloadOutlined,
+  BulbOutlined,
 } from '@ant-design/icons';
 import type { TextAreaRef } from 'antd/es/input/TextArea';
 import { useTranslation } from 'react-i18next';
@@ -468,12 +469,12 @@ const buildCompactAiReply = (
     const execution = resultPayload.execution as BrowserCommandExecutionResponse | undefined;
     if (execution && isExecutionFailed(execution)) {
       const reason = getFailedExecutionMessage(execution);
-      return `录制执行失败：${reason}`;
+      return `执行失败：${reason}`;
     }
-    return '浏览器执行已完成，详细信息请点击下方“查看详情”或“打开链接”。';
+    return '已完成';
   }
   if (looksLikeVerboseExecutionReply) {
-    return '任务已完成，详细信息请点击下方“查看详情”或“打开链接”。';
+    return '已完成';
   }
   return replyText || 'OK';
 };
@@ -496,20 +497,20 @@ const buildCompactHistoryBubbleText = (entry: CommandHistoryEntry): string => {
     const execution = entry.result?.execution as BrowserCommandExecutionResponse | undefined;
     if (execution && isExecutionFailed(execution)) {
       const reason = getFailedExecutionMessage(execution);
-      return `录制执行失败：${reason}`;
+      return `执行失败：${reason}`;
     }
-    return (
-      entry.result?.execution ||
-      entry.result?.observation ||
-      entry.result?.exportArtifacts ||
-      entry.result?.loopDraft ||
-      entry.result?.loopState
-    )
-      ? '浏览器执行已完成，详细信息请点击下方“查看详情”或“打开链接”。'
-      : '任务已完成，详细信息请点击下方“查看详情”或“打开链接”。';
+    if (entry.result?.outcome) {
+      const outcome = entry.result.outcome;
+      const statusText = getOutcomeStatusMeta(outcome.status).label;
+      const verification = outcome.verification;
+      const confText = verification?.confidence ? `置信度 ${formatRecorderConfidence(verification.confidence)}` : '';
+      const verifText = verification?.success !== undefined ? (verification.success ? '验证通过' : '验证未通过') : '';
+      return [statusText, verifText, confText].filter(Boolean).join(' · ');
+    }
+    return '已完成';
   }
 
-  const compacted =
+  let compacted =
     entry.type === 'ai'
       ? buildCompactAiReply(entry.content, {
           execution: entry.result?.execution,
@@ -520,6 +521,10 @@ const buildCompactHistoryBubbleText = (entry: CommandHistoryEntry): string => {
           outcome: entry.result?.outcome,
         })
       : String(entry.content || '');
+
+  if (entry.type === 'ai' && compacted.includes('浏览器会话已初始化')) {
+    compacted = '浏览器已经初始化';
+  }
 
   const text = String(compacted || '').trim();
   if (!text) {
@@ -810,7 +815,7 @@ const normalizeTemplateStepExecutionPolicy = (
 interface AIControlsProps {
   onCommandExecuted?: (commands: MCPCommand[]) => void;
   // Browser ready callback
-  onBrowserReady?: (ready: boolean) => void;
+  onBrowserReady?: (ready: boolean, backend?: string) => void;
   // Browser endpoints callback
   onBrowserEndpoints?: (endpoints: { novnc?: string; cdp?: string }) => void;
   onTakeoverStateChange?: (state: RecorderTakeoverViewState) => void;
@@ -1608,21 +1613,10 @@ const AIControls: React.FC<AIControlsProps> = ({
           return;
         }
         setIsBrowserReady(true);
-        onBrowserReady?.(true);
+        onBrowserReady?.(true, executionBackend);
         if (data.endpoints) {
           onBrowserEndpoints?.(data.endpoints);
         }
-        void message.success(t('recorder:ai.browserReady'));
-        setHistory((prev) => [
-          ...prev,
-          {
-            id: Date.now().toString(),
-            type: 'system',
-            content: `${t('recorder:ai.browserInitialized') || '浏览器已初始化，可以开始发送命令'} (${executionBackend})`,
-            timestamp: new Date(),
-            backend: executionBackend,
-          },
-        ]);
       },
       onError: (error: unknown) => {
         console.error('[AIControls] Browser init failed:', error);
@@ -3024,25 +3018,25 @@ const AIControls: React.FC<AIControlsProps> = ({
   const canExport = Boolean(recorderDebugSessionId && recorderDebugRuntimeSessionId);
   const canUseSpeech = speechSupported && !isLoading && !isTranscribing;
   const buildRecorderDebugDetailPath = (sessionId: string) => `/recorder-debug/${sessionId}`;
-  const actionColumnHeight = 112;
+  const actionColumnHeight = 84;
   const primaryActionButtonStyle = {
-    height: 44,
-    borderRadius: 18,
-    width: 108,
-    paddingInline: 18,
+    height: 38,
+    borderRadius: 12,
+    width: 90,
+    paddingInline: 12,
     border: isDarkTheme ? '1px solid #7c83ff' : '1px solid #4f46e5',
     color: '#ffffff',
     fontWeight: 600,
     background: isDarkTheme ? '#4f46e5' : '#4f46e5',
     boxShadow: isDarkTheme
-      ? '0 10px 24px rgba(79, 70, 229, 0.4)'
-      : '0 6px 16px rgba(79, 70, 229, 0.24)',
+      ? '0 6px 16px rgba(79, 70, 229, 0.3)'
+      : '0 4px 12px rgba(79, 70, 229, 0.2)',
   } satisfies React.CSSProperties;
   const secondaryActionButtonStyle = {
-    height: 44,
-    borderRadius: 18,
-    width: 108,
-    paddingInline: 18,
+    height: 38,
+    borderRadius: 12,
+    width: 90,
+    paddingInline: 12,
     border: isDarkTheme ? '1px solid #6366f1' : '1px solid #c7d2fe',
     background: isDarkTheme ? '#1f2540' : '#eef2ff',
     color: isDarkTheme ? '#e0e7ff' : '#4338ca',
@@ -3059,96 +3053,102 @@ const AIControls: React.FC<AIControlsProps> = ({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, gap: 4 }}>
       {/* Header section with controls */}
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'stretch',
-          gap: 8,
-          padding: '8px 10px',
-          background: isDarkTheme
-            ? 'var(--bg-secondary)'
-            : 'linear-gradient(135deg, #f0f4ff 0%, #e8f0fe 100%)',
-          borderRadius: 12,
-          border: isDarkTheme ? '1px solid #334155' : '1px solid rgba(99, 102, 241, 0.1)',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 12,
-            flexWrap: 'wrap',
-          }}
-        >
-          <Space>
-            <Switch
-              checked={isAIMode}
-              onChange={setIsAIMode}
-              checkedChildren={
-                <>
-                  <RobotOutlined /> AI
-                </>
-              }
-              unCheckedChildren={
-                <>
-                  <VideoCameraOutlined /> 手动
-                </>
-              }
-            />
-          </Space>
-          <Space wrap>
-            <Radio.Group
-              value={executionBackend}
-              onChange={(e) => {
-                void handleExecutionBackendChange(e.target.value as ExecutionBackend);
-              }}
-              size="middle"
-              optionType="button"
-              buttonStyle="solid"
-            >
-              <Radio.Button value="cli">{backendButtonLabels.cli}</Radio.Button>
-              <Radio.Button value="chrome-devtools">
-                {backendButtonLabels['chrome-devtools']}
-              </Radio.Button>
-            </Radio.Group>
-            {isAIMode && (
-              <Space>
-                <Text type="secondary" style={{ fontSize: 14 }}>
-                  模式
-                </Text>
-                <Switch
-                  checked={isReactChatMode}
-                  onChange={setIsReactChatMode}
-                  checkedChildren="对话"
-                  unCheckedChildren="单步"
-                />
-              </Space>
-            )}
-          </Space>
-        </div>
-        <Space wrap>
-          <Text type="secondary" style={{ fontSize: 14 }}>
-            等待
-          </Text>
-          <Space.Compact>
-            <InputNumber
-              min={0.5}
-              max={120}
-              step={0.5}
-              value={waitDuration}
-              onChange={(val) => setWaitDuration(val ?? 0.5)}
-              style={{ width: 68 }}
-            />
-            <Button disabled>s</Button>
-          </Space.Compact>
-          <Text type="secondary" style={{ fontSize: 14, marginLeft: 8 }}>
-            自动截图
-          </Text>
-          <Switch checked={autoAppendScreenshots} onChange={setAutoAppendScreenshots} />
+      <Collapse
+        ghost
+        size="small"
+        style={{ padding: 0 }}
+        items={[
+          {
+            key: '1',
+            label: <Text type="secondary" style={{ fontSize: 12 }}>高级配置</Text>,
+            style: { padding: 0 },
+            children: (
+              <div
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 6,
+                  padding: '0 4px',
+                }}
+              >
+                <Space size={6} wrap>
+          <Switch
+            size="small"
+            checked={isAIMode}
+            onChange={setIsAIMode}
+            checkedChildren={
+              <>
+                <RobotOutlined /> AI
+              </>
+            }
+            unCheckedChildren={
+              <>
+                <VideoCameraOutlined /> 手动
+              </>
+            }
+          />
+          <Radio.Group
+            value={executionBackend}
+            onChange={(e) => {
+              void handleExecutionBackendChange(e.target.value as ExecutionBackend);
+            }}
+            size="small"
+            optionType="button"
+            buttonStyle="solid"
+          >
+            <Radio.Button value="cli" style={{ fontSize: 12, padding: '0 4px' }}>{backendButtonLabels.cli === 'Playwright CLI' ? 'PW' : backendButtonLabels.cli}</Radio.Button>
+            <Radio.Button value="chrome-devtools" style={{ fontSize: 12, padding: '0 4px' }}>
+              {backendButtonLabels['chrome-devtools'] === 'Chrome DevTools CLI' ? 'CDT' : backendButtonLabels['chrome-devtools']}
+            </Radio.Button>
+          </Radio.Group>
+          {isAIMode && (
+            <Space size={2}>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                模式
+              </Text>
+              <Switch
+                size="small"
+                checked={isReactChatMode}
+                onChange={setIsReactChatMode}
+                checkedChildren="对话"
+                unCheckedChildren="单步"
+              />
+            </Space>
+          )}
         </Space>
-      </div>
+        
+        <Space size={6} wrap>
+          <Space size={2}>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              等待
+            </Text>
+            <Space.Compact>
+              <InputNumber
+                size="small"
+                min={0.5}
+                max={120}
+                step={0.5}
+                value={waitDuration}
+                onChange={(val) => setWaitDuration(val ?? 0.5)}
+                style={{ width: 50, fontSize: 12 }}
+              />
+              <Button size="small" disabled style={{ padding: '0 4px' }}>s</Button>
+            </Space.Compact>
+          </Space>
+          <Space size={2}>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              截图
+            </Text>
+            <Switch size="small" checked={autoAppendScreenshots} onChange={setAutoAppendScreenshots} />
+          </Space>
+        </Space>
+              </div>
+            )
+          }
+        ]}
+      />
 
       {isAIMode ? (
         // AI Mode Content
@@ -3208,20 +3208,14 @@ const AIControls: React.FC<AIControlsProps> = ({
                                   ? 'var(--bg-card)'
                                   : '#fff',
                           color: entry.type === 'user' ? '#fff' : 'inherit',
-                          boxShadow: isDarkTheme
+                          boxShadow: entry.type === 'user' ? 'none' : (isDarkTheme
                             ? '0 1px 3px rgba(0,0,0,0.3)'
-                            : '0 1px 2px rgba(0,0,0,0.1)',
+                            : '0 1px 2px rgba(0,0,0,0.1)'),
                           border:
                             isDarkTheme && entry.type !== 'user' ? '1px solid #334155' : 'none',
                         }}
                       >
-                        {entry.backend && (
-                          <div style={{ marginBottom: 6 }}>
-                            <Tag color={backendTagColors[entry.backend]}>
-                              {backendLabels[entry.backend]}
-                            </Tag>
-                          </div>
-                        )}
+                        {/* Backend tag moved next to timestamp */}
                         <Text
                           style={{
                             color: entry.type === 'user' ? '#fff' : 'inherit',
@@ -3303,14 +3297,35 @@ const AIControls: React.FC<AIControlsProps> = ({
                         {entry.result && (
                           <div style={{ marginTop: 8 }}>
                             {isReactChatMode ? (
-                              <div style={{ marginTop: 8 }}>
-                                {entry.commands && entry.commands.length > 0 && (
-                                  <div style={{ marginBottom: 8 }}>
-                                    <Text type="secondary" style={{ fontSize: 12 }}>
-                                      已执行: {entry.commands.map((cmd) => cmd.tool).join(' / ')}
-                                    </Text>
-                                  </div>
-                                )}
+                              <Collapse
+                                size="small"
+                                ghost
+                                defaultActiveKey={entry.result.outcome?.status === 'error' || entry.result.status === 'error' || entry.result.execution?.success === false ? ['detail'] : []}
+                                items={[{
+                                  key: 'detail',
+                                  label: (
+                                    <Space>
+                                      {entry.result.outcome?.status === 'error' || entry.result.status === 'error' || entry.result.execution?.success === false ? (
+                                        <CloseCircleOutlined style={{ color: '#ff4d4f' }} />
+                                      ) : (
+                                        <CheckCircleOutlined style={{ color: '#52c41a' }} />
+                                      )}
+                                      <Text style={{ fontSize: 12 }}>
+                                        {entry.result.outcome?.status === 'error' || entry.result.status === 'error' || entry.result.execution?.success === false
+                                          ? entry.result.outcome?.verification?.failureReason || entry.result.message || '执行失败'
+                                          : entry.commands && entry.commands.length > 0 ? `已执行: ${entry.commands.map((cmd) => cmd.tool).join(' / ')}` : '执行成功'}
+                                      </Text>
+                                    </Space>
+                                  ),
+                                  children: (
+                                    <div style={{ marginTop: 4 }}>
+                                      {entry.commands && entry.commands.length > 0 && (
+                                        <div style={{ marginBottom: 8 }}>
+                                          <Text type="secondary" style={{ fontSize: 12 }}>
+                                            已执行: {entry.commands.map((cmd) => cmd.tool).join(' / ')}
+                                          </Text>
+                                        </div>
+                                      )}
                                 {buildLoopSummaryText(
                                   entry.result.loopDraft,
                                   entry.result.loopState
@@ -3474,7 +3489,10 @@ const AIControls: React.FC<AIControlsProps> = ({
                                     </div>
                                   </div>
                                 )}
-                              </div>
+                                    </div>
+                                  )}
+                                ]}
+                              />
                             ) : (
                               <Collapse
                                 size="small"
@@ -3556,9 +3574,18 @@ const AIControls: React.FC<AIControlsProps> = ({
                           fontSize: 10,
                           color: isDarkTheme ? '#64748b' : '#999',
                           marginTop: 2,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          justifyContent: entry.type === 'user' ? 'flex-end' : 'flex-start',
                         }}
                       >
                         {entry.timestamp.toLocaleTimeString()}
+                        {entry.backend && entry.type !== 'user' && (
+                          <Tag style={{ fontSize: 9, lineHeight: '14px', padding: '0 4px', border: 0, marginInlineEnd: 0, background: 'transparent' }} color={backendTagColors[entry.backend]}>
+                            {backendLabels[entry.backend] === 'Playwright CLI' ? 'PW CLI' : backendLabels[entry.backend] === 'CDT CLI' ? 'CDT' : backendLabels[entry.backend]}
+                          </Tag>
+                        )}
                       </div>
                     </div>
                   );
@@ -3726,41 +3753,6 @@ const AIControls: React.FC<AIControlsProps> = ({
                 </Space>
               </div>
             )}
-            {isReactChatMode &&
-              latestReactSuggestedParameters &&
-              latestReactSuggestedParameters.length > 0 && (
-                <div
-                  style={{
-                    marginBottom: 8,
-                    padding: '8px 10px',
-                    borderRadius: 10,
-                    background: isDarkTheme ? '#0f172a' : '#f8fafc',
-                    border: isDarkTheme ? '1px solid #334155' : '1px solid #e2e8f0',
-                  }}
-                >
-                  <div style={{ marginBottom: 6 }}>
-                    <Text strong style={{ fontSize: 12 }}>
-                      快速补充参数
-                    </Text>
-                  </div>
-                  <Space size={[6, 6]} wrap>
-                    {latestReactSuggestedParameters.map((param) => (
-                      <Tooltip
-                        key={param.name}
-                        title={`${param.label}${param.reason ? `: ${param.reason}` : ''}`}
-                      >
-                        <Tag
-                          color={param.required ? 'processing' : 'default'}
-                          onClick={() => handleInsertSuggestedParameter(param.name)}
-                          style={{ cursor: 'pointer', marginInlineEnd: 0 }}
-                        >
-                          {param.name}
-                        </Tag>
-                      </Tooltip>
-                    ))}
-                  </Space>
-                </div>
-              )}
             {!isReactChatMode && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
                 {predefinedCommands.map((c) => (
@@ -3934,7 +3926,43 @@ const AIControls: React.FC<AIControlsProps> = ({
                   setRecorderDebugRuntimeSessionId(nextRuntimeSessionId);
                 }}
                 onInsertControlToken={handleInsertRecorderControlToken}
-              />
+              >
+                {isReactChatMode && latestReactSuggestedParameters && latestReactSuggestedParameters.length > 0 && (
+                  <>
+                    <div style={{ width: 1, height: 16, background: isDarkTheme ? '#334155' : '#e2e8f0', margin: '0 4px' }} />
+                    <Tooltip
+                      title={`补充参数: ${latestReactSuggestedParameters.map((p) => p.name).join(', ')}`}
+                    >
+                      <Button
+                        size="small"
+                        shape="circle"
+                        type="text"
+                        icon={<BulbOutlined />}
+                        style={{ color: '#6366f1' }}
+                        onClick={() => {
+                          latestReactSuggestedParameters.forEach((param) => {
+                            handleInsertSuggestedParameter(param.name);
+                          });
+                        }}
+                      />
+                    </Tooltip>
+                  </>
+                )}
+                <div style={{ flex: 1 }} />
+                {history.length > 0 && (
+                  <Tooltip title={t('recorder:ai.clearHistory') || '清空记录'}>
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<DeleteOutlined />}
+                      onClick={() => {
+                        void handleClearHistory();
+                      }}
+                      style={{ color: '#999' }}
+                    />
+                  </Tooltip>
+                )}
+              </LoopRecordingPanel>
             )}
           </div>
 
@@ -4030,20 +4058,6 @@ const AIControls: React.FC<AIControlsProps> = ({
                 </Space>
               </div>
             </div>
-          )}
-
-          {/* Clear history button */}
-          {history.length > 0 && (
-            <Button
-              type="text"
-              icon={<DeleteOutlined />}
-              onClick={() => {
-                void handleClearHistory();
-              }}
-              style={{ color: '#999', marginTop: 2 }}
-            >
-              {t('recorder:ai.clearHistory') || '清空记录'}
-            </Button>
           )}
 
           {/* Template section */}

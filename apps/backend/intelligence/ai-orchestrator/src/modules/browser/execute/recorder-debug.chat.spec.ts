@@ -5,6 +5,60 @@ describe('RecorderDebugService', () => {
     resetRecorderDebugTestEnv();
   });
 
+  it('chat should prefer cached observation when starting a new turn', async () => {
+    const parseCommand = jest.fn().mockResolvedValue({
+      success: true,
+      commands: [],
+      explanation: '总结当前页面',
+    });
+    const service = createService({
+      browserCommandService: { parseCommand },
+    });
+    const session = {
+      sessionId: 'recorder-debug-cached-observation',
+      runtimeSessionId: 'runtime-cached-observation',
+      backend: 'cli',
+      browserInitialized: true,
+      currentPageUrl: 'https://example.com/list',
+      lastObservation: {
+        currentPageUrl: 'https://example.com/list',
+        title: '列表页',
+        text: '最近一次 observation',
+        inputs: [],
+        buttons: [],
+        headings: [],
+        links: [],
+        suggestedParameters: [],
+        reuseEligibility: 'fresh' as const,
+        capturedAt: new Date().toISOString(),
+      },
+      history: [],
+      executedCommands: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    jest.spyOn(service as any, 'loadOrCreateSession').mockResolvedValue(session);
+    jest.spyOn(service as any, 'ensureBrowserReady').mockResolvedValue(undefined);
+    const observePageSafelySpy = jest
+      .spyOn(service as any, 'observePageSafely')
+      .mockResolvedValue(session.lastObservation);
+    jest.spyOn(service as any, 'saveSession').mockResolvedValue(undefined);
+
+    const response = await service.chat({
+      sessionId: session.sessionId,
+      runtimeSessionId: session.runtimeSessionId,
+      backend: 'cli',
+      message: '看看当前页面',
+    });
+
+    expect(observePageSafelySpy).toHaveBeenCalledWith(session, undefined, {
+      preferCachedObservation: true,
+    });
+    expect(response.status).toBe('answer');
+    expect(response.observation).toBe(session.lastObservation);
+  });
+
   it('chat should prioritize executable commands over observation wording', async () => {
     const parsedCommands = [
       {

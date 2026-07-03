@@ -459,4 +459,46 @@ export class BrowserCommandSearchService {
   private escapeRegex(value: string): string {
     return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
   }
+
+  /**
+   * Fast early detection for click-result patterns like "打开第二个结果", "点击第二条记录".
+   * This is called BEFORE the action-profile to prevent verbs like "打开" or "点击" 
+   * from being mistakenly interpreted as generic clicks when they are clearly targeting a search result.
+   */
+  public parseEarlyClickResult(input: string): SearchParseResult | null {
+    const normalizedInput = input.replace(/\s+/g, ' ').trim();
+    if (!normalizedInput) {
+      return null;
+    }
+
+    const VERBS = '(点击|选择|打开|进入|访问|查看|click|open|跳转到)';
+    const ORDINAL = '(?:第)?([一二三四五六七八九十\\d]+)';
+    const NOUNS = '(?:个|条|项)?\\s*(?:结果|记录|搜索结果|检索结果|查询结果|result)?';
+
+    const pattern = new RegExp(`^${VERBS}\\s*${ORDINAL}\\s*${NOUNS}$`, 'i');
+    const match = normalizedInput.match(pattern);
+
+    if (match && match[2]) {
+      const resultIndex = this.resolveResultIndex(match[2]);
+      if (resultIndex > 0) {
+        return {
+          status: 'success',
+          response: this.buildStandaloneResponse({
+            intentType: 'click_result',
+            command: {
+              tool: 'click_result',
+              params: { index: resultIndex },
+              description: `打开第${resultIndex}个搜索结果`,
+            },
+            explanation: `将打开第${resultIndex}个搜索结果`,
+            matchedTerm: { term: match[1] },
+            resultIndex: resultIndex,
+          }),
+        };
+      }
+    }
+
+    return null;
+  }
 }
+

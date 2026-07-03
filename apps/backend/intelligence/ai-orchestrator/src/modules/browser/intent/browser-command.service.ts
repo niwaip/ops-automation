@@ -340,6 +340,18 @@ export class BrowserCommandService {
         parserSource: 'navigation-profile',
       });
     }
+    const earlyClickResult = this.browserCommandSearchService.parseEarlyClickResult(effectiveInput);
+    if (earlyClickResult && earlyClickResult.status === 'success' && earlyClickResult.response) {
+      return this.finalizeParseResult({
+        originalInput: input,
+        normalizedInput: effectiveInput,
+        context: commandContext,
+        semanticRuntime,
+        result: earlyClickResult.response,
+        parserSource: 'search-profile',
+      });
+    }
+
 
     const preferAIForCandidateScopedIntent =
       this.browserCommandClickContextService.shouldPreferAIForCandidateScopedIntent(

@@ -1762,6 +1762,10 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
           seen.add(key);
 
           let score = 0;
+          if (location.hostname.includes('baidu.com') && element.closest('.c-container h3, h3.t')) score += 300;
+          if (location.hostname.includes('google.') && element.closest('.g h3')) score += 300;
+          if (location.hostname.includes('bing.com') && element.closest('.b_algo h2')) score += 300;
+
           if (element.querySelector('h1, h2, h3, h4')) score += 80;
           if (element.closest('h1, h2, h3, h4')) score += 60;
           if (element.closest('article, [role="article"]')) score += 35;
@@ -1857,6 +1861,10 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
             if (seen.has(key)) return;
             seen.add(key);
             let score = 0;
+            if (location.hostname.includes('baidu.com') && element.closest('.c-container h3, h3.t')) score += 300;
+            if (location.hostname.includes('google.') && element.closest('.g h3')) score += 300;
+            if (location.hostname.includes('bing.com') && element.closest('.b_algo h2')) score += 300;
+
             if (element.querySelector('h1, h2, h3, h4')) score += 80;
             if (element.closest('h1, h2, h3, h4')) score += 60;
             if (element.closest('article, [role="article"]')) score += 35;

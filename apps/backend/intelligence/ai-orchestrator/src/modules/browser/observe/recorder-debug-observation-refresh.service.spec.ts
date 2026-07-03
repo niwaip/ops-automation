@@ -9,6 +9,37 @@ jest.mock(
 import { RecorderDebugObservationRefreshService } from './recorder-debug-observation-refresh.service';
 
 describe('RecorderDebugObservationRefreshService', () => {
+  it('observePageSafely should reuse fresh recent observation when preferred', async () => {
+    const service = new RecorderDebugObservationRefreshService();
+    const recentObservation = {
+      currentPageUrl: 'https://example.com/current',
+      text: 'recent',
+      inputs: [],
+      buttons: [],
+      headings: [],
+      links: [],
+      suggestedParameters: [],
+      reuseEligibility: 'fresh' as const,
+      capturedAt: new Date().toISOString(),
+    };
+    const session = {
+      sessionId: 'session-1',
+      currentPageUrl: 'https://example.com/current',
+      lastObservation: recentObservation,
+    };
+    const observePage = jest.fn();
+
+    await expect(
+      service.observePageSafely({
+        session,
+        preferCachedObservation: true,
+        observePage,
+      })
+    ).resolves.toBe(recentObservation);
+
+    expect(observePage).not.toHaveBeenCalled();
+  });
+
   it('observePageSafely should return fallback observation when observePage fails', async () => {
     const service = new RecorderDebugObservationRefreshService();
     const session = {
@@ -42,6 +73,46 @@ describe('RecorderDebugObservationRefreshService', () => {
         hasFallback: true,
       })
     );
+  });
+
+  it('observePageSafely should reobserve when cached observation is stale', async () => {
+    const service = new RecorderDebugObservationRefreshService();
+    const staleObservation = {
+      currentPageUrl: 'https://example.com/current',
+      text: 'stale',
+      inputs: [],
+      buttons: [],
+      headings: [],
+      links: [],
+      suggestedParameters: [],
+      reuseEligibility: 'stale' as const,
+      capturedAt: new Date().toISOString(),
+    };
+    const refreshedObservation = {
+      currentPageUrl: 'https://example.com/current',
+      text: 'fresh',
+      inputs: [],
+      buttons: [],
+      headings: [],
+      links: [],
+      suggestedParameters: [],
+    };
+    const session = {
+      sessionId: 'session-1',
+      currentPageUrl: 'https://example.com/current',
+      lastObservation: staleObservation,
+    };
+    const observePage = jest.fn().mockResolvedValue(refreshedObservation);
+
+    await expect(
+      service.observePageSafely({
+        session,
+        preferCachedObservation: true,
+        observePage,
+      })
+    ).resolves.toBe(refreshedObservation);
+
+    expect(observePage).toHaveBeenCalledWith(session);
   });
 
   it('refreshObservationAfterExecution should update persisted session with refreshed observation', async () => {

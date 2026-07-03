@@ -7,6 +7,8 @@ import { BrowserActionValidatorService, BrowserCommand, BrowserCommandCandidate 
 import {
   RecorderObservationService,
   RecorderSnapshotService,
+  RecorderSnapshotReuseService,
+  RecorderTargetResolutionReuseService,
   RecorderStructureProbeService,
   SnapshotNode,
   SnapshotResolutionState,
@@ -48,6 +50,8 @@ export class RecorderDebugExecutionService {
     private readonly recorderDebugChatSupportService: RecorderDebugChatSupportService,
     private readonly recorderObservationService: RecorderObservationService,
     private readonly recorderSnapshotService: RecorderSnapshotService,
+    private readonly recorderSnapshotReuseService: RecorderSnapshotReuseService,
+    private readonly recorderTargetResolutionReuseService: RecorderTargetResolutionReuseService,
     private readonly recorderStructureProbeService: RecorderStructureProbeService
   ) {}
 
@@ -451,14 +455,28 @@ export class RecorderDebugExecutionService {
     const capturedAt = new Date().toISOString();
     const snapshotContentHash = this.buildSnapshotContentHash(snapshotState);
     const observationFingerprint = this.buildObservationFingerprint(observation);
-    const reuseEligibility =
-      snapshotState?.nodes.length && snapshotContentHash ? this.inferReuseEligibility(session, observation) : 'reobserve-required';
-    const staleReason = this.buildStaleReason(session, observation, reuseEligibility);
+    const reuseAssessment = this.recorderSnapshotReuseService.assessReuse({
+      previousObservation: session.lastObservation,
+      currentObservation: observation,
+      snapshotContentHash,
+      observationFingerprint,
+      hasSnapshotNodes: Boolean(snapshotState?.nodes.length),
+    });
+    const reusedResolution = this.recorderTargetResolutionReuseService.mergeReusableCandidates({
+      previousObservation: session.lastObservation,
+      currentObservation: observation,
+      currentSnapshotContentHash: snapshotContentHash,
+      reuseEligibility: reuseAssessment.reuseEligibility,
+    });
+    const candidates = reusedResolution.candidates || observation.candidates || [];
+    const candidateTrace = reusedResolution.candidateTrace || observation.candidateTrace || [];
     const inputs = this.enrichObservedRecords(observation.inputs, 'input');
     const buttons = this.enrichObservedRecords(observation.buttons, 'button');
 
     return {
       ...observation,
+      candidates,
+      candidateTrace,
       inputs,
       buttons,
       observationVersion: 'v1',
@@ -466,8 +484,8 @@ export class RecorderDebugExecutionService {
       snapshotVersion,
       ...(snapshotContentHash ? { snapshotContentHash } : {}),
       observationFingerprint,
-      reuseEligibility,
-      ...(staleReason ? { staleReason } : {}),
+      reuseEligibility: reuseAssessment.reuseEligibility,
+      ...(reuseAssessment.staleReason ? { staleReason: reuseAssessment.staleReason } : {}),
       capturedAt,
       page: {
         url: observation.currentPageUrl,
@@ -478,8 +496,8 @@ export class RecorderDebugExecutionService {
         observationFingerprint,
         ...(observation.snapshotPath ? { snapshotPath: observation.snapshotPath } : {}),
         capturedAt,
-        reuseEligibility,
-        ...(staleReason ? { staleReason } : {}),
+        reuseEligibility: reuseAssessment.reuseEligibility,
+        ...(reuseAssessment.staleReason ? { staleReason: reuseAssessment.staleReason } : {}),
       },
       textState: {
         visibleText: observation.text,
@@ -490,7 +508,7 @@ export class RecorderDebugExecutionService {
       interactiveState: {
         inputs: inputs.map((item) => this.toObservedNode(item, 'input')),
         buttons: buttons.map((item) => this.toObservedNode(item, 'button')),
-        candidates: (observation.candidates || []).map((candidate, index) => ({
+        candidates: candidates.map((candidate, index) => ({
           ref: candidate.ref,
           diffKey: candidate.ref || candidate.candidateId || `candidate-${index + 1}`,
           role: candidate.role,
@@ -633,44 +651,6 @@ export class RecorderDebugExecutionService {
       ...(observation.inputs || []).slice(0, 6).map((item) => this.pickString(item.label, item.name) || ''),
     ].join('|');
     return createHash('sha1').update(normalized).digest('hex').slice(0, 16);
-  }
-
-  private inferReuseEligibility(
-    session: RecorderDebugExecutionSession,
-    observation: RecorderDebugObservation
-  ): 'fresh' | 'stale' | 'reobserve-required' {
-    const previous = session.lastObservation;
-    if (!previous) {
-      return 'fresh';
-    }
-    if (previous.currentPageUrl && observation.currentPageUrl && previous.currentPageUrl !== observation.currentPageUrl) {
-      return 'stale';
-    }
-    if (previous.title && observation.title && previous.title !== observation.title) {
-      return 'stale';
-    }
-    return 'fresh';
-  }
-
-  private buildStaleReason(
-    session: RecorderDebugExecutionSession,
-    observation: RecorderDebugObservation,
-    reuseEligibility: 'fresh' | 'stale' | 'reobserve-required'
-  ): string | undefined {
-    if (reuseEligibility === 'reobserve-required') {
-      return '缺少可复用快照结构，下一轮应重新 observe。';
-    }
-    const previous = session.lastObservation;
-    if (!previous || reuseEligibility !== 'stale') {
-      return undefined;
-    }
-    if (previous.currentPageUrl !== observation.currentPageUrl) {
-      return '页面 URL 已变化，旧 observation 不能直接复用。';
-    }
-    if (previous.title !== observation.title) {
-      return '页面标题已变化，旧 observation 不能直接复用。';
-    }
-    return undefined;
   }
 
   private buildSalientTexts(observation: RecorderDebugObservation): string[] {

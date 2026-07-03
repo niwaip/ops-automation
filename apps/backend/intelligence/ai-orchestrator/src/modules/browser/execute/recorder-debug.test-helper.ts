@@ -50,9 +50,12 @@ import {
   RecorderDebugObservationRefreshService,
   RecorderObservationService,
   RecorderSnapshotService,
+  RecorderSnapshotReuseService,
+  RecorderTargetResolutionReuseService,
   RecorderStructureProbeService,
 } from '../observe';
 import { RecorderDebugResponseService } from './recorder-debug-response.service';
+import { RecorderDebugOutcomeService } from './recorder-debug-outcome.service';
 import {
   RecorderDebugSessionCoordinatorService,
   RecorderDebugSessionStoreService,
@@ -97,6 +100,12 @@ export const createService = (overrides?: {
   recorderScriptExportService?: RecorderScriptExportService;
   recorderTemplateExportService?: RecorderTemplateExportService;
 }) => {
+  const modelService =
+    overrides?.modelService ||
+    ({
+      getPreferredDefaultModel: jest.fn().mockReturnValue(undefined),
+      callModel: jest.fn().mockResolvedValue({ content: '' }),
+    } as any);
   const recorderLoopService = overrides?.recorderLoopService || new RecorderLoopService();
   const recorderDisambiguationService =
     overrides?.recorderDisambiguationService || new RecorderDisambiguationService();
@@ -128,9 +137,13 @@ export const createService = (overrides?: {
   const recorderDebugObservationFacade =
     overrides?.recorderDebugObservationFacade ||
     new RecorderDebugObservationFacade(
-      (overrides?.modelService || {}) as any,
+      modelService,
       recorderObservationService
     );
+  const recorderDebugOutcomeService = new RecorderDebugOutcomeService();
+  const recorderDebugResponseService =
+    overrides?.recorderDebugResponseService ||
+    new RecorderDebugResponseService(recorderDebugOutcomeService);
   const recorderDebugChatExecutionService =
     overrides?.recorderDebugChatExecutionService
       ? Object.assign(
@@ -153,11 +166,9 @@ export const createService = (overrides?: {
     new RecorderDebugBranchFacade(
       recorderConditionalBranchService,
       recorderDebugChatExecutionService,
-      overrides?.recorderDebugResponseService || new RecorderDebugResponseService(),
+      recorderDebugResponseService,
       recorderDebugSessionFacade
     );
-  const recorderDebugResponseService =
-    overrides?.recorderDebugResponseService || new RecorderDebugResponseService();
 
   return new RecorderDebugService(
     (overrides?.browserCommandService || {}) as any,
@@ -171,7 +182,7 @@ export const createService = (overrides?: {
     recorderLoopService,
     overrides?.recorderExportAssemblyService ||
       new RecorderExportAssemblyService(
-        (overrides?.modelService || {}) as any,
+        modelService,
         recorderLoopService,
         overrides?.recorderExportService || new RecorderExportService(),
         overrides?.recorderParameterService || new RecorderParameterService(),
@@ -195,6 +206,8 @@ export const createService = (overrides?: {
         recorderDebugChatSupportService,
         recorderObservationService,
         recorderSnapshotService,
+        new RecorderSnapshotReuseService(),
+        new RecorderTargetResolutionReuseService(),
         recorderStructureProbeService
       ),
     recorderDebugResponseService,

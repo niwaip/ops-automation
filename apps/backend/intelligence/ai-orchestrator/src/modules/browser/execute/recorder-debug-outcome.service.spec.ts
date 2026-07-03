@@ -202,4 +202,182 @@ describe('RecorderDebugOutcomeService', () => {
       ])
     );
   });
+
+  it('fails select verification when another node changes selected state instead of the grounded target', () => {
+    const service = new RecorderDebugOutcomeService();
+    const beforeObservation: any = {
+      currentPageUrl: 'https://example.com/list',
+      title: 'List',
+      text: '列表页',
+      inputs: [],
+      buttons: [],
+      interactiveState: {
+        inputs: [],
+        buttons: [
+          {
+            ref: 'row-1',
+            diffKey: 'row-1',
+            text: '第一条记录',
+            role: 'button',
+            visible: true,
+            selected: false,
+          },
+          {
+            ref: 'row-2',
+            diffKey: 'row-2',
+            text: '第二条记录',
+            role: 'button',
+            visible: true,
+            selected: false,
+          },
+        ],
+      },
+      headings: [],
+      links: [],
+      suggestedParameters: [],
+    };
+    const afterObservation: any = {
+      ...beforeObservation,
+      interactiveState: {
+        inputs: [],
+        buttons: [
+          {
+            ref: 'row-1',
+            diffKey: 'row-1',
+            text: '第一条记录',
+            role: 'button',
+            visible: true,
+            selected: true,
+          },
+          {
+            ref: 'row-2',
+            diffKey: 'row-2',
+            text: '第二条记录',
+            role: 'button',
+            visible: true,
+            selected: false,
+          },
+        ],
+      },
+    };
+
+    const outcome = service.buildOutcome({
+      status: 'executed',
+      reply: '已尝试选中第二条记录。',
+      userGoal: '选中第二条记录',
+      beforeObservation,
+      observation: afterObservation,
+      commands: [{ tool: 'click', params: { target: 'row-2' }, locator: { strategy: 'ref', value: 'row-2' } }],
+      execution: { success: true, results: [], executedCommands: [{ tool: 'click', params: { target: 'row-2' } }] },
+    });
+
+    expect(outcome.status).toBe('failed');
+    expect(outcome.verification).toEqual(
+      expect.objectContaining({
+        verifier: 'select',
+        success: false,
+        failureReason: '观察到其他节点变化，但目标本身未进入选中态。',
+      })
+    );
+    expect(outcome.verification.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'target_selected',
+          passed: false,
+          required: true,
+        }),
+      ])
+    );
+  });
+
+  it('fails fill verification when requested value is written into a different input', () => {
+    const service = new RecorderDebugOutcomeService();
+    const beforeObservation: any = {
+      currentPageUrl: 'https://example.com/form',
+      title: 'Form',
+      text: '填写表单',
+      inputs: [],
+      buttons: [],
+      interactiveState: {
+        inputs: [
+          {
+            ref: 'input-name',
+            diffKey: 'input-name',
+            role: 'textbox',
+            name: '姓名',
+            visible: true,
+            value: '',
+          },
+          {
+            ref: 'input-note',
+            diffKey: 'input-note',
+            role: 'textbox',
+            name: '备注',
+            visible: true,
+            value: '',
+          },
+        ],
+        buttons: [],
+      },
+      headings: [],
+      links: [],
+      suggestedParameters: [],
+    };
+    const afterObservation: any = {
+      ...beforeObservation,
+      interactiveState: {
+        inputs: [
+          {
+            ref: 'input-name',
+            diffKey: 'input-name',
+            role: 'textbox',
+            name: '姓名',
+            visible: true,
+            value: '',
+          },
+          {
+            ref: 'input-note',
+            diffKey: 'input-note',
+            role: 'textbox',
+            name: '备注',
+            visible: true,
+            value: '张三',
+          },
+        ],
+        buttons: [],
+      },
+    };
+
+    const outcome = service.buildOutcome({
+      status: 'executed',
+      reply: '已尝试填写姓名。',
+      userGoal: '填写姓名为张三',
+      beforeObservation,
+      observation: afterObservation,
+      commands: [{ tool: 'fill', params: { target: 'input-name', value: '张三' } }],
+      execution: {
+        success: true,
+        results: [],
+        executedCommands: [{ tool: 'fill', params: { target: 'input-name', value: '张三' } }],
+      },
+    });
+
+    expect(outcome.status).toBe('failed');
+    expect(outcome.verification).toEqual(
+      expect.objectContaining({
+        verifier: 'fill',
+        success: false,
+        failureReason: '请求值出现在非目标输入框，或目标输入框未写入该值。',
+      })
+    );
+    expect(outcome.verification.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'input_value_written',
+          passed: false,
+          required: true,
+        }),
+      ])
+    );
+  });
 });

@@ -38,6 +38,7 @@ const RecorderPage: React.FC = () => {
   });
   const [isConnected, setIsConnected] = useState(false);
   const [isBrowserInitialized, setIsBrowserInitialized] = useState(false);
+  const [browserBackend, setBrowserBackend] = useState<string>('');
   const [dynamicNoVncUrl, setDynamicNoVncUrl] = useState<string | null>(null);
   const [previewMode, setPreviewMode] = useState<RecorderPreviewMode>('idle');
   const [template, setTemplate] = useState<CompiledTemplate | null>(null);
@@ -349,7 +350,10 @@ const RecorderPage: React.FC = () => {
           >
             <AIControls
               onCommandExecuted={handleAICommandExecuted}
-              onBrowserReady={setIsBrowserInitialized}
+              onBrowserReady={(ready, backend) => {
+                setIsBrowserInitialized(ready);
+                if (backend) setBrowserBackend(backend);
+              }}
               onTakeoverStateChange={setTakeoverState}
               onBrowserEndpoints={(endpoints) => {
                 if (endpoints.novnc) {
@@ -390,7 +394,11 @@ const RecorderPage: React.FC = () => {
             previewMode={previewMode}
             previewUrl={previewUrl}
             openInNewTabLabel={t('session:openInNewTab') || '新标签页打开'}
-            browserPreviewLabel={t('recorder:browserPreview')}
+            browserPreviewLabel={
+              isBrowserInitialized && browserBackend
+                ? `${t('recorder:browserPreview') || '浏览器预览'} - 浏览器已初始化 (${browserBackend})`
+                : t('recorder:browserPreview') || '浏览器预览'
+            }
             startPreviewHint={t('recorder:ai.startToPreview') || '初始化浏览器后开始控制'}
             noVncHint={t('recorder:novncHint') || 'noVNC will show browser after initialization'}
           />
