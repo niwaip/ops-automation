@@ -19,6 +19,12 @@
   - 适合回答：loop 为什么要提升为 workflow 可见模型，以及最终的 loop-aware plan 应该长什么样。
 - Browser Phase 执行与恢复：[Enterprise-Skill-Platform_Browser-Phase-Execution-and-Recovery_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Browser-Phase-Execution-and-Recovery_v4.0.md)
   - 适合回答：phase、接管、恢复、执行 DTO 与前端 phase 展示的目标边界。
+- Recorder 统一结果与快照复用草案：[Enterprise-Skill-Platform_Recorder-Unified-Outcome-and-Snapshot-Reuse-Draft_v4.1.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Recorder-Unified-Outcome-and-Snapshot-Reuse-Draft_v4.1.md)
+  - 适合回答：recorder-debug 为什么需要统一 outcome 协议、如何复用页面快照做 grounding/verification，以及如何从 reply 驱动演进为证据化结果层。
+- Recorder Outcome TypeSpec 草案：[Enterprise-Skill-Platform_Recorder-Outcome-TypeSpec_v4.1.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Recorder-Outcome-TypeSpec_v4.1.md)
+  - 适合回答：统一结果方案在后端 DTO、前端响应与 session history 上应如何建模，以及 `outcome / observation / diff / verification` 应如何与现有 recorder-debug 类型兼容演进。
+- Recorder Verification Rules 草案：[Enterprise-Skill-Platform_Recorder-Verification-Rules_v4.1.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Recorder-Verification-Rules_v4.1.md)
+  - 适合回答：`Selection / DetailOpen / Fill / Navigation` 四类 verifier 应如何定义统一输入输出、检查项、短路条件、失败原因与实现落点。
 - 浏览器语义规则版本化与模块重组方案：[Enterprise-Skill-Platform_Browser-Semantic-Rule-Versioning-and-Module-Reorg-Plan_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Browser-Semantic-Rule-Versioning-and-Module-Reorg-Plan_v4.0.md)
   - 适合回答：测试网站如何升级为评测站、业务语义规则如何版本化、浏览器目录如何按处理流程重组。
 - Browser Mock ERP 评测站页面矩阵与任务集：[Enterprise-Skill-Platform_Browser-Mock-ERP-Evaluation-Site-Matrix_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Browser-Mock-ERP-Evaluation-Site-Matrix_v4.0.md)

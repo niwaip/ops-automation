@@ -1,11 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
+import { createHash } from 'crypto';
 import * as fs from 'fs/promises';
 import { getBrowserWorkerUrl } from '../../../config/service-endpoints';
 import { BrowserActionValidatorService, BrowserCommand, BrowserCommandCandidate } from '../intent';
 import {
   RecorderObservationService,
   RecorderSnapshotService,
+  RecorderSnapshotReuseService,
+  RecorderTargetResolutionReuseService,
   RecorderStructureProbeService,
   SnapshotNode,
   SnapshotResolutionState,
@@ -23,6 +26,7 @@ type RecorderDebugExecutionSession = {
   backend: string;
   runtimeSessionId: string;
   currentPageUrl?: string;
+  lastObservation?: RecorderDebugObservation;
 };
 
 @Injectable()
@@ -46,6 +50,8 @@ export class RecorderDebugExecutionService {
     private readonly recorderDebugChatSupportService: RecorderDebugChatSupportService,
     private readonly recorderObservationService: RecorderObservationService,
     private readonly recorderSnapshotService: RecorderSnapshotService,
+    private readonly recorderSnapshotReuseService: RecorderSnapshotReuseService,
+    private readonly recorderTargetResolutionReuseService: RecorderTargetResolutionReuseService,
     private readonly recorderStructureProbeService: RecorderStructureProbeService
   ) {}
 
@@ -99,7 +105,7 @@ export class RecorderDebugExecutionService {
     observation.candidates = candidates;
     observation.candidateTrace = trace;
     observation.suggestedParameters = this.inferSuggestedParameters(observation);
-    return observation;
+    return this.enrichObservationState(session, observation, snapshotState);
   }
 
   async executeBrowserCommands(
@@ -438,5 +444,328 @@ export class RecorderDebugExecutionService {
     observation: Pick<RecorderDebugObservation, 'inputs' | 'buttons' | 'title' | 'text'>
   ): Array<{ name: string; label: string; required: boolean; reason: string }> {
     return this.recorderObservationService.inferSuggestedParameters(observation);
+  }
+
+  private enrichObservationState(
+    session: RecorderDebugExecutionSession,
+    observation: RecorderDebugObservation,
+    snapshotState: SnapshotResolutionState | null
+  ): RecorderDebugObservation {
+    const snapshotVersion = (session.lastObservation?.snapshotVersion || 0) + 1;
+    const capturedAt = new Date().toISOString();
+    const snapshotContentHash = this.buildSnapshotContentHash(snapshotState);
+    const observationFingerprint = this.buildObservationFingerprint(observation);
+    const reuseAssessment = this.recorderSnapshotReuseService.assessReuse({
+      previousObservation: session.lastObservation,
+      currentObservation: observation,
+      snapshotContentHash,
+      observationFingerprint,
+      hasSnapshotNodes: Boolean(snapshotState?.nodes.length),
+    });
+    const reusedResolution = this.recorderTargetResolutionReuseService.mergeReusableCandidates({
+      previousObservation: session.lastObservation,
+      currentObservation: observation,
+      currentSnapshotContentHash: snapshotContentHash,
+      reuseEligibility: reuseAssessment.reuseEligibility,
+    });
+    const candidates = reusedResolution.candidates || observation.candidates || [];
+    const candidateTrace = reusedResolution.candidateTrace || observation.candidateTrace || [];
+    const inputs = this.enrichObservedRecords(observation.inputs, 'input');
+    const buttons = this.enrichObservedRecords(observation.buttons, 'button');
+
+    return {
+      ...observation,
+      candidates,
+      candidateTrace,
+      inputs,
+      buttons,
+      observationVersion: 'v1',
+      snapshotId: `${session.runtimeSessionId}:${snapshotVersion}`,
+      snapshotVersion,
+      ...(snapshotContentHash ? { snapshotContentHash } : {}),
+      observationFingerprint,
+      reuseEligibility: reuseAssessment.reuseEligibility,
+      ...(reuseAssessment.staleReason ? { staleReason: reuseAssessment.staleReason } : {}),
+      capturedAt,
+      page: {
+        url: observation.currentPageUrl,
+        title: observation.title,
+        snapshotId: `${session.runtimeSessionId}:${snapshotVersion}`,
+        snapshotVersion,
+        ...(snapshotContentHash ? { snapshotContentHash } : {}),
+        observationFingerprint,
+        ...(observation.snapshotPath ? { snapshotPath: observation.snapshotPath } : {}),
+        capturedAt,
+        reuseEligibility: reuseAssessment.reuseEligibility,
+        ...(reuseAssessment.staleReason ? { staleReason: reuseAssessment.staleReason } : {}),
+      },
+      textState: {
+        visibleText: observation.text,
+        salientTexts: this.buildSalientTexts(observation),
+        headings: observation.headings,
+        links: observation.links,
+      },
+      interactiveState: {
+        inputs: inputs.map((item) => this.toObservedNode(item, 'input')),
+        buttons: buttons.map((item) => this.toObservedNode(item, 'button')),
+        candidates: candidates.map((candidate, index) => ({
+          ref: candidate.ref,
+          diffKey: candidate.ref || candidate.candidateId || `candidate-${index + 1}`,
+          role: candidate.role,
+          name: candidate.label,
+          text: candidate.summary,
+          visible: true,
+          regionId: typeof candidate.preferredLocator?.value === 'string' ? candidate.preferredLocator.value : undefined,
+          ordinal: index + 1,
+          attributes: {
+            confidence: typeof candidate.score === 'number' ? candidate.score : 0,
+          },
+        })),
+      },
+      facts: this.buildPageFacts(observation),
+    };
+  }
+
+  private enrichObservedRecords(
+    records: Array<Record<string, unknown>>,
+    kind: 'input' | 'button'
+  ): Array<Record<string, unknown>> {
+    return records.map((record, index) => {
+      const role = this.pickString(record.role, record.tagName, kind);
+      const name = this.pickString(record.label, record.labelText, record.placeholder, record.text);
+      const text = this.pickString(record.text, record.value, record.labelText);
+      const regionId = this.pickString(record.region, record.regionType, `global-${kind}`);
+      const contextLabel = this.pickString(record.label, record.labelText, record.stableName);
+      const ref = this.pickString(record.ref);
+      const ordinal = this.pickNumber(record.ordinal, record.index, record.rowIndex, index);
+      const selected = this.pickBoolean(
+        record.selected,
+        record.checked,
+        record.ariaSelected,
+        record.ariaPressed
+      );
+      const disabled = this.pickBoolean(record.disabled);
+      const visible = this.pickBoolean(record.visible, true);
+      const value = this.pickString(record.value);
+      const diffKey = this.buildDiffKey({
+        ref,
+        role,
+        name,
+        text,
+        contextLabel,
+        regionId,
+        ordinal,
+      });
+
+      return {
+        ...record,
+        role,
+        ...(name ? { name } : {}),
+        ...(text ? { text } : {}),
+        ...(contextLabel ? { contextLabel } : {}),
+        ...(regionId ? { regionId } : {}),
+        ...(ordinal !== undefined ? { ordinal } : {}),
+        ...(ref ? { ref } : {}),
+        diffKey,
+        ...(selected !== undefined ? { selected } : {}),
+        ...(disabled !== undefined ? { disabled } : {}),
+        ...(visible !== undefined ? { visible } : {}),
+        ...(value ? { value } : {}),
+        attributes: this.buildRecordAttributes(record),
+      };
+    });
+  }
+
+  private buildRecordAttributes(
+    record: Record<string, unknown>
+  ): Record<string, string | boolean | number> {
+    const rawEntries: Array<[string, unknown]> = [
+      ['checked', record.checked],
+      ['ariaSelected', record.ariaSelected],
+      ['ariaPressed', record.ariaPressed],
+      ['dataState', record.dataState],
+      ['stableName', record.stableName],
+    ];
+    return rawEntries.reduce<Record<string, string | boolean | number>>((accumulator, [key, value]) => {
+      if (typeof value === 'string' || typeof value === 'boolean' || typeof value === 'number') {
+        accumulator[key] = value;
+      }
+      return accumulator;
+    }, {});
+  }
+
+  private toObservedNode(
+    record: Record<string, unknown>,
+    kind: 'input' | 'button'
+  ): {
+    ref?: string;
+    diffKey?: string;
+    role?: string;
+    name?: string;
+    text?: string;
+    contextLabel?: string;
+    selected?: boolean;
+    disabled?: boolean;
+    visible?: boolean;
+    value?: string;
+    regionId?: string;
+    ordinal?: number;
+    attributes?: Record<string, string | boolean | number>;
+  } {
+    return {
+      ref: this.pickString(record.ref),
+      diffKey: this.pickString(record.diffKey, this.buildDiffKey({ role: kind })),
+      role: this.pickString(record.role, kind),
+      name: this.pickString(record.name, record.label, record.labelText),
+      text: this.pickString(record.text),
+      contextLabel: this.pickString(record.contextLabel, record.label, record.labelText),
+      selected: this.pickBoolean(record.selected),
+      disabled: this.pickBoolean(record.disabled),
+      visible: this.pickBoolean(record.visible, true),
+      value: this.pickString(record.value),
+      regionId: this.pickString(record.regionId, record.region),
+      ordinal: this.pickNumber(record.ordinal, record.index),
+      attributes:
+        record.attributes && typeof record.attributes === 'object'
+          ? (record.attributes as Record<string, string | boolean | number>)
+          : {},
+    };
+  }
+
+  private buildSnapshotContentHash(snapshotState: SnapshotResolutionState | null): string | undefined {
+    if (!snapshotState?.nodes.length) {
+      return undefined;
+    }
+    const normalized = snapshotState.nodes
+      .map((node) => [node.role, node.name || '', node.text || '', node.contextLabel || ''].join('|'))
+      .join('\n');
+    return createHash('sha1').update(normalized).digest('hex');
+  }
+
+  private buildObservationFingerprint(observation: RecorderDebugObservation): string {
+    const normalized = [
+      observation.currentPageUrl || '',
+      observation.title || '',
+      ...(observation.headings || []).slice(0, 8),
+      ...(observation.buttons || []).slice(0, 8).map((item) => this.pickString(item.text, item.name) || ''),
+      ...(observation.inputs || []).slice(0, 6).map((item) => this.pickString(item.label, item.name) || ''),
+    ].join('|');
+    return createHash('sha1').update(normalized).digest('hex').slice(0, 16);
+  }
+
+  private buildSalientTexts(observation: RecorderDebugObservation): string[] {
+    const values = [
+      observation.title || '',
+      ...(observation.headings || []),
+      ...(observation.links || []).slice(0, 8),
+      ...(observation.buttons || [])
+        .slice(0, 8)
+        .map((item) => this.pickString(item.text, item.name) || ''),
+    ]
+      .map((item) => item.trim())
+      .filter(Boolean);
+    return [...new Set(values)].slice(0, 16);
+  }
+
+  private buildPageFacts(observation: RecorderDebugObservation): Array<{
+    type: string;
+    value?: string | number | boolean;
+    confidence?: number;
+    source?: 'structure' | 'text' | 'visual';
+  }> {
+    const facts: Array<{
+      type: string;
+      value?: string | number | boolean;
+      confidence?: number;
+      source?: 'structure' | 'text' | 'visual';
+    }> = [];
+    if (observation.inputs.length > 0) {
+      facts.push({
+        type: 'form-field-count',
+        value: observation.inputs.length,
+        confidence: 0.9,
+        source: 'structure',
+      });
+    }
+    if ((observation.rows?.length || 0) > 0) {
+      facts.push({
+        type: 'selectable-list',
+        value: observation.rows?.length || 0,
+        confidence: 0.8,
+        source: 'structure',
+      });
+    }
+    if (/(登录|登入|log\s*in|sign\s*in|ログイン)/i.test(`${observation.title || ''} ${observation.text || ''}`)) {
+      facts.push({
+        type: 'location',
+        value: 'login',
+        confidence: 0.8,
+        source: 'text',
+      });
+    }
+    if (this.detectModalOpen(observation)) {
+      facts.push({
+        type: 'modal-open',
+        value: true,
+        confidence: 0.7,
+        source: 'text',
+      });
+    }
+    return facts;
+  }
+
+  private detectModalOpen(observation: RecorderDebugObservation): boolean {
+    const text = `${observation.title || ''} ${observation.text || ''}`;
+    return /(确认要|确定要|是否确认|是否删除|modal|dialog|popup|overlay)/i.test(text);
+  }
+
+  private buildDiffKey(input: {
+    ref?: string;
+    role?: string;
+    name?: string;
+    text?: string;
+    contextLabel?: string;
+    regionId?: string;
+    ordinal?: number;
+  }): string {
+    if (input.ref) {
+      return input.ref;
+    }
+    const roleNameKey = [input.role, input.name, input.contextLabel].filter(Boolean).join('|');
+    if (roleNameKey) {
+      return roleNameKey;
+    }
+    return [input.regionId || 'global', input.ordinal ?? 0, input.text || 'node'].join('|');
+  }
+
+  private pickString(...values: unknown[]): string | undefined {
+    const found = values.find((value) => typeof value === 'string' && value.trim().length > 0);
+    return typeof found === 'string' ? found.trim() : undefined;
+  }
+
+  private pickBoolean(...values: unknown[]): boolean | undefined {
+    for (const value of values) {
+      if (typeof value === 'boolean') {
+        return value;
+      }
+      if (typeof value === 'string') {
+        if (value === 'true') {
+          return true;
+        }
+        if (value === 'false') {
+          return false;
+        }
+      }
+    }
+    return undefined;
+  }
+
+  private pickNumber(...values: unknown[]): number | undefined {
+    for (const value of values) {
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        return value;
+      }
+    }
+    return undefined;
   }
 }

@@ -108,6 +108,7 @@ Normalized actions allowed:
 - list_search_results
 - click_result
 - switch_latest_tab
+- close_tab
 - fill
 - screenshot
 - snapshot
@@ -136,8 +137,9 @@ Rules:
 - Use "navigate" for opening a site.
 - Use "smart_search" when the user wants to search on the current page or after opening a search engine.
 - Use "list_search_results" when the user asks to查看/列出当前搜索结果候选.
-- Use "click_result" when the user says "点击第一个结果" or similar.
+- Use "click_result" when the user says "点击第一个结果" or "打开第二个检索结果" or similar.
 - Use "switch_latest_tab" when the user wants to切到最新标签页/最新页面.
+- Use "close_tab" when the user wants to关闭当前tab页/关闭当前页面/close tab.
 - When the user provides credentials such as 用户名/账号/密码, decompose the request into multiple steps and include "fill" steps before "click".
 - For login pages, prefer selectors like "用户名", "账号", "密码" for fill params.selector.
 - Do not output a single "click 登录" step for a full login request that includes credentials.
@@ -171,6 +173,9 @@ JSON: {"steps":[{"action":"list_search_results","params":{"limit":8},"descriptio
 
 User: 切到最新标签页
 JSON: {"steps":[{"action":"switch_latest_tab","params":{},"description":"切换到最新标签页"}],"explanation":"切换到当前浏览器会话中的最新标签页"}
+
+User: 关闭当前tab页
+JSON: {"steps":[{"action":"close_tab","params":{},"description":"关闭当前标签页"}],"explanation":"关闭当前激活的浏览器标签页"}
 
 User: 打开百度
 JSON: {"steps":[{"action":"navigate","params":{"url":"https://www.baidu.com"},"description":"打开百度"}],"explanation":"打开百度"}

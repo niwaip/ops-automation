@@ -75,6 +75,7 @@ interface LoopRecordingPanelProps {
   isDarkTheme: boolean;
   onSessionBound?: (sessionId: string, runtimeSessionId: string) => void;
   onInsertControlToken?: (token: string) => void;
+  children?: React.ReactNode;
 }
 
 const createDefaultLoopDraft = (currentPageUrl?: string): LoopDraft => ({
@@ -99,6 +100,7 @@ const LoopRecordingPanel: React.FC<LoopRecordingPanelProps> = ({
   isDarkTheme,
   onSessionBound,
   onInsertControlToken,
+  children,
 }) => {
   const [saving, setSaving] = useState(false);
   const [loadingDraft, setLoadingDraft] = useState(false);
@@ -255,10 +257,12 @@ const LoopRecordingPanel: React.FC<LoopRecordingPanelProps> = ({
 
   return (
     <div style={{ marginTop: 12 }}>
-      <Space
-        size={8}
-        wrap
+      <div
         style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          gap: 8,
           width: '100%',
           padding: 8,
           borderRadius: 12,
@@ -323,7 +327,8 @@ const LoopRecordingPanel: React.FC<LoopRecordingPanelProps> = ({
             disabled={loadingDraft}
           />
         </Tooltip>
-      </Space>
+        {children}
+      </div>
     </div>
   );
 };

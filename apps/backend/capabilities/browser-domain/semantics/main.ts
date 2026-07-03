@@ -5,7 +5,13 @@ import { AppModule } from './app.module';
 import { getPublicHost } from './config/service-endpoints';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    // Raise body size limit to handle large observation/snapshot payloads in error logs
+    bodyParser: true,
+  });
+  // Increase JSON body limit beyond the default 100kb
+  app.use(require('express').json({ limit: '10mb' }));
+  app.use(require('express').urlencoded({ limit: '10mb', extended: true }));
 
   app.useGlobalPipes(
     new ValidationPipe({

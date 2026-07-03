@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { RecorderObservedRegion } from '../execute/recorder-debug.types';
 
 interface SnapshotObservationLike {
   inputs: Array<Record<string, unknown>>;
@@ -15,7 +16,7 @@ interface RecorderProbeObservationLike {
   inputs: Array<Record<string, unknown>>;
   buttons: Array<Record<string, unknown>>;
   rows?: Array<Record<string, unknown>>;
-  regions?: Array<Record<string, unknown>>;
+  regions?: RecorderObservedRegion[];
   pageSemantics?: Record<string, unknown>;
   headings: string[];
   links: string[];
@@ -143,6 +144,22 @@ export class RecorderStructureProbeService {
         const value = element.getAttribute(name);
         return value ? value.trim() : undefined;
       };
+      const getBooleanAttr = (element, name) => {
+        if (!(element instanceof HTMLElement)) {
+          return undefined;
+        }
+        const value = element.getAttribute(name);
+        if (value === null) {
+          return undefined;
+        }
+        if (value === '' || value === 'true') {
+          return true;
+        }
+        if (value === 'false') {
+          return false;
+        }
+        return undefined;
+      };
       const getDatasetAttr = (element, key) => {
         if (!(element instanceof HTMLElement)) {
           return undefined;
@@ -190,6 +207,13 @@ export class RecorderStructureProbeService {
           dataTestId: getDataAttr(element, 'data-testid') || getDataAttr(element, 'data-test-id'),
           region: getDatasetAttr(element, 'aiRegion'),
           stableName: getDatasetAttr(element, 'aiStableName'),
+          visible: true,
+          disabled: 'disabled' in element ? Boolean(element.disabled) : undefined,
+          checked: element instanceof HTMLInputElement ? Boolean(element.checked) : undefined,
+          selected: element instanceof HTMLOptionElement ? Boolean(element.selected) : undefined,
+          ariaSelected: getBooleanAttr(element, 'aria-selected'),
+          ariaPressed: getBooleanAttr(element, 'aria-pressed'),
+          dataState: getDataAttr(element, 'data-state'),
         }));
 
       const buttons = uniqueElements(queryAllAcrossRoots('button, a, [role="button"], [role="link"], [data-ai-action]'))
@@ -205,6 +229,12 @@ export class RecorderStructureProbeService {
           action: getDatasetAttr(element, 'aiAction'),
           region: getDatasetAttr(element, 'aiRegion'),
           stableName: getDatasetAttr(element, 'aiStableName'),
+          visible: true,
+          disabled: 'disabled' in element ? Boolean(element.disabled) : undefined,
+          selected: getBooleanAttr(element, 'aria-selected'),
+          ariaSelected: getBooleanAttr(element, 'aria-selected'),
+          ariaPressed: getBooleanAttr(element, 'aria-pressed'),
+          dataState: getDataAttr(element, 'data-state'),
           rowIndex: (() => {
             const raw = getDatasetAttr(element, 'aiRowIndex');
             const parsed = raw ? Number.parseInt(raw, 10) : NaN;
@@ -289,14 +319,17 @@ export class RecorderStructureProbeService {
 
           return {
             index,
-            region: getDatasetAttr(element, 'aiRegion') || getDataAttr(element, 'aria-label') || getDataAttr(element, 'id') || undefined,
-            regionType: getDatasetAttr(element, 'aiRegionType') || element.tagName.toLowerCase(),
+            regionId: getDatasetAttr(element, 'aiRegion') || getDataAttr(element, 'aria-label') || getDataAttr(element, 'id') || ('region-' + (index + 1)),
+            label: getDatasetAttr(element, 'aiRegionType') || element.tagName.toLowerCase(),
             text: toText(element.textContent),
             fields,
             actions,
+            entryCount: fields.length + actions.length,
+            visible: true,
+            nodeRefs: [...fields, ...actions].map(item => item.ref).filter(Boolean),
           };
         })
-        .filter(region => region.region || region.fields.length > 0 || region.actions.length > 0);
+        .filter(region => !region.regionId.startsWith('region-') || region.fields.length > 0 || region.actions.length > 0);
 
       const headings = uniqueElements(queryAllAcrossRoots('h1, h2, h3, h4, [role="heading"]'))
         .filter(isVisible)
@@ -324,7 +357,7 @@ export class RecorderStructureProbeService {
     })())`;
   }
 
-  private mergeObservedRecords<T extends Record<string, unknown>>(...groups: T[][]): T[] {
+  private mergeObservedRecords<T extends object>(...groups: T[][]): T[] {
     const merged = new Map<string, T>();
     for (const group of groups) {
       for (const item of group) {

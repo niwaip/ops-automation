@@ -70,6 +70,11 @@ export const BROWSER_TOOLS: BrowserToolDefinition[] = [
     params: {},
   },
   {
+    name: 'close_tab',
+    description: 'Close the current active tab/page in the browser session',
+    params: {},
+  },
+  {
     name: 'fill',
     description: 'Fill text into an input field',
     params: {

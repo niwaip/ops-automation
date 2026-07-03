@@ -94,7 +94,33 @@ services:
     image: ${DOCKER_REGISTRY:-}node:20-bullseye
     container_name: ops-session-broker
     working_dir: /app
-    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && rm -f tsconfig.tsbuildinfo && npx tsc && node dist/main.js"
+    command: >
+      sh -c "npm config set registry https://registry.npmmirror.com
+      && npm config set fetch-retries 5
+      && npm config set fetch-retry-mintimeout 20000
+      && npm config set fetch-retry-maxtimeout 120000
+      && i=0
+      && until [ $$i -ge 5 ]; do
+        npm install --legacy-peer-deps --include=dev --no-package-lock && break;
+        i=$$((i+1));
+        echo 'npm install failed, retrying in 10s...';
+        sleep 10;
+      done
+      && [ $$i -lt 5 ]
+      && j=0
+      && until [ $$j -ge 5 ]; do
+        npx prisma generate && break;
+        j=$$((j+1));
+        echo 'prisma generate failed, retrying in 10s...';
+        sleep 10;
+      done
+      && [ $$j -lt 5 ]
+      && rm -f tsconfig.tsbuildinfo
+      && npx tsc
+      && rm -rf dist/generated
+      && mkdir -p dist/generated
+      && cp -R src/generated/prisma dist/generated/prisma
+      && node dist/main.js"
     environment:
       - NODE_ENV=development
       - DATABASE_URL=postgresql://${POSTGRES_USER:-ops}:${POSTGRES_PASSWORD:-ops_secret}@postgres:5432/${POSTGRES_DB:-ops}
@@ -320,7 +346,28 @@ services:
     image: ${DOCKER_REGISTRY:-}node:20-bullseye
     container_name: ops-ai-orchestrator
     working_dir: /app
-    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && npm run dev"
+    command: >
+      sh -c "npm config set registry https://registry.npmmirror.com
+      && npm config set fetch-retries 5
+      && npm config set fetch-retry-mintimeout 20000
+      && npm config set fetch-retry-maxtimeout 120000
+      && i=0
+      && until [ $$i -ge 5 ]; do
+        npm install --legacy-peer-deps --include=dev && break;
+        i=$$((i+1));
+        echo 'npm install failed, retrying in 10s...';
+        sleep 10;
+      done
+      && [ $$i -lt 5 ]
+      && j=0
+      && until [ $$j -ge 5 ]; do
+        npx prisma generate && break;
+        j=$$((j+1));
+        echo 'prisma generate failed, retrying in 10s...';
+        sleep 10;
+      done
+      && [ $$j -lt 5 ]
+      && npm run dev"
     environment:
       - NODE_ENV=development
       - DOCKER_ENV=true
@@ -352,7 +399,6 @@ services:
       - "${AI_ORCHESTRATOR_PORT:-3007}:${AI_ORCHESTRATOR_PORT:-3007}"
     volumes:
       - ${PROJECT_ROOT:-..}/apps/backend/intelligence/ai-orchestrator:/app
-      - ${PROJECT_ROOT:-..}/packages/contracts:/packages/contracts
       - ai_orchestrator_node_modules:/app/node_modules
       - ${PROJECT_ROOT:-..}/apps/backend/var/cache/ai-orchestrator:/app/data
     depends_on:
@@ -376,7 +422,7 @@ services:
       && npm config set fetch-retry-maxtimeout 120000
       && i=0
       && until [ $$i -ge 5 ]; do
-        npm install --legacy-peer-deps --include=dev && break;
+        npm install --legacy-peer-deps --include=dev --no-package-lock && break;
         i=$$((i+1));
         echo 'npm install failed, retrying in 10s...';
         sleep 10;
@@ -454,7 +500,6 @@ services:
     volumes:
       - ${PROJECT_ROOT:-..}/apps/frontend/portal:/app
       - ${PROJECT_ROOT:-..}/apps/frontend/shared:/shared
-      - ${PROJECT_ROOT:-..}/packages/contracts:/packages/contracts
       - ${PROJECT_ROOT:-..}/packages/backend-contracts:/packages/backend-contracts
       - ${PROJECT_ROOT:-..}/packages/user-core:/packages/user-core
       - ${PROJECT_ROOT:-..}/tsconfig.base.json:/tsconfig.base.json:ro
@@ -484,7 +529,6 @@ services:
     volumes:
       - ${PROJECT_ROOT:-..}/apps/frontend/user-web:/app
       - ${PROJECT_ROOT:-..}/apps/frontend/shared:/shared
-      - ${PROJECT_ROOT:-..}/packages/contracts:/packages/contracts
       - ${PROJECT_ROOT:-..}/packages/backend-contracts:/packages/backend-contracts
       - ${PROJECT_ROOT:-..}/packages/user-core:/packages/user-core
       - ${PROJECT_ROOT:-..}/tsconfig.base.json:/tsconfig.base.json:ro

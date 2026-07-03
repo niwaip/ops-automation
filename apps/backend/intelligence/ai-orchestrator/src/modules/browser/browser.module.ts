@@ -12,6 +12,8 @@ import {
   RecorderDebugObservationRefreshService,
   RecorderObservationService,
   RecorderSnapshotService,
+  RecorderSnapshotReuseService,
+  RecorderTargetResolutionReuseService,
   RecorderStructureProbeService,
 } from './observe';
 import {
@@ -44,11 +46,13 @@ import {
   RecorderDebugChatFlowService,
   RecorderDebugChatSupportService,
   RecorderDebugExecutionService,
+  RecorderDebugOutcomeService,
   RecorderDebugObservationFacade,
   RecorderDebugResponseService,
   RecorderDebugService,
   RecorderDebugSessionFacade,
 } from './execute';
+import { RecorderHistoryCompressionService } from './execute/recorder';
 import {
   RecorderConditionalBranchService,
   RecorderLoopExportService,
@@ -95,6 +99,7 @@ import {
     RecorderDebugChatFlowService,
     RecorderConditionalBranchService,
     RecorderDebugExecutionService,
+    RecorderDebugOutcomeService,
     RecorderDebugObservationRefreshService,
     RecorderDebugResponseService,
     RecorderDebugSessionCoordinatorService,
@@ -108,12 +113,15 @@ import {
     RecorderDisambiguationService,
     RecorderObservationService,
     RecorderSnapshotService,
+    RecorderSnapshotReuseService,
+    RecorderTargetResolutionReuseService,
     RecorderStructureProbeService,
     BrowserActionValidatorService,
     RecorderParameterService,
     RecorderScriptExportService,
     RecorderTemplateExportService,
     ExecutionReconcileService,
+    RecorderHistoryCompressionService,
   ],
   exports: [
     BrowserCommandService,

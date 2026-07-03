@@ -30,6 +30,7 @@ const CAUTION_ACTIONS = new Set([
   'search',
   'smart_search',
   'switch_latest_tab',
+  'close_tab',
 ]);
 
 const HIGH_RISK_KEYWORD =

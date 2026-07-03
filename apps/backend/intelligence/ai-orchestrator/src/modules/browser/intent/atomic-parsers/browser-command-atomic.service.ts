@@ -30,6 +30,26 @@ export class BrowserCommandAtomicService {
       }
     }
 
+    const closeTabPatterns = [
+      /^(?:关闭|关掉)\s*(?:当前)?\s*(?:标签页|页签|tab|页面)$/i,
+      /^(?:close|dismiss)\s*(?:the\s+)?(?:current|active)?\s*(?:tab|page)$/i,
+    ];
+    for (const pattern of closeTabPatterns) {
+      if (pattern.test(normalizedInput)) {
+        return {
+          success: true,
+          commands: [
+            {
+              tool: 'close_tab',
+              params: {},
+              description: '关闭当前标签页',
+            },
+          ],
+          explanation: '将关闭当前激活的浏览器标签页',
+        };
+      }
+    }
+
     const scrollPatterns = [
       /^(?:滚动|scroll)\s*(向下|下|up|down|向上|上|top|bottom|顶部|底部)?$/i,
       /^(?:向下|向下滚动|向下翻页)$/i,

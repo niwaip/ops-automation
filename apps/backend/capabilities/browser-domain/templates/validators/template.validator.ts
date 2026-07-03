@@ -62,6 +62,7 @@ export class TemplateValidator {
           'list_search_results',
           'click_result',
           'switch_latest_tab',
+          'close_tab',
           'read_value',
           'branch',
           'takeover_gate',

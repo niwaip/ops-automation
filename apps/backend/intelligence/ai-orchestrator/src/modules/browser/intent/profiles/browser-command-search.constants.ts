@@ -14,4 +14,4 @@ export const DEFAULT_LIST_RESULT_TERMS = [
   'list results',
   'inspect results',
 ] as const;
-export const DEFAULT_CLICK_RESULT_TERMS = ['点击', '选择', 'click'] as const;
+export const DEFAULT_CLICK_RESULT_TERMS = ['点击', '选择', '打开', 'click', 'open'] as const;

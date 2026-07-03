@@ -130,7 +130,8 @@ describe('RecorderDebugService', () => {
       ],
       regions: [
         {
-          region: 'gross-margin-panel',
+          regionId: 'gross-margin-panel',
+          label: 'section',
           fields: [{ field: 'grossMargin', text: '25.5%' }],
           actions: [{ action: 'approve', text: '承認する (Approve)' }],
         },
@@ -167,7 +168,8 @@ describe('RecorderDebugService', () => {
       rows: [],
       regions: [
         {
-          region: 'gross-margin-panel',
+          regionId: 'gross-margin-panel',
+          label: 'section',
           fields: [
             {
               field: 'grossMargin',

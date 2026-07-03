@@ -220,6 +220,7 @@ export const buildRuntimeArgs = (
     case 'read_page':
     case 'get_text':
     case 'switch_latest_tab':
+    case 'close_tab':
     case 'hover':
     case 'click':
       return {};

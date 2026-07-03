@@ -1524,26 +1524,29 @@ describe('RecorderDebugService', () => {
         expect.objectContaining({
           step_id: 'step_2',
           action: 'click',
-          locator: { type: 'role', value: 'button[name="保留中"]' },
+          locator: expect.objectContaining({
+            type: 'role',
+            value: 'button[name="保留中"]',
+          }),
         }),
         expect.objectContaining({
           step_id: 'step_3',
           action: 'click',
-          locator: {
+          locator: expect.objectContaining({
             type: 'css',
             value:
               ':nth-match(tr:has([data-ai-action="detail"]):has-text("保留中") [data-ai-action="detail"], 1)',
-          },
+          }),
         }),
         expect.objectContaining({
           step_id: 'step_4',
           action: 'click',
-          locator: { type: 'test-id', value: 'btn-approve' },
+          locator: expect.objectContaining({ type: 'test-id', value: 'btn-approve' }),
         }),
         expect.objectContaining({
           step_id: 'step_5',
           action: 'click',
-          locator: { type: 'text', value: '一覧に戻る' },
+          locator: expect.objectContaining({ type: 'text', value: '一覧に戻る' }),
         }),
       ])
     );
@@ -1771,5 +1774,73 @@ describe('RecorderDebugService', () => {
         source: 'template.step_8.branch.condition_fn',
       }),
     ]);
+  });
+
+  it('enrichCommandsWithGrounding should preserve outcome.grounding.chosenTarget on exported commands and script', async () => {
+    const service = createService({
+      modelService: { getPreferredDefaultModel: jest.fn().mockReturnValue(undefined) },
+    });
+    const targetCommand = {
+      tool: 'click',
+      params: { target: 'e42' },
+      description: '打开 gross-margin 详情',
+      locator: {
+        strategy: 'role',
+        value: 'button',
+        role: 'button',
+        name: 'gross-margin',
+        generatedBy: 'system',
+      },
+    };
+    const session = {
+      sessionId: 'recorder-debug-grounding-enrich',
+      runtimeSessionId: 'runtime-grounding-enrich',
+      backend: 'cli',
+      browserInitialized: true,
+      currentPageUrl: 'http://localhost/#approvals',
+      loopDraft: undefined,
+      manualInterventions: [],
+      history: [
+        {
+          role: 'assistant',
+          content: '已点击 gross-margin 详情',
+          commands: [targetCommand],
+          outcome: {
+            grounding: {
+              chosenTarget: {
+                ref: 'e42',
+                role: 'button',
+                name: 'gross-margin',
+                contextLabel: 'margin-row-3',
+                regionId: 'gross-margin-panel',
+                locator: { strategy: 'role', value: 'button' },
+                confidence: 0.9,
+              },
+            },
+          },
+        },
+      ],
+      executedCommands: [targetCommand],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const artifacts = await (service as any).recorderExportAssemblyService.buildExportArtifacts(
+      session,
+      '打开 gross-margin 详情'
+    );
+
+    expect(artifacts.skillDraft.commands[0].locator).toEqual(
+      expect.objectContaining({
+        ref: 'e42',
+        role: 'button',
+        name: 'gross-margin',
+        contextLabel: 'margin-row-3',
+        regionId: 'gross-margin-panel',
+      })
+    );
+    expect(artifacts.script).toContain(
+      '// grounding: ref=e42, role=button, name=gross-margin, context=margin-row-3, region=gross-margin-panel'
+    );
   });
 });

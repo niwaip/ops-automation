@@ -21,4 +21,3 @@ export declare const ERROR_CODES: {
     readonly RUNTIME_TAKEOVER_REQUIRED: "RUNTIME_TAKEOVER_REQUIRED";
 };
 export type ErrorCode = keyof typeof ERROR_CODES;
-//# sourceMappingURL=index.d.ts.map

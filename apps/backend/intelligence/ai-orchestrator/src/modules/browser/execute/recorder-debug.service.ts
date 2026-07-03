@@ -94,7 +94,9 @@ export class RecorderDebugService {
     });
 
     await this.ensureBrowserReady(session);
-    const observation = await this.observePageSafely(session);
+    const observation = await this.observePageSafely(session, undefined, {
+      preferCachedObservation: true,
+    });
     this.recorderDebugSessionFacade.syncObservationToSession(session, observation);
     this.recorderDebugSessionFacade.applyRecorderControlTokensBeforeExecution(
       session,
@@ -113,6 +115,8 @@ export class RecorderDebugService {
         session,
         reply,
         status: 'answer',
+        userGoal: rawMessage,
+        beforeObservation: observation,
         observation,
         controlTokenState,
       });
@@ -177,6 +181,8 @@ export class RecorderDebugService {
         session,
         reply: '已根据当前对话与执行历史生成 CLI 脚本和内部 skill 草稿。',
         status: 'completed',
+        userGoal: effectiveMessage,
+        beforeObservation: observation,
         observation,
         exportArtifacts,
         controlTokenState,
@@ -186,6 +192,8 @@ export class RecorderDebugService {
         session,
         reply: flow.reply,
         status: 'question',
+        userGoal: effectiveMessage,
+        beforeObservation: observation,
         observation,
         commands: parsed.commands,
         controlTokenState,
@@ -230,6 +238,8 @@ export class RecorderDebugService {
           session,
           reply: executionOutcome.reply,
           status: 'question',
+          userGoal: effectiveMessage,
+          beforeObservation: observation,
           observation: executionOutcome.nextObservation,
           commands: parsed.commands,
           execution: executionOutcome.execution,
@@ -240,6 +250,8 @@ export class RecorderDebugService {
           session,
           reply: executionOutcome.reply,
           status: 'executed',
+          userGoal: effectiveMessage,
+          beforeObservation: observation,
           observation: executionOutcome.nextObservation,
           commands: parsed.commands,
           execution: executionOutcome.execution,
@@ -257,6 +269,8 @@ export class RecorderDebugService {
         session,
         reply,
         status: 'answer',
+        userGoal: effectiveMessage,
+        beforeObservation: observation,
         observation,
         controlTokenState,
       });
@@ -266,6 +280,8 @@ export class RecorderDebugService {
         session,
         reply,
         status: 'question',
+        userGoal: effectiveMessage,
+        beforeObservation: observation,
         observation,
         controlTokenState,
       });
@@ -295,7 +311,10 @@ export class RecorderDebugService {
         request.userGoal || '浏览器调试任务'
       )) as unknown as RecorderDebugExportArtifacts;
     this.recorderDebugResponseService.pushAssistantTurn(session, {
+      status: 'completed',
       reply: '已导出 CLI 脚本和内部 skill 草稿。',
+      userGoal: request.userGoal,
+      beforeObservation: session.lastObservation,
       exportArtifacts,
       observation: session.lastObservation,
     });
@@ -441,11 +460,13 @@ export class RecorderDebugService {
 
   private async observePageSafely(
     session: RecorderDebugSession,
-    fallback?: RecorderDebugObservation
+    fallback?: RecorderDebugObservation,
+    options?: { preferCachedObservation?: boolean }
   ): Promise<RecorderDebugObservation> {
     return this.recorderDebugSessionFacade.observePageSafely({
       session,
       fallback,
+      preferCachedObservation: options?.preferCachedObservation,
       observePage: async (currentSession) => this.observePage(currentSession),
       reportError: async ({ session: failedSession, sourceStage, errorType, errorMessage }) =>
         this.reportRecorderDebugError({
@@ -636,6 +657,8 @@ export class RecorderDebugService {
           '导航失败'
         }`,
         status: 'executed',
+        userGoal: input.effectiveMessage,
+        beforeObservation: input.observation,
         observation: postNavigateObservation,
         commands: navigateParsed.commands,
         execution: navigateExecution,
@@ -699,6 +722,8 @@ export class RecorderDebugService {
           session: input.session,
           reply: `${navigationPreface}\n${executionOutcome.reply}`,
           status: 'question',
+          userGoal: input.effectiveMessage,
+          beforeObservation: input.observation,
           observation: executionOutcome.nextObservation,
           commands: combinedCommands,
           execution: mergedExecution,
@@ -710,6 +735,8 @@ export class RecorderDebugService {
         session: input.session,
         reply: `${navigationPreface}\n${executionOutcome.reply}`,
         status: 'executed',
+        userGoal: input.effectiveMessage,
+        beforeObservation: input.observation,
         observation: executionOutcome.nextObservation,
         commands: combinedCommands,
         execution: mergedExecution,
@@ -732,6 +759,8 @@ export class RecorderDebugService {
         session: input.session,
         reply: `${navigationPreface}\n已根据当前对话与执行历史生成 CLI 脚本和内部 skill 草稿。`,
         status: 'completed',
+        userGoal: input.effectiveMessage,
+        beforeObservation: input.observation,
         observation: postNavigateObservation,
         commands: combinedCommands,
         execution: navigateExecution,
@@ -745,6 +774,8 @@ export class RecorderDebugService {
         session: input.session,
         reply: `${navigationPreface}\n${followUpFlow.reply}`,
         status: 'question',
+        userGoal: input.effectiveMessage,
+        beforeObservation: input.observation,
         observation: postNavigateObservation,
         commands: combinedCommands,
         execution: navigateExecution,
@@ -763,6 +794,8 @@ export class RecorderDebugService {
         session: input.session,
         reply: `${navigationPreface}\n${reply}`,
         status: 'answer',
+        userGoal: input.effectiveMessage,
+        beforeObservation: input.observation,
         observation: postNavigateObservation,
         commands: combinedCommands,
         execution: navigateExecution,
@@ -776,6 +809,8 @@ export class RecorderDebugService {
         postNavigateObservation
       )}`,
       status: 'question',
+      userGoal: input.effectiveMessage,
+      beforeObservation: input.observation,
       observation: postNavigateObservation,
       commands: combinedCommands,
       execution: navigateExecution,

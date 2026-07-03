@@ -425,13 +425,19 @@ export class BrowserExecutionControllerService {
     initialExecution: BrowserExecuteResponse,
     recoveryExecution: BrowserExecuteResponse
   ): BrowserExecuteResponse {
+    // When recovery succeeds, the merged result reflects the recovery outcome —
+    // the initial failure was an internal retry. Surfacing initialExecution.message
+    // ("One or more CLI commands failed...") or its error results would contradict
+    // `success: true` and confuse the displayed execution result / outcome toolExecution.
+    const recoverySucceeded = recoveryExecution.success;
     return {
       success: recoveryExecution.success,
-      message:
-        recoveryExecution.message ||
-        initialExecution.message ||
-        (recoveryExecution.success ? 'Recovered after retry' : undefined),
-      results: [...(initialExecution.results || []), ...(recoveryExecution.results || [])],
+      message: recoverySucceeded
+        ? recoveryExecution.message || 'Recovered after retry'
+        : recoveryExecution.message || initialExecution.message,
+      results: recoverySucceeded
+        ? [...(recoveryExecution.results || [])]
+        : [...(initialExecution.results || []), ...(recoveryExecution.results || [])],
       steps: [...(initialExecution.steps || []), ...(recoveryExecution.steps || [])],
       executedCommands: [
         ...(initialExecution.executedCommands || []),

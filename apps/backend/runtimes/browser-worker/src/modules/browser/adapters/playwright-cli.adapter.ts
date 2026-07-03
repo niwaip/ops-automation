@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { execFile } from 'child_process';
 import { createHash } from 'crypto';
 import { lookup } from 'dns/promises';
+import * as fsSync from 'fs';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import sharp from 'sharp';
@@ -127,6 +128,18 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     const initialUrl = options?.initialUrl || 'about:blank';
 
     this.logger.log(`Initializing Playwright CLI session ${sessionId} at ${initialUrl}`);
+    // #region debug-point C:init-browser
+    this.reportDebugEvent(
+      'C',
+      'playwright-cli.adapter.ts:initBrowser:start',
+      '[DEBUG] initBrowser start',
+      {
+        sessionId,
+        initialUrl,
+        sessionPreferences: options?.sessionPreferences || null,
+      }
+    );
+    // #endregion
 
     try {
       await this.workerService.ensureSessionWorker(sessionId, {
@@ -134,13 +147,37 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
         enableCodegen: options?.sessionPreferences?.enableCodegen,
         headless: options?.sessionPreferences?.headless,
       });
+      // #region debug-point C:init-browser-worker-ready
+      this.reportDebugEvent(
+        'C',
+        'playwright-cli.adapter.ts:initBrowser:worker-ready',
+        '[DEBUG] initBrowser worker ready',
+        { sessionId }
+      );
+      // #endregion
       await this.ensureDirectories();
       await this.openSession(sessionId, initialUrl);
       await this.configureSessionTimeouts(sessionId);
+      // #region debug-point C:init-browser-success
+      this.reportDebugEvent(
+        'C',
+        'playwright-cli.adapter.ts:initBrowser:success',
+        '[DEBUG] initBrowser success',
+        { sessionId, initialUrl }
+      );
+      // #endregion
       return { success: true, message: `Playwright CLI session ${sessionId} initialized` };
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(`Failed to initialize CLI browser: ${errorMessage}`);
+      // #region debug-point C:init-browser-error
+      this.reportDebugEvent(
+        'C',
+        'playwright-cli.adapter.ts:initBrowser:error',
+        '[DEBUG] initBrowser failed',
+        { sessionId, initialUrl, errorMessage }
+      );
+      // #endregion
       return { success: false, message: errorMessage };
     }
   }
@@ -347,77 +384,142 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
   ): Promise<CliActionResult> {
     await this.ensureDirectories();
     const normalizedParams = await this.resolveRuntimeTargetRefs(action, params, sessionId);
+    // #region debug-point B:run-cli-action-start
+    this.reportDebugEvent(
+      'B',
+      'playwright-cli.adapter.ts:runCliAction:start',
+      '[DEBUG] runCliAction start',
+      {
+        sessionId,
+        action,
+        params: this.summarizeParams(normalizedParams),
+      }
+    );
+    // #endregion
 
-    switch (action) {
-      case 'goto':
-      case 'navigate':
-        return this.handleNavigate(
+    try {
+      let result: CliActionResult;
+      switch (action) {
+        case 'goto':
+        case 'navigate':
+          result = await this.handleNavigate(
+            sessionId,
+            this.requireStringParam(normalizedParams, ['target', 'url'])
+          );
+          break;
+        case 'click':
+          result = await this.handleClick(sessionId, normalizedParams);
+          break;
+        case 'fill':
+          result = await this.handleSimpleCommand(sessionId, 'fill', [
+            this.requireStringParam(normalizedParams, ['target', 'selector']),
+            this.requireStringParam(normalizedParams, ['value', 'text']),
+          ]);
+          break;
+        case 'type':
+        case 'type_text':
+          result = await this.handleTypeText(sessionId, normalizedParams);
+          break;
+        case 'press':
+        case 'press_key':
+          result = await this.handleSimpleCommand(sessionId, 'press', [
+            this.requireStringParam(normalizedParams, ['key', 'target']),
+          ]);
+          break;
+        case 'hover':
+          result = await this.handleSimpleCommand(sessionId, 'hover', [
+            this.requireStringParam(normalizedParams, ['target', 'selector']),
+          ]);
+          break;
+        case 'drag':
+          result = await this.handleSimpleCommand(sessionId, 'drag', [
+            this.requireStringParam(normalizedParams, ['src']),
+            this.requireStringParam(normalizedParams, ['dst']),
+          ]);
+          break;
+        case 'screenshot':
+          result = await this.handleScreenshot(sessionId, normalizedParams);
+          break;
+        case 'snapshot':
+          result = await this.handleSnapshot(sessionId, normalizedParams);
+          break;
+        case 'evaluate':
+          result = await this.handleEvaluate(
+            sessionId,
+            this.requireStringParam(normalizedParams, ['script'])
+          );
+          break;
+        case 'wait':
+          result = await this.handleWait(sessionId, normalizedParams);
+          break;
+        case 'scroll':
+          result = await this.handleScroll(sessionId, normalizedParams);
+          break;
+        case 'read_page':
+        case 'get_text':
+          result = await this.handleReadPage(sessionId, normalizedParams);
+          break;
+        case 'search':
+          result = await this.handleSearch(
+            sessionId,
+            this.requireStringParam(normalizedParams, ['query', 'text'])
+          );
+          break;
+        case 'smart_search':
+          result = await this.handleSmartSearch(
+            sessionId,
+            this.requireStringParam(normalizedParams, ['query', 'text'])
+          );
+          break;
+        case 'list_search_results':
+        case 'inspect_search_results':
+          result = await this.handleListSearchResults(sessionId, normalizedParams);
+          break;
+        case 'click_result':
+          result = await this.handleClickResult(
+            sessionId,
+            this.requireNumberParam(normalizedParams, ['index'])
+          );
+          break;
+        case 'switch_latest_tab':
+        case 'focus_latest_page':
+          result = await this.handleSwitchLatestTab(sessionId);
+          break;
+        case 'close_tab':
+          result = await this.handleCloseTab(sessionId);
+          break;
+        default:
+          throw new Error(`Unsupported Playwright CLI action: ${action}`);
+      }
+      // #region debug-point B:run-cli-action-success
+      this.reportDebugEvent(
+        'B',
+        'playwright-cli.adapter.ts:runCliAction:success',
+        '[DEBUG] runCliAction success',
+        {
           sessionId,
-          this.requireStringParam(normalizedParams, ['target', 'url'])
-        );
-      case 'click':
-        return this.handleClick(sessionId, normalizedParams);
-      case 'fill':
-        return this.handleSimpleCommand(sessionId, 'fill', [
-          this.requireStringParam(normalizedParams, ['target', 'selector']),
-          this.requireStringParam(normalizedParams, ['value', 'text']),
-        ]);
-      case 'type':
-      case 'type_text':
-        return this.handleTypeText(sessionId, normalizedParams);
-      case 'press':
-      case 'press_key':
-        return this.handleSimpleCommand(sessionId, 'press', [
-          this.requireStringParam(normalizedParams, ['key', 'target']),
-        ]);
-      case 'hover':
-        return this.handleSimpleCommand(sessionId, 'hover', [
-          this.requireStringParam(normalizedParams, ['target', 'selector']),
-        ]);
-      case 'drag':
-        return this.handleSimpleCommand(sessionId, 'drag', [
-          this.requireStringParam(normalizedParams, ['src']),
-          this.requireStringParam(normalizedParams, ['dst']),
-        ]);
-      case 'screenshot':
-        return this.handleScreenshot(sessionId, normalizedParams);
-      case 'snapshot':
-        return this.handleSnapshot(sessionId, normalizedParams);
-      case 'evaluate':
-        return this.handleEvaluate(
+          action,
+          command: result.command,
+        }
+      );
+      // #endregion
+      return result;
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      // #region debug-point B:run-cli-action-error
+      this.reportDebugEvent(
+        'B',
+        'playwright-cli.adapter.ts:runCliAction:error',
+        '[DEBUG] runCliAction failed',
+        {
           sessionId,
-          this.requireStringParam(normalizedParams, ['script'])
-        );
-      case 'wait':
-        return this.handleWait(sessionId, normalizedParams);
-      case 'scroll':
-        return this.handleScroll(sessionId, normalizedParams);
-      case 'read_page':
-      case 'get_text':
-        return this.handleReadPage(sessionId, normalizedParams);
-      case 'search':
-        return this.handleSearch(
-          sessionId,
-          this.requireStringParam(normalizedParams, ['query', 'text'])
-        );
-      case 'smart_search':
-        return this.handleSmartSearch(
-          sessionId,
-          this.requireStringParam(normalizedParams, ['query', 'text'])
-        );
-      case 'list_search_results':
-      case 'inspect_search_results':
-        return this.handleListSearchResults(sessionId, normalizedParams);
-      case 'click_result':
-        return this.handleClickResult(
-          sessionId,
-          this.requireNumberParam(normalizedParams, ['index'])
-        );
-      case 'switch_latest_tab':
-      case 'focus_latest_page':
-        return this.handleSwitchLatestTab(sessionId);
-      default:
-        throw new Error(`Unsupported Playwright CLI action: ${action}`);
+          action,
+          params: this.summarizeParams(normalizedParams),
+          errorMessage,
+        }
+      );
+      // #endregion
+      throw error;
     }
   }
 
@@ -1132,7 +1234,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     try {
       fillResult = await this.execCli(sessionId, [
         'run-code',
-        this.buildSearchScript(query, false),
+        this.buildSearchScript(sessionId, query, false),
       ]);
       this.assertNoCliError(fillResult, 'Search input detection failed');
     } catch (error: unknown) {
@@ -1159,7 +1261,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
 
     let fillResult: CliExecResult;
     try {
-      fillResult = await this.execCli(sessionId, ['run-code', this.buildSearchScript(query, true)]);
+      fillResult = await this.execCli(sessionId, ['run-code', this.buildSearchScript(sessionId, query, true)]);
       this.assertNoCliError(fillResult, 'Smart search input detection failed');
     } catch (error: unknown) {
       const message =
@@ -1203,7 +1305,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     const limit = this.readOptionalNumberParam(params, ['limit', 'max']) ?? 8;
     const result = await this.execCli(sessionId, [
       'run-code',
-      this.buildListSearchResultsScript(limit),
+      this.buildListSearchResultsScript(sessionId, limit),
     ]);
     this.assertNoCliError(result, 'List search results failed');
     const meta = this.parseJsonStdout<{
@@ -1244,13 +1346,18 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     };
   }
 
-  private buildSearchScript(query: string, allowLooseFallback: boolean): string {
+  private buildSearchScript(sessionId: string, query: string, allowLooseFallback: boolean): string {
     const minScore = allowLooseFallback ? 25 : 60;
     const errorMessage = allowLooseFallback
       ? 'No searchable input found on current page'
       : 'No explicit search entry found on current page';
+    const session = this.getOrCreateSession(sessionId);
+    const activePageExpr = session.preferLatestTab
+      ? '(page.context().pages().length ? page.context().pages()[page.context().pages().length - 1] : page)'
+      : 'page';
     return `async page => {
-      return await page.evaluate(({ query, minScore, errorMessage, allowLooseFallback }) => {
+      const activePage = ${activePageExpr};
+      return await activePage.evaluate(({ query, minScore, errorMessage, allowLooseFallback }) => {
         const isVisible = element => {
           if (!(element instanceof HTMLElement)) {
             return false;
@@ -1549,7 +1656,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
       await this.handleListSearchResults(sessionId, { limit: Math.max(index, 8) });
     }
 
-    const script = this.buildClickSearchResultScript(index);
+    const script = this.buildClickSearchResultScript(sessionId, index);
 
     const result = await this.execCli(sessionId, ['run-code', script]);
     this.assertNoCliError(result, 'Click search result failed');
@@ -1582,15 +1689,20 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     };
   }
 
-  private buildListSearchResultsScript(limit: number): string {
+  private buildListSearchResultsScript(sessionId: string, limit: number): string {
+    const session = this.getOrCreateSession(sessionId);
+    const activePageExpr = session.preferLatestTab
+      ? '(page.context().pages().length ? page.context().pages()[page.context().pages().length - 1] : page)'
+      : 'page';
     const normalizedLimit = Math.max(1, Math.min(limit, 20));
     return `async page => {
+      const activePage = ${activePageExpr};
       const settleTimeout = ${this.cliPageSettleTimeoutMs};
-      await page.waitForLoadState('domcontentloaded', { timeout: settleTimeout }).catch(() => {});
-      await page.waitForLoadState('networkidle', { timeout: settleTimeout }).catch(() => {});
-      await page.waitForTimeout(500).catch(() => {});
+      await activePage.waitForLoadState('domcontentloaded', { timeout: settleTimeout }).catch(() => {});
+      await activePage.waitForLoadState('networkidle', { timeout: settleTimeout }).catch(() => {});
+      await activePage.waitForTimeout(500).catch(() => {});
 
-      return await page.evaluate(({ limit }) => {
+      return await activePage.evaluate(({ limit }) => {
         const FLAG_ATTR = 'data-ops-search-result-rank';
         document.querySelectorAll(\`[\${FLAG_ATTR}]\`).forEach((node) => {
           node.removeAttribute(FLAG_ATTR);
@@ -1650,6 +1762,10 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
           seen.add(key);
 
           let score = 0;
+          if (location.hostname.includes('baidu.com') && element.closest('.c-container h3, h3.t')) score += 300;
+          if (location.hostname.includes('google.') && element.closest('.g h3')) score += 300;
+          if (location.hostname.includes('bing.com') && element.closest('.b_algo h2')) score += 300;
+
           if (element.querySelector('h1, h2, h3, h4')) score += 80;
           if (element.closest('h1, h2, h3, h4')) score += 60;
           if (element.closest('article, [role="article"]')) score += 35;
@@ -1691,17 +1807,22 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     }`;
   }
 
-  private buildClickSearchResultScript(index: number): string {
+  private buildClickSearchResultScript(sessionId: string, index: number): string {
+    const session = this.getOrCreateSession(sessionId);
+    const activePageExpr = session.preferLatestTab
+      ? '(page.context().pages().length ? page.context().pages()[page.context().pages().length - 1] : page)'
+      : 'page';
     const normalizedIndex = Math.max(index, 1);
     return `async page => {
+      const activePage = ${activePageExpr};
       const settleTimeout = ${this.cliPageSettleTimeoutMs};
-      await page.waitForLoadState('domcontentloaded', { timeout: settleTimeout }).catch(() => {});
-      const originalUrl = await page.url();
-      const originalTitle = await page.title().catch(() => '');
-      await page.waitForLoadState('networkidle', { timeout: settleTimeout }).catch(() => {});
-      await page.waitForTimeout(300).catch(() => {});
+      await activePage.waitForLoadState('domcontentloaded', { timeout: settleTimeout }).catch(() => {});
+      const originalUrl = await activePage.url();
+      const originalTitle = await activePage.title().catch(() => '');
+      await activePage.waitForLoadState('networkidle', { timeout: settleTimeout }).catch(() => {});
+      await activePage.waitForTimeout(300).catch(() => {});
 
-      let selected = await page.evaluate(({ targetIndex }) => {
+      let selected = await activePage.evaluate(({ targetIndex }) => {
         const target = document.querySelector(\`[data-ops-search-result-rank="\${targetIndex}"]\`);
         if (!(target instanceof HTMLAnchorElement)) {
           return null;
@@ -1714,7 +1835,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
       }, { targetIndex: ${normalizedIndex} });
 
       if (!selected) {
-        selected = JSON.parse(await page.evaluate(${JSON.stringify(`({ targetIndex }) => {
+        selected = JSON.parse(await activePage.evaluate(${JSON.stringify(`({ targetIndex }) => {
           const FLAG_ATTR = 'data-ops-search-result-rank';
           document.querySelectorAll(\`[\${FLAG_ATTR}]\`).forEach((node) => {
             node.removeAttribute(FLAG_ATTR);
@@ -1740,6 +1861,10 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
             if (seen.has(key)) return;
             seen.add(key);
             let score = 0;
+            if (location.hostname.includes('baidu.com') && element.closest('.c-container h3, h3.t')) score += 300;
+            if (location.hostname.includes('google.') && element.closest('.g h3')) score += 300;
+            if (location.hostname.includes('bing.com') && element.closest('.b_algo h2')) score += 300;
+
             if (element.querySelector('h1, h2, h3, h4')) score += 80;
             if (element.closest('h1, h2, h3, h4')) score += 60;
             if (element.closest('article, [role="article"]')) score += 35;
@@ -1770,10 +1895,12 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
         }`)})( { targetIndex: ${normalizedIndex} } ));
       }
 
-      const target = page.locator('[data-ops-search-result-rank="${normalizedIndex}"]').first();
-      const popupPromise = page.context().waitForEvent('page', { timeout: 3000 }).catch(() => null);
+      // Use activePage (which may be the latest tab) as the locator target
+      const target = activePage.locator('[data-ops-search-result-rank="${normalizedIndex}"]').first();
+      const pageCountBefore = page.context().pages().length;
+      const popupPromise = page.context().waitForEvent('page', { timeout: 5000 }).catch(() => null);
       await target.scrollIntoViewIfNeeded().catch(() => {});
-      await page.waitForTimeout(200).catch(() => {});
+      await activePage.waitForTimeout(200).catch(() => {});
       await target.click({ force: true });
       const popup = await popupPromise;
       if (popup) {
@@ -1791,17 +1918,37 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
         });
       }
 
-      await page.waitForLoadState('domcontentloaded', { timeout: settleTimeout }).catch(() => {});
-      await page.waitForTimeout(500).catch(() => {});
-      await page.evaluate(() => { window.focus(); }).catch(() => {});
-      await page.waitForTimeout(300).catch(() => {});
-      await page.bringToFront().catch(() => {});
+      // Wait for any in-page or new-tab navigation to settle
+      await activePage.waitForLoadState('domcontentloaded', { timeout: settleTimeout }).catch(() => {});
+      await activePage.waitForTimeout(500).catch(() => {});
+      await activePage.evaluate(() => { window.focus(); }).catch(() => {});
+      await activePage.waitForTimeout(300).catch(() => {});
+      await activePage.bringToFront().catch(() => {});
 
-      const landedUrl = await page.url();
-      const title = await page.title().catch(() => '');
+      const landedUrl = await activePage.url();
+      const title = await activePage.title().catch(() => '');
       const navigationConfirmed = landedUrl !== originalUrl || title !== originalTitle;
 
+      // Even if the current page URL did not change, a new tab may have been opened
+      // without firing the 'page' popup event (e.g. Baidu search results use window.open
+      // with a short delay, or the click triggered a context-level navigation).
       if (!navigationConfirmed) {
+        const allPages = page.context().pages();
+        if (allPages.length > pageCountBefore) {
+          // A new tab was opened without a popup event — switch to it
+          const newTab = allPages[allPages.length - 1];
+          await newTab.waitForLoadState('domcontentloaded', { timeout: settleTimeout }).catch(() => {});
+          await newTab.bringToFront().catch(() => {});
+          return JSON.stringify({
+            openedNewPage: true,
+            landedUrl: await newTab.url(),
+            title: await newTab.title().catch(() => ''),
+            pageCount: allPages.length,
+            ...selected,
+            navigationConfirmed: true,
+          });
+        }
+        // Truly no navigation occurred
         throw new Error(\`Click did not navigate away from current page; host=\${selected.host}; target=\${selected.selectedText}; href=\${selected.selectedHref}\`);
       }
 
@@ -1859,6 +2006,61 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
       stdout: result.stdout,
       stderr: result.stderr,
       data: switchMeta || { switched: true },
+    };
+  }
+
+  private async handleCloseTab(sessionId: string): Promise<CliActionResult> {
+    await this.ensureSessionReady(sessionId);
+    const session = this.getOrCreateSession(sessionId);
+    const activePageExpr = session.preferLatestTab
+      ? '(page.context().pages().length ? page.context().pages()[page.context().pages().length - 1] : page)'
+      : 'page';
+
+    const script = `async page => {
+      const pages = page.context().pages();
+      if (!pages.length) {
+        throw new Error('No pages found in current browser context');
+      }
+
+      const activePage = ${activePageExpr};
+      if (!activePage.isClosed()) {
+        await activePage.close().catch(() => {});
+      }
+      
+      const remainingPages = page.context().pages();
+      const latestPage = remainingPages.length > 0 ? remainingPages[remainingPages.length - 1] : null;
+      if (latestPage) {
+        await latestPage.bringToFront().catch(() => {});
+      }
+
+      return JSON.stringify({
+        pageCount: remainingPages.length,
+        closed: true,
+        landedUrl: latestPage ? latestPage.url() : '',
+        title: latestPage ? await latestPage.title().catch(() => '') : '',
+      });
+    }`;
+
+    const result = await this.execCli(sessionId, ['run-code', script]);
+    this.assertNoCliError(result, 'Close tab failed');
+    const closeMeta = this.parseJsonStdout<{
+      pageCount?: number;
+      closed?: boolean;
+      landedUrl?: string;
+      title?: string;
+    }>(result.stdout);
+
+    if (typeof closeMeta?.landedUrl === 'string' && closeMeta.landedUrl.trim()) {
+      session.lastUrl = closeMeta.landedUrl.trim();
+    }
+    session.preferLatestTab = true;
+
+    return {
+      status: 'success',
+      command: 'close_tab',
+      stdout: result.stdout,
+      stderr: result.stderr,
+      data: closeMeta || { closed: true },
     };
   }
 
@@ -2298,6 +2500,19 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
 
   private async openSession(sessionId: string, initialUrl: string): Promise<CliExecResult> {
     const session = this.getOrCreateSession(sessionId);
+    // #region debug-point C:open-session-start
+    this.reportDebugEvent(
+      'C',
+      'playwright-cli.adapter.ts:openSession:start',
+      '[DEBUG] openSession start',
+      {
+        sessionId,
+        initialUrl,
+        attachToRemoteChrome: this.shouldAttachToRemoteChrome(),
+        profilePath: session.profilePath,
+      }
+    );
+    // #endregion
     const result = this.shouldAttachToRemoteChrome()
       ? await this.attachToRemoteChrome(sessionId, initialUrl)
       : await this.execCli(sessionId, [
@@ -2312,6 +2527,18 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     session.lastUrl = initialUrl;
     session.controlMode = 'AGENT_RUNNING';
     session.frozenReason = undefined;
+    // #region debug-point C:open-session-success
+    this.reportDebugEvent(
+      'C',
+      'playwright-cli.adapter.ts:openSession:success',
+      '[DEBUG] openSession success',
+      {
+        sessionId,
+        initialUrl,
+        attached: session.attached,
+      }
+    );
+    // #endregion
 
     return result;
   }
@@ -2475,16 +2702,41 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
   private async resolveSessionCdpUrl(sessionId: string): Promise<string> {
     const workerDebuggerWsUrl = await this.workerService.getPublicDebuggerWsUrl(sessionId);
     if (workerDebuggerWsUrl) {
+      // #region debug-point C:resolve-cdp-ws
+      this.reportDebugEvent(
+        'C',
+        'playwright-cli.adapter.ts:resolveSessionCdpUrl:worker-ws',
+        '[DEBUG] resolveSessionCdpUrl via worker websocket',
+        { sessionId, cdpUrl: workerDebuggerWsUrl }
+      );
+      // #endregion
       return workerDebuggerWsUrl;
     }
 
     const workerCdpHttpUrl = this.workerService.getPublicCdpHttpUrl(sessionId);
     if (workerCdpHttpUrl) {
+      // #region debug-point C:resolve-cdp-http
+      this.reportDebugEvent(
+        'C',
+        'playwright-cli.adapter.ts:resolveSessionCdpUrl:worker-http',
+        '[DEBUG] resolveSessionCdpUrl via worker http',
+        { sessionId, cdpUrl: workerCdpHttpUrl }
+      );
+      // #endregion
       return workerCdpHttpUrl;
     }
 
     const remoteHost = await this.resolveRemoteDebuggingHost();
-    return `http://${remoteHost}:${this.chromeRemoteDebuggingPort}`;
+    const fallbackUrl = `http://${remoteHost}:${this.chromeRemoteDebuggingPort}`;
+    // #region debug-point C:resolve-cdp-fallback
+    this.reportDebugEvent(
+      'C',
+      'playwright-cli.adapter.ts:resolveSessionCdpUrl:fallback',
+      '[DEBUG] resolveSessionCdpUrl fallback host',
+      { sessionId, remoteHost, cdpUrl: fallbackUrl }
+    );
+    // #endregion
+    return fallbackUrl;
   }
 
   private async resolveRemoteDebuggingHost(): Promise<string> {
@@ -2512,6 +2764,22 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     const binary = await this.resolveCliBinary();
     const fullArgs = [...binary.baseArgs, `-s=${sessionId}`, ...args];
     this.logger.debug(`Running CLI command: ${binary.command} ${fullArgs.join(' ')}`);
+    // #region debug-point A:exec-cli-start
+    this.reportDebugEvent(
+      'A',
+      'playwright-cli.adapter.ts:execCli:start',
+      '[DEBUG] execCli start',
+      {
+        sessionId,
+        command: binary.command,
+        args: this.summarizeCliArgs(fullArgs),
+        processTimeoutMs: this.cliProcessTimeoutMs,
+        actionTimeoutMs: this.cliActionTimeoutMs,
+        navigationTimeoutMs: this.cliNavigationTimeoutMs,
+        pageSettleTimeoutMs: this.cliPageSettleTimeoutMs,
+      }
+    );
+    // #endregion
     return this.execFileAsync(binary.command, fullArgs);
   }
 
@@ -2561,6 +2829,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
 
   private execFileAsync(command: string, args: string[]): Promise<CliExecResult> {
     return new Promise((resolve, reject) => {
+      const startedAt = Date.now();
       execFile(
         command,
         args,
@@ -2572,10 +2841,45 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
         },
         (error, stdout, stderr) => {
           if (error) {
+            const errorWithMeta = error as NodeJS.ErrnoException & {
+              killed?: boolean;
+              code?: string | number;
+              signal?: NodeJS.Signals | null;
+            };
+            // #region debug-point D:exec-file-error
+            this.reportDebugEvent(
+              'D',
+              'playwright-cli.adapter.ts:execFileAsync:error',
+              '[DEBUG] execFileAsync failed',
+              {
+                command,
+                args: this.summarizeCliArgs(args),
+                elapsedMs: Date.now() - startedAt,
+                errorMessage: stderr?.trim() || error.message,
+                killed: errorWithMeta.killed === true,
+                code: errorWithMeta.code ?? null,
+                signal: errorWithMeta.signal ?? null,
+              }
+            );
+            // #endregion
             reject(new Error(stderr?.trim() || error.message));
             return;
           }
 
+          // #region debug-point A:exec-file-success
+          this.reportDebugEvent(
+            'A',
+            'playwright-cli.adapter.ts:execFileAsync:success',
+            '[DEBUG] execFileAsync success',
+            {
+              command,
+              args: this.summarizeCliArgs(args),
+              elapsedMs: Date.now() - startedAt,
+              stdoutLength: stdout?.trim()?.length || 0,
+              stderrLength: stderr?.trim()?.length || 0,
+            }
+          );
+          // #endregion
           resolve({
             stdout: stdout?.trim() || '',
             stderr: stderr?.trim() || '',
@@ -2677,5 +2981,69 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     }
 
     return null;
+  }
+
+  private summarizeCliArgs(args: string[]): string[] {
+    return args.map((arg) => {
+      if (arg.length <= 160) {
+        return arg;
+      }
+      return `${arg.slice(0, 157)}...`;
+    });
+  }
+
+  private summarizeParams(params: Record<string, unknown>): Record<string, unknown> {
+    const summary: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(params)) {
+      if (typeof value === 'string') {
+        summary[key] = value.length <= 160 ? value : `${value.slice(0, 157)}...`;
+        continue;
+      }
+      summary[key] = value;
+    }
+    return summary;
+  }
+
+  private reportDebugEvent(
+    hypothesisId: 'A' | 'B' | 'C' | 'D' | 'E',
+    location: string,
+    msg: string,
+    data: Record<string, unknown>
+  ): void {
+    const envPath = path.join(process.cwd(), '.dbg', 'playwright-cli-timeout.env');
+    const isContainerRuntime =
+      process.env.DOCKER_ENV === 'true' ||
+      process.env.CHROME_REMOTE_DEBUGGING_HOST === 'browser-chrome' ||
+      fsSync.existsSync('/.dockerenv');
+    let debugServerUrl =
+      process.env.DEBUG_SERVER_URL?.trim() ||
+      (isContainerRuntime
+        ? 'http://host.docker.internal:7777/event'
+        : 'http://127.0.0.1:7777/event');
+    let debugSessionId = process.env.DEBUG_SESSION_ID?.trim() || 'playwright-cli-timeout';
+
+    try {
+      const envContent = fsSync.readFileSync(envPath, 'utf8');
+      debugServerUrl =
+        envContent.match(/^DEBUG_SERVER_URL=(.+)$/m)?.[1]?.trim() || debugServerUrl;
+      debugSessionId =
+        envContent.match(/^DEBUG_SESSION_ID=(.+)$/m)?.[1]?.trim() || debugSessionId;
+    } catch {
+      // Ignore missing debug env file; fall back to defaults.
+    }
+
+    void fetch(debugServerUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId: debugSessionId,
+        runId: 'pre-fix',
+        hypothesisId,
+        location,
+        msg,
+        data,
+        ts: Date.now(),
+      }),
+    }).catch(() => undefined);
   }
 }

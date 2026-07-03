@@ -13,6 +13,9 @@ export interface BrowserCommand {
     confidence?: number;
     matchedCandidateId?: string;
     resolutionMode?: string;
+    ref?: string;
+    contextLabel?: string;
+    regionId?: string;
   };
 }
 
@@ -44,6 +47,7 @@ export interface BrowserCommandCandidate {
   entityId?: string;
   semanticPath?: string[];
   priority?: number;
+  score?: number;
   ref?: string;
   role?: string;
   elementId?: string;
@@ -86,6 +90,7 @@ export type BrowserPlanAction =
   | 'list_search_results'
   | 'click_result'
   | 'switch_latest_tab'
+  | 'close_tab'
   | 'fill'
   | 'screenshot'
   | 'snapshot'

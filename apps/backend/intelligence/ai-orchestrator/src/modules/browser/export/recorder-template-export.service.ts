@@ -52,6 +52,11 @@ interface TemplateStepArtifactLike {
   locator?: {
     type: string;
     value: string;
+    ref?: string;
+    role?: string;
+    name?: string;
+    contextLabel?: string;
+    regionId?: string;
   };
   params?: Record<string, string | number>;
   output_var?: string;
@@ -236,7 +241,11 @@ export class RecorderTemplateExportService {
 
     const remainingRecordedDetailFlowCommands =
       branchAnalysis.nextAction?.action === 'click' &&
-      this.matchesBranchNextAction(recordedDetailFlowCommands[0], branchAnalysis.nextAction)
+      this.matchesBranchNextAction(
+        recordedDetailFlowCommands[0],
+        branchAnalysis.nextAction,
+        detailObservation
+      )
         ? recordedDetailFlowCommands.slice(1)
         : recordedDetailFlowCommands;
 
@@ -529,12 +538,12 @@ export class RecorderTemplateExportService {
   ): TemplateStepArtifactLike['locator'] | undefined {
     const targetLocator = this.toTemplateLocatorFromTarget(command.params.target);
     if (targetLocator) {
-      return targetLocator;
+      return this.withGroundingMetadata(targetLocator, command.locator);
     }
 
     const resolvedRefLocator = this.resolveTemplateLocatorFromRecordedRef(command, session);
     if (resolvedRefLocator) {
-      return resolvedRefLocator;
+      return this.withGroundingMetadata(resolvedRefLocator, command.locator);
     }
 
     if (command.locator?.strategy && command.locator.value) {
@@ -546,27 +555,68 @@ export class RecorderTemplateExportService {
 
     if (typeof command.params.selector === 'string' && command.params.selector.trim()) {
       if (this.isEphemeralRuntimeHandle(command.params.selector)) {
-        return this.toTemplateLocatorFromDescription(command.description);
+        const fromDescription = this.toTemplateLocatorFromDescription(command.description);
+        return this.withGroundingMetadata(fromDescription, command.locator);
       }
-      return {
-        type: this.inferTemplateLocatorType(command.params.selector),
-        value: command.params.selector,
-      };
+      return this.withGroundingMetadata(
+        {
+          type: this.inferTemplateLocatorType(command.params.selector),
+          value: command.params.selector,
+        },
+        command.locator
+      );
     }
 
     if (typeof command.params.text === 'string' && command.params.text.trim()) {
       if (this.isEphemeralRuntimeHandle(command.params.text)) {
-        return this.toTemplateLocatorFromDescription(command.description);
+        const fromDescription = this.toTemplateLocatorFromDescription(command.description);
+        return this.withGroundingMetadata(fromDescription, command.locator);
       }
-      return this.buildTemplateLocatorFromLabel(command.params.text, command.description);
+      const fromLabel = this.buildTemplateLocatorFromLabel(command.params.text, command.description);
+      return this.withGroundingMetadata(fromLabel, command.locator);
     }
 
     const descriptionLocator = this.toTemplateLocatorFromDescription(command.description);
     if (descriptionLocator) {
-      return descriptionLocator;
+      return this.withGroundingMetadata(descriptionLocator, command.locator);
     }
 
     return undefined;
+  }
+
+  private withGroundingMetadata(
+    locator: TemplateStepArtifactLike['locator'] | undefined,
+    sourceLocator: BrowserCommand['locator'] | undefined
+  ): TemplateStepArtifactLike['locator'] | undefined {
+    if (!locator || !sourceLocator) {
+      return locator;
+    }
+    const groundingFields: Pick<
+      NonNullable<TemplateStepArtifactLike['locator']>,
+      'ref' | 'role' | 'name' | 'contextLabel' | 'regionId'
+    > = {};
+    if (typeof sourceLocator.ref === 'string' && sourceLocator.ref.trim()) {
+      groundingFields.ref = sourceLocator.ref.trim();
+    }
+    if (typeof sourceLocator.role === 'string' && sourceLocator.role.trim()) {
+      groundingFields.role = sourceLocator.role.trim();
+    }
+    if (typeof sourceLocator.name === 'string' && sourceLocator.name.trim()) {
+      groundingFields.name = sourceLocator.name.trim();
+    }
+    if (typeof sourceLocator.contextLabel === 'string' && sourceLocator.contextLabel.trim()) {
+      groundingFields.contextLabel = sourceLocator.contextLabel.trim();
+    }
+    if (typeof sourceLocator.regionId === 'string' && sourceLocator.regionId.trim()) {
+      groundingFields.regionId = sourceLocator.regionId.trim();
+    }
+    if (Object.keys(groundingFields).length === 0) {
+      return locator;
+    }
+    return {
+      ...locator,
+      ...groundingFields,
+    };
   }
 
   matchesBranchNextAction(
@@ -578,7 +628,8 @@ export class RecorderTemplateExportService {
           text?: string;
           description?: string;
         }
-      | undefined
+      | undefined,
+    observation?: ObservationLike
   ): boolean {
     if (!command || command.tool !== 'click' || nextAction?.action !== 'click') {
       return false;
@@ -593,6 +644,7 @@ export class RecorderTemplateExportService {
     const commandText = normalize(command.params.text);
     const locatorValue = normalize(command.locator?.value);
     const locatorName = normalize(command.locator?.name);
+    const locatorStrategy = normalize(command.locator?.strategy);
 
     if (nextSelector) {
       return [commandTarget, normalize(command.params.selector), locatorValue].includes(
@@ -604,11 +656,64 @@ export class RecorderTemplateExportService {
       return false;
     }
 
-    return [commandText, commandTarget, locatorName, commandDescription].some(
+    // Recovery commands often carry only a ref or testid (no params.text or
+    // locator.name). Resolve the button's visible label from the page
+    // observation so we can still match it against nextAction.text.
+    const resolvedLabels = this.resolveButtonLabelsFromObservation(
+      command,
+      observation,
+      locatorStrategy
+    );
+
+    return [commandText, commandTarget, locatorName, commandDescription, ...resolvedLabels].some(
       (value) =>
         value.length > 0 &&
         (value === nextText || value.includes(nextText) || nextText.includes(value))
     );
+  }
+
+  private resolveButtonLabelsFromObservation(
+    command: BrowserCommand,
+    observation: ObservationLike | undefined,
+    locatorStrategy: string
+  ): string[] {
+    if (!observation?.buttons?.length) {
+      return [];
+    }
+
+    const normalize = (value: unknown): string =>
+      typeof value === 'string' ? value.trim().toLowerCase() : '';
+    const targetRef = normalize(command.params.target);
+    const locatorValue = normalize(command.locator?.value);
+
+    const matchedButton = observation.buttons.find((button) => {
+      const buttonRef = normalize(button.ref);
+      if (targetRef && buttonRef && buttonRef === targetRef) {
+        return true;
+      }
+      if (locatorStrategy === 'testid' && locatorValue) {
+        const buttonTestId = normalize(button.dataTestId);
+        if (buttonTestId && buttonTestId === locatorValue) {
+          return true;
+        }
+      }
+      return false;
+    });
+
+    if (!matchedButton) {
+      return [];
+    }
+
+    const labels: string[] = [];
+    const buttonText = normalize(matchedButton.text);
+    const buttonName = normalize(matchedButton.name);
+    if (buttonText) {
+      labels.push(buttonText);
+    }
+    if (buttonName && buttonName !== buttonText) {
+      labels.push(buttonName);
+    }
+    return labels;
   }
 
   private appendOptionalManualInterventionStepsForIndex(
@@ -864,6 +969,26 @@ export class RecorderTemplateExportService {
       return undefined;
     }
 
+    const groundingFields: Pick<
+      NonNullable<TemplateStepArtifactLike['locator']>,
+      'ref' | 'role' | 'name' | 'contextLabel' | 'regionId'
+    > = {};
+    if (typeof locator.ref === 'string' && locator.ref.trim()) {
+      groundingFields.ref = locator.ref.trim();
+    }
+    if (typeof locator.role === 'string' && locator.role.trim()) {
+      groundingFields.role = locator.role.trim();
+    }
+    if (typeof locator.name === 'string' && locator.name.trim()) {
+      groundingFields.name = locator.name.trim();
+    }
+    if (typeof locator.contextLabel === 'string' && locator.contextLabel.trim()) {
+      groundingFields.contextLabel = locator.contextLabel.trim();
+    }
+    if (typeof locator.regionId === 'string' && locator.regionId.trim()) {
+      groundingFields.regionId = locator.regionId.trim();
+    }
+
     if (
       strategy === 'role' &&
       typeof locator.role === 'string' &&
@@ -875,6 +1000,7 @@ export class RecorderTemplateExportService {
       return {
         type,
         value: `${locator.role.trim()}[name="${escapedName}"]`,
+        ...groundingFields,
       };
     }
 
@@ -885,6 +1011,7 @@ export class RecorderTemplateExportService {
     return {
       type,
       value,
+      ...groundingFields,
     };
   }
 

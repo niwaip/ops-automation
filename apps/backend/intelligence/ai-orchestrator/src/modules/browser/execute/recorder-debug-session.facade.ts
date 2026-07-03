@@ -156,6 +156,7 @@ export class RecorderDebugSessionFacade {
   >(input: {
     session: TSession;
     fallback?: RecorderDebugObservation;
+    preferCachedObservation?: boolean;
     observePage: (currentSession: TSession) => Promise<RecorderDebugObservation>;
     reportError: (error: {
       session: TSession;
@@ -168,6 +169,7 @@ export class RecorderDebugSessionFacade {
     return this.recorderDebugObservationRefreshService.observePageSafely({
       session: input.session,
       fallback: input.fallback,
+      preferCachedObservation: input.preferCachedObservation,
       observePage: input.observePage,
       onObserveFailed: ({ session, errorMessage }) => {
         this.logger.warn(`observePage failed for session ${session.sessionId}: ${errorMessage}`);

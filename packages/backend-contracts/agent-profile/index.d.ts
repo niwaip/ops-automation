@@ -15,4 +15,3 @@ export interface AgentProfile {
     riskLevel: AgentProfileRiskLevel;
     metadata?: Record<string, unknown>;
 }
-//# sourceMappingURL=index.d.ts.map

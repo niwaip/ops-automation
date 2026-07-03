@@ -71,7 +71,7 @@
     "reinitBrowser": "重新初始化",
     "browserReady": "浏览器已就绪",
     "browserInitFailed": "浏览器初始化失败",
-    "browserInitialized": "浏览器会话已初始化，现在可以发送命令了。",
+    "browserInitialized": "浏览器已经初始化",
     "infoTitle": "自然语言控制",
     "infoDesc": "输入自然语言描述，AI 将自动转换为浏览器操作命令。支持导航、点击、填充、截图等操作。",
     "examples": "示例命令：",

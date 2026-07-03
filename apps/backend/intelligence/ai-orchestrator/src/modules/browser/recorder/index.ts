@@ -10,5 +10,6 @@ export { RecorderDebugChatExecutionService } from '../execute/recorder-debug-cha
 export { RecorderDebugChatFlowService } from '../execute/recorder-debug-chat-flow.service';
 export { RecorderDebugChatSupportService } from '../execute/recorder-debug-chat-support.service';
 export { RecorderDebugExecutionService } from '../execute/recorder-debug-execution.service';
+export { RecorderDebugOutcomeService } from '../execute/recorder-debug-outcome.service';
 export { RecorderDebugResponseService } from '../execute/recorder-debug-response.service';
 export type * from '../execute/recorder-debug.types';
