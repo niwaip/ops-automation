@@ -86,6 +86,7 @@ export class RecorderDebugResponseService {
       observation: input.observation,
       commands: input.commands,
       execution: input.execution,
+      exportArtifacts: input.exportArtifacts,
     });
     return {
       sessionId: input.session.sessionId,
@@ -128,6 +129,7 @@ export class RecorderDebugResponseService {
       observation: input.observation,
       commands: input.commands,
       execution: input.execution,
+      exportArtifacts: input.exportArtifacts,
     });
     session.history.push({
       role: 'assistant',

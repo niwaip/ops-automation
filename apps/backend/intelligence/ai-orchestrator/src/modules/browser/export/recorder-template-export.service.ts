@@ -241,7 +241,11 @@ export class RecorderTemplateExportService {
 
     const remainingRecordedDetailFlowCommands =
       branchAnalysis.nextAction?.action === 'click' &&
-      this.matchesBranchNextAction(recordedDetailFlowCommands[0], branchAnalysis.nextAction)
+      this.matchesBranchNextAction(
+        recordedDetailFlowCommands[0],
+        branchAnalysis.nextAction,
+        detailObservation
+      )
         ? recordedDetailFlowCommands.slice(1)
         : recordedDetailFlowCommands;
 
@@ -624,7 +628,8 @@ export class RecorderTemplateExportService {
           text?: string;
           description?: string;
         }
-      | undefined
+      | undefined,
+    observation?: ObservationLike
   ): boolean {
     if (!command || command.tool !== 'click' || nextAction?.action !== 'click') {
       return false;
@@ -639,6 +644,7 @@ export class RecorderTemplateExportService {
     const commandText = normalize(command.params.text);
     const locatorValue = normalize(command.locator?.value);
     const locatorName = normalize(command.locator?.name);
+    const locatorStrategy = normalize(command.locator?.strategy);
 
     if (nextSelector) {
       return [commandTarget, normalize(command.params.selector), locatorValue].includes(
@@ -650,11 +656,64 @@ export class RecorderTemplateExportService {
       return false;
     }
 
-    return [commandText, commandTarget, locatorName, commandDescription].some(
+    // Recovery commands often carry only a ref or testid (no params.text or
+    // locator.name). Resolve the button's visible label from the page
+    // observation so we can still match it against nextAction.text.
+    const resolvedLabels = this.resolveButtonLabelsFromObservation(
+      command,
+      observation,
+      locatorStrategy
+    );
+
+    return [commandText, commandTarget, locatorName, commandDescription, ...resolvedLabels].some(
       (value) =>
         value.length > 0 &&
         (value === nextText || value.includes(nextText) || nextText.includes(value))
     );
+  }
+
+  private resolveButtonLabelsFromObservation(
+    command: BrowserCommand,
+    observation: ObservationLike | undefined,
+    locatorStrategy: string
+  ): string[] {
+    if (!observation?.buttons?.length) {
+      return [];
+    }
+
+    const normalize = (value: unknown): string =>
+      typeof value === 'string' ? value.trim().toLowerCase() : '';
+    const targetRef = normalize(command.params.target);
+    const locatorValue = normalize(command.locator?.value);
+
+    const matchedButton = observation.buttons.find((button) => {
+      const buttonRef = normalize(button.ref);
+      if (targetRef && buttonRef && buttonRef === targetRef) {
+        return true;
+      }
+      if (locatorStrategy === 'testid' && locatorValue) {
+        const buttonTestId = normalize(button.dataTestId);
+        if (buttonTestId && buttonTestId === locatorValue) {
+          return true;
+        }
+      }
+      return false;
+    });
+
+    if (!matchedButton) {
+      return [];
+    }
+
+    const labels: string[] = [];
+    const buttonText = normalize(matchedButton.text);
+    const buttonName = normalize(matchedButton.name);
+    if (buttonText) {
+      labels.push(buttonText);
+    }
+    if (buttonName && buttonName !== buttonText) {
+      labels.push(buttonName);
+    }
+    return labels;
   }
 
   private appendOptionalManualInterventionStepsForIndex(

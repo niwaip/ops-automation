@@ -32,6 +32,7 @@ export class RecorderDebugOutcomeService {
     observation?: RecorderDebugObservation;
     commands?: BrowserCommand[];
     execution?: BrowserExecuteResponse;
+    exportArtifacts?: unknown;
   }): RecorderOutcome {
     const kind = this.resolveOutcomeKind(input.status);
     const intent = this.buildIntent(input.userGoal, input.commands, kind);
@@ -47,6 +48,7 @@ export class RecorderDebugOutcomeService {
       observation: input.observation,
       diff,
       grounding,
+      exportArtifacts: Boolean(input.exportArtifacts),
     });
     const outcomeStatus = this.resolveOutcomeStatus(kind, input.status, verification);
 

@@ -248,6 +248,119 @@ describe('RecorderTemplateExportService', () => {
     );
   });
 
+  it('dedupes recorded recovery click against branch analysis nextAction via observation', async () => {
+    // Regression: when the recorded approve click is a recovery command (carrying
+    // only target=e93 + testid=btn-approve, no params.text or locator.name),
+    // matchesBranchNextAction used to fail dedup against nextAction.text
+    // "承認する (Approve)" — producing a duplicate approve step in the export.
+    // The fix resolves the button's visible label from the page observation
+    // (matching by ref or dataTestId) so the recorded click is sliced off.
+    const branchAnalysisService = {
+      analyzeBranchCondition: jest.fn().mockResolvedValue({
+        branchStepSpec: {
+          readSelectors: ['#detail-gross-margin'],
+          readMethod: 'innerText',
+          outputVar: 'grossMarginRaw',
+          conditionFn:
+            '(ctx) => Number(String(ctx.grossMarginRaw || "").replace(/[^0-9.]+/g, "")) >= 20',
+          takeoverReason: '低于阈值需要人工介入',
+          onMismatch: 'takeover',
+          onMatch: 'continue',
+          description: '根据毛利率阈值判断',
+        },
+        nextAction: {
+          action: 'click',
+          text: '承認する (Approve)',
+          description: '条件满足后点击承认按钮',
+        },
+      }),
+    };
+    const service = new RecorderTemplateExportService(
+      branchAnalysisService as any,
+      new RecorderLoopService()
+    );
+
+    const steps = await service.buildTemplateStepsForExport(
+      {
+        runtimeSessionId: 'runtime-recovery-dedup',
+        currentPageUrl: 'http://localhost/#approvals/detail',
+        lastObservation: {
+          currentPageUrl: 'http://localhost/#approvals/detail',
+          title: 'Approval Detail',
+          text: '案件粗利率（毛利率） 25.5%',
+          inputs: [],
+          buttons: [
+            {
+              ref: 'e93',
+              text: '承認する (Approve)',
+              dataTestId: 'btn-approve',
+              name: '承認する (Approve)',
+              role: 'button',
+            },
+          ],
+          headings: ['案件承認管理 / 案件詳細'],
+          links: [],
+        },
+        history: [
+          {
+            role: 'user',
+            content:
+              '[条件分歧] 根据 案件粗利率 生成条件执行，如果 案件粗利率 大于 20% 就直接承认，否则需要介入同意，才承认',
+          },
+        ],
+        loopDraft: {
+          mode: 'repeat_until',
+          target: {
+            scope: 'current_list',
+            currentPageUrl: 'http://localhost/#approvals',
+            match: {
+              field: 'status',
+              operator: 'equals',
+              value: '未承认',
+            },
+          },
+          eachIteration: {
+            capturedFromIndex: 1,
+            capturedToIndex: 2,
+            stepCount: 2,
+          },
+          onNoProgress: 'takeover',
+          maxIterations: 100,
+        },
+        executedCommands: [
+          {
+            tool: 'navigate',
+            params: { url: 'http://localhost/#approvals' },
+            description: '打开审批页面',
+          },
+          {
+            tool: 'click',
+            params: { target: ':nth-match([data-ai-action="detail"], 1)' },
+            description: '点击第一个记录，进入详细页面',
+          },
+          {
+            tool: 'click',
+            params: { target: 'e93' },
+            description: '点击承认按钮',
+            locator: { strategy: 'testid', value: 'btn-approve' },
+          },
+        ],
+      } as any,
+      '案件粗利率条件审批'
+    );
+
+    const clickSteps = steps?.filter((step) => step.action === 'click') || [];
+    const approveClickSteps = clickSteps.filter(
+      (step) =>
+        typeof step.locator?.value === 'string' && step.locator.value.includes('承認する')
+    );
+    const recoveryClickSteps = clickSteps.filter(
+      (step) => typeof step.locator?.value === 'string' && step.locator.value === 'btn-approve'
+    );
+    expect(approveClickSteps).toHaveLength(1);
+    expect(recoveryClickSteps).toHaveLength(0);
+  });
+
   it('dedupes redundant recovery setup steps before exporting template steps', async () => {
     const service = new RecorderTemplateExportService({} as any, new RecorderLoopService());
     const steps = await service.buildTemplateStepsForExport(

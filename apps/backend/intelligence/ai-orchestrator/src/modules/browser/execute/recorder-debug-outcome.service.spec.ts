@@ -380,4 +380,56 @@ describe('RecorderDebugOutcomeService', () => {
       ])
     );
   });
+
+  it('marks export-only turn as succeeded without requiring browser execution', () => {
+    const service = new RecorderDebugOutcomeService();
+    const observation: any = {
+      currentPageUrl: 'https://example.com/list',
+      title: 'List',
+      text: '列表页',
+      inputs: [],
+      buttons: [],
+      headings: [],
+      links: [],
+      suggestedParameters: [],
+    };
+
+    const outcome = service.buildOutcome({
+      status: 'completed',
+      reply: '已根据当前对话与执行历史生成 CLI 脚本和内部 skill 草稿。',
+      userGoal: '导出',
+      beforeObservation: observation,
+      observation,
+      exportArtifacts: {
+        script: 'const { chromium } = require("playwright");',
+        skillDraft: { name: 'mock-skill' },
+      },
+    });
+
+    expect(outcome.status).toBe('succeeded');
+    expect(outcome.verification).toEqual(
+      expect.objectContaining({
+        success: true,
+      })
+    );
+    expect(outcome.verification.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'tool_command_succeeded',
+          passed: true,
+          required: false,
+        }),
+        expect.objectContaining({
+          code: 'export_artifacts_generated',
+          passed: true,
+          required: true,
+        }),
+      ])
+    );
+    expect(outcome.verification.checks).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'intent_alignment' }),
+      ])
+    );
+  });
 });

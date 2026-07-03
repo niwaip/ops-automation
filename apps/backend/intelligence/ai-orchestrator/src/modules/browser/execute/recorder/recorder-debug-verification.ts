@@ -24,6 +24,7 @@ export interface RecorderVerificationContext {
   observation?: RecorderDebugObservation;
   diff?: RecorderObservationDiff;
   grounding?: RecorderGrounding;
+  exportArtifacts?: boolean;
 }
 
 export function buildRecorderVerification(
@@ -98,17 +99,36 @@ function buildChecks(
   const inputWriteState = evaluateRequestedValueWrite(input);
   const targetSelectedState = evaluateTargetSelection(input);
   const detailChanged = didDetailViewChange(input.diff);
+  const isExportOnly = Boolean(input.exportArtifacts) && !input.execution;
   const checks: RecorderVerificationCheck[] = [
     {
       code: 'tool_command_succeeded',
       level: 'tool',
-      passed: Boolean(input.execution?.success),
-      message: input.execution?.success ? '浏览器命令执行成功。' : '浏览器命令未成功执行。',
-      required: true,
+      passed: isExportOnly
+        ? true
+        : Boolean(input.execution?.success),
+      message: isExportOnly
+        ? '导出轮次无需浏览器执行。'
+        : input.execution?.success
+          ? '浏览器命令执行成功。'
+          : '浏览器命令未成功执行。',
+      required: isExportOnly ? false : true,
       weight: 3,
       evidencePath: 'evidence.toolExecution.success',
     },
   ];
+
+  if (isExportOnly) {
+    checks.push({
+      code: 'export_artifacts_generated',
+      level: 'goal',
+      passed: true,
+      message: '已生成 CLI 脚本和 skill 草稿。',
+      required: true,
+      weight: 3,
+    });
+    return checks;
+  }
 
   if (verifier === 'navigate') {
     checks.push({
