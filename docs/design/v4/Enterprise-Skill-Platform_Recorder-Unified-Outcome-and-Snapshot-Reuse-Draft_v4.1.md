@@ -911,3 +911,48 @@ export interface RecorderDebugChatResponseVNext {
 - 以视觉回退作为结构观察不足时的兜底能力
 
 这条路线与当前仓库已存在的 `snapshot + evaluate + get_text + session history` 骨架高度兼容，改造成本可控，也最符合近两年开源框架与论文对浏览器智能体结果层的共同方向。
+
+---
+
+## 18. 实现进度
+
+本节跟踪 §13 分期实施建议在仓库中的落地情况。设计内容本身保持不变；此节仅记录"已实现 / 待实现 / 暂缓"状态与对应 commit。
+
+### 18.1 第一期（§13.1 协议落地）— 已落地
+
+下列能力已在仓库中存在，对应类型与生成逻辑分布在 `apps/backend/intelligence/ai-orchestrator/src/modules/browser/`：
+
+- ✅ `RecorderOutcome` 统一协议（`kind / status / intent / evidence / grounding / verification / summary / artifacts`）— `execute/recorder-debug.types.ts`
+- ✅ `RecorderDebugObservation` 扩展 `snapshotId / snapshotContentHash / snapshotVersion / observationFingerprint / reuseEligibility / staleReason / capturedAt` — 同上
+- ✅ `RecorderObservationDiff`（`urlChanged / titleChanged / interactiveNodeChanges / salientTextChanges / regionChanges`）+ `diffKey / regionId` 稳定主键
+- ✅ `RecorderVerification` 三层 level（`tool / page / goal`）+ verifier 路由（`actionType / goal-pattern / command-family / fallback`）+ confidence 公式
+- ✅ `RecorderEvidence` 前后 observation + diff + toolExecution 摘要
+- ✅ 最小 stale 检测与 `reobserve-required` 判定
+
+> 第一期实现早于本节的引入，commit 未单独标注 "Phase 1"；以上能力可在类型文件与 `recorder-debug-outcome.service.ts` 中直接核对。
+
+### 18.2 第二期（§13.2 验证器升级）— 已落地
+
+- ✅ `ObservedRegion` 强类型化与 `regionId` 区域 diff 主键化 — `8554131`
+- ✅ verification 三层 level 真正分层（tool / page / goal 各自承担不同 check）— `d5d9403`
+- ✅ verifier 系统补全：`form-submit` verifier + 3 个 check 产出（`intent_alignment / blocking_overlay_detected / confirmation_required` 等）— `2072d04`
+
+### 18.3 第三期（§13.3 快照驱动回放与视觉回退）— 部分落地
+
+| # | 目标 | 状态 | Commit | 关键代码 |
+|---|---|---|---|---|
+| 1 | 导出步骤保存 grounding 元数据 | ✅ 已落地 | `a068950` | `export/recorder-export-assembly.service.ts`、`export/recorder-template-export.service.ts`、`export/recorder-script-export.service.ts` |
+| 2 | 回放优先按 ref 复用（4 步回退链） | ✅ 已落地 | `902c777` | `execute/recorder/recorder-replay.service.ts`（`snapshot-ref → semantic-match → relative-position → visual-fallback-required`） |
+| 3 | 对长会话进行 snapshot compression 与 episodic memory 压缩 | ✅ 已落地 | `ecd7785` | `execute/recorder/recorder-history-compression.service.ts`（接入 `RecorderDebugResponseService.finalizeSession`） |
+| 4 | 结构信息不足时引入 screenshot grounding（视觉回退） | ⏸️ 暂缓 | — | `RecorderReplayService` 已发出 `visual-fallback-required` sentinel，但视觉模型调用 / 截图 grounding / region→ref 解析未实现 |
+
+**第 4 项暂缓原因**（2026-07-03）：视觉回退涉及视觉模型选型、截图边界、region→ref 解析契约等设计决策，需先完成"视觉模型集成方案"讨论再落地代码。前 3 项已构成自洽的 Phase 3 交付，第 4 项以 sentinel 形式预留接入点。
+
+### 18.4 后续接续点
+
+若要恢复第 4 项视觉回退的实现，建议从以下入口：
+
+1. `RecorderReplayService.resolveReplayPlan()` 返回的 `visualFallbackRequired` 计数 > 0 即触发视觉路径
+2. 视觉模型选型与调用契约（建议先产出独立设计文档）
+3. 截图捕获边界（全页 vs. region 裁剪）与 region→ref 解析
+4. 视觉结果回填到 `BrowserCommand.locator` 的 `resolutionMode: 'visual-region'` 分支
