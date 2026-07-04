@@ -91,4 +91,39 @@ export class BrowserService implements OnModuleDestroy {
   async resume(dto: ResumeBrowserSessionDto): Promise<BrowserControlStateDto> {
     return this.browserSessionService.resume(dto);
   }
+
+  // v4.1 P0: recorder state capture/restore/cleanup — delegates to session service.
+  // Worker owns file lifecycle under PLAYWRIGHT_CLI_ARTIFACT_DIR/recorder-state/.
+
+  async captureState(options: {
+    runtimeSessionId: string;
+    executionIndex: number;
+  }): Promise<{ stateHandle: string; url?: string; capturedAt: string }> {
+    return this.browserSessionService.captureState(options);
+  }
+
+  async restoreState(options: {
+    runtimeSessionId: string;
+    stateHandle: string;
+  }): Promise<{
+    restored: boolean;
+    partial?: boolean;
+    reason?: string;
+    url?: string;
+  }> {
+    return this.browserSessionService.restoreState(options);
+  }
+
+  async cleanupStateFilesAfter(options: {
+    runtimeSessionId: string;
+    executionIndex: number;
+  }): Promise<{ cleanedCount: number }> {
+    return this.browserSessionService.cleanupStateFilesAfter(options);
+  }
+
+  async cleanupAllStateFiles(options: {
+    runtimeSessionId: string;
+  }): Promise<{ cleanedCount: number }> {
+    return this.browserSessionService.cleanupAllStateFiles(options);
+  }
 }

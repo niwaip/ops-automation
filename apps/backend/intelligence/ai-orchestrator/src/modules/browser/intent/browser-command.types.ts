@@ -17,6 +17,24 @@ export interface BrowserCommand {
     contextLabel?: string;
     regionId?: string;
   };
+  /**
+   * v4.1 P0 rollback side-effect classification (doc §2.5).
+   * - `none`     : no side effect (snapshot / get_text / observe)
+   * - `read`     : read-only (navigate / hover / click that only queries)
+   * - `mutate`   : front-end state change without persistence (fill / type_text / expand toggle)
+   * - `persist`  : triggers backend persistence (submit / approve / delete / save)
+   *
+   * When undefined, the rollback service treats it conservatively as `persist`
+   * after a retrospective classifier pass (rule layer + optional LLM).
+   * The classifier runs once per rollback if any historical command lacks this field.
+   */
+  sideEffectLevel?: 'none' | 'read' | 'mutate' | 'persist';
+  /**
+   * Internal metadata: which recorder execution step this command belongs to.
+   * Set by RecorderDebugChatExecutionService when capturing pre-action state.
+   * Independent of session.history.length — see doc §4.3.4.
+   */
+  executionIndex?: number;
 }
 
 export interface ParseBrowserCommandRequest {

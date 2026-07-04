@@ -13,12 +13,15 @@ DEFAULT_ADMIN_EMAIL="${DEFAULT_ADMIN_EMAIL:-admin@example.com}"
 DOCKER_ENV_FILE="$DOCKER_DIR/.env"
 DOCKER_ENV_TEMPLATE="$DOCKER_DIR/env/.env.example"
 
-CORE_COMPOSE="docker-compose.core.yml"
-PLANNER_COMPOSE="docker-compose.planner.yml"
-RUNTIME_COMPOSE="docker-compose.runtime.yml"
-EXPERIENCE_COMPOSE="docker-compose.experience.yml"
 BASE_COMPOSE="docker-compose.base.yml"
 INFRA_COMPOSE="docker-compose.yml"
+LEGACY_COMPAT_COMPOSES=(
+  "docker-compose.full.yml"
+  "docker-compose.core.yml"
+  "docker-compose.planner.yml"
+  "docker-compose.runtime.yml"
+  "docker-compose.experience.yml"
+)
 
 PLATFORM_BASELINE_MIGRATION="20260608_init_platform_baseline"
 PLATFORM_SCHEMA="./prisma/schema.prisma"
@@ -31,6 +34,59 @@ BROWSER_TEMPLATE_REPAIR_SQL="$REPO_ROOT/apps/backend/capabilities/browser-domain
 LEGACY_SQL_FILES=(
   "$REPO_ROOT/docker/sql/migrations/001_init.sql"
   "$REPO_ROOT/docker/sql/seed.sql"
+)
+PLACEHOLDER_MIGRATION_FILES=(
+  "$REPO_ROOT/apps/backend/capabilities/browser-domain/templates/prisma/migrations/0_baseline/migration.sql"
+  "$REPO_ROOT/apps/backend/capabilities/document-domain/report/prisma/migrations/0_baseline/migration.sql"
+  "$REPO_ROOT/apps/backend/runtimes/replay-worker/prisma/migrations/0_baseline/migration.sql"
+)
+PLATFORM_REQUIRED_TABLES=(
+  "users"
+  "roles"
+  "user_roles"
+  "organizations"
+  "departments"
+  "teams"
+  "org_memberships"
+  "team_memberships"
+  "org_role_bindings"
+  "identity_provider_configs"
+  "execution_flow_templates"
+  "skill_configs"
+  "skill_permissions"
+  "tool_catalogs"
+  "skill_tool_bindings"
+  "chat_sessions"
+  "chat_messages"
+  "executions"
+  "execution_phases"
+  "execution_phase_steps"
+  "execution_phase_artifacts"
+  "execution_takeovers"
+  "runtime_sessions"
+  "execution_steps"
+  "execution_events"
+  "audit_logs"
+  "activities"
+  "temporal_workflows"
+  "skill_schedules"
+)
+PLATFORM_REQUIRED_COLUMNS=(
+  "executions:current_phase_key"
+  "executions:current_phase_status"
+  "executions:takeover_status"
+  "executions:trigger_type"
+  "executions:schedule_id"
+)
+SCHEMA_STATUS_TABLES=(
+  "${PLATFORM_REQUIRED_TABLES[@]}"
+  "templates"
+)
+LEGACY_TABLES=(
+  "sessions"
+  "step_logs"
+  "ai_models"
+  "ai_agents"
 )
 INITIAL_DATA_EXPORT_PATH_DEFAULT="$REPO_ROOT/docker/sql/exports/platform-initial-data-latest.sql"
 
@@ -241,31 +297,11 @@ apply_sql_file() {
   run_psql_stdin < "$file_path"
 }
 
-run_platform_job() {
-  local command="$1"
-  run_compose "$BASE_COMPOSE" run --rm platform sh -lc \
-    "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && ${command}"
-}
-
-run_platform_job_with_env() {
-  local command="$1"
-  shift
-  run_compose "$BASE_COMPOSE" run --rm "$@" platform sh -lc \
-    "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && ${command}"
-}
-
-run_platform_job_with_admin_password() {
-  local password="$1"
-  run_platform_job_with_env \
-    "npx ts-node prisma/reset-admin-password.ts" \
-    -e ADMIN_PASSWORD="$password"
-}
-
 stop_all_compose() {
-  run_compose "$EXPERIENCE_COMPOSE" down || true
-  run_compose "$RUNTIME_COMPOSE" down || true
-  run_compose "$PLANNER_COMPOSE" down || true
-  run_compose "$CORE_COMPOSE" down || true
+  local compose_file
+  for compose_file in "${LEGACY_COMPAT_COMPOSES[@]}"; do
+    run_compose "$compose_file" down || true
+  done
   run_compose "$BASE_COMPOSE" down || true
   run_compose "$INFRA_COMPOSE" down || true
 }
@@ -276,13 +312,7 @@ start_infra() {
 }
 
 start_core() {
-  run_compose "$CORE_COMPOSE" up -d
-}
-
-start_peripheral() {
-  run_compose "$PLANNER_COMPOSE" up -d
-  run_compose "$RUNTIME_COMPOSE" up -d
-  run_compose "$EXPERIENCE_COMPOSE" up -d
+  run_compose "$BASE_COMPOSE" up -d
 }
 
 apply_shared_domain_schema_repairs() {
@@ -324,9 +354,9 @@ print_migration_inventory() {
   printf '  - Shared domain repair SQL: %s\n' "$BROWSER_TEMPLATE_REPAIR_SQL"
 
   printf '\n[Placeholder migrations not applied automatically]\n'
-  printf '  - %s\n' "$REPO_ROOT/apps/backend/capabilities/browser-domain/templates/prisma/migrations/0_baseline/migration.sql"
-  printf '  - %s\n' "$REPO_ROOT/apps/backend/capabilities/document-domain/report/prisma/migrations/0_baseline/migration.sql"
-  printf '  - %s\n' "$REPO_ROOT/apps/backend/runtimes/replay-worker/prisma/migrations/0_baseline/migration.sql"
+  for sql_file in "${PLACEHOLDER_MIGRATION_FILES[@]}"; do
+    printf '  - %s\n' "$sql_file"
+  done
 
   printf '\n[Legacy SQL entrypoints]\n'
   for sql_file in "${LEGACY_SQL_FILES[@]}"; do
@@ -338,67 +368,6 @@ print_migration_inventory() {
   done
 
   printf '\n'
-}
-
-platform_schema_is_aligned() {
-  local -a required_tables=(
-    "users"
-    "roles"
-    "user_roles"
-    "organizations"
-    "departments"
-    "teams"
-    "org_memberships"
-    "team_memberships"
-    "org_role_bindings"
-    "identity_provider_configs"
-    "execution_flow_templates"
-    "skill_configs"
-    "skill_permissions"
-    "tool_catalogs"
-    "skill_tool_bindings"
-    "chat_sessions"
-    "chat_messages"
-    "executions"
-    "execution_phases"
-    "execution_phase_steps"
-    "execution_phase_artifacts"
-    "execution_takeovers"
-    "runtime_sessions"
-    "execution_steps"
-    "execution_events"
-    "audit_logs"
-    "activities"
-    "temporal_workflows"
-    "skill_schedules"
-  )
-  local -a required_columns=(
-    "executions:current_phase_key"
-    "executions:current_phase_status"
-    "executions:takeover_status"
-    "executions:trigger_type"
-    "executions:schedule_id"
-  )
-  local table
-  local entry
-  local tbl
-  local col
-
-  for table in "${required_tables[@]}"; do
-    if ! table_exists "$table"; then
-      return 1
-    fi
-  done
-
-  for entry in "${required_columns[@]}"; do
-    tbl="${entry%%:*}"
-    col="${entry##*:}"
-    if ! column_exists "$tbl" "$col"; then
-      return 1
-    fi
-  done
-
-  return 0
 }
 
 database_status_check() {
@@ -426,40 +395,8 @@ database_status_check() {
   fi
 
   printf '\n[Current schema tables]\n'
-  local current_tables=(
-    "users"
-    "roles"
-    "user_roles"
-    "organizations"
-    "departments"
-    "teams"
-    "org_memberships"
-    "team_memberships"
-    "org_role_bindings"
-    "identity_provider_configs"
-    "execution_flow_templates"
-    "skill_configs"
-    "skill_permissions"
-    "tool_catalogs"
-    "skill_tool_bindings"
-    "chat_sessions"
-    "chat_messages"
-    "executions"
-    "execution_phases"
-    "execution_phase_steps"
-    "execution_phase_artifacts"
-    "execution_takeovers"
-    "runtime_sessions"
-    "execution_steps"
-    "execution_events"
-    "audit_logs"
-    "activities"
-    "temporal_workflows"
-    "skill_schedules"
-    "templates"
-  )
   local tbl
-  for tbl in "${current_tables[@]}"; do
+  for tbl in "${SCHEMA_STATUS_TABLES[@]}"; do
     if table_exists "$tbl"; then
       log_ok "$tbl"
     else
@@ -468,16 +405,9 @@ database_status_check() {
   done
 
   printf '\n[Key columns]\n'
-  local -a col_checks=(
-    "executions:current_phase_key"
-    "executions:current_phase_status"
-    "executions:takeover_status"
-    "executions:trigger_type"
-    "executions:schedule_id"
-  )
   local entry
   local col
-  for entry in "${col_checks[@]}"; do
+  for entry in "${PLATFORM_REQUIRED_COLUMNS[@]}"; do
     tbl="${entry%%:*}"
     col="${entry##*:}"
     if column_exists "$tbl" "$col"; then
@@ -507,8 +437,7 @@ database_status_check() {
   fi
 
   printf '\n[Legacy object checks]\n'
-  local legacy_tables=("sessions" "step_logs" "ai_models" "ai_agents")
-  for tbl in "${legacy_tables[@]}"; do
+  for tbl in "${LEGACY_TABLES[@]}"; do
     if table_exists "$tbl"; then
       log_warn "Legacy table still present: $tbl"
     else
@@ -614,11 +543,8 @@ SQL
   log "Exporting initial data snapshot..."
   bash "$EXPORT_INITIAL_DATA_SCRIPT" "$INITIAL_DATA_EXPORT_PATH_DEFAULT"
 
-  log "Starting core services..."
+  log "Starting application services..."
   start_core
-
-  log "Starting peripheral services..."
-  start_peripheral
 
   log "Final database status check..."
   database_status_check

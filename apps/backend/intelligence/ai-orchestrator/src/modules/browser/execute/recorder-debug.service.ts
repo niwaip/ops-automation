@@ -36,6 +36,11 @@ import {
 import { RecorderDebugResponseService } from './recorder-debug-response.service';
 import { RecorderDebugObservationFacade } from './recorder-debug-observation.facade';
 import { RecorderDebugSessionFacade } from './recorder-debug-session.facade';
+import {
+  RecorderDebugRollbackService,
+  type RollbackResult,
+} from './recorder/recorder-debug-rollback.service';
+import { RecorderStateStoreService } from './recorder/recorder-state-store.service';
 
 export type RecorderDebugBackend = 'cli' | 'chrome-devtools' | 'mcp';
 export type RecorderDebugTurnRole = 'user' | 'assistant' | 'system';
@@ -74,7 +79,9 @@ export class RecorderDebugService {
     private readonly recorderDebugExecutionService: RecorderDebugExecutionService,
     private readonly recorderDebugResponseService: RecorderDebugResponseService,
     private readonly recorderDebugObservationFacade: RecorderDebugObservationFacade,
-    private readonly recorderObservationService: RecorderObservationService
+    private readonly recorderObservationService: RecorderObservationService,
+    private readonly recorderDebugRollbackService: RecorderDebugRollbackService,
+    private readonly recorderStateStoreService: RecorderStateStoreService
   ) {}
 
   async chat(request: RecorderDebugChatRequest): Promise<RecorderDebugChatResponse> {
@@ -244,6 +251,7 @@ export class RecorderDebugService {
           commands: parsed.commands,
           execution: executionOutcome.execution,
           controlTokenState,
+          executionIndex: (executionOutcome as { executionIndex?: number }).executionIndex,
         });
       } else {
         response = this.recorderDebugResponseService.createAndRecordChatResponse({
@@ -256,6 +264,7 @@ export class RecorderDebugService {
           commands: parsed.commands,
           execution: executionOutcome.execution,
           controlTokenState,
+          executionIndex: (executionOutcome as { executionIndex?: number }).executionIndex,
         });
       }
     } else if (flow.kind === 'observation') {
@@ -329,7 +338,63 @@ export class RecorderDebugService {
   }
 
   async resetSession(sessionId: string): Promise<void> {
+    // v4.1 P0: clean up worker-owned state files before deleting the session record.
+    // We need runtimeSessionId to address the worker — load first, then delete.
+    const session = await this.loadSession(sessionId);
+    if (session) {
+      await this.recorderStateStoreService
+        .cleanupAll(session)
+        .catch((error: unknown) => {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          // Don't block session reset on cleanup failure — the worker may already be gone.
+          console.warn(
+            `recorderStateStoreService.cleanupAll failed during resetSession(${sessionId}): ${errorMessage}`
+          );
+        });
+    }
     await this.recorderDebugSessionFacade.deleteSession(sessionId);
+  }
+
+  /**
+   * v4.1 P0 (doc §5.1.5): rollback the last recorder execution step.
+   *
+   * Flow:
+   * 1. Load session
+   * 2. Delegate to RecorderDebugRollbackService (side-effect check → history filter → state restore)
+   * 3. If `requires_confirmation`: return WITHOUT saving (no mutation happened)
+   * 4. Otherwise: save the mutated session and return the result
+   *
+   * First-period endpoint only exposes `rollbackLastStep` semantics — `rollbackTo(N)`
+   * for arbitrary N is a P1+ concern (loopDraft / conditional-branch consistency).
+   */
+  async rollbackLastStep(
+    sessionId: string,
+    confirmation?: {
+      targetExecutionIndex: number;
+      sessionRevision: number;
+      sideEffectDigest: string;
+      confirmedSideEffects?: string[];
+    }
+  ): Promise<RollbackResult> {
+    const session = await this.recorderDebugSessionFacade.getSessionOrThrow<RecorderDebugSession>(
+      sessionId
+    );
+    const result = await this.recorderDebugRollbackService.rollbackLastStep({
+      session,
+      ...(confirmation ? { confirmation } : {}),
+    });
+
+    // requires_confirmation / noop / failed-restore: don't persist partial mutations.
+    // The rollback service only mutates the session once past the confirmation gate,
+    // so requires_confirmation guarantees an unmutated session.
+    if (result.status === 'requires_confirmation' || result.status === 'noop') {
+      return result;
+    }
+
+    // succeeded OR failed (browser restore failed but history already rolled back):
+    // persist the mutated session either way — history rollback stands per doc §5.1 降级处理.
+    await this.saveSession(session);
+    return result;
   }
 
   async upsertLoopDraft(request: RecorderLoopDraftRequest): Promise<{
@@ -613,6 +678,13 @@ export class RecorderDebugService {
       return null;
     }
 
+    // v4.1 P0 fix: the staged navigate step executes directly via executeBrowserCommands,
+    // bypassing executeAndResolve. Call prepareExecution so it gets the same pre-action
+    // state capture + executionIndex assignment as the main path — otherwise rollback
+    // can't match the navigate command to an execution step.
+    const navigateExecutionIndex =
+      await this.recorderDebugChatExecutionService.prepareExecution(input.session);
+
     const navigateExecution = await this.executeBrowserCommands(input.session, navigateParsed.commands, {
       appendDefaultWait: true,
     });
@@ -627,8 +699,16 @@ export class RecorderDebugService {
       input.session,
       postNavigateObservation
     );
+    // v4.1 P0 fix: stamp executionIndex onto navigate commands so rollback's persist
+    // scan and command filter can match them to this execution step.
+    const preNavigatePushCount = input.session.executedCommands.length;
     input.session.executedCommands.push(
       ...(navigateExecution.executedCommands || navigateParsed.commands)
+    );
+    this.recorderDebugChatExecutionService.stampExecutionIndex(
+      input.session,
+      navigateExecutionIndex,
+      preNavigatePushCount
     );
 
     if (!navigateExecution.success) {
@@ -663,6 +743,7 @@ export class RecorderDebugService {
         commands: navigateParsed.commands,
         execution: navigateExecution,
         controlTokenState: input.controlTokenState,
+        executionIndex: navigateExecutionIndex,
       });
     }
 
@@ -686,6 +767,11 @@ export class RecorderDebugService {
         parsed: followUpParsed,
         observation: postNavigateObservation,
         controlTokenState: input.controlTokenState,
+        // v4.1 P0 Issue #3: reuse the navigate's executionIndex so the whole staged
+        // flow (navigate + follow-up) shares one execution slot. This avoids the
+        // divergence where navigate commands get index N but the assistant turn gets
+        // index N+1, causing rollback to delete the turn while leaving navigate commands.
+        preAssignedExecutionIndex: navigateExecutionIndex,
         executeBrowserCommands: async (currentSession, commands, options) =>
           this.executeBrowserCommands(currentSession, commands, options),
         observePageSafely: async (currentSession, fallback) =>
@@ -728,6 +814,7 @@ export class RecorderDebugService {
           commands: combinedCommands,
           execution: mergedExecution,
           controlTokenState: input.controlTokenState,
+          executionIndex: (executionOutcome as { executionIndex?: number }).executionIndex,
         });
       }
 
@@ -741,6 +828,7 @@ export class RecorderDebugService {
         commands: combinedCommands,
         execution: mergedExecution,
         controlTokenState: input.controlTokenState,
+        executionIndex: (executionOutcome as { executionIndex?: number }).executionIndex,
       });
     }
 
@@ -766,6 +854,7 @@ export class RecorderDebugService {
         execution: navigateExecution,
         exportArtifacts,
         controlTokenState: input.controlTokenState,
+        executionIndex: navigateExecutionIndex,
       });
     }
 
@@ -780,6 +869,7 @@ export class RecorderDebugService {
         commands: combinedCommands,
         execution: navigateExecution,
         controlTokenState: input.controlTokenState,
+        executionIndex: navigateExecutionIndex,
       });
     }
 
@@ -800,6 +890,7 @@ export class RecorderDebugService {
         commands: combinedCommands,
         execution: navigateExecution,
         controlTokenState: input.controlTokenState,
+        executionIndex: navigateExecutionIndex,
       });
     }
 
@@ -815,6 +906,7 @@ export class RecorderDebugService {
       commands: combinedCommands,
       execution: navigateExecution,
       controlTokenState: input.controlTokenState,
+      executionIndex: navigateExecutionIndex,
     });
   }
 

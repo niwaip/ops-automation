@@ -22,6 +22,8 @@ export class RecorderDebugSessionStoreService {
     executedCommands: [];
     createdAt: string;
     updatedAt: string;
+    nextExecutionIndex: number;
+    revision: number;
   } {
     const now = new Date().toISOString();
     return {
@@ -33,6 +35,10 @@ export class RecorderDebugSessionStoreService {
       executedCommands: [],
       createdAt: now,
       updatedAt: now,
+      // v4.1 P0 (doc §4.3.4): executionIndex starts at 1; first pre-action capture is for execution 1
+      nextExecutionIndex: 1,
+      // v4.1 P0 (doc §5.2): revision starts at 0; increments on chat/rollback/reset commit
+      revision: 0,
     };
   }
 

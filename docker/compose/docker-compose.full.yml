@@ -1,7 +1,7 @@
-# Full development environment with default services
+# Legacy full-stack compose
+# 保留为兼容入口；日常开发请优先使用 ./docker/start-smart.sh dev up -d
 # Optional services such as `report` require explicit profiles
-# Must be started from the repository root via `./docker/start-smart.sh`
-# Usage: ./docker/start-smart.sh docker-compose.full.yml up -d
+# Explicit legacy usage: ./docker/start-smart.sh docker-compose.full.yml up -d
 # Set HOST_IP to your machine's IP for external access (e.g., HOST_IP=192.168.100.143)
 
 x-common-env: &common-env

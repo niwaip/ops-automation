@@ -362,6 +362,114 @@ describe('RecorderDebugService', () => {
     );
   });
 
+  it('chat should stamp executionIndex on staged navigate assistant turns for observation follow-up flows', async () => {
+    const parseCommand = jest
+      .fn()
+      .mockResolvedValueOnce({
+        success: true,
+        commands: [
+          {
+            tool: 'navigate',
+            params: { url: 'http://192.168.100.143/#approvals' },
+            description: '打开 http://192.168.100.143/#approvals',
+          },
+        ],
+        explanation: '先打开审批页面',
+      })
+      .mockResolvedValueOnce({
+        success: false,
+        commands: [],
+        explanation: '观察当前页面',
+      });
+    const service = createService({
+      browserCommandService: { parseCommand },
+      modelService: {
+        getPreferredDefaultModel: jest.fn().mockReturnValue(undefined),
+        callModel: jest.fn().mockResolvedValue({ content: '当前页面已打开，可继续观察。' }),
+      },
+    });
+    const session = {
+      sessionId: 'recorder-debug-stage-observe',
+      runtimeSessionId: 'runtime-stage-observe',
+      backend: 'cli',
+      browserInitialized: true,
+      currentPageUrl: 'about:blank',
+      lastObservation: undefined,
+      history: [],
+      executedCommands: [],
+      nextExecutionIndex: 3,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    const initialObservation = {
+      currentPageUrl: 'about:blank',
+      text: '',
+      title: 'Blank',
+      inputs: [],
+      buttons: [],
+      headings: [],
+      links: [],
+      suggestedParameters: [],
+      candidates: [],
+      candidateTrace: [],
+    };
+    const postNavigateObservation = {
+      currentPageUrl: 'http://192.168.100.143/#approvals',
+      text: '审批列表',
+      title: 'Approvals',
+      inputs: [],
+      buttons: [{ ref: 'e16', text: '详情', role: 'button' }],
+      headings: [],
+      links: [],
+      suggestedParameters: [],
+      candidates: [],
+      candidateTrace: [],
+    };
+    const navigateExecution = {
+      success: true,
+      results: [{ status: 'success', data: { url: 'http://192.168.100.143/#approvals' } }],
+      steps: [{ action: 'navigate', status: 'success' }],
+      executedCommands: [
+        {
+          tool: 'navigate',
+          params: { url: 'http://192.168.100.143/#approvals' },
+          description: '打开 http://192.168.100.143/#approvals',
+        },
+      ],
+    };
+
+    jest.spyOn(service as any, 'loadOrCreateSession').mockResolvedValue(session);
+    jest.spyOn(service as any, 'ensureBrowserReady').mockResolvedValue(undefined);
+    jest
+      .spyOn(service as any, 'observePageSafely')
+      .mockResolvedValueOnce(initialObservation)
+      .mockResolvedValueOnce(postNavigateObservation);
+    jest
+      .spyOn(service as any, 'executeBrowserCommands')
+      .mockResolvedValue(navigateExecution);
+    jest.spyOn(service as any, 'saveSession').mockResolvedValue(undefined);
+    jest.spyOn(service as any, 'refreshObservationAfterExecution').mockResolvedValue(undefined);
+
+    const response = await service.chat({
+      sessionId: session.sessionId,
+      runtimeSessionId: session.runtimeSessionId,
+      backend: 'cli',
+      message: '打开 http://192.168.100.143/#approvals\n观察当前页面',
+    });
+
+    expect(response.status).toBe('answer');
+    expect(response.reply).toContain('已先打开目标页面');
+    expect(session.history.at(-1)).toEqual(
+      expect.objectContaining({
+        role: 'assistant',
+        executionIndex: 3,
+      })
+    );
+    expect(session.executedCommands).toEqual(
+      expect.arrayContaining([expect.objectContaining({ tool: 'navigate', executionIndex: 3 })])
+    );
+  });
+
   it('chat should execute high-risk actions directly during recorder flow', async () => {
     const parseCommand = jest.fn().mockResolvedValue({
       success: true,

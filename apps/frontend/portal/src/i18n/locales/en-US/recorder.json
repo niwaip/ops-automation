@@ -87,6 +87,12 @@
     "parseFailed": "Failed to parse command",
     "commandExecuted": "Command executed successfully",
     "executionFailed": "Command execution failed",
-    "clearHistory": "Clear history"
+    "clearHistory": "Clear history",
+    "rollbackLastStep": "Undo last step",
+    "rollbackConfirmTitle": "Undo confirmation",
+    "rollbackConfirmOk": "Confirm undo",
+    "rollbackConfirmCancel": "Cancel",
+    "rollbackSideEffects": "Affected backend persist operations:",
+    "rollbackWarningNote": "Browser rollback will not undo these backend operations. To undo, manually handle backend state or contact admin."
   }
 }

@@ -66,6 +66,8 @@ import {
   RecorderScriptExportService,
   RecorderTemplateExportService,
 } from './export';
+import { RecorderStateStoreService } from './execute/recorder';
+import { RecorderDebugRollbackService } from './execute/recorder';
 
 @Module({
   imports: [ModelModule, RedisModule, BranchAnalysisModule],
@@ -122,6 +124,8 @@ import {
     RecorderTemplateExportService,
     ExecutionReconcileService,
     RecorderHistoryCompressionService,
+    RecorderStateStoreService,
+    RecorderDebugRollbackService,
   ],
   exports: [
     BrowserCommandService,

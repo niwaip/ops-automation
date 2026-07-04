@@ -220,7 +220,8 @@ export interface RecorderVerificationCheck {
     | 'list_count_changed'
     | 'blocking_overlay_detected'
     | 'confirmation_required'
-    | 'intent_alignment';
+    | 'intent_alignment'
+    | 'export_artifacts_generated';
   passed: boolean | 'partial' | 'unknown';
   message: string;
   required?: boolean;
@@ -411,6 +412,13 @@ export interface RecorderDebugTurn {
   loopState?: RecorderLoopRuntimeStateLike;
   compressed?: boolean;
   compressedReason?: string;
+  /**
+   * v4.1 P0 (doc §4.3.4): which recorder execution step this turn was produced by.
+   * Independent of history.length (which mixes user + assistant turns).
+   * Used by rollback to filter assistant turns: `turn.executionIndex < target` survives.
+   * Undefined on turns not produced by a real browser execution (pure user messages, system notes).
+   */
+  executionIndex?: number;
 }
 
 export interface RecorderDebugSession {
@@ -429,6 +437,42 @@ export interface RecorderDebugSession {
   pendingRiskConfirmation?: RecorderDebugPendingRiskConfirmation;
   createdAt: string;
   updatedAt: string;
+  /**
+   * v4.1 P0 (doc §4.3.4): monotonic execution counter, independent of history.length.
+   * Starts at 1 (so pre-action state for execution N can be captured before N is dispatched).
+   * Pre-action state for execution N is captured BEFORE executeAndResolve runs;
+   * the assistant turn produced by execution N carries executionIndex=N on its metadata.
+   * On rollback to N: nextExecutionIndex is set back to N so the next execution re-uses slot N.
+   */
+  nextExecutionIndex?: number;
+  /**
+   * v4.1 P0 (doc §5.2): version stamp for concurrency control.
+   * Increments only on chat commit / rollback commit / reset.
+   * Does NOT increment on observation refresh or requires_confirmation responses
+   * that haven't actually mutated session state.
+   * P1 will use this to invalidate stale pendingRecoverySuggestion entries.
+   */
+  revision?: number;
+  /**
+   * v4.1 P0 (doc §9.2.2): index of captured pre-action state per execution step.
+   * Keyed by executionIndex. Persisted alongside session so it survives orchestrator restart.
+   * Worker owns the actual state files; this index only holds the opaque stateHandle + metadata.
+   */
+  stateSnapshots?: Record<number, RecorderStateSnapshotMeta>;
+}
+
+/**
+ * v4.1 P0 (doc §9.2.2): metadata for a captured pre-action state.
+ * The stateHandle is opaque to ai-orchestrator — worker owns the actual file path.
+ */
+export interface RecorderStateSnapshotMeta {
+  executionIndex: number;
+  stateHandle: string;
+  runtimeSessionId: string;
+  url?: string;
+  capturedAt: string;
+  partial?: boolean;
+  reason?: string;
 }
 
 export interface RecorderDebugChatRequest {

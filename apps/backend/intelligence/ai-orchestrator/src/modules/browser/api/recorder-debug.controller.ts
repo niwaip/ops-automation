@@ -56,6 +56,63 @@ export class RecorderDebugController {
     return { success: true };
   }
 
+  // v4.1 P0 (doc §5.1.6-7): recorder rollback endpoints.
+  // First period only exposes `rollbackLastStep` — no `targetExecutionIndex` param
+  // on /rollback to prevent callers from skipping intermediate persist-level steps.
+  // /rollback/confirm accepts the binding fields returned by a prior requires_confirmation
+  // response and re-validates them server-side before forcing the rollback through.
+
+  @Post('rollback')
+  @ApiOperation({ summary: 'Rollback the last recorder execution step' })
+  async rollback(@Body() body: { sessionId: string }) {
+    if (!body?.sessionId || typeof body.sessionId !== 'string') {
+      return {
+        status: 'failed',
+        reason: 'sessionId-required',
+        targetExecutionIndex: 0,
+      };
+    }
+    return this.service.rollbackLastStep(body.sessionId);
+  }
+
+  @Post('rollback/confirm')
+  @ApiOperation({ summary: 'Confirm rollback after acknowledging side-effects' })
+  async rollbackConfirm(
+    @Body()
+    body: {
+      sessionId: string;
+      targetExecutionIndex: number;
+      sessionRevision: number;
+      sideEffectDigest: string;
+      confirmedSideEffects?: string[];
+    }
+  ) {
+    if (!body?.sessionId || typeof body.sessionId !== 'string') {
+      return {
+        status: 'failed',
+        reason: 'sessionId-required',
+        targetExecutionIndex: body?.targetExecutionIndex ?? 0,
+      };
+    }
+    if (
+      typeof body.targetExecutionIndex !== 'number' ||
+      typeof body.sessionRevision !== 'number' ||
+      typeof body.sideEffectDigest !== 'string'
+    ) {
+      return {
+        status: 'failed',
+        reason: 'invalid-confirmation-binding',
+        targetExecutionIndex: body?.targetExecutionIndex ?? 0,
+      };
+    }
+    return this.service.rollbackLastStep(body.sessionId, {
+      targetExecutionIndex: body.targetExecutionIndex,
+      sessionRevision: body.sessionRevision,
+      sideEffectDigest: body.sideEffectDigest,
+      ...(body.confirmedSideEffects ? { confirmedSideEffects: body.confirmedSideEffects } : {}),
+    });
+  }
+
   @Get(':sessionId')
   @ApiOperation({ summary: 'Get recorder debug session detail' })
   async getSession(@Param('sessionId') sessionId: string) {

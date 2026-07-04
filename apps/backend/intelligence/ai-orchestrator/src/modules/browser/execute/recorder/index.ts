@@ -8,3 +8,5 @@ export * from '../recorder-debug-outcome.service';
 export * from '../recorder-debug-response.service';
 export * from './recorder-history-compression.service';
 export * from './recorder-replay.service';
+export * from './recorder-state-store.service';
+export * from './recorder-debug-rollback.service';

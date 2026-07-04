@@ -20,7 +20,7 @@
     "clean": "rm -rf node_modules dist .turbo",
     "docker:up": "bash ./docker/start-smart.sh docker-compose.yml up -d",
     "docker:down": "bash ./docker/start-smart.sh docker-compose.yml down",
-    "docker:dev": "bash ./docker/start-smart.sh docker-compose.yml -f docker-compose.dev.yml up -d",
+    "docker:dev": "bash ./docker/start-smart.sh dev up -d",
     "docker:infra:up": "bash ./docker/start-smart.sh docker-compose.yml up -d",
     "docker:infra:down": "bash ./docker/start-smart.sh docker-compose.yml down",
     "docker:addin:up": "bash ./docker/start-smart.sh docker-compose.addin.yml up -d",

@@ -72,6 +72,21 @@ start_chrome() {
         args="${CHROME_ARGS:-}"
     fi
 
+    for required_arg in \
+        --ignore-certificate-errors \
+        --allow-insecure-localhost \
+        --disable-client-side-phishing-detection \
+        --test-type \
+        --safebrowsing-disable-download-protection; do
+        if ! echo " $args " | grep -q -- " ${required_arg} "; then
+            args="$args ${required_arg}"
+        fi
+    done
+
+    if ! echo "$args" | grep -q "HttpsUpgrades"; then
+        args="$args --disable-features=TranslateUI,VizDisplayCompositor,HttpsUpgrades,HTTPS-FirstBalancedModeAutoEnable,HTTPS-FirstModeV2ForEngagedSites"
+    fi
+
     # Ensure remote debugging port is included
     if ! echo "$args" | grep -q "remote-debugging-port"; then
         args="--remote-debugging-port=${CDP_PORT} $args"

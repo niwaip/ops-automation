@@ -1,5 +1,6 @@
-# Development environment overrides for the infrastructure stack
-# Usage: ./docker/start-smart.sh docker-compose.yml -f docker-compose.dev.yml up -d
+# Legacy infra-only development override
+# 仅保留给需要单独调试 infra 变体的场景。
+# 日常开发请优先使用 ./docker/start-smart.sh dev up -d
 
 services:
   postgres:

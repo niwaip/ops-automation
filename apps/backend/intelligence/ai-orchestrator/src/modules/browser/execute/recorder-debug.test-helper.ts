@@ -57,6 +57,8 @@ import {
 import { RecorderDebugResponseService } from './recorder-debug-response.service';
 import { RecorderDebugOutcomeService } from './recorder-debug-outcome.service';
 import { RecorderHistoryCompressionService } from './recorder';
+import { RecorderStateStoreService } from './recorder';
+import { RecorderDebugRollbackService } from './recorder';
 import {
   RecorderDebugSessionCoordinatorService,
   RecorderDebugSessionStoreService,
@@ -100,6 +102,8 @@ export const createService = (overrides?: {
   recorderParameterService?: RecorderParameterService;
   recorderScriptExportService?: RecorderScriptExportService;
   recorderTemplateExportService?: RecorderTemplateExportService;
+  recorderStateStoreService?: RecorderStateStoreService;
+  recorderDebugRollbackService?: RecorderDebugRollbackService;
 }) => {
   const modelService =
     overrides?.modelService ||
@@ -149,13 +153,28 @@ export const createService = (overrides?: {
       recorderDebugOutcomeService,
       recorderHistoryCompressionService
     );
+  const recorderStateStoreService =
+    overrides?.recorderStateStoreService ||
+    ({
+      capturePreActionState: jest.fn().mockResolvedValue(undefined),
+      getStateMeta: jest.fn().mockReturnValue(undefined),
+      restoreState: jest.fn().mockResolvedValue({ restored: false, reason: 'no-captured-state' }),
+      cleanupAfter: jest.fn().mockResolvedValue({ cleanedCount: 0 }),
+      cleanupAll: jest.fn().mockResolvedValue({ cleanedCount: 0 }),
+    } as any);
   const recorderDebugChatExecutionService =
     overrides?.recorderDebugChatExecutionService
       ? Object.assign(
-          new RecorderDebugChatExecutionService(browserExecutionControllerService),
+          new RecorderDebugChatExecutionService(
+            browserExecutionControllerService,
+            recorderStateStoreService
+          ),
           overrides.recorderDebugChatExecutionService
         )
-      : new RecorderDebugChatExecutionService(browserExecutionControllerService);
+      : new RecorderDebugChatExecutionService(
+          browserExecutionControllerService,
+          recorderStateStoreService
+        );
   const recorderDebugSessionFacade =
     overrides?.recorderDebugSessionFacade ||
     new RecorderDebugSessionFacade(
@@ -217,7 +236,17 @@ export const createService = (overrides?: {
       ),
     recorderDebugResponseService,
     recorderDebugObservationFacade,
-    recorderObservationService
+    recorderObservationService,
+    // v4.1 P0: rollback + state store services (mocked by default; tests can override)
+    overrides?.recorderDebugRollbackService ||
+      ({
+        rollbackLastStep: jest.fn().mockResolvedValue({
+          status: 'noop',
+          reason: 'no-rollback-target',
+          targetExecutionIndex: 1,
+        }),
+      } as any),
+    overrides?.recorderStateStoreService || recorderStateStoreService
   );
 };
 

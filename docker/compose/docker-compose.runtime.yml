@@ -1,7 +1,7 @@
-# V4 Runtime Group
-# 承载运行时资源与执行器：
-# browser-worker / temporal / sandbox-worker
-# 必须从仓库根目录通过 `./docker/start-smart.sh` 启动，确保挂载当前 worktree
+# Legacy V4 Runtime Group
+# 仅保留给分层调试/兼容校验使用。
+# 日常开发请优先使用 ./docker/start-smart.sh dev up -d
+# 如需单独调试运行时层，再显式使用本文件。
 
 services:
   browser-worker:

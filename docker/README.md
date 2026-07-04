@@ -26,18 +26,23 @@ Docker 体系负责整个仓库的基础设施、后端服务及测试环境的�
 
 ## 配置文件说明 (`docker/compose/`)
 
-| 文件                            | 用途                    | 主要服务                                                 |
-| ------------------------------- | ----------------------- | -------------------------------------------------------- |
-| `docker-compose.core.yml`       | V4 最小核心             | postgres, redis, auth, control-plane                     |
-| `docker-compose.planner.yml`    | V4 规划层               | ai-orchestrator                                          |
-| `docker-compose.runtime.yml`    | V4 运行时层             | session-broker, browser-worker, carbone-engine, temporal |
-| `docker-compose.experience.yml` | V4 体验层               | portal                                                   |
-| `docker-compose.base.yml`       | **统一基础配置**        | 所有服务模板 + 基础设施                                  |
-| `docker-compose.yml`            | 仅基础设施              | postgres, redis                                          |
-| `docker-compose.full.yml`       | 全栈开发环境            | 所有后端服务 + portal + browser-chrome                   |
-| `docker-compose.carbone.yml`    | Carbone 模板服务        | carbone-engine                                           |
-| `docker-compose.addin.yml`      | Carbone + Office Add-in | carbone-api, office-addin                                |
-| `docker-compose.test.yml`       | 测试环境                | mock-ai-server, carbone-engine-test                      |
+推荐日常只关注这几份：
+
+| 文件                       | 用途               | 主要服务                               |
+| -------------------------- | ------------------ | -------------------------------------- |
+| `docker-compose.base.yml`  | **默认开发栈**     | 基础设施 + 后端 + 前端 + browser chrome |
+| `docker-compose.yml`       | 仅基础设施         | postgres, redis                        |
+| `docker-compose.addin.yml` | Office Add-in 链路 | carbone-api, office-addin              |
+| `docker-compose.test.yml`  | 测试环境           | mock-ai-server, carbone-engine-test    |
+| `docker-compose.carbone.yml` | 独立 document-domain / carbone | carbone-engine                  |
+
+以下分层文件保留为兼容/调试用途，不作为默认入口：
+
+- `docker-compose.core.yml`
+- `docker-compose.planner.yml`
+- `docker-compose.runtime.yml`
+- `docker-compose.experience.yml`
+- `docker-compose.full.yml`
 
 ## 环境配置
 
@@ -59,8 +64,11 @@ cp env/.env.example .env
 ## 快速启动示例
 
 ```bash
-# 启动全栈开发环境
-./docker/start-smart.sh docker-compose.full.yml up -d
+# 启动默认开发环境
+./docker/start-smart.sh dev up -d
+
+# 等价写法
+./docker/start-smart.sh docker-compose.base.yml up -d
 
 # 启动独立 document-domain / carbone-engine
 ./docker/start-smart.sh docker-compose.carbone.yml up -d carbone-engine
@@ -68,14 +76,8 @@ cp env/.env.example .env
 # 运行 document-domain 测试容器
 ./docker/start-smart.sh docker-compose.test.yml run --rm carbone-engine-test
 
-# 启动 V4 最小核心
-./docker/start-smart.sh docker-compose.core.yml up -d
-
-# 在核心之上追加规划层
-./docker/start-smart.sh docker-compose.planner.yml up -d
-
 # 停止特定环境
-./docker/start-smart.sh docker-compose.core.yml down
+./docker/start-smart.sh dev down
 ```
 
 ## 校验与冒烟测试
