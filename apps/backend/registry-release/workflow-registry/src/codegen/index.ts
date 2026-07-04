@@ -1,5 +1,4 @@
-export { ActivityCodegenService } from '@ops/platform/dist/modules/temporal-workflow/temporal-activity-codegen.service';
-export { TemporalWorkflowCodegenService } from '@ops/platform/dist/modules/temporal-workflow/temporal-workflow-codegen.service';
+export { ActivityCodegenService, TemporalWorkflowCodegenService } from '@ops/platform/dist/modules/temporal-workflow';
 export { TemporalWorkflowCodegenOrchestrationService } from '@ops/platform/dist/workflow-registry/codegen/index';
 
 export interface WorkflowCodegenSummary {

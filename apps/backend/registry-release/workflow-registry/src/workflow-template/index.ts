@@ -1,5 +1,4 @@
-export { TemporalWorkflowModule } from '@ops/platform/dist/modules/temporal-workflow/temporal-workflow.module';
-export { TemporalWorkflowService } from '@ops/platform/dist/modules/temporal-workflow/temporal-workflow.service';
+export { TemporalWorkflowModule, TemporalWorkflowService } from '@ops/platform/dist/modules/temporal-workflow';
 export {
   TemporalWorkflowArtifactService,
   TemporalWorkflowConfigOrchestrationService,
@@ -12,7 +11,7 @@ export {
 } from '@ops/platform/dist/workflow-registry/workflow-template/index';
 export {
   DEFAULT_TEMPLATE_WORKFLOW_DSL,
-} from '@ops/platform/dist/modules/temporal-workflow/temporal-workflow.types';
+} from '@ops/platform/dist/modules/temporal-workflow';
 export type {
   ActivityDefinition,
   ActivityDsl,
@@ -68,13 +67,13 @@ export type {
   WorkflowResultTrigger,
   WorkflowSignalHandler,
   WorkflowStep,
-} from '@ops/platform/dist/modules/temporal-workflow/temporal-workflow.types';
+} from '@ops/platform/dist/modules/temporal-workflow';
 
 import type {
   TemplateWorkflowDraft,
   TemporalWorkflowSourceTemplate,
   WorkflowDsl,
-} from '@ops/platform/dist/modules/temporal-workflow/temporal-workflow.types';
+} from '@ops/platform/dist/modules/temporal-workflow';
 
 export function resolveWorkflowTemplateSourceTemplate(
   workflowDsl: Pick<WorkflowDsl, 'sourceContext'> | null | undefined,

@@ -2,7 +2,7 @@
 
 当前目录作为浏览器能力域的目标逻辑路径，用来统一承接以下现态模块：
 
-- `apps/backend/domain/browser-template`
+- 历史 `apps/backend/domain/browser-template`
 - 历史 `apps/backend/domain/browser-semantics`
 - `apps/backend/intelligence/ai-orchestrator/src/modules/browser`
 
@@ -11,7 +11,7 @@
 - `templates`
   - 真实运行根目录已位于 `capabilities/browser-domain/templates`
   - 负责浏览器模板资产的设计时定义、编译与校验
-  - 历史 `apps/backend/domain/browser-template` 当前仅保留 `README.md` 作为迁移说明锚点
+  - 历史 `apps/backend/domain/browser-template` 物理路径已退出仓库
 - `semantics`
   - 真实运行根目录已位于 `capabilities/browser-domain/semantics`
   - 负责浏览器语义规则的设计时管理、发布态查询与运行时解析
@@ -50,7 +50,7 @@ apps/backend/capabilities/browser-domain/
 当前批次中，`templates` 与 `semantics` 已完成首轮真实运行包根目录迁移；其余子层继续保持按边界逐步收口。
 
 - 历史 `apps/backend/domain/browser-semantics` 物理路径已在后续收口中完成删除。
-- 历史 `apps/backend/domain/browser-template` 的 `src/` 已完成删除，旧目录当前仅保留 `README.md`。
+- 历史 `apps/backend/domain/browser-template` 的旧物理路径已完成删除。
 - `browser-domain/index.ts`、`recorder/index.ts` 与 `runtime-facade/index.ts` 这类零消费者 root/compat shell 已在后续 Phase E 删除；当前以目录边界和真实子层承接逻辑归属，不再额外维持根导出壳。
 
 ## 当前迁移原则

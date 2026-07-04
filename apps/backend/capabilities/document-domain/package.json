@@ -13,7 +13,7 @@
   },
   "scripts": {
     "prisma:generate": "prisma generate --schema template/prisma/schema.prisma",
-    "build": "prisma generate --schema template/prisma/schema.prisma && rm -rf dist/backend/capabilities/document-domain dist/backend/domain/document-engine && tsc -p tsconfig.json && rm -rf dist/backend/capabilities/document-domain/template/generated dist/backend/capabilities/document-domain/report/generated && mkdir -p dist/backend/capabilities/document-domain/template/generated dist/backend/capabilities/document-domain/report/generated && cp -R template/generated/prisma dist/backend/capabilities/document-domain/template/generated/prisma && cp -R report/generated/prisma dist/backend/capabilities/document-domain/report/generated/prisma",
+    "build": "prisma generate --schema template/prisma/schema.prisma && rm -rf dist/backend/capabilities/document-domain && tsc -p tsconfig.json && rm -rf dist/backend/capabilities/document-domain/template/generated dist/backend/capabilities/document-domain/report/generated && mkdir -p dist/backend/capabilities/document-domain/template/generated dist/backend/capabilities/document-domain/report/generated && cp -R template/generated/prisma dist/backend/capabilities/document-domain/template/generated/prisma && cp -R report/generated/prisma dist/backend/capabilities/document-domain/report/generated/prisma",
     "dev": "prisma generate --schema template/prisma/schema.prisma && ts-node-dev --project tsconfig.json --respawn --transpile-only main.ts",
     "start": "node dist/backend/capabilities/document-domain/main.js",
     "start:prod": "node dist/backend/capabilities/document-domain/main.js",

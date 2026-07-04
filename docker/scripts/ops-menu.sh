@@ -31,6 +31,7 @@ CONTROL_PLANE_INCREMENTAL_SQL_FILES=(
   "$REPO_ROOT/apps/backend/execution-control/control-plane/prisma/migrations/20260625000000_add_scheduler/migration.sql"
 )
 BROWSER_TEMPLATE_REPAIR_SQL="$REPO_ROOT/apps/backend/capabilities/browser-domain/templates/prisma/manual-sql/20260608_rebuild_templates_current_schema.sql"
+PLATFORM_UUID_DEFAULT_REPAIR_SQL="$REPO_ROOT/apps/backend/core/platform/prisma/manual-sql/20260704_repair_uuid_id_defaults.sql"
 LEGACY_SQL_FILES=(
   "$REPO_ROOT/docker/sql/migrations/001_init.sql"
   "$REPO_ROOT/docker/sql/seed.sql"
@@ -317,6 +318,7 @@ start_core() {
 
 apply_shared_domain_schema_repairs() {
   log "Applying shared domain schema repair SQL..."
+  apply_sql_file "$PLATFORM_UUID_DEFAULT_REPAIR_SQL"
   apply_sql_file "$BROWSER_TEMPLATE_REPAIR_SQL"
 }
 
@@ -351,6 +353,7 @@ print_migration_inventory() {
   for sql_file in "${CONTROL_PLANE_INCREMENTAL_SQL_FILES[@]}"; do
     printf '  - Shared incremental SQL: %s\n' "$sql_file"
   done
+  printf '  - Shared platform repair SQL: %s\n' "$PLATFORM_UUID_DEFAULT_REPAIR_SQL"
   printf '  - Shared domain repair SQL: %s\n' "$BROWSER_TEMPLATE_REPAIR_SQL"
 
   printf '\n[Placeholder migrations not applied automatically]\n'
@@ -569,11 +572,11 @@ seed_platform_accounts_sql() {
   run_psql_stdin <<SQL
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
-INSERT INTO roles (name, description, permissions, is_system)
+INSERT INTO roles (id, name, description, permissions, is_system)
 VALUES
-  ('admin', '系统管理员', '{"all_skills": true}'::json, true),
-  ('employee', '普通员工', '{}'::json, true),
-  ('agent', '自动化代理', '{"replay_start": true, "replay_stop": true, "agent_create": true}'::json, true)
+  (gen_random_uuid(), 'admin', '系统管理员', '{"all_skills": true}'::json, true),
+  (gen_random_uuid(), 'employee', '普通员工', '{}'::json, true),
+  (gen_random_uuid(), 'agent', '自动化代理', '{"replay_start": true, "replay_stop": true, "agent_create": true}'::json, true)
 ON CONFLICT (name) DO UPDATE
 SET
   description = EXCLUDED.description,
@@ -581,8 +584,9 @@ SET
   is_system = EXCLUDED.is_system,
   updated_at = NOW();
 
-INSERT INTO users (username, password_hash, email, role, is_active)
+INSERT INTO users (id, username, password_hash, email, role, is_active)
 VALUES (
+  gen_random_uuid(),
   '${admin_username_sql}',
   crypt('${admin_password_sql}', gen_salt('bf')),
   '${admin_email_sql}',

@@ -18,7 +18,6 @@
   - `modules/execution-flow`
   - `modules/temporal-workflow`
   - `src/release-manager`
-  - `modules/capability-release`（兼容层）
 
 ## 当前规则
 

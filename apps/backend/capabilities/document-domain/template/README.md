@@ -4,7 +4,7 @@
 
 ## 当前归属
 
-- 对齐 `apps/backend/domain/document-engine` 中的模板上传、变量发现、模板元数据。
+- 对齐历史 `apps/backend/domain/document-engine` 中的模板上传、变量发现、模板元数据。
 - 对齐历史 `apps/backend/domain/report` 中偏报表模板管理的一侧；当前真实运行根已收口到 `apps/backend/capabilities/document-domain/report`。
 
 ## 当前约束

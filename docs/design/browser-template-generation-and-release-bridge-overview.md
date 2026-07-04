@@ -164,12 +164,12 @@ apps/backend/registry-release/
 1. 本文档：先确认职责边界和主链路。
 2. `docs/design/browser-recorder-module-overview.md`
    作用：理解导出产物的来源。
-3. `docs/design/v4/browser-domain-release-boundary_v4.1.md`
-   作用：理解模板与语义规则的设计时 / 发布态 / 运行时边界。
-4. `docs/design/v4/browser-domain-logical-view_v4.1.md`
-   作用：理解 `templates / semantics / recorder / runtime-facade` 的统一逻辑视图。
-5. `docs/design/v4/Enterprise-Skill-Platform_Unified-Capability-Model-and-Skill-Publishing_v4.0.md`
-   作用：理解统一能力模型与 Skill 发布主线。
+3. `docs/design/v4/Enterprise-Skill-Platform_Project-Description_v4.1.md`
+   作用：理解模板、发布和运行时在当前项目结构中的位置。
+4. `docs/design/v4/Enterprise-Skill-Platform_Master_v4.0.md`
+   作用：理解系统级主链和 `Skill / Release / Execution / Runtime` 的关系。
+5. `docs/project_architecture_redesign.md`
+   作用：理解目录重塑背景与能力域边界来源。
 
 ## 8. 相关代码与设计锚点
 
@@ -177,5 +177,5 @@ apps/backend/registry-release/
 - `apps/backend/capabilities/browser-domain/templates/README.md`
 - `apps/backend/registry-release/template-registry/README.md`
 - `apps/backend/registry-release/release-manager/src/release/capability-release.controller.ts`
-- `docs/design/v4/browser-domain-logical-view_v4.1.md`
-- `docs/design/v4/browser-domain-release-boundary_v4.1.md`
+- `docs/design/v4/Enterprise-Skill-Platform_Project-Description_v4.1.md`
+- `docs/project_architecture_redesign.md`

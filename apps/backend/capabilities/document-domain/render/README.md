@@ -4,7 +4,7 @@
 
 ## 当前归属
 
-- 对齐 `apps/backend/domain/document-engine` 的预览、校验与正式渲染能力。
+- 对齐历史 `apps/backend/domain/document-engine` 的预览、校验与正式渲染能力。
 - 对齐历史 `apps/backend/domain/report` 的 Word / Excel / PDF 生成流水线；当前真实运行根已收口到 `apps/backend/capabilities/document-domain/report`。
 
 ## 当前约束

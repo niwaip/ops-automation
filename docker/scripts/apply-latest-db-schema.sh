@@ -16,6 +16,7 @@ CONTROL_PLANE_INCREMENTAL_SQL_FILES=(
   "$REPO_ROOT/apps/backend/execution-control/control-plane/prisma/migrations/20260516140000_add_execution_phase_steps/migration.sql"
   "$REPO_ROOT/apps/backend/execution-control/control-plane/prisma/migrations/20260625000000_add_scheduler/migration.sql"
 )
+PLATFORM_UUID_DEFAULT_REPAIR_SQL="$REPO_ROOT/apps/backend/core/platform/prisma/manual-sql/20260704_repair_uuid_id_defaults.sql"
 
 log() {
   printf '[apply-latest-db-schema] %s\n' "$1"
@@ -105,6 +106,9 @@ apply_latest_schema() {
   for sql_file in "${CONTROL_PLANE_INCREMENTAL_SQL_FILES[@]}"; do
     apply_sql_file "$sql_file"
   done
+
+  log "Applying platform UUID default repair SQL..."
+  apply_sql_file "$PLATFORM_UUID_DEFAULT_REPAIR_SQL"
 
   log "Latest database schema is now applied."
 }

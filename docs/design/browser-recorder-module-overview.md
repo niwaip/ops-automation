@@ -144,16 +144,16 @@ apps/backend/intelligence/ai-orchestrator/src/modules/browser/
 如果要理解当前录制模块，建议按以下顺序阅读：
 
 1. 本文档：先明确产品入口、职责边界和主链路。
-2. `docs/design/v4/Enterprise-Skill-Platform_AI-Browser-Execution-Guide_v4.0.md`
-   作用：理解录制态动作、locator、参数和执行约束。
-3. `docs/design/v4/Enterprise-Skill-Platform_Recorder-Unified-Outcome-and-Snapshot-Reuse-Draft_v4.1.md`
-   作用：理解统一结果与快照复用的目标设计。
-4. `docs/design/v4/Enterprise-Skill-Platform_Recorder-Outcome-TypeSpec_v4.1.md`
-   作用：理解 outcome / observation / verification 的建模方式。
-5. `docs/design/v4/Enterprise-Skill-Platform_Recorder-Verification-Rules_v4.1.md`
-   作用：理解不同动作类型的验证规则。
-6. `docs/design/v4/Enterprise-Skill-Platform_Browser-Phase-Execution-and-Recovery_v4.0.md`
-   作用：理解恢复、接管、phase 边界。
+2. `docs/design/v4/Enterprise-Skill-Platform_Project-Description_v4.1.md`
+   作用：理解当前项目范围与浏览器能力域在整体项目中的位置。
+3. `docs/design/v4/Enterprise-Skill-Platform_Master_v4.0.md`
+   作用：理解系统级主链、正式对象与稳定契约。
+4. `docs/project_architecture_redesign.md`
+   作用：理解浏览器能力域与执行链路的整体重塑背景。
+5. `apps/backend/intelligence/ai-orchestrator/src/modules/browser/README.md`
+   作用：理解当前浏览器执行与录制模块的代码落点。
+6. `apps/backend/capabilities/browser-domain/recorder/README.md`
+   作用：理解录制能力在 browser-domain 中的职责边界。
 
 ## 9. 相关代码与设计锚点
 
@@ -161,4 +161,4 @@ apps/backend/intelligence/ai-orchestrator/src/modules/browser/
 - `apps/backend/intelligence/ai-orchestrator/src/modules/browser/README.md`
 - `apps/backend/capabilities/browser-domain/README.md`
 - `apps/backend/capabilities/browser-domain/recorder/README.md`
-- `docs/design/v4/browser-domain-logical-view_v4.1.md`
+- `docs/design/v4/Enterprise-Skill-Platform_Project-Description_v4.1.md`

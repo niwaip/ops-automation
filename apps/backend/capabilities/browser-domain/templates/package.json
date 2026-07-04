@@ -6,7 +6,7 @@
   "main": "dist/main.js",
   "types": "dist/main.d.ts",
   "scripts": {
-    "build": "prisma generate && nest build",
+    "build": "prisma generate && nest build && rm -rf dist/generated/prisma && mkdir -p dist/generated && cp -R generated/prisma dist/generated/prisma",
     "dev": "nest start --watch",
     "start": "node dist/main.js",
     "start:prod": "node dist/main.js",

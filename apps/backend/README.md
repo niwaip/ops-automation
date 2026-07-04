@@ -16,7 +16,6 @@ target architecture described in `docs/project_architecture_redesign.md` and
 - `execution-control/`: control-plane and session broker responsibilities.
 - `capabilities/`: browser and document capability domains.
 - `runtimes/`: executors and workers.
-- `domain/`: legacy capability services kept during migration; new capability-domain work must not expand this layer.
 - `orchestration/`: legacy orchestration shell retained only where compatibility still requires it.
 - `shared/`: controlled shared backend contracts and infrastructure.
 - `var/`: runtime data and generated artifacts.
@@ -36,7 +35,6 @@ target architecture described in `docs/project_architecture_redesign.md` and
 ## Freeze Rules
 
 - `core/platform` compatibility shells may forward, assemble, or expose stable facades, but must not absorb new core business implementation.
-- `domain/*` is in migration freeze for capability-domain growth; new browser or document capability requirements must go to the `capabilities/*` logical view first.
 - `intelligence/ai-orchestrator/src/modules/planner/*` must remain focused on generic planning and delegation; new browser-domain internals must not be added there.
 - `execution-control/*` must not receive release compilation, template authoring, or capability-domain design-time logic.
 - New cross-service DTOs, manifests, and protocol types must not be added back into legacy paths when a `packages/backend-contracts/*` package is the logical target.

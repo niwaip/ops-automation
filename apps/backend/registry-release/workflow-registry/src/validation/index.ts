@@ -1,48 +1,34 @@
 export type {
   StepAnalysis,
   ValidationResult,
-} from '@ops/platform/dist/modules/execution-flow/interfaces';
+} from '@ops/platform/dist/modules/execution-flow';
 export {
   ExecutionFlowValidationFacadeService,
-} from '@ops/platform/dist/modules/execution-flow/execution-flow-validation-facade.service';
-export {
   ExecutionFlowValidationHttpService,
-} from '@ops/platform/dist/modules/execution-flow/execution-flow-validation-http.service';
-export {
   ExecutionFlowValidationService,
-} from '@ops/platform/dist/modules/execution-flow/execution-flow-validation.service';
+} from '@ops/platform/dist/modules/execution-flow';
 export {
   ActivityValidationService,
-} from '@ops/platform/dist/modules/temporal-workflow/temporal-activity-validation.service';
-export {
   TemporalActivityValidationFacadeService,
-} from '@ops/platform/dist/modules/temporal-workflow/temporal-activity-validation-facade.service';
-export {
   TemporalActivityValidationHttpService,
-} from '@ops/platform/dist/modules/temporal-workflow/temporal-activity-validation-http.service';
-export {
   TemporalWorkflowValidationService,
-} from '@ops/platform/dist/modules/temporal-workflow/temporal-workflow-validation.service';
-export {
   TemporalWorkflowValidationFacadeService,
-} from '@ops/platform/dist/modules/temporal-workflow/temporal-workflow-validation-facade.service';
-export {
   TemporalWorkflowValidationHttpService,
-} from '@ops/platform/dist/modules/temporal-workflow/temporal-workflow-validation-http.service';
+} from '@ops/platform/dist/modules/temporal-workflow';
 export {
   TemporalWorkflowArtifactValidationService,
   TemporalWorkflowDslValidationService,
 } from '@ops/platform/dist/workflow-registry/validation/index';
 export {
   DEFAULT_TEMPLATE_WORKFLOW_DSL,
-} from '@ops/platform/dist/modules/temporal-workflow/temporal-workflow.types';
+} from '@ops/platform/dist/modules/temporal-workflow';
 export type {
   ActivityExecutionOptions,
   ActivityFormData,
   ActivityValidationResult,
   BuiltinActivityDTO,
   GenerateCodeResult,
-} from '@ops/platform/dist/modules/temporal-workflow/temporal-activity.types';
+} from '@ops/platform/dist/modules/temporal-workflow';
 export type {
   ActivityDefinition,
   ActivityDsl,
@@ -98,17 +84,17 @@ export type {
   WorkflowResultTrigger,
   WorkflowSignalHandler,
   WorkflowStep,
-} from '@ops/platform/dist/modules/temporal-workflow/temporal-workflow.types';
+} from '@ops/platform/dist/modules/temporal-workflow';
 
 import type {
   ActivityValidationResult,
-} from '@ops/platform/dist/modules/temporal-workflow/temporal-activity.types';
+} from '@ops/platform/dist/modules/temporal-workflow';
 import type {
   TemporalValidationResult,
-} from '@ops/platform/dist/modules/temporal-workflow/temporal-workflow.types';
+} from '@ops/platform/dist/modules/temporal-workflow';
 import type {
   ValidationResult,
-} from '@ops/platform/dist/modules/execution-flow/interfaces';
+} from '@ops/platform/dist/modules/execution-flow';
 
 export function isExecutionFlowValidationPassed(
   result: ValidationResult,

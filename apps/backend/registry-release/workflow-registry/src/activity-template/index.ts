@@ -1,6 +1,4 @@
-export { ActivityCrudService } from '@ops/platform/dist/modules/temporal-workflow/temporal-activity-crud.service';
-export { ActivityService } from '@ops/platform/dist/modules/temporal-workflow/temporal-activity.service';
-export { ActivityValidationService } from '@ops/platform/dist/modules/temporal-workflow/temporal-activity-validation.service';
+export { ActivityCrudService, ActivityService, ActivityValidationService } from '@ops/platform/dist/modules/temporal-workflow';
 export {
   BuiltinActivityRegistry,
   BUILTIN_ACTIVITY_REF_PREFIX,
@@ -8,24 +6,24 @@ export {
   HTTP_REQUEST_ACTIVITY_KEY,
   STRUCTURED_TRANSFORM_ACTIVITY_KEY,
   AI_STRUCTURED_TRANSFORM_ACTIVITY_KEY,
-} from '@ops/platform/dist/modules/temporal-workflow/builtin-activity.registry';
+} from '@ops/platform/dist/modules/temporal-workflow';
 export type {
   BuiltinActivityDefinition,
-} from '@ops/platform/dist/modules/temporal-workflow/builtin-activity.registry';
+} from '@ops/platform/dist/modules/temporal-workflow';
 export type {
   ActivityExecutionOptions,
   ActivityFormData,
   ActivityValidationResult,
   BuiltinActivityDTO,
   GenerateCodeResult,
-} from '@ops/platform/dist/modules/temporal-workflow/temporal-activity.types';
+} from '@ops/platform/dist/modules/temporal-workflow';
 
 import type {
   GenerateCodeResult,
-} from '@ops/platform/dist/modules/temporal-workflow/temporal-activity.types';
+} from '@ops/platform/dist/modules/temporal-workflow';
 import {
   BUILTIN_ACTIVITY_REF_PREFIX as builtinActivityRefPrefix,
-} from '@ops/platform/dist/modules/temporal-workflow/builtin-activity.registry';
+} from '@ops/platform/dist/modules/temporal-workflow';
 
 export function isBuiltinActivityRef(ref: string | null | undefined): boolean {
   return Boolean(ref && ref.startsWith(builtinActivityRefPrefix));

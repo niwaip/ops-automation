@@ -12,7 +12,6 @@ packages:
   - 'apps/*/*'
   - 'apps/*/*/*'
   - 'apps/*/*/*/*'
-  - '!apps/backend/domain/document-engine'
   - 'tests/*'
   - 'packages/*'
   - 'packages/*/*'
