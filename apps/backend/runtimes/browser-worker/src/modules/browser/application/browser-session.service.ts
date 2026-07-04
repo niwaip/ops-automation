@@ -78,6 +78,19 @@ export class BrowserSessionService {
     runtimeSessionId?: string;
   }): Promise<void> {
     const backend = options?.backend || 'cli';
+    // v4.1 P0: clean up recorder state files before tearing down the session.
+    // Filesystem-level cleanup is independent of session teardown — runs even if reset throws.
+    if (options?.runtimeSessionId) {
+      await this.playwrightCliAdapter
+        .cleanupAllStateFiles(options.runtimeSessionId)
+        .catch((error: unknown) => {
+          this.logger.warn(
+            `Failed to clean recorder state files for ${options.runtimeSessionId}: ${
+              error instanceof Error ? error.message : String(error)
+            }`
+          );
+        });
+    }
     await this.getAdapter(backend).resetBrowser({
       runtimeSessionId: options?.runtimeSessionId,
     });
@@ -85,6 +98,63 @@ export class BrowserSessionService {
     if (options?.runtimeSessionId) {
       this.sessionRegistry.delete(options.runtimeSessionId);
     }
+  }
+
+  // v4.1 P0: recorder state capture/restore entrypoints.
+  // These are playwright-cli specific (chrome-devtools backend doesn't need recorder state).
+  // Per doc §9.2.3, stateHandle is opaque to ai-orchestrator.
+
+  async captureState(options: {
+    runtimeSessionId: string;
+    executionIndex: number;
+  }): Promise<{ stateHandle: string; url?: string; capturedAt: string }> {
+    if (!options?.runtimeSessionId) {
+      throw new Error('runtimeSessionId is required for state capture');
+    }
+    return this.playwrightCliAdapter.captureState(
+      options.runtimeSessionId,
+      options.executionIndex
+    );
+  }
+
+  async restoreState(options: {
+    runtimeSessionId: string;
+    stateHandle: string;
+  }): Promise<{
+    restored: boolean;
+    partial?: boolean;
+    reason?: string;
+    url?: string;
+  }> {
+    if (!options?.runtimeSessionId) {
+      throw new Error('runtimeSessionId is required for state restore');
+    }
+    return this.playwrightCliAdapter.restoreState(
+      options.runtimeSessionId,
+      options.stateHandle
+    );
+  }
+
+  async cleanupStateFilesAfter(options: {
+    runtimeSessionId: string;
+    executionIndex: number;
+  }): Promise<{ cleanedCount: number }> {
+    if (!options?.runtimeSessionId) {
+      throw new Error('runtimeSessionId is required for state cleanup');
+    }
+    return this.playwrightCliAdapter.cleanupStateFilesAfter(
+      options.runtimeSessionId,
+      options.executionIndex
+    );
+  }
+
+  async cleanupAllStateFiles(options: {
+    runtimeSessionId: string;
+  }): Promise<{ cleanedCount: number }> {
+    if (!options?.runtimeSessionId) {
+      throw new Error('runtimeSessionId is required for state cleanup');
+    }
+    return this.playwrightCliAdapter.cleanupAllStateFiles(options.runtimeSessionId);
   }
 
   async freeze(dto: FreezeBrowserSessionDto): Promise<BrowserControlStateDto> {

@@ -208,7 +208,7 @@ const config = {
       "value": "prisma-client-js"
     },
     "output": {
-      "value": "/app/src/generated/prisma",
+      "value": "/Users/chain/Documents/MyProject/ops-automation/apps/backend/intelligence/ai-orchestrator/src/generated/prisma",
       "fromEnvVar": null
     },
     "config": {
@@ -217,12 +217,12 @@ const config = {
     "binaryTargets": [
       {
         "fromEnvVar": null,
-        "value": "linux-arm64-openssl-1.1.x",
+        "value": "darwin-arm64",
         "native": true
       }
     ],
     "previewFeatures": [],
-    "sourceFilePath": "/app/prisma/schema.prisma",
+    "sourceFilePath": "/Users/chain/Documents/MyProject/ops-automation/apps/backend/intelligence/ai-orchestrator/prisma/schema.prisma",
     "isCustomOutput": true
   },
   "relativeEnvPaths": {

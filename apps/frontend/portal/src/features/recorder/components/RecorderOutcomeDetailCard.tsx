@@ -341,8 +341,12 @@ const RecorderOutcomeDetailCard: React.FC<RecorderOutcomeDetailCardProps> = ({
           <Space direction="vertical" size="small" style={{ width: '100%' }}>
             <Space wrap>
               <Tag color="default">总数 {checks.length}</Tag>
-              <Tag color="error">失败 {failedChecks.length}</Tag>
-              <Tag color="processing">待确认/部分 {unknownChecks.length}</Tag>
+              <Tag color={failedChecks.length > 0 ? 'error' : 'default'}>
+                失败 {failedChecks.length}
+              </Tag>
+              <Tag color={unknownChecks.length > 0 ? 'processing' : 'default'}>
+                待确认/部分 {unknownChecks.length}
+              </Tag>
             </Space>
             {checks.length > 0 ? (
               <Space direction="vertical" size="small" style={{ width: '100%' }}>

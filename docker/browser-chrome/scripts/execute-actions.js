@@ -26,6 +26,12 @@ async function executeActions(actions, sessionId) {
       args: [
         '--no-sandbox',
         '--disable-dev-shm-usage',
+        '--ignore-certificate-errors',
+        '--allow-insecure-localhost',
+        '--disable-client-side-phishing-detection',
+        '--test-type',
+        '--safebrowsing-disable-download-protection',
+        '--disable-features=TranslateUI,VizDisplayCompositor,HttpsUpgrades,HTTPS-FirstBalancedModeAutoEnable,HTTPS-FirstModeV2ForEngagedSites',
         '--window-size=1920,1080',
         '--window-position=0,0',
         '--start-maximized',
@@ -34,6 +40,7 @@ async function executeActions(actions, sessionId) {
 
     const context = await browser.newContext({
       viewport: { width: 1920, height: 1080 },
+      ignoreHTTPSErrors: true,
     });
 
     const page = await context.newPage();

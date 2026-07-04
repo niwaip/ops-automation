@@ -1,6 +1,6 @@
 # 文档导航
 
-`docs/` 只保留当前项目仍有实际参考价值的资料，并按“当前基线 / 操作手册 / 历史归档”组织。
+`docs/` 只保留当前项目仍有实际参考价值的资料，并按“当前基线 / 功能概要 / 操作手册 / 历史归档”组织。
 
 当前项目基线：
 
@@ -16,10 +16,15 @@
 - 交付物与样例：[`artifacts/README.md`](file:///Users/chain/Documents/MyProject/ops-automation/docs/artifacts/README.md)
 - Skill 参考资料：`skills/temporal-developer/`
 
+## 当前功能概要
+
+- 浏览器录制模块：[`design/browser-recorder-module-overview.md`](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/browser-recorder-module-overview.md)
+- 浏览器模板生成与发布桥接：[`design/browser-template-generation-and-release-bridge-overview.md`](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/browser-template-generation-and-release-bridge-overview.md)
+
 ## 目录说明
 
 - `design/`
-  当前设计文档入口。`v4` 是唯一实施基线，`v2`、`v3` 和 `history/` 仅作历史参考。
+  当前设计文档入口。优先阅读功能概要与 `v4` 基线文档；`v2`、`v3` 和 `history/` 仅作历史参考。
 - `runbook/`
   面向排障、验证和阶段性落地的操作文档。
 - `memory/`

@@ -1,6 +1,6 @@
-# V4 Experience Group
-# 承载体验层：portal
-# 预期与 core / planner / runtime 组配合使用
+# Legacy V4 Experience Group
+# 仅保留给分层调试/兼容校验使用。
+# 日常开发请优先使用 ./docker/start-smart.sh dev up -d
 
 services:
   portal:

@@ -87,6 +87,12 @@
     "parseFailed": "コマンドの解析に失敗しました",
     "commandExecuted": "コマンドが正常に実行されました",
     "executionFailed": "コマンドの実行に失敗しました",
-    "clearHistory": "履歴をクリア"
+    "clearHistory": "履歴をクリア",
+    "rollbackLastStep": "一つ前のステップを取り消す",
+    "rollbackConfirmTitle": "取り消し確認",
+    "rollbackConfirmOk": "取り消しを確認",
+    "rollbackConfirmCancel": "キャンセル",
+    "rollbackSideEffects": "影響を受けるバックエンド永続化操作：",
+    "rollbackWarningNote": "ブラウザのロールバックはこれらのバックエンド操作を取り消しません。取り消すには、手動でバックエンド状態を処理するか管理者に連絡してください。"
   }
 }

@@ -183,4 +183,78 @@ export class BrowserController {
 
     res.sendFile(artifactPath);
   }
+
+  // v4.1 P0: recorder state capture/restore/cleanup endpoints.
+  // Worker owns the state files (PLAYWRIGHT_CLI_ARTIFACT_DIR/recorder-state/...).
+  // ai-orchestrator only stores the opaque stateHandle + metadata.
+
+  @Post('state/capture')
+  @ApiOperation({ summary: 'Capture browser storage state before recorder action' })
+  @ApiResponse({ status: 200, description: 'State captured and persisted to worker filesystem' })
+  @ApiResponse({ status: 400, description: 'Missing runtimeSessionId / executionIndex' })
+  async captureState(
+    @Body() body: { runtimeSessionId: string; executionIndex: number }
+  ): Promise<{ stateHandle: string; url?: string; capturedAt: string }> {
+    if (!body?.runtimeSessionId) {
+      throw new BadRequestException('runtimeSessionId is required');
+    }
+    if (typeof body.executionIndex !== 'number' || !Number.isFinite(body.executionIndex) || body.executionIndex < 0) {
+      throw new BadRequestException('executionIndex must be a non-negative number');
+    }
+    return this.browserService.captureState({
+      runtimeSessionId: body.runtimeSessionId,
+      executionIndex: body.executionIndex,
+    });
+  }
+
+  @Post('state/restore')
+  @ApiOperation({ summary: 'Restore browser state from a previously captured stateHandle' })
+  @ApiResponse({ status: 200, description: 'State restored (possibly partial)' })
+  @ApiResponse({ status: 400, description: 'Missing runtimeSessionId / stateHandle' })
+  async restoreState(
+    @Body() body: { runtimeSessionId: string; stateHandle: string }
+  ): Promise<{ restored: boolean; partial?: boolean; reason?: string; url?: string }> {
+    if (!body?.runtimeSessionId) {
+      throw new BadRequestException('runtimeSessionId is required');
+    }
+    if (!body?.stateHandle || typeof body.stateHandle !== 'string') {
+      throw new BadRequestException('stateHandle is required');
+    }
+    return this.browserService.restoreState({
+      runtimeSessionId: body.runtimeSessionId,
+      stateHandle: body.stateHandle,
+    });
+  }
+
+  @Post('state/cleanup-after')
+  @ApiOperation({ summary: 'Clean up recorder state files at and after the given executionIndex' })
+  @ApiResponse({ status: 200, description: 'Cleanup result with count of removed files' })
+  async cleanupStateAfter(
+    @Body() body: { runtimeSessionId: string; executionIndex: number }
+  ): Promise<{ cleanedCount: number }> {
+    if (!body?.runtimeSessionId) {
+      throw new BadRequestException('runtimeSessionId is required');
+    }
+    if (typeof body.executionIndex !== 'number' || !Number.isFinite(body.executionIndex) || body.executionIndex < 0) {
+      throw new BadRequestException('executionIndex must be a non-negative number');
+    }
+    return this.browserService.cleanupStateFilesAfter({
+      runtimeSessionId: body.runtimeSessionId,
+      executionIndex: body.executionIndex,
+    });
+  }
+
+  @Post('state/cleanup-all')
+  @ApiOperation({ summary: 'Clean up all recorder state files for a session' })
+  @ApiResponse({ status: 200, description: 'Cleanup result with count of removed files' })
+  async cleanupAllState(
+    @Body() body: { runtimeSessionId: string }
+  ): Promise<{ cleanedCount: number }> {
+    if (!body?.runtimeSessionId) {
+      throw new BadRequestException('runtimeSessionId is required');
+    }
+    return this.browserService.cleanupAllStateFiles({
+      runtimeSessionId: body.runtimeSessionId,
+    });
+  }
 }

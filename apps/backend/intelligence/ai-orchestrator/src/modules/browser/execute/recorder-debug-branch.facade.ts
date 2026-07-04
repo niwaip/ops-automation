@@ -131,6 +131,7 @@ export class RecorderDebugBranchFacade {
         commands: parsed.commands,
         execution: executionOutcome.execution,
         controlTokenState: input.controlTokenState,
+        executionIndex: (executionOutcome as { executionIndex?: number }).executionIndex,
       });
     }
 
@@ -144,6 +145,7 @@ export class RecorderDebugBranchFacade {
       commands: parsed.commands,
       execution: executionOutcome.execution,
       controlTokenState: input.controlTokenState,
+      executionIndex: (executionOutcome as { executionIndex?: number }).executionIndex,
     });
   }
 }

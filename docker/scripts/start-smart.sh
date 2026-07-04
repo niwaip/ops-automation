@@ -27,7 +27,7 @@ Usage:
   ./docker/start-smart.sh [mode|compose-file] -f <compose-file>... [docker-compose args]
 
 Recommended modes:
-  dev      Start the standard day-to-day development stack
+  dev      Start the standard day-to-day development stack (docker-compose.base.yml)
   infra    Start postgres + redis only
   addin    Start Office Add-in related services
   test     Start the test stack
@@ -82,9 +82,6 @@ maybe_warn_legacy_entry() {
     case "$entry" in
         full|docker-compose.full.yml|compose/docker-compose.full.yml)
             echo "[WARN] 'full' is a legacy compatibility entry. Prefer './docker/start-smart.sh dev ...'."
-            ;;
-        base|docker-compose.base.yml|compose/docker-compose.base.yml)
-            echo "[WARN] Raw compose file 'base' is still supported, but the recommended preset is './docker/start-smart.sh dev ...'."
             ;;
         core|planner|runtime|experience|carbone|docker-compose.core.yml|docker-compose.planner.yml|docker-compose.runtime.yml|docker-compose.experience.yml|docker-compose.carbone.yml|compose/docker-compose.core.yml|compose/docker-compose.planner.yml|compose/docker-compose.runtime.yml|compose/docker-compose.experience.yml|compose/docker-compose.carbone.yml)
             echo "[WARN] '$entry' is an internal layered/compatibility entry."
@@ -154,12 +151,7 @@ resolve_target() {
     case "$requested" in
         ""|dev)
             target_entry="dev"
-            compose_files=(
-                "$(resolve_compose_file "compose/docker-compose.core.yml")"
-                "$(resolve_compose_file "compose/docker-compose.planner.yml")"
-                "$(resolve_compose_file "compose/docker-compose.runtime.yml")"
-                "$(resolve_compose_file "compose/docker-compose.experience.yml")"
-            )
+            compose_files=("$(resolve_compose_file "compose/docker-compose.base.yml")")
             ;;
         infra)
             compose_files=("$(resolve_compose_file "compose/docker-compose.yml")")

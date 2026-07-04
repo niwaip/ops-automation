@@ -348,10 +348,17 @@ def ai_start(url="about:blank"):
                 "--window-size=1920,1080",
                 "--no-sandbox",
                 "--disable-setuid-sandbox",
+                "--ignore-certificate-errors",
+                "--allow-insecure-localhost",
+                "--disable-client-side-phishing-detection",
+                "--test-type",
+                "--safebrowsing-disable-download-protection",
+                "--disable-features=TranslateUI,VizDisplayCompositor,HttpsUpgrades,HTTPS-FirstBalancedModeAutoEnable,HTTPS-FirstModeV2ForEngagedSites",
             ]
         )
         ai_context = ai_browser.new_context(
-            viewport={"width": 1920, "height": 1080}
+            viewport={"width": 1920, "height": 1080},
+            ignore_https_errors=True,
         )
         ai_page = ai_context.new_page()
         ai_page.set_default_timeout(30000)  # 30 second timeout for all operations

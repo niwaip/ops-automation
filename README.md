@@ -21,7 +21,7 @@ pnpm docker:addin:smoke
 pnpm docker:v4:validate
 pnpm docker:v4:acceptance
 
-./docker/start-smart.sh docker-compose.full.yml up -d
+./docker/start-smart.sh dev up -d
 bash ./docker/addin-smoke.sh
 bash ./docker/v4-acceptance.sh
 ```

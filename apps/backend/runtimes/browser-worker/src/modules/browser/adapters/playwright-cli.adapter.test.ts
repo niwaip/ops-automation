@@ -210,4 +210,48 @@ describe('PlaywrightCliAdapter', () => {
       'Failed to resolve runtime target ref: e53'
     );
   });
+
+  // v4.1 P0 regression: Issue #4 — localStorage restore was merge (setItem only),
+  // not replace. The restore script must call localStorage.clear() before setItem
+  // so dirty keys from the rolled-back step don't survive. Also verifies cross-origin
+  // iframe detection (doc §4.4 promises partial: true + reason: 'cross-origin-iframe').
+  it('restoreState script clears localStorage before setItem and detects cross-origin iframes', async () => {
+    const adapter = createAdapter();
+    jest.spyOn(adapter as any, 'resolveStateFilePath').mockResolvedValue('/fake/state.json');
+    jest.spyOn(adapter as any, 'ensureSessionReady').mockResolvedValue(undefined);
+    jest.spyOn(adapter as any, 'getOrCreateSession').mockReturnValue({ preferLatestTab: false });
+
+    const fsPromises = require('fs/promises');
+    jest.spyOn(fsPromises, 'readFile').mockResolvedValue(
+      JSON.stringify({
+        url: 'https://example.com',
+        storageState: {
+          cookies: [],
+          origins: [
+            { origin: 'https://example.com', localStorage: [{ name: 'key1', value: 'val1' }] },
+          ],
+        },
+      })
+    );
+
+    let capturedScript = '';
+    jest.spyOn(adapter as any, 'execCli').mockImplementation(async (_sid: string, args: string[]) => {
+      if (args[0] === 'run-code' && args[1]) capturedScript = args[1];
+      return { stdout: JSON.stringify({ restored: true, partial: false }), stderr: '', exitCode: 0 };
+    });
+
+    await adapter.restoreState('rt-1', 'rw:rt-1:3');
+
+    // localStorage.clear() must appear BEFORE the setItem loop — without it, keys
+    // written by the rolled-back step (draft marks, feature flags) survive as residue.
+    expect(capturedScript).toContain('localStorage.clear()');
+    const clearPos = capturedScript.indexOf('localStorage.clear()');
+    const setItemPos = capturedScript.indexOf('localStorage.setItem(');
+    expect(clearPos).toBeGreaterThan(-1);
+    expect(setItemPos).toBeGreaterThan(clearPos);
+
+    // Cross-origin iframe detection must be present (doc §4.4 / §5.1)
+    expect(capturedScript).toContain('iframe');
+    expect(capturedScript).toContain('cross-origin-iframe');
+  });
 });

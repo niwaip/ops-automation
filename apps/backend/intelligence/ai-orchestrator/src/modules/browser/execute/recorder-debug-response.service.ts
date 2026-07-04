@@ -21,6 +21,10 @@ type RecorderDebugSessionLike = {
   pendingLoopCaptureStartCommandIndex?: number;
   history: any[];
   updatedAt: string;
+  // v4.1 P0 (doc §5.2): version stamp, increments on chat/rollback/reset commit
+  revision?: number;
+  // v4.1 P0 (doc §4.3.4): monotonic execution counter, independent of history.length
+  nextExecutionIndex?: number;
 };
 
 @Injectable()
@@ -41,6 +45,12 @@ export class RecorderDebugResponseService {
     execution?: any;
     exportArtifacts?: any;
     controlTokenState?: RecorderControlTokenStateLike;
+    /**
+     * v4.1 P0 (doc §4.3.4): executionIndex this assistant turn was produced by.
+     * Stamped onto the turn so rollback can filter turns by executionIndex.
+     * Undefined for non-execution turns (pure answer/question).
+     */
+    executionIndex?: number;
   }): any {
     const response = this.createChatResponse(input);
     this.pushAssistantTurn(input.session, {
@@ -53,6 +63,7 @@ export class RecorderDebugResponseService {
       execution: input.execution,
       exportArtifacts: input.exportArtifacts,
       controlTokenState: input.controlTokenState,
+      executionIndex: input.executionIndex,
     });
     return response;
   }
@@ -118,6 +129,7 @@ export class RecorderDebugResponseService {
       execution?: any;
       exportArtifacts?: any;
       controlTokenState?: RecorderControlTokenStateLike;
+      executionIndex?: number;
     }
   ): void {
     const loopState = this.buildLoopState(session, input.controlTokenState);
@@ -143,7 +155,14 @@ export class RecorderDebugResponseService {
       ...(input.exportArtifacts ? { exportArtifacts: input.exportArtifacts } : {}),
       ...(session.loopDraft ? { loopDraft: session.loopDraft } : {}),
       ...(loopState ? { loopState } : {}),
+      // v4.1 P0 (doc §4.3.4): stamp executionIndex on the turn so rollback can filter
+      ...(typeof input.executionIndex === 'number'
+        ? { executionIndex: input.executionIndex }
+        : {}),
     });
+    // v4.1 P0 (doc §5.2): chat commit increments session revision.
+    // Used by P1 to invalidate stale pendingRecoverySuggestion entries.
+    session.revision = (session.revision || 0) + 1;
   }
 
   finalizeSession(session: RecorderDebugSessionLike, maxHistory: number): void {

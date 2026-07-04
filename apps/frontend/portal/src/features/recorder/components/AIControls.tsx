@@ -47,6 +47,8 @@ import {
   BugOutlined,
   ReloadOutlined,
   BulbOutlined,
+  UndoOutlined,
+  WarningOutlined,
 } from '@ant-design/icons';
 import type { TextAreaRef } from 'antd/es/input/TextArea';
 import { useTranslation } from 'react-i18next';
@@ -920,6 +922,22 @@ const AIControls: React.FC<AIControlsProps> = ({
   const [exportTemplateLoading, setExportTemplateLoading] = useState(false);
   const [showBranchGateModal, setShowBranchGateModal] = useState(false);
   const [branchInsertAfterStepId, setBranchInsertAfterStepId] = useState<string>();
+
+  // v4.1 P0 (doc §5.1.10): recorder rollback state
+  const [rollbackLoading, setRollbackLoading] = useState(false);
+  const [rollbackConfirmation, setRollbackConfirmation] = useState<{
+    sessionId: string;
+    targetExecutionIndex: number;
+    sessionRevision: number;
+    sideEffectDigest: string;
+    sideEffects: Array<{
+      executionIndex: number;
+      classifiedLevel: string;
+      description: string;
+      matchedKeyword?: string;
+    }>;
+    message: string;
+  } | null>(null);
 
   // Parameter editing state - maps original param name to custom name
   const [paramNames, setParamNames] = useState<Record<string, string>>({});
@@ -1850,6 +1868,115 @@ const AIControls: React.FC<AIControlsProps> = ({
     setRecorderDebugRuntimeSessionId(undefined);
     setBrowserRuntimeSessionId(createRuntimeSessionId());
     resetTakeoverState();
+  };
+
+  // v4.1 P0 (doc §5.1.6-7): rollback the last recorder execution step.
+  // Handles requires_confirmation (persist-level side effects) + partial restore.
+  const handleRollbackResponse = (
+    result: Record<string, unknown>,
+    sessionId: string
+  ): boolean => {
+    const status = result?.status as string | undefined;
+    if (status === 'succeeded') {
+      // Remove the last assistant turn from local history (server already truncated it)
+      setHistory((prev) => {
+        const lastAssistantIdx = [...prev].reverse().findIndex((h) => h.type === 'ai');
+        if (lastAssistantIdx === -1) return prev;
+        const realIdx = prev.length - 1 - lastAssistantIdx;
+        return prev.filter((_, i) => i !== realIdx);
+      });
+      const browserRestore = (result?.browserRestore ?? {}) as {
+        partial?: boolean;
+        reason?: string;
+        url?: string;
+      };
+      setCurrentPageUrl(browserRestore.url);
+      if (browserRestore.partial) {
+        void message.warning(
+          `浏览器状态已部分恢复（${browserRestore.reason || '原因未知'}）。跨域 iframe 内的状态可能需要手动恢复。`
+        );
+      } else {
+        void message.success('已撤销上一步操作');
+      }
+      setRollbackConfirmation(null);
+      return true;
+    }
+    if (status === 'requires_confirmation') {
+      setRollbackConfirmation({
+        sessionId,
+        targetExecutionIndex: result?.targetExecutionIndex as number,
+        sessionRevision: result?.sessionRevision as number,
+        sideEffectDigest: result?.sideEffectDigest as string,
+        sideEffects: (result?.sideEffects ?? []) as Array<{
+          executionIndex: number;
+          classifiedLevel: string;
+          description: string;
+          matchedKeyword?: string;
+        }>,
+        message: (result?.message as string) || '回退将跨越后端持久化操作，是否继续？',
+      });
+      return false;
+    }
+    if (status === 'noop') {
+      void message.info(result?.reason === 'target-before-first-execution' ? '没有可撤销的步骤' : '已在起始位置，无法继续撤销');
+      setRollbackConfirmation(null);
+      return false;
+    }
+    if (status === 'failed') {
+      void message.error(`撤销失败：${result?.reason || '未知原因'}。浏览器历史已回退，但状态恢复未完成。`);
+      // History was still truncated server-side — reflect locally
+      setHistory((prev) => {
+        const lastAssistantIdx = [...prev].reverse().findIndex((h) => h.type === 'ai');
+        if (lastAssistantIdx === -1) return prev;
+        const realIdx = prev.length - 1 - lastAssistantIdx;
+        return prev.filter((_, i) => i !== realIdx);
+      });
+      const browserRestore = (result?.browserRestore ?? {}) as {
+        url?: string;
+      };
+      setCurrentPageUrl(browserRestore.url);
+      setRollbackConfirmation(null);
+      return false;
+    }
+    void message.error('撤销失败：未知响应');
+    return false;
+  };
+
+  const handleRollbackLastStep = async () => {
+    const sessionId = recorderDebugSessionId;
+    if (!sessionId) {
+      void message.warning('没有活跃的录制会话，无法撤销');
+      return;
+    }
+    setRollbackLoading(true);
+    try {
+      const result = await apiClient.post('/ai/recorder-debug/rollback', { sessionId });
+      handleRollbackResponse(result as Record<string, unknown>, sessionId);
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      void message.error(`撤销请求失败：${reason}`);
+    } finally {
+      setRollbackLoading(false);
+    }
+  };
+
+  const handleConfirmRollback = async () => {
+    if (!rollbackConfirmation) return;
+    setRollbackLoading(true);
+    try {
+      const result = await apiClient.post('/ai/recorder-debug/rollback/confirm', {
+        sessionId: rollbackConfirmation.sessionId,
+        targetExecutionIndex: rollbackConfirmation.targetExecutionIndex,
+        sessionRevision: rollbackConfirmation.sessionRevision,
+        sideEffectDigest: rollbackConfirmation.sideEffectDigest,
+      });
+      handleRollbackResponse(result as Record<string, unknown>, rollbackConfirmation.sessionId);
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      void message.error(`撤销确认失败：${reason}`);
+    } finally {
+      setRollbackLoading(false);
+    }
   };
 
   const handleExecutionBackendChange = async (nextBackend: ExecutionBackend) => {
@@ -3300,18 +3427,18 @@ const AIControls: React.FC<AIControlsProps> = ({
                               <Collapse
                                 size="small"
                                 ghost
-                                defaultActiveKey={entry.result.outcome?.status === 'error' || entry.result.status === 'error' || entry.result.execution?.success === false ? ['detail'] : []}
+                                defaultActiveKey={entry.result.outcome?.status === 'failed' || entry.result.status === 'error' || entry.result.execution?.success === false ? ['detail'] : []}
                                 items={[{
                                   key: 'detail',
                                   label: (
                                     <Space>
-                                      {entry.result.outcome?.status === 'error' || entry.result.status === 'error' || entry.result.execution?.success === false ? (
+                                      {entry.result.outcome?.status === 'failed' || entry.result.status === 'error' || entry.result.execution?.success === false ? (
                                         <CloseCircleOutlined style={{ color: '#ff4d4f' }} />
                                       ) : (
                                         <CheckCircleOutlined style={{ color: '#52c41a' }} />
                                       )}
                                       <Text style={{ fontSize: 12 }}>
-                                        {entry.result.outcome?.status === 'error' || entry.result.status === 'error' || entry.result.execution?.success === false
+                                        {entry.result.outcome?.status === 'failed' || entry.result.status === 'error' || entry.result.execution?.success === false
                                           ? entry.result.outcome?.verification?.failureReason || entry.result.message || '执行失败'
                                           : entry.commands && entry.commands.length > 0 ? `已执行: ${entry.commands.map((cmd) => cmd.tool).join(' / ')}` : '执行成功'}
                                       </Text>
@@ -3949,6 +4076,20 @@ const AIControls: React.FC<AIControlsProps> = ({
                   </>
                 )}
                 <div style={{ flex: 1 }} />
+                {recorderDebugSessionId && history.some((h) => h.type === 'ai') && (
+                  <Tooltip title={t('recorder:ai.rollbackLastStep') || '撤销上一步'}>
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<UndoOutlined />}
+                      loading={rollbackLoading}
+                      onClick={() => {
+                        void handleRollbackLastStep();
+                      }}
+                      style={{ color: '#6366f1' }}
+                    />
+                  </Tooltip>
+                )}
                 {history.length > 0 && (
                   <Tooltip title={t('recorder:ai.clearHistory') || '清空记录'}>
                     <Button
@@ -4409,6 +4550,65 @@ const AIControls: React.FC<AIControlsProps> = ({
             }}
             onConfirm={handleConfirmBranchGate}
           />
+          {/* v4.1 P0 (doc §5.1.6-7): rollback confirmation modal for persist-level side effects */}
+          <Modal
+            open={rollbackConfirmation !== null}
+            title={
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                <WarningOutlined style={{ color: '#faad14' }} />
+                {t('recorder:ai.rollbackConfirmTitle') || '撤销确认'}
+              </span>
+            }
+            okText={t('recorder:ai.rollbackConfirmOk') || '确认撤销'}
+            cancelText={t('recorder:ai.rollbackConfirmCancel') || '取消'}
+            okButtonProps={{ danger: true, loading: rollbackLoading }}
+            onCancel={() => setRollbackConfirmation(null)}
+            onOk={() => {
+              void handleConfirmRollback();
+            }}
+          >
+            {rollbackConfirmation && (
+              <div style={{ fontSize: 13, lineHeight: 1.6 }}>
+                <p style={{ margin: '0 0 12px' }}>{rollbackConfirmation.message}</p>
+                <div
+                  style={{
+                    background: isDarkTheme ? '#1e293b' : '#fff7e6',
+                    border: `1px solid ${isDarkTheme ? '#475569' : '#ffe58f'}`,
+                    borderRadius: 6,
+                    padding: '8px 12px',
+                    marginBottom: 12,
+                  }}
+                >
+                  <Typography.Text strong style={{ fontSize: 13, display: 'block', marginBottom: 6 }}>
+                    {t('recorder:ai.rollbackSideEffects') || '受影响的后端持久化操作：'}
+                  </Typography.Text>
+                  {rollbackConfirmation.sideEffects.map((se, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '2px 0',
+                      }}
+                    >
+                      <span>
+                        <Tag color="red" style={{ marginRight: 6 }}>
+                          #{se.executionIndex}
+                        </Tag>
+                        {se.description}
+                      </span>
+                      <Tag color="orange">{se.classifiedLevel}</Tag>
+                    </div>
+                  ))}
+                </div>
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                  {t('recorder:ai.rollbackWarningNote') ||
+                    '浏览器回退不会撤销这些后端操作。如需撤销，请手动处理后端状态或联系管理员。'}
+                </Typography.Text>
+              </div>
+            )}
+          </Modal>
         </div>
       ) : (
         // Manual Mode Content

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Layout, Menu, Dropdown, Button, Avatar, Space, Tag, Typography } from 'antd';
+import { Layout, Menu, Dropdown, Button, Avatar, Space, Tag } from 'antd';
 import type { MenuProps } from 'antd';
 import {
   UserOutlined,
@@ -24,8 +24,6 @@ import { useAuthStore } from '@/shared/store/authStore';
 import { usePreferencesStore } from '@/shared/store/preferencesStore';
 
 const { Header, Sider, Content } = Layout;
-const { Text } = Typography;
-
 const MainLayout: React.FC = () => {
   const { t } = useTranslation('common');
   const navigate = useNavigate();
@@ -185,11 +183,16 @@ const MainLayout: React.FC = () => {
       >
         <Header
           style={{
-            padding: '0 24px',
+            padding: '12px 24px',
             background: 'var(--bg-header)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
+            gap: 12,
+            flexWrap: 'wrap',
+            height: 'auto',
+            minHeight: 64,
+            lineHeight: 'normal',
             position: 'sticky',
             top: 0,
             zIndex: 99,
@@ -198,7 +201,16 @@ const MainLayout: React.FC = () => {
             borderBottom: '1px solid var(--bg-secondary)',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 16,
+              flex: '1 1 320px',
+              minWidth: 0,
+              flexWrap: 'wrap',
+            }}
+          >
             <Button
               type="text"
               icon={sidebarCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
@@ -214,15 +226,14 @@ const MainLayout: React.FC = () => {
                 justifyContent: 'center',
               }}
             />
-            <Space size={8}>
+            <Space size={8} wrap>
               <Tag color="purple" style={{ marginInlineEnd: 0, borderRadius: 999 }}>
                 内部工作台
               </Tag>
-              <Text type="secondary">管理员与内部运营使用，普通用户入口逐步迁往 user-web</Text>
             </Space>
           </div>
 
-          <Space size={12}>
+          <Space size={12} wrap style={{ marginLeft: 'auto', justifyContent: 'flex-end' }}>
             <ExecutionNotificationCenter />
 
             <Button
