@@ -1,6 +1,9 @@
 export {
   EXECUTION_FLOW_CATEGORIES,
-} from '@ops/platform/dist/modules/execution-flow/interfaces';
+  ExecutionFlowModule,
+  ExecutionFlowTemplateController,
+  ExecutionFlowTemplateService,
+} from '@ops/platform/dist/modules/execution-flow';
 export type {
   CreateExecutionFlowTemplateDTO,
   ExecutionFlowStep,
@@ -12,17 +15,14 @@ export type {
   WorkflowInputPolicy,
   WorkflowParamPolicy,
   WorkflowParamRequiredMode,
-} from '@ops/platform/dist/modules/execution-flow/interfaces';
-export { ExecutionFlowModule } from '@ops/platform/dist/modules/execution-flow/execution-flow.module';
-export { ExecutionFlowTemplateController } from '@ops/platform/dist/modules/execution-flow/execution-flow.controller';
-export { ExecutionFlowTemplateService } from '@ops/platform/dist/modules/execution-flow/execution-flow-template.service';
+} from '@ops/platform/dist/modules/execution-flow';
 
 import type {
   ExecutionFlowStep,
-} from '@ops/platform/dist/modules/execution-flow/interfaces';
+} from '@ops/platform/dist/modules/execution-flow';
 import {
   EXECUTION_FLOW_CATEGORIES as executionFlowCategories,
-} from '@ops/platform/dist/modules/execution-flow/interfaces';
+} from '@ops/platform/dist/modules/execution-flow';
 
 export function getExecutionFlowCategoryMeta(category: string): {
   label: string;

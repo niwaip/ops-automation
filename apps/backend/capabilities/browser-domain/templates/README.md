@@ -7,9 +7,9 @@
 
 - 当前物理运行目录：`apps/backend/capabilities/browser-domain/templates`
 - 承接原 `apps/backend/domain/browser-template` 的设计时模板定义、编译与校验
-- 历史 `apps/backend/domain/browser-template` 当前仅保留 `README.md` 作为迁移说明锚点
+- 历史 `apps/backend/domain/browser-template` 物理路径已退出仓库
 
 ## 当前约束
 
 - 新的浏览器模板需求与运行调整优先落在当前目录。
-- `apps/backend/domain/browser-template` 的旧 `src/` 已移除，不再保留运行时代码或历史生成产物。
+- `apps/backend/domain/browser-template` 的旧运行时代码与历史生成产物已完成删除。

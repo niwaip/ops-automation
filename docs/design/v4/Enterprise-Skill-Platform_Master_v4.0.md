@@ -82,58 +82,29 @@
 
 ---
 
-## 4. `v4` 的五类正式文档
+## 4. `v4` 的当前基线文档
 
-`v4` 当前由以下五份正式文档构成：
+`v4` 目录已经收敛为两份长期保留的高层文档：
 
-### 4.1 架构总方案
+### 4.1 系统总述
 
-- [Stable-Interface-and-External-Capability-Architecture_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Stable-Interface-and-External-Capability-Architecture_v4.0.md)
-
-用途：
-
-- 定义平台总体边界
-- 划分核心能力与外部能力
-- 明确核心服务职责
-- 作为 `v4` 架构基线
-
-### 4.2 接口契约规范
-
-- [API-Contract-Spec_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_API-Contract-Spec_v4.0.md)
+- [Master_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Master_v4.0.md)
 
 用途：
 
-- 定义正式外部 API
-- 定义治理接口
-- 冻结主要 DTO、错误码与版本策略
+- 定义平台总体定位
+- 固化 `v4` 的核心原则、正式对象、稳定契约和分层心智
+- 作为系统级高层描述
 
-### 4.3 Runtime 协议规范
+### 4.2 项目描述
 
-- [Runtime-Capability-Protocol-Spec_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Runtime-Capability-Protocol-Spec_v4.0.md)
-
-用途：
-
-- 定义 Browser / Document / Workflow / 第三方 Runtime 的统一协议
-- 作为外部 Runtime Adapter 接入基线
-
-### 4.4 Docker 与部署蓝图
-
-- [Docker-and-Deployment-Blueprint_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Docker-and-Deployment-Blueprint_v4.0.md)
+- [Project-Description_v4.1.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Project-Description_v4.1.md)
 
 用途：
 
-- 定义平台五组部署分层
-- 说明外部能力应部署到哪里
-- 指导 Compose 拆分与生产部署收敛
-
-### 4.5 迁移实施方案
-
-- [Migration-Plan_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Migration-Plan_v4.0.md)
-
-用途：
-
-- 给出现态到目标态的阶段性迁移路线
-- 指导 backlog 和实施节奏
+- 描述当前仓库仍有效的项目范围
+- 对齐现有实现主线和目录边界
+- 作为项目级高层描述
 
 ---
 
@@ -362,18 +333,12 @@
 建议按以下顺序阅读：
 
 1. [Master_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Master_v4.0.md)
-2. [Stable-Interface-and-External-Capability-Architecture_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Stable-Interface-and-External-Capability-Architecture_v4.0.md)
-3. [API-Contract-Spec_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_API-Contract-Spec_v4.0.md)
-4. [Runtime-Capability-Protocol-Spec_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Runtime-Capability-Protocol-Spec_v4.0.md)
-5. [Docker-and-Deployment-Blueprint_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Docker-and-Deployment-Blueprint_v4.0.md)
-6. [Migration-Plan_v4.0.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Migration-Plan_v4.0.md)
+2. [Project-Description_v4.1.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/v4/Enterprise-Skill-Platform_Project-Description_v4.1.md)
 
 推荐用途：
 
-- 架构讨论：先读 `Master + Architecture`
-- 接口冻结：重点读 `API Contract + Runtime Protocol`
-- 部署收敛：重点读 `Docker Blueprint`
-- 实施排期：重点读 `Migration Plan`
+- 系统层讨论：先读 `Master`
+- 项目现状与目录边界：再读 `Project Description`
 
 ---
 

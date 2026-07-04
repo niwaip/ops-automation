@@ -255,19 +255,17 @@ docker/office-addin/certs/server.key
 
 ```text
 docs/artifacts/misc/*.xlsx
-docs/design/v2/**
-docs/design/v3/**
 docs/design/archive/**
 ```
 
 判断：
 
-- 这些内容不是“垃圾文件”，但不是当前主实现基线。
+- 这些内容不是“垃圾文件”，但通常不是当前主实现基线。
 - 如果仓库体积持续变大，可以把低频历史文档进一步归档，或迁移到外部知识库。
 
 建议动作：
 
-- 不建议直接删除。
+- `docs/design/v2/**`、`docs/design/v3/**` 已完成删除；后续主要关注 `archive/` 与样例附件是否仍有保留价值。
 - 可以先做目录分层优化，把低频资料进一步下沉到更明确的归档区域。
 
 ## 不建议清理的主体

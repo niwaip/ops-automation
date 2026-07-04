@@ -17,9 +17,11 @@ const skillsOnly = args.has('--skills-only');
 const reportArg = (process.argv.find((s) => s.startsWith('--report=')) || '').split('=')[1] || '';
 
 const projectRoot = path.resolve(__dirname, '..');
-const legacySidecarRoot = path.resolve(__dirname, '../../../domain/document-engine');
-const templatesDir = process.env.TEMPLATES_DIR || path.join(legacySidecarRoot, 'templates');
-const outputsDir = process.env.OUTPUTS_DIR || path.join(legacySidecarRoot, 'outputs');
+const runtimeDataRoot = path.resolve(projectRoot, '../var');
+const templatesDir =
+  process.env.TEMPLATES_DIR || path.join(runtimeDataRoot, 'templates', 'document-engine');
+const outputsDir =
+  process.env.OUTPUTS_DIR || path.join(runtimeDataRoot, 'outputs', 'document-engine');
 
 function isRecord(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);

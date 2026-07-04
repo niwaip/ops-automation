@@ -2,7 +2,7 @@
 
 当前目录作为文档能力域的目标逻辑路径，用来统一承接以下现态模块：
 
-- `apps/backend/domain/document-engine`
+- 历史 `apps/backend/domain/document-engine`
 - 历史 `apps/backend/domain/report`
 
 ## 模块归属说明
@@ -28,10 +28,8 @@
 - `document-engine` 的主运行入口已经切到
   `apps/backend/capabilities/document-domain`，本地开发脚本、
   `docker-compose.carbone.yml` 与测试容器默认都从该目录启动。
-- `apps/backend/domain/document-engine` 当前已退出活动 `pnpm-workspace`
-  package 集合，旧目录内的 `package.json` / `package-lock.json`、
-  `src/`、`prisma/` 与 `tsconfig.json` 都已移除；当前仅保留历史
-  `README.md` 作为迁移说明锚点，不再作为默认运行包根目录。
+- 历史 `apps/backend/domain/document-engine` 物理路径已退出仓库，
+  不再作为默认运行包根目录。
 - 历史 `carbone-engine` 包名仍暂时保留用于兼容 `pnpm --filter carbone-engine ...`
   一类命令；当前由 `apps/backend/capabilities/document-domain/carbone-engine-compat`
   这个轻量 shell 承接，再转发到 `@ops/document-domain`，包括 `test:e2e` 与
@@ -65,7 +63,7 @@ apps/backend/capabilities/document-domain/
 ```
 
 当前批次中，`report` 与 `document-engine` 都已经完成首轮运行包根目录迁移；
-`document-engine` 的旧目录当前只剩历史说明文档，不再承载本地源码、脚本或
+`document-engine` 的旧物理路径已退出仓库主运行路径，不再承载本地源码、脚本或
 Prisma 配置。
 
 ## 当前迁移原则
