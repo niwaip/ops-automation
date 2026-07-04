@@ -15,8 +15,17 @@ ENV SCREEN_HEIGHT=1080
 ENV SCREEN_DEPTH=24
 ENV NODE_TLS_REJECT_UNAUTHORIZED=0
 
-# Use mirrors for better connectivity
-RUN sed -i 's|http://ports.ubuntu.com|http://mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list || true
+# Use mirrors for better connectivity across arm64/x64 Ubuntu base images.
+RUN if [ -f /etc/apt/sources.list ]; then \
+      sed -i 's|http://ports.ubuntu.com/ubuntu-ports|https://mirrors.tuna.tsinghua.edu.cn/ubuntu-ports|g' /etc/apt/sources.list && \
+      sed -i 's|http://archive.ubuntu.com/ubuntu|https://mirrors.tuna.tsinghua.edu.cn/ubuntu|g' /etc/apt/sources.list && \
+      sed -i 's|http://security.ubuntu.com/ubuntu|https://mirrors.tuna.tsinghua.edu.cn/ubuntu|g' /etc/apt/sources.list; \
+    fi && \
+    if [ -f /etc/apt/sources.list.d/ubuntu.sources ]; then \
+      sed -i 's|http://ports.ubuntu.com/ubuntu-ports|https://mirrors.tuna.tsinghua.edu.cn/ubuntu-ports|g' /etc/apt/sources.list.d/ubuntu.sources && \
+      sed -i 's|http://archive.ubuntu.com/ubuntu|https://mirrors.tuna.tsinghua.edu.cn/ubuntu|g' /etc/apt/sources.list.d/ubuntu.sources && \
+      sed -i 's|http://security.ubuntu.com/ubuntu|https://mirrors.tuna.tsinghua.edu.cn/ubuntu|g' /etc/apt/sources.list.d/ubuntu.sources; \
+    fi
 
 # Install Node.js 20 (needed for Playwright)
 RUN apt-get update && apt-get install -y curl && \
