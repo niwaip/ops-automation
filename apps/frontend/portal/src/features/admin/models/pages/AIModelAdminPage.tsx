@@ -15,7 +15,8 @@ import {
   Alert,
   Tooltip,
   Checkbox,
-  List,
+  Col,
+  Row,
 } from 'antd';
 import {
   SearchOutlined,
@@ -42,6 +43,7 @@ import {
   ModelProvider,
 } from '@/api/ai';
 import type { ColumnsType } from 'antd/es/table';
+import ProviderGovernanceCardGrid from '@/features/admin/models/components/ProviderGovernanceCardGrid';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -92,6 +94,20 @@ const scopeTagMeta: Record<string, { label: string; color: string }> = {
   admin_chat: { label: '管理员 AI', color: 'purple' },
   admin_task: { label: '管理员任务', color: 'magenta' },
   audio_transcription: { label: '语音识别', color: 'orange' },
+};
+
+const SECTION_CARD_STYLE: React.CSSProperties = {
+  marginTop: 16,
+  borderRadius: 20,
+  border: '1px solid var(--bg-secondary)',
+  boxShadow: 'var(--shadow-md)',
+};
+
+const OVERVIEW_METRIC_STYLE: React.CSSProperties = {
+  borderRadius: 16,
+  border: '1px solid var(--bg-secondary)',
+  background: 'var(--bg-card)',
+  boxShadow: 'var(--shadow-sm)',
 };
 
 function mapConfigToFormValues(config?: AIModelConfig) {
@@ -679,6 +695,41 @@ const AIModelAdminPage: React.FC = () => {
 
   const canSwitchModel = Boolean(editingModel?.providerConfigId || editingModel?.provider);
 
+  const handleAppendModelFromProvider = (
+    providerConfig: AIProviderConfig,
+    summary?: AIProviderSummary
+  ) => {
+    openCreateModal(
+      summary || {
+        id: providerConfig.id,
+        provider: providerConfig.provider,
+        api_endpoint: providerConfig.api_endpoint,
+        modelCount: 0,
+        activeModelCount: 0,
+        hasCredential: providerConfig.hasCredential || false,
+        advancedModelCount: 0,
+        defaultScopes: [],
+      }
+    );
+  };
+
+  const refreshOverview = () => {
+    void modelsQuery.refetch();
+    void providersQuery.refetch();
+    void providerConfigsQuery.refetch();
+  };
+
+  const totalModelCount = modelsQuery.data?.models.length || 0;
+  const activeModelCount = (modelsQuery.data?.models || []).filter(
+    (model) => model.status === 'active'
+  ).length;
+  const advancedModelCount = (modelsQuery.data?.models || []).filter(
+    (model) => model.config?.capability_tier === 'advanced'
+  ).length;
+  const configuredProviderCount = providerGovernanceItems.filter(
+    ({ providerConfig }) => providerConfig.hasCredential
+  ).length;
+
   const columns: ColumnsType<AIModel> = [
     {
       title: '模型',
@@ -825,136 +876,148 @@ const AIModelAdminPage: React.FC = () => {
     'local',
   ];
 
-  const renderProviderSummary = (providerConfig: AIProviderConfig, summary?: AIProviderSummary) => (
-    <Space direction="vertical" size={4} style={{ width: '100%' }}>
-      <Space size={8} wrap>
-        <Text strong>{PROVIDER_NAMES[providerConfig.provider] || providerConfig.provider}</Text>
-        <Tag color={providerConfig.hasCredential ? 'success' : 'default'}>
-          {providerConfig.hasCredential ? '已配置凭据' : '未配置凭据'}
-        </Tag>
-        <Tag>{summary?.modelCount || 0} 个模型</Tag>
-        <Tag color="processing">{summary?.activeModelCount || 0} 个启用</Tag>
-        <Tag color="gold">{summary?.advancedModelCount || 0} 个高级模型</Tag>
-      </Space>
-      <Text type="secondary">Endpoint: {providerConfig.api_endpoint}</Text>
-      <Space size={[0, 8]} wrap>
-        {(summary?.defaultScopes || []).map((scope) => (
-          <Tag key={`${providerConfig.id}-${scope}`} color={scopeTagMeta[scope].color}>
-            {scopeTagMeta[scope].label}
-          </Tag>
-        ))}
-        {(!summary || summary.defaultScopes.length === 0) && (
-          <Text type="secondary">未配置默认策略</Text>
-        )}
-      </Space>
-    </Space>
-  );
-
   return (
     <div>
-      <Title level={4}>{t('admin:modelManagement')}</Title>
-
       <Card
-        title="Provider 视图"
-        style={{ marginTop: 16 }}
-        extra={
-          <Space>
+        style={{
+          ...SECTION_CARD_STYLE,
+          background: 'linear-gradient(180deg, rgba(99, 102, 241, 0.08) 0%, var(--bg-card) 100%)',
+        }}
+        styles={{ body: { padding: 24 } }}
+      >
+        <Space
+          align="start"
+          style={{ width: '100%', justifyContent: 'space-between', marginBottom: 20 }}
+          wrap
+        >
+          <Space direction="vertical" size={6}>
+            <Space size={10} wrap>
+              <Title level={4} style={{ margin: 0 }}>
+                {t('admin:modelManagement')}
+              </Title>
+              <Tag color="gold">{advancedModelCount} 个高级模型</Tag>
+              {providerFilter && (
+                <Tag closable color="processing" onClose={() => setProviderFilter(null)}>
+                  当前筛选: {PROVIDER_NAMES[providerFilter] || providerFilter}
+                </Tag>
+              )}
+            </Space>
+            <Text type="secondary">
+              统一管理 Provider 凭据、模型接入与默认路由策略。Provider 区采用卡片视图，优先突出接入状态、策略覆盖和操作入口。
+            </Text>
+          </Space>
+          <Space wrap>
+            <Button icon={<ReloadOutlined />} onClick={refreshOverview}>
+              刷新概览
+            </Button>
+            <Button icon={<PlusOutlined />} onClick={openCreateProviderModal}>
+              新建 Provider
+            </Button>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => openCreateModal()}>
+              {t('admin:createModel')}
+            </Button>
+          </Space>
+        </Space>
+
+        <Row gutter={[12, 12]}>
+          <Col xs={24} sm={12} xl={6}>
+            <Card size="small" style={OVERVIEW_METRIC_STYLE} styles={{ body: { padding: 16 } }}>
+              <Text type="secondary">Provider 配置</Text>
+              <div style={{ marginTop: 8, fontSize: 28, fontWeight: 700 }}>
+                {providerGovernanceItems.length}
+              </div>
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} xl={6}>
+            <Card size="small" style={OVERVIEW_METRIC_STYLE} styles={{ body: { padding: 16 } }}>
+              <Text type="secondary">已配置凭据</Text>
+              <div style={{ marginTop: 8, fontSize: 28, fontWeight: 700, color: '#10b981' }}>
+                {configuredProviderCount}
+              </div>
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} xl={6}>
+            <Card size="small" style={OVERVIEW_METRIC_STYLE} styles={{ body: { padding: 16 } }}>
+              <Text type="secondary">注册模型</Text>
+              <div style={{ marginTop: 8, fontSize: 28, fontWeight: 700 }}>
+                {totalModelCount}
+              </div>
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} xl={6}>
+            <Card size="small" style={OVERVIEW_METRIC_STYLE} styles={{ body: { padding: 16 } }}>
+              <Text type="secondary">启用中</Text>
+              <div style={{ marginTop: 8, fontSize: 28, fontWeight: 700, color: '#6366f1' }}>
+                {activeModelCount}
+              </div>
+            </Card>
+          </Col>
+        </Row>
+      </Card>
+
+      <Card style={SECTION_CARD_STYLE} styles={{ body: { padding: 20 } }}>
+        <Space
+          align="start"
+          style={{ width: '100%', justifyContent: 'space-between', marginBottom: 18 }}
+          wrap
+        >
+          <Space direction="vertical" size={4}>
+            <Text strong style={{ fontSize: 16 }}>
+              Provider 视图
+            </Text>
+            <Text type="secondary">
+              每张卡片对应一个接入配置，集中展示 endpoint、凭据状态、默认策略与模型覆盖情况。
+            </Text>
+          </Space>
+          <Space wrap>
             <Button
               icon={<ReloadOutlined />}
               onClick={() => {
-                providersQuery.refetch();
-                providerConfigsQuery.refetch();
+                void providersQuery.refetch();
+                void providerConfigsQuery.refetch();
               }}
             >
               刷新 Provider
             </Button>
-            <Button type="primary" icon={<PlusOutlined />} onClick={openCreateProviderModal}>
-              新建 Provider
-            </Button>
           </Space>
-        }
-      >
-        <List
-          dataSource={providerGovernanceItems}
+        </Space>
+
+        <ProviderGovernanceCardGrid
+          items={providerGovernanceItems}
           loading={providersQuery.isLoading || providerConfigsQuery.isLoading}
-          locale={{ emptyText: '暂无 provider 配置' }}
-          renderItem={({ providerConfig, summary }) => (
-            <List.Item
-              style={{
-                cursor: 'pointer',
-                background:
-                  providerFilter === providerConfig.provider
-                    ? 'rgba(99, 102, 241, 0.14)'
-                    : 'transparent',
-                borderRadius: 8,
-                paddingInline: 12,
-              }}
-              onClick={() =>
-                setProviderFilter((current) =>
-                  current === providerConfig.provider ? null : providerConfig.provider
-                )
-              }
-              actions={[
-                <Button
-                  key="health"
-                  type="link"
-                  icon={<ThunderboltOutlined />}
-                  loading={
-                    checkProviderHealthMutation.isLoading &&
-                    checkProviderHealthMutation.variables === providerConfig.id
-                  }
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    checkProviderHealthMutation.mutate(providerConfig.id);
-                  }}
-                >
-                  健康检查
-                </Button>,
-                <Button
-                  key="edit-provider"
-                  type="link"
-                  icon={<EditOutlined />}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    openEditProviderModal(providerConfig);
-                  }}
-                >
-                  编辑 Provider
-                </Button>,
-                <Button
-                  key="append"
-                  type="link"
-                  icon={<PlusOutlined />}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    openCreateModal(
-                      summary || {
-                        id: providerConfig.id,
-                        provider: providerConfig.provider,
-                        api_endpoint: providerConfig.api_endpoint,
-                        modelCount: 0,
-                        activeModelCount: 0,
-                        hasCredential: providerConfig.hasCredential || false,
-                        advancedModelCount: 0,
-                        defaultScopes: [],
-                      }
-                    );
-                  }}
-                >
-                  追加模型
-                </Button>,
-              ]}
-            >
-              {renderProviderSummary(providerConfig, summary)}
-            </List.Item>
-          )}
+          selectedProvider={providerFilter}
+          providerNames={PROVIDER_NAMES}
+          scopeTagMeta={scopeTagMeta}
+          healthCheckingId={
+            checkProviderHealthMutation.isLoading ? checkProviderHealthMutation.variables : undefined
+          }
+          onSelectProvider={(provider) =>
+            setProviderFilter((current) => (current === provider ? null : provider))
+          }
+          onCheckHealth={(providerConfigId) => checkProviderHealthMutation.mutate(providerConfigId)}
+          onEditProvider={openEditProviderModal}
+          onAppendModel={handleAppendModelFromProvider}
         />
       </Card>
 
-      {/* Registered Models Card */}
-      <Card style={{ marginTop: 16 }}>
-        <Space style={{ marginBottom: 16, width: '100%', justifyContent: 'space-between' }}>
-          <Space>
+      <Card style={SECTION_CARD_STYLE} styles={{ body: { padding: 20 } }}>
+        <Space
+          align="start"
+          style={{ marginBottom: 16, width: '100%', justifyContent: 'space-between' }}
+          wrap
+        >
+          <Space direction="vertical" size={4}>
+            <Space size={8} wrap>
+              <Text strong style={{ fontSize: 16 }}>
+                已注册模型
+              </Text>
+              <Tag color="blue">{filteredModels.length} 条结果</Tag>
+            </Space>
+            <Text type="secondary">
+              模型列表按 Provider 配置分组展示，便于对比同一接入点下的启用状态和路由策略。
+            </Text>
+          </Space>
+          <Space wrap>
             <Input
               placeholder={t('common:search')}
               prefix={<SearchOutlined />}
@@ -963,14 +1026,12 @@ const AIModelAdminPage: React.FC = () => {
               style={{ width: 200 }}
               allowClear
             />
-            {providerFilter && (
-              <Tag closable color="blue" onClose={() => setProviderFilter(null)}>
-                当前 Provider: {PROVIDER_NAMES[providerFilter] || providerFilter}
-              </Tag>
-            )}
-          </Space>
-          <Space>
-            <Button icon={<ReloadOutlined />} onClick={() => modelsQuery.refetch()}>
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={() => {
+                void modelsQuery.refetch();
+              }}
+            >
               {t('common:refresh')}
             </Button>
             <Button type="primary" icon={<PlusOutlined />} onClick={() => openCreateModal()}>
@@ -979,31 +1040,68 @@ const AIModelAdminPage: React.FC = () => {
           </Space>
         </Space>
 
+        {providerFilter && (
+          <div style={{ marginBottom: 16 }}>
+            <Tag closable color="processing" onClose={() => setProviderFilter(null)}>
+              当前 Provider: {PROVIDER_NAMES[providerFilter] || providerFilter}
+            </Tag>
+          </div>
+        )}
+
         {groupedModels.length === 0 ? (
           <Alert message={searchText ? '未找到匹配的模型' : '暂无模型配置'} type="info" showIcon />
         ) : (
           groupedModels.map(({ providerConfig, models }) => (
-            <div key={providerConfig?.id || 'unlinked'} style={{ marginBottom: 24 }}>
+            <Card
+              key={providerConfig?.id || 'unlinked'}
+              size="small"
+              style={{
+                marginBottom: 16,
+                borderRadius: 16,
+                border: '1px solid var(--bg-secondary)',
+                boxShadow: 'var(--shadow-sm)',
+              }}
+              styles={{ body: { padding: 0 } }}
+            >
               <div
                 style={{
-                  background: 'var(--bg-secondary)',
-                  padding: '8px 16px',
-                  borderLeft: '4px solid var(--primary-color)',
-                  marginBottom: 8,
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  borderRadius: '0 4px 4px 0',
-                  color: 'var(--text-primary)',
+                  padding: '14px 16px',
+                  borderBottom: '1px solid var(--bg-secondary)',
+                  background:
+                    'linear-gradient(180deg, rgba(99, 102, 241, 0.08) 0%, var(--bg-card) 100%)',
                 }}
               >
-                <Space>
-                  <Text strong>
-                    {providerConfig
-                      ? getProviderConfigLabel(providerConfig)
-                      : '未绑定 Provider (旧版)'}
-                  </Text>
-                  <Tag color="blue">{models.length} 个模型</Tag>
+                <Space
+                  align="start"
+                  style={{ width: '100%', justifyContent: 'space-between' }}
+                  wrap
+                >
+                  <Space direction="vertical" size={4}>
+                    <Space size={8} wrap>
+                      <Text strong style={{ fontSize: 15 }}>
+                        {providerConfig
+                          ? getProviderConfigLabel(providerConfig)
+                          : '未绑定 Provider (旧版)'}
+                      </Text>
+                      {providerConfig?.hasCredential && <Tag color="success">已复用凭据</Tag>}
+                    </Space>
+                    <Text type="secondary">
+                      {providerConfig?.api_endpoint || '旧版模型未绑定 provider 配置'}
+                    </Text>
+                  </Space>
+                  <Space size={[0, 8]} wrap>
+                    <Tag color="blue">{models.length} 个模型</Tag>
+                    <Tag color="success">
+                      {models.filter((model) => model.status === 'active').length} 个启用
+                    </Tag>
+                    <Tag color="gold">
+                      {
+                        models.filter((model) => model.config?.capability_tier === 'advanced')
+                          .length
+                      }{' '}
+                      个高级
+                    </Tag>
+                  </Space>
                 </Space>
               </div>
               <Table
@@ -1015,7 +1113,7 @@ const AIModelAdminPage: React.FC = () => {
                 pagination={false}
                 size="small"
               />
-            </div>
+            </Card>
           ))
         )}
       </Card>

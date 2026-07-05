@@ -465,6 +465,15 @@ export const reduceChatStreamEvent = ({
         }
       : undefined;
 
+  if (event.type === StreamEventTypeValue.SESSION_PATCH) {
+    return {
+      accumulatedContent,
+      progressLog,
+      sessionPatch,
+      messagePatch: {},
+    };
+  }
+
   return {
     accumulatedContent: nextAccumulatedContent,
     progressLog,
@@ -480,7 +489,12 @@ export const reduceChatStreamEvent = ({
         event.type !== StreamEventTypeValue.HUMAN_CONTROL,
       metadata: {
         mode,
-        showThinking: mode === 'task',
+        showThinking:
+          mode === 'task'
+            ? true
+            : typeof data?.thinking === 'boolean'
+              ? data.thinking
+              : undefined,
         taskStatus,
         executionId: asString(data?.executionId),
         executionStatus: asString(data?.status),

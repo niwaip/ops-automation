@@ -77,6 +77,16 @@ export class ChatController {
     };
   }
 
+  private isPersistableTaskEvent(event: StreamEvent | SseEventPayload): boolean {
+    return (
+      event.type === StreamEventType.RESULT ||
+      event.type === StreamEventType.WAITING_INPUT ||
+      event.type === StreamEventType.PENDING_APPROVAL ||
+      event.type === StreamEventType.HUMAN_CONTROL ||
+      event.type === StreamEventType.ERROR
+    );
+  }
+
   @Get('chat/sessions')
   @ApiOperation({ summary: 'List chat sessions' })
   @ApiResponse({ status: 200, description: 'Chat sessions loaded successfully' })
@@ -157,12 +167,29 @@ export class ChatController {
         return;
       }
 
+      let latestPersistableEvent: StreamEvent | null = null;
       for await (const event of this.chatOrchestratorService.handleTaskMode(
         body,
         taskModeContext.context,
         req.headers.authorization
       )) {
+        const streamEvent = event as unknown as StreamEvent;
+        if (this.isPersistableTaskEvent(streamEvent)) {
+          latestPersistableEvent = streamEvent;
+        }
         emit(event as unknown as SseEventPayload);
+      }
+
+      if (latestPersistableEvent) {
+        const sessionPatchEvent = await this.chatConversationService.persistTaskConversation({
+          sessionId,
+          userContent: body.message,
+          terminalEvent: latestPersistableEvent,
+          modelId: body.modelId,
+        });
+        if (sessionPatchEvent) {
+          emit(sessionPatchEvent as unknown as SseEventPayload);
+        }
       }
       emit({ type: 'done', content: 'Stream completed' });
       res.end();
@@ -230,6 +257,7 @@ export class ChatController {
 
     const events: StreamEvent[] = [];
     let finalResponse = '';
+    let latestPersistableEvent: StreamEvent | null = null;
 
     let seq = 0;
     for await (const event of this.chatOrchestratorService.handleTaskMode(
@@ -244,14 +272,27 @@ export class ChatController {
         seq,
       }) as unknown as StreamEvent;
       events.push(eventWithTrace);
-      if (
-        event.type === StreamEventType.RESULT ||
-        event.type === StreamEventType.WAITING_INPUT ||
-        event.type === StreamEventType.PENDING_APPROVAL ||
-        event.type === StreamEventType.HUMAN_CONTROL ||
-        event.type === StreamEventType.ERROR
-      ) {
+      if (this.isPersistableTaskEvent(eventWithTrace)) {
+        latestPersistableEvent = eventWithTrace;
         finalResponse = event.content;
+      }
+    }
+
+    if (latestPersistableEvent) {
+      const sessionPatchEvent = await this.chatConversationService.persistTaskConversation({
+        sessionId,
+        userContent: body.message,
+        terminalEvent: latestPersistableEvent,
+        modelId: body.modelId,
+      });
+      if (sessionPatchEvent) {
+        events.push(
+          this.enrichStreamEvent(sessionPatchEvent as unknown as SseEventPayload, {
+            sessionId,
+            traceId,
+            seq: events.length + 1,
+          }) as unknown as StreamEvent
+        );
       }
     }
 

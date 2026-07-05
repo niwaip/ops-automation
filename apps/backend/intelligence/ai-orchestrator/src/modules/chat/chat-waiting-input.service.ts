@@ -128,10 +128,11 @@ export class ChatWaitingInputService {
     missingInputs: WaitingInputItem[];
     semantic?: WaitingInputSemantic;
   }): string {
-    const lines: string[] = [input.intro || '任务需要你补充信息后才能继续执行。'];
+    const lines: string[] = [input.intro || '还差一点信息，补充后我就继续处理。'];
     const groupedMissing = Array.isArray(input.semantic?.groupedMissing)
       ? this.dedupeWaitingInputGroups(input.semantic.groupedMissing)
       : [];
+    const missingLabels = this.dedupeWaitingInputLabels(input.missingInputs);
     const groupedInputs = input.missingInputs.reduce<Map<string, WaitingInputItem[]>>(
       (acc, item) => {
         const label = typeof item.group_label === 'string' ? item.group_label.trim() : '';
@@ -146,12 +147,9 @@ export class ChatWaitingInputService {
       new Map()
     );
 
-    if (input.semantic?.summary) {
-      lines.push(input.semantic.summary);
-    }
-
-    if (groupedMissing.length > 0) {
-      lines.push(`缺少业务组：${groupedMissing.map((item) => item.label).join('、')}`);
+    const humanizedSummary = this.humanizeWaitingInputSummary(input.semantic?.summary);
+    if (humanizedSummary) {
+      lines.push(humanizedSummary);
     }
 
     if (groupedInputs.size > 0) {
@@ -159,18 +157,16 @@ export class ChatWaitingInputService {
       groupedInputs.forEach((items, label) => {
         lines.push(`${label}：${this.dedupeWaitingInputLabels(items).join('、')}`);
       });
-    } else if (input.missingInputs.length > 0) {
-      lines.push(
-        `${groupedMissing.length > 0 ? '字段兜底' : '缺少参数'}：${this.dedupeWaitingInputLabels(input.missingInputs).join('、')}`
-      );
+    } else if (missingLabels.length > 0) {
+      lines.push(`请补充：${this.formatFieldNameList(missingLabels)}`);
+    } else if (groupedMissing.length > 0) {
+      lines.push(`还需要补充：${this.formatFieldNameList(groupedMissing.map((item) => item.label))}`);
     } else if (groupedMissing.length === 0) {
-      lines.push('请继续补充必要参数。');
+      lines.push('请继续补充相关信息。');
     }
 
     if (input.semantic) {
-      lines.push(
-        `可预览：${input.semantic.previewReady ? '是' : '否'}；可正式生成：${input.semantic.finalReady ? '是' : '否'}`
-      );
+      lines.push(this.buildWaitingInputProgressHint(input.semantic));
     }
 
     if (input.executionId) {
@@ -186,7 +182,7 @@ export class ChatWaitingInputService {
     remainingMissingInputs: WaitingInputItem[];
     semantic?: WaitingInputSemantic;
   }): string {
-    const lines = ['已提交补充信息。'];
+    const lines = ['已收到你补充的信息。'];
     const resolvedFieldNames = this.formatFieldNameList(
       input.resolvedFieldNames.map((item) => this.normalizeWaitingInputSemanticLabel(item))
     );
@@ -198,24 +194,23 @@ export class ChatWaitingInputService {
       )
     ).length;
     if (resolvedCount > 0) {
-      lines.push(`本次识别到 ${resolvedCount} 个字段：${resolvedFieldNames}`);
+      lines.push(`这次补充了 ${resolvedCount} 项信息：${resolvedFieldNames}`);
     }
 
     const groupedMissing = Array.isArray(input.semantic?.groupedMissing)
       ? input.semantic.groupedMissing.filter((item) => item?.label)
       : [];
-    if (groupedMissing.length > 0) {
-      lines.push(`仍缺少业务组：${groupedMissing.map((item) => item.label).join('、')}`);
-    }
-
     if (input.remainingMissingInputs.length > 0) {
       const remainingMissingLabels = this.dedupeWaitingInputLabels(input.remainingMissingInputs);
       lines.push(
-        `仍缺少 ${remainingMissingLabels.length} 个字段：${this.formatFieldNameList(remainingMissingLabels)}`
+        `还需要 ${remainingMissingLabels.length} 项信息：${this.formatFieldNameList(remainingMissingLabels)}`
       );
-      lines.push('已保留当前执行单，请继续补充剩余信息。');
+      if (groupedMissing.length > 0) {
+        lines.push(`优先补充这些信息类别：${this.formatFieldNameList(groupedMissing.map((item) => item.label))}`);
+      }
+      lines.push('把这些内容直接发给我，我会继续处理。');
     } else {
-      lines.push('当前缺失字段已补齐，任务将继续执行。');
+      lines.push('需要的信息已经补齐，我继续处理。');
     }
 
     if (input.executionId) {
@@ -571,10 +566,41 @@ export class ChatWaitingInputService {
       : [];
 
     if (groupedMissing.length > 0) {
-      return `当前仍缺少多个业务组：${groupedMissing.map((item) => item.label).join('、')}。请优先按业务组补充，例如：“补充标的清单：设备A 10台，设备B 5台；补充交付计划：第一批5月30日交付。”`;
+      return `还需要补充这些信息类别：${groupedMissing.map((item) => item.label).join('、')}。可以直接按类别回复，例如：“补充标的清单：设备A 10台，设备B 5台；补充交付计划：第一批5月30日交付。”`;
     }
 
-    return `当前还缺少多个参数：${this.dedupeWaitingInputLabels(missingInputs).join('、')}。请继续用自然语言逐项补充（例如：甲方签字用公司名称、乙方签字用公司名称、附件填写无）。`;
+    return `还需要这些信息：${this.dedupeWaitingInputLabels(missingInputs).join('、')}。直接用自然语言逐项补充就可以（例如：甲方签字用公司名称、乙方签字用公司名称、附件填写无）。`;
+  }
+
+  private humanizeWaitingInputSummary(summary?: string): string | undefined {
+    const normalized = String(summary || '').trim();
+    if (!normalized) {
+      return undefined;
+    }
+
+    let result = normalized
+      .replace(/^文档仍缺少\s*(\d+)\s*个关键业务组。?$/u, '还需要补充 $1 类信息。')
+      .replace(/^文档可以先进入预览，但仍缺少\s*(\d+)\s*个业务组。?$/u, '还需要补充 $1 类信息，补充完整后我会继续生成结果。')
+      .replace(/^仍缺少\s*(\d+)\s*个必填参数。?$/u, '还需要 $1 项信息。')
+      .replace(/^执行参数已满足要求。?$/u, '需要的信息已经齐了。');
+
+    if (/^请补充/u.test(result)) {
+      result = result.replace(/^请补充/u, '还需要补充');
+    }
+
+    return result;
+  }
+
+  private buildWaitingInputProgressHint(semantic: WaitingInputSemantic): string {
+    if (semantic.finalReady) {
+      return '需要的信息已经齐了，我会继续处理。';
+    }
+
+    if (semantic.previewReady) {
+      return '补充完整后，我会继续生成最终结果。';
+    }
+
+    return '补充后我就继续处理。';
   }
 
   private formatFieldNameList(fieldNames: string[], limit = 12): string {

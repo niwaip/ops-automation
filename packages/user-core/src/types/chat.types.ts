@@ -137,6 +137,7 @@ export interface ChatMessage {
     finalResultData?: ExecutionResultPayload | unknown;
     finalSummary?: string;
     progressLogs?: ChatProgressLog[];
+    thoughtLogsSnapshot?: string[];
     errorMessage?: string;
     failureReason?: string;
     hasBusinessResult?: boolean;
@@ -178,6 +179,7 @@ export interface ChatRequest {
     mode?: 'chat' | 'task';
     maxIterations?: number;
     thinking?: boolean;
+    reasoning?: boolean;
     webSearch?: boolean;
   };
 }
@@ -189,6 +191,12 @@ export interface AIModel {
   config?: {
     display_name?: string;
     description?: string;
+    supports_reasoning?: boolean;
+    reasoning_effort?: 'low' | 'medium' | 'high';
+    reasoning?: {
+      supported?: boolean;
+      effort?: 'low' | 'medium' | 'high';
+    };
   };
   status: 'active' | 'inactive';
 }

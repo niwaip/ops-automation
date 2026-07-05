@@ -94,7 +94,39 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
 }) => {
   const showDownloadButton = Boolean(downloadUrl && !browserExecutionMode);
   const showDetailButton = Boolean(executionDetailLink || temporalLink);
-  const bodySummary = waitingInputSummary || summaryToDisplay;
+  const sanitizeWaitingInputSummary = (summary?: string): string | undefined => {
+    if (!summary) {
+      return undefined;
+    }
+
+    const filteredLines = summary
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .filter(
+        (line) =>
+          !/^状态[:：]/.test(line) &&
+          !/^执行单 ID[:：]/.test(line) &&
+          !/^请补充以下信息[:：]?$/.test(line) &&
+          !/^请补充[:：]/.test(line) &&
+          !/^还需要补充[:：]/.test(line) &&
+          !/^缺少业务组[:：]/.test(line) &&
+          !/^仍缺少业务组[:：]/.test(line) &&
+          !/^字段兜底[:：]/.test(line) &&
+          !/^缺少参数[:：]/.test(line) &&
+          !/^待补字段[:：]?$/.test(line)
+      );
+
+    if (filteredLines.length === 0) {
+      return undefined;
+    }
+
+    return filteredLines.join('\n\n');
+  };
+  const bodySummary =
+    isWaitingInput && waitingInputItems.length > 0
+      ? sanitizeWaitingInputSummary(waitingInputSummary || summaryToDisplay)
+      : waitingInputSummary || summaryToDisplay;
 
   const renderResourceLinks = () => (
     <div className="chat-outcome-actions" style={{ marginTop: 12 }}>

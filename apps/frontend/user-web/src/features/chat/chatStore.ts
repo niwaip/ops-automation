@@ -1,13 +1,7 @@
 import { create } from 'zustand';
+import type { ChatSession } from '@ops/user-core';
 
 type ChatMode = 'chat' | 'task';
-
-interface ChatSession {
-  id: string;
-  title: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
 
 interface ChatStoreState {
   currentSession: ChatSession | null;
@@ -15,7 +9,8 @@ interface ChatStoreState {
   chatMode: ChatMode;
   draftMessage: string;
   draftExecutionId: string | null;
-  createSession: () => void;
+  createSession: () => ChatSession;
+  setCurrentSession: (session: ChatSession | null) => void;
   setOpen: (isOpen: boolean) => void;
   setChatMode: (mode: ChatMode) => void;
   setDraftMessage: (message: string) => void;
@@ -37,16 +32,22 @@ export const useChatStore = create<ChatStoreState>((set) => ({
   chatMode: 'task',
   draftMessage: '',
   draftExecutionId: null,
-  createSession: () =>
+  createSession: () => {
+    const now = new Date().toISOString();
+    const nextSession: ChatSession = {
+      id: buildSessionId(),
+      title: '新对话',
+      status: 'active',
+      createdAt: now,
+      updatedAt: now,
+    };
     set({
-      currentSession: {
-        id: buildSessionId(),
-        title: '新对话',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
+      currentSession: nextSession,
       draftExecutionId: null,
-    }),
+    });
+    return nextSession;
+  },
+  setCurrentSession: (currentSession) => set({ currentSession }),
   setOpen: (isOpen) => set({ isOpen }),
   setChatMode: (chatMode) => set({ chatMode }),
   setDraftMessage: (draftMessage) => set({ draftMessage }),

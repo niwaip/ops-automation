@@ -26,7 +26,6 @@ import {
   Spin,
   Alert,
   message,
-  Tooltip,
   Image,
   Modal,
   DatePicker,
@@ -38,8 +37,11 @@ import {
   ReloadOutlined,
   DownloadOutlined,
   RobotOutlined,
-  InfoCircleOutlined,
   DeleteOutlined,
+  CheckCircleOutlined,
+  AppstoreOutlined,
+  HourglassOutlined,
+  WarningOutlined,
 } from '@ant-design/icons';
 import '@/features/chat/ChatMessage.css';
 import { resolveExecutionNormalizedResult } from '@ops/user-core';
@@ -56,7 +58,6 @@ import { runtimeSessionApi } from '@/api/runtimeSession';
 import { skillApi } from '@/api/skill';
 import { capabilityReleaseApi } from '@/api/capabilities';
 import { useChatStore } from '@/features/chat';
-import { ListSectionHeader } from '@/components/page/PageScaffold';
 import LiveSessionPreviewCard from '@/components/runtime/LiveSessionPreviewCard';
 import InlineRecoveryPanel from '@/features/executions/components/InlineRecoveryPanel';
 import WaitingInputActionPanel from '@/features/executions/components/WaitingInputActionPanel';
@@ -87,9 +88,7 @@ import { buildExecutionLoopSummary } from '@/features/executions/lib/executionSu
 import {
   formatDateTime,
   formatDuration,
-  formatListDateTime,
   getExecutionRowStyle,
-  getRiskBadgeStyle,
   getStepStatusColor,
   summarizeSteps,
 } from '@/features/executions/lib/listView';
@@ -117,6 +116,7 @@ import {
 } from '@/shared/lib/waitingInputDisplay';
 import { usePreferencesStore } from '@/shared/store/preferencesStore';
 import dayjs, { Dayjs } from 'dayjs';
+import './ExecutionListPage.css';
 
 const { Text } = Typography;
 const statusColors = EXECUTION_STATUS_COLORS;
@@ -143,6 +143,36 @@ const EXECUTION_STATUS_FILTER_OPTIONS: Array<{ value?: ExecutionStatus; label: s
 const getExecutionTime = (record: ExecutionDto) => {
   const source = record.startedAt || record.createdAt;
   return source ? new Date(source).getTime() : 0;
+};
+
+const padTimePart = (value: number) => String(value).padStart(2, '0');
+
+const formatCompactExecutionTime = (date?: string) => {
+  if (!date) {
+    return '-';
+  }
+
+  const targetDate = new Date(date);
+  if (Number.isNaN(targetDate.getTime())) {
+    return '-';
+  }
+
+  const now = new Date();
+  const timeLabel = `${padTimePart(targetDate.getHours())}:${padTimePart(targetDate.getMinutes())}`;
+
+  if (
+    targetDate.getFullYear() === now.getFullYear() &&
+    targetDate.getMonth() === now.getMonth() &&
+    targetDate.getDate() === now.getDate()
+  ) {
+    return timeLabel;
+  }
+
+  if (targetDate.getFullYear() === now.getFullYear()) {
+    return `${padTimePart(targetDate.getMonth() + 1)}/${padTimePart(targetDate.getDate())} ${timeLabel}`;
+  }
+
+  return `${String(targetDate.getFullYear()).slice(-2)}/${padTimePart(targetDate.getMonth() + 1)}/${padTimePart(targetDate.getDate())}`;
 };
 
 const detailPanelStyle = {
@@ -307,17 +337,13 @@ const renderExecutionPayloadContent = (
 };
 
 const renderPanelLabel = (title: string, summary?: string) => (
-  <div
-    style={{
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 12,
-      width: '100%',
-    }}
-  >
-    <Text strong>{title}</Text>
-    {summary ? <Text type="secondary">{summary}</Text> : null}
+  <div className="execution-detail-panel-label">
+    <Text strong className="execution-detail-panel-title">{title}</Text>
+    {summary ? (
+      <Text type="secondary" className="execution-detail-panel-summary">
+        {summary}
+      </Text>
+    ) : null}
   </div>
 );
 
@@ -356,7 +382,6 @@ const ExecutionListPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const {
-    currentSession,
     createSession,
     setOpen,
     setChatMode,
@@ -613,9 +638,7 @@ const ExecutionListPage: React.FC = () => {
   };
 
   const openAiTaskMode = (draft: string, executionId: string) => {
-    if (!currentSession) {
-      createSession();
-    }
+    createSession();
     setChatMode('task');
     setDraftMessage(draft);
     setDraftExecutionId(executionId);
@@ -775,52 +798,107 @@ const ExecutionListPage: React.FC = () => {
     return rows;
   }, [data?.data, searchText, skillNameMap]);
 
+  const overviewItems = useMemo(
+    () => [
+      {
+        key: 'visible',
+        label: '当前结果',
+        value: filteredAndSortedData.length,
+        accentClassName: 'is-primary',
+        icon: <AppstoreOutlined />,
+      },
+      {
+        key: 'running',
+        label: '进行中',
+        value: filteredAndSortedData.filter((record) =>
+          ['running', 'waiting_input', 'pending_approval'].includes(record.status)
+        ).length,
+        accentClassName: 'is-accent',
+        icon: <HourglassOutlined />,
+      },
+      {
+        key: 'attention',
+        label: '需关注',
+        value: filteredAndSortedData.filter((record) =>
+          ['failed', 'human_control', 'pending_approval', 'waiting_input'].includes(record.status)
+        ).length,
+        accentClassName: 'is-danger',
+        icon: <WarningOutlined />,
+      },
+      {
+        key: 'completed',
+        label: '已完成',
+        value: filteredAndSortedData.filter((record) => record.status === 'succeeded').length,
+        accentClassName: 'is-success',
+        icon: <CheckCircleOutlined />,
+      },
+      {
+        key: 'skills',
+        label: '技能覆盖',
+        value: new Set(filteredAndSortedData.map((record) => record.skillId)).size,
+        accentClassName: 'is-neutral',
+        icon: <RobotOutlined />,
+      },
+    ],
+    [filteredAndSortedData]
+  );
+
+  const hasActiveFilters = Boolean(searchText.trim() || statusFilter);
+
+  const emptyStateDescription = hasActiveFilters
+    ? '没有找到符合当前筛选条件的执行记录，可以调整关键词或状态后再试。'
+    : '当前账号还没有执行记录，可以从新建执行开始体验。';
+
   const columns = [
     {
       title: '技能名称',
       key: 'execution',
-      width: 220,
+      width: 188,
       render: (_: unknown, record: ExecutionDto) => (
-        <Space direction="vertical" size={4}>
+        <div className="execution-list-skill-cell">
           <Text
             strong
             ellipsis={{ tooltip: getSkillDisplayName(record.skillId) }}
-            style={{ display: 'block', maxWidth: 200, fontSize: 16 }}
+            className="execution-list-skill-name"
           >
             {getSkillDisplayName(record.skillId)}
           </Text>
-        </Space>
+        </div>
       ),
     },
     {
       title: '开始时间',
       dataIndex: 'startedAt',
       key: 'startedAt',
-      width: 140,
+      width: 144,
       defaultSortOrder: 'descend' as const,
       sorter: (a: ExecutionDto, b: ExecutionDto) => getExecutionTime(a) - getExecutionTime(b),
       render: (_: string | undefined, record: ExecutionDto) => (
-        <Space direction="vertical" size={0}>
-          <Text>{formatListDateTime(record.startedAt || record.createdAt)}</Text>
-          <Text type="secondary" style={{ fontSize: 12 }}>
+        <div className="execution-list-time-cell">
+          <Text className="execution-list-time-value">
+            {formatCompactExecutionTime(record.startedAt || record.createdAt)}
+          </Text>
+          <Text type="secondary" className="execution-list-time-duration">
             {formatDuration(record)}
           </Text>
-        </Space>
+        </div>
       ),
     },
     {
       title: '状态',
       key: 'status',
-      width: 88,
+      width: 76,
       render: (_: unknown, record: ExecutionDto) => (
         <Tag
           color={statusColors[record.status]}
           style={{
             marginInlineEnd: 0,
             width: 'fit-content',
-            paddingInline: 10,
+            paddingInline: 8,
             borderRadius: 999,
             fontWeight: 600,
+            fontSize: 12,
+            lineHeight: '18px',
           }}
         >
           {listStatusLabels[record.status] || statusLabels[record.status]}
@@ -828,62 +906,25 @@ const ExecutionListPage: React.FC = () => {
       ),
     },
     {
-      title: '风险',
-      dataIndex: 'riskLevel',
-      key: 'riskLevel',
-      width: 64,
-      render: (riskLevel?: string) =>
-        riskLevel ? (
-          <span
-            style={{
-              ...getRiskBadgeStyle(riskLevel),
-              display: 'inline-block',
-              padding: '2px 10px',
-              borderRadius: 999,
-              fontSize: 12,
-              fontWeight: 600,
-            }}
-          >
-            {riskLevel}
-          </span>
-        ) : (
-          '-'
-        ),
-    },
-    {
       title: '用户输入',
       key: 'input',
-      width: 260,
+      width: 292,
       ellipsis: true,
       render: (_: unknown, record: ExecutionDto) => (
-        <Text
-          style={{
-            display: 'block',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}
-        >
-          {summarizeExecutionListInput(record)}
-        </Text>
+        <div className="execution-list-summary-cell">
+          <Text className="execution-list-summary-text">{summarizeExecutionListInput(record)}</Text>
+        </div>
       ),
     },
     {
       title: '结果摘要',
       key: 'result',
-      width: 260,
+      width: 292,
       ellipsis: true,
       render: (_: unknown, record: ExecutionDto) => (
-        <Text
-          style={{
-            display: 'block',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}
-        >
-          {summarizeExecutionListResult(record)}
-        </Text>
+        <div className="execution-list-summary-cell is-result">
+          <Text className="execution-list-summary-text">{summarizeExecutionListResult(record)}</Text>
+        </div>
       ),
     },
   ];
@@ -930,72 +971,75 @@ const ExecutionListPage: React.FC = () => {
   };
 
   return (
-    <div style={{ padding: 24 }}>
-      {/* Table */}
-      <Card
-        style={{
-          borderRadius: 16,
-          border: '1px solid var(--bg-secondary)',
-          boxShadow: 'var(--shadow-md)',
-        }}
-        styles={{ body: { padding: 12 } }}
-      >
-        <ListSectionHeader
-          title={
-            <Space size={16}>
-              <Text strong style={{ fontSize: 16 }}>
-                执行记录列表
-              </Text>
-              <Input
-                className="execution-search-input"
-                size="small"
-                placeholder="内容过滤"
-                prefix={<SearchOutlined />}
-                variant="borderless"
-                style={{
-                  width: 200,
-                  background: 'var(--bg-secondary)',
-                  borderRadius: 6,
-                  fontSize: 12,
-                }}
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                allowClear
-              />
-              <Select
-                className="execution-status-filter"
-                size="small"
-                placeholder="全部状态"
-                variant="borderless"
-                style={{
-                  width: 110,
-                  background: 'var(--bg-secondary)',
-                  borderRadius: 6,
-                  fontSize: 12,
-                }}
-                allowClear
-                value={statusFilter}
-                onChange={(value) => setStatusFilter(value)}
-                popupMatchSelectWidth={false}
-              >
-                {EXECUTION_STATUS_FILTER_OPTIONS.map((option) => (
-                  <Select.Option key={option.value ?? 'all'} value={option.value}>
-                    {option.label}
-                  </Select.Option>
-                ))}
-              </Select>
-            </Space>
-          }
-          tip={
-            <Tooltip title="按开始时间倒序展示，可点击任一行查看详情">
-              <InfoCircleOutlined style={{ color: 'var(--text-secondary)', fontSize: 14 }} />
-            </Tooltip>
-          }
-          extra={
-            <Space wrap size={8} style={{ justifyContent: 'flex-end' }}>
-              <Text type="secondary" style={{ fontSize: 13 }}>
-                共 {filteredAndSortedData.length} 条
-              </Text>
+    <div className="execution-list-page">
+      <div className="execution-list-summary-strip">
+        {overviewItems.map((item) => (
+          <div
+            key={item.key}
+            className={`execution-list-summary-item ${item.accentClassName}`}
+          >
+            <div className="execution-list-summary-icon">{item.icon}</div>
+            <div className="execution-list-summary-body">
+              <span className="execution-list-summary-key">{item.label}</span>
+              <span className="execution-list-summary-value">{item.value}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <Card className="execution-list-card" styles={{ body: { padding: 0 } }}>
+        <div className="execution-list-toolbar">
+          <div className="execution-list-toolbar-heading">
+            <Text strong className="execution-list-toolbar-title">
+              执行记录
+            </Text>
+            <Text type="secondary" className="execution-list-toolbar-subtitle">
+              当前筛选后显示 {filteredAndSortedData.length} 条，本页总计 {data?.total || 0} 条记录。
+            </Text>
+          </div>
+          <div className="execution-list-toolbar-row">
+            <div className="execution-list-toolbar-main">
+              <div className="execution-list-toolbar-controls">
+                <Input
+                  className="execution-search-input execution-list-filter-control"
+                  size="middle"
+                  placeholder="搜索技能、输入内容或结果摘要"
+                  prefix={<SearchOutlined />}
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                  allowClear
+                />
+                <Select
+                  className="execution-status-filter execution-list-filter-control"
+                  size="middle"
+                  placeholder="全部状态"
+                  allowClear
+                  value={statusFilter}
+                  onChange={(value) => setStatusFilter(value)}
+                  popupMatchSelectWidth={false}
+                >
+                  {EXECUTION_STATUS_FILTER_OPTIONS.map((option) => (
+                    <Select.Option key={option.value ?? 'all'} value={option.value}>
+                      {option.label}
+                    </Select.Option>
+                  ))}
+                </Select>
+                {hasActiveFilters ? (
+                  <Button
+                    size="small"
+                    type="text"
+                    className="execution-list-clear-chip"
+                    onClick={() => {
+                      setSearchText('');
+                      setStatusFilter(undefined);
+                    }}
+                  >
+                    清空筛选
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+            <div className="execution-list-toolbar-actions">
               <Button
                 size="middle"
                 icon={<ReloadOutlined />}
@@ -1007,13 +1051,22 @@ const ExecutionListPage: React.FC = () => {
               >
                 刷新
               </Button>
+              <Button
+                size="middle"
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => navigate('/executions/new')}
+                className="btn-pill"
+              >
+                新建
+              </Button>
               <DatePicker
                 size="middle"
                 value={clearBeforeDate}
                 onChange={(value) => setClearBeforeDate(value ?? dayjs().subtract(2, 'day'))}
                 allowClear={false}
                 format="YYYY-MM-DD"
-                style={{ minWidth: 150 }}
+                className="execution-list-date-picker"
               />
               <Button
                 size="middle"
@@ -1023,30 +1076,47 @@ const ExecutionListPage: React.FC = () => {
                 loading={cleanupExecutionsMutation.isLoading}
                 className="btn-pill"
               >
-                清理日期前
+                清理
               </Button>
-              <Button
-                size="middle"
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={() => navigate('/executions/new')}
-                className="btn-pill"
-                style={{
-                  boxShadow: '0 10px 24px rgba(99, 102, 241, 0.24)',
-                }}
-              >
-                新建执行
-              </Button>
-            </Space>
-          }
-        />
+            </div>
+          </div>
+        </div>
         <Table
+          className="execution-list-table"
           columns={columns}
           dataSource={filteredAndSortedData}
           rowKey="id"
           size="middle"
           loading={isLoading}
-          locale={{ emptyText: '暂无执行记录' }}
+          locale={{
+            emptyText: (
+              <div className="execution-list-empty-state">
+                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={emptyStateDescription}>
+                  <Space wrap size={12} style={{ justifyContent: 'center' }}>
+                    <Button
+                      type="primary"
+                      icon={<PlusOutlined />}
+                      onClick={() => navigate('/executions/new')}
+                    >
+                      去新建执行
+                    </Button>
+                    <Button onClick={() => navigate('/published-skills')}>查看已发布技能</Button>
+                    {hasActiveFilters ? (
+                      <Button
+                        type="link"
+                        onClick={() => {
+                          setSearchText('');
+                          setStatusFilter(undefined);
+                        }}
+                      >
+                        清空筛选条件
+                      </Button>
+                    ) : null}
+                  </Space>
+                </Empty>
+              </div>
+            ),
+          }}
           showSorterTooltip={false}
           pagination={{
             current: page,
@@ -1059,6 +1129,7 @@ const ExecutionListPage: React.FC = () => {
               setPageSize(ps);
             },
           }}
+          rowClassName={() => 'execution-list-table-row'}
           onRow={(record) => ({
             style: {
               cursor: 'pointer',
@@ -1071,6 +1142,7 @@ const ExecutionListPage: React.FC = () => {
       </Card>
 
       <Drawer
+        className="execution-detail-drawer"
         title="执行详情"
         placement="right"
         width={720}
@@ -1079,12 +1151,13 @@ const ExecutionListPage: React.FC = () => {
         styles={{ body: { background: 'var(--bg-primary)' } }}
       >
         {isDetailLoading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '48px 0' }}>
+          <div className="execution-detail-loading">
             <Spin />
           </div>
         ) : selectedExecution ? (
-          <Space direction="vertical" size={16} style={{ width: '100%' }}>
+          <Space direction="vertical" size={16} style={{ width: '100%' }} className="execution-detail-content">
             <Collapse
+              className="execution-detail-sections"
               ghost
               defaultActiveKey={['summary']}
               expandIconPosition="end"
@@ -1203,16 +1276,18 @@ const ExecutionListPage: React.FC = () => {
             stableSelectedRuntimeSessionNovncUrl &&
             (isSelectedExecutionActive ||
               isPreviewRuntimeSessionState(selectedRuntimeSession?.state)) ? (
-              <LiveSessionPreviewCard
-                novncUrl={stableSelectedRuntimeSessionNovncUrl}
-                title="实时画面"
-                statusLabel={getRuntimeSessionStatusLabel(selectedRuntimeSession?.state)}
-                height={360}
-              />
+              <div className="execution-detail-live-card">
+                <LiveSessionPreviewCard
+                  novncUrl={stableSelectedRuntimeSessionNovncUrl}
+                  title="实时画面"
+                  statusLabel={getRuntimeSessionStatusLabel(selectedRuntimeSession?.state)}
+                  height={360}
+                />
+              </div>
             ) : null}
 
             {!isSelectedBrowserExecution ? (
-              <Card title="输入与输出">
+              <Card title="输入与输出" className="execution-detail-section-card">
                 <Space direction="vertical" size={16} style={{ width: '100%' }}>
                   <div>
                     <Text strong>输入：</Text>
@@ -1302,10 +1377,10 @@ const ExecutionListPage: React.FC = () => {
             ) : null}
 
             {isSelectedBrowserExecution && displaySelectedPhases.length > 0 ? (
-              <Card title="步骤进度">
+              <Card title="步骤进度" className="execution-detail-section-card">
                 {!shouldShowSelectedExecutionSummary ? (
                   <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                    <Card size="small" title="当前步骤">
+                    <Card size="small" title="当前步骤" className="execution-detail-section-card">
                       <Space direction="vertical" size={12} style={{ width: '100%' }}>
                         <Space wrap size={[8, 8]}>
                           <Tag color={statusColors[selectedExecution.status]}>
@@ -1384,7 +1459,7 @@ const ExecutionListPage: React.FC = () => {
                     />
                   </Space>
                 ) : (
-                  <Card size="small" title="执行总结">
+                  <Card size="small" title="执行总结" className="execution-detail-section-card">
                     <Space direction="vertical" size={12} style={{ width: '100%' }}>
                       <Space wrap size={[8, 8]}>
                         <Tag color={statusColors[selectedExecution.status]}>
@@ -1580,6 +1655,7 @@ const ExecutionListPage: React.FC = () => {
                                                 <Card
                                                   size="small"
                                                   title="Activity 结果"
+                                                  className="execution-detail-section-card"
                                                   styles={{ body: { padding: 12 } }}
                                                 >
                                                   <Space
@@ -1658,7 +1734,7 @@ const ExecutionListPage: React.FC = () => {
                                                             </Text>
                                                           </Space>
                                                         ) : (
-                                                          <Card size="small">
+                                                          <Card size="small" className="execution-detail-timeline-card">
                                                             <Space
                                                               direction="vertical"
                                                               size={10}
@@ -1752,6 +1828,7 @@ const ExecutionListPage: React.FC = () => {
                                               <Card
                                                 size="small"
                                                 title="Activity 输出"
+                                                className="execution-detail-section-card"
                                                 styles={{ body: { padding: 12 } }}
                                               >
                                                 {renderExecutionPayloadContent(phase.output, {
@@ -1796,7 +1873,7 @@ const ExecutionListPage: React.FC = () => {
                                                       </Text>
                                                     </Space>
                                                   ) : (
-                                                    <Card size="small">
+                                                    <Card size="small" className="execution-detail-timeline-card">
                                                       <Space
                                                         direction="vertical"
                                                         size={10}
@@ -1927,6 +2004,7 @@ const ExecutionListPage: React.FC = () => {
                                 children: (
                                   <Card
                                     size="small"
+                                    className="execution-detail-timeline-card"
                                     style={{
                                       borderRadius: 12,
                                       border: '1px solid var(--bg-secondary)',

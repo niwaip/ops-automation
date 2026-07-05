@@ -1,5 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ChatMessage as MultimodalChatMessage, ContentBlock } from '../../interfaces';
+import {
+  ChatMessage as MultimodalChatMessage,
+  ContentBlock,
+  ModelReasoningConfig,
+} from '../../interfaces';
 import { ModelService } from '../model/model.service';
 import { ChatSessionData, SessionService } from '../redis/session.service';
 import { StreamEventType } from '../react-engine/interfaces';
@@ -23,7 +27,16 @@ interface ChatHistoryItem {
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: string;
+  metadata?: Record<string, unknown>;
 }
+
+type PersistedTaskStatus =
+  | 'running'
+  | 'waiting_input'
+  | 'pending_approval'
+  | 'human_control'
+  | 'completed'
+  | 'failed';
 
 @Injectable()
 export class ChatConversationService {
@@ -39,6 +52,7 @@ export class ChatConversationService {
     const modelId = this.resolvePreferredChatModelId(body);
     const sessionId = body.sessionId || 'default';
     const thinkingEnabled = this.isThinkingEnabled(body);
+    const reasoningConfig = await this.resolveReasoningConfig(body, modelId);
     const client = this.modelService.getClient(modelId);
 
     if (!client) {
@@ -77,8 +91,12 @@ export class ChatConversationService {
           data: {
             mode: 'chat',
             thinking: thinkingEnabled,
+            reasoning: reasoningConfig.enabled === true,
           },
         });
+      },
+      {
+        reasoning: reasoningConfig,
       }
     );
 
@@ -95,17 +113,22 @@ export class ChatConversationService {
       data: {
         mode: 'chat',
         thinking: thinkingEnabled,
+        reasoning: reasoningConfig.enabled === true,
         usage: response.usage,
         rateLimit: response.rateLimit,
       },
     });
 
-    const session = await this.persistConversation(
+    const session = await this.persistConversation({
       sessionId,
-      userMessageForHistory,
-      historyAssistantContent,
-      modelId
-    );
+      userContent: userMessageForHistory,
+      assistantContent: historyAssistantContent,
+      rawAssistantContent: fullContent || '处理完成',
+      modelId,
+      thinkingEnabled,
+      usage: response.usage,
+      rateLimit: response.rateLimit,
+    });
     emit(this.buildSessionPatchEvent(sessionId, session));
   }
 
@@ -113,6 +136,7 @@ export class ChatConversationService {
     const modelId = this.resolvePreferredChatModelId(body);
     const sessionId = body.sessionId || 'default';
     const thinkingEnabled = this.isThinkingEnabled(body);
+    const reasoningConfig = await this.resolveReasoningConfig(body, modelId);
     const client = this.modelService.getClient(modelId);
 
     if (!client) {
@@ -128,16 +152,23 @@ export class ChatConversationService {
       this.buildChatSystemMessage(thinkingEnabled, Boolean(body.files?.length)),
       userContent
     );
-    const response = await client.chatCompletion(messages);
+    const response = await client.chatCompletion({
+      messages,
+      reasoning: reasoningConfig,
+    });
     const visibleContent = this.getVisibleChatContent(response.content, thinkingEnabled);
     const historyAssistantContent = this.modelService.stripThinkingTags(response.content);
 
-    const session = await this.persistConversation(
+    const session = await this.persistConversation({
       sessionId,
-      this.normalizeContentToText(userContent),
-      historyAssistantContent,
-      modelId
-    );
+      userContent: this.normalizeContentToText(userContent),
+      assistantContent: historyAssistantContent,
+      rawAssistantContent: response.content,
+      modelId,
+      thinkingEnabled,
+      usage: response.usage,
+      rateLimit: response.rateLimit,
+    });
 
     return {
       response: visibleContent,
@@ -149,6 +180,7 @@ export class ChatConversationService {
             sessionId,
             mode: 'chat',
             thinking: thinkingEnabled,
+            reasoning: reasoningConfig.enabled === true,
             usage: response.usage,
             rateLimit: response.rateLimit,
           },
@@ -179,7 +211,42 @@ export class ChatConversationService {
       role: message.role,
       content: message.content,
       timestamp: message.timestamp,
+      metadata: message.metadata,
     }));
+  }
+
+  async persistTaskConversation(params: {
+    sessionId: string;
+    userContent: string;
+    terminalEvent: StreamEvent;
+    modelId?: string;
+  }): Promise<StreamEvent | null> {
+    const normalizedUserContent = params.userContent.trim();
+    const assistantMessage = this.buildTaskAssistantHistoryMessage(params.terminalEvent);
+    if (!normalizedUserContent || !assistantMessage) {
+      return null;
+    }
+
+    const nextSession = await this.sessionService.appendChatMessages(
+      params.sessionId,
+      [
+        {
+          role: 'user',
+          content: normalizedUserContent,
+          timestamp: new Date().toISOString(),
+          metadata: {
+            mode: 'task',
+          },
+        },
+        assistantMessage,
+      ],
+      {
+        modelId: params.modelId && params.modelId !== 'default' ? params.modelId : undefined,
+        title: this.buildSessionTitle(normalizedUserContent),
+      }
+    );
+
+    return this.buildSessionPatchEvent(params.sessionId, nextSession.session);
   }
 
   private async buildConversationMessages(
@@ -200,28 +267,67 @@ export class ChatConversationService {
     ];
   }
 
-  private async persistConversation(
-    sessionId: string,
-    userContent: string,
-    assistantContent: string,
-    modelId?: string
-  ): Promise<NonNullable<ChatSessionData['session']> | undefined> {
-    const nextSession = await this.sessionService.appendChatMessages(sessionId, [
+  private async persistConversation(params: {
+    sessionId: string;
+    userContent: string;
+    assistantContent: string;
+    rawAssistantContent: string;
+    modelId?: string;
+    thinkingEnabled: boolean;
+    usage?: unknown;
+    rateLimit?: unknown;
+  }): Promise<NonNullable<ChatSessionData['session']> | undefined> {
+    const assistantMetadata = this.buildChatAssistantMetadata({
+      rawAssistantContent: params.rawAssistantContent,
+      thinkingEnabled: params.thinkingEnabled,
+      usage: params.usage,
+      rateLimit: params.rateLimit,
+    });
+    const nextSession = await this.sessionService.appendChatMessages(params.sessionId, [
       {
         role: 'user',
-        content: userContent,
+        content: params.userContent,
         timestamp: new Date().toISOString(),
+        metadata: {
+          mode: 'chat',
+        },
       },
       {
         role: 'assistant',
-        content: assistantContent,
+        content: params.assistantContent,
         timestamp: new Date().toISOString(),
+        metadata: assistantMetadata,
       },
     ], {
-      modelId: modelId && modelId !== 'default' ? modelId : undefined,
-      title: this.buildSessionTitle(userContent),
+      modelId: params.modelId && params.modelId !== 'default' ? params.modelId : undefined,
+      title: this.buildSessionTitle(params.userContent),
     });
     return nextSession.session;
+  }
+
+  private buildChatAssistantMetadata(params: {
+    rawAssistantContent: string;
+    thinkingEnabled: boolean;
+    usage?: unknown;
+    rateLimit?: unknown;
+  }): Record<string, unknown> {
+    const metadata: Record<string, unknown> = {
+      mode: 'chat',
+      showThinking: params.thinkingEnabled,
+    };
+    const thoughtLogsSnapshot = params.thinkingEnabled
+      ? this.extractThinkingBlocks(params.rawAssistantContent)
+      : [];
+    if (thoughtLogsSnapshot.length > 0) {
+      metadata.thoughtLogsSnapshot = thoughtLogsSnapshot;
+    }
+    if (params.usage !== undefined) {
+      metadata.usage = params.usage;
+    }
+    if (params.rateLimit !== undefined) {
+      metadata.rateLimit = params.rateLimit;
+    }
+    return metadata;
   }
 
   private buildSessionPatchEvent(
@@ -231,7 +337,7 @@ export class ChatConversationService {
     return {
       type: StreamEventType.SESSION_PATCH,
       sessionId,
-      content: 'Session updated',
+      content: '',
       data: {
         title: session?.title,
         status: session?.status || 'active',
@@ -267,8 +373,177 @@ export class ChatConversationService {
       .join('\n');
   }
 
+  private extractThinkingBlocks(content: string): string[] {
+    const blocks: string[] = [];
+    const thinkTagRegex = /<think>([\s\S]*?)(?:<\/think>|$)/gi;
+    let match: RegExpExecArray | null;
+
+    while ((match = thinkTagRegex.exec(content)) !== null) {
+      const block = match[1]?.trim();
+      if (block) {
+        blocks.push(block);
+      }
+    }
+
+    return blocks;
+  }
+
+  private buildTaskAssistantHistoryMessage(
+    event: StreamEvent
+  ): ChatSessionData['history'][number] | null {
+    const content = event.content?.trim();
+    const data = this.asRecord(event.data);
+    const taskStatus = this.resolveTaskStatus(event, data);
+    if (!content || !taskStatus) {
+      return null;
+    }
+
+    const executionId = this.asString(data?.executionId);
+    const executionStatus = this.asString(data?.status) || taskStatus;
+    const hasBusinessResult =
+      typeof data?.hasBusinessResult === 'boolean' ? data.hasBusinessResult : taskStatus === 'completed';
+    const metadata: Record<string, unknown> = {
+      mode: 'task',
+      showThinking: false,
+      taskStatus,
+      executionStatus,
+      finalSummary: content,
+      hasBusinessResult,
+    };
+
+    if (executionId) {
+      metadata.executionId = executionId;
+    }
+    if (taskStatus === 'completed') {
+      metadata.finalResult = content;
+    }
+    if (taskStatus === 'failed') {
+      metadata.errorMessage = content;
+      metadata.failureReason = content;
+    }
+    if (data?.result !== undefined) {
+      metadata.finalResultData = data.result;
+    }
+    if (Array.isArray(data?.missingInputs)) {
+      metadata.missingInputs = data.missingInputs;
+    }
+
+    const downloadUrl = this.asString(data?.downloadUrl);
+    if (downloadUrl) {
+      metadata.downloadUrl = downloadUrl;
+    }
+
+    const temporalLink = this.asString(data?.temporalLink);
+    if (temporalLink) {
+      metadata.temporalLink = temporalLink;
+    }
+
+    return {
+      role: 'assistant',
+      content,
+      timestamp: new Date().toISOString(),
+      metadata,
+    };
+  }
+
+  private resolveTaskStatus(
+    event: StreamEvent,
+    data?: Record<string, unknown>
+  ): PersistedTaskStatus | null {
+    switch (event.type) {
+      case StreamEventType.WAITING_INPUT:
+        return 'waiting_input';
+      case StreamEventType.PENDING_APPROVAL:
+        return 'pending_approval';
+      case StreamEventType.HUMAN_CONTROL:
+        return 'human_control';
+      case StreamEventType.ERROR:
+        return 'failed';
+      case StreamEventType.RESULT: {
+        const explicitStatus = this.normalizeTaskStatus(
+          this.asString(data?.taskStatus) || this.asString(data?.status)
+        );
+        if (explicitStatus) {
+          return explicitStatus;
+        }
+        return 'completed';
+      }
+      default:
+        return null;
+    }
+  }
+
+  private normalizeTaskStatus(value?: string): PersistedTaskStatus | null {
+    switch (value) {
+      case 'running':
+      case 'waiting_input':
+      case 'pending_approval':
+      case 'human_control':
+      case 'completed':
+      case 'failed':
+        return value;
+      case 'succeeded':
+        return 'completed';
+      default:
+        return null;
+    }
+  }
+
+  private asRecord(value: unknown): Record<string, unknown> | undefined {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return undefined;
+    }
+    return value as Record<string, unknown>;
+  }
+
+  private asString(value: unknown): string | undefined {
+    return typeof value === 'string' && value.trim() ? value : undefined;
+  }
+
   private isThinkingEnabled(body: ChatRequestDTO): boolean {
     return body.config?.thinking !== false;
+  }
+
+  private async resolveReasoningConfig(
+    body: ChatRequestDTO,
+    modelId: string
+  ): Promise<ModelReasoningConfig> {
+    const requested = body.config?.reasoning === true || body.config?.thinking === true;
+    if (!requested) {
+      return { enabled: false };
+    }
+
+    const model = await this.modelService.getModel(modelId);
+    if (!model) {
+      return { enabled: false };
+    }
+
+    const config = (model.config || {}) as Record<string, unknown>;
+    const reasoningConfig =
+      typeof config.reasoning === 'object' && config.reasoning ? config.reasoning : null;
+    const explicitSupport =
+      config.supports_reasoning === true ||
+      (reasoningConfig &&
+        (reasoningConfig as Record<string, unknown>).supported === true);
+    const inferredSupport =
+      /^(o1|o3|o4|qwq)/i.test(model.name) ||
+      /(reasoner|reasoning|deepseek-r1)/i.test(model.name) ||
+      (model.provider === 'minimax' && /^MiniMax-M/i.test(model.name));
+    const enabled = explicitSupport || inferredSupport;
+    const effortValue =
+      (typeof config.reasoning_effort === 'string' ? config.reasoning_effort : undefined) ||
+      (reasoningConfig &&
+      typeof (reasoningConfig as Record<string, unknown>).effort === 'string'
+        ? (reasoningConfig as Record<string, unknown>).effort
+        : undefined);
+
+    return {
+      enabled,
+      effort:
+        effortValue === 'low' || effortValue === 'high' || effortValue === 'medium'
+          ? effortValue
+          : 'medium',
+    };
   }
 
   private resolvePreferredChatModelId(body: ChatRequestDTO): string {

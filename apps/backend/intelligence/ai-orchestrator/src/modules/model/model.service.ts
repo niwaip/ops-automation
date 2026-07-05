@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import {
   AIModelDTO,
   AIModelConfig,
+  ModelReasoningConfig,
   AIProviderConfigDTO,
   AIProviderSummaryDTO,
   CreateModelDTO,
@@ -1281,7 +1282,10 @@ export class ModelService implements OnModuleInit {
   async callModel(
     id: string,
     prompt: string,
-    _type: 'reasoning' | 'auxiliary' = 'reasoning'
+    _type: 'reasoning' | 'auxiliary' = 'reasoning',
+    options?: {
+      reasoning?: ModelReasoningConfig;
+    }
   ): Promise<LLMResponse> {
     const client = this.getClient(id);
     if (!client) {
@@ -1289,7 +1293,9 @@ export class ModelService implements OnModuleInit {
     }
 
     const messages = [{ role: 'user' as const, content: prompt }];
-    const result = await client.chatCompletion(messages);
+    const result = await client.chatCompletion(
+      options?.reasoning ? { messages, reasoning: options.reasoning } : messages
+    );
 
     // Strip thinking tags from MiniMax model response
     result.content = this.stripThinkingTags(result.content);
@@ -1306,6 +1312,7 @@ export class ModelService implements OnModuleInit {
     return content
       .replace(/<think>[\s\S]*?<\/think>/gi, '')
       .replace(/<think>[\s\S]*$/gi, '')
+      .replace(/<\/?think>/gi, '')
       .trim();
   }
 
@@ -1335,14 +1342,17 @@ export class ModelService implements OnModuleInit {
   async callModelStreamWithMessages(
     id: string,
     messages: ChatMessage[],
-    onChunk: (chunk: string) => void
+    onChunk: (chunk: string) => void,
+    options?: {
+      reasoning?: ModelReasoningConfig;
+    }
   ): Promise<LLMResponse> {
     const client = this.getClient(id);
     if (!client) {
       throw new Error(`No client initialized for model ${id}`);
     }
 
-    const result = await client.chatCompletionStream(messages, onChunk);
+    const result = await client.chatCompletionStream(messages, onChunk, options?.reasoning);
     result.content = this.stripThinkingTags(result.content);
 
     return result;

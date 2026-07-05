@@ -528,8 +528,9 @@
 
 .chat-message-markdown {
   font-size: 14px;
-  line-height: 1.55;
+  line-height: 1.48;
   color: inherit;
+  white-space: normal;
 }
 
 .chat-message-markdown > :first-child {
@@ -543,8 +544,8 @@
 .chat-message-markdown h1,
 .chat-message-markdown h2,
 .chat-message-markdown h3 {
-  margin-top: 12px;
-  margin-bottom: 6px;
+  margin-top: 10px;
+  margin-bottom: 5px;
   font-weight: 600;
   color: inherit;
 }
@@ -554,7 +555,7 @@
 .chat-message-markdown h3 { font-size: 15px; }
 
 .chat-message-markdown p {
-  margin: 2px 0 8px;
+  margin: 0 0 6px;
 }
 
 .chat-message-markdown p:last-child {
@@ -563,17 +564,34 @@
 
 .chat-message-markdown ul,
 .chat-message-markdown ol {
-  margin: 2px 0 8px;
-  padding-left: 22px;
+  margin: 0 0 6px;
+  padding-left: 20px;
 }
 
 .chat-message-markdown li {
-  margin: 1px 0;
+  margin: 0;
+  line-height: 1.42;
+}
+
+.chat-message-markdown li + li {
+  margin-top: 2px;
+}
+
+.chat-message-markdown li > p {
+  margin-bottom: 3px;
+}
+
+.chat-message-markdown ul ul,
+.chat-message-markdown ul ol,
+.chat-message-markdown ol ul,
+.chat-message-markdown ol ol {
+  margin-top: 2px;
+  margin-bottom: 2px;
 }
 
 .chat-message-markdown blockquote {
-  margin: 8px 0;
-  padding: 10px 14px;
+  margin: 6px 0;
+  padding: 8px 12px;
   border-left: 3px solid rgba(99, 102, 241, 0.38);
   background: rgba(99, 102, 241, 0.05);
   border-radius: 12px;
@@ -739,6 +757,10 @@
   color: #e2e8f0;
 }
 
+[data-theme='dark'] .chat-thoughts-summary {
+  color: #e2e8f0;
+}
+
 [data-theme='dark'] .chat-progress-running-indicator {
   background: rgba(59, 130, 246, 0.2);
   color: #93c5fd;
@@ -746,7 +768,7 @@
 
 .chat-thoughts-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   padding: 10px 12px;
   cursor: pointer;
@@ -757,6 +779,20 @@
 
 .chat-thoughts-header:hover {
   background: rgba(99, 102, 241, 0.06);
+}
+
+.chat-thoughts-header-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.chat-thoughts-header-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .chat-thoughts-title {
@@ -770,6 +806,13 @@
 
 .chat-thoughts-content {
   padding: 0 12px 10px;
+}
+
+.chat-thoughts-summary {
+  color: #334155;
+  font-size: 13px;
+  line-height: 1.7;
+  white-space: pre-wrap;
 }
 
 .chat-progress-content {

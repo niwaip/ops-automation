@@ -95,7 +95,7 @@ services:
     container_name: ops-session-broker
     working_dir: /app
     command: >
-      sh -c "npm config set registry https://registry.npmmirror.com
+      sh -c "npm config set registry https://registry.npmjs.org
       && npm config set fetch-retries 5
       && npm config set fetch-retry-mintimeout 20000
       && npm config set fetch-retry-maxtimeout 120000
@@ -185,7 +185,7 @@ services:
     image: ${DOCKER_REGISTRY:-}node:20-bullseye
     container_name: ops-browser-worker
     working_dir: /app
-    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && npm run dev"
+    command: sh -c "npm config set registry https://registry.npmmirror.com && rm -rf /app/node_modules/* /app/node_modules/.[!.]* /app/node_modules/..?* 2>/dev/null || true && npm install --legacy-peer-deps --include=dev --ignore-scripts && npm run dev"
     environment:
       - NODE_ENV=development
       - PORT=${BROWSER_WORKER_PORT:-3004}
@@ -248,7 +248,7 @@ services:
     container_name: ops-browser-template
     working_dir: /app
     command: >
-      sh -c "npm config set registry https://registry.npmmirror.com
+      sh -c "npm config set registry https://registry.npmjs.org
       && npm config set fetch-retries 5
       && npm config set fetch-retry-mintimeout 20000
       && npm config set fetch-retry-maxtimeout 120000
@@ -298,7 +298,7 @@ services:
     container_name: ops-browser-semantics
     working_dir: /app
     command: >
-      sh -c "npm config set registry https://registry.npmmirror.com
+      sh -c "npm config set registry https://registry.npmjs.org
       && npm config set fetch-retries 5
       && npm config set fetch-retry-mintimeout 20000
       && npm config set fetch-retry-maxtimeout 120000
@@ -347,7 +347,7 @@ services:
     container_name: ops-ai-orchestrator
     working_dir: /app
     command: >
-      sh -c "npm config set registry https://registry.npmmirror.com
+      sh -c "npm config set registry https://registry.npmjs.org
       && npm config set fetch-retries 5
       && npm config set fetch-retry-mintimeout 20000
       && npm config set fetch-retry-maxtimeout 120000
@@ -416,7 +416,7 @@ services:
     container_name: ops-report
     working_dir: /app
     command: >
-      sh -c "npm config set registry https://registry.npmmirror.com
+      sh -c "npm config set registry https://registry.npmjs.org
       && npm config set fetch-retries 5
       && npm config set fetch-retry-mintimeout 20000
       && npm config set fetch-retry-maxtimeout 120000

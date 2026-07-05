@@ -6,7 +6,7 @@ import {
   SendOutlined,
   StopOutlined,
 } from '@ant-design/icons';
-import { Button, Input, Select, Segmented, Typography, message as antdMessage } from 'antd';
+import { Button, Input, Select, Segmented, Switch, Typography, message as antdMessage } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { TextAreaRef } from 'antd/es/input/TextArea';
 import type { AIModel } from '@ops/user-core';
@@ -37,6 +37,20 @@ const normalizeSpeechLanguage = (value?: string | null): string => {
     return 'ja-JP';
   }
   return 'zh-CN';
+};
+
+const supportsNativeReasoning = (model?: AIModel | null): boolean => {
+  if (!model) {
+    return false;
+  }
+
+  return (
+    model.config?.supports_reasoning === true ||
+    model.config?.reasoning?.supported === true ||
+    (model.provider === 'minimax' && /^MiniMax-M/i.test(model.name)) ||
+    /^(o1|o3|o4|qwq)/i.test(model.name) ||
+    /(reasoner|reasoning|deepseek-r1)/i.test(model.name)
+  );
 };
 
 const resolveAiPath = (path: string): string => {
@@ -88,6 +102,11 @@ interface UserChatComposerProps {
   onNewSession: () => void;
   chatMode: 'chat' | 'task';
   onChatModeChange: (mode: 'chat' | 'task') => void;
+  enableThinking: boolean;
+  onEnableThinkingChange: (enabled: boolean) => void;
+  thinkingLabel: string;
+  thinkingHint: string;
+  nativeReasoningSupported: boolean;
   selectedModel?: string;
   availableModels: AIModel[];
   onModelChange: (modelId: string) => void;
@@ -106,6 +125,11 @@ export function UserChatComposer(props: UserChatComposerProps) {
     onNewSession,
     chatMode,
     onChatModeChange,
+    enableThinking,
+    onEnableThinkingChange,
+    thinkingLabel,
+    thinkingHint,
+    nativeReasoningSupported,
     selectedModel,
     availableModels,
     onModelChange,
@@ -216,7 +240,7 @@ export function UserChatComposer(props: UserChatComposerProps) {
         <div className="user-chat-input-editor">
           <TextArea
             ref={inputRef}
-            rows={2}
+            autoSize={{ minRows: 1, maxRows: 6 }}
             value={draft}
             onChange={(event) => onDraftChange(event.target.value)}
             placeholder={placeholder}
@@ -240,6 +264,20 @@ export function UserChatComposer(props: UserChatComposerProps) {
               { label: '任务', value: 'task', icon: <RobotOutlined /> },
             ]}
           />
+          <div className="user-chat-input-controls">
+            <div className="user-chat-control-item" title={thinkingHint}>
+              <span className="user-chat-control-label">{thinkingLabel}</span>
+              {chatMode === 'chat' && nativeReasoningSupported ? (
+                <span className="user-chat-control-badge">原生</span>
+              ) : null}
+              <Switch
+                size="small"
+                checked={enableThinking}
+                onChange={onEnableThinkingChange}
+                className="user-chat-input-dot-switch"
+              />
+            </div>
+          </div>
           <Button
             size="small"
             onClick={onNewSession}
@@ -251,7 +289,7 @@ export function UserChatComposer(props: UserChatComposerProps) {
           <Select
             size="small"
             className="user-chat-input-model-select"
-            style={{ minWidth: 220 }}
+            style={{ minWidth: 188 }}
             value={selectedModel}
             placeholder="模型策略"
             onChange={onModelChange}
@@ -260,43 +298,47 @@ export function UserChatComposer(props: UserChatComposerProps) {
             options={[
               { label: 'Auto / 系统默认', value: 'default' },
               ...availableModels.map((model) => ({
-                label: `${model.name} (${model.provider})`,
+                label: supportsNativeReasoning(model)
+                  ? `${model.name} (${model.provider}) · 推理`
+                  : `${model.name} (${model.provider})`,
                 value: model.id,
               })),
             ]}
-          />
-          <Select
-            size="small"
-            value={speechLanguage}
-            onChange={setSpeechLanguage}
-            style={{ width: 104 }}
-            options={SPEECH_LANGUAGE_OPTIONS}
-            disabled={disabled || isTranscribing || isListening || !speechSupported}
-            className="user-chat-input-language-select"
           />
           <div className="user-chat-input-toolbar-spacer" />
           <Typography.Text type="secondary" className="user-chat-input-shortcut-hint">
             Enter 发送，Shift + Enter 换行
           </Typography.Text>
-          <Button
-            size="small"
-            icon={<AudioOutlined />}
-            onClick={() => {
-              void handleSpeechToggle();
-            }}
-            disabled={disabled || (!speechSupported && !isTranscribing)}
-            loading={isTranscribing}
-            title={
-              speechSupported
-                ? isListening
-                  ? '停止语音输入'
-                  : '开始语音输入'
-                : '当前浏览器不支持语音输入'
-            }
-            className={`user-chat-input-voice-btn ${isListening ? 'active' : ''}`}
-          >
-            {isListening ? '录音中' : isTranscribing ? '转写中' : '语音'}
-          </Button>
+          <div className="user-chat-input-voice-group">
+            <Select
+              size="small"
+              value={speechLanguage}
+              onChange={setSpeechLanguage}
+              style={{ width: 92 }}
+              options={SPEECH_LANGUAGE_OPTIONS}
+              disabled={disabled || isTranscribing || isListening || !speechSupported}
+              className="user-chat-input-language-select"
+            />
+            <Button
+              size="small"
+              icon={<AudioOutlined />}
+              onClick={() => {
+                void handleSpeechToggle();
+              }}
+              disabled={disabled || (!speechSupported && !isTranscribing)}
+              loading={isTranscribing}
+              title={
+                speechSupported
+                  ? isListening
+                    ? '停止语音输入'
+                    : '开始语音输入'
+                  : '当前浏览器不支持语音输入'
+              }
+              className={`user-chat-input-voice-btn ${isListening ? 'active' : ''}`}
+            >
+              {isListening ? '录音中' : isTranscribing ? '转写中' : '语音'}
+            </Button>
+          </div>
           <Button
             type="primary"
             size="small"

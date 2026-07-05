@@ -31,3 +31,23 @@ export interface SkillConfig {
   publishedDeploymentStatus?: string | null;
   publishedSourceType?: string | null;
 }
+
+export type SkillAccessStatus = 'authorized' | 'requested' | 'unauthorized';
+
+export interface SkillAccessRequest {
+  id: string;
+  skillId: string;
+  requesterUserId: string;
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  reason?: string | null;
+  responseNote?: string | null;
+  processedAt?: string | null;
+  processedBy?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PublishedSkillCatalogItem extends SkillConfig {
+  accessStatus: SkillAccessStatus;
+  accessRequest?: SkillAccessRequest | null;
+}

@@ -11,6 +11,7 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   HttpException,
   HttpStatus,
   UseGuards,
@@ -57,6 +58,53 @@ export class SkillController {
     // 只返回用户有权限访问的 Skills
     const skills = await this.skillService.listSkillsForUser(userId);
     return { skills };
+  }
+
+  @Get('catalog')
+  async listPublishedSkillCatalog(@Request() req: any) {
+    const userId = req.user.id;
+    const skills = await this.skillService.listPublishedSkillCatalogForUser(userId);
+    return { skills };
+  }
+
+  @Get('access-requests')
+  @Roles('admin')
+  async listSkillAccessRequests(
+    @Query('skillId') skillId?: string,
+    @Query('status') status?: 'pending' | 'approved' | 'rejected' | 'cancelled'
+  ) {
+    const requests = await this.skillService.listSkillAccessRequests({ skillId, status });
+    return { requests };
+  }
+
+  @Post('access-requests/:requestId/approve')
+  @Roles('admin')
+  async approveSkillAccessRequest(
+    @Param('requestId') requestId: string,
+    @Body() body: { responseNote?: string },
+    @Request() req: any
+  ) {
+    const request = await this.skillService.approveSkillAccessRequest(
+      requestId,
+      req.user.id,
+      body?.responseNote
+    );
+    return { request };
+  }
+
+  @Post('access-requests/:requestId/reject')
+  @Roles('admin')
+  async rejectSkillAccessRequest(
+    @Param('requestId') requestId: string,
+    @Body() body: { responseNote?: string },
+    @Request() req: any
+  ) {
+    const request = await this.skillService.rejectSkillAccessRequest(
+      requestId,
+      req.user.id,
+      body?.responseNote
+    );
+    return { request };
   }
 
   /**
@@ -211,6 +259,20 @@ export class SkillController {
     const grantedBy = req.user.id;
     const permission = await this.skillService.grantSkillToRole(skillId, body.roleId, grantedBy);
     return { permission };
+  }
+
+  @Post(':id/access-requests')
+  async createSkillAccessRequest(
+    @Param('id') skillId: string,
+    @Body() body: { reason?: string },
+    @Request() req: any
+  ) {
+    const request = await this.skillService.createSkillAccessRequest(
+      req.user.id,
+      skillId,
+      body?.reason
+    );
+    return { request };
   }
 
   /**

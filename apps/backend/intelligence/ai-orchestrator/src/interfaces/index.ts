@@ -34,6 +34,11 @@ export interface OpenAICompatibleConfig {
   anthropicVersion?: string;
 }
 
+export interface ModelReasoningConfig {
+  enabled?: boolean;
+  effort?: 'low' | 'medium' | 'high';
+}
+
 /**
  * LLM Token Usage
  */
@@ -109,6 +114,9 @@ export interface ModelInvocationConfig {
 export interface AIModelConfig {
   display_name?: string;
   description?: string;
+  supports_reasoning?: boolean;
+  reasoning_effort?: 'low' | 'medium' | 'high';
+  reasoning?: ModelReasoningConfig;
   default?: boolean;
   routing_tags?: string[];
   input?: string[];

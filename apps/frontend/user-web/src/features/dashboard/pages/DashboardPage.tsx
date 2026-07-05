@@ -1,4 +1,13 @@
-import { ArrowRightOutlined, InfoCircleOutlined, PlusOutlined, RobotOutlined } from '@ant-design/icons';
+import {
+  ArrowRightOutlined,
+  CheckOutlined,
+  ClockCircleOutlined,
+  EyeOutlined,
+  InfoCircleOutlined,
+  PlayCircleOutlined,
+  PlusOutlined,
+  RobotOutlined,
+} from '@ant-design/icons';
 import {
   App,
   Alert,
@@ -19,16 +28,20 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from 'react-query';
 import { useNavigate } from 'react-router-dom';
 import {
-  StreamEventType,
   EXECUTION_STATUS_LABELS_ZH,
   type ChatRequest,
   type ExecutionDto,
   type ExecutionStatus,
 } from '@ops/user-core';
 import { authStore } from '@/adapters/auth/authStore';
-import { browserStreamingTransport } from '@/adapters/streaming/browserStreamingTransport';
-import { apiClient, chatApi, executionApi, scheduleApi, skillApi } from '../../../api';
+import { apiClient, executionApi, runtimeConfig, scheduleApi, skillApi } from '../../../api';
 import { useChatStore } from '../../chat';
+import SharedMessageContentRenderer from '@chat-web/components/MessageContentRenderer';
+import {
+  loadWorkbenchHandledExecutions,
+  saveWorkbenchHandledExecutions,
+  type WorkbenchHandledExecutionMap,
+} from '../lib/workbenchHandledExecutionStorage';
 import {
   loadWorkbenchTodos,
   saveWorkbenchTodos,
@@ -47,6 +60,16 @@ const ACTIONABLE_STATUSES: ExecutionStatus[] = [
   'waiting_input',
   'failed',
 ];
+
+const PRIORITY_PANEL_STATUSES: ExecutionStatus[] = [...ACTIONABLE_STATUSES, 'running'];
+
+const WORKBENCH_EXECUTION_TAG_COLORS: Partial<Record<ExecutionStatus, string>> = {
+  human_control: 'gold',
+  pending_approval: 'warning',
+  waiting_input: 'orange',
+  failed: 'error',
+  running: 'processing',
+};
 
 const WORKBENCH_DATE_FORMATTER = new Intl.DateTimeFormat('zh-CN', {
   month: '2-digit',
@@ -101,6 +124,85 @@ interface SummaryGenerateState {
   generatedAt?: string;
   error?: string;
 }
+
+const asRecord = (value: unknown): Record<string, unknown> | undefined => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return undefined;
+  }
+  return value as Record<string, unknown>;
+};
+
+const asTrimmedString = (value: unknown): string => {
+  if (typeof value !== 'string') {
+    return '';
+  }
+  return value.trim();
+};
+
+const extractWorkbenchSummaryContent = (
+  event: { content: string; data?: unknown },
+  reducedContentCandidates: Array<string | undefined>
+): string => {
+  const data = asRecord(event.data);
+  const normalizedResult = asRecord(data?.normalizedResult);
+  const actionInput = asRecord(data?.actionInput);
+
+  const candidates = [
+    ...reducedContentCandidates,
+    asTrimmedString(actionInput?.answer),
+    asTrimmedString(actionInput?.finalAnswer),
+    asTrimmedString(actionInput?.output),
+    asTrimmedString(data?.resultSummary),
+    asTrimmedString(data?.resultTitle),
+    asTrimmedString(data?.failureReason),
+    asTrimmedString(normalizedResult?.detailText),
+    asTrimmedString(normalizedResult?.body),
+    asTrimmedString(normalizedResult?.summary),
+    asTrimmedString(normalizedResult?.output),
+    asTrimmedString(event.content),
+  ];
+
+  return candidates.find((value): value is string => typeof value === 'string' && value.length > 0) || '';
+};
+
+const resolveWorkbenchAiStreamUrl = (): string => {
+  const baseUrl = (runtimeConfig.aiApiBaseUrl?.trim() || '/api/ai').replace(/\/+$/, '');
+  return `${baseUrl}/chat/stream`;
+};
+
+const extractWorkbenchSummaryFromSse = (payload: string): string => {
+  let finalContent = '';
+
+  for (const chunk of payload.split('\n\n')) {
+    for (const line of chunk.split('\n')) {
+      if (!line.startsWith('data: ')) {
+        continue;
+      }
+
+      try {
+        const parsed = JSON.parse(line.slice(6)) as Record<string, unknown>;
+        if (parsed.type === 'done') {
+          continue;
+        }
+
+        const nextContent = extractWorkbenchSummaryContent(
+          {
+            content: typeof parsed.content === 'string' ? parsed.content : '',
+            data: parsed.data,
+          },
+          []
+        );
+        if (nextContent) {
+          finalContent = nextContent;
+        }
+      } catch {
+        continue;
+      }
+    }
+  }
+
+  return finalContent.trim();
+};
 
 const summarizeCronExpression = (cronExpression?: string) => {
   if (!cronExpression) {
@@ -265,8 +367,15 @@ const buildExecutionSummaryLines = (items: ExecutionDto[]): string[] =>
 export function DashboardPage() {
   const { message } = App.useApp();
   const navigate = useNavigate();
-  const openWithPrompt = useChatStore((state) => state.openWithPrompt);
-  const [todos, setTodos] = useState<WorkbenchTodo[]>([]);
+  const createSession = useChatStore((state) => state.createSession);
+  const setOpen = useChatStore((state) => state.setOpen);
+  const setChatMode = useChatStore((state) => state.setChatMode);
+  const setDraftMessage = useChatStore((state) => state.setDraftMessage);
+  const setDraftExecutionId = useChatStore((state) => state.setDraftExecutionId);
+  const [handledExecutions, setHandledExecutions] = useState<WorkbenchHandledExecutionMap>(() =>
+    loadWorkbenchHandledExecutions()
+  );
+  const [todos, setTodos] = useState<WorkbenchTodo[]>(() => loadWorkbenchTodos());
   const [todoDraft, setTodoDraft] = useState('');
   const autoGeneratedSummaryRef = useRef<Record<WorkbenchSummaryPeriod, boolean>>({
     daily: false,
@@ -299,8 +408,8 @@ export function DashboardPage() {
   });
 
   useEffect(() => {
-    setTodos(loadWorkbenchTodos());
-  }, []);
+    saveWorkbenchHandledExecutions(handledExecutions);
+  }, [handledExecutions]);
 
   useEffect(() => {
     saveWorkbenchTodos(todos);
@@ -342,6 +451,17 @@ export function DashboardPage() {
         executions.filter((item) => ACTIONABLE_STATUSES.includes(item.status))
       ),
     [executions]
+  );
+  const priorityQueue = useMemo(
+    () =>
+      sortByExecutionTimeDesc(
+        executions.filter((item) => PRIORITY_PANEL_STATUSES.includes(item.status))
+      ),
+    [executions]
+  );
+  const priorityQueueDisplay = useMemo(
+    () => priorityQueue.filter((item) => !handledExecutions[item.id]),
+    [handledExecutions, priorityQueue]
   );
   const recentSuccessfulExecutions = useMemo(
     () => executions.filter((item) => item.status === 'succeeded').slice(0, 5),
@@ -398,9 +518,13 @@ export function DashboardPage() {
   };
 
   const launchAiAssistant = useCallback((prompt: string) => {
-    openWithPrompt(prompt, 'task');
+    createSession();
+    setChatMode('task');
+    setDraftMessage(prompt);
+    setDraftExecutionId(null);
+    setOpen(true);
     void message.success('已为你打开 AI 助手并填入提示词');
-  }, [message, openWithPrompt]);
+  }, [createSession, message, setChatMode, setDraftExecutionId, setDraftMessage, setOpen]);
 
   const getAccessToken = useCallback(async (): Promise<string | null | undefined> => {
     return (await apiClient.ensureFreshAccessToken()) || authStore.getState().accessToken;
@@ -427,7 +551,6 @@ export function DashboardPage() {
           throw new Error('当前登录态已失效，请重新登录后重试');
         }
 
-        let finalContent = '';
         const request: ChatRequest = {
           message: prompt,
           config: {
@@ -436,39 +559,20 @@ export function DashboardPage() {
           },
         };
 
-        const streamHandle = chatApi.stream(browserStreamingTransport, token, request, (event) => {
-          const data =
-            event.data && typeof event.data === 'object' && !Array.isArray(event.data)
-              ? (event.data as Record<string, unknown>)
-              : {};
-          if (event.type === StreamEventType.RESULT) {
-            finalContent =
-              event.content ||
-              (typeof data.resultSummary === 'string' ? data.resultSummary : '') ||
-              (typeof data.resultTitle === 'string' ? data.resultTitle : '') ||
-              finalContent;
-            return;
-          }
-
-          if (event.type === StreamEventType.ERROR) {
-            finalContent =
-              (typeof data.failureReason === 'string' ? data.failureReason : '') ||
-              event.content ||
-              finalContent;
-            return;
-          }
-
-          if (
-            typeof data.resultSummary === 'string' &&
-            data.resultSummary.trim() &&
-            finalContent.trim().length === 0
-          ) {
-            finalContent = data.resultSummary;
-          }
+        const response = await fetch(resolveWorkbenchAiStreamUrl(), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(request),
         });
-        await streamHandle.promise;
+        if (!response.ok) {
+          const errorText = await response.text().catch(() => '');
+          throw new Error(errorText || `HTTP ${response.status}`);
+        }
 
-        const normalizedContent = finalContent.trim();
+        const normalizedContent = extractWorkbenchSummaryFromSse(await response.text());
         if (!normalizedContent) {
           throw new Error('AI 没有返回可展示的总结内容');
         }
@@ -530,6 +634,15 @@ export function DashboardPage() {
         item.id === id ? { ...item, completed, updatedAt: new Date().toISOString() } : item
       )
     );
+  };
+
+  const handleIgnorePriorityItem = (executionId: string) => {
+    const handledAt = new Date().toISOString();
+    setHandledExecutions((current) => ({
+      ...current,
+      [executionId]: handledAt,
+    }));
+    void message.success('已标记为已处理');
   };
 
   const dailySummaryPrompt = useMemo((): string => {
@@ -607,49 +720,74 @@ export function DashboardPage() {
               </div>
               <div className="workbench-summary-strip">
                 <div className="workbench-summary-item is-danger">
-                  <span className="workbench-summary-key">待处理</span>
-                  <span className="workbench-summary-number">{manualQueue.length}</span>
+                  <div className="workbench-summary-icon">
+                    <ClockCircleOutlined />
+                  </div>
+                  <div className="workbench-summary-body">
+                    <span className="workbench-summary-key">待处理</span>
+                    <span className="workbench-summary-number">{manualQueue.length}</span>
+                  </div>
                 </div>
                 <div className="workbench-summary-item is-primary">
-                  <span className="workbench-summary-key">今日完成</span>
-                  <span className="workbench-summary-number">{todayCompletedExecutions.length}</span>
+                  <div className="workbench-summary-icon">
+                    <CheckOutlined />
+                  </div>
+                  <div className="workbench-summary-body">
+                    <span className="workbench-summary-key">今日完成</span>
+                    <span className="workbench-summary-number">{todayCompletedExecutions.length}</span>
+                  </div>
                 </div>
                 <div className="workbench-summary-item is-accent">
-                  <span className="workbench-summary-key">本周完成</span>
-                  <span className="workbench-summary-number">{weekCompletedExecutions.length}</span>
+                  <div className="workbench-summary-icon">
+                    <ArrowRightOutlined />
+                  </div>
+                  <div className="workbench-summary-body">
+                    <span className="workbench-summary-key">本周完成</span>
+                    <span className="workbench-summary-number">{weekCompletedExecutions.length}</span>
+                  </div>
                 </div>
                 <div className="workbench-summary-item is-neutral">
-                  <span className="workbench-summary-key-row">
-                    <span className="workbench-summary-key">定期执行</span>
-                    <Popover
-                      trigger={['hover']}
-                      placement="bottomLeft"
-                      overlayClassName="workbench-summary-popover"
-                      content={
-                        upcomingSchedules.length === 0 ? (
-                          <Typography.Text type="secondary">当前没有启用中的定期任务</Typography.Text>
-                        ) : (
-                          <div className="workbench-summary-popover-list">
-                            {upcomingSchedules.map((item) => (
-                              <div className="workbench-summary-popover-item" key={item.id}>
-                                <Typography.Text strong>{sanitizeDisplayName(item.name)}</Typography.Text>
-                                <Typography.Text type="secondary">
-                                  {summarizeCronExpression(item.cronExpression)} · {formatDateTime(item.nextRunAt)}
-                                </Typography.Text>
-                              </div>
-                            ))}
-                          </div>
-                        )
-                      }
-                    >
-                      <InfoCircleOutlined className="workbench-summary-tip" />
-                    </Popover>
-                  </span>
-                  <span className="workbench-summary-number">{activeSchedules.length}</span>
+                  <div className="workbench-summary-icon">
+                    <PlayCircleOutlined />
+                  </div>
+                  <div className="workbench-summary-body">
+                    <span className="workbench-summary-key-row">
+                      <span className="workbench-summary-key">定期执行</span>
+                      <Popover
+                        trigger={['hover']}
+                        placement="bottomLeft"
+                        overlayClassName="workbench-summary-popover"
+                        content={
+                          upcomingSchedules.length === 0 ? (
+                            <Typography.Text type="secondary">当前没有启用中的定期任务</Typography.Text>
+                          ) : (
+                            <div className="workbench-summary-popover-list">
+                              {upcomingSchedules.map((item) => (
+                                <div className="workbench-summary-popover-item" key={item.id}>
+                                  <Typography.Text strong>{sanitizeDisplayName(item.name)}</Typography.Text>
+                                  <Typography.Text type="secondary">
+                                    {summarizeCronExpression(item.cronExpression)} · {formatDateTime(item.nextRunAt)}
+                                  </Typography.Text>
+                                </div>
+                              ))}
+                            </div>
+                          )
+                        }
+                      >
+                        <InfoCircleOutlined className="workbench-summary-tip" />
+                      </Popover>
+                    </span>
+                    <span className="workbench-summary-number">{activeSchedules.length}</span>
+                  </div>
                 </div>
                 <div className="workbench-summary-item is-success">
-                  <span className="workbench-summary-key">待办</span>
-                  <span className="workbench-summary-number">{todoSummary.pending}</span>
+                  <div className="workbench-summary-icon">
+                    <PlusOutlined />
+                  </div>
+                  <div className="workbench-summary-body">
+                    <span className="workbench-summary-key">待办</span>
+                    <span className="workbench-summary-number">{todoSummary.pending}</span>
+                  </div>
                 </div>
               </div>
             </Space>
@@ -658,7 +796,7 @@ export function DashboardPage() {
       </Card>
 
       <Row gutter={[20, 20]} className="workbench-layout">
-        <Col xs={24} md={12} className="workbench-column">
+        <Col xs={24} md={10} className="workbench-column">
           <Space direction="vertical" size={20} style={{ width: '100%' }}>
             <Card
               className="workbench-panel"
@@ -667,40 +805,71 @@ export function DashboardPage() {
                   <Typography.Text strong className="workbench-panel-title">
                     优先处理
                   </Typography.Text>
-                  <Typography.Text className="workbench-panel-subtitle">
-                    先处理人工接管、审批阻塞与失败执行，减少链路积压。
-                  </Typography.Text>
                 </div>
               }
               extra={
                 <Button type="link" className="workbench-action-button" onClick={() => navigate('/executions')}>
-                  查看全部执行
+                  查看全部
                 </Button>
               }
             >
-              {manualQueue.length === 0 ? (
-                <Empty description="当前没有待人工处理或失败记录" />
+              {priorityQueueDisplay.length === 0 ? (
+                <Empty description="当前没有待人工处理、失败或执行中的记录" />
               ) : (
                 <div className="workbench-queue-list">
-                  {manualQueue.map((item) => (
-                    <div
-                      key={item.id}
-                      className={`workbench-queue-item${item.status === 'human_control' || item.status === 'failed' ? ' is-priority' : ''}`}
-                    >
-                      <div className="workbench-queue-row">
-                        <Typography.Paragraph className="workbench-queue-desc strong" style={{ margin: 0 }}>
-                          {getExecutionDisplayDescription(item)}
-                        </Typography.Paragraph>
-                        <Button
-                          type="primary"
-                          className="workbench-action-button"
-                          onClick={() => navigate(`/executions/${item.id}`)}
-                        >
-                          处理
-                        </Button>
+                  {priorityQueueDisplay.map((item) => {
+                    return (
+                      <div
+                        key={item.id}
+                          className={`workbench-queue-item${item.status === 'human_control' || item.status === 'failed' ? ' is-priority' : ''}`}
+                      >
+                        <div className="workbench-queue-row">
+                          <div className="workbench-queue-main">
+                            <Typography.Paragraph
+                              className="workbench-queue-desc strong"
+                              style={{ margin: 0 }}
+                              ellipsis={{
+                                rows: 2,
+                                tooltip: getExecutionDisplayDescription(item),
+                              }}
+                            >
+                              {getExecutionDisplayDescription(item)}
+                            </Typography.Paragraph>
+                            <Space size={[6, 6]} wrap className="workbench-queue-meta">
+                                <Tag color={WORKBENCH_EXECUTION_TAG_COLORS[item.status]}>
+                                  {EXECUTION_STATUS_LABELS_ZH[item.status] || item.status}
+                              </Tag>
+                              <Typography.Text type="secondary">
+                                {getSkillDisplayName(item.skillId)}
+                              </Typography.Text>
+                            </Space>
+                          </div>
+                          <div className="workbench-queue-actions">
+                            <Button
+                              type="primary"
+                              size="small"
+                              className="workbench-action-button workbench-queue-action"
+                                icon={<EyeOutlined />}
+                                title="详细"
+                                aria-label="详细"
+                              onClick={() => navigate(`/executions/${item.id}`)}
+                              />
+                              <Button
+                                size="small"
+                                className="workbench-action-button workbench-queue-action"
+                                icon={<CheckOutlined />}
+                                title="忽略"
+                                aria-label="忽略"
+                                onClick={() => handleIgnorePriorityItem(item.id)}
+                              />
+                              <Typography.Text type="secondary" className="workbench-queue-time">
+                                {formatDateTime(getExecutionDisplayTime(item))}
+                              </Typography.Text>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </Card>
@@ -712,14 +881,11 @@ export function DashboardPage() {
                   <Typography.Text strong className="workbench-panel-title">
                     最近完成
                   </Typography.Text>
-                  <Typography.Text className="workbench-panel-subtitle">
-                    查看最近正常处理完成的记录，快速回看结果与上下文。
-                  </Typography.Text>
                 </div>
               }
               extra={
                 <Button type="link" className="workbench-action-button" onClick={() => navigate('/executions')}>
-                  进入执行列表
+                  查看列表
                 </Button>
               }
             >
@@ -728,46 +894,22 @@ export function DashboardPage() {
               ) : (
                 <div className="workbench-history-grid">
                   {recentSuccessfulExecutions.map((item) => (
-                    <Popover
-                      key={item.id}
-                      trigger={['hover']}
-                      placement="topLeft"
-                      overlayClassName="workbench-history-popover"
-                      content={
-                        <Space direction="vertical" size={10} style={{ maxWidth: 360 }}>
-                          <Typography.Text strong>{getExecutionTitle(item)}</Typography.Text>
-                          <Typography.Paragraph style={{ margin: 0 }}>
-                            {getExecutionDisplayDescription(item)}
-                          </Typography.Paragraph>
-                          <div className="workbench-history-meta">
-                            {item.skillId ? (
-                              <Tag bordered={false}>技能：{getSkillDisplayName(item.skillId)}</Tag>
-                            ) : null}
-                            <Tag bordered={false}>完成于 {formatDateTime(getExecutionDisplayTime(item))}</Tag>
-                          </div>
-                          <Button
-                            type="link"
-                            className="workbench-action-button"
-                            icon={<ArrowRightOutlined />}
-                            onClick={() => navigate(`/executions/${item.id}`)}
-                            style={{ paddingInline: 0 }}
-                          >
-                            查看详情
-                          </Button>
-                        </Space>
-                      }
-                    >
-                      <div className="workbench-history-tile">
-                        <Typography.Text strong>{compactText(getExecutionTitle(item), 20)}</Typography.Text>
-                        <div className="workbench-history-preview">
-                          {compactText(getExecutionDisplayDescription(item), 32)}
-                        </div>
-                        <div className="workbench-history-meta compact">
-                          <span>{formatDateTime(getExecutionDisplayTime(item))}</span>
-                          <span>已完成</span>
-                        </div>
+                    <div key={item.id} className="workbench-history-tile">
+                      <div className="workbench-history-preview">
+                        {compactText(getExecutionDisplayDescription(item), 32)}
                       </div>
-                    </Popover>
+                      <div className="workbench-history-meta compact">
+                        <span>{formatDateTime(getExecutionDisplayTime(item))}</span>
+                        <Button
+                          type="link"
+                          size="small"
+                          className="workbench-history-detail-button"
+                          onClick={() => navigate(`/executions/${item.id}`)}
+                        >
+                          查看详细
+                        </Button>
+                      </div>
+                    </div>
                   ))}
                 </div>
               )}
@@ -775,7 +917,7 @@ export function DashboardPage() {
           </Space>
         </Col>
 
-        <Col xs={24} md={12} className="workbench-column">
+        <Col xs={24} md={14} className="workbench-column">
           <Space direction="vertical" size={20} style={{ width: '100%' }}>
             <Card
               className="workbench-panel"
@@ -807,14 +949,14 @@ export function DashboardPage() {
                   <div className="workbench-todo-form-actions">
                     <Button
                       type="primary"
-                      className="workbench-action-button"
+                      className="workbench-action-button workbench-todo-toolbar-button is-create"
                       icon={<PlusOutlined />}
                       onClick={handleCreateTodo}
                     >
                       添加
                     </Button>
                     <Button
-                      className="workbench-action-button"
+                      className="workbench-action-button workbench-todo-toolbar-button is-ai"
                       icon={<RobotOutlined />}
                       onClick={() =>
                         launchAiAssistant(
@@ -832,6 +974,13 @@ export function DashboardPage() {
                       }
                     >
                       ai添加
+                    </Button>
+                    <Button
+                      className="workbench-action-button workbench-todo-toolbar-button is-run"
+                      icon={<PlayCircleOutlined />}
+                      onClick={() => navigate('/executions/new')}
+                    >
+                      新建执行
                     </Button>
                   </div>
                 </div>
@@ -921,9 +1070,18 @@ export function DashboardPage() {
                         {summaryState.daily.status === 'running' ? '生成中' : '生成'}
                       </Button>
                     </div>
-                    <Typography.Paragraph className="workbench-summary-result-content">
-                      {summaryState.daily.content || '若未自动生成，可点击右侧按钮重新生成今日总结。'}
-                    </Typography.Paragraph>
+                    <div className="workbench-summary-result-content">
+                      {summaryState.daily.content ? (
+                        <SharedMessageContentRenderer
+                          content={summaryState.daily.content}
+                          mode="markdown"
+                        />
+                      ) : (
+                        <Typography.Text type="secondary">
+                          若未自动生成，可点击右侧按钮重新生成今日总结。
+                        </Typography.Text>
+                      )}
+                    </div>
                   </div>
                   <div className="workbench-summary-result-card">
                     <div className="workbench-summary-result-head">
@@ -943,9 +1101,18 @@ export function DashboardPage() {
                         {summaryState.weekly.status === 'running' ? '生成中' : '生成'}
                       </Button>
                     </div>
-                    <Typography.Paragraph className="workbench-summary-result-content">
-                      {summaryState.weekly.content || '若未自动生成，可点击右侧按钮重新生成本周总结。'}
-                    </Typography.Paragraph>
+                    <div className="workbench-summary-result-content">
+                      {summaryState.weekly.content ? (
+                        <SharedMessageContentRenderer
+                          content={summaryState.weekly.content}
+                          mode="markdown"
+                        />
+                      ) : (
+                        <Typography.Text type="secondary">
+                          若未自动生成，可点击右侧按钮重新生成本周总结。
+                        </Typography.Text>
+                      )}
+                    </div>
                   </div>
                 </div>
               </Space>

@@ -183,6 +183,39 @@ export interface SkillConfigDto {
   configStatus?: string;
   isPublished: boolean;
   publishedReleaseId?: string | null;
+  publishedReleaseVersion?: number | null;
+  publishedReleaseStatus?: string | null;
+  publishedDeploymentStatus?: string | null;
+  publishedSourceType?: string | null;
+}
+
+export type SkillAccessStatus = 'authorized' | 'requested' | 'unauthorized';
+
+export interface SkillAccessRequestDTO {
+  id: string;
+  skillId: string;
+  requesterUserId: string;
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  reason?: string | null;
+  responseNote?: string | null;
+  processedAt?: Date | null;
+  processedBy?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface SkillAccessRequestReviewDTO extends SkillAccessRequestDTO {
+  skillName: string;
+  requesterUsername: string;
+  requesterEmail?: string | null;
+  requesterRole: string;
+  targetRoleId?: string | null;
+  targetRoleName?: string | null;
+}
+
+export interface PublishedSkillCatalogItemDTO extends SkillConfigDto {
+  accessStatus: SkillAccessStatus;
+  accessRequest?: SkillAccessRequestDTO | null;
 }
 
 export interface LLMUsage {

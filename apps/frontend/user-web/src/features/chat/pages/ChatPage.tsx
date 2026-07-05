@@ -12,10 +12,10 @@ import {
 import {
   Alert,
   App,
+  Avatar,
   Button,
   Card,
   Empty,
-  Input,
   List,
   Skeleton,
   Space,
@@ -23,13 +23,10 @@ import {
   Typography,
 } from 'antd';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from 'react-query';
+import { useQuery, useQueryClient } from 'react-query';
 import {
-  buildExecutionWaitingInputGroups,
-  getExecutionWaitingInputFields,
   reduceChatStreamEvent,
   resolveWaitingInputDisplayLabel,
-  type ExecutionDto,
   type AIModel,
   type ChatMessage,
   type ChatProgressLog,
@@ -62,7 +59,6 @@ import SharedTaskProgressCard from '@chat-web/components/TaskProgressCard';
 import '../ChatMessage.css';
 import './ChatPage.css';
 
-const { TextArea } = Input;
 type ChatTaskStatus = NonNullable<NonNullable<ChatMessage['metadata']>['taskStatus']>;
 const buildMessageId = (): string => `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
@@ -73,6 +69,34 @@ const buildSessionId = (): string => {
     return crypto.randomUUID();
   }
   return `chat-session-${buildMessageId()}`;
+};
+
+const resolveDefaultChatModel = (models: AIModel[]): AIModel | null => {
+  if (!models.length) {
+    return null;
+  }
+
+  const preferredDefault = models.find((model) => {
+    const config = model.config as (AIModel['config'] & { default?: boolean }) | undefined;
+    return config?.default === true;
+  });
+
+  return preferredDefault || models[0] || null;
+};
+
+const supportsNativeReasoning = (model?: AIModel | null): boolean => {
+  if (!model) {
+    return false;
+  }
+
+  const config = model.config;
+  return (
+    config?.supports_reasoning === true ||
+    config?.reasoning?.supported === true ||
+    (model.provider === 'minimax' && /^MiniMax-M/i.test(model.name)) ||
+    /^(o1|o3|o4|qwq)/i.test(model.name) ||
+    /(reasoner|reasoning|deepseek-r1)/i.test(model.name)
+  );
 };
 
 const getLatestWaitingInputExecutionId = (messages: ChatMessage[]): string | undefined => {
@@ -136,6 +160,24 @@ const getSessionSortTime = (session: ChatSession): number => {
   return new Date(session.createdAt).getTime() || 0;
 };
 
+const isSameSession = (
+  left: ChatSession | null | undefined,
+  right: ChatSession | null | undefined
+): boolean => {
+  if (!left || !right) {
+    return left === right;
+  }
+
+  return (
+    left.id === right.id &&
+    left.title === right.title &&
+    left.modelId === right.modelId &&
+    left.status === right.status &&
+    left.createdAt === right.createdAt &&
+    left.updatedAt === right.updatedAt
+  );
+};
+
 const upsertMessage = (messages: ChatMessage[], nextMessage: ChatMessage): ChatMessage[] => {
   const hasExisting = messages.some((message) => message.id === nextMessage.id);
   if (hasExisting) {
@@ -144,21 +186,123 @@ const upsertMessage = (messages: ChatMessage[], nextMessage: ChatMessage): ChatM
   return [...messages, nextMessage];
 };
 
+const normalizeComparableMessageText = (value: string): string =>
+  value
+    .replace(/<think>[\s\S]*?(?:<\/think>|$)/gi, '')
+    .replace(/<\/?think>/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const isEphemeralAssistantMessage = (message: ChatMessage): boolean => {
+  if (message.role !== 'assistant') {
+    return false;
+  }
+
+  const normalized = message.content.trim();
+  return (
+    message.isStreaming === true ||
+    normalized === '正在思考...' ||
+    normalized === 'Session updated' ||
+    normalized.length === 0
+  );
+};
+
+const areMessagesEquivalent = (localMessage: ChatMessage, remoteMessage: ChatMessage): boolean => {
+  if (localMessage.role !== remoteMessage.role) {
+    return false;
+  }
+
+  const localTime = new Date(localMessage.timestamp).getTime();
+  const remoteTime = new Date(remoteMessage.timestamp).getTime();
+  if (
+    Number.isFinite(localTime) &&
+    Number.isFinite(remoteTime) &&
+    Math.abs(localTime - remoteTime) > 15_000
+  ) {
+    return false;
+  }
+
+  if (localMessage.role === 'user') {
+    return (
+      normalizeComparableMessageText(localMessage.content) ===
+      normalizeComparableMessageText(remoteMessage.content)
+    );
+  }
+
+  if (isEphemeralAssistantMessage(localMessage)) {
+    return true;
+  }
+
+  const localText = normalizeComparableMessageText(localMessage.content);
+  const remoteText = normalizeComparableMessageText(remoteMessage.content);
+  if (!localText || !remoteText) {
+    return false;
+  }
+
+  return localText === remoteText || localText.includes(remoteText) || remoteText.includes(localText);
+};
+
 const mergeHistoryMessages = (
   remoteMessages: ChatMessage[],
   localMessages: ChatMessage[]
 ): ChatMessage[] => {
   const merged = new Map<string, ChatMessage>();
+  const matchedLocalIds = new Set<string>();
 
   localMessages.forEach((message) => {
     merged.set(message.id, message);
   });
   remoteMessages.forEach((message) => {
-    merged.set(message.id, {
-      ...(merged.get(message.id) || {}),
+    const exactMatch = merged.get(message.id);
+    if (exactMatch) {
+      merged.set(message.id, {
+        ...exactMatch,
+        ...message,
+        isStreaming: false,
+        metadata: {
+          ...(exactMatch.metadata || {}),
+          ...(message.metadata || {}),
+        },
+      });
+      matchedLocalIds.add(message.id);
+      return;
+    }
+
+    const localMatch = localMessages.find(
+      (localMessage) =>
+        !matchedLocalIds.has(localMessage.id) && areMessagesEquivalent(localMessage, message)
+    );
+
+    if (!localMatch) {
+      merged.set(message.id, {
+        ...(merged.get(message.id) || {}),
+        ...message,
+        isStreaming: false,
+        metadata: {
+          ...(merged.get(message.id)?.metadata || {}),
+          ...(message.metadata || {}),
+        },
+      });
+      return;
+    }
+
+    matchedLocalIds.add(localMatch.id);
+    const current = merged.get(localMatch.id) || localMatch;
+    const preserveLocalContent =
+      localMatch.role === 'assistant' &&
+      !isEphemeralAssistantMessage(localMatch) &&
+      normalizeComparableMessageText(current.content).includes(
+        normalizeComparableMessageText(message.content)
+      );
+
+    merged.set(localMatch.id, {
+      ...current,
       ...message,
+      id: localMatch.id,
+      content: preserveLocalContent ? current.content : message.content,
+      isStreaming: false,
       metadata: {
-        ...(merged.get(message.id)?.metadata || {}),
+        ...(current.metadata || {}),
         ...(message.metadata || {}),
       },
     });
@@ -282,6 +426,7 @@ const formatMessageTimestamp = (timestamp: string): string =>
 const parseMessageContent = (content: string): { thoughts: string[]; answer: string } => {
   const thoughts: string[] = [];
   let answer = content;
+  const thinkTagRegex = /<think>([\s\S]*?)(?:<\/think>|$)/gi;
 
   // Legacy fallback for older assistant text payloads. This duplicate parser
   // can be removed after all backends emit dedicated thought/action/
@@ -291,6 +436,11 @@ const parseMessageContent = (content: string): { thoughts: string[]; answer: str
   const observationRegex = /【观察】([^\n]*(?:\n(?!【)[^\n]*)*)/g;
 
   let match: RegExpExecArray | null;
+  while ((match = thinkTagRegex.exec(content)) !== null) {
+    if (match[1]?.trim()) {
+      thoughts.push(match[1].trim());
+    }
+  }
   while ((match = thoughtRegex.exec(content)) !== null) {
     if (match[1]?.trim()) {
       thoughts.push(`思考: ${match[1].trim()}`);
@@ -302,7 +452,12 @@ const parseMessageContent = (content: string): { thoughts: string[]; answer: str
     }
   }
 
-  answer = content.replace(thoughtRegex, '').replace(actionRegex, '').trim();
+  answer = content
+    .replace(thinkTagRegex, '')
+    .replace(/<\/?think>/gi, '')
+    .replace(thoughtRegex, '')
+    .replace(actionRegex, '')
+    .trim();
 
   if (!answer) {
     const observations = [...content.matchAll(observationRegex)]
@@ -314,6 +469,52 @@ const parseMessageContent = (content: string): { thoughts: string[]; answer: str
   return { thoughts, answer };
 };
 
+const summarizeThoughts = (thoughts: string[]): string | undefined => {
+  const lastMeaningfulThought = [...thoughts]
+    .reverse()
+    .map((item) => item.trim())
+    .find(Boolean);
+
+  if (!lastMeaningfulThought) {
+    return undefined;
+  }
+
+  const normalized = lastMeaningfulThought.replace(/^(思考|行动)\s*:\s*/u, '').trim();
+  if (!normalized) {
+    return undefined;
+  }
+
+  return normalized.length > 140 ? `${normalized.slice(0, 140).trim()}...` : normalized;
+};
+
+const dedupeThoughtTexts = (thoughts: string[]): string[] => {
+  const deduped: string[] = [];
+  const seen = new Set<string>();
+
+  thoughts.forEach((item) => {
+    const normalized = item.trim();
+    if (!normalized) {
+      return;
+    }
+    const key = normalizeComparableMessageText(normalized);
+    if (!key || seen.has(key)) {
+      return;
+    }
+    seen.add(key);
+    deduped.push(normalized);
+  });
+
+  return deduped;
+};
+
+const terminalTaskStatuses = new Set<NonNullable<NonNullable<ChatMessage['metadata']>['taskStatus']>>([
+  'completed',
+  'waiting_input',
+  'pending_approval',
+  'human_control',
+  'failed',
+]);
+
 interface ChatPageProps {
   embedded?: boolean;
 }
@@ -321,18 +522,23 @@ interface ChatPageProps {
 export function ChatPage({ embedded = false }: ChatPageProps) {
   const { message: toast } = App.useApp();
   const queryClient = useQueryClient();
+  const currentSession = useChatStore((state) => state.currentSession);
   const prefetchedDraftMessage = useChatStore((state) => state.draftMessage);
   const prefetchedChatMode = useChatStore((state) => state.chatMode);
   const prefetchedDraftExecutionId = useChatStore((state) => state.draftExecutionId);
   const clearDraftContext = useChatStore((state) => state.clearDraftContext);
+  const setCurrentSession = useChatStore((state) => state.setCurrentSession);
   const [draft, setDraft] = useState('');
   const [pendingExecutionId, setPendingExecutionId] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState<string>('default');
   const [chatMode, setChatMode] = useState<'chat' | 'task'>('chat');
+  const [enableThinking, setEnableThinking] = useState(true);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [abortStreaming, setAbortStreaming] = useState<(() => void) | null>(null);
-  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(
+    () => currentSession?.id ?? null
+  );
   const [isSessionListCollapsed, setIsSessionListCollapsed] = useState(true);
   const [draftSessions, setDraftSessions] = useState<ChatSession[]>([]);
   const [sessionOverrides, setSessionOverrides] = useState<Record<string, Partial<ChatSession>>>(
@@ -398,6 +604,34 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     () => sessions.find((session) => session.id === selectedSessionId) || null,
     [selectedSessionId, sessions]
   );
+  const availableModels = useMemo(() => ((modelsQuery.data || []) as AIModel[]) || [], [modelsQuery.data]);
+  const selectedModelInfo = useMemo(() => {
+    if (selectedModel && selectedModel !== 'default') {
+      return availableModels.find((model) => model.id === selectedModel) || null;
+    }
+
+    return resolveDefaultChatModel(availableModels);
+  }, [availableModels, selectedModel]);
+  const nativeReasoningSupported = useMemo(
+    () => supportsNativeReasoning(selectedModelInfo),
+    [selectedModelInfo]
+  );
+  const thinkingToggleLabel = useMemo(() => {
+    if (chatMode === 'chat' && nativeReasoningSupported) {
+      return '推理';
+    }
+    return '思考';
+  }, [chatMode, nativeReasoningSupported]);
+  const thinkingToggleHint = useMemo(() => {
+    if (chatMode === 'chat' && nativeReasoningSupported) {
+      return '当前模型支持原生推理';
+    }
+    if (chatMode === 'chat') {
+      return '当前模型不支持原生推理，将使用思考增强';
+    }
+    return '任务模式下展示思考过程与中间状态';
+  }, [chatMode, nativeReasoningSupported]);
+  const nativeReasoningEnabled = chatMode === 'chat' && nativeReasoningSupported && enableThinking;
 
   useEffect(() => {
     const models = modelsQuery.data || [];
@@ -409,6 +643,42 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
       setIsSessionListCollapsed(true);
     }
   }, [embedded]);
+
+  useEffect(() => {
+    if (!currentSession) {
+      return;
+    }
+
+    setDraftSessions((existing) => {
+      const hasCurrentSession = existing.some((session) => session.id === currentSession.id);
+      if (hasCurrentSession) {
+        let changed = false;
+        const next = existing.map((session) => {
+          if (session.id !== currentSession.id) {
+            return session;
+          }
+          if (isSameSession(session, currentSession)) {
+            return session;
+          }
+          changed = true;
+          return { ...session, ...currentSession };
+        });
+        return changed ? next : existing;
+      }
+      return [currentSession, ...existing];
+    });
+    setSelectedSessionId((existing) =>
+      existing === currentSession.id ? existing : currentSession.id
+    );
+    setSessionMessages((existing) =>
+      existing[currentSession.id]
+        ? existing
+        : {
+            ...existing,
+            [currentSession.id]: [],
+          }
+    );
+  }, [currentSession]);
 
   useEffect(() => {
     if (!prefetchedDraftMessage) {
@@ -426,10 +696,21 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
   ]);
 
   useEffect(() => {
-    if (!selectedSessionId && sessions[0]?.id) {
-      setSelectedSessionId(sessions[0].id);
+    if (selectedSessionId || currentSession || !sessions[0]?.id) {
+      return;
     }
-  }, [selectedSessionId, sessions]);
+    setSelectedSessionId(sessions[0].id);
+  }, [currentSession, selectedSessionId, sessions]);
+
+  useEffect(() => {
+    if (!selectedSession) {
+      return;
+    }
+    if (isSameSession(currentSession, selectedSession)) {
+      return;
+    }
+    setCurrentSession(selectedSession);
+  }, [currentSession, selectedSession, setCurrentSession]);
 
   useEffect(() => {
     if (!remoteSessions.length) {
@@ -490,13 +771,81 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
           ? {
               ...message,
               ...patch,
-              metadata: patch.metadata
-                ? { ...(message.metadata || {}), ...patch.metadata }
-                : message.metadata,
+              metadata: (() => {
+                if (!patch.metadata) {
+                  return message.metadata;
+                }
+
+                const nextMetadata = { ...(message.metadata || {}), ...patch.metadata };
+                const nextTaskStatus = nextMetadata.taskStatus;
+                if (!nextTaskStatus || !terminalTaskStatuses.has(nextTaskStatus)) {
+                  return nextMetadata;
+                }
+
+                const progressThoughtLogs = (message.metadata?.progressLogs || [])
+                  .filter((log) => log.stage === 'thought')
+                  .map((log) => log.text.trim())
+                  .filter(Boolean);
+                const persistedThoughtLogs = message.metadata?.thoughtLogsSnapshot || [];
+                const mergedThoughtLogs = dedupeThoughtTexts([
+                  ...persistedThoughtLogs,
+                  ...progressThoughtLogs,
+                ]);
+
+                if (mergedThoughtLogs.length === 0) {
+                  return nextMetadata;
+                }
+
+                return {
+                  ...nextMetadata,
+                  thoughtLogsSnapshot: mergedThoughtLogs,
+                };
+              })(),
             }
           : message
       )
     );
+  };
+
+  const snapshotMessageThoughts = (sessionId: string, messageId: string) => {
+    setSessionMessages((current) => {
+      const currentMessages = current[sessionId] || [];
+      const nextMessages = currentMessages.map((message) => {
+        if (message.id !== messageId) {
+          return message;
+        }
+
+        const parsedThoughtLogs =
+          message.role === 'assistant' ? parseMessageContent(message.content).thoughts : [];
+        const progressThoughtLogs = (message.metadata?.progressLogs || [])
+          .filter((log) => log.stage === 'thought')
+          .map((log) => log.text.trim())
+          .filter(Boolean);
+        const persistedThoughtLogs = message.metadata?.thoughtLogsSnapshot || [];
+        const mergedThoughtLogs = dedupeThoughtTexts([
+          ...persistedThoughtLogs,
+          ...progressThoughtLogs,
+          ...parsedThoughtLogs,
+        ]);
+
+        if (mergedThoughtLogs.length === 0) {
+          return message;
+        }
+
+        return {
+          ...message,
+          metadata: {
+            ...(message.metadata || {}),
+            thoughtLogsSnapshot: mergedThoughtLogs,
+          },
+        };
+      });
+
+      return {
+        ...current,
+        [sessionId]: nextMessages,
+      };
+    });
   };
 
   const appendProgressLog = (
@@ -554,6 +903,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
       ...current,
       [nextSession.id]: current[nextSession.id] || [],
     }));
+    setCurrentSession(nextSession);
     return nextSession;
   };
 
@@ -597,7 +947,9 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
       if (reduced.sessionPatch) {
         updateSessionMeta(sessionId, reduced.sessionPatch);
       }
-      updateMessage(sessionId, assistantMessageId, reduced.messagePatch);
+      if (Object.keys(reduced.messagePatch).length > 0) {
+        updateMessage(sessionId, assistantMessageId, reduced.messagePatch);
+      }
     });
     setAbortStreaming(() => streamHandle.abort);
     await streamHandle.promise;
@@ -610,6 +962,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
   ) => {
     try {
       await startAssistantStream(session.id, assistantMessageId, request);
+      snapshotMessageThoughts(session.id, assistantMessageId);
       updateMessage(session.id, assistantMessageId, { isStreaming: false });
       await syncRelatedQueries(session.id);
     } catch (streamError) {
@@ -666,7 +1019,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
       isStreaming: true,
       metadata: {
         mode: chatMode,
-        showThinking: chatMode === 'task',
+        showThinking: enableThinking,
       },
     };
 
@@ -686,7 +1039,8 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
       executionId: continuedExecutionId || undefined,
       modelId: resolvedModelId,
       mode: chatMode,
-      thinking: chatMode === 'task',
+      thinking: enableThinking,
+      reasoning: nativeReasoningEnabled,
     });
 
     if (pendingExecutionId) {
@@ -740,7 +1094,8 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
           executionId,
           modelId: selectedModel && selectedModel !== 'default' ? selectedModel : undefined,
           mode: 'task',
-          thinking: true,
+          thinking: enableThinking,
+          reasoning: false,
         }),
         assistantMessageId
       );
@@ -1042,17 +1397,63 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
         ['text', 'markdown', 'structured_result', 'deeplink', 'file_ref'].includes(part.type)
       )
     );
-    const thoughtLogs = message.role === 'assistant' ? parsedContent.thoughts : [];
+    const taskSummaryCandidates = [
+      message.metadata?.finalSummary?.trim(),
+      message.metadata?.normalizedResult?.summary?.trim(),
+      message.metadata?.resultTitle?.trim(),
+      message.metadata?.finalResult?.trim(),
+      message.metadata?.errorMessage?.trim(),
+    ].filter((item): item is string => Boolean(item));
+    const contentThoughtLogs = message.role === 'assistant' ? parsedContent.thoughts : [];
+    const persistedThoughtLogs = message.metadata?.thoughtLogsSnapshot || [];
+    const progressThoughtLogs = (message.metadata?.progressLogs || [])
+      .filter((log) => log.stage === 'thought')
+      .map((log) => log.text.trim())
+      .filter(Boolean);
+    const thoughtLogs = dedupeThoughtTexts([
+      ...persistedThoughtLogs,
+      ...progressThoughtLogs,
+      ...contentThoughtLogs,
+    ]);
     const hasProgressLogs = Boolean(message.metadata?.progressLogs?.length);
     const showThoughtLogs = Boolean(
       message.role === 'assistant' &&
-      message.metadata?.mode === 'task' &&
       message.metadata?.showThinking !== false &&
       thoughtLogs.length > 0
+    );
+    const isThoughtExpanded = expandedThoughtMessageId === message.id;
+    const thoughtSummary = summarizeThoughts(thoughtLogs);
+    const shouldPinCollapsedThoughts =
+      showThoughtLogs && !message.isStreaming && !isThoughtExpanded && Boolean(taskCard);
+    const shouldPinFinishedTaskThoughts =
+      showThoughtLogs &&
+      !message.isStreaming &&
+      Boolean(taskCard) &&
+      message.metadata?.mode === 'task';
+    const thoughtPanel = showThoughtLogs ? (
+      <SharedThoughtProcessPanel
+        thoughts={thoughtLogs}
+        expanded={isThoughtExpanded}
+        collapsedSummary={thoughtSummary}
+        preserveSummaryWhenCollapsed={!message.isStreaming}
+        onToggle={() =>
+          setExpandedThoughtMessageId((current) => (current === message.id ? null : message.id))
+        }
+      />
+    ) : null;
+    const hasDuplicatedTaskSummary = Boolean(
+      message.metadata?.mode === 'task' &&
+      taskCard &&
+      plainContent &&
+      taskSummaryCandidates.some(
+        (item) =>
+          normalizeComparableMessageText(plainContent) === normalizeComparableMessageText(item)
+      )
     );
     const shouldShowMessageContent = Boolean(
       (hasRenderableContentParts ||
         (plainContent &&
+          !hasDuplicatedTaskSummary &&
           plainContent !== message.metadata?.finalResult?.trim() &&
           plainContent !== message.metadata?.errorMessage?.trim())) &&
       !(message.metadata?.mode === 'task' && hasProgressLogs)
@@ -1060,9 +1461,6 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     const usage = message.metadata?.usage;
     const rateLimit = message.metadata?.rateLimit;
     const showMessageActions = message.role === 'assistant';
-    const senderLabel = message.role === 'user' ? '你' : 'AI';
-    const senderIcon = message.role === 'user' ? <UserOutlined /> : <RobotOutlined />;
-
     const handleCopyMessage = async () => {
       const copyTarget = [
         message.metadata?.finalSummary,
@@ -1084,45 +1482,42 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
 
     return (
       <List.Item key={message.id} className={`user-chat-message-row role-${message.role}`}>
-        <div className={`user-chat-message-bubble role-${message.role}`}>
-          {taskCard}
-          {progressCard}
-          {showThoughtLogs ? (
-            <SharedThoughtProcessPanel
-              thoughts={thoughtLogs}
-              expanded={expandedThoughtMessageId === message.id}
-              onToggle={() =>
-                setExpandedThoughtMessageId((current) => (current === message.id ? null : message.id))
-              }
-            />
-          ) : null}
-          {shouldShowMessageContent ? (
-            <div className="user-chat-message-content">
-              {hasRenderableContentParts ? (
-                <SharedContentPartsRenderer
-                  parts={message.contentParts}
-                  isStreaming={Boolean(message.isStreaming)}
-                  renderStructuredResult={message.metadata?.mode !== 'task'}
-                  renderDeeplink={message.metadata?.mode !== 'task'}
-                />
-              ) : (
-                <SharedMessageContentRenderer
-                  content={plainContent}
-                  mode={message.role === 'assistant' ? 'markdown' : 'plain'}
-                  isStreaming={Boolean(message.isStreaming)}
-                />
-              )}
-            </div>
-          ) : null}
+        <div className={`user-chat-message-stack role-${message.role}`}>
+          <div className={`user-chat-message-bubble role-${message.role}`}>
+            {shouldPinCollapsedThoughts || shouldPinFinishedTaskThoughts ? thoughtPanel : null}
+            {taskCard}
+            {progressCard}
+            {!(shouldPinCollapsedThoughts || shouldPinFinishedTaskThoughts) ? thoughtPanel : null}
+            {shouldShowMessageContent ? (
+              <div className="user-chat-message-content">
+                {hasRenderableContentParts ? (
+                  <SharedContentPartsRenderer
+                    parts={message.contentParts}
+                    isStreaming={Boolean(message.isStreaming)}
+                    renderStructuredResult={message.metadata?.mode !== 'task'}
+                    renderDeeplink={message.metadata?.mode !== 'task'}
+                  />
+                ) : (
+                  <SharedMessageContentRenderer
+                    content={plainContent}
+                    mode={message.role === 'assistant' ? 'markdown' : 'plain'}
+                    isStreaming={Boolean(message.isStreaming)}
+                  />
+                )}
+              </div>
+            ) : null}
+          </div>
           <div className={`user-chat-message-footer role-${message.role}`}>
             <div className={`user-chat-message-meta role-${message.role}`}>
-              <span className="user-chat-message-meta-item user-chat-message-meta-sender">
-                {senderIcon}
-                <span>{senderLabel}</span>
-              </span>
-              <span className="user-chat-message-meta-item user-chat-message-meta-time">
-                <ClockCircleOutlined />
-                <span>{formatMessageTimestamp(message.timestamp)}</span>
+              <span className="user-chat-message-meta-item user-chat-message-meta-identity">
+                <Avatar
+                  icon={message.role === 'user' ? <UserOutlined /> : <RobotOutlined />}
+                  className={`user-chat-message-avatar inline ${message.role}`}
+                />
+                <span className="user-chat-message-meta-time">
+                  <ClockCircleOutlined />
+                  <span>{formatMessageTimestamp(message.timestamp)}</span>
+                </span>
               </span>
               {message.isStreaming ? (
                 <span className="user-chat-message-meta-item user-chat-message-meta-status status-processing">
@@ -1333,33 +1728,51 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
           </div>
         )}
 
-        <Card className="user-chat-thread" styles={{ body: { paddingBottom: 8 } }}>
-          {selectedSessionHistoryQuery.isLoading && activeMessages.length === 0 ? (
-            <Skeleton active paragraph={{ rows: 8 }} />
-          ) : activeMessages.length === 0 ? (
-            <Empty description="还没有对话，发送第一条消息开始体验" />
-          ) : (
-            <List dataSource={activeMessages} renderItem={(message) => renderMessage(message)} />
-          )}
-          <div ref={messagesEndRef} />
-        </Card>
+        <div className={`user-chat-window-shell${embedded ? ' embedded' : ''}`}>
+          <Card className="user-chat-thread" styles={{ body: { paddingBottom: 8 } }}>
+            {selectedSessionHistoryQuery.isLoading && activeMessages.length === 0 ? (
+              <Skeleton active paragraph={{ rows: 8 }} />
+            ) : activeMessages.length === 0 ? (
+              <div className="user-chat-empty-state">
+                <Empty
+                  description={
+                    <div className="user-chat-empty-description">
+                      <div className="user-chat-empty-title">开始一个新对话</div>
+                      <Typography.Text type="secondary">
+                        输入你的问题、任务或补充信息，AI 会在这里持续返回结果。
+                      </Typography.Text>
+                    </div>
+                  }
+                />
+              </div>
+            ) : (
+              <List dataSource={activeMessages} renderItem={(message) => renderMessage(message)} />
+            )}
+            <div ref={messagesEndRef} />
+          </Card>
 
-        <UserChatComposer
-          draft={draft}
-          onDraftChange={setDraft}
-          onSend={handleSend}
-          onStop={handleStopStreaming}
-          onNewSession={handleCreateSession}
-          chatMode={chatMode}
-          onChatModeChange={setChatMode}
-          selectedModel={selectedModel}
-          availableModels={(modelsQuery.data || []) as AIModel[]}
-          onModelChange={setSelectedModel}
-          isStreaming={isStreaming}
-          modelsLoading={modelsQuery.isLoading}
-          disabled={false}
-          placeholder={placeholder}
-        />
+          <UserChatComposer
+            draft={draft}
+            onDraftChange={setDraft}
+            onSend={handleSend}
+            onStop={handleStopStreaming}
+            onNewSession={handleCreateSession}
+            chatMode={chatMode}
+            onChatModeChange={setChatMode}
+            enableThinking={enableThinking}
+            onEnableThinkingChange={setEnableThinking}
+            thinkingLabel={thinkingToggleLabel}
+            thinkingHint={thinkingToggleHint}
+            nativeReasoningSupported={nativeReasoningSupported}
+            selectedModel={selectedModel}
+            availableModels={availableModels}
+            onModelChange={setSelectedModel}
+            isStreaming={isStreaming}
+            modelsLoading={modelsQuery.isLoading}
+            disabled={false}
+            placeholder={placeholder}
+          />
+        </div>
       </div>
 
     </div>

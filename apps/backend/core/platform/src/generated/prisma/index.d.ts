@@ -79,6 +79,11 @@ export type SkillConfig = $Result.DefaultSelection<Prisma.$SkillConfigPayload>
  */
 export type SkillPermission = $Result.DefaultSelection<Prisma.$SkillPermissionPayload>
 /**
+ * Model SkillAccessRequest
+ * 
+ */
+export type SkillAccessRequest = $Result.DefaultSelection<Prisma.$SkillAccessRequestPayload>
+/**
  * Model ToolCatalog
  * 
  */
@@ -449,6 +454,16 @@ export class PrismaClient<
     * ```
     */
   get skillPermission(): Prisma.SkillPermissionDelegate<ExtArgs>;
+
+  /**
+   * `prisma.skillAccessRequest`: Exposes CRUD operations for the **SkillAccessRequest** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more SkillAccessRequests
+    * const skillAccessRequests = await prisma.skillAccessRequest.findMany()
+    * ```
+    */
+  get skillAccessRequest(): Prisma.SkillAccessRequestDelegate<ExtArgs>;
 
   /**
    * `prisma.toolCatalog`: Exposes CRUD operations for the **ToolCatalog** model.
@@ -1023,6 +1038,7 @@ export namespace Prisma {
     ExecutionFlowTemplate: 'ExecutionFlowTemplate',
     SkillConfig: 'SkillConfig',
     SkillPermission: 'SkillPermission',
+    SkillAccessRequest: 'SkillAccessRequest',
     ToolCatalog: 'ToolCatalog',
     SkillToolBinding: 'SkillToolBinding',
     ChatSession: 'ChatSession',
@@ -1050,7 +1066,7 @@ export namespace Prisma {
 
   export type TypeMap<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, ClientOptions = {}> = {
     meta: {
-      modelProps: "user" | "role" | "userRole" | "organization" | "department" | "team" | "orgMembership" | "teamMembership" | "orgRoleBinding" | "identityProviderConfig" | "executionFlowTemplate" | "skillConfig" | "skillPermission" | "toolCatalog" | "skillToolBinding" | "chatSession" | "chatMessage" | "execution" | "runtimeSession" | "executionStep" | "executionEvent" | "auditLog" | "activity" | "temporalWorkflow" | "skillSchedule"
+      modelProps: "user" | "role" | "userRole" | "organization" | "department" | "team" | "orgMembership" | "teamMembership" | "orgRoleBinding" | "identityProviderConfig" | "executionFlowTemplate" | "skillConfig" | "skillPermission" | "skillAccessRequest" | "toolCatalog" | "skillToolBinding" | "chatSession" | "chatMessage" | "execution" | "runtimeSession" | "executionStep" | "executionEvent" | "auditLog" | "activity" | "temporalWorkflow" | "skillSchedule"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -1961,6 +1977,76 @@ export namespace Prisma {
           count: {
             args: Prisma.SkillPermissionCountArgs<ExtArgs>
             result: $Utils.Optional<SkillPermissionCountAggregateOutputType> | number
+          }
+        }
+      }
+      SkillAccessRequest: {
+        payload: Prisma.$SkillAccessRequestPayload<ExtArgs>
+        fields: Prisma.SkillAccessRequestFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.SkillAccessRequestFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SkillAccessRequestPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.SkillAccessRequestFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SkillAccessRequestPayload>
+          }
+          findFirst: {
+            args: Prisma.SkillAccessRequestFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SkillAccessRequestPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.SkillAccessRequestFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SkillAccessRequestPayload>
+          }
+          findMany: {
+            args: Prisma.SkillAccessRequestFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SkillAccessRequestPayload>[]
+          }
+          create: {
+            args: Prisma.SkillAccessRequestCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SkillAccessRequestPayload>
+          }
+          createMany: {
+            args: Prisma.SkillAccessRequestCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.SkillAccessRequestCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SkillAccessRequestPayload>[]
+          }
+          delete: {
+            args: Prisma.SkillAccessRequestDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SkillAccessRequestPayload>
+          }
+          update: {
+            args: Prisma.SkillAccessRequestUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SkillAccessRequestPayload>
+          }
+          deleteMany: {
+            args: Prisma.SkillAccessRequestDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.SkillAccessRequestUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.SkillAccessRequestUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SkillAccessRequestPayload>
+          }
+          aggregate: {
+            args: Prisma.SkillAccessRequestAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateSkillAccessRequest>
+          }
+          groupBy: {
+            args: Prisma.SkillAccessRequestGroupByArgs<ExtArgs>
+            result: $Utils.Optional<SkillAccessRequestGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.SkillAccessRequestCountArgs<ExtArgs>
+            result: $Utils.Optional<SkillAccessRequestCountAggregateOutputType> | number
           }
         }
       }
@@ -2970,6 +3056,8 @@ export namespace Prisma {
     orgMemberships: number
     assignedOrgRoles: number
     chatSessions: number
+    skillAccessRequests: number
+    processedSkillAccessRequests: number
   }
 
   export type UserCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -2978,6 +3066,8 @@ export namespace Prisma {
     orgMemberships?: boolean | UserCountOutputTypeCountOrgMembershipsArgs
     assignedOrgRoles?: boolean | UserCountOutputTypeCountAssignedOrgRolesArgs
     chatSessions?: boolean | UserCountOutputTypeCountChatSessionsArgs
+    skillAccessRequests?: boolean | UserCountOutputTypeCountSkillAccessRequestsArgs
+    processedSkillAccessRequests?: boolean | UserCountOutputTypeCountProcessedSkillAccessRequestsArgs
   }
 
   // Custom InputTypes
@@ -3024,6 +3114,20 @@ export namespace Prisma {
    */
   export type UserCountOutputTypeCountChatSessionsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: ChatSessionWhereInput
+  }
+
+  /**
+   * UserCountOutputType without action
+   */
+  export type UserCountOutputTypeCountSkillAccessRequestsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: SkillAccessRequestWhereInput
+  }
+
+  /**
+   * UserCountOutputType without action
+   */
+  export type UserCountOutputTypeCountProcessedSkillAccessRequestsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: SkillAccessRequestWhereInput
   }
 
 
@@ -3279,11 +3383,13 @@ export namespace Prisma {
   export type SkillConfigCountOutputType = {
     permissions: number
     toolBindings: number
+    accessRequests: number
   }
 
   export type SkillConfigCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     permissions?: boolean | SkillConfigCountOutputTypeCountPermissionsArgs
     toolBindings?: boolean | SkillConfigCountOutputTypeCountToolBindingsArgs
+    accessRequests?: boolean | SkillConfigCountOutputTypeCountAccessRequestsArgs
   }
 
   // Custom InputTypes
@@ -3309,6 +3415,13 @@ export namespace Prisma {
    */
   export type SkillConfigCountOutputTypeCountToolBindingsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: SkillToolBindingWhereInput
+  }
+
+  /**
+   * SkillConfigCountOutputType without action
+   */
+  export type SkillConfigCountOutputTypeCountAccessRequestsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: SkillAccessRequestWhereInput
   }
 
 
@@ -3630,6 +3743,8 @@ export namespace Prisma {
     assignedOrgRoles?: boolean | User$assignedOrgRolesArgs<ExtArgs>
     activeOrg?: boolean | User$activeOrgArgs<ExtArgs>
     chatSessions?: boolean | User$chatSessionsArgs<ExtArgs>
+    skillAccessRequests?: boolean | User$skillAccessRequestsArgs<ExtArgs>
+    processedSkillAccessRequests?: boolean | User$processedSkillAccessRequestsArgs<ExtArgs>
     _count?: boolean | UserCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["user"]>
 
@@ -3673,6 +3788,8 @@ export namespace Prisma {
     assignedOrgRoles?: boolean | User$assignedOrgRolesArgs<ExtArgs>
     activeOrg?: boolean | User$activeOrgArgs<ExtArgs>
     chatSessions?: boolean | User$chatSessionsArgs<ExtArgs>
+    skillAccessRequests?: boolean | User$skillAccessRequestsArgs<ExtArgs>
+    processedSkillAccessRequests?: boolean | User$processedSkillAccessRequestsArgs<ExtArgs>
     _count?: boolean | UserCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type UserIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -3688,6 +3805,8 @@ export namespace Prisma {
       assignedOrgRoles: Prisma.$OrgRoleBindingPayload<ExtArgs>[]
       activeOrg: Prisma.$OrganizationPayload<ExtArgs> | null
       chatSessions: Prisma.$ChatSessionPayload<ExtArgs>[]
+      skillAccessRequests: Prisma.$SkillAccessRequestPayload<ExtArgs>[]
+      processedSkillAccessRequests: Prisma.$SkillAccessRequestPayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -4073,6 +4192,8 @@ export namespace Prisma {
     assignedOrgRoles<T extends User$assignedOrgRolesArgs<ExtArgs> = {}>(args?: Subset<T, User$assignedOrgRolesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$OrgRoleBindingPayload<ExtArgs>, T, "findMany"> | Null>
     activeOrg<T extends User$activeOrgArgs<ExtArgs> = {}>(args?: Subset<T, User$activeOrgArgs<ExtArgs>>): Prisma__OrganizationClient<$Result.GetResult<Prisma.$OrganizationPayload<ExtArgs>, T, "findUniqueOrThrow"> | null, null, ExtArgs>
     chatSessions<T extends User$chatSessionsArgs<ExtArgs> = {}>(args?: Subset<T, User$chatSessionsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ChatSessionPayload<ExtArgs>, T, "findMany"> | Null>
+    skillAccessRequests<T extends User$skillAccessRequestsArgs<ExtArgs> = {}>(args?: Subset<T, User$skillAccessRequestsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SkillAccessRequestPayload<ExtArgs>, T, "findMany"> | Null>
+    processedSkillAccessRequests<T extends User$processedSkillAccessRequestsArgs<ExtArgs> = {}>(args?: Subset<T, User$processedSkillAccessRequestsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SkillAccessRequestPayload<ExtArgs>, T, "findMany"> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -4545,6 +4666,46 @@ export namespace Prisma {
     take?: number
     skip?: number
     distinct?: ChatSessionScalarFieldEnum | ChatSessionScalarFieldEnum[]
+  }
+
+  /**
+   * User.skillAccessRequests
+   */
+  export type User$skillAccessRequestsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SkillAccessRequest
+     */
+    select?: SkillAccessRequestSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SkillAccessRequestInclude<ExtArgs> | null
+    where?: SkillAccessRequestWhereInput
+    orderBy?: SkillAccessRequestOrderByWithRelationInput | SkillAccessRequestOrderByWithRelationInput[]
+    cursor?: SkillAccessRequestWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: SkillAccessRequestScalarFieldEnum | SkillAccessRequestScalarFieldEnum[]
+  }
+
+  /**
+   * User.processedSkillAccessRequests
+   */
+  export type User$processedSkillAccessRequestsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SkillAccessRequest
+     */
+    select?: SkillAccessRequestSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SkillAccessRequestInclude<ExtArgs> | null
+    where?: SkillAccessRequestWhereInput
+    orderBy?: SkillAccessRequestOrderByWithRelationInput | SkillAccessRequestOrderByWithRelationInput[]
+    cursor?: SkillAccessRequestWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: SkillAccessRequestScalarFieldEnum | SkillAccessRequestScalarFieldEnum[]
   }
 
   /**
@@ -15068,6 +15229,7 @@ export namespace Prisma {
     updatedAt?: boolean
     permissions?: boolean | SkillConfig$permissionsArgs<ExtArgs>
     toolBindings?: boolean | SkillConfig$toolBindingsArgs<ExtArgs>
+    accessRequests?: boolean | SkillConfig$accessRequestsArgs<ExtArgs>
     _count?: boolean | SkillConfigCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["skillConfig"]>
 
@@ -15114,6 +15276,7 @@ export namespace Prisma {
   export type SkillConfigInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     permissions?: boolean | SkillConfig$permissionsArgs<ExtArgs>
     toolBindings?: boolean | SkillConfig$toolBindingsArgs<ExtArgs>
+    accessRequests?: boolean | SkillConfig$accessRequestsArgs<ExtArgs>
     _count?: boolean | SkillConfigCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type SkillConfigIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
@@ -15123,6 +15286,7 @@ export namespace Prisma {
     objects: {
       permissions: Prisma.$SkillPermissionPayload<ExtArgs>[]
       toolBindings: Prisma.$SkillToolBindingPayload<ExtArgs>[]
+      accessRequests: Prisma.$SkillAccessRequestPayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -15508,6 +15672,7 @@ export namespace Prisma {
     readonly [Symbol.toStringTag]: "PrismaPromise"
     permissions<T extends SkillConfig$permissionsArgs<ExtArgs> = {}>(args?: Subset<T, SkillConfig$permissionsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SkillPermissionPayload<ExtArgs>, T, "findMany"> | Null>
     toolBindings<T extends SkillConfig$toolBindingsArgs<ExtArgs> = {}>(args?: Subset<T, SkillConfig$toolBindingsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SkillToolBindingPayload<ExtArgs>, T, "findMany"> | Null>
+    accessRequests<T extends SkillConfig$accessRequestsArgs<ExtArgs> = {}>(args?: Subset<T, SkillConfig$accessRequestsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SkillAccessRequestPayload<ExtArgs>, T, "findMany"> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -15905,6 +16070,26 @@ export namespace Prisma {
     take?: number
     skip?: number
     distinct?: SkillToolBindingScalarFieldEnum | SkillToolBindingScalarFieldEnum[]
+  }
+
+  /**
+   * SkillConfig.accessRequests
+   */
+  export type SkillConfig$accessRequestsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SkillAccessRequest
+     */
+    select?: SkillAccessRequestSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SkillAccessRequestInclude<ExtArgs> | null
+    where?: SkillAccessRequestWhereInput
+    orderBy?: SkillAccessRequestOrderByWithRelationInput | SkillAccessRequestOrderByWithRelationInput[]
+    cursor?: SkillAccessRequestWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: SkillAccessRequestScalarFieldEnum | SkillAccessRequestScalarFieldEnum[]
   }
 
   /**
@@ -16846,6 +17031,1026 @@ export namespace Prisma {
      * Choose, which related nodes to fetch as well
      */
     include?: SkillPermissionInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model SkillAccessRequest
+   */
+
+  export type AggregateSkillAccessRequest = {
+    _count: SkillAccessRequestCountAggregateOutputType | null
+    _min: SkillAccessRequestMinAggregateOutputType | null
+    _max: SkillAccessRequestMaxAggregateOutputType | null
+  }
+
+  export type SkillAccessRequestMinAggregateOutputType = {
+    id: string | null
+    skillId: string | null
+    requesterUserId: string | null
+    status: string | null
+    reason: string | null
+    responseNote: string | null
+    processedAt: Date | null
+    processedBy: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type SkillAccessRequestMaxAggregateOutputType = {
+    id: string | null
+    skillId: string | null
+    requesterUserId: string | null
+    status: string | null
+    reason: string | null
+    responseNote: string | null
+    processedAt: Date | null
+    processedBy: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type SkillAccessRequestCountAggregateOutputType = {
+    id: number
+    skillId: number
+    requesterUserId: number
+    status: number
+    reason: number
+    responseNote: number
+    processedAt: number
+    processedBy: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type SkillAccessRequestMinAggregateInputType = {
+    id?: true
+    skillId?: true
+    requesterUserId?: true
+    status?: true
+    reason?: true
+    responseNote?: true
+    processedAt?: true
+    processedBy?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type SkillAccessRequestMaxAggregateInputType = {
+    id?: true
+    skillId?: true
+    requesterUserId?: true
+    status?: true
+    reason?: true
+    responseNote?: true
+    processedAt?: true
+    processedBy?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type SkillAccessRequestCountAggregateInputType = {
+    id?: true
+    skillId?: true
+    requesterUserId?: true
+    status?: true
+    reason?: true
+    responseNote?: true
+    processedAt?: true
+    processedBy?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type SkillAccessRequestAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which SkillAccessRequest to aggregate.
+     */
+    where?: SkillAccessRequestWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of SkillAccessRequests to fetch.
+     */
+    orderBy?: SkillAccessRequestOrderByWithRelationInput | SkillAccessRequestOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: SkillAccessRequestWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` SkillAccessRequests from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` SkillAccessRequests.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned SkillAccessRequests
+    **/
+    _count?: true | SkillAccessRequestCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: SkillAccessRequestMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: SkillAccessRequestMaxAggregateInputType
+  }
+
+  export type GetSkillAccessRequestAggregateType<T extends SkillAccessRequestAggregateArgs> = {
+        [P in keyof T & keyof AggregateSkillAccessRequest]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateSkillAccessRequest[P]>
+      : GetScalarType<T[P], AggregateSkillAccessRequest[P]>
+  }
+
+
+
+
+  export type SkillAccessRequestGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: SkillAccessRequestWhereInput
+    orderBy?: SkillAccessRequestOrderByWithAggregationInput | SkillAccessRequestOrderByWithAggregationInput[]
+    by: SkillAccessRequestScalarFieldEnum[] | SkillAccessRequestScalarFieldEnum
+    having?: SkillAccessRequestScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: SkillAccessRequestCountAggregateInputType | true
+    _min?: SkillAccessRequestMinAggregateInputType
+    _max?: SkillAccessRequestMaxAggregateInputType
+  }
+
+  export type SkillAccessRequestGroupByOutputType = {
+    id: string
+    skillId: string
+    requesterUserId: string
+    status: string
+    reason: string | null
+    responseNote: string | null
+    processedAt: Date | null
+    processedBy: string | null
+    createdAt: Date
+    updatedAt: Date
+    _count: SkillAccessRequestCountAggregateOutputType | null
+    _min: SkillAccessRequestMinAggregateOutputType | null
+    _max: SkillAccessRequestMaxAggregateOutputType | null
+  }
+
+  type GetSkillAccessRequestGroupByPayload<T extends SkillAccessRequestGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<SkillAccessRequestGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof SkillAccessRequestGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], SkillAccessRequestGroupByOutputType[P]>
+            : GetScalarType<T[P], SkillAccessRequestGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type SkillAccessRequestSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    skillId?: boolean
+    requesterUserId?: boolean
+    status?: boolean
+    reason?: boolean
+    responseNote?: boolean
+    processedAt?: boolean
+    processedBy?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    skill?: boolean | SkillConfigDefaultArgs<ExtArgs>
+    requester?: boolean | UserDefaultArgs<ExtArgs>
+    processor?: boolean | SkillAccessRequest$processorArgs<ExtArgs>
+  }, ExtArgs["result"]["skillAccessRequest"]>
+
+  export type SkillAccessRequestSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    skillId?: boolean
+    requesterUserId?: boolean
+    status?: boolean
+    reason?: boolean
+    responseNote?: boolean
+    processedAt?: boolean
+    processedBy?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    skill?: boolean | SkillConfigDefaultArgs<ExtArgs>
+    requester?: boolean | UserDefaultArgs<ExtArgs>
+    processor?: boolean | SkillAccessRequest$processorArgs<ExtArgs>
+  }, ExtArgs["result"]["skillAccessRequest"]>
+
+  export type SkillAccessRequestSelectScalar = {
+    id?: boolean
+    skillId?: boolean
+    requesterUserId?: boolean
+    status?: boolean
+    reason?: boolean
+    responseNote?: boolean
+    processedAt?: boolean
+    processedBy?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type SkillAccessRequestInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    skill?: boolean | SkillConfigDefaultArgs<ExtArgs>
+    requester?: boolean | UserDefaultArgs<ExtArgs>
+    processor?: boolean | SkillAccessRequest$processorArgs<ExtArgs>
+  }
+  export type SkillAccessRequestIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    skill?: boolean | SkillConfigDefaultArgs<ExtArgs>
+    requester?: boolean | UserDefaultArgs<ExtArgs>
+    processor?: boolean | SkillAccessRequest$processorArgs<ExtArgs>
+  }
+
+  export type $SkillAccessRequestPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "SkillAccessRequest"
+    objects: {
+      skill: Prisma.$SkillConfigPayload<ExtArgs>
+      requester: Prisma.$UserPayload<ExtArgs>
+      processor: Prisma.$UserPayload<ExtArgs> | null
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      skillId: string
+      requesterUserId: string
+      status: string
+      reason: string | null
+      responseNote: string | null
+      processedAt: Date | null
+      processedBy: string | null
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["skillAccessRequest"]>
+    composites: {}
+  }
+
+  type SkillAccessRequestGetPayload<S extends boolean | null | undefined | SkillAccessRequestDefaultArgs> = $Result.GetResult<Prisma.$SkillAccessRequestPayload, S>
+
+  type SkillAccessRequestCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<SkillAccessRequestFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: SkillAccessRequestCountAggregateInputType | true
+    }
+
+  export interface SkillAccessRequestDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['SkillAccessRequest'], meta: { name: 'SkillAccessRequest' } }
+    /**
+     * Find zero or one SkillAccessRequest that matches the filter.
+     * @param {SkillAccessRequestFindUniqueArgs} args - Arguments to find a SkillAccessRequest
+     * @example
+     * // Get one SkillAccessRequest
+     * const skillAccessRequest = await prisma.skillAccessRequest.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends SkillAccessRequestFindUniqueArgs>(args: SelectSubset<T, SkillAccessRequestFindUniqueArgs<ExtArgs>>): Prisma__SkillAccessRequestClient<$Result.GetResult<Prisma.$SkillAccessRequestPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+
+    /**
+     * Find one SkillAccessRequest that matches the filter or throw an error with `error.code='P2025'` 
+     * if no matches were found.
+     * @param {SkillAccessRequestFindUniqueOrThrowArgs} args - Arguments to find a SkillAccessRequest
+     * @example
+     * // Get one SkillAccessRequest
+     * const skillAccessRequest = await prisma.skillAccessRequest.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends SkillAccessRequestFindUniqueOrThrowArgs>(args: SelectSubset<T, SkillAccessRequestFindUniqueOrThrowArgs<ExtArgs>>): Prisma__SkillAccessRequestClient<$Result.GetResult<Prisma.$SkillAccessRequestPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+
+    /**
+     * Find the first SkillAccessRequest that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SkillAccessRequestFindFirstArgs} args - Arguments to find a SkillAccessRequest
+     * @example
+     * // Get one SkillAccessRequest
+     * const skillAccessRequest = await prisma.skillAccessRequest.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends SkillAccessRequestFindFirstArgs>(args?: SelectSubset<T, SkillAccessRequestFindFirstArgs<ExtArgs>>): Prisma__SkillAccessRequestClient<$Result.GetResult<Prisma.$SkillAccessRequestPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+
+    /**
+     * Find the first SkillAccessRequest that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SkillAccessRequestFindFirstOrThrowArgs} args - Arguments to find a SkillAccessRequest
+     * @example
+     * // Get one SkillAccessRequest
+     * const skillAccessRequest = await prisma.skillAccessRequest.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends SkillAccessRequestFindFirstOrThrowArgs>(args?: SelectSubset<T, SkillAccessRequestFindFirstOrThrowArgs<ExtArgs>>): Prisma__SkillAccessRequestClient<$Result.GetResult<Prisma.$SkillAccessRequestPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+
+    /**
+     * Find zero or more SkillAccessRequests that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SkillAccessRequestFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all SkillAccessRequests
+     * const skillAccessRequests = await prisma.skillAccessRequest.findMany()
+     * 
+     * // Get first 10 SkillAccessRequests
+     * const skillAccessRequests = await prisma.skillAccessRequest.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const skillAccessRequestWithIdOnly = await prisma.skillAccessRequest.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends SkillAccessRequestFindManyArgs>(args?: SelectSubset<T, SkillAccessRequestFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SkillAccessRequestPayload<ExtArgs>, T, "findMany">>
+
+    /**
+     * Create a SkillAccessRequest.
+     * @param {SkillAccessRequestCreateArgs} args - Arguments to create a SkillAccessRequest.
+     * @example
+     * // Create one SkillAccessRequest
+     * const SkillAccessRequest = await prisma.skillAccessRequest.create({
+     *   data: {
+     *     // ... data to create a SkillAccessRequest
+     *   }
+     * })
+     * 
+     */
+    create<T extends SkillAccessRequestCreateArgs>(args: SelectSubset<T, SkillAccessRequestCreateArgs<ExtArgs>>): Prisma__SkillAccessRequestClient<$Result.GetResult<Prisma.$SkillAccessRequestPayload<ExtArgs>, T, "create">, never, ExtArgs>
+
+    /**
+     * Create many SkillAccessRequests.
+     * @param {SkillAccessRequestCreateManyArgs} args - Arguments to create many SkillAccessRequests.
+     * @example
+     * // Create many SkillAccessRequests
+     * const skillAccessRequest = await prisma.skillAccessRequest.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends SkillAccessRequestCreateManyArgs>(args?: SelectSubset<T, SkillAccessRequestCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many SkillAccessRequests and returns the data saved in the database.
+     * @param {SkillAccessRequestCreateManyAndReturnArgs} args - Arguments to create many SkillAccessRequests.
+     * @example
+     * // Create many SkillAccessRequests
+     * const skillAccessRequest = await prisma.skillAccessRequest.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many SkillAccessRequests and only return the `id`
+     * const skillAccessRequestWithIdOnly = await prisma.skillAccessRequest.createManyAndReturn({ 
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends SkillAccessRequestCreateManyAndReturnArgs>(args?: SelectSubset<T, SkillAccessRequestCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SkillAccessRequestPayload<ExtArgs>, T, "createManyAndReturn">>
+
+    /**
+     * Delete a SkillAccessRequest.
+     * @param {SkillAccessRequestDeleteArgs} args - Arguments to delete one SkillAccessRequest.
+     * @example
+     * // Delete one SkillAccessRequest
+     * const SkillAccessRequest = await prisma.skillAccessRequest.delete({
+     *   where: {
+     *     // ... filter to delete one SkillAccessRequest
+     *   }
+     * })
+     * 
+     */
+    delete<T extends SkillAccessRequestDeleteArgs>(args: SelectSubset<T, SkillAccessRequestDeleteArgs<ExtArgs>>): Prisma__SkillAccessRequestClient<$Result.GetResult<Prisma.$SkillAccessRequestPayload<ExtArgs>, T, "delete">, never, ExtArgs>
+
+    /**
+     * Update one SkillAccessRequest.
+     * @param {SkillAccessRequestUpdateArgs} args - Arguments to update one SkillAccessRequest.
+     * @example
+     * // Update one SkillAccessRequest
+     * const skillAccessRequest = await prisma.skillAccessRequest.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends SkillAccessRequestUpdateArgs>(args: SelectSubset<T, SkillAccessRequestUpdateArgs<ExtArgs>>): Prisma__SkillAccessRequestClient<$Result.GetResult<Prisma.$SkillAccessRequestPayload<ExtArgs>, T, "update">, never, ExtArgs>
+
+    /**
+     * Delete zero or more SkillAccessRequests.
+     * @param {SkillAccessRequestDeleteManyArgs} args - Arguments to filter SkillAccessRequests to delete.
+     * @example
+     * // Delete a few SkillAccessRequests
+     * const { count } = await prisma.skillAccessRequest.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends SkillAccessRequestDeleteManyArgs>(args?: SelectSubset<T, SkillAccessRequestDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more SkillAccessRequests.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SkillAccessRequestUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many SkillAccessRequests
+     * const skillAccessRequest = await prisma.skillAccessRequest.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends SkillAccessRequestUpdateManyArgs>(args: SelectSubset<T, SkillAccessRequestUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one SkillAccessRequest.
+     * @param {SkillAccessRequestUpsertArgs} args - Arguments to update or create a SkillAccessRequest.
+     * @example
+     * // Update or create a SkillAccessRequest
+     * const skillAccessRequest = await prisma.skillAccessRequest.upsert({
+     *   create: {
+     *     // ... data to create a SkillAccessRequest
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the SkillAccessRequest we want to update
+     *   }
+     * })
+     */
+    upsert<T extends SkillAccessRequestUpsertArgs>(args: SelectSubset<T, SkillAccessRequestUpsertArgs<ExtArgs>>): Prisma__SkillAccessRequestClient<$Result.GetResult<Prisma.$SkillAccessRequestPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+
+
+    /**
+     * Count the number of SkillAccessRequests.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SkillAccessRequestCountArgs} args - Arguments to filter SkillAccessRequests to count.
+     * @example
+     * // Count the number of SkillAccessRequests
+     * const count = await prisma.skillAccessRequest.count({
+     *   where: {
+     *     // ... the filter for the SkillAccessRequests we want to count
+     *   }
+     * })
+    **/
+    count<T extends SkillAccessRequestCountArgs>(
+      args?: Subset<T, SkillAccessRequestCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], SkillAccessRequestCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a SkillAccessRequest.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SkillAccessRequestAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends SkillAccessRequestAggregateArgs>(args: Subset<T, SkillAccessRequestAggregateArgs>): Prisma.PrismaPromise<GetSkillAccessRequestAggregateType<T>>
+
+    /**
+     * Group by SkillAccessRequest.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SkillAccessRequestGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends SkillAccessRequestGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: SkillAccessRequestGroupByArgs['orderBy'] }
+        : { orderBy?: SkillAccessRequestGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, SkillAccessRequestGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetSkillAccessRequestGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the SkillAccessRequest model
+   */
+  readonly fields: SkillAccessRequestFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for SkillAccessRequest.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__SkillAccessRequestClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    skill<T extends SkillConfigDefaultArgs<ExtArgs> = {}>(args?: Subset<T, SkillConfigDefaultArgs<ExtArgs>>): Prisma__SkillConfigClient<$Result.GetResult<Prisma.$SkillConfigPayload<ExtArgs>, T, "findUniqueOrThrow"> | Null, Null, ExtArgs>
+    requester<T extends UserDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UserDefaultArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow"> | Null, Null, ExtArgs>
+    processor<T extends SkillAccessRequest$processorArgs<ExtArgs> = {}>(args?: Subset<T, SkillAccessRequest$processorArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow"> | null, null, ExtArgs>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the SkillAccessRequest model
+   */ 
+  interface SkillAccessRequestFieldRefs {
+    readonly id: FieldRef<"SkillAccessRequest", 'String'>
+    readonly skillId: FieldRef<"SkillAccessRequest", 'String'>
+    readonly requesterUserId: FieldRef<"SkillAccessRequest", 'String'>
+    readonly status: FieldRef<"SkillAccessRequest", 'String'>
+    readonly reason: FieldRef<"SkillAccessRequest", 'String'>
+    readonly responseNote: FieldRef<"SkillAccessRequest", 'String'>
+    readonly processedAt: FieldRef<"SkillAccessRequest", 'DateTime'>
+    readonly processedBy: FieldRef<"SkillAccessRequest", 'String'>
+    readonly createdAt: FieldRef<"SkillAccessRequest", 'DateTime'>
+    readonly updatedAt: FieldRef<"SkillAccessRequest", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * SkillAccessRequest findUnique
+   */
+  export type SkillAccessRequestFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SkillAccessRequest
+     */
+    select?: SkillAccessRequestSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SkillAccessRequestInclude<ExtArgs> | null
+    /**
+     * Filter, which SkillAccessRequest to fetch.
+     */
+    where: SkillAccessRequestWhereUniqueInput
+  }
+
+  /**
+   * SkillAccessRequest findUniqueOrThrow
+   */
+  export type SkillAccessRequestFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SkillAccessRequest
+     */
+    select?: SkillAccessRequestSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SkillAccessRequestInclude<ExtArgs> | null
+    /**
+     * Filter, which SkillAccessRequest to fetch.
+     */
+    where: SkillAccessRequestWhereUniqueInput
+  }
+
+  /**
+   * SkillAccessRequest findFirst
+   */
+  export type SkillAccessRequestFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SkillAccessRequest
+     */
+    select?: SkillAccessRequestSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SkillAccessRequestInclude<ExtArgs> | null
+    /**
+     * Filter, which SkillAccessRequest to fetch.
+     */
+    where?: SkillAccessRequestWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of SkillAccessRequests to fetch.
+     */
+    orderBy?: SkillAccessRequestOrderByWithRelationInput | SkillAccessRequestOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for SkillAccessRequests.
+     */
+    cursor?: SkillAccessRequestWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` SkillAccessRequests from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` SkillAccessRequests.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of SkillAccessRequests.
+     */
+    distinct?: SkillAccessRequestScalarFieldEnum | SkillAccessRequestScalarFieldEnum[]
+  }
+
+  /**
+   * SkillAccessRequest findFirstOrThrow
+   */
+  export type SkillAccessRequestFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SkillAccessRequest
+     */
+    select?: SkillAccessRequestSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SkillAccessRequestInclude<ExtArgs> | null
+    /**
+     * Filter, which SkillAccessRequest to fetch.
+     */
+    where?: SkillAccessRequestWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of SkillAccessRequests to fetch.
+     */
+    orderBy?: SkillAccessRequestOrderByWithRelationInput | SkillAccessRequestOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for SkillAccessRequests.
+     */
+    cursor?: SkillAccessRequestWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` SkillAccessRequests from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` SkillAccessRequests.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of SkillAccessRequests.
+     */
+    distinct?: SkillAccessRequestScalarFieldEnum | SkillAccessRequestScalarFieldEnum[]
+  }
+
+  /**
+   * SkillAccessRequest findMany
+   */
+  export type SkillAccessRequestFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SkillAccessRequest
+     */
+    select?: SkillAccessRequestSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SkillAccessRequestInclude<ExtArgs> | null
+    /**
+     * Filter, which SkillAccessRequests to fetch.
+     */
+    where?: SkillAccessRequestWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of SkillAccessRequests to fetch.
+     */
+    orderBy?: SkillAccessRequestOrderByWithRelationInput | SkillAccessRequestOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing SkillAccessRequests.
+     */
+    cursor?: SkillAccessRequestWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` SkillAccessRequests from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` SkillAccessRequests.
+     */
+    skip?: number
+    distinct?: SkillAccessRequestScalarFieldEnum | SkillAccessRequestScalarFieldEnum[]
+  }
+
+  /**
+   * SkillAccessRequest create
+   */
+  export type SkillAccessRequestCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SkillAccessRequest
+     */
+    select?: SkillAccessRequestSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SkillAccessRequestInclude<ExtArgs> | null
+    /**
+     * The data needed to create a SkillAccessRequest.
+     */
+    data: XOR<SkillAccessRequestCreateInput, SkillAccessRequestUncheckedCreateInput>
+  }
+
+  /**
+   * SkillAccessRequest createMany
+   */
+  export type SkillAccessRequestCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many SkillAccessRequests.
+     */
+    data: SkillAccessRequestCreateManyInput | SkillAccessRequestCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * SkillAccessRequest createManyAndReturn
+   */
+  export type SkillAccessRequestCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SkillAccessRequest
+     */
+    select?: SkillAccessRequestSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * The data used to create many SkillAccessRequests.
+     */
+    data: SkillAccessRequestCreateManyInput | SkillAccessRequestCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SkillAccessRequestIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * SkillAccessRequest update
+   */
+  export type SkillAccessRequestUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SkillAccessRequest
+     */
+    select?: SkillAccessRequestSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SkillAccessRequestInclude<ExtArgs> | null
+    /**
+     * The data needed to update a SkillAccessRequest.
+     */
+    data: XOR<SkillAccessRequestUpdateInput, SkillAccessRequestUncheckedUpdateInput>
+    /**
+     * Choose, which SkillAccessRequest to update.
+     */
+    where: SkillAccessRequestWhereUniqueInput
+  }
+
+  /**
+   * SkillAccessRequest updateMany
+   */
+  export type SkillAccessRequestUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update SkillAccessRequests.
+     */
+    data: XOR<SkillAccessRequestUpdateManyMutationInput, SkillAccessRequestUncheckedUpdateManyInput>
+    /**
+     * Filter which SkillAccessRequests to update
+     */
+    where?: SkillAccessRequestWhereInput
+  }
+
+  /**
+   * SkillAccessRequest upsert
+   */
+  export type SkillAccessRequestUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SkillAccessRequest
+     */
+    select?: SkillAccessRequestSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SkillAccessRequestInclude<ExtArgs> | null
+    /**
+     * The filter to search for the SkillAccessRequest to update in case it exists.
+     */
+    where: SkillAccessRequestWhereUniqueInput
+    /**
+     * In case the SkillAccessRequest found by the `where` argument doesn't exist, create a new SkillAccessRequest with this data.
+     */
+    create: XOR<SkillAccessRequestCreateInput, SkillAccessRequestUncheckedCreateInput>
+    /**
+     * In case the SkillAccessRequest was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<SkillAccessRequestUpdateInput, SkillAccessRequestUncheckedUpdateInput>
+  }
+
+  /**
+   * SkillAccessRequest delete
+   */
+  export type SkillAccessRequestDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SkillAccessRequest
+     */
+    select?: SkillAccessRequestSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SkillAccessRequestInclude<ExtArgs> | null
+    /**
+     * Filter which SkillAccessRequest to delete.
+     */
+    where: SkillAccessRequestWhereUniqueInput
+  }
+
+  /**
+   * SkillAccessRequest deleteMany
+   */
+  export type SkillAccessRequestDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which SkillAccessRequests to delete
+     */
+    where?: SkillAccessRequestWhereInput
+  }
+
+  /**
+   * SkillAccessRequest.processor
+   */
+  export type SkillAccessRequest$processorArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the User
+     */
+    select?: UserSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserInclude<ExtArgs> | null
+    where?: UserWhereInput
+  }
+
+  /**
+   * SkillAccessRequest without action
+   */
+  export type SkillAccessRequestDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SkillAccessRequest
+     */
+    select?: SkillAccessRequestSelect<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SkillAccessRequestInclude<ExtArgs> | null
   }
 
 
@@ -29254,6 +30459,22 @@ export namespace Prisma {
   export type SkillPermissionScalarFieldEnum = (typeof SkillPermissionScalarFieldEnum)[keyof typeof SkillPermissionScalarFieldEnum]
 
 
+  export const SkillAccessRequestScalarFieldEnum: {
+    id: 'id',
+    skillId: 'skillId',
+    requesterUserId: 'requesterUserId',
+    status: 'status',
+    reason: 'reason',
+    responseNote: 'responseNote',
+    processedAt: 'processedAt',
+    processedBy: 'processedBy',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type SkillAccessRequestScalarFieldEnum = (typeof SkillAccessRequestScalarFieldEnum)[keyof typeof SkillAccessRequestScalarFieldEnum]
+
+
   export const ToolCatalogScalarFieldEnum: {
     id: 'id',
     name: 'name',
@@ -29685,6 +30906,8 @@ export namespace Prisma {
     assignedOrgRoles?: OrgRoleBindingListRelationFilter
     activeOrg?: XOR<OrganizationNullableRelationFilter, OrganizationWhereInput> | null
     chatSessions?: ChatSessionListRelationFilter
+    skillAccessRequests?: SkillAccessRequestListRelationFilter
+    processedSkillAccessRequests?: SkillAccessRequestListRelationFilter
   }
 
   export type UserOrderByWithRelationInput = {
@@ -29707,6 +30930,8 @@ export namespace Prisma {
     assignedOrgRoles?: OrgRoleBindingOrderByRelationAggregateInput
     activeOrg?: OrganizationOrderByWithRelationInput
     chatSessions?: ChatSessionOrderByRelationAggregateInput
+    skillAccessRequests?: SkillAccessRequestOrderByRelationAggregateInput
+    processedSkillAccessRequests?: SkillAccessRequestOrderByRelationAggregateInput
   }
 
   export type UserWhereUniqueInput = Prisma.AtLeast<{
@@ -29732,6 +30957,8 @@ export namespace Prisma {
     assignedOrgRoles?: OrgRoleBindingListRelationFilter
     activeOrg?: XOR<OrganizationNullableRelationFilter, OrganizationWhereInput> | null
     chatSessions?: ChatSessionListRelationFilter
+    skillAccessRequests?: SkillAccessRequestListRelationFilter
+    processedSkillAccessRequests?: SkillAccessRequestListRelationFilter
   }, "id" | "username" | "email">
 
   export type UserOrderByWithAggregationInput = {
@@ -30630,6 +31857,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFilter<"SkillConfig"> | Date | string
     permissions?: SkillPermissionListRelationFilter
     toolBindings?: SkillToolBindingListRelationFilter
+    accessRequests?: SkillAccessRequestListRelationFilter
   }
 
   export type SkillConfigOrderByWithRelationInput = {
@@ -30652,6 +31880,7 @@ export namespace Prisma {
     updatedAt?: SortOrder
     permissions?: SkillPermissionOrderByRelationAggregateInput
     toolBindings?: SkillToolBindingOrderByRelationAggregateInput
+    accessRequests?: SkillAccessRequestOrderByRelationAggregateInput
   }
 
   export type SkillConfigWhereUniqueInput = Prisma.AtLeast<{
@@ -30677,6 +31906,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFilter<"SkillConfig"> | Date | string
     permissions?: SkillPermissionListRelationFilter
     toolBindings?: SkillToolBindingListRelationFilter
+    accessRequests?: SkillAccessRequestListRelationFilter
   }, "id" | "name">
 
   export type SkillConfigOrderByWithAggregationInput = {
@@ -30777,6 +32007,92 @@ export namespace Prisma {
     roleId?: UuidWithAggregatesFilter<"SkillPermission"> | string
     grantedAt?: DateTimeWithAggregatesFilter<"SkillPermission"> | Date | string
     grantedBy?: UuidNullableWithAggregatesFilter<"SkillPermission"> | string | null
+  }
+
+  export type SkillAccessRequestWhereInput = {
+    AND?: SkillAccessRequestWhereInput | SkillAccessRequestWhereInput[]
+    OR?: SkillAccessRequestWhereInput[]
+    NOT?: SkillAccessRequestWhereInput | SkillAccessRequestWhereInput[]
+    id?: UuidFilter<"SkillAccessRequest"> | string
+    skillId?: UuidFilter<"SkillAccessRequest"> | string
+    requesterUserId?: UuidFilter<"SkillAccessRequest"> | string
+    status?: StringFilter<"SkillAccessRequest"> | string
+    reason?: StringNullableFilter<"SkillAccessRequest"> | string | null
+    responseNote?: StringNullableFilter<"SkillAccessRequest"> | string | null
+    processedAt?: DateTimeNullableFilter<"SkillAccessRequest"> | Date | string | null
+    processedBy?: UuidNullableFilter<"SkillAccessRequest"> | string | null
+    createdAt?: DateTimeFilter<"SkillAccessRequest"> | Date | string
+    updatedAt?: DateTimeFilter<"SkillAccessRequest"> | Date | string
+    skill?: XOR<SkillConfigRelationFilter, SkillConfigWhereInput>
+    requester?: XOR<UserRelationFilter, UserWhereInput>
+    processor?: XOR<UserNullableRelationFilter, UserWhereInput> | null
+  }
+
+  export type SkillAccessRequestOrderByWithRelationInput = {
+    id?: SortOrder
+    skillId?: SortOrder
+    requesterUserId?: SortOrder
+    status?: SortOrder
+    reason?: SortOrderInput | SortOrder
+    responseNote?: SortOrderInput | SortOrder
+    processedAt?: SortOrderInput | SortOrder
+    processedBy?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    skill?: SkillConfigOrderByWithRelationInput
+    requester?: UserOrderByWithRelationInput
+    processor?: UserOrderByWithRelationInput
+  }
+
+  export type SkillAccessRequestWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: SkillAccessRequestWhereInput | SkillAccessRequestWhereInput[]
+    OR?: SkillAccessRequestWhereInput[]
+    NOT?: SkillAccessRequestWhereInput | SkillAccessRequestWhereInput[]
+    skillId?: UuidFilter<"SkillAccessRequest"> | string
+    requesterUserId?: UuidFilter<"SkillAccessRequest"> | string
+    status?: StringFilter<"SkillAccessRequest"> | string
+    reason?: StringNullableFilter<"SkillAccessRequest"> | string | null
+    responseNote?: StringNullableFilter<"SkillAccessRequest"> | string | null
+    processedAt?: DateTimeNullableFilter<"SkillAccessRequest"> | Date | string | null
+    processedBy?: UuidNullableFilter<"SkillAccessRequest"> | string | null
+    createdAt?: DateTimeFilter<"SkillAccessRequest"> | Date | string
+    updatedAt?: DateTimeFilter<"SkillAccessRequest"> | Date | string
+    skill?: XOR<SkillConfigRelationFilter, SkillConfigWhereInput>
+    requester?: XOR<UserRelationFilter, UserWhereInput>
+    processor?: XOR<UserNullableRelationFilter, UserWhereInput> | null
+  }, "id">
+
+  export type SkillAccessRequestOrderByWithAggregationInput = {
+    id?: SortOrder
+    skillId?: SortOrder
+    requesterUserId?: SortOrder
+    status?: SortOrder
+    reason?: SortOrderInput | SortOrder
+    responseNote?: SortOrderInput | SortOrder
+    processedAt?: SortOrderInput | SortOrder
+    processedBy?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: SkillAccessRequestCountOrderByAggregateInput
+    _max?: SkillAccessRequestMaxOrderByAggregateInput
+    _min?: SkillAccessRequestMinOrderByAggregateInput
+  }
+
+  export type SkillAccessRequestScalarWhereWithAggregatesInput = {
+    AND?: SkillAccessRequestScalarWhereWithAggregatesInput | SkillAccessRequestScalarWhereWithAggregatesInput[]
+    OR?: SkillAccessRequestScalarWhereWithAggregatesInput[]
+    NOT?: SkillAccessRequestScalarWhereWithAggregatesInput | SkillAccessRequestScalarWhereWithAggregatesInput[]
+    id?: UuidWithAggregatesFilter<"SkillAccessRequest"> | string
+    skillId?: UuidWithAggregatesFilter<"SkillAccessRequest"> | string
+    requesterUserId?: UuidWithAggregatesFilter<"SkillAccessRequest"> | string
+    status?: StringWithAggregatesFilter<"SkillAccessRequest"> | string
+    reason?: StringNullableWithAggregatesFilter<"SkillAccessRequest"> | string | null
+    responseNote?: StringNullableWithAggregatesFilter<"SkillAccessRequest"> | string | null
+    processedAt?: DateTimeNullableWithAggregatesFilter<"SkillAccessRequest"> | Date | string | null
+    processedBy?: UuidNullableWithAggregatesFilter<"SkillAccessRequest"> | string | null
+    createdAt?: DateTimeWithAggregatesFilter<"SkillAccessRequest"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"SkillAccessRequest"> | Date | string
   }
 
   export type ToolCatalogWhereInput = {
@@ -31930,6 +33246,8 @@ export namespace Prisma {
     assignedOrgRoles?: OrgRoleBindingCreateNestedManyWithoutAssignerInput
     activeOrg?: OrganizationCreateNestedOneWithoutActiveUsersInput
     chatSessions?: ChatSessionCreateNestedManyWithoutUserInput
+    skillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutRequesterInput
+    processedSkillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutProcessorInput
   }
 
   export type UserUncheckedCreateInput = {
@@ -31951,6 +33269,8 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipUncheckedCreateNestedManyWithoutUserInput
     assignedOrgRoles?: OrgRoleBindingUncheckedCreateNestedManyWithoutAssignerInput
     chatSessions?: ChatSessionUncheckedCreateNestedManyWithoutUserInput
+    skillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutRequesterInput
+    processedSkillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutProcessorInput
   }
 
   export type UserUpdateInput = {
@@ -31972,6 +33292,8 @@ export namespace Prisma {
     assignedOrgRoles?: OrgRoleBindingUpdateManyWithoutAssignerNestedInput
     activeOrg?: OrganizationUpdateOneWithoutActiveUsersNestedInput
     chatSessions?: ChatSessionUpdateManyWithoutUserNestedInput
+    skillAccessRequests?: SkillAccessRequestUpdateManyWithoutRequesterNestedInput
+    processedSkillAccessRequests?: SkillAccessRequestUpdateManyWithoutProcessorNestedInput
   }
 
   export type UserUncheckedUpdateInput = {
@@ -31993,6 +33315,8 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
     assignedOrgRoles?: OrgRoleBindingUncheckedUpdateManyWithoutAssignerNestedInput
     chatSessions?: ChatSessionUncheckedUpdateManyWithoutUserNestedInput
+    skillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutRequesterNestedInput
+    processedSkillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutProcessorNestedInput
   }
 
   export type UserCreateManyInput = {
@@ -32959,6 +34283,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     permissions?: SkillPermissionCreateNestedManyWithoutSkillInput
     toolBindings?: SkillToolBindingCreateNestedManyWithoutSkillInput
+    accessRequests?: SkillAccessRequestCreateNestedManyWithoutSkillInput
   }
 
   export type SkillConfigUncheckedCreateInput = {
@@ -32981,6 +34306,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     permissions?: SkillPermissionUncheckedCreateNestedManyWithoutSkillInput
     toolBindings?: SkillToolBindingUncheckedCreateNestedManyWithoutSkillInput
+    accessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutSkillInput
   }
 
   export type SkillConfigUpdateInput = {
@@ -33003,6 +34329,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     permissions?: SkillPermissionUpdateManyWithoutSkillNestedInput
     toolBindings?: SkillToolBindingUpdateManyWithoutSkillNestedInput
+    accessRequests?: SkillAccessRequestUpdateManyWithoutSkillNestedInput
   }
 
   export type SkillConfigUncheckedUpdateInput = {
@@ -33025,6 +34352,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     permissions?: SkillPermissionUncheckedUpdateManyWithoutSkillNestedInput
     toolBindings?: SkillToolBindingUncheckedUpdateManyWithoutSkillNestedInput
+    accessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutSkillNestedInput
   }
 
   export type SkillConfigCreateManyInput = {
@@ -33132,6 +34460,94 @@ export namespace Prisma {
     roleId?: StringFieldUpdateOperationsInput | string
     grantedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     grantedBy?: NullableStringFieldUpdateOperationsInput | string | null
+  }
+
+  export type SkillAccessRequestCreateInput = {
+    id?: string
+    status?: string
+    reason?: string | null
+    responseNote?: string | null
+    processedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    skill: SkillConfigCreateNestedOneWithoutAccessRequestsInput
+    requester: UserCreateNestedOneWithoutSkillAccessRequestsInput
+    processor?: UserCreateNestedOneWithoutProcessedSkillAccessRequestsInput
+  }
+
+  export type SkillAccessRequestUncheckedCreateInput = {
+    id?: string
+    skillId: string
+    requesterUserId: string
+    status?: string
+    reason?: string | null
+    responseNote?: string | null
+    processedAt?: Date | string | null
+    processedBy?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type SkillAccessRequestUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    reason?: NullableStringFieldUpdateOperationsInput | string | null
+    responseNote?: NullableStringFieldUpdateOperationsInput | string | null
+    processedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    skill?: SkillConfigUpdateOneRequiredWithoutAccessRequestsNestedInput
+    requester?: UserUpdateOneRequiredWithoutSkillAccessRequestsNestedInput
+    processor?: UserUpdateOneWithoutProcessedSkillAccessRequestsNestedInput
+  }
+
+  export type SkillAccessRequestUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    skillId?: StringFieldUpdateOperationsInput | string
+    requesterUserId?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    reason?: NullableStringFieldUpdateOperationsInput | string | null
+    responseNote?: NullableStringFieldUpdateOperationsInput | string | null
+    processedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    processedBy?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type SkillAccessRequestCreateManyInput = {
+    id?: string
+    skillId: string
+    requesterUserId: string
+    status?: string
+    reason?: string | null
+    responseNote?: string | null
+    processedAt?: Date | string | null
+    processedBy?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type SkillAccessRequestUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    reason?: NullableStringFieldUpdateOperationsInput | string | null
+    responseNote?: NullableStringFieldUpdateOperationsInput | string | null
+    processedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type SkillAccessRequestUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    skillId?: StringFieldUpdateOperationsInput | string
+    requesterUserId?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    reason?: NullableStringFieldUpdateOperationsInput | string | null
+    responseNote?: NullableStringFieldUpdateOperationsInput | string | null
+    processedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    processedBy?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type ToolCatalogCreateInput = {
@@ -34591,6 +36007,12 @@ export namespace Prisma {
     none?: ChatSessionWhereInput
   }
 
+  export type SkillAccessRequestListRelationFilter = {
+    every?: SkillAccessRequestWhereInput
+    some?: SkillAccessRequestWhereInput
+    none?: SkillAccessRequestWhereInput
+  }
+
   export type SortOrderInput = {
     sort: SortOrder
     nulls?: NullsOrder
@@ -34609,6 +36031,10 @@ export namespace Prisma {
   }
 
   export type ChatSessionOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type SkillAccessRequestOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
 
@@ -35525,6 +36951,45 @@ export namespace Prisma {
     grantedBy?: SortOrder
   }
 
+  export type SkillAccessRequestCountOrderByAggregateInput = {
+    id?: SortOrder
+    skillId?: SortOrder
+    requesterUserId?: SortOrder
+    status?: SortOrder
+    reason?: SortOrder
+    responseNote?: SortOrder
+    processedAt?: SortOrder
+    processedBy?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type SkillAccessRequestMaxOrderByAggregateInput = {
+    id?: SortOrder
+    skillId?: SortOrder
+    requesterUserId?: SortOrder
+    status?: SortOrder
+    reason?: SortOrder
+    responseNote?: SortOrder
+    processedAt?: SortOrder
+    processedBy?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type SkillAccessRequestMinOrderByAggregateInput = {
+    id?: SortOrder
+    skillId?: SortOrder
+    requesterUserId?: SortOrder
+    status?: SortOrder
+    reason?: SortOrder
+    responseNote?: SortOrder
+    processedAt?: SortOrder
+    processedBy?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
   export type ToolCatalogCountOrderByAggregateInput = {
     id?: SortOrder
     name?: SortOrder
@@ -36218,6 +37683,20 @@ export namespace Prisma {
     connect?: ChatSessionWhereUniqueInput | ChatSessionWhereUniqueInput[]
   }
 
+  export type SkillAccessRequestCreateNestedManyWithoutRequesterInput = {
+    create?: XOR<SkillAccessRequestCreateWithoutRequesterInput, SkillAccessRequestUncheckedCreateWithoutRequesterInput> | SkillAccessRequestCreateWithoutRequesterInput[] | SkillAccessRequestUncheckedCreateWithoutRequesterInput[]
+    connectOrCreate?: SkillAccessRequestCreateOrConnectWithoutRequesterInput | SkillAccessRequestCreateOrConnectWithoutRequesterInput[]
+    createMany?: SkillAccessRequestCreateManyRequesterInputEnvelope
+    connect?: SkillAccessRequestWhereUniqueInput | SkillAccessRequestWhereUniqueInput[]
+  }
+
+  export type SkillAccessRequestCreateNestedManyWithoutProcessorInput = {
+    create?: XOR<SkillAccessRequestCreateWithoutProcessorInput, SkillAccessRequestUncheckedCreateWithoutProcessorInput> | SkillAccessRequestCreateWithoutProcessorInput[] | SkillAccessRequestUncheckedCreateWithoutProcessorInput[]
+    connectOrCreate?: SkillAccessRequestCreateOrConnectWithoutProcessorInput | SkillAccessRequestCreateOrConnectWithoutProcessorInput[]
+    createMany?: SkillAccessRequestCreateManyProcessorInputEnvelope
+    connect?: SkillAccessRequestWhereUniqueInput | SkillAccessRequestWhereUniqueInput[]
+  }
+
   export type UserRoleUncheckedCreateNestedManyWithoutUserInput = {
     create?: XOR<UserRoleCreateWithoutUserInput, UserRoleUncheckedCreateWithoutUserInput> | UserRoleCreateWithoutUserInput[] | UserRoleUncheckedCreateWithoutUserInput[]
     connectOrCreate?: UserRoleCreateOrConnectWithoutUserInput | UserRoleCreateOrConnectWithoutUserInput[]
@@ -36251,6 +37730,20 @@ export namespace Prisma {
     connectOrCreate?: ChatSessionCreateOrConnectWithoutUserInput | ChatSessionCreateOrConnectWithoutUserInput[]
     createMany?: ChatSessionCreateManyUserInputEnvelope
     connect?: ChatSessionWhereUniqueInput | ChatSessionWhereUniqueInput[]
+  }
+
+  export type SkillAccessRequestUncheckedCreateNestedManyWithoutRequesterInput = {
+    create?: XOR<SkillAccessRequestCreateWithoutRequesterInput, SkillAccessRequestUncheckedCreateWithoutRequesterInput> | SkillAccessRequestCreateWithoutRequesterInput[] | SkillAccessRequestUncheckedCreateWithoutRequesterInput[]
+    connectOrCreate?: SkillAccessRequestCreateOrConnectWithoutRequesterInput | SkillAccessRequestCreateOrConnectWithoutRequesterInput[]
+    createMany?: SkillAccessRequestCreateManyRequesterInputEnvelope
+    connect?: SkillAccessRequestWhereUniqueInput | SkillAccessRequestWhereUniqueInput[]
+  }
+
+  export type SkillAccessRequestUncheckedCreateNestedManyWithoutProcessorInput = {
+    create?: XOR<SkillAccessRequestCreateWithoutProcessorInput, SkillAccessRequestUncheckedCreateWithoutProcessorInput> | SkillAccessRequestCreateWithoutProcessorInput[] | SkillAccessRequestUncheckedCreateWithoutProcessorInput[]
+    connectOrCreate?: SkillAccessRequestCreateOrConnectWithoutProcessorInput | SkillAccessRequestCreateOrConnectWithoutProcessorInput[]
+    createMany?: SkillAccessRequestCreateManyProcessorInputEnvelope
+    connect?: SkillAccessRequestWhereUniqueInput | SkillAccessRequestWhereUniqueInput[]
   }
 
   export type StringFieldUpdateOperationsInput = {
@@ -36357,6 +37850,34 @@ export namespace Prisma {
     deleteMany?: ChatSessionScalarWhereInput | ChatSessionScalarWhereInput[]
   }
 
+  export type SkillAccessRequestUpdateManyWithoutRequesterNestedInput = {
+    create?: XOR<SkillAccessRequestCreateWithoutRequesterInput, SkillAccessRequestUncheckedCreateWithoutRequesterInput> | SkillAccessRequestCreateWithoutRequesterInput[] | SkillAccessRequestUncheckedCreateWithoutRequesterInput[]
+    connectOrCreate?: SkillAccessRequestCreateOrConnectWithoutRequesterInput | SkillAccessRequestCreateOrConnectWithoutRequesterInput[]
+    upsert?: SkillAccessRequestUpsertWithWhereUniqueWithoutRequesterInput | SkillAccessRequestUpsertWithWhereUniqueWithoutRequesterInput[]
+    createMany?: SkillAccessRequestCreateManyRequesterInputEnvelope
+    set?: SkillAccessRequestWhereUniqueInput | SkillAccessRequestWhereUniqueInput[]
+    disconnect?: SkillAccessRequestWhereUniqueInput | SkillAccessRequestWhereUniqueInput[]
+    delete?: SkillAccessRequestWhereUniqueInput | SkillAccessRequestWhereUniqueInput[]
+    connect?: SkillAccessRequestWhereUniqueInput | SkillAccessRequestWhereUniqueInput[]
+    update?: SkillAccessRequestUpdateWithWhereUniqueWithoutRequesterInput | SkillAccessRequestUpdateWithWhereUniqueWithoutRequesterInput[]
+    updateMany?: SkillAccessRequestUpdateManyWithWhereWithoutRequesterInput | SkillAccessRequestUpdateManyWithWhereWithoutRequesterInput[]
+    deleteMany?: SkillAccessRequestScalarWhereInput | SkillAccessRequestScalarWhereInput[]
+  }
+
+  export type SkillAccessRequestUpdateManyWithoutProcessorNestedInput = {
+    create?: XOR<SkillAccessRequestCreateWithoutProcessorInput, SkillAccessRequestUncheckedCreateWithoutProcessorInput> | SkillAccessRequestCreateWithoutProcessorInput[] | SkillAccessRequestUncheckedCreateWithoutProcessorInput[]
+    connectOrCreate?: SkillAccessRequestCreateOrConnectWithoutProcessorInput | SkillAccessRequestCreateOrConnectWithoutProcessorInput[]
+    upsert?: SkillAccessRequestUpsertWithWhereUniqueWithoutProcessorInput | SkillAccessRequestUpsertWithWhereUniqueWithoutProcessorInput[]
+    createMany?: SkillAccessRequestCreateManyProcessorInputEnvelope
+    set?: SkillAccessRequestWhereUniqueInput | SkillAccessRequestWhereUniqueInput[]
+    disconnect?: SkillAccessRequestWhereUniqueInput | SkillAccessRequestWhereUniqueInput[]
+    delete?: SkillAccessRequestWhereUniqueInput | SkillAccessRequestWhereUniqueInput[]
+    connect?: SkillAccessRequestWhereUniqueInput | SkillAccessRequestWhereUniqueInput[]
+    update?: SkillAccessRequestUpdateWithWhereUniqueWithoutProcessorInput | SkillAccessRequestUpdateWithWhereUniqueWithoutProcessorInput[]
+    updateMany?: SkillAccessRequestUpdateManyWithWhereWithoutProcessorInput | SkillAccessRequestUpdateManyWithWhereWithoutProcessorInput[]
+    deleteMany?: SkillAccessRequestScalarWhereInput | SkillAccessRequestScalarWhereInput[]
+  }
+
   export type UserRoleUncheckedUpdateManyWithoutUserNestedInput = {
     create?: XOR<UserRoleCreateWithoutUserInput, UserRoleUncheckedCreateWithoutUserInput> | UserRoleCreateWithoutUserInput[] | UserRoleUncheckedCreateWithoutUserInput[]
     connectOrCreate?: UserRoleCreateOrConnectWithoutUserInput | UserRoleCreateOrConnectWithoutUserInput[]
@@ -36425,6 +37946,34 @@ export namespace Prisma {
     update?: ChatSessionUpdateWithWhereUniqueWithoutUserInput | ChatSessionUpdateWithWhereUniqueWithoutUserInput[]
     updateMany?: ChatSessionUpdateManyWithWhereWithoutUserInput | ChatSessionUpdateManyWithWhereWithoutUserInput[]
     deleteMany?: ChatSessionScalarWhereInput | ChatSessionScalarWhereInput[]
+  }
+
+  export type SkillAccessRequestUncheckedUpdateManyWithoutRequesterNestedInput = {
+    create?: XOR<SkillAccessRequestCreateWithoutRequesterInput, SkillAccessRequestUncheckedCreateWithoutRequesterInput> | SkillAccessRequestCreateWithoutRequesterInput[] | SkillAccessRequestUncheckedCreateWithoutRequesterInput[]
+    connectOrCreate?: SkillAccessRequestCreateOrConnectWithoutRequesterInput | SkillAccessRequestCreateOrConnectWithoutRequesterInput[]
+    upsert?: SkillAccessRequestUpsertWithWhereUniqueWithoutRequesterInput | SkillAccessRequestUpsertWithWhereUniqueWithoutRequesterInput[]
+    createMany?: SkillAccessRequestCreateManyRequesterInputEnvelope
+    set?: SkillAccessRequestWhereUniqueInput | SkillAccessRequestWhereUniqueInput[]
+    disconnect?: SkillAccessRequestWhereUniqueInput | SkillAccessRequestWhereUniqueInput[]
+    delete?: SkillAccessRequestWhereUniqueInput | SkillAccessRequestWhereUniqueInput[]
+    connect?: SkillAccessRequestWhereUniqueInput | SkillAccessRequestWhereUniqueInput[]
+    update?: SkillAccessRequestUpdateWithWhereUniqueWithoutRequesterInput | SkillAccessRequestUpdateWithWhereUniqueWithoutRequesterInput[]
+    updateMany?: SkillAccessRequestUpdateManyWithWhereWithoutRequesterInput | SkillAccessRequestUpdateManyWithWhereWithoutRequesterInput[]
+    deleteMany?: SkillAccessRequestScalarWhereInput | SkillAccessRequestScalarWhereInput[]
+  }
+
+  export type SkillAccessRequestUncheckedUpdateManyWithoutProcessorNestedInput = {
+    create?: XOR<SkillAccessRequestCreateWithoutProcessorInput, SkillAccessRequestUncheckedCreateWithoutProcessorInput> | SkillAccessRequestCreateWithoutProcessorInput[] | SkillAccessRequestUncheckedCreateWithoutProcessorInput[]
+    connectOrCreate?: SkillAccessRequestCreateOrConnectWithoutProcessorInput | SkillAccessRequestCreateOrConnectWithoutProcessorInput[]
+    upsert?: SkillAccessRequestUpsertWithWhereUniqueWithoutProcessorInput | SkillAccessRequestUpsertWithWhereUniqueWithoutProcessorInput[]
+    createMany?: SkillAccessRequestCreateManyProcessorInputEnvelope
+    set?: SkillAccessRequestWhereUniqueInput | SkillAccessRequestWhereUniqueInput[]
+    disconnect?: SkillAccessRequestWhereUniqueInput | SkillAccessRequestWhereUniqueInput[]
+    delete?: SkillAccessRequestWhereUniqueInput | SkillAccessRequestWhereUniqueInput[]
+    connect?: SkillAccessRequestWhereUniqueInput | SkillAccessRequestWhereUniqueInput[]
+    update?: SkillAccessRequestUpdateWithWhereUniqueWithoutProcessorInput | SkillAccessRequestUpdateWithWhereUniqueWithoutProcessorInput[]
+    updateMany?: SkillAccessRequestUpdateManyWithWhereWithoutProcessorInput | SkillAccessRequestUpdateManyWithWhereWithoutProcessorInput[]
+    deleteMany?: SkillAccessRequestScalarWhereInput | SkillAccessRequestScalarWhereInput[]
   }
 
   export type UserRoleCreateNestedManyWithoutRoleInput = {
@@ -37339,6 +38888,13 @@ export namespace Prisma {
     connect?: SkillToolBindingWhereUniqueInput | SkillToolBindingWhereUniqueInput[]
   }
 
+  export type SkillAccessRequestCreateNestedManyWithoutSkillInput = {
+    create?: XOR<SkillAccessRequestCreateWithoutSkillInput, SkillAccessRequestUncheckedCreateWithoutSkillInput> | SkillAccessRequestCreateWithoutSkillInput[] | SkillAccessRequestUncheckedCreateWithoutSkillInput[]
+    connectOrCreate?: SkillAccessRequestCreateOrConnectWithoutSkillInput | SkillAccessRequestCreateOrConnectWithoutSkillInput[]
+    createMany?: SkillAccessRequestCreateManySkillInputEnvelope
+    connect?: SkillAccessRequestWhereUniqueInput | SkillAccessRequestWhereUniqueInput[]
+  }
+
   export type SkillPermissionUncheckedCreateNestedManyWithoutSkillInput = {
     create?: XOR<SkillPermissionCreateWithoutSkillInput, SkillPermissionUncheckedCreateWithoutSkillInput> | SkillPermissionCreateWithoutSkillInput[] | SkillPermissionUncheckedCreateWithoutSkillInput[]
     connectOrCreate?: SkillPermissionCreateOrConnectWithoutSkillInput | SkillPermissionCreateOrConnectWithoutSkillInput[]
@@ -37351,6 +38907,13 @@ export namespace Prisma {
     connectOrCreate?: SkillToolBindingCreateOrConnectWithoutSkillInput | SkillToolBindingCreateOrConnectWithoutSkillInput[]
     createMany?: SkillToolBindingCreateManySkillInputEnvelope
     connect?: SkillToolBindingWhereUniqueInput | SkillToolBindingWhereUniqueInput[]
+  }
+
+  export type SkillAccessRequestUncheckedCreateNestedManyWithoutSkillInput = {
+    create?: XOR<SkillAccessRequestCreateWithoutSkillInput, SkillAccessRequestUncheckedCreateWithoutSkillInput> | SkillAccessRequestCreateWithoutSkillInput[] | SkillAccessRequestUncheckedCreateWithoutSkillInput[]
+    connectOrCreate?: SkillAccessRequestCreateOrConnectWithoutSkillInput | SkillAccessRequestCreateOrConnectWithoutSkillInput[]
+    createMany?: SkillAccessRequestCreateManySkillInputEnvelope
+    connect?: SkillAccessRequestWhereUniqueInput | SkillAccessRequestWhereUniqueInput[]
   }
 
   export type SkillPermissionUpdateManyWithoutSkillNestedInput = {
@@ -37381,6 +38944,20 @@ export namespace Prisma {
     deleteMany?: SkillToolBindingScalarWhereInput | SkillToolBindingScalarWhereInput[]
   }
 
+  export type SkillAccessRequestUpdateManyWithoutSkillNestedInput = {
+    create?: XOR<SkillAccessRequestCreateWithoutSkillInput, SkillAccessRequestUncheckedCreateWithoutSkillInput> | SkillAccessRequestCreateWithoutSkillInput[] | SkillAccessRequestUncheckedCreateWithoutSkillInput[]
+    connectOrCreate?: SkillAccessRequestCreateOrConnectWithoutSkillInput | SkillAccessRequestCreateOrConnectWithoutSkillInput[]
+    upsert?: SkillAccessRequestUpsertWithWhereUniqueWithoutSkillInput | SkillAccessRequestUpsertWithWhereUniqueWithoutSkillInput[]
+    createMany?: SkillAccessRequestCreateManySkillInputEnvelope
+    set?: SkillAccessRequestWhereUniqueInput | SkillAccessRequestWhereUniqueInput[]
+    disconnect?: SkillAccessRequestWhereUniqueInput | SkillAccessRequestWhereUniqueInput[]
+    delete?: SkillAccessRequestWhereUniqueInput | SkillAccessRequestWhereUniqueInput[]
+    connect?: SkillAccessRequestWhereUniqueInput | SkillAccessRequestWhereUniqueInput[]
+    update?: SkillAccessRequestUpdateWithWhereUniqueWithoutSkillInput | SkillAccessRequestUpdateWithWhereUniqueWithoutSkillInput[]
+    updateMany?: SkillAccessRequestUpdateManyWithWhereWithoutSkillInput | SkillAccessRequestUpdateManyWithWhereWithoutSkillInput[]
+    deleteMany?: SkillAccessRequestScalarWhereInput | SkillAccessRequestScalarWhereInput[]
+  }
+
   export type SkillPermissionUncheckedUpdateManyWithoutSkillNestedInput = {
     create?: XOR<SkillPermissionCreateWithoutSkillInput, SkillPermissionUncheckedCreateWithoutSkillInput> | SkillPermissionCreateWithoutSkillInput[] | SkillPermissionUncheckedCreateWithoutSkillInput[]
     connectOrCreate?: SkillPermissionCreateOrConnectWithoutSkillInput | SkillPermissionCreateOrConnectWithoutSkillInput[]
@@ -37409,6 +38986,20 @@ export namespace Prisma {
     deleteMany?: SkillToolBindingScalarWhereInput | SkillToolBindingScalarWhereInput[]
   }
 
+  export type SkillAccessRequestUncheckedUpdateManyWithoutSkillNestedInput = {
+    create?: XOR<SkillAccessRequestCreateWithoutSkillInput, SkillAccessRequestUncheckedCreateWithoutSkillInput> | SkillAccessRequestCreateWithoutSkillInput[] | SkillAccessRequestUncheckedCreateWithoutSkillInput[]
+    connectOrCreate?: SkillAccessRequestCreateOrConnectWithoutSkillInput | SkillAccessRequestCreateOrConnectWithoutSkillInput[]
+    upsert?: SkillAccessRequestUpsertWithWhereUniqueWithoutSkillInput | SkillAccessRequestUpsertWithWhereUniqueWithoutSkillInput[]
+    createMany?: SkillAccessRequestCreateManySkillInputEnvelope
+    set?: SkillAccessRequestWhereUniqueInput | SkillAccessRequestWhereUniqueInput[]
+    disconnect?: SkillAccessRequestWhereUniqueInput | SkillAccessRequestWhereUniqueInput[]
+    delete?: SkillAccessRequestWhereUniqueInput | SkillAccessRequestWhereUniqueInput[]
+    connect?: SkillAccessRequestWhereUniqueInput | SkillAccessRequestWhereUniqueInput[]
+    update?: SkillAccessRequestUpdateWithWhereUniqueWithoutSkillInput | SkillAccessRequestUpdateWithWhereUniqueWithoutSkillInput[]
+    updateMany?: SkillAccessRequestUpdateManyWithWhereWithoutSkillInput | SkillAccessRequestUpdateManyWithWhereWithoutSkillInput[]
+    deleteMany?: SkillAccessRequestScalarWhereInput | SkillAccessRequestScalarWhereInput[]
+  }
+
   export type SkillConfigCreateNestedOneWithoutPermissionsInput = {
     create?: XOR<SkillConfigCreateWithoutPermissionsInput, SkillConfigUncheckedCreateWithoutPermissionsInput>
     connectOrCreate?: SkillConfigCreateOrConnectWithoutPermissionsInput
@@ -37435,6 +39026,50 @@ export namespace Prisma {
     upsert?: RoleUpsertWithoutSkillPermissionsInput
     connect?: RoleWhereUniqueInput
     update?: XOR<XOR<RoleUpdateToOneWithWhereWithoutSkillPermissionsInput, RoleUpdateWithoutSkillPermissionsInput>, RoleUncheckedUpdateWithoutSkillPermissionsInput>
+  }
+
+  export type SkillConfigCreateNestedOneWithoutAccessRequestsInput = {
+    create?: XOR<SkillConfigCreateWithoutAccessRequestsInput, SkillConfigUncheckedCreateWithoutAccessRequestsInput>
+    connectOrCreate?: SkillConfigCreateOrConnectWithoutAccessRequestsInput
+    connect?: SkillConfigWhereUniqueInput
+  }
+
+  export type UserCreateNestedOneWithoutSkillAccessRequestsInput = {
+    create?: XOR<UserCreateWithoutSkillAccessRequestsInput, UserUncheckedCreateWithoutSkillAccessRequestsInput>
+    connectOrCreate?: UserCreateOrConnectWithoutSkillAccessRequestsInput
+    connect?: UserWhereUniqueInput
+  }
+
+  export type UserCreateNestedOneWithoutProcessedSkillAccessRequestsInput = {
+    create?: XOR<UserCreateWithoutProcessedSkillAccessRequestsInput, UserUncheckedCreateWithoutProcessedSkillAccessRequestsInput>
+    connectOrCreate?: UserCreateOrConnectWithoutProcessedSkillAccessRequestsInput
+    connect?: UserWhereUniqueInput
+  }
+
+  export type SkillConfigUpdateOneRequiredWithoutAccessRequestsNestedInput = {
+    create?: XOR<SkillConfigCreateWithoutAccessRequestsInput, SkillConfigUncheckedCreateWithoutAccessRequestsInput>
+    connectOrCreate?: SkillConfigCreateOrConnectWithoutAccessRequestsInput
+    upsert?: SkillConfigUpsertWithoutAccessRequestsInput
+    connect?: SkillConfigWhereUniqueInput
+    update?: XOR<XOR<SkillConfigUpdateToOneWithWhereWithoutAccessRequestsInput, SkillConfigUpdateWithoutAccessRequestsInput>, SkillConfigUncheckedUpdateWithoutAccessRequestsInput>
+  }
+
+  export type UserUpdateOneRequiredWithoutSkillAccessRequestsNestedInput = {
+    create?: XOR<UserCreateWithoutSkillAccessRequestsInput, UserUncheckedCreateWithoutSkillAccessRequestsInput>
+    connectOrCreate?: UserCreateOrConnectWithoutSkillAccessRequestsInput
+    upsert?: UserUpsertWithoutSkillAccessRequestsInput
+    connect?: UserWhereUniqueInput
+    update?: XOR<XOR<UserUpdateToOneWithWhereWithoutSkillAccessRequestsInput, UserUpdateWithoutSkillAccessRequestsInput>, UserUncheckedUpdateWithoutSkillAccessRequestsInput>
+  }
+
+  export type UserUpdateOneWithoutProcessedSkillAccessRequestsNestedInput = {
+    create?: XOR<UserCreateWithoutProcessedSkillAccessRequestsInput, UserUncheckedCreateWithoutProcessedSkillAccessRequestsInput>
+    connectOrCreate?: UserCreateOrConnectWithoutProcessedSkillAccessRequestsInput
+    upsert?: UserUpsertWithoutProcessedSkillAccessRequestsInput
+    disconnect?: UserWhereInput | boolean
+    delete?: UserWhereInput | boolean
+    connect?: UserWhereUniqueInput
+    update?: XOR<XOR<UserUpdateToOneWithWhereWithoutProcessedSkillAccessRequestsInput, UserUpdateWithoutProcessedSkillAccessRequestsInput>, UserUncheckedUpdateWithoutProcessedSkillAccessRequestsInput>
   }
 
   export type SkillConfigCreateNestedOneWithoutToolBindingsInput = {
@@ -38239,6 +39874,74 @@ export namespace Prisma {
     skipDuplicates?: boolean
   }
 
+  export type SkillAccessRequestCreateWithoutRequesterInput = {
+    id?: string
+    status?: string
+    reason?: string | null
+    responseNote?: string | null
+    processedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    skill: SkillConfigCreateNestedOneWithoutAccessRequestsInput
+    processor?: UserCreateNestedOneWithoutProcessedSkillAccessRequestsInput
+  }
+
+  export type SkillAccessRequestUncheckedCreateWithoutRequesterInput = {
+    id?: string
+    skillId: string
+    status?: string
+    reason?: string | null
+    responseNote?: string | null
+    processedAt?: Date | string | null
+    processedBy?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type SkillAccessRequestCreateOrConnectWithoutRequesterInput = {
+    where: SkillAccessRequestWhereUniqueInput
+    create: XOR<SkillAccessRequestCreateWithoutRequesterInput, SkillAccessRequestUncheckedCreateWithoutRequesterInput>
+  }
+
+  export type SkillAccessRequestCreateManyRequesterInputEnvelope = {
+    data: SkillAccessRequestCreateManyRequesterInput | SkillAccessRequestCreateManyRequesterInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type SkillAccessRequestCreateWithoutProcessorInput = {
+    id?: string
+    status?: string
+    reason?: string | null
+    responseNote?: string | null
+    processedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    skill: SkillConfigCreateNestedOneWithoutAccessRequestsInput
+    requester: UserCreateNestedOneWithoutSkillAccessRequestsInput
+  }
+
+  export type SkillAccessRequestUncheckedCreateWithoutProcessorInput = {
+    id?: string
+    skillId: string
+    requesterUserId: string
+    status?: string
+    reason?: string | null
+    responseNote?: string | null
+    processedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type SkillAccessRequestCreateOrConnectWithoutProcessorInput = {
+    where: SkillAccessRequestWhereUniqueInput
+    create: XOR<SkillAccessRequestCreateWithoutProcessorInput, SkillAccessRequestUncheckedCreateWithoutProcessorInput>
+  }
+
+  export type SkillAccessRequestCreateManyProcessorInputEnvelope = {
+    data: SkillAccessRequestCreateManyProcessorInput | SkillAccessRequestCreateManyProcessorInput[]
+    skipDuplicates?: boolean
+  }
+
   export type UserRoleUpsertWithWhereUniqueWithoutUserInput = {
     where: UserRoleWhereUniqueInput
     update: XOR<UserRoleUpdateWithoutUserInput, UserRoleUncheckedUpdateWithoutUserInput>
@@ -38414,6 +40117,54 @@ export namespace Prisma {
     updatedAt?: DateTimeFilter<"ChatSession"> | Date | string
   }
 
+  export type SkillAccessRequestUpsertWithWhereUniqueWithoutRequesterInput = {
+    where: SkillAccessRequestWhereUniqueInput
+    update: XOR<SkillAccessRequestUpdateWithoutRequesterInput, SkillAccessRequestUncheckedUpdateWithoutRequesterInput>
+    create: XOR<SkillAccessRequestCreateWithoutRequesterInput, SkillAccessRequestUncheckedCreateWithoutRequesterInput>
+  }
+
+  export type SkillAccessRequestUpdateWithWhereUniqueWithoutRequesterInput = {
+    where: SkillAccessRequestWhereUniqueInput
+    data: XOR<SkillAccessRequestUpdateWithoutRequesterInput, SkillAccessRequestUncheckedUpdateWithoutRequesterInput>
+  }
+
+  export type SkillAccessRequestUpdateManyWithWhereWithoutRequesterInput = {
+    where: SkillAccessRequestScalarWhereInput
+    data: XOR<SkillAccessRequestUpdateManyMutationInput, SkillAccessRequestUncheckedUpdateManyWithoutRequesterInput>
+  }
+
+  export type SkillAccessRequestScalarWhereInput = {
+    AND?: SkillAccessRequestScalarWhereInput | SkillAccessRequestScalarWhereInput[]
+    OR?: SkillAccessRequestScalarWhereInput[]
+    NOT?: SkillAccessRequestScalarWhereInput | SkillAccessRequestScalarWhereInput[]
+    id?: UuidFilter<"SkillAccessRequest"> | string
+    skillId?: UuidFilter<"SkillAccessRequest"> | string
+    requesterUserId?: UuidFilter<"SkillAccessRequest"> | string
+    status?: StringFilter<"SkillAccessRequest"> | string
+    reason?: StringNullableFilter<"SkillAccessRequest"> | string | null
+    responseNote?: StringNullableFilter<"SkillAccessRequest"> | string | null
+    processedAt?: DateTimeNullableFilter<"SkillAccessRequest"> | Date | string | null
+    processedBy?: UuidNullableFilter<"SkillAccessRequest"> | string | null
+    createdAt?: DateTimeFilter<"SkillAccessRequest"> | Date | string
+    updatedAt?: DateTimeFilter<"SkillAccessRequest"> | Date | string
+  }
+
+  export type SkillAccessRequestUpsertWithWhereUniqueWithoutProcessorInput = {
+    where: SkillAccessRequestWhereUniqueInput
+    update: XOR<SkillAccessRequestUpdateWithoutProcessorInput, SkillAccessRequestUncheckedUpdateWithoutProcessorInput>
+    create: XOR<SkillAccessRequestCreateWithoutProcessorInput, SkillAccessRequestUncheckedCreateWithoutProcessorInput>
+  }
+
+  export type SkillAccessRequestUpdateWithWhereUniqueWithoutProcessorInput = {
+    where: SkillAccessRequestWhereUniqueInput
+    data: XOR<SkillAccessRequestUpdateWithoutProcessorInput, SkillAccessRequestUncheckedUpdateWithoutProcessorInput>
+  }
+
+  export type SkillAccessRequestUpdateManyWithWhereWithoutProcessorInput = {
+    where: SkillAccessRequestScalarWhereInput
+    data: XOR<SkillAccessRequestUpdateManyMutationInput, SkillAccessRequestUncheckedUpdateManyWithoutProcessorInput>
+  }
+
   export type UserRoleCreateWithoutRoleInput = {
     assignedAt?: Date | string
     user: UserCreateNestedOneWithoutUserRolesInput
@@ -38564,6 +40315,8 @@ export namespace Prisma {
     assignedOrgRoles?: OrgRoleBindingCreateNestedManyWithoutAssignerInput
     activeOrg?: OrganizationCreateNestedOneWithoutActiveUsersInput
     chatSessions?: ChatSessionCreateNestedManyWithoutUserInput
+    skillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutRequesterInput
+    processedSkillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutProcessorInput
   }
 
   export type UserUncheckedCreateWithoutUserRolesInput = {
@@ -38584,6 +40337,8 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipUncheckedCreateNestedManyWithoutUserInput
     assignedOrgRoles?: OrgRoleBindingUncheckedCreateNestedManyWithoutAssignerInput
     chatSessions?: ChatSessionUncheckedCreateNestedManyWithoutUserInput
+    skillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutRequesterInput
+    processedSkillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutProcessorInput
   }
 
   export type UserCreateOrConnectWithoutUserRolesInput = {
@@ -38638,6 +40393,8 @@ export namespace Prisma {
     assignedOrgRoles?: OrgRoleBindingCreateNestedManyWithoutAssignerInput
     activeOrg?: OrganizationCreateNestedOneWithoutActiveUsersInput
     chatSessions?: ChatSessionCreateNestedManyWithoutUserInput
+    skillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutRequesterInput
+    processedSkillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutProcessorInput
   }
 
   export type UserUncheckedCreateWithoutAssignedRolesInput = {
@@ -38658,6 +40415,8 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipUncheckedCreateNestedManyWithoutUserInput
     assignedOrgRoles?: OrgRoleBindingUncheckedCreateNestedManyWithoutAssignerInput
     chatSessions?: ChatSessionUncheckedCreateNestedManyWithoutUserInput
+    skillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutRequesterInput
+    processedSkillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutProcessorInput
   }
 
   export type UserCreateOrConnectWithoutAssignedRolesInput = {
@@ -38694,6 +40453,8 @@ export namespace Prisma {
     assignedOrgRoles?: OrgRoleBindingUpdateManyWithoutAssignerNestedInput
     activeOrg?: OrganizationUpdateOneWithoutActiveUsersNestedInput
     chatSessions?: ChatSessionUpdateManyWithoutUserNestedInput
+    skillAccessRequests?: SkillAccessRequestUpdateManyWithoutRequesterNestedInput
+    processedSkillAccessRequests?: SkillAccessRequestUpdateManyWithoutProcessorNestedInput
   }
 
   export type UserUncheckedUpdateWithoutUserRolesInput = {
@@ -38714,6 +40475,8 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
     assignedOrgRoles?: OrgRoleBindingUncheckedUpdateManyWithoutAssignerNestedInput
     chatSessions?: ChatSessionUncheckedUpdateManyWithoutUserNestedInput
+    skillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutRequesterNestedInput
+    processedSkillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutProcessorNestedInput
   }
 
   export type RoleUpsertWithoutUserRolesInput = {
@@ -38780,6 +40543,8 @@ export namespace Prisma {
     assignedOrgRoles?: OrgRoleBindingUpdateManyWithoutAssignerNestedInput
     activeOrg?: OrganizationUpdateOneWithoutActiveUsersNestedInput
     chatSessions?: ChatSessionUpdateManyWithoutUserNestedInput
+    skillAccessRequests?: SkillAccessRequestUpdateManyWithoutRequesterNestedInput
+    processedSkillAccessRequests?: SkillAccessRequestUpdateManyWithoutProcessorNestedInput
   }
 
   export type UserUncheckedUpdateWithoutAssignedRolesInput = {
@@ -38800,6 +40565,8 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
     assignedOrgRoles?: OrgRoleBindingUncheckedUpdateManyWithoutAssignerNestedInput
     chatSessions?: ChatSessionUncheckedUpdateManyWithoutUserNestedInput
+    skillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutRequesterNestedInput
+    processedSkillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutProcessorNestedInput
   }
 
   export type DepartmentCreateWithoutOrganizationInput = {
@@ -39004,6 +40771,8 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipCreateNestedManyWithoutUserInput
     assignedOrgRoles?: OrgRoleBindingCreateNestedManyWithoutAssignerInput
     chatSessions?: ChatSessionCreateNestedManyWithoutUserInput
+    skillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutRequesterInput
+    processedSkillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutProcessorInput
   }
 
   export type UserUncheckedCreateWithoutActiveOrgInput = {
@@ -39024,6 +40793,8 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipUncheckedCreateNestedManyWithoutUserInput
     assignedOrgRoles?: OrgRoleBindingUncheckedCreateNestedManyWithoutAssignerInput
     chatSessions?: ChatSessionUncheckedCreateNestedManyWithoutUserInput
+    skillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutRequesterInput
+    processedSkillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutProcessorInput
   }
 
   export type UserCreateOrConnectWithoutActiveOrgInput = {
@@ -39735,6 +41506,8 @@ export namespace Prisma {
     assignedOrgRoles?: OrgRoleBindingCreateNestedManyWithoutAssignerInput
     activeOrg?: OrganizationCreateNestedOneWithoutActiveUsersInput
     chatSessions?: ChatSessionCreateNestedManyWithoutUserInput
+    skillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutRequesterInput
+    processedSkillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutProcessorInput
   }
 
   export type UserUncheckedCreateWithoutOrgMembershipsInput = {
@@ -39755,6 +41528,8 @@ export namespace Prisma {
     assignedRoles?: UserRoleUncheckedCreateNestedManyWithoutAssignerInput
     assignedOrgRoles?: OrgRoleBindingUncheckedCreateNestedManyWithoutAssignerInput
     chatSessions?: ChatSessionUncheckedCreateNestedManyWithoutUserInput
+    skillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutRequesterInput
+    processedSkillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutProcessorInput
   }
 
   export type UserCreateOrConnectWithoutOrgMembershipsInput = {
@@ -39917,6 +41692,8 @@ export namespace Prisma {
     assignedOrgRoles?: OrgRoleBindingUpdateManyWithoutAssignerNestedInput
     activeOrg?: OrganizationUpdateOneWithoutActiveUsersNestedInput
     chatSessions?: ChatSessionUpdateManyWithoutUserNestedInput
+    skillAccessRequests?: SkillAccessRequestUpdateManyWithoutRequesterNestedInput
+    processedSkillAccessRequests?: SkillAccessRequestUpdateManyWithoutProcessorNestedInput
   }
 
   export type UserUncheckedUpdateWithoutOrgMembershipsInput = {
@@ -39937,6 +41714,8 @@ export namespace Prisma {
     assignedRoles?: UserRoleUncheckedUpdateManyWithoutAssignerNestedInput
     assignedOrgRoles?: OrgRoleBindingUncheckedUpdateManyWithoutAssignerNestedInput
     chatSessions?: ChatSessionUncheckedUpdateManyWithoutUserNestedInput
+    skillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutRequesterNestedInput
+    processedSkillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutProcessorNestedInput
   }
 
   export type OrganizationUpsertWithoutMembershipsInput = {
@@ -40300,6 +42079,8 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipCreateNestedManyWithoutUserInput
     activeOrg?: OrganizationCreateNestedOneWithoutActiveUsersInput
     chatSessions?: ChatSessionCreateNestedManyWithoutUserInput
+    skillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutRequesterInput
+    processedSkillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutProcessorInput
   }
 
   export type UserUncheckedCreateWithoutAssignedOrgRolesInput = {
@@ -40320,6 +42101,8 @@ export namespace Prisma {
     assignedRoles?: UserRoleUncheckedCreateNestedManyWithoutAssignerInput
     orgMemberships?: OrgMembershipUncheckedCreateNestedManyWithoutUserInput
     chatSessions?: ChatSessionUncheckedCreateNestedManyWithoutUserInput
+    skillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutRequesterInput
+    processedSkillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutProcessorInput
   }
 
   export type UserCreateOrConnectWithoutAssignedOrgRolesInput = {
@@ -40471,6 +42254,8 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipUpdateManyWithoutUserNestedInput
     activeOrg?: OrganizationUpdateOneWithoutActiveUsersNestedInput
     chatSessions?: ChatSessionUpdateManyWithoutUserNestedInput
+    skillAccessRequests?: SkillAccessRequestUpdateManyWithoutRequesterNestedInput
+    processedSkillAccessRequests?: SkillAccessRequestUpdateManyWithoutProcessorNestedInput
   }
 
   export type UserUncheckedUpdateWithoutAssignedOrgRolesInput = {
@@ -40491,6 +42276,8 @@ export namespace Prisma {
     assignedRoles?: UserRoleUncheckedUpdateManyWithoutAssignerNestedInput
     orgMemberships?: OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
     chatSessions?: ChatSessionUncheckedUpdateManyWithoutUserNestedInput
+    skillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutRequesterNestedInput
+    processedSkillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutProcessorNestedInput
   }
 
   export type OrganizationCreateWithoutIdentityProvidersInput = {
@@ -40621,6 +42408,40 @@ export namespace Prisma {
     skipDuplicates?: boolean
   }
 
+  export type SkillAccessRequestCreateWithoutSkillInput = {
+    id?: string
+    status?: string
+    reason?: string | null
+    responseNote?: string | null
+    processedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    requester: UserCreateNestedOneWithoutSkillAccessRequestsInput
+    processor?: UserCreateNestedOneWithoutProcessedSkillAccessRequestsInput
+  }
+
+  export type SkillAccessRequestUncheckedCreateWithoutSkillInput = {
+    id?: string
+    requesterUserId: string
+    status?: string
+    reason?: string | null
+    responseNote?: string | null
+    processedAt?: Date | string | null
+    processedBy?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type SkillAccessRequestCreateOrConnectWithoutSkillInput = {
+    where: SkillAccessRequestWhereUniqueInput
+    create: XOR<SkillAccessRequestCreateWithoutSkillInput, SkillAccessRequestUncheckedCreateWithoutSkillInput>
+  }
+
+  export type SkillAccessRequestCreateManySkillInputEnvelope = {
+    data: SkillAccessRequestCreateManySkillInput | SkillAccessRequestCreateManySkillInput[]
+    skipDuplicates?: boolean
+  }
+
   export type SkillPermissionUpsertWithWhereUniqueWithoutSkillInput = {
     where: SkillPermissionWhereUniqueInput
     update: XOR<SkillPermissionUpdateWithoutSkillInput, SkillPermissionUncheckedUpdateWithoutSkillInput>
@@ -40665,6 +42486,22 @@ export namespace Prisma {
     updatedAt?: DateTimeFilter<"SkillToolBinding"> | Date | string
   }
 
+  export type SkillAccessRequestUpsertWithWhereUniqueWithoutSkillInput = {
+    where: SkillAccessRequestWhereUniqueInput
+    update: XOR<SkillAccessRequestUpdateWithoutSkillInput, SkillAccessRequestUncheckedUpdateWithoutSkillInput>
+    create: XOR<SkillAccessRequestCreateWithoutSkillInput, SkillAccessRequestUncheckedCreateWithoutSkillInput>
+  }
+
+  export type SkillAccessRequestUpdateWithWhereUniqueWithoutSkillInput = {
+    where: SkillAccessRequestWhereUniqueInput
+    data: XOR<SkillAccessRequestUpdateWithoutSkillInput, SkillAccessRequestUncheckedUpdateWithoutSkillInput>
+  }
+
+  export type SkillAccessRequestUpdateManyWithWhereWithoutSkillInput = {
+    where: SkillAccessRequestScalarWhereInput
+    data: XOR<SkillAccessRequestUpdateManyMutationInput, SkillAccessRequestUncheckedUpdateManyWithoutSkillInput>
+  }
+
   export type SkillConfigCreateWithoutPermissionsInput = {
     id?: string
     name: string
@@ -40684,6 +42521,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     toolBindings?: SkillToolBindingCreateNestedManyWithoutSkillInput
+    accessRequests?: SkillAccessRequestCreateNestedManyWithoutSkillInput
   }
 
   export type SkillConfigUncheckedCreateWithoutPermissionsInput = {
@@ -40705,6 +42543,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     toolBindings?: SkillToolBindingUncheckedCreateNestedManyWithoutSkillInput
+    accessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutSkillInput
   }
 
   export type SkillConfigCreateOrConnectWithoutPermissionsInput = {
@@ -40771,6 +42610,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     toolBindings?: SkillToolBindingUpdateManyWithoutSkillNestedInput
+    accessRequests?: SkillAccessRequestUpdateManyWithoutSkillNestedInput
   }
 
   export type SkillConfigUncheckedUpdateWithoutPermissionsInput = {
@@ -40792,6 +42632,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     toolBindings?: SkillToolBindingUncheckedUpdateManyWithoutSkillNestedInput
+    accessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutSkillNestedInput
   }
 
   export type RoleUpsertWithoutSkillPermissionsInput = {
@@ -40829,6 +42670,318 @@ export namespace Prisma {
     orgRoleBindings?: OrgRoleBindingUncheckedUpdateManyWithoutRoleNestedInput
   }
 
+  export type SkillConfigCreateWithoutAccessRequestsInput = {
+    id?: string
+    name: string
+    description?: string | null
+    triggerKeywords?: JsonNullValueInput | InputJsonValue
+    paramsSchema?: JsonNullValueInput | InputJsonValue
+    templateId?: string | null
+    carboneTemplateId?: string | null
+    carboneSkillId?: string | null
+    apiEndpoints?: NullableJsonNullValueInput | InputJsonValue
+    executionFlow?: JsonNullValueInput | InputJsonValue
+    executionFlowTemplateIds?: JsonNullValueInput | InputJsonValue
+    tools?: JsonNullValueInput | InputJsonValue
+    configStatus?: string
+    lastValidationSummary?: NullableJsonNullValueInput | InputJsonValue
+    isActive?: boolean
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    permissions?: SkillPermissionCreateNestedManyWithoutSkillInput
+    toolBindings?: SkillToolBindingCreateNestedManyWithoutSkillInput
+  }
+
+  export type SkillConfigUncheckedCreateWithoutAccessRequestsInput = {
+    id?: string
+    name: string
+    description?: string | null
+    triggerKeywords?: JsonNullValueInput | InputJsonValue
+    paramsSchema?: JsonNullValueInput | InputJsonValue
+    templateId?: string | null
+    carboneTemplateId?: string | null
+    carboneSkillId?: string | null
+    apiEndpoints?: NullableJsonNullValueInput | InputJsonValue
+    executionFlow?: JsonNullValueInput | InputJsonValue
+    executionFlowTemplateIds?: JsonNullValueInput | InputJsonValue
+    tools?: JsonNullValueInput | InputJsonValue
+    configStatus?: string
+    lastValidationSummary?: NullableJsonNullValueInput | InputJsonValue
+    isActive?: boolean
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    permissions?: SkillPermissionUncheckedCreateNestedManyWithoutSkillInput
+    toolBindings?: SkillToolBindingUncheckedCreateNestedManyWithoutSkillInput
+  }
+
+  export type SkillConfigCreateOrConnectWithoutAccessRequestsInput = {
+    where: SkillConfigWhereUniqueInput
+    create: XOR<SkillConfigCreateWithoutAccessRequestsInput, SkillConfigUncheckedCreateWithoutAccessRequestsInput>
+  }
+
+  export type UserCreateWithoutSkillAccessRequestsInput = {
+    id?: string
+    username: string
+    passwordHash: string
+    email?: string | null
+    role?: $Enums.UserRoleType
+    ldapDn?: string | null
+    adSid?: string | null
+    externalId?: string | null
+    isActive?: boolean
+    lastLoginAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    userRoles?: UserRoleCreateNestedManyWithoutUserInput
+    assignedRoles?: UserRoleCreateNestedManyWithoutAssignerInput
+    orgMemberships?: OrgMembershipCreateNestedManyWithoutUserInput
+    assignedOrgRoles?: OrgRoleBindingCreateNestedManyWithoutAssignerInput
+    activeOrg?: OrganizationCreateNestedOneWithoutActiveUsersInput
+    chatSessions?: ChatSessionCreateNestedManyWithoutUserInput
+    processedSkillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutProcessorInput
+  }
+
+  export type UserUncheckedCreateWithoutSkillAccessRequestsInput = {
+    id?: string
+    username: string
+    passwordHash: string
+    email?: string | null
+    role?: $Enums.UserRoleType
+    ldapDn?: string | null
+    adSid?: string | null
+    externalId?: string | null
+    activeOrgId?: string | null
+    isActive?: boolean
+    lastLoginAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    userRoles?: UserRoleUncheckedCreateNestedManyWithoutUserInput
+    assignedRoles?: UserRoleUncheckedCreateNestedManyWithoutAssignerInput
+    orgMemberships?: OrgMembershipUncheckedCreateNestedManyWithoutUserInput
+    assignedOrgRoles?: OrgRoleBindingUncheckedCreateNestedManyWithoutAssignerInput
+    chatSessions?: ChatSessionUncheckedCreateNestedManyWithoutUserInput
+    processedSkillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutProcessorInput
+  }
+
+  export type UserCreateOrConnectWithoutSkillAccessRequestsInput = {
+    where: UserWhereUniqueInput
+    create: XOR<UserCreateWithoutSkillAccessRequestsInput, UserUncheckedCreateWithoutSkillAccessRequestsInput>
+  }
+
+  export type UserCreateWithoutProcessedSkillAccessRequestsInput = {
+    id?: string
+    username: string
+    passwordHash: string
+    email?: string | null
+    role?: $Enums.UserRoleType
+    ldapDn?: string | null
+    adSid?: string | null
+    externalId?: string | null
+    isActive?: boolean
+    lastLoginAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    userRoles?: UserRoleCreateNestedManyWithoutUserInput
+    assignedRoles?: UserRoleCreateNestedManyWithoutAssignerInput
+    orgMemberships?: OrgMembershipCreateNestedManyWithoutUserInput
+    assignedOrgRoles?: OrgRoleBindingCreateNestedManyWithoutAssignerInput
+    activeOrg?: OrganizationCreateNestedOneWithoutActiveUsersInput
+    chatSessions?: ChatSessionCreateNestedManyWithoutUserInput
+    skillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutRequesterInput
+  }
+
+  export type UserUncheckedCreateWithoutProcessedSkillAccessRequestsInput = {
+    id?: string
+    username: string
+    passwordHash: string
+    email?: string | null
+    role?: $Enums.UserRoleType
+    ldapDn?: string | null
+    adSid?: string | null
+    externalId?: string | null
+    activeOrgId?: string | null
+    isActive?: boolean
+    lastLoginAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    userRoles?: UserRoleUncheckedCreateNestedManyWithoutUserInput
+    assignedRoles?: UserRoleUncheckedCreateNestedManyWithoutAssignerInput
+    orgMemberships?: OrgMembershipUncheckedCreateNestedManyWithoutUserInput
+    assignedOrgRoles?: OrgRoleBindingUncheckedCreateNestedManyWithoutAssignerInput
+    chatSessions?: ChatSessionUncheckedCreateNestedManyWithoutUserInput
+    skillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutRequesterInput
+  }
+
+  export type UserCreateOrConnectWithoutProcessedSkillAccessRequestsInput = {
+    where: UserWhereUniqueInput
+    create: XOR<UserCreateWithoutProcessedSkillAccessRequestsInput, UserUncheckedCreateWithoutProcessedSkillAccessRequestsInput>
+  }
+
+  export type SkillConfigUpsertWithoutAccessRequestsInput = {
+    update: XOR<SkillConfigUpdateWithoutAccessRequestsInput, SkillConfigUncheckedUpdateWithoutAccessRequestsInput>
+    create: XOR<SkillConfigCreateWithoutAccessRequestsInput, SkillConfigUncheckedCreateWithoutAccessRequestsInput>
+    where?: SkillConfigWhereInput
+  }
+
+  export type SkillConfigUpdateToOneWithWhereWithoutAccessRequestsInput = {
+    where?: SkillConfigWhereInput
+    data: XOR<SkillConfigUpdateWithoutAccessRequestsInput, SkillConfigUncheckedUpdateWithoutAccessRequestsInput>
+  }
+
+  export type SkillConfigUpdateWithoutAccessRequestsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    triggerKeywords?: JsonNullValueInput | InputJsonValue
+    paramsSchema?: JsonNullValueInput | InputJsonValue
+    templateId?: NullableStringFieldUpdateOperationsInput | string | null
+    carboneTemplateId?: NullableStringFieldUpdateOperationsInput | string | null
+    carboneSkillId?: NullableStringFieldUpdateOperationsInput | string | null
+    apiEndpoints?: NullableJsonNullValueInput | InputJsonValue
+    executionFlow?: JsonNullValueInput | InputJsonValue
+    executionFlowTemplateIds?: JsonNullValueInput | InputJsonValue
+    tools?: JsonNullValueInput | InputJsonValue
+    configStatus?: StringFieldUpdateOperationsInput | string
+    lastValidationSummary?: NullableJsonNullValueInput | InputJsonValue
+    isActive?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    permissions?: SkillPermissionUpdateManyWithoutSkillNestedInput
+    toolBindings?: SkillToolBindingUpdateManyWithoutSkillNestedInput
+  }
+
+  export type SkillConfigUncheckedUpdateWithoutAccessRequestsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    triggerKeywords?: JsonNullValueInput | InputJsonValue
+    paramsSchema?: JsonNullValueInput | InputJsonValue
+    templateId?: NullableStringFieldUpdateOperationsInput | string | null
+    carboneTemplateId?: NullableStringFieldUpdateOperationsInput | string | null
+    carboneSkillId?: NullableStringFieldUpdateOperationsInput | string | null
+    apiEndpoints?: NullableJsonNullValueInput | InputJsonValue
+    executionFlow?: JsonNullValueInput | InputJsonValue
+    executionFlowTemplateIds?: JsonNullValueInput | InputJsonValue
+    tools?: JsonNullValueInput | InputJsonValue
+    configStatus?: StringFieldUpdateOperationsInput | string
+    lastValidationSummary?: NullableJsonNullValueInput | InputJsonValue
+    isActive?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    permissions?: SkillPermissionUncheckedUpdateManyWithoutSkillNestedInput
+    toolBindings?: SkillToolBindingUncheckedUpdateManyWithoutSkillNestedInput
+  }
+
+  export type UserUpsertWithoutSkillAccessRequestsInput = {
+    update: XOR<UserUpdateWithoutSkillAccessRequestsInput, UserUncheckedUpdateWithoutSkillAccessRequestsInput>
+    create: XOR<UserCreateWithoutSkillAccessRequestsInput, UserUncheckedCreateWithoutSkillAccessRequestsInput>
+    where?: UserWhereInput
+  }
+
+  export type UserUpdateToOneWithWhereWithoutSkillAccessRequestsInput = {
+    where?: UserWhereInput
+    data: XOR<UserUpdateWithoutSkillAccessRequestsInput, UserUncheckedUpdateWithoutSkillAccessRequestsInput>
+  }
+
+  export type UserUpdateWithoutSkillAccessRequestsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    username?: StringFieldUpdateOperationsInput | string
+    passwordHash?: StringFieldUpdateOperationsInput | string
+    email?: NullableStringFieldUpdateOperationsInput | string | null
+    role?: EnumUserRoleTypeFieldUpdateOperationsInput | $Enums.UserRoleType
+    ldapDn?: NullableStringFieldUpdateOperationsInput | string | null
+    adSid?: NullableStringFieldUpdateOperationsInput | string | null
+    externalId?: NullableStringFieldUpdateOperationsInput | string | null
+    isActive?: BoolFieldUpdateOperationsInput | boolean
+    lastLoginAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    userRoles?: UserRoleUpdateManyWithoutUserNestedInput
+    assignedRoles?: UserRoleUpdateManyWithoutAssignerNestedInput
+    orgMemberships?: OrgMembershipUpdateManyWithoutUserNestedInput
+    assignedOrgRoles?: OrgRoleBindingUpdateManyWithoutAssignerNestedInput
+    activeOrg?: OrganizationUpdateOneWithoutActiveUsersNestedInput
+    chatSessions?: ChatSessionUpdateManyWithoutUserNestedInput
+    processedSkillAccessRequests?: SkillAccessRequestUpdateManyWithoutProcessorNestedInput
+  }
+
+  export type UserUncheckedUpdateWithoutSkillAccessRequestsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    username?: StringFieldUpdateOperationsInput | string
+    passwordHash?: StringFieldUpdateOperationsInput | string
+    email?: NullableStringFieldUpdateOperationsInput | string | null
+    role?: EnumUserRoleTypeFieldUpdateOperationsInput | $Enums.UserRoleType
+    ldapDn?: NullableStringFieldUpdateOperationsInput | string | null
+    adSid?: NullableStringFieldUpdateOperationsInput | string | null
+    externalId?: NullableStringFieldUpdateOperationsInput | string | null
+    activeOrgId?: NullableStringFieldUpdateOperationsInput | string | null
+    isActive?: BoolFieldUpdateOperationsInput | boolean
+    lastLoginAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    userRoles?: UserRoleUncheckedUpdateManyWithoutUserNestedInput
+    assignedRoles?: UserRoleUncheckedUpdateManyWithoutAssignerNestedInput
+    orgMemberships?: OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
+    assignedOrgRoles?: OrgRoleBindingUncheckedUpdateManyWithoutAssignerNestedInput
+    chatSessions?: ChatSessionUncheckedUpdateManyWithoutUserNestedInput
+    processedSkillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutProcessorNestedInput
+  }
+
+  export type UserUpsertWithoutProcessedSkillAccessRequestsInput = {
+    update: XOR<UserUpdateWithoutProcessedSkillAccessRequestsInput, UserUncheckedUpdateWithoutProcessedSkillAccessRequestsInput>
+    create: XOR<UserCreateWithoutProcessedSkillAccessRequestsInput, UserUncheckedCreateWithoutProcessedSkillAccessRequestsInput>
+    where?: UserWhereInput
+  }
+
+  export type UserUpdateToOneWithWhereWithoutProcessedSkillAccessRequestsInput = {
+    where?: UserWhereInput
+    data: XOR<UserUpdateWithoutProcessedSkillAccessRequestsInput, UserUncheckedUpdateWithoutProcessedSkillAccessRequestsInput>
+  }
+
+  export type UserUpdateWithoutProcessedSkillAccessRequestsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    username?: StringFieldUpdateOperationsInput | string
+    passwordHash?: StringFieldUpdateOperationsInput | string
+    email?: NullableStringFieldUpdateOperationsInput | string | null
+    role?: EnumUserRoleTypeFieldUpdateOperationsInput | $Enums.UserRoleType
+    ldapDn?: NullableStringFieldUpdateOperationsInput | string | null
+    adSid?: NullableStringFieldUpdateOperationsInput | string | null
+    externalId?: NullableStringFieldUpdateOperationsInput | string | null
+    isActive?: BoolFieldUpdateOperationsInput | boolean
+    lastLoginAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    userRoles?: UserRoleUpdateManyWithoutUserNestedInput
+    assignedRoles?: UserRoleUpdateManyWithoutAssignerNestedInput
+    orgMemberships?: OrgMembershipUpdateManyWithoutUserNestedInput
+    assignedOrgRoles?: OrgRoleBindingUpdateManyWithoutAssignerNestedInput
+    activeOrg?: OrganizationUpdateOneWithoutActiveUsersNestedInput
+    chatSessions?: ChatSessionUpdateManyWithoutUserNestedInput
+    skillAccessRequests?: SkillAccessRequestUpdateManyWithoutRequesterNestedInput
+  }
+
+  export type UserUncheckedUpdateWithoutProcessedSkillAccessRequestsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    username?: StringFieldUpdateOperationsInput | string
+    passwordHash?: StringFieldUpdateOperationsInput | string
+    email?: NullableStringFieldUpdateOperationsInput | string | null
+    role?: EnumUserRoleTypeFieldUpdateOperationsInput | $Enums.UserRoleType
+    ldapDn?: NullableStringFieldUpdateOperationsInput | string | null
+    adSid?: NullableStringFieldUpdateOperationsInput | string | null
+    externalId?: NullableStringFieldUpdateOperationsInput | string | null
+    activeOrgId?: NullableStringFieldUpdateOperationsInput | string | null
+    isActive?: BoolFieldUpdateOperationsInput | boolean
+    lastLoginAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    userRoles?: UserRoleUncheckedUpdateManyWithoutUserNestedInput
+    assignedRoles?: UserRoleUncheckedUpdateManyWithoutAssignerNestedInput
+    orgMemberships?: OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
+    assignedOrgRoles?: OrgRoleBindingUncheckedUpdateManyWithoutAssignerNestedInput
+    chatSessions?: ChatSessionUncheckedUpdateManyWithoutUserNestedInput
+    skillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutRequesterNestedInput
+  }
+
   export type SkillConfigCreateWithoutToolBindingsInput = {
     id?: string
     name: string
@@ -40848,6 +43001,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     permissions?: SkillPermissionCreateNestedManyWithoutSkillInput
+    accessRequests?: SkillAccessRequestCreateNestedManyWithoutSkillInput
   }
 
   export type SkillConfigUncheckedCreateWithoutToolBindingsInput = {
@@ -40869,6 +43023,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     permissions?: SkillPermissionUncheckedCreateNestedManyWithoutSkillInput
+    accessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutSkillInput
   }
 
   export type SkillConfigCreateOrConnectWithoutToolBindingsInput = {
@@ -40906,6 +43061,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     permissions?: SkillPermissionUpdateManyWithoutSkillNestedInput
+    accessRequests?: SkillAccessRequestUpdateManyWithoutSkillNestedInput
   }
 
   export type SkillConfigUncheckedUpdateWithoutToolBindingsInput = {
@@ -40927,6 +43083,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     permissions?: SkillPermissionUncheckedUpdateManyWithoutSkillNestedInput
+    accessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutSkillNestedInput
   }
 
   export type ChatMessageCreateWithoutSessionInput = {
@@ -40973,6 +43130,8 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipCreateNestedManyWithoutUserInput
     assignedOrgRoles?: OrgRoleBindingCreateNestedManyWithoutAssignerInput
     activeOrg?: OrganizationCreateNestedOneWithoutActiveUsersInput
+    skillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutRequesterInput
+    processedSkillAccessRequests?: SkillAccessRequestCreateNestedManyWithoutProcessorInput
   }
 
   export type UserUncheckedCreateWithoutChatSessionsInput = {
@@ -40993,6 +43152,8 @@ export namespace Prisma {
     assignedRoles?: UserRoleUncheckedCreateNestedManyWithoutAssignerInput
     orgMemberships?: OrgMembershipUncheckedCreateNestedManyWithoutUserInput
     assignedOrgRoles?: OrgRoleBindingUncheckedCreateNestedManyWithoutAssignerInput
+    skillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutRequesterInput
+    processedSkillAccessRequests?: SkillAccessRequestUncheckedCreateNestedManyWithoutProcessorInput
   }
 
   export type UserCreateOrConnectWithoutChatSessionsInput = {
@@ -41057,6 +43218,8 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipUpdateManyWithoutUserNestedInput
     assignedOrgRoles?: OrgRoleBindingUpdateManyWithoutAssignerNestedInput
     activeOrg?: OrganizationUpdateOneWithoutActiveUsersNestedInput
+    skillAccessRequests?: SkillAccessRequestUpdateManyWithoutRequesterNestedInput
+    processedSkillAccessRequests?: SkillAccessRequestUpdateManyWithoutProcessorNestedInput
   }
 
   export type UserUncheckedUpdateWithoutChatSessionsInput = {
@@ -41077,6 +43240,8 @@ export namespace Prisma {
     assignedRoles?: UserRoleUncheckedUpdateManyWithoutAssignerNestedInput
     orgMemberships?: OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
     assignedOrgRoles?: OrgRoleBindingUncheckedUpdateManyWithoutAssignerNestedInput
+    skillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutRequesterNestedInput
+    processedSkillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutProcessorNestedInput
   }
 
   export type ChatSessionCreateWithoutMessagesInput = {
@@ -41813,6 +43978,30 @@ export namespace Prisma {
     updatedAt?: Date | string
   }
 
+  export type SkillAccessRequestCreateManyRequesterInput = {
+    id?: string
+    skillId: string
+    status?: string
+    reason?: string | null
+    responseNote?: string | null
+    processedAt?: Date | string | null
+    processedBy?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type SkillAccessRequestCreateManyProcessorInput = {
+    id?: string
+    skillId: string
+    requesterUserId: string
+    status?: string
+    reason?: string | null
+    responseNote?: string | null
+    processedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
   export type UserRoleUpdateWithoutUserInput = {
     assignedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     role?: RoleUpdateOneRequiredWithoutUserRolesNestedInput
@@ -41941,6 +44130,78 @@ export namespace Prisma {
     title?: NullableStringFieldUpdateOperationsInput | string | null
     modelId?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type SkillAccessRequestUpdateWithoutRequesterInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    reason?: NullableStringFieldUpdateOperationsInput | string | null
+    responseNote?: NullableStringFieldUpdateOperationsInput | string | null
+    processedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    skill?: SkillConfigUpdateOneRequiredWithoutAccessRequestsNestedInput
+    processor?: UserUpdateOneWithoutProcessedSkillAccessRequestsNestedInput
+  }
+
+  export type SkillAccessRequestUncheckedUpdateWithoutRequesterInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    skillId?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    reason?: NullableStringFieldUpdateOperationsInput | string | null
+    responseNote?: NullableStringFieldUpdateOperationsInput | string | null
+    processedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    processedBy?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type SkillAccessRequestUncheckedUpdateManyWithoutRequesterInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    skillId?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    reason?: NullableStringFieldUpdateOperationsInput | string | null
+    responseNote?: NullableStringFieldUpdateOperationsInput | string | null
+    processedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    processedBy?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type SkillAccessRequestUpdateWithoutProcessorInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    reason?: NullableStringFieldUpdateOperationsInput | string | null
+    responseNote?: NullableStringFieldUpdateOperationsInput | string | null
+    processedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    skill?: SkillConfigUpdateOneRequiredWithoutAccessRequestsNestedInput
+    requester?: UserUpdateOneRequiredWithoutSkillAccessRequestsNestedInput
+  }
+
+  export type SkillAccessRequestUncheckedUpdateWithoutProcessorInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    skillId?: StringFieldUpdateOperationsInput | string
+    requesterUserId?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    reason?: NullableStringFieldUpdateOperationsInput | string | null
+    responseNote?: NullableStringFieldUpdateOperationsInput | string | null
+    processedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type SkillAccessRequestUncheckedUpdateManyWithoutProcessorInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    skillId?: StringFieldUpdateOperationsInput | string
+    requesterUserId?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    reason?: NullableStringFieldUpdateOperationsInput | string | null
+    responseNote?: NullableStringFieldUpdateOperationsInput | string | null
+    processedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -42322,6 +44583,8 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipUpdateManyWithoutUserNestedInput
     assignedOrgRoles?: OrgRoleBindingUpdateManyWithoutAssignerNestedInput
     chatSessions?: ChatSessionUpdateManyWithoutUserNestedInput
+    skillAccessRequests?: SkillAccessRequestUpdateManyWithoutRequesterNestedInput
+    processedSkillAccessRequests?: SkillAccessRequestUpdateManyWithoutProcessorNestedInput
   }
 
   export type UserUncheckedUpdateWithoutActiveOrgInput = {
@@ -42342,6 +44605,8 @@ export namespace Prisma {
     orgMemberships?: OrgMembershipUncheckedUpdateManyWithoutUserNestedInput
     assignedOrgRoles?: OrgRoleBindingUncheckedUpdateManyWithoutAssignerNestedInput
     chatSessions?: ChatSessionUncheckedUpdateManyWithoutUserNestedInput
+    skillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutRequesterNestedInput
+    processedSkillAccessRequests?: SkillAccessRequestUncheckedUpdateManyWithoutProcessorNestedInput
   }
 
   export type UserUncheckedUpdateManyWithoutActiveOrgInput = {
@@ -42621,6 +44886,18 @@ export namespace Prisma {
     updatedAt?: Date | string
   }
 
+  export type SkillAccessRequestCreateManySkillInput = {
+    id?: string
+    requesterUserId: string
+    status?: string
+    reason?: string | null
+    responseNote?: string | null
+    processedAt?: Date | string | null
+    processedBy?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
   export type SkillPermissionUpdateWithoutSkillInput = {
     grantedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     grantedBy?: NullableStringFieldUpdateOperationsInput | string | null
@@ -42659,6 +44936,42 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     toolName?: StringFieldUpdateOperationsInput | string
     bindingSource?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type SkillAccessRequestUpdateWithoutSkillInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    reason?: NullableStringFieldUpdateOperationsInput | string | null
+    responseNote?: NullableStringFieldUpdateOperationsInput | string | null
+    processedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    requester?: UserUpdateOneRequiredWithoutSkillAccessRequestsNestedInput
+    processor?: UserUpdateOneWithoutProcessedSkillAccessRequestsNestedInput
+  }
+
+  export type SkillAccessRequestUncheckedUpdateWithoutSkillInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    requesterUserId?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    reason?: NullableStringFieldUpdateOperationsInput | string | null
+    responseNote?: NullableStringFieldUpdateOperationsInput | string | null
+    processedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    processedBy?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type SkillAccessRequestUncheckedUpdateManyWithoutSkillInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    requesterUserId?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    reason?: NullableStringFieldUpdateOperationsInput | string | null
+    responseNote?: NullableStringFieldUpdateOperationsInput | string | null
+    processedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    processedBy?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -42988,6 +45301,10 @@ export namespace Prisma {
      * @deprecated Use SkillPermissionDefaultArgs instead
      */
     export type SkillPermissionArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = SkillPermissionDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use SkillAccessRequestDefaultArgs instead
+     */
+    export type SkillAccessRequestArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = SkillAccessRequestDefaultArgs<ExtArgs>
     /**
      * @deprecated Use ToolCatalogDefaultArgs instead
      */
