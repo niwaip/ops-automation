@@ -63,4 +63,49 @@ describe('OpenAICompatibleClient', () => {
       })
     );
   });
+
+  it('uses MiniMax thinking payload instead of reasoning_effort', async () => {
+    const client = new OpenAICompatibleClient({
+      baseURL: 'https://api.minimax.chat/v1',
+      apiKey: 'test-key',
+      model: 'MiniMax-M3',
+      provider: 'minimax',
+    });
+    const postMock = jest.fn().mockResolvedValue({
+      data: {
+        choices: [
+          {
+            message: {
+              content: 'ok',
+            },
+          },
+        ],
+        usage: {
+          prompt_tokens: 10,
+          completion_tokens: 5,
+          total_tokens: 15,
+        },
+      },
+      headers: {},
+    });
+    (client as any).client.post = postMock;
+
+    await client.chatCompletion({
+      messages: [{ role: 'user', content: 'hello' }],
+      reasoning: {
+        enabled: true,
+        effort: 'high',
+      },
+    });
+
+    expect(postMock).toHaveBeenCalledWith(
+      '/chat/completions',
+      expect.objectContaining({
+        model: 'MiniMax-M3',
+        messages: [{ role: 'user', content: 'hello' }],
+        thinking: { type: 'adaptive' },
+      })
+    );
+    expect(postMock.mock.calls[0][1]).not.toHaveProperty('reasoning_effort');
+  });
 });

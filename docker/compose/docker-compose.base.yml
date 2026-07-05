@@ -122,7 +122,7 @@ services:
   control-plane:
     <<: *common-node-service
     container_name: ops-control-plane
-    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && npx prisma generate && npm run build && rm -rf /app/dist/generated && mkdir -p /app/dist/generated && cp -R /app/src/generated/prisma /app/dist/generated/prisma && npm run start"
+    command: sh -c "npm config set registry https://registry.npmjs.org && npm install --legacy-peer-deps && npx prisma generate && npm run build && rm -rf /app/dist/generated && mkdir -p /app/dist/generated && cp -R /app/src/generated/prisma /app/dist/generated/prisma && npm run start"
     environment:
       <<: *common-env
       DOCKER_ENV: true
@@ -157,7 +157,8 @@ services:
     container_name: ops-browser-worker
     command: >
       sh -c "npm config set registry https://registry.npmmirror.com
-      && npm install --legacy-peer-deps --include=dev
+      && rm -rf /app/node_modules/* /app/node_modules/.[!.]* /app/node_modules/..?* 2>/dev/null || true
+      && npm install --legacy-peer-deps --include=dev --ignore-scripts
       && if [ \"${BROWSER_WORKER_RUN_MODE:-prod}\" = \"dev\" ]; then npm run dev; else npm run build && node --enable-source-maps dist/main.js; fi"
     environment:
       NODE_ENV: ${BROWSER_WORKER_NODE_ENV:-production}
@@ -198,7 +199,7 @@ services:
     <<: *common-node-service
     container_name: ops-browser-template
     command: >
-      sh -c "npm config set registry https://registry.npmmirror.com
+      sh -c "npm config set registry https://registry.npmjs.org
       && npm config set fetch-retries 5
       && npm config set fetch-retry-mintimeout 20000
       && npm config set fetch-retry-maxtimeout 120000
@@ -244,7 +245,7 @@ services:
     <<: *common-node-service
     container_name: ops-browser-semantics
     command: >
-      sh -c "npm config set registry https://registry.npmmirror.com
+      sh -c "npm config set registry https://registry.npmjs.org
       && npm config set fetch-retries 5
       && npm config set fetch-retry-mintimeout 20000
       && npm config set fetch-retry-maxtimeout 120000
@@ -294,7 +295,7 @@ services:
     <<: *common-node-service
     container_name: ops-ai-orchestrator
     command: >
-      sh -c "npm config set registry https://registry.npmmirror.com
+      sh -c "npm config set registry https://registry.npmjs.org
       && npm install --legacy-peer-deps
       && npx prisma generate
       && npm run dev"
@@ -334,7 +335,7 @@ services:
     <<: *common-node-service
     container_name: ops-report
     command: >
-      sh -c "npm config set registry https://registry.npmmirror.com
+      sh -c "npm config set registry https://registry.npmjs.org
       && npm install --package-lock=false --legacy-peer-deps --include=dev --workspaces=false
       && npx prisma generate
       && npm run build

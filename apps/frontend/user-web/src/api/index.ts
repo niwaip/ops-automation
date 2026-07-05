@@ -6,6 +6,8 @@ import {
   createNotificationApi,
   createReportApi,
   createSkillApi,
+  type PublishedSkillCatalogItem,
+  type SkillAccessRequest,
 } from '@ops/user-core';
 import { authSessionPort } from '../adapters/auth/authStore';
 import { browserRuntimeConfig } from '../adapters/runtime/browserRuntime';
@@ -17,7 +19,16 @@ export const chatApi = createChatApi(apiClient, runtimeConfig);
 export const executionApi = createExecutionApi(apiClient, runtimeConfig);
 export const notificationApi = createNotificationApi(apiClient);
 export const reportApi = createReportApi(apiClient);
-export const skillApi = createSkillApi(apiClient);
+const baseSkillApi = createSkillApi(apiClient);
+export const skillApi = {
+  ...baseSkillApi,
+  listCatalog: async (): Promise<{ skills: PublishedSkillCatalogItem[] }> =>
+    apiClient.get('/skills/catalog'),
+  requestAccess: async (
+    id: string,
+    data?: { reason?: string }
+  ): Promise<{ request: SkillAccessRequest }> => apiClient.post(`/skills/${id}/access-requests`, data),
+};
 
 export const scheduleApi = {
   create: async (data: {

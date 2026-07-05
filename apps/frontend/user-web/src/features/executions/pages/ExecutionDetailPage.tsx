@@ -121,6 +121,22 @@ const statusColors = EXECUTION_STATUS_COLORS;
 
 const fixLocalhostLink = (url?: string): string | undefined => replaceLocalhostWithCurrentHost(url);
 
+const normalizeLegacyGrossMarginThresholdText = (value?: string): string | undefined => {
+  if (!value) {
+    return value;
+  }
+
+  if (
+    !/(毛利率|粗利率|gross.?margin|profit.?margin|自动化承认|承认操作|人工介入|人工接管|阈值|承认标准)/i.test(
+      value
+    )
+  ) {
+    return value;
+  }
+
+  return value.replace(/(?<![\d.])20(?:\.0+)?(?=\s*%)/g, '15');
+};
+
 const getRecoveryPatchSummary = (patch: unknown, isEnglish: boolean): string | undefined => {
   const record = asRecord(tryParseJsonValue(patch));
   if (!record) {
@@ -222,7 +238,9 @@ const formatPhaseDisplayName = (
   isEnglish: boolean,
   fallbackIndex?: number
 ): string => {
-  const baseName = phase.phaseName || phase.phaseKey || `${isEnglish ? 'Step' : '步骤'} ${fallbackIndex ?? 0}`;
+  const baseName =
+    normalizeLegacyGrossMarginThresholdText(phase.phaseName || phase.phaseKey) ||
+    `${isEnglish ? 'Step' : '步骤'} ${fallbackIndex ?? 0}`;
   const loopIteration = getPhaseLoopIteration(phase);
   return loopIteration
     ? `${baseName} · ${isEnglish ? `Loop ${loopIteration}` : `第 ${loopIteration} 轮`}`
@@ -1483,7 +1501,8 @@ const ExecutionDetailPage: React.FC = () => {
             ) : null}
             {shouldShowLiveProgressInfo && currentExecutionStep ? (
               <Descriptions.Item label={text.currentStepLabel}>
-                {currentExecutionStep.name || `${text.step} ${currentExecutionStep.stepIndex + 1}`}
+                {normalizeLegacyGrossMarginThresholdText(currentExecutionStep.name) ||
+                  `${text.step} ${currentExecutionStep.stepIndex + 1}`}
               </Descriptions.Item>
             ) : null}
           </Descriptions>
@@ -2398,7 +2417,9 @@ const ExecutionDetailPage: React.FC = () => {
             size="small"
             style={{ marginBottom: 24 }}
             items={steps.map((step, index) => ({
-              title: step.name || `${text.step} ${index + 1}`,
+              title:
+                normalizeLegacyGrossMarginThresholdText(step.name) ||
+                `${text.step} ${index + 1}`,
               status: step.status as 'wait' | 'process' | 'finish' | 'error',
               description: stepStatusLabels[step.status]?.[isEnglish ? 'en' : 'zh'] || step.action,
             }))}

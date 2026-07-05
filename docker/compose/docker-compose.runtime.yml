@@ -8,7 +8,7 @@ services:
     image: ${DOCKER_REGISTRY:-}node:20-bullseye
     container_name: ops-browser-worker
     working_dir: /app
-    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && npm run dev"
+    command: sh -c "npm config set registry https://registry.npmmirror.com && rm -rf /app/node_modules/* /app/node_modules/.[!.]* /app/node_modules/..?* 2>/dev/null || true && npm install --legacy-peer-deps --include=dev --ignore-scripts && npm run dev"
     environment:
       NODE_ENV: development
       PORT: ${BROWSER_WORKER_PORT:-3004}

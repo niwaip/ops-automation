@@ -60,12 +60,14 @@ model User {
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   // Relations
-  userRoles        UserRole[]
-  assignedRoles    UserRole[]       @relation("AssignedBy")
-  orgMemberships   OrgMembership[]
-  assignedOrgRoles OrgRoleBinding[] @relation("OrgRoleAssignedBy")
-  activeOrg        Organization?    @relation("ActiveOrganization", fields: [activeOrgId], references: [id], onDelete: SetNull)
-  chatSessions     ChatSession[]
+  userRoles                    UserRole[]
+  assignedRoles                UserRole[]           @relation("AssignedBy")
+  orgMemberships               OrgMembership[]
+  assignedOrgRoles             OrgRoleBinding[]     @relation("OrgRoleAssignedBy")
+  activeOrg                    Organization?        @relation("ActiveOrganization", fields: [activeOrgId], references: [id], onDelete: SetNull)
+  chatSessions                 ChatSession[]
+  skillAccessRequests          SkillAccessRequest[] @relation("SkillAccessRequester")
+  processedSkillAccessRequests SkillAccessRequest[] @relation("SkillAccessProcessor")
 
   @@index([username])
   @@index([role])
@@ -328,8 +330,9 @@ model SkillConfig {
   updatedAt                DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   // Relations
-  permissions  SkillPermission[] // Roles granted access to this skill
-  toolBindings SkillToolBinding[]
+  permissions    SkillPermission[] // Roles granted access to this skill
+  toolBindings   SkillToolBinding[]
+  accessRequests SkillAccessRequest[]
 
   @@index([name])
   @@index([isActive])
@@ -351,6 +354,28 @@ model SkillPermission {
   @@index([skillId])
   @@index([roleId])
   @@map("skill_permissions")
+}
+
+model SkillAccessRequest {
+  id              String    @id @default(uuid()) @db.Uuid
+  skillId         String    @map("skill_id") @db.Uuid
+  requesterUserId String    @map("requester_user_id") @db.Uuid
+  status          String    @default("pending") @db.VarChar(32)
+  reason          String?   @db.VarChar(500)
+  responseNote    String?   @map("response_note") @db.VarChar(500)
+  processedAt     DateTime? @map("processed_at") @db.Timestamptz
+  processedBy     String?   @map("processed_by") @db.Uuid
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  skill     SkillConfig @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  requester User        @relation("SkillAccessRequester", fields: [requesterUserId], references: [id], onDelete: Cascade)
+  processor User?       @relation("SkillAccessProcessor", fields: [processedBy], references: [id], onDelete: SetNull)
+
+  @@index([skillId, status])
+  @@index([requesterUserId, status])
+  @@index([processedBy])
+  @@map("skill_access_requests")
 }
 
 model ToolCatalog {

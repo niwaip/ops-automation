@@ -1050,10 +1050,13 @@ export class ExecutionPlanNormalizationService {
       // #endregion
 
       const metadata = {
-        stepName: this.readNonEmptyString(step.name) || `${activityName} command ${index + 1}`,
+        stepName: this.rewriteLegacyGrossMarginThresholdText(
+          this.readNonEmptyString(step.name) || `${activityName} command ${index + 1}`,
+          resolvedInput
+        ),
         activityName,
         activityOrder,
-        ...(this.buildBrowserPhaseCommandMetadata(normalizedAction, config) || {}),
+        ...(this.buildBrowserPhaseCommandMetadata(normalizedAction, config, resolvedInput) || {}),
       };
 
       commands.push({
@@ -1131,8 +1134,10 @@ export class ExecutionPlanNormalizationService {
       this.readNonEmptyString(input.templateStep.step_id, input.templateStep.id) ||
       `template_step_${input.counter.value}`;
     const title =
-      this.readNonEmptyString(input.templateStep.description, input.templateStep.name) ||
-      templateStepId;
+      this.rewriteLegacyGrossMarginThresholdText(
+        this.readNonEmptyString(input.templateStep.description, input.templateStep.name),
+        input.resolvedInput
+      ) || templateStepId;
     const commands = this.mapBrowserActivityCommands(
       [input.templateStep],
       input.counter.value,
@@ -1292,7 +1297,8 @@ export class ExecutionPlanNormalizationService {
 
   private buildBrowserPhaseCommandMetadata(
     action: string,
-    config: Record<string, unknown>
+    config: Record<string, unknown>,
+    resolvedInput: Record<string, unknown>
   ): Record<string, unknown> | undefined {
     const metadata: Record<string, unknown> = {};
     const outputVar = this.readNonEmptyString(config.outputVar, config.output_var);
@@ -1318,14 +1324,19 @@ export class ExecutionPlanNormalizationService {
                 : 'stop',
           ...(this.readNonEmptyString(branch?.takeoverReason, branch?.takeover_reason)
             ? {
-                takeoverReason: this.readNonEmptyString(
-                  branch?.takeoverReason,
-                  branch?.takeover_reason
+                takeoverReason: this.rewriteLegacyGrossMarginThresholdText(
+                  this.readNonEmptyString(branch?.takeoverReason, branch?.takeover_reason),
+                  resolvedInput
                 ),
               }
             : {}),
           ...(this.readNonEmptyString(branch?.description)
-            ? { description: this.readNonEmptyString(branch?.description) }
+            ? {
+                description: this.rewriteLegacyGrossMarginThresholdText(
+                  this.readNonEmptyString(branch?.description),
+                  resolvedInput
+                ),
+              }
             : {}),
         };
       }
@@ -1366,6 +1377,42 @@ export class ExecutionPlanNormalizationService {
       );
     }
     return value;
+  }
+
+  private rewriteLegacyGrossMarginThresholdText(
+    value: string | undefined,
+    resolvedInput: Record<string, unknown>
+  ): string | undefined {
+    const resolvedValue = this.readNonEmptyString(
+      this.resolveBrowserTemplateValue(value, resolvedInput),
+      value
+    );
+    if (!resolvedValue) {
+      return resolvedValue;
+    }
+
+    const threshold = this.readNonEmptyString(
+      resolvedInput.grossMarginThreshold,
+      resolvedInput.gross_margin_threshold
+    );
+    if (!threshold) {
+      return resolvedValue;
+    }
+
+    if (
+      !/(毛利率|粗利率|gross.?margin|profit.?margin|自动化承认|承认操作|人工介入|人工接管|阈值|未达到|条件满足)/i.test(
+        resolvedValue
+      )
+    ) {
+      return resolvedValue;
+    }
+
+    const normalizedThreshold = threshold.replace(/%/g, '').trim();
+    if (!normalizedThreshold) {
+      return resolvedValue;
+    }
+
+    return resolvedValue.replace(/(?<![\d.])-?\d+(?:\.\d+)?(?=\s*%)/g, normalizedThreshold);
   }
 
   private normalizeBrowserPhaseCommandAction(action: string | undefined): string | undefined {

@@ -12,7 +12,10 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
+  PublishedSkillCatalogItemDTO,
   SkillConfigDto,
+  SkillAccessRequestDTO,
+  SkillAccessRequestReviewDTO,
   CreateSkillDTO,
   SkillMatchResult,
   SkillPermissionDTO,
@@ -454,6 +457,16 @@ export class SkillService implements OnModuleInit {
     return this.skillAccessService.listSkillsForUser(userId);
   }
 
+  async listPublishedSkillCatalogForUser(
+    userId: string
+  ): Promise<PublishedSkillCatalogItemDTO[]> {
+    if (!isValidUUID(userId)) {
+      this.logger.warn(`Invalid userId format: ${userId}, returning empty published skill catalog`);
+      return [];
+    }
+    return this.skillAccessService.listPublishedSkillCatalogForUser(userId);
+  }
+
   async checkUserSkillPermission(userId: string, skillId: string): Promise<boolean> {
     return this.skillAccessService.checkUserSkillPermission(userId, skillId);
   }
@@ -464,6 +477,46 @@ export class SkillService implements OnModuleInit {
     grantedBy: string
   ): Promise<SkillPermissionDTO> {
     return this.skillAccessService.grantSkillToRole(skillId, roleId, grantedBy);
+  }
+
+  async createSkillAccessRequest(
+    userId: string,
+    skillId: string,
+    reason?: string
+  ): Promise<SkillAccessRequestDTO> {
+    if (!isValidUUID(userId) || !isValidUUID(skillId)) {
+      throw new BadRequestException('Invalid skill access request input');
+    }
+    return this.skillAccessService.createSkillAccessRequest(userId, skillId, reason);
+  }
+
+  async listSkillAccessRequests(options?: {
+    skillId?: string;
+    status?: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  }): Promise<SkillAccessRequestReviewDTO[]> {
+    return this.skillAccessService.listSkillAccessRequests(options);
+  }
+
+  async approveSkillAccessRequest(
+    requestId: string,
+    processedBy: string,
+    responseNote?: string
+  ): Promise<SkillAccessRequestReviewDTO> {
+    if (!isValidUUID(requestId) || !isValidUUID(processedBy)) {
+      throw new BadRequestException('Invalid skill access request approval input');
+    }
+    return this.skillAccessService.approveSkillAccessRequest(requestId, processedBy, responseNote);
+  }
+
+  async rejectSkillAccessRequest(
+    requestId: string,
+    processedBy: string,
+    responseNote?: string
+  ): Promise<SkillAccessRequestReviewDTO> {
+    if (!isValidUUID(requestId) || !isValidUUID(processedBy)) {
+      throw new BadRequestException('Invalid skill access request rejection input');
+    }
+    return this.skillAccessService.rejectSkillAccessRequest(requestId, processedBy, responseNote);
   }
 
   async revokeSkillFromRole(skillId: string, roleId: string): Promise<boolean> {

@@ -1,6 +1,7 @@
 import {
   BellOutlined,
   BgColorsOutlined,
+  DownOutlined,
   MessageOutlined,
   DashboardOutlined,
   GlobalOutlined,
@@ -13,6 +14,7 @@ import {
 } from '@ant-design/icons';
 import { Avatar, Badge, Button, Dropdown, Empty, Layout, Menu, Space, Tag, Typography } from 'antd';
 import type { MenuProps } from 'antd';
+import { useEffect, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useStore } from 'zustand';
 import {
@@ -25,16 +27,27 @@ import {
   isExecutionStatusValue,
 } from '@ops/user-core';
 import { UserChatWidget } from '@/features/chat/components/UserChatWidget';
+import { useChatStore } from '@/features/chat';
 import { authStore } from '../../adapters/auth/authStore';
 import { notificationStore } from '../../adapters/notifications/notificationStore';
 import { preferencesStore } from '../../adapters/preferences/preferencesStore';
 import './UserLayout.css';
 
 const { Header, Content, Sider } = Layout;
+
+const userMenuItems = [
+  { key: '/dashboard', icon: <DashboardOutlined />, label: '工作台' },
+  { key: '/chat', icon: <MessageOutlined />, label: 'AI 对话' },
+  { key: '/executions', icon: <OrderedListOutlined />, label: '执行列表' },
+  { key: '/published-skills', icon: <ThunderboltOutlined />, label: '已发布技能' },
+] satisfies Required<MenuProps>['items'];
+
 export function UserLayout() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const isChatRoute = location.pathname.startsWith('/chat');
+  const setChatWidgetOpen = useChatStore((state) => state.setOpen);
   const user = useStore(authStore, (state) => state.user);
   const notifications = useStore(notificationStore, (state) => state.items);
   const unreadNotificationCount = useStore(
@@ -61,8 +74,59 @@ export function UserLayout() {
           : location.pathname.startsWith('/reports')
             ? '/reports'
             : location.pathname;
+  const currentMenuLabel =
+    userMenuItems.find((item) => item?.key === selectedMenuKey)?.label ?? '工作台';
   const statusLabels =
     language === 'en-US' ? EXECUTION_STATUS_LABELS_EN : EXECUTION_STATUS_LABELS_ZH;
+  const roleLabels = {
+    'zh-CN': {
+      employee: '企业成员',
+      admin: '管理员',
+      agent: '代理账号',
+    },
+    'en-US': {
+      employee: 'Employee',
+      admin: 'Administrator',
+      agent: 'Agent',
+    },
+    'ja-JP': {
+      employee: '従業員',
+      admin: '管理者',
+      agent: 'エージェント',
+    },
+  } as const;
+  const roleColors = {
+    employee: 'blue',
+    admin: 'gold',
+    agent: 'purple',
+  } as const;
+  const currentRoleLabel = user ? roleLabels[language][user.role] : null;
+  const accountStatusLabel =
+    language === 'en-US'
+      ? user?.isActive
+        ? 'Active'
+        : 'Inactive'
+      : language === 'ja-JP'
+        ? user?.isActive
+          ? '有効'
+          : '無効'
+        : user?.isActive
+          ? '已启用'
+          : '已停用';
+  const userSecondaryText =
+    user?.email?.trim() ||
+    (currentRoleLabel
+      ? language === 'en-US'
+        ? `Role · ${currentRoleLabel}`
+        : language === 'ja-JP'
+          ? `役割・${currentRoleLabel}`
+          : `角色 · ${currentRoleLabel}`
+      : language === 'en-US'
+        ? 'Not signed in'
+        : language === 'ja-JP'
+          ? '未ログイン'
+          : '未登录');
+  const userInitial = user?.username?.trim()?.charAt(0).toUpperCase() || 'U';
   const previewNotifications = notifications
     .slice()
     .sort((left, right) => new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime())
@@ -78,27 +142,6 @@ export function UserLayout() {
     selectedKeys: [language],
   };
 
-  const userMenu: MenuProps = {
-    items: [
-      {
-        key: 'chat',
-        icon: <MessageOutlined />,
-        label: '打开 AI 对话',
-      },
-      {
-        key: 'logout',
-        icon: <LogoutOutlined />,
-        label: '退出登录',
-      },
-    ],
-    onClick: ({ key }) => {
-      if (key === 'chat') {
-        navigate('/chat');
-        return;
-      }
-      authStore.getState().logout();
-    },
-  };
   const resolveActionPath = (actionUrl: string, source: string, sourceId: string): string => {
     if (source === 'execution') {
       return `/executions/${sourceId}`;
@@ -107,6 +150,17 @@ export function UserLayout() {
       return `/reports/${sourceId}`;
     }
     return actionUrl;
+  };
+
+  useEffect(() => {
+    if (isChatRoute) {
+      setChatWidgetOpen(false);
+    }
+  }, [isChatRoute, setChatWidgetOpen]);
+
+  const handleUserAction = () => {
+    setUserMenuOpen(false);
+    authStore.getState().logout();
   };
 
   return (
@@ -132,13 +186,11 @@ export function UserLayout() {
           theme="dark"
           mode="inline"
           selectedKeys={[selectedMenuKey]}
-          onClick={({ key }) => navigate(key)}
-          items={[
-            { key: '/dashboard', icon: <DashboardOutlined />, label: '工作台' },
-            { key: '/chat', icon: <MessageOutlined />, label: 'AI 对话' },
-            { key: '/executions', icon: <OrderedListOutlined />, label: '执行列表' },
-            { key: '/published-skills', icon: <ThunderboltOutlined />, label: '已发布技能' },
-          ]}
+          onClick={({ key }) => {
+            setChatWidgetOpen(false);
+            navigate(key);
+          }}
+          items={userMenuItems}
         />
       </Sider>
       <Layout
@@ -164,7 +216,7 @@ export function UserLayout() {
             />
             <Space size={8}>
               <Tag color="blue" style={{ marginInlineEnd: 0, borderRadius: 999 }}>
-                工作台
+                {currentMenuLabel}
               </Tag>
             </Space>
           </div>
@@ -174,10 +226,10 @@ export function UserLayout() {
               placement="bottomRight"
               popupRender={() => (
                 <div
+                  className="user-shell-notification-panel"
                   style={{
                     width: 360,
                     maxWidth: 'calc(100vw - 32px)',
-                    background: 'var(--surface-primary)',
                     border: '1px solid var(--border-color)',
                     borderRadius: 16,
                     boxShadow: '0 12px 40px rgba(15, 23, 42, 0.16)',
@@ -226,6 +278,7 @@ export function UserLayout() {
                           <button
                             key={item.id}
                             type="button"
+                            className={`user-shell-notification-item${item.unread ? ' is-unread' : ''}`}
                             onClick={() => {
                               markAsRead(item.id);
                               navigate(
@@ -240,9 +293,6 @@ export function UserLayout() {
                                 : '1px solid var(--border-color)',
                               borderRadius: 12,
                               padding: 12,
-                              background: item.unread
-                                ? 'rgba(59, 130, 246, 0.06)'
-                                : 'var(--surface-secondary)',
                               cursor: 'pointer',
                             }}
                           >
@@ -282,6 +332,7 @@ export function UserLayout() {
             >
               <Button
                 type="text"
+                className="user-shell-header-icon-button user-shell-notification-button"
                 icon={
                   <Badge count={unreadNotificationCount} size="small" overflowCount={99}>
                     <BellOutlined />
@@ -317,24 +368,93 @@ export function UserLayout() {
                 {language === 'zh-CN' ? '中文' : language === 'en-US' ? 'EN' : '日本語'}
               </Button>
             </Dropdown>
-            <Dropdown menu={userMenu} placement="bottomRight" trigger={['click']}>
-              <Space className="user-shell-user">
+            <Dropdown
+              open={userMenuOpen}
+              onOpenChange={setUserMenuOpen}
+              placement="bottomRight"
+              trigger={['click']}
+              popupRender={() => (
+                <div className="user-shell-user-menu">
+                  <div className="user-shell-user-menu-card">
+                    <Avatar
+                      size={44}
+                      className="user-shell-user-menu-avatar"
+                      icon={!user ? <UserOutlined /> : undefined}
+                    >
+                      {user ? userInitial : null}
+                    </Avatar>
+                    <div className="user-shell-user-menu-body">
+                      <div className="user-shell-user-menu-title">
+                        <Typography.Text strong className="user-shell-user-menu-name">
+                          {user?.username || '未登录'}
+                        </Typography.Text>
+                          {user && currentRoleLabel ? (
+                          <Tag color={roleColors[user.role]} style={{ marginInlineEnd: 0 }}>
+                            {currentRoleLabel}
+                          </Tag>
+                        ) : null}
+                      </div>
+                      <Typography.Text
+                        type="secondary"
+                        className="user-shell-user-menu-secondary"
+                      >
+                        {userSecondaryText}
+                      </Typography.Text>
+                      {user ? (
+                        <Typography.Text
+                          type="secondary"
+                          className="user-shell-user-menu-secondary"
+                        >
+                          {language === 'en-US'
+                            ? `Account status · ${accountStatusLabel}`
+                            : language === 'ja-JP'
+                              ? `アカウント状態・${accountStatusLabel}`
+                              : `账号状态 · ${accountStatusLabel}`}
+                        </Typography.Text>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className="user-shell-user-menu-section">
+                    <button
+                      type="button"
+                      className="user-shell-user-menu-action danger"
+                      onClick={handleUserAction}
+                    >
+                      <span className="user-shell-user-menu-action-icon">
+                        <LogoutOutlined />
+                      </span>
+                      <span className="user-shell-user-menu-action-copy">
+                        <span className="user-shell-user-menu-action-title">退出登录</span>
+                        <span className="user-shell-user-menu-action-description">
+                          清除当前会话并返回登录页
+                        </span>
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            >
+              <button type="button" className="user-shell-user">
                 <Avatar
-                  size={32}
-                  icon={<UserOutlined />}
-                  style={{ background: 'linear-gradient(135deg, #6366f1 0%, #f472b6 100%)' }}
-                />
-                <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>
-                  {user?.username || '未登录'}
+                  size={36}
+                  className="user-shell-user-avatar"
+                  icon={!user ? <UserOutlined /> : undefined}
+                >
+                  {user ? userInitial : null}
+                </Avatar>
+                <span className="user-shell-user-meta">
+                  <span className="user-shell-user-name">{user?.username || '未登录'}</span>
+                  <span className="user-shell-user-secondary">{userSecondaryText}</span>
                 </span>
-              </Space>
+                <DownOutlined className="user-shell-user-chevron" />
+              </button>
             </Dropdown>
           </div>
         </Header>
         <Content className={`user-shell-content${isChatRoute ? ' user-shell-content-chat' : ''}`}>
           <Outlet />
         </Content>
-        <UserChatWidget />
+        {isChatRoute ? null : <UserChatWidget />}
       </Layout>
     </Layout>
   );

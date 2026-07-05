@@ -1,33 +1,19 @@
-import { PlayCircleOutlined, ReloadOutlined, ScheduleOutlined, DeleteOutlined, PlusOutlined, LeftOutlined } from '@ant-design/icons';
 import {
-  App,
-  Button,
-  Card,
-  Checkbox,
-  Form,
-  Input,
-  InputNumber,
-  Modal,
-  Select,
-  Space,
-  Spin,
-  Switch,
-  Table,
-  Tag,
-  TimePicker,
-  Typography,
-} from 'antd';
-import { useEffect, useMemo, useState } from 'react';
-import { useMutation, useQuery } from 'react-query';
+  AppstoreOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  CloseCircleOutlined,
+  DownOutlined,
+  HourglassOutlined,
+  PlayCircleOutlined,
+  SendOutlined,
+  UpOutlined,
+} from '@ant-design/icons';
+import { App, Button, Card, Empty, Input, Modal, Space, Tag, Typography, theme } from 'antd';
+import { type CSSProperties, type ReactNode, useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { useNavigate } from 'react-router-dom';
-import type { SkillConfig, SkillParamProperty } from '@ops/user-core';
-import {
-  buildSkillExecutionInputInitialValues,
-  isBooleanInputType,
-  isJsonLikeInputType,
-  isNumericInputType,
-  normalizeSkillExecutionInput,
-} from '@ops/user-core';
+import type { PublishedSkillCatalogItem } from '../../../api/skill';
 import { scheduleApi, skillApi } from '../../../api';
 
 const deploymentColor = (status?: string | null): string => {
@@ -44,591 +30,694 @@ const deploymentColor = (status?: string | null): string => {
   }
 };
 
-const renderFieldInput = (name: string, config: SkillParamProperty) => {
-  if (isNumericInputType(config.type)) {
-    return <InputNumber style={{ width: '100%' }} placeholder={`请输入 ${name}`} />;
+const formatDateTime = (value?: string | null): string | null => {
+  if (!value) {
+    return null;
   }
-  if (isBooleanInputType(config.type)) {
-    return <Switch />;
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
   }
-  if (isJsonLikeInputType(config.type)) {
-    return <Input.TextArea rows={5} placeholder="请输入 JSON 字符串" />;
-  }
-  return <Input placeholder={config.description || `请输入 ${name}`} />;
+
+  return date.toLocaleString('zh-CN', { hour12: false });
 };
 
-const generateCronExpression = (values: any): string => {
-  if (values.frequency === 'cron') {
-    return values.cronExpression;
-  }
-  
-  const time = values.time;
-  const minute = time ? time.minute() : 0;
-  const hour = time ? time.hour() : 0;
+interface ScheduleSummary {
+  id: string;
+  name: string;
+  skillId: string;
+  cronExpression: string;
+  timezone?: string;
+  isActive: boolean;
+  nextRunAt?: string;
+  updatedAt?: string;
+}
 
-  if (values.frequency === 'daily') {
-    return `${minute} ${hour} * * *`;
+const summarizeCronExpression = (cronExpression?: string) => {
+  if (!cronExpression) {
+    return '未设置';
   }
-  
-  if (values.frequency === 'weekly') {
-    const days = values.weekdays && values.weekdays.length > 0 ? values.weekdays.join(',') : '*';
-    return `${minute} ${hour} * * ${days}`;
+
+  const parts = cronExpression.trim().split(/\s+/);
+  if (parts.length !== 5) {
+    return cronExpression;
   }
-  
-  if (values.frequency === 'monthly') {
-    const day = values.dayOfMonth || '1';
-    return `${minute} ${hour} ${day} * *`;
+
+  const [minute, hour, dayOfMonth, _month, dayOfWeek] = parts;
+  const timeText = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+
+  if (dayOfMonth === '*' && dayOfWeek === '1-5') {
+    return `工作日 ${timeText}`;
   }
-  
-  return '* * * * *';
+
+  if (dayOfMonth !== '*' && dayOfWeek === '*') {
+    return `每月 ${dayOfMonth} 日 ${timeText}`;
+  }
+
+  if (dayOfMonth === '*' && dayOfWeek !== '*') {
+    return `每周 ${dayOfWeek} ${timeText}`;
+  }
+
+  return cronExpression;
+};
+
+const sectionCardStyle: CSSProperties = {
+  borderRadius: 16,
+};
+
+const skillCardStyle: CSSProperties = {
+  height: '100%',
+  borderRadius: 16,
+  boxShadow: '0 10px 30px rgba(15, 23, 42, 0.06)',
+};
+
+const descriptionStyle: CSSProperties = {
+  minHeight: 44,
+  marginBottom: 0,
+};
+
+const statCardStyle: CSSProperties = {
+  borderRadius: 14,
+  height: '100%',
+  minHeight: 68,
+  border: '1px solid var(--border-color)',
+  background: 'var(--bg-card)',
+};
+
+const statGridStyle: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+  gap: 8,
+  marginBottom: 12,
+};
+
+const statCardBodyStyle: CSSProperties = {
+  padding: '12px 14px',
+  display: 'flex',
+  alignItems: 'center',
+  gap: 12,
+};
+
+const statIconStyle: CSSProperties = {
+  width: 36,
+  height: 36,
+  borderRadius: 10,
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  fontSize: 16,
+  flex: 'none',
+};
+
+const statContentStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 2,
+  flex: 1,
+  minWidth: 0,
+  alignItems: 'center',
+  justifyContent: 'center',
+  textAlign: 'center',
+};
+
+const statTitleStyle: CSSProperties = {
+  fontSize: 12,
+  lineHeight: 1.2,
+  color: 'var(--text-secondary)',
+};
+
+const statValueStyle: CSSProperties = {
+  fontSize: 24,
+  lineHeight: 1.1,
+  fontWeight: 700,
+};
+
+const skillMetaSectionStyle: CSSProperties = {
+  width: '100%',
+  borderRadius: 12,
+  border: '1px solid rgba(148, 163, 184, 0.14)',
+  background: 'rgba(248, 250, 252, 0.72)',
+  padding: '10px 12px',
+};
+
+const skillMetaSectionTitleStyle: CSSProperties = {
+  display: 'block',
+  marginBottom: 8,
+  fontSize: 12,
+};
+
+const skillMetaRowStyle: CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  gap: 12,
+  alignItems: 'center',
+  flexWrap: 'wrap',
+};
+
+const skillMetaValueStyle: CSSProperties = {
+  fontSize: 12,
+};
+
+const skillGridStyle: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+  gap: 16,
+};
+
+const getAccessStatusTag = (skill: PublishedSkillCatalogItem) => {
+  if (skill.accessStatus === 'authorized') {
+    return <Tag color="success">已授权</Tag>;
+  }
+
+  if (skill.accessStatus === 'requested') {
+    return <Tag color="processing">申请中</Tag>;
+  }
+
+  if (skill.accessRequest?.status === 'rejected') {
+    return <Tag color="error">已拒绝</Tag>;
+  }
+
+  return <Tag>未授权</Tag>;
 };
 
 export function PublishedSkillListPage() {
   const { message } = App.useApp();
+  const { token } = theme.useToken();
   const navigate = useNavigate();
-  const [form] = Form.useForm();
-  
-  const [isSchedulerModalVisible, setIsSchedulerModalVisible] = useState(false);
-  const [selectedSkillId, setSelectedSkillId] = useState<string | null>(null);
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const selectedFrequency = Form.useWatch('frequency', form);
+  const queryClient = useQueryClient();
+  const [requestTarget, setRequestTarget] = useState<PublishedSkillCatalogItem | null>(null);
+  const [requestReason, setRequestReason] = useState('');
+  const [recentlyRequestedSkillId, setRecentlyRequestedSkillId] = useState<string | null>(null);
+  const [collapsedSections, setCollapsedSections] = useState<Record<'authorized' | 'unauthorized', boolean>>({
+    authorized: false,
+    unauthorized: false,
+  });
 
-  const { data, isLoading, isFetching, refetch } = useQuery(
-    ['user-web-published-skills-list'],
-    () => skillApi.list()
+  const catalogQuery = useQuery<{ skills: PublishedSkillCatalogItem[] }>(
+    ['user-web-published-skills-catalog'],
+    () => skillApi.listCatalog(),
+    {
+      staleTime: 15000,
+    }
   );
-
-  const selectedSkillQuery = useQuery(
-    ['user-web-skill-detail', selectedSkillId],
-    () => skillApi.getById(selectedSkillId!),
-    { enabled: Boolean(selectedSkillId) }
-  );
-
   const schedulesQuery = useQuery(
-    ['user-web-schedules-list'],
-    () => scheduleApi.list(),
-    { enabled: isSchedulerModalVisible }
+    ['user-web-published-skill-schedules'],
+    () => scheduleApi.list() as Promise<ScheduleSummary[]>,
+    {
+      staleTime: 60000,
+      refetchOnWindowFocus: false,
+    }
   );
 
-  const updateScheduleMutation = useMutation(
-    async ({ id, data }: { id: string; data: any }) => scheduleApi.update(id, data),
+  const requestAccessMutation = useMutation(
+    async (payload: { skillId: string; reason?: string }) =>
+      skillApi.requestAccess(payload.skillId, { reason: payload.reason }),
     {
-      onSuccess: () => {
-        void message.success('定时任务已更新');
-        void schedulesQuery.refetch();
+      onSuccess: async (data, variables) => {
+        queryClient.setQueryData<{ skills: PublishedSkillCatalogItem[] } | undefined>(
+          ['user-web-published-skills-catalog'],
+          (current) => {
+            if (!current) {
+              return current;
+            }
+
+            return {
+              skills: current.skills.map((skill) =>
+                skill.id === variables.skillId
+                  ? {
+                      ...skill,
+                      accessStatus: 'requested',
+                      accessRequest: data.request,
+                    }
+                  : skill
+              ),
+            };
+          }
+        );
+        setRecentlyRequestedSkillId(variables.skillId);
+        void message.success('授权申请已提交');
+        setRequestTarget(null);
+        setRequestReason('');
+        await queryClient.invalidateQueries(['user-web-published-skills-catalog']);
       },
       onError: (error) => {
-        void message.error(error instanceof Error ? error.message : '更新定时任务失败');
+        void message.error(error instanceof Error ? error.message : '提交授权申请失败');
       },
     }
   );
-
-  const deleteScheduleMutation = useMutation(
-    async (id: string) => scheduleApi.delete(id),
-    {
-      onSuccess: () => {
-        void message.success('定时任务已删除');
-        void schedulesQuery.refetch();
-      },
-      onError: (error) => {
-        void message.error(error instanceof Error ? error.message : '删除定时任务失败');
-      },
-    }
-  );
-
-  const triggerScheduleMutation = useMutation(
-    async (id: string) => scheduleApi.trigger(id),
-    {
-      onSuccess: () => {
-        void message.success('定时任务已手动触发执行');
-      },
-      onError: (error) => {
-        void message.error(error instanceof Error ? error.message : '手动触发失败');
-      },
-    }
-  );
-
-  const skillSchedules = useMemo(() => {
-    if (!schedulesQuery.data || !selectedSkillId) return [];
-    return schedulesQuery.data.filter((s: any) => s.skillId === selectedSkillId);
-  }, [schedulesQuery.data, selectedSkillId]);
-
-  useEffect(() => {
-    if (isSchedulerModalVisible && schedulesQuery.isSuccess) {
-      const existing = schedulesQuery.data?.filter((s: any) => s.skillId === selectedSkillId) || [];
-      setShowCreateForm(existing.length === 0);
-    }
-  }, [isSchedulerModalVisible, schedulesQuery.isSuccess, selectedSkillId]);
-
-  useEffect(() => {
-    if (isSchedulerModalVisible) {
-      form.resetFields();
-      form.setFieldValue('timezone', 'Asia/Shanghai');
-      form.setFieldValue('frequency', 'daily');
-    }
-  }, [isSchedulerModalVisible, form]);
-
-  useEffect(() => {
-    if (selectedSkillQuery.data) {
-      form.setFieldValue('input', buildSkillExecutionInputInitialValues(selectedSkillQuery.data));
-    }
-  }, [form, selectedSkillQuery.data]);
 
   const skills = useMemo(
+    () => (catalogQuery.data?.skills || []).sort((left, right) => left.name.localeCompare(right.name)),
+    [catalogQuery.data?.skills]
+  );
+
+  const authorizedSkills = useMemo(
+    () => skills.filter((skill) => skill.accessStatus === 'authorized'),
+    [skills]
+  );
+
+  const unauthorizedSkills = useMemo(
+    () => skills.filter((skill) => skill.accessStatus !== 'authorized'),
+    [skills]
+  );
+
+  const requestedSkills = useMemo(
+    () => unauthorizedSkills.filter((skill) => skill.accessStatus === 'requested'),
+    [unauthorizedSkills]
+  );
+
+  const rejectedSkills = useMemo(
+    () => unauthorizedSkills.filter((skill) => skill.accessRequest?.status === 'rejected'),
+    [unauthorizedSkills]
+  );
+
+  const neverRequestedSkills = useMemo(
     () =>
-      (data?.skills || [])
-        .filter((skill) => skill.isPublished)
-        .sort((left, right) => left.name.localeCompare(right.name)),
-    [data?.skills]
+      unauthorizedSkills.filter(
+        (skill) => skill.accessStatus !== 'requested' && skill.accessRequest?.status !== 'rejected'
+      ),
+    [unauthorizedSkills]
   );
 
-  const createScheduleMutation = useMutation(
-    async (values: any) => scheduleApi.create(values),
-    {
-      onSuccess: () => {
-        void message.success('定时任务已成功配置');
-        form.resetFields();
-        form.setFieldValue('timezone', 'Asia/Shanghai');
-        form.setFieldValue('frequency', 'daily');
-        if (selectedSkillQuery.data) {
-          form.setFieldValue('input', buildSkillExecutionInputInitialValues(selectedSkillQuery.data));
-        }
-        void schedulesQuery.refetch();
-        setShowCreateForm(false);
-      },
-      onError: (error) => {
-        void message.error(error instanceof Error ? error.message : '配置定时任务失败');
-      },
-    }
+  const orderedUnauthorizedSkills = useMemo(
+    () => [...requestedSkills, ...rejectedSkills, ...neverRequestedSkills],
+    [neverRequestedSkills, rejectedSkills, requestedSkills]
   );
+  const overviewItems = useMemo(
+    () => [
+      {
+        key: 'total',
+        label: '已发布技能总数',
+        value: skills.length,
+        icon: <AppstoreOutlined />,
+        iconStyle: { color: '#4f46e5', background: 'rgba(99, 102, 241, 0.12)' },
+      },
+      {
+        key: 'authorized',
+        label: '已授权',
+        value: authorizedSkills.length,
+        icon: <CheckCircleOutlined />,
+        iconStyle: { color: '#059669', background: 'rgba(16, 185, 129, 0.12)' },
+      },
+      {
+        key: 'requested',
+        label: '申请中',
+        value: requestedSkills.length,
+        icon: <HourglassOutlined />,
+        iconStyle: { color: '#2563eb', background: 'rgba(59, 130, 246, 0.12)' },
+      },
+      {
+        key: 'rejected',
+        label: '最近被拒绝',
+        value: rejectedSkills.length,
+        icon: <CloseCircleOutlined />,
+        iconStyle: { color: '#dc2626', background: 'rgba(239, 68, 68, 0.12)' },
+      },
+      {
+        key: 'available',
+        label: '可直接申请',
+        value: neverRequestedSkills.length,
+        icon: <SendOutlined />,
+        iconStyle: { color: '#475569', background: 'rgba(148, 163, 184, 0.16)' },
+      },
+    ],
+    [skills.length, authorizedSkills.length, requestedSkills.length, rejectedSkills.length, neverRequestedSkills.length]
+  );
+  const schedulesBySkillId = useMemo(() => {
+    const grouped = new Map<string, ScheduleSummary[]>();
 
-  const handleOpenScheduler = (skillId: string) => {
-    setSelectedSkillId(skillId);
-    setShowCreateForm(false);
-    setIsSchedulerModalVisible(true);
-  };
-
-  const handleSchedulerSubmit = (values: any) => {
-    if (!selectedSkillId) return;
-
-    const nextInput = normalizeSkillExecutionInput(
-      values.input || {},
-      selectedSkillQuery.data?.paramsSchema?.properties || {}
-    );
-
-    const cronExpression = generateCronExpression(values);
-
-    createScheduleMutation.mutate({
-      name: values.name,
-      description: values.description,
-      skillId: selectedSkillId,
-      skillVersion: selectedSkillQuery.data?.publishedReleaseVersion || undefined,
-      input: nextInput,
-      cronExpression,
-      timezone: values.timezone,
+    (schedulesQuery.data || []).forEach((schedule) => {
+      const current = grouped.get(schedule.skillId) || [];
+      current.push(schedule);
+      grouped.set(schedule.skillId, current);
     });
-  };
 
-  const schemaEntries = Object.entries(selectedSkillQuery.data?.paramsSchema?.properties || {});
-  const requiredFields = new Set(selectedSkillQuery.data?.paramsSchema?.required || []);
+    grouped.forEach((items, skillId) => {
+      grouped.set(
+        skillId,
+        [...items].sort((left, right) => {
+          const leftTime = new Date(left.nextRunAt || left.updatedAt || left.id).getTime();
+          const rightTime = new Date(right.nextRunAt || right.updatedAt || right.id).getTime();
+          return leftTime - rightTime;
+        })
+      );
+    });
 
-  return (
-    <Card>
-      <Space style={{ width: '100%', justifyContent: 'space-between', marginBottom: 16 }}>
-        <div>
-          <Typography.Title level={3} style={{ margin: 0 }}>
-            已发布技能
-          </Typography.Title>
-          <Typography.Paragraph type="secondary" style={{ margin: '4px 0 0' }}>
-            面向普通用户只展示可执行的公开技能，不展示管理员配置、调试和 Prompt 细节。
-          </Typography.Paragraph>
+    return grouped;
+  }, [schedulesQuery.data]);
+  const resolvedSkillMetaSectionStyle = useMemo<CSSProperties>(
+    () => ({
+      ...skillMetaSectionStyle,
+      border: `1px solid ${token.colorBorderSecondary}`,
+      background: token.colorFillTertiary,
+    }),
+    [token.colorBorderSecondary, token.colorFillTertiary]
+  );
+
+  const renderSkillGrid = (
+    list: PublishedSkillCatalogItem[],
+    options: { emptyText: string; authorized: boolean }
+  ) => {
+    if (catalogQuery.isLoading && skills.length === 0) {
+      return (
+        <div style={skillGridStyle}>
+          {[0, 1, 2].map((index) => (
+            <Card key={index} loading style={skillCardStyle} />
+          ))}
         </div>
-        <Button icon={<ReloadOutlined />} onClick={() => void refetch()} loading={isFetching}>
-          刷新
-        </Button>
-      </Space>
-      
-      <Table<SkillConfig>
-        rowKey="id"
-        loading={isLoading}
-        dataSource={skills}
-        pagination={false}
-        columns={[
-          {
-            title: '技能',
-            dataIndex: 'name',
-            key: 'name',
-            render: (value: string, record) => (
-              <Space direction="vertical" size={2}>
-                <Typography.Text strong>{value}</Typography.Text>
-                <Typography.Text type="secondary">
-                  {record.description || '暂无说明'}
-                </Typography.Text>
-              </Space>
-            ),
-          },
-          {
-            title: '来源',
-            dataIndex: 'publishedSourceType',
-            key: 'publishedSourceType',
-            render: (value?: string | null) => <Tag>{value || 'published'}</Tag>,
-          },
-          {
-            title: '部署状态',
-            dataIndex: 'publishedDeploymentStatus',
-            key: 'publishedDeploymentStatus',
-            render: (value?: string | null) => (
-              <Tag color={deploymentColor(value)}>{value || 'unknown'}</Tag>
-            ),
-          },
-          {
-            title: '操作',
-            key: 'actions',
-            render: (_, record) => (
-              <Space>
-                <Button
-                  type="primary"
-                  icon={<PlayCircleOutlined />}
-                  onClick={() => navigate(`/executions/new?skillId=${record.id}`)}
-                >
-                  发起执行
-                </Button>
-                <Button
-                  icon={<ScheduleOutlined />}
-                  onClick={() => handleOpenScheduler(record.id)}
-                >
-                  定时任务
-                </Button>
-              </Space>
-            ),
-          },
-        ]}
-      />
+      );
+    }
 
-      <Modal
-        title={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {showCreateForm && skillSchedules.length > 0 && (
-              <Button
-                type="text"
-                size="small"
-                icon={<LeftOutlined />}
-                onClick={() => setShowCreateForm(false)}
-              />
-            )}
-            <span>
-              {showCreateForm ? '新建定时任务' : '定时任务管理'} - {selectedSkillQuery.data?.name || ''}
-            </span>
-          </div>
-        }
-        open={isSchedulerModalVisible}
-        onCancel={() => {
-          if (showCreateForm && skillSchedules.length > 0) {
-            setShowCreateForm(false);
-          } else {
-            setIsSchedulerModalVisible(false);
-          }
-        }}
-        onOk={() => {
-          if (showCreateForm) {
-            form.submit();
-          } else {
-            setIsSchedulerModalVisible(false);
-          }
-        }}
-        okText={showCreateForm ? '创建' : '确定'}
-        cancelText={showCreateForm && skillSchedules.length > 0 ? '返回列表' : '关闭'}
-        cancelButtonProps={!showCreateForm ? { style: { display: 'none' } } : undefined}
-        confirmLoading={createScheduleMutation.isLoading}
-        width={750}
-        destroyOnClose
-      >
-        {schedulesQuery.isLoading && <Spin style={{ display: 'block', margin: '32px auto' }} />}
+    if (list.length === 0) {
+      return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={options.emptyText} />;
+    }
 
-        {!schedulesQuery.isLoading && !showCreateForm && (
-          <div style={{ marginTop: 16 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <Typography.Text type="secondary">
-                已配置 {skillSchedules.length} 个定时周期任务。
-              </Typography.Text>
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={() => {
-                  form.resetFields();
-                  form.setFieldValue('timezone', 'Asia/Shanghai');
-                  form.setFieldValue('frequency', 'daily');
-                  if (selectedSkillQuery.data) {
-                    form.setFieldValue('input', buildSkillExecutionInputInitialValues(selectedSkillQuery.data));
-                  }
-                  setShowCreateForm(true);
-                }}
-              >
-                新增定时任务
-              </Button>
-            </div>
+    return (
+      <div style={skillGridStyle}>
+        {list.map((skill) => {
+          const skillSchedules = schedulesBySkillId.get(skill.id) || [];
+          const activeSchedules = skillSchedules.filter((schedule) => schedule.isActive);
+          const nextSchedule = activeSchedules[0] || skillSchedules[0];
 
-            <Table
-              dataSource={skillSchedules}
-              rowKey="id"
-              size="middle"
-              pagination={false}
-              locale={{ emptyText: '暂无定时任务，点击右上角按钮新增。' }}
-              columns={[
-                {
-                  title: '任务名称',
-                  dataIndex: 'name',
-                  key: 'name',
-                  render: (val, record: any) => (
-                    <Space direction="vertical" size={2}>
-                      <Typography.Text strong>{val}</Typography.Text>
-                      {record.description && (
-                        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                          {record.description}
-                        </Typography.Text>
-                      )}
-                    </Space>
-                  ),
-                },
-                {
-                  title: '周期 / 时区',
-                  dataIndex: 'cronExpression',
-                  key: 'cronExpression',
-                  render: (val, record: any) => (
-                    <Space direction="vertical" size={2}>
-                      <Tag color="processing">{val}</Tag>
-                      <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                        {record.timezone}
-                      </Typography.Text>
-                    </Space>
-                  ),
-                },
-                {
-                  title: '下次执行时间',
-                  dataIndex: 'nextRunAt',
-                  key: 'nextRunAt',
-                  render: (val, record: any) => {
-                    if (!record.isActive) {
-                      return <Typography.Text type="secondary">已暂停</Typography.Text>;
-                    }
-                    return val ? new Date(val).toLocaleString('zh-CN', { hour12: false }) : '-';
-                  },
-                },
-                {
-                  title: '状态',
-                  dataIndex: 'isActive',
-                  key: 'isActive',
-                  width: 90,
-                  render: (isActive, record: any) => (
-                    <Switch
-                      checked={isActive}
-                      loading={updateScheduleMutation.isLoading}
-                      onChange={(checked) => {
-                        updateScheduleMutation.mutate({
-                          id: record.id,
-                          data: { isActive: checked },
-                        });
-                      }}
-                    />
-                  ),
-                },
-                {
-                  title: '操作',
-                  key: 'actions',
-                  width: 120,
-                  render: (_, record: any) => (
-                    <Space size="middle">
-                      <Button
-                        type="text"
-                        size="small"
-                        icon={<PlayCircleOutlined style={{ color: '#52c41a' }} />}
-                        title="立即执行一次"
-                        onClick={() => triggerScheduleMutation.mutate(record.id)}
-                      />
-                      <Button
-                        type="text"
-                        size="small"
-                        danger
-                        icon={<DeleteOutlined />}
-                        title="删除定时任务"
-                        onClick={() => {
-                          Modal.confirm({
-                            title: '确认删除',
-                            content: `确认要删除定时任务 "${record.name}" 吗？此操作无法撤销。`,
-                            okText: '确认删除',
-                            okType: 'danger',
-                            cancelText: '取消',
-                            onOk: () => deleteScheduleMutation.mutate(record.id),
-                          });
-                        }}
-                      />
-                    </Space>
-                  ),
-                },
-              ]}
-            />
-          </div>
-        )}
-
-        {!schedulesQuery.isLoading && showCreateForm && (
-          <Form
-            form={form}
-            layout="vertical"
-            onFinish={handleSchedulerSubmit}
-            style={{ marginTop: 16 }}
-          >
-            <Form.Item
-              label="任务名称"
-              name="name"
-              rules={[{ required: true, message: '请输入定时任务名称' }]}
+          return (
+            <Card
+              key={skill.id}
+              style={{
+                ...skillCardStyle,
+                borderColor:
+                  recentlyRequestedSkillId === skill.id && skill.accessStatus === 'requested'
+                    ? token.colorInfoBorder
+                    : undefined,
+                background:
+                  recentlyRequestedSkillId === skill.id && skill.accessStatus === 'requested'
+                    ? token.colorInfoBg
+                    : undefined,
+              }}
+              styles={{ body: { display: 'flex', flexDirection: 'column', gap: 16 } }}
             >
-              <Input placeholder="例如: 每日报表自动抓取" />
-            </Form.Item>
-
-            <Form.Item label="任务描述" name="description">
-              <Input.TextArea rows={2} placeholder="请输入任务描述（可选）" />
-            </Form.Item>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-              <Form.Item
-                label="定时周期"
-                name="frequency"
-                rules={[{ required: true, message: '请选择定时周期' }]}
-              >
-                <Select
-                  options={[
-                    { label: '每天 (Daily)', value: 'daily' },
-                    { label: '每周 (Weekly)', value: 'weekly' },
-                    { label: '每月 (Monthly)', value: 'monthly' },
-                    { label: '高级 (Cron 表达式)', value: 'cron' },
-                  ]}
-                />
-              </Form.Item>
-
-              <Form.Item
-                label="执行时区"
-                name="timezone"
-                rules={[{ required: true, message: '请选择执行时区' }]}
-              >
-                <Select
-                  options={[
-                    { label: '北京时间 (Asia/Shanghai)', value: 'Asia/Shanghai' },
-                    { label: '协调世界时 (UTC)', value: 'UTC' },
-                  ]}
-                />
-              </Form.Item>
-            </div>
-
-            {/* Conditional timing fields */}
-            {selectedFrequency === 'daily' && (
-              <Form.Item
-                label="执行时间"
-                name="time"
-                rules={[{ required: true, message: '请选择执行时间' }]}
-              >
-                <TimePicker format="HH:mm" style={{ width: '100%' }} />
-              </Form.Item>
-            )}
-
-            {selectedFrequency === 'weekly' && (
-              <>
-                <Form.Item
-                  label="执行日 (周)"
-                  name="weekdays"
-                  rules={[{ required: true, message: '请选择星期几执行' }]}
+              <Space direction="vertical" size={10} style={{ width: '100%' }}>
+              <Space style={{ width: '100%', justifyContent: 'space-between' }} align="start">
+                <Typography.Title
+                  level={5}
+                  ellipsis={{ tooltip: skill.name }}
+                  style={{ margin: 0, flex: 1, minWidth: 0 }}
                 >
-                  <Checkbox.Group
-                    options={[
-                      { label: '周一', value: '1' },
-                      { label: '周二', value: '2' },
-                      { label: '周三', value: '3' },
-                      { label: '周四', value: '4' },
-                      { label: '周五', value: '5' },
-                      { label: '周六', value: '6' },
-                      { label: '周日', value: '0' },
-                    ]}
-                  />
-                </Form.Item>
-                <Form.Item
-                  label="执行时间"
-                  name="time"
-                  rules={[{ required: true, message: '请选择执行时间' }]}
-                >
-                  <TimePicker format="HH:mm" style={{ width: '100%' }} />
-                </Form.Item>
-              </>
-            )}
+                  {skill.name}
+                </Typography.Title>
+                {getAccessStatusTag(skill)}
+              </Space>
 
-            {selectedFrequency === 'monthly' && (
-              <>
-                <Form.Item
-                  label="执行日 (月)"
-                  name="dayOfMonth"
-                  rules={[{ required: true, message: '请选择几号执行' }]}
-                >
-                  <Select
-                    placeholder="选择月份中的日期"
-                    options={Array.from({ length: 31 }, (_, i) => ({
-                      label: `${i + 1} 号`,
-                      value: String(i + 1),
-                    }))}
-                  />
-                </Form.Item>
-                <Form.Item
-                  label="执行时间"
-                  name="time"
-                  rules={[{ required: true, message: '请选择执行时间' }]}
-                >
-                  <TimePicker format="HH:mm" style={{ width: '100%' }} />
-                </Form.Item>
-              </>
-            )}
+                {options.authorized ? (
+                  <>
+                    <div style={resolvedSkillMetaSectionStyle}>
+                      <Typography.Text type="secondary" style={skillMetaSectionTitleStyle}>
+                        说明
+                      </Typography.Text>
+                      <Typography.Paragraph
+                        type="secondary"
+                        ellipsis={{ rows: 3 }}
+                        style={{ ...descriptionStyle, minHeight: 'auto' }}
+                      >
+                        {skill.description || '暂无说明'}
+                      </Typography.Paragraph>
+                    </div>
+                    <div style={resolvedSkillMetaSectionStyle}>
+                      <Typography.Text type="secondary" style={skillMetaSectionTitleStyle}>
+                        定期任务
+                      </Typography.Text>
+                      {skillSchedules.length === 0 ? (
+                        <Typography.Text type="secondary" style={skillMetaValueStyle}>
+                          当前没有关联的定期任务
+                        </Typography.Text>
+                      ) : (
+                        <Space direction="vertical" size={6} style={{ width: '100%' }}>
+                          <div style={skillMetaRowStyle}>
+                            <Typography.Text type="secondary" style={skillMetaValueStyle}>
+                              共 {skillSchedules.length} 个，启用中 {activeSchedules.length} 个
+                            </Typography.Text>
+                            {nextSchedule?.timezone ? (
+                              <Tag bordered={false}>{nextSchedule.timezone}</Tag>
+                            ) : null}
+                          </div>
+                          {nextSchedule ? (
+                            <>
+                              <Typography.Text style={skillMetaValueStyle}>
+                                {summarizeCronExpression(nextSchedule.cronExpression)}
+                              </Typography.Text>
+                              <Typography.Text type="secondary" style={skillMetaValueStyle}>
+                                {nextSchedule.isActive ? '下次执行' : '最近更新'}：
+                                {formatDateTime(
+                                  nextSchedule.isActive
+                                    ? nextSchedule.nextRunAt
+                                    : nextSchedule.updatedAt || nextSchedule.nextRunAt
+                                ) || '-'}
+                              </Typography.Text>
+                            </>
+                          ) : null}
+                        </Space>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <Typography.Paragraph type="secondary" ellipsis={{ rows: 2 }} style={descriptionStyle}>
+                      {skill.description || '暂无说明'}
+                    </Typography.Paragraph>
+                    <Space size={[8, 8]} wrap>
+                      <Tag>{skill.publishedSourceType || 'published'}</Tag>
+                      <Tag color={deploymentColor(skill.publishedDeploymentStatus)}>
+                        {skill.publishedDeploymentStatus || 'unknown'}
+                      </Tag>
+                      {skill.publishedReleaseVersion ? (
+                        <Tag color="blue">v{skill.publishedReleaseVersion}</Tag>
+                      ) : null}
+                    </Space>
+                  </>
+                )}
+              </Space>
 
-            {selectedFrequency === 'cron' && (
-              <Form.Item
-                label="Cron 表达式"
-                name="cronExpression"
-                rules={[{ required: true, message: '请输入 Cron 表达式' }]}
-                extra="标准 5 位 Cron 格式，如：*/15 * * * * (每 15 分钟执行一次)"
-              >
-                <Input placeholder="* * * * *" />
-              </Form.Item>
-            )}
-
-            {/* Skill parameters input schema */}
-            {selectedSkillId && (
+              {skill.accessStatus === 'requested' ? (
               <Card
                 size="small"
-                title="技能入参配置"
-                style={{ marginTop: 16, backgroundColor: '#fafafa', borderRadius: 8 }}
+                variant="borderless"
+                style={{
+                  background:
+                    recentlyRequestedSkillId === skill.id
+                      ? token.colorInfoBg
+                      : token.colorFillQuaternary,
+                }}
+                styles={{ body: { padding: 12 } }}
               >
-                {selectedSkillQuery.isLoading ? <Spin /> : null}
-
-                {schemaEntries.length === 0 && !selectedSkillQuery.isLoading && (
-                  <Typography.Text type="secondary">该技能无需输入任何参数。</Typography.Text>
-                )}
-
-                {schemaEntries.map(([name, config]) => (
-                  <Form.Item
-                    key={name}
-                    label={config.description || name}
-                    name={['input', name]}
-                    valuePropName={isBooleanInputType(config.type) ? 'checked' : 'value'}
-                    rules={
-                      requiredFields.has(name)
-                        ? [{ required: true, message: `请填写 ${name}` }]
-                        : undefined
-                    }
-                    extra={`参数名: ${name} | 类型: ${config.type}`}
-                  >
-                    {renderFieldInput(name, config)}
-                  </Form.Item>
-                ))}
+                <Space direction="vertical" size={4}>
+                  {recentlyRequestedSkillId === skill.id ? (
+                    <Tag color="blue" style={{ width: 'fit-content', marginInlineEnd: 0 }}>
+                      刚刚提交
+                    </Tag>
+                  ) : null}
+                  <Typography.Text>
+                    <ClockCircleOutlined style={{ marginRight: 6 }} />
+                    已提交授权申请，等待管理员处理
+                  </Typography.Text>
+                  {skill.accessRequest?.reason ? (
+                    <Typography.Text type="secondary">
+                      申请原因：{skill.accessRequest.reason}
+                    </Typography.Text>
+                  ) : null}
+                  {formatDateTime(skill.accessRequest?.createdAt) ? (
+                    <Typography.Text type="secondary">
+                      提交时间：{formatDateTime(skill.accessRequest?.createdAt)}
+                    </Typography.Text>
+                  ) : null}
+                </Space>
               </Card>
-            )}
-          </Form>
-        )}
+              ) : null}
+
+              {skill.accessStatus === 'unauthorized' && skill.accessRequest?.status === 'rejected' ? (
+              <Card
+                size="small"
+                variant="borderless"
+                style={{ background: token.colorErrorBg }}
+                styles={{ body: { padding: 12 } }}
+              >
+                <Space direction="vertical" size={4}>
+                  <Typography.Text>
+                    <CloseCircleOutlined style={{ marginRight: 6 }} />
+                    最近一次授权申请未通过
+                  </Typography.Text>
+                  {skill.accessRequest.reason ? (
+                    <Typography.Text type="secondary">
+                      申请原因：{skill.accessRequest.reason}
+                    </Typography.Text>
+                  ) : null}
+                  {skill.accessRequest.responseNote ? (
+                    <Typography.Text type="secondary">
+                      管理员备注：{skill.accessRequest.responseNote}
+                    </Typography.Text>
+                  ) : null}
+                  {formatDateTime(skill.accessRequest.processedAt || skill.accessRequest.updatedAt) ? (
+                    <Typography.Text type="secondary">
+                      处理时间：{formatDateTime(
+                        skill.accessRequest.processedAt || skill.accessRequest.updatedAt
+                      )}
+                    </Typography.Text>
+                  ) : null}
+                </Space>
+              </Card>
+              ) : null}
+
+              <Space direction="vertical" size={8} style={{ marginTop: 'auto', width: '100%' }}>
+              <Button
+                block
+                type={options.authorized ? 'primary' : skill.accessStatus === 'requested' ? 'default' : 'primary'}
+                ghost={!options.authorized && skill.accessStatus !== 'requested'}
+                icon={options.authorized ? <PlayCircleOutlined /> : <SendOutlined />}
+                disabled={!options.authorized && skill.accessStatus === 'requested'}
+                onClick={() => {
+                  if (options.authorized) {
+                    navigate(`/executions/new?skillId=${skill.id}`);
+                    return;
+                  }
+
+                  setRequestTarget(skill);
+                  setRequestReason(skill.accessRequest?.reason || '');
+                }}
+              >
+                {options.authorized
+                  ? '确认配置'
+                  : skill.accessStatus === 'requested'
+                    ? '已提交申请'
+                    : skill.accessRequest?.status === 'rejected'
+                      ? '重新申请'
+                      : '申请授权'}
+              </Button>
+              </Space>
+            </Card>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderSectionCard = (
+    key: 'authorized' | 'unauthorized',
+    title: string,
+    content: ReactNode
+  ) => {
+    const collapsed = collapsedSections[key];
+    const toggleSection = () =>
+      setCollapsedSections((current) => ({
+        ...current,
+        [key]: !current[key],
+      }));
+
+    return (
+      <Card
+        size="small"
+        title={
+          <button
+            type="button"
+            onClick={toggleSection}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: 0,
+              border: 'none',
+              background: 'transparent',
+              cursor: 'pointer',
+              textAlign: 'left',
+              font: 'inherit',
+            }}
+          >
+            <span>{title}</span>
+            {collapsed ? <DownOutlined /> : <UpOutlined />}
+          </button>
+        }
+        style={{ ...sectionCardStyle, marginBottom: key === 'authorized' ? 16 : 0 }}
+        styles={{
+          header: { cursor: 'pointer' },
+          body: collapsed
+            ? { display: 'none' }
+            : { paddingTop: 8 },
+        }}
+      >
+        {content}
+      </Card>
+    );
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <div style={statGridStyle}>
+        {overviewItems.map((item) => (
+          <Card key={item.key} size="small" style={statCardStyle} styles={{ body: statCardBodyStyle }}>
+            <div style={{ ...statIconStyle, ...item.iconStyle }}>{item.icon}</div>
+            <div style={statContentStyle}>
+              <span style={statTitleStyle}>{item.label}</span>
+              <span style={statValueStyle}>{item.value}</span>
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      {renderSectionCard(
+        'authorized',
+        `已授权技能 (${authorizedSkills.length})`,
+        renderSkillGrid(authorizedSkills, {
+          emptyText: '当前没有已授权技能',
+          authorized: true,
+        })
+      )}
+
+      {renderSectionCard(
+        'unauthorized',
+        `未授权 / 申请记录 (${unauthorizedSkills.length})`,
+        renderSkillGrid(orderedUnauthorizedSkills, {
+          emptyText: '当前没有未授权技能或申请记录',
+          authorized: false,
+        })
+      )}
+
+      <Modal
+        title={requestTarget ? `申请使用技能: ${requestTarget.name}` : '申请授权'}
+        open={Boolean(requestTarget)}
+        onCancel={() => {
+          if (requestAccessMutation.isLoading) {
+            return;
+          }
+          setRequestTarget(null);
+          setRequestReason('');
+        }}
+        onOk={() => {
+          if (!requestTarget) {
+            return;
+          }
+          requestAccessMutation.mutate({
+            skillId: requestTarget.id,
+            reason: requestReason.trim() || undefined,
+          });
+        }}
+        okText="提交申请"
+        cancelText="取消"
+        confirmLoading={requestAccessMutation.isLoading}
+        destroyOnHidden
+      >
+        <Space direction="vertical" size={12} style={{ width: '100%' }}>
+          <Typography.Text type="secondary">
+            请填写申请原因，便于管理员判断是否为你开通该技能。
+          </Typography.Text>
+          <Input.TextArea
+            rows={4}
+            maxLength={500}
+            showCount
+            placeholder="例如：需要用于日报生成、合同整理或日常审批处理。"
+            value={requestReason}
+            onChange={(event) => setRequestReason(event.target.value)}
+          />
+        </Space>
       </Modal>
-    </Card>
+    </div>
   );
 }

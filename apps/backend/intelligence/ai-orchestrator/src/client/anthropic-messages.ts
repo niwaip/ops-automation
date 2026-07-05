@@ -104,7 +104,11 @@ export class AnthropicMessagesClient {
 
   async chatCompletionStream(
     messages: ChatMessage[],
-    _onChunk: (chunk: string) => void
+    _onChunk: (chunk: string) => void,
+    _reasoning?: {
+      enabled?: boolean;
+      effort?: 'low' | 'medium' | 'high';
+    }
   ): Promise<LLMResponse> {
     return this.chatCompletion(messages);
   }

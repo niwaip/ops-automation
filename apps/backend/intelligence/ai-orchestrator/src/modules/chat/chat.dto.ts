@@ -37,6 +37,7 @@ export interface ChatHistoryMessageDTO {
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: string;
+  metadata?: Record<string, unknown>;
 }
 
 export interface ChatSessionDTO {

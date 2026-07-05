@@ -111,6 +111,32 @@ export interface SkillPermissionsResponse {
   permissions: SkillPermissionDTO[];
 }
 
+export interface SkillAccessRequestDTO {
+  id: string;
+  skillId: string;
+  requesterUserId: string;
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  reason?: string | null;
+  responseNote?: string | null;
+  processedAt?: string | null;
+  processedBy?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SkillAccessRequestReviewDTO extends SkillAccessRequestDTO {
+  skillName: string;
+  requesterUsername: string;
+  requesterEmail?: string | null;
+  requesterRole: string;
+  targetRoleId?: string | null;
+  targetRoleName?: string | null;
+}
+
+export interface SkillAccessRequestsResponse {
+  requests: SkillAccessRequestReviewDTO[];
+}
+
 // Role DTO for selection
 export interface RoleDTO {
   id: string;
@@ -276,6 +302,38 @@ export const skillApi = {
 
   revoke: async (skillId: string, roleId: string): Promise<{ success: boolean }> => {
     return apiClient.delete<{ success: boolean }>(`/skills/${skillId}/grant/${roleId}`);
+  },
+
+  getAccessRequests: async (
+    skillId?: string,
+    status: 'pending' | 'approved' | 'rejected' | 'cancelled' = 'pending'
+  ): Promise<SkillAccessRequestsResponse> => {
+    return apiClient.get<SkillAccessRequestsResponse>('/skills/access-requests', {
+      params: {
+        ...(skillId ? { skillId } : {}),
+        status,
+      },
+    });
+  },
+
+  approveAccessRequest: async (
+    requestId: string,
+    data?: { responseNote?: string }
+  ): Promise<{ request: SkillAccessRequestReviewDTO }> => {
+    return apiClient.post<{ request: SkillAccessRequestReviewDTO }>(
+      `/skills/access-requests/${requestId}/approve`,
+      data
+    );
+  },
+
+  rejectAccessRequest: async (
+    requestId: string,
+    data?: { responseNote?: string }
+  ): Promise<{ request: SkillAccessRequestReviewDTO }> => {
+    return apiClient.post<{ request: SkillAccessRequestReviewDTO }>(
+      `/skills/access-requests/${requestId}/reject`,
+      data
+    );
   },
 };
 

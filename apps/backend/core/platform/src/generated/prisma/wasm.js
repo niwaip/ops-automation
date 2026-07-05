@@ -287,6 +287,19 @@ exports.Prisma.SkillPermissionScalarFieldEnum = {
   grantedBy: 'grantedBy'
 };
 
+exports.Prisma.SkillAccessRequestScalarFieldEnum = {
+  id: 'id',
+  skillId: 'skillId',
+  requesterUserId: 'requesterUserId',
+  status: 'status',
+  reason: 'reason',
+  responseNote: 'responseNote',
+  processedAt: 'processedAt',
+  processedBy: 'processedBy',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.ToolCatalogScalarFieldEnum = {
   id: 'id',
   name: 'name',
@@ -545,6 +558,7 @@ exports.Prisma.ModelName = {
   ExecutionFlowTemplate: 'ExecutionFlowTemplate',
   SkillConfig: 'SkillConfig',
   SkillPermission: 'SkillPermission',
+  SkillAccessRequest: 'SkillAccessRequest',
   ToolCatalog: 'ToolCatalog',
   SkillToolBinding: 'SkillToolBinding',
   ChatSession: 'ChatSession',

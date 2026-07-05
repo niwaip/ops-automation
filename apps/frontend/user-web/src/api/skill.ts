@@ -1,4 +1,9 @@
-import { type SkillConfig, type SkillParamsSchema } from '@ops/user-core';
+import {
+  type PublishedSkillCatalogItem,
+  type SkillAccessRequest,
+  type SkillConfig,
+  type SkillParamsSchema,
+} from '@ops/user-core';
 import { skillApi } from './index';
 
 export interface SkillConfigDTO extends SkillConfig {
@@ -6,6 +11,7 @@ export interface SkillConfigDTO extends SkillConfig {
 }
 
 export type { SkillParamsSchema };
+export type { PublishedSkillCatalogItem, SkillAccessRequest };
 
 export { skillApi };
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Table,
@@ -51,6 +51,7 @@ import {
   skillApi,
   roleApi,
   SkillConfigDTO,
+  SkillAccessRequestReviewDTO,
   SkillPermissionDTO,
   CreateSkillDTO,
   SkillValidationResult,
@@ -59,6 +60,7 @@ import {
 import { userApi } from '@/api/auth';
 import { carboneApi, CarboneTemplateDTO } from '@/api/carbone';
 import { executionFlowApi } from '@/api/flows';
+import { SkillAccessRequestReviewTab } from '@/features/admin/skills/components/SkillAccessRequestReviewTab';
 import type { ColumnsType } from 'antd/es/table';
 
 const { Title, Text } = Typography;
@@ -227,6 +229,10 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
   const [validationStage, setValidationStage] = useState('等待开始');
   const [validationPulse, setValidationPulse] = useState(0);
   const [permissionUserSearch, setPermissionUserSearch] = useState('');
+  const [processingAccessRequestId, setProcessingAccessRequestId] = useState<string | null>(null);
+  const [processingAccessRequestAction, setProcessingAccessRequestAction] = useState<
+    'approve' | 'reject' | null
+  >(null);
   const [form] = Form.useForm();
   const validationAbortRef = useRef<(() => void) | null>(null);
 
@@ -247,6 +253,21 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
     ['skill-permissions', selectedSkill?.id],
     () => skillApi.getPermissions(selectedSkill!.id),
     { enabled: !!selectedSkill }
+  );
+  const accessRequestsQuery = useQuery(
+    ['skill-access-requests', selectedSkill?.id],
+    () => skillApi.getAccessRequests(selectedSkill!.id, 'pending'),
+    { enabled: permissionModalVisible && !!selectedSkill }
+  );
+  const approvedAccessRequestsQuery = useQuery(
+    ['skill-access-requests', selectedSkill?.id, 'approved'],
+    () => skillApi.getAccessRequests(selectedSkill!.id, 'approved'),
+    { enabled: permissionModalVisible && !!selectedSkill }
+  );
+  const rejectedAccessRequestsQuery = useQuery(
+    ['skill-access-requests', selectedSkill?.id, 'rejected'],
+    () => skillApi.getAccessRequests(selectedSkill!.id, 'rejected'),
+    { enabled: permissionModalVisible && !!selectedSkill }
   );
 
   // Mutations
@@ -324,6 +345,57 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
     }
   );
 
+  const approveAccessRequestMutation = useMutation(
+    ({ requestId, responseNote }: { requestId: string; responseNote?: string }) =>
+      skillApi.approveAccessRequest(requestId, { responseNote }),
+    {
+      onMutate: ({ requestId }) => {
+        setProcessingAccessRequestId(requestId);
+        setProcessingAccessRequestAction('approve');
+      },
+      onSuccess: () => {
+        message.success('授权申请已批准');
+        queryClient.invalidateQueries(['skill-access-requests', selectedSkill?.id]);
+        queryClient.invalidateQueries(['skill-access-requests', selectedSkill?.id, 'approved']);
+        queryClient.invalidateQueries(['skill-access-requests', selectedSkill?.id, 'rejected']);
+        queryClient.invalidateQueries(['skill-permissions', selectedSkill?.id]);
+      },
+      onError: (error: any) => {
+        const errorMessage = error?.response?.data?.message || error?.message || '批准授权申请失败';
+        message.error(typeof errorMessage === 'string' ? errorMessage : '批准授权申请失败');
+      },
+      onSettled: () => {
+        setProcessingAccessRequestId(null);
+        setProcessingAccessRequestAction(null);
+      },
+    }
+  );
+
+  const rejectAccessRequestMutation = useMutation(
+    ({ requestId, responseNote }: { requestId: string; responseNote?: string }) =>
+      skillApi.rejectAccessRequest(requestId, { responseNote }),
+    {
+      onMutate: ({ requestId }) => {
+        setProcessingAccessRequestId(requestId);
+        setProcessingAccessRequestAction('reject');
+      },
+      onSuccess: () => {
+        message.success('授权申请已拒绝');
+        queryClient.invalidateQueries(['skill-access-requests', selectedSkill?.id]);
+        queryClient.invalidateQueries(['skill-access-requests', selectedSkill?.id, 'approved']);
+        queryClient.invalidateQueries(['skill-access-requests', selectedSkill?.id, 'rejected']);
+      },
+      onError: (error: any) => {
+        const errorMessage = error?.response?.data?.message || error?.message || '拒绝授权申请失败';
+        message.error(typeof errorMessage === 'string' ? errorMessage : '拒绝授权申请失败');
+      },
+      onSettled: () => {
+        setProcessingAccessRequestId(null);
+        setProcessingAccessRequestAction(null);
+      },
+    }
+  );
+
   const applyAdjustmentMutation = useMutation(
     ({ id, generatedSkill }: { id: string; generatedSkill?: Partial<CreateSkillDTO> }) =>
       skillApi.applyAdjustment(id, generatedSkill),
@@ -345,6 +417,20 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
 
   const appendValidationLog = (log: string) => {
     setValidationLogs((prev) => [...prev, log]);
+  };
+
+  const handleApproveAccessRequest = (
+    request: SkillAccessRequestReviewDTO,
+    responseNote?: string
+  ) => {
+    approveAccessRequestMutation.mutate({ requestId: request.id, responseNote });
+  };
+
+  const handleRejectAccessRequest = (
+    request: SkillAccessRequestReviewDTO,
+    responseNote?: string
+  ) => {
+    rejectAccessRequestMutation.mutate({ requestId: request.id, responseNote });
   };
 
   const stopValidationStream = () => {
@@ -864,6 +950,18 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
       user.role.toLowerCase().includes(keyword)
     );
   });
+  const handledAccessRequests = useMemo(
+    () =>
+      [
+        ...(approvedAccessRequestsQuery.data?.requests || []),
+        ...(rejectedAccessRequestsQuery.data?.requests || []),
+      ].sort((left, right) => {
+        const leftTime = new Date(left.processedAt || left.updatedAt).getTime();
+        const rightTime = new Date(right.processedAt || right.updatedAt).getTime();
+        return rightTime - leftTime;
+      }),
+    [approvedAccessRequestsQuery.data?.requests, rejectedAccessRequestsQuery.data?.requests]
+  );
 
   // Available templates for selection
   const templateOptions = templatesQuery.data?.templates?.map((t: CarboneTemplateDTO) => ({
@@ -1656,6 +1754,36 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
                     },
                   },
                 ]}
+              />
+            </Space>
+          </TabPane>
+          <TabPane
+            tab={`授权申请 (${accessRequestsQuery.data?.requests.length || 0})`}
+            key="requests"
+          >
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Alert
+                type="info"
+                showIcon
+                message="待处理申请"
+                description="批准后会按申请人的当前角色授予该技能权限；拒绝后仅关闭本次申请，不会影响已有权限。"
+              />
+              <SkillAccessRequestReviewTab
+                requests={accessRequestsQuery.data?.requests || []}
+                loading={accessRequestsQuery.isLoading}
+                processingRequestId={processingAccessRequestId}
+                processingAction={processingAccessRequestAction}
+                onApprove={handleApproveAccessRequest}
+                onReject={handleRejectAccessRequest}
+              />
+              <Divider style={{ margin: '8px 0' }}>最近已处理</Divider>
+              <SkillAccessRequestReviewTab
+                requests={handledAccessRequests}
+                loading={
+                  approvedAccessRequestsQuery.isLoading || rejectedAccessRequestsQuery.isLoading
+                }
+                enableReviewActions={false}
+                emptyText="当前没有已处理的授权申请"
               />
             </Space>
           </TabPane>

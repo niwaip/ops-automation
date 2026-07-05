@@ -577,6 +577,10 @@ export class SkillEnrichmentService {
       configStatus: skill.configStatus || skill.config_status || undefined,
       isPublished: Boolean(publication),
       publishedReleaseId: publication?.releaseId || null,
+      publishedReleaseVersion: publication?.releaseVersion || null,
+      publishedReleaseStatus: publication?.status || null,
+      publishedDeploymentStatus: publication?.deploymentStatus || null,
+      publishedSourceType: publication?.sourceType || null,
     };
   }
 }

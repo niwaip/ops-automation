@@ -23,13 +23,21 @@ export interface LLMChatRequest {
   assembly?: PromptAssembly;
   responseFormat?: 'json_object';
   promptCaching?: PromptCachingConfig;
+  reasoning?: {
+    enabled?: boolean;
+    effort?: 'low' | 'medium' | 'high';
+  };
 }
 
 export interface LLMClient {
   chatCompletion(request: ChatMessage[] | LLMChatRequest): Promise<LLMResponse>;
   chatCompletionStream(
     messages: ChatMessage[],
-    onChunk: (chunk: string) => void
+    onChunk: (chunk: string) => void,
+    reasoning?: {
+      enabled?: boolean;
+      effort?: 'low' | 'medium' | 'high';
+    }
   ): Promise<LLMResponse>;
   listModels(): Promise<string[]>;
   healthCheck(): Promise<boolean>;

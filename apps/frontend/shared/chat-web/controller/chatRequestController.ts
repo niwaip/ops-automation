@@ -7,6 +7,7 @@ interface BuildChatRequestParams<TFile = unknown> {
   modelId?: string;
   mode: 'chat' | 'task';
   thinking?: boolean;
+  reasoning?: boolean;
   webSearch?: boolean;
   files?: TFile[];
 }
@@ -20,6 +21,7 @@ export const buildChatRequest = <TFile = unknown>({
   modelId,
   mode,
   thinking,
+  reasoning,
   webSearch,
   files,
 }: BuildChatRequestParams<TFile>) => ({
@@ -33,6 +35,7 @@ export const buildChatRequest = <TFile = unknown>({
   config: {
     mode,
     thinking,
+    reasoning,
     webSearch,
   },
 });

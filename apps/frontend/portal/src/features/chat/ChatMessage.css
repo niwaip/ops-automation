@@ -741,7 +741,7 @@
 
 .chat-thoughts-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   padding: 10px 12px;
   cursor: pointer;
@@ -754,6 +754,20 @@
   background: rgba(99, 102, 241, 0.06);
 }
 
+.chat-thoughts-header-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.chat-thoughts-header-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .chat-thoughts-title {
   font-weight: 600;
 }
@@ -761,6 +775,13 @@
 .chat-thoughts-count {
   color: rgba(79, 70, 229, 0.65);
   font-size: 12px;
+}
+
+.chat-thoughts-summary {
+  color: #334155;
+  font-size: 13px;
+  line-height: 1.7;
+  white-space: pre-wrap;
 }
 
 .chat-thoughts-content {

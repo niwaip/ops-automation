@@ -44,6 +44,7 @@ export class OpenAICompatibleClient {
   private baseURL: string;
   private apiKey: string;
   private model: string;
+  private provider?: string;
   private timeout: number;
   private useJsonMode: boolean;
   private promptCacheKey?: string;
@@ -53,6 +54,7 @@ export class OpenAICompatibleClient {
     this.baseURL = config.baseURL;
     this.apiKey = config.apiKey;
     this.model = config.model;
+    this.provider = config.provider;
     this.timeout = timeout;
     this.useJsonMode = config.useJsonMode || false;
     this.promptCacheKey = config.promptCacheKey;
@@ -93,6 +95,7 @@ export class OpenAICompatibleClient {
       ) {
         data.prompt_cache_retention = normalized.promptCacheRetention;
       }
+      this.applyReasoningConfig(data, normalized.reasoning);
 
       // Use /chat/completions since baseURL already includes /v1
       const response = await this.client.post<ChatCompletionResponse>('/chat/completions', data);
@@ -127,7 +130,11 @@ export class OpenAICompatibleClient {
    */
   async chatCompletionStream(
     messages: ChatMessage[],
-    onChunk: (chunk: string) => void
+    onChunk: (chunk: string) => void,
+    reasoning?: {
+      enabled?: boolean;
+      effort?: 'low' | 'medium' | 'high';
+    }
   ): Promise<LLMResponse> {
     try {
       const data: any = {
@@ -140,6 +147,7 @@ export class OpenAICompatibleClient {
       if (this.useJsonMode) {
         data.response_format = { type: 'json_object' };
       }
+      this.applyReasoningConfig(data, reasoning);
 
       // Use /chat/completions since baseURL already includes /v1
       const response = await this.client.post<NodeJS.ReadableStream>('/chat/completions', data, {
@@ -235,6 +243,35 @@ export class OpenAICompatibleClient {
     return hasInfo ? rateLimit : undefined;
   }
 
+  private applyReasoningConfig(
+    data: Record<string, any>,
+    reasoning?: {
+      enabled?: boolean;
+      effort?: 'low' | 'medium' | 'high';
+    }
+  ): void {
+    if (!reasoning?.enabled) {
+      return;
+    }
+
+    if (this.isMiniMaxCompatibleEndpoint()) {
+      data.thinking = {
+        type: 'adaptive',
+      };
+      return;
+    }
+
+    data.reasoning_effort = reasoning.effort || 'medium';
+  }
+
+  private isMiniMaxCompatibleEndpoint(): boolean {
+    if (this.provider === 'minimax') {
+      return true;
+    }
+
+    return /(^|\/\/)([^/]+\.)?(minimax\.chat|minimax\.io|minimaxi\.com)(\/|$)/i.test(this.baseURL);
+  }
+
   /**
    * Get available models from the API endpoint
    * @returns Promise resolving to list of available models
@@ -284,6 +321,9 @@ export class OpenAICompatibleClient {
     if (config.model) {
       this.model = config.model;
     }
+    if (config.provider !== undefined) {
+      this.provider = config.provider;
+    }
     if (config.useJsonMode !== undefined) {
       this.useJsonMode = config.useJsonMode;
     }
@@ -303,6 +343,7 @@ export class OpenAICompatibleClient {
       baseURL: this.baseURL,
       apiKey: this.apiKey,
       model: this.model,
+      provider: this.provider,
       useJsonMode: this.useJsonMode,
       promptCacheKey: this.promptCacheKey,
       promptCacheRetention: this.promptCacheRetention,
@@ -314,6 +355,10 @@ export class OpenAICompatibleClient {
     responseFormat?: 'json_object';
     promptCacheKey?: string;
     promptCacheRetention?: 'in_memory' | '24h' | '5m' | '1h';
+    reasoning?: {
+      enabled?: boolean;
+      effort?: 'low' | 'medium' | 'high';
+    };
   } {
     if (Array.isArray(request)) {
       return {
@@ -329,6 +374,7 @@ export class OpenAICompatibleClient {
         responseFormat: request.responseFormat,
         promptCacheKey: request.assembly?.promptCacheKey || this.promptCacheKey,
         promptCacheRetention: request.promptCaching?.retention || this.promptCacheRetention,
+        reasoning: request.reasoning,
       };
     }
 
@@ -345,6 +391,7 @@ export class OpenAICompatibleClient {
         responseFormat: request.responseFormat,
         promptCacheKey: request.assembly.promptCacheKey || this.promptCacheKey,
         promptCacheRetention: request.promptCaching?.retention || this.promptCacheRetention,
+        reasoning: request.reasoning,
       };
     }
 
