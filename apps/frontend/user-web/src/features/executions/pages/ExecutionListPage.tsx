@@ -122,22 +122,6 @@ const { Text } = Typography;
 const statusColors = EXECUTION_STATUS_COLORS;
 const statusLabels = EXECUTION_STATUS_LABELS_ZH;
 
-const normalizeLegacyGrossMarginThresholdText = (value?: string): string | undefined => {
-  if (!value) {
-    return value;
-  }
-
-  if (
-    !/(毛利率|粗利率|gross.?margin|profit.?margin|自动化承认|承认操作|人工介入|人工接管|阈值|承认标准)/i.test(
-      value
-    )
-  ) {
-    return value;
-  }
-
-  return value.replace(/(?<![\d.])20(?:\.0+)?(?=\s*%)/g, '15');
-};
-
 const listStatusLabels: Partial<Record<ExecutionStatus, string>> = {
   running: '执行中',
   waiting_input: '补参',
@@ -262,9 +246,7 @@ const getPhaseLoopIteration = (phase: ExecutionPhaseDto): number | undefined => 
 };
 
 const formatPhaseDisplayName = (phase: ExecutionPhaseDto, fallbackIndex?: number): string => {
-  const baseName =
-    normalizeLegacyGrossMarginThresholdText(phase.phaseName || phase.phaseKey) ||
-    `步骤 ${fallbackIndex ?? 0}`;
+  const baseName = phase.phaseName || phase.phaseKey || `步骤 ${fallbackIndex ?? 0}`;
   const loopIteration = getPhaseLoopIteration(phase);
   return loopIteration ? `${baseName} · 第 ${loopIteration} 轮` : baseName;
 };
@@ -1419,8 +1401,8 @@ const ExecutionListPage: React.FC = () => {
                         </Space>
                         <div>
                           <Text strong style={{ fontSize: 16 }}>
-                            {normalizeLegacyGrossMarginThresholdText(currentSelectedStep?.name) ||
-                              normalizeLegacyGrossMarginThresholdText(currentSelectedPhase?.phaseName) ||
+                            {currentSelectedStep?.name ||
+                              currentSelectedPhase?.phaseName ||
                               currentSelectedPhase?.phaseKey ||
                               '-'}
                           </Text>
@@ -1442,9 +1424,7 @@ const ExecutionListPage: React.FC = () => {
                             type={selectedExecution.status === 'human_control' ? 'warning' : 'info'}
                             showIcon
                             message={`当前阶段：${
-                              normalizeLegacyGrossMarginThresholdText(
-                                currentSelectedPhase.phaseName || currentSelectedPhase.phaseKey
-                              ) || '-'
+                              currentSelectedPhase.phaseName || currentSelectedPhase.phaseKey || '-'
                             }`}
                             description={
                               <Space wrap size={[12, 4]}>

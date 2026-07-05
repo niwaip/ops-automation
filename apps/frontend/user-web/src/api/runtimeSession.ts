@@ -41,21 +41,34 @@ interface ListRuntimeSessionsResponse {
   pageSize: number;
 }
 
-const isRuntimeSessionNotFound = (error: unknown): boolean =>
-  axios.isAxiosError(error) && error.response?.status === 404;
-
-const isIgnorableRuntimeSessionError = (error: unknown): boolean => {
+const getRuntimeSessionErrorStatus = (error: unknown): number | undefined => {
   if (axios.isAxiosError(error)) {
-    return [401, 403, 404].includes(error.response?.status ?? 0);
+    return error.response?.status;
   }
 
-  return (
-    error instanceof Error &&
-    (error.message.includes('Authorization header is required') ||
-      error.message.includes('Unauthorized') ||
-      error.message.includes('Cannot GET /runtime-sessions') ||
-      error.message.includes('Not Found'))
-  );
+  if (!error || typeof error !== 'object') {
+    return undefined;
+  }
+
+  const errorWithStatus = error as {
+    status?: unknown;
+    response?: {
+      status?: unknown;
+    };
+  };
+
+  if (typeof errorWithStatus.response?.status === 'number') {
+    return errorWithStatus.response.status;
+  }
+
+  return typeof errorWithStatus.status === 'number' ? errorWithStatus.status : undefined;
+};
+
+const isRuntimeSessionNotFound = (error: unknown): boolean => getRuntimeSessionErrorStatus(error) === 404;
+
+const isIgnorableRuntimeSessionError = (error: unknown): boolean => {
+  const status = getRuntimeSessionErrorStatus(error);
+  return status !== undefined && [401, 403, 404].includes(status);
 };
 
 export const runtimeSessionApi = {

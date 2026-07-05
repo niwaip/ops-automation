@@ -121,22 +121,6 @@ const statusColors = EXECUTION_STATUS_COLORS;
 
 const fixLocalhostLink = (url?: string): string | undefined => replaceLocalhostWithCurrentHost(url);
 
-const normalizeLegacyGrossMarginThresholdText = (value?: string): string | undefined => {
-  if (!value) {
-    return value;
-  }
-
-  if (
-    !/(毛利率|粗利率|gross.?margin|profit.?margin|自动化承认|承认操作|人工介入|人工接管|阈值|承认标准)/i.test(
-      value
-    )
-  ) {
-    return value;
-  }
-
-  return value.replace(/(?<![\d.])20(?:\.0+)?(?=\s*%)/g, '15');
-};
-
 const getRecoveryPatchSummary = (patch: unknown, isEnglish: boolean): string | undefined => {
   const record = asRecord(tryParseJsonValue(patch));
   if (!record) {
@@ -238,9 +222,7 @@ const formatPhaseDisplayName = (
   isEnglish: boolean,
   fallbackIndex?: number
 ): string => {
-  const baseName =
-    normalizeLegacyGrossMarginThresholdText(phase.phaseName || phase.phaseKey) ||
-    `${isEnglish ? 'Step' : '步骤'} ${fallbackIndex ?? 0}`;
+  const baseName = phase.phaseName || phase.phaseKey || `${isEnglish ? 'Step' : '步骤'} ${fallbackIndex ?? 0}`;
   const loopIteration = getPhaseLoopIteration(phase);
   return loopIteration
     ? `${baseName} · ${isEnglish ? `Loop ${loopIteration}` : `第 ${loopIteration} 轮`}`
@@ -501,6 +483,9 @@ const ExecutionDetailPage: React.FC = () => {
     executionSummaryHint: isEnglish
       ? 'Showing the final outcome and key information after execution ends.'
       : '执行结束后，展示最终结果和关键信息。',
+    detailButton: isEnglish ? 'Detail' : '详细',
+    skillLabel: isEnglish ? 'Skill' : '技能',
+    processingSummary: isEnglish ? 'Processing Summary' : '处理概要信息',
     progressOverview: isEnglish ? 'Progress' : '进度',
     totalActivities: isEnglish ? 'Total Activities' : '总阶段数',
     completedActivities: isEnglish ? 'Completed' : '已完成',
@@ -888,6 +873,10 @@ const ExecutionDetailPage: React.FC = () => {
       execution.status === 'human_control' ||
       execution.status === 'failed')
   );
+  const phaseTimelineSectionRef = React.useRef<HTMLDivElement | null>(null);
+  const scrollToPhaseTimeline = React.useCallback(() => {
+    phaseTimelineSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
   const shouldShowLiveProgressInfo = Boolean(
     execution &&
     (execution.status === 'running' ||
@@ -1437,6 +1426,43 @@ const ExecutionDetailPage: React.FC = () => {
     isBrowserExecution && displayActivityPhases.length > 0 && shouldShowExecutionSummary ? (
       <Card title={text.executionSummaryTitle} style={{ marginBottom: 16 }}>
         <Space direction="vertical" size={12} style={{ width: '100%' }}>
+          <div
+            style={{
+              display: 'grid',
+              gap: 10,
+              padding: 12,
+              borderRadius: 10,
+              border: '1px solid var(--bg-secondary)',
+              background: 'var(--bg-secondary)',
+            }}
+          >
+            <Space
+              wrap
+              size={[12, 8]}
+              style={{ width: '100%', justifyContent: 'space-between' }}
+            >
+              <Space wrap size={[8, 8]}>
+                <Text type="secondary">{text.skillLabel}</Text>
+                <Text strong>{getSkillDisplayName(execution.skillId)}</Text>
+              </Space>
+              <Button size="small" onClick={scrollToPhaseTimeline}>
+                {text.detailButton}
+              </Button>
+            </Space>
+            <div style={{ display: 'grid', gap: 4 }}>
+              <Text type="secondary">{text.processingSummary}</Text>
+              <Text strong>{summaryHeadline || text.noSummary}</Text>
+            </div>
+            <Space wrap size={[12, 8]}>
+              <Text type="secondary">{text.executionSummaryHint}</Text>
+              {execution.endedAt ? (
+                <Text type="secondary">{`${text.endedAt}: ${formatDateTime(execution.endedAt)}`}</Text>
+              ) : null}
+              {execution.failureReason ? (
+                <Text type="danger">{execution.failureReason}</Text>
+              ) : null}
+            </Space>
+          </div>
           <Space wrap size={[8, 8]}>
             <Tag color={getExecutionStatusColor(execution.status)}>
               {getExecutionStatusLabel(execution.status)}
@@ -1445,28 +1471,6 @@ const ExecutionDetailPage: React.FC = () => {
             <Tag color="green">{`${text.completedActivities}: ${completedActivityCount}`}</Tag>
             {totalLoopCount > 0 ? <Tag>{`${text.loopCount}: ${totalLoopCount}`}</Tag> : null}
           </Space>
-          <Alert
-            type={
-              execution.status === 'succeeded'
-                ? 'success'
-                : execution.status === 'failed'
-                  ? 'error'
-                  : 'warning'
-            }
-            showIcon
-            message={summaryHeadline || text.noSummary}
-            description={
-              <Space wrap size={[12, 8]}>
-                <Text type="secondary">{text.executionSummaryHint}</Text>
-                {execution.endedAt ? (
-                  <Text type="secondary">{`${text.endedAt}: ${formatDateTime(execution.endedAt)}`}</Text>
-                ) : null}
-                {execution.failureReason ? (
-                  <Text type="danger">{execution.failureReason}</Text>
-                ) : null}
-              </Space>
-            }
-          />
           <Descriptions column={2} size="small">
             <Descriptions.Item label={text.progressOverview}>
               {`${completedActivityCount} / ${displayActivityPhases.length}`}
@@ -1501,8 +1505,7 @@ const ExecutionDetailPage: React.FC = () => {
             ) : null}
             {shouldShowLiveProgressInfo && currentExecutionStep ? (
               <Descriptions.Item label={text.currentStepLabel}>
-                {normalizeLegacyGrossMarginThresholdText(currentExecutionStep.name) ||
-                  `${text.step} ${currentExecutionStep.stepIndex + 1}`}
+                {currentExecutionStep.name || `${text.step} ${currentExecutionStep.stepIndex + 1}`}
               </Descriptions.Item>
             ) : null}
           </Descriptions>
@@ -1715,23 +1718,24 @@ const ExecutionDetailPage: React.FC = () => {
     ) : null;
   const phaseDetailsCard: React.ReactNode =
     isBrowserExecution && displayActivityPhases.length > 0 ? (
-      <Card title={text.phaseTimeline} style={{ marginBottom: 16 }}>
-        <Collapse
-          size="small"
-          items={[
-            {
-              key: 'phase-timeline',
-              label: `${text.expandPhaseTimeline} (${displayActivityPhases.length})`,
-              children: (
-                <Timeline
-                  items={displayActivityPhases.map((phase) => {
-                    const phaseSteps = getPhaseSteps(phase);
-                    const phaseSnapshotSources = extractWorkflowActivitySnapshotSources(phase);
-                    const phaseArtifacts = getPhaseArtifacts(phase);
-                    return {
-                      color: getPhaseStatusColor(phase.status),
-                      children: (
-                        <Card size="small">
+      <div ref={phaseTimelineSectionRef}>
+        <Card title={text.phaseTimeline} style={{ marginBottom: 16 }}>
+          <Collapse
+            size="small"
+            items={[
+              {
+                key: 'phase-timeline',
+                label: `${text.expandPhaseTimeline} (${displayActivityPhases.length})`,
+                children: (
+                  <Timeline
+                    items={displayActivityPhases.map((phase) => {
+                      const phaseSteps = getPhaseSteps(phase);
+                      const phaseSnapshotSources = extractWorkflowActivitySnapshotSources(phase);
+                      const phaseArtifacts = getPhaseArtifacts(phase);
+                      return {
+                        color: getPhaseStatusColor(phase.status),
+                        children: (
+                          <Card size="small">
                           <Space direction="vertical" size={12} style={{ width: '100%' }}>
                             <Space wrap style={{ width: '100%', justifyContent: 'space-between' }}>
                               <Space wrap>
@@ -1866,16 +1870,17 @@ const ExecutionDetailPage: React.FC = () => {
                               />
                             )}
                           </Space>
-                        </Card>
-                      ),
-                    };
-                  })}
-                />
-              ),
-            },
-          ]}
-        />
-      </Card>
+                          </Card>
+                        ),
+                      };
+                    })}
+                  />
+                ),
+              },
+            ]}
+          />
+        </Card>
+      </div>
     ) : null;
   const browserSummaryCard: React.ReactNode =
     isBrowserExecution && execution ? (
@@ -2417,9 +2422,7 @@ const ExecutionDetailPage: React.FC = () => {
             size="small"
             style={{ marginBottom: 24 }}
             items={steps.map((step, index) => ({
-              title:
-                normalizeLegacyGrossMarginThresholdText(step.name) ||
-                `${text.step} ${index + 1}`,
+              title: step.name || `${text.step} ${index + 1}`,
               status: step.status as 'wait' | 'process' | 'finish' | 'error',
               description: stepStatusLabels[step.status]?.[isEnglish ? 'en' : 'zh'] || step.action,
             }))}
