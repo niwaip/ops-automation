@@ -33,6 +33,18 @@ const compactText = (value: string, maxLength: number): string => {
   return `${normalized.slice(0, maxLength - 1).trim()}…`;
 };
 
+const normalizeLegacyGrossMarginThresholdText = (value: string): string => {
+  if (
+    !/(毛利率|粗利率|gross.?margin|profit.?margin|自动化承认|承认操作|人工介入|人工接管|阈值|承认标准)/i.test(
+      value
+    )
+  ) {
+    return value;
+  }
+
+  return value.replace(/(?<![\d.])20(?:\.0+)?(?=\s*%)/g, '15');
+};
+
 const sanitizeDisplayUrl = (value?: string): string | undefined => {
   if (!value) {
     return undefined;
@@ -217,12 +229,15 @@ export const buildTaskProgressLog = (
   normalizedResult: NormalizedChatExecutionResult | undefined
 ): ChatProgressLog | undefined => {
   if (event.type === StreamEventTypeValue.THOUGHT) {
-    const text = compactText(event.content.replace(/[🚀📥]/g, '').trim(), 100);
+    const text = compactText(
+      normalizeLegacyGrossMarginThresholdText(event.content).replace(/[🚀📥]/g, '').trim(),
+      100
+    );
     return text ? { stage: 'thought', text } : undefined;
   }
 
   if (event.type === StreamEventTypeValue.ACTION) {
-    const text = compactText(event.content, 100);
+    const text = compactText(normalizeLegacyGrossMarginThresholdText(event.content), 100);
     return text ? { stage: 'action', text } : undefined;
   }
 
@@ -236,12 +251,17 @@ export const buildTaskProgressLog = (
   const pageUrl = sanitizeDisplayUrl(asString(result?.pageUrl));
   const resultData = asRecord(result?.data);
   const duration = typeof resultData?.duration === 'number' ? resultData.duration : undefined;
-  const summary = normalizedResult?.summary || normalizedResult?.detailText || normalizedResult?.body;
+  const summary = normalizeLegacyGrossMarginThresholdText(
+    normalizedResult?.summary || normalizedResult?.detailText || normalizedResult?.body || ''
+  );
   const failureReason =
-    inferFailureReason(result) ||
-    inferFailureReason(resultData) ||
-    inferFailureReason(normalizedResult?.structuredData) ||
-    inferFailureReason(normalizedResult?.rawResult);
+    normalizeLegacyGrossMarginThresholdText(
+      inferFailureReason(result) ||
+        inferFailureReason(resultData) ||
+        inferFailureReason(normalizedResult?.structuredData) ||
+        inferFailureReason(normalizedResult?.rawResult) ||
+        ''
+    ) || undefined;
   const parts = [failureReason ? '步骤执行失败' : '步骤执行成功'];
   if (command) {
     parts.push(`命令：${command}`);
@@ -311,7 +331,10 @@ const resolveTaskStatus = (
     case StreamEventTypeValue.ERROR:
       return CHAT_TASK_STATUS.FAILED;
     case StreamEventTypeValue.RESULT:
-      return mode === 'task' ? CHAT_TASK_STATUS.COMPLETED : undefined;
+      if (mode !== 'task') {
+        return undefined;
+      }
+      return isTerminalTaskResult(mode, data) ? CHAT_TASK_STATUS.COMPLETED : CHAT_TASK_STATUS.RUNNING;
     default:
       return mode === 'task' ? CHAT_TASK_STATUS.RUNNING : undefined;
   }
@@ -329,7 +352,7 @@ const isTerminalTaskResult = (
   const executionStatus = asString(data?.status);
 
   if (!executionId) {
-    return true;
+    return false;
   }
 
   return (
@@ -344,13 +367,14 @@ const isTerminalTaskResult = (
 const buildContentParts = (
   event: StreamEvent,
   data: Record<string, unknown> | undefined,
-  normalizedResult: NormalizedChatExecutionResult | undefined
+  normalizedResult: NormalizedChatExecutionResult | undefined,
+  contentText: string
 ): ChatContentPart[] | undefined => {
   const parts: ChatContentPart[] = [];
   const executionId = asString(data?.executionId);
 
-  if (event.content.trim()) {
-    parts.push({ type: CONTENT_PART_TYPE.TEXT, text: event.content });
+  if (contentText.trim()) {
+    parts.push({ type: CONTENT_PART_TYPE.TEXT, text: contentText });
   }
 
   if (event.type === StreamEventTypeValue.RESULT && normalizedResult?.structuredData) {
@@ -370,7 +394,7 @@ const buildContentParts = (
   ) {
     parts.push({
       type: CONTENT_PART_TYPE.TASK_CARD,
-      taskStatus: resolveTaskStatus(event.type, 'task') || CHAT_TASK_STATUS.RUNNING,
+      taskStatus: resolveTaskStatus(event.type, 'task', data) || CHAT_TASK_STATUS.RUNNING,
       executionId,
     });
   }
@@ -415,6 +439,8 @@ export const reduceChatStreamEvent = ({
 }: ReduceChatStreamEventParams): ReduceChatStreamEventResult => {
   const data = asRecord(event.data);
   const normalizedResult = normalizeNormalizedResult(data?.normalizedResult);
+  const contentText =
+    mode === 'task' ? normalizeLegacyGrossMarginThresholdText(event.content) : event.content;
   const progressLog = mode === 'task' ? buildTaskProgressLog(event, data, normalizedResult) : undefined;
   const inferredFailureReason =
     event.type === StreamEventTypeValue.RESULT
@@ -444,14 +470,14 @@ export const reduceChatStreamEvent = ({
       nextAccumulatedContent = `${accumulatedContent}${accumulatedContent ? '\n' : ''}${prefix}${event.content}`;
     }
   } else if (event.type === StreamEventTypeValue.RESULT && mode === 'chat') {
-    nextAccumulatedContent = event.content;
+      nextAccumulatedContent = contentText;
   } else if (
     event.type === StreamEventTypeValue.ERROR ||
     event.type === StreamEventTypeValue.WAITING_INPUT ||
     event.type === StreamEventTypeValue.PENDING_APPROVAL ||
     event.type === StreamEventTypeValue.HUMAN_CONTROL
   ) {
-    nextAccumulatedContent = accumulatedContent || event.content;
+    nextAccumulatedContent = accumulatedContent || contentText;
   }
 
   const nextSessionStatus: ChatSession['status'] | undefined =
@@ -480,7 +506,7 @@ export const reduceChatStreamEvent = ({
     sessionPatch,
     messagePatch: {
       content: nextAccumulatedContent,
-      contentParts: buildContentParts(event, data, normalizedResult),
+        contentParts: buildContentParts(event, data, normalizedResult, contentText),
       isStreaming:
         (event.type !== StreamEventTypeValue.RESULT || (mode === 'task' && !terminalTaskResult)) &&
         event.type !== StreamEventTypeValue.ERROR &&

@@ -27,6 +27,7 @@ import { useQuery, useQueryClient } from 'react-query';
 import {
   reduceChatStreamEvent,
   resolveWaitingInputDisplayLabel,
+  type AppNotification,
   type AIModel,
   type ChatMessage,
   type ChatProgressLog,
@@ -34,6 +35,8 @@ import {
   type ChatSession,
 } from '@ops/user-core';
 import { apiClient, chatApi, executionApi } from '../../../api';
+import { notificationStore } from '../../../adapters/notifications/notificationStore';
+import { copyTextToClipboard } from '../../../adapters/platform/browserClipboard';
 import { UserChatComposer } from '../components/UserChatComposer';
 import { useChatStore } from '../chatStore';
 import { authStore } from '../../../adapters/auth/authStore';
@@ -45,13 +48,11 @@ import {
   buildApprovedAssistantDraftMeta,
   buildApprovedTaskPatch,
   buildRejectedTaskPatch,
-  buildResumedHumanControlTaskPatch,
 } from '@chat-web/controller/taskActionController';
 import {
   buildChatRequest,
   buildResumeExecutionRequest,
 } from '@chat-web/controller/chatRequestController';
-import { resumeHumanControlExecution } from '@chat-web/controller/humanControlController';
 import SharedMessageContentRenderer from '@chat-web/components/MessageContentRenderer';
 import SharedThoughtProcessPanel from '@chat-web/components/ThoughtProcessPanel';
 import SharedTaskOutcomeCard from '@chat-web/components/TaskOutcomeCard';
@@ -184,6 +185,117 @@ const upsertMessage = (messages: ChatMessage[], nextMessage: ChatMessage): ChatM
     return messages.map((message) => (message.id === nextMessage.id ? nextMessage : message));
   }
   return [...messages, nextMessage];
+};
+
+const buildPatchedMessage = (
+  message: ChatMessage,
+  patch: Partial<ChatMessage>
+): ChatMessage => ({
+  ...message,
+  ...patch,
+  contentParts: mergeContentParts(message.contentParts, patch.contentParts),
+  metadata: (() => {
+    if (!patch.metadata) {
+      return message.metadata;
+    }
+
+    const nextMetadata = mergeDefinedMetadata(message.metadata, patch.metadata) || {};
+    const nextTaskStatus = nextMetadata.taskStatus;
+    if (!nextTaskStatus || !terminalTaskStatuses.has(nextTaskStatus)) {
+      return nextMetadata;
+    }
+
+    const progressThoughtLogs = (message.metadata?.progressLogs || [])
+      .filter((log) => log.stage === 'thought')
+      .map((log) => log.text.trim())
+      .filter(Boolean);
+    const persistedThoughtLogs = message.metadata?.thoughtLogsSnapshot || [];
+    const mergedThoughtLogs = dedupeThoughtTexts([
+      ...persistedThoughtLogs,
+      ...progressThoughtLogs,
+    ]);
+
+    if (mergedThoughtLogs.length === 0) {
+      return nextMetadata;
+    }
+
+    return {
+      ...nextMetadata,
+      thoughtLogsSnapshot: mergedThoughtLogs,
+    };
+  })(),
+});
+
+const mergeDefinedMetadata = (
+  currentMetadata: ChatMessage['metadata'],
+  patchMetadata: ChatMessage['metadata']
+): ChatMessage['metadata'] => {
+  if (!patchMetadata) {
+    return currentMetadata;
+  }
+
+  const definedEntries = Object.entries(patchMetadata).filter(([, value]) => value !== undefined);
+  if (definedEntries.length === 0) {
+    return currentMetadata;
+  }
+
+  return {
+    ...(currentMetadata || {}),
+    ...Object.fromEntries(definedEntries),
+  };
+};
+
+const mergeContentParts = (
+  currentParts: ChatMessage['contentParts'],
+  nextParts: ChatMessage['contentParts']
+): ChatMessage['contentParts'] => {
+  if (!nextParts || nextParts.length === 0) {
+    return currentParts;
+  }
+
+  const currentTaskParts = resolveTaskParts(currentParts);
+  const nextTaskParts = resolveTaskParts(nextParts);
+  if (!currentTaskParts.executionId || nextTaskParts.executionId || nextTaskParts.deeplinks.length > 0) {
+    return nextParts;
+  }
+
+  const preservedParts = (currentParts || []).filter(
+    (part) => part.type === 'task_card' || part.type === 'approval_card' || part.type === 'deeplink'
+  );
+  if (preservedParts.length === 0) {
+    return nextParts;
+  }
+
+  const nextPartKeys = new Set(
+    nextParts.map((part) => {
+      switch (part.type) {
+        case 'task_card':
+          return `${part.type}:${part.executionId}:${part.taskStatus}`;
+        case 'approval_card':
+          return `${part.type}:${part.executionId}:${part.riskLevel || ''}`;
+        case 'deeplink':
+          return `${part.type}:${part.label}:${part.url}`;
+        default:
+          return `${part.type}`;
+      }
+    })
+  );
+
+  return [
+    ...nextParts,
+    ...preservedParts.filter((part) => {
+      switch (part.type) {
+        case 'task_card':
+          return !nextPartKeys.has(`${part.type}:${part.executionId}:${part.taskStatus}`);
+        case 'approval_card':
+          return !nextPartKeys.has(`${part.type}:${part.executionId}:${part.riskLevel || ''}`);
+        case 'deeplink':
+          return !nextPartKeys.has(`${part.type}:${part.label}:${part.url}`);
+        default:
+          return false;
+      }
+    }),
+  ];
 };
 
 const normalizeComparableMessageText = (value: string): string =>
@@ -369,6 +481,11 @@ const hasTerminalTaskOutcome = (message: ChatMessage): boolean => {
     return false;
   }
 
+  const executionStatus = message.metadata?.executionStatus?.trim();
+  if (!executionStatus || !terminalExecutionStatuses.has(executionStatus)) {
+    return false;
+  }
+
   const normalizedResult = message.metadata?.normalizedResult;
   return Boolean(
     message.metadata?.finalResult?.trim() ||
@@ -515,6 +632,17 @@ const terminalTaskStatuses = new Set<NonNullable<NonNullable<ChatMessage['metada
   'failed',
 ]);
 
+const terminalExecutionStatuses = new Set([
+  'succeeded',
+  'completed',
+  'failed',
+  'cancelled',
+  'rolled_back',
+  'waiting_input',
+  'pending_approval',
+  'human_control',
+]);
+
 interface ChatPageProps {
   embedded?: boolean;
 }
@@ -531,7 +659,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
   const [draft, setDraft] = useState('');
   const [pendingExecutionId, setPendingExecutionId] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState<string>('default');
-  const [chatMode, setChatMode] = useState<'chat' | 'task'>('chat');
+  const [chatMode, setChatMode] = useState<'chat' | 'task'>('task');
   const [enableThinking, setEnableThinking] = useState(true);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -546,10 +674,12 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
   );
   const [sessionMessages, setSessionMessages] = useState<Record<string, ChatMessage[]>>({});
   const [actionLoadingByMessage, setActionLoadingByMessage] = useState<
-    Record<string, 'approve' | 'reject' | 'resume' | undefined>
+    Record<string, 'approve' | 'reject' | undefined>
   >({});
   const [expandedThoughtMessageId, setExpandedThoughtMessageId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const sessionMessagesRef = useRef<Record<string, ChatMessage[]>>({});
+  const notifiedTaskStateKeysRef = useRef<Set<string>>(new Set());
   const activeMessages = selectedSessionId ? sessionMessages[selectedSessionId] || [] : [];
   const showSessionSidebar = !embedded && !isSessionListCollapsed;
   const selectedSessionNeedsRefresh = useMemo(
@@ -604,6 +734,10 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     () => sessions.find((session) => session.id === selectedSessionId) || null,
     [selectedSessionId, sessions]
   );
+
+  useEffect(() => {
+    sessionMessagesRef.current = sessionMessages;
+  }, [sessionMessages]);
   const availableModels = useMemo(() => ((modelsQuery.data || []) as AIModel[]) || [], [modelsQuery.data]);
   const selectedModelInfo = useMemo(() => {
     if (selectedModel && selectedModel !== 'default') {
@@ -767,44 +901,104 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
   const updateMessage = (sessionId: string, messageId: string, patch: Partial<ChatMessage>) => {
     updateSessionMessages(sessionId, (messages) =>
       messages.map((message) =>
-        message.id === messageId
-          ? {
-              ...message,
-              ...patch,
-              metadata: (() => {
-                if (!patch.metadata) {
-                  return message.metadata;
-                }
-
-                const nextMetadata = { ...(message.metadata || {}), ...patch.metadata };
-                const nextTaskStatus = nextMetadata.taskStatus;
-                if (!nextTaskStatus || !terminalTaskStatuses.has(nextTaskStatus)) {
-                  return nextMetadata;
-                }
-
-                const progressThoughtLogs = (message.metadata?.progressLogs || [])
-                  .filter((log) => log.stage === 'thought')
-                  .map((log) => log.text.trim())
-                  .filter(Boolean);
-                const persistedThoughtLogs = message.metadata?.thoughtLogsSnapshot || [];
-                const mergedThoughtLogs = dedupeThoughtTexts([
-                  ...persistedThoughtLogs,
-                  ...progressThoughtLogs,
-                ]);
-
-                if (mergedThoughtLogs.length === 0) {
-                  return nextMetadata;
-                }
-
-                return {
-                  ...nextMetadata,
-                  thoughtLogsSnapshot: mergedThoughtLogs,
-                };
-              })(),
-            }
-          : message
+        message.id === messageId ? buildPatchedMessage(message, patch) : message
       )
     );
+  };
+
+  const notifyTaskTerminalState = (message: ChatMessage) => {
+    if (message.metadata?.mode !== 'task') {
+      return;
+    }
+
+    const taskStatus = resolveMessageTaskStatus(message);
+    if (!taskStatus || !terminalTaskStatuses.has(taskStatus)) {
+      return;
+    }
+
+    const executionId =
+      message.metadata?.executionId || resolveTaskParts(message.contentParts).executionId;
+    const executionStatus = message.metadata?.executionStatus?.trim();
+    if (executionId && (!executionStatus || !terminalExecutionStatuses.has(executionStatus))) {
+      return;
+    }
+    const dedupeBase = executionId || message.id;
+    const dedupeKey = `${dedupeBase}:${taskStatus}`;
+    if (notifiedTaskStateKeysRef.current.has(dedupeKey)) {
+      return;
+    }
+    notifiedTaskStateKeysRef.current.add(dedupeKey);
+
+    const summary =
+      message.metadata?.finalSummary?.trim() ||
+      message.metadata?.normalizedResult?.summary?.trim() ||
+      message.metadata?.resultTitle?.trim() ||
+      message.metadata?.finalResult?.trim() ||
+      message.metadata?.failureReason?.trim() ||
+      message.metadata?.errorMessage?.trim();
+
+    const maybeUpsertNotification = (
+      category: AppNotification['category'],
+      severity: AppNotification['severity'],
+      requiresAction: boolean
+    ) => {
+      if (!executionId) {
+        return;
+      }
+
+      const timestamp = new Date().toISOString();
+      notificationStore.getState().upsertNotification({
+        id: `chat-task-${executionId}-${taskStatus}`,
+        dedupeKey: `execution:${executionId}:${taskStatus}`,
+        source: 'execution',
+        sourceId: executionId,
+        severity,
+        category,
+        status: taskStatus,
+        stateKey: `${taskStatus}:${summary || timestamp}`,
+        timestamp,
+        unread: true,
+        requiresAction,
+        actionUrl: `/executions/${executionId}`,
+        metadata: {
+          executionId,
+          resultTitle: message.metadata?.resultTitle,
+          resultSummary: message.metadata?.finalSummary || message.metadata?.normalizedResult?.summary,
+          takeoverReason:
+            message.metadata?.finalSummary ||
+            message.metadata?.failureReason ||
+            message.metadata?.errorMessage,
+          failureReason:
+            message.metadata?.failureReason || message.metadata?.errorMessage,
+          downloadUrl: message.metadata?.downloadUrl,
+        },
+      });
+    };
+
+    switch (taskStatus) {
+      case 'completed':
+        void toast.success('任务已完成');
+        maybeUpsertNotification('completed', 'success', false);
+        break;
+      case 'failed':
+        void toast.error(summary ? `任务执行失败：${summary}` : '任务执行失败');
+        maybeUpsertNotification('failed', 'error', true);
+        break;
+      case 'waiting_input':
+        void toast.warning('任务需要补充输入');
+        maybeUpsertNotification('waiting_input', 'warning', true);
+        break;
+      case 'pending_approval':
+        void toast.warning('任务等待你审批处理');
+        maybeUpsertNotification('pending_approval', 'warning', true);
+        break;
+      case 'human_control':
+        void toast.warning(summary || '接管原因：任务未满足自动化处理条件，需要人工介入审查。');
+        maybeUpsertNotification('human_control', 'warning', true);
+        break;
+      default:
+        break;
+    }
   };
 
   const snapshotMessageThoughts = (sessionId: string, messageId: string) => {
@@ -948,6 +1142,12 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
         updateSessionMeta(sessionId, reduced.sessionPatch);
       }
       if (Object.keys(reduced.messagePatch).length > 0) {
+        const currentMessage = (sessionMessagesRef.current[sessionId] || []).find(
+          (message) => message.id === assistantMessageId
+        );
+        if (currentMessage) {
+          notifyTaskTerminalState(buildPatchedMessage(currentMessage, reduced.messagePatch));
+        }
         updateMessage(sessionId, assistantMessageId, reduced.messagePatch);
       }
     });
@@ -968,7 +1168,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     } catch (streamError) {
       const nextError = streamError instanceof Error ? streamError.message : '聊天请求失败';
       setError(nextError);
-      updateMessage(session.id, assistantMessageId, {
+      const errorPatch = {
         content: nextError,
         isStreaming: false,
         metadata: {
@@ -976,7 +1176,14 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
           taskStatus: 'failed',
           errorMessage: nextError,
         },
-      });
+      } satisfies Partial<ChatMessage>;
+      const currentMessage = (sessionMessagesRef.current[session.id] || []).find(
+        (message) => message.id === assistantMessageId
+      );
+      if (currentMessage) {
+        notifyTaskTerminalState(buildPatchedMessage(currentMessage, errorPatch));
+      }
+      updateMessage(session.id, assistantMessageId, errorPatch);
     } finally {
       setIsStreaming(false);
       setAbortStreaming(null);
@@ -1128,35 +1335,6 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     }
   };
 
-  const handleResumeHumanControl = async (messageId: string, executionId: string) => {
-    if (!selectedSession) {
-      return;
-    }
-    setActionLoadingByMessage((current) => ({ ...current, [messageId]: 'resume' }));
-    try {
-      const execution = await executionApi.getById(executionId);
-      const resumedExecution = await resumeHumanControlExecution({
-        executionId,
-        execution,
-        executionApi,
-      });
-      updateMessage(selectedSession.id, messageId, {
-        metadata: buildResumedHumanControlTaskPatch({
-          executionId,
-          executionStatus: resumedExecution.status,
-        }),
-      });
-      await syncRelatedQueries(selectedSession.id);
-      void toast.success('已同意人工处理结果，任务继续执行中');
-    } catch (resumeError) {
-      void toast.error(
-        resumeError instanceof Error ? resumeError.message : '继续执行失败'
-      );
-    } finally {
-      setActionLoadingByMessage((current) => ({ ...current, [messageId]: undefined }));
-    }
-  };
-
   const renderTaskCard = (message: ChatMessage) => {
     if (message.role !== 'assistant' || message.metadata?.mode !== 'task') {
       return null;
@@ -1261,6 +1439,8 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
       return null;
     }
 
+    const shouldShowArtifactActions = status === 'completed' || status === 'failed';
+
     return (
       <>
         <SharedTaskOutcomeCard
@@ -1298,7 +1478,6 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
             const action = actionLoadingByMessage[message.id];
             return action === 'approve' || action === 'reject' ? action : null;
           })()}
-          takeoverAction={actionLoadingByMessage[message.id] === 'resume' ? 'resume' : null}
           onApproveExecution={() => {
             if (executionId) {
               void handleApprove(message.id, executionId);
@@ -1309,13 +1488,8 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
               void handleReject(message.id, executionId);
             }
           }}
-          onResumeExecution={() => {
-            if (executionId) {
-              void handleResumeHumanControl(message.id, executionId);
-            }
-          }}
         />
-        {artifacts.length > 0 ? (
+        {shouldShowArtifactActions && artifacts.length > 0 ? (
           <Space wrap className="user-chat-outcome-actions">
             {artifacts.map((artifact, index) => {
               const href = artifact.downloadUrl || artifact.url;
@@ -1343,30 +1517,11 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
   const renderProgressCard = (message: ChatMessage) => {
     const progressLogs = message.metadata?.progressLogs || [];
     const status = resolveMessageTaskStatus(message);
-    const taskParts = resolveTaskParts(message.contentParts);
-    const finalResult = message.metadata?.finalResult?.trim();
-    const finalSummary = message.metadata?.finalSummary?.trim();
-    const errorMessage = message.metadata?.errorMessage?.trim();
-    const failureReason = message.metadata?.failureReason?.trim();
-    const normalizedSummary = message.metadata?.normalizedResult?.summary?.trim();
-    const structuredResult = toStructuredResultText(
-      message.metadata?.normalizedResult?.structuredData ??
-        message.metadata?.finalResultData ??
-        taskParts.structuredResultData
-    );
     if (
       message.role !== 'assistant' ||
       message.metadata?.mode !== 'task' ||
       progressLogs.length === 0 ||
-      status !== 'running' ||
-      Boolean(
-        finalResult ||
-          finalSummary ||
-          normalizedSummary ||
-          errorMessage ||
-          failureReason ||
-          structuredResult
-      )
+      status !== 'running'
     ) {
       return null;
     }
@@ -1473,7 +1628,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
         return;
       }
       try {
-        await navigator.clipboard.writeText(copyTarget);
+        await copyTextToClipboard(copyTarget);
         void toast.success('消息已复制');
       } catch {
         void toast.error('复制失败');

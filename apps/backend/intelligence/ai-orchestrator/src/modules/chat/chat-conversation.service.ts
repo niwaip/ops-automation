@@ -475,6 +475,10 @@ export class ChatConversationService {
 
   private normalizeTaskStatus(value?: string): PersistedTaskStatus | null {
     switch (value) {
+      case 'draft':
+      case 'queued':
+      case 'paused':
+        return 'running';
       case 'running':
       case 'waiting_input':
       case 'pending_approval':

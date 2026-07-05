@@ -360,6 +360,87 @@ describe('ExecutionPlanNormalizationService', () => {
     );
   });
 
+  it('rewrites legacy gross margin threshold text in browser loop step metadata', () => {
+    const service = createService();
+
+    const result = service.buildBrowserLoopWorkflowPlanDraftFromExisting({
+      planDraft: {
+        plan_id: 'plan-browser-loop-threshold-1',
+        planner_mode: 'skill',
+        objective: '审批案件',
+        summary: '浏览器录制技能',
+        skill_match: {
+          skill_id: 'skill-browser-loop-threshold-1',
+          skill_name: '案件粗利率条件审批',
+          confidence: 1,
+        },
+        steps: [],
+        required_inputs: [],
+        risk_summary: {
+          level: 'low',
+          requires_human_review: false,
+          items: ['no_material_risk_detected'],
+        },
+      } as any,
+      resolvedSkillId: 'skill-browser-loop-threshold-1',
+      resolvedInput: {
+        grossMarginThreshold: '15',
+      },
+      templateSteps: [
+        {
+          step_id: 'step_1',
+          action: 'branch',
+          description: '读取页面中的案件粗利率，超过20%则继续执行承认操作',
+          branch: {
+            condition_fn: '(ctx) => Number(ctx.grossMargin || 0) >= Number(ctx.grossMarginThreshold)',
+            on_match: 'continue',
+            on_mismatch: 'takeover',
+            takeover_reason: '案件粗利率未达到20%自动化承认标准，需要人工介入审查后再承认',
+            description: '读取页面中的案件粗利率，超过20%则继续执行承认操作',
+          },
+        },
+      ],
+      loopDraft: {
+        mode: 'repeat_until',
+        eachIteration: {
+          stepIds: ['step_1'],
+          stepCount: 1,
+        },
+        stopWhen: {
+          read: {
+            type: 'text',
+            locator: {
+              type: 'css',
+              value: '[data-testid="empty-state"]',
+            },
+          },
+          conditionFn: 'value === "无待处理案件"',
+          description: '没有待处理案件时结束',
+        },
+        maxIterations: 10,
+      },
+      runtimeSourceType: 'browser_recording',
+    });
+
+    const iterationStep = result.steps.find((step: any) => step.id === 'iteration_step_1');
+    expect(iterationStep).toEqual(
+      expect.objectContaining({
+        title: '读取页面中的案件粗利率，超过15%则继续执行承认操作',
+      })
+    );
+    expect(iterationStep?.commands).toEqual([
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          stepName: expect.stringContaining('读取页面中的案件粗利率，超过15%则继续执行承认操作'),
+          branch: expect.objectContaining({
+            description: '读取页面中的案件粗利率，超过15%则继续执行承认操作',
+            takeoverReason: '案件粗利率未达到15%自动化承认标准，需要人工介入审查后再承认',
+          }),
+        }),
+      }),
+    ]);
+  });
+
   it('reconciles semantic grouped missing fields and adds uncovered required fields', () => {
     const service = createService();
 

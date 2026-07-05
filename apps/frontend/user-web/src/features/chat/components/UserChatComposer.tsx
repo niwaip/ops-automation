@@ -240,7 +240,7 @@ export function UserChatComposer(props: UserChatComposerProps) {
         <div className="user-chat-input-editor">
           <TextArea
             ref={inputRef}
-            autoSize={{ minRows: 1, maxRows: 6 }}
+            autoSize={{ minRows: 2, maxRows: 6 }}
             value={draft}
             onChange={(event) => onDraftChange(event.target.value)}
             placeholder={placeholder}
@@ -256,6 +256,7 @@ export function UserChatComposer(props: UserChatComposerProps) {
         </div>
         <div className="user-chat-input-toolbar">
           <Segmented
+            className={`user-chat-mode-switch mode-${chatMode}`}
             size="small"
             value={chatMode}
             onChange={(value) => onChatModeChange(value as 'chat' | 'task')}
@@ -284,7 +285,7 @@ export function UserChatComposer(props: UserChatComposerProps) {
             className="user-chat-input-new-btn"
             icon={<PlusOutlined />}
           >
-            新建会话
+            新建
           </Button>
           <Select
             size="small"

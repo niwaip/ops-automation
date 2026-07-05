@@ -145,6 +145,41 @@
   gap: 12px;
 }
 
+.user-shell-header-icon-button.ant-btn {
+  color: var(--text-secondary) !important;
+  border-radius: 10px !important;
+  background: var(--bg-card) !important;
+  border: 1px solid color-mix(in srgb, var(--border-color) 86%, white 14%) !important;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+}
+
+.user-shell-header-icon-button.ant-btn:hover,
+.user-shell-header-icon-button.ant-btn:focus-visible {
+  color: var(--text-primary) !important;
+  background: color-mix(in srgb, var(--bg-card) 82%, var(--primary-color) 18%) !important;
+  border-color: color-mix(in srgb, var(--primary-color) 30%, var(--border-color) 70%) !important;
+}
+
+.user-shell-header-icon-button.ant-btn:active,
+.user-shell-header-icon-button.ant-btn.ant-dropdown-open {
+  color: var(--text-primary) !important;
+  background: color-mix(in srgb, var(--bg-card) 74%, var(--primary-color) 26%) !important;
+  border-color: color-mix(in srgb, var(--primary-color) 42%, var(--border-color) 58%) !important;
+  box-shadow: 0 8px 20px rgba(99, 102, 241, 0.16);
+}
+
+.user-shell-notification-panel {
+  background: var(--bg-card);
+}
+
+.user-shell-notification-item {
+  background: var(--bg-card);
+}
+
+.user-shell-notification-item.is-unread {
+  background: color-mix(in srgb, var(--bg-card) 92%, #3b82f6 8%);
+}
+
 .user-shell-user {
   border: 1px solid var(--border-color);
   display: inline-flex;

@@ -226,10 +226,10 @@ export function UserLayout() {
               placement="bottomRight"
               popupRender={() => (
                 <div
+                  className="user-shell-notification-panel"
                   style={{
                     width: 360,
                     maxWidth: 'calc(100vw - 32px)',
-                    background: 'var(--surface-primary)',
                     border: '1px solid var(--border-color)',
                     borderRadius: 16,
                     boxShadow: '0 12px 40px rgba(15, 23, 42, 0.16)',
@@ -278,6 +278,7 @@ export function UserLayout() {
                           <button
                             key={item.id}
                             type="button"
+                            className={`user-shell-notification-item${item.unread ? ' is-unread' : ''}`}
                             onClick={() => {
                               markAsRead(item.id);
                               navigate(
@@ -292,9 +293,6 @@ export function UserLayout() {
                                 : '1px solid var(--border-color)',
                               borderRadius: 12,
                               padding: 12,
-                              background: item.unread
-                                ? 'rgba(59, 130, 246, 0.06)'
-                                : 'var(--surface-secondary)',
                               cursor: 'pointer',
                             }}
                           >
@@ -334,6 +332,7 @@ export function UserLayout() {
             >
               <Button
                 type="text"
+                className="user-shell-header-icon-button user-shell-notification-button"
                 icon={
                   <Badge count={unreadNotificationCount} size="small" overflowCount={99}>
                     <BellOutlined />

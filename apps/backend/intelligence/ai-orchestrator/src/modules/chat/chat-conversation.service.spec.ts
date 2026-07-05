@@ -365,4 +365,63 @@ describe('ChatConversationService', () => {
       }
     );
   });
+
+  it('persists queued task result as running instead of completed', async () => {
+    const { service, sessionService } = createService();
+    sessionService.appendChatMessages.mockResolvedValue({
+      session: {
+        id: 'task-session-queued',
+        title: '登录并且承认',
+        status: 'active',
+        createdAt: '2026-07-05T00:00:00.000Z',
+        updatedAt: '2026-07-05T00:00:03.000Z',
+        modelId: 'task-model',
+      },
+      history: [],
+    });
+
+    await service.persistTaskConversation({
+      sessionId: 'task-session-queued',
+      userContent: '登录并且承认',
+      modelId: 'task-model',
+      terminalEvent: {
+        type: StreamEventType.RESULT,
+        content: '任务已启动。执行单 ID: exec-queued',
+        data: {
+          executionId: 'exec-queued',
+          status: 'queued',
+          hasBusinessResult: false,
+        },
+      } as any,
+    });
+
+    expect(sessionService.appendChatMessages).toHaveBeenCalledWith(
+      'task-session-queued',
+      [
+        expect.objectContaining({
+          role: 'user',
+          content: '登录并且承认',
+          metadata: {
+            mode: 'task',
+          },
+        }),
+        expect.objectContaining({
+          role: 'assistant',
+          content: '任务已启动。执行单 ID: exec-queued',
+          metadata: expect.objectContaining({
+            mode: 'task',
+            taskStatus: 'running',
+            executionId: 'exec-queued',
+            executionStatus: 'queued',
+            finalSummary: '任务已启动。执行单 ID: exec-queued',
+            hasBusinessResult: false,
+          }),
+        }),
+      ],
+      {
+        modelId: 'task-model',
+        title: '登录并且承认',
+      }
+    );
+  });
 });
