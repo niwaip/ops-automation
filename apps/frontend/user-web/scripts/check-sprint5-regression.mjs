@@ -50,9 +50,9 @@ const checks = [
       "chatApi.listSessions()",
       "chatApi.getChatHistory(selectedSessionId!)",
       "chatApi.stream(",
-      "executionApi.submitInput(",
       "executionApi.approve(",
       "executionApi.reject(",
+      "buildResumeExecutionRequest(",
     ]),
   },
   {
@@ -73,18 +73,18 @@ const checks = [
   {
     name: "通知页保留通知列表展示",
     ok: includesAll(notificationsPage, [
-      'invalidateQueries(["user-web-notifications"])',
+      "queryClient.invalidateQueries(['user-web-notifications'])",
       "buildNotificationContent(item, language)",
       "useNotificationStore((state) => state.items)",
     ]),
   },
   {
-    name: "运行时接线保留通知拉取与 socket 生命周期",
+    name: "运行时接线保留通知拉取与轮询生命周期",
     ok: includesAll(runtimeEffects, [
       "notificationApi.list({ limit: 100 })",
-      "runtimeSocket.subscribe(",
-      "runtimeSocket.connect()",
-      "runtimeSocket.disconnect()",
+      "syncNotifications(data.items)",
+      "void refetch()",
+      "NOTIFICATION_POLLING_ENABLED",
       "resetNotifications()",
     ]),
   },

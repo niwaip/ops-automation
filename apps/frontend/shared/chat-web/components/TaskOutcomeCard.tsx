@@ -24,6 +24,7 @@ interface TaskOutcomeCardProps {
   executionStatus?: string | null;
   executionId?: string;
   executionStepCount?: number;
+  skillName?: string;
   downloadUrl?: string;
   temporalLink?: string;
   executionDetailLink?: string;
@@ -61,10 +62,38 @@ const getErrorPreview = (value?: string): string => {
   return preview || '任务执行失败，请展开查看具体错误信息。';
 };
 
+const getStructuredResultPreview = (value?: string | null): string | undefined => {
+  if (!value) {
+    return undefined;
+  }
+
+  try {
+    const parsed = JSON.parse(value) as {
+      result?: unknown;
+      output?: {
+        result?: unknown;
+      };
+    };
+
+    if (typeof parsed.result === 'string' && parsed.result.trim().length > 0) {
+      return parsed.result.trim();
+    }
+
+    if (typeof parsed.output?.result === 'string' && parsed.output.result.trim().length > 0) {
+      return parsed.output.result.trim();
+    }
+  } catch {
+    return undefined;
+  }
+
+  return undefined;
+};
+
 const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
   executionStatus,
   executionId,
   executionStepCount,
+  skillName,
   downloadUrl,
   temporalLink,
   executionDetailLink,
@@ -90,6 +119,8 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
 }) => {
   const showDownloadButton = Boolean(downloadUrl && !browserExecutionMode);
   const showDetailButton = Boolean(executionDetailLink || temporalLink);
+  const normalizedSkillName = skillName?.trim();
+  const displaySuccessResult = finalResult?.trim() || getStructuredResultPreview(structuredResultText);
   const sanitizeWaitingInputSummary = (summary?: string): string | undefined => {
     if (!summary) {
       return undefined;
@@ -105,6 +136,7 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
           !/^执行单 ID[:：]/.test(line) &&
           !/^请补充以下信息[:：]?$/.test(line) &&
           !/^请补充[:：]/.test(line) &&
+          !/^补充后我就继续处理。?$/.test(line) &&
           !/^还需要补充[:：]/.test(line) &&
           !/^缺少业务组[:：]/.test(line) &&
           !/^仍缺少业务组[:：]/.test(line) &&
@@ -124,7 +156,13 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
       ? sanitizeWaitingInputSummary(waitingInputSummary || summaryToDisplay)
       : waitingInputSummary || summaryToDisplay;
 
-  const renderResourceLinks = () => (
+  const renderResourceLinks = ({
+    detailButtonText = '查看执行详情',
+    showDetailAction = true,
+  }: {
+    detailButtonText?: string;
+    showDetailAction?: boolean;
+  } = {}) => (
     <div className="chat-outcome-actions" style={{ marginTop: 12 }}>
       <Space size={12} wrap>
         {showDownloadButton && downloadUrl ? (
@@ -138,7 +176,7 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
             下载生成的文档
           </Button>
         ) : null}
-        {showDetailButton ? (
+        {showDetailAction && showDetailButton ? (
           <Button
             type="primary"
             ghost
@@ -148,7 +186,7 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
             target="_blank"
             rel="noopener noreferrer"
           >
-            查看执行详情
+            {detailButtonText}
           </Button>
         ) : null}
       </Space>
@@ -214,15 +252,37 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
     );
   }
 
-  if (finalResult) {
+  if (displaySuccessResult) {
     return (
       <div className="chat-outcome-card success">
-        <div className="chat-outcome-title">{hasBusinessResult ? '任务结果' : '任务完成'}</div>
-        {renderMeta()}
-        <div className="chat-outcome-body">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{finalResult}</ReactMarkdown>
+        <div className="chat-outcome-header">
+          <div className="chat-outcome-title">{hasBusinessResult ? '任务结果' : '任务完成'}</div>
+          {showDetailButton ? (
+            <Button
+              type="primary"
+              ghost
+              size="small"
+              icon={<ThunderboltOutlined />}
+              href={executionDetailLink || temporalLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="chat-outcome-detail-button"
+            >
+              详细
+            </Button>
+          ) : null}
         </div>
-        {downloadUrl || temporalLink ? renderResourceLinks() : null}
+        {renderMeta()}
+        {normalizedSkillName ? (
+          <div className="chat-outcome-overview-skill">
+            <div className="chat-outcome-overview-label">技能</div>
+            <div className="chat-outcome-overview-skill-pill">{normalizedSkillName}</div>
+          </div>
+        ) : null}
+        <div className="chat-outcome-body">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{displaySuccessResult}</ReactMarkdown>
+        </div>
+        {showDownloadButton ? renderResourceLinks({ showDetailAction: false }) : null}
         {shouldShowStructuredResult && structuredResultText ? (
           <details className="chat-outcome-details">
             <summary>查看结构化结果</summary>
@@ -263,33 +323,16 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
       ) : null}
       {downloadUrl || temporalLink ? renderResourceLinks() : null}
       {isWaitingInput && waitingInputItems.length > 0 ? (
-        <div className="chat-outcome-body">
-          <div>请补充以下信息：</div>
+        <div className="chat-outcome-input-panel">
+          <div className="chat-outcome-input-heading">请补充以下信息</div>
           {waitingInputGroups.length > 0 ? (
-            <div style={{ display: 'grid', gap: 12 }}>
+            <div className="chat-outcome-input-groups">
               {waitingInputGroups.map((group) => (
-                <div
-                  key={group.label}
-                  style={{
-                    border: '1px solid var(--bg-secondary)',
-                    borderRadius: 12,
-                    padding: 12,
-                    background: 'var(--bg-card)',
-                  }}
-                >
-                  <div style={{ fontWeight: 600, marginBottom: 8 }}>{group.label}</div>
-                  <ul
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-                      columnGap: 16,
-                      rowGap: 6,
-                      paddingLeft: 20,
-                      marginBottom: 0,
-                    }}
-                  >
+                <div key={group.label} className="chat-outcome-input-group">
+                  <div className="chat-outcome-input-group-title">{group.label}</div>
+                  <ul className="chat-outcome-input-list">
                     {group.items.map((item) => (
-                      <li key={item.key} style={{ minWidth: 0 }}>
+                      <li key={item.key}>
                         {item.label}
                       </li>
                     ))}
@@ -298,18 +341,9 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
               ))}
             </div>
           ) : (
-            <ul
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-                columnGap: 16,
-                rowGap: 6,
-                paddingLeft: 20,
-                marginBottom: 0,
-              }}
-            >
+            <ul className="chat-outcome-input-list">
               {waitingInputItems.map((item) => (
-                <li key={item.key} style={{ minWidth: 0 }}>
+                <li key={item.key}>
                   {item.label}
                 </li>
               ))}

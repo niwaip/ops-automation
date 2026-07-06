@@ -310,13 +310,23 @@ const isEphemeralAssistantMessage = (message: ChatMessage): boolean => {
     return false;
   }
 
-  const normalized = message.content.trim();
-  return (
-    message.isStreaming === true ||
-    normalized === '正在思考...' ||
-    normalized === 'Session updated' ||
-    normalized.length === 0
-  );
+  if (message.isStreaming === true) {
+    return true;
+  }
+
+  const hasStructuredState =
+    Boolean(resolveMessageTaskStatus(message)) ||
+    hasTerminalTaskOutcome(message) ||
+    Boolean(message.metadata?.progressLogs?.length) ||
+    Boolean(message.metadata?.thoughtLogsSnapshot?.length) ||
+    Boolean(message.contentParts?.length) ||
+    Boolean(message.metadata?.finalSummary?.trim()) ||
+    Boolean(message.metadata?.finalResult?.trim()) ||
+    Boolean(message.metadata?.errorMessage?.trim()) ||
+    Boolean(message.metadata?.failureReason?.trim()) ||
+    Boolean(message.metadata?.normalizedResult);
+
+  return !hasStructuredState && normalizeComparableMessageText(message.content).length === 0;
 };
 
 const areMessagesEquivalent = (localMessage: ChatMessage, remoteMessage: ChatMessage): boolean => {
@@ -993,7 +1003,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
         maybeUpsertNotification('pending_approval', 'warning', true);
         break;
       case 'human_control':
-        void toast.warning(summary || '接管原因：任务未满足自动化处理条件，需要人工介入审查。');
+        void toast.warning(summary || '任务需要人工介入处理');
         maybeUpsertNotification('human_control', 'warning', true);
         break;
       default:
@@ -1446,6 +1456,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
         <SharedTaskOutcomeCard
           executionStatus={getMessageStatusLabel(status) || null}
           executionId={executionId}
+          skillName={message.metadata?.skillUsed}
           downloadUrl={message.metadata?.downloadUrl || partDownloadUrl}
           temporalLink={message.metadata?.temporalLink || partDetailUrl}
           executionDetailLink={executionId ? `/executions/${executionId}` : undefined}
