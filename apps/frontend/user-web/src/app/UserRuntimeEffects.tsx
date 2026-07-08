@@ -7,7 +7,7 @@ import { notificationStore } from '../adapters/notifications/notificationStore';
 
 const ACTIVE_POLLING_INTERVAL_MS = 10000;
 const IDLE_POLLING_INTERVAL_MS = 60000;
-const NOTIFICATION_POLLING_ENABLED = false;
+const NOTIFICATION_AUTO_POLLING_ENABLED = false;
 
 export function UserRuntimeEffects() {
   const isAuthenticated = useStore(authStore, (state) => state.isAuthenticated);
@@ -30,15 +30,18 @@ export function UserRuntimeEffects() {
       }
     },
     {
-      enabled: hasSession && NOTIFICATION_POLLING_ENABLED,
+      enabled: hasSession,
       refetchInterval: () => {
+        if (!NOTIFICATION_AUTO_POLLING_ENABLED) {
+          return false;
+        }
         if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
           return false;
         }
         return hasPendingNotifications ? ACTIVE_POLLING_INTERVAL_MS : IDLE_POLLING_INTERVAL_MS;
       },
       refetchIntervalInBackground: false,
-      refetchOnWindowFocus: true,
+      refetchOnWindowFocus: NOTIFICATION_AUTO_POLLING_ENABLED,
       keepPreviousData: true,
       onSuccess: (data) => {
         syncNotifications(data.items);
@@ -53,7 +56,7 @@ export function UserRuntimeEffects() {
   }, [hasSession, resetNotifications]);
 
   useEffect(() => {
-    if (!NOTIFICATION_POLLING_ENABLED || !hasSession || typeof window === 'undefined') {
+    if (!NOTIFICATION_AUTO_POLLING_ENABLED || !hasSession || typeof window === 'undefined') {
       return;
     }
 

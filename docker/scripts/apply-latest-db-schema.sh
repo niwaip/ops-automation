@@ -64,7 +64,7 @@ wait_for_postgres() {
 run_platform_job() {
   local command="$1"
   run_compose "$BASE_COMPOSE" run --rm platform sh -c \
-    "corepack enable && COREPACK_NPM_REGISTRY=https://registry.npmmirror.com corepack prepare pnpm@8.12.0 --activate && pnpm config set registry https://registry.npmmirror.com && pnpm install --no-frozen-lockfile && cd apps/backend/core/platform && ${command}"
+    "bash /workspace/docker/scripts/bootstrap-workspace-deps.sh && cd apps/backend/core/platform && ${command}"
 }
 
 run_psql() {

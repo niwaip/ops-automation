@@ -1,11 +1,12 @@
 import React, { useEffect } from 'react';
-import { Button, Card, Form, Space, Tag, Typography } from 'antd';
+import { Button, Form, Space, Tag, Typography } from 'antd';
 import type { FormInstance } from 'antd/es/form';
 import { ThunderboltOutlined } from '@ant-design/icons';
-import {
-  renderRequiredInputField,
-  type RequiredInputField,
-} from '@/features/executions/lib/inputFields';
+import ExecutionDetailActionBar from '@/features/executions/components/ExecutionDetailActionBar';
+import ExecutionDetailInfoBlock from '@/features/executions/components/ExecutionDetailInfoBlock';
+import ExecutionRequiredInputField from '@/features/executions/components/ExecutionRequiredInputField';
+import ExecutionDetailSectionCard from '@/features/executions/components/ExecutionDetailSectionCard';
+import type { RequiredInputField } from '@/features/executions/lib/inputFields';
 import {
   resolveWaitingInputDisplayLabel,
   type WaitingInputDisplayGroup,
@@ -63,11 +64,12 @@ const renderInputItem = (
       ]}
       valuePropName={field.type.toLowerCase() === 'boolean' ? 'checked' : 'value'}
     >
-      {renderRequiredInputField(field, {
-        jsonPlaceholder: props.enterJsonString,
-        textPlaceholderPrefix: props.enterFieldPrefix,
-        treatArrayAsJson: true,
-      })}
+      <ExecutionRequiredInputField
+        field={field}
+        jsonPlaceholder={props.enterJsonString}
+        textPlaceholderPrefix={props.enterFieldPrefix}
+        treatArrayAsJson
+      />
     </Form.Item>
     {field.needs_confirmation ? (
       <Tag color="gold" style={{ marginBottom: 12 }}>
@@ -116,19 +118,16 @@ const WaitingInputActionPanel: React.FC<WaitingInputActionPanelProps> = ({
   }, [requiredInputs, resolvedForm]);
 
   return (
-    <Card title={title} size={cardSize} style={{ marginBottom: 16 }} styles={{ body: { padding: 16 } }}>
+    <ExecutionDetailSectionCard
+      title={title}
+      size={cardSize}
+      style={{ marginBottom: 16 }}
+      styles={{ body: { padding: 16 } }}
+    >
       {summaryText ? (
-        <div
-          style={{
-            marginBottom: 16,
-            padding: '10px 12px',
-            borderRadius: 10,
-            background: 'var(--bg-secondary)',
-            border: '1px solid var(--bg-secondary)',
-          }}
-        >
+        <ExecutionDetailInfoBlock style={{ marginBottom: 16, padding: '10px 12px' }}>
           <Text type="secondary">{summaryText}</Text>
-        </div>
+        </ExecutionDetailInfoBlock>
       ) : null}
       <Form
         form={resolvedForm}
@@ -139,9 +138,8 @@ const WaitingInputActionPanel: React.FC<WaitingInputActionPanelProps> = ({
         {requiredInputGroups.length > 0 ? (
           <Space direction="vertical" size={16} style={{ width: '100%' }}>
             {requiredInputGroups.map((group) => (
-              <Card
+              <ExecutionDetailSectionCard
                 key={group.label}
-                size="small"
                 title={group.label}
                 style={{ borderRadius: 12, background: 'var(--bg-card)' }}
               >
@@ -153,17 +151,15 @@ const WaitingInputActionPanel: React.FC<WaitingInputActionPanelProps> = ({
                   }}
                 >
                   {group.items.map((field: RequiredInputField) => (
-                    <Card
+                    <ExecutionDetailSectionCard
                       key={field.name}
-                      size="small"
-                      styles={{ body: { padding: 12 } }}
                       style={{ borderRadius: 10, background: 'var(--bg-secondary)' }}
                     >
                       {renderInputItem(field, fieldRenderProps)}
-                    </Card>
+                    </ExecutionDetailSectionCard>
                   ))}
                 </div>
-              </Card>
+              </ExecutionDetailSectionCard>
             ))}
           </Space>
         ) : (
@@ -175,28 +171,16 @@ const WaitingInputActionPanel: React.FC<WaitingInputActionPanelProps> = ({
             }}
           >
             {requiredInputs.map((field) => (
-              <Card
+              <ExecutionDetailSectionCard
                 key={field.name}
-                size="small"
-                styles={{ body: { padding: 12 } }}
                 style={{ borderRadius: 10, background: 'var(--bg-secondary)' }}
               >
                 {renderInputItem(field, fieldRenderProps)}
-              </Card>
+              </ExecutionDetailSectionCard>
             ))}
           </div>
         )}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'flex-end',
-            flexWrap: 'wrap',
-            gap: 8,
-            paddingTop: 12,
-            marginTop: 4,
-            borderTop: '1px solid var(--bg-secondary)',
-          }}
-        >
+        <ExecutionDetailActionBar marginTop={4}>
           <Button
             type="primary"
             icon={<ThunderboltOutlined />}
@@ -214,9 +198,9 @@ const WaitingInputActionPanel: React.FC<WaitingInputActionPanelProps> = ({
           >
             {resetLabel}
           </Button>
-        </div>
+        </ExecutionDetailActionBar>
       </Form>
-    </Card>
+    </ExecutionDetailSectionCard>
   );
 };
 

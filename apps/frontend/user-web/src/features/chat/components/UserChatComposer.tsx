@@ -12,6 +12,7 @@ import type { TextAreaRef } from 'antd/es/input/TextArea';
 import type { AIModel } from '@ops/user-core';
 import { apiClient, runtimeConfig } from '../../../api';
 import { authStore } from '../../../adapters/auth/authStore';
+import { supportsNativeReasoning } from '@/shared/lib/aiModelReasoning';
 
 const { TextArea } = Input;
 
@@ -37,20 +38,6 @@ const normalizeSpeechLanguage = (value?: string | null): string => {
     return 'ja-JP';
   }
   return 'zh-CN';
-};
-
-const supportsNativeReasoning = (model?: AIModel | null): boolean => {
-  if (!model) {
-    return false;
-  }
-
-  return (
-    model.config?.supports_reasoning === true ||
-    model.config?.reasoning?.supported === true ||
-    (model.provider === 'minimax' && /^MiniMax-M/i.test(model.name)) ||
-    /^(o1|o3|o4|qwq)/i.test(model.name) ||
-    /(reasoner|reasoning|deepseek-r1)/i.test(model.name)
-  );
 };
 
 const resolveAiPath = (path: string): string => {

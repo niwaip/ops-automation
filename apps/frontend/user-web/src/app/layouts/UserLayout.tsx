@@ -28,6 +28,7 @@ import {
 } from '@ops/user-core';
 import { UserChatWidget } from '@/features/chat/components/UserChatWidget';
 import { useChatStore } from '@/features/chat';
+import { resolveNotificationActionPath } from '@/shared/lib/notificationNavigation';
 import { authStore } from '../../adapters/auth/authStore';
 import { notificationStore } from '../../adapters/notifications/notificationStore';
 import { preferencesStore } from '../../adapters/preferences/preferencesStore';
@@ -140,16 +141,6 @@ export function UserLayout() {
     ],
     onClick: ({ key }) => void setLanguage(key as 'zh-CN' | 'en-US' | 'ja-JP'),
     selectedKeys: [language],
-  };
-
-  const resolveActionPath = (actionUrl: string, source: string, sourceId: string): string => {
-    if (source === 'execution') {
-      return `/executions/${sourceId}`;
-    }
-    if (source === 'report') {
-      return `/reports/${sourceId}`;
-    }
-    return actionUrl;
   };
 
   useEffect(() => {
@@ -282,7 +273,11 @@ export function UserLayout() {
                             onClick={() => {
                               markAsRead(item.id);
                               navigate(
-                                resolveActionPath(item.actionUrl, item.source, item.sourceId)
+                                resolveNotificationActionPath(
+                                  item.actionUrl,
+                                  item.source,
+                                  item.sourceId
+                                )
                               );
                             }}
                             style={{
