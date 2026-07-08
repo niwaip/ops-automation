@@ -1,6 +1,7 @@
 import React from 'react';
-import { Button, Card, Space, Typography } from 'antd';
+import { Button, Space, Typography } from 'antd';
 import { DownOutlined, RightOutlined } from '@ant-design/icons';
+import ExecutionDetailSectionCard from '@/features/executions/components/ExecutionDetailSectionCard';
 
 const { Text } = Typography;
 
@@ -67,9 +68,7 @@ const TimelineNodeCard: React.FC<TimelineNodeCardProps> = ({
   };
 
   return (
-    <Card
-      size="small"
-      styles={{ body: { padding: 12 } }}
+    <ExecutionDetailSectionCard
       style={{
         borderRadius: 12,
         borderColor: tone.borderColor,
@@ -141,7 +140,7 @@ const TimelineNodeCard: React.FC<TimelineNodeCardProps> = ({
         {preview ? <div style={{ paddingTop: 4 }}>{preview}</div> : null}
         {expanded && details ? <div style={{ paddingTop: 4 }}>{details}</div> : null}
       </Space>
-    </Card>
+    </ExecutionDetailSectionCard>
   );
 };
 

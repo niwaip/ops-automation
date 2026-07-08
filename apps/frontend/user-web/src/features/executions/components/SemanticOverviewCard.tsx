@@ -1,6 +1,7 @@
 import React from 'react';
-import { Card, Descriptions, Space, Tag, Typography } from 'antd';
+import { Descriptions, Space, Tag, Typography } from 'antd';
 import type { ExecutionSemantic } from '@/api/execution';
+import ExecutionDetailSectionCard from '@/features/executions/components/ExecutionDetailSectionCard';
 
 const { Text } = Typography;
 
@@ -20,10 +21,8 @@ const renderSemanticGroupedMissing = (
   return (
     <Space direction="vertical" size={8} style={{ width: '100%' }}>
       {groupedMissing.map((group) => (
-        <Card
+        <ExecutionDetailSectionCard
           key={group.key}
-          size="small"
-          styles={{ body: { padding: 12 } }}
           style={{ borderRadius: 10, background: 'var(--bg-secondary)' }}
         >
           <Space direction="vertical" size={6} style={{ width: '100%' }}>
@@ -39,7 +38,7 @@ const renderSemanticGroupedMissing = (
             {group.description ? <Text type="secondary">{group.description}</Text> : null}
             <Text type="secondary">{group.missingFieldNames.join(', ')}</Text>
           </Space>
-        </Card>
+        </ExecutionDetailSectionCard>
       ))}
     </Space>
   );
@@ -80,7 +79,7 @@ const SemanticOverviewCard: React.FC<{
       : undefined;
 
   return (
-    <Card title={text.semanticOverview} style={{ marginBottom: 16 }}>
+    <ExecutionDetailSectionCard title={text.semanticOverview} style={{ marginBottom: 16 }}>
       <Descriptions
         column={2}
         size="small"
@@ -119,7 +118,7 @@ const SemanticOverviewCard: React.FC<{
           })}
         </div>
       ) : null}
-    </Card>
+    </ExecutionDetailSectionCard>
   );
 };
 

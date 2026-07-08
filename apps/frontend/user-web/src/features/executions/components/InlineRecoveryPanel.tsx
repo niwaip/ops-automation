@@ -2,7 +2,6 @@ import React from 'react';
 import {
   Alert,
   Button,
-  Card,
   Form,
   Input,
   Modal,
@@ -16,6 +15,10 @@ import {
 import { InfoCircleOutlined, PlayCircleOutlined, StopOutlined } from '@ant-design/icons';
 import { useMutation, useQueryClient } from 'react-query';
 import { executionApi, ExecutionPhaseDto } from '@/api/execution';
+import ExecutionDetailActionBar from '@/features/executions/components/ExecutionDetailActionBar';
+import ExecutionDetailInfoBlock from '@/features/executions/components/ExecutionDetailInfoBlock';
+import ExecutionDetailPanelBlock from '@/features/executions/components/ExecutionDetailPanelBlock';
+import ExecutionDetailSectionCard from '@/features/executions/components/ExecutionDetailSectionCard';
 import {
   RECOVERY_COPY,
   RECOVERY_RESUME_OPTIONS,
@@ -207,7 +210,7 @@ const InlineRecoveryPanel: React.FC<InlineRecoveryPanelProps> = ({
 
   return (
     <>
-      <Card
+      <ExecutionDetailSectionCard
         title={title || RECOVERY_COPY.panelTitle}
         size="small"
         styles={{ body: { padding: 16 } }}
@@ -301,16 +304,9 @@ const InlineRecoveryPanel: React.FC<InlineRecoveryPanelProps> = ({
           ) : null}
 
           {auxiliaryContent ? (
-            <div
-              style={{
-                padding: 12,
-                borderRadius: 10,
-                border: '1px solid var(--bg-secondary)',
-                background: 'var(--bg-secondary)',
-              }}
-            >
+            <ExecutionDetailInfoBlock>
               {auxiliaryContent}
-            </div>
+            </ExecutionDetailInfoBlock>
           ) : null}
 
           <Form layout="vertical">
@@ -322,15 +318,11 @@ const InlineRecoveryPanel: React.FC<InlineRecoveryPanelProps> = ({
                 alignItems: 'stretch',
               }}
             >
-              <div
+              <ExecutionDetailPanelBlock
                 style={{
                   display: 'flex',
                   flexDirection: 'column',
                   height: '100%',
-                  padding: 12,
-                  borderRadius: 10,
-                  border: '1px solid var(--bg-secondary)',
-                  background: 'var(--bg-card)',
                 }}
               >
                 <Form.Item label="人工审查记录" style={{ marginBottom: 0 }}>
@@ -341,17 +333,13 @@ const InlineRecoveryPanel: React.FC<InlineRecoveryPanelProps> = ({
                     placeholder="记录人工审查结论，例如：已人工核实该案件可继续承认，允许跳过条件分支并继续后续步骤"
                   />
                 </Form.Item>
-              </div>
-              <div
+              </ExecutionDetailPanelBlock>
+              <ExecutionDetailPanelBlock
                 style={{
                   display: 'grid',
                   gap: 10,
                   width: '100%',
                   height: '100%',
-                  padding: 12,
-                  borderRadius: 10,
-                  border: '1px solid var(--bg-secondary)',
-                  background: 'var(--bg-card)',
                 }}
               >
                 <Text strong style={{ margin: 0 }}>
@@ -386,21 +374,11 @@ const InlineRecoveryPanel: React.FC<InlineRecoveryPanelProps> = ({
                     </Radio>
                   ))}
                 </Radio.Group>
-              </div>
+              </ExecutionDetailPanelBlock>
             </div>
           </Form>
 
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'flex-end',
-              flexWrap: 'wrap',
-              gap: 12,
-              paddingTop: 12,
-              borderTop: '1px solid var(--bg-secondary)',
-            }}
-          >
+          <ExecutionDetailActionBar>
             <Space wrap size={[8, 8]}>
               <Button
                 type="primary"
@@ -421,9 +399,9 @@ const InlineRecoveryPanel: React.FC<InlineRecoveryPanelProps> = ({
                 {RECOVERY_COPY.cancelExecution}
               </Button>
             </Space>
-          </div>
+          </ExecutionDetailActionBar>
         </Space>
-      </Card>
+      </ExecutionDetailSectionCard>
 
       <Modal
         title={RECOVERY_COPY.resumeConfirmTitle}

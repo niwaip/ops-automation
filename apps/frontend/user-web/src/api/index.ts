@@ -30,19 +30,57 @@ export const skillApi = {
   ): Promise<{ request: SkillAccessRequest }> => apiClient.post(`/skills/${id}/access-requests`, data),
 };
 
+export interface CreateScheduleRequest {
+  name: string;
+  description?: string;
+  skillId: string;
+  skillVersion?: string;
+  input: Record<string, unknown>;
+  cronExpression: string;
+  timezone?: string;
+}
+
+export interface UpdateScheduleRequest {
+  name?: string;
+  description?: string;
+  input?: Record<string, unknown>;
+  cronExpression?: string;
+  timezone?: string;
+  isActive?: boolean;
+}
+
+export interface ScheduleDto {
+  id: string;
+  name: string;
+  description?: string;
+  skillId: string;
+  skillVersion?: string;
+  input: Record<string, unknown>;
+  cronExpression: string;
+  timezone: string;
+  isActive: boolean;
+  lastRunAt?: string;
+  nextRunAt: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export const scheduleApi = {
-  create: async (data: {
-    name: string;
-    description?: string;
-    skillId: string;
-    skillVersion?: string;
-    input: Record<string, unknown>;
-    cronExpression: string;
-    timezone?: string;
-  }): Promise<any> => apiClient.post('/schedules', data),
-  list: async (): Promise<any[]> => apiClient.get('/schedules'),
-  getById: async (id: string): Promise<any> => apiClient.get(`/schedules/${id}`),
-  update: async (id: string, data: any): Promise<any> => apiClient.put(`/schedules/${id}`, data),
+  create: async (data: CreateScheduleRequest): Promise<ScheduleDto> => apiClient.post('/schedules', data),
+  list: async (): Promise<ScheduleDto[]> => {
+    const response = await apiClient.get<ScheduleDto[] | { data?: ScheduleDto[] }>('/schedules');
+    if (Array.isArray(response)) {
+      return response;
+    }
+    if (Array.isArray(response?.data)) {
+      return response.data;
+    }
+    return [];
+  },
+  getById: async (id: string): Promise<ScheduleDto> => apiClient.get(`/schedules/${id}`),
+  update: async (id: string, data: UpdateScheduleRequest): Promise<ScheduleDto> =>
+    apiClient.put(`/schedules/${id}`, data),
   delete: async (id: string): Promise<{ success: boolean }> => apiClient.delete(`/schedules/${id}`),
   trigger: async (id: string): Promise<{ success: boolean }> => apiClient.post(`/schedules/${id}/trigger`),
 };

@@ -15,6 +15,7 @@ import {
 import { useStore } from 'zustand';
 import { preferencesStore } from '../../../adapters/preferences/preferencesStore';
 import { useNotificationStore } from '../../../adapters/notifications/notificationStore';
+import { resolveNotificationActionPath } from '@/shared/lib/notificationNavigation';
 
 export function NotificationsPage() {
   const navigate = useNavigate();
@@ -40,16 +41,6 @@ export function NotificationsPage() {
     typeof item.metadata?.downloadUrl === 'string' && item.metadata.downloadUrl.trim()
       ? item.metadata.downloadUrl
       : undefined;
-  const resolveActionPath = (actionUrl: string, source: string, sourceId: string): string => {
-    if (source === 'execution') {
-      return `/executions/${sourceId}`;
-    }
-    if (source === 'report') {
-      return `/reports/${sourceId}`;
-    }
-    return actionUrl;
-  };
-
   return (
     <Card>
       <Space style={{ width: '100%', justifyContent: 'space-between', marginBottom: 16 }}>
@@ -63,7 +54,7 @@ export function NotificationsPage() {
         </div>
         <Button
           icon={<ReloadOutlined />}
-          onClick={() => void queryClient.invalidateQueries(['user-web-notifications'])}
+          onClick={() => void queryClient.refetchQueries(['user-web-notifications'])}
           loading={isFetching}
         >
           刷新
@@ -98,7 +89,9 @@ export function NotificationsPage() {
                     key="open"
                     type="link"
                     onClick={() =>
-                      navigate(resolveActionPath(item.actionUrl, item.source, item.sourceId))
+                      navigate(
+                        resolveNotificationActionPath(item.actionUrl, item.source, item.sourceId)
+                      )
                     }
                   >
                     {content.actionText}

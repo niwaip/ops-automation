@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { ChatSession } from '@ops/user-core';
+import { createChatSessionId } from './lib/session';
 
 type ChatMode = 'chat' | 'task';
 
@@ -19,13 +20,6 @@ interface ChatStoreState {
   clearDraftContext: () => void;
 }
 
-const buildSessionId = (): string => {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  return `chat-session-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-};
-
 export const useChatStore = create<ChatStoreState>((set) => ({
   currentSession: null,
   isOpen: false,
@@ -35,7 +29,7 @@ export const useChatStore = create<ChatStoreState>((set) => ({
   createSession: () => {
     const now = new Date().toISOString();
     const nextSession: ChatSession = {
-      id: buildSessionId(),
+      id: createChatSessionId(),
       title: '新对话',
       status: 'active',
       createdAt: now,
