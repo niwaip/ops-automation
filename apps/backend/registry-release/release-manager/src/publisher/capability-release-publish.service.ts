@@ -312,10 +312,11 @@ export class CapabilityReleasePublishService {
 
   async publishSkill(
     id: string,
-    dto: PublishSkillDraftDTO,
+    dto: PublishSkillDraftDTO | undefined,
     userId: string | undefined,
     accessors: CapabilityReleasePublishAccessors
   ): Promise<{ release: CapabilityReleaseDTO; publishedSkillId: string }> {
+    const safeDto: PublishSkillDraftDTO = dto ?? {};
     const release = await accessors.getReleaseOrThrow(id);
     if (release.approvalStatus === 'pending' || release.status === 'pending_approval') {
       throw createBadRequestException({
@@ -330,7 +331,7 @@ export class CapabilityReleasePublishService {
       });
     }
 
-    const draftId = dto.draftId || release.currentSkillDraftId;
+    const draftId = safeDto.draftId || release.currentSkillDraftId;
     if (!draftId) {
       throw createNotFoundException({
         code: CAPABILITY_RELEASE_ERROR_CODE.SKILL_DRAFT_NOT_FOUND,

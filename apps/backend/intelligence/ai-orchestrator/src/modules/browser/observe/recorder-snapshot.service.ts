@@ -1,5 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { BrowserCommand } from '../intent';
+import {
+  INPUT_ROLES,
+  ACTION_ROLES,
+  STRUCTURAL_ROLES,
+  isRoleCompatibleWithTool,
+} from '../browser-domain.constants';
 
 export interface SnapshotNode {
   ref: string;
@@ -9,6 +15,12 @@ export interface SnapshotNode {
   line: string;
   indent: number;
   contextLabel?: string;
+  matchIndex?: number;
+  matchCount?: number;
+  isInMenu?: boolean;
+  parentId?: string | null;
+  parentClasses?: string[];
+  parentRole?: string;
 }
 
 export interface SnapshotResolutionState {
@@ -18,6 +30,8 @@ export interface SnapshotResolutionState {
 
 @Injectable()
 export class RecorderSnapshotService {
+  // Role sets are defined in browser-domain.constants.ts and imported above.
+
   rewriteCommandWithSnapshotRefs(
     command: BrowserCommand,
     snapshotState: SnapshotResolutionState | null
@@ -27,7 +41,7 @@ export class RecorderSnapshotService {
     }
 
     const targetCandidate = this.extractCommandTargetCandidate(command);
-    if (!targetCandidate || /^e\d+$/i.test(targetCandidate)) {
+    if (!targetCandidate || /^e\d+$/i.test(targetCandidate) || /^\d+_\d+$/.test(targetCandidate)) {
       return command;
     }
 
@@ -47,6 +61,94 @@ export class RecorderSnapshotService {
         target: this.buildSnapshotNodeTarget(resolvedNode),
       },
     };
+  }
+
+  findNodeByRef(
+    ref: string,
+    snapshotState: SnapshotResolutionState | null
+  ): SnapshotNode | undefined {
+    if (!snapshotState?.nodes.length || !ref) {
+      return undefined;
+    }
+    return snapshotState.nodes.find((node) => node.ref === ref);
+  }
+
+  buildLocatorFromNode(node: SnapshotNode): {
+    strategy: string;
+    value: string;
+    expression?: string;
+    role?: string;
+    name?: string;
+    ref?: string;
+    generatedBy: string;
+    confidence: number;
+  } | undefined {
+    const hasName = typeof node.name === 'string' && node.name.trim().length > 0;
+    if (hasName) {
+      const escapedName = node.name!.trim().replace(/"/g, '\\"');
+      return {
+        strategy: 'role',
+        value: node.role,
+        expression: `getByRole('${node.role}', { name: '${escapedName}' })`,
+        role: node.role,
+        name: node.name!.trim(),
+        ref: node.ref,
+        generatedBy: 'snapshot',
+        confidence: 0.9,
+      };
+    }
+    if (typeof node.text === 'string' && node.text.trim().length > 0) {
+      const text = node.text.trim();
+      if (node.isInMenu) {
+        if (node.role === 'link') {
+          const escapedName = text.replace(/"/g, '\\"');
+          return {
+            strategy: 'role',
+            value: 'link',
+            expression: `getByRole('link', { name: '${escapedName}' })`,
+            role: 'link',
+            name: text,
+            ref: node.ref,
+            generatedBy: 'snapshot',
+            confidence: 0.85,
+          };
+        }
+        if (node.role === 'button') {
+          const escapedName = text.replace(/"/g, '\\"');
+          return {
+            strategy: 'role',
+            value: 'button',
+            expression: `getByRole('button', { name: '${escapedName}' })`,
+            role: 'button',
+            name: text,
+            ref: node.ref,
+            generatedBy: 'snapshot',
+            confidence: 0.85,
+          };
+        }
+      }
+
+      if (typeof node.matchCount === 'number' && node.matchCount > 1 && typeof node.matchIndex === 'number') {
+        return {
+          strategy: 'text',
+          value: text,
+          expression: `getByText('${text}').nth(${node.matchIndex})`,
+          ref: node.ref,
+          generatedBy: 'snapshot',
+          confidence: 0.75,
+        };
+      }
+
+      return {
+        strategy: 'text',
+        value: text,
+        expression: `getByText('${text}')`,
+        ref: node.ref,
+        generatedBy: 'snapshot',
+        confidence: 0.7,
+      };
+    }
+    return undefined;
   }
 
   parseSnapshotNodes(content: string): SnapshotNode[] {
@@ -93,9 +195,7 @@ export class RecorderSnapshotService {
     snapshotPath?: string;
   } {
     const inputs = snapshotState.nodes
-      .filter((node) =>
-        ['textbox', 'searchbox', 'combobox', 'textarea', 'input'].includes(node.role)
-      )
+      .filter((node) => INPUT_ROLES.has(node.role))
       .map((node, index) => ({
         index,
         ref: node.ref,
@@ -105,9 +205,7 @@ export class RecorderSnapshotService {
       }));
 
     const buttons = snapshotState.nodes
-      .filter((node) =>
-        ['button', 'link', 'menuitem', 'tab', 'checkbox', 'radio'].includes(node.role)
-      )
+      .filter((node) => ACTION_ROLES.has(node.role))
       .map((node, index) => ({
         index,
         ref: node.ref,
@@ -170,7 +268,7 @@ export class RecorderSnapshotService {
     nodes: SnapshotNode[]
   ): SnapshotNode | undefined {
     const inputNodes = nodes.filter((node) =>
-      ['textbox', 'searchbox', 'combobox', 'textarea', 'input'].includes(node.role)
+      INPUT_ROLES.has(node.role)
     );
     return this.pickBestSnapshotNode(target, inputNodes);
   }
@@ -179,10 +277,16 @@ export class RecorderSnapshotService {
     target: string,
     nodes: SnapshotNode[]
   ): SnapshotNode | undefined {
-    const preferredNodes = nodes.filter((node) =>
-      ['button', 'link', 'menuitem', 'tab', 'checkbox', 'radio'].includes(node.role)
-    );
+    const preferredNodes = nodes.filter((node) => ACTION_ROLES.has(node.role));
     return this.pickBestSnapshotNode(target, preferredNodes);
+  }
+
+  isNodeCompatibleWithTool(node: SnapshotNode, tool: string): boolean {
+    // Delegate to the shared implementation in browser-domain.constants.ts.
+    // For click/hover we additionally allow structural roles (cell/row/generic).
+    if (isRoleCompatibleWithTool(node.role, tool)) return true;
+    if ((tool === 'click' || tool === 'hover') && STRUCTURAL_ROLES.has(node.role)) return true;
+    return false;
   }
 
   private buildSnapshotNodeTarget(node: SnapshotNode): string {
@@ -387,7 +491,7 @@ export class RecorderSnapshotService {
 
   private attachSnapshotContextLabels(nodes: SnapshotNode[]): SnapshotNode[] {
     return nodes.map((node, index) => {
-      if (!['textbox', 'searchbox', 'combobox', 'textarea', 'input'].includes(node.role)) {
+      if (!INPUT_ROLES.has(node.role)) {
         return node;
       }
 
@@ -418,9 +522,7 @@ export class RecorderSnapshotService {
         break;
       }
       if (
-        ['textbox', 'searchbox', 'combobox', 'textarea', 'input', 'button', 'link', 'tab'].includes(
-          candidate.role
-        )
+        INPUT_ROLES.has(candidate.role) || ACTION_ROLES.has(candidate.role)
       ) {
         continue;
       }

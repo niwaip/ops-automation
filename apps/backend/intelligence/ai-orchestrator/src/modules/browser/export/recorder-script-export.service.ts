@@ -1,6 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { BrowserCommand } from '../intent';
 
+export class UnresolvedRefLocatorError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'UnresolvedRefLocatorError';
+  }
+}
+
 interface SkillParameterLike {
   name: string;
   description: string;
@@ -199,9 +206,18 @@ export class RecorderScriptExportService {
         ];
       case 'click':
         if (command.locator) {
-          return [
-            `  await ${this.toPlaywrightLocatorExpression(command.locator)}.first().click();`,
-          ];
+          try {
+            return [
+              `  await ${this.toPlaywrightLocatorExpression(command.locator)}.first().click();`,
+            ];
+          } catch (error) {
+            if (error instanceof UnresolvedRefLocatorError) {
+              return [
+                `  // Unsupported command in exported script: ${command.tool} — unresolved transient ref locator; export pipeline accepted this locator but did not resolve it to a durable role/text selector`,
+              ];
+            }
+            throw error;
+          }
         }
         if (typeof command.params.selector === 'string') {
           return [
@@ -216,9 +232,18 @@ export class RecorderScriptExportService {
         return ['  // Unsupported click command payload'];
       case 'fill':
         if (command.locator) {
-          return [
-            `  await ${this.toPlaywrightLocatorExpression(command.locator)}.first().fill(${this.resolveScriptValue(commandIndex, 'value', command.params.value, parameters)});`,
-          ];
+          try {
+            return [
+              `  await ${this.toPlaywrightLocatorExpression(command.locator)}.first().fill(${this.resolveScriptValue(commandIndex, 'value', command.params.value, parameters)});`,
+            ];
+          } catch (error) {
+            if (error instanceof UnresolvedRefLocatorError) {
+              return [
+                `  // Unsupported command in exported script: ${command.tool} — unresolved transient ref locator; export pipeline accepted this locator but did not resolve it to a durable role/text selector`,
+              ];
+            }
+            throw error;
+          }
         }
         if (typeof command.params.selector === 'string') {
           return [
@@ -331,6 +356,14 @@ export class RecorderScriptExportService {
         return `page.getByTestId(${this.toJavaScriptLiteral(locator.value || '')})`;
       case 'text':
         return `page.getByText(${this.toJavaScriptLiteral(locator.value || '')}, { exact: ${locator.exact ? 'true' : 'false'} })`;
+      case 'label':
+        return `page.getByLabel(${this.toJavaScriptLiteral(locator.value || '')}, { exact: false })`;
+      case 'ref':
+        throw new UnresolvedRefLocatorError(
+          `Unresolved transient ref locator strategy='ref', value=${JSON.stringify(
+            locator.value || ''
+          )}; the export pipeline must resolve it to a durable locator before script generation.`
+        );
       default:
         return `page.locator(${this.toJavaScriptLiteral(locator.value || '')})`;
     }

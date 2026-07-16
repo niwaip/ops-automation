@@ -30,23 +30,25 @@ compute_fingerprint() {
     {
       sha256sum pnpm-lock.yaml
       find . \
-        -path './node_modules' -prune -o \
-        -path './.pnpm-store' -prune -o \
-        -path './.git' -prune -o \
-        -path './dist' -prune -o \
-        -name package.json -print0 \
+        -name 'node_modules' -prune -o \
+        -name '.pnpm-store' -prune -o \
+        -name '.git' -prune -o \
+        -name 'dist' -prune -o \
+        -name 'package.json' -print0 \
         | sort -z \
-        | xargs -0 sha256sum
+        | xargs -0 sha256sum 2>/dev/null || true
     } | sha256sum | awk '{print $1}'
   )
 }
 
-install_workspace_deps() {
-  log "Preparing pnpm@$PNPM_VERSION"
+ensure_pnpm() {
+  log "Ensuring pnpm@$PNPM_VERSION is available"
   corepack enable
   COREPACK_NPM_REGISTRY="$REGISTRY_URL" corepack prepare "pnpm@$PNPM_VERSION" --activate
-  pnpm config set registry "$REGISTRY_URL"
+  pnpm config set registry "$REGISTRY_URL" 2>/dev/null || true
+}
 
+install_workspace_deps() {
   log "Refreshing workspace dependency directories"
   rm -rf \
     "$WORKSPACE_ROOT/node_modules" \
@@ -64,6 +66,9 @@ install_workspace_deps() {
 main() {
   ensure_workspace_root
   mkdir -p "$STAMP_DIR"
+
+  # pnpm must be available regardless of dependency cache state
+  ensure_pnpm
 
   local current_fingerprint
   current_fingerprint="$(compute_fingerprint)"

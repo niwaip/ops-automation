@@ -22,8 +22,10 @@ export const extractWorkbenchSummaryContentFromEvent = (
   const normalizedResult = asRecord(data?.normalizedResult);
   const actionInput = asRecord(data?.actionInput);
 
+  // 候选顺序：当前事件的内容字段优先，已累积的 currentContent 作为兜底。
+  // 聊天模式下 OBSERVATION 携带累积可见内容、RESULT 携带完整答案，
+  // 必须让它们覆盖上一轮的 "正在思考..." 前缀，否则最终总结会卡在前缀上。
   const candidates = [
-    ...reducedContentCandidates,
     asTrimmedString(actionInput?.answer),
     asTrimmedString(actionInput?.finalAnswer),
     asTrimmedString(actionInput?.output),
@@ -35,6 +37,7 @@ export const extractWorkbenchSummaryContentFromEvent = (
     asTrimmedString(normalizedResult?.summary),
     asTrimmedString(normalizedResult?.output),
     asTrimmedString(event.content),
+    ...reducedContentCandidates,
   ];
 
   return (

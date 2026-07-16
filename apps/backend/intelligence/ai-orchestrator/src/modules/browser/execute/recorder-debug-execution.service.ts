@@ -139,7 +139,15 @@ export class RecorderDebugExecutionService {
 
     for (const prepared of preparedCommands) {
       const resolvedCommand = this.rewriteCommandWithSnapshotRefs(prepared.command, snapshotState);
-      const response = await this.executeBrowserCommandBatch(session, [resolvedCommand], options);
+      const commandWithSnapshotLocator = this.enrichCommandWithSnapshotLocator(
+        resolvedCommand,
+        snapshotState
+      );
+      const response = await this.executeBrowserCommandBatch(
+        session,
+        [commandWithSnapshotLocator],
+        options
+      );
 
       aggregated.results.push(...(Array.isArray(response.results) ? response.results : []));
       if (Array.isArray(response.steps) && aggregated.steps) {
@@ -157,7 +165,7 @@ export class RecorderDebugExecutionService {
 
       if (!prepared.synthetic && aggregated.executedCommands) {
         aggregated.executedCommands.push(
-          this.enrichCommandWithExecutionStep(resolvedCommand, response)
+          this.enrichCommandWithExecutionStep(commandWithSnapshotLocator, response)
         );
       }
 
@@ -302,6 +310,10 @@ export class RecorderDebugExecutionService {
     command: BrowserCommand,
     execution: BrowserExecuteResponse
   ): BrowserCommand {
+    if (command.locator?.generatedBy === 'snapshot') {
+      return command;
+    }
+
     const step = Array.isArray(execution.steps) ? execution.steps[0] : undefined;
     if (!step || typeof step !== 'object') {
       return command;
@@ -320,6 +332,38 @@ export class RecorderDebugExecutionService {
       ...command,
       params,
       ...(locator ? { locator } : {}),
+    };
+  }
+
+  private enrichCommandWithSnapshotLocator(
+    command: BrowserCommand,
+    snapshotState: SnapshotResolutionState | null
+  ): BrowserCommand {
+    if (!snapshotState?.nodes.length) {
+      return command;
+    }
+
+    const ref = typeof command.params?.target === 'string' ? command.params.target.trim() : '';
+    if (!ref || !/^e\d+$/i.test(ref)) {
+      return command;
+    }
+
+    const node = this.recorderSnapshotService.findNodeByRef(ref, snapshotState);
+    if (!node) {
+      return command;
+    }
+
+    if (!this.recorderSnapshotService.isNodeCompatibleWithTool(node, command.tool)) {
+      return command;
+    }
+
+    const locator = this.recorderSnapshotService.buildLocatorFromNode(node);
+    if (!locator) {
+      return command;
+    }
+    return {
+      ...command,
+      locator,
     };
   }
 

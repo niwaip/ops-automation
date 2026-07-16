@@ -12,10 +12,10 @@
     "check:user-route-policy": "node ./scripts/check-user-route-policy.mjs"
   },
   "dependencies": {
+    "@ant-design/icons": "^5.2.6",
     "@ops/backend-ai-chat-protocol": "file:../../../packages/backend-contracts/ai-chat-protocol",
     "@ops/backend-execution-core": "file:../../../packages/backend-contracts/execution-core",
     "@ops/user-core": "file:../../../packages/user-core",
-    "@ant-design/icons": "^5.2.6",
     "@types/uuid": "^10.0.0",
     "antd": "^5.12.0",
     "axios": "^1.6.2",

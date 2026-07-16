@@ -57,6 +57,8 @@ export const buildTargetFromLocator = (locator?: Record<string, unknown>): strin
       return `role=${locatorValue}`;
     case 'text':
       return `text=${locatorValue}`;
+    case 'label':
+      return `internal:label="${locatorValue}"`;
     case 'test-id':
       return `[data-testid="${locatorValue}"]`;
     case 'xpath':

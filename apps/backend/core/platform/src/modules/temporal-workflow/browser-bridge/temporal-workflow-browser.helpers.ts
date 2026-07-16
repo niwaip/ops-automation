@@ -656,10 +656,26 @@ function normalizeBrowserTemplateStepSelector(step: BrowserTemplateStepInput): s
     return '';
   }
   const locatorType = String(step.locator.type || '').toLowerCase();
-  if (locatorType === 'test-id') {
-    return `[data-testid="${step.locator.value}"]`;
+  const locatorValue = String(step.locator.value);
+  if (locatorType === 'css' || locatorType === 'selector' || !locatorType) {
+    return locatorValue;
   }
-  return String(step.locator.value);
+  if (locatorType === 'test-id' || locatorType === 'testid' || locatorType === 'data-testid') {
+    return `[data-testid="${locatorValue}"]`;
+  }
+  if (locatorType === 'role') {
+    return `role=${locatorValue}`;
+  }
+  if (locatorType === 'text') {
+    return `text=${locatorValue}`;
+  }
+  if (locatorType === 'label') {
+    return `internal:label="${locatorValue}"`;
+  }
+  if (locatorType === 'xpath') {
+    return `xpath=${locatorValue}`;
+  }
+  return locatorValue;
 }
 
 export function buildBrowserInputParamsFromTemplateSource(

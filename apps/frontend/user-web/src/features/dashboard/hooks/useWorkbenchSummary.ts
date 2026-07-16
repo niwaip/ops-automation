@@ -85,10 +85,18 @@ export function useWorkbenchSummary({
         }
 
         const request: ChatRequest = {
+          // 每次生成用独立的新 sessionId，避免复用 'default' 会话历史。
+          // 否则 LLM 会读到旧 task 模式留下的"已创建等待补充信息的执行单…"
+          // 记录，并照着该模式幻觉出假的执行单 ID。
+          sessionId: `workbench-summary-${period}-${Date.now()}`,
           message: prompt,
           config: {
-            mode: 'task',
-            thinking: true,
+            // 固定聊天模式：直接走 LLM 生成 markdown，不进 planner/技能匹配，
+            // 避免被路由到 general_document_generator 并卡在 templateName。
+            mode: 'chat',
+            // 关闭 reasoning：后端会关闭推理、剥离 think 标签，且系统提示词要求
+            // "直接输出结论，不要输出思考过程或  "-// 标签"。工作台总结只需干净 markdown。
+            thinking: false,
           },
         };
         let finalContent = '';

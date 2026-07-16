@@ -7,7 +7,7 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "nest build",
-    "dev": "nest start --watch",
+    "dev": "prisma generate && nest start --watch",
     "start": "node dist/main.js",
     "start:prod": "node dist/main.js",
     "typecheck": "tsc --noEmit"

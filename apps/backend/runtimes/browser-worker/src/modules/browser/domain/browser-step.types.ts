@@ -6,7 +6,7 @@ export interface BrowserRuntimeLocator {
   role?: string;
   name?: string;
   exact?: boolean;
-  generatedBy?: 'cli' | 'ai' | 'manual' | 'system';
+  generatedBy?: 'cli' | 'ai' | 'manual' | 'system' | 'snapshot';
   confidence?: number;
 }
 

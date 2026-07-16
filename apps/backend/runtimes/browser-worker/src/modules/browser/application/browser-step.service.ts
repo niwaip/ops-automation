@@ -40,6 +40,14 @@ export class BrowserStepService {
               return step;
             }
 
+            const hasSnapshotLocator =
+              typeof step.locator?.generatedBy === 'string' &&
+              step.locator.generatedBy === 'snapshot';
+
+            if (hasSnapshotLocator) {
+              return step;
+            }
+
             try {
               const locatorExpression = await adapter.generateLocator?.(
                 step.runtimeTargetRef,

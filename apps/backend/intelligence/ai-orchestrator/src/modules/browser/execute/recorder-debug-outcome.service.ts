@@ -209,6 +209,20 @@ export class RecorderDebugOutcomeService {
     observedNodes: RecorderObservedNode[]
   ): RecorderGroundedTarget | undefined {
     const directRefMatch = observedNodes.find((node) => node.ref === candidateTarget);
+    const intentSignals = this.collectGroundingIntentSignals(command);
+    if (directRefMatch && intentSignals && !this.isRefNodeConsistentWithIntent(directRefMatch, intentSignals)) {
+      // directRefMatch collided with command intent. This means observation's
+      // ref namespace produced a node that the user-visible command was not
+      // referring to (off-namespace collision). Fall back to a semantic
+      // match only when an observed node actually satisfies the intent.
+      const intentMatch = observedNodes.find((node) =>
+        this.isRefNodeConsistentWithIntent(node, intentSignals)
+      );
+      if (intentMatch) {
+        return this.buildGroundedTargetRecord(intentMatch, command, candidateTarget, true);
+      }
+      return undefined;
+    }
     const semanticMatch =
       directRefMatch ||
       observedNodes.find((node) => {
@@ -222,13 +236,102 @@ export class RecorderDebugOutcomeService {
       return undefined;
     }
 
+    return this.buildGroundedTargetRecord(semanticMatch, command, candidateTarget, false);
+  }
+
+  // Strong, user-intent-bearing signals extracted from the recorded command.
+  // When present, an observation ref node must match these to be trusted.
+  // Without intent signals we cannot disambiguate observation-vs-cli ref
+  // namespaces, so the legacy behavior is preserved.
+  private collectGroundingIntentSignals(
+    command: BrowserCommand
+  ): { role?: string; name?: string; labels: string[] } | undefined {
+    const labels: string[] = [];
+    const pushLabel = (value: unknown) => {
+      if (typeof value === 'string' && value.trim()) {
+        labels.push(value.trim());
+      }
+    };
+    pushLabel(command.params?.text);
+    pushLabel(command.locator?.name);
+    if (typeof command.description === 'string') {
+      const quoted = command.description.match(/[「“"'『'](.*?)[」”"』']/);
+      pushLabel(quoted?.[1]);
+      const buttonHint = command.description.match(/点击\s*(.+?)\s*按钮/);
+      pushLabel(buttonHint?.[1]);
+      const navigateLabel = command.description.match(/^(?:打开|进入|跳转到|导航到)\s*(.+)/);
+      pushLabel(navigateLabel?.[1]);
+    }
+    const role =
+      typeof command.locator?.role === 'string' && command.locator.role.trim()
+        ? command.locator.role.trim().toLowerCase()
+        : undefined;
+    const name =
+      typeof command.locator?.name === 'string' && command.locator.name.trim()
+        ? command.locator.name.trim()
+        : undefined;
+    if (!role && labels.length === 0) {
+      return undefined;
+    }
+    return { role, name, labels: labels.filter((label, index) => labels.indexOf(label) === index) };
+  }
+
+  private isRefNodeConsistentWithIntent(
+    node: RecorderObservedNode,
+    intent: { role?: string; name?: string; labels: string[] }
+  ): boolean {
+    const nodeRole = typeof node.role === 'string' && node.role.trim() ? node.role.trim().toLowerCase() : '';
+    const nodeName =
+      typeof node.name === 'string' && node.name.trim()
+        ? node.name.trim().toLowerCase()
+        : typeof node.text === 'string' && node.text.trim()
+          ? node.text.trim().toLowerCase()
+          : '';
+    if (intent.role && nodeRole && intent.role !== nodeRole) {
+      // Roles known to be interchangeable click containers; reject only when
+      // they are genuinely incompatible (e.g. button vs cell vs row).
+      const interchangeable = new Set(['button', 'link', 'menuitem', 'option']);
+      if (!(interchangeable.has(intent.role) && interchangeable.has(nodeRole))) {
+        return false;
+      }
+    }
+    if (intent.name && nodeName && intent.name !== nodeName) {
+      return false;
+    }
+    if (intent.labels.length > 0) {
+      const haystack = [node.name, node.text, node.contextLabel, node.diffKey]
+        .filter((value): value is string => Boolean(value))
+        .map((value) => value.trim().toLowerCase())
+        .join(' ');
+      const anyLabelMatches = intent.labels.some((label) => {
+        const normalized = label.trim().toLowerCase();
+        return (
+          normalized.length > 0 &&
+          (haystack.includes(normalized) ||
+            normalized.includes(nodeName) ||
+            nodeName.includes(normalized))
+        );
+      });
+      if (!anyLabelMatches) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private buildGroundedTargetRecord(
+    node: RecorderObservedNode | undefined,
+    command: BrowserCommand,
+    candidateTarget: string,
+    forcedIntentMatch: boolean
+  ): RecorderGroundedTarget {
     return {
-      ...(semanticMatch?.ref ? { ref: semanticMatch.ref } : {}),
-      ...(semanticMatch?.role ? { role: semanticMatch.role } : {}),
-      ...(semanticMatch?.name ? { name: semanticMatch.name } : {}),
-      ...(semanticMatch?.text ? { text: semanticMatch.text } : {}),
-      ...(semanticMatch?.contextLabel ? { contextLabel: semanticMatch.contextLabel } : {}),
-      ...(semanticMatch?.regionId ? { regionId: semanticMatch.regionId } : {}),
+      ...(node?.ref ? { ref: node.ref } : {}),
+      ...(node?.role ? { role: node.role } : {}),
+      ...(node?.name ? { name: node.name } : {}),
+      ...(node?.text ? { text: node.text } : {}),
+      ...(node?.contextLabel ? { contextLabel: node.contextLabel } : {}),
+      ...(node?.regionId ? { regionId: node.regionId } : {}),
       ...(command.locator
         ? {
             locator: {
@@ -238,7 +341,7 @@ export class RecorderDebugOutcomeService {
             },
           }
         : {}),
-      confidence: semanticMatch ? 0.9 : 0.5,
+      confidence: forcedIntentMatch ? 0.95 : node ? 0.9 : 0.5,
     };
   }
 

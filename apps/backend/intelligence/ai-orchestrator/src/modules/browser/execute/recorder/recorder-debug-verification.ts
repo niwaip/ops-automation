@@ -60,14 +60,19 @@ function routeVerifier(
   if (intent.actionType === 'navigate') {
     return { verifier: 'navigate', routeReason: 'actionType' };
   }
-  if (intent.actionType === 'fill') {
-    return { verifier: 'fill', routeReason: 'actionType' };
-  }
+  // Goal-pattern verifiers run before the actionType-based `fill` route so that
+  // multi-step flows whose first command is a `fill` (e.g. 填写用户名/密码后点击登录)
+  // are verified as a form submit rather than as a standalone fill, which would
+  // otherwise observe the input boxes disappearing after page navigation and drop
+  // confidence below 100% even when the migration succeeded.
   if (shouldUseDetailOpenVerifier(intent, commands)) {
     return { verifier: 'detail-open', routeReason: 'goal-pattern' };
   }
   if (shouldUseFormSubmitVerifier(intent, commands)) {
     return { verifier: 'form-submit', routeReason: 'goal-pattern' };
+  }
+  if (intent.actionType === 'fill') {
+    return { verifier: 'fill', routeReason: 'actionType' };
   }
   if (intent.actionType === 'select') {
     return { verifier: 'select', routeReason: 'goal-pattern' };
@@ -535,6 +540,12 @@ function isDetailOpenGoal(value: string | undefined): boolean {
 function shouldUseFormSubmitVerifier(intent: RecorderIntent, commands: BrowserCommand[]): boolean {
   const submitTools = new Set(['click', 'fill', 'type_text', 'press_key']);
   if (!commands.some((command) => submitTools.has(command.tool))) {
+    return false;
+  }
+  // A form-submit verification only makes sense when an actual submit trigger
+  // (click or key press) is present. Pure fill-only turns must keep using the
+  // `fill` verifier, since a value write alone never triggers a page transition.
+  if (!commands.some((command) => command.tool === 'click' || command.tool === 'press_key')) {
     return false;
   }
   const submitSignals = [

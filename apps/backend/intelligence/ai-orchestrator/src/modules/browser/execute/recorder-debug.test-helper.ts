@@ -68,6 +68,7 @@ import {
   RecorderExportService,
   RecorderScriptExportService,
   RecorderTemplateExportService,
+  RecorderDurableLocatorResolver,
 } from '../export';
 import { RecorderDisambiguationService } from '../intent/recorder-disambiguation.service';
 import { RecorderParameterService } from '../intent/recorder-parameter.service';
@@ -87,6 +88,7 @@ export const createService = (overrides?: {
   recorderLoopService?: RecorderLoopService;
   recorderExportService?: RecorderExportService;
   recorderExportAssemblyService?: RecorderExportAssemblyService;
+  recorderDurableLocatorResolver?: RecorderDurableLocatorResolver;
   recorderDebugChatExecutionService?: RecorderDebugChatExecutionService;
   recorderDebugChatFlowService?: RecorderDebugChatFlowService;
   recorderDebugChatSupportService?: RecorderDebugChatSupportService;
@@ -215,7 +217,8 @@ export const createService = (overrides?: {
           new RecorderTemplateExportService(
             (overrides?.branchAnalysisService || {}) as any,
             recorderLoopService
-          )
+          ),
+        overrides?.recorderDurableLocatorResolver || new RecorderDurableLocatorResolver()
       ),
     recorderDebugChatSupportService,
     overrides?.recorderDebugChatFlowService ||

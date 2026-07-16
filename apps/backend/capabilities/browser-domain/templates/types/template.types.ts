@@ -4,7 +4,7 @@
 
 export type TemplateStatus = 'DRAFT' | 'REVIEW' | 'PUBLISHED' | 'DEPRECATED' | 'REVOKED';
 
-export type LocatorType = 'role' | 'text' | 'test-id' | 'css' | 'xpath' | 'ref';
+export type LocatorType = 'role' | 'text' | 'label' | 'test-id' | 'css' | 'xpath' | 'ref';
 
 export type ActionType =
   | 'click'
@@ -167,6 +167,7 @@ export interface ListTemplatesResponse {
 export const LOCATOR_PRIORITY: Record<LocatorType, number> = {
   role: 1,
   text: 2,
+  label: 2,
   'test-id': 3,
   css: 4,
   xpath: 5,
