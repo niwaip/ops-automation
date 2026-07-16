@@ -88,8 +88,13 @@ export interface ValidateCapabilityDTO {
   fn?: string;
 }
 
-export interface GenerateSkillDraftDTO {
+export class GenerateSkillDraftDTO {
+  @IsOptional()
+  @IsUUID()
   validationId?: string;
+
+  @IsOptional()
+  @IsString()
   modelId?: string;
 }
 
@@ -253,7 +258,9 @@ export interface UpdateSkillDraftDTO {
   apiEndpoints?: Record<string, unknown>;
 }
 
-export interface PublishSkillDraftDTO {
+export class PublishSkillDraftDTO {
+  @IsOptional()
+  @IsUUID()
   draftId?: string;
 }
 

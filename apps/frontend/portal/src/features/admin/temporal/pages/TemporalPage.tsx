@@ -33,7 +33,7 @@ import {
   temporalWorkflowApi,
   TemporalWorkflowDTO,
   CreateTemporalWorkflowDTO,
-  WorkflowDsl,
+  TemplateWorkflowDraft,
 } from '@/api/temporal';
 import { executionApi } from '@/api/execution';
 import { ListSectionHeader } from '@/components/page/PageScaffold';
@@ -76,7 +76,9 @@ const TemporalPage: React.FC = () => {
   const [searchText, setSearchText] = useState('');
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingWorkflow, setEditingWorkflow] = useState<TemporalWorkflowDTO | null>(null);
-  const [draftWorkflowDsl, setDraftWorkflowDsl] = useState<WorkflowDsl | null>(null);
+  const [draftWorkflowDsl, setDraftWorkflowDsl] = useState<
+    Pick<TemplateWorkflowDraft, 'name' | 'description' | 'taskQueue' | 'workflowDsl' | 'activityDsl'> | null
+  >(null);
   const [openTemplatePickerOnEditOpen, setOpenTemplatePickerOnEditOpen] = useState(false);
 
   const [detailModalVisible, setDetailModalVisible] = useState(false);
@@ -563,7 +565,9 @@ const TemporalPage: React.FC = () => {
         onApplyDraft={(dsl) => {
           setAiDraftDrawerVisible(false);
           setEditingWorkflow(null);
-          setDraftWorkflowDsl(dsl.workflowDsl as WorkflowDsl);
+          // 传完整 draft（含 workflowDsl + activityDsl + name/description/taskQueue），
+          // 否则模态 useEffect 读 initialDraftDsl.workflowDsl 会得到 undefined 而回退默认值。
+          setDraftWorkflowDsl(dsl);
           setOpenTemplatePickerOnEditOpen(false);
           setEditModalVisible(true);
         }}

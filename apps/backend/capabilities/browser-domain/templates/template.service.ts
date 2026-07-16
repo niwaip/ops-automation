@@ -89,11 +89,28 @@ export class TemplateService {
     const limit = this.parsePositiveInt(query.limit ?? query.pageSize, 20);
     const skip = (page - 1) * limit;
     const excludeDraft = query.excludeDraft === true || query.excludeDraft === 'true';
-    const where = query.status
+
+    const statusFilter = query.status
       ? { status: query.status }
       : excludeDraft
         ? { status: { not: 'DRAFT' as const } }
         : undefined;
+
+    const searchTerm = query.search?.trim();
+    const searchFilter =
+      searchTerm
+        ? {
+            OR: [
+              { name: { contains: searchTerm, mode: 'insensitive' as const } },
+              { description: { contains: searchTerm, mode: 'insensitive' as const } },
+            ],
+          }
+        : undefined;
+
+    const where =
+      statusFilter && searchFilter
+        ? { AND: [statusFilter, searchFilter] }
+        : statusFilter ?? searchFilter ?? undefined;
 
     const [templates, total] = await this.prisma.$transaction([
       this.prisma.template.findMany({
@@ -133,6 +150,34 @@ export class TemplateService {
       );
     }
 
+    // When steps are explicitly updated, mirror them into config.executionPlan.templateSteps
+    // so that session-broker (which prefers executionPlan.templateSteps over top-level steps)
+    // always executes the latest locators.
+    let resolvedConfig = dto.config || template.config;
+    if (dto.steps && Array.isArray(dto.steps)) {
+      const existingConfig =
+        resolvedConfig && typeof resolvedConfig === 'object' && !Array.isArray(resolvedConfig)
+          ? (resolvedConfig as Record<string, unknown>)
+          : {};
+      const existingExecutionPlan =
+        existingConfig.executionPlan &&
+        typeof existingConfig.executionPlan === 'object' &&
+        !Array.isArray(existingConfig.executionPlan)
+          ? (existingConfig.executionPlan as Record<string, unknown>)
+          : undefined;
+
+      if (existingExecutionPlan) {
+        // Sync templateSteps inside executionPlan to the new top-level steps.
+        resolvedConfig = {
+          ...existingConfig,
+          executionPlan: {
+            ...existingExecutionPlan,
+            templateSteps: dto.steps,
+          },
+        };
+      }
+    }
+
     const mergedTemplate: TemplateRecord = {
       ...template,
       name: dto.name || template.name,
@@ -141,7 +186,7 @@ export class TemplateService {
       paramsSchema: dto.params_schema || template.paramsSchema,
       steps: dto.steps || template.steps,
       guards: dto.guards || template.guards,
-      config: dto.config || template.config,
+      config: resolvedConfig,
     };
 
     const validation = this.templateValidator.validate(this.toJSON(mergedTemplate));
@@ -149,9 +194,10 @@ export class TemplateService {
       throw new BadRequestException(`Template validation failed: ${validation.errors.join(', ')}`);
     }
 
+    // Pass the resolved config (with synced executionPlan.templateSteps) into the DB update.
     const saved = await this.prisma.template.update({
       where: { id },
-      data: this.buildUpdateData(dto),
+      data: this.buildUpdateData({ ...dto, config: resolvedConfig as UpdateTemplateDto['config'] }),
     });
     return this.toJSON(saved);
   }

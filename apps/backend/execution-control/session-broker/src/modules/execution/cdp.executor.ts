@@ -258,10 +258,18 @@ export class CdpExecutor implements OnModuleDestroy {
   }
 
   /**
-   * Build CSS selector from locator
+   * Build a Playwright/CSS selector string from a template locator.
+   *
+   * Canonical mapping — keep in sync with buildSelectorFromLocator() in
+   * apps/backend/intelligence/ai-orchestrator/src/modules/browser/browser-domain.constants.ts.
+   * When adding a new locator type, update both files.
    */
   private buildSelector(locator: { type: string; value: string }): string {
-    switch (locator.type) {
+    // Normalise legacy spellings of the test-id type before switching.
+    const type =
+      locator.type === 'testId' || locator.type === 'testid' ? 'test-id' : locator.type;
+
+    switch (type) {
       case 'css':
         return locator.value;
 
@@ -283,7 +291,7 @@ export class CdpExecutor implements OnModuleDestroy {
       case 'label':
         return `label:has-text("${locator.value}")`;
 
-      case 'testId':
+      case 'test-id':
         return `[data-testid="${locator.value}"]`;
 
       default:
@@ -330,41 +338,16 @@ export class CdpExecutor implements OnModuleDestroy {
       };
       const loopPlan = this.buildLoopPlan(steps, options.loopDraft);
 
-      // #region debug-point E:executor-plan
-      (() => {
-        const fs = require('fs');
-        const envPath = '.dbg/session-loop-stall.env';
-        let debugUrl = `http://${process.env.EXTERNAL_HOST || 'host.docker.internal'}:7777/event`;
-        let debugSessionId = 'session-loop-stall';
-        try {
-          const envContent = fs.readFileSync(envPath, 'utf8');
-          debugUrl = envContent.match(/DEBUG_SERVER_URL=(.+)/)?.[1] || debugUrl;
-          debugSessionId = envContent.match(/DEBUG_SESSION_ID=(.+)/)?.[1] || debugSessionId;
-        } catch {}
-        fetch(debugUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sessionId: debugSessionId,
-            runId: 'pre-fix',
-            hypothesisId: 'E',
-            location: 'cdp.executor.ts:executeSteps:plan',
-            msg: '[DEBUG] cdpExecutor initialized execution plan',
-            data: {
-              sessionId,
-              backend,
-              stepIds: steps.map((step) => step.step_id),
-              hasLoopDraft: Boolean(options.loopDraft),
-              hasLoopPlan: Boolean(loopPlan),
-              preLoopCount: loopPlan?.preLoopSteps.length || 0,
-              iterationCount: loopPlan?.iterationSteps.length || 0,
-              postLoopCount: loopPlan?.postLoopSteps.length || 0,
-            },
-            ts: Date.now(),
-          }),
-        }).catch(() => {});
-      })();
-      // #endregion
+      this.emitDebugEvent('cdp.executor.ts:executeSteps:plan', '[DEBUG] cdpExecutor initialized execution plan', {
+        sessionId,
+        backend,
+        stepIds: steps.map((step) => step.step_id),
+        hasLoopDraft: Boolean(options.loopDraft),
+        hasLoopPlan: Boolean(loopPlan),
+        preLoopCount: loopPlan?.preLoopSteps.length || 0,
+        iterationCount: loopPlan?.iterationSteps.length || 0,
+        postLoopCount: loopPlan?.postLoopSteps.length || 0,
+      });
       if (loopPlan) {
         const preLoopFailure = await executeSequence(loopPlan.preLoopSteps);
         if (preLoopFailure) {
@@ -458,72 +441,22 @@ export class CdpExecutor implements OnModuleDestroy {
         }
       }
 
-      // #region debug-point E:executor-results
-      (() => {
-        const fs = require('fs');
-        const envPath = '.dbg/session-loop-stall.env';
-        let debugUrl = `http://${process.env.EXTERNAL_HOST || 'host.docker.internal'}:7777/event`;
-        let debugSessionId = 'session-loop-stall';
-        try {
-          const envContent = fs.readFileSync(envPath, 'utf8');
-          debugUrl = envContent.match(/DEBUG_SERVER_URL=(.+)/)?.[1] || debugUrl;
-          debugSessionId = envContent.match(/DEBUG_SESSION_ID=(.+)/)?.[1] || debugSessionId;
-        } catch {}
-        fetch(debugUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sessionId: debugSessionId,
-            runId: 'pre-fix',
-            hypothesisId: 'E',
-            location: 'cdp.executor.ts:executeSteps:results',
-            msg: '[DEBUG] cdpExecutor finished execution',
-            data: {
-              sessionId,
-              resultCount: results.length,
-              failedCount: results.filter((item) => !item.success).length,
-              lastResult: results[results.length - 1] || null,
-            },
-            ts: Date.now(),
-          }),
-        }).catch(() => {});
-      })();
-      // #endregion
+      this.emitDebugEvent('cdp.executor.ts:executeSteps:results', '[DEBUG] cdpExecutor finished execution', {
+        sessionId,
+        resultCount: results.length,
+        failedCount: results.filter((item) => !item.success).length,
+        lastResult: results[results.length - 1] || null,
+      });
       return results;
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       this.logger.error(`Execution failed: ${errorMsg}`);
 
-      // #region debug-point E:executor-error
-      (() => {
-        const fs = require('fs');
-        const envPath = '.dbg/session-loop-stall.env';
-        let debugUrl = `http://${process.env.EXTERNAL_HOST || 'host.docker.internal'}:7777/event`;
-        let debugSessionId = 'session-loop-stall';
-        try {
-          const envContent = fs.readFileSync(envPath, 'utf8');
-          debugUrl = envContent.match(/DEBUG_SERVER_URL=(.+)/)?.[1] || debugUrl;
-          debugSessionId = envContent.match(/DEBUG_SESSION_ID=(.+)/)?.[1] || debugSessionId;
-        } catch {}
-        fetch(debugUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sessionId: debugSessionId,
-            runId: 'pre-fix',
-            hypothesisId: 'E',
-            location: 'cdp.executor.ts:executeSteps:error',
-            msg: '[DEBUG] cdpExecutor execution failed',
-            data: {
-              sessionId,
-              backend,
-              error: errorMsg,
-            },
-            ts: Date.now(),
-          }),
-        }).catch(() => {});
-      })();
-      // #endregion
+      this.emitDebugEvent('cdp.executor.ts:executeSteps:error', '[DEBUG] cdpExecutor execution failed', {
+        sessionId,
+        backend,
+        error: errorMsg,
+      });
 
       return [
         {
@@ -1168,6 +1101,45 @@ export class CdpExecutor implements OnModuleDestroy {
       this.logger.log(`Browser stopped: ${result.success}`);
     } catch (error) {
       this.logger.warn(`Failed to stop browser: ${error}`);
+    }
+  }
+
+  /**
+   * Emit a structured debug event to the local debug server when present.
+   *
+   * Config is read from `.dbg/session-loop-stall.env` (optional — silently
+   * ignored when absent).  All three copy-pasted debug IIFE blocks previously
+   * scattered through executeSteps() have been collapsed into this helper.
+   */
+  private emitDebugEvent(location: string, msg: string, data: Record<string, unknown>): void {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const fs = require('fs') as typeof import('fs');
+      const envPath = '.dbg/session-loop-stall.env';
+      let debugUrl = `http://${process.env.EXTERNAL_HOST || 'host.docker.internal'}:7777/event`;
+      let debugSessionId = 'session-loop-stall';
+      try {
+        const envContent = fs.readFileSync(envPath, 'utf8');
+        debugUrl = envContent.match(/DEBUG_SERVER_URL=(.+)/)?.[1] ?? debugUrl;
+        debugSessionId = envContent.match(/DEBUG_SESSION_ID=(.+)/)?.[1] ?? debugSessionId;
+      } catch {
+        // env file absent — use defaults
+      }
+      fetch(debugUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: debugSessionId,
+          runId: 'pre-fix',
+          hypothesisId: 'E',
+          location,
+          msg,
+          data,
+          ts: Date.now(),
+        }),
+      }).catch(() => {});
+    } catch {
+      // debug emission must never throw
     }
   }
 }

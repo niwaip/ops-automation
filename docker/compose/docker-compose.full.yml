@@ -78,7 +78,6 @@ services:
       - "${PLATFORM_PORT:-3001}:${PLATFORM_PORT:-3001}"
     volumes:
       - ${PROJECT_ROOT:-..}:/workspace
-      - auth_node_modules:/workspace/node_modules
     depends_on:
       postgres:
         condition: service_healthy
@@ -90,34 +89,10 @@ services:
   session-broker:
     image: ${DOCKER_REGISTRY:-}node:20-bullseye
     container_name: ops-session-broker
-    working_dir: /app
+    working_dir: /workspace/apps/backend/execution-control/session-broker
     command: >
-      sh -c "npm config set registry https://registry.npmjs.org
-      && npm config set fetch-retries 5
-      && npm config set fetch-retry-mintimeout 20000
-      && npm config set fetch-retry-maxtimeout 120000
-      && i=0
-      && until [ $$i -ge 5 ]; do
-        npm install --legacy-peer-deps --include=dev --no-package-lock && break;
-        i=$$((i+1));
-        echo 'npm install failed, retrying in 10s...';
-        sleep 10;
-      done
-      && [ $$i -lt 5 ]
-      && j=0
-      && until [ $$j -ge 5 ]; do
-        npx prisma generate && break;
-        j=$$((j+1));
-        echo 'prisma generate failed, retrying in 10s...';
-        sleep 10;
-      done
-      && [ $$j -lt 5 ]
-      && rm -f tsconfig.tsbuildinfo
-      && npx tsc
-      && rm -rf dist/generated
-      && mkdir -p dist/generated
-      && cp -R src/generated/prisma dist/generated/prisma
-      && node dist/main.js"
+      sh -c "npm run dev"
+
     environment:
       - NODE_ENV=development
       - DATABASE_URL=postgresql://${POSTGRES_USER:-ops}:${POSTGRES_PASSWORD:-ops_secret}@postgres:5432/${POSTGRES_DB:-ops}
@@ -128,8 +103,7 @@ services:
     ports:
       - "${SESSION_BROKER_PORT:-3002}:${SESSION_BROKER_PORT:-3002}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/backend/execution-control/session-broker:/app
-      - session_broker_node_modules:/app/node_modules
+      - ${PROJECT_ROOT:-..}:/workspace
     depends_on:
       postgres:
         condition: service_healthy
@@ -166,7 +140,6 @@ services:
       - "${CONTROL_PLANE_PORT:-3003}:${CONTROL_PLANE_PORT:-3003}"
     volumes:
       - ${PROJECT_ROOT:-..}:/workspace
-      - control_plane_node_modules:/workspace/node_modules
     depends_on:
       postgres:
         condition: service_healthy
@@ -178,8 +151,8 @@ services:
   browser-worker:
     image: ${DOCKER_REGISTRY:-}node:20-bullseye
     container_name: ops-browser-worker
-    working_dir: /app
-    command: sh -c "npm config set registry https://registry.npmmirror.com && rm -rf /app/node_modules/* /app/node_modules/.[!.]* /app/node_modules/..?* 2>/dev/null || true && npm install --legacy-peer-deps --include=dev --ignore-scripts && npm run dev"
+    working_dir: /workspace/apps/backend/runtimes/browser-worker
+    command: sh -c "npm run dev"
     environment:
       - NODE_ENV=development
       - PORT=${BROWSER_WORKER_PORT:-3004}
@@ -193,9 +166,7 @@ services:
     ports:
       - "${BROWSER_WORKER_PORT:-3004}:${BROWSER_WORKER_PORT:-3004}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/backend/runtimes/browser-worker:/app
-      - ${PROJECT_ROOT:-..}/packages/backend-contracts:/packages/backend-contracts
-      - browser_worker_node_modules:/app/node_modules
+      - ${PROJECT_ROOT:-..}:/workspace
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - browser-chrome
@@ -226,7 +197,6 @@ services:
       - "${CARBONE_ENGINE_PORT:-3009}:${CARBONE_ENGINE_PORT:-3009}"
     volumes:
       - ${PROJECT_ROOT:-..}:/workspace
-      - carbone_engine_node_modules:/workspace/apps/backend/capabilities/document-domain/node_modules
       - ${PROJECT_ROOT:-..}/apps/backend/var/templates/document-engine:/workspace/apps/backend/var/templates/document-engine
       - ${PROJECT_ROOT:-..}/apps/backend/var/outputs/document-engine:/workspace/apps/backend/var/outputs/document-engine
     healthcheck:
@@ -240,33 +210,10 @@ services:
   browser-template:
     image: ${DOCKER_REGISTRY:-}node:20-bullseye
     container_name: ops-browser-template
-    working_dir: /app
+    working_dir: /workspace/apps/backend/capabilities/browser-domain/templates
     command: >
-      sh -c "npm config set registry https://registry.npmjs.org
-      && npm config set fetch-retries 5
-      && npm config set fetch-retry-mintimeout 20000
-      && npm config set fetch-retry-maxtimeout 120000
-      && i=0
-      && until [ $$i -ge 5 ]; do
-        npm install --package-lock=false --legacy-peer-deps --include=dev --workspaces=false && break;
-        i=$$((i+1));
-        echo 'npm install failed, retrying in 10s...';
-        sleep 10;
-      done
-      && [ $$i -lt 5 ]
-      && j=0
-      && until [ $$j -ge 5 ]; do
-        npx prisma generate && break;
-        j=$$((j+1));
-        echo 'prisma generate failed, retrying in 10s...';
-        sleep 10;
-      done
-      && [ $$j -lt 5 ]
-      && npm run build
-      && rm -rf dist/generated
-      && mkdir -p dist/generated
-      && cp -R generated/prisma dist/generated/prisma
-      && npm run start"
+      sh -c "npx prisma generate && npm run dev"
+
     environment:
       - NODE_ENV=development
       - DATABASE_URL=postgresql://${POSTGRES_USER:-ops}:${POSTGRES_PASSWORD:-ops_secret}@postgres:5432/${POSTGRES_DB:-ops}
@@ -279,8 +226,7 @@ services:
     ports:
       - "${BROWSER_TEMPLATE_PORT:-3005}:${BROWSER_TEMPLATE_PORT:-3005}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/backend/capabilities/browser-domain/templates:/app
-      - browser_template_node_modules:/app/node_modules
+      - ${PROJECT_ROOT:-..}:/workspace
     depends_on:
       postgres:
         condition: service_healthy
@@ -290,35 +236,10 @@ services:
   browser-semantics:
     image: ${DOCKER_REGISTRY:-}node:20-bullseye
     container_name: ops-browser-semantics
-    working_dir: /app
+    working_dir: /workspace/apps/backend/capabilities/browser-domain/semantics
     command: >
-      sh -c "npm config set registry https://registry.npmjs.org
-      && npm config set fetch-retries 5
-      && npm config set fetch-retry-mintimeout 20000
-      && npm config set fetch-retry-maxtimeout 120000
-      && i=0
-      && until [ $$i -ge 5 ]; do
-        npm install --legacy-peer-deps --include=dev && break;
-        i=$$((i+1));
-        echo 'npm install failed, retrying in 10s...';
-        sleep 10;
-      done
-      && [ $$i -lt 5 ]
-      && j=0
-      && until [ $$j -ge 5 ]; do
-        npx prisma generate && break;
-        j=$$((j+1));
-        echo 'prisma generate failed, retrying in 10s...';
-        sleep 10;
-      done
-      && [ $$j -lt 5 ]
-      && npx prisma db push
-      && if [ \"${BROWSER_SEMANTICS_RUN_DEFAULT_SEED:-false}\" = \"true\" ]; then npm run seed:browser-recorder; fi
-      && npm run build
-      && rm -rf /app/dist/generated
-      && mkdir -p /app/dist/generated
-      && cp -R /app/generated/prisma /app/dist/generated/prisma
-      && npm run start"
+      sh -c "npx prisma generate && npm run dev"
+
     environment:
       - NODE_ENV=development
       - DATABASE_URL=postgresql://${POSTGRES_USER:-ops}:${POSTGRES_PASSWORD:-ops_secret}@postgres:5432/${POSTGRES_DB:-ops}?schema=browser_semantics
@@ -328,8 +249,7 @@ services:
     ports:
       - "${BROWSER_SEMANTICS_PORT:-3006}:${BROWSER_SEMANTICS_PORT:-3006}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/backend/capabilities/browser-domain/semantics:/app
-      - browser_semantics_node_modules:/app/node_modules
+      - ${PROJECT_ROOT:-..}:/workspace
     depends_on:
       postgres:
         condition: service_healthy
@@ -339,30 +259,10 @@ services:
   ai-orchestrator:
     image: ${DOCKER_REGISTRY:-}node:20-bullseye
     container_name: ops-ai-orchestrator
-    working_dir: /app
+    working_dir: /workspace/apps/backend/intelligence/ai-orchestrator
     command: >
-      sh -c "npm config set registry https://registry.npmjs.org
-      && npm config set fetch-retries 5
-      && npm config set fetch-retry-mintimeout 20000
-      && npm config set fetch-retry-maxtimeout 120000
-      && rm -rf /app/node_modules/* /app/node_modules/.[!.]* /app/node_modules/..?* 2>/dev/null || true
-      && i=0
-      && until [ $$i -ge 5 ]; do
-        npm install --legacy-peer-deps --include=dev && break;
-        i=$$((i+1));
-        echo 'npm install failed, retrying in 10s...';
-        sleep 10;
-      done
-      && [ $$i -lt 5 ]
-      && j=0
-      && until [ $$j -ge 5 ]; do
-        npx prisma generate && break;
-        j=$$((j+1));
-        echo 'prisma generate failed, retrying in 10s...';
-        sleep 10;
-      done
-      && [ $$j -lt 5 ]
-      && npm run dev"
+      sh -c "npx prisma generate && npm run dev"
+
     environment:
       - NODE_ENV=development
       - DOCKER_ENV=true
@@ -393,9 +293,8 @@ services:
     ports:
       - "${AI_ORCHESTRATOR_PORT:-3007}:${AI_ORCHESTRATOR_PORT:-3007}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/backend/intelligence/ai-orchestrator:/app
-      - ai_orchestrator_node_modules:/app/node_modules
-      - ${PROJECT_ROOT:-..}/apps/backend/var/cache/ai-orchestrator:/app/data
+      - ${PROJECT_ROOT:-..}:/workspace
+      - ${PROJECT_ROOT:-..}/apps/backend/var/cache/ai-orchestrator:/workspace/apps/backend/var/cache/ai-orchestrator
     depends_on:
       postgres:
         condition: service_healthy
@@ -409,33 +308,10 @@ services:
   report:
     image: ${DOCKER_REGISTRY:-}node:20-bullseye
     container_name: ops-report
-    working_dir: /app
+    working_dir: /workspace/apps/backend/capabilities/document-domain/report
     command: >
-      sh -c "npm config set registry https://registry.npmjs.org
-      && npm config set fetch-retries 5
-      && npm config set fetch-retry-mintimeout 20000
-      && npm config set fetch-retry-maxtimeout 120000
-      && i=0
-      && until [ $$i -ge 5 ]; do
-        npm install --legacy-peer-deps --include=dev --no-package-lock && break;
-        i=$$((i+1));
-        echo 'npm install failed, retrying in 10s...';
-        sleep 10;
-      done
-      && [ $$i -lt 5 ]
-      && j=0
-      && until [ $$j -ge 5 ]; do
-        npx prisma generate && break;
-        j=$$((j+1));
-        echo 'prisma generate failed, retrying in 10s...';
-        sleep 10;
-      done
-      && [ $$j -lt 5 ]
-      && npm run build
-      && rm -rf dist/generated
-      && mkdir -p dist/generated
-      && cp -R generated/prisma dist/generated/prisma
-      && npm run start"
+      sh -c "npx prisma generate && npm run dev"
+
     environment:
       - NODE_ENV=development
       - DATABASE_URL=postgresql://${POSTGRES_USER:-ops}:${POSTGRES_PASSWORD:-ops_secret}@postgres:5432/${POSTGRES_DB:-ops}
@@ -449,10 +325,8 @@ services:
     ports:
       - "${REPORT_PORT:-3008}:${REPORT_PORT:-3008}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/backend/capabilities/document-domain/report:/app
-      - ${PROJECT_ROOT:-..}/packages/backend-contracts:/packages/backend-contracts
-      - report_runtime_node_modules:/app/node_modules
-      - report_files:/app/files
+      - ${PROJECT_ROOT:-..}:/workspace
+      - report_files:/workspace/apps/backend/capabilities/document-domain/report/files
     depends_on:
       postgres:
         condition: service_healthy
@@ -471,8 +345,8 @@ services:
   portal:
     image: ${DOCKER_REGISTRY:-}node:20-bullseye
     container_name: ops-portal
-    working_dir: /app
-    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && npm run dev"
+    working_dir: /workspace/apps/frontend/portal
+    command: sh -c "npm run dev"
     environment:
       - NODE_ENV=development
       - DOCKER_ENV=true
@@ -493,12 +367,7 @@ services:
     ports:
       - "${PORTAL_PORT:-5173}:${PORTAL_PORT:-5173}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/frontend/portal:/app
-      - ${PROJECT_ROOT:-..}/apps/frontend/shared:/shared
-      - ${PROJECT_ROOT:-..}/packages/backend-contracts:/packages/backend-contracts
-      - ${PROJECT_ROOT:-..}/packages/user-core:/packages/user-core
-      - ${PROJECT_ROOT:-..}/tsconfig.base.json:/tsconfig.base.json:ro
-      - portal_node_modules:/app/node_modules
+      - ${PROJECT_ROOT:-..}:/workspace
     depends_on:
       - platform
       - browser-worker
@@ -509,8 +378,8 @@ services:
   user-web:
     image: ${DOCKER_REGISTRY:-}node:20-bullseye
     container_name: ops-user-web
-    working_dir: /app
-    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && npm run dev"
+    working_dir: /workspace/apps/frontend/user-web
+    command: sh -c "npm run dev"
     environment:
       - NODE_ENV=development
       - DOCKER_ENV=true
@@ -522,12 +391,7 @@ services:
     ports:
       - "${USER_WEB_PORT:-5174}:${USER_WEB_PORT:-5174}"
     volumes:
-      - ${PROJECT_ROOT:-..}/apps/frontend/user-web:/app
-      - ${PROJECT_ROOT:-..}/apps/frontend/shared:/shared
-      - ${PROJECT_ROOT:-..}/packages/backend-contracts:/packages/backend-contracts
-      - ${PROJECT_ROOT:-..}/packages/user-core:/packages/user-core
-      - ${PROJECT_ROOT:-..}/tsconfig.base.json:/tsconfig.base.json:ro
-      - user_web_node_modules:/app/node_modules
+      - ${PROJECT_ROOT:-..}:/workspace
     depends_on:
       - platform
       - control-plane
@@ -616,7 +480,7 @@ services:
       args:
         SANDBOX_WORKER_PROJECT_PATH: ${SANDBOX_WORKER_PROJECT_PATH:-apps/backend/runtimes/sandbox-worker}
     container_name: ops-sandbox-worker
-    working_dir: /app
+    working_dir: /workspace/apps/backend/runtimes/sandbox-worker
     environment:
       - TEMPORAL_ADDRESS=temporal:7233
       - TEMPORAL_NAMESPACE=default
@@ -629,7 +493,7 @@ services:
     ports:
       - "8090:8090"
     volumes:
-      - ${PROJECT_ROOT:-..}/${SANDBOX_WORKER_PROJECT_PATH:-apps/backend/runtimes/sandbox-worker}:/app
+      - ${PROJECT_ROOT:-..}:/workspace
       - /var/run/docker.sock:/var/run/docker.sock  # For Docker sandbox backend
     depends_on:
       - temporal
@@ -641,17 +505,6 @@ volumes:
     driver: local
   redis_data:
     driver: local
-  auth_node_modules:
-  session_broker_node_modules:
-  control_plane_node_modules:
-  browser_worker_node_modules:
-  carbone_engine_node_modules:
-  browser_template_node_modules:
-  browser_semantics_node_modules:
-  ai_orchestrator_node_modules:
-  portal_node_modules:
-  user_web_node_modules:
-  report_runtime_node_modules:
   report_files:
   temporal_data:
 

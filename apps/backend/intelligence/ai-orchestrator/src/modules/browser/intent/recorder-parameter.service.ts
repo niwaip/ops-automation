@@ -110,7 +110,11 @@ export class RecorderParameterService {
         });
       }
 
-      if (command.tool === 'fill' && typeof command.params.value === 'string') {
+      if (
+        command.tool === 'fill' &&
+        typeof command.params.value === 'string' &&
+        !options?.templateSteps?.length
+      ) {
         registerParameter(this.inferFillParameter(command, index));
       }
 
@@ -344,10 +348,13 @@ export class RecorderParameterService {
   }
 
   extractTemplateStepFieldHint(step: TemplateStepLike): string {
+    const locatorType = typeof step.locator?.type === 'string' ? step.locator.type.trim() : '';
+    const isCssLocator = locatorType === 'css' || locatorType === 'test-id';
+
     const candidates = [
-      typeof step.locator?.value === 'string' ? step.locator.value : undefined,
-      typeof step.params?.selector === 'string' ? step.params.selector : undefined,
+      !isCssLocator && typeof step.locator?.value === 'string' ? step.locator.value : undefined,
       typeof step.description === 'string' ? step.description : undefined,
+      typeof step.params?.selector === 'string' ? step.params.selector : undefined,
     ];
 
     for (const candidate of candidates) {

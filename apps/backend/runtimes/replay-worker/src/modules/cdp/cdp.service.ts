@@ -283,6 +283,8 @@ export class CdpService implements OnModuleDestroy {
         return this.page.locator(`role=${locator.value}`);
       case 'text':
         return this.page.getByText(locator.value);
+      case 'label':
+        return this.page.getByLabel(locator.value, { exact: false });
       case 'test-id':
         return this.page.getByTestId(locator.value);
       case 'css':

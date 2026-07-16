@@ -7,7 +7,7 @@
   "types": "dist/main.d.ts",
   "scripts": {
     "build": "prisma generate && nest build",
-    "dev": "nest start --watch",
+    "dev": "prisma generate && nest start --watch",
     "start": "node dist/main.js",
     "start:prod": "node dist/main.js",
     "test": "jest",

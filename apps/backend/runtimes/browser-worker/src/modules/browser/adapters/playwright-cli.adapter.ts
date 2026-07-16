@@ -25,6 +25,20 @@ import {
 } from './browser-execution.adapter';
 import { WorkerService } from '../../worker/worker.service';
 
+// ---------------------------------------------------------------------------
+// Locator / error pattern constants
+// Keep in sync with browser-domain.constants.ts in ai-orchestrator.
+// ---------------------------------------------------------------------------
+/** Playwright strict-mode: locator resolved to multiple elements. */
+const STRICT_MODE_VIOLATION_PATTERN = /strict mode violation/i;
+/** Playwright: element not found or timed out. */
+const ELEMENT_NOT_FOUND_PATTERN = /does not match any elements|No element found|Timeout/i;
+/** Any locator resolution failure (superset of the two above). */
+const LOCATOR_ERROR_PATTERN =
+  /does not match any elements|No element found|strict mode violation|Unknown engine|Timeout/i;
+/** Ephemeral runtime element handle (e.g. "e24" or "12_3"). */
+const EPHEMERAL_REF_RE = /^(?:e\d+|\d+_\d+)$/i;
+
 interface CliSessionState {
   runtimeSessionId: string;
   profilePath: string;
@@ -956,19 +970,58 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     } catch (error: unknown) {
       const fallbackArgs = this.buildPlaceholderFallbackArgs(command, normalizedArgs, error);
       if (fallbackArgs) {
+        let fbSucceeded = false;
         try {
           result = await this.execCli(sessionId, [command, ...fallbackArgs]);
           this.assertNoCliError(result, `${command} failed`);
+          fbSucceeded = true;
         } catch (fbError) {
-          result = await this.executeIframeFallback(sessionId, command, fallbackArgs).catch(
-            () => undefined
-          );
-          if (!result) throw fbError;
+          // Try remaining label candidates before falling back to iframe
+          const remainingCandidates = this.buildLabelFallbackArgsList(command, normalizedArgs);
+          let lastCandidateError: unknown = fbError;
+          for (const candidateArgs of remainingCandidates) {
+            try {
+              result = await this.execCli(sessionId, [command, ...candidateArgs]);
+              this.assertNoCliError(result, `${command} failed`);
+              fbSucceeded = true;
+              break;
+            } catch (candidateError) {
+              lastCandidateError = candidateError;
+            }
+          }
+          if (!fbSucceeded) {
+            result = await this.executeIframeFallback(sessionId, command, fallbackArgs).catch(
+              () => undefined
+            );
+            if (!result) throw lastCandidateError;
+          }
         }
       } else {
         const errorMessage = error instanceof Error ? error.message : String(error || '');
+        // strict mode violation: locator matched multiple elements.
+        // For click commands backed by a text= or role= selector, retry with .first()
+        // so that ambiguous pages (e.g. repeated table rows) succeed on the first match
+        // rather than crashing the whole session.
         if (
-          /does not match any elements|No element found|Timeout/i.test(errorMessage) ||
+          command === 'click' &&
+          STRICT_MODE_VIOLATION_PATTERN.test(errorMessage) &&
+          normalizedArgs[0]
+        ) {
+          const firstResult = await this.executeStrictModeFirstFallback(
+            sessionId,
+            normalizedArgs[0]
+          ).catch(() => undefined);
+          if (firstResult) {
+            result = firstResult;
+          } else {
+            // Try iframe before giving up
+            result = await this.executeIframeFallback(sessionId, command, normalizedArgs).catch(
+              () => undefined
+            );
+            if (!result) throw error;
+          }
+        } else if (
+          ELEMENT_NOT_FOUND_PATTERN.test(errorMessage) ||
           /failed/i.test(errorMessage)
         ) {
           result = await this.executeIframeFallback(sessionId, command, normalizedArgs).catch(
@@ -984,8 +1037,8 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     return {
       status: 'success',
       command,
-      stdout: result.stdout,
-      stderr: result.stderr,
+      stdout: result!.stdout,
+      stderr: result!.stderr,
     };
   }
 
@@ -1092,7 +1145,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
       if (target) {
         const errorMessage = error instanceof Error ? error.message : String(error || '');
         if (
-          /does not match any elements|No element found|Timeout/i.test(errorMessage) ||
+          ELEMENT_NOT_FOUND_PATTERN.test(errorMessage) ||
           /failed/i.test(errorMessage)
         ) {
           try {
@@ -2441,7 +2494,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
   }
 
   private isRuntimeTargetRef(value: unknown): value is string {
-    return typeof value === 'string' && /^e\d+$/i.test(value.trim());
+    return typeof value === 'string' && EPHEMERAL_REF_RE.test(value.trim());
   }
 
   private assertNoCliError(result: CliExecResult, fallbackMessage: string): void {
@@ -2461,7 +2514,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     }
 
     const errorMessage = error instanceof Error ? error.message : String(error || '');
-    if (!/does not match any elements|No element found|strict mode violation/i.test(errorMessage)) {
+    if (!LOCATOR_ERROR_PATTERN.test(errorMessage)) {
       return undefined;
     }
 
@@ -2471,29 +2524,121 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     }
 
     const placeholder = this.extractRoleTextboxName(target);
-    if (!placeholder) {
-      return undefined;
+    if (placeholder) {
+      return [this.buildPlaceholderSelector(placeholder), ...restArgs];
     }
 
-    return [this.buildPlaceholderSelector(placeholder), ...restArgs];
+    // For label= targets, return the first (most specific) adjacent-input candidate.
+    // If this also fails, handleSimpleCommand will iterate remaining candidates
+    // via buildLabelFallbackArgsList.
+    const labelText = this.extractLabelText(target);
+    if (labelText) {
+      const candidates = this.buildAdjacentInputSelectors(labelText);
+      if (candidates[0]) {
+        return [candidates[0], ...restArgs];
+      }
+    }
+
+    return undefined;
   }
+
+  private buildLabelFallbackArgsList(
+    command: string,
+    args: string[]
+  ): string[][] {
+    if (command !== 'fill' || args.length < 2) {
+      return [];
+    }
+    const [target, ...restArgs] = args;
+    if (!target) {
+      return [];
+    }
+    const labelText = this.extractLabelText(target);
+    if (!labelText) {
+      return [];
+    }
+    // Return all candidates except the first (already tried by buildPlaceholderFallbackArgs).
+    return this.buildAdjacentInputSelectors(labelText)
+      .slice(1)
+      .map((selector) => [selector, ...restArgs]);
+  }
+
+  private extractLabelText(target: string): string | undefined {
+    // Matches: label=密码, label="密码", internal:label="密码", internal:label=密码
+    const match = target.match(/^(?:internal:)?label=(['"]?)(.+?)\1$/i);
+    return match?.[2]?.trim() || undefined;
+  }
+
+  private buildAdjacentInputSelectors(labelText: string): string[] {
+    // Returns an ordered list of selectors to try, from most specific to least.
+    const escaped = labelText.replace(/"/g, '\\"');
+    const regexEscaped = labelText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return [
+      // Standard <label> wrapping
+      `label:has-text("${escaped}") >> input >> visible=true >> nth=0`,
+      `label:has-text("${escaped}") >> select >> visible=true >> nth=0`,
+      // Exact text match (innermost element) -> closest ancestor <tr>
+      `text="${escaped}" >> xpath=ancestor::tr[1] >> input[type="password"] >> visible=true >> nth=0`,
+      `text="${escaped}" >> xpath=ancestor::tr[1] >> input:not([type="hidden"]):not([type="button"]):not([type="submit"]) >> visible=true >> nth=0`,
+      `text="${escaped}" >> xpath=ancestor::tr[1] >> select >> visible=true >> nth=0`,
+      // Substring text match (innermost element) -> closest ancestor <tr>
+      `text=/${regexEscaped}/i >> xpath=ancestor::tr[1] >> input[type="password"] >> visible=true >> nth=0`,
+      `text=/${regexEscaped}/i >> xpath=ancestor::tr[1] >> input:not([type="hidden"]):not([type="button"]):not([type="submit"]) >> visible=true >> nth=0`,
+      `text=/${regexEscaped}/i >> xpath=ancestor::tr[1] >> select >> visible=true >> nth=0`,
+    ];
+  }
+
+  /**
+   * W3C/Playwright ARIA role names that are valid targets for `getByRole()`.
+   * HTML tag names (input, select, textarea, div, span, …) must NOT be treated
+   * as roles — they are CSS selectors and must be passed through unchanged.
+   */
+  private static readonly PLAYWRIGHT_ARIA_ROLES = new Set([
+    'alert', 'alertdialog', 'application', 'article', 'banner', 'blockquote',
+    'button', 'caption', 'cell', 'checkbox', 'code', 'columnheader', 'combobox',
+    'complementary', 'contentinfo', 'definition', 'deletion', 'dialog', 'directory',
+    'document', 'emphasis', 'feed', 'figure', 'form', 'generic', 'grid', 'gridcell',
+    'group', 'heading', 'img', 'insertion', 'link', 'list', 'listbox', 'listitem',
+    'log', 'main', 'marquee', 'math', 'meter', 'menu', 'menubar', 'menuitem',
+    'menuitemcheckbox', 'menuitemradio', 'navigation', 'none', 'note', 'option',
+    'paragraph', 'presentation', 'progressbar', 'radio', 'radiogroup', 'region',
+    'row', 'rowgroup', 'rowheader', 'scrollbar', 'search', 'searchbox', 'separator',
+    'slider', 'spinbutton', 'status', 'strong', 'subscript', 'superscript',
+    'switch', 'tab', 'table', 'tablist', 'tabpanel', 'term', 'textbox', 'time',
+    'timer', 'toolbar', 'tooltip', 'tree', 'treegrid', 'treeitem',
+  ]);
 
   private normalizeSemanticRoleSelector(target: string): string {
     if (!target || /^role=/i.test(target)) {
       return target;
     }
 
+    // Convert CSS `label:has-text("xxx")` to Playwright `internal:label="xxx"` so it uses
+    // getByLabel() semantics instead of a raw CSS selector. Pages using table
+    // layouts without <label> elements will fail natively, but our label= fallback
+    // chain below will handle it gracefully.
+    const labelHasTextMatch = target.match(/^label:has-text\((['"]?)(.+?)\1\)$/i);
+    if (labelHasTextMatch?.[2]) {
+      return `internal:label="${labelHasTextMatch[2].trim()}"`;
+    }
+
+    // Match `something[name="..."]` — only convert when `something` is a known
+    // ARIA role.  HTML tag names like `input`, `select`, `div` must not be
+    // prefixed with `role=` because Playwright would then look for an element
+    // with that ARIA role rather than the HTML tag, causing "does not match".
     const match = target.match(/^([a-z_][\w-]*)\[name=(['"]?)(.+?)\2\]$/i);
     if (!match?.[1] || !match[3]) {
       return target;
     }
 
-    const role = match[1].trim();
-    const name = match[3].trim().replace(/"/g, '\\"');
-    if (!role || !name) {
+    const role = match[1].trim().toLowerCase();
+    if (!PlaywrightCliAdapter.PLAYWRIGHT_ARIA_ROLES.has(role)) {
+      // Not an ARIA role (e.g. `input`, `select`) — return as-is so Playwright
+      // interprets it as a CSS attribute selector.
       return target;
     }
 
+    const name = match[3].trim().replace(/"/g, '\\"');
     return `role=${role}[name="${name}"]`;
   }
 
@@ -2585,6 +2730,48 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
         index: positionalSelector.index,
       },
     };
+  }
+
+  /**
+   * Strict-mode fallback for click: when a text= or role= selector matches
+   * multiple elements, click the first visible one using .first() semantics.
+   * This is intentionally a best-effort measure — if the target page really
+   * requires a specific occurrence the template should carry a :nth-match locator
+   * (produced by the export layer).  Here we just prevent a hard crash when the
+   * template was generated before per-occurrence disambiguation was available.
+   */
+  private async executeStrictModeFirstFallback(
+    sessionId: string,
+    selector: string
+  ): Promise<CliExecResult | undefined> {
+    const session = this.getOrCreateSession(sessionId);
+    const activePageExpr = session.preferLatestTab
+      ? '(page.context().pages().length ? page.context().pages()[page.context().pages().length - 1] : page)'
+      : 'page';
+
+    const script = `async page => {
+      const activePage = ${activePageExpr};
+      const tryFirst = async (scope) => {
+        const loc = scope.locator(${JSON.stringify(selector)}).first();
+        const count = await loc.count().catch(() => 0);
+        if (!count) return null;
+        await loc.scrollIntoViewIfNeeded().catch(() => {});
+        await loc.click({ force: true, timeout: 5000 });
+        return JSON.stringify({ selector: ${JSON.stringify(selector)}, matchedIn: 'page', first: true });
+      };
+      const pageResult = await tryFirst(activePage).catch(() => null);
+      if (pageResult) return pageResult;
+      for (const frame of activePage.frames()) {
+        if (frame === activePage.mainFrame()) continue;
+        const frameResult = await tryFirst(frame).catch(() => null);
+        if (frameResult) return frameResult;
+      }
+      throw new Error('strict-mode-first fallback found no element for: ' + ${JSON.stringify(selector)});
+    }`;
+
+    const result = await this.execCli(sessionId, ['run-code', script]);
+    this.assertNoCliError(result, 'strict-mode-first fallback failed');
+    return result;
   }
 
   private extractRoleTextboxName(target: string): string | undefined {

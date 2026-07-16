@@ -556,10 +556,16 @@ const withNormalizedWorkflowInputParams = (
   workflowDsl: WorkflowDsl,
   activityDsl?: ActivityDsl
 ): WorkflowDsl => {
-  const mergedInputParams = mergeWorkflowInputParamMaps(
-    workflowDsl?.inputParams,
-    buildWorkflowInputParamsFromActivityDsl(activityDsl)
-  );
+  // 已显式声明输入参数时，只用已声明的（后续仍走 inputPolicy 水合）；不从 activity 步骤追加，
+  // 避免内部参数（引用上游步骤输出的）被聚成"入口参数"。未声明时才从 activity 自动发现。
+  const hasDeclaredInputs =
+    !!workflowDsl?.inputParams && Object.keys(workflowDsl.inputParams).length > 0;
+  const mergedInputParams = hasDeclaredInputs
+    ? normalizeWorkflowInputParamMap(workflowDsl.inputParams)
+    : mergeWorkflowInputParamMaps(
+        workflowDsl?.inputParams,
+        buildWorkflowInputParamsFromActivityDsl(activityDsl)
+      );
   if (Object.keys(mergedInputParams).length === 0) {
     return workflowDsl.inputParams ? { ...workflowDsl, inputParams: {} } : workflowDsl;
   }
@@ -1228,6 +1234,13 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
         setEditingWorkflow(null);
         didInitializeCodeSignatureRef.current = false;
         form.resetFields();
+        // 与 applyDraftToEditor 保持一致：把草稿的 name/description/taskQueue 写入表单，
+        // 否则只有 DSL 载入、表单字段为空。
+        form.setFieldsValue({
+          name: initialDraftDsl.name,
+          description: initialDraftDsl.description,
+          taskQueue: initialDraftDsl.taskQueue || 'SKILL_TASK_QUEUE',
+        });
         const nextActivityDsl = initialDraftDsl.activityDsl || DEFAULT_ACTIVITY_DSL;
         const nextWorkflowDsl = await hydrateWorkflowDslForEditor(
           initialDraftDsl.workflowDsl || DEFAULT_WORKFLOW_DSL,
@@ -1668,6 +1681,12 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
           : prev;
       }
       const currentDefinitions = prev.inputParams || {};
+      // 已显式声明输入参数时，保留已声明的，不再从步骤自动追加——
+      // 否则第二步起的内部参数（引用上游步骤输出的）会被聚成"入口参数"泄漏到参数区域。
+      // 未声明时（bootstrap）才从步骤自动发现。
+      if (Object.keys(currentDefinitions).length > 0) {
+        return prev;
+      }
       // 分析所有步骤（不仅是第一个），提取自动生成的参数
       // 浏览器模版场景下，所有步骤都在 activityDsl.activities[0].config.steps 中
       const discoveredParams: Record<string, WorkflowInputParamDefinition> = {};
@@ -2756,13 +2775,20 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
   // 收集工作流步骤的输入参数
   const collectWorkflowInputParams = (): Record<string, string> => {
     const params: Record<string, string> = {};
-    Object.entries(workflowDsl.inputParams || {}).forEach(([key, config]) => {
+    const declaredInputParams = workflowDsl.inputParams || {};
+    Object.entries(declaredInputParams).forEach(([key, config]) => {
       params[key] = normalizeValidationInputValue(
         config?.defaultValue !== undefined && config?.defaultValue !== ''
           ? config.defaultValue
           : config?.exampleValue
       );
     });
+    // 已显式声明输入参数时，只收集已声明的用于验证；不从步骤追加内部参数
+    // （否则第二步起引用上游步骤输出的内部参数会混进验证输入）。
+    // 未声明时（bootstrap）才从步骤自动发现。
+    if (Object.keys(declaredInputParams).length > 0) {
+      return params;
+    }
     workflowDsl.steps.forEach((step) => {
       getStepInputPublicEntries(step).forEach(([key, value]) => {
         if (!params[key]) {
@@ -3230,26 +3256,6 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
             关闭
           </Button>,
         ];
-
-  const codeGenerationModalFooter = [
-    codeGenerationState.result?.success && generatedCode ? (
-      <Button
-        key="view"
-        type="primary"
-        icon={<CodeOutlined />}
-        onClick={() => setCodeModalVisible(true)}
-      >
-        查看代码
-      </Button>
-    ) : null,
-    <Button
-      key="close"
-      onClick={() => dispatchCodeGeneration({ type: 'CLOSE' })}
-      disabled={codeGenerationState.isStreaming}
-    >
-      关闭
-    </Button>,
-  ].filter(Boolean);
 
   const renderTipLabel = (label: string, tip: string) => (
     <Space size={4}>
@@ -7979,51 +7985,6 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
         ) : (
           <Alert type="info" message="点击验证按钮开始验证" />
         )}
-      </Modal>
-      <Modal
-        title="AI 生成代码状态"
-        open={codeGenerationState.visible}
-        onCancel={() => {
-          if (!codeGenerationState.isStreaming) {
-            dispatchCodeGeneration({ type: 'CLOSE' });
-          }
-        }}
-        footer={codeGenerationModalFooter}
-        width={760}
-      >
-        <Space direction="vertical" style={{ width: '100%' }}>
-          {codeGenerationState.isStreaming && (
-            <Alert type="info" message="AI 正在生成 Workflow 代码..." showIcon />
-          )}
-          {!codeGenerationState.isStreaming && codeGenerationState.result && (
-            <Alert
-              type={codeGenerationState.result.success ? 'success' : 'error'}
-              message={codeGenerationState.result.success ? '代码已生成并保存' : '代码生成失败'}
-              description={
-                codeGenerationState.result.error ||
-                (codeGenerationState.result.generationMode === 'deterministic'
-                  ? '本次命中固定模版编译路径。'
-                  : `共尝试 ${codeGenerationState.result.attempts || 1} 次生成。`)
-              }
-              showIcon
-            />
-          )}
-          <Card title="生成日志" size="small">
-            <div
-              style={{ maxHeight: 320, overflow: 'auto', fontFamily: 'monospace', fontSize: 11 }}
-            >
-              {codeGenerationState.logs.map((log, i) => (
-                <div key={i} style={{ marginBottom: 4 }}>
-                  {log}
-                </div>
-              ))}
-              {codeGenerationState.logs.length === 0 && !codeGenerationState.isStreaming && (
-                <Text type="secondary">暂无日志</Text>
-              )}
-              {codeGenerationState.isStreaming && <Text type="secondary">等待更多状态...</Text>}
-            </div>
-          </Card>
-        </Space>
       </Modal>
       <Modal
         title={

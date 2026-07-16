@@ -893,7 +893,10 @@ describe('RecorderDebugService', () => {
         }),
         expect.objectContaining({
           action: 'click',
-          locator: { type: 'role', value: 'button[name="一覧に戻る"]' },
+          locator: expect.objectContaining({
+            type: 'role',
+            value: 'button[name="一覧に戻る"]',
+          }),
         }),
       ])
     );
@@ -1546,7 +1549,7 @@ describe('RecorderDebugService', () => {
         expect.objectContaining({
           step_id: 'step_5',
           action: 'click',
-          locator: expect.objectContaining({ type: 'text', value: '一覧に戻る' }),
+          locator: expect.objectContaining({ type: 'role', value: 'button[name="一覧に戻る"]' }),
         }),
       ])
     );

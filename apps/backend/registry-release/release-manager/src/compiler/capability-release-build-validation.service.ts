@@ -836,14 +836,15 @@ export class CapabilityReleaseBuildValidationService {
 
   async generateSkillDraft(
     id: string,
-    dto: GenerateSkillDraftDTO,
+    dto: GenerateSkillDraftDTO | undefined,
     userId: string | undefined,
     accessors: CapabilityReleaseBuildValidationAccessors
   ): Promise<{ release: CapabilityReleaseDTO; skillDraft: SkillDraftDTO }> {
+    const safeDto: GenerateSkillDraftDTO = dto ?? {};
     const release = await accessors.getReleaseOrThrow(id);
     const snapshot = await accessors.getCurrentSnapshotOrThrow(release);
-    const validation = dto.validationId
-      ? await accessors.getValidationOrThrow(dto.validationId)
+    const validation = safeDto.validationId
+      ? await accessors.getValidationOrThrow(safeDto.validationId)
       : await accessors.getLatestSuccessfulValidationOrThrow(id);
 
     const draftPayload = this.capabilityReleaseSkillDraftService.buildSkillDraftPayload(

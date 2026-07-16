@@ -65,6 +65,7 @@ import {
   RecorderExportService,
   RecorderScriptExportService,
   RecorderTemplateExportService,
+  RecorderDurableLocatorResolver,
 } from './export';
 import { RecorderStateStoreService } from './execute/recorder';
 import { RecorderDebugRollbackService } from './execute/recorder';
@@ -112,6 +113,7 @@ import { RecorderDebugRollbackService } from './execute/recorder';
     RecorderLoopExportService,
     RecorderLoopService,
     RecorderExportService,
+    RecorderDurableLocatorResolver,
     RecorderDisambiguationService,
     RecorderObservationService,
     RecorderSnapshotService,

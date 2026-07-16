@@ -87,8 +87,10 @@ services:
     ports:
       - "${PLATFORM_PORT:-3001}:${PLATFORM_PORT:-3001}"
     volumes:
+      # node_modules lives on the bind mount (not a named volume) so pnpm can
+      # freely rmdir/mkdir it during full rebuilds. A mountpoint cannot be
+      # rmdir'd, which previously caused `EBUSY: rmdir '/workspace/node_modules'`.
       - ${PROJECT_ROOT:-..}:/workspace
-      - auth_node_modules:/workspace/node_modules
     depends_on:
       postgres:
         condition: service_healthy
@@ -196,30 +198,22 @@ services:
     <<: *common-node-service
     container_name: ops-browser-template
     command: >
-      sh -c "npm config set registry https://registry.npmjs.org
-      && npm config set fetch-retries 5
-      && npm config set fetch-retry-mintimeout 20000
-      && npm config set fetch-retry-maxtimeout 120000
-      && i=0
-      && until [ $$i -ge 5 ]; do
-        npm install --legacy-peer-deps --include=dev && break;
-        i=$$((i+1));
-        echo 'npm install failed, retrying in 10s...';
-        sleep 10;
-      done
-      && [ $$i -lt 5 ]
-      && j=0
-      && until [ $$j -ge 5 ]; do
-        npx prisma generate && break;
-        j=$$((j+1));
-        echo 'prisma generate failed, retrying in 10s...';
-        sleep 10;
-      done
-      && [ $$j -lt 5 ]
+      sh -c "if [ ! -f /app/node_modules/.bin/nest ]; then
+        npm config set registry https://registry.npmjs.org
+        && npm config set fetch-retries 5
+        && npm config set fetch-retry-mintimeout 20000
+        && npm config set fetch-retry-maxtimeout 120000
+        && i=0
+        && until [ $$i -ge 5 ]; do
+          npm install --legacy-peer-deps --include=dev && break;
+          i=$$((i+1));
+          echo 'npm install failed, retrying in 10s...';
+          sleep 10;
+        done
+        && [ $$i -lt 5 ];
+      fi
+      && npx prisma generate
       && npm run build
-      && rm -rf /app/dist/generated
-      && mkdir -p /app/dist/generated
-      && cp -R /app/generated/prisma /app/dist/generated/prisma
       && npm run start"
     environment:
       <<: *common-env
@@ -456,7 +450,6 @@ volumes:
     driver: local
   redis_data:
     driver: local
-  auth_node_modules:
   session_broker_node_modules:
   control_plane_node_modules:
   browser_worker_node_modules:

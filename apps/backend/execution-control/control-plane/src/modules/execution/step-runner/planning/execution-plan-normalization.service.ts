@@ -1509,11 +1509,14 @@ export class ExecutionPlanNormalizationService {
 
     switch (type) {
       case 'css':
+      case 'selector':
         return value;
       case 'role':
         return `role=${value}`;
       case 'text':
         return `text=${value}`;
+      case 'label':
+        return `internal:label="${value}"`;
       case 'testid':
       case 'data-testid':
         return `[data-testid="${value}"]`;

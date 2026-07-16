@@ -13,8 +13,15 @@ import {
 import { RecorderParameterService } from '../intent';
 import { RecorderScriptExportService } from './recorder-script-export.service';
 import { RecorderTemplateExportService } from './recorder-template-export.service';
+import { RecorderDurableLocatorResolver } from './recorder-durable-locator-resolver.service';
 
 type ExportBackendLike = 'cli' | 'chrome-devtools' | 'mcp';
+
+interface DurableLocatorResolutionHistoryLike {
+  execution?: {
+    results?: Array<Record<string, unknown>>;
+  };
+}
 
 interface ExportMetadataLike {
   name: string;
@@ -159,7 +166,8 @@ export class RecorderExportAssemblyService {
     private readonly recorderExportService: RecorderExportService,
     private readonly recorderParameterService: RecorderParameterService,
     private readonly recorderScriptExportService: RecorderScriptExportService,
-    private readonly recorderTemplateExportService: RecorderTemplateExportService
+    private readonly recorderTemplateExportService: RecorderTemplateExportService,
+    private readonly durableLocatorResolver: RecorderDurableLocatorResolver
   ) {}
 
   async buildExportArtifacts(session: SessionLike, userGoal: string): Promise<ExportArtifactsLike> {
@@ -168,6 +176,7 @@ export class RecorderExportAssemblyService {
       session.executedCommands,
       session
     );
+    session.executedCommands = enrichedCommands;
     const sanitizedCommands = this.recorderTemplateExportService.sanitizeRecordedCommandsForExport(
       enrichedCommands
     );
@@ -347,27 +356,44 @@ export class RecorderExportAssemblyService {
       groundingByCommand.set(firstCommand, chosenTarget);
     }
 
-    if (groundingByCommand.size === 0) {
-      return commands;
-    }
-
     return commands.map((command) => {
       const target = groundingByCommand.get(command);
-      if (!target) {
+      const existingLocator = command.locator || {};
+      const groundingEnrichedLocator = target
+        ? {
+            ...existingLocator,
+            ...(target.ref ? { ref: target.ref } : {}),
+            ...(target.role ? { role: target.role } : {}),
+            ...(target.name ? { name: target.name } : {}),
+            ...(target.contextLabel ? { contextLabel: target.contextLabel } : {}),
+            ...(target.regionId ? { regionId: target.regionId } : {}),
+          }
+        : existingLocator;
+
+      const resolved = this.durableLocatorResolver.resolve(
+        { ...command, locator: groundingEnrichedLocator },
+        { history: session.history as DurableLocatorResolutionHistoryLike[] },
+        target
+      );
+
+      if (!resolved) {
+        if (target) {
+          return { ...command, locator: groundingEnrichedLocator };
+        }
         return command;
       }
-      const existingLocator = command.locator || {};
-      const enrichedLocator = {
-        ...existingLocator,
-        ...(target.ref ? { ref: target.ref } : {}),
-        ...(target.role ? { role: target.role } : {}),
-        ...(target.name ? { name: target.name } : {}),
-        ...(target.contextLabel ? { contextLabel: target.contextLabel } : {}),
-        ...(target.regionId ? { regionId: target.regionId } : {}),
-      };
+
       return {
         ...command,
-        locator: enrichedLocator,
+        locator: {
+          ...groundingEnrichedLocator,
+          ref: resolved.ref,
+          strategy: resolved.strategy,
+          value: resolved.value,
+          ...(resolved.role ? { role: resolved.role } : {}),
+          ...(resolved.name ? { name: resolved.name } : {}),
+          ...(resolved.expression ? { expression: resolved.expression } : {}),
+        },
       };
     });
   }

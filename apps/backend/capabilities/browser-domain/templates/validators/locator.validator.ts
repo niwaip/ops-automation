@@ -16,7 +16,7 @@ export class LocatorValidator {
     }
 
     // Check locator type is valid
-    const validTypes: LocatorType[] = ['role', 'text', 'test-id', 'css', 'xpath', 'ref'];
+    const validTypes: LocatorType[] = ['role', 'text', 'label', 'test-id', 'css', 'xpath', 'ref'];
     if (!validTypes.includes(locator.type)) {
       errors.push(
         `Invalid locator type "${locator.type}". Must be one of: ${validTypes.join(', ')}`

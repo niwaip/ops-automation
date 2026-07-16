@@ -92,6 +92,9 @@ export default defineConfig({
       ),
       axios: resolveDependencyEntry('./node_modules/axios/index.js'),
       'zustand/vanilla': resolveDependencyEntry('./node_modules/zustand/vanilla.js'),
+      'react-markdown': resolveDependencyEntry('./node_modules/react-markdown'),
+      'remark-gfm': resolveDependencyEntry('./node_modules/remark-gfm'),
+      'rehype-raw': resolveDependencyEntry('./node_modules/rehype-raw'),
     },
   },
   server: {

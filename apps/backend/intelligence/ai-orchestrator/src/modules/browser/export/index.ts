@@ -1,3 +1,4 @@
+export * from './recorder-durable-locator-resolver.service';
 export * from './recorder-export-assembly.service';
 export * from './recorder-export.service';
 export * from './recorder-script-export.service';

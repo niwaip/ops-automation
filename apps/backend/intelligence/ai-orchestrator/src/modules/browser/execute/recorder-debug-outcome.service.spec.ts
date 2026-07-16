@@ -432,4 +432,188 @@ describe('RecorderDebugOutcomeService', () => {
       ])
     );
   });
+
+  it('routes login fill+click flow to form-submit verifier with 100% confidence', () => {
+    const service = new RecorderDebugOutcomeService();
+    const beforeObservation: any = {
+      currentPageUrl: 'http://10.167.105.37:8080/login.htm',
+      title: '登录画面',
+      text: '登录',
+      inputs: [],
+      buttons: [],
+      interactiveState: {
+        inputs: [
+          { ref: 'e1', diffKey: 'e1', role: 'textbox', name: '用户名', visible: true, value: '' },
+          { ref: 'e2', diffKey: 'e2', role: 'textbox', name: '密码', visible: true, value: '' },
+        ],
+        buttons: [],
+      },
+      headings: [],
+      links: [],
+      suggestedParameters: [],
+    };
+    const afterObservation: any = {
+      currentPageUrl: 'http://10.167.105.37:8080/index',
+      title: '主页',
+      text: '欢迎',
+      inputs: [],
+      buttons: [],
+      interactiveState: { inputs: [], buttons: [] },
+      headings: [],
+      links: [],
+      suggestedParameters: [],
+    };
+
+    const outcome = service.buildOutcome({
+      status: 'executed',
+      reply: '将依次填写用户名和密码，点击 登录\n已执行当前页面操作。',
+      userGoal: '用 用户名 S22014 密码 abcd1234 进行登录',
+      beforeObservation,
+      observation: afterObservation,
+      commands: [
+        { tool: 'fill', params: { selector: '用户名', value: 'S22014' } },
+        { tool: 'fill', params: { selector: '密码', value: 'abcd1234' } },
+        { tool: 'click', params: { target: 'e28' } },
+      ],
+      execution: {
+        success: true,
+        results: [],
+        executedCommands: [
+          { tool: 'fill', params: { selector: '用户名', value: 'S22014' } },
+          { tool: 'fill', params: { selector: '密码', value: 'abcd1234' } },
+          { tool: 'click', params: { target: 'e28' } },
+        ],
+      },
+    });
+
+    expect(outcome.status).toBe('succeeded');
+    expect(outcome.verification).toEqual(
+      expect.objectContaining({
+        verifier: 'form-submit',
+        routeReason: 'goal-pattern',
+        success: true,
+        confidence: 1,
+      })
+    );
+    expect(outcome.verification.checks).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'input_value_written' }),
+      ])
+    );
+  });
+
+  it('keeps fill verifier for fill-only turns even when goal contains a submit keyword', () => {
+    const service = new RecorderDebugOutcomeService();
+    const beforeObservation: any = {
+      currentPageUrl: 'https://example.com/login',
+      title: 'Login',
+      text: '登录页',
+      inputs: [],
+      buttons: [],
+      interactiveState: {
+        inputs: [
+          { ref: 'input-1', diffKey: 'input-1', role: 'textbox', name: '用户名', visible: true, value: '' },
+        ],
+        buttons: [],
+      },
+      headings: [],
+      links: [],
+      suggestedParameters: [],
+    };
+    const afterObservation: any = {
+      currentPageUrl: 'https://example.com/login',
+      title: 'Login',
+      text: '登录页',
+      inputs: [],
+      buttons: [],
+      interactiveState: {
+        inputs: [
+          { ref: 'input-1', diffKey: 'input-1', role: 'textbox', name: '用户名', visible: true, value: 'S22014' },
+        ],
+        buttons: [],
+      },
+      headings: [],
+      links: [],
+      suggestedParameters: [],
+    };
+
+    const outcome = service.buildOutcome({
+      status: 'executed',
+      reply: '已填写用户名。',
+      userGoal: '登录前先填写用户名 S22014',
+      beforeObservation,
+      observation: afterObservation,
+      commands: [
+        { tool: 'fill', params: { target: 'input-1', value: 'S22014' } },
+      ],
+      execution: {
+        success: true,
+        results: [],
+        executedCommands: [
+          { tool: 'fill', params: { target: 'input-1', value: 'S22014' } },
+        ],
+      },
+    });
+
+    expect(outcome.verification).toEqual(
+      expect.objectContaining({
+        verifier: 'fill',
+        routeReason: 'actionType',
+      })
+    );
+    expect(outcome.verification.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'input_value_written', passed: true }),
+      ])
+    );
+  });
+
+  it('rejects grounding chosenTarget when observation ref node collides with command intent', () => {
+    const service = new RecorderDebugOutcomeService();
+    const observation: any = {
+      currentPageUrl: 'http://10.0.0.1:8080/login.htm',
+      title: '登录画面',
+      text: '登录',
+      inputs: [],
+      buttons: [],
+      interactiveState: {
+        inputs: [],
+        buttons: [
+          { ref: 'e28', diffKey: 'e28', role: 'cell', name: '用户：', visible: true },
+          { ref: 'e29', diffKey: 'e29', role: 'button', name: '登录', text: '登录', visible: true },
+        ],
+      },
+      headings: [],
+      links: [],
+      suggestedParameters: [],
+    };
+
+    const outcome = service.buildOutcome({
+      status: 'executed',
+      reply: '已点击登录。',
+      userGoal: '点击登录按钮',
+      observation,
+      commands: [
+        {
+          tool: 'click',
+          params: { target: 'e28', text: '登录' },
+          locator: { strategy: 'ref', value: 'e28', generatedBy: 'cli' },
+          description: '点击登录按钮',
+        },
+      ],
+      execution: {
+        success: true,
+        results: [],
+        executedCommands: [
+          { tool: 'click', params: { target: 'e28', text: '登录' } },
+        ],
+      },
+    });
+
+    const chosenTarget = outcome.grounding?.chosenTarget;
+    if (chosenTarget) {
+      expect(chosenTarget.role).not.toBe('cell');
+      expect(String(chosenTarget.name || chosenTarget.text || '').toLowerCase()).toContain('登录');
+    }
+  });
 });

@@ -8,6 +8,13 @@ import {
   RecorderManualInterventionRecord,
   RecorderManualInterventionSignal,
 } from '../loop';
+import {
+  EPHEMERAL_REF_PATTERN,
+  INPUT_ROLES,
+  ACTION_ROLES,
+  SNAPSHOT_ROLE_ALTERNATION,
+  isRoleCompatibleWithTool,
+} from '../browser-domain.constants';
 
 interface ObservationLike {
   currentPageUrl?: string;
@@ -73,6 +80,8 @@ interface OptionalManualInterventionPlan {
 
 @Injectable()
 export class RecorderTemplateExportService {
+  // Role sets are imported from browser-domain.constants.ts.
+
   constructor(
     private readonly branchAnalysisService: BranchAnalysisService,
     private readonly recorderLoopService: RecorderLoopService
@@ -541,12 +550,60 @@ export class RecorderTemplateExportService {
       return this.withGroundingMetadata(targetLocator, command.locator);
     }
 
+    if (
+      typeof command.locator?.role === 'string' &&
+      command.locator.role.trim() &&
+      typeof command.locator?.name === 'string' &&
+      command.locator.name.trim() &&
+      this.isRoleCompatibleWithTool(command.locator.role.trim(), command.tool)
+    ) {
+      const escapedName = command.locator.name.trim().replace(/"/g, '\\"');
+      return this.withGroundingMetadata(
+        { type: 'role', value: `${command.locator.role.trim()}[name="${escapedName}"]` },
+        command.locator
+      );
+    }
+
+    const expressionLocator = this.toTemplateLocatorFromExpression(command.locator, command.tool);
+    if (expressionLocator) {
+      // For text-type locators derived from getByText(), the same text may appear
+      // multiple times on the page (e.g. repeated table rows).  Fall through to
+      // the snapshot-based uniqueness check so we can emit :nth-match when needed.
+      // Role/label/testId locators are already unique by construction — return them
+      // directly without the extra snapshot round-trip.
+      if (expressionLocator.type !== 'text') {
+        return this.withGroundingMetadata(expressionLocator, command.locator);
+      }
+
+      // text-type: check whether the snapshot confirms it appears only once.
+      // If resolveTemplateLocatorFromSnapshotText finds the ref and the text
+      // occurs multiple times it will promote to :nth-match automatically.
+      const ref = this.extractRecordedRef(command);
+      if (ref && session?.history?.length) {
+        const snapshotResolved = this.resolveTemplateLocatorFromSnapshotText(
+          expressionLocator.value,
+          command,
+          session
+        );
+        if (snapshotResolved) {
+          return this.withGroundingMetadata(snapshotResolved, command.locator);
+        }
+      }
+
+      // No snapshot available (e.g. early recording) — keep the text locator as-is.
+      return this.withGroundingMetadata(expressionLocator, command.locator);
+    }
+
     const resolvedRefLocator = this.resolveTemplateLocatorFromRecordedRef(command, session);
     if (resolvedRefLocator) {
       return this.withGroundingMetadata(resolvedRefLocator, command.locator);
     }
 
-    if (command.locator?.strategy && command.locator.value) {
+    if (
+      command.locator?.strategy &&
+      command.locator.value &&
+      this.isRoleCompatibleWithTool(command.locator.strategy, command.tool)
+    ) {
       const runtimeLocator = this.toTemplateLocatorFromRuntimeLocator(command.locator);
       if (runtimeLocator) {
         return runtimeLocator;
@@ -554,14 +611,25 @@ export class RecorderTemplateExportService {
     }
 
     if (typeof command.params.selector === 'string' && command.params.selector.trim()) {
-      if (this.isEphemeralRuntimeHandle(command.params.selector)) {
+      const selectorValue = command.params.selector.trim();
+      if (this.isEphemeralRuntimeHandle(selectorValue)) {
         const fromDescription = this.toTemplateLocatorFromDescription(command.description);
         return this.withGroundingMetadata(fromDescription, command.locator);
       }
+      if (command.tool === 'fill' || command.tool === 'type_text') {
+        const fromLabel = this.buildTemplateLocatorFromLabel(
+          selectorValue,
+          command.description,
+          command.tool
+        );
+        if (fromLabel) {
+          return this.withGroundingMetadata(fromLabel, command.locator);
+        }
+      }
       return this.withGroundingMetadata(
         {
-          type: this.inferTemplateLocatorType(command.params.selector),
-          value: command.params.selector,
+          type: this.inferTemplateLocatorType(selectorValue),
+          value: selectorValue,
         },
         command.locator
       );
@@ -572,7 +640,37 @@ export class RecorderTemplateExportService {
         const fromDescription = this.toTemplateLocatorFromDescription(command.description);
         return this.withGroundingMetadata(fromDescription, command.locator);
       }
-      const fromLabel = this.buildTemplateLocatorFromLabel(command.params.text, command.description);
+
+      const fromSnapshotText = this.resolveTemplateLocatorFromSnapshotText(
+        command.params.text.trim(),
+        command,
+        session
+      );
+      if (fromSnapshotText) {
+        if (
+          command.tool === 'click' &&
+          fromSnapshotText.type === 'text' &&
+          typeof fromSnapshotText.value === 'string' &&
+          fromSnapshotText.value.trim()
+        ) {
+          const normalizedText = fromSnapshotText.value.trim();
+          const escaped = normalizedText.replace(/"/g, '\\"');
+          const isButton = this.isButtonLikeDescription(command.description);
+          const role = isButton ? 'button' : 'link';
+          const upgraded: TemplateStepArtifactLike['locator'] = {
+            type: 'role',
+            value: `${role}[name="${escaped}"]`,
+          };
+          return this.withGroundingMetadata(upgraded, command.locator);
+        }
+        return this.withGroundingMetadata(fromSnapshotText, command.locator);
+      }
+
+      const fromLabel = this.buildTemplateLocatorFromLabel(
+        command.params.text,
+        command.description,
+        command.tool
+      );
       return this.withGroundingMetadata(fromLabel, command.locator);
     }
 
@@ -582,6 +680,71 @@ export class RecorderTemplateExportService {
     }
 
     return undefined;
+  }
+
+  /**
+   * Parse the CLI-generated expression (e.g. `getByRole('button', { name: '...' })`)
+   * into a template locator. The expression was produced by `generate-locator <ref>`
+   * on the live page and is the most reliable locator source.
+   */
+  private toTemplateLocatorFromExpression(
+    locator: BrowserCommand['locator'] | undefined,
+    tool?: string
+  ): TemplateStepArtifactLike['locator'] | undefined {
+    const expression = typeof locator?.expression === 'string' ? locator.expression.trim() : '';
+    if (!expression) {
+      return undefined;
+    }
+
+    const roleMatch = expression.match(
+      /^getByRole\(\s*['"]([^'"]+)['"],\s*\{\s*name:\s*['"]([^'"]+)['"]/
+    );
+    if (roleMatch?.[1] && roleMatch[2]) {
+      const role = roleMatch[1].trim();
+      if (tool && !this.isRoleCompatibleWithTool(role, tool)) {
+        return undefined;
+      }
+      const name = roleMatch[2].trim().replace(/"/g, '\\"');
+      return { type: 'role', value: `${role}[name="${name}"]` };
+    }
+
+    // getByText('营业商谈', { exact: true })
+    const textMatch = expression.match(/^getByText\(\s*['"]([^'"]+)['"]/);
+    if (textMatch?.[1]) {
+      return { type: 'text', value: textMatch[1].trim() };
+    }
+
+    // getByLabel('用户名', { exact: false })
+    const labelMatch = expression.match(/^getByLabel\(\s*['"]([^'"]+)['"]/);
+    if (labelMatch?.[1]) {
+      return { type: 'label', value: labelMatch[1].trim() };
+    }
+
+    // getByPlaceholder('请输入')
+    const placeholderMatch = expression.match(/^getByPlaceholder\(\s*['"]([^'"]+)['"]/);
+    if (placeholderMatch?.[1]) {
+      return { type: 'placeholder', value: placeholderMatch[1].trim() };
+    }
+
+    // getByTestId('submit-btn')
+    const testIdMatch = expression.match(/^getByTestId\(\s*['"]([^'"]+)['"]/);
+    if (testIdMatch?.[1]) {
+      return { type: 'test-id', value: testIdMatch[1].trim() };
+    }
+
+    const locatorMatch = expression.match(/^locator\(\s*(['"])([\s\S]*?)\1\s*\)$/);
+    if (locatorMatch?.[2]) {
+      return {
+        type: this.inferTemplateLocatorType(locatorMatch[2]),
+        value: locatorMatch[2].trim(),
+      };
+    }
+
+    return undefined;
+  }
+
+  private isRoleCompatibleWithTool(role: string, tool: string): boolean {
+    return isRoleCompatibleWithTool(role, tool);
   }
 
   private withGroundingMetadata(
@@ -948,12 +1111,39 @@ export class RecorderTemplateExportService {
       return undefined;
     }
 
-    const roleMatch = target.trim().match(/^([a-zA-Z_][\w-]*)\[name=(["'])(.+)\2\]$/);
+    const trimmed = target.trim();
+
+    // role[name="..."] format → role locator
+    const roleMatch = trimmed.match(/^([a-zA-Z_][\w-]*)\[name=(["'])(.+)\2\]$/);
     if (roleMatch?.[1] && roleMatch[3]) {
       return {
         type: 'role',
         value: `${roleMatch[1]}[name="${roleMatch[3]}"]`,
       };
+    }
+
+    // Skip ephemeral runtime handles (e.g. "e24", "12_3") — they are session-scoped
+    // and cannot be used as stable locators in a template.
+    if (this.isEphemeralRuntimeHandle(trimmed)) {
+      return undefined;
+    }
+
+    // Explicit Playwright-style prefixes: role=, text=, xpath=, label=
+    if (/^(role|text|xpath|label)=/i.test(trimmed)) {
+      const eqIndex = trimmed.indexOf('=');
+      const locatorType = trimmed.slice(0, eqIndex).toLowerCase();
+      const locatorValue = trimmed.slice(eqIndex + 1);
+      return { type: locatorType, value: locatorValue };
+    }
+
+    // CSS-style selectors: start with #, ., [, // (xpath), or contain > or :has
+    if (
+      /^(#|\.|\[|\/\/)/.test(trimmed) ||
+      trimmed.includes('>>') ||
+      trimmed.includes(':has') ||
+      trimmed.includes('[data-testid=')
+    ) {
+      return { type: this.inferTemplateLocatorType(trimmed), value: trimmed };
     }
 
     return undefined;
@@ -1088,7 +1278,8 @@ export class RecorderTemplateExportService {
 
   buildTemplateLocatorFromLabel(
     label: string | undefined,
-    description?: string
+    description?: string,
+    action?: string
   ): TemplateStepArtifactLike['locator'] | undefined {
     const normalizedLabel = typeof label === 'string' ? label.trim() : '';
     if (!normalizedLabel) {
@@ -1100,6 +1291,17 @@ export class RecorderTemplateExportService {
       return {
         type: 'role',
         value: `button[name="${escapedName}"]`,
+      };
+    }
+
+    // Fill actions target input elements: prefer label= strategy so the runtime
+    // uses Playwright's getByLabel() semantics instead of getByText() which would
+    // match visible text nodes (e.g. the <label> element itself) rather than the
+    // associated <input>.
+    if (action === 'fill' || action === 'type_text') {
+      return {
+        type: 'label',
+        value: normalizedLabel,
       };
     }
 
@@ -1118,14 +1320,7 @@ export class RecorderTemplateExportService {
   }
 
   isEphemeralRuntimeHandle(value: unknown): boolean {
-    if (typeof value !== 'string') {
-      return false;
-    }
-    const normalized = value.trim();
-    if (!normalized) {
-      return false;
-    }
-    return /^e\d+$/i.test(normalized) || /^\d+_\d+$/.test(normalized);
+    return typeof value === 'string' && !!value.trim() && EPHEMERAL_REF_PATTERN.test(value.trim());
   }
 
   private isMeaningfulObservation(observation?: ObservationLike): observation is ObservationLike {
@@ -1355,7 +1550,15 @@ export class RecorderTemplateExportService {
       return undefined;
     }
 
+    const executionIndex = typeof command.executionIndex === 'number' ? command.executionIndex : undefined;
+
     for (const turn of session.history) {
+      if (typeof executionIndex === 'number') {
+        const turnExecutionIndex = this.extractTurnExecutionIndex(turn);
+        if (turnExecutionIndex !== undefined && turnExecutionIndex > executionIndex) {
+          break;
+        }
+      }
       const results = turn.execution?.results;
       if (!Array.isArray(results)) {
         continue;
@@ -1382,6 +1585,18 @@ export class RecorderTemplateExportService {
     return undefined;
   }
 
+  private extractTurnExecutionIndex(turn: unknown): number | undefined {
+    if (typeof turn !== 'object' || turn === null) return undefined;
+    const commands = (turn as { commands?: unknown }).commands;
+    if (!Array.isArray(commands)) return undefined;
+    for (const cmd of commands) {
+      if (cmd && typeof cmd === 'object' && typeof (cmd as { executionIndex?: unknown }).executionIndex === 'number') {
+        return (cmd as { executionIndex: number }).executionIndex;
+      }
+    }
+    return undefined;
+  }
+
   private extractRecordedRef(command: BrowserCommand): string | undefined {
     const target =
       typeof command.params.target === 'string' && this.isEphemeralRuntimeHandle(command.params.target)
@@ -1404,7 +1619,7 @@ export class RecorderTemplateExportService {
     const escapedRef = ref.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const roleMatch = snapshotContent.match(
       new RegExp(
-        `(?:-\\s*)?(button|link|textbox|checkbox|radio|combobox)\\s+"([^"]+)"\\s+\\[ref=${escapedRef}\\]`,
+        `(?:-\\s*)?(${SNAPSHOT_ROLE_ALTERNATION})\\s+"([^"]+)"\\s+\\[ref=${escapedRef}\\]`,
         'i'
       )
     );
@@ -1417,6 +1632,139 @@ export class RecorderTemplateExportService {
       };
     }
     return undefined;
+  }
+
+  private resolveTemplateLocatorFromSnapshotText(
+    text: string,
+    command: BrowserCommand,
+    session?: SessionLike
+  ): TemplateStepArtifactLike['locator'] | undefined {
+    if (!text || !session?.history?.length) {
+      return undefined;
+    }
+
+    const executionIndex =
+      typeof command.executionIndex === 'number' ? command.executionIndex : undefined;
+    const escapedText = this.escapeRegex(text);
+    const refPattern = new RegExp(
+      `(?:-\\s*)?(${SNAPSHOT_ROLE_ALTERNATION})(\\s+"[^"]*")?\\s+\\[ref=(e\\d+)\\].*${escapedText}`,
+      'i'
+    );
+    const exactTextPattern = new RegExp(
+      `(?:-\\s*)?(${SNAPSHOT_ROLE_ALTERNATION})\\s+"${escapedText}"\\s+\\[ref=(e\\d+)\\]`,
+      'i'
+    );
+
+    let exactMatch: { role: string; ref: string; content: string } | undefined;
+    let prefixMatch: { role: string; ref: string; content: string } | undefined;
+
+    for (const turn of session.history) {
+      if (typeof executionIndex === 'number') {
+        const turnExecutionIndex = this.extractTurnExecutionIndex(turn);
+        if (turnExecutionIndex !== undefined && turnExecutionIndex > executionIndex) {
+          break;
+        }
+      }
+      const results = turn.execution?.results;
+      if (!Array.isArray(results)) continue;
+
+      for (const result of results) {
+        const content =
+          result && typeof result === 'object' && result.data && typeof result.data === 'object'
+            ? (result.data as Record<string, unknown>).content
+            : undefined;
+        if (typeof content !== 'string' || !content) continue;
+
+        if (!exactMatch) {
+          const m = content.match(exactTextPattern);
+          if (m?.[1] && m[2]) {
+            exactMatch = { role: m[1].toLowerCase(), ref: m[2], content };
+          }
+        }
+        if (!prefixMatch) {
+          for (const line of content.split('\n')) {
+            const m = line.match(refPattern);
+            if (m?.[1] && m[3]) {
+              prefixMatch = { role: m[1].toLowerCase(), ref: m[3], content };
+              break;
+            }
+          }
+        }
+        if (exactMatch) break;
+      }
+      if (exactMatch) break;
+    }
+
+    const match = exactMatch || prefixMatch;
+    if (!match) return undefined;
+
+    if (exactMatch && match.role !== 'generic' && match.role !== 'cell' && match.role !== 'row') {
+      // Extra guard: if the same text also exists as a `generic` (sidebar/menu) element
+      // in the same snapshot, the role-based locator (e.g. link[name="..."]) is
+      // unreliable — it refers to an ephemeral tab/header element that only exists
+      // after the user has visited that page once.  Prefer a text= locator so that
+      // the always-present menu item is used regardless of tab state.
+      if (this.hasCoexistingGenericText(match.content, text)) {
+        const ordinal = this.countTextOccurrences(match.content, text, match.ref);
+        return {
+          type: 'css',
+          value: `:nth-match(text=${text}, ${ordinal})`,
+        };
+      }
+
+      return {
+        type: 'role',
+        value: `${match.role}[name="${text.replace(/"/g, '\\"')}"]`,
+      };
+    }
+
+    const ordinal = this.countTextOccurrences(match.content, text, match.ref);
+    return {
+      type: 'css',
+      value: `:nth-match(text=${text}, ${ordinal})`,
+    };
+  }
+
+  /**
+   * Returns true when the snapshot content contains a `generic` element whose
+   * text matches `text` in addition to whatever role was matched.
+   *
+   * This signals that the same label appears both in a structural widget (e.g. a
+   * sidebar menu item rendered as `generic`) and in a volatile context (e.g. a
+   * browser tab rendered as `link`).  In that case exporting a role-based locator
+   * would point at the volatile element and fail on fresh sessions.
+   */
+  private hasCoexistingGenericText(snapshotContent: string, text: string): boolean {
+    const escapedText = this.escapeRegex(text);
+    // Matches lines like: `- generic [ref=eN] [cursor=pointer]: 营业商谈一览`
+    const genericPattern = new RegExp(
+      `(?:-\\s*)generic\\s+\\[ref=e\\d+\\][^\\n]*:\\s*${escapedText}\\s*$`,
+      'im'
+    );
+    return genericPattern.test(snapshotContent);
+  }
+
+  private countTextOccurrences(snapshotContent: string, text: string, targetRef: string): number {
+    const escapedText = this.escapeRegex(text);
+    const linePattern = new RegExp(
+      `\\[ref=(e\\d+)\\][^\\n]*${escapedText}`,
+      'i'
+    );
+    let ordinal = 0;
+    const lines = snapshotContent.split('\n');
+    for (const line of lines) {
+      const m = line.match(linePattern);
+      if (!m) continue;
+      ordinal++;
+      if (m[1] === targetRef) {
+        return ordinal;
+      }
+    }
+    return ordinal || 1;
+  }
+
+  private escapeRegex(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
   private normalize(value: unknown): string {

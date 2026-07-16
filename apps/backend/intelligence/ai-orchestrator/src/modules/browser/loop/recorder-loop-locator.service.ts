@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { BrowserCommand } from '../intent';
 import { TemplateStepLike } from './recorder-loop.types';
+import { NTH_MATCH_PATTERN, NTH_MATCH_FIRST_PATTERN } from '../browser-domain.constants';
 
 @Injectable()
 export class RecorderLoopLocatorService {
@@ -87,7 +88,7 @@ export class RecorderLoopLocatorService {
     }
     const locatorValue = typeof step.locator?.value === 'string' ? step.locator.value : '';
     return (
-      locatorValue.includes('${rowIndex}') || /^:nth-match\((.+),\s*1\)$/.test(locatorValue.trim())
+      locatorValue.includes('${rowIndex}') || NTH_MATCH_FIRST_PATTERN.test(locatorValue.trim())
     );
   }
 
@@ -103,8 +104,7 @@ export class RecorderLoopLocatorService {
     if (!locatorValue.trim()) {
       return undefined;
     }
-    const nthMatchPattern = /^:nth-match\((.+),\s*(\d+|\$\{rowIndex\})\)$/;
-    const match = locatorValue.trim().match(nthMatchPattern);
+    const match = locatorValue.trim().match(NTH_MATCH_PATTERN);
     const baseSelector = match?.[1]?.trim();
     const scopedBaseSelector = baseSelector
       ? this.toRowScopedActionSelector(baseSelector)
@@ -151,7 +151,7 @@ export class RecorderLoopLocatorService {
       return undefined;
     }
 
-    const match = trimmed.match(/^:nth-match\((.+),\s*(?:\$\{rowIndex\}|\d+)\)$/);
+    const match = trimmed.match(NTH_MATCH_PATTERN);
     const baseSelector = match?.[1]?.trim() || trimmed;
     if (!baseSelector) {
       return undefined;
@@ -177,7 +177,7 @@ export class RecorderLoopLocatorService {
       return undefined;
     }
 
-    const match = trimmed.match(/^:nth-match\((.+),\s*(?:\$\{rowIndex\}|\d+)\)$/);
+    const match = trimmed.match(NTH_MATCH_PATTERN);
     const baseSelector = match?.[1]?.trim() || trimmed;
     if (!baseSelector.includes(':has-text(')) {
       return undefined;

@@ -391,7 +391,7 @@ export const capabilityReleaseApi = {
 
   generateSkillDraft: async (
     id: string,
-    data?: { validationId?: string; modelId?: string }
+    data: { validationId?: string; modelId?: string } = {}
   ): Promise<{ release: CapabilityRelease; skillDraft: SkillDraft }> => {
     return apiClient.post<{ release: CapabilityRelease; skillDraft: SkillDraft }>(
       `/capabilities/${id}/generate-skill-draft`,
@@ -423,7 +423,7 @@ export const capabilityReleaseApi = {
 
   publishSkill: async (
     id: string,
-    data?: { draftId?: string }
+    data: { draftId?: string } = {}
   ): Promise<{ release: CapabilityRelease; publishedSkillId: string }> => {
     return apiClient.post<{ release: CapabilityRelease; publishedSkillId: string }>(
       `/capabilities/${id}/publish-skill`,

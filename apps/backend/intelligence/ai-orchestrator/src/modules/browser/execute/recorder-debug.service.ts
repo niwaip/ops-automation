@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { getBrowserWorkerUrl } from '../../../config/service-endpoints';
 import { BrowserSemanticsClient } from '../../../client/browser-semantics.client';
 import type { BrowserCommand, BrowserCommandCandidate } from '../intent';
@@ -85,9 +85,9 @@ export class RecorderDebugService {
   ) {}
 
   async chat(request: RecorderDebugChatRequest): Promise<RecorderDebugChatResponse> {
-    const rawMessage = request.message.trim();
+    const rawMessage = request.message?.trim() || '';
     if (!rawMessage) {
-      throw new Error('Message is required');
+      throw new BadRequestException('Message is required');
     }
     const controlTokenState = this.extractRecorderControlTokens(rawMessage);
 
