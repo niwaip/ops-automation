@@ -340,17 +340,7 @@ export class BrowserCommandService {
         parserSource: 'navigation-profile',
       });
     }
-    const earlyClickTableRow = this.browserCommandSearchService.parseEarlyClickTableRow(effectiveInput);
-    if (earlyClickTableRow && earlyClickTableRow.status === 'success' && earlyClickTableRow.response) {
-      return this.finalizeParseResult({
-        originalInput: input,
-        normalizedInput: effectiveInput,
-        context: commandContext,
-        semanticRuntime,
-        result: earlyClickTableRow.response,
-        parserSource: 'search-profile',
-      });
-    }
+    // earlyClickTableRow has been removed to allow AI Planner to smartly select row targets
     const earlyClickResult = this.browserCommandSearchService.parseEarlyClickResult(effectiveInput);
     if (earlyClickResult && earlyClickResult.status === 'success' && earlyClickResult.response) {
       return this.finalizeParseResult({
@@ -608,11 +598,11 @@ export class BrowserCommandService {
     return this.browserCommandClickContextService.isExplicitNonTextClickTarget(target);
   }
 
-  private resolveClickCommandsWithContext(
+  private async resolveClickCommandsWithContext(
     commands: BrowserCommand[],
     context: BrowserCommandContext,
     source: PendingActionIntentSource
-  ): BrowserCommand[] {
+  ): Promise<BrowserCommand[]> {
     return this.browserCommandClickContextService.resolveClickCommandsWithContext(
       commands,
       context,
@@ -760,7 +750,7 @@ export class BrowserCommandService {
       context,
       this.getUrlPatterns()
     );
-    const commands = this.resolveClickCommandsWithContext(
+    const commands = await this.resolveClickCommandsWithContext(
       result.commands as BrowserCommand[],
       context,
       'ai-parser'

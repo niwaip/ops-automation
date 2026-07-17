@@ -16,10 +16,13 @@ import type {
   BrowserCommandContext,
 } from '../browser-command.types';
 
+import { TableRegionResolverService } from './table-region-resolver.service';
+
 @Injectable()
 export class BrowserCommandClickContextService {
   constructor(
-    private readonly browserCommandContextNormalizerService: BrowserCommandContextNormalizerService
+    private readonly browserCommandContextNormalizerService: BrowserCommandContextNormalizerService,
+    private readonly tableRegionResolverService: TableRegionResolverService
   ) {}
 
   getActionResolverCandidates(context: BrowserCommandContext): BrowserCommandCandidate[] {
@@ -124,20 +127,43 @@ export class BrowserCommandClickContextService {
     return true;
   }
 
-  resolveClickCommandsWithContext(
+  async resolveClickCommandsWithContext(
     commands: BrowserCommand[],
     context: BrowserCommandContext,
     source: PendingActionIntentSource
-  ): BrowserCommand[] {
-    return commands.map((command) => {
+  ): Promise<BrowserCommand[]> {
+    return Promise.all(commands.map(async (command) => {
       if (command.tool === 'click_table_row') {
         const params = (command.params || {}) as Record<string, unknown>;
         const index = typeof params.index === 'number' ? params.index : 1;
+        
+        let regionHint = typeof params.scope === 'string' ? params.scope : undefined;
+        
+        // If a regionHint is given, see if we can resolve it precisely
+        if (regionHint) {
+          const candidates = this.getActionResolverCandidates(context);
+          const exactRegionMatch = candidates.some(c => c.region?.name === regionHint);
+          
+          if (!exactRegionMatch && (context as any).observation?.regions) {
+            // No exact region name match, try AI resolution
+            const resolvedRegionId = await this.tableRegionResolverService.resolveTableRegion({
+              userScope: regionHint,
+              regions: (context as any).observation?.regions,
+              candidates,
+              pageTitle: context.lastObservationText,
+              pageUrl: context.currentPageUrl,
+            });
+            if (resolvedRegionId) {
+              regionHint = resolvedRegionId; // Update the region hint with the AI's answer
+            }
+          }
+        }
+
         const intent = this.buildPendingClickIntentFromParams(
           {
             rowHint: { index },
             semanticHint: 'submit', // Prioritize actionable buttons/links
-            regionHint: typeof params.scope === 'string' ? params.scope : undefined
+            regionHint,
           },
           source
         );
@@ -159,7 +185,13 @@ export class BrowserCommandClickContextService {
           }
         }
         // Fallback to rule-based execution if AI ties or fails
-        return command;
+        return {
+          ...command,
+          params: {
+            ...params,
+            regionIdHint: regionHint !== params.scope ? regionHint : undefined,
+          }
+        };
       }
 
       if (command.tool !== 'click') {
@@ -185,7 +217,7 @@ export class BrowserCommandClickContextService {
         command.description || `点击${intent.rawTarget || ''}`.trim()
       );
       return resolved || command;
-    });
+    }));
   }
 
   validateAIResolvedCommands(

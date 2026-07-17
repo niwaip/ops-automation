@@ -22,3 +22,4 @@ export * from './atomic-parsers/browser-action-validator.service';
 export * from './ai-planner/browser-planner-prompt.builder';
 export * from './ai-planner/browser-planner-response.parser';
 export * from './ai-planner/browser-execution-planner.service';
+export * from './atomic-parsers/table-region-resolver.service';

@@ -65,6 +65,8 @@ IMPORTANT for PAGE CONTEXT / LOCATOR STABILITY:
 - If multiple same-name elements exist, prefer the candidate with clearer row/region context
 - For row-scoped detail actions like "点击第一条数据，进入详细页面", prefer params.candidateId if available; otherwise emit params.rawTarget="详情" with params.rowHint={"index":1} and params.semanticHint="detail"
 - When the page contains repeated "详情/详细/明细" actions, NEVER respond with a broad text click such as {"tool":"click","params":{"text":"详情"}}
+- If the user wants to interact with an element inside a specific tab, table, or section (e.g., "收件箱一览里面的第一条记录") that is not currently visible, but a navigation link or tab to reveal it is visible (e.g., "收件箱" link), you MUST generate a multi-step sequence: first click the tab/link to reveal the target area, then interact with the target element.
+
 
 IMPORTANT for RETRY / FAILURE RECOVERY:
 - If Failure Context is provided, analyze why the previous action failed before proposing new commands
@@ -135,6 +137,8 @@ User command: "${input}"
 
 Rules:
 - Prefer multi-step planning when the user expresses multiple actions in one sentence.
+- If the user wants to interact with an element inside a specific tab, table, or section (e.g., "收件箱一览里面的第一条记录") that is not currently visible, but a navigation link or tab to reveal it is visible (e.g., "收件箱" link), you MUST plan a multi-step sequence: first click the tab/link to reveal the target area, then interact with the target element.
+
 - Use "navigate" for opening a site.
 - Use "smart_search" when the user wants to search on the current page or after opening a search engine.
 - Use "list_search_results" when the user asks to查看/列出当前搜索结果候选.

@@ -807,7 +807,8 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
           result = await this.handleClickTableRow(
             sessionId,
             this.requireNumberParam(normalizedParams, ['index']),
-            this.readOptionalStringParam(normalizedParams, ['scope'])
+            this.readOptionalStringParam(normalizedParams, ['scope']),
+            this.readOptionalStringParam(normalizedParams, ['regionIdHint'])
           );
           break;
         case 'switch_latest_tab':
@@ -2472,7 +2473,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     }`;
   }
 
-  private async handleClickTableRow(sessionId: string, index: number, scope?: string): Promise<CliActionResult> {
+  private async handleClickTableRow(sessionId: string, index: number, scope?: string, regionIdHint?: string): Promise<CliActionResult> {
     await this.ensureSessionReady(sessionId);
     const session = this.getOrCreateSession(sessionId);
     const activePageExpr = session.preferLatestTab
@@ -2508,9 +2509,18 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
         const isInExcludedZone = el =>
           !!el.closest('nav,header,footer,aside,[role="navigation"],[role="menubar"],[role="menu"]');
 
+        const computeSyntheticRegionId = (regionElement) => {
+          if (!regionElement) return '';
+          const allRegions = Array.from(document.querySelectorAll('[data-ai-region], section, main, aside, nav, form')).filter(isVisible);
+          const idx = allRegions.indexOf(regionElement);
+          if (idx === -1) return '';
+          return regionElement.getAttribute('data-ai-region') || regionElement.getAttribute('aria-label') || regionElement.getAttribute('id') || ('region-' + (idx + 1));
+        };
+
         // Collect tbody data rows, skipping header rows and excluded zones
         const candidates = [];
         const scopeFilter = ${JSON.stringify(scope || '')};
+        const regionIdHint = ${JSON.stringify(regionIdHint || '')};
         const rows = document.querySelectorAll('tr');
         for (const row of rows) {
           if (isInExcludedZone(row)) continue;
@@ -2520,31 +2530,55 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
           if (row.cells.length === 0) continue;
 
           // Scope filtering
-          if (scopeFilter) {
+          if (scopeFilter || regionIdHint) {
             const table = row.closest('table, [role="table"], [role="grid"], .datagrid-view');
-            const region = row.closest('[data-ai-region]');
-            const regionName = region ? region.getAttribute('data-ai-region') : '';
-            const tableText = table ? table.textContent || '' : '';
+            const region = row.closest('[data-ai-region], section, main, aside, nav, form');
             
-            const regionMatch = regionName && (regionName.includes(scopeFilter) || scopeFilter.includes(regionName));
-            const tableMatch = tableText && tableText.includes(scopeFilter);
+            let regionMatch = false;
+            let tableMatch = false;
+            let headerMatch = false;
+
+            if (regionIdHint && region) {
+               const syntheticId = computeSyntheticRegionId(region);
+               if (syntheticId === regionIdHint) {
+                 regionMatch = true;
+               }
+            }
+
+            if (scopeFilter) {
+              const regionName = region ? region.getAttribute('data-ai-region') : '';
+              const tableText = table ? table.textContent || '' : '';
+              const headerText = table ? (table.querySelector('thead, th, tr:first-child')?.textContent || '') : '';
+              
+              if (regionName && (regionName.includes(scopeFilter) || scopeFilter.includes(regionName))) regionMatch = true;
+              if (tableText && (tableText.includes(scopeFilter) || scopeFilter.includes(tableText.substring(0, 20)))) tableMatch = true;
+              if (headerText && (headerText.includes(scopeFilter) || scopeFilter.includes(headerText.trim()))) headerMatch = true;
+            }
             
-            if (!regionMatch && !tableMatch) {
+            if (!regionMatch && !tableMatch && !headerMatch) {
               continue; // Skip rows that don't match the scope
             }
           }
 
+          // Exclude checkboxes
+          const isNotCheckbox = el => {
+            if (el.tagName === 'INPUT' && (el.type === 'checkbox' || el.type === 'radio')) return false;
+            if (el.querySelector && el.querySelector('input[type="checkbox"], input[type="radio"]')) return false;
+            return true;
+          };
+
           // Find best clickable target inside the row
           let target =
-            [...row.querySelectorAll('a[href], button')].find(el => isVisible(el) && el.textContent.trim()) ||
+            [...row.querySelectorAll('a[href]')].find(el => isVisible(el) && el.textContent.trim()) ||
+            [...row.querySelectorAll('button')].find(el => isVisible(el) && el.textContent.trim()) ||
             row.querySelector('a[href], button') ||
-            [...row.querySelectorAll('td [onclick], td [cursor="pointer"]')].find(el => isVisible(el)) ||
+            [...row.querySelectorAll('td [onclick], td [cursor="pointer"]')].find(el => isVisible(el) && isNotCheckbox(el)) ||
             [...row.querySelectorAll('td span,td div,td a,td')].find(el => {
-              if (!isVisible(el)) return false;
+              if (!isVisible(el) || !isNotCheckbox(el)) return false;
               return window.getComputedStyle(el).cursor === 'pointer';
             }) ||
             [...row.querySelectorAll('td a')].find(el => isVisible(el)) ||
-            row.querySelector('td') ||
+            [...row.querySelectorAll('td')].find(el => isVisible(el) && isNotCheckbox(el)) ||
             row;
 
           candidates.push({

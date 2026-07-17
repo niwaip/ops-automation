@@ -37,6 +37,7 @@ import {
   BrowserPlannerResponseParser,
   RecorderDisambiguationService,
   RecorderParameterService,
+  TableRegionResolverService,
 } from './intent';
 import {
   BrowserExecutionControllerService,
@@ -87,6 +88,7 @@ import { RecorderDebugRollbackService } from './execute/recorder';
     BrowserCommandSemanticRuntimeService,
     BrowserCommandContextNormalizerService,
     BrowserCommandClickContextService,
+    TableRegionResolverService,
     BrowserSemanticsClient,
     BrowserCandidateContextFormatter,
     BrowserPlannerPromptBuilder,
