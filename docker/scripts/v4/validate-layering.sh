@@ -26,6 +26,7 @@ run_services() {
     /^  PROJECT_ROOT:/ { next }
     /^Using env file:/ { next }
     /^Running: docker compose / { next }
+    /^\[WARN\]/ { next }
     NF == 0 { next }
     { print }
   '
