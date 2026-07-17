@@ -51,7 +51,9 @@ export function resolveActionIntentToLocator(
   intent: PendingActionIntent,
   context: ActionTargetResolverContext
 ): ResolvedActionTarget | null {
-  const candidates = (context.availableCandidates || []).filter((candidate) => candidate.kind === 'action');
+  const candidates = (context.availableCandidates || []).filter(
+    (candidate) => candidate.kind === 'action'
+  );
 
   const candidateMatch = resolveFromCandidates(intent, candidates);
   if (candidateMatch) {
@@ -82,7 +84,9 @@ function resolveFromCandidates(
   }
 
   if (intent.candidateId) {
-    const directMatch = candidates.find((candidate) => candidate.candidateId === intent.candidateId);
+    const directMatch = candidates.find(
+      (candidate) => candidate.candidateId === intent.candidateId
+    );
     const resolved = directMatch ? buildCandidateLocatorTarget(directMatch, 0.98) : null;
     if (resolved) {
       return resolved;
@@ -109,10 +113,7 @@ function resolveFromCandidates(
   }
   if (scored.length > 1 && best.score - nextScore < 12) {
     const nextCandidate = scored[1]?.candidate;
-    if (
-      nextCandidate &&
-      canPreferStableCandidate(best.candidate, nextCandidate)
-    ) {
+    if (nextCandidate && canPreferStableCandidate(best.candidate, nextCandidate)) {
       return buildCandidateLocatorTarget(best.candidate, scoreToConfidence(best.score));
     }
     return null;
@@ -148,11 +149,37 @@ function buildCandidateLocatorTarget(
   }
 
   const pageText = normalizeOptionalText(candidate.text) || normalizeOptionalText(candidate.label);
-  if (candidate.role && pageText) {
+  const normalizedRole = candidate.role === 'a' ? 'link' : candidate.role;
+
+  const validAriaRoles = new Set([
+    'button',
+    'checkbox',
+    'combobox',
+    'dialog',
+    'gridcell',
+    'heading',
+    'img',
+    'link',
+    'listbox',
+    'menuitem',
+    'menuitemcheckbox',
+    'menuitemradio',
+    'option',
+    'radio',
+    'searchbox',
+    'slider',
+    'spinbutton',
+    'switch',
+    'tab',
+    'textbox',
+    'treeitem',
+  ]);
+
+  if (normalizedRole && validAriaRoles.has(normalizedRole) && pageText) {
     return {
       locator: {
         type: 'role',
-        value: `${candidate.role}[name="${escapeQuotes(pageText)}"]`,
+        value: `${normalizedRole}[name="${escapeQuotes(pageText)}"]`,
       },
       matchedCandidateId: candidate.candidateId,
       confidence,
@@ -189,7 +216,12 @@ function normalizePreferredLocator(
     };
   }
 
-  if (locator.type === 'ref' || locator.type === 'css' || locator.type === 'role' || locator.type === 'text') {
+  if (
+    locator.type === 'ref' ||
+    locator.type === 'css' ||
+    locator.type === 'role' ||
+    locator.type === 'text'
+  ) {
     return {
       type: locator.type,
       value: locator.value,

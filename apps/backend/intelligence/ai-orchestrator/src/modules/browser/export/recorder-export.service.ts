@@ -330,7 +330,7 @@ export class RecorderExportService {
       if (command.tool === 'search' || command.tool === 'smart_search') {
         keywords.add('搜索');
       }
-      if (command.tool === 'click_result') {
+      if (command.tool === 'click_result' || command.tool === 'click_table_row') {
         keywords.add('点击结果');
       }
     });

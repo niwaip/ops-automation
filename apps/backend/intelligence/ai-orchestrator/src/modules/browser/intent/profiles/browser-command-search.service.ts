@@ -460,6 +460,7 @@ export class BrowserCommandSearchService {
     return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
   }
 
+
   /**
    * Fast early detection for click-result patterns like "打开第二个结果", "点击第二条记录".
    * This is called BEFORE the action-profile to prevent verbs like "打开" or "点击" 
@@ -468,6 +469,11 @@ export class BrowserCommandSearchService {
   public parseEarlyClickResult(input: string): SearchParseResult | null {
     const normalizedInput = input.replace(/\s+/g, ' ').trim();
     if (!normalizedInput) {
+      return null;
+    }
+
+    // Don't match table-scoped phrases — those should be handled by parseEarlyClickTableRow
+    if (/一览表|查询结果|检索结果/.test(normalizedInput)) {
       return null;
     }
 
@@ -500,5 +506,6 @@ export class BrowserCommandSearchService {
 
     return null;
   }
-}
 
+  // parseEarlyClickTableRow has been removed. Table row clicks are now handled by the AI Planner for smarter target selection.
+}

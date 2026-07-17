@@ -736,10 +736,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
           result = await this.handleClick(sessionId, normalizedParams);
           break;
         case 'fill':
-          result = await this.handleSimpleCommand(sessionId, 'fill', [
-            this.requireStringParam(normalizedParams, ['target', 'selector']),
-            this.requireStringParam(normalizedParams, ['value', 'text']),
-          ]);
+          result = await this.handleFill(sessionId, normalizedParams);
           break;
         case 'type':
         case 'type_text':
@@ -804,6 +801,14 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
           result = await this.handleClickResult(
             sessionId,
             this.requireNumberParam(normalizedParams, ['index'])
+          );
+          break;
+        case 'click_table_row':
+          result = await this.handleClickTableRow(
+            sessionId,
+            this.requireNumberParam(normalizedParams, ['index']),
+            this.readOptionalStringParam(normalizedParams, ['scope']),
+            this.readOptionalStringParam(normalizedParams, ['regionIdHint'])
           );
           break;
         case 'switch_latest_tab':
@@ -954,6 +959,113 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     }`;
   }
 
+  /**
+   * Handles 'fill' commands with a JS force-fill fallback for hidden elements.
+   *
+   * Playwright's built-in fill() requires the element to be visible. Some legacy
+   * pages (e.g. systems using a fake visible plaintext box + hidden password
+   * field that is shown only after a JS click event) keep the real input hidden
+   * until a jQuery animation completes. Even with a post-click settle wait
+   * there can be a short window where the element is not yet actionable.
+   *
+   * Strategy:
+   *  1. Try the standard execCli fill (covers the normal case).
+   *  2. On any timeout / visibility error, run a run-code script that:
+   *     a. Tries locator.fill() with force:true (skips visibility check).
+   *     b. Falls back to element.value assignment + dispatching change/input
+   *        events (works even for display:none elements).
+   *  3. If still failing, try the iframe fallback.
+   */
+  private async handleFill(
+    sessionId: string,
+    params: Record<string, unknown>
+  ): Promise<CliActionResult> {
+    const selector = this.requireStringParam(params, ['target', 'selector']);
+    const value    = this.requireStringParam(params, ['value', 'text']);
+
+    // ── Primary path: standard playwright fill ──
+    try {
+      const result = await this.handleSimpleCommand(sessionId, 'fill', [selector, value]);
+      return result;
+    } catch (primaryErr: unknown) {
+      const msg = primaryErr instanceof Error ? primaryErr.message : String(primaryErr || '');
+      const isVisibilityIssue =
+        /timeout/i.test(msg) ||
+        /not visible/i.test(msg) ||
+        /hidden/i.test(msg) ||
+        /not interactable/i.test(msg) ||
+        /element is not attached/i.test(msg);
+
+      if (!isVisibilityIssue) throw primaryErr;
+    }
+
+    // ── Fallback: force-fill via run-code (handles display:none elements) ──
+    await this.ensureSessionReady(sessionId);
+    const session = this.getOrCreateSession(sessionId);
+    const activePageExpr = session.preferLatestTab
+      ? '(page.context().pages().length ? page.context().pages()[page.context().pages().length - 1] : page)'
+      : 'page';
+    const normalizedSelector = this.normalizeSemanticRoleSelector(selector);
+    const settleTimeout = this.cliPageSettleTimeoutMs;
+
+    const buildForceFillScript = (scopeExpr: string) => `async page => {
+      const activePage = ${activePageExpr};
+      await activePage.waitForLoadState('domcontentloaded', { timeout: ${settleTimeout} }).catch(() => {});
+      const scope = ${scopeExpr};
+      const loc = scope.locator(${JSON.stringify(normalizedSelector)});
+      const count = await loc.count().catch(() => 0);
+      if (!count) throw new Error('force-fill: no element found for ' + ${JSON.stringify(normalizedSelector)});
+      // Try Playwright force fill first (skips actionability checks)
+      try {
+        await loc.first().fill(${JSON.stringify(value)}, { force: true, timeout: 5000 });
+        return JSON.stringify({ method: 'force-fill', selector: ${JSON.stringify(normalizedSelector)} });
+      } catch {}
+      // Last resort: direct DOM assignment + synthetic events
+      await loc.first().evaluate((el, val) => {
+        const input = el;
+        const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+          window.HTMLInputElement.prototype, 'value'
+        )?.set;
+        if (nativeInputValueSetter) {
+          nativeInputValueSetter.call(input, val);
+        } else {
+          input.value = val;
+        }
+        ['input', 'change'].forEach(type =>
+          input.dispatchEvent(new Event(type, { bubbles: true, cancelable: true }))
+        );
+      }, ${JSON.stringify(value)});
+      return JSON.stringify({ method: 'js-value-set', selector: ${JSON.stringify(normalizedSelector)} });
+    }`;
+
+    try {
+      const r = await this.execCli(sessionId, ['run-code', buildForceFillScript('activePage')]);
+      this.assertNoCliError(r, 'force-fill on page failed');
+      return {
+        status: 'success',
+        command: 'fill',
+        stdout: r.stdout,
+        stderr: r.stderr,
+        data: { selector, value, forceFill: true },
+      };
+    } catch (pageErr: unknown) {
+      // Try each iframe via the standard iframe fallback
+      const iframeResult = await this.executeIframeFallback(sessionId, 'fill', [selector, value]).catch(
+        () => undefined
+      );
+      if (iframeResult) {
+        return {
+          status: 'success',
+          command: 'fill',
+          stdout: iframeResult.stdout,
+          stderr: iframeResult.stderr,
+          data: { selector, value, iframeFill: true },
+        };
+      }
+      throw pageErr;
+    }
+  }
+
   private async handleSimpleCommand(
     sessionId: string,
     command: string,
@@ -1034,6 +1146,13 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
       }
     }
 
+    // After any click, wait for the page to settle so the next step finds a
+    // fully-loaded DOM. This prevents race conditions on slow networks where
+    // async navigation or JS animations haven't finished yet.
+    if (command === 'click') {
+      await this.settlePageAfterAction(sessionId);
+    }
+
     return {
       status: 'success',
       command,
@@ -1094,6 +1213,33 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     const result = await this.execCli(sessionId, ['run-code', script]);
     this.assertNoCliError(result, `Iframe fallback ${command} failed`);
     return result;
+  }
+
+  /**
+   * Universal post-action page-stability wait.
+   * Called after every click (regardless of which code path handled it) to
+   * ensure the page has finished any navigation or JS-triggered DOM updates
+   * before the next command runs.  Both waitForLoadState calls are soft
+   * (errors are swallowed) so they never cause a step to fail on their own.
+   */
+  private async settlePageAfterAction(sessionId: string): Promise<void> {
+    try {
+      const session = this.getOrCreateSession(sessionId);
+      const activePageExpr = session.preferLatestTab
+        ? '(page.context().pages().length ? page.context().pages()[page.context().pages().length - 1] : page)'
+        : 'page';
+      const settleTimeout = this.cliPageSettleTimeoutMs;
+      const script = `async page => {
+        const activePage = ${activePageExpr};
+        await activePage.waitForLoadState('domcontentloaded', { timeout: ${settleTimeout} }).catch(() => {});
+        await activePage.waitForLoadState('networkidle', { timeout: ${settleTimeout} }).catch(() => {});
+        await activePage.waitForTimeout(300).catch(() => {});
+        return 'settled';
+      }`;
+      await this.execCli(sessionId, ['run-code', script]);
+    } catch {
+      // settle is best-effort — never fail the step
+    }
   }
 
   private async handleTypeText(
@@ -2327,6 +2473,229 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
     }`;
   }
 
+  private async handleClickTableRow(sessionId: string, index: number, scope?: string, regionIdHint?: string): Promise<CliActionResult> {
+    await this.ensureSessionReady(sessionId);
+    const session = this.getOrCreateSession(sessionId);
+    const activePageExpr = session.preferLatestTab
+      ? '(page.context().pages().length ? page.context().pages()[page.context().pages().length - 1] : page)'
+      : 'page';
+    const normalizedIndex = Math.max(index, 1);
+    const settleMs = this.cliPageSettleTimeoutMs;
+
+    // We embed a small inline script that:
+    // 1. Scans tbody rows in the active content area (excluding nav/header/footer)
+    // 2. Marks the Nth data row's first clickable element
+    // 3. Playwright clicks it via the marker attribute
+    const script = `async page => {
+      const activePage = ${activePageExpr};
+      await activePage.waitForLoadState('domcontentloaded', { timeout: ${settleMs} }).catch(() => {});
+      await activePage.waitForLoadState('networkidle', { timeout: ${settleMs} }).catch(() => {});
+      await activePage.waitForTimeout(400).catch(() => {});
+
+      const originalUrl = activePage.url();
+      const originalTitle = await activePage.title().catch(() => '');
+
+      const selected = await activePage.evaluate((targetIndex) => {
+        const MARKER = 'data-ops-table-row-target';
+        document.querySelectorAll('[' + MARKER + ']').forEach(el => el.removeAttribute(MARKER));
+
+        const isVisible = el => {
+          if (!(el instanceof HTMLElement)) return false;
+          const s = window.getComputedStyle(el);
+          const r = el.getBoundingClientRect();
+          return s.visibility !== 'hidden' && s.display !== 'none' && r.width > 4 && r.height > 4;
+        };
+
+        const isInExcludedZone = el =>
+          !!el.closest('nav,header,footer,aside,[role="navigation"],[role="menubar"],[role="menu"]');
+
+        const computeSyntheticRegionId = (regionElement) => {
+          if (!regionElement) return '';
+          const allRegions = Array.from(document.querySelectorAll('[data-ai-region], section, main, aside, nav, form')).filter(isVisible);
+          const idx = allRegions.indexOf(regionElement);
+          if (idx === -1) return '';
+          return regionElement.getAttribute('data-ai-region') || regionElement.getAttribute('aria-label') || regionElement.getAttribute('id') || ('region-' + (idx + 1));
+        };
+
+        // Collect tbody data rows, skipping header rows and excluded zones
+        const candidates = [];
+        const scopeFilter = ${JSON.stringify(scope || '')};
+        const regionIdHint = ${JSON.stringify(regionIdHint || '')};
+        const rows = document.querySelectorAll('tr');
+        for (const row of rows) {
+          if (isInExcludedZone(row)) continue;
+          if (!isVisible(row)) continue;
+          if (row.closest('thead')) continue;
+          if (row.querySelectorAll('th').length >= row.cells.length && row.cells.length > 0) continue;
+          if (row.cells.length === 0) continue;
+
+          // Scope filtering
+          if (scopeFilter || regionIdHint) {
+            const table = row.closest('table, [role="table"], [role="grid"], .datagrid-view');
+            const region = row.closest('[data-ai-region], section, main, aside, nav, form');
+            
+            let regionMatch = false;
+            let tableMatch = false;
+            let headerMatch = false;
+
+            if (regionIdHint && region) {
+               const syntheticId = computeSyntheticRegionId(region);
+               if (syntheticId === regionIdHint) {
+                 regionMatch = true;
+               }
+            }
+
+            if (scopeFilter) {
+              const regionName = region ? region.getAttribute('data-ai-region') : '';
+              const tableText = table ? table.textContent || '' : '';
+              const headerText = table ? (table.querySelector('thead, th, tr:first-child')?.textContent || '') : '';
+              
+              if (regionName && (regionName.includes(scopeFilter) || scopeFilter.includes(regionName))) regionMatch = true;
+              if (tableText && (tableText.includes(scopeFilter) || scopeFilter.includes(tableText.substring(0, 20)))) tableMatch = true;
+              if (headerText && (headerText.includes(scopeFilter) || scopeFilter.includes(headerText.trim()))) headerMatch = true;
+            }
+            
+            if (!regionMatch && !tableMatch && !headerMatch) {
+              continue; // Skip rows that don't match the scope
+            }
+          }
+
+          // Exclude checkboxes
+          const isNotCheckbox = el => {
+            if (el.tagName === 'INPUT' && (el.type === 'checkbox' || el.type === 'radio')) return false;
+            if (el.querySelector && el.querySelector('input[type="checkbox"], input[type="radio"]')) return false;
+            return true;
+          };
+
+          // Find best clickable target inside the row
+          let target =
+            [...row.querySelectorAll('a[href]')].find(el => isVisible(el) && el.textContent.trim()) ||
+            [...row.querySelectorAll('button')].find(el => isVisible(el) && el.textContent.trim()) ||
+            row.querySelector('a[href], button') ||
+            [...row.querySelectorAll('td [onclick], td [cursor="pointer"]')].find(el => isVisible(el) && isNotCheckbox(el)) ||
+            [...row.querySelectorAll('td span,td div,td a,td')].find(el => {
+              if (!isVisible(el) || !isNotCheckbox(el)) return false;
+              return window.getComputedStyle(el).cursor === 'pointer';
+            }) ||
+            [...row.querySelectorAll('td a')].find(el => isVisible(el)) ||
+            [...row.querySelectorAll('td')].find(el => isVisible(el) && isNotCheckbox(el)) ||
+            row;
+
+          candidates.push({
+            element: target,
+            text: (target.textContent || '').replace(/\\s+/g, ' ').trim().slice(0, 120),
+          });
+        }
+
+        // Fallback: list items when no table rows are found
+        if (candidates.length === 0) {
+          const items = document.querySelectorAll('li,[role="listitem"],[role="row"]');
+          for (const item of items) {
+            if (isInExcludedZone(item)) continue;
+            if (!isVisible(item)) continue;
+            candidates.push({
+              element: item,
+              text: (item.textContent || '').replace(/\\s+/g, ' ').trim().slice(0, 120),
+            });
+          }
+        }
+
+        if (candidates.length < targetIndex) {
+          throw new Error('click_table_row: found ' + candidates.length + ' data rows, requested index ' + targetIndex);
+        }
+
+        const chosen = candidates[targetIndex - 1];
+        chosen.element.setAttribute(MARKER, String(targetIndex));
+        return { selectedText: chosen.text };
+      }, ${normalizedIndex});
+
+      const target = activePage.locator('[data-ops-table-row-target="${normalizedIndex}"]').first();
+      const pageCountBefore = page.context().pages().length;
+      const popupPromise = page.context().waitForEvent('page', { timeout: 5000 }).catch(() => null);
+      await target.scrollIntoViewIfNeeded().catch(() => {});
+      await activePage.waitForTimeout(150).catch(() => {});
+      await target.click({ force: true });
+      // Clean up marker
+      await activePage.evaluate(() => {
+        document.querySelectorAll('[data-ops-table-row-target]').forEach(el => el.removeAttribute('data-ops-table-row-target'));
+      }).catch(() => {});
+
+      const popup = await popupPromise;
+      if (popup) {
+        await popup.waitForLoadState('domcontentloaded', { timeout: ${settleMs} }).catch(() => {});
+        await popup.bringToFront().catch(() => {});
+        return JSON.stringify({
+          openedNewPage: true,
+          landedUrl: await popup.url(),
+          title: await popup.title().catch(() => ''),
+          pageCount: page.context().pages().length,
+          ...selected,
+          navigationConfirmed: true,
+        });
+      }
+
+      await activePage.waitForLoadState('domcontentloaded', { timeout: ${settleMs} }).catch(() => {});
+      await activePage.waitForTimeout(500).catch(() => {});
+      await activePage.bringToFront().catch(() => {});
+
+      const landedUrl = activePage.url();
+      const title = await activePage.title().catch(() => '');
+      const navigationConfirmed = landedUrl !== originalUrl || title !== originalTitle;
+
+      if (!navigationConfirmed) {
+        const allPages = page.context().pages();
+        if (allPages.length > pageCountBefore) {
+          const newTab = allPages[allPages.length - 1];
+          await newTab.waitForLoadState('domcontentloaded', { timeout: ${settleMs} }).catch(() => {});
+          await newTab.bringToFront().catch(() => {});
+          return JSON.stringify({
+            openedNewPage: true,
+            landedUrl: await newTab.url(),
+            title: await newTab.title().catch(() => ''),
+            pageCount: allPages.length,
+            ...selected,
+            navigationConfirmed: true,
+          });
+        }
+      }
+
+      return JSON.stringify({
+        openedNewPage: false,
+        landedUrl,
+        title,
+        pageCount: page.context().pages().length,
+        ...selected,
+        navigationConfirmed,
+      });
+    }`;
+
+    const execResult = await this.execCli(sessionId, ['run-code', script]);
+    this.assertNoCliError(execResult, 'click_table_row failed');
+    const clickMeta = this.parseJsonStdout<{
+      openedNewPage?: boolean;
+      landedUrl?: string;
+      title?: string;
+      pageCount?: number;
+      selectedText?: string;
+      navigationConfirmed?: boolean;
+    }>(execResult.stdout);
+    if (typeof clickMeta?.landedUrl === 'string' && clickMeta.landedUrl.trim()) {
+      session.lastUrl = clickMeta.landedUrl.trim();
+    }
+    session.preferLatestTab = clickMeta?.openedNewPage === true;
+
+    return {
+      status: 'success',
+      command: 'click_table_row',
+      stdout: execResult.stdout,
+      stderr: execResult.stderr,
+      data: {
+        index,
+        ...(clickMeta || {}),
+      },
+    };
+  }
+
   private async handleSwitchLatestTab(sessionId: string): Promise<CliActionResult> {
     await this.ensureSessionReady(sessionId);
     const session = this.getOrCreateSession(sessionId);
@@ -2685,8 +3054,14 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
       action === 'click'
         ? `await locator.click({ force: true, timeout: 5000 });`
         : 'return null;';
+    const settleTimeout = this.cliPageSettleTimeoutMs;
     const script = `async page => {
       const activePage = ${activePageExpr};
+      // Wait for page to be fully loaded before checking for the element.
+      // This prevents :nth-match selectors from failing on async-rendered
+      // menus or widgets that appear after navigation completes.
+      await activePage.waitForLoadState('domcontentloaded', { timeout: ${settleTimeout} }).catch(() => {});
+      await activePage.waitForLoadState('networkidle', { timeout: ${settleTimeout} }).catch(() => {});
       const runWithin = async (scope, matchedIn) => {
         const locator = ${locatorExpr};
         const count = await locator.count().catch(() => 0);
@@ -2719,6 +3094,11 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
 
     const result = await this.execCli(sessionId, ['run-code', script]);
     this.assertNoCliError(result, `${action} failed`);
+    // Wait for the page to settle after a positional click just as we do for
+    // all other click paths.
+    if (action === 'click') {
+      await this.settlePageAfterAction(sessionId);
+    }
     return {
       status: 'success',
       command: action,
@@ -2771,6 +3151,7 @@ export class PlaywrightCliAdapter implements BrowserExecutionAdapter {
 
     const result = await this.execCli(sessionId, ['run-code', script]);
     this.assertNoCliError(result, 'strict-mode-first fallback failed');
+    await this.settlePageAfterAction(sessionId);
     return result;
   }
 

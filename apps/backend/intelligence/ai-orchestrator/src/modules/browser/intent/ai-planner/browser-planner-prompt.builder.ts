@@ -65,6 +65,8 @@ IMPORTANT for PAGE CONTEXT / LOCATOR STABILITY:
 - If multiple same-name elements exist, prefer the candidate with clearer row/region context
 - For row-scoped detail actions like "点击第一条数据，进入详细页面", prefer params.candidateId if available; otherwise emit params.rawTarget="详情" with params.rowHint={"index":1} and params.semanticHint="detail"
 - When the page contains repeated "详情/详细/明细" actions, NEVER respond with a broad text click such as {"tool":"click","params":{"text":"详情"}}
+- If the user wants to interact with an element inside a specific tab, table, or section (e.g., "收件箱一览里面的第一条记录") that is not currently visible, but a navigation link or tab to reveal it is visible (e.g., "收件箱" link), you MUST generate a multi-step sequence: first click the tab/link to reveal the target area, then interact with the target element.
+
 
 IMPORTANT for RETRY / FAILURE RECOVERY:
 - If Failure Context is provided, analyze why the previous action failed before proposing new commands
@@ -86,6 +88,7 @@ Examples:
 - "打开示例站点 用test 密码test123进行登录 然后点击执行管理" -> {"commands":[{"tool":"navigate","params":{"url":"https://example.com/login"},"description":"打开登录页"},{"tool":"fill","params":{"selector":"用户名","value":"test"},"description":"填写用户名"},{"tool":"fill","params":{"selector":"密码","value":"test123"},"description":"填写密码"},{"tool":"click","params":{"rawTarget":"登录","roleHint":"button","semanticHint":"submit"},"description":"点击登录"},{"tool":"click","params":{"rawTarget":"执行管理","semanticHint":"open"},"description":"点击执行管理"}],"explanation":"依次打开站点、填写用户名和密码、提交登录并进入执行管理"}
 - If visible buttons contain candidate [action_1] button "詳細" (ref=e88) inside Row 1 (PRJ-2026-001), and the user says "点击第一条记录的详情", prefer {"commands":[{"tool":"click","params":{"candidateId":"action_1"},"description":"点击第一条记录的详情"}],"explanation":"点击第一条记录的详情按钮"}
 - If the user says "点击第一条数据，进入详细页面" and the page has repeated row detail actions, prefer {"commands":[{"tool":"click","params":{"candidateId":"action_1"},"description":"点击第一条数据的详情"}],"explanation":"点击第一条数据的详情按钮"} or {"commands":[{"tool":"click","params":{"rawTarget":"详情","rowHint":{"index":1},"semanticHint":"detail"},"description":"点击第一条数据的详情"}],"explanation":"点击第一条数据的详情按钮"}
+- If the user says "打开一览表里面的第一条记录的链接" and there is a visible candidate for the first record's link (e.g. SD202508-0049-2), prefer outputting a click intent targeting that candidate's text or candidateId directly, instead of broad text. e.g. {"commands":[{"tool":"click","params":{"candidateId":"action_43"},"description":"点击第一条记录的链接"}],"explanation":"点击第一条记录的链接"}
 
 Respond with ONLY the JSON object:`;
   }
@@ -134,6 +137,8 @@ User command: "${input}"
 
 Rules:
 - Prefer multi-step planning when the user expresses multiple actions in one sentence.
+- If the user wants to interact with an element inside a specific tab, table, or section (e.g., "收件箱一览里面的第一条记录") that is not currently visible, but a navigation link or tab to reveal it is visible (e.g., "收件箱" link), you MUST plan a multi-step sequence: first click the tab/link to reveal the target area, then interact with the target element.
+
 - Use "navigate" for opening a site.
 - Use "smart_search" when the user wants to search on the current page or after opening a search engine.
 - Use "list_search_results" when the user asks to查看/列出当前搜索结果候选.

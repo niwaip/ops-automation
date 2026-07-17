@@ -145,18 +145,12 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
   const promptDebug = message.metadata?.promptDebug;
   const progressLogs = message.metadata?.progressLogs || [];
   const showThinking = message.metadata?.showThinking !== false;
-  const isRunning = isTaskMode && message.metadata?.taskStatus === 'running';
+  const isRunning = isTaskMode && taskStatus === 'running';
   const showRunningState =
     isTaskMode &&
     (isRunning || (Boolean(isStreaming) && !isWaitingInput && !isPendingApproval && !errorMessage));
-  const shouldShowTakeoverCard = Boolean((failureReason || errorMessage) && isHumanControl);
-  const shouldShowErrorCard = Boolean(
-    !shouldShowTakeoverCard &&
-      (failureReason || errorMessage) &&
-      !isHumanControl &&
-      message.metadata?.executionStatus !== 'human_control' &&
-      (isFailed || (!isWaitingInput && !isPendingApproval && !showRunningState))
-  );
+  const shouldShowTakeoverCard = isTaskMode && taskStatus === 'human_control';
+  const shouldShowErrorCard = isTaskMode && taskStatus === 'failed';
   const missingInputs = useMemo(
     () =>
       dedupeWaitingInputDisplayFields(
@@ -330,8 +324,6 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
       isRunning &&
       !isWaitingInput &&
       !isPendingApproval &&
-      !outcomeFinalResult &&
-      !outcomeSummary &&
       !shouldShowErrorCard &&
       !shouldShowTakeoverCard
   );

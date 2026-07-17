@@ -135,3 +135,4 @@ apps/backend/governance/identity-access/src/**/*.js.map
 # backend-contracts source map artifacts (can be regenerated from tsc)
 packages/backend-contracts/**/*.js.map
 packages/backend-contracts/**/*.d.ts.map
+.docker-workspace-bootstrap.lock

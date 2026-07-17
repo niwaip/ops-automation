@@ -179,18 +179,29 @@ export class RecorderObservationService {
       });
     };
 
-    for (const input of observation.inputs) {
-      push(this.buildCandidate(nextCandidateId('input'), 'input', 'probe', input), [
-        'visible_input',
-      ]);
+    // Separate inputs by importance
+    const textInputs: Record<string, unknown>[] = [];
+    const checkboxInputs: Record<string, unknown>[] = [];
+    for (const input of observation.inputs || []) {
+      if (input && typeof input === 'object') {
+        const type = String(input.type || '').toLowerCase();
+        if (type === 'checkbox' || type === 'radio') {
+          checkboxInputs.push(input as Record<string, unknown>);
+        } else {
+          textInputs.push(input as Record<string, unknown>);
+        }
+      }
     }
-    for (const button of observation.buttons) {
+
+    // 1. Visible global buttons
+    for (const button of observation.buttons || []) {
       push(this.buildCandidate(nextCandidateId('action'), 'action', 'probe', button), [
         'visible_button',
       ]);
     }
+
+    // 2. Row actions (buttons/links inside tables)
     for (const row of observation.rows || []) {
-      push(this.buildCandidate(nextCandidateId('row'), 'row', 'row', row), ['row_container']);
       const rowIndex = typeof row.rowIndex === 'number' ? row.rowIndex : undefined;
       const rowKey = typeof row.rowKey === 'string' ? row.rowKey : undefined;
       const rowText = typeof row.rowText === 'string' ? row.rowText : undefined;
@@ -215,6 +226,43 @@ export class RecorderObservationService {
           ['row_action']
         );
       }
+    }
+
+    // 3. Region actions
+    for (const region of observation.regions || []) {
+      const regionName = region.regionId;
+      const regionType = region.label;
+      const actions = Array.isArray(region.actions)
+        ? region.actions.filter(
+            (item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object'
+          )
+        : [];
+      for (const action of actions) {
+        push(
+          this.buildCandidate(nextCandidateId('action'), 'action', 'region', {
+            ...action,
+            region: regionName,
+            regionType,
+          }),
+          ['region_action']
+        );
+      }
+    }
+
+    // 4. Important text inputs (username, password, search, etc.)
+    for (const input of textInputs) {
+      push(this.buildCandidate(nextCandidateId('input'), 'input', 'probe', input), [
+        'visible_input',
+      ]);
+    }
+
+    // 5. Row fields & Region fields
+    for (const row of observation.rows || []) {
+      const rowIndex = typeof row.rowIndex === 'number' ? row.rowIndex : undefined;
+      const rowKey = typeof row.rowKey === 'string' ? row.rowKey : undefined;
+      const rowText = typeof row.rowText === 'string' ? row.rowText : undefined;
+      const region = typeof row.region === 'string' ? row.region : undefined;
+      const regionType = typeof row.regionType === 'string' ? row.regionType : undefined;
 
       const rowFields = Array.isArray(row.rowFields)
         ? row.rowFields.filter(
@@ -237,9 +285,6 @@ export class RecorderObservationService {
     }
 
     for (const region of observation.regions || []) {
-      push(this.buildCandidate(nextCandidateId('region'), 'region', 'region', region as unknown as Record<string, unknown>), [
-        'region_container',
-      ]);
       const regionName = region.regionId;
       const regionType = region.label;
       const fields = Array.isArray(region.fields)
@@ -257,21 +302,30 @@ export class RecorderObservationService {
           ['region_field']
         );
       }
-      const actions = Array.isArray(region.actions)
-        ? region.actions.filter(
-            (item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object'
-          )
-        : [];
-      for (const action of actions) {
-        push(
-          this.buildCandidate(nextCandidateId('action'), 'action', 'region', {
-            ...action,
-            region: regionName,
-            regionType,
-          }),
-          ['region_action']
-        );
-      }
+    }
+
+    // 6. Checkboxes & Radios (least important inputs)
+    for (const input of checkboxInputs) {
+      push(this.buildCandidate(nextCandidateId('input'), 'input', 'probe', input), [
+        'visible_input',
+      ]);
+    }
+
+    // 7. Containers
+    for (const row of observation.rows || []) {
+      push(this.buildCandidate(nextCandidateId('row'), 'row', 'row', row), ['row_container']);
+    }
+
+    for (const region of observation.regions || []) {
+      push(
+        this.buildCandidate(
+          nextCandidateId('region'),
+          'region',
+          'region',
+          region as unknown as Record<string, unknown>
+        ),
+        ['region_container']
+      );
     }
 
     for (const semanticInput of this.collectSemanticCandidateInputs(observation.pageSemantics)) {
@@ -287,8 +341,8 @@ export class RecorderObservationService {
     }
 
     return {
-      candidates: candidates.slice(0, 40),
-      trace: trace.slice(0, 40),
+      candidates: candidates.slice(0, 150),
+      trace: trace.slice(0, 150),
     };
   }
 

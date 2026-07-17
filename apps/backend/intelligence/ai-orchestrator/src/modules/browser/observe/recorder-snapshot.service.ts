@@ -267,6 +267,23 @@ export class RecorderSnapshotService {
     target: string,
     nodes: SnapshotNode[]
   ): SnapshotNode | undefined {
+    const match = target.trim().match(/^([a-z_][\w-]*)\[name=(['"]?)(.+?)\2\]$/i);
+    if (match?.[1] && match[3]) {
+      const targetRole = match[1].trim().toLowerCase();
+      const targetName = match[3].trim();
+      const roleMatchedNodes = nodes.filter((node) => {
+        if (node.role === targetRole) return true;
+        if ((targetRole === 'link' || targetRole === 'button') && node.role === 'generic') {
+          return true;
+        }
+        return false;
+      });
+      if (roleMatchedNodes.length > 0) {
+        const resolved = this.pickBestSnapshotNode(targetName, roleMatchedNodes);
+        if (resolved) return resolved;
+      }
+    }
+
     const inputNodes = nodes.filter((node) =>
       INPUT_ROLES.has(node.role)
     );
@@ -277,7 +294,24 @@ export class RecorderSnapshotService {
     target: string,
     nodes: SnapshotNode[]
   ): SnapshotNode | undefined {
-    const preferredNodes = nodes.filter((node) => ACTION_ROLES.has(node.role));
+    const match = target.trim().match(/^([a-z_][\w-]*)\[name=(['"]?)(.+?)\2\]$/i);
+    if (match?.[1] && match[3]) {
+      const targetRole = match[1].trim().toLowerCase();
+      const targetName = match[3].trim();
+      const roleMatchedNodes = nodes.filter((node) => {
+        if (node.role === targetRole) return true;
+        if ((targetRole === 'link' || targetRole === 'button') && node.role === 'generic') {
+          return true;
+        }
+        return false;
+      });
+      if (roleMatchedNodes.length > 0) {
+        const resolved = this.pickBestSnapshotNode(targetName, roleMatchedNodes);
+        if (resolved) return resolved;
+      }
+    }
+
+    const preferredNodes = nodes.filter((node) => ACTION_ROLES.has(node.role) || node.role === 'generic');
     return this.pickBestSnapshotNode(target, preferredNodes);
   }
 
