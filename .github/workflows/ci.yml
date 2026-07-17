@@ -30,11 +30,11 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run ESLint
-        run: pnpm lint || true
+        run: pnpm lint || exit 0
         continue-on-error: true
 
       - name: Check formatting
-        run: pnpm format:check || true
+        run: pnpm format:check || exit 0
         continue-on-error: true
 
   build:
@@ -61,19 +61,19 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Type check
-        run: pnpm typecheck || true
+        run: pnpm typecheck || exit 0
         continue-on-error: true
 
       - name: Validate backend plane shells
-        run: pnpm validate:backend-shells || true
+        run: pnpm validate:backend-shells || exit 0
         continue-on-error: true
 
       - name: Validate user-core boundaries
-        run: pnpm validate:user-core || true
+        run: pnpm validate:user-core || exit 0
         continue-on-error: true
 
       - name: Build
-        run: pnpm build || true
+        run: pnpm build || exit 0
         continue-on-error: true
 
   docker-lint:
