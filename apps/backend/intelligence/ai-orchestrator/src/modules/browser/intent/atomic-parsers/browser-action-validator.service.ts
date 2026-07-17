@@ -37,6 +37,7 @@ const CAUTION_TOOLS = new Set([
   'search',
   'smart_search',
   'click_result',
+  'click_table_row',
   'hover',
 ]);
 

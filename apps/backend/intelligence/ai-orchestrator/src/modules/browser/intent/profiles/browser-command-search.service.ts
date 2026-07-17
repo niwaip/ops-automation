@@ -460,6 +460,7 @@ export class BrowserCommandSearchService {
     return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
   }
 
+
   /**
    * Fast early detection for click-result patterns like "打开第二个结果", "点击第二条记录".
    * This is called BEFORE the action-profile to prevent verbs like "打开" or "点击" 
@@ -468,6 +469,11 @@ export class BrowserCommandSearchService {
   public parseEarlyClickResult(input: string): SearchParseResult | null {
     const normalizedInput = input.replace(/\s+/g, ' ').trim();
     if (!normalizedInput) {
+      return null;
+    }
+
+    // Don't match table-scoped phrases — those should be handled by parseEarlyClickTableRow
+    if (/一览表|查询结果|检索结果/.test(normalizedInput)) {
       return null;
     }
 
@@ -500,5 +506,84 @@ export class BrowserCommandSearchService {
 
     return null;
   }
-}
 
+  /**
+   * Detects phrases that mean "open/click the Nth record in a business table/list".
+   * Examples: "打开一览表里面的第一条记录", "点击查询结果的第一条", "打开检索结果里面的第一条记录的链接"
+   * These are routed to click_table_row instead of click_result, because business
+   * system tables use javascript:void(0) links that the search-engine-oriented
+   * click_result scorer incorrectly filters out.
+   */
+  public parseEarlyClickTableRow(input: string): SearchParseResult | null {
+    const normalizedInput = input.replace(/\s+/g, ' ').trim();
+    if (!normalizedInput) {
+      return null;
+    }
+
+    const VERBS = '(?:.*?(?:点击|单击|选择|打开|进入|进入到|进|入|访问|查看|click|open))?';
+    // Capture the table scope name!
+    const TABLE_SCOPE = '(.*?(?:一览表|查询结果|检索结果|列表|结果列表))(?:里(?:面)?(?:的)?|中(?:的)?|的)?';
+    const ORDINAL = '(?:第)?([一二三四五六七八九十\\d]+)';
+    const NOUNS = '(?:个|条|项)?\\s*(?:记录|结果|数据|行|条目)?(?:的(?:链接|标题|详情|详细)?)?';
+
+    // Pattern: VERB + TABLE_SCOPE + ORDINAL + NOUNS (table-scoped ordinal)
+    const scopedPattern = new RegExp(
+      `^${VERBS}\\s*${TABLE_SCOPE}\\s*${ORDINAL}\\s*${NOUNS}.*$`,
+      'i'
+    );
+    const scopedMatch = normalizedInput.match(scopedPattern);
+
+    if (scopedMatch && scopedMatch[1] && scopedMatch[2]) {
+      const scopeName = scopedMatch[1].trim();
+      const rowIndex = this.resolveResultIndex(scopedMatch[2]);
+      if (rowIndex > 0) {
+        return {
+          status: 'success',
+          response: this.buildStandaloneResponse({
+            intentType: 'click_result',
+            command: {
+              tool: 'click_table_row',
+              params: { index: rowIndex, scope: scopeName },
+              description: `打开${scopeName}第${rowIndex}条记录`,
+            },
+            explanation: `将打开${scopeName}第${rowIndex}条记录`,
+            matchedTerm: { term: normalizedInput },
+            resultIndex: rowIndex,
+          }),
+        };
+      }
+    }
+
+    // Pattern: VERB + ORDINAL + TABLE_SCOPE + NOUNS (ordinal first, then scope)
+    const ordinalFirstPattern = new RegExp(
+      `^${VERBS}\\s*${ORDINAL}\\s*(?:条|个|项)?\\s*(?:${TABLE_SCOPE})?(?:的(?:链接|标题|详情|详细)?)?.*$`,
+      'i'
+    );
+    // Only match if there is an explicit table scope keyword in the input
+    if (/一览表|查询结果|检索结果/.test(normalizedInput)) {
+      const ordinalMatch = normalizedInput.match(ordinalFirstPattern);
+      if (ordinalMatch && ordinalMatch[1]) {
+        const rowIndex = this.resolveResultIndex(ordinalMatch[1]);
+        const scopeName = ordinalMatch[2] ? ordinalMatch[2].trim() : undefined;
+        if (rowIndex > 0) {
+          return {
+            status: 'success',
+            response: this.buildStandaloneResponse({
+              intentType: 'click_result',
+              command: {
+                tool: 'click_table_row',
+                params: scopeName ? { index: rowIndex, scope: scopeName } : { index: rowIndex },
+                description: scopeName ? `打开${scopeName}第${rowIndex}条记录` : `打开一览表第${rowIndex}条记录`,
+              },
+              explanation: scopeName ? `将打开${scopeName}第${rowIndex}条记录` : `将打开一览表第${rowIndex}条记录`,
+              matchedTerm: { term: normalizedInput },
+              resultIndex: rowIndex,
+            }),
+          };
+        }
+      }
+    }
+
+    return null;
+  }
+}

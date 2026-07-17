@@ -27,6 +27,7 @@ export type ActionType =
   | 'read_page'
   | 'list_search_results'
   | 'click_result'
+  | 'click_table_row'
   | 'switch_latest_tab'
   | 'close_tab'
   | 'read_value'

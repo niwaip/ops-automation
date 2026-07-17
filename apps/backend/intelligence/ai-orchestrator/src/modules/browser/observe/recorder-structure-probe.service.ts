@@ -187,6 +187,13 @@ export class RecorderStructureProbeService {
       };
       const getElementRef = element => getDataAttr(element, 'data-ref') || getDataAttr(element, 'data-playwright-ref') || undefined;
 
+      const allRows = uniqueElements(queryAllAcrossRoots('[data-ai-row-key], tr, [role="row"], [data-ai-row-index]')).filter(isVisible);
+      allRows.forEach((row, idx) => {
+        if (row instanceof HTMLElement) {
+          row.setAttribute('data-sys-row-index', String(idx + 1));
+        }
+      });
+
       const inputs = uniqueElements(queryAllAcrossRoots('input, textarea, select, [contenteditable="true"]'))
         .filter(isVisible)
         .map((element, index) => ({
@@ -214,6 +221,17 @@ export class RecorderStructureProbeService {
           ariaSelected: getBooleanAttr(element, 'aria-selected'),
           ariaPressed: getBooleanAttr(element, 'aria-pressed'),
           dataState: getDataAttr(element, 'data-state'),
+          rowIndex: (() => {
+            const raw = getDatasetAttr(element, 'aiRowIndex');
+            const parsed = raw ? Number.parseInt(raw, 10) : NaN;
+            if (Number.isFinite(parsed)) return parsed;
+            const closestRow = element.closest && element.closest('[data-sys-row-index]');
+            if (closestRow) {
+              const sysParsed = Number.parseInt(closestRow.getAttribute('data-sys-row-index'), 10);
+              return Number.isFinite(sysParsed) ? sysParsed : undefined;
+            }
+            return undefined;
+          })(),
         }));
 
       const buttons = uniqueElements(queryAllAcrossRoots('button, a, [role="button"], [role="link"], [data-ai-action]'))
@@ -238,7 +256,13 @@ export class RecorderStructureProbeService {
           rowIndex: (() => {
             const raw = getDatasetAttr(element, 'aiRowIndex');
             const parsed = raw ? Number.parseInt(raw, 10) : NaN;
-            return Number.isFinite(parsed) ? parsed : undefined;
+            if (Number.isFinite(parsed)) return parsed;
+            const closestRow = element.closest && element.closest('[data-sys-row-index]');
+            if (closestRow) {
+              const sysParsed = Number.parseInt(closestRow.getAttribute('data-sys-row-index'), 10);
+              return Number.isFinite(sysParsed) ? sysParsed : undefined;
+            }
+            return undefined;
           })(),
           rowKey: getDatasetAttr(element, 'aiRowKey'),
           rowText: getDatasetAttr(element, 'aiRowText'),
@@ -341,7 +365,7 @@ export class RecorderStructureProbeService {
         .filter(isVisible)
         .map(element => toText(getDataAttr(element, 'aria-label') || element.textContent))
         .filter(Boolean)
-        .slice(0, 30);
+        .slice(0, 150);
 
       return {
         url: window.location.href,

@@ -310,9 +310,13 @@ function buildChecks(
     checks.push({
       code: 'node_state_changed',
       level: 'page',
+      // Not required: many valid clicks (menu expand, tab switch, input focus, row select)
+      // do not produce an observable DOM diff within the observation window.  The browser
+      // tool reporting success is the authoritative signal; page-observation is supporting
+      // evidence only.  Marking this required caused spurious "验证失败" for actions that
+      // actually worked fine in the browser.
       passed: changed ? true : input.execution?.success ? 'unknown' : false,
-      message: changed ? '页面已观察到状态变化。' : '尚未观察到明确的页面变化。',
-      required: true,
+      message: changed ? '页面已观察到状态变化。' : '尚未观察到明确的页面变化（工具执行结果为主要依据）。',
       weight: 2,
       evidencePath: 'evidence.diff',
     });
@@ -358,22 +362,24 @@ function resolveVerificationSuccess(
     if (layerChecks.length === 0) {
       continue;
     }
+
     const layerHasRequiredFailure = layerChecks.some(
       (check) => check.required && check.passed === false
     );
     const layerAllPassed = layerChecks.every((check) => check.passed === true);
-    const layerHasUnknown = layerChecks.some(
-      (check) => check.passed === 'unknown' || check.passed === 'partial'
-    );
 
+    // A required check explicitly failing is a hard failure for this layer.
     if (layerHasRequiredFailure) {
       return { success: false, level: layer };
     }
-    if (!layerAllPassed && layerHasUnknown) {
-      return { success: 'partial', level: layer };
-    }
+
+    // Any other non-passing result (unknown, partial, or a non-required false)
+    // means we have partial evidence — not a hard failure.  Callers (e.g.
+    // resolveOutcomeStatus) map 'partial' to a yellow/warning state rather than
+    // a red/error state, which matches the recording UX requirement:
+    // "只有明确出错的才提示出错".
     if (!layerAllPassed) {
-      return { success: false, level: layer };
+      return { success: 'partial', level: layer };
     }
   }
 

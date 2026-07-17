@@ -107,6 +107,7 @@ export type BrowserPlanAction =
   | 'click'
   | 'list_search_results'
   | 'click_result'
+  | 'click_table_row'
   | 'switch_latest_tab'
   | 'close_tab'
   | 'fill'

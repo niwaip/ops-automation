@@ -28,7 +28,9 @@ export class BrowserCommandClickContextService {
     }
 
     return (context.availableButtons || [])
-      .map((item, index) => this.browserCommandContextNormalizerService.normalizeCandidate(item, index))
+      .map((item, index) =>
+        this.browserCommandContextNormalizerService.normalizeCandidate(item, index)
+      )
       .filter((item): item is BrowserCommandCandidate => Boolean(item));
   }
 
@@ -65,13 +67,23 @@ export class BrowserCommandClickContextService {
       typeof params.target === 'string'
         ? this.extractRawTargetFromTextLocator(params.target)
         : undefined;
-    const candidateId =
+
+    let candidateId =
       typeof params.candidateId === 'string' && params.candidateId.trim()
         ? params.candidateId.trim()
         : undefined;
 
+    // Fallback: if params.target looks like a candidateId, treat it as candidateId
+    if (
+      !candidateId &&
+      typeof params.target === 'string' &&
+      /^(action|input|field|row|region)_\d+$/.test(params.target.trim())
+    ) {
+      candidateId = params.target.trim();
+    }
+
     const rawTarget = rawTargetFromIntent || rawTargetFromText || rawTargetFromTarget;
-    if (!rawTarget && !candidateId) {
+    if (!rawTarget && !candidateId && typeof params.rowHint === 'undefined') {
       return null;
     }
 
@@ -105,6 +117,10 @@ export class BrowserCommandClickContextService {
       return false;
     }
 
+    if (/^(action|input|field|row|region)_\d+$/.test(normalized)) {
+      return false;
+    }
+
     return true;
   }
 
@@ -114,6 +130,38 @@ export class BrowserCommandClickContextService {
     source: PendingActionIntentSource
   ): BrowserCommand[] {
     return commands.map((command) => {
+      if (command.tool === 'click_table_row') {
+        const params = (command.params || {}) as Record<string, unknown>;
+        const index = typeof params.index === 'number' ? params.index : 1;
+        const intent = this.buildPendingClickIntentFromParams(
+          {
+            rowHint: { index },
+            semanticHint: 'submit', // Prioritize actionable buttons/links
+            regionHint: typeof params.scope === 'string' ? params.scope : undefined
+          },
+          source
+        );
+        if (intent) {
+          // Exclude checkboxes/inputs when trying to "open" a table row.
+          const filteredContext: BrowserCommandContext = {
+            ...context,
+            availableCandidates: this.getActionResolverCandidates(context).filter(c => c.kind !== 'input')
+          };
+          
+          const resolved = this.resolvePendingClickIntent(
+            intent,
+            filteredContext,
+            command.description || `打开一览表第${index}条记录`
+          );
+          if (resolved) {
+            // AI confidently found the best target! Use it.
+            return resolved;
+          }
+        }
+        // Fallback to rule-based execution if AI ties or fails
+        return command;
+      }
+
       if (command.tool !== 'click') {
         return command;
       }
@@ -227,10 +275,7 @@ export class BrowserCommandClickContextService {
     return indexMap[normalized] || parseInt(normalized, 10) || 0;
   }
 
-  shouldPreferAIForCandidateScopedIntent(
-    input: string,
-    context: BrowserCommandContext
-  ): boolean {
+  shouldPreferAIForCandidateScopedIntent(input: string, context: BrowserCommandContext): boolean {
     if (!context.availableCandidates?.length) {
       return false;
     }
@@ -291,12 +336,15 @@ export class BrowserCommandClickContextService {
     }
 
     const params = (command.params || {}) as Record<string, unknown>;
+    // Allow params.text if it targets a specific value that we failed to match directly but isn't a broad descriptive string
     if (typeof params.text === 'string' && params.text.trim()) {
-      return true;
+      if (/的链接/.test(params.text)) return true;
+      return false;
     }
 
     if (typeof params.target === 'string' && /^text\s*=/i.test(params.target.trim())) {
-      return true;
+      if (/的链接/.test(params.target)) return true;
+      return false;
     }
 
     return false;
@@ -350,7 +398,9 @@ export class BrowserCommandClickContextService {
     if (!matchedCandidateId) {
       return true;
     }
-    const matchedCandidate = candidates.find((candidate) => candidate.candidateId === matchedCandidateId);
+    const matchedCandidate = candidates.find(
+      (candidate) => candidate.candidateId === matchedCandidateId
+    );
     return matchedCandidate?.row?.index !== requestedRowIndex;
   }
 

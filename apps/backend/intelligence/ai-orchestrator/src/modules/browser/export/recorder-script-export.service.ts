@@ -193,6 +193,10 @@ export class RecorderScriptExportService {
         return [
           `  page = await clickSearchResult(page, context, ${this.resolveScriptValue(commandIndex, 'index', command.params.index, parameters)});`,
         ];
+      case 'click_table_row':
+        return [
+          `  page = await clickTableRow(page, context, ${this.resolveScriptValue(commandIndex, 'index', command.params.index, parameters)});`,
+        ];
       case 'switch_latest_tab':
         return [
           '  page = context.pages().at(-1) || page;',

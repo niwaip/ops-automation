@@ -340,6 +340,17 @@ export class BrowserCommandService {
         parserSource: 'navigation-profile',
       });
     }
+    const earlyClickTableRow = this.browserCommandSearchService.parseEarlyClickTableRow(effectiveInput);
+    if (earlyClickTableRow && earlyClickTableRow.status === 'success' && earlyClickTableRow.response) {
+      return this.finalizeParseResult({
+        originalInput: input,
+        normalizedInput: effectiveInput,
+        context: commandContext,
+        semanticRuntime,
+        result: earlyClickTableRow.response,
+        parserSource: 'search-profile',
+      });
+    }
     const earlyClickResult = this.browserCommandSearchService.parseEarlyClickResult(effectiveInput);
     if (earlyClickResult && earlyClickResult.status === 'success' && earlyClickResult.response) {
       return this.finalizeParseResult({
@@ -884,6 +895,15 @@ export class BrowserCommandService {
         }
         return {
           tool: 'click_result',
+          params: { index: params.index },
+          description,
+        };
+      case 'click_table_row':
+        if (typeof params.index !== 'number') {
+          return null;
+        }
+        return {
+          tool: 'click_table_row',
           params: { index: params.index },
           description,
         };

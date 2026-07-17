@@ -1,0 +1,69 @@
+### Result
+"消息中心\n营业商谈一览\n查询\n \n 导出\n \n 显示列\n \n关闭\n \n查询条件\n单据编号 \t商谈号 \tWBS编号 \n营业部门  \t\t营业担当 \n实施部门  \t\t实施担当 \n客户名称 \t商谈名称 \t商谈Stage \n登录日期 \t～ \t登录人 \n查询结果\nNo.\n\t\n\t\n单据编号\n\t\n商谈号\n1\n\t\n\t\nSD202508-0049-2\n\t\nS63432\n商谈开始日\n\t\n营业部门\n\t\n营业担当\n\t\n实施部门\n\t\n实施担当\n\t\n客户名称\n\t\n商谈名称\n\t\n商谈Stage\n\t\nWBS类型\n\t\nWBS编号\n\t\n无税销售额(K)\n\t\n登录人\n\t\n登录日期\n2025-08-12\n\t\nFC41002 Industry BP_華東1（流通）\n\t\n沈小娟\n\t\nFC45031 HIT華東\n\t\n杨烨\n\t\n萧山太阳机械有限公司\n\t\nICAD新购\n\t\nSS4 - Design\n\t\nIW\n\t\n\t\n22.00000\n\t\n沈小娟\n\t\n2025-08-13 04:15:23\n50\n100\n300\n500\n\t\n\t \n \n\t \n \n\t\n\t第\t\t共1页\t\n\t \n \n\t \n \n\t\n\t \n \n显示1到1,共1记录\n "
+### Ran Playwright code
+```js
+await (async page => {
+          const activePage = page;
+          let text = await activePage.evaluate(
+            ({ maxLength, method, attributeName }) => {
+              const body = document.body;
+              if (!body) return '';
+              if (method === 'visible') {
+                return 'true';
+              }
+              if (method === 'attribute') {
+                if (!attributeName) return '';
+                return String(body.getAttribute(attributeName) || '').slice(0, maxLength);
+              }
+              if (method === 'value') {
+                return String(body.getAttribute('value') || '').slice(0, maxLength);
+              }
+              if (method === 'textContent') {
+                return String(body.textContent || '').slice(0, maxLength);
+              }
+              return String(body.innerText || '').slice(0, maxLength);
+            },
+            {
+              maxLength: 1600,
+              method: "innerText",
+              attributeName: "",
+            }
+          );
+          if (!text || text.length < 100) {
+            for (const frame of activePage.frames()) {
+              if (frame === activePage.mainFrame()) continue;
+              const frameText = await frame
+                .evaluate(
+                  ({ maxLength, method, attributeName }) => {
+                    const body = document.body;
+                    if (!body) return '';
+                    if (method === 'visible') {
+                      return 'true';
+                    }
+                    if (method === 'attribute') {
+                      if (!attributeName) return '';
+                      return String(body.getAttribute(attributeName) || '').slice(0, maxLength);
+                    }
+                    if (method === 'value') {
+                      return String(body.getAttribute('value') || '').slice(0, maxLength);
+                    }
+                    if (method === 'textContent') {
+                      return String(body.textContent || '').slice(0, maxLength);
+                    }
+                    return String(body.innerText || '').slice(0, maxLength);
+                  },
+                  {
+                    maxLength: 1600,
+                    method: "innerText",
+                    attributeName: "",
+                  }
+                )
+                .catch(() => '');
+              if (frameText && frameText.length > text.length) {
+                text = frameText;
+              }
+            }
+          }
+          return text;
+        })(page);
+```

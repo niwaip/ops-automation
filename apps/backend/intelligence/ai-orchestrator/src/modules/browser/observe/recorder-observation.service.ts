@@ -237,9 +237,15 @@ export class RecorderObservationService {
     }
 
     for (const region of observation.regions || []) {
-      push(this.buildCandidate(nextCandidateId('region'), 'region', 'region', region as unknown as Record<string, unknown>), [
-        'region_container',
-      ]);
+      push(
+        this.buildCandidate(
+          nextCandidateId('region'),
+          'region',
+          'region',
+          region as unknown as Record<string, unknown>
+        ),
+        ['region_container']
+      );
       const regionName = region.regionId;
       const regionType = region.label;
       const fields = Array.isArray(region.fields)
@@ -287,8 +293,8 @@ export class RecorderObservationService {
     }
 
     return {
-      candidates: candidates.slice(0, 40),
-      trace: trace.slice(0, 40),
+      candidates: candidates.slice(0, 150),
+      trace: trace.slice(0, 150),
     };
   }
 

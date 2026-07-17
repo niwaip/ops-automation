@@ -7,107 +7,74 @@ import type {
 const isStreamEventPayload = (value: Record<string, unknown>): value is StreamEventPayload =>
   typeof value.type === 'string';
 
-export const browserStreamingTransport: StreamingTransportPort = {
-  postSseStream({
-    url,
-    payload,
-    token,
-    requireDoneEvent = false,
-    onEvent,
-  }: PostSseStreamRequest) {
-    const xhr = new XMLHttpRequest();
-    const promise = new Promise<void>((resolve, reject) => {
-      let processedLength = 0;
-      let lineBuffer = '';
-      let hasDoneEvent = false;
+const isStreamDonePayload = (value: Record<string, unknown>): boolean => value.type === 'done';
 
-      const processChunk = (chunk: string) => {
-        if (!chunk) {
-          return;
+export const browserStreamingTransport: StreamingTransportPort = {
+  postSseStream({ url, payload, token, onEvent }: PostSseStreamRequest) {
+    const abortController = new AbortController();
+
+    const promise = (async () => {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+        signal: abortController.signal,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => '');
+        throw new Error(errorText || `HTTP ${response.status}`);
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('Response body is null');
+      }
+
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) {
+          break;
         }
 
-        lineBuffer += chunk;
-        const lines = lineBuffer.split('\n');
-        lineBuffer = lines.pop() || '';
+        buffer += decoder.decode(value, { stream: true });
+        const chunks = buffer.split('\n\n');
+        buffer = chunks.pop() || '';
 
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) {
-            continue;
-          }
-          try {
-            const data = JSON.parse(line.slice(6)) as Record<string, unknown>;
-            if (!isStreamEventPayload(data)) {
+        for (const chunk of chunks) {
+          for (const line of chunk.split('\n')) {
+            if (!line.startsWith('data: ')) {
               continue;
             }
-            if (data.type === 'done') {
-              hasDoneEvent = true;
+            const data = JSON.parse(line.slice(6)) as Record<string, unknown>;
+            if (isStreamDonePayload(data)) {
+              continue;
             }
-            onEvent(data);
-          } catch {
-            // Ignore malformed SSE chunks and continue reading the stream.
-          }
-        }
-      };
-
-      xhr.open('POST', url);
-      xhr.setRequestHeader('Content-Type', 'application/json');
-      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-
-      xhr.onprogress = () => {
-        const newChunk = xhr.responseText.slice(processedLength);
-        processedLength = xhr.responseText.length;
-        processChunk(newChunk);
-      };
-
-      xhr.onload = () => {
-        const newChunk = xhr.responseText.slice(processedLength);
-        processChunk(newChunk);
-
-        const trailingLine = lineBuffer.trim();
-        if (trailingLine.startsWith('data: ')) {
-          try {
-            const data = JSON.parse(trailingLine.slice(6)) as Record<string, unknown>;
             if (isStreamEventPayload(data)) {
-              if (data.type === 'done') {
-                hasDoneEvent = true;
-              }
               onEvent(data);
             }
-          } catch {
-            // Ignore malformed trailing data.
           }
         }
+      }
 
-        if (xhr.status >= 200 && xhr.status < 300) {
-          if (!requireDoneEvent || hasDoneEvent) {
-            resolve();
-          } else {
-            reject(new Error('SSE stream ended without done event'));
-          }
-          return;
+      const trailingLine = buffer.trim();
+      if (trailingLine.startsWith('data: ')) {
+        const data = JSON.parse(trailingLine.slice(6)) as Record<string, unknown>;
+        if (!isStreamDonePayload(data) && isStreamEventPayload(data)) {
+          onEvent(data);
         }
-
-        if (xhr.status === 401) {
-          reject(new Error('登录状态已失效，请重新登录后再试'));
-          return;
-        }
-
-        if (xhr.status === 403) {
-          reject(new Error('当前账号无权执行该操作'));
-          return;
-        }
-
-        const responseText = xhr.responseText?.trim();
-        reject(new Error(responseText || `HTTP ${xhr.status}: ${xhr.statusText}`));
-      };
-
-      xhr.onerror = () => reject(new Error('Network error'));
-      xhr.send(JSON.stringify(payload));
-    });
+      }
+    })();
 
     return {
       promise,
-      abort: () => xhr?.abort?.(),
+      abort: () => abortController.abort(),
     };
   },
 };
