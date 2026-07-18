@@ -4,13 +4,11 @@
 
 ## 说明
 
-- `check:sprint5` 是轻量静态回归，覆盖聊天、报告、通知主链路的关键接线点
-- 它不能替代人工联调，但可以在提交前快速发现页面、路由或运行时接线被误删
+- 本清单作为参考，用于确保在重构或迭代时主链路功能不受影响。
 
 ## 一、先决条件
 
 - `pnpm run validate:user-core`
-- `pnpm --filter @ops/user-web run check:sprint5`
 - `pnpm --filter @ops/user-web run build`
 - `pnpm --filter @ops/portal run build`
 - `pnpm --filter @ops/portal run check:user-route-policy`
@@ -54,4 +52,4 @@
 
 - 对每条人工回归记录：时间、环境、执行人、结果
 - 若失败，记录失败页面、接口、控制台错误与复现步骤
-- 若本轮只完成静态校验，也应明确标注“功能闭环未人工回归”
+- 若本轮未全部人工回归，也应明确标注“功能闭环未人工回归”

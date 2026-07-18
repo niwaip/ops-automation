@@ -155,6 +155,10 @@ export const aiModelApi = {
     return apiClient.patch<AIProviderConfig>(`/ai/providers/${id}`, data);
   },
 
+  deleteProviderConfig: async (id: string): Promise<void> => {
+    return apiClient.delete(`/ai/providers/${id}`);
+  },
+
   checkProviderHealth: async (
     id: string
   ): Promise<{ success: boolean; response?: string; error?: string }> => {

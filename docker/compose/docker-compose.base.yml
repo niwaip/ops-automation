@@ -327,8 +327,8 @@ services:
     <<: *common-node-service
     container_name: ops-report
     command: >
-      sh -c "npm config set registry https://registry.npmjs.org
-      && npm install --package-lock=false --legacy-peer-deps --include=dev --workspaces=false
+      sh -c "npm install -g pnpm@8.12.0 && pnpm config set registry https://registry.npmmirror.com && pnpm config set ignore-scripts true && pnpm install --no-frozen-lockfile
+      && pnpm add -D @types/express-serve-static-core
       && npx prisma generate
       && npm run build
       && rm -rf /app/dist/generated

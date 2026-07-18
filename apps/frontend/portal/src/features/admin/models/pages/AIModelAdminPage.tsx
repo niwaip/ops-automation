@@ -17,6 +17,7 @@ import {
   Checkbox,
   Col,
   Row,
+  Statistic,
 } from 'antd';
 import {
   SearchOutlined,
@@ -28,8 +29,11 @@ import {
   StopOutlined,
   ExperimentOutlined,
   LockOutlined,
-  SwapOutlined,
   ThunderboltOutlined,
+  AppstoreOutlined,
+  KeyOutlined,
+  RobotOutlined,
+  CheckCircleOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
@@ -98,16 +102,9 @@ const scopeTagMeta: Record<string, { label: string; color: string }> = {
 
 const SECTION_CARD_STYLE: React.CSSProperties = {
   marginTop: 16,
-  borderRadius: 20,
-  border: '1px solid var(--bg-secondary)',
-  boxShadow: 'var(--shadow-md)',
-};
-
-const OVERVIEW_METRIC_STYLE: React.CSSProperties = {
-  borderRadius: 16,
-  border: '1px solid var(--bg-secondary)',
-  background: 'var(--bg-card)',
-  boxShadow: 'var(--shadow-sm)',
+  borderRadius: 24,
+  border: '1px solid var(--border-color)',
+  boxShadow: 'none',
 };
 
 function mapConfigToFormValues(config?: AIModelConfig) {
@@ -818,13 +815,6 @@ const AIModelAdminPage: React.FC = () => {
       fixed: 'right',
       render: (_, record) => (
         <Space size={4} wrap>
-          <Tooltip title="切换模型">
-            <Button
-              size="small"
-              icon={<SwapOutlined />}
-              onClick={() => handleSwitchModel(record)}
-            />
-          </Tooltip>
           <Tooltip title={t('common:edit')}>
             <Button size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)} />
           </Tooltip>
@@ -879,105 +869,119 @@ const AIModelAdminPage: React.FC = () => {
   return (
     <div>
       <Card
+        className="execution-list-card"
         style={{
           ...SECTION_CARD_STYLE,
           background: 'linear-gradient(180deg, rgba(99, 102, 241, 0.08) 0%, var(--bg-card) 100%)',
         }}
-        styles={{ body: { padding: 24 } }}
+        styles={{ body: { padding: '16px 20px' } }}
       >
         <Space
-          align="start"
-          style={{ width: '100%', justifyContent: 'space-between', marginBottom: 20 }}
+          align="center"
+          style={{ width: '100%', justifyContent: 'space-between', marginBottom: 16 }}
           wrap
         >
-          <Space direction="vertical" size={6}>
-            <Space size={10} wrap>
-              <Title level={4} style={{ margin: 0 }}>
-                {t('admin:modelManagement')}
-              </Title>
-              <Tag color="gold">{advancedModelCount} 个高级模型</Tag>
-              {providerFilter && (
-                <Tag closable color="processing" onClose={() => setProviderFilter(null)}>
-                  当前筛选: {PROVIDER_NAMES[providerFilter] || providerFilter}
-                </Tag>
-              )}
-            </Space>
-            <Text type="secondary">
-              统一管理 Provider 凭据、模型接入与默认路由策略。Provider 区采用卡片视图，优先突出接入状态、策略覆盖和操作入口。
-            </Text>
-          </Space>
-          <Space wrap>
-            <Button icon={<ReloadOutlined />} onClick={refreshOverview}>
-              刷新概览
-            </Button>
-            <Button icon={<PlusOutlined />} onClick={openCreateProviderModal}>
-              新建 Provider
-            </Button>
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => openCreateModal()}>
-              {t('admin:createModel')}
-            </Button>
+          <Space size={10} wrap>
+            <Title level={4} style={{ margin: 0 }}>
+              {t('admin:modelManagement')}
+            </Title>
+            <Tag color="gold">{advancedModelCount} 个高级模型</Tag>
+            {providerFilter && (
+              <Tag closable color="processing" onClose={() => setProviderFilter(null)}>
+                当前筛选: {PROVIDER_NAMES[providerFilter] || providerFilter}
+              </Tag>
+            )}
           </Space>
         </Space>
 
-        <Row gutter={[12, 12]}>
+        <Row gutter={[16, 16]}>
           <Col xs={24} sm={12} xl={6}>
-            <Card size="small" style={OVERVIEW_METRIC_STYLE} styles={{ body: { padding: 16 } }}>
-              <Text type="secondary">Provider 配置</Text>
-              <div style={{ marginTop: 8, fontSize: 28, fontWeight: 700 }}>
-                {providerGovernanceItems.length}
-              </div>
+            <Card
+              className="stat-card dashboard-stat-card card-gradient-1 animate-fade-in-up"
+              variant="borderless"
+              styles={{ body: { padding: '8px 16px', minHeight: 'auto' } }}
+            >
+              <Statistic
+                title={t('admin:providerConfig', { defaultValue: 'Provider 配置' })}
+                value={providerGovernanceItems.length}
+                prefix={<AppstoreOutlined style={{ opacity: 0.9 }} />}
+              />
             </Card>
           </Col>
           <Col xs={24} sm={12} xl={6}>
-            <Card size="small" style={OVERVIEW_METRIC_STYLE} styles={{ body: { padding: 16 } }}>
-              <Text type="secondary">已配置凭据</Text>
-              <div style={{ marginTop: 8, fontSize: 28, fontWeight: 700, color: '#10b981' }}>
-                {configuredProviderCount}
-              </div>
+            <Card
+              className="stat-card dashboard-stat-card card-gradient-2 animate-fade-in-up"
+              variant="borderless"
+              styles={{ body: { padding: '8px 16px', minHeight: 'auto' } }}
+            >
+              <Statistic
+                title={t('admin:configuredCredentials', { defaultValue: '已配置凭据' })}
+                value={configuredProviderCount}
+                prefix={<KeyOutlined style={{ opacity: 0.9 }} />}
+              />
             </Card>
           </Col>
           <Col xs={24} sm={12} xl={6}>
-            <Card size="small" style={OVERVIEW_METRIC_STYLE} styles={{ body: { padding: 16 } }}>
-              <Text type="secondary">注册模型</Text>
-              <div style={{ marginTop: 8, fontSize: 28, fontWeight: 700 }}>
-                {totalModelCount}
-              </div>
+            <Card
+              className="stat-card dashboard-stat-card card-gradient-3 animate-fade-in-up"
+              variant="borderless"
+              styles={{ body: { padding: '8px 16px', minHeight: 'auto' } }}
+            >
+              <Statistic
+                title={t('admin:registeredModels', { defaultValue: '注册模型' })}
+                value={totalModelCount}
+                prefix={<RobotOutlined style={{ opacity: 0.9 }} />}
+              />
             </Card>
           </Col>
           <Col xs={24} sm={12} xl={6}>
-            <Card size="small" style={OVERVIEW_METRIC_STYLE} styles={{ body: { padding: 16 } }}>
-              <Text type="secondary">启用中</Text>
-              <div style={{ marginTop: 8, fontSize: 28, fontWeight: 700, color: '#6366f1' }}>
-                {activeModelCount}
-              </div>
+            <Card
+              className="stat-card dashboard-stat-card card-gradient-4 animate-fade-in-up"
+              variant="borderless"
+              styles={{ body: { padding: '8px 16px', minHeight: 'auto' } }}
+            >
+              <Statistic
+                title={t('admin:activeModelsCount', { defaultValue: '启用中' })}
+                value={activeModelCount}
+                prefix={<CheckCircleOutlined style={{ opacity: 0.9 }} />}
+              />
             </Card>
           </Col>
         </Row>
       </Card>
 
-      <Card style={SECTION_CARD_STYLE} styles={{ body: { padding: 20 } }}>
+      <Card className="execution-list-card" style={SECTION_CARD_STYLE} styles={{ body: { padding: '16px 20px' } }}>
         <Space
-          align="start"
-          style={{ width: '100%', justifyContent: 'space-between', marginBottom: 18 }}
+          align="center"
+          style={{ width: '100%', justifyContent: 'space-between', marginBottom: 16 }}
           wrap
         >
-          <Space direction="vertical" size={4}>
+          <Space size={8} wrap>
             <Text strong style={{ fontSize: 16 }}>
-              Provider 视图
-            </Text>
-            <Text type="secondary">
-              每张卡片对应一个接入配置，集中展示 endpoint、凭据状态、默认策略与模型覆盖情况。
+              {t('admin:providerView', { defaultValue: 'Provider 视图' })}
             </Text>
           </Space>
-          <Space wrap>
+          <Space wrap size={12} style={{ justifyContent: 'flex-end' }}>
             <Button
               icon={<ReloadOutlined />}
+              className="btn-pill"
               onClick={() => {
                 void providersQuery.refetch();
                 void providerConfigsQuery.refetch();
               }}
             >
-              刷新 Provider
+              {t('admin:refreshProvider', { defaultValue: '刷新 Provider' })}
+            </Button>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={openCreateProviderModal}
+              className="btn-pill"
+              style={{
+                boxShadow: '0 10px 24px rgba(99, 102, 241, 0.24)',
+              }}
+            >
+              {t('admin:createProvider', { defaultValue: '新建 Provider' })}
             </Button>
           </Space>
         </Space>
@@ -1000,42 +1004,40 @@ const AIModelAdminPage: React.FC = () => {
         />
       </Card>
 
-      <Card style={SECTION_CARD_STYLE} styles={{ body: { padding: 20 } }}>
+      <Card className="execution-list-card" style={SECTION_CARD_STYLE} styles={{ body: { padding: '16px 20px' } }}>
         <Space
-          align="start"
+          align="center"
           style={{ marginBottom: 16, width: '100%', justifyContent: 'space-between' }}
           wrap
         >
-          <Space direction="vertical" size={4}>
-            <Space size={8} wrap>
-              <Text strong style={{ fontSize: 16 }}>
-                已注册模型
-              </Text>
-              <Tag color="blue">{filteredModels.length} 条结果</Tag>
-            </Space>
-            <Text type="secondary">
-              模型列表按 Provider 配置分组展示，便于对比同一接入点下的启用状态和路由策略。
+          <Space size={8} wrap>
+            <Text strong style={{ fontSize: 16 }}>
+              {t('admin:registeredModels', { defaultValue: '已注册模型' })}
             </Text>
+            <Tag color="blue">{t('admin:resultsCount', { count: filteredModels.length, defaultValue: '{{count}} 条结果' })}</Tag>
           </Space>
-          <Space wrap>
+          <Space wrap size={12} style={{ justifyContent: 'flex-end' }}>
             <Input
+              className="execution-list-filter-control"
               placeholder={t('common:search')}
               prefix={<SearchOutlined />}
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              style={{ width: 200 }}
+              style={{
+                width: 200,
+                background: 'var(--bg-secondary)',
+                border: 'none',
+              }}
               allowClear
             />
             <Button
               icon={<ReloadOutlined />}
+              className="btn-pill"
               onClick={() => {
                 void modelsQuery.refetch();
               }}
             >
               {t('common:refresh')}
-            </Button>
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => openCreateModal()}>
-              {t('admin:createModel')}
             </Button>
           </Space>
         </Space>
@@ -1085,9 +1087,6 @@ const AIModelAdminPage: React.FC = () => {
                       </Text>
                       {providerConfig?.hasCredential && <Tag color="success">已复用凭据</Tag>}
                     </Space>
-                    <Text type="secondary">
-                      {providerConfig?.api_endpoint || '旧版模型未绑定 provider 配置'}
-                    </Text>
                   </Space>
                   <Space size={[0, 8]} wrap>
                     <Tag color="blue">{models.length} 个模型</Tag>
@@ -1125,20 +1124,25 @@ const AIModelAdminPage: React.FC = () => {
         onCancel={handleProviderModalClose}
         confirmLoading={createProviderMutation.isLoading || updateProviderMutation.isLoading}
         width={560}
+        okButtonProps={{ className: 'btn-pill', style: { boxShadow: '0 8px 16px rgba(99, 102, 241, 0.2)' } }}
+        cancelButtonProps={{ className: 'btn-pill' }}
       >
         <Alert
           type="info"
           showIcon
           message={
             editingProvider
-              ? '修改 Provider 的 endpoint 或凭据后，关联模型会复用最新 Provider 配置'
-              : '建议先配置 Provider，再从 Provider 卡片中追加模型'
+              ? '修改 Provider 的 endpoint 或凭据后，关联模型会自动复用最新配置'
+              : '建议先配置 Provider，再从 Provider 卡片中直接追加模型'
           }
-          style={{ marginBottom: 16 }}
+          style={{ marginBottom: 24, borderRadius: 12, border: 'none', background: 'var(--bg-secondary)' }}
         />
         <Form form={providerForm} layout="vertical">
-          <Form.Item name="provider" label="Provider" rules={[{ required: true }]}>
-            <Select onChange={handleProviderConfigProviderChange}>
+          <Form.Item name="provider" label="提供商 (Provider)" rules={[{ required: true }]}>
+            <Select
+              className="execution-list-filter-control"
+              onChange={handleProviderConfigProviderChange}
+            >
               {providerOptions.map((p) => (
                 <Option key={p} value={p}>
                   {PROVIDER_NAMES[p] || p}
@@ -1148,7 +1152,7 @@ const AIModelAdminPage: React.FC = () => {
           </Form.Item>
           <Form.Item
             name="api_endpoint"
-            label="Endpoint"
+            label="API Endpoint"
             rules={[{ required: true }]}
             extra={
               providerFormProvider && PRESET_ENDPOINTS[providerFormProvider]
@@ -1157,9 +1161,10 @@ const AIModelAdminPage: React.FC = () => {
             }
           >
             <Input
+              className="execution-list-filter-control"
               prefix={
                 providerFormProvider && PRESET_ENDPOINTS[providerFormProvider] ? (
-                  <LockOutlined />
+                  <LockOutlined style={{ color: 'var(--text-secondary)' }} />
                 ) : null
               }
             />
@@ -1174,6 +1179,7 @@ const AIModelAdminPage: React.FC = () => {
             }
           >
             <Input.Password
+              className="execution-list-filter-control"
               placeholder={editingProvider ? '不修改则留空' : '输入 Provider API Key'}
             />
           </Form.Item>
@@ -1186,21 +1192,24 @@ const AIModelAdminPage: React.FC = () => {
         onOk={handleCreate}
         onCancel={handleCreateModalClose}
         confirmLoading={createMutation.isLoading}
-        width={600}
+        width={640}
+        okButtonProps={{ className: 'btn-pill', style: { boxShadow: '0 8px 16px rgba(99, 102, 241, 0.2)' } }}
+        cancelButtonProps={{ className: 'btn-pill' }}
       >
         <Alert
           type="info"
           showIcon
           message={
             canReuseProviderCredential
-              ? '当前 Provider 配置已存在可复用凭据，追加模型时 API Key 可留空'
-              : '请先选择 Provider 配置；若该配置尚未保存凭据，可在本次创建时补充 API Key'
+              ? '当前 Provider 已配置凭据，追加模型时 API Key 可留空'
+              : '请先选择 Provider 配置；若该配置未保存凭据，可在下方临时补充 API Key'
           }
-          style={{ marginBottom: 16 }}
+          style={{ marginBottom: 24, borderRadius: 12, border: 'none', background: 'var(--bg-secondary)' }}
         />
         <Form form={createForm} layout="vertical">
           <Form.Item name="providerConfigId" label="Provider 配置" rules={[{ required: true }]}>
             <Select
+              className="execution-list-filter-control"
               placeholder="选择已配置的 Provider"
               onChange={handleCreateProviderConfigChange}
               options={(providerConfigsQuery.data?.providers || []).map((providerConfig) => ({
@@ -1217,7 +1226,6 @@ const AIModelAdminPage: React.FC = () => {
                   {PROVIDER_NAMES[selectedCreateProviderConfig.provider] ||
                     selectedCreateProviderConfig.provider}
                 </Tag>
-                <Text type="secondary">{selectedCreateProviderConfig.api_endpoint}</Text>
                 {!selectedCreateProviderConfig.hasCredential && (
                   <Text type="warning">当前 Provider 未保存凭据，本次创建建议输入 API Key</Text>
                 )}
@@ -1263,6 +1271,7 @@ const AIModelAdminPage: React.FC = () => {
                 )}
               </Space>
               <Select
+                className="execution-list-filter-control"
                 showSearch
                 allowClear
                 placeholder="先加载模型列表，再选择模型"
@@ -1278,7 +1287,7 @@ const AIModelAdminPage: React.FC = () => {
           </Form.Item>
 
           <Form.Item name="name" label={t('admin:modelName')} rules={[{ required: true }]}>
-            <Input placeholder="输入模型名称，或从已加载列表中选择" />
+            <Input className="execution-list-filter-control" placeholder="输入模型名称，或从已加载列表中选择" />
           </Form.Item>
           <Form.Item
             name="apiKey"
@@ -1289,17 +1298,24 @@ const AIModelAdminPage: React.FC = () => {
             }
           >
             <Input.Password
+              className="execution-list-filter-control"
               placeholder={canReuseProviderCredential ? '可留空，复用已有 API Key' : '输入 API Key'}
             />
           </Form.Item>
           <Form.Item name="display_name" label="显示名称">
-            <Input placeholder="例如：SiliconFlow 高级代码模型" />
+            <Input className="execution-list-filter-control" placeholder="例如：SiliconFlow 高级代码模型" />
           </Form.Item>
           <Form.Item name="description" label="模型说明">
-            <Input.TextArea rows={2} placeholder="用于说明模型定位，例如高级代码生成模型" />
+            <Input.TextArea
+              className="execution-list-filter-control"
+              style={{ borderRadius: 16, padding: '12px 16px' }}
+              rows={2}
+              placeholder="用于说明模型定位，例如高级代码生成模型"
+            />
           </Form.Item>
           <Form.Item name="capability_tier" label="能力层级" initialValue="standard">
             <Select
+              className="execution-list-filter-control"
               options={[
                 { label: '标准模型', value: 'standard' },
                 { label: '高级模型', value: 'advanced' },
@@ -1308,6 +1324,7 @@ const AIModelAdminPage: React.FC = () => {
           </Form.Item>
           <Form.Item name="defaultScopes" label="默认策略">
             <Select
+              className="execution-list-filter-control"
               mode="multiple"
               allowClear
               options={DEFAULT_SCOPE_OPTIONS}
@@ -1316,6 +1333,7 @@ const AIModelAdminPage: React.FC = () => {
           </Form.Item>
           <Form.Item name="routing_tags" label="路由标签">
             <Select
+              className="execution-list-filter-control"
               mode="multiple"
               allowClear
               options={ROUTING_TAG_OPTIONS}
@@ -1364,158 +1382,211 @@ const AIModelAdminPage: React.FC = () => {
           setEditAvailableModels([]);
         }}
         confirmLoading={updateMutation.isLoading}
-        width={600}
-      >
-        <Alert
-          type="info"
-          showIcon
-          message="模型优先绑定到 Provider 配置；如需修改 endpoint 或凭据，也可以直接去编辑对应 Provider"
-          style={{ marginBottom: 16 }}
-        />
-        <Form form={editForm} layout="vertical">
-          <Form.Item name="providerConfigId" label="Provider 配置" rules={[{ required: true }]}>
-            <Select
-              placeholder="选择 Provider 配置"
-              onChange={handleEditProviderConfigChange}
-              options={(providerConfigsQuery.data?.providers || []).map((providerConfig) => ({
-                value: providerConfig.id,
-                label: getProviderConfigLabel(providerConfig),
-              }))}
-            ></Select>
-          </Form.Item>
-          {selectedEditProviderConfig && (
-            <Form.Item label="当前绑定">
-              <Space direction="vertical" size={4}>
-                <Tag color="blue">
-                  {PROVIDER_NAMES[selectedEditProviderConfig.provider] ||
-                    selectedEditProviderConfig.provider}
-                </Tag>
-                <Text type="secondary">{selectedEditProviderConfig.api_endpoint}</Text>
-              </Space>
-            </Form.Item>
-          )}
+        width={720}
+        okButtonProps={{ className: 'btn-pill', style: { boxShadow: '0 8px 16px rgba(99, 102, 241, 0.2)' } }}
+        cancelButtonProps={{ className: 'btn-pill' }}
+        footer={[
+          <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }} key="footer">
+            <Button
+              type="default"
+              icon={<ExperimentOutlined />}
+              onClick={() => {
+                const values = editForm.getFieldsValue();
+                const providerConfig = values.providerConfigId
+                  ? providerConfigMap.get(values.providerConfigId)
+                  : undefined;
 
-          <Form.Item label="模型列表">
-            <Space direction="vertical" size={8} style={{ width: '100%' }}>
-              <Space wrap>
-                <Button
-                  onClick={() => {
-                    if (selectedEditProviderConfig) {
-                      void loadModelsForProvider(selectedEditProviderConfig.id, 'edit');
-                    } else {
-                      message.warning('请先选择 Provider 配置');
-                    }
-                  }}
-                  loading={
-                    loadProviderModelsMutation.isLoading &&
-                    selectedEditProviderConfigId === loadProviderModelsMutation.variables
+                if (
+                  editingModel?.hasApiKey &&
+                  !values.apiKey &&
+                  editingModel.providerConfigId === values.providerConfigId
+                ) {
+                  testConfigWithStoredKeyMutation.mutate(editingModel.id);
+                } else if (providerConfig && values.apiKey && values.name) {
+                  testConfigMutation.mutate({
+                    endpoint: providerConfig.api_endpoint,
+                    apiKey: values.apiKey,
+                    modelName: values.name,
+                  });
+                } else {
+                  message.warning('请先填写模型名称，并提供可测试的 Provider 凭据');
+                }
+              }}
+              loading={testConfigMutation.isLoading || testConfigWithStoredKeyMutation.isLoading}
+              className="btn-pill"
+            >
+              测试配置
+            </Button>
+            <Space>
+              <Button 
+                className="btn-pill" 
+                onClick={() => {
+                  setEditModalVisible(false);
+                  setEditAvailableModels([]);
+                }}
+              >
+                取消
+              </Button>
+              <Button 
+                type="primary" 
+                className="btn-pill" 
+                onClick={handleSaveEdit} 
+                loading={updateMutation.isLoading}
+                style={{ boxShadow: '0 8px 16px rgba(99, 102, 241, 0.2)' }}
+              >
+                确定
+              </Button>
+            </Space>
+          </div>
+        ]}
+      >
+        <Form form={editForm} layout="vertical" className="modern-form">
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>核心参数 Core</div>
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item label="Provider 绑定" style={{ marginBottom: 12 }}>
+                  <div style={{ 
+                    padding: '6px 12px', 
+                    background: 'var(--bg-secondary)', 
+                    borderRadius: 8,
+                    border: '1px solid var(--border-color)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    minHeight: 32
+                  }}>
+                    <Tag color="blue" style={{ margin: 0, lineHeight: '18px' }}>
+                      {selectedEditProviderConfig ? 
+                        (PROVIDER_NAMES[selectedEditProviderConfig.provider] || selectedEditProviderConfig.provider) : 
+                        '未知 Provider'
+                      }
+                    </Tag>
+                    {selectedEditProviderConfig && (
+                      <span style={{ fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {selectedEditProviderConfig.api_endpoint}
+                      </span>
+                    )}
+                  </div>
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item label={t('admin:modelName')} style={{ marginBottom: 12 }}>
+                  <div style={{ 
+                    padding: '6px 12px', 
+                    background: 'var(--bg-secondary)', 
+                    borderRadius: 8,
+                    border: '1px solid var(--border-color)',
+                    color: 'var(--text-primary)',
+                    fontWeight: 500,
+                    minHeight: 32,
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}>
+                    {editForm.getFieldValue('name') || '未知模型'}
+                  </div>
+                </Form.Item>
+                {/* 隐藏的表单项，用于在提交时能够获取到值 */}
+                <Form.Item name="providerConfigId" hidden><Input /></Form.Item>
+                <Form.Item name="name" hidden><Input /></Form.Item>
+              </Col>
+            </Row>
+
+            <Row gutter={16}>
+              <Col span={24}>
+                <Form.Item
+                  name="apiKey"
+                  label={t('admin:modelApiKey')}
+                  style={{ marginBottom: 12 }}
+                  extra={
+                    <span style={{ fontSize: 12 }}>
+                      {selectedEditProviderConfig?.hasCredential
+                        ? '留空将复用当前 Provider 凭据'
+                        : '若 Provider 未配置凭据，需在此输入'}
+                    </span>
                   }
                 >
-                  加载模型名列表
-                </Button>
-                {editAvailableModels.length > 0 && (
-                  <Text type="secondary">已加载 {editAvailableModels.length} 个模型</Text>
-                )}
-              </Space>
-              <Select
-                showSearch
-                allowClear
-                placeholder="先加载模型列表，再选择模型"
-                value={editForm.getFieldValue('name')}
-                onChange={(value) => editForm.setFieldsValue({ name: value })}
-                options={editAvailableModels.map((model) => ({
-                  value: model,
-                  label: model,
-                }))}
-                notFoundContent="暂无已加载模型，请点击上方按钮加载"
-              />
-            </Space>
-          </Form.Item>
+                  <Input.Password
+                    className="execution-list-filter-control"
+                    placeholder={
+                      selectedEditProviderConfig?.hasCredential
+                        ? '可留空，复用已有 API Key'
+                        : '输入 API Key'
+                    }
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+          </div>
 
-          <Form.Item name="name" label={t('admin:modelName')} rules={[{ required: true }]}>
-            <Input placeholder="输入模型名称，或从已加载列表中选择" />
-          </Form.Item>
+          <div style={{ marginBottom: 16, paddingTop: 12, borderTop: '1px solid var(--border-color)' }}>
+            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>展示与路由 Routing</div>
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item name="display_name" label="显示名称" style={{ marginBottom: 12 }}>
+                  <Input className="execution-list-filter-control" placeholder="例如：SiliconFlow 高级代码模型" />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item name="capability_tier" label="能力层级" style={{ marginBottom: 12 }}>
+                  <Select
+                    className="execution-list-filter-control"
+                    options={[
+                      { label: '标准模型 Standard', value: 'standard' },
+                      { label: '高级模型 Advanced', value: 'advanced' },
+                    ]}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
 
-          <Form.Item
-            name="apiKey"
-            label={t('admin:modelApiKey')}
-            extra={
-              selectedEditProviderConfig?.hasCredential
-                ? '留空将复用当前 provider 已配置的 API Key'
-                : '若 Provider 未配置凭据，建议在此输入 API Key'
-            }
-          >
-            <Input.Password
-              placeholder={
-                selectedEditProviderConfig?.hasCredential
-                  ? '可留空，复用已有 API Key'
-                  : '输入 API Key'
-              }
-            />
-          </Form.Item>
-          <Form.Item name="display_name" label="显示名称">
-            <Input placeholder="例如：SiliconFlow 高级代码模型" />
-          </Form.Item>
-          <Form.Item name="description" label="模型说明">
-            <Input.TextArea rows={2} placeholder="用于说明模型定位，例如高级代码生成模型" />
-          </Form.Item>
-          <Form.Item name="capability_tier" label="能力层级">
-            <Select
-              options={[
-                { label: '标准模型', value: 'standard' },
-                { label: '高级模型', value: 'advanced' },
-              ]}
-            />
-          </Form.Item>
-          <Form.Item name="defaultScopes" label="默认策略">
-            <Select
-              mode="multiple"
-              allowClear
-              options={DEFAULT_SCOPE_OPTIONS}
-              placeholder="可同时设置多个默认策略"
-            />
-          </Form.Item>
-          <Form.Item name="routing_tags" label="路由标签">
-            <Select
-              mode="multiple"
-              allowClear
-              options={ROUTING_TAG_OPTIONS}
-              placeholder="可选：聊天 / 代码 / 文档 / 流程 / 查询 / 多模态"
-            />
-          </Form.Item>
-          <Form.Item name="prefer_for_code" valuePropName="checked">
-            <Checkbox>代码生成优先使用该模型</Checkbox>
-          </Form.Item>
-          <Divider />
-          <Button
-            type="default"
-            icon={<ExperimentOutlined />}
-            onClick={() => {
-              const values = editForm.getFieldsValue();
-              const providerConfig = values.providerConfigId
-                ? providerConfigMap.get(values.providerConfigId)
-                : undefined;
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item name="defaultScopes" label="默认策略" style={{ marginBottom: 12 }}>
+                  <Select
+                    className="execution-list-filter-control"
+                    mode="multiple"
+                    allowClear
+                    options={DEFAULT_SCOPE_OPTIONS}
+                    placeholder="可多选"
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item name="routing_tags" label="路由标签" style={{ marginBottom: 12 }}>
+                  <Select
+                    className="execution-list-filter-control"
+                    mode="multiple"
+                    allowClear
+                    options={ROUTING_TAG_OPTIONS}
+                    placeholder="聊天 / 代码 / 文档等"
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+          </div>
 
-              if (
-                editingModel?.hasApiKey &&
-                !values.apiKey &&
-                editingModel.providerConfigId === values.providerConfigId
-              ) {
-                testConfigWithStoredKeyMutation.mutate(editingModel.id);
-              } else if (providerConfig && values.apiKey && values.name) {
-                testConfigMutation.mutate({
-                  endpoint: providerConfig.api_endpoint,
-                  apiKey: values.apiKey,
-                  modelName: values.name,
-                });
-              } else {
-                message.warning('请先填写模型名称，并提供可测试的 Provider 凭据');
-              }
-            }}
-            loading={testConfigMutation.isLoading || testConfigWithStoredKeyMutation.isLoading}
-          >
-            测试配置
-          </Button>
+          <div style={{ paddingTop: 12, borderTop: '1px solid var(--border-color)' }}>
+            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>附加信息 Extra</div>
+            <Row gutter={16}>
+              <Col span={24}>
+                <Form.Item name="description" label="模型说明" style={{ marginBottom: 8 }}>
+                  <Input.TextArea
+                    className="execution-list-filter-control"
+                    style={{ borderRadius: 12, padding: '6px 12px' }}
+                    rows={1}
+                    autoSize={{ minRows: 1, maxRows: 3 }}
+                    placeholder="用于说明模型定位，例如高级代码生成模型"
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={24}>
+                <Form.Item name="prefer_for_code" valuePropName="checked" style={{ marginBottom: 0 }}>
+                  <Checkbox>代码生成优先使用该模型</Checkbox>
+                </Form.Item>
+              </Col>
+            </Row>
+          </div>
         </Form>
       </Modal>
 

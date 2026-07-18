@@ -253,16 +253,16 @@ body {
 }
 
 .ant-card {
-  border-radius: var(--radius-lg) !important;
-  border: none !important;
-  box-shadow: var(--shadow-md) !important;
+  border-radius: var(--radius-xl) !important;
+  border: 1px solid var(--border-color) !important;
+  box-shadow: none !important;
   transition: all var(--transition-normal) !important;
   background: var(--bg-card) !important;
 }
 
 .ant-card:hover {
-  box-shadow: var(--shadow-lg) !important;
-  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm) !important;
+  transform: none;
 }
 
 .ant-card-head {
@@ -274,16 +274,19 @@ body {
   padding: 24px !important;
 }
 
-.ant-statistic-title {
+.stat-card .ant-statistic-title {
   color: var(--text-secondary) !important;
-  font-weight: 500;
   font-size: 14px !important;
+  font-weight: 500 !important;
   margin-bottom: 8px !important;
 }
 
-.ant-statistic-content-value {
-  font-weight: 700 !important;
+.stat-card .ant-statistic-content-value {
   font-size: 28px !important;
+  font-weight: 700 !important;
+  color: var(--text-primary) !important;
+  display: flex !important;
+  align-items: center !important;
 }
 
 .ant-table {
@@ -511,13 +514,42 @@ body {
 }
 
 .ant-modal-content {
-  border-radius: var(--radius-lg) !important;
+  border-radius: var(--radius-xl) !important;
   overflow: hidden;
-  box-shadow: var(--shadow-xl) !important;
+  box-shadow: 0 24px 48px -12px rgba(15, 23, 42, 0.18) !important;
+  padding: 0 !important;
+  border: 1px solid var(--border-color);
 }
 
 .ant-modal-header {
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0 !important;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0 !important;
+  padding: 24px 32px 16px !important;
+  border-bottom: 1px solid var(--border-color) !important;
+  margin-bottom: 0 !important;
+  background: var(--bg-card) !important;
+}
+
+.ant-modal-title {
+  font-size: 18px !important;
+  font-weight: 700 !important;
+  color: var(--text-primary) !important;
+}
+
+.ant-modal-body {
+  padding: 24px 32px !important;
+  background: var(--bg-primary) !important;
+}
+
+.ant-modal-footer {
+  padding: 16px 32px 24px !important;
+  border-top: 1px solid var(--border-color) !important;
+  margin-top: 0 !important;
+  background: var(--bg-card) !important;
+}
+
+.ant-modal-close {
+  top: 24px !important;
+  inset-inline-end: 24px !important;
 }
 
 /* Custom utility classes */
@@ -539,22 +571,22 @@ body {
 }
 
 .card-gradient-1 {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%) !important;
   color: white !important;
 }
 
 .card-gradient-2 {
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
+  background: linear-gradient(135deg, #ec4899 0%, #f43f5e 100%) !important;
   color: white !important;
 }
 
 .card-gradient-3 {
-  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%) !important;
+  background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%) !important;
   color: white !important;
 }
 
 .card-gradient-4 {
-  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%) !important;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
   color: white !important;
 }
 
@@ -567,7 +599,6 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 112px;
   text-align: center;
 }
 

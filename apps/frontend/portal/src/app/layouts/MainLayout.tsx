@@ -32,7 +32,24 @@ const MainLayout: React.FC = () => {
   const { language, setLanguage, theme, toggleTheme, sidebarCollapsed, toggleSidebar } =
     usePreferencesStore();
   const menuItems = buildNavigationMenuItems(t, user?.role);
+  const selectedKey = getSelectedNavigationKey(location.pathname);
   const [openKeys, setOpenKeys] = useState<string[]>(getDefaultNavigationOpenKeys(location.pathname));
+
+  let currentMenuLabel: React.ReactNode = '内部工作台';
+  for (const item of menuItems || []) {
+    if (!item) continue;
+    if (item.key === selectedKey) {
+      currentMenuLabel = (item as any).label;
+      break;
+    }
+    if ('children' in item && item.children) {
+      const child = item.children.find((c: any) => c?.key === selectedKey);
+      if (child) {
+        currentMenuLabel = (child as any).label;
+        break;
+      }
+    }
+  }
 
   useEffect(() => {
     setOpenKeys(getDefaultNavigationOpenKeys(location.pathname));
@@ -118,40 +135,51 @@ const MainLayout: React.FC = () => {
             <div
               className="portal-sider-logo-mark"
               style={{
-                width: 36,
-                height: 36,
-                borderRadius: 10,
-                background:
-                  'linear-gradient(135deg, rgba(255,255,255,0.24) 0%, rgba(255,255,255,0.12) 100%)',
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                background: 'linear-gradient(135deg, #6366f1 0%, #f472b6 100%)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: 18,
-                fontWeight: 700,
                 color: '#fff',
-                backdropFilter: 'blur(10px)',
+                boxShadow: '0 4px 10px rgba(99, 102, 241, 0.3)',
+                flexShrink: 0,
               }}
             >
-              O
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 0C12 6.62742 17.3726 12 24 12C17.3726 12 12 17.3726 12 24C12 17.3726 6.62742 12 0 12C6.62742 12 12 6.62742 12 0Z" />
+              </svg>
             </div>
             {!sidebarCollapsed && (
               <div
                 className="portal-sider-logo-text"
                 style={{
+                  fontSize: 20,
+                  fontWeight: 800,
+                  color: '#fff',
+                  margin: 0,
+                  letterSpacing: '-0.5px',
                   display: 'flex',
                   alignItems: 'center',
+                  gap: 6,
                 }}
               >
+                {t('appName')}
                 <span
                   style={{
-                    color: '#fff',
-                    fontSize: 18,
-                    fontWeight: 600,
-                    letterSpacing: '0.5px',
-                    lineHeight: 1.2,
+                    fontSize: 10,
+                    fontWeight: 700,
+                    background: 'linear-gradient(135deg, #6366f1 0%, #f472b6 100%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    padding: '1px 6px',
+                    borderRadius: 8,
+                    border: '1px solid rgba(244, 114, 182, 0.3)',
+                    verticalAlign: 'middle',
                   }}
                 >
-                  {t('appName')}
+                  AI
                 </span>
               </div>
             )}
@@ -162,7 +190,7 @@ const MainLayout: React.FC = () => {
           className="portal-menu"
           theme="dark"
           mode="inline"
-          selectedKeys={[getSelectedNavigationKey(location.pathname)]}
+          selectedKeys={[selectedKey]}
           openKeys={openKeys}
           onOpenChange={(keys) => setOpenKeys(keys as string[])}
           items={menuItems}
@@ -228,7 +256,7 @@ const MainLayout: React.FC = () => {
             />
             <Space size={8} wrap>
               <Tag color="purple" style={{ marginInlineEnd: 0, borderRadius: 999 }}>
-                内部工作台
+                {currentMenuLabel}
               </Tag>
             </Space>
           </div>
@@ -247,7 +275,7 @@ const MainLayout: React.FC = () => {
                 padding: '0 12px',
               }}
             >
-              {theme === 'light' ? '深色' : '浅色'}
+              {theme === 'light' ? t('darkTheme', { defaultValue: '深色' }) : t('lightTheme', { defaultValue: '浅色' })}
             </Button>
 
             <Button
@@ -263,7 +291,7 @@ const MainLayout: React.FC = () => {
                 padding: '0 12px',
               }}
             >
-              用户入口
+              {t('userPortal', { defaultValue: '用户入口' })}
             </Button>
 
             <Dropdown menu={languageMenu} placement="bottomRight" trigger={['click']}>
@@ -277,7 +305,7 @@ const MainLayout: React.FC = () => {
                   padding: '0 12px',
                 }}
               >
-                {language === 'zh-CN' ? '中文' : language === 'en-US' ? 'EN' : '日本語'}
+                {language === 'zh-CN' ? t('zh-CN', { defaultValue: '中文' }) : language === 'en-US' ? t('en-US', { defaultValue: 'EN' }) : t('ja-JP', { defaultValue: '日本語' })}
               </Button>
             </Dropdown>
 

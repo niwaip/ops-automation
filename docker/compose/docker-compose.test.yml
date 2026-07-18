@@ -39,10 +39,8 @@ services:
       - "13009:3009"
     volumes:
       - ${PROJECT_ROOT:-..}:/workspace
-      - carbone_test_node_modules:/workspace/apps/backend/capabilities/document-domain/node_modules
     depends_on:
       - mock-ai-server
 
 volumes:
-  carbone_test_node_modules:
     driver: local

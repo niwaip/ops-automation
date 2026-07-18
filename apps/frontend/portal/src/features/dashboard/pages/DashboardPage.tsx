@@ -237,10 +237,7 @@ const DashboardPage: React.FC = () => {
                 onClick={() => {
                   void recentExecutionsQuery.refetch();
                 }}
-                style={{
-                  borderRadius: 8,
-                  fontWeight: 500,
-                }}
+                className="btn-pill"
               >
                 {t('refresh')}
               </Button>
@@ -248,7 +245,7 @@ const DashboardPage: React.FC = () => {
                 type="primary"
                 icon={<PlayCircleOutlined />}
                 onClick={() => navigate('/executions/new')}
-                style={{ borderRadius: 8, fontWeight: 500 }}
+                className="btn-pill"
               >
                 {t('newExecution')}
               </Button>
@@ -256,7 +253,6 @@ const DashboardPage: React.FC = () => {
           </Space>
         }
         style={{ marginTop: 16 }}
-        variant="borderless"
       >
         <Table
           columns={executionColumns}

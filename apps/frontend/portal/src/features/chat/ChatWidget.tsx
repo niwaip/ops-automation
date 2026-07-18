@@ -22,12 +22,14 @@ const ChatWidget: React.FC = () => {
       <div className="chat-widget-trigger">
         <Badge count={unreadCount} offset={[-5, 5]}>
           <Button
-            type="primary"
             shape="circle"
-            size="large"
-            icon={<MessageOutlined />}
             onClick={toggleChat}
             className="chat-trigger-button"
+            icon={
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 0C12 6.62742 17.3726 12 24 12C17.3726 12 12 17.3726 12 24C12 17.3726 6.62742 12 0 12C6.62742 12 12 6.62742 12 0Z" />
+              </svg>
+            }
           />
         </Badge>
       </div>

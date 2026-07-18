@@ -133,8 +133,9 @@ const LoginPage: React.FC = () => {
 
       <div
         style={{
-          width: 420,
-          padding: 48,
+          width: '100%',
+          maxWidth: 440,
+          margin: '0 16px',
           background: isDarkTheme ? 'rgba(15, 23, 42, 0.84)' : 'rgba(255, 255, 255, 0.95)',
           borderRadius: 24,
           boxShadow: isDarkTheme
@@ -144,57 +145,92 @@ const LoginPage: React.FC = () => {
           position: 'relative',
           zIndex: 1,
           border: isDarkTheme ? '1px solid rgba(148, 163, 184, 0.14)' : 'none',
+          overflow: 'hidden',
         }}
       >
         <div
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 12,
-            marginBottom: 8,
+            padding: '40px 32px 24px',
+            background: isDarkTheme
+              ? 'linear-gradient(to bottom, rgba(30, 41, 59, 0.5), transparent)'
+              : 'linear-gradient(to bottom, rgba(243, 244, 246, 0.6), transparent)',
+            borderBottom: isDarkTheme ? '1px solid rgba(148, 163, 184, 0.05)' : '1px solid rgba(0,0,0,0.02)',
           }}
         >
           <div
             style={{
-              width: 48,
-              height: 48,
-              borderRadius: 14,
-              background: 'linear-gradient(135deg, #6366f1 0%, #f472b6 100%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: 24,
-              fontWeight: 700,
-              color: '#fff',
-              boxShadow: '0 4px 14px rgba(99, 102, 241, 0.4)',
+              gap: 16,
+              marginBottom: 16,
             }}
           >
-            O
+            <div
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: 16,
+                background: 'linear-gradient(135deg, #6366f1 0%, #f472b6 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#fff',
+                boxShadow: '0 8px 20px -4px rgba(99, 102, 241, 0.5)',
+              }}
+            >
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 0C12 6.62742 17.3726 12 24 12C17.3726 12 12 17.3726 12 24C12 17.3726 6.62742 12 0 12C6.62742 12 12 6.62742 12 0Z" />
+              </svg>
+            </div>
+            <h1
+              style={{
+                fontSize: 32,
+                fontWeight: 800,
+                color: 'var(--text-primary)',
+                margin: 0,
+                letterSpacing: '-0.5px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+              }}
+            >
+              {t('common:appName')}
+              <span
+                style={{
+                  fontSize: 13,
+                  fontWeight: 700,
+                  background: 'linear-gradient(135deg, #6366f1 0%, #f472b6 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  padding: '2px 8px',
+                  borderRadius: 12,
+                  border: '1px solid rgba(244, 114, 182, 0.3)',
+                  verticalAlign: 'middle',
+                }}
+              >
+                AI
+              </span>
+            </h1>
           </div>
-          <h1
+          <div
             style={{
-              fontSize: 28,
-              fontWeight: 700,
-              color: 'var(--text-primary)',
-              margin: 0,
-              letterSpacing: '-0.5px',
+              textAlign: 'center',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 8,
             }}
           >
-            {t('common:appName')}
-          </h1>
+            <div style={{ color: 'var(--text-primary)', fontSize: 18, fontWeight: 600 }}>
+              {t('loginTitle')}
+            </div>
+            <div style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
+              智能编排 · 高效执行 · 安全认证
+            </div>
+          </div>
         </div>
 
-        <p
-          style={{
-            textAlign: 'center',
-            color: 'var(--text-secondary)',
-            marginBottom: 32,
-            fontSize: 15,
-          }}
-        >
-          {t('loginTitle')}
-        </p>
+        <div style={{ padding: '24px 32px 32px' }}>
 
         <Form form={form} onFinish={handleSubmit} layout="vertical" size="large">
           <Form.Item
@@ -252,29 +288,29 @@ const LoginPage: React.FC = () => {
           </Form.Item>
         </Form>
 
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            marginTop: 24,
-            paddingTop: 24,
-            borderTop: '1px solid var(--bg-secondary)',
-          }}
-        >
-          <Dropdown menu={languageMenu} placement="bottomLeft" trigger={['click']}>
-            <Button
-              type="text"
-              icon={<GlobalOutlined />}
-              style={{
-                color: 'var(--text-secondary)',
-                borderRadius: 8,
-                fontWeight: 500,
-              }}
-            >
-              {language === 'zh-CN' ? '简体中文' : language === 'en-US' ? 'English' : '日本語'}
-            </Button>
-          </Dropdown>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              marginTop: 16,
+            }}
+          >
+            <Dropdown menu={languageMenu} placement="bottom" trigger={['click']}>
+              <Button
+                type="text"
+                icon={<GlobalOutlined />}
+                style={{
+                  color: 'var(--text-secondary)',
+                  borderRadius: 8,
+                  fontWeight: 500,
+                  fontSize: 13,
+                }}
+              >
+                {language === 'zh-CN' ? '简体中文' : language === 'en-US' ? 'English' : '日本語'}
+              </Button>
+            </Dropdown>
+          </div>
         </div>
       </div>
     </div>
