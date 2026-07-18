@@ -41,7 +41,7 @@ interface OverviewStatGridProps {
 export const OverviewStatGrid: React.FC<OverviewStatGridProps> = ({ items, gutter = 16 }) => (
   <Row gutter={gutter} style={{ marginBottom: 24 }}>
     {items.map((item) => (
-      <Col span={item.span || 6} key={item.key}>
+      <Col span={item.span} flex={item.span ? 'none' : 1} key={item.key}>
         <Card
           size="small"
           style={OVERVIEW_STAT_CARD_STYLE}

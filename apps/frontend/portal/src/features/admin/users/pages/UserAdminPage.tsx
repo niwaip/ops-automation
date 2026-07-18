@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Table,
   Card,
@@ -6,12 +6,12 @@ import {
   Input,
   Space,
   Tag,
-  Typography,
   Modal,
   message,
   Form,
   Select,
   Alert,
+  Typography,
 } from 'antd';
 import {
   SearchOutlined,
@@ -20,14 +20,23 @@ import {
   EditOutlined,
   CheckOutlined,
   StopOutlined,
+  TeamOutlined,
+  UserOutlined,
+  SafetyCertificateOutlined,
+  RobotOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { authApi, userApi, UserDto } from '@/api/auth';
 import type { ColumnsType } from 'antd/es/table';
+import {
+  PageTitleBlock,
+  OverviewStatGrid,
+  ListSectionHeader,
+} from '@/components/page/PageScaffold';
 
-const { Title } = Typography;
 const { Option } = Select;
+const { Text } = Typography;
 
 const UserAdminPage: React.FC = () => {
   const { t } = useTranslation(['common', 'admin']);
@@ -225,48 +234,127 @@ const UserAdminPage: React.FC = () => {
     );
   });
 
-  return (
-    <div>
-      <Title level={4}>{t('admin:userManagement')}</Title>
+  const statItems = useMemo(() => {
+    const users = usersQuery.data?.users || [];
+    const total = usersQuery.data?.total || 0;
+    const active = users.filter((u) => u.isActive).length;
+    const adminCount = users.filter((u) => u.role === 'admin').length;
+    const agentCount = users.filter((u) => u.role === 'agent').length;
 
-      <Card style={{ marginTop: 16 }}>
-        <Space style={{ marginBottom: 16, width: '100%', justifyContent: 'space-between' }}>
-          <Space>
-            <Input
-              placeholder={t('common:search')}
-              prefix={<SearchOutlined />}
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              style={{ width: 200 }}
-              allowClear
-            />
-            <Select
-              placeholder={t('admin:userRole')}
-              style={{ width: 150 }}
-              value={roleFilter}
-              onChange={(value) => setRoleFilter(value)}
-              allowClear
-            >
-              {roleOptions.map((role) => (
-                <Option key={role} value={role}>
-                  {t(`auth:role${role.charAt(0).toUpperCase() + role.slice(1)}`)}
-                </Option>
-              ))}
-            </Select>
-          </Space>
-          <Space>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => setCreateModalVisible(true)}
-            >
-              创建用户
-            </Button>
-            <Button icon={<ReloadOutlined />} onClick={() => usersQuery.refetch()}>
-              {t('common:refresh')}
-            </Button>
-          </Space>
-        </Space>
+    return [
+      {
+        key: 'total',
+        label: '总用户数',
+        value: total,
+        icon: <TeamOutlined style={{ color: 'var(--text-secondary)' }} />,
+        color: 'var(--primary-color)',
+      },
+      {
+        key: 'active',
+        label: '活跃用户',
+        value: active,
+        icon: <UserOutlined style={{ color: 'var(--success-color)' }} />,
+        color: 'var(--success-color)',
+      },
+      {
+        key: 'admin',
+        label: '管理员',
+        value: adminCount,
+        icon: <SafetyCertificateOutlined style={{ color: 'var(--error-color)' }} />,
+        color: 'var(--error-color)',
+      },
+      {
+        key: 'agent',
+        label: '系统 Agent',
+        value: agentCount,
+        icon: <RobotOutlined style={{ color: 'var(--warning-color)' }} />,
+        color: 'var(--warning-color)',
+      },
+    ];
+  }, [usersQuery.data]);
+
+  return (
+    <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px' }}>
+      <PageTitleBlock
+        title={t('admin:userManagement')}
+        subtitle="统一管理系统中的所有用户账号、角色权限与登录状态"
+      />
+
+      <OverviewStatGrid items={statItems} />
+
+      <Card
+        styles={{ body: { padding: '20px 24px' } }}
+        style={{
+          borderRadius: 16,
+          border: '1px solid var(--bg-secondary)',
+          background: 'var(--bg-card)',
+          boxShadow: 'var(--shadow-md)',
+        }}
+      >
+        <ListSectionHeader
+          title={
+            <Space wrap size={12}>
+              <Text strong style={{ fontSize: 16 }}>
+                用户列表
+              </Text>
+              <Input
+                size="large"
+                placeholder={t('common:search')}
+                prefix={<SearchOutlined style={{ color: 'var(--text-light)' }} />}
+                variant="borderless"
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                allowClear
+                style={{
+                  width: 320,
+                  background: 'var(--bg-secondary)',
+                  borderRadius: 12,
+                }}
+              />
+              <Select
+                size="large"
+                placeholder={t('admin:userRole')}
+                variant="borderless"
+                value={roleFilter}
+                onChange={(value) => setRoleFilter(value)}
+                allowClear
+                style={{
+                  width: 160,
+                  background: 'var(--bg-secondary)',
+                  borderRadius: 12,
+                }}
+              >
+                {roleOptions.map((role) => (
+                  <Option key={role} value={role}>
+                    {t(`auth:role${role.charAt(0).toUpperCase() + role.slice(1)}`)}
+                  </Option>
+                ))}
+              </Select>
+            </Space>
+          }
+          extra={
+            <Space wrap size={12}>
+              <Text type="secondary">当前显示 {filteredUsers.length} 条</Text>
+              <Button
+                size="large"
+                icon={<ReloadOutlined />}
+                onClick={() => usersQuery.refetch()}
+                className="btn-pill"
+              >
+                {t('common:refresh')}
+              </Button>
+              <Button
+                size="large"
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => setCreateModalVisible(true)}
+                className="btn-pill"
+              >
+                创建用户
+              </Button>
+            </Space>
+          }
+        />
 
         {usersQuery.isError && (
           <Alert

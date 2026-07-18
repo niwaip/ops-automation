@@ -3031,7 +3031,6 @@ const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'manager' })
                 allowClear
                 style={{
                   width: 360,
-                  height: 44,
                   background: 'var(--bg-secondary)',
                   borderRadius: 12,
                 }}

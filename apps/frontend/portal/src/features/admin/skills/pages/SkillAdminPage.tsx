@@ -62,6 +62,11 @@ import { carboneApi, CarboneTemplateDTO } from '@/api/carbone';
 import { executionFlowApi } from '@/api/flows';
 import { SkillAccessRequestReviewTab } from '@/features/admin/skills/components/SkillAccessRequestReviewTab';
 import type { ColumnsType } from 'antd/es/table';
+import {
+  PageTitleBlock,
+  OverviewStatGrid,
+  ListSectionHeader,
+} from '@/components/page/PageScaffold';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -1116,76 +1121,124 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
     );
   }
 
+  const statItems = useMemo(() => {
+    const skills = skillsQuery.data?.skills || [];
+    const total = skills.length;
+    const published = skills.filter((s) => s.isPublished).length;
+    const active = skills.filter((s) => s.isActive).length;
+
+    return [
+      {
+        key: 'total',
+        label: '技能总数',
+        value: total,
+        icon: <ThunderboltOutlined style={{ color: 'var(--text-secondary)' }} />,
+        color: 'var(--primary-color)',
+      },
+      {
+        key: 'published',
+        label: '已发布',
+        value: published,
+        icon: <RocketOutlined style={{ color: 'var(--success-color)' }} />,
+        color: 'var(--success-color)',
+      },
+      {
+        key: 'active',
+        label: '启用中',
+        value: active,
+        icon: <CheckCircleOutlined style={{ color: 'var(--processing-color)' }} />,
+        color: 'var(--processing-color)',
+      },
+    ];
+  }, [skillsQuery.data]);
+
   return (
-    <div>
-      <Title level={4}>{t('admin:skillManagement')}</Title>
-
-      <Card style={{ marginTop: 8, marginBottom: 16 }}>
-        <Space direction="vertical" size="small">
-          <Text strong>系统 Skills 管理说明：</Text>
-          <Text>• 这里管理的是系统里的 Skill 定义，用于配置能力、流程、参数和触发词</Text>
-          <Text>• 只有完成公开发布的 Skill，才会进入公开 Skill 列表，并成为普通用户可执行对象</Text>
-          <Text>• 普通角色权限只能分配给已公开的 Skill；未公开 Skill 仅供管理员设计和维护</Text>
-          <Divider style={{ margin: '8px 0' }} />
-          <Text strong>匹配机制：</Text>
-          <Text>
-            • <Badge status="success">AI语义匹配</Badge> - 主要方式，自动识别用户意图
-          </Text>
-          <Text>
-            • <Badge status="warning">触发关键字</Badge> - 回退方案。AI服务不可用时使用
-          </Text>
-        </Space>
-      </Card>
-
-      <Alert
-        type="info"
-        showIcon
-        style={{ marginBottom: 16 }}
-        message="执行对象规则"
-        description="`admin/skills` 管的是系统 Skill 定义；`published-skills` 管的是已经公开、可被执行和授权的 Skill 对象。"
+    <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px' }}>
+      <PageTitleBlock
+        title={t('admin:skillManagement')}
+        subtitle="管理系统核心能力定义、执行流程与公开状态"
       />
 
-      <Card>
-        <Space style={{ marginBottom: 16, width: '100%', justifyContent: 'space-between' }}>
-          <Space>
-            <Input
-              placeholder={t('common:search')}
-              prefix={<SearchOutlined />}
-              value={searchText}
-              onChange={(e) => {
-                const nextValue = e.target.value;
-                setSearchText(nextValue);
-                if (nextValue) {
-                  setSearchParams({ q: nextValue }, { replace: true });
-                } else {
-                  setSearchParams({}, { replace: true });
-                }
-              }}
-              style={{ width: 200 }}
-              allowClear
-            />
-            <Button
-              icon={<FileTextOutlined />}
-              onClick={() => (window.location.href = '/carbone-templates')}
-            >
-              模板管理
-            </Button>
-            <Button
-              icon={<OrderedListOutlined />}
-              onClick={() => (window.location.href = '/admin/flows')}
-            >
-              流程模板
-            </Button>
-          </Space>
-          <Space>
-            <Button icon={<PlusOutlined />} type="primary" onClick={handleCreate}>
-              {t('common:create')}
-            </Button>
-            <Button icon={<ReloadOutlined />} onClick={() => skillsQuery.refetch()}>
-              {t('common:refresh')}
-            </Button>
-          </Space>
-        </Space>
+      <OverviewStatGrid items={statItems} />
+
+      <Card
+        styles={{ body: { padding: '20px 24px' } }}
+        style={{
+          borderRadius: 16,
+          border: '1px solid var(--bg-secondary)',
+          background: 'var(--bg-card)',
+          boxShadow: 'var(--shadow-md)',
+        }}
+      >
+        <ListSectionHeader
+          title={
+            <Space wrap size={12}>
+              <Text strong style={{ fontSize: 16 }}>
+                技能列表
+              </Text>
+              <Input
+                size="large"
+                placeholder={t('common:search')}
+                prefix={<SearchOutlined style={{ color: 'var(--text-light)' }} />}
+                variant="borderless"
+                value={searchText}
+                onChange={(e) => {
+                  const nextValue = e.target.value;
+                  setSearchText(nextValue);
+                  if (nextValue) {
+                    setSearchParams({ q: nextValue }, { replace: true });
+                  } else {
+                    setSearchParams({}, { replace: true });
+                  }
+                }}
+                allowClear
+                style={{
+                  width: 320,
+                  background: 'var(--bg-secondary)',
+                  borderRadius: 12,
+                }}
+              />
+            </Space>
+          }
+          extra={
+            <Space wrap size={12}>
+              <Text type="secondary">当前显示 {filteredSkills?.length || 0} 条</Text>
+              <Button
+                size="large"
+                icon={<FileTextOutlined />}
+                onClick={() => (window.location.href = '/carbone-templates')}
+                className="btn-pill"
+              >
+                模板管理
+              </Button>
+              <Button
+                size="large"
+                icon={<OrderedListOutlined />}
+                onClick={() => (window.location.href = '/admin/flows')}
+                className="btn-pill"
+              >
+                流程模板
+              </Button>
+              <Button
+                size="large"
+                icon={<ReloadOutlined />}
+                onClick={() => skillsQuery.refetch()}
+                className="btn-pill"
+              >
+                {t('common:refresh')}
+              </Button>
+              <Button
+                size="large"
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={handleCreate}
+                className="btn-pill"
+              >
+                {t('common:create')}
+              </Button>
+            </Space>
+          }
+        />
 
         <Table
           columns={columns}
