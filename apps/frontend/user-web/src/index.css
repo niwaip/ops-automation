@@ -113,15 +113,16 @@ body {
 }
 
 .ant-card {
-  border-radius: var(--radius-lg) !important;
-  border: none !important;
-  box-shadow: var(--shadow-md) !important;
+  border-radius: var(--radius-xl) !important;
+  border: 1px solid var(--border-color) !important;
+  box-shadow: none !important;
   transition: all var(--transition-normal) !important;
   background: var(--bg-card) !important;
 }
 
 .ant-card:hover {
-  box-shadow: var(--shadow-lg) !important;
+  box-shadow: var(--shadow-sm) !important;
+  transform: none;
 }
 
 .ant-btn {

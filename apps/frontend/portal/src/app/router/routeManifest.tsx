@@ -124,7 +124,7 @@ export const portalRouteEntries: PortalRouteEntry[] = [
     nav: {
       key: '/admin/activities',
       group: 'root',
-      label: '工作单元',
+      labelKey: 'activities',
       icon: <ThunderboltOutlined />,
       requiresAdmin: true,
     },
@@ -136,7 +136,7 @@ export const portalRouteEntries: PortalRouteEntry[] = [
     nav: {
       key: '/admin/temporal',
       group: 'root',
-      label: '工作流',
+      labelKey: 'temporal',
       icon: <ThunderboltOutlined />,
       requiresAdmin: true,
     },
@@ -148,7 +148,7 @@ export const portalRouteEntries: PortalRouteEntry[] = [
     nav: {
       key: '/admin/capabilities',
       group: 'root',
-      label: '流程发布',
+      labelKey: 'capabilities',
       icon: <ThunderboltOutlined />,
       requiresAdmin: true,
     },
@@ -201,7 +201,7 @@ export const portalRouteEntries: PortalRouteEntry[] = [
     nav: {
       key: '/templates',
       group: 'root',
-      label: '浏览器模版',
+      labelKey: 'browserTemplates',
       icon: <FileTextOutlined />,
     },
   },
@@ -261,14 +261,14 @@ export const portalRouteEntries: PortalRouteEntry[] = [
         },
         {
           key: '/admin/browser-semantic-rules',
-          label: '规则管理(AI审查)',
+          labelKey: 'browserSemanticRules',
           icon: <OrderedListOutlined />,
           requiresAdmin: true,
         },
-        { key: '/admin/tools', label: '系统工具', icon: <ToolOutlined />, requiresAdmin: true },
+        { key: '/admin/tools', labelKey: 'systemTools', icon: <ToolOutlined />, requiresAdmin: true },
         {
           key: '/admin/prompt-debug',
-          label: 'Prompt 调试',
+          labelKey: 'promptDebug',
           icon: <BugOutlined />,
           requiresAdmin: true,
         },

@@ -161,8 +161,9 @@ export function LoginPage() {
       />
       <div
         style={{
-          width: 420,
-          padding: 48,
+          width: '100%',
+          maxWidth: 440,
+          margin: '0 16px',
           background: isDark ? 'rgba(15, 23, 42, 0.84)' : 'rgba(255, 255, 255, 0.95)',
           borderRadius: 24,
           boxShadow: isDark
@@ -172,57 +173,93 @@ export function LoginPage() {
           position: 'relative',
           zIndex: 1,
           border: isDark ? '1px solid rgba(148, 163, 184, 0.14)' : 'none',
+          overflow: 'hidden',
         }}
       >
         <div
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 12,
-            marginBottom: 8,
+            padding: '40px 32px 24px',
+            background: isDark
+              ? 'linear-gradient(to bottom, rgba(30, 41, 59, 0.5), transparent)'
+              : 'linear-gradient(to bottom, rgba(243, 244, 246, 0.6), transparent)',
+            borderBottom: isDark ? '1px solid rgba(148, 163, 184, 0.05)' : '1px solid rgba(0,0,0,0.02)',
           }}
         >
           <div
             style={{
-              width: 48,
-              height: 48,
-              borderRadius: 14,
-              background: 'linear-gradient(135deg, #6366f1 0%, #f472b6 100%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: 24,
-              fontWeight: 700,
-              color: '#fff',
-              boxShadow: '0 4px 14px rgba(99, 102, 241, 0.4)',
+              gap: 16,
+              marginBottom: 16,
             }}
           >
-            U
+            <div
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: 16,
+                background: 'linear-gradient(135deg, #6366f1 0%, #f472b6 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#fff',
+                boxShadow: '0 8px 20px -4px rgba(99, 102, 241, 0.5)',
+              }}
+            >
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 0C12 6.62742 17.3726 12 24 12C17.3726 12 12 17.3726 12 24C12 17.3726 6.62742 12 0 12C6.62742 12 12 6.62742 12 0Z" />
+              </svg>
+            </div>
+            <h1
+              style={{
+                fontSize: 32,
+                fontWeight: 800,
+                color: 'var(--text-primary)',
+                margin: 0,
+                letterSpacing: '-0.5px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+              }}
+            >
+              OpsPilot
+              <span
+                style={{
+                  fontSize: 13,
+                  fontWeight: 700,
+                  background: 'linear-gradient(135deg, #6366f1 0%, #f472b6 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  padding: '2px 8px',
+                  borderRadius: 12,
+                  border: '1px solid rgba(244, 114, 182, 0.3)',
+                  verticalAlign: 'middle',
+                }}
+              >
+                AI
+              </span>
+            </h1>
           </div>
-          <h1
+          <div
             style={{
-              fontSize: 28,
-              fontWeight: 700,
-              color: 'var(--text-primary)',
-              margin: 0,
-              letterSpacing: '-0.5px',
+              textAlign: 'center',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 8,
             }}
           >
-            企业AI门户
-          </h1>
+            <div style={{ color: 'var(--text-primary)', fontSize: 18, fontWeight: 600 }}>
+              构建新一代自动化运维体验
+            </div>
+            <div style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
+              智能编排 · 高效执行 · 安全认证
+            </div>
+          </div>
         </div>
-        <p
-          style={{
-            textAlign: 'center',
-            color: 'var(--text-secondary)',
-            marginBottom: 32,
-            fontSize: 15,
-          }}
-        >
-          统一沿用 portal 的登录视觉，继续使用 user-core 的认证与执行能力。
-        </p>
-        <Form<LoginFormValues>
+
+        <div style={{ padding: '24px 32px 32px' }}>
+          <Form<LoginFormValues>
           form={form}
           layout="vertical"
           initialValues={{ username: '', password: '', remember: false }}
@@ -294,39 +331,25 @@ export function LoginPage() {
               使用 SSO 登录
             </Button>
           </Space>
+        </Form>
           <div
             style={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
               marginTop: 16,
-              padding: '12px 14px',
-              borderRadius: 12,
-              background: isDark ? 'rgba(30, 41, 59, 0.72)' : 'rgba(99, 102, 241, 0.06)',
-              color: 'var(--text-secondary)',
-              fontSize: 13,
-              lineHeight: 1.6,
             }}
           >
-            当前保留本地登录；后端提供统一 SSO 端点后，可通过 `?sso=1` 或按钮切换认证入口。
+            <Dropdown menu={languageMenu} placement="bottom" trigger={['click']}>
+              <Button
+                type="text"
+                icon={<GlobalOutlined />}
+                style={{ color: 'var(--text-secondary)', borderRadius: 8, fontWeight: 500, fontSize: 13 }}
+              >
+                {language === 'zh-CN' ? '简体中文' : language === 'en-US' ? 'English' : '日本語'}
+              </Button>
+            </Dropdown>
           </div>
-        </Form>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            marginTop: 24,
-            paddingTop: 24,
-            borderTop: '1px solid var(--bg-secondary)',
-          }}
-        >
-          <Dropdown menu={languageMenu} placement="bottomLeft" trigger={['click']}>
-            <Button
-              type="text"
-              icon={<GlobalOutlined />}
-              style={{ color: 'var(--text-secondary)', borderRadius: 8, fontWeight: 500 }}
-            >
-              {language === 'zh-CN' ? '简体中文' : language === 'en-US' ? 'English' : '日本語'}
-            </Button>
-          </Dropdown>
         </div>
       </div>
     </div>

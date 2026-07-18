@@ -927,7 +927,7 @@ const ActivityPage: React.FC = () => {
 
   const columns: ColumnsType<ActivityDTO> = [
     {
-      title: '名称',
+      title: t('common:name', { defaultValue: '名称' }),
       dataIndex: 'name',
       key: 'name',
       width: 220,
@@ -943,7 +943,7 @@ const ActivityPage: React.FC = () => {
       ),
     },
     {
-      title: '函数名',
+      title: t('admin:functionName', { defaultValue: '函数名' }),
       dataIndex: 'fn',
       key: 'fn',
       width: 180,
@@ -964,7 +964,7 @@ const ActivityPage: React.FC = () => {
       ),
     },
     {
-      title: '处理器',
+      title: t('admin:handler', { defaultValue: '处理器' }),
       key: 'handler',
       width: 110,
       align: 'center',
@@ -978,14 +978,14 @@ const ActivityPage: React.FC = () => {
       ),
     },
     {
-      title: '步骤',
+      title: t('admin:steps', { defaultValue: '步骤' }),
       key: 'steps',
       width: 90,
       align: 'center',
       render: (_, record) => <Text strong>{record.config?.steps?.length || 0}</Text>,
     },
     {
-      title: '状态',
+      title: t('common:status', { defaultValue: '状态' }),
       key: 'status',
       width: 110,
       align: 'center',
@@ -994,12 +994,12 @@ const ActivityPage: React.FC = () => {
           color={record.isActive ? 'success' : 'default'}
           style={{ marginInlineEnd: 0, paddingInline: 10, borderRadius: 999, fontWeight: 600 }}
         >
-          {record.isActive ? '启用' : '禁用'}
+          {record.isActive ? t('admin:enabled', { defaultValue: '启用' }) : t('admin:disabled', { defaultValue: '禁用' })}
         </Tag>
       ),
     },
     {
-      title: t('common:actions'),
+      title: t('common:actions', { defaultValue: '操作' }),
       key: 'actions',
       width: 150,
       align: 'center',
@@ -1010,16 +1010,16 @@ const ActivityPage: React.FC = () => {
             style={{ paddingInline: 0, fontWeight: 600 }}
             onClick={() => handleEdit(record)}
           >
-            编辑
+            {t('common:edit')}
           </Button>
           <Popconfirm
-            title="确认删除"
+            title={t('common:confirmDelete')}
             onConfirm={() => handleDelete(record.id)}
-            okText="删除"
+            okText={t('common:delete')}
             okButtonProps={{ danger: true }}
           >
             <Button type="link" danger style={{ paddingInline: 0, fontWeight: 600 }}>
-              删除
+              {t('common:delete')}
             </Button>
           </Popconfirm>
         </Space>
@@ -1029,7 +1029,7 @@ const ActivityPage: React.FC = () => {
 
   const builtinColumns: ColumnsType<BuiltinActivityDTO> = [
     {
-      title: '名称',
+      title: t('common:name', { defaultValue: '名称' }),
       dataIndex: 'name',
       key: 'name',
       width: 220,
@@ -1037,15 +1037,15 @@ const ActivityPage: React.FC = () => {
       render: (name) => <Text strong>{name}</Text>,
     },
     {
-      title: '说明',
+      title: t('common:description', { defaultValue: '说明' }),
       dataIndex: 'description',
       key: 'description',
       width: 360,
       align: 'left',
-      render: (desc) => <Text type="secondary">{desc || '无'}</Text>,
+      render: (desc) => <Text type="secondary">{desc || t('common:none', { defaultValue: '无' })}</Text>,
     },
     {
-      title: '处理器',
+      title: t('admin:handler', { defaultValue: '处理器' }),
       key: 'handler',
       width: 110,
       align: 'center',
@@ -1059,7 +1059,7 @@ const ActivityPage: React.FC = () => {
       ),
     },
     {
-      title: '版本',
+      title: t('common:version', { defaultValue: '版本' }),
       dataIndex: 'version',
       key: 'version',
       width: 110,
@@ -1067,7 +1067,7 @@ const ActivityPage: React.FC = () => {
       render: (version) => <Text strong>{version}</Text>,
     },
     {
-      title: '模式',
+      title: t('admin:mode', { defaultValue: '模式' }),
       key: 'readonly',
       width: 120,
       align: 'center',
@@ -1076,7 +1076,7 @@ const ActivityPage: React.FC = () => {
           color="gold"
           style={{ marginInlineEnd: 0, paddingInline: 10, borderRadius: 999, fontWeight: 600 }}
         >
-          只读内置
+          {t('admin:readonlyBuiltin', { defaultValue: '只读内置' })}
         </Tag>
       ),
     },
@@ -1109,28 +1109,28 @@ const ActivityPage: React.FC = () => {
   const activityOverviewStats = [
     {
       key: 'userCreated',
-      label: '用户创建',
+      label: t('admin:userCreated', { defaultValue: '用户创建' }),
       value: stats.userCreated,
       color: 'var(--text-primary)',
       icon: <ThunderboltOutlined style={{ color: 'var(--text-secondary)' }} />,
     },
     {
       key: 'builtin',
-      label: '系统内置',
+      label: t('admin:builtin', { defaultValue: '系统内置' }),
       value: stats.builtin,
       color: 'var(--success-color)',
       icon: <LockOutlined style={{ color: 'var(--success-color)' }} />,
     },
     {
       key: 'active',
-      label: '已启用',
+      label: t('admin:active', { defaultValue: '已启用' }),
       value: stats.active,
       color: 'var(--warning-color)',
       icon: <LineChartOutlined style={{ color: 'var(--warning-color)' }} />,
     },
     {
       key: 'visible',
-      label: '当前显示',
+      label: t('admin:currentVisible', { defaultValue: '当前显示' }),
       value: stats.visible,
       color: 'var(--info-color)',
       icon: <SearchOutlined style={{ color: 'var(--info-color)' }} />,
@@ -1181,11 +1181,11 @@ const ActivityPage: React.FC = () => {
           title={
             <Space wrap size={12}>
               <Text strong style={{ fontSize: 16 }}>
-                用户创建工作单元
+                {t('admin:userCreatedActivities', { defaultValue: '用户创建工作单元' })}
               </Text>
               <Input
                 size="large"
-                placeholder="搜索工作单元名称或函数名..."
+                placeholder={t('admin:searchActivitiesPlaceholder', { defaultValue: '搜索工作单元名称或函数名...' })}
                 prefix={<SearchOutlined />}
                 variant="borderless"
                 value={searchText}
@@ -1202,7 +1202,7 @@ const ActivityPage: React.FC = () => {
           }
           extra={
             <Space wrap size={12}>
-              <Text type="secondary">当前显示 {filteredActivities.length} 条</Text>
+              <Text type="secondary">{t('admin:currentDisplayCount', { count: filteredActivities.length, defaultValue: '当前显示 {{count}} 条' })}</Text>
               <Button
                 size="large"
                 icon={<ReloadOutlined />}
@@ -1211,7 +1211,7 @@ const ActivityPage: React.FC = () => {
                 }}
                 className="btn-pill"
               >
-                刷新
+                {t('common:refresh')}
               </Button>
               <Button
                 size="large"
@@ -1220,7 +1220,7 @@ const ActivityPage: React.FC = () => {
                 onClick={handleCreate}
                 className="btn-pill"
               >
-                创建
+                {t('common:create')}
               </Button>
             </Space>
           }
@@ -1255,20 +1255,20 @@ const ActivityPage: React.FC = () => {
                 >
                   <Space size={8} align="center">
                     <Text strong style={{ fontSize: 16 }}>
-                      系统内置工作单元
+                      {t('admin:builtinActivities', { defaultValue: '系统内置工作单元' })}
                     </Text>
-                    <Tooltip title="模板工作流无需预先创建 Carbone Activity；系统提供内置 documentRender Activity，后续也会在这里统一展示更多内置能力">
+                    <Tooltip title={t('admin:builtinActivitiesTooltip', { defaultValue: '模板工作流无需预先创建 Carbone Activity；系统提供内置 documentRender Activity，后续也会在这里统一展示更多内置能力' })}>
                       <InfoCircleOutlined style={{ color: 'var(--text-secondary)' }} />
                     </Tooltip>
                   </Space>
-                  <Text type="secondary">共 {builtinActivities.length} 条</Text>
+                  <Text type="secondary">{t('admin:totalItemsCount', { count: builtinActivities.length, defaultValue: '共 {{count}} 条' })}</Text>
                 </div>
               ),
               children: (
                 <Space direction="vertical" size={16} style={{ width: '100%' }}>
                   <Input
                     size="large"
-                    placeholder="搜索内置工作单元名称或说明..."
+                    placeholder={t('admin:searchBuiltinActivitiesPlaceholder', { defaultValue: '搜索内置工作单元名称或说明...' })}
                     prefix={<SearchOutlined />}
                     variant="borderless"
                     value={builtinSearchText}

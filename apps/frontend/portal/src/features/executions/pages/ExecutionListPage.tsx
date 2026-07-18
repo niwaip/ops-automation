@@ -939,13 +939,14 @@ const ExecutionListPage: React.FC = () => {
   };
 
   return (
-    <div style={{ padding: 24 }}>
+    <div className="execution-list-page" style={{ padding: 24 }}>
       {/* Table */}
       <Card
+        className="execution-list-card"
         style={{
-          borderRadius: 16,
+          borderRadius: 20,
           border: '1px solid var(--bg-secondary)',
-          boxShadow: 'var(--shadow-md)',
+          boxShadow: '0 12px 32px rgba(15, 23, 42, 0.04)',
         }}
         styles={{ body: { padding: 12 } }}
       >
@@ -956,7 +957,7 @@ const ExecutionListPage: React.FC = () => {
                 执行记录列表
               </Text>
               <Input
-                className="execution-search-input"
+                className="execution-search-input execution-list-filter-control"
                 size="small"
                 placeholder="内容过滤"
                 prefix={<SearchOutlined />}
@@ -972,7 +973,7 @@ const ExecutionListPage: React.FC = () => {
                 allowClear
               />
               <Select
-                className="execution-status-filter"
+                className="execution-status-filter execution-list-filter-control"
                 size="small"
                 placeholder="全部状态"
                 variant="borderless"
@@ -1023,6 +1024,7 @@ const ExecutionListPage: React.FC = () => {
                 allowClear={false}
                 format="YYYY-MM-DD"
                 style={{ minWidth: 150 }}
+                className="execution-list-date-picker"
               />
               <Button
                 size="middle"

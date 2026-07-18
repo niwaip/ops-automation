@@ -1,14 +1,16 @@
 import React from 'react';
-import { Button, Card, Col, Empty, Row, Space, Tag, Typography, theme } from 'antd';
+import { Button, Card, Col, Empty, Row, Space, Tag, Typography, theme, Modal, message } from 'antd';
 import {
   CheckCircleFilled,
   EditOutlined,
   LinkOutlined,
   LockOutlined,
   PlusOutlined,
-  ThunderboltOutlined,
+  DeleteOutlined,
 } from '@ant-design/icons';
 import type { AIProviderConfig, AIProviderSummary } from '@/api/ai';
+import { aiModelApi } from '@/api/ai';
+import { useMutation, useQueryClient } from 'react-query';
 
 const { Paragraph, Text } = Typography;
 
@@ -67,8 +69,7 @@ const metricCardStyle = (background: string): React.CSSProperties => ({
   borderRadius: 12,
   border: '1px solid var(--bg-secondary)',
   background,
-  minHeight: 72,
-  padding: '10px 12px',
+  padding: '8px 12px',
 });
 
 interface ProviderGovernanceCardGridProps {
@@ -100,6 +101,31 @@ const ProviderGovernanceCardGrid: React.FC<ProviderGovernanceCardGridProps> = ({
   onAppendModel,
 }) => {
   const { token } = theme.useToken();
+  const queryClient = useQueryClient();
+
+  const deleteProviderMutation = useMutation((id: string) => aiModelApi.deleteProviderConfig(id), {
+    onSuccess: () => {
+      message.success('删除成功');
+      void queryClient.invalidateQueries('ai-providers-configs');
+      void queryClient.invalidateQueries('ai-models');
+    },
+    onError: (error: any) => {
+      message.error(error.message || '删除失败');
+    },
+  });
+
+  const handleDeleteProvider = (id: string) => {
+    Modal.confirm({
+      title: '确认删除 Provider',
+      content: '删除此 Provider 配置将会影响到关联的模型和默认路由，确定要删除吗？',
+      okText: '删除',
+      okType: 'danger',
+      cancelText: '取消',
+      onOk: () => {
+        deleteProviderMutation.mutate(id);
+      },
+    });
+  };
 
   if (!loading && items.length === 0) {
     return (
@@ -131,7 +157,7 @@ const ProviderGovernanceCardGrid: React.FC<ProviderGovernanceCardGridProps> = ({
               loading={loading}
               hoverable
               onClick={() => onSelectProvider(providerConfig.provider)}
-              styles={{ body: { padding: 18 } }}
+              styles={{ body: { padding: 16 } }}
               style={{
                 borderRadius: 20,
                 border: isSelected
@@ -142,12 +168,11 @@ const ProviderGovernanceCardGrid: React.FC<ProviderGovernanceCardGridProps> = ({
                   ? `0 18px 40px ${accent.soft}`
                   : '0 12px 24px rgba(15, 23, 42, 0.08)',
                 transition: 'all 0.2s ease',
-                minHeight: 320,
               }}
             >
               <Space
                 align="start"
-                style={{ width: '100%', justifyContent: 'space-between', marginBottom: 16 }}
+                style={{ width: '100%', justifyContent: 'space-between', marginBottom: 12 }}
               >
                 <Space align="start" size={12}>
                   <div
@@ -178,13 +203,6 @@ const ProviderGovernanceCardGrid: React.FC<ProviderGovernanceCardGridProps> = ({
                         </Tag>
                       )}
                     </Space>
-                    <Paragraph
-                      type="secondary"
-                      style={{ marginBottom: 0, maxWidth: 320, fontSize: 13 }}
-                      ellipsis={{ rows: 2, tooltip: providerConfig.api_endpoint }}
-                    >
-                      {providerConfig.api_endpoint}
-                    </Paragraph>
                   </Space>
                 </Space>
                 <Tag
@@ -195,7 +213,7 @@ const ProviderGovernanceCardGrid: React.FC<ProviderGovernanceCardGridProps> = ({
                 </Tag>
               </Space>
 
-              <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+              <Row gutter={[12, 12]} style={{ marginBottom: 12 }}>
                 <Col span={8}>
                   <div style={metricCardStyle(metricBackground)}>
                     <Text type="secondary" style={{ fontSize: 12 }}>
@@ -233,8 +251,8 @@ const ProviderGovernanceCardGrid: React.FC<ProviderGovernanceCardGridProps> = ({
                   borderRadius: 14,
                   border: '1px solid var(--bg-secondary)',
                   background: token.colorBgContainer,
-                  padding: 12,
-                  marginBottom: 16,
+                  padding: '8px 12px',
+                  marginBottom: 12,
                 }}
               >
                 <Space size={8} style={{ marginBottom: 8 }} wrap>
@@ -256,17 +274,8 @@ const ProviderGovernanceCardGrid: React.FC<ProviderGovernanceCardGridProps> = ({
               <Space style={{ width: '100%', justifyContent: 'space-between' }} wrap>
                 <Space size={8} wrap>
                   <Button
-                    icon={<ThunderboltOutlined />}
-                    loading={healthCheckingId === providerConfig.id}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onCheckHealth(providerConfig.id);
-                    }}
-                  >
-                    健康检查
-                  </Button>
-                  <Button
                     icon={<EditOutlined />}
+                    className="btn-pill"
                     onClick={(event) => {
                       event.stopPropagation();
                       onEditProvider(providerConfig);
@@ -274,16 +283,28 @@ const ProviderGovernanceCardGrid: React.FC<ProviderGovernanceCardGridProps> = ({
                   >
                     编辑
                   </Button>
+                  <Button
+                    danger
+                    icon={<DeleteOutlined />}
+                    className="btn-pill"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleDeleteProvider(providerConfig.id);
+                    }}
+                  >
+                    删除
+                  </Button>
                 </Space>
                 <Button
                   type="primary"
                   icon={<PlusOutlined />}
+                  className="btn-pill"
                   onClick={(event) => {
                     event.stopPropagation();
                     onAppendModel(providerConfig, summary);
                   }}
                 >
-                  追加模型
+                  模型
                 </Button>
               </Space>
             </Card>

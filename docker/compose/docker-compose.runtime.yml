@@ -23,7 +23,6 @@ services:
       - "${BROWSER_WORKER_PORT:-3004}:${BROWSER_WORKER_PORT:-3004}"
     volumes:
       - ${PROJECT_ROOT:-..}/apps/backend/runtimes/browser-worker:/app
-      - browser_worker_node_modules:/app/node_modules
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - browser-chrome
@@ -64,7 +63,6 @@ services:
       - "${CARBONE_ENGINE_PORT:-3009}:${CARBONE_ENGINE_PORT:-3009}"
     volumes:
       - ${PROJECT_ROOT:-..}:/workspace
-      - carbone_engine_node_modules:/workspace/apps/backend/capabilities/document-domain/node_modules
       - ${PROJECT_ROOT:-..}/apps/backend/var/templates/document-engine:/workspace/apps/backend/var/templates/document-engine
       - ${PROJECT_ROOT:-..}/apps/backend/var/outputs/document-engine:/workspace/apps/backend/var/outputs/document-engine
     healthcheck:
@@ -165,8 +163,6 @@ services:
       - ops-network
 
 volumes:
-  browser_worker_node_modules:
-  carbone_engine_node_modules:
   temporal_data:
 
 networks:
