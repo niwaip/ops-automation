@@ -519,8 +519,8 @@ src/shared/
 
 **验收标准**
 
-- [ ] 可以 `import type { ChatStoreState } from '@/features/chat/chatStore'`
-- [ ] 引用该类型的 hooks/组件有完整 TS 类型提示，无 `any`
+- [x] 可以 `import type { ChatStoreState } from '@/features/chat/chatStore'`
+- [x] 引用该类型的 hooks/组件有完整 TS 类型提示，无 `any`
 
 ---
 
@@ -533,9 +533,9 @@ src/shared/
 
 **验收标准**
 
-- [ ] `src/main.tsx` ≤ 30 行
-- [ ] `AntdProvider.tsx` 包含完整的 locale + theme Token 配置
-- [ ] 主题切换、语言切换功能正常
+- [x] `src/main.tsx` ≤ 30 行
+- [x] `AntdProvider.tsx` 包含完整的 locale + theme Token 配置
+- [x] 主题切换、语言切换功能正常
 
 ---
 
@@ -550,14 +550,14 @@ src/shared/
 | T2-04 executions 二次分层 | 🟠 二阶段 | 3 天 | ✅ 已完成 |
 | T2-05 拆分 InlineRecoveryPanel | 🟠 二阶段 | 1.5 天 | ✅ 已完成 |
 | T2-06 统一 i18n | 🟠 二阶段 | 3 天 | ✅ 已完成 |
-| T3-01 CSS Modules 迁移 | 🟡 三阶段 | 3 天 | 待开始 |
-| T3-02 antd Token 迁移 | 🟡 三阶段 | 1.5 天 | 待开始 |
-| T3-03 轮询配置集中化 | 🟡 三阶段 | 0.5 天 | 待开始 |
-| T3-04 接入 Vitest | 🟡 三阶段 | 2 天 | 待开始 |
-| T3-05 统一 API 错误类型 | 🟡 三阶段 | 1 天 | 待开始 |
+| T3-01 CSS Modules 迁移 | 🟡 三阶段 | 3 天 | ⏸️ 已搁置 |
+| T3-02 antd Token 迁移 | 🟡 三阶段 | 1.5 天 | ✅ 已完成 |
+| T3-03 轮询配置集中化 | 🟡 三阶段 | 0.5 天 | ✅ 已完成 |
+| T3-04 接入 Vitest | 🟡 三阶段 | 2 天 | ✅ 已完成 |
+| T3-05 统一 API 错误类型 | 🟡 三阶段 | 1 天 | ✅ 已完成 |
 | T4-01 shared/ 目录细化 | 🟢 持续 | 0.5 天 | 待开始 |
-| T4-02 chatStore 类型导出 | 🟢 持续 | 0.5 天 | 待开始 |
-| T4-03 提取 AntdProvider | 🟢 持续 | 0.5 天 | 待开始 |
+| T4-02 chatStore 类型导出 | 🟢 持续 | 0.5 天 | ✅ 已完成 |
+| T4-03 提取 AntdProvider | 🟢 持续 | 0.5 天 | ✅ 已完成 |
 
 ---
 
