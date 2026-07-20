@@ -32,7 +32,7 @@ import {
   EXECUTION_STATUS_LABELS_ZH,
 } from '@/shared/constants/executionStatusMeta';
 import { usePreferencesStore } from '@/shared/store/preferencesStore';
-import './ExecutionListPage.css';
+import styles from './ExecutionListPage.module.css';
 
 const statusColors = EXECUTION_STATUS_COLORS;
 const statusLabels = EXECUTION_STATUS_LABELS_ZH;
@@ -217,10 +217,10 @@ const ExecutionListPage: React.FC = () => {
   });
 
   return (
-    <div className="execution-list-page">
+    <div className={styles['execution-list-page']}>
       <ExecutionListSummaryStrip items={overviewItems} />
 
-      <Card className="execution-list-card" styles={{ body: { padding: 0 } }}>
+      <Card className={styles['execution-list-card']} styles={{ body: { padding: 0 } }}>
         <ExecutionListToolbar {...toolbarProps} />
         <Table {...tableProps} />
       </Card>

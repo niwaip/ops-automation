@@ -2,6 +2,7 @@ import { PlayCircleOutlined, PlusOutlined, RobotOutlined } from '@ant-design/ico
 import { Button, Card, Checkbox, Empty, Input, List, Space, Tag, Typography } from 'antd';
 import type { WorkbenchTodo } from '../lib/workbenchTodoStorage';
 import { formatMonthDayTime } from '@/shared/utils/dateText';
+import styles from '../pages/DashboardPage.module.css';
 
 interface TodoCardProps {
   todoDraft: string;
@@ -30,13 +31,13 @@ export function TodoCard({
 }: TodoCardProps) {
   return (
     <Card
-      className="workbench-panel"
+      className={styles['workbench-panel']}
       title={
-        <div className="workbench-panel-header">
-          <Typography.Text strong className="workbench-panel-title">
+        <div className={styles['workbench-panel-header']}>
+          <Typography.Text strong className={styles['workbench-panel-title']}>
             Todo
           </Typography.Text>
-          <Typography.Text className="workbench-panel-subtitle">
+          <Typography.Text className={styles['workbench-panel-subtitle']}>
             记录今天要做的事，并用 AI 快速整理优先级与行动建议。
           </Typography.Text>
         </div>
@@ -49,7 +50,7 @@ export function TodoCard({
       }
     >
       <Space direction="vertical" size={16} style={{ width: '100%' }}>
-        <div className="workbench-todo-form">
+        <div className={styles['workbench-todo-form']}>
           <Input.TextArea
             value={todoDraft}
             placeholder={
@@ -58,17 +59,17 @@ export function TodoCard({
             onChange={(event) => onDraftChange(event.target.value)}
             autoSize={{ minRows: 3, maxRows: 6 }}
           />
-          <div className="workbench-todo-form-actions">
+          <div className={styles['workbench-todo-form-actions']}>
             <Button
               type="primary"
-              className="workbench-action-button workbench-todo-toolbar-button is-create"
+              className={`${styles['workbench-action-button']} ${styles['workbench-todo-toolbar-button']} ${styles['is-create']}`}
               icon={<PlusOutlined />}
               onClick={onCreateTodo}
             >
               添加
             </Button>
             <Button
-              className="workbench-action-button workbench-todo-toolbar-button is-ai"
+              className={`${styles['workbench-action-button']} ${styles['workbench-todo-toolbar-button']} ${styles['is-ai']}`}
               icon={<RobotOutlined />}
               onClick={() =>
                 onLaunchAiAssistant(
@@ -88,7 +89,7 @@ export function TodoCard({
               ai添加
             </Button>
             <Button
-              className="workbench-action-button workbench-todo-toolbar-button is-run"
+              className={`${styles['workbench-action-button']} ${styles['workbench-todo-toolbar-button']} ${styles['is-run']}`}
               icon={<PlayCircleOutlined />}
               onClick={onOpenNewExecution}
             >
@@ -103,14 +104,14 @@ export function TodoCard({
             dataSource={todos}
             renderItem={(item) => (
               <List.Item key={item.id} style={{ padding: 0, border: 'none' }}>
-                <div className="workbench-todo-item" style={{ width: '100%' }}>
+                <div className={styles['workbench-todo-item']} style={{ width: '100%' }}>
                   <Space
                     direction="vertical"
                     size={12}
                     style={{ width: '100%', opacity: item.completed ? 0.72 : 1 }}
                   >
                     <Space
-                      className="workbench-todo-row"
+                      className={styles['workbench-todo-row']}
                       style={{ width: '100%', justifyContent: 'space-between' }}
                     >
                       <Checkbox
@@ -121,7 +122,7 @@ export function TodoCard({
                       </Checkbox>
                       <Button
                         size="small"
-                        className="workbench-action-button"
+                        className={styles['workbench-action-button']}
                         icon={<RobotOutlined />}
                         onClick={() =>
                           onLaunchAiAssistant(
@@ -136,7 +137,7 @@ export function TodoCard({
                         AI 处理
                       </Button>
                     </Space>
-                    <div className="workbench-todo-meta">
+                    <div className={styles['workbench-todo-meta']}>
                       <Tag bordered={false}>更新于 {formatMonthDayTime(item.updatedAt)}</Tag>
                     </div>
                   </Space>

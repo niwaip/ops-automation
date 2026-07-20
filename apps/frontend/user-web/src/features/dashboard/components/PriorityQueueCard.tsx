@@ -6,6 +6,7 @@ import {
   type ExecutionStatus,
 } from '@ops/user-core';
 import { formatMonthDayTime } from '@/shared/utils/dateText';
+import styles from '../pages/DashboardPage.module.css';
 
 const WORKBENCH_EXECUTION_TAG_COLORS: Partial<Record<ExecutionStatus, string>> = {
   human_control: 'gold',
@@ -36,16 +37,16 @@ export function PriorityQueueCard({
 }: PriorityQueueCardProps) {
   return (
     <Card
-      className="workbench-panel"
+      className={styles['workbench-panel']}
       title={
-        <div className="workbench-panel-header">
-          <Typography.Text strong className="workbench-panel-title">
+        <div className={styles['workbench-panel-header']}>
+          <Typography.Text strong className={styles['workbench-panel-title']}>
             优先处理
           </Typography.Text>
         </div>
       }
       extra={
-        <Button type="link" className="workbench-action-button" onClick={onViewAll}>
+        <Button type="link" className={styles['workbench-action-button']} onClick={onViewAll}>
           查看全部
         </Button>
       }
@@ -53,16 +54,16 @@ export function PriorityQueueCard({
       {items.length === 0 ? (
         <Empty description="当前没有待人工处理、失败或执行中的记录" />
       ) : (
-        <div className="workbench-queue-list">
+        <div className={styles['workbench-queue-list']}>
           {items.map((item) => (
             <div
               key={item.id}
-              className={`workbench-queue-item${item.status === 'human_control' || item.status === 'failed' ? ' is-priority' : ''}`}
+              className={`${styles['workbench-queue-item']}${item.status === 'human_control' || item.status === 'failed' ? ` ${styles['is-priority']}` : ''}`}
             >
-              <div className="workbench-queue-row">
-                <div className="workbench-queue-main">
+              <div className={styles['workbench-queue-row']}>
+                <div className={styles['workbench-queue-main']}>
                   <Typography.Paragraph
-                    className="workbench-queue-desc strong"
+                    className={`${styles['workbench-queue-desc']} ${styles.strong}`}
                     style={{ margin: 0 }}
                     ellipsis={{
                       rows: 2,
@@ -71,7 +72,7 @@ export function PriorityQueueCard({
                   >
                     {getExecutionDisplayDescription(item)}
                   </Typography.Paragraph>
-                  <Space size={[6, 6]} wrap className="workbench-queue-meta">
+                  <Space size={[6, 6]} wrap className={styles['workbench-queue-meta']}>
                     <Tag color={WORKBENCH_EXECUTION_TAG_COLORS[item.status]}>
                       {EXECUTION_STATUS_LABELS_ZH[item.status] || item.status}
                     </Tag>
@@ -80,11 +81,11 @@ export function PriorityQueueCard({
                     </Typography.Text>
                   </Space>
                 </div>
-                <div className="workbench-queue-actions">
+                <div className={styles['workbench-queue-actions']}>
                   <Button
                     type="primary"
                     size="small"
-                    className="workbench-action-button workbench-queue-action"
+                    className={`${styles['workbench-action-button']} ${styles['workbench-queue-action']}`}
                     icon={<EyeOutlined />}
                     title="详细"
                     aria-label="详细"
@@ -92,13 +93,13 @@ export function PriorityQueueCard({
                   />
                   <Button
                     size="small"
-                    className="workbench-action-button workbench-queue-action"
+                    className={`${styles['workbench-action-button']} ${styles['workbench-queue-action']}`}
                     icon={<CheckOutlined />}
                     title="忽略"
                     aria-label="忽略"
                     onClick={() => onIgnoreItem(item.id)}
                   />
-                  <Typography.Text type="secondary" className="workbench-queue-time">
+                  <Typography.Text type="secondary" className={styles['workbench-queue-time']}>
                     {formatMonthDayTime(getExecutionDisplayTime(item))}
                   </Typography.Text>
                 </div>

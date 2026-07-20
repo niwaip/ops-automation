@@ -1,4 +1,5 @@
 import React from 'react';
+import styles from '../../pages/ExecutionListPage.module.css';
 import { Button, DatePicker, Input, Select, Typography } from 'antd';
 import { DeleteOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import type { Dayjs } from 'dayjs';
@@ -44,20 +45,20 @@ const ExecutionListToolbar: React.FC<ExecutionListToolbarProps> = ({
   statusOptions,
 }) => {
   return (
-    <div className="execution-list-toolbar">
-      <div className="execution-list-toolbar-heading">
-        <Text strong className="execution-list-toolbar-title">
+    <div className={styles['execution-list-toolbar']}>
+      <div className={styles['execution-list-toolbar-heading']}>
+        <Text strong className={styles['execution-list-toolbar-title']}>
           执行记录
         </Text>
-        <Text type="secondary" className="execution-list-toolbar-subtitle">
+        <Text type="secondary" className={styles['execution-list-toolbar-subtitle']}>
           当前筛选后显示 {filteredCount} 条，本页总计 {total} 条记录。
         </Text>
       </div>
-      <div className="execution-list-toolbar-row">
-        <div className="execution-list-toolbar-main">
-          <div className="execution-list-toolbar-controls">
+      <div className={styles['execution-list-toolbar-row']}>
+        <div className={styles['execution-list-toolbar-main']}>
+          <div className={styles['execution-list-toolbar-controls']}>
             <Input
-              className="execution-search-input execution-list-filter-control"
+              className={styles['execution-search-input execution-list-filter-control']}
               size="middle"
               placeholder="搜索技能、输入内容或结果摘要"
               prefix={<SearchOutlined />}
@@ -66,7 +67,7 @@ const ExecutionListToolbar: React.FC<ExecutionListToolbarProps> = ({
               allowClear
             />
             <Select
-              className="execution-status-filter execution-list-filter-control"
+              className={styles['execution-status-filter execution-list-filter-control']}
               size="middle"
               placeholder="全部状态"
               allowClear
@@ -84,7 +85,7 @@ const ExecutionListToolbar: React.FC<ExecutionListToolbarProps> = ({
               <Button
                 size="small"
                 type="text"
-                className="execution-list-clear-chip"
+                className={styles['execution-list-clear-chip']}
                 onClick={onClearFilters}
               >
                 清空筛选
@@ -92,13 +93,13 @@ const ExecutionListToolbar: React.FC<ExecutionListToolbarProps> = ({
             ) : null}
           </div>
         </div>
-        <div className="execution-list-toolbar-actions">
+        <div className={styles['execution-list-toolbar-actions']}>
           <Button
             size="middle"
             icon={<ReloadOutlined />}
             onClick={onRefresh}
             loading={isFetching}
-            className="btn-pill"
+            className={styles['btn-pill']}
           >
             刷新
           </Button>
@@ -107,7 +108,7 @@ const ExecutionListToolbar: React.FC<ExecutionListToolbarProps> = ({
             type="primary"
             icon={<PlusOutlined />}
             onClick={onCreate}
-            className="btn-pill"
+            className={styles['btn-pill']}
           >
             新建
           </Button>
@@ -117,7 +118,7 @@ const ExecutionListToolbar: React.FC<ExecutionListToolbarProps> = ({
             onChange={onClearBeforeDateChange}
             allowClear={false}
             format="YYYY-MM-DD"
-            className="execution-list-date-picker"
+            className={styles['execution-list-date-picker']}
           />
           <Button
             size="middle"
@@ -125,7 +126,7 @@ const ExecutionListToolbar: React.FC<ExecutionListToolbarProps> = ({
             icon={<DeleteOutlined />}
             onClick={onCleanup}
             loading={cleanupLoading}
-            className="btn-pill"
+            className={styles['btn-pill']}
           >
             清理
           </Button>

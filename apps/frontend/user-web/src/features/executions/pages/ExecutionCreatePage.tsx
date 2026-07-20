@@ -26,7 +26,7 @@ import { useExecutionCreatePageView } from '@/features/executions/create/hooks/u
 import { useExecutionCreateSchedules } from '@/features/executions/create/hooks/useExecutionCreateSchedules';
 import { useExecutionCreateSkillState } from '@/features/executions/create/hooks/useExecutionCreateSkillState';
 import type { ExecutionCreateFormValues } from '@/features/executions/create/lib/executionCreate';
-import './ExecutionCreatePage.css';
+import styles from './ExecutionCreatePage.module.css';
 
 const { Title } = Typography;
 
@@ -131,7 +131,7 @@ const ExecutionCreatePage: React.FC = () => {
   });
 
   return (
-    <div className="execution-create-page" style={executionCreateContainerStyle}>
+    <div className={styles['execution-create-page']} style={executionCreateContainerStyle}>
       <div style={{ marginBottom: 16 }}>
         <Space align="center" style={{ marginBottom: 8 }}>
           <Button size="small" icon={<ArrowLeftOutlined />} onClick={() => navigate('/executions')}>

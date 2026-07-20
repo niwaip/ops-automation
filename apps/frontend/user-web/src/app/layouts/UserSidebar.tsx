@@ -6,6 +6,7 @@ import { useStore } from 'zustand';
 import { useTranslation } from 'react-i18next';
 import { useChatStore } from '@/features/chat';
 import { preferencesStore } from '../../adapters/preferences/preferencesStore';
+import styles from './UserLayout.module.css';
 
 const { Sider } = Layout;
 
@@ -35,17 +36,17 @@ export function UserSidebar({ selectedMenuKey }: UserSidebarProps) {
 
   return (
     <Sider
-      className="user-shell-sider"
+      className={styles['user-shell-sider']}
       collapsible
       collapsed={sidebarCollapsed}
       onCollapse={(collapsed) => setSidebarCollapsed(collapsed)}
       trigger={null}
     >
       <div
-        className="user-shell-logo"
+        className={styles['user-shell-logo']}
         style={{ padding: sidebarCollapsed ? '0 16px' : '0 24px' }}
       >
-        <div className="user-shell-logo-inner" style={{ gap: sidebarCollapsed ? 0 : 12 }}>
+        <div className={styles['user-shell-logo-inner']} style={{ gap: sidebarCollapsed ? 0 : 12 }}>
           <div
             style={{
               width: 32,
@@ -66,7 +67,7 @@ export function UserSidebar({ selectedMenuKey }: UserSidebarProps) {
           </div>
           {!sidebarCollapsed ? (
             <div
-              className="user-shell-logo-text"
+              className={styles['user-shell-logo-text']}
               style={{
                 fontSize: 20,
                 fontWeight: 800,
@@ -99,7 +100,7 @@ export function UserSidebar({ selectedMenuKey }: UserSidebarProps) {
         </div>
       </div>
       <Menu
-        className="user-shell-menu"
+        className={styles['user-shell-menu']}
         theme="dark"
         mode="inline"
         selectedKeys={[selectedMenuKey]}

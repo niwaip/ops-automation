@@ -6,6 +6,7 @@ import {
 } from '@ant-design/icons';
 import { Button, Card, Empty, List, Skeleton, Space, Tag, Typography } from 'antd';
 import type { ChatSession } from '@ops/user-core';
+import styles from '../pages/ChatPage.module.css';
 
 interface ChatSessionSidebarProps {
   sessions: ChatSession[];
@@ -29,8 +30,8 @@ export function ChatSessionSidebar({
   formatUpdatedAt,
 }: ChatSessionSidebarProps) {
   return (
-    <Card className="user-chat-sidebar">
-      <div className="user-chat-sidebar-header">
+    <Card className={styles['user-chat-sidebar']}>
+      <div className={styles['user-chat-sidebar-header']}>
         <div>
           <Typography.Title level={4} style={{ margin: 0 }}>
             会话管理
@@ -42,7 +43,7 @@ export function ChatSessionSidebar({
             type="text"
             icon={<MenuFoldOutlined />}
             onClick={onCollapse}
-            className="user-chat-sidebar-toggle"
+            className={styles['user-chat-sidebar-toggle']}
             title="收起会话管理"
           />
           <Button type="primary" icon={<PlusOutlined />} onClick={onCreateSession}>
@@ -60,15 +61,15 @@ export function ChatSessionSidebar({
           renderItem={(session) => (
             <List.Item
               key={session.id}
-              className={`user-chat-session-item ${session.id === selectedSessionId ? 'active' : ''}`}
+              className={`${styles['user-chat-session-item']}${session.id === selectedSessionId ? ` ${styles.active}` : ''}`}
               onClick={() => onSelectSession(session.id)}
             >
-              <div className="user-chat-session-main">
+              <div className={styles['user-chat-session-main']}>
                 <Space align="center" size={8}>
                   <MessageOutlined />
                   <Typography.Text strong>{session.title || '未命名会话'}</Typography.Text>
                 </Space>
-                <Typography.Paragraph type="secondary" className="user-chat-session-preview">
+                <Typography.Paragraph type="secondary" className={styles['user-chat-session-preview']}>
                   {getPreview(session.id)}
                 </Typography.Paragraph>
                 <Space size={8} wrap>
@@ -78,7 +79,7 @@ export function ChatSessionSidebar({
                   </Typography.Text>
                 </Space>
               </div>
-              <RightOutlined className="user-chat-session-arrow" />
+              <RightOutlined className={styles['user-chat-session-arrow']} />
             </List.Item>
           )}
         />

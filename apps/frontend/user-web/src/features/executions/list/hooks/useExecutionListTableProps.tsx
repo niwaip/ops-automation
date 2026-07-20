@@ -1,4 +1,5 @@
 import { useCallback, useMemo } from 'react';
+import styles from '../../pages/ExecutionListPage.module.css';
 import type { TableProps } from 'antd';
 import type { ExecutionDto } from '@/api/execution';
 import ExecutionListEmptyState from '@/features/executions/list/components/ExecutionListEmptyState';
@@ -80,7 +81,7 @@ export function useExecutionListTableProps({
   );
 
   return {
-    className: 'execution-list-table',
+    className: styles['execution-list-table'],
     columns,
     dataSource,
     rowKey: 'id',
@@ -89,7 +90,7 @@ export function useExecutionListTableProps({
     locale,
     showSorterTooltip: false,
     pagination,
-    rowClassName: () => 'execution-list-table-row',
+    rowClassName: () => styles['execution-list-table-row'],
     onRow,
   };
 }

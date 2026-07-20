@@ -7,6 +7,7 @@ import { NotificationBell } from './header/NotificationBell';
 import { ThemeToggle } from './header/ThemeToggle';
 import { LanguagePicker } from './header/LanguagePicker';
 import { UserMenu } from './header/UserMenu';
+import styles from './UserLayout.module.css';
 
 const { Header } = Layout;
 
@@ -39,8 +40,8 @@ export function UserHeader({ language, selectedMenuKey }: UserHeaderProps) {
   const currentMenuLabel = getHeaderTitle(selectedMenuKey);
 
   return (
-    <Header className="user-shell-header">
-      <div className="user-shell-header-left">
+    <Header className={styles['user-shell-header']}>
+      <div className={styles['user-shell-header-left']}>
         <Button
           type="text"
           icon={sidebarCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
@@ -59,7 +60,7 @@ export function UserHeader({ language, selectedMenuKey }: UserHeaderProps) {
           </Tag>
         </Space>
       </div>
-      <div className="user-shell-header-right">
+      <div className={styles['user-shell-header-right']}>
         <NotificationBell language={language} />
         <ThemeToggle />
         <LanguagePicker language={language} />

@@ -7,7 +7,7 @@ import { useChatStore } from '@/features/chat';
 import { preferencesStore } from '../../adapters/preferences/preferencesStore';
 import { UserSidebar } from './UserSidebar';
 import { UserHeader } from './UserHeader';
-import './UserLayout.css';
+import styles from './UserLayout.module.css';
 
 const { Content } = Layout;
 
@@ -43,17 +43,17 @@ export function UserLayout() {
             : location.pathname;
 
   return (
-    <Layout className="user-shell">
+    <Layout className={styles['user-shell']}>
       <UserSidebar selectedMenuKey={selectedMenuKey} />
       <Layout
-        className="user-shell-main"
+        className={styles['user-shell-main']}
         style={{
           marginLeft: sidebarCollapsed ? 80 : 200,
           transition: 'margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         }}
       >
         <UserHeader language={language} selectedMenuKey={selectedMenuKey} />
-        <Content className={`user-shell-content${isChatRoute ? ' user-shell-content-chat' : ''}`}>
+        <Content className={`${styles['user-shell-content']}${isChatRoute ? ` ${styles['user-shell-content-chat']}` : ''}`}>
           <Outlet />
         </Content>
         {isChatRoute ? null : <UserChatWidget />}

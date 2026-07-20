@@ -1,6 +1,7 @@
 import { Alert, Button, Card, Space, Tag, Typography } from 'antd';
 import SharedMessageContentRenderer from '@chat-web/components/MessageContentRenderer';
 import type { WorkbenchSummaryState } from '../lib/workbenchSummaryState';
+import styles from '../pages/DashboardPage.module.css';
 
 interface SummaryCardProps {
   dailySummaryPrompt: string;
@@ -21,15 +22,15 @@ export function SummaryCard({
   weeklySummaryPrompt,
 }: SummaryCardProps) {
   return (
-    <Card className="workbench-ai-summary-card">
+    <Card className={styles['workbench-ai-summary-card']}>
       <Space direction="vertical" size={12} style={{ width: '100%' }}>
-        <Tag color="purple" className="workbench-summary-tag">
+        <Tag color="purple" className={styles['workbench-summary-tag']}>
           AI 协同
         </Tag>
-        <Typography.Title level={4} className="workbench-summary-heading">
+        <Typography.Title level={4} className={styles['workbench-summary-heading']}>
           让 AI 帮你整理今天和本周
         </Typography.Title>
-        <Typography.Paragraph className="workbench-summary-description">
+        <Typography.Paragraph className={styles['workbench-summary-description']}>
           自动缓存当日与当周总结，适合用于复盘、同步进展或对外汇报。
         </Typography.Paragraph>
         {summaryState.daily.error ? (
@@ -38,10 +39,10 @@ export function SummaryCard({
         {summaryState.weekly.error ? (
           <Alert type="error" showIcon message={summaryState.weekly.error} />
         ) : null}
-        <div className="workbench-summary-result-grid">
-          <div className="workbench-summary-result-card">
-            <div className="workbench-summary-result-head">
-              <div className="workbench-summary-result-title">
+        <div className={styles['workbench-summary-result-grid']}>
+          <div className={styles['workbench-summary-result-card']}>
+            <div className={styles['workbench-summary-result-head']}>
+              <div className={styles['workbench-summary-result-title']}>
                 <Typography.Text strong>今日总结</Typography.Text>
                 {summaryState.daily.generatedAt ? (
                   <Typography.Text type="secondary">
@@ -51,14 +52,14 @@ export function SummaryCard({
               </div>
               <Button
                 type="primary"
-                className="workbench-summary-button"
+                className={styles['workbench-summary-button']}
                 loading={summaryState.daily.status === 'running'}
                 onClick={() => void generateWorkbenchSummary('daily', dailySummaryPrompt)}
               >
                 {summaryState.daily.status === 'running' ? '生成中' : '生成'}
               </Button>
             </div>
-            <div className="workbench-summary-result-content">
+            <div className={styles['workbench-summary-result-content']}>
               {summaryState.daily.content ? (
                 <SharedMessageContentRenderer
                   content={summaryState.daily.content}
@@ -71,9 +72,9 @@ export function SummaryCard({
               )}
             </div>
           </div>
-          <div className="workbench-summary-result-card">
-            <div className="workbench-summary-result-head">
-              <div className="workbench-summary-result-title">
+          <div className={styles['workbench-summary-result-card']}>
+            <div className={styles['workbench-summary-result-head']}>
+              <div className={styles['workbench-summary-result-title']}>
                 <Typography.Text strong>本周总结</Typography.Text>
                 {summaryState.weekly.generatedAt ? (
                   <Typography.Text type="secondary">
@@ -82,14 +83,14 @@ export function SummaryCard({
                 ) : null}
               </div>
               <Button
-                className="workbench-summary-button"
+                className={styles['workbench-summary-button']}
                 loading={summaryState.weekly.status === 'running'}
                 onClick={() => void generateWorkbenchSummary('weekly', weeklySummaryPrompt)}
               >
                 {summaryState.weekly.status === 'running' ? '生成中' : '生成'}
               </Button>
             </div>
-            <div className="workbench-summary-result-content">
+            <div className={styles['workbench-summary-result-content']}>
               {summaryState.weekly.content ? (
                 <SharedMessageContentRenderer
                   content={summaryState.weekly.content}

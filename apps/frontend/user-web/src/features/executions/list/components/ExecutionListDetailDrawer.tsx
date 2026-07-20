@@ -6,6 +6,7 @@ import {
   executionDetailPanelStyle,
 } from '@/features/executions/detail/components/executionDetailCollapse';
 import type { ExecutionListDetailDrawerProps } from '@/features/executions/list/lib/executionListDrawerProps';
+import styles from '../../pages/ExecutionListPage.module.css';
 import LiveSessionPreviewCard from '@/components/runtime/LiveSessionPreviewCard';
 import ExecutionBasicInfoSection from '@/features/executions/shared/components/ExecutionBasicInfoSection';
 import ExecutionBrowserProgressCard from '@/features/executions/shared/components/ExecutionBrowserProgressCard';
@@ -57,7 +58,7 @@ const ExecutionListDetailDrawer: React.FC<ExecutionListDetailDrawerProps> = ({
 }) => {
   return (
     <Drawer
-      className="execution-detail-drawer"
+      className={styles['execution-detail-drawer']}
       title="执行详情"
       placement="right"
       width={720}
@@ -66,7 +67,7 @@ const ExecutionListDetailDrawer: React.FC<ExecutionListDetailDrawerProps> = ({
       styles={{ body: { background: 'var(--bg-primary)' } }}
     >
       {isDetailLoading ? (
-        <div className="execution-detail-loading">
+        <div className={styles['execution-detail-loading']}>
           <Spin />
         </div>
       ) : selectedExecution ? (
@@ -74,10 +75,10 @@ const ExecutionListDetailDrawer: React.FC<ExecutionListDetailDrawerProps> = ({
           direction="vertical"
           size={16}
           style={{ width: '100%' }}
-          className="execution-detail-content"
+          className={styles['execution-detail-content']}
         >
           <Collapse
-            className="execution-detail-sections"
+            className={styles['execution-detail-sections']}
             ghost
             defaultActiveKey={['summary']}
             expandIconPosition="end"
@@ -102,7 +103,7 @@ const ExecutionListDetailDrawer: React.FC<ExecutionListDetailDrawerProps> = ({
           />
 
           {isSelectedBrowserExecution && stableSelectedRuntimeSessionNovncUrl && shouldShowLivePreview ? (
-            <div className="execution-detail-live-card">
+            <div className={styles['execution-detail-live-card']}>
               <LiveSessionPreviewCard
                 novncUrl={stableSelectedRuntimeSessionNovncUrl}
                 title="实时画面"

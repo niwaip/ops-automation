@@ -11,6 +11,8 @@ import {
 } from '../lib/taskStatus';
 import { toStructuredResultText } from '../lib/messageDisplay';
 
+import styles from '../pages/ChatPage.module.css';
+
 interface TaskOutcomeBlockProps {
   message: ChatMessage;
   actionLoadingByMessage: Record<string, 'approve' | 'reject' | undefined>;
@@ -216,7 +218,7 @@ export function TaskOutcomeBlock({
         }}
       />
       {shouldShowArtifactActions && artifacts.length > 0 ? (
-        <Space wrap className="user-chat-outcome-actions">
+        <Space wrap className={styles['user-chat-outcome-actions']}>
           {artifacts.map((artifact, index) => {
             const href = artifact.downloadUrl || artifact.url;
             if (!href) {
@@ -231,9 +233,9 @@ export function TaskOutcomeBlock({
         </Space>
       ) : null}
       {supplementalResult ? (
-        <details className="user-chat-outcome-details">
+        <details className={styles['user-chat-outcome-details']}>
           <summary>查看补充说明</summary>
-          <pre className="user-chat-outcome-pre">{supplementalResult}</pre>
+          <pre className={styles['user-chat-outcome-pre']}>{supplementalResult}</pre>
         </details>
       ) : null}
     </>

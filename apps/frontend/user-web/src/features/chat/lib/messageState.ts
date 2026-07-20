@@ -10,6 +10,9 @@ export const normalizeComparableMessageText = (value: string): string =>
   value
     .replace(/<think>[\s\S]*?(?:<\/think>|$)/gi, '')
     .replace(/<\/?think>/gi, '')
+    .replace(/^```[a-z]*\n/gi, '')
+    .replace(/\n?```$/g, '')
+    .replace(/```[a-z]*\n?/gi, '')
     .replace(/\s+/g, ' ')
     .trim();
 
@@ -153,28 +156,29 @@ export const upsertMessage = (messages: ChatMessage[], nextMessage: ChatMessage)
 };
 
 export const isEphemeralAssistantMessage = (message: ChatMessage): boolean => {
-  if (message.role !== 'assistant') {
-    return false;
-  }
-
-  if (message.isStreaming === true) {
-    return true;
-  }
-
-  const hasStructuredState =
-    Boolean(resolveMessageTaskStatus(message)) ||
-    hasTerminalTaskOutcome(message) ||
-    Boolean(message.metadata?.progressLogs?.length) ||
-    Boolean(message.metadata?.thoughtLogsSnapshot?.length) ||
-    Boolean(message.contentParts?.length) ||
-    Boolean(message.metadata?.finalSummary?.trim()) ||
-    Boolean(message.metadata?.finalResult?.trim()) ||
-    Boolean(message.metadata?.errorMessage?.trim()) ||
-    Boolean(message.metadata?.failureReason?.trim()) ||
-    Boolean(message.metadata?.normalizedResult);
-
-  return !hasStructuredState && normalizeComparableMessageText(message.content).length === 0;
-};
+    if (message.role !== 'assistant') {
+      return false;
+    }
+  
+    if (message.isStreaming === true) {
+      return true;
+    }
+  
+    const hasStructuredState =
+      Boolean(resolveMessageTaskStatus(message)) ||
+      hasTerminalTaskOutcome(message) ||
+      Boolean(message.metadata?.progressLogs?.length) ||
+      Boolean(message.metadata?.thoughtLogsSnapshot?.length) ||
+      Boolean(message.contentParts?.length) ||
+      Boolean(message.metadata?.finalSummary?.trim()) ||
+      Boolean(message.metadata?.finalResult?.trim()) ||
+      Boolean(message.metadata?.errorMessage?.trim()) ||
+      Boolean(message.metadata?.failureReason?.trim()) ||
+      Boolean(message.metadata?.normalizedResult) ||
+      Boolean(message.metadata?.missingInputs?.length);
+  
+    return !hasStructuredState && normalizeComparableMessageText(message.content).length === 0;
+  };
 
 export const areMessagesEquivalent = (
   localMessage: ChatMessage,
@@ -186,23 +190,40 @@ export const areMessagesEquivalent = (
 
   const localTime = new Date(localMessage.timestamp).getTime();
   const remoteTime = new Date(remoteMessage.timestamp).getTime();
-  if (
-    Number.isFinite(localTime) &&
-    Number.isFinite(remoteTime) &&
-    Math.abs(localTime - remoteTime) > 15_000
-  ) {
-    return false;
-  }
 
   if (localMessage.role === 'user') {
+    if (
+      Number.isFinite(localTime) &&
+      Number.isFinite(remoteTime) &&
+      Math.abs(localTime - remoteTime) > 300_000 // 5 minutes for user messages to match long-running agents
+    ) {
+      return false;
+    }
     return (
       normalizeComparableMessageText(localMessage.content) ===
       normalizeComparableMessageText(remoteMessage.content)
     );
   }
 
+  // For assistant messages, generation and execution can take a long time.
+  // We use a larger time window to avoid duplicating messages that took > 15s to generate.
   if (isEphemeralAssistantMessage(localMessage)) {
+    if (
+      Number.isFinite(localTime) &&
+      Number.isFinite(remoteTime) &&
+      Math.abs(localTime - remoteTime) > 300_000 // 5 minutes for ephemeral drafts
+    ) {
+      return false;
+    }
     return true;
+  }
+
+  if (
+    Number.isFinite(localTime) &&
+    Number.isFinite(remoteTime) &&
+    Math.abs(localTime - remoteTime) > 120_000 // 2 minutes for normal assistant messages
+  ) {
+    return false;
   }
 
   const localText = normalizeComparableMessageText(localMessage.content);
@@ -278,6 +299,25 @@ export const mergeHistoryMessages = (
         ...(message.metadata || {}),
       },
     });
+  });
+
+  // Fix local messages timestamps to ensure they are monotonically increasing.
+  // This prevents ephemeral assistant messages from being sorted BEFORE their
+  // corresponding user messages due to server clock skew.
+  let maxTimestamp = 0;
+  localMessages.forEach((localMsg) => {
+    const mergedMsg = merged.get(localMsg.id);
+    if (mergedMsg) {
+      const currentTs = new Date(mergedMsg.timestamp).getTime();
+      if (currentTs < maxTimestamp) {
+        merged.set(localMsg.id, {
+          ...mergedMsg,
+          timestamp: new Date(maxTimestamp).toISOString(),
+        });
+      } else {
+        maxTimestamp = currentTs;
+      }
+    }
   });
 
   return [...merged.values()].sort(

@@ -1,4 +1,5 @@
 import { Alert, Card, Space } from 'antd';
+import styles from '../pages/ChatPage.module.css';
 
 interface ChatStatusAlertsProps {
   embedded: boolean;
@@ -52,7 +53,7 @@ export function ChatStatusAlerts({
 
   if (embedded) {
     return (
-      <Card className="user-chat-status-panel embedded">
+      <Card className={`${styles['user-chat-status-panel']} ${styles.embedded}`}>
         <Space direction="vertical" size={12} style={{ width: '100%' }}>
           {alerts}
         </Space>
@@ -60,5 +61,5 @@ export function ChatStatusAlerts({
     );
   }
 
-  return <div className="user-chat-alert-stack">{alerts}</div>;
+  return <div className={styles['user-chat-alert-stack']}>{alerts}</div>;
 }

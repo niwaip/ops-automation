@@ -38,11 +38,11 @@ describe('dedupeThoughtTexts', () => {
 
 describe('mergeDefinedMetadata', () => {
   it('should merge only defined fields from patchMetadata', () => {
-    const current = {
+    const current: ChatMessage['metadata'] = {
       taskStatus: 'running',
       executionId: '123',
     };
-    const patch = {
+    const patch: ChatMessage['metadata'] = {
       taskStatus: undefined,
       executionId: '456',
       errorMessage: 'Failed',
@@ -55,7 +55,7 @@ describe('mergeDefinedMetadata', () => {
   });
 
   it('should return current metadata if patch is empty or all undefined', () => {
-    const current = { taskStatus: 'running' };
+    const current: ChatMessage['metadata'] = { taskStatus: 'running' };
     expect(mergeDefinedMetadata(current, undefined)).toBe(current);
     expect(mergeDefinedMetadata(current, { taskStatus: undefined })).toBe(current);
   });
@@ -64,6 +64,7 @@ describe('mergeDefinedMetadata', () => {
 describe('areMessagesEquivalent', () => {
   const baseUserMsg: ChatMessage = {
     id: 'u1',
+    sessionId: 's1',
     role: 'user',
     content: 'hello',
     timestamp: '2026-07-20T12:00:00.000Z',
@@ -74,7 +75,7 @@ describe('areMessagesEquivalent', () => {
     expect(areMessagesEquivalent(baseUserMsg, msg2)).toBe(false);
   });
 
-  it('should return false if time difference is greater than 15 seconds', () => {
+  it('should return false for user message if time difference is greater than 15 seconds', () => {
     const msg2 = {
       ...baseUserMsg,
       timestamp: '2026-07-20T12:00:16.000Z',
@@ -98,5 +99,41 @@ describe('areMessagesEquivalent', () => {
       timestamp: '2026-07-20T12:00:05.000Z',
     };
     expect(areMessagesEquivalent(baseUserMsg, msg2)).toBe(false);
+  });
+
+  const baseAssistantMsg: ChatMessage = {
+    id: 'a1',
+    sessionId: 's1',
+    role: 'assistant',
+    content: 'hello',
+    timestamp: '2026-07-20T12:00:00.000Z',
+  };
+
+  it('should return true for assistant message if time difference is within 2 minutes', () => {
+    const msg2 = {
+      ...baseAssistantMsg,
+      timestamp: '2026-07-20T12:01:50.000Z',
+    };
+    expect(areMessagesEquivalent(baseAssistantMsg, msg2)).toBe(true);
+  });
+
+  it('should return false for assistant message if time difference is greater than 2 minutes', () => {
+    const msg2 = {
+      ...baseAssistantMsg,
+      timestamp: '2026-07-20T12:02:10.000Z',
+    };
+    expect(areMessagesEquivalent(baseAssistantMsg, msg2)).toBe(false);
+  });
+
+  it('should return true for ephemeral assistant message if time difference is within 5 minutes', () => {
+    const ephemeralMsg: ChatMessage = {
+      ...baseAssistantMsg,
+      isStreaming: true,
+    };
+    const msg2 = {
+      ...ephemeralMsg,
+      timestamp: '2026-07-20T12:04:50.000Z',
+    };
+    expect(areMessagesEquivalent(ephemeralMsg, msg2)).toBe(true);
   });
 });

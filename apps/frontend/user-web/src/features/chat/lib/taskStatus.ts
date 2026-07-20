@@ -93,6 +93,7 @@ export const hasTerminalTaskOutcome = (message: ChatMessage): boolean => {
       normalizedResult?.summary?.trim() ||
       normalizedResult?.detailText?.trim() ||
       message.metadata?.finalResultData ||
+      message.metadata?.missingInputs?.length ||
       /任务完成/.test(message.content)
   );
 };
@@ -109,6 +110,23 @@ export const resolveMessageTaskStatus = (message: ChatMessage): ChatTaskStatus |
   }
 
   if (hasTerminalTaskOutcome(message)) {
+    const executionStatus = message.metadata?.executionStatus?.trim();
+    if (
+      executionStatus === 'failed' ||
+      executionStatus === 'cancelled' ||
+      executionStatus === 'rolled_back' ||
+      message.metadata?.errorMessage ||
+      message.metadata?.failureReason
+    ) {
+      return 'failed';
+    }
+    if (
+      executionStatus === 'waiting_input' ||
+      executionStatus === 'pending_approval' ||
+      executionStatus === 'human_control'
+    ) {
+      return executionStatus as ChatTaskStatus;
+    }
     return 'completed';
   }
 
