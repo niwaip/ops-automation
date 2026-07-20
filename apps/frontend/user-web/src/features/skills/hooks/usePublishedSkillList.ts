@@ -2,7 +2,7 @@ import { App } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { useNavigate } from 'react-router-dom';
-import { scheduleApi, skillApi } from '@/api';
+import { scheduleApi, skillApi } from '@/api/index';
 import type { PublishedSkillCatalogItem } from '@/api/skill';
 import type { ScheduleDto } from '@/api/schedules';
 import {

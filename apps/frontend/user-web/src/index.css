@@ -4,7 +4,8 @@
   font-weight: 400;
   color-scheme: light dark;
 
-  --primary-color: #6366f1;
+  /* 与 src/shared/config/theme.ts 的 PRIMARY_COLOR 保持一致，禁止异化 */
+  --primary-color: #4f46e5;
   --primary-light: #818cf8;
   --primary-dark: #4f46e5;
   --accent-color: #f472b6;

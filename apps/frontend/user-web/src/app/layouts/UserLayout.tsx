@@ -1,69 +1,35 @@
-import {
-  BellOutlined,
-  BgColorsOutlined,
-  DownOutlined,
-  MessageOutlined,
-  DashboardOutlined,
-  GlobalOutlined,
-  LogoutOutlined,
-  MenuFoldOutlined,
-  MenuUnfoldOutlined,
-  OrderedListOutlined,
-  ThunderboltOutlined,
-  UserOutlined,
-} from '@ant-design/icons';
-import { Avatar, Badge, Button, Dropdown, Empty, Layout, Menu, Space, Tag, Typography } from 'antd';
-import type { MenuProps } from 'antd';
-import { useEffect, useState } from 'react';
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Layout } from 'antd';
+import { useEffect } from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
 import { useStore } from 'zustand';
-import {
-  buildNotificationContent,
-  EXECUTION_STATUS_COLORS,
-  EXECUTION_STATUS_LABELS_EN,
-  EXECUTION_STATUS_LABELS_ZH,
-  getNotificationSeverityTagColor,
-  getNotificationSeverityText,
-  isExecutionStatusValue,
-} from '@ops/user-core';
 import { UserChatWidget } from '@/features/chat/components/UserChatWidget';
 import { useChatStore } from '@/features/chat';
-import { resolveNotificationActionPath } from '@/shared/lib/notificationNavigation';
-import { authStore } from '../../adapters/auth/authStore';
-import { notificationStore } from '../../adapters/notifications/notificationStore';
 import { preferencesStore } from '../../adapters/preferences/preferencesStore';
+import { UserSidebar } from './UserSidebar';
+import { UserHeader } from './UserHeader';
 import './UserLayout.css';
 
-const { Header, Content, Sider } = Layout;
+const { Content } = Layout;
 
-const userMenuItems = [
-  { key: '/dashboard', icon: <DashboardOutlined />, label: '工作台' },
-  { key: '/chat', icon: <MessageOutlined />, label: 'AI 对话' },
-  { key: '/executions', icon: <OrderedListOutlined />, label: '执行列表' },
-  { key: '/published-skills', icon: <ThunderboltOutlined />, label: '已发布技能' },
-] satisfies Required<MenuProps>['items'];
-
+/**
+ * 用户主框架：Sider + Header + Content + (非 chat 路由时的悬浮 ChatWidget)。
+ *
+ * 各关注点已下沉至 `UserSidebar` / `UserHeader` 及 `header/*` 子组件，
+ * 此文件仅负责骨架组装与 chat 路由下关闭 chat widget 的副作用。
+ */
 export function UserLayout() {
-  const navigate = useNavigate();
   const location = useLocation();
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const isChatRoute = location.pathname.startsWith('/chat');
   const setChatWidgetOpen = useChatStore((state) => state.setOpen);
-  const user = useStore(authStore, (state) => state.user);
-  const notifications = useStore(notificationStore, (state) => state.items);
-  const unreadNotificationCount = useStore(
-    notificationStore,
-    (state) => state.items.filter((item) => item.unread).length
-  );
-  const markAsRead = useStore(notificationStore, (state) => state.markAsRead);
-  const markAllAsRead = useStore(notificationStore, (state) => state.markAllAsRead);
-  const language = useStore(preferencesStore, (state) => state.language);
-  const setLanguage = useStore(preferencesStore, (state) => state.setLanguage);
-  const theme = useStore(preferencesStore, (state) => state.theme);
-  const toggleTheme = useStore(preferencesStore, (state) => state.toggleTheme);
   const sidebarCollapsed = useStore(preferencesStore, (state) => state.sidebarCollapsed);
-  const toggleSidebar = useStore(preferencesStore, (state) => state.toggleSidebar);
-  const setSidebarCollapsed = useStore(preferencesStore, (state) => state.setSidebarCollapsed);
+  const language = useStore(preferencesStore, (state) => state.language);
+
+  useEffect(() => {
+    if (isChatRoute) {
+      setChatWidgetOpen(false);
+    }
+  }, [isChatRoute, setChatWidgetOpen]);
+
   const selectedMenuKey = location.pathname.startsWith('/executions')
     ? '/executions'
     : location.pathname.startsWith('/published-skills')
@@ -75,163 +41,10 @@ export function UserLayout() {
           : location.pathname.startsWith('/reports')
             ? '/reports'
             : location.pathname;
-  const currentMenuLabel =
-    userMenuItems.find((item) => item?.key === selectedMenuKey)?.label ?? '工作台';
-  const statusLabels =
-    language === 'en-US' ? EXECUTION_STATUS_LABELS_EN : EXECUTION_STATUS_LABELS_ZH;
-  const roleLabels = {
-    'zh-CN': {
-      employee: '企业成员',
-      admin: '管理员',
-      agent: '代理账号',
-    },
-    'en-US': {
-      employee: 'Employee',
-      admin: 'Administrator',
-      agent: 'Agent',
-    },
-    'ja-JP': {
-      employee: '従業員',
-      admin: '管理者',
-      agent: 'エージェント',
-    },
-  } as const;
-  const roleColors = {
-    employee: 'blue',
-    admin: 'gold',
-    agent: 'purple',
-  } as const;
-  const currentRoleLabel = user ? roleLabels[language][user.role] : null;
-  const accountStatusLabel =
-    language === 'en-US'
-      ? user?.isActive
-        ? 'Active'
-        : 'Inactive'
-      : language === 'ja-JP'
-        ? user?.isActive
-          ? '有効'
-          : '無効'
-        : user?.isActive
-          ? '已启用'
-          : '已停用';
-  const userSecondaryText =
-    user?.email?.trim() ||
-    (currentRoleLabel
-      ? language === 'en-US'
-        ? `Role · ${currentRoleLabel}`
-        : language === 'ja-JP'
-          ? `役割・${currentRoleLabel}`
-          : `角色 · ${currentRoleLabel}`
-      : language === 'en-US'
-        ? 'Not signed in'
-        : language === 'ja-JP'
-          ? '未ログイン'
-          : '未登录');
-  const userInitial = user?.username?.trim()?.charAt(0).toUpperCase() || 'U';
-  const previewNotifications = notifications
-    .slice()
-    .sort((left, right) => new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime())
-    .slice(0, 5);
-
-  const languageMenu: MenuProps = {
-    items: [
-      { key: 'zh-CN', label: '简体中文' },
-      { key: 'en-US', label: 'English' },
-      { key: 'ja-JP', label: '日本語' },
-    ],
-    onClick: ({ key }) => void setLanguage(key as 'zh-CN' | 'en-US' | 'ja-JP'),
-    selectedKeys: [language],
-  };
-
-  useEffect(() => {
-    if (isChatRoute) {
-      setChatWidgetOpen(false);
-    }
-  }, [isChatRoute, setChatWidgetOpen]);
-
-  const handleUserAction = () => {
-    setUserMenuOpen(false);
-    authStore.getState().logout();
-  };
 
   return (
     <Layout className="user-shell">
-      <Sider
-        className="user-shell-sider"
-        collapsible
-        collapsed={sidebarCollapsed}
-        onCollapse={(collapsed) => setSidebarCollapsed(collapsed)}
-        trigger={null}
-      >
-        <div
-          className="user-shell-logo"
-          style={{ padding: sidebarCollapsed ? '0 16px' : '0 24px' }}
-        >
-          <div className="user-shell-logo-inner" style={{ gap: sidebarCollapsed ? 0 : 12 }}>
-            <div
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 8,
-                background: 'linear-gradient(135deg, #6366f1 0%, #f472b6 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#fff',
-                boxShadow: '0 4px 10px rgba(99, 102, 241, 0.3)',
-                flexShrink: 0,
-              }}
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 0C12 6.62742 17.3726 12 24 12C17.3726 12 12 17.3726 12 24C12 17.3726 6.62742 12 0 12C6.62742 12 12 6.62742 12 0Z" />
-              </svg>
-            </div>
-            {!sidebarCollapsed ? (
-              <div
-                className="user-shell-logo-text"
-                style={{
-                  fontSize: 20,
-                  fontWeight: 800,
-                  color: 'var(--text-primary)',
-                  margin: 0,
-                  letterSpacing: '-0.5px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                }}
-              >
-                OpsPilot
-                <span
-                  style={{
-                    fontSize: 10,
-                    fontWeight: 700,
-                    background: 'linear-gradient(135deg, #6366f1 0%, #f472b6 100%)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    padding: '1px 6px',
-                    borderRadius: 8,
-                    border: '1px solid rgba(244, 114, 182, 0.3)',
-                    verticalAlign: 'middle',
-                  }}
-                >
-                  AI
-                </span>
-              </div>
-            ) : null}
-          </div>
-        </div>
-        <Menu
-          className="user-shell-menu"
-          theme="dark"
-          mode="inline"
-          selectedKeys={[selectedMenuKey]}
-          onClick={({ key }) => {
-            setChatWidgetOpen(false);
-            navigate(key);
-          }}
-          items={userMenuItems}
-        />
-      </Sider>
+      <UserSidebar selectedMenuKey={selectedMenuKey} />
       <Layout
         className="user-shell-main"
         style={{
@@ -239,261 +52,7 @@ export function UserLayout() {
           transition: 'margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         }}
       >
-        <Header className="user-shell-header">
-          <div className="user-shell-header-left">
-            <Button
-              type="text"
-              icon={sidebarCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-              onClick={toggleSidebar}
-              style={{
-                fontSize: 18,
-                color: 'var(--text-secondary)',
-                width: 40,
-                height: 40,
-                borderRadius: 10,
-              }}
-            />
-            <Space size={8}>
-              <Tag color="blue" style={{ marginInlineEnd: 0, borderRadius: 999 }}>
-                {currentMenuLabel}
-              </Tag>
-            </Space>
-          </div>
-          <div className="user-shell-header-right">
-            <Dropdown
-              trigger={['click']}
-              placement="bottomRight"
-              popupRender={() => (
-                <div
-                  className="user-shell-notification-panel"
-                  style={{
-                    width: 360,
-                    maxWidth: 'calc(100vw - 32px)',
-                    border: '1px solid var(--border-color)',
-                    borderRadius: 16,
-                    boxShadow: '0 12px 40px rgba(15, 23, 42, 0.16)',
-                    padding: 12,
-                  }}
-                >
-                  <Space
-                    style={{ width: '100%', justifyContent: 'space-between', marginBottom: 12 }}
-                    align="start"
-                  >
-                    <div>
-                      <Typography.Text strong>通知预览</Typography.Text>
-                      <div style={{ marginTop: 4 }}>
-                        <Typography.Text type="secondary">
-                          {unreadNotificationCount > 0
-                            ? `未读 ${unreadNotificationCount} 条`
-                            : '当前没有未读通知'}
-                        </Typography.Text>
-                      </div>
-                    </div>
-                    <Space size={4}>
-                      <Button
-                        type="link"
-                        size="small"
-                        disabled={unreadNotificationCount === 0}
-                        onClick={() => markAllAsRead()}
-                      >
-                        全部已读
-                      </Button>
-                      <Button type="link" size="small" onClick={() => navigate('/notifications')}>
-                        查看全部
-                      </Button>
-                    </Space>
-                  </Space>
-                  {previewNotifications.length === 0 ? (
-                    <Empty
-                      image={Empty.PRESENTED_IMAGE_SIMPLE}
-                      description="暂无通知"
-                      style={{ margin: '20px 0 8px' }}
-                    />
-                  ) : (
-                    <Space direction="vertical" size={8} style={{ width: '100%' }}>
-                      {previewNotifications.map((item) => {
-                        const content = buildNotificationContent(item, language);
-                        return (
-                          <button
-                            key={item.id}
-                            type="button"
-                            className={`user-shell-notification-item${item.unread ? ' is-unread' : ''}`}
-                            onClick={() => {
-                              markAsRead(item.id);
-                              navigate(
-                                resolveNotificationActionPath(
-                                  item.actionUrl,
-                                  item.source,
-                                  item.sourceId
-                                )
-                              );
-                            }}
-                            style={{
-                              width: '100%',
-                              textAlign: 'left',
-                              border: item.unread
-                                ? '1px solid rgba(59, 130, 246, 0.24)'
-                                : '1px solid var(--border-color)',
-                              borderRadius: 12,
-                              padding: 12,
-                              cursor: 'pointer',
-                            }}
-                          >
-                            <Space direction="vertical" size={6} style={{ width: '100%' }}>
-                              <Space wrap size={[6, 6]}>
-                                <Typography.Text strong>{content.title}</Typography.Text>
-                                {isExecutionStatusValue(item.status) ? (
-                                  <Tag color={EXECUTION_STATUS_COLORS[item.status]}>
-                                    {statusLabels[item.status]}
-                                  </Tag>
-                                ) : null}
-                                <Tag color={getNotificationSeverityTagColor(item.severity)}>
-                                  {getNotificationSeverityText(item.severity, language)}
-                                </Tag>
-                                {item.unread ? <Tag color="blue">未读</Tag> : null}
-                              </Space>
-                              <Typography.Text
-                                type="secondary"
-                                style={{
-                                  display: 'block',
-                                  lineHeight: 1.6,
-                                }}
-                              >
-                                {content.description}
-                              </Typography.Text>
-                              <Typography.Text type="secondary">
-                                {new Date(item.timestamp).toLocaleString()}
-                              </Typography.Text>
-                            </Space>
-                          </button>
-                        );
-                      })}
-                    </Space>
-                  )}
-                </div>
-              )}
-            >
-              <Button
-                type="text"
-                className="user-shell-header-icon-button user-shell-notification-button"
-                icon={
-                  <Badge count={unreadNotificationCount} size="small" overflowCount={99}>
-                    <BellOutlined />
-                  </Badge>
-                }
-                style={{ color: 'var(--text-secondary)', borderRadius: 10, height: 36, width: 36 }}
-              />
-            </Dropdown>
-            <Button
-              type="text"
-              icon={<BgColorsOutlined />}
-              onClick={toggleTheme}
-              style={{
-                color: 'var(--text-secondary)',
-                borderRadius: 10,
-                height: 36,
-                padding: '0 12px',
-              }}
-            >
-              {theme === 'light' ? '深色' : '浅色'}
-            </Button>
-            <Dropdown menu={languageMenu} placement="bottomRight" trigger={['click']}>
-              <Button
-                type="text"
-                icon={<GlobalOutlined />}
-                style={{
-                  color: 'var(--text-secondary)',
-                  borderRadius: 10,
-                  height: 36,
-                  padding: '0 12px',
-                }}
-              >
-                {language === 'zh-CN' ? '中文' : language === 'en-US' ? 'EN' : '日本語'}
-              </Button>
-            </Dropdown>
-            <Dropdown
-              open={userMenuOpen}
-              onOpenChange={setUserMenuOpen}
-              placement="bottomRight"
-              trigger={['click']}
-              popupRender={() => (
-                <div className="user-shell-user-menu">
-                  <div className="user-shell-user-menu-card">
-                    <Avatar
-                      size={44}
-                      className="user-shell-user-menu-avatar"
-                      icon={!user ? <UserOutlined /> : undefined}
-                    >
-                      {user ? userInitial : null}
-                    </Avatar>
-                    <div className="user-shell-user-menu-body">
-                      <div className="user-shell-user-menu-title">
-                        <Typography.Text strong className="user-shell-user-menu-name">
-                          {user?.username || '未登录'}
-                        </Typography.Text>
-                          {user && currentRoleLabel ? (
-                          <Tag color={roleColors[user.role]} style={{ marginInlineEnd: 0 }}>
-                            {currentRoleLabel}
-                          </Tag>
-                        ) : null}
-                      </div>
-                      <Typography.Text
-                        type="secondary"
-                        className="user-shell-user-menu-secondary"
-                      >
-                        {userSecondaryText}
-                      </Typography.Text>
-                      {user ? (
-                        <Typography.Text
-                          type="secondary"
-                          className="user-shell-user-menu-secondary"
-                        >
-                          {language === 'en-US'
-                            ? `Account status · ${accountStatusLabel}`
-                            : language === 'ja-JP'
-                              ? `アカウント状態・${accountStatusLabel}`
-                              : `账号状态 · ${accountStatusLabel}`}
-                        </Typography.Text>
-                      ) : null}
-                    </div>
-                  </div>
-                  <div className="user-shell-user-menu-section">
-                    <button
-                      type="button"
-                      className="user-shell-user-menu-action danger"
-                      onClick={handleUserAction}
-                    >
-                      <span className="user-shell-user-menu-action-icon">
-                        <LogoutOutlined />
-                      </span>
-                      <span className="user-shell-user-menu-action-copy">
-                        <span className="user-shell-user-menu-action-title">退出登录</span>
-                        <span className="user-shell-user-menu-action-description">
-                          清除当前会话并返回登录页
-                        </span>
-                      </span>
-                    </button>
-                  </div>
-                </div>
-              )}
-            >
-              <button type="button" className="user-shell-user">
-                <Avatar
-                  size={36}
-                  className="user-shell-user-avatar"
-                  icon={!user ? <UserOutlined /> : undefined}
-                >
-                  {user ? userInitial : null}
-                </Avatar>
-                <span className="user-shell-user-meta">
-                  <span className="user-shell-user-name">{user?.username || '未登录'}</span>
-                  <span className="user-shell-user-secondary">{userSecondaryText}</span>
-                </span>
-                <DownOutlined className="user-shell-user-chevron" />
-              </button>
-            </Dropdown>
-          </div>
-        </Header>
+        <UserHeader language={language} selectedMenuKey={selectedMenuKey} />
         <Content className={`user-shell-content${isChatRoute ? ' user-shell-content-chat' : ''}`}>
           <Outlet />
         </Content>

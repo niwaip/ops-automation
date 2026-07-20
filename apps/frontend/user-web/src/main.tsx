@@ -8,7 +8,8 @@ import { QueryClient, QueryClientProvider } from 'react-query';
 import { useStore } from 'zustand';
 import { browserI18n } from './adapters/i18n/browserI18n';
 import { preferencesStore } from './adapters/preferences/preferencesStore';
-import App from './app.tsx';
+import { BORDER_RADIUS, PRIMARY_COLOR } from '@/shared/config/theme';
+import App from './app/App';
 import './index.css';
 
 const queryClient = new QueryClient({
@@ -34,8 +35,8 @@ const AntdProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     () => ({
       algorithm: theme === 'dark' ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
       token: {
-        colorPrimary: '#4f46e5',
-        borderRadius: 10,
+        colorPrimary: PRIMARY_COLOR,
+        borderRadius: BORDER_RADIUS,
       },
     }),
     [theme]
