@@ -20,5 +20,11 @@
   "search": "検索",
   "status": "ステータス",
   "submit": "送信",
-  "yes": "はい"
+  "yes": "はい",
+  "menu": {
+    "dashboard": "ワークベンチ",
+    "chat": "AIチャット",
+    "executions": "実行リスト",
+    "published_skills": "公開スキル"
+  }
 }
