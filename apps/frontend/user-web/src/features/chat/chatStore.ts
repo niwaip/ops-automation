@@ -2,9 +2,9 @@ import { create } from 'zustand';
 import type { ChatSession } from '@ops/user-core';
 import { createChatSessionId } from './lib/session';
 
-type ChatMode = 'chat' | 'task';
+export type ChatMode = 'chat' | 'task';
 
-interface ChatStoreState {
+export interface ChatStoreState {
   currentSession: ChatSession | null;
   isOpen: boolean;
   chatMode: ChatMode;
