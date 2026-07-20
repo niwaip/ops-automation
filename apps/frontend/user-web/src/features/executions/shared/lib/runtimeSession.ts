@@ -9,6 +9,8 @@ import {
 import type { ExecutionStatus } from '@/api/execution';
 import { EXECUTION_ACTIVE_POLLING_STATUSES } from '@/shared/lib/executionStatusMeta';
 
+import { EXECUTION_ACTIVE_POLL_INTERVAL } from '@/shared/config/pollingConfig';
+
 export {
   getRuntimeSessionNovncUrl,
   getRuntimeSessionStatusLabel,
@@ -28,7 +30,7 @@ export const isExecutionActivePollingStatus = (
 export const getExecutionPollingInterval = (
   executionStatus?: ExecutionStatus | string
 ): number | false =>
-  isExecutionActivePollingStatus(executionStatus) ? 3000 : false;
+  isExecutionActivePollingStatus(executionStatus) ? EXECUTION_ACTIVE_POLL_INTERVAL : false;
 
 export const getExecutionRuntimeSessionRefetchInterval = ({
   runtimeSessionState,
@@ -38,7 +40,7 @@ export const getExecutionRuntimeSessionRefetchInterval = ({
   executionStatus?: ExecutionStatus | string;
 }): number | false => {
   if (isLiveRuntimeSessionState(runtimeSessionState)) {
-    return 3000;
+    return EXECUTION_ACTIVE_POLL_INTERVAL;
   }
 
   return getExecutionPollingInterval(executionStatus);

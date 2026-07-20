@@ -1,5 +1,5 @@
-import axios from 'axios';
 import { apiClient } from './index';
+import { isNotFoundError, isIgnorableApiError } from '@/shared/utils/apiError';
 
 export type RuntimeSessionState = 'allocating' | 'ready' | 'busy' | 'frozen' | 'closed' | 'error';
 
@@ -41,35 +41,7 @@ interface ListRuntimeSessionsResponse {
   pageSize: number;
 }
 
-const getRuntimeSessionErrorStatus = (error: unknown): number | undefined => {
-  if (axios.isAxiosError(error)) {
-    return error.response?.status;
-  }
 
-  if (!error || typeof error !== 'object') {
-    return undefined;
-  }
-
-  const errorWithStatus = error as {
-    status?: unknown;
-    response?: {
-      status?: unknown;
-    };
-  };
-
-  if (typeof errorWithStatus.response?.status === 'number') {
-    return errorWithStatus.response.status;
-  }
-
-  return typeof errorWithStatus.status === 'number' ? errorWithStatus.status : undefined;
-};
-
-const isRuntimeSessionNotFound = (error: unknown): boolean => getRuntimeSessionErrorStatus(error) === 404;
-
-const isIgnorableRuntimeSessionError = (error: unknown): boolean => {
-  const status = getRuntimeSessionErrorStatus(error);
-  return status !== undefined && [401, 403, 404].includes(status);
-};
 
 export const runtimeSessionApi = {
   getById: async (id: string): Promise<RuntimeSessionDto> => {
@@ -96,7 +68,7 @@ export const runtimeSessionApi = {
     try {
       return await runtimeSessionApi.getById(id);
     } catch (error) {
-      if (!isRuntimeSessionNotFound(error) && !isIgnorableRuntimeSessionError(error)) {
+      if (!isNotFoundError(error) && !isIgnorableApiError(error)) {
         throw error;
       }
       if (!executionId) {
@@ -105,7 +77,7 @@ export const runtimeSessionApi = {
       try {
         return await runtimeSessionApi.getLatestForExecution(executionId);
       } catch (fallbackError) {
-        if (isIgnorableRuntimeSessionError(fallbackError)) {
+        if (isIgnorableApiError(fallbackError)) {
           return undefined;
         }
         throw fallbackError;

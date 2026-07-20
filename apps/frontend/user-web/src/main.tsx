@@ -37,6 +37,21 @@ const AntdProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
       token: {
         colorPrimary: PRIMARY_COLOR,
         borderRadius: BORDER_RADIUS,
+        borderRadiusLG: 24, // --radius-xl
+        borderRadiusSM: 6,  // --radius-sm
+      },
+      components: {
+        Layout: {
+          colorBgBody: theme === 'dark' ? '#0f172a' : '#f8fafc',
+          colorBgHeader: theme === 'dark' ? 'rgba(30, 41, 59, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+        },
+        Card: {
+          colorBgContainer: theme === 'dark' ? '#1e293b' : '#ffffff',
+          colorBorderSecondary: theme === 'dark' ? '#334155' : '#e2e8f0',
+        },
+        Menu: {
+          colorBgContainer: 'transparent',
+        },
       },
     }),
     [theme]
