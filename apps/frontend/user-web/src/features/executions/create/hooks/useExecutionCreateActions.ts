@@ -7,7 +7,6 @@ import type { ExecutionCreateFormValues, SchemaField } from '@/features/executio
 import {
   buildExecutionScheduleCreateRequest,
   buildExecutionScheduleToggleInput,
-  buildScheduleCronExpression,
   WEEKDAY_LABEL_MAP,
   getDefaultScheduleName,
   normalizeInputValues,
