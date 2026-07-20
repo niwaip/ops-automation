@@ -22,6 +22,10 @@ import { useChatStreaming } from '../hooks/useChatStreaming';
 import { useChatStore } from '../chatStore';
 import { supportsNativeReasoning } from '@/shared/lib/aiModelReasoning';
 import {
+  CHAT_SESSION_POLL_INTERVAL,
+  CHAT_SESSION_STREAMING_POLL_INTERVAL,
+} from '@/shared/config/pollingConfig';
+import {
   formatRelativeTime,
   getSessionPreview,
 } from '../lib/sessionView';
@@ -138,7 +142,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     }
     const timer = window.setInterval(() => {
       void refetchSessions({ cancelRefetch: false });
-    }, 5000);
+    }, CHAT_SESSION_POLL_INTERVAL);
     return () => window.clearInterval(timer);
   }, [refetchSessions, selectedSessionNeedsRefresh]);
 
@@ -148,7 +152,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
     {
       enabled: Boolean(selectedSessionId && remoteSessionIds.has(selectedSessionId)),
       refetchOnWindowFocus: false,
-      refetchInterval: selectedSessionNeedsRefresh && !isStreaming ? 4000 : false,
+      refetchInterval: selectedSessionNeedsRefresh && !isStreaming ? CHAT_SESSION_STREAMING_POLL_INTERVAL : false,
     }
   );
   const availableModels = useMemo(() => ((modelsQuery.data || []) as AIModel[]) || [], [modelsQuery.data]);

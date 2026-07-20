@@ -25,6 +25,7 @@ import type {
 } from '@ops/user-core';
 import { authStore } from '../../../adapters/auth/authStore';
 import { reportApi, resolveApiUrl } from '../../../api';
+import { REPORT_STATUS_POLL_INTERVAL } from '@/shared/config/pollingConfig';
 
 const { Title, Text } = Typography;
 
@@ -52,7 +53,7 @@ export function ReportDetailPage() {
       enabled:
         Boolean(id) &&
         (reportQuery.data?.status === 'pending' || reportQuery.data?.status === 'generating'),
-      refetchInterval: 3000,
+      refetchInterval: REPORT_STATUS_POLL_INTERVAL,
     }
   );
 
