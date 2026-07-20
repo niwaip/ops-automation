@@ -226,8 +226,26 @@ export const areMessagesEquivalent = (
     return false;
   }
 
+  const localExecutionId =
+    localMessage.metadata?.executionId || resolveTaskParts(localMessage.contentParts).executionId;
+  const remoteExecutionId =
+    remoteMessage.metadata?.executionId || resolveTaskParts(remoteMessage.contentParts).executionId;
+  if (localExecutionId && remoteExecutionId && localExecutionId === remoteExecutionId) {
+    return true;
+  }
+
   const localText = normalizeComparableMessageText(localMessage.content);
   const remoteText = normalizeComparableMessageText(remoteMessage.content);
+  
+  if (!localText && !remoteText) {
+    const localStatus = resolveMessageTaskStatus(localMessage);
+    const remoteStatus = resolveMessageTaskStatus(remoteMessage);
+    if (localStatus && remoteStatus && localStatus === remoteStatus) {
+      return true;
+    }
+    return localMessage.metadata?.mode === remoteMessage.metadata?.mode;
+  }
+
   if (!localText || !remoteText) {
     return false;
   }
