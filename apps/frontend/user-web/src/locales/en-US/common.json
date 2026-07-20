@@ -20,5 +20,11 @@
   "search": "Search",
   "status": "Status",
   "submit": "Submit",
-  "yes": "Yes"
+  "yes": "Yes",
+  "menu": {
+    "dashboard": "Dashboard",
+    "chat": "AI Chat",
+    "executions": "Executions",
+    "published_skills": "Published Skills"
+  }
 }

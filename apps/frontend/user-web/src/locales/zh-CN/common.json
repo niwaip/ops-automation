@@ -20,5 +20,11 @@
   "search": "搜索",
   "status": "状态",
   "submit": "提交",
-  "yes": "是"
+  "yes": "是",
+  "menu": {
+    "dashboard": "工作台",
+    "chat": "AI 对话",
+    "executions": "执行列表",
+    "published_skills": "已发布技能"
+  }
 }

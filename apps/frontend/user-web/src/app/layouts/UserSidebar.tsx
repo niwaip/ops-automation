@@ -3,18 +3,11 @@ import { Layout, Menu } from 'antd';
 import type { MenuProps } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from 'zustand';
+import { useTranslation } from 'react-i18next';
 import { useChatStore } from '@/features/chat';
 import { preferencesStore } from '../../adapters/preferences/preferencesStore';
 
 const { Sider } = Layout;
-
-/** 侧边栏导航菜单项。key 同时作为路由 path。 */
-export const userMenuItems = [
-  { key: '/dashboard', icon: <DashboardOutlined />, label: '工作台' },
-  { key: '/chat', icon: <MessageOutlined />, label: 'AI 对话' },
-  { key: '/executions', icon: <OrderedListOutlined />, label: '执行列表' },
-  { key: '/published-skills', icon: <ThunderboltOutlined />, label: '已发布技能' },
-] satisfies Required<MenuProps>['items'];
 
 interface UserSidebarProps {
   /** 当前选中的菜单 key（由 Layout 根据路由推导后传入） */
@@ -31,6 +24,14 @@ export function UserSidebar({ selectedMenuKey }: UserSidebarProps) {
   const setChatWidgetOpen = useChatStore((state) => state.setOpen);
   const sidebarCollapsed = useStore(preferencesStore, (state) => state.sidebarCollapsed);
   const setSidebarCollapsed = useStore(preferencesStore, (state) => state.setSidebarCollapsed);
+  const { t } = useTranslation('common');
+
+  const menuItems = [
+    { key: '/dashboard', icon: <DashboardOutlined />, label: t('menu.dashboard', '工作台') },
+    { key: '/chat', icon: <MessageOutlined />, label: t('menu.chat', 'AI 对话') },
+    { key: '/executions', icon: <OrderedListOutlined />, label: t('menu.executions', '执行列表') },
+    { key: '/published-skills', icon: <ThunderboltOutlined />, label: t('menu.published_skills', '已发布技能') },
+  ] satisfies Required<MenuProps>['items'];
 
   return (
     <Sider
@@ -106,7 +107,7 @@ export function UserSidebar({ selectedMenuKey }: UserSidebarProps) {
           setChatWidgetOpen(false);
           navigate(key);
         }}
-        items={userMenuItems}
+        items={menuItems}
       />
     </Sider>
   );
