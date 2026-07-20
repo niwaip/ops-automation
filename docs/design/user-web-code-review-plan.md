@@ -371,10 +371,10 @@ Vite 原生支持 CSS Modules，文件改名为 `*.module.css` 即可启用，�
 
 **验收标准**
 
-- [ ] `index.css` 中无 `.ant-` 前缀选择器
-- [ ] `index.css` 中无 `!important`（或极少数有注释说明原因的例外）
-- [ ] `main.tsx` 中 `ConfigProvider` 的 `components` 字段包含圆角、间距等配置
-- [ ] 全站 antd 组件（Card、Button、Input、Table、Modal）视觉与迁移前一致
+- [x] `index.css` 中无 `.ant-` 前缀选择器
+- [x] `index.css` 中无 `!important`（或极少数有注释说明原因的例外）
+- [x] `main.tsx` 中 `ConfigProvider` 的 `components` 字段包含圆角、间距等配置
+- [x] 全站 antd 组件（Card、Button、Input、Table、Modal）视觉与迁移前一致
 
 ---
 
@@ -417,10 +417,10 @@ export const EXECUTION_ACTIVE_POLL_INTERVAL = 5_000;
 
 **验收标准**
 
-- [ ] `src/shared/config/pollingConfig.ts` 文件存在，包含所有轮询常量
-- [ ] 全局搜索数字字面量 `3000`、`4000`、`5000` 在轮询相关代码中无硬编码
-- [ ] 报告详情页在 generating 状态下每 3 秒刷新一次（可通过 Network 面板确认）
-- [ ] 聊天页面 streaming 时会话列表每 4 秒刷新，非 streaming 时每 5 秒
+- [x] `src/shared/config/pollingConfig.ts` 文件存在，包含所有轮询常量
+- [x] 全局搜索数字字面量 `3000`、`4000`、`5000` 在轮询相关代码中无硬编码
+- [x] 报告详情页在 generating 状态下每 3 秒刷新一次（可通过 Network 面板确认）
+- [x] 聊天页面 streaming 时会话列表每 4 秒刷新，非 streaming 时每 5 秒
 
 ---
 
@@ -457,11 +457,11 @@ export const EXECUTION_ACTIVE_POLL_INTERVAL = 5_000;
 
 **验收标准**
 
-- [ ] `npm run test` 命令可执行，不报 "script not found"
-- [ ] `messageState.test.ts` 全部通过（≥ 8 个测试用例）
-- [ ] `scheduleText.test.ts` 全部通过（≥ 5 个测试用例，含边界情况）
-- [ ] `executionPhaseState.test.ts` 全部通过（≥ 5 个测试用例）
-- [ ] 上述 3 个文件分支覆盖率 ≥ 70%
+- [x] `npm run test` 命令可执行，不报 "script not found"
+- [x] `messageState.test.ts` 全部通过（≥ 8 个测试用例）
+- [x] `scheduleText.test.ts` 全部通过（≥ 5 个测试用例，含边界情况）
+- [x] `executionPhaseState.test.ts` 全部通过（≥ 5 个测试用例）
+- [x] 上述 3 个文件分支覆盖率 ≥ 70%
 
 ---
 
@@ -481,10 +481,10 @@ export const EXECUTION_ACTIVE_POLL_INTERVAL = 5_000;
 
 **验收标准**
 
-- [ ] `src/shared/utils/apiError.ts` 文件存在，导出 `ApiError` 类和工具函数
-- [ ] `src/api/runtimeSession.ts` 中不再有本地 `isIgnorableRuntimeSessionError` 函数
-- [ ] 全局搜索 `status === 404`、`status === 401` 在 api 层中无直接使用（均通过工具函数）
-- [ ] 运行时 session 404/401/403 场景下，页面行为与修改前一致（优雅 fallback，不崩溃）
+- [x] `src/shared/utils/apiError.ts` 文件存在，导出 `ApiError` 类和工具函数
+- [x] `src/api/runtimeSession.ts` 中不再有本地 `isIgnorableRuntimeSessionError` 函数
+- [x] 全局搜索 `status === 404`、`status === 401` 在 api层中无直接使用（均通过工具函数）
+- [x] 运行时 session 404/401/403 场景下，页面行为与修改前一致（优雅 fallback，不崩溃）
 
 ---
 
