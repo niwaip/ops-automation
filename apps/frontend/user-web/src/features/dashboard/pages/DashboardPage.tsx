@@ -34,8 +34,8 @@ import {
   saveWorkbenchHandledExecutions,
   type WorkbenchHandledExecutionMap,
 } from '../lib/workbenchHandledExecutionStorage';
-import { formatMonthDayTime } from '@/shared/lib/dateText';
-import { summarizeCronExpression } from '@/shared/lib/scheduleText';
+import { formatMonthDayTime } from '@/shared/utils/dateText';
+import { summarizeCronExpression } from '@/shared/utils/scheduleText';
 import './DashboardPage.css';
 
 const sanitizeDisplayName = (value?: string): string => {

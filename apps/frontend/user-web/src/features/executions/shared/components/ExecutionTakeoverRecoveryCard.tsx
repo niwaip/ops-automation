@@ -6,7 +6,7 @@ import { JsonPreview } from '@/features/executions/shared/components/JsonPreview
 import ExecutionStatusTag from '@/features/executions/shared/components/ExecutionStatusTag';
 import { asRecord, tryParseJsonValue } from '@/features/executions/shared/lib/common';
 import { getPhaseStatusColor, getPhaseStatusLabel } from '@/features/executions/shared/lib/phase';
-import { formatLocalizedDateTime } from '@/shared/lib/dateText';
+import { formatLocalizedDateTime } from '@/shared/utils/dateText';
 
 const { Text } = Typography;
 

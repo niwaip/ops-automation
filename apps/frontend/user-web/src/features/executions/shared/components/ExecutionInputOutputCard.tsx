@@ -5,7 +5,7 @@ import ExecutionLinkButton from '@/features/executions/shared/components/Executi
 import type { ExecutionDto } from '@/api/execution';
 import ExecutionPayloadContent from '@/features/executions/shared/components/ExecutionPayloadContent';
 import ExecutionResultHeader from '@/features/executions/shared/components/ExecutionResultHeader';
-import { replaceLocalhostWithCurrentHost } from '@/shared/lib/publicUrl';
+import { replaceLocalhostWithCurrentHost } from '@/shared/utils/publicUrl';
 
 const { Text } = Typography;
 

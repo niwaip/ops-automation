@@ -7,7 +7,7 @@ import ExecutionStatusSummaryTags from '@/features/executions/shared/components/
 import type { ExecutionLoopSummary } from '@/features/executions/shared/lib/executionSummary';
 import { getPhaseStatusColor, getPhaseStatusLabel, getPhaseStepStatus } from '@/features/executions/shared/lib/phase';
 import { formatPhaseDisplayName } from '@/features/executions/shared/lib/phaseText';
-import { formatLocalizedDateTime } from '@/shared/lib/dateText';
+import { formatLocalizedDateTime } from '@/shared/utils/dateText';
 
 const { Text } = Typography;
 

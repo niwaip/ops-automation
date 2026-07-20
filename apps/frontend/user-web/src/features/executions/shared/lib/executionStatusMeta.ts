@@ -3,7 +3,7 @@ import {
   EXECUTION_STATUS_COLORS,
   EXECUTION_STATUS_LABELS_EN,
   EXECUTION_STATUS_LABELS_ZH,
-} from '@/shared/lib/executionStatusMeta';
+} from '@/shared/constants/executionStatusMeta';
 
 export const buildExecutionStatusMeta = ({
   isEnglish,

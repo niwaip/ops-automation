@@ -505,9 +505,9 @@ src/shared/
 
 **验收标准**
 
-- [ ] `shared/` 一级子目录只有 config / store / utils / lib / constants
-- [ ] 各工具函数按主题归入正确子目录
-- [ ] 所有 import 路径更新正确，无 TS 报错
+- [x] `shared/` 一级子目录只有 config / store / utils / lib / constants
+- [x] 各工具函数按主题归入正确子目录
+- [x] 所有 import 路径更新正确，无 TS 报错
 
 ---
 
@@ -555,7 +555,7 @@ src/shared/
 | T3-03 轮询配置集中化 | 🟡 三阶段 | 0.5 天 | ✅ 已完成 |
 | T3-04 接入 Vitest | 🟡 三阶段 | 2 天 | ✅ 已完成 |
 | T3-05 统一 API 错误类型 | 🟡 三阶段 | 1 天 | ✅ 已完成 |
-| T4-01 shared/ 目录细化 | 🟢 持续 | 0.5 天 | 待开始 |
+| T4-01 shared/ 目录细化 | 🟢 持续 | 0.5 天 | ✅ 已完成 |
 | T4-02 chatStore 类型导出 | 🟢 持续 | 0.5 天 | ✅ 已完成 |
 | T4-03 提取 AntdProvider | 🟢 持续 | 0.5 天 | ✅ 已完成 |
 

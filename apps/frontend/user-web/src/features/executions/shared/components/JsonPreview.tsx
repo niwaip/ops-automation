@@ -1,6 +1,6 @@
 import React from 'react';
 import { tryParseJsonValue } from '@/features/executions/shared/lib/common';
-import { replaceLocalhostWithCurrentHost } from '@/shared/lib/publicUrl';
+import { replaceLocalhostWithCurrentHost } from '@/shared/utils/publicUrl';
 
 const renderJsonValue = (value: unknown, path = 'root'): React.ReactNode => {
   const parsedValue = tryParseJsonValue(value);

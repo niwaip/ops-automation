@@ -15,7 +15,7 @@ import {
 } from '@/features/executions/shared/lib/artifacts';
 import { getPhaseStatusColor, getPhaseStatusLabel } from '@/features/executions/shared/lib/phase';
 import { formatPhaseDisplayName } from '@/features/executions/shared/lib/phaseText';
-import { formatLocalizedDateTime } from '@/shared/lib/dateText';
+import { formatLocalizedDateTime } from '@/shared/utils/dateText';
 
 const { Text } = Typography;
 

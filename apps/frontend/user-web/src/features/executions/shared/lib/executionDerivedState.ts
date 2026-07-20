@@ -8,7 +8,7 @@ import { isBrowserWorkflowActivity } from '@/features/executions/detail/lib/exec
 import type { RequiredInputField } from '@/features/executions/create/lib/inputFields';
 import { extractExecutionDisplayInput } from '@/features/executions/list/lib/listHelpers';
 import { isExecutionActivePollingStatus } from '@/features/executions/shared/lib/runtimeSession';
-import { buildWaitingInputDisplayGroups } from '@/shared/lib/waitingInputDisplay';
+import { buildWaitingInputDisplayGroups } from '@/shared/constants/waitingInputDisplay';
 
 interface ExecutionNormalizedResultLike {
   summary?: string;

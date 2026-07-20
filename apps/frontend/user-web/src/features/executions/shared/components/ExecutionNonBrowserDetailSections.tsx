@@ -8,7 +8,7 @@ import ExecutionReviewResultCard from '@/features/executions/shared/components/E
 import ExecutionTakeoverRecoveryCard from '@/features/executions/shared/components/ExecutionTakeoverRecoveryCard';
 import SemanticOverviewCard from '@/features/executions/shared/components/SemanticOverviewCard';
 import { asRecord, tryParseJsonValue } from '@/features/executions/shared/lib/common';
-import { replaceLocalhostWithCurrentHost } from '@/shared/lib/publicUrl';
+import { replaceLocalhostWithCurrentHost } from '@/shared/utils/publicUrl';
 
 const fixLocalhostLink = (url?: string): string | undefined =>
   replaceLocalhostWithCurrentHost(url);

@@ -30,7 +30,7 @@ import { useExecutionListToolbarProps } from '@/features/executions/list/hooks/u
 import {
   EXECUTION_STATUS_COLORS,
   EXECUTION_STATUS_LABELS_ZH,
-} from '@/shared/lib/executionStatusMeta';
+} from '@/shared/constants/executionStatusMeta';
 import { usePreferencesStore } from '@/shared/store/preferencesStore';
 import './ExecutionListPage.css';
 

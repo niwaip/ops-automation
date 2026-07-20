@@ -7,7 +7,7 @@ import {
   type RuntimeSessionLike,
 } from '@ops/user-core';
 import type { ExecutionStatus } from '@/api/execution';
-import { EXECUTION_ACTIVE_POLLING_STATUSES } from '@/shared/lib/executionStatusMeta';
+import { EXECUTION_ACTIVE_POLLING_STATUSES } from '@/shared/constants/executionStatusMeta';
 
 import { EXECUTION_ACTIVE_POLL_INTERVAL } from '@/shared/config/pollingConfig';
 

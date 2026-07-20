@@ -25,8 +25,8 @@ import {
 } from '@/features/executions/create/components/executionCreateStyles';
 import type { ScheduleDto } from '@/api/schedules';
 import { stringifyPreview, WEEKDAY_LABEL_MAP } from '@/features/executions/create/lib/executionCreate';
-import { formatLocalizedDateTime } from '@/shared/lib/dateText';
-import { summarizeCronExpression } from '@/shared/lib/scheduleText';
+import { formatLocalizedDateTime } from '@/shared/utils/dateText';
+import { summarizeCronExpression } from '@/shared/utils/scheduleText';
 
 const { Panel } = Collapse;
 const { Text } = Typography;

@@ -16,8 +16,8 @@ import {
   skillMetaSectionTitleStyle,
   skillMetaValueStyle,
 } from '@/features/skills/components/publishedSkillListStyles';
-import { formatLocalizedDateTime } from '@/shared/lib/dateText';
-import { summarizeCronExpression } from '@/shared/lib/scheduleText';
+import { formatLocalizedDateTime } from '@/shared/utils/dateText';
+import { summarizeCronExpression } from '@/shared/utils/scheduleText';
 
 interface SkillCardProps {
   authorized: boolean;

@@ -1,6 +1,6 @@
 import { Button, Card, Empty, Typography } from 'antd';
 import type { ExecutionDto } from '@ops/user-core';
-import { formatMonthDayTime } from '@/shared/lib/dateText';
+import { formatMonthDayTime } from '@/shared/utils/dateText';
 
 const compactText = (value: string, max = 42): string =>
   value.length > max ? `${value.slice(0, max).trim()}...` : value;

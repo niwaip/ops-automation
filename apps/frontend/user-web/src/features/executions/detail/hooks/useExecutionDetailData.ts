@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useExecutionDetailBaseQueries } from './useExecutionDetailBaseQueries';
 import { useExecutionDetailDerivedState } from './useExecutionDetailDerivedState';
 import type { ExecutionDetailText } from '../lib/executionDetailText';
-import { buildExecutionStatusMeta } from '../../shared/lib/executionStatusMeta';
+import { buildExecutionStatusMeta } from '@/shared/constants/executionStatusMeta';
 
 interface UseExecutionDetailDataOptions {
   id?: string;

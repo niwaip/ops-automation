@@ -10,7 +10,7 @@ import {
   sortExecutionPhaseArtifactsByTime,
   sortExecutionPhaseStepsByTime,
 } from '@/features/executions/shared/lib/artifacts';
-import { replaceLocalhostWithCurrentHost } from '@/shared/lib/publicUrl';
+import { replaceLocalhostWithCurrentHost } from '@/shared/utils/publicUrl';
 
 const BROWSER_ACTIVITY_ACTIONS = new Set([
   'navigate',

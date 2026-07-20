@@ -5,11 +5,11 @@ import { extractExecutionDownloadUrl } from '@ops/user-core';
 import type { ExecutionDto } from '@/api/execution';
 import ExecutionStatusTag from '@/features/executions/shared/components/ExecutionStatusTag';
 import { formatDateTime } from '@/features/executions/list/lib/listView';
-import { replaceLocalhostWithCurrentHost } from '@/shared/lib/publicUrl';
+import { replaceLocalhostWithCurrentHost } from '@/shared/utils/publicUrl';
 import {
   EXECUTION_STATUS_COLORS,
   EXECUTION_STATUS_LABELS_ZH,
-} from '@/shared/lib/executionStatusMeta';
+} from '@/shared/constants/executionStatusMeta';
 
 const { Text } = Typography;
 

@@ -1,4 +1,4 @@
-import { formatMonthDayTime } from '@/shared/lib/dateText';
+import { formatMonthDayTime } from '@/shared/utils/dateText';
 
 export interface SummaryExecutionItem {
   title: string;
