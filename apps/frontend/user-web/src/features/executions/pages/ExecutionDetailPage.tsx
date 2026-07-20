@@ -17,10 +17,10 @@ import '../../chat/ChatMessage.css';
 import {
   ArrowLeftOutlined,
 } from '@ant-design/icons';
-import ExecutionDetailSections from '../components/ExecutionDetailSections';
-import { useExecutionDetailActions } from '../hooks/useExecutionDetailActions';
-import { useExecutionDetailData } from '../hooks/useExecutionDetailData';
-import { buildExecutionDetailText } from '../lib/executionDetailText';
+import ExecutionDetailSections from '../detail/components/ExecutionDetailSections';
+import { useExecutionDetailActions } from '../detail/hooks/useExecutionDetailActions';
+import { useExecutionDetailData } from '../detail/hooks/useExecutionDetailData';
+import { useExecutionDetailText } from '../detail/lib/executionDetailText';
 import { usePreferencesStore } from '@/shared/store/preferencesStore';
 
 const { Title } = Typography;
@@ -31,7 +31,7 @@ const ExecutionDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const language = usePreferencesStore((state) => state.language);
   const isEnglish = language === 'en-US';
-  const text = React.useMemo(() => buildExecutionDetailText(isEnglish), [isEnglish]);
+  const text = useExecutionDetailText();
   const {
     statusLabels,
     statusColors,
