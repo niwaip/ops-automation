@@ -234,6 +234,13 @@ export const areMessagesEquivalent = (
     return true;
   }
 
+  // If both are task messages and close in time (checked above), they are highly likely the same message.
+  // The ephemeral local message might have temporary text like "正在规划任务..." that the remote DB message discards.
+  // Since exact ID matches are handled before calling this, any unmatched local task message is the ephemeral one.
+  if (localMessage.metadata?.mode === 'task' && remoteMessage.metadata?.mode === 'task') {
+    return true;
+  }
+
   const localText = normalizeComparableMessageText(localMessage.content);
   const remoteText = normalizeComparableMessageText(remoteMessage.content);
   
