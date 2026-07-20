@@ -15,7 +15,7 @@ import ExecutionPhasesCollapse from '@/features/executions/shared/components/Exe
 import InlineRecoveryPanel from '@/features/executions/shared/components/InlineRecovery';
 import WaitingInputActionPanel from '@/features/executions/shared/components/WaitingInputActionPanel';
 import { RECOVERY_COPY } from '@/features/executions/shared/components/recoveryOptions';
-import { EXECUTION_STATUS_LABELS_ZH } from '@/shared/lib/executionStatusMeta';
+import { EXECUTION_STATUS_LABELS_ZH } from '@/shared/constants/executionStatusMeta';
 
 const ExecutionListDetailDrawer: React.FC<ExecutionListDetailDrawerProps> = ({
   open,

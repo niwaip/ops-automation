@@ -1,7 +1,7 @@
 import { PlayCircleOutlined, PlusOutlined, RobotOutlined } from '@ant-design/icons';
 import { Button, Card, Checkbox, Empty, Input, List, Space, Tag, Typography } from 'antd';
 import type { WorkbenchTodo } from '../lib/workbenchTodoStorage';
-import { formatMonthDayTime } from '@/shared/lib/dateText';
+import { formatMonthDayTime } from '@/shared/utils/dateText';
 
 interface TodoCardProps {
   todoDraft: string;

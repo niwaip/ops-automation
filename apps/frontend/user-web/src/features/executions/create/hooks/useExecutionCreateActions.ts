@@ -12,8 +12,8 @@ import {
   getDefaultScheduleName,
   normalizeInputValues,
 } from '@/features/executions/create/lib/executionCreate';
-import { formatLocalizedDateTime } from '@/shared/lib/dateText';
-import { summarizeCronExpression } from '@/shared/lib/scheduleText';
+import { formatLocalizedDateTime } from '@/shared/utils/dateText';
+import { summarizeCronExpression } from '@/shared/utils/scheduleText';
 
 interface UseExecutionCreateActionsOptions {
   form: FormInstance;

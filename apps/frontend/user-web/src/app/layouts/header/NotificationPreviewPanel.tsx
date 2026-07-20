@@ -10,7 +10,7 @@ import {
   getNotificationSeverityText,
   isExecutionStatusValue,
 } from '@ops/user-core';
-import { resolveNotificationActionPath } from '@/shared/lib/notificationNavigation';
+import { resolveNotificationActionPath } from '@/shared/utils/notificationNavigation';
 import { notificationStore } from '../../../adapters/notifications/notificationStore';
 
 type Language = 'zh-CN' | 'en-US' | 'ja-JP';

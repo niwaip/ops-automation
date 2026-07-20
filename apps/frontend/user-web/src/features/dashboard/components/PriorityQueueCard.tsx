@@ -5,7 +5,7 @@ import {
   type ExecutionDto,
   type ExecutionStatus,
 } from '@ops/user-core';
-import { formatMonthDayTime } from '@/shared/lib/dateText';
+import { formatMonthDayTime } from '@/shared/utils/dateText';
 
 const WORKBENCH_EXECUTION_TAG_COLORS: Partial<Record<ExecutionStatus, string>> = {
   human_control: 'gold',

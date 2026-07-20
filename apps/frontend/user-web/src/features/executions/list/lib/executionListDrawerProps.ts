@@ -8,7 +8,7 @@ import {
   getRuntimeSessionStatusLabel,
   isPreviewRuntimeSessionState,
 } from '@/features/executions/shared/lib/runtimeSession';
-import type { WaitingInputDisplayGroup } from '@/shared/lib/waitingInputDisplay';
+import type { WaitingInputDisplayGroup } from '@/shared/constants/waitingInputDisplay';
 
 export interface ExecutionListDetailDrawerProps {
   open: boolean;

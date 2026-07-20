@@ -11,7 +11,7 @@ import {
   normalizeRequiredInputValues,
   type RequiredInputField,
 } from '@/features/executions/create/lib/inputFields';
-import type { WaitingInputDisplayGroup } from '@/shared/lib/waitingInputDisplay';
+import type { WaitingInputDisplayGroup } from '@/shared/constants/waitingInputDisplay';
 
 const { Text } = Typography;
 

@@ -10,7 +10,7 @@ import type { RequiredInputField } from '@/features/executions/create/lib/inputF
 import {
   resolveWaitingInputDisplayLabel,
   type WaitingInputDisplayGroup,
-} from '@/shared/lib/waitingInputDisplay';
+} from '@/shared/constants/waitingInputDisplay';
 
 const { Text } = Typography;
 

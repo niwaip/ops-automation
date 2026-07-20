@@ -5,11 +5,11 @@ import ExecutionDetailSectionCard from '@/features/executions/detail/components/
 import ExecutionStatusSummaryTags from '@/features/executions/shared/components/ExecutionStatusSummaryTags';
 import { formatPhaseDisplayName } from '@/features/executions/shared/lib/phaseText';
 import { getPhaseStatusColor, getPhaseStepStatus } from '@/features/executions/shared/lib/phase';
-import { formatLocalizedDateTime } from '@/shared/lib/dateText';
+import { formatLocalizedDateTime } from '@/shared/utils/dateText';
 import {
   EXECUTION_STATUS_COLORS,
   EXECUTION_STATUS_LABELS_ZH,
-} from '@/shared/lib/executionStatusMeta';
+} from '@/shared/constants/executionStatusMeta';
 
 const { Text } = Typography;
 const statusColors = EXECUTION_STATUS_COLORS;

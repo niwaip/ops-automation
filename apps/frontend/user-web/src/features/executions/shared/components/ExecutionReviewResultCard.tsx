@@ -3,7 +3,7 @@ import { Descriptions, Typography } from 'antd';
 import type { ExecutionDto, ExecutionStatus } from '@/api/execution';
 import ExecutionDetailSectionCard from '@/features/executions/detail/components/ExecutionDetailSectionCard';
 import ExecutionStatusTag from '@/features/executions/shared/components/ExecutionStatusTag';
-import { formatLocalizedDateTime } from '@/shared/lib/dateText';
+import { formatLocalizedDateTime } from '@/shared/utils/dateText';
 
 const { Text } = Typography;
 

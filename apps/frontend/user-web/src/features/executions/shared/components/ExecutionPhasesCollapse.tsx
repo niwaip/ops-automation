@@ -15,7 +15,7 @@ import {
 import { extractWorkflowActivitySnapshotSources } from '@/features/executions/shared/lib/artifacts';
 import { formatPhaseDisplayName } from '@/features/executions/shared/lib/phaseText';
 import { getPhaseStatusColor } from '@/features/executions/shared/lib/phase';
-import { formatLocalizedDateTime } from '@/shared/lib/dateText';
+import { formatLocalizedDateTime } from '@/shared/utils/dateText';
 
 const { Text } = Typography;
 

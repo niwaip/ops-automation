@@ -15,7 +15,7 @@ import {
 import { useStore } from 'zustand';
 import { preferencesStore } from '../../../adapters/preferences/preferencesStore';
 import { useNotificationStore } from '../../../adapters/notifications/notificationStore';
-import { resolveNotificationActionPath } from '@/shared/lib/notificationNavigation';
+import { resolveNotificationActionPath } from '@/shared/utils/notificationNavigation';
 
 export function NotificationsPage() {
   const navigate = useNavigate();
