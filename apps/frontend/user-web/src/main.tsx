@@ -4,6 +4,11 @@ import { QueryClient, QueryClientProvider } from 'react-query';
 import { AntdProvider } from './app/providers/AntdProvider';
 import App from './app/App';
 import './index.css';
+import { browserI18n } from './adapters/i18n/browserI18n';
+import { preferencesStore } from './adapters/preferences/preferencesStore';
+
+// Initialize i18n synchronously before rendering to prevent React hook order issues
+browserI18n.changeLanguage(preferencesStore.getState().language);
 
 const queryClient = new QueryClient({
   defaultOptions: {

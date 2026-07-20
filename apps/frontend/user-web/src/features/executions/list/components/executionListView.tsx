@@ -15,6 +15,7 @@ import {
   listStatusLabels,
 } from '@/features/executions/list/lib/executionListView';
 import { summarizeExecutionListInput } from '@/features/executions/list/lib/listHelpers';
+import styles from '../../pages/ExecutionListPage.module.css';
 import { formatDuration } from '@/features/executions/list/lib/listView';
 import { summarizeExecutionListResult } from '@ops/user-core';
 
@@ -102,11 +103,11 @@ export const buildExecutionListColumns = ({
     key: 'execution',
     width: 188,
     render: (_: unknown, record: ExecutionDto) => (
-      <div className="execution-list-skill-cell">
+      <div className={styles['execution-list-skill-cell']}>
         <Text
           strong
           ellipsis={{ tooltip: getSkillDisplayName(record.skillId) }}
-          className="execution-list-skill-name"
+          className={styles['execution-list-skill-name']}
         >
           {getSkillDisplayName(record.skillId)}
         </Text>
@@ -121,11 +122,11 @@ export const buildExecutionListColumns = ({
     defaultSortOrder: 'descend',
     sorter: (a: ExecutionDto, b: ExecutionDto) => getExecutionTime(a) - getExecutionTime(b),
     render: (_: string | undefined, record: ExecutionDto) => (
-      <div className="execution-list-time-cell">
-        <Text className="execution-list-time-value">
+      <div className={styles['execution-list-time-cell']}>
+        <Text className={styles['execution-list-time-value']}>
           {formatCompactExecutionTime(record.startedAt || record.createdAt)}
         </Text>
-        <Text type="secondary" className="execution-list-time-duration">
+        <Text type="secondary" className={styles['execution-list-time-duration']}>
           {formatDuration(record)}
         </Text>
       </div>
@@ -149,8 +150,8 @@ export const buildExecutionListColumns = ({
     width: 292,
     ellipsis: true,
     render: (_: unknown, record: ExecutionDto) => (
-      <div className="execution-list-summary-cell">
-        <Text className="execution-list-summary-text">{summarizeExecutionListInput(record)}</Text>
+      <div className={styles['execution-list-summary-cell']}>
+        <Text className={styles['execution-list-summary-text']}>{summarizeExecutionListInput(record)}</Text>
       </div>
     ),
   },
@@ -160,8 +161,8 @@ export const buildExecutionListColumns = ({
     width: 292,
     ellipsis: true,
     render: (_: unknown, record: ExecutionDto) => (
-      <div className="execution-list-summary-cell is-result">
-        <Text className="execution-list-summary-text">{summarizeExecutionListResult(record)}</Text>
+      <div className={styles['execution-list-summary-cell is-result']}>
+        <Text className={styles['execution-list-summary-text']}>{summarizeExecutionListResult(record)}</Text>
       </div>
     ),
   },

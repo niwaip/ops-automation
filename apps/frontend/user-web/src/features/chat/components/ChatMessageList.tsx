@@ -2,6 +2,7 @@ import { Card, Empty, List, Skeleton, Typography } from 'antd';
 import type { ChatMessage } from '@ops/user-core';
 import type { MutableRefObject } from 'react';
 import { ChatMessageItem } from './ChatMessageItem';
+import styles from '../pages/ChatPage.module.css';
 
 interface ChatMessageListProps {
   actionLoadingByMessage: Record<string, 'approve' | 'reject' | undefined>;
@@ -25,17 +26,18 @@ export function ChatMessageList({
   onToggleThought,
 }: ChatMessageListProps) {
   return (
-    <Card className="user-chat-thread" styles={{ body: { paddingBottom: 8 } }}>
+    <Card className={styles['user-chat-thread']} styles={{ body: { paddingBottom: 8 } }}>
       {historyLoading && activeMessages.length === 0 ? (
-        <Skeleton active paragraph={{ rows: 8 }} />
+        <Skeleton active avatar paragraph={{ rows: 4 }} />
       ) : activeMessages.length === 0 ? (
-        <div className="user-chat-empty-state">
+        <div className={styles['user-chat-empty-state']}>
           <Empty
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
             description={
-              <div className="user-chat-empty-description">
-                <div className="user-chat-empty-title">开始一个新对话</div>
+              <div className={styles['user-chat-empty-description']}>
+                <div className={styles['user-chat-empty-title']}>开始一个新对话</div>
                 <Typography.Text type="secondary">
-                  输入你的问题、任务或补充信息，AI 会在这里持续返回结果。
+                  您可以直接提问，或者选择任务模式执行操作
                 </Typography.Text>
               </div>
             }

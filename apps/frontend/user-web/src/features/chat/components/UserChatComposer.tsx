@@ -14,6 +14,8 @@ import { apiClient, runtimeConfig } from '../../../api';
 import { authStore } from '../../../adapters/auth/authStore';
 import { supportsNativeReasoning } from '@/shared/lib/aiModelReasoning';
 
+import styles from '../pages/ChatPage.module.css';
+
 const { TextArea } = Input;
 
 const SPEECH_LANGUAGE_STORAGE_KEY = 'user-chat.speech.lang';
@@ -222,16 +224,16 @@ export function UserChatComposer(props: UserChatComposerProps) {
   }, [draft, isListening, onDraftChange, speechLanguage, stopListening]);
 
   return (
-    <div className="user-chat-input-container">
-      <div className="user-chat-input-shell">
-        <div className="user-chat-input-editor">
+    <div className={styles['user-chat-input-container']}>
+      <div className={styles['user-chat-input-shell']}>
+        <div className={styles['user-chat-input-editor']}>
           <TextArea
             ref={inputRef}
             autoSize={{ minRows: 2, maxRows: 6 }}
             value={draft}
             onChange={(event) => onDraftChange(event.target.value)}
             placeholder={placeholder}
-            className="user-chat-input-textarea"
+            className={styles['user-chat-input-textarea']}
             disabled={disabled || isTranscribing}
             onPressEnter={(event) => {
               if (!event.shiftKey) {
@@ -241,9 +243,9 @@ export function UserChatComposer(props: UserChatComposerProps) {
             }}
           />
         </div>
-        <div className="user-chat-input-toolbar">
+        <div className={styles['user-chat-input-toolbar']}>
           <Segmented
-            className={`user-chat-mode-switch mode-${chatMode}`}
+            className={`${styles['user-chat-mode-switch']} ${styles[`mode-${chatMode}`] || ''}`}
             size="small"
             value={chatMode}
             onChange={(value) => onChatModeChange(value as 'chat' | 'task')}
@@ -252,31 +254,31 @@ export function UserChatComposer(props: UserChatComposerProps) {
               { label: '任务', value: 'task', icon: <RobotOutlined /> },
             ]}
           />
-          <div className="user-chat-input-controls">
-            <div className="user-chat-control-item" title={thinkingHint}>
-              <span className="user-chat-control-label">{thinkingLabel}</span>
+          <div className={styles['user-chat-input-controls']}>
+            <div className={styles['user-chat-control-item']} title={thinkingHint}>
+              <span className={styles['user-chat-control-label']}>{thinkingLabel}</span>
               {chatMode === 'chat' && nativeReasoningSupported ? (
-                <span className="user-chat-control-badge">原生</span>
+                <span className={styles['user-chat-control-badge']}>原生</span>
               ) : null}
               <Switch
                 size="small"
                 checked={enableThinking}
                 onChange={onEnableThinkingChange}
-                className="user-chat-input-dot-switch"
+                className={styles['user-chat-input-dot-switch']}
               />
             </div>
           </div>
           <Button
             size="small"
             onClick={onNewSession}
-            className="user-chat-input-new-btn"
+            className={styles['user-chat-input-new-btn']}
             icon={<PlusOutlined />}
           >
             新建
           </Button>
           <Select
             size="small"
-            className="user-chat-input-model-select"
+            className={styles['user-chat-input-model-select']}
             style={{ minWidth: 188 }}
             value={selectedModel}
             placeholder="模型策略"
@@ -293,11 +295,11 @@ export function UserChatComposer(props: UserChatComposerProps) {
               })),
             ]}
           />
-          <div className="user-chat-input-toolbar-spacer" />
-          <Typography.Text type="secondary" className="user-chat-input-shortcut-hint">
+          <div className={styles['user-chat-input-toolbar-spacer']} />
+          <Typography.Text type="secondary" className={styles['user-chat-input-shortcut-hint']}>
             Enter 发送，Shift + Enter 换行
           </Typography.Text>
-          <div className="user-chat-input-voice-group">
+          <div className={styles['user-chat-input-voice-group']}>
             <Select
               size="small"
               value={speechLanguage}
@@ -305,7 +307,7 @@ export function UserChatComposer(props: UserChatComposerProps) {
               style={{ width: 92 }}
               options={SPEECH_LANGUAGE_OPTIONS}
               disabled={disabled || isTranscribing || isListening || !speechSupported}
-              className="user-chat-input-language-select"
+              className={styles['user-chat-input-language-select']}
             />
             <Button
               size="small"
@@ -322,7 +324,7 @@ export function UserChatComposer(props: UserChatComposerProps) {
                     : '开始语音输入'
                   : '当前浏览器不支持语音输入'
               }
-              className={`user-chat-input-voice-btn ${isListening ? 'active' : ''}`}
+              className={`${styles['user-chat-input-voice-btn']}${isListening ? ` ${styles.active}` : ''}`}
             >
               {isListening ? '录音中' : isTranscribing ? '转写中' : '语音'}
             </Button>

@@ -34,7 +34,7 @@ import {
   resolveMessageTaskStatus,
 } from '../lib/taskStatus';
 import '../ChatMessage.css';
-import './ChatPage.css';
+import styles from './ChatPage.module.css';
 
 const resolveDefaultChatModel = (models: AIModel[]): AIModel | null => {
   if (!models.length) {
@@ -257,14 +257,14 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
   );
 
   return (
-    <div className={`user-chat-page${embedded ? ' embedded' : ''}`}>
+    <div className={`${styles['user-chat-page']}${embedded ? ` ${styles.embedded}` : ''}`}>
       {!embedded && isSessionListCollapsed ? (
-        <div className="user-chat-sidebar-rail">
+        <div className={styles['user-chat-sidebar-rail']}>
           <Button
             type="text"
             icon={<MenuUnfoldOutlined />}
             onClick={() => setIsSessionListCollapsed(false)}
-            className="user-chat-sidebar-toggle"
+            className={styles['user-chat-sidebar-toggle']}
             title="展开会话管理"
           />
           <Button
@@ -290,7 +290,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
         />
       ) : null}
 
-      <div className="user-chat-main">
+      <div className={styles['user-chat-main']}>
         <ChatStatusAlerts
           embedded={embedded}
           modelsError={modelsQuery.error}
@@ -299,7 +299,7 @@ export function ChatPage({ embedded = false }: ChatPageProps) {
           pageError={error}
         />
 
-        <div className={`user-chat-window-shell${embedded ? ' embedded' : ''}`}>
+        <div className={`${styles['user-chat-window-shell']}${embedded ? ` ${styles.embedded}` : ''}`}>
           <ChatMessageList
             actionLoadingByMessage={actionLoadingByMessage}
             activeMessages={activeMessages}

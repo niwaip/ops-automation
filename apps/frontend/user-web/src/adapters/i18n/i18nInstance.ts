@@ -83,4 +83,7 @@ export const initI18n = (language: SupportedLanguage = DEFAULT_LANGUAGE): typeof
   return i18n;
 };
 
+// Initialize synchronously on module load
+initI18n(DEFAULT_LANGUAGE);
+
 export default i18n;

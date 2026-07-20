@@ -14,11 +14,14 @@ import {
   getStatusTagColor,
   resolveMessageTaskStatus,
 } from '../lib/taskStatus';
+import { toStructuredResultText } from '../lib/messageDisplay';
+import { resolveTaskParts } from '@chat-web/lib/contentParts';
 import {
   hasTaskOutcomeContent,
   TaskOutcomeBlock,
   TaskProgressBlock,
 } from './TaskMessageBlocks';
+import styles from '../pages/ChatPage.module.css';
 
 interface ChatMessageItemProps {
   message: ChatMessage;
@@ -49,12 +52,21 @@ export function ChatMessageItem({
       ['text', 'markdown', 'structured_result', 'deeplink', 'file_ref'].includes(part.type)
     )
   );
+  const taskParts = resolveTaskParts(message.contentParts);
+  const structuredResult = toStructuredResultText(
+    message.metadata?.normalizedResult?.structuredData ??
+      message.metadata?.finalResultData ??
+      taskParts.structuredResultData
+  );
+
   const taskSummaryCandidates = [
     message.metadata?.finalSummary?.trim(),
     message.metadata?.normalizedResult?.summary?.trim(),
     message.metadata?.resultTitle?.trim(),
     message.metadata?.finalResult?.trim(),
     message.metadata?.errorMessage?.trim(),
+    message.metadata?.failureReason?.trim(),
+    structuredResult?.trim(),
   ].filter((item): item is string => Boolean(item));
   const contentThoughtLogs = message.role === 'assistant' ? parsedContent.thoughts : [];
   const persistedThoughtLogs = message.metadata?.thoughtLogsSnapshot || [];
@@ -96,13 +108,22 @@ export function ChatMessageItem({
           normalizeComparableMessageText(plainContent) === normalizeComparableMessageText(item)
       )
   );
+  const isToolExecutionTask = Boolean(
+    message.metadata?.mode === 'task' &&
+      hasTaskCard &&
+      (message.metadata?.skillUsed === 'tool_execution' ||
+        message.metadata?.skillUsed === 'flow_execute' ||
+        message.metadata?.skillUsed === 'skill-match')
+  );
+
   const shouldShowMessageContent = Boolean(
     (hasRenderableContentParts ||
       (plainContent &&
         !hasDuplicatedTaskSummary &&
         plainContent !== message.metadata?.finalResult?.trim() &&
         plainContent !== message.metadata?.errorMessage?.trim())) &&
-      !(message.metadata?.mode === 'task' && hasProgressLogs)
+      !(message.metadata?.mode === 'task' && hasProgressLogs) &&
+      !(isToolExecutionTask && !hasRenderableContentParts)
   );
   const usage = message.metadata?.usage;
   const rateLimit = message.metadata?.rateLimit;
@@ -128,9 +149,9 @@ export function ChatMessageItem({
   };
 
   return (
-    <List.Item key={message.id} className={`user-chat-message-row role-${message.role}`}>
-      <div className={`user-chat-message-stack role-${message.role}`}>
-        <div className={`user-chat-message-bubble role-${message.role}`}>
+    <List.Item key={message.id} className={`${styles['user-chat-message-row']} ${styles[`role-${message.role}`] || ''}`}>
+      <div className={`${styles['user-chat-message-stack']} ${styles[`role-${message.role}`] || ''}`}>
+        <div className={`${styles['user-chat-message-bubble']} ${styles[`role-${message.role}`] || ''}`}>
           {shouldPinCollapsedThoughts || shouldPinFinishedTaskThoughts ? thoughtPanel : null}
           {hasTaskCard ? (
             <TaskOutcomeBlock
@@ -143,7 +164,7 @@ export function ChatMessageItem({
           <TaskProgressBlock message={message} />
           {!(shouldPinCollapsedThoughts || shouldPinFinishedTaskThoughts) ? thoughtPanel : null}
           {shouldShowMessageContent ? (
-            <div className="user-chat-message-content">
+            <div className={styles['user-chat-message-content']}>
               {hasRenderableContentParts ? (
                 <SharedContentPartsRenderer
                   parts={message.contentParts}
@@ -161,35 +182,35 @@ export function ChatMessageItem({
             </div>
           ) : null}
         </div>
-        <div className={`user-chat-message-footer role-${message.role}`}>
-          <div className={`user-chat-message-meta role-${message.role}`}>
-            <span className="user-chat-message-meta-item user-chat-message-meta-identity">
+        <div className={`${styles['user-chat-message-footer']} ${styles[`role-${message.role}`] || ''}`}>
+          <div className={`${styles['user-chat-message-meta']} ${styles[`role-${message.role}`] || ''}`}>
+            <span className={`${styles['user-chat-message-meta-item']} ${styles['user-chat-message-meta-identity']}`}>
               <Avatar
                 icon={message.role === 'user' ? <UserOutlined /> : <RobotOutlined />}
-                className={`user-chat-message-avatar inline ${message.role}`}
+                className={`${styles['user-chat-message-avatar']} ${styles.inline} ${styles[message.role] || ''}`}
               />
-              <span className="user-chat-message-meta-time">
+              <span className={styles['user-chat-message-meta-time']}>
                 <ClockCircleOutlined />
                 <span>{formatMessageTimestamp(message.timestamp)}</span>
               </span>
             </span>
             {message.isStreaming ? (
-              <span className="user-chat-message-meta-item user-chat-message-meta-status status-processing">
+              <span className={`${styles['user-chat-message-meta-item']} ${styles['user-chat-message-meta-status']} ${styles['status-processing']}`}>
                 <LoadingOutlined spin />
                 <span>生成中</span>
               </span>
             ) : null}
-            {statusLabel && statusColor ? (
+            {statusLabel && statusColor && !(message.isStreaming && statusLabel === '进行中') ? (
               <span
-                className={`user-chat-message-meta-item user-chat-message-meta-status status-${statusColor}`}
+                className={`${styles['user-chat-message-meta-item']} ${styles['user-chat-message-meta-status']} ${styles[`status-${statusColor}`] || ''}`}
               >
-                <span className="user-chat-message-status-dot" />
+                <span className={styles['user-chat-message-status-dot']} />
                 <span>{statusLabel}</span>
               </span>
             ) : null}
           </div>
           {showMessageActions ? (
-            <div className="user-chat-message-actions">
+            <div className={styles['user-chat-message-actions']}>
               <SharedChatMessageActions
                 usage={usage}
                 onCopy={() => {
@@ -198,12 +219,12 @@ export function ChatMessageItem({
                 extraContent={
                   <>
                     {rateLimit?.requests_remaining !== undefined ? (
-                      <Typography.Text type="secondary" className="user-chat-usage-text">
+                      <Typography.Text type="secondary" className={styles['user-chat-usage-text']}>
                         请求剩余: {rateLimit.requests_remaining}
                       </Typography.Text>
                     ) : null}
                     {rateLimit?.tokens_remaining !== undefined ? (
-                      <Typography.Text type="secondary" className="user-chat-usage-text">
+                      <Typography.Text type="secondary" className={styles['user-chat-usage-text']}>
                         Token 剩余: {rateLimit.tokens_remaining}
                       </Typography.Text>
                     ) : null}

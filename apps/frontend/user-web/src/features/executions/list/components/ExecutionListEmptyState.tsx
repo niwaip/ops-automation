@@ -1,4 +1,5 @@
 import React from 'react';
+import styles from '../../pages/ExecutionListPage.module.css';
 import { Button, Empty, Space } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 
@@ -18,7 +19,7 @@ const ExecutionListEmptyState: React.FC<ExecutionListEmptyStateProps> = ({
   onClearFilters,
 }) => {
   return (
-    <div className="execution-list-empty-state">
+    <div className={styles['execution-list-empty-state']}>
       <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={description}>
         <Space wrap size={12} style={{ justifyContent: 'center' }}>
           <Button type="primary" icon={<PlusOutlined />} onClick={onCreate}>

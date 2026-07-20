@@ -36,7 +36,7 @@ import {
 } from '../lib/workbenchHandledExecutionStorage';
 import { formatMonthDayTime } from '@/shared/utils/dateText';
 import { summarizeCronExpression } from '@/shared/utils/scheduleText';
-import './DashboardPage.css';
+import styles from './DashboardPage.module.css';
 
 const sanitizeDisplayName = (value?: string): string => {
   if (!value) {
@@ -156,51 +156,51 @@ export function DashboardPage() {
   };
 
   return (
-    <div className="workbench-page">
-      <Card className="workbench-hero" styles={{ body: { padding: 24 } }}>
-        <div className="workbench-hero-content">
-          <div className="workbench-hero-top">
+    <div className={styles['workbench-page']}>
+      <Card className={styles['workbench-hero']} styles={{ body: { padding: 24 } }}>
+        <div className={styles['workbench-hero-content']}>
+          <div className={styles['workbench-hero-top']}>
             <Space direction="vertical" size={12} style={{ width: '100%', display: 'flex' }}>
-              <div className="workbench-hero-heading">
-                <Typography.Title level={2} className="workbench-hero-title">
+              <div className={styles['workbench-hero-heading']}>
+                <Typography.Title level={2} className={styles['workbench-hero-title']}>
                   今天的任务、执行与总结，一屏掌握
                 </Typography.Title>
               </div>
-              <div className="workbench-summary-strip">
-                <div className="workbench-summary-item is-danger">
-                  <div className="workbench-summary-icon">
+              <div className={styles['workbench-summary-strip']}>
+                <div className={`${styles['workbench-summary-item']} ${styles['is-danger']}`}>
+                  <div className={styles['workbench-summary-icon']}>
                     <ClockCircleOutlined />
                   </div>
-                  <div className="workbench-summary-body">
-                    <span className="workbench-summary-key">待处理</span>
-                    <span className="workbench-summary-number">{manualQueue.length}</span>
+                  <div className={styles['workbench-summary-body']}>
+                    <span className={styles['workbench-summary-key']}>待处理</span>
+                    <span className={styles['workbench-summary-number']}>{manualQueue.length}</span>
                   </div>
                 </div>
-                <div className="workbench-summary-item is-primary">
-                  <div className="workbench-summary-icon">
+                <div className={`${styles['workbench-summary-item']} ${styles['is-primary']}`}>
+                  <div className={styles['workbench-summary-icon']}>
                     <CheckOutlined />
                   </div>
-                  <div className="workbench-summary-body">
-                    <span className="workbench-summary-key">今日完成</span>
-                    <span className="workbench-summary-number">{todayCompletedExecutions.length}</span>
+                  <div className={styles['workbench-summary-body']}>
+                    <span className={styles['workbench-summary-key']}>今日完成</span>
+                    <span className={styles['workbench-summary-number']}>{todayCompletedExecutions.length}</span>
                   </div>
                 </div>
-                <div className="workbench-summary-item is-accent">
-                  <div className="workbench-summary-icon">
+                <div className={`${styles['workbench-summary-item']} ${styles['is-accent']}`}>
+                  <div className={styles['workbench-summary-icon']}>
                     <ArrowRightOutlined />
                   </div>
-                  <div className="workbench-summary-body">
-                    <span className="workbench-summary-key">本周完成</span>
-                    <span className="workbench-summary-number">{weekCompletedExecutions.length}</span>
+                  <div className={styles['workbench-summary-body']}>
+                    <span className={styles['workbench-summary-key']}>本周完成</span>
+                    <span className={styles['workbench-summary-number']}>{weekCompletedExecutions.length}</span>
                   </div>
                 </div>
-                <div className="workbench-summary-item is-neutral">
-                  <div className="workbench-summary-icon">
+                <div className={`${styles['workbench-summary-item']} ${styles['is-neutral']}`}>
+                  <div className={styles['workbench-summary-icon']}>
                     <PlayCircleOutlined />
                   </div>
-                  <div className="workbench-summary-body">
-                    <span className="workbench-summary-key-row">
-                      <span className="workbench-summary-key">定期执行</span>
+                  <div className={styles['workbench-summary-body']}>
+                    <span className={styles['workbench-summary-key-row']}>
+                      <span className={styles['workbench-summary-key']}>定期执行</span>
                       <Popover
                         trigger={['hover']}
                         placement="bottomLeft"
@@ -209,9 +209,9 @@ export function DashboardPage() {
                           upcomingSchedules.length === 0 ? (
                             <Typography.Text type="secondary">当前没有启用中的定期任务</Typography.Text>
                           ) : (
-                            <div className="workbench-summary-popover-list">
+                            <div className={styles['workbench-summary-popover-list']}>
                               {upcomingSchedules.map((item) => (
-                                <div className="workbench-summary-popover-item" key={item.id}>
+                                <div className={styles['workbench-summary-popover-item']} key={item.id}>
                                   <Typography.Text strong>{sanitizeDisplayName(item.name)}</Typography.Text>
                                   <Typography.Text type="secondary">
                                     {summarizeCronExpression(item.cronExpression, { workdaysLabel: '工作日' })} · {formatMonthDayTime(item.nextRunAt)}
@@ -222,19 +222,19 @@ export function DashboardPage() {
                           )
                         }
                       >
-                        <InfoCircleOutlined className="workbench-summary-tip" />
+                        <InfoCircleOutlined className={styles['workbench-summary-tip']} />
                       </Popover>
                     </span>
-                    <span className="workbench-summary-number">{activeSchedules.length}</span>
+                    <span className={styles['workbench-summary-number']}>{activeSchedules.length}</span>
                   </div>
                 </div>
-                <div className="workbench-summary-item is-success">
-                  <div className="workbench-summary-icon">
+                <div className={`${styles['workbench-summary-item']} ${styles['is-success']}`}>
+                  <div className={styles['workbench-summary-icon']}>
                     <PlusOutlined />
                   </div>
-                  <div className="workbench-summary-body">
-                    <span className="workbench-summary-key">待办</span>
-                    <span className="workbench-summary-number">{todoSummary.pending}</span>
+                  <div className={styles['workbench-summary-body']}>
+                    <span className={styles['workbench-summary-key']}>待办</span>
+                    <span className={styles['workbench-summary-number']}>{todoSummary.pending}</span>
                   </div>
                 </div>
               </div>
@@ -243,8 +243,8 @@ export function DashboardPage() {
         </div>
       </Card>
 
-      <Row gutter={[20, 20]} className="workbench-layout">
-        <Col xs={24} md={10} className="workbench-column">
+      <Row gutter={[20, 20]} className={styles['workbench-layout']}>
+        <Col xs={24} md={10} className={styles['workbench-column']}>
           <Space direction="vertical" size={20} style={{ width: '100%' }}>
             <PriorityQueueCard
               items={priorityQueueDisplay}
@@ -266,7 +266,7 @@ export function DashboardPage() {
           </Space>
         </Col>
 
-        <Col xs={24} md={14} className="workbench-column">
+        <Col xs={24} md={14} className={styles['workbench-column']}>
           <Space direction="vertical" size={20} style={{ width: '100%' }}>
             <TodoCard
               todoDraft={todoDraft}

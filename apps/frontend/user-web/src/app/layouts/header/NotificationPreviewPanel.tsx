@@ -12,6 +12,7 @@ import {
 } from '@ops/user-core';
 import { resolveNotificationActionPath } from '@/shared/utils/notificationNavigation';
 import { notificationStore } from '../../../adapters/notifications/notificationStore';
+import styles from '../UserLayout.module.css';
 
 type Language = 'zh-CN' | 'en-US' | 'ja-JP';
 
@@ -41,7 +42,7 @@ export function NotificationPreviewPanel({ language }: NotificationPreviewPanelP
 
   return (
     <div
-      className="user-shell-notification-panel"
+      className={styles['user-shell-notification-panel']}
       style={{
         width: 360,
         maxWidth: 'calc(100vw - 32px)',
@@ -93,7 +94,7 @@ export function NotificationPreviewPanel({ language }: NotificationPreviewPanelP
               <button
                 key={item.id}
                 type="button"
-                className={`user-shell-notification-item${item.unread ? ' is-unread' : ''}`}
+                className={`${styles['user-shell-notification-item']}${item.unread ? ` ${styles['is-unread']}` : ''}`}
                 onClick={() => {
                   markAsRead(item.id);
                   navigate(

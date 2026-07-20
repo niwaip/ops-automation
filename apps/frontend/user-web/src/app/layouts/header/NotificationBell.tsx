@@ -3,6 +3,7 @@ import { Badge, Button, Dropdown } from 'antd';
 import { useStore } from 'zustand';
 import { notificationStore } from '../../../adapters/notifications/notificationStore';
 import { NotificationPreviewPanel } from './NotificationPreviewPanel';
+import styles from '../UserLayout.module.css';
 
 type Language = 'zh-CN' | 'en-US' | 'ja-JP';
 
@@ -29,7 +30,7 @@ export function NotificationBell({ language }: NotificationBellProps) {
     >
       <Button
         type="text"
-        className="user-shell-header-icon-button user-shell-notification-button"
+        className={`${styles['user-shell-header-icon-button']} ${styles['user-shell-notification-button']}`}
         icon={
           <Badge count={unreadNotificationCount} size="small" overflowCount={99}>
             <BellOutlined />

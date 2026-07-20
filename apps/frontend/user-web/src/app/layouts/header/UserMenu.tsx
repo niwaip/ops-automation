@@ -3,6 +3,7 @@ import { Avatar, Dropdown, Tag, Typography } from 'antd';
 import { useState } from 'react';
 import { useStore } from 'zustand';
 import { authStore } from '../../../adapters/auth/authStore';
+import styles from '../UserLayout.module.css';
 
 type Language = 'zh-CN' | 'en-US' | 'ja-JP';
 type UserRole = 'employee' | 'admin' | 'agent';
@@ -71,18 +72,18 @@ export function UserMenu({ language }: UserMenuProps) {
       placement="bottomRight"
       trigger={['click']}
       popupRender={() => (
-        <div className="user-shell-user-menu">
-          <div className="user-shell-user-menu-card">
+        <div className={styles['user-shell-user-menu']}>
+          <div className={styles['user-shell-user-menu-card']}>
             <Avatar
               size={44}
-              className="user-shell-user-menu-avatar"
+              className={styles['user-shell-user-menu-avatar']}
               icon={!user ? <UserOutlined /> : undefined}
             >
               {user ? userInitial : null}
             </Avatar>
-            <div className="user-shell-user-menu-body">
-              <div className="user-shell-user-menu-title">
-                <Typography.Text strong className="user-shell-user-menu-name">
+            <div className={styles['user-shell-user-menu-body']}>
+              <div className={styles['user-shell-user-menu-title']}>
+                <Typography.Text strong className={styles['user-shell-user-menu-name']}>
                   {user?.username || '未登录'}
                 </Typography.Text>
                 {user && currentRoleLabel ? (
@@ -91,13 +92,13 @@ export function UserMenu({ language }: UserMenuProps) {
                   </Tag>
                 ) : null}
               </div>
-              <Typography.Text type="secondary" className="user-shell-user-menu-secondary">
+              <Typography.Text type="secondary" className={styles['user-shell-user-menu-secondary']}>
                 {userSecondaryText}
               </Typography.Text>
               {user ? (
                 <Typography.Text
                   type="secondary"
-                  className="user-shell-user-menu-secondary"
+                  className={`${styles['user-shell-user-menu-secondary']} ${styles['user-shell-user-menu-id']}`}
                 >
                   {language === 'en-US'
                     ? `Account status · ${accountStatusLabel}`
@@ -108,18 +109,18 @@ export function UserMenu({ language }: UserMenuProps) {
               ) : null}
             </div>
           </div>
-          <div className="user-shell-user-menu-section">
+          <div className={styles['user-shell-user-menu-section']}>
             <button
               type="button"
-              className="user-shell-user-menu-action danger"
+              className={`${styles['user-shell-user-menu-action']} ${styles.danger}`}
               onClick={handleLogout}
             >
-              <span className="user-shell-user-menu-action-icon">
+              <span className={styles['user-shell-user-menu-action-icon']}>
                 <LogoutOutlined />
               </span>
-              <span className="user-shell-user-menu-action-copy">
-                <span className="user-shell-user-menu-action-title">退出登录</span>
-                <span className="user-shell-user-menu-action-description">
+              <span className={styles['user-shell-user-menu-action-copy']}>
+                <span className={styles['user-shell-user-menu-action-title']}>退出登录</span>
+                <span className={styles['user-shell-user-menu-action-description']}>
                   清除当前会话并返回登录页
                 </span>
               </span>
@@ -128,19 +129,19 @@ export function UserMenu({ language }: UserMenuProps) {
         </div>
       )}
     >
-      <button type="button" className="user-shell-user">
+      <button type="button" className={styles['user-shell-user']}>
         <Avatar
           size={36}
-          className="user-shell-user-avatar"
+          className={styles['user-shell-user-avatar']}
           icon={!user ? <UserOutlined /> : undefined}
         >
           {user ? userInitial : null}
         </Avatar>
-        <span className="user-shell-user-meta">
-          <span className="user-shell-user-name">{user?.username || '未登录'}</span>
-          <span className="user-shell-user-secondary">{userSecondaryText}</span>
+        <span className={styles['user-shell-user-meta']}>
+          <span className={styles['user-shell-user-name']}>{user?.username || '未登录'}</span>
+          <span className={styles['user-shell-user-secondary']}>{userSecondaryText}</span>
         </span>
-        <DownOutlined className="user-shell-user-chevron" />
+        <DownOutlined className={styles['user-shell-user-chevron']} />
       </button>
     </Dropdown>
   );
