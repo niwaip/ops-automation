@@ -15,9 +15,9 @@ describe('shouldShowCurrentExecutionPhaseInfo', () => {
   });
 
   it('should return false for other statuses', () => {
-    expect(shouldShowCurrentExecutionPhaseInfo('pending')).toBe(false);
+    expect(shouldShowCurrentExecutionPhaseInfo('pending' as any)).toBe(false);
     expect(shouldShowCurrentExecutionPhaseInfo('waiting_input')).toBe(false);
-    expect(shouldShowCurrentExecutionPhaseInfo('waiting_approval')).toBe(false);
+    expect(shouldShowCurrentExecutionPhaseInfo('waiting_approval' as any)).toBe(false);
     expect(shouldShowCurrentExecutionPhaseInfo('cancelled')).toBe(false);
     expect(shouldShowCurrentExecutionPhaseInfo('succeeded')).toBe(false);
   });
@@ -32,7 +32,7 @@ describe('shouldShowExecutionSummary', () => {
 
   it('should return false for non-terminal statuses', () => {
     expect(shouldShowExecutionSummary('running')).toBe(false);
-    expect(shouldShowExecutionSummary('pending')).toBe(false);
+    expect(shouldShowExecutionSummary('pending' as any)).toBe(false);
   });
 });
 

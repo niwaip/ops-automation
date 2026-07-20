@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { CloseOutlined, MessageOutlined } from '@ant-design/icons';
+import { CloseOutlined } from '@ant-design/icons';
 import { Badge, Button, Skeleton } from 'antd';
 import { useChatStore } from '@/features/chat';
 import styles from './UserChatWidget.module.css';

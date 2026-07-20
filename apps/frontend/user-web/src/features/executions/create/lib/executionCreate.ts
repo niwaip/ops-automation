@@ -1,4 +1,4 @@
-import type { CreateScheduleRequest, ScheduleDto, UpdateScheduleRequest } from '@/api/schedules';
+import type { CreateScheduleRequest, UpdateScheduleRequest } from '@/api/schedules';
 import type { SkillParamsSchema } from '@/api/skill';
 
 export type SchemaField = {
