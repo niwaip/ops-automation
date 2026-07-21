@@ -1,0 +1,14 @@
+.execution-create-page,
+.execution-create-page :global(.execution-create-scroll-region),
+.execution-create-page :global(.execution-create-form-card) :global(.ant-card-body) {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.execution-create-page::-webkit-scrollbar,
+.execution-create-page :global(.execution-create-scroll-region)::-webkit-scrollbar,
+.execution-create-page :global(.execution-create-form-card) :global(.ant-card-body)::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
