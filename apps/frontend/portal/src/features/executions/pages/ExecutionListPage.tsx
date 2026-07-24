@@ -59,32 +59,32 @@ import { capabilityReleaseApi } from '@/api/capabilities';
 import { useChatStore } from '@/features/chat';
 import { ListSectionHeader } from '@/components/page/PageScaffold';
 import LiveSessionPreviewCard from '@/components/runtime/LiveSessionPreviewCard';
-import InlineRecoveryPanel from '@/features/executions/components/InlineRecoveryPanel';
-import { RECOVERY_COPY } from '@/features/executions/components/recoveryOptions';
+import InlineRecoveryPanel from '@/features/executions/shared/InlineRecoveryPanel';
+import { RECOVERY_COPY } from '@/features/executions/shared/recoveryOptions';
 import {
   extractBrowserExecutionResult,
   hasBrowserExecutionEvidence,
-} from '@/features/executions/lib/browser';
+} from '@/features/executions/shared/browser';
 import {
   extractPhaseStepImageSources,
   extractPhaseStepUrl,
   extractWorkflowActivitySnapshotSources,
   sortExecutionPhaseArtifactsByTime,
   sortExecutionPhaseStepsByTime,
-} from '@/features/executions/lib/artifacts';
-import { hasMeaningfulExecutionResult, tryParseJsonValue } from '@/features/executions/lib/common';
-import { beautifyText } from '@/features/executions/lib/detailView';
+} from '@/features/executions/shared/artifacts';
+import { hasMeaningfulExecutionResult, tryParseJsonValue } from '@/features/executions/shared/common';
+import { beautifyText } from '@/features/executions/detail/detailView';
 import {
   normalizeRequiredInputValues,
   renderRequiredInputField,
   type RequiredInputField,
-} from '@/features/executions/lib/inputFields';
+} from '@/features/executions/create/inputFields';
 import {
   buildAiResumeDraft,
   extractExecutionDisplayInput,
   summarizeExecutionListInput,
-} from '@/features/executions/lib/listHelpers';
-import { buildExecutionLoopSummary } from '@/features/executions/lib/executionSummary';
+} from '@/features/executions/list/listHelpers';
+import { buildExecutionLoopSummary } from '@/features/executions/shared/executionSummary';
 import {
   formatDateTime,
   formatDuration,
@@ -93,20 +93,20 @@ import {
   getRiskBadgeStyle,
   getStepStatusColor,
   summarizeSteps,
-} from '@/features/executions/lib/listView';
+} from '@/features/executions/list/listView';
 import {
   compareExecutionPhasesByTime,
   compareExecutionPhases,
   getPhaseStatusColor,
   getPhaseStepStatus,
-} from '@/features/executions/lib/phase';
-import { renderJsonValue } from '@/features/executions/lib/json';
+} from '@/features/executions/shared/phase';
+import { renderJsonValue } from '@/features/executions/shared/json';
 import {
   getRuntimeSessionNovncUrl,
   getRuntimeSessionStatusLabel,
   isLiveRuntimeSessionState,
   isPreviewRuntimeSessionState,
-} from '@/features/executions/lib/runtimeSession';
+} from '@/features/executions/shared/runtimeSession';
 import { replaceLocalhostWithCurrentHost } from '@/shared/lib/publicUrl';
 import {
   EXECUTION_ACTIVE_POLLING_STATUSES,

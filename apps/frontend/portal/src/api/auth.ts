@@ -8,7 +8,7 @@ import {
   type RoleDto,
   type UserDto,
 } from '@ops/user-core';
-import { apiClient } from './client';
+import { apiClient } from '@/shared/api/http/client';
 
 export interface UserListResponse {
   users: UserDto[];

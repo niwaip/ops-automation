@@ -12,7 +12,7 @@ import type { AIProviderConfig, AIProviderSummary } from '@/api/ai';
 import { aiModelApi } from '@/api/ai';
 import { useMutation, useQueryClient } from 'react-query';
 
-const { Paragraph, Text } = Typography;
+const { Text } = Typography;
 
 type ScopeTagMeta = Record<string, { label: string; color: string }>;
 
@@ -81,9 +81,9 @@ interface ProviderGovernanceCardGridProps {
   selectedProvider: string | null;
   providerNames: Record<string, string>;
   scopeTagMeta: ScopeTagMeta;
-  healthCheckingId?: string;
+  healthCheckingId?: string | null;
   onSelectProvider: (provider: string) => void;
-  onCheckHealth: (providerConfigId: string) => void;
+  onCheckHealth?: (providerConfigId: string) => void;
   onEditProvider: (providerConfig: AIProviderConfig) => void;
   onAppendModel: (providerConfig: AIProviderConfig, summary?: AIProviderSummary) => void;
 }
@@ -94,9 +94,7 @@ const ProviderGovernanceCardGrid: React.FC<ProviderGovernanceCardGridProps> = ({
   selectedProvider,
   providerNames,
   scopeTagMeta,
-  healthCheckingId,
   onSelectProvider,
-  onCheckHealth,
   onEditProvider,
   onAppendModel,
 }) => {

@@ -3,7 +3,7 @@
  * 执行流程模板API客户端
  */
 
-import apiClient from './client';
+import apiClient from '@/shared/api/http/client';
 
 // Step types supported by execution flow
 export type StepType = 'text' | 'script' | 'tool' | 'api' | 'llm' | 'validator';

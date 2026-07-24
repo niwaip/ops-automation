@@ -5,7 +5,6 @@
 
 import React from 'react';
 import { Button, Badge } from 'antd';
-import { MessageOutlined } from '@ant-design/icons';
 import { useChatStore } from './chatStore';
 import ChatWindow from './ChatWindow';
 import './ChatWidget.css';

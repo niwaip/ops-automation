@@ -26,7 +26,7 @@ const MessageContentRenderer: React.FC<MessageContentRendererProps> = ({
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          code: ({ className, children, ...props }) => {
+          code: ({ className, children, ...props }: React.ComponentPropsWithoutRef<'code'> & { className?: string }) => {
             const match = /language-(\w+)/.exec(className || '');
             return match ? (
               <pre className={`code-block language-${match[1]}`}>
@@ -38,7 +38,7 @@ const MessageContentRenderer: React.FC<MessageContentRendererProps> = ({
               </code>
             );
           },
-          table: ({ children }) => (
+          table: ({ children }: { children?: React.ReactNode }) => (
             <div className="markdown-table-wrapper">
               <table>{children}</table>
             </div>

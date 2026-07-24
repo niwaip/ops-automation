@@ -663,7 +663,7 @@ export class TemporalWorkflowCodegenService {
           modelId: 'default',
           prompt,
         },
-        { timeout: 180000 }
+        { timeout: 360000 }
       );
       onProgress?.(`[${new Date().toISOString()}] AI 已返回候选代码，开始提取与静态检查`);
 

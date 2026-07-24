@@ -1,5 +1,5 @@
 import { createSkillApi } from '@ops/user-core';
-import { apiClient } from './client';
+import { apiClient } from '@/shared/api/http/client';
 import { ExecutionFlowStep } from './flows';
 import { useAuthStore } from '@/shared/store/authStore';
 

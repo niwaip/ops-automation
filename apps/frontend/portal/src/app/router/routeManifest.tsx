@@ -12,35 +12,37 @@ import {
   ToolOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import LoginPage from '@/features/auth/pages/LoginPage';
-import SessionListPage from '@/features/sessions/pages/SessionListPage';
-import SessionStartPage from '@/features/sessions/pages/SessionStartPage';
-import SessionDetailPage from '@/features/sessions/pages/SessionDetailPage';
-import TemplateListPage from '@/features/browser-templates/pages/TemplateListPage';
-import TemplateDetailPage from '@/features/browser-templates/pages/TemplateDetailPage';
-import RecorderPage from '@/features/recorder/pages/RecorderPage';
-import RecorderDebugDetailPage from '@/features/recorder/pages/RecorderDebugDetailPage';
-import UserAdminPage from '@/features/admin/users/pages/UserAdminPage';
-import AIModelAdminPage from '@/features/admin/models/pages/AIModelAdminPage';
-import SkillAdminPage from '@/features/admin/skills/pages/SkillAdminPage';
-import BrowserSemanticRuleAdminPage from '@/features/admin/browser-semantics/pages/BrowserSemanticRuleAdminPage';
-import SystemToolAdminPage from '@/features/admin/tools/pages/SystemToolAdminPage';
-import PromptDebugPage from '@/features/admin/prompt-debug/pages/PromptDebugPage';
-import FlowsPage from '@/features/admin/flows/pages/FlowsPage';
-import TemporalPage from '@/features/admin/temporal/pages/TemporalPage';
-import ActivityPage from '@/features/admin/activities/pages/ActivityPage';
-import CapabilitiesPage from '@/features/admin/capabilities/pages/CapabilitiesPage';
-import CapabilityStudioPage from '@/features/admin/capabilities/pages/CapabilityStudioPage';
-import CapabilityBuildDetailPage from '@/features/admin/capabilities/pages/CapabilityBuildDetailPage';
-import CarboneTemplateListPage from '@/features/carbone-templates/pages/CarboneTemplateListPage';
-import DashboardPage from '@/features/dashboard/pages/DashboardPage';
-import ExecutionCreatePage from '@/features/executions/pages/ExecutionCreatePage';
-import ExecutionDetailPage from '@/features/executions/pages/ExecutionDetailPage';
-import ExecutionListPage from '@/features/executions/pages/ExecutionListPage';
-import ReportDetailPage from '@/features/reports/pages/ReportDetailPage';
-import ReportListPage from '@/features/reports/pages/ReportListPage';
+import { lazy } from 'react';
 import UserWebRedirectPage from '@/app/router/UserWebRedirectPage';
 import userRoutePolicy from '@/app/router/userRoutePolicy.json';
+
+const LoginPage = lazy(() => import('@/features/auth/pages/LoginPage'));
+const SessionListPage = lazy(() => import('@/features/sessions/pages/SessionListPage'));
+const SessionStartPage = lazy(() => import('@/features/sessions/pages/SessionStartPage'));
+const SessionDetailPage = lazy(() => import('@/features/sessions/pages/SessionDetailPage'));
+const TemplateListPage = lazy(() => import('@/features/browser-templates/pages/TemplateListPage'));
+const TemplateDetailPage = lazy(() => import('@/features/browser-templates/pages/TemplateDetailPage'));
+const RecorderPage = lazy(() => import('@/features/recorder/pages/RecorderPage'));
+const RecorderDebugDetailPage = lazy(() => import('@/features/recorder/pages/RecorderDebugDetailPage'));
+const UserAdminPage = lazy(() => import('@/features/admin/users/pages/UserAdminPage'));
+const AIModelAdminPage = lazy(() => import('@/features/admin/models/pages/AIModelAdminPage'));
+const SkillAdminPage = lazy(() => import('@/features/admin/skills/pages/SkillAdminPage'));
+const BrowserSemanticRuleAdminPage = lazy(() => import('@/features/admin/browser-semantics/pages/BrowserSemanticRuleAdminPage'));
+const SystemToolAdminPage = lazy(() => import('@/features/admin/tools/pages/SystemToolAdminPage'));
+const PromptDebugPage = lazy(() => import('@/features/admin/prompt-debug/pages/PromptDebugPage'));
+const FlowsPage = lazy(() => import('@/features/admin/flows/pages/FlowsPage'));
+const TemporalPage = lazy(() => import('@/features/admin/temporal/pages/TemporalPage'));
+const ActivityPage = lazy(() => import('@/features/admin/activities/pages/ActivityPage'));
+const CapabilitiesPage = lazy(() => import('@/features/admin/capabilities/pages/CapabilitiesPage'));
+const CapabilityStudioPage = lazy(() => import('@/features/admin/capabilities/pages/CapabilityStudioPage'));
+const CapabilityBuildDetailPage = lazy(() => import('@/features/admin/capabilities/pages/CapabilityBuildDetailPage'));
+const CarboneTemplateListPage = lazy(() => import('@/features/carbone-templates/pages/CarboneTemplateListPage'));
+const DashboardPage = lazy(() => import('@/features/dashboard/pages/DashboardPage'));
+const ExecutionCreatePage = lazy(() => import('@/features/executions/pages/ExecutionCreatePage'));
+const ExecutionDetailPage = lazy(() => import('@/features/executions/pages/ExecutionDetailPage'));
+const ExecutionListPage = lazy(() => import('@/features/executions/pages/ExecutionListPage'));
+const ReportDetailPage = lazy(() => import('@/features/reports/pages/ReportDetailPage'));
+const ReportListPage = lazy(() => import('@/features/reports/pages/ReportListPage'));
 
 export type NavGroup = 'root' | 'admin';
 

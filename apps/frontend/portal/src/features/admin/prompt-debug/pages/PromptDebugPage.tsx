@@ -37,7 +37,7 @@ import { aiModelApi, AIModel } from '@/api/ai';
 import {
   extractBrowserExecutionResult,
   hasBrowserExecutionEvidence,
-} from '@/features/executions/lib/browser';
+} from '@/features/executions/shared/browser';
 
 const { Title, Text } = Typography;
 

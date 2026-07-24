@@ -509,7 +509,7 @@ export class TemporalWorkflowConfigService {
         modelId: 'default',
         prompt,
       },
-      { timeout: 180000 }
+      { timeout: 360000 }
     );
 
     return this.parseJsonFromAiContent(aiResponse.data?.result || '');
@@ -611,7 +611,7 @@ export class TemporalWorkflowConfigService {
         modelId: 'default',
         prompt,
       },
-      { timeout: 180000 }
+      { timeout: 360000 }
     );
     return this.parseJsonFromAiContent(aiResponse.data?.result || '');
   }
@@ -659,7 +659,7 @@ export class TemporalWorkflowConfigService {
         modelId: 'default',
         prompt,
       },
-      { timeout: 180000 }
+      { timeout: 360000 }
     );
     return this.parseJsonFromAiContent(aiResponse.data?.result || '');
   }

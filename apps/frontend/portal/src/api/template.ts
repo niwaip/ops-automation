@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+import { apiClient } from '@/shared/api/http/client';
 
 // Types based on template service entity
 export type TemplateStatus = 'DRAFT' | 'REVIEW' | 'PUBLISHED' | 'DEPRECATED' | 'REVOKED';

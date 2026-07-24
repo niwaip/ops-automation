@@ -5,7 +5,7 @@ import {
   type NotificationListResponse,
   type NotificationSource,
 } from '@ops/user-core';
-import { apiClient } from './client';
+import { apiClient } from '@/shared/api/http/client';
 
 export type {
   AppNotification,

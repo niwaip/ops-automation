@@ -14,7 +14,7 @@ import {
   type WorkerPoolResetResponse,
   type WorkerPoolStatus,
 } from '@ops/user-core';
-import { apiClient } from './client';
+import { apiClient } from '@/shared/api/http/client';
 
 export type {
   ContinueSessionRequest,

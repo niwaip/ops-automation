@@ -187,7 +187,7 @@ const AIModelAdminPage: React.FC = () => {
   const [editingProvider, setEditingProvider] = useState<AIProviderConfig | null>(null);
   const [providerFormProvider, setProviderFormProvider] = useState<string>('');
   const [createAvailableModels, setCreateAvailableModels] = useState<string[]>([]);
-  const [editAvailableModels, setEditAvailableModels] = useState<string[]>([]);
+  const [_editAvailableModels, setEditAvailableModels] = useState<string[]>([]);
   const [switchAvailableModels, setSwitchAvailableModels] = useState<string[]>([]);
 
   const modelsQuery = useQuery(['ai-models'], () => aiModelApi.listForAdmin());
@@ -486,13 +486,7 @@ const AIModelAdminPage: React.FC = () => {
     }
   };
 
-  const handleEditProviderConfigChange = (providerConfigId: string) => {
-    const providerConfig = providerConfigMap.get(providerConfigId);
-    setEditAvailableModels([]);
-    if (!providerConfig) {
-      return;
-    }
-  };
+
 
   const handleCreateModalClose = () => {
     setCreateModalVisible(false);
@@ -600,12 +594,7 @@ const AIModelAdminPage: React.FC = () => {
     });
   };
 
-  const handleSwitchModel = (model: AIModel) => {
-    setEditingModel(model);
-    setNewModelName(model.name);
-    setSwitchAvailableModels([]);
-    setSwitchModelVisible(true);
-  };
+
 
   const handleConfirmSwitchModel = () => {
     if (editingModel && newModelName && newModelName !== editingModel.name) {
@@ -710,11 +699,7 @@ const AIModelAdminPage: React.FC = () => {
     );
   };
 
-  const refreshOverview = () => {
-    void modelsQuery.refetch();
-    void providersQuery.refetch();
-    void providerConfigsQuery.refetch();
-  };
+
 
   const totalModelCount = modelsQuery.data?.models.length || 0;
   const activeModelCount = (modelsQuery.data?.models || []).filter(

@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+import { apiClient } from '@/shared/api/http/client';
 
 export type ToolCatalogStatus = 'active' | 'disabled' | 'deprecated';
 export type ToolRiskLevel = 'L0' | 'L1' | 'L2' | 'L3';

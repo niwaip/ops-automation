@@ -1,14 +1,22 @@
+import { Suspense } from 'react';
+import { Spin } from 'antd';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import MainLayout from '@/app/layouts/MainLayout';
 import { AdminRoute, PrivateRoute } from '@/app/router/guards';
 import { portalPageRoutes, portalRouteEntries } from '@/app/router/routeManifest';
 
 const renderProtectedElement = (element: React.ReactElement, requiresAdmin?: boolean) => {
+  const content = (
+    <Suspense fallback={<div style={{ padding: 48, textAlign: 'center' }}><Spin size="large" /></div>}>
+      {element}
+    </Suspense>
+  );
+
   if (requiresAdmin) {
-    return <AdminRoute>{element}</AdminRoute>;
+    return <AdminRoute>{content}</AdminRoute>;
   }
 
-  return element;
+  return content;
 };
 
 const AppRoutes: React.FC = () => (

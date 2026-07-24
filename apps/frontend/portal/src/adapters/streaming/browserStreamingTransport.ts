@@ -7,7 +7,6 @@ import type {
 const isStreamEventPayload = (value: Record<string, unknown>): value is StreamEventPayload =>
   typeof value.type === 'string';
 
-const isStreamDonePayload = (value: Record<string, unknown>): boolean => value.type === 'done';
 
 export const browserStreamingTransport: StreamingTransportPort = {
   postSseStream({ url, payload, token, onEvent }: PostSseStreamRequest) {
@@ -53,9 +52,6 @@ export const browserStreamingTransport: StreamingTransportPort = {
               continue;
             }
             const data = JSON.parse(line.slice(6)) as Record<string, unknown>;
-            if (isStreamDonePayload(data)) {
-              continue;
-            }
             if (isStreamEventPayload(data)) {
               onEvent(data);
             }
@@ -66,7 +62,7 @@ export const browserStreamingTransport: StreamingTransportPort = {
       const trailingLine = buffer.trim();
       if (trailingLine.startsWith('data: ')) {
         const data = JSON.parse(trailingLine.slice(6)) as Record<string, unknown>;
-        if (!isStreamDonePayload(data) && isStreamEventPayload(data)) {
+        if (isStreamEventPayload(data)) {
           onEvent(data);
         }
       }

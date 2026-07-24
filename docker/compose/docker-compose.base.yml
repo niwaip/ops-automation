@@ -198,25 +198,15 @@ services:
     <<: *common-node-service
     container_name: ops-browser-template
     command: >
-      sh -c "if [ ! -f /app/node_modules/.bin/nest ]; then
-        npm config set registry https://registry.npmjs.org
-        && npm config set fetch-retries 5
-        && npm config set fetch-retry-mintimeout 20000
-        && npm config set fetch-retry-maxtimeout 120000
-        && i=0
-        && until [ $$i -ge 5 ]; do
-          npm install --legacy-peer-deps --include=dev && break;
-          i=$$((i+1));
-          echo 'npm install failed, retrying in 10s...';
-          sleep 10;
-        done
-        && [ $$i -lt 5 ];
-      fi
+      sh -c "npm config set registry https://registry.npmmirror.com
+      && npm install --legacy-peer-deps --include=dev
       && npx prisma generate
       && npm run build
       && npm run start"
     environment:
       <<: *common-env
+      NODE_ENV: development
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ops}:${POSTGRES_PASSWORD:-ops_secret}@postgres:5432/${POSTGRES_DB:-ops}?schema=public&connection_limit=${PRISMA_CONNECTION_LIMIT:-5}
       DB_HOST: postgres
       DB_PORT: 5432
       DB_USERNAME: ${POSTGRES_USER:-ops}

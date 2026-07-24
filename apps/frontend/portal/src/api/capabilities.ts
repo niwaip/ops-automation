@@ -1,4 +1,4 @@
-import apiClient from './client';
+import apiClient from '@/shared/api/http/client';
 import { useAuthStore } from '@/shared/store/authStore';
 
 export type CapabilitySourceType =

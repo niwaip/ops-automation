@@ -42,7 +42,7 @@ const ThoughtProcessPanel: React.FC<ThoughtProcessPanelProps> = ({
       </div>
       {expanded ? (
         <div className="chat-thoughts-content">
-          {thoughts.map((thought, idx) => (
+          {thoughts.map((thought: string, idx: number) => (
             <div key={idx} className="chat-thought-step">
               {thought}
             </div>

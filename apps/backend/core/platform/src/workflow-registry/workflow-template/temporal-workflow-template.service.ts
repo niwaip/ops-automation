@@ -384,7 +384,7 @@ export class TemporalWorkflowTemplateService {
           modelId: 'default',
           prompt,
         },
-        { timeout: 180000 }
+        { timeout: 360000 }
       );
 
       return this.parseJsonFromAiContent(response.data?.result || '') as TemplateWorkflowAiAnalysis;
