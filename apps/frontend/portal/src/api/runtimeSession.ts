@@ -1,5 +1,4 @@
-import axios from 'axios';
-import { apiClient } from './client';
+import { apiClient } from '@/shared/api/http/client';
 
 export type RuntimeSessionState = 'allocating' | 'ready' | 'busy' | 'frozen' | 'closed' | 'error';
 
@@ -41,8 +40,9 @@ interface ListRuntimeSessionsResponse {
   pageSize: number;
 }
 
-const isRuntimeSessionNotFound = (error: unknown): boolean =>
-  axios.isAxiosError(error) && error.response?.status === 404;
+import { isNotFound } from '@/shared/utils/apiError';
+
+const isRuntimeSessionNotFound = (error: unknown): boolean => isNotFound(error);
 
 export const runtimeSessionApi = {
   getById: async (id: string): Promise<RuntimeSessionDto> => {

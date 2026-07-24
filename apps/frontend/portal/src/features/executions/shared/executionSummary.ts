@@ -1,5 +1,5 @@
 import type { ExecutionPhaseDto, ExecutionPhaseStepDto } from '@/api/execution';
-import { asRecord, tryParseJsonValue } from '@/features/executions/lib/common';
+import { asRecord, tryParseJsonValue } from '@/features/executions/shared/common';
 
 export interface ExecutionLoopSummary {
   totalItems: number;

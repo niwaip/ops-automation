@@ -45,8 +45,10 @@ interface TaskOutcomeCardProps {
   waitingInputGroups: SharedDisplayGroup[];
   waitingInputItems: SharedDisplayGroupItem[];
   approvalAction: 'approve' | 'reject' | null;
+  takeoverAction?: string | null;
   onApproveExecution: () => void;
   onRejectExecution: () => void;
+  onResumeExecution?: () => void;
 }
 
 const getErrorPreview = (value?: string): string => {
@@ -327,11 +329,11 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
           <div className="chat-outcome-input-heading">请补充以下信息</div>
           {waitingInputGroups.length > 0 ? (
             <div className="chat-outcome-input-groups">
-              {waitingInputGroups.map((group) => (
+              {waitingInputGroups.map((group: SharedDisplayGroup) => (
                 <div key={group.label} className="chat-outcome-input-group">
                   <div className="chat-outcome-input-group-title">{group.label}</div>
                   <ul className="chat-outcome-input-list">
-                    {group.items.map((item) => (
+                    {group.items.map((item: SharedDisplayGroupItem) => (
                       <li key={item.key}>
                         {item.label}
                       </li>
@@ -342,7 +344,7 @@ const TaskOutcomeCard: React.FC<TaskOutcomeCardProps> = ({
             </div>
           ) : (
             <ul className="chat-outcome-input-list">
-              {waitingInputItems.map((item) => (
+              {waitingInputItems.map((item: SharedDisplayGroupItem) => (
                 <li key={item.key}>
                   {item.label}
                 </li>

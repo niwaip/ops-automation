@@ -3,7 +3,7 @@
  * 用于管理Carbone模板和Skills
  */
 
-import { apiClient } from './client';
+import { apiClient } from '@/shared/api/http/client';
 
 // Carbone Template DTO for Skills page
 export interface CarboneTemplateDTO {

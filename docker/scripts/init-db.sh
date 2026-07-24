@@ -17,6 +17,8 @@ SERVICE_DATABASES=(
   "session_broker"
   "replay_engine"
   "control_plane"
+  "temporal"
+  "temporal_visibility"
 )
 
 echo "Initializing databases for services..."

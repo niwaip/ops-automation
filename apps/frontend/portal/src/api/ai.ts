@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+import { apiClient } from '@/shared/api/http/client';
 
 // AI Model types for admin page
 export type ModelProvider =

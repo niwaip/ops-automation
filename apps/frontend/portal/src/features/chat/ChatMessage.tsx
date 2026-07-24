@@ -120,10 +120,6 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
     taskParts.taskStatus;
   const isWaitingInput = isTaskMode && taskStatus === 'waiting_input';
   const isPendingApproval = isTaskMode && taskStatus === 'pending_approval';
-  const isFailed = isTaskMode && taskStatus === 'failed';
-  const isHumanControl =
-    isTaskMode &&
-    (taskStatus === 'human_control' || message.metadata?.executionStatus === 'human_control');
   const finalResult = message.metadata?.finalResult?.trim();
   const finalResultData = message.metadata?.finalResultData;
   const finalSummary = message.metadata?.finalSummary?.trim();

@@ -20,7 +20,7 @@ import {
   RECOVERY_COPY,
   RECOVERY_RESUME_OPTIONS,
   RecoveryResumeAction,
-} from '@/features/executions/components/recoveryOptions';
+} from '@/features/executions/shared/recoveryOptions';
 
 const { Text } = Typography;
 

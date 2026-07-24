@@ -1,25 +1,19 @@
-import axios, {
-  AxiosError,
-  AxiosHeaders,
-  type AxiosInstance,
-  type AxiosRequestConfig,
-  type InternalAxiosRequestConfig,
-} from 'axios';
+import axios from 'axios';
 import type { AuthSessionPort } from '../ports/auth-session.port.js';
 import type { RuntimeConfigPort } from '../ports/runtime.port.js';
 
-type RetryableAxiosRequestConfig = InternalAxiosRequestConfig & {
+type AxiosError = any;
+
+type RetryableAxiosRequestConfig = any & {
   _retry?: boolean;
 };
 
-export type RequestConfig = AxiosRequestConfig & {
-  _retry?: boolean;
-};
+export type RequestConfig = any;
 
 export class ApiClient {
   private static readonly TOKEN_REFRESH_BUFFER_MS = 60 * 1000;
-  private readonly client: AxiosInstance;
-  private readonly refreshClient: AxiosInstance;
+  private readonly client: any;
+  private readonly refreshClient: any;
   private refreshPromise: Promise<string | null> | null = null;
 
   constructor(
@@ -44,27 +38,27 @@ export class ApiClient {
   }
 
   async get<T>(url: string, config?: RequestConfig): Promise<T> {
-    const response = await this.client.get<T>(url, config);
+    const response = await (this.client as any).get(url, config);
     return response.data;
   }
 
   async post<T>(url: string, data?: unknown, config?: RequestConfig): Promise<T> {
-    const response = await this.client.post<T>(url, data, config);
+    const response = await (this.client as any).post(url, data, config);
     return response.data;
   }
 
   async put<T>(url: string, data?: unknown, config?: RequestConfig): Promise<T> {
-    const response = await this.client.put<T>(url, data, config);
+    const response = await (this.client as any).put(url, data, config);
     return response.data;
   }
 
   async patch<T>(url: string, data?: unknown, config?: RequestConfig): Promise<T> {
-    const response = await this.client.patch<T>(url, data, config);
+    const response = await (this.client as any).patch(url, data, config);
     return response.data;
   }
 
   async delete<T>(url: string, config?: RequestConfig): Promise<T> {
-    const response = await this.client.delete<T>(url, config);
+    const response = await (this.client as any).delete(url, config);
     return response.data;
   }
 
@@ -75,9 +69,9 @@ export class ApiClient {
     }
 
     if (!this.refreshPromise) {
-      this.refreshPromise = this.refreshClient
-        .post<{ accessToken: string; refreshToken: string }>('/auth/refresh', { refreshToken })
-        .then((response) => {
+      this.refreshPromise = (this.refreshClient as any)
+        .post('/auth/refresh', { refreshToken })
+        .then((response: any) => {
           this.auth?.setTokens(response.data.accessToken, response.data.refreshToken);
           return response.data.accessToken;
         })
@@ -138,21 +132,26 @@ export class ApiClient {
 
   private setupInterceptors(): void {
     this.client.interceptors.request.use(
-      async (config) => {
+      async (config: any) => {
         const token = await this.ensureFreshAccessToken();
         if (token) {
-          const headers = new AxiosHeaders(config.headers);
-          headers.set('Authorization', `Bearer ${token}`);
+          const AxiosHeaders = (axios as any).AxiosHeaders;
+          const headers = AxiosHeaders
+            ? new AxiosHeaders(config.headers)
+            : { ...config.headers, Authorization: `Bearer ${token}` };
+          if (AxiosHeaders && 'set' in headers) {
+            (headers as any).set('Authorization', `Bearer ${token}`);
+          }
           config.headers = headers;
         }
         return config;
       },
-      (error: AxiosError) => Promise.reject(error)
+      (error: any) => Promise.reject(error)
     );
 
     this.client.interceptors.response.use(
-      (response) => response,
-      async (error: AxiosError) => {
+      (response: any) => response,
+      async (error: any) => {
         const originalRequest = error.config as RetryableAxiosRequestConfig | undefined;
         if (
           error.response?.status === 401 &&
@@ -164,8 +163,13 @@ export class ApiClient {
           originalRequest._retry = true;
           const accessToken = await this.refreshAccessToken();
           if (accessToken) {
-            const headers = new AxiosHeaders(originalRequest.headers);
-            headers.set('Authorization', `Bearer ${accessToken}`);
+            const AxiosHeaders = (axios as any).AxiosHeaders;
+            const headers = AxiosHeaders
+              ? new AxiosHeaders(originalRequest.headers)
+              : { ...originalRequest.headers, Authorization: `Bearer ${accessToken}` };
+            if (AxiosHeaders && 'set' in headers) {
+              (headers as any).set('Authorization', `Bearer ${accessToken}`);
+            }
             originalRequest.headers = headers;
             return this.client(originalRequest);
           }

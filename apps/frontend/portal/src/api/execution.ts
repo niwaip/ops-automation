@@ -21,7 +21,7 @@ import {
   type TakeoverExecutionRequest,
 } from '@ops/user-core';
 import { runtimeConfig } from '@/shared/config/runtime';
-import { apiClient } from './client';
+import { apiClient } from '@/shared/api/http/client';
 
 export type {
   ApprovalDecisionRequest,

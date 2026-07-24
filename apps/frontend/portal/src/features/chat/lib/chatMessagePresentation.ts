@@ -1,7 +1,7 @@
 import {
   buildBrowserOutputDisplay,
   extractBrowserExecutionResult,
-} from '@/features/executions/lib/browser';
+} from '@/features/executions/shared/browser';
 import type { PromptDebugPayload } from '../types';
 
 interface BrowserExecutionOptions {

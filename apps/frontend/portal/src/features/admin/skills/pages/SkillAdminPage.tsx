@@ -68,7 +68,7 @@ import {
   ListSectionHeader,
 } from '@/components/page/PageScaffold';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 const { Option } = Select;
 const { TabPane } = Tabs;
 const { Panel } = Collapse;

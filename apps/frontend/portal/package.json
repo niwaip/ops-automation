@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "lint": "eslint src --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",
-    "check:user-route-policy": "node ./scripts/check-user-route-policy.mjs"
+    "check:user-route-policy": "node ./scripts/check-user-route-policy.mjs",
+    "test": "vitest run"
   },
   "dependencies": {
     "@ant-design/icons": "^5.2.6",

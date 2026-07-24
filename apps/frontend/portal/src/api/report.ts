@@ -22,7 +22,7 @@ import {
   type ValidationFailAction,
   type ValidationResult,
 } from '@ops/user-core';
-import apiClient from './client';
+import apiClient from '@/shared/api/http/client';
 
 export type {
   AIAnalysisResult,

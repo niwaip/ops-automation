@@ -7,8 +7,8 @@ import {
   PlayCircleOutlined,
 } from '@ant-design/icons';
 import { Space, Tag, Typography } from 'antd';
-import type { BrowserExecutionStepResult } from '@/features/executions/lib/browser';
-import { asRecord } from '@/features/executions/lib/common';
+import type { BrowserExecutionStepResult } from '@/features/executions/shared/browser';
+import { asRecord } from '@/features/executions/shared/common';
 
 const { Text } = Typography;
 
