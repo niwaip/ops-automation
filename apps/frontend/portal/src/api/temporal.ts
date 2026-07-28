@@ -355,11 +355,14 @@ export interface GenerateBrowserDraftDTO {
 export interface GenerateAiWorkflowDraftDTO {
   description?: string;
   referenceUrl?: string;
+  skillFileContent?: string;
+  skillFileType?: string;
 }
 
 export interface GenerateAiWorkflowDraftSessionDTO extends GenerateAiWorkflowDraftDTO {
   title?: string;
 }
+
 
 export interface RefineAiWorkflowDraftDTO {
   currentWorkflowDsl: WorkflowDsl;

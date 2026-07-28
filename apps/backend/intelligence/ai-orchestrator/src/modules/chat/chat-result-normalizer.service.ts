@@ -193,6 +193,7 @@ export class ChatResultNormalizerService {
       return undefined;
     }
 
+    const resultType = this.asString(record.resultType)?.trim().toLowerCase();
     const status = this.asString(record.status)?.trim().toLowerCase();
     const fileName = this.firstNonEmptyString(
       this.asString(record.fileName),
@@ -200,16 +201,17 @@ export class ChatResultNormalizerService {
       this.asString(record.name)
     );
     const format = this.asString(record.format)?.trim().toUpperCase();
-    const isDocumentResult = Boolean(
-      fileName ||
-      format ||
-      result.downloadUrl ||
-      ['rendered', 'success', 'succeeded', 'completed'].includes(status || '')
+
+    const isExplicitDocument =
+      resultType === 'document' || Boolean(record.isDocument) || Boolean(record.carbone);
+    const hasDocumentFileMeta = Boolean(
+      (fileName || format) && (result.downloadUrl || status === 'rendered')
     );
 
-    if (!isDocumentResult) {
+    if (!isExplicitDocument && !hasDocumentFileMeta) {
       return undefined;
     }
+
 
     return [
       '文档已生成。',
@@ -624,9 +626,44 @@ export class ChatResultNormalizerService {
     return typeof value === 'string' && value.trim() ? value : undefined;
   }
 
+  toContract(
+    normalized: NormalizedChatExecutionResult,
+    context?: {
+      executionId?: string;
+      status?: WorkflowResultExecution['status'];
+      warnings?: string[];
+    }
+  ) {
+    const executionId = context?.executionId || normalized.envelope.execution?.executionId;
+    const status = context?.status || normalized.envelope.execution?.status || 'success';
+    const chatSummary =
+      normalized.envelope.presentation?.chatSummary ||
+      normalized.summary ||
+      normalized.body ||
+      (typeof normalized.rawResult === 'string' ? normalized.rawResult : '') ||
+      '任务已完成';
+
+    return {
+      _version: '1' as const,
+      executionId,
+      status,
+      hasBusinessResult: normalized.hasBusinessResult,
+      chatSummary,
+      summaryFormat: normalized.summaryFormat || 'plain_text',
+      title: normalized.title,
+      businessData: normalized.structuredData,
+      artifacts: normalized.artifacts,
+      downloadUrl: normalized.downloadUrl,
+      temporalLink: normalized.temporalLink,
+      nextActions: normalized.envelope.result?.nextActions,
+      warnings: context?.warnings,
+    };
+  }
+
   private firstNonEmptyString(...values: Array<string | undefined>): string | undefined {
     return values.find(
       (item): item is string => typeof item === 'string' && item.trim().length > 0
     );
   }
 }
+

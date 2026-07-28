@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { ControlPlaneClient } from '../../client/control-plane.client';
 import {
   CONTROL_PLANE_APPROVAL_STATUS,
@@ -9,6 +9,7 @@ import {
 } from '../../client/control-plane.contracts';
 import { StreamEventType } from '../react-engine/interfaces';
 import type { LLMUsage, StreamEvent } from '../react-engine/interfaces';
+import { ModelService } from '../model/model.service';
 import { ChatResultNormalizerService } from './chat-result-normalizer.service';
 import type { ChatUserContext, WaitingInputSemantic } from './chat.types';
 import { ChatWaitingInputService } from './chat-waiting-input.service';
@@ -41,7 +42,8 @@ export class ChatExecutionStreamService {
   constructor(
     private readonly controlPlaneClient: ControlPlaneClient,
     private readonly waitingInputService: ChatWaitingInputService,
-    private readonly resultNormalizerService: ChatResultNormalizerService
+    private readonly resultNormalizerService: ChatResultNormalizerService,
+    @Optional() private readonly modelService?: ModelService
   ) {}
 
   async *observeExecution(
@@ -251,12 +253,22 @@ export class ChatExecutionStreamService {
       const execution = await this.controlPlaneClient.getExecution<{
         id: string;
         status: string;
+        runtimeType?: string;
+        runtime_type?: string;
         result?: unknown;
         resultJson?: unknown;
         failureReason?: string;
         usage?: LLMUsage;
+        normalizedInput?: {
+          objective?: string;
+          prompt?: string;
+        };
+        input?: {
+          prompt?: string;
+        };
       }>(executionId, this.waitingInputService.buildControlPlaneRequestOptions(authToken, user));
       const rawResult = execution.resultJson ?? execution.result;
+      const runtimeType = execution.runtimeType || execution.runtime_type;
 
       if (status === CONTROL_PLANE_EXECUTION_STATUS.SUCCEEDED) {
         if (rawResult !== null && rawResult !== undefined) {
@@ -264,17 +276,93 @@ export class ChatExecutionStreamService {
             executionId,
             status: 'success',
           });
+          const contract = this.resultNormalizerService.toContract(normalizedResult, {
+            executionId,
+            status: 'success',
+          });
+
+          let chatContent = this.resultNormalizerService.formatForChat(
+            normalizedResult,
+            executionId
+          );
+
+          const objective =
+            typeof execution.normalizedInput?.objective === 'string' &&
+            execution.normalizedInput.objective.trim()
+              ? execution.normalizedInput.objective.trim()
+              : typeof execution.normalizedInput?.prompt === 'string' &&
+                  execution.normalizedInput.prompt.trim()
+                ? execution.normalizedInput.prompt.trim()
+                : typeof execution.input?.prompt === 'string' && execution.input.prompt.trim()
+                  ? execution.input.prompt.trim()
+                  : '';
+
+          const hasSummarizationIntent =
+            /总结|概括|归纳|分析|梳理|汇总|提炼|综合|整理|summarize|summary|analyze|analysis/i.test(
+              objective
+            );
+
+          const rawRecord =
+            rawResult && typeof rawResult === 'object'
+              ? (rawResult as Record<string, unknown>)
+              : {};
+          const businessData =
+            rawRecord.businessData && typeof rawRecord.businessData === 'object'
+              ? (rawRecord.businessData as Record<string, unknown>)
+              : undefined;
+
+          const isSearchOrDataResult =
+            normalizedResult.resultType === 'tavily_search' ||
+            Boolean(businessData?.results) ||
+            Boolean(rawRecord.results);
+
+          // effectiveAiSummary tracks AI-generated summary to synchronize into
+          // both event.content AND the data fields that the frontend prioritizes.
+          let effectiveAiSummary: string | undefined;
+
+          if (hasSummarizationIntent || isSearchOrDataResult) {
+            const aiResult = await this.generateAiSummary(
+              objective || '对工具执行结果进行总结',
+              rawResult,
+              executionId
+            );
+            if (aiResult?.summary) {
+              chatContent = aiResult.summary;
+              effectiveAiSummary = aiResult.summary;
+            } else if (aiResult?.warning) {
+              chatContent = `${chatContent}\n\n---\n_⚠️ AI 自动总结未生成：${aiResult.warning}_`;
+            }
+          }
+
+          // When an AI summary was generated, patch the contract and normalizedResult
+          // so the frontend's contractChatSummary and finalResult paths also surface
+          // the AI summary (not the original tool metadata which would otherwise win).
+          const effectiveContract = effectiveAiSummary
+            ? { ...contract, chatSummary: effectiveAiSummary, summaryFormat: 'markdown' as const }
+            : contract;
+          const effectiveNormalizedResult = effectiveAiSummary
+            ? {
+                ...normalizedResult,
+                summary: effectiveAiSummary,
+                body: effectiveAiSummary,
+                detailText: effectiveAiSummary,
+                summaryFormat: 'markdown' as const,
+              }
+            : normalizedResult;
+
           return {
             type: StreamEventType.RESULT,
-            content: this.resultNormalizerService.formatForChat(normalizedResult, executionId),
+            content: chatContent,
             data: {
+              ...effectiveContract,
               executionId,
               status,
+              runtimeType,
               result: rawResult,
-              normalizedResult,
+              normalizedResult: effectiveNormalizedResult,
               resultType: normalizedResult.resultType,
               resultTitle: normalizedResult.title,
-              resultSummary: normalizedResult.summary,
+              resultSummary: effectiveNormalizedResult.summary,
               artifacts: normalizedResult.artifacts,
               downloadUrl: normalizedResult.downloadUrl,
               temporalLink: normalizedResult.temporalLink,
@@ -284,13 +372,17 @@ export class ChatExecutionStreamService {
           };
         }
 
+        const noResultContent = `任务已完成，但该任务没有可直接展示的返回结果。\n\n执行单 ID: ${executionId}`;
         return {
           type: StreamEventType.RESULT,
-          content: `任务已完成，但该任务没有可直接展示的返回结果。\n\n执行单 ID: ${executionId}`,
+          content: noResultContent,
           data: {
+            _version: '1',
             executionId,
-            status,
+            status: 'success',
             hasBusinessResult: false,
+            chatSummary: noResultContent,
+            summaryFormat: 'plain_text',
             usage: execution.usage,
           },
         };
@@ -321,13 +413,17 @@ export class ChatExecutionStreamService {
         };
       }
 
+      const cancelledContent = `任务已取消。\n\n执行单 ID: ${executionId}`;
       return {
         type: StreamEventType.RESULT,
-        content: `任务已取消。\n\n执行单 ID: ${executionId}`,
+        content: cancelledContent,
         data: {
+          _version: '1',
           executionId,
-          status,
+          status: 'cancelled',
           hasBusinessResult: false,
+          chatSummary: cancelledContent,
+          summaryFormat: 'plain_text',
           usage: execution.usage,
         },
       };
@@ -347,10 +443,18 @@ export class ChatExecutionStreamService {
       | typeof CONTROL_PLANE_EXECUTION_STATUS.CANCELLED
   ): StreamEvent {
     if (status === CONTROL_PLANE_EXECUTION_STATUS.SUCCEEDED) {
+      const summary = `任务已完成。\n\n执行单 ID: ${executionId}`;
       return {
         type: StreamEventType.RESULT,
-        content: `任务已完成。\n\n执行单 ID: ${executionId}`,
-        data: { executionId, status, hasBusinessResult: false },
+        content: summary,
+        data: {
+          _version: '1',
+          executionId,
+          status: 'success',
+          hasBusinessResult: false,
+          chatSummary: summary,
+          summaryFormat: 'plain_text',
+        },
       };
     }
 
@@ -362,12 +466,21 @@ export class ChatExecutionStreamService {
       };
     }
 
+    const cancelledSummary = `任务已取消。\n\n执行单 ID: ${executionId}`;
     return {
       type: StreamEventType.RESULT,
-      content: `任务已取消。\n\n执行单 ID: ${executionId}`,
-      data: { executionId, status, hasBusinessResult: false },
+      content: cancelledSummary,
+      data: {
+        _version: '1',
+        executionId,
+        status: 'cancelled',
+        hasBusinessResult: false,
+        chatSummary: cancelledSummary,
+        summaryFormat: 'plain_text',
+      },
     };
   }
+
 
   private mapExecutionEventToStreamEvent(event: any): StreamEvent | null {
     const { eventType, payload } = event;
@@ -605,5 +718,112 @@ export class ChatExecutionStreamService {
       return undefined;
     }
     return value.replace(/`/g, '').trim();
+  }
+
+  private async generateAiSummary(
+    objective: string,
+    rawResult: unknown,
+    executionId: string
+  ): Promise<{ summary?: string; warning?: string }> {
+    if (!this.modelService) {
+      reportChatExecutionStreamDebug(
+        'H3',
+        'apps/backend/intelligence/ai-orchestrator/src/modules/chat/chat-execution-stream.service.ts:generateAiSummary',
+        'AI summary skipped: modelService not injected',
+        { executionId, objective }
+      );
+      return { warning: 'AI 总结能力未启用（ModelService 未注入）' };
+    }
+
+    try {
+      const preferredModel = this.modelService.getPreferredDefaultModel({ mode: 'chat' });
+      if (!preferredModel?.id) {
+        reportChatExecutionStreamDebug(
+          'H3',
+          'apps/backend/intelligence/ai-orchestrator/src/modules/chat/chat-execution-stream.service.ts:generateAiSummary',
+          'AI summary skipped: no preferred default chat model',
+          { executionId, objective }
+        );
+        return { warning: '未配置 chat 模式默认模型，无法进行 AI 总结' };
+      }
+
+      const client = this.modelService.getClient(preferredModel.id);
+      if (!client) {
+        reportChatExecutionStreamDebug(
+          'H3',
+          'apps/backend/intelligence/ai-orchestrator/src/modules/chat/chat-execution-stream.service.ts:generateAiSummary',
+          'AI summary skipped: model client not initialized (usually API key not resolvable)',
+          { executionId, objective, modelId: preferredModel.id, modelName: preferredModel.name }
+        );
+        return {
+          warning: `模型「${preferredModel.name}」客户端未就绪（通常因为 API Key 未解析或模型未启用），已在后台记录`,
+        };
+      }
+
+      this.logger.log(
+        `Generating AI summary for execution ${executionId} with objective: "${objective}"`
+      );
+      reportChatExecutionStreamDebug(
+        'H1',
+        'apps/backend/intelligence/ai-orchestrator/src/modules/chat/chat-execution-stream.service.ts:generateAiSummary',
+        'Calling LLM for AI summary',
+        { executionId, objective, modelId: preferredModel.id, modelName: preferredModel.name }
+      );
+
+      const payloadStr =
+        typeof rawResult === 'string' ? rawResult : JSON.stringify(rawResult, null, 2);
+
+      const prompt = `用户需求：${objective}
+
+工具/技能实际执行返回的数据内容：
+${payloadStr.length > 10000 ? payloadStr.slice(0, 10000) + '\n... (输出已截断)' : payloadStr}
+
+请根据以上数据内容，结合用户的需求「${objective}」，完成以下总结任务：
+1. 语言要求：必须全篇使用**中文（简体中文）**进行总结报告！即使原始数据是英文新闻，也必须翻译并整理成通顺、专业的中文要点。
+2. 总结结构：
+   - 核心摘要：用 2-3 句话总结整体动态或核心看点。
+   - 重点新闻/项目详情：按主题或看点分条归纳，每条包含中文标题、核心内容解读、主要影响或亮点。
+3. 格式要求：使用清晰漂亮的 Markdown 语法排版。`;
+
+      const response = await client.chatCompletion([
+        {
+          role: 'system',
+          content:
+            '你是一个专业的 AI 智能总结助手。你的任务是将工具或技能执行获得的数据（包括英文搜索结果、API 输出、技术数据）总结提炼为结构清晰、专业易读的中文 Markdown 报告。无论原始数据是什么语言，输出必须全程使用中文。',
+        },
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ]);
+
+      const summaryText =
+        typeof response?.content === 'string' ? response.content.trim() : undefined;
+      if (summaryText) {
+        this.logger.log(
+          `AI summary generated successfully for execution ${executionId} (${summaryText.length} chars)`
+        );
+        return { summary: summaryText };
+      }
+      reportChatExecutionStreamDebug(
+        'H3',
+        'apps/backend/intelligence/ai-orchestrator/src/modules/chat/chat-execution-stream.service.ts:generateAiSummary',
+        'AI summary returned empty content',
+        { executionId, objective, modelId: preferredModel.id }
+      );
+      return { warning: 'AI 返回了空内容' };
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : 'unknown';
+      this.logger.warn(
+        `Failed to generate AI summary for execution ${executionId}: ${reason}`
+      );
+      reportChatExecutionStreamDebug(
+        'H3',
+        'apps/backend/intelligence/ai-orchestrator/src/modules/chat/chat-execution-stream.service.ts:generateAiSummary',
+        'AI summary LLM call failed',
+        { executionId, objective, reason }
+      );
+      return { warning: `AI 总结调用失败：${reason}` };
+    }
   }
 }

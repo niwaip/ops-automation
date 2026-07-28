@@ -162,6 +162,9 @@ export class SkillCacheService {
             ...(typeof property.confirmationThreshold === 'number'
               ? { confirmationThreshold: property.confirmationThreshold }
               : {}),
+            ...(Array.isArray(property.enum) && property.enum.length > 0
+              ? { enum: property.enum }
+              : {}),
           },
         ];
       })

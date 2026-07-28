@@ -337,8 +337,17 @@ export class CapabilityReleaseTemporalSchemaService {
       const definition =
         rawValue && typeof rawValue === 'object' ? (rawValue as Record<string, unknown>) : {};
       const type = typeof definition.type === 'string' ? definition.type : 'string';
-      if (definition.default !== undefined) {
-        acc[key] = this.normalizeSmokeInputValue(key, definition.default, type);
+      const valueCandidate =
+        definition.default !== undefined && definition.default !== ''
+          ? definition.default
+          : definition.example !== undefined && definition.example !== ''
+            ? definition.example
+            : definition.exampleValue !== undefined && definition.exampleValue !== ''
+              ? definition.exampleValue
+              : undefined;
+
+      if (valueCandidate !== undefined) {
+        acc[key] = this.normalizeSmokeInputValue(key, valueCandidate, type);
         return acc;
       }
 
@@ -379,11 +388,18 @@ export class CapabilityReleaseTemporalSchemaService {
       Object.entries(inputParams).forEach(([key, rawValue]) => {
         const definition =
           rawValue && typeof rawValue === 'object' ? (rawValue as Record<string, unknown>) : {};
-        if (definition.defaultValue === undefined) {
+        const candidateValue =
+          definition.defaultValue !== undefined && definition.defaultValue !== ''
+            ? definition.defaultValue
+            : definition.exampleValue !== undefined && definition.exampleValue !== ''
+              ? definition.exampleValue
+              : undefined;
+
+        if (candidateValue === undefined) {
           return;
         }
         const normalizedDefaultValue = this.normalizeCapabilityDefaultValue(
-          definition.defaultValue
+          candidateValue
         );
         if (normalizedDefaultValue !== undefined) {
           const typeHint = typeof definition.type === 'string' ? definition.type : undefined;
@@ -395,6 +411,7 @@ export class CapabilityReleaseTemporalSchemaService {
         }
       });
     }
+
 
     const fixedTestInput = this.resolveFixedTestInput(snapshot.sourcePayload, environment);
 
@@ -736,9 +753,13 @@ export class CapabilityReleaseTemporalSchemaService {
     if (type === 'string' && isUrlLikeKey) {
       return this.normalizeUrlLikeSmokeValue(unquoted);
     }
+    if (normalizedKey === 'platform' && (!unquoted || /^test[_-]?platform$/i.test(unquoted))) {
+      return 'weibo';
+    }
 
     return unquoted;
   }
+
 
   private normalizeUrlLikeSmokeValue(value: string): string {
     const normalized = String(value || '').trim();

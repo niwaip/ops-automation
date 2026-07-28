@@ -454,6 +454,7 @@ export interface ParamProperty {
   description: string;
   required: boolean;
   default?: unknown;
+  enum?: Array<string | number>;
   extractionPrompt?: string;
   semanticRole?: string;
   extractionHints?: string[];
@@ -463,6 +464,7 @@ export interface ParamProperty {
   previewBlocking?: boolean;
   confirmationThreshold?: number;
 }
+
 
 /**
  * 上传文件信息

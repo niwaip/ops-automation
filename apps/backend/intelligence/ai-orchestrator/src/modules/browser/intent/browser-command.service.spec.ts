@@ -27,7 +27,9 @@ import { BrowserCommandReadService } from './profiles/browser-command-read.servi
 import { BrowserCommandActionService } from './profiles/browser-command-action.service';
 import { BrowserCommandSearchService } from './profiles/browser-command-search.service';
 import { BrowserCommandFieldFillService } from './profiles/browser-command-field-fill.service';
+import { TableRegionResolverService } from './atomic-parsers/table-region-resolver.service';
 import { BrowserCommandAtomicService } from './atomic-parsers/browser-command-atomic.service';
+
 import { BrowserCommandSequentialService } from './atomic-parsers/browser-command-sequential.service';
 import { BrowserCommandSemanticLogService } from './browser-command-semantic-log.service';
 import { BrowserCommandSemanticRuntimeService } from './browser-command-semantic-runtime.service';
@@ -87,8 +89,11 @@ describe('BrowserCommandService', () => {
     );
     const browserCommandContextNormalizerService = new BrowserCommandContextNormalizerService();
     const browserCommandClickContextService = new BrowserCommandClickContextService(
-      browserCommandContextNormalizerService
+      browserCommandContextNormalizerService,
+      new TableRegionResolverService(modelService)
     );
+
+
 
     return new BrowserCommandService(
       plannerService,

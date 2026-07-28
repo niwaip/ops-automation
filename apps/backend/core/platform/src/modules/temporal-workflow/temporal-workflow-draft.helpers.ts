@@ -6,72 +6,91 @@ import type {
 
 type PickFirstNonEmptyString = (...values: unknown[]) => string | undefined;
 
-export function buildAnalyzeAiWorkflowDraftPrompt(args: {
-  description: string;
-  referenceUrl: string;
-  referenceExcerpt: string;
-  activityResources: AiDraftActivityResource[];
-}): string {
-  const { description, referenceUrl, referenceExcerpt, activityResources } = args;
-  return [
-    '你是一个企业级 Temporal Workflow 草稿生成器。',
-    '你的职责是根据用户说明和参考资料，生成一个“可编辑、可审计、受控”的 Workflow 草稿。',
-    '重要边界：',
-    '1. 只能从系统给出的 activity 资源中选择，不能发明新的 activityRef。',
-    '2. 只输出 Workflow 草稿 JSON，不要输出 Markdown 或解释。',
-    '3. 默认优先选择 builtin activity；只有当用户目标明显依赖现有 custom activity 时才使用 custom。',
-    '4. 【HTTP 提取规则】：如果提供了参考 URL（如 https://wttr.in/shanghai?format=j1），必须将其分解：',
-    '   - 协议与域名部分存入 urlTemplate (如 https://wttr.in/shanghai)',
-    '   - 查询参数部分存入 queryTemplate (如 { "format": "j1" })',
-    '   - 严禁将参考 URL 整体塞入 urlTemplate 而忽略 queryTemplate。',
-    '   - 严禁在 urlTemplate 或 queryTemplate 中包含 Markdown 反引号 (`) 或多余空格。',
-    '5. 【参数参数化规则】：只有当某个值是动态输入时，才在 template 中使用 {param} 占位符。参考 URL 中的固定值（如 format=j1）必须作为常量存入 config，不得强制参数化，除非用户明确要求。',
-    '5.1 【参数声明规则】：workflow.inputParams 只声明真正的运行时输入；允许为每个参数补充 description、required、defaultValue、source、type、exampleValue。source 优先使用 declared / inferred_from_template / inferred_from_reference_url / merged。',
-    '5.2 【参数标准化规则】：如果步骤模板里出现了 {param} 占位符，而 inputParams 未显式声明该参数，也必须保留占位符，并在 inputParams 中补齐该参数定义；不要把花括号占位符改写成字面量文本。',
-    '6. 不要生成 script 执行代码，不要包含 shell 命令。',
-    '7. workflowClassName 使用 Python 类名风格，以 Workflow 结尾。',
-    '8. taskQueue 默认使用 SKILL_TASK_QUEUE。',
-    '9. documentRender 只用于基于模板生成 Office 文档，不能用于通用格式转换、HTML/JSON 提取或字段规整。',
-    '10. 如果目标是从 HTML/JSON/Text 中提取内容、按规则转换结构、映射字段、路径提取或模板化格式输出，默认优先使用 builtin:structuredTransform（固定规则版），并把 step.input.__structuredTransform 配置完整。',
-    '11. 只有当用户目标明显需要 AI 语义理解、归纳、自由摘要、模糊分类、无法用固定字段映射或 textTemplate 表达时，才使用 builtin:aiStructuredTransform。',
-    '',
-    '允许使用的 activity 资源列表（只能从这些 ref 中选择）：',
+export function formatActivityResources(
+  activityResources: AiDraftActivityResource[]
+): string {
+  const builtin = activityResources.filter((item) => item.ref.startsWith('builtin:'));
+  const custom = activityResources.filter((item) => !item.ref.startsWith('builtin:'));
+
+  const formatList = (list: AiDraftActivityResource[]) =>
     JSON.stringify(
-      activityResources.map((item) => ({
+      list.map((item) => ({
         ref: item.ref,
         name: item.name,
         fn: item.fn,
         timeout: item.timeout,
         handler: item.handler,
         description: item.description || '',
-        config: item.config || {},
       })),
       null,
       2
-    ),
+    );
+
+  return [
+    '# Builtin Activities（系统内置，优先使用）：',
+    formatList(builtin),
+    ...(custom.length > 0
+      ? ['# Custom Activities（仅当明显依赖时使用）：', formatList(custom.slice(0, 25))]
+      : []),
+  ].join('\n');
+}
+
+export function buildAnalyzeAiWorkflowDraftPrompt(args: {
+  description: string;
+  referenceUrl: string;
+  referenceExcerpt: string;
+  activityResources: AiDraftActivityResource[];
+  skillFileContent?: string;
+  skillFileType?: string;
+}): string {
+  const { description, referenceUrl, referenceExcerpt, activityResources, skillFileContent, skillFileType } = args;
+
+  return [
+    '【区域 A: ROLE & CONSTRAINTS】',
+    '你是一个企业级 Temporal Workflow 草稿生成器。',
+    '你的职责是根据用户说明、技能文件和参考资料，生成一个“可编辑、可审计、受控”的 Workflow 草稿 JSON。',
+    '硬性规则：',
+    '1. 只能从系统给出的 activity 资源中选择，不能发明新的 activityRef。',
+    '2. 必须只输出 Workflow 草稿 JSON，不要输出 Markdown 标记（```json）或任何解释文字。',
+    '3. 默认优先选择 builtin activity；只有当用户目标明显依赖现有 custom activity 时才使用 custom。',
+    '4. 【HTTP 提取规则】：如果提供了参考 URL（如 https://wttr.in/shanghai?format=j1），必须将其分解：',
+    '   - 协议与域名部分存入 urlTemplate (如 https://wttr.in/shanghai)',
+    '   - 查询参数部分存入 queryTemplate (如 { "format": "j1" })',
+    '   - 严禁将参考 URL 整体塞入 urlTemplate 而忽略 queryTemplate。',
+    '   - 严禁在 urlTemplate 或 queryTemplate 中包含 Markdown 反引号 (`) 或多余空格。',
+    '5. 【参数化与声明规则】：只有动态输入才在 template 中使用 {param} 占位符。常量作为常量存入 config。workflow.inputParams 声明运行时输入。如果步骤模板出现了 {param} 占位符，inputParams 必须补齐定义。',
+    '6. 不要生成 script 执行代码，不要包含 shell 命令。',
+    '7. workflowClassName 使用 Python 类名风格，以 Workflow 结尾。taskQueue 默认使用 SKILL_TASK_QUEUE。',
+    '8. documentRender 只用于 Office 模版渲染，不能用于通用数据提取。提取转换优先使用 builtin:structuredTransform。AI 理解/分类才使用 builtin:aiStructuredTransform。',
     '',
-    '重要补充：如果选择 builtin:structuredTransform（固定规则版），必须完整输出 step.input.__structuredTransform，至少包含以下字段：',
+    '【区域 B: CONTEXT】',
+    formatActivityResources(activityResources),
+    '',
+    '结构化转换(builtin:structuredTransform)配置示范：',
     JSON.stringify(
       {
         contentType: 'json',
         contentTemplate: '{content}',
         outputMode: 'json',
-        outputSchema: {
-          fieldName: 'string',
-        },
+        outputSchema: { fieldName: 'string' },
         contextTemplate: '',
-        fieldMappings: {
-          fieldName: 'source.path',
-        },
+        fieldMappings: { fieldName: 'source.path' },
         textTemplate: '',
       },
       null,
       2
     ),
-    '如果用户要求“格式化输出”“ASCII 文本”“类似 wttr.in 风格”，则 builtin:structuredTransform.outputMode 优先为 text，并优先生成 textTemplate，而不是 AI 指令。',
-    '如果选择 builtin:aiStructuredTransform，则 __structuredTransform 至少要包含 contentType、contentTemplate、instructionTemplate、outputMode、outputSchema、contextTemplate，并保留清晰的 instructionTemplate。',
     '',
-    '返回 JSON 结构要求：',
+    '【区域 C: OBJECTIVE】',
+    skillFileContent
+      ? `【技能文件内容（优先参考）(${skillFileType || 'yaml/json'}】\n${skillFileContent.slice(0, 4000)}\n\n【用户补充说明（可覆盖文件设定）】`
+      : '【用户目标说明】',
+    description || '（无额外补充说明，完全按照技能文件或参考内容处理）',
+    `参考 URL: ${referenceUrl || '无'}`,
+    `参考内容摘录（可能截断）: ${referenceExcerpt || '无'}`,
+    '',
+    '【区域 D: OUTPUT SPEC】',
+    '必须直接返回符合以下 Schema 的 JSON 对象：',
     JSON.stringify(
       {
         workflowName: 'string',
@@ -120,39 +139,13 @@ export function buildAnalyzeAiWorkflowDraftPrompt(args: {
               },
             },
           },
-          {
-            id: 'step_2',
-            name: '结构化转换或格式化输出',
-            type: 'activity',
-            activityRef: 'builtin:structuredTransform',
-            activityName: '结构化转换(固定规则)',
-            startToCloseTimeout: '90s',
-            input: {
-              __structuredTransform: {
-                contentType: 'json',
-                contentTemplate: '{content}',
-                outputMode: 'json',
-                outputSchema: {
-                  result: 'string',
-                },
-                contextTemplate: '',
-                fieldMappings: {
-                  result: 'result',
-                },
-                textTemplate: '',
-              },
-            },
-          },
         ],
         activities: [
           {
             activityRef: 'builtin:httpRequest',
             name: 'HTTP 请求',
             timeout: '30s',
-            retryPolicy: {
-              maxRetries: 2,
-              backoffMs: 1000,
-            },
+            retryPolicy: { maxRetries: 2, backoffMs: 1000 },
             config: {},
           },
         ],
@@ -160,10 +153,6 @@ export function buildAnalyzeAiWorkflowDraftPrompt(args: {
       null,
       2
     ),
-    '',
-    `用户说明: ${description || '无'}`,
-    `参考 URL: ${referenceUrl || '无'}`,
-    `参考内容摘录（可能截断）: ${referenceExcerpt || '无'}`,
   ].join('\n');
 }
 
@@ -178,37 +167,11 @@ export function buildRepairAiWorkflowDraftPlanPrompt(args: {
   const { currentPlan, issues, description, referenceUrl, referenceExcerpt, activityResources } =
     args;
   return [
+    '【区域 A: ROLE & CONSTRAINTS】',
     '你是一个 Temporal Workflow 草稿修复器。',
     '你的任务不是重写需求，而是根据问题清单修复当前草稿 JSON，使其变成一个可直接进入下一步代码生成的完整 Workflow 草稿。',
     '请使用 ReAct 风格在脑中逐项核对，但最终只输出修复后的 JSON 对象，不要输出思考过程、Markdown 或解释。',
-    '',
-    '【用户目标】',
-    description || '无',
-    '',
-    `【参考 URL】${referenceUrl || '无'}`,
-    `【参考内容摘录】${referenceExcerpt || '无'}`,
-    '',
-    '【当前草稿】',
-    JSON.stringify(currentPlan, null, 2),
-    '',
-    '【问题清单（必须逐条修复）】',
-    ...issues.map((item, index) => `${index + 1}. ${item}`),
-    '',
-    '【可用 Activity 资源池】',
-    JSON.stringify(
-      activityResources.map((item) => ({
-        ref: item.ref,
-        name: item.name,
-        fn: item.fn,
-        timeout: item.timeout,
-        description: item.description || '',
-        config: item.config || {},
-      })),
-      null,
-      2
-    ),
-    '',
-    '【硬性要求】',
+    '硬性要求：',
     '1. 只输出一个 JSON 对象。',
     '2. 不允许删除已有的有效步骤，除非该步骤明显错误且必须替换。',
     '3. 如果存在 builtin:httpRequest，必须确保 __httpRequest 完整，且 query 参数放入 queryTemplate。',
@@ -218,75 +181,105 @@ export function buildRepairAiWorkflowDraftPlanPrompt(args: {
     '7. 如果目标是结构化 JSON，则 builtin:structuredTransform.outputMode 必须为 json，并提供非空 outputSchema。',
     '8. 如果存在 builtin:aiStructuredTransform，必须确保 __structuredTransform 至少包含 contentType、contentTemplate、instructionTemplate、outputMode、outputSchema、contextTemplate。',
     '9. 继续沿用已经正确的 inputParams/outputParams/steps/activityRef，不要发明新的未注册 activityRef。',
+    '',
+    '【区域 B: CONTEXT】',
+    formatActivityResources(activityResources),
+    '',
+    '【当前草稿】',
+    JSON.stringify(currentPlan, null, 2),
+    '',
+    '【问题清单（必须逐条修复）】',
+    ...issues.map((item, index) => `${index + 1}. ${item}`),
+    '',
+    `【参考 URL】${referenceUrl || '无'}`,
+    `【参考内容摘录】${referenceExcerpt || '无'}`,
+    '',
+    '【区域 C: OBJECTIVE】',
+    '【用户目标】',
+    description || '无',
+    '',
+    '【区域 D: OUTPUT SPEC】',
+    '必须直接返回修复后的 Workflow 草稿 JSON 对象，结构与 analyze prompt 的 OUTPUT SPEC 一致（workflowName / workflowDescription / workflowClassName / workflowDefnName / taskQueue / inputParams / outputParams / extraPrompt / warnings / steps / activities）。',
+    '严禁输出 Markdown 标记（```json）或任何解释文字。',
   ].join('\n');
 }
 
 export function buildAnalyzeAiWorkflowRefinementPrompt(args: {
   currentWorkflowDsl: unknown;
-  currentActivityDsl: unknown;
   userPrompt: string;
   activityResources: AiDraftActivityResource[];
 }): string {
-  const { currentWorkflowDsl, currentActivityDsl, userPrompt, activityResources } = args;
+  const { currentWorkflowDsl, userPrompt, activityResources } = args;
+  const dsl =
+    currentWorkflowDsl && typeof currentWorkflowDsl === 'object'
+      ? (currentWorkflowDsl as Record<string, any>)
+      : {};
+  const rawSteps = Array.isArray(dsl.steps) ? dsl.steps : [];
+  const stepSummary = {
+    name: dsl.name,
+    inputParams: dsl.inputParams,
+    outputParams: dsl.outputParams,
+    steps: rawSteps.map((step: any, index: number) => ({
+      id: step?.id || `step_${index + 1}`,
+      name: step?.name,
+      activityRef: step?.activityRef,
+    })),
+  };
   return [
+    '【区域 A: ROLE & CONSTRAINTS】',
     '你是一个 Temporal Python 开发专家，负责改进现有的 Workflow DSL 设计。',
     '请根据用户提出的改进要求，对当前的工作流步骤、参数定义、输出映射进行调整。',
-    '',
-    '【当前 Workflow DSL】',
-    JSON.stringify(currentWorkflowDsl, null, 2),
-    '',
-    '【当前 Activity DSL】',
-    JSON.stringify(currentActivityDsl, null, 2),
-    '',
-    '【改进要求】',
-    userPrompt,
-    '',
-    '【可用 Activity 资源池】',
-    JSON.stringify(
-      activityResources.map((r) => ({
-        ref: r.ref,
-        name: r.name,
-        fn: r.fn,
-        description: r.description,
-      })),
-      null,
-      2
-    ),
-    '',
     '输出要求：',
     '1. 只返回一个 JSON 对象，不要输出 Markdown 或任何解释。',
     '2. JSON 结构必须符合 AiWorkflowDraftPlan 接口：',
     '   {',
-    '     "workflowName": "中文名称",',
-    '     "workflowDescription": "描述",',
-    '     "workflowClassName": "Python类名",',
-    '     "workflowDefnName": "Temporal显示名",',
-    '     "taskQueue": "队列名",',
-    '     "steps": [{ "id": "step_1", "name": "步骤名", "type": "activity", "activityRef": "builtin:...", "input": { ... } }],',
-    '     "inputParams": { "paramName": { "description": "描述", "required": true, "defaultValue": "", "source": "declared", "type": "string", "exampleValue": "sample_value" } },',
-    '     "outputParams": { "result": { "description": "描述", "sourceStep": "step_1" } },',
-    '     "activities": [{ "activityRef": "...", "config": { ... } }],',
-    '     "warnings": ["注意点1"]',
+    '     “workflowName”: “中文名称”,',
+    '     “workflowDescription”: “描述”,',
+    '     “workflowClassName”: “Python类名”,',
+    '     “workflowDefnName”: “Temporal显示名”,',
+    '     “taskQueue”: “队列名”,',
+    '     “steps”: [{ “id”: “step_1”, “name”: “步骤名”, “type”: “activity”, “activityRef”: “builtin:...”, “input”: { ... } }],',
+    '     “inputParams”: { “paramName”: { “description”: “描述”, “required”: true, “defaultValue”: “”, “source”: “declared”, “type”: “string”, “exampleValue”: “sample_value” } },',
+    '     “outputParams”: { “result”: { “description”: “描述”, “sourceStep”: “step_1” } },',
+    '     “activities”: [{ “activityRef”: “...”, “config”: { ... } }],',
+    '     “warnings”: [“注意点1”]',
     '   }',
     '3. 必须确保 activityRef 在资源池中存在。',
-    '4. 如果涉及 HTTP 请求，必须将配置放在 input 的 "__httpRequest" 字段下，并遵循分解规则：域名归 urlTemplate，参数归 queryTemplate。',
-    '5. 如果涉及结构化转换，必须将配置放在 input 的 "__structuredTransform" 字段下。',
+    '4. 如果涉及 HTTP 请求，必须将配置放在 input 的 “__httpRequest” 字段下，并遵循分解规则：域名归 urlTemplate，参数归 queryTemplate。',
+    '5. 如果涉及结构化转换，必须将配置放在 input 的 “__structuredTransform” 字段下。',
     '6. `__httpRequest` 和 `__structuredTransform` 是步骤内部配置，不允许写入 workflow 级别的 inputParams，也不允许暴露为 workflow runtime 参数。',
     '6.1 inputParams 可以携带 source/type/exampleValue 元数据；如果步骤模板中存在未声明的 {param} 占位符，必须补齐参数定义，且不得把占位符改写成字面量。',
     '7. 严禁在模板字段中包含 Markdown 反引号 (`) 或多余空格。',
     '8. 如果某一步使用 builtin:structuredTransform，必须完整输出 contentType、contentTemplate、outputMode、outputSchema、contextTemplate、fieldMappings、textTemplate；其中 contentTemplate 默认为 {content}。',
-    '9. 如果用户要求“格式化输出”“ASCII 文本”“类似 wttr.in”，builtin:structuredTransform.outputMode 必须为 text，并优先产出 textTemplate。',
+    '9. 如果用户要求”格式化输出””ASCII 文本””类似 wttr.in”，builtin:structuredTransform.outputMode 必须为 text，并优先产出 textTemplate。',
     '10. 只有在用户明确要求 AI 语义理解、摘要、归纳、模糊分类或难以用固定规则表达时，才使用 builtin:aiStructuredTransform，此时必须输出 instructionTemplate。',
+    '',
+    '【区域 B: CONTEXT】',
+    formatActivityResources(activityResources),
+    '',
+    '【当前 Workflow 摘要】',
+    JSON.stringify(stepSummary, null, 2),
+    '',
+    '【区域 C: OBJECTIVE】',
+    '【改进要求】',
+    userPrompt,
+    '',
+    '【区域 D: OUTPUT SPEC】',
+    '必须直接返回 AiWorkflowDraftPlan 形状的 JSON 对象（结构同上方输出要求所列）。',
+    '严禁输出 Markdown 标记（```json）或任何解释文字。',
   ].join('\n');
 }
 
 export function buildAiDraftStepSampleKey(
-  step: NonNullable<AiWorkflowDraftPlan['steps']>[number] | undefined,
+  _step: NonNullable<AiWorkflowDraftPlan['steps']>[number] | undefined,
   index: number,
-  pickFirstNonEmptyString: PickFirstNonEmptyString
+  _pickFirstNonEmptyString: PickFirstNonEmptyString
 ): string {
-  return pickFirstNonEmptyString(step?.id) || `step_${index + 1}`;
+  // Use index-only key to avoid stepId collisions overwriting samples
+  // when two steps happen to share the same (possibly empty) id.
+  return `step_${index + 1}`;
 }
+
 
 export function buildStructuredTransformPlaceholderKeys(
   sampleInputs: Record<string, any>,

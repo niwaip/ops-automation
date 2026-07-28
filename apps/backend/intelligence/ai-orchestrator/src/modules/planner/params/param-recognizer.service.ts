@@ -141,7 +141,22 @@ export class ParamRecognizerService {
         const normalizedRawValue = rawHasValue
           ? this.normalizeMeaningfulInputValue(rawValue)
           : undefined;
-        const hasValue = this.hasMeaningfulRequiredInputValue(normalizedRawValue);
+
+        // enum 强制归一化：如果字段有 enum 约束且识别到的值不在合法列表中，则忽略该值，回退至 default
+        const schemaEnum = Array.isArray((schemaMeta as Record<string, unknown>).enum)
+          ? ((schemaMeta as Record<string, unknown>).enum as Array<string | number>)
+          : undefined;
+        const rawValuePassesEnum =
+          !schemaEnum ||
+          schemaEnum.length === 0 ||
+          (normalizedRawValue !== undefined &&
+            normalizedRawValue !== null &&
+            schemaEnum.includes(normalizedRawValue as string | number));
+        const effectiveHasValue = rawHasValue && rawValuePassesEnum;
+        const effectiveNormalizedRawValue = effectiveHasValue ? normalizedRawValue : undefined;
+
+        const hasValue = this.hasMeaningfulRequiredInputValue(effectiveNormalizedRawValue);
+
         const normalizedWorkflowDefaultValue =
           !required && workflowPolicy?.defaultValue !== undefined
             ? this.normalizeOptionalDefaultValue(workflowPolicy.defaultValue)
@@ -156,10 +171,11 @@ export class ParamRecognizerService {
             : normalizedSchemaDefaultValue;
         const canUseDefault = !required && !hasValue && normalizedDefaultValue !== undefined;
         const value = hasValue
-          ? normalizedRawValue
+          ? effectiveNormalizedRawValue
           : canUseDefault
             ? normalizedDefaultValue
             : undefined;
+
         const arrayGroupKey = this.extractArrayGroupKey(name, schema.type);
         const groupTargetCount = arrayGroupKey ? arrayGroupTargetCounts[arrayGroupKey] || 0 : 0;
         const valueItemCount = this.countMeaningfulRequiredInputItems(value);
@@ -190,12 +206,22 @@ export class ParamRecognizerService {
               ? Boolean(schemaMeta.previewBlocking)
               : undefined;
         const shouldBlockOnConfirmation = required || previewBlocking === true;
+        const collectedParams = matchedSkill.collectedParams || {};
+        const isCollectedParam =
+          Object.prototype.hasOwnProperty.call(collectedParams, name) &&
+          this.hasMeaningfulRequiredInputValue(collectedParams[name]);
+
         const needsConfidenceConfirmation =
           hasValue &&
           shouldBlockOnConfirmation &&
+          !isCollectedParam &&
           (uncertainFields.has(name) ||
             (fieldConfidence !== undefined && fieldConfidence < confirmationThreshold) ||
             (fieldConfidence === undefined && required && overallLowConfidence));
+
+
+
+
         const needsPartialGroupConfirmation =
           hasPartialArrayGroupValue && shouldBlockOnConfirmation;
         const needsConfirmation = needsConfidenceConfirmation || needsPartialGroupConfirmation;

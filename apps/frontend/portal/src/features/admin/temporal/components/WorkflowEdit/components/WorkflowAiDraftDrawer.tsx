@@ -1,6 +1,6 @@
 import React from 'react';
-import { Drawer, Space, Button, Typography, Card, Form, Input, Alert, Popconfirm, Collapse } from 'antd';
-import { RobotOutlined, ThunderboltOutlined, ReloadOutlined, DeleteOutlined, SendOutlined } from '@ant-design/icons';
+import { Drawer, Space, Button, Typography, Card, Form, Input, Alert, Popconfirm, Collapse, Upload, Tag, message } from 'antd';
+import { RobotOutlined, ThunderboltOutlined, ReloadOutlined, DeleteOutlined, SendOutlined, UploadOutlined, FileTextOutlined } from '@ant-design/icons';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -17,6 +17,11 @@ export interface WorkflowAiDraftDrawerProps {
   setAiDraftDescription: (desc: string) => void;
   aiDraftReferenceUrl: string;
   setAiDraftReferenceUrl: (url: string) => void;
+  skillFileName?: string;
+  setSkillFileContent?: (content?: string) => void;
+  setSkillFileType?: (type?: string) => void;
+  setSkillFileName?: (name?: string) => void;
+  handleClearSkillFile?: () => void;
   generateAiDraftMutationLoading: boolean;
   handleGenerateAiDraft: () => void;
   aiDraftSessionsQuery: any;
@@ -47,6 +52,11 @@ export const WorkflowAiDraftDrawer: React.FC<WorkflowAiDraftDrawerProps> = ({
   setAiDraftDescription,
   aiDraftReferenceUrl,
   setAiDraftReferenceUrl,
+  skillFileName,
+  setSkillFileContent,
+  setSkillFileType,
+  setSkillFileName,
+  handleClearSkillFile,
   generateAiDraftMutationLoading,
   handleGenerateAiDraft,
   aiDraftSessionsQuery,
@@ -66,6 +76,47 @@ export const WorkflowAiDraftDrawer: React.FC<WorkflowAiDraftDrawerProps> = ({
   setAiDraftInput,
   handleRefineAiDraft,
 }) => {
+  const [showParamInput, setShowParamInput] = React.useState(false);
+  const [paramText, setParamText] = React.useState('');
+  const [showOutputInput, setShowOutputInput] = React.useState(false);
+  const [outputText, setOutputText] = React.useState('');
+
+  const handleBeforeUpload = async (file: File) => {
+    try {
+      const text = await file.text();
+      let fileType = 'text';
+      if (file.name.endsWith('.yml') || file.name.endsWith('.yaml')) {
+        fileType = 'yaml';
+      } else if (file.name.endsWith('.json')) {
+        fileType = 'json';
+      } else if (file.name.endsWith('.md')) {
+        fileType = 'markdown';
+      }
+      setSkillFileContent?.(text);
+      setSkillFileType?.(fileType);
+      setSkillFileName?.(file.name);
+      message.success(`已加载技能文件: ${file.name}`);
+    } catch {
+      message.error('读取技能文件失败');
+    }
+    return false;
+  };
+
+  const handleFormSubmit = () => {
+    let finalDesc = aiDraftDescription.trim();
+    if (paramText.trim()) {
+      finalDesc += `\n\n【指定运行时输入参数】\n${paramText.trim()}`;
+    }
+    if (outputText.trim()) {
+      finalDesc += `\n\n【指定期望输出与动作】\n${outputText.trim()}`;
+    }
+    if (finalDesc !== aiDraftDescription) {
+      setAiDraftDescription(finalDesc);
+    }
+    handleGenerateAiDraft();
+  };
+
+
   return (
     <Drawer
       title={
@@ -104,14 +155,75 @@ export const WorkflowAiDraftDrawer: React.FC<WorkflowAiDraftDrawerProps> = ({
               </Text>
 
               <Card style={{ marginTop: 24, textAlign: 'left' }} size="small">
-                <Form layout="vertical">
-                  <Form.Item label="业务需求说明" required>
+                <Form layout="vertical" onFinish={handleFormSubmit}>
+                  <Form.Item label="业务需求说明" required={!skillFileName}>
                     <Input.TextArea
                       rows={4}
                       value={aiDraftDescription}
                       onChange={(e) => setAiDraftDescription(e.target.value)}
                       placeholder="例如：创建一个查询天气并发送通知的流程。"
                     />
+                    <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <Text type="secondary" style={{ fontSize: 12 }}>💡 Prompt 引导：</Text>
+                      {!showParamInput && (
+                        <Tag
+                          color="blue"
+                          style={{ cursor: 'pointer' }}
+                          onClick={() => setShowParamInput(true)}
+                        >
+                          + 补充输入参数
+                        </Tag>
+                      )}
+                      {!showOutputInput && (
+                        <Tag
+                          color="purple"
+                          style={{ cursor: 'pointer' }}
+                          onClick={() => setShowOutputInput(true)}
+                        >
+                          + 补充输出/通知
+                        </Tag>
+                      )}
+                    </div>
+                  </Form.Item>
+
+                  {showParamInput && (
+                    <Form.Item label="指定运行时输入参数 (可选)">
+                      <Input
+                        placeholder="例如: 服务器 IP, CPU 告警阈值(默认 90%)"
+                        value={paramText}
+                        onChange={(e) => setParamText(e.target.value)}
+                        allowClear
+                      />
+                    </Form.Item>
+                  )}
+
+                  {showOutputInput && (
+                    <Form.Item label="指定期望输出与动作 (可选)">
+                      <Input
+                        placeholder="例如: 生成 Markdown 报告并推送到钉钉机器人"
+                        value={outputText}
+                        onChange={(e) => setOutputText(e.target.value)}
+                        allowClear
+                      />
+                    </Form.Item>
+                  )}
+
+                  <Form.Item label="上传 Skill / 配置文件 (可选)">
+                    {skillFileName ? (
+                      <Tag
+                        color="blue"
+                        closable
+                        onClose={handleClearSkillFile}
+                        icon={<FileTextOutlined />}
+                        style={{ padding: '4px 8px', fontSize: 13 }}
+                      >
+                        已加载: {skillFileName}
+                      </Tag>
+                    ) : (
+                      <Upload beforeUpload={handleBeforeUpload} showUploadList={false} accept=".yml,.yaml,.json,.md">
+                        <Button icon={<UploadOutlined />} size="small">选择文件 (.yml / .json / .md)</Button>
+                      </Upload>
+                    )}
                   </Form.Item>
                   <Form.Item label="参考 URL (可选)">
                     <Input
@@ -120,16 +232,18 @@ export const WorkflowAiDraftDrawer: React.FC<WorkflowAiDraftDrawerProps> = ({
                       placeholder="例如：https://wttr.in/beijing?format=j1"
                     />
                   </Form.Item>
+
                   <Button
                     type="primary"
                     block
                     icon={<ThunderboltOutlined />}
                     loading={generateAiDraftMutationLoading}
-                    onClick={handleGenerateAiDraft}
+                    htmlType="submit"
                   >
                     生成初始草稿
                   </Button>
                 </Form>
+
               </Card>
 
               <Card style={{ marginTop: 16, textAlign: 'left' }} size="small">

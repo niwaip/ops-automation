@@ -56,6 +56,9 @@ export const useWorkflowDraftTemplates = ({
   const [currentAiDraft, setCurrentAiDraft] = useState<AiWorkflowDraft | null>(null);
   const [aiDraftDescription, setAiDraftDescription] = useState('');
   const [aiDraftReferenceUrl, setAiDraftReferenceUrl] = useState('');
+  const [skillFileContent, setSkillFileContent] = useState<string | undefined>(undefined);
+  const [skillFileType, setSkillFileType] = useState<string | undefined>(undefined);
+  const [skillFileName, setSkillFileName] = useState<string | undefined>(undefined);
   const [aiDraftDrawerVisible, setAiDraftDrawerVisible] = useState(false);
   const [applyDraftConfirmVisible, setApplyDraftConfirmVisible] = useState(false);
 
@@ -89,8 +92,12 @@ export const useWorkflowDraftTemplates = ({
   };
 
   const generateAiDraftMutation = useMutation(
-    (payload: { description?: string; referenceUrl?: string }) =>
-      temporalWorkflowApi.createAiDraftSession(payload),
+    (payload: {
+      description?: string;
+      referenceUrl?: string;
+      skillFileContent?: string;
+      skillFileType?: string;
+    }) => temporalWorkflowApi.createAiDraftSession(payload),
     {
       onSuccess: (session: AiWorkflowDraftSession) => {
         syncAiDraftSessionState(session);
@@ -169,15 +176,24 @@ export const useWorkflowDraftTemplates = ({
   };
 
   const handleGenerateAiDraft = () => {
-    if (!aiDraftDescription.trim() && !aiDraftReferenceUrl.trim()) {
-      void message.warning('请至少输入工作流说明或参考 URL');
+    if (!aiDraftDescription.trim() && !aiDraftReferenceUrl.trim() && !skillFileContent) {
+      void message.warning('请至少输入工作流说明、参考 URL 或上传技能文件');
       return;
     }
     generateAiDraftMutation.mutate({
-      description: aiDraftDescription.trim(),
-      referenceUrl: aiDraftReferenceUrl.trim(),
+      description: aiDraftDescription.trim() || undefined,
+      referenceUrl: aiDraftReferenceUrl.trim() || undefined,
+      skillFileContent,
+      skillFileType,
     });
   };
+
+  const handleClearSkillFile = () => {
+    setSkillFileContent(undefined);
+    setSkillFileType(undefined);
+    setSkillFileName(undefined);
+  };
+
 
   const handleRefineAiDraft = () => {
     if (!aiDraftInput.trim() || !aiDraftSessionId) {
@@ -349,8 +365,16 @@ export const useWorkflowDraftTemplates = ({
     setAiDraftDescription,
     aiDraftReferenceUrl,
     setAiDraftReferenceUrl,
+    skillFileContent,
+    setSkillFileContent,
+    skillFileType,
+    setSkillFileType,
+    skillFileName,
+    setSkillFileName,
+    handleClearSkillFile,
     aiDraftDrawerVisible,
     setAiDraftDrawerVisible,
+
     applyDraftConfirmVisible,
     setApplyDraftConfirmVisible,
     handleResumeAiDraftSession,

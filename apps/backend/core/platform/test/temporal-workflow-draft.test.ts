@@ -1656,11 +1656,11 @@ describe('TemporalWorkflowAiDraftService', () => {
     } as any);
 
     try {
-      await (aiDraftService as any).analyzeAiWorkflowDraft(
-        '查询天气',
-        '',
-        '',
-        [
+      await (aiDraftService as any).analyzeAiWorkflowDraft({
+        description: '查询天气',
+        referenceUrl: '',
+        referenceExcerpt: '',
+        activityResources: [
           {
             ref: 'builtin:httpRequest',
             name: 'HTTP 请求',
@@ -1670,10 +1670,11 @@ describe('TemporalWorkflowAiDraftService', () => {
             config: {},
           },
         ],
-        {
+        knownActivityRefs: new Set(['builtin:httpRequest']),
+        support: {
           parseJsonFromAiContent: (content: string) => JSON.parse(content),
-        }
-      );
+        },
+      });
       expect(mockedAxios.post).toHaveBeenCalledWith(
         expect.any(String),
         expect.any(Object),

@@ -290,7 +290,18 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
       downloadUrl
     );
   }, [downloadUrl, finalResult, finalResultData, taskParts.structuredResultData]);
+  const contractChatSummary = useMemo(() => {
+    const dataObj = (finalResultData || metadataRecord) as Record<string, unknown> | undefined;
+    if (dataObj?._version === '1' && typeof dataObj.chatSummary === 'string' && dataObj.chatSummary.trim()) {
+      return dataObj.chatSummary.trim();
+    }
+    return undefined;
+  }, [finalResultData, metadataRecord]);
+
   const sanitizedOutcomeSummary = useMemo(() => {
+    if (contractChatSummary) {
+      return compactExecutionText(beautifyText(contractChatSummary), finalResultData);
+    }
     const source = waitingInputSummary || finalSummary;
     if (!source) {
       return undefined;
@@ -302,7 +313,8 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
     }
 
     return compactExecutionText(beautifyText(stripped), finalResultData);
-  }, [finalResultData, finalSummary, waitingInputSummary]);
+  }, [contractChatSummary, finalResultData, finalSummary, waitingInputSummary]);
+
   const outcomeSummary = useMemo(() => {
     if (!sanitizedOutcomeSummary) {
       return undefined;

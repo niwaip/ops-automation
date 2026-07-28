@@ -233,17 +233,15 @@ const summarizeDocumentExecutionResult = (value: unknown, downloadUrl?: string):
     return null;
   }
 
+  const resultType = asString(record.resultType)?.toLowerCase();
   const status = asString(record.status)?.toLowerCase();
   const fileName = asString(record.fileName) || asString(record.filename) || asString(record.name);
   const format = asString(record.format)?.toUpperCase();
-  const isDocumentResult = Boolean(
-    fileName ||
-      format ||
-      downloadUrl ||
-      ['rendered', 'success', 'succeeded', 'completed'].includes(status || '')
-  );
 
-  if (!isDocumentResult) {
+  const isExplicitDocument = resultType === 'document' || Boolean(record.isDocument) || Boolean(record.carbone);
+  const hasDocumentFileMeta = Boolean((fileName || format) && (downloadUrl || status === 'rendered'));
+
+  if (!isExplicitDocument && !hasDocumentFileMeta) {
     return null;
   }
 
@@ -256,11 +254,31 @@ const summarizeDocumentExecutionResult = (value: unknown, downloadUrl?: string):
 };
 
 const hasBrowserExecutionPayload = (value: unknown): boolean => {
-  const result = extractBrowserExecutionResult(value);
-  if (result && result.stepResults.length > 0) {
-    return true;
+  if (!value || typeof value !== 'object') {
+    return false;
   }
-  return getExecutionStepCount(value) !== undefined;
+  const rootRecord = value as Record<string, unknown>;
+  const declaredRuntimeType = (
+    typeof rootRecord.runtimeType === 'string'
+      ? rootRecord.runtimeType
+      : typeof asRecord(rootRecord.execution)?.runtimeType === 'string'
+        ? (asRecord(rootRecord.execution)?.runtimeType as string)
+        : typeof asRecord(rootRecord.execution)?.runtime_type === 'string'
+          ? (asRecord(rootRecord.execution)?.runtime_type as string)
+          : undefined
+  )?.trim()?.toLowerCase();
+
+  if (
+    declaredRuntimeType &&
+    ['custom', 'http', 'workflow', 'backend', 'api', 'temporal_workflow', 'document'].includes(
+      declaredRuntimeType
+    )
+  ) {
+    return false;
+  }
+
+  const result = extractBrowserExecutionResult(value);
+  return Boolean(result && result.stepResults.length > 0);
 };
 
 const summarizeBrowserExecutionResult = (value: unknown): string | null => {
@@ -294,13 +312,28 @@ const summarizeBrowserExecutionResult = (value: unknown): string | null => {
   ].join('\n');
 };
 
+const summarizeSearchResult = (value: unknown): string | null => {
+  const record = asRecord(value);
+  if (!record) return null;
+  const res = asRecord(record.result);
+  const title = asString(res?.title) || asString(record.title);
+  const summary = asString(res?.summary) || asString(record.summary);
+
+  if (summary) {
+    return summary;
+  }
+  if (title) {
+    return `${title} 执行完成。`;
+  }
+  return null;
+};
+
 export const compactExecutionText = (text?: string, executionResultData?: unknown): string => {
   const raw = stripTaskStatusBoilerplate(stripThinkingContent(text)).trim();
   if (!raw) return '';
-  if (looksLikeVerboseExecutionContent(raw) && hasBrowserExecutionPayload(executionResultData)) {
+  if (hasBrowserExecutionPayload(executionResultData)) {
     return (
-      summarizeBrowserExecutionResult(executionResultData) ||
-      '浏览器执行已完成，详细信息请通过下方链接查看。'
+      summarizeBrowserExecutionResult(executionResultData) || raw
     );
   }
   return raw;
@@ -309,7 +342,7 @@ export const compactExecutionText = (text?: string, executionResultData?: unknow
 export const getExecutionStepCount = (value: unknown): number | undefined => {
   if (!value || typeof value !== 'object') return undefined;
   const obj = value as Record<string, unknown>;
-  const candidates = [obj.stepResults, obj.executedCommands, obj.results, obj.steps];
+  const candidates = [obj.stepResults, obj.executedCommands];
   for (const candidate of candidates) {
     if (Array.isArray(candidate) && candidate.length > 0) {
       return candidate.length;
@@ -327,8 +360,37 @@ export const isBrowserExecutionResult = (
   if (!executionId) {
     return false;
   }
-  const normalizedRuntimeType =
-    typeof options?.runtimeType === 'string' ? options.runtimeType.trim().toLowerCase() : '';
+
+  const resultObj =
+    finalResultData && typeof finalResultData === 'object'
+      ? (finalResultData as Record<string, unknown>)
+      : undefined;
+  const executionObj =
+    resultObj?.execution && typeof resultObj.execution === 'object'
+      ? (resultObj.execution as Record<string, unknown>)
+      : undefined;
+
+  const normalizedRuntimeType = (
+    typeof options?.runtimeType === 'string'
+      ? options.runtimeType
+      : typeof resultObj?.runtimeType === 'string'
+        ? (resultObj.runtimeType as string)
+        : typeof executionObj?.runtimeType === 'string'
+          ? (executionObj.runtimeType as string)
+          : typeof executionObj?.runtime_type === 'string'
+            ? (executionObj.runtime_type as string)
+            : ''
+  )
+    .trim()
+    .toLowerCase();
+
+  if (
+    ['custom', 'http', 'workflow', 'backend', 'api', 'temporal_workflow', 'document'].includes(
+      normalizedRuntimeType
+    )
+  ) {
+    return false;
+  }
   if (normalizedRuntimeType === 'browser') {
     return true;
   }
@@ -341,17 +403,25 @@ export const isBrowserExecutionResult = (
   return looksLikeVerboseExecutionContent(answerText) && hasBrowserExecutionPayload(answerText);
 };
 
+
 export const summarizeOutcomeFinalResult = (
   finalResult: string | undefined,
   finalResultData: unknown,
   downloadUrl?: string
 ): string | undefined => {
-  if (!finalResult) {
-    return undefined;
+  const compactText = compactExecutionText(finalResult, finalResultData);
+  if (compactText) {
+    return compactText;
+  }
+
+  const searchSummary = summarizeSearchResult(finalResultData);
+  if (searchSummary) {
+    return searchSummary;
   }
 
   return (
     summarizeDocumentExecutionResult(finalResultData, downloadUrl) ||
-    compactExecutionText(finalResult, finalResultData)
+    undefined
   );
 };
+

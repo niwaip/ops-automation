@@ -414,6 +414,10 @@ export class ChatConversationService {
     if (executionId) {
       metadata.executionId = executionId;
     }
+    const runtimeType = this.asString(data?.runtimeType) || this.asString(data?.runtime_type);
+    if (runtimeType) {
+      metadata.runtimeType = runtimeType;
+    }
     if (taskStatus === 'completed') {
       metadata.finalResult = content;
     }
