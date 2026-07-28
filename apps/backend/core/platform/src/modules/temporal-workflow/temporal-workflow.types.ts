@@ -70,6 +70,24 @@ export interface WorkflowResultEnvelope {
   delivery?: Record<string, unknown>;
 }
 
+export interface WorkflowResultContract {
+  _version: '1';
+  executionId?: string;
+  workflowId?: string;
+  status: 'success' | 'partial_success' | 'failed' | 'cancelled';
+  hasBusinessResult: boolean;
+  chatSummary: string;
+  summaryFormat: 'plain_text' | 'markdown';
+  title?: string;
+  businessData?: unknown;
+  metrics?: Record<string, unknown>;
+  artifacts?: WorkflowResultArtifact[];
+  downloadUrl?: string;
+  temporalLink?: string;
+  nextActions?: Array<{ type: string; label: string; value?: string }>;
+  warnings?: string[];
+}
+
 export interface WorkflowStep {
   id: string;
   name: string;
@@ -344,6 +362,8 @@ export interface BrowserWorkflowDraft {
 export interface GenerateAiWorkflowDraftDTO {
   description?: string;
   referenceUrl?: string;
+  skillFileContent?: string;
+  skillFileType?: 'yaml' | 'json' | 'markdown' | 'text' | string;
 }
 
 export interface GenerateAiWorkflowDraftSessionDTO extends GenerateAiWorkflowDraftDTO {

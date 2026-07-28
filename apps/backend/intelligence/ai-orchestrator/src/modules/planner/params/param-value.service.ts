@@ -28,7 +28,10 @@ export class ParamValueService {
     }
     if (typeof value === 'string') {
       const trimmed = value.trim();
-      return trimmed.length > 0 && !isPlaceholderTextValue(trimmed) ? trimmed : undefined;
+      if (!trimmed || isPlaceholderTextValue(trimmed)) {
+        return undefined;
+      }
+      return this.sanitizeSearchActionSuffix(trimmed);
     }
     if (Array.isArray(value)) {
       const normalized = value
@@ -87,5 +90,21 @@ export class ParamValueService {
     }
 
     return undefined;
+  }
+
+  sanitizeSearchActionSuffix(val: string): string {
+    // First pass: strip trailing output-format instructions
+    // e.g. "，最终输出md文件", "，生成markdown格式报告", ", output to markdown file"
+    const OUTPUT_FORMAT_PATTERN =
+      /\s*[，,。.；;]?\s*(?:(?:并且|并|然后)?\s*(?:最终|最后)?\s*(?:输出|生成|导出|写出|保存|制作|格式化|output|export|generate|save|write|create)?\s*(?:为|成|到|成为|as|in|to)?\s*(?:一个|一份)?\s*(?:md|markdown|txt|pdf|word|excel|csv|json)\s*(?:格式的)?\s*(?:文件|报告|文档|file|format|report|document)?|(?:输出|生成|制作|output|generate|export)\s*(?:md|markdown|txt|pdf)\s*(?:文件|格式|file|format)?)\s*$/i;
+    const withoutOutput = val.replace(OUTPUT_FORMAT_PATTERN, '').trim() || val;
+
+    // Second pass: strip trailing summarization/analysis action instructions
+    // e.g. "并且对结果进行总结", "并分析", "并summarize"
+    const SUMMARIZE_PATTERN =
+      /\s*(?:并且|并|并且对结果|对结果|然后)?\s*(?:进行|做|给出)?\s*(?:总结|概括|归纳|分析|梳理|汇总|提炼|整理|summarize|summary|analysis\b)\s*$/i;
+    const cleaned = withoutOutput.replace(SUMMARIZE_PATTERN, '').trim();
+
+    return cleaned || val;
   }
 }

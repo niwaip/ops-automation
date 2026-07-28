@@ -576,9 +576,10 @@ export class ToolExecutor implements OnModuleInit {
       if (isTaskConstrainedRun && !params.skillId) {
         return this.buildToolResult(toolName, {
           success: false,
-          output: '任务模式下必须先基于 skillId 选择技能，再执行 flow_execute',
+          output:
+            '当前任务没有匹配到外部流程技能。如果是内容总结、问答、概括或文本分析等任务，请直接输出 Final Answer 回复用户，不要调用 flow_execute；若确实需要外部流程，请先通过技能列表匹配合法 skillId。',
           code: 'skill_id_required_in_task_mode',
-          severity: 'error',
+          severity: 'warning',
           data: { error: 'skill_id_required_in_task_mode' },
         });
       }

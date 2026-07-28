@@ -47,7 +47,19 @@ describe('ChatResultNormalizerService', () => {
     expect(normalized.structuredData).toEqual({ orderCount: 12 });
     expect(normalized.downloadUrl).toBe('https://example.com/report.pdf');
     expect(normalized.hasBusinessResult).toBe(true);
+
+    const contract = service.toContract(normalized, { executionId: 'exec-1', status: 'success' });
+    expect(contract._version).toBe('1');
+    expect(contract.executionId).toBe('exec-1');
+    expect(contract.status).toBe('success');
+    expect(contract.hasBusinessResult).toBe(true);
+    expect(contract.chatSummary).toBe('日报已生成并发送。');
+    expect(contract.summaryFormat).toBe('markdown');
+    expect(contract.title).toBe('销售日报');
+    expect(contract.businessData).toEqual({ orderCount: 12 });
+    expect(contract.downloadUrl).toBe('https://example.com/report.pdf');
   });
+
 
   it('falls back to legacy result fields', () => {
     const normalized = service.normalize(

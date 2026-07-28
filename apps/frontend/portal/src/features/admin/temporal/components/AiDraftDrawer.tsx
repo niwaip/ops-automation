@@ -79,9 +79,15 @@ export const AiDraftDrawer: React.FC<AiDraftDrawerProps> = ({ visible, onClose, 
             setDescription={session.setAiDraftDescription}
             referenceUrl={session.aiDraftReferenceUrl}
             setReferenceUrl={session.setAiDraftReferenceUrl}
+            skillFileName={session.skillFileName}
+            setSkillFileContent={session.setSkillFileContent}
+            setSkillFileType={session.setSkillFileType}
+            setSkillFileName={session.setSkillFileName}
+            onClearSkillFile={session.handleClearSkillFile}
             onSubmit={session.handleGenerateAiDraft}
             loading={session.generateAiDraftMutation.isLoading}
           />
+
         )}
       </div>
 

@@ -19,6 +19,10 @@ export function useAiDraftSession(visible: boolean) {
   const [aiDraftReferenceUrl, setAiDraftReferenceUrl] = useState('');
   const [applyDraftConfirmVisible, setApplyDraftConfirmVisible] = useState(false);
 
+  const [skillFileContent, setSkillFileContent] = useState<string | undefined>(undefined);
+  const [skillFileType, setSkillFileType] = useState<string | undefined>(undefined);
+  const [skillFileName, setSkillFileName] = useState<string | undefined>(undefined);
+
   const aiDraftSessionsQuery = useQuery(
     ['temporal-draft-sessions'],
     () => temporalWorkflowApi.listAiDraftSessions(),
@@ -37,8 +41,12 @@ export function useAiDraftSession(visible: boolean) {
   };
 
   const generateAiDraftMutation = useMutation(
-    (payload: { description?: string; referenceUrl?: string }) =>
-      temporalWorkflowApi.createAiDraftSession(payload),
+    (payload: {
+      description?: string;
+      referenceUrl?: string;
+      skillFileContent?: string;
+      skillFileType?: string;
+    }) => temporalWorkflowApi.createAiDraftSession(payload),
     {
       onSuccess: (session: AiWorkflowDraftSession) => {
         syncAiDraftSessionState(session);
@@ -88,14 +96,22 @@ export function useAiDraftSession(visible: boolean) {
   );
 
   const handleGenerateAiDraft = () => {
-    if (!aiDraftDescription.trim() && !aiDraftReferenceUrl.trim()) {
-      message.warning('请至少输入工作流说明或参考 URL');
+    if (!aiDraftDescription.trim() && !aiDraftReferenceUrl.trim() && !skillFileContent) {
+      message.warning('请至少输入工作流说明、参考 URL 或上传技能文件');
       return;
     }
     generateAiDraftMutation.mutate({
-      description: aiDraftDescription.trim(),
-      referenceUrl: aiDraftReferenceUrl.trim(),
+      description: aiDraftDescription.trim() || undefined,
+      referenceUrl: aiDraftReferenceUrl.trim() || undefined,
+      skillFileContent,
+      skillFileType,
     });
+  };
+
+  const handleClearSkillFile = () => {
+    setSkillFileContent(undefined);
+    setSkillFileType(undefined);
+    setSkillFileName(undefined);
   };
 
   const handleRefineAiDraft = () => {
@@ -130,6 +146,13 @@ export function useAiDraftSession(visible: boolean) {
     setAiDraftDescription,
     aiDraftReferenceUrl,
     setAiDraftReferenceUrl,
+    skillFileContent,
+    setSkillFileContent,
+    skillFileType,
+    setSkillFileType,
+    skillFileName,
+    setSkillFileName,
+    handleClearSkillFile,
     applyDraftConfirmVisible,
     setApplyDraftConfirmVisible,
     aiDraftSessionsQuery,
@@ -141,3 +164,4 @@ export function useAiDraftSession(visible: boolean) {
     handleResumeAiDraftSession,
   };
 }
+

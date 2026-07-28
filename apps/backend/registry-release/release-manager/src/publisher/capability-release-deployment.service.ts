@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import type {
   ReleaseManagerPrismaPort,
@@ -25,30 +25,14 @@ import {
   SkillDraftDTO,
 } from '../interfaces';
 
-type ExceptionLike = Error & {
-  name: string;
-  status: number;
-  response: string | Record<string, unknown>;
-};
-
-function createBadRequestException(response: string | Record<string, unknown>): ExceptionLike {
-  const message =
-    typeof response === 'string' ? response : String(response.message ?? 'Bad Request');
-  const error = new Error(message) as ExceptionLike;
-  error.name = 'BadRequestException';
-  error.status = 400;
-  error.response = response;
-  return error;
+function createBadRequestException(response: string | Record<string, unknown>): BadRequestException {
+  return new BadRequestException(response);
 }
 
-function createNotFoundException(response: string | Record<string, unknown>): ExceptionLike {
-  const message = typeof response === 'string' ? response : String(response.message ?? 'Not Found');
-  const error = new Error(message) as ExceptionLike;
-  error.name = 'NotFoundException';
-  error.status = 404;
-  error.response = response;
-  return error;
+function createNotFoundException(response: string | Record<string, unknown>): NotFoundException {
+  return new NotFoundException(response);
 }
+
 
 export interface CapabilityReleaseDeploymentAccessors {
   getReleaseOrThrow(id: string): Promise<CapabilityReleaseDTO>;

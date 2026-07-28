@@ -262,8 +262,14 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
     setAiDraftDescription,
     aiDraftReferenceUrl,
     setAiDraftReferenceUrl,
+    skillFileName,
+    setSkillFileContent,
+    setSkillFileType,
+    setSkillFileName,
+    handleClearSkillFile,
     aiDraftDrawerVisible,
     setAiDraftDrawerVisible,
+
     applyDraftConfirmVisible,
     setApplyDraftConfirmVisible,
     handleResumeAiDraftSession,
@@ -843,7 +849,13 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
         setAiDraftDescription={setAiDraftDescription}
         aiDraftReferenceUrl={aiDraftReferenceUrl}
         setAiDraftReferenceUrl={setAiDraftReferenceUrl}
+        skillFileName={skillFileName}
+        setSkillFileContent={setSkillFileContent}
+        setSkillFileType={setSkillFileType}
+        setSkillFileName={setSkillFileName}
+        handleClearSkillFile={handleClearSkillFile}
         generateAiDraftMutationLoading={generateAiDraftMutation.isLoading}
+
         handleGenerateAiDraft={handleGenerateAiDraft}
         aiDraftSessionsQuery={aiDraftSessionsQuery}
         resolveApiErrorMessage={resolveApiErrorMessage}

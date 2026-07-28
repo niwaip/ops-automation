@@ -27,11 +27,14 @@ interface ParamSchemaProperty {
   description?: string;
   required?: boolean;
   default?: string | number | boolean;
+  enum?: Array<string | number>;
+  exampleValue?: unknown;
   extractionPrompt?: string;
   semanticRole?: string;
   extractionHints?: string[];
   displayName?: string;
 }
+
 
 /**
  * Param Recognizer Service
@@ -531,8 +534,16 @@ export class RecognizerService {
     if (value === null || value === undefined) {
       return false;
     }
-    return this.validateType(value, normalizedExpectedType);
+    const isValidType = this.validateType(value, normalizedExpectedType);
+    if (!isValidType) {
+      return false;
+    }
+    if (schema?.enum && Array.isArray(schema.enum) && schema.enum.length > 0) {
+      return schema.enum.includes(value as any);
+    }
+    return true;
   }
+
 
   private postProcessRecognizedParams(
     params: Record<string, unknown>,
@@ -1008,9 +1019,34 @@ export class RecognizerService {
       }
     }
 
-    if (expectedType === 'number') {
-      return this.extractFirstLabeledValue(userInput, aliases, 'number');
+    if (
+      this.hasAliasKeyword(aliases, [
+        'query',
+        'keyword',
+        'keywords',
+        'search',
+        'searchterm',
+        'querytext',
+        'searchquery',
+        '搜索',
+        '检索',
+        '查询',
+        '关键词',
+      ])
+    ) {
+      const searchMatch = userInput.match(/(?:检索|搜索|查找|查询|搜|找)\s*(.+)/i);
+      if (searchMatch?.[1]?.trim()) {
+        return searchMatch[1].trim();
+      }
     }
+
+    if (expectedType === 'number') {
+      const explicitNumber = this.extractFirstLabeledValue(userInput, aliases, 'number');
+      if (explicitNumber !== undefined) {
+        return explicitNumber;
+      }
+    }
+
     if (expectedType === 'date') {
       return this.extractFirstLabeledValue(userInput, aliases, 'date');
     }
@@ -1020,6 +1056,8 @@ export class RecognizerService {
 
     return this.extractFirstLabeledValue(userInput, aliases, 'string');
   }
+
+
 
   private isDeliveryScopedArrayField(
     key: string,
@@ -1557,8 +1595,8 @@ export class RecognizerService {
 
   private extractLocationValue(input: string): string | undefined {
     const patterns = [
-      /(?:交付地点|交货地点|收货地址|交付地址|到货地点|送达地点)[为是:：]?\s*([^，。；\n]+)/,
-      /(?:地点为|地址为)[：: ]?\s*([^，。；\n]+)/,
+      /(?:交付地点|交货地点|收货地址|交付地址|到货地点|送达地点|城市名称|查询城市|城市)[为是:：]?\s*([^，。；\n]+)/,
+      /(?:地点为|地址为|城市为)[：: ]?\s*([^，。；\n]+)/,
     ];
 
     for (const pattern of patterns) {
@@ -1567,8 +1605,27 @@ export class RecognizerService {
         return match[1].trim();
       }
     }
+
+    const cityMatch = input.match(
+      /(?:上海|北京|广州|深圳|成都|武汉|南京|杭州|西安|重庆|天津|苏州|无锡|宁波|青岛|大连|厦门|福州|长沙|郑州|沈阳|哈尔滨|长春|济南|合肥|南昌|昆明|贵阳|海口|拉萨|乌鲁木齐|银川|西宁|呼和浩特|兰州|香港|澳门|台北|三亚|桂林|扬州|徐州|常州|南通|绍兴|嘉兴|金华|台州|温州|佛山|东莞|中山|珠海|惠州|江门|汕头|湛江|肇庆|清远|韶关|河源|梅州|潮州|揭阳|云浮)/
+    );
+    if (cityMatch?.[0]) {
+      return cityMatch[0];
+    }
+
+    const suffixMatch = input.match(/[\u4e00-\u9fa5]{2,8}(?:省|市|区|县)/);
+    if (suffixMatch?.[0]) {
+      return suffixMatch[0];
+    }
+
+    const trimmed = input.trim();
+    if (trimmed.length >= 2 && trimmed.length <= 20 && /^[\u4e00-\u9fa5]+$/.test(trimmed)) {
+      return trimmed;
+    }
+
     return undefined;
   }
+
 
   private extractAcceptanceTypeValue(input: string): string | undefined {
     const normalized = input.replace(/\s+/g, '');

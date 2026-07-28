@@ -41,7 +41,13 @@ export interface WorkflowAuxiliaryModalsProps {
   setAiDraftDescription: (val: string) => void;
   aiDraftReferenceUrl: string;
   setAiDraftReferenceUrl: (val: string) => void;
+  skillFileName?: string;
+  setSkillFileContent?: (val: string | undefined) => void;
+  setSkillFileType?: (val: string | undefined) => void;
+  setSkillFileName?: (val: string | undefined) => void;
+  handleClearSkillFile?: () => void;
   generateAiDraftMutationLoading: boolean;
+
   handleGenerateAiDraft: () => void;
   aiDraftSessionsQuery: any;
   resolveApiErrorMessage: (err: unknown, fallback: string) => string;
@@ -108,6 +114,11 @@ export const WorkflowAuxiliaryModals: React.FC<WorkflowAuxiliaryModalsProps> = (
   setAiDraftDescription,
   aiDraftReferenceUrl,
   setAiDraftReferenceUrl,
+  skillFileName,
+  setSkillFileContent,
+  setSkillFileType,
+  setSkillFileName,
+  handleClearSkillFile,
   generateAiDraftMutationLoading,
   handleGenerateAiDraft,
   aiDraftSessionsQuery,
@@ -182,7 +193,13 @@ export const WorkflowAuxiliaryModals: React.FC<WorkflowAuxiliaryModalsProps> = (
         setAiDraftDescription={setAiDraftDescription}
         aiDraftReferenceUrl={aiDraftReferenceUrl}
         setAiDraftReferenceUrl={setAiDraftReferenceUrl}
+        skillFileName={skillFileName}
+        setSkillFileContent={setSkillFileContent}
+        setSkillFileType={setSkillFileType}
+        setSkillFileName={setSkillFileName}
+        handleClearSkillFile={handleClearSkillFile}
         generateAiDraftMutationLoading={generateAiDraftMutationLoading}
+
         handleGenerateAiDraft={handleGenerateAiDraft}
         aiDraftSessionsQuery={aiDraftSessionsQuery}
         resolveApiErrorMessage={resolveApiErrorMessage}

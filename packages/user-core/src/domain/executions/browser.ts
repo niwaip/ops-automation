@@ -47,20 +47,66 @@ export const extractBrowserExecutionResult = (
   value: unknown
 ): BrowserExecutionResultViewModel | null => {
   const parsed = tryParseJsonValue(value);
+  const rootRecord = asRecord(parsed);
+
+  const declaredRuntimeType = (
+    typeof rootRecord?.runtimeType === 'string'
+      ? rootRecord.runtimeType
+      : typeof asRecord(rootRecord?.execution)?.runtimeType === 'string'
+        ? (asRecord(rootRecord?.execution)?.runtimeType as string)
+        : typeof asRecord(rootRecord?.execution)?.runtime_type === 'string'
+          ? (asRecord(rootRecord?.execution)?.runtime_type as string)
+          : undefined
+  )?.trim()?.toLowerCase();
+
+  if (
+    declaredRuntimeType &&
+    ['custom', 'http', 'workflow', 'backend', 'api', 'temporal_workflow', 'document'].includes(
+      declaredRuntimeType
+    )
+  ) {
+    return null;
+  }
+
   const candidates = [
-    asRecord(parsed),
-    asRecord(asRecord(parsed)?.result),
-    asRecord(asRecord(parsed)?.output),
+    rootRecord,
+    asRecord(rootRecord?.result),
+    asRecord(rootRecord?.output),
   ].filter((item): item is Record<string, unknown> => Boolean(item));
 
   for (const candidate of candidates) {
-    const rawStepResults = Array.isArray(candidate.stepResults)
+    const isExplicitStepResults = Array.isArray(candidate.stepResults);
+    const rawStepResults = isExplicitStepResults
       ? candidate.stepResults
       : Array.isArray(candidate.results)
         ? candidate.results
         : undefined;
     if (!Array.isArray(rawStepResults)) {
       continue;
+    }
+
+    if (!isExplicitStepResults) {
+      const hasBrowserCharacteristics = rawStepResults.some(
+        (item) =>
+          Boolean(item) &&
+          typeof item === 'object' &&
+          !Array.isArray(item) &&
+          ('snapshotId' in item ||
+            'action' in item ||
+            'command' in item ||
+            'pageUrl' in item ||
+            'selector' in item ||
+            'stepId' in item ||
+            'target' in item)
+      );
+      if (
+        !hasBrowserCharacteristics &&
+        !candidate.trace &&
+        !candidate.runtimeEvidence &&
+        candidate.runtimeSessionId === undefined
+      ) {
+        continue;
+      }
     }
 
     const stepResults = rawStepResults
@@ -91,6 +137,7 @@ export const extractBrowserExecutionResult = (
               : null,
         output: asRecord(item.output) || item,
       }));
+
     const trace = asRecord(candidate.trace);
     const runtimeEvidence = asRecord(candidate.runtimeEvidence);
 

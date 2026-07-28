@@ -1171,12 +1171,35 @@ export class ReActEngineService {
 
     // 检查是否任务完成（如document_render返回taskComplete）
     if (innerData?.taskComplete && !state.isWaitingForUserInput) {
-      state.isFinished = true;
-      state.finalAnswer =
-        typeof innerData.finalAnswer === 'string' && innerData.finalAnswer.trim()
-          ? innerData.finalAnswer
-          : event.content;
-      state.finalResultData = innerData as Record<string, unknown>;
+      // 判断用户是否有总结/后处理意图（如"总结"、"概括"、"分析"等关键词）
+      const userInput = context.originalUserInput || '';
+      const hasSummarizationIntent =
+        /总结|概括|归纳|分析|梳理|汇总|提炼|综合|整理|summarize|summary|analyze|analysis/i.test(
+          userInput
+        );
+      const toolName = typeof state.action === 'string' ? state.action : '';
+      const isSkillExecution =
+        toolName === 'flow_execute' || toolName === 'api_call' || toolName === 'temporal_workflow';
+
+      if (hasSummarizationIntent && isSkillExecution && state.iteration < state.maxIterations - 1) {
+        // 将执行结果放入 observation，让 LLM 继续推理并输出总结
+        const executionResult =
+          typeof innerData.finalAnswer === 'string' && innerData.finalAnswer.trim()
+            ? innerData.finalAnswer
+            : event.content;
+        state.observation = `${executionResult}\n\n[技能执行已完成，请根据以上结果，结合用户的原始请求「${userInput}」，输出一份清晰的总结回答]`;
+        state.finalResultData = innerData as Record<string, unknown>;
+        // 清除 nextAction，让 LLM 自由决策（输出 Final Answer）
+        context.nextAction = undefined;
+        context.nextActionParams = undefined;
+      } else {
+        state.isFinished = true;
+        state.finalAnswer =
+          typeof innerData.finalAnswer === 'string' && innerData.finalAnswer.trim()
+            ? innerData.finalAnswer
+            : event.content;
+        state.finalResultData = innerData as Record<string, unknown>;
+      }
     }
 
     // 检查是否有nextAction提示

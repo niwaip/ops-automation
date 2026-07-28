@@ -159,6 +159,17 @@ export interface TemporalWorkflowAiDraftSupport {
   ): Record<string, any>;
 }
 
+export interface AiDraftGenerationContext {
+  readonly description: string;
+  readonly referenceUrl: string;
+  readonly referenceExcerpt: string;
+  readonly skillFileContent?: string;
+  readonly skillFileType?: string;
+  readonly activityResources: AiDraftActivityResource[];
+  readonly knownActivityRefs: Set<string>;
+  readonly support: TemporalWorkflowAiDraftSupport;
+}
+
 @Injectable()
 export class TemporalWorkflowAiDraftService {
   constructor(
@@ -181,9 +192,11 @@ export class TemporalWorkflowAiDraftService {
   ): Promise<AiWorkflowDraft> {
     const description = String(data?.description || '').trim();
     const referenceUrl = String(data?.referenceUrl || '').trim();
+    const skillFileContent = String(data?.skillFileContent || '').trim() || undefined;
+    const skillFileType = String(data?.skillFileType || '').trim() || undefined;
 
-    if (!description && !referenceUrl) {
-      throw new BadRequestException('请提供工作流说明或参考 URL');
+    if (!description && !referenceUrl && !skillFileContent) {
+      throw new BadRequestException('请提供工作流说明、技能文件或参考 URL');
     }
 
     const warnings: string[] = [];
@@ -197,35 +210,20 @@ export class TemporalWorkflowAiDraftService {
     }
 
     const activityResources = await this.getAiDraftActivityResources(support);
-    const initialPlan = await this.analyzeAiWorkflowDraft(
+    const ctx: AiDraftGenerationContext = {
       description,
       referenceUrl,
       referenceExcerpt,
+      skillFileContent,
+      skillFileType,
       activityResources,
-      support
-    );
-    const resolvedPlan = await this.resolveAiWorkflowDraftPlan(
-      initialPlan,
-      description,
-      referenceUrl,
-      activityResources,
-      support
-    );
-    const plan = await this.repairAiWorkflowDraftPlanIfNeeded(
-      resolvedPlan,
-      description,
-      referenceUrl,
-      referenceExcerpt,
-      activityResources,
-      support
-    );
-    const draft = await this.materializeAiWorkflowDraft(
-      plan,
-      activityResources,
-      description,
-      referenceUrl,
-      support
-    );
+      knownActivityRefs: new Set(activityResources.map((item) => item.ref)),
+      support,
+    };
+    const initialPlan = await this.analyzeAiWorkflowDraft(ctx);
+    const resolvedPlan = await this.resolveAiWorkflowDraftPlan(ctx, initialPlan);
+    const plan = await this.repairAiWorkflowDraftPlanIfNeeded(ctx, resolvedPlan);
+    const draft = await this.materializeAiWorkflowDraft(ctx, plan);
 
     return {
       ...draft,
@@ -237,6 +235,7 @@ export class TemporalWorkflowAiDraftService {
     };
   }
 
+
   async refineWorkflowDraft(
     data: RefineAiWorkflowDraftDTO,
     support: TemporalWorkflowAiDraftSupport
@@ -247,6 +246,17 @@ export class TemporalWorkflowAiDraftService {
     }
 
     const activityResources = await this.getAiDraftActivityResources(support);
+    const referenceUrl = data.currentWorkflowDsl.sourceContext?.referenceUrl || '';
+    const ctx: AiDraftGenerationContext = {
+      description: userPrompt,
+      referenceUrl,
+      referenceExcerpt: '',
+      skillFileContent: undefined,
+      skillFileType: undefined,
+      activityResources,
+      knownActivityRefs: new Set(activityResources.map((item) => item.ref)),
+      support,
+    };
     const initialPlan = await this.analyzeAiWorkflowRefinement(
       data.currentWorkflowDsl,
       data.currentActivityDsl,
@@ -254,28 +264,9 @@ export class TemporalWorkflowAiDraftService {
       activityResources,
       support
     );
-    const resolvedPlan = await this.resolveAiWorkflowDraftPlan(
-      initialPlan,
-      userPrompt,
-      data.currentWorkflowDsl.sourceContext?.referenceUrl || '',
-      activityResources,
-      support
-    );
-    const plan = await this.repairAiWorkflowDraftPlanIfNeeded(
-      resolvedPlan,
-      userPrompt,
-      data.currentWorkflowDsl.sourceContext?.referenceUrl || '',
-      '',
-      activityResources,
-      support
-    );
-    const draft = await this.materializeAiWorkflowDraft(
-      plan,
-      activityResources,
-      userPrompt,
-      data.currentWorkflowDsl.sourceContext?.referenceUrl || '',
-      support
-    );
+    const resolvedPlan = await this.resolveAiWorkflowDraftPlan(ctx, initialPlan);
+    const plan = await this.repairAiWorkflowDraftPlanIfNeeded(ctx, resolvedPlan);
+    const draft = await this.materializeAiWorkflowDraft(ctx, plan);
 
     return {
       ...draft,
@@ -336,18 +327,17 @@ export class TemporalWorkflowAiDraftService {
   }
 
   private async analyzeAiWorkflowDraft(
-    description: string,
-    referenceUrl: string,
-    referenceExcerpt: string,
-    activityResources: AiDraftActivityResource[],
-    support: TemporalWorkflowAiDraftSupport
+    ctx: AiDraftGenerationContext
   ): Promise<AiWorkflowDraftPlan> {
+    const { description, referenceUrl, referenceExcerpt, activityResources, support, skillFileContent, skillFileType } = ctx;
     const aiOrchestratorUrl = getAiOrchestratorUrl();
     const prompt = buildAnalyzeAiWorkflowDraftPrompt({
       description,
       referenceUrl,
       referenceExcerpt,
       activityResources,
+      skillFileContent,
+      skillFileType,
     });
 
     const response = await axios.post<{ result: string }>(
@@ -362,14 +352,12 @@ export class TemporalWorkflowAiDraftService {
     return support.parseJsonFromAiContent(response.data?.result || '') as AiWorkflowDraftPlan;
   }
 
+
   private async resolveAiWorkflowDraftPlan(
-    initialPlan: AiWorkflowDraftPlan,
-    description: string,
-    referenceUrl: string,
-    activityResources: AiDraftActivityResource[],
-    support: TemporalWorkflowAiDraftSupport
+    ctx: AiDraftGenerationContext,
+    initialPlan: AiWorkflowDraftPlan
   ): Promise<AiWorkflowDraftPlan> {
-    const knownActivityRefs = new Set(activityResources.map((item) => item.ref));
+    const { description, referenceUrl, knownActivityRefs, support } = ctx;
     const steps = Array.isArray(initialPlan.steps)
       ? initialPlan.steps.map((step) => ({
           ...step,
@@ -381,7 +369,7 @@ export class TemporalWorkflowAiDraftService {
       return initialPlan;
     }
 
-    const resolvedPlan: AiWorkflowDraftPlan = {
+    let resolvedPlan: AiWorkflowDraftPlan = {
       ...initialPlan,
       steps,
       warnings: Array.isArray(initialPlan.warnings) ? [...initialPlan.warnings] : [],
@@ -472,7 +460,8 @@ export class TemporalWorkflowAiDraftService {
               sampleInputs
             );
             if (!previewResult.success || !previewResult.previewResponse) {
-              (resolvedPlan.warnings as string[]).push(
+              resolvedPlan = this.appendDraftWarning(
+                resolvedPlan,
                 `分步解析未能预览步骤「${currentStep.name || currentStep.id || currentStepKey}」: ${previewResult.error || optimizedHttpResult.error || '未知错误'}`
               );
               continue;
@@ -480,7 +469,8 @@ export class TemporalWorkflowAiDraftService {
             previewResponse = previewResult.previewResponse;
           }
         } catch (error: any) {
-          (resolvedPlan.warnings as string[]).push(
+          resolvedPlan = this.appendDraftWarning(
+            resolvedPlan,
             `分步解析未能处理步骤「${currentStep.name || currentStep.id || currentStepKey}」: ${error?.message || '未知错误'}`
           );
           continue;
@@ -534,7 +524,8 @@ export class TemporalWorkflowAiDraftService {
               existingTransformConfig
             );
             if (!transformConfigResult.success || !transformConfigResult.config) {
-              (resolvedPlan.warnings as string[]).push(
+              resolvedPlan = this.appendDraftWarning(
+                resolvedPlan,
                 `分步解析未能生成步骤「${currentStep.name || currentStep.id || currentStepKey}」的固定规则转换配置: ${transformConfigResult.error || '未知错误'}`
               );
               continue;
@@ -563,7 +554,8 @@ export class TemporalWorkflowAiDraftService {
                 support
               )
             );
-            (resolvedPlan.warnings as string[]).push(
+            resolvedPlan = this.appendDraftWarning(
+              resolvedPlan,
               `已基于步骤「${previousStep?.name || previousStep?.id || previousStepKey}」的真实响应样本，补全「${currentStep.name || currentStep.id || currentStepKey}」固定规则配置。`
             );
             continue;
@@ -575,7 +567,8 @@ export class TemporalWorkflowAiDraftService {
             existingTransformConfig
           );
           if (!aiTransformConfigResult.success || !aiTransformConfigResult.config) {
-            (resolvedPlan.warnings as string[]).push(
+            resolvedPlan = this.appendDraftWarning(
+              resolvedPlan,
               `分步解析未能生成步骤「${currentStep.name || currentStep.id || currentStepKey}」的 AI 转换配置: ${aiTransformConfigResult.error || '未知错误'}`
             );
             continue;
@@ -605,11 +598,13 @@ export class TemporalWorkflowAiDraftService {
                 support
               )
           );
-          (resolvedPlan.warnings as string[]).push(
+          resolvedPlan = this.appendDraftWarning(
+            resolvedPlan,
             `已基于步骤「${previousStep?.name || previousStep?.id || previousStepKey}」的真实响应样本，补全「${currentStep.name || currentStep.id || currentStepKey}」AI 转换配置。`
           );
         } catch (error: any) {
-          (resolvedPlan.warnings as string[]).push(
+          resolvedPlan = this.appendDraftWarning(
+            resolvedPlan,
             `分步解析未能补全步骤「${currentStep.name || currentStep.id || currentStepKey}」: ${error?.message || '未知错误'}`
           );
         }
@@ -620,13 +615,10 @@ export class TemporalWorkflowAiDraftService {
   }
 
   private async repairAiWorkflowDraftPlanIfNeeded(
-    initialPlan: AiWorkflowDraftPlan,
-    description: string,
-    referenceUrl: string,
-    referenceExcerpt: string,
-    activityResources: AiDraftActivityResource[],
-    support: TemporalWorkflowAiDraftSupport
+    ctx: AiDraftGenerationContext,
+    initialPlan: AiWorkflowDraftPlan
   ): Promise<AiWorkflowDraftPlan> {
+    const { activityResources } = ctx;
     let plan = repairCommonDraftPlanIssues(initialPlan, {
       pickFirstNonEmptyString: (...values) => this.pickFirstNonEmptyString(...values),
     });
@@ -636,15 +628,7 @@ export class TemporalWorkflowAiDraftService {
       if (issues.length === 0) {
         return plan;
       }
-      plan = await this.repairAiWorkflowDraftPlan(
-        plan,
-        issues,
-        description,
-        referenceUrl,
-        referenceExcerpt,
-        activityResources,
-        support
-      );
+      plan = await this.repairAiWorkflowDraftPlan(ctx, plan, issues);
       plan = repairCommonDraftPlanIssues(plan, {
         pickFirstNonEmptyString: (...values) => this.pickFirstNonEmptyString(...values),
       });
@@ -662,20 +646,26 @@ export class TemporalWorkflowAiDraftService {
       ...plan,
       warnings: [
         ...(Array.isArray(plan.warnings) ? plan.warnings : []),
-        ...finalIssues.map((item) => `AI 草稿自动修复后仍需确认: ${item}`),
+        ...finalIssues.map((item) => {
+          const hint = item.includes('activityRef')
+            ? '→ 请在编辑器中手动选择正确的 Activity'
+            : item.includes('__httpRequest')
+              ? '→ 请在步骤配置中补充 HTTP 请求参数'
+              : item.includes('__structuredTransform')
+                ? '→ 请在步骤配置中补全结构化转换配置'
+                : '→ 请在编辑器中手动检查';
+          return `AI 草稿自动修复后仍需确认: ${item} ${hint}`;
+        }),
       ],
     };
   }
 
   private async repairAiWorkflowDraftPlan(
+    ctx: AiDraftGenerationContext,
     currentPlan: AiWorkflowDraftPlan,
-    issues: string[],
-    description: string,
-    referenceUrl: string,
-    referenceExcerpt: string,
-    activityResources: AiDraftActivityResource[],
-    support: TemporalWorkflowAiDraftSupport
+    issues: string[]
   ): Promise<AiWorkflowDraftPlan> {
+    const { description, referenceUrl, referenceExcerpt, activityResources, support } = ctx;
     const aiOrchestratorUrl = getAiOrchestratorUrl();
     const prompt = buildRepairAiWorkflowDraftPlanPrompt({
       currentPlan,
@@ -708,7 +698,6 @@ export class TemporalWorkflowAiDraftService {
     const aiOrchestratorUrl = getAiOrchestratorUrl();
     const prompt = buildAnalyzeAiWorkflowRefinementPrompt({
       currentWorkflowDsl,
-      currentActivityDsl,
       userPrompt,
       activityResources,
     });
@@ -726,12 +715,10 @@ export class TemporalWorkflowAiDraftService {
   }
 
   private async materializeAiWorkflowDraft(
-    plan: AiWorkflowDraftPlan,
-    activityResources: AiDraftActivityResource[],
-    description: string,
-    referenceUrl: string,
-    support: TemporalWorkflowAiDraftSupport
+    ctx: AiDraftGenerationContext,
+    plan: AiWorkflowDraftPlan
   ): Promise<AiWorkflowDraft> {
+    const { description, referenceUrl, activityResources, support } = ctx;
     const activityResourceMap = new Map(activityResources.map((item) => [item.ref, item]));
     const rawSteps = Array.isArray(plan.steps) ? plan.steps : [];
 
@@ -848,6 +835,19 @@ export class TemporalWorkflowAiDraftService {
       workflowDsl,
       activityDsl,
       warnings: [],
+    };
+  }
+
+  private appendDraftWarning(
+    plan: AiWorkflowDraftPlan,
+    text: string
+  ): AiWorkflowDraftPlan {
+    return {
+      ...plan,
+      warnings: [
+        ...(Array.isArray(plan.warnings) ? plan.warnings : []),
+        text,
+      ],
     };
   }
 
