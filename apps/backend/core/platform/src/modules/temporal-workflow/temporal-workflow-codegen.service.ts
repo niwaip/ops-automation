@@ -401,6 +401,10 @@ export class TemporalWorkflowCodegenService {
       lines.push('37. 【Saga 模式】：必须维护 compensations 列表，在失败时逆序执行补偿任务。');
     }
 
+    lines.push(
+      '38. 【enum 参数禁止二次校验】：inputParams 中带 `enum` 约束的参数（例如 `topic` 仅允许 `general`/`news`/`finance`），上游 plan 归一化层已保证传入 `run(self, params)` 的值合法（非法值会被丢弃并用 `defaultValue` 顶上）。生成的 Python 代码必须直接使用 `params` 中读到的值，禁止：(a) 在 Workflow/Activity 中再做一次 `if value not in [...]` 形式的 enum 白名单校验；(b) 抛出形如 `ApplicationError("X 必须是 [...] 之一，当前值: ...")` 的错误；(c) 绕开 `params` 重新从用户原始自然语言输入里抽取/推断 enum 字段值。如需对缺失的 required enum 参数兜底，只允许使用 `params.get(key, defaultValue)` 形式应用 defaultValue。'
+    );
+
     if (workflowDsl.extraPrompt) {
       lines.push('');
       lines.push('【补足情报（额外指导）】：');
@@ -508,6 +512,51 @@ export class TemporalWorkflowCodegenService {
     }
 
     return candidate;
+  }
+
+  /**
+   * 剥离 LLM 生成的 Python 代码中违规的 enum 白名单二次校验。
+   *
+   * 背景：inputParams 中带 enum 约束的参数，上游 plan 归一化层已保证传入值合法
+   * （见 ai-orchestrator param-enum-constraint.ts + param-recognizer.service.ts）。
+   * 但 LLM 常在生成的 activity 里自作主张再加 `if x not in [...]: raise ApplicationError("...必须是...之一...")`
+   * 形式的白名单校验，且校验的值往往不是从 params 读的、而是重新从自然语言抽取的，
+   * 导致运行时抛 "topic 必须是 ['general','news','finance'] 之一，当前值: AI" 类 ApplicationError。
+   *
+   * 这里只剥离"消息文本含『必须是...之一』"的 enum 白名单分支，避免误伤 HTTP 状态码
+   * 等合法的 `if x not in [...]` 校验。
+   */
+  private stripForbiddenEnumChecks(code: string): { code: string; stripped: boolean } {
+    // 形态 1：两行
+    //   if topic not in ['general', 'news', 'finance']:
+    //       raise ApplicationError("topic 必须是 ['general', 'news', 'finance'] 之一，当前值: " + str(topic), non_retryable=True)
+    // 用 [^\n]* 吃掉 raise 整行以应对消息里的嵌套括号（如 str(topic)、列表字面量），
+    // 但要求该行含"必须是...之一"才剥离，避免误伤 HTTP 状态码等合法校验。
+    const twoLinePattern = () =>
+      new RegExp(
+        '^[ \\t]*if\\s+(\\w+)\\s+not\\s+in\\s+\\[[^\\]]*\\]\\s*:\\s*\\n[ \\t]*raise\\s+ApplicationError\\([^\n]*必须是[^\n]*之一[^\n]*\\n',
+        'gm'
+      );
+    // 形态 2：单行
+    //   if topic not in [...]: raise ApplicationError("...必须是...之一...")
+    const oneLinePattern = () =>
+      new RegExp(
+        '^[ \\t]*if\\s+(\\w+)\\s+not\\s+in\\s+\\[[^\\]]*\\]\\s*:\\s*raise\\s+ApplicationError\\([^\n]*必须是[^\n]*之一[^\n]*\\n',
+        'gm'
+      );
+
+    let stripped = false;
+    let result = code;
+    for (const factory of [twoLinePattern, oneLinePattern]) {
+      const pattern = factory();
+      if (pattern.test(result)) {
+        // 用新实例执行 replace，避免 test() 留下的 lastIndex 状态影响匹配
+        result = result.replace(factory(), '');
+        stripped = true;
+      }
+    }
+
+    return { code: result, stripped };
   }
 
   private validateGeneratedPythonCodeShape(code: string): { success: boolean; error?: string } {
@@ -668,8 +717,8 @@ export class TemporalWorkflowCodegenService {
       onProgress?.(`[${new Date().toISOString()}] AI 已返回候选代码，开始提取与静态检查`);
 
       const content = response.data?.result || '';
-      const code = this.extractCodeFromMarkdown(content);
-      if (!code) {
+      const extractedCode = this.extractCodeFromMarkdown(content);
+      if (!extractedCode) {
         onProgress?.(`[${new Date().toISOString()}] AI 输出中未提取到有效 Python 代码`);
         if (attempt === 0) {
           errorContext = this.mergeErrorContext(
@@ -684,6 +733,13 @@ export class TemporalWorkflowCodegenService {
           attempts,
           autoRetried: attempts > 1,
         };
+      }
+
+      const { code, stripped } = this.stripForbiddenEnumChecks(extractedCode);
+      if (stripped) {
+        onProgress?.(
+          `[${new Date().toISOString()}] 检测到生成的 Python 代码包含 enum 白名单二次校验，已自动剥离（上游 plan 归一化层已保证 enum 合法）`
+        );
       }
 
       const codeShapeCheck = this.validateGeneratedPythonCodeShape(code);

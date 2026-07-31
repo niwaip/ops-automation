@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { RecognizeParamsDTO } from '../../../interfaces';
 import { AvailableSkillDefinition, SkillMatchResult } from '../../react-engine/interfaces';
+import { resolveParamEnumValues } from './param-enum-constraint';
 
 @Injectable()
 export class ParamSchemaService {
@@ -46,10 +47,12 @@ export class ParamSchemaService {
     return Object.fromEntries(
       Object.entries(properties).map(([name, schema]) => {
         const { required: _required, default: _schemaDefault, ...rest } = schema;
+        const enumValues = resolveParamEnumValues(schema);
         const recognizerProperty: NonNullable<
           RecognizeParamsDTO['params_schema']
         >['properties'][string] = {
           ...rest,
+          ...(enumValues ? { enum: enumValues } : {}),
         };
         return [name, recognizerProperty];
       })

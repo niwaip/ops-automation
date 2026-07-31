@@ -7,10 +7,15 @@ import {
 import { AvailableSkillDefinition, SkillMatchResult } from '../../react-engine/interfaces';
 import { ParamBilingualService } from './param-bilingual.service';
 import { ParamContextMergeService } from './param-context-merge.service';
-import { ParamPolicyService, WorkflowParamPolicySnapshot, WorkflowParamRequiredMode } from './param-policy.service';
+import {
+  ParamPolicyService,
+  WorkflowParamPolicySnapshot,
+  WorkflowParamRequiredMode,
+} from './param-policy.service';
 import { ParamRequiredInputPresentationService } from './param-required-input-presentation.service';
 import { ParamSchemaService } from './param-schema.service';
 import { ParamValueService } from './param-value.service';
+import { isParamEnumValueAllowed, resolveParamEnumValues } from './param-enum-constraint';
 
 const RECOGNIZED_FIELD_LOW_CONFIDENCE_THRESHOLD = Number(
   process.env.PARAM_FIELD_LOW_CONFIDENCE_THRESHOLD || 0.7
@@ -142,16 +147,10 @@ export class ParamRecognizerService {
           ? this.normalizeMeaningfulInputValue(rawValue)
           : undefined;
 
-        // enum 强制归一化：如果字段有 enum 约束且识别到的值不在合法列表中，则忽略该值，回退至 default
-        const schemaEnum = Array.isArray((schemaMeta as Record<string, unknown>).enum)
-          ? ((schemaMeta as Record<string, unknown>).enum as Array<string | number>)
-          : undefined;
-        const rawValuePassesEnum =
-          !schemaEnum ||
-          schemaEnum.length === 0 ||
-          (normalizedRawValue !== undefined &&
-            normalizedRawValue !== null &&
-            schemaEnum.includes(normalizedRawValue as string | number));
+        // 旧发布版本可能只把枚举写在 description/extractionPrompt 中。
+        // 运行时必须确定性校验，不能依赖模型是否遵守提示词。
+        const schemaEnum = resolveParamEnumValues(schemaMeta);
+        const rawValuePassesEnum = isParamEnumValueAllowed(normalizedRawValue, schemaEnum);
         const effectiveHasValue = rawHasValue && rawValuePassesEnum;
         const effectiveNormalizedRawValue = effectiveHasValue ? normalizedRawValue : undefined;
 
@@ -165,10 +164,13 @@ export class ParamRecognizerService {
           allowSchemaStrategyFallback && !required && normalizedWorkflowDefaultValue === undefined
             ? this.normalizeOptionalDefaultValue(schema.default)
             : undefined;
-        const normalizedDefaultValue =
+        const candidateDefaultValue =
           normalizedWorkflowDefaultValue !== undefined
             ? normalizedWorkflowDefaultValue
             : normalizedSchemaDefaultValue;
+        const normalizedDefaultValue = isParamEnumValueAllowed(candidateDefaultValue, schemaEnum)
+          ? candidateDefaultValue
+          : undefined;
         const canUseDefault = !required && !hasValue && normalizedDefaultValue !== undefined;
         const value = hasValue
           ? effectiveNormalizedRawValue
@@ -219,9 +221,6 @@ export class ParamRecognizerService {
             (fieldConfidence !== undefined && fieldConfidence < confirmationThreshold) ||
             (fieldConfidence === undefined && required && overallLowConfidence));
 
-
-
-
         const needsPartialGroupConfirmation =
           hasPartialArrayGroupValue && shouldBlockOnConfirmation;
         const needsConfirmation = needsConfidenceConfirmation || needsPartialGroupConfirmation;
@@ -263,6 +262,7 @@ export class ParamRecognizerService {
             ? { group_label: String(schemaMeta.groupLabel) }
             : {}),
           ...this.resolveRenderPath(schemaMeta),
+          ...(Array.isArray(schemaEnum) && schemaEnum.length > 0 ? { enum: schemaEnum } : {}),
           ...(typeof workflowPolicy?.templateBinding === 'string'
             ? { template_binding: workflowPolicy.templateBinding.trim() }
             : {}),

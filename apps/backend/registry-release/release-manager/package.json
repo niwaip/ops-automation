@@ -10,7 +10,7 @@
     }
   },
   "scripts": {
-    "build": "rm -rf dist && pnpm --filter @ops/skill-registry run build && tsc -p tsconfig.json",
+    "build": "rm -rf dist && pnpm --filter @ops/skill-registry run build && (pnpm exec tsc -p tsconfig.json || tsc -p tsconfig.json)",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {

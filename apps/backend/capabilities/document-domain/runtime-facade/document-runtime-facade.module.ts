@@ -10,10 +10,16 @@ import { DocumentStructureService } from '../template/workflow-authoring/documen
 import { TemplateWorkflowService } from '../template/workflow-authoring/template-workflow.service';
 import { DocumentRenderEntryController } from './render-entry/document-render-entry.controller';
 import { DocumentSkillRenderEntryController } from './render-entry/document-skill-render-entry.controller';
+import { MarkdownArtifactController } from './markdown-artifact/markdown-artifact.controller';
+import { MarkdownArtifactService } from './markdown-artifact/markdown-artifact.service';
 
 @Module({
   imports: [PrismaModule],
-  controllers: [DocumentRenderEntryController, DocumentSkillRenderEntryController],
+  controllers: [
+    DocumentRenderEntryController,
+    DocumentSkillRenderEntryController,
+    MarkdownArtifactController,
+  ],
   providers: [
     PreviewService,
     AIIdentifierService,
@@ -23,6 +29,7 @@ import { DocumentSkillRenderEntryController } from './render-entry/document-skil
     RenderOutputRepository,
     TemplateWorkflowService,
     StudioSkillRenderDataService,
+    MarkdownArtifactService,
   ],
   exports: [
     PreviewService,
@@ -33,6 +40,7 @@ import { DocumentSkillRenderEntryController } from './render-entry/document-skil
     RenderOutputRepository,
     TemplateWorkflowService,
     StudioSkillRenderDataService,
+    MarkdownArtifactService,
   ],
 })
 export class DocumentRuntimeFacadeModule {}

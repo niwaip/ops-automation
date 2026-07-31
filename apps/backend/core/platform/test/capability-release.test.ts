@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import axios from 'axios';
 import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';

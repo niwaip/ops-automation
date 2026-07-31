@@ -13,6 +13,8 @@ import { PrismaModule } from './prisma/prisma.module';
 import { IdentityAccessBridgeModule } from './governance/identity-access/identity-access-bridge.module';
 import { OrganizationBridgeModule } from './governance/organization/organization-bridge.module';
 
+import { BuiltinSkillModule } from './modules/builtin-skill/builtin-skill.module';
+
 @Module({
   imports: [
     // Passport module for JWT authentication
@@ -38,6 +40,7 @@ import { OrganizationBridgeModule } from './governance/organization/organization
 
     // Registry-release modules
     SkillModule,
+    BuiltinSkillModule,
     ExecutionFlowModule,
     TemporalWorkflowModule,
     ReleaseManagerRuntimeAdapterModule,

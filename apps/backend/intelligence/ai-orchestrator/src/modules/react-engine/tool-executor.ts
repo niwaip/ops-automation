@@ -401,6 +401,34 @@ export class ToolExecutor implements OnModuleInit {
     };
   }
 
+  private buildCapabilityNotMatchedMessage(context: ExecutionContext): string {
+    const catalogCapabilities = (context.availableSkills || [])
+      .slice(0, 5)
+      .map((skill) => {
+        const description = skill.description?.trim();
+        return description
+          ? `- ${skill.skillName}：${description.slice(0, 100)}`
+          : `- ${skill.skillName}`;
+      });
+    const catalogSection =
+      catalogCapabilities.length > 0
+        ? `\n当前实时能力目录中可用的流程能力：\n${catalogCapabilities.join('\n')}`
+        : '\n当前实时能力目录中没有已发布且可执行的流程 Skill。';
+    const isRealtimeSearchRequest =
+      /搜索|检索|查找|最新|新闻|search|latest|news/i.test(context.originalUserInput || '');
+    const missingCapabilityHint = isRealtimeSearchRequest
+      ? '这个请求需要实时搜索能力，但当前目录中没有匹配的搜索 Skill，因此我没有发起流程执行。'
+      : '这个请求没有匹配到可执行的外部流程 Skill，因此我没有发起流程执行。';
+
+    return `${missingCapabilityHint}
+
+当前系统仍可以直接完成：
+- 问答、总结、概括、改写和文本分析
+- 对你提供的内容进行整理、提取与结构化${catalogSection}
+
+你可以提供已有材料让我处理；如需实时搜索，请先由管理员发布并启用相应的搜索 Skill。`;
+  }
+
   private isToolAllowedInSelectedSkill(toolName: string, context: ExecutionContext): boolean {
     const selectedSkillId =
       context.skill?.skillId ||
@@ -574,13 +602,22 @@ export class ToolExecutor implements OnModuleInit {
       }
 
       if (isTaskConstrainedRun && !params.skillId) {
+        const finalAnswer = this.buildCapabilityNotMatchedMessage(context);
         return this.buildToolResult(toolName, {
-          success: false,
-          output:
-            '当前任务没有匹配到外部流程技能。如果是内容总结、问答、概括或文本分析等任务，请直接输出 Final Answer 回复用户，不要调用 flow_execute；若确实需要外部流程，请先通过技能列表匹配合法 skillId。',
-          code: 'skill_id_required_in_task_mode',
-          severity: 'warning',
-          data: { error: 'skill_id_required_in_task_mode' },
+          success: true,
+          output: finalAnswer,
+          code: 'capability_not_matched',
+          severity: 'info',
+          data: {
+            taskComplete: true,
+            finalAnswer,
+            capabilityMatched: false,
+            availableCapabilities: (context.availableSkills || []).map((skill) => ({
+              skillId: skill.skillId,
+              skillName: skill.skillName,
+              description: skill.description,
+            })),
+          },
         });
       }
 

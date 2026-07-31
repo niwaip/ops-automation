@@ -1,5 +1,5 @@
 import React from 'react';
-import { Input, InputNumber, Switch } from 'antd';
+import { Input, InputNumber, Select, Switch } from 'antd';
 import type { RequiredInputField } from '@/features/executions/create/lib/inputFields';
 
 interface ExecutionRequiredInputFieldProps {
@@ -31,6 +31,18 @@ const ExecutionRequiredInputField: React.FC<ExecutionRequiredInputFieldProps> = 
 
   if (isJsonLike) {
     return <Input.TextArea rows={4} placeholder={jsonPlaceholder || '请输入 JSON 字符串'} />;
+  }
+
+  if (Array.isArray(field.enum) && field.enum.length > 0) {
+    return (
+      <Select style={{ width: '100%' }} allowClear>
+        {field.enum.map((val) => (
+          <Select.Option key={String(val)} value={val}>
+            {String(val)}
+          </Select.Option>
+        ))}
+      </Select>
+    );
   }
 
   return (

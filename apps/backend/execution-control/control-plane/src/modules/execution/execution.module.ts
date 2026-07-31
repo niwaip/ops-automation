@@ -40,6 +40,15 @@ import { RuntimeExecutionOrchestrator } from './step-runner/runtime/runtime-exec
 import { RuntimeResultInterpreter } from './step-runner/runtime/runtime-result.interpreter';
 import { RuntimeStepRequestFactory } from './step-runner/runtime/runtime-step-request.factory';
 import { WorkflowRuntimeAdapter } from './adapters/workflow-runtime.adapter';
+import { LlmOperationRuntimeAdapter } from './adapters/llm-operation-runtime.adapter';
+import { BuiltinWorkflowRuntimeAdapter } from './adapters/builtin-workflow-runtime.adapter';
+import { BuiltinHandlerRegistryService } from './adapters/builtin-handler-registry.service';
+import { DeterministicPlanValidatorService } from './plan-runtime/deterministic-plan-validator.service';
+import { DeterministicPlanFreezeService } from './plan-runtime/deterministic-plan-freeze.service';
+import { DeterministicNodeInputResolverService } from './plan-runtime/deterministic-node-input-resolver.service';
+import { DeterministicFinalOutputService } from './plan-runtime/deterministic-final-output.service';
+import { DeterministicPlanSchedulerService } from './plan-runtime/deterministic-plan-scheduler.service';
+import { DeterministicPlanRecoveryService } from './plan-runtime/deterministic-plan-recovery.service';
 import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
@@ -52,6 +61,15 @@ import { PrismaModule } from '../prisma/prisma.module';
     CapabilityRuntimeAdapter,
     DocumentRuntimeAdapter,
     WorkflowRuntimeAdapter,
+    BuiltinHandlerRegistryService,
+    BuiltinWorkflowRuntimeAdapter,
+    LlmOperationRuntimeAdapter,
+    DeterministicPlanValidatorService,
+    DeterministicPlanFreezeService,
+    DeterministicNodeInputResolverService,
+    DeterministicFinalOutputService,
+    DeterministicPlanSchedulerService,
+    DeterministicPlanRecoveryService,
     ExecutionService,
     ExecutionCreateService,
     ExecutionApprovalService,
@@ -90,6 +108,9 @@ import { PrismaModule } from '../prisma/prisma.module';
   exports: [
     ExecutionService,
     ExecutionEventService,
+    DeterministicPlanValidatorService,
+    DeterministicPlanFreezeService,
+    DeterministicPlanSchedulerService,
   ],
 })
 export class ExecutionModule {}

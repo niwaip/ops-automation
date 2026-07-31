@@ -68,6 +68,52 @@ describe('ExecutionPlanNormalizationService', () => {
     );
   });
 
+  it('rejects invalid enum input and then applies the valid runtime default', () => {
+    const service = createService();
+    const planDraft = {
+      plan_id: 'plan-enum-1',
+      planner_mode: 'skill',
+      objective: '查询最新的AI新闻',
+      summary: 'search',
+      steps: [],
+      required_inputs: [
+        {
+          name: 'topic',
+          type: 'string',
+          enum: ['general', 'news', 'finance'],
+          required: false,
+          missing: true,
+          source: 'unresolved',
+        },
+      ],
+      risk_summary: {
+        level: 'low',
+        requires_human_review: false,
+        items: ['no_material_risk_detected'],
+      },
+    } as any;
+
+    const rejected = service.reconcilePlanDraftWithInput(planDraft, {
+      topic: '最新的AI新闻',
+    });
+    expect(rejected?.required_inputs[0]).toMatchObject({
+      source: 'unresolved',
+      missing: true,
+    });
+    expect(rejected?.required_inputs[0]?.value).toBeUndefined();
+
+    const defaulted = service.applyRuntimeDefaultsToPlanDraft(
+      rejected,
+      { topic: 'general' },
+      { topic: 'default' }
+    );
+    expect(defaulted?.required_inputs[0]).toMatchObject({
+      value: 'general',
+      source: 'default',
+      missing: false,
+    });
+  });
+
   it('builds runtime default resolution from skill schema and template workflow policy', () => {
     const service = createService();
 
@@ -392,7 +438,8 @@ describe('ExecutionPlanNormalizationService', () => {
           action: 'branch',
           description: '读取页面中的案件粗利率，超过20%则继续执行承认操作',
           branch: {
-            condition_fn: '(ctx) => Number(ctx.grossMargin || 0) >= Number(ctx.grossMarginThreshold)',
+            condition_fn:
+              '(ctx) => Number(ctx.grossMargin || 0) >= Number(ctx.grossMarginThreshold)',
             on_match: 'continue',
             on_mismatch: 'takeover',
             takeover_reason: '案件粗利率未达到20%自动化承认标准，需要人工介入审查后再承认',

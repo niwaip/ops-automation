@@ -152,17 +152,18 @@ export class ChatMediaService {
         },
         maxBodyLength: Infinity,
         maxContentLength: Infinity,
-      });
+      } as any);
 
+      const resData = response.data as any;
       let text = '';
-      if (typeof response.data === 'string') {
-        text = response.data;
-      } else if (response.data && typeof response.data.text === 'string') {
-        text = response.data.text;
-      } else if (response.data && typeof response.data.result === 'string') {
-        text = response.data.result;
-      } else if (response.data?.data && typeof response.data.data.text === 'string') {
-        text = response.data.data.text;
+      if (typeof resData === 'string') {
+        text = resData;
+      } else if (resData && typeof resData.text === 'string') {
+        text = resData.text;
+      } else if (resData && typeof resData.result === 'string') {
+        text = resData.result;
+      } else if (resData?.data && typeof resData.data.text === 'string') {
+        text = resData.data.text;
       } else {
         this.logger.warn(
           `Unexpected transcription response format: ${JSON.stringify(response.data)}`

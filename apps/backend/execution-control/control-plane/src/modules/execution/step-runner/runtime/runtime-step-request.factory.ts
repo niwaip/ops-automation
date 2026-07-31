@@ -50,28 +50,56 @@ export class RuntimeStepRequestFactory {
     phaseMetadata?: RuntimeStepPhaseMetadata;
     step?: Record<string, unknown> | null;
   }): RuntimeStepInvokeRequest | null {
-    const capabilityId = this.resolveExecutionCapabilityId(input.execution);
+    const stepObj = input.step as Record<string, unknown> | null | undefined;
+    const capabilityId = this.resolveExecutionCapabilityId(input.execution, stepObj);
     if (!capabilityId) {
       return null;
     }
 
     const executionId = input.execution.id as string;
     const includeExecutionStepMetadata = this.shouldIncludeExecutionStepMetadata(input.execution);
+    const isBuiltin = capabilityId.startsWith('platform.');
+
+    const frozenMeta = (
+      (stepObj?.inputBindingsJson as any)?._frozenMetadata ||
+      (stepObj?.input_bindings_json as any)?._frozenMetadata ||
+      (stepObj?.outputContractJson as any)?._frozenMetadata ||
+      (stepObj?.output_contract_json as any)?._frozenMetadata ||
+      stepObj?.metadata ||
+      {}
+    ) as Record<string, unknown>;
+
+    const capabilityVersion = this.resolveExecutionCapabilityVersion(input.execution, stepObj);
 
     return {
       requestId: `${executionId}:${input.stepId}`,
       executionId,
       stepId: input.stepId,
-      runtimeType: this.resolveExecutionRuntimeType(input.execution),
+      runtimeType: isBuiltin ? 'workflow' : this.resolveExecutionRuntimeType(input.execution),
       runtimeSessionId: input.runtimeSessionId,
-      skillId: (input.execution.skillId as string | null) || null,
+      skillId: (input.execution.skillId as string | null) || capabilityId,
       publishedSkillId: capabilityId,
-      capabilityType: this.resolveExecutionCapabilityType(input.execution),
-      action: this.resolveExecutionAction(input.execution),
+      capabilityType: isBuiltin ? 'builtin' : this.resolveExecutionCapabilityType(input.execution),
+      action: isBuiltin ? 'run' : this.resolveExecutionAction(input.execution),
       input: this.resolveExecutionInput(input.execution),
       policyContext: this.buildPolicyContext(input.execution),
       metadata: {
-        capabilityVersion: this.resolveExecutionCapabilityVersion(input.execution),
+        capabilityVersion,
+        ...(isBuiltin ? { builtinSkill: true, definitionVersion: capabilityVersion } : {}),
+        ...(frozenMeta.handlerKey
+          ? { handlerKey: frozenMeta.handlerKey as string }
+          : isBuiltin
+            ? {
+                handlerKey:
+                  capabilityId === 'platform.document.markdown-artifact-writer'
+                    ? 'document.markdown-artifact-writer'
+                    : capabilityId === 'platform.notification.internal-message'
+                      ? 'platform.notification.internal-message'
+                      : undefined,
+              }
+            : {}),
+        ...(frozenMeta.definitionDigest ? { definitionDigest: frozenMeta.definitionDigest as string } : {}),
+        ...(frozenMeta.adapterRoute ? { adapterRoute: frozenMeta.adapterRoute as string } : {}),
         ...(includeExecutionStepMetadata
           ? {
               executionStepName:
@@ -99,7 +127,17 @@ export class RuntimeStepRequestFactory {
     return this.resolveExecutionRuntimeSourceType(execution) !== 'browser_recording';
   }
 
-  resolveExecutionCapabilityId(execution: Record<string, unknown>): string | undefined {
+  resolveExecutionCapabilityId(
+    execution: Record<string, unknown>,
+    step?: Record<string, unknown> | null,
+  ): string | undefined {
+    if (typeof step?.capabilityId === 'string' && step.capabilityId.trim()) {
+      return step.capabilityId.trim();
+    }
+    if (typeof step?.capability_id === 'string' && step.capability_id.trim()) {
+      return step.capability_id.trim();
+    }
+
     const normalizedInput = execution.normalizedInputJson as Record<string, unknown> | undefined;
     const capabilityMatch = normalizedInput?.capabilityMatch as Record<string, unknown> | undefined;
     const skillMatch = normalizedInput?.skillMatch as Record<string, unknown> | undefined;
@@ -119,7 +157,16 @@ export class RuntimeStepRequestFactory {
     return undefined;
   }
 
-  resolveExecutionCapabilityVersion(execution: Record<string, unknown>): string | undefined {
+  resolveExecutionCapabilityVersion(
+    execution: Record<string, unknown>,
+    step?: Record<string, unknown> | null,
+  ): string | undefined {
+    if (typeof step?.capabilityVersion === 'string' && step.capabilityVersion.trim()) {
+      return step.capabilityVersion.trim();
+    }
+    if (typeof step?.capability_version === 'string' && step.capability_version.trim()) {
+      return step.capability_version.trim();
+    }
     return typeof execution.skillVersion === 'string' && execution.skillVersion.trim()
       ? execution.skillVersion
       : undefined;
@@ -198,298 +245,96 @@ export class RuntimeStepRequestFactory {
     const existingData = this.asRecord(result.data);
     const dataPayload = existingData ? { ...existingData } : {};
     let hasBindingMappings = false;
-    const bindingSamples: Array<{
-      name: string;
-      bindingPath: string;
-      rawValue: unknown;
-      resolvedValue: unknown;
-    }> = [];
-    const diagnostics = {
-      totalEntries: 0,
-      mapped: [] as string[],
-      invalidEntry: [] as string[],
-      missingValue: [] as string[],
-      notFinal: [] as string[],
-      missingBindingPath: [] as string[],
-    };
 
     for (const [name, entry] of Object.entries(rawParamResolution || {})) {
-      diagnostics.totalEntries += 1;
       const normalizedEntry = this.normalizeDocumentParamResolutionEntry(entry);
-      if (!normalizedEntry) {
-        diagnostics.invalidEntry.push(name);
-        continue;
-      }
-      if (normalizedEntry.final !== true) {
-        diagnostics.notFinal.push(name);
-        continue;
-      }
-      if (normalizedEntry.value === undefined || normalizedEntry.value === null) {
-        diagnostics.missingValue.push(name);
+      if (!normalizedEntry || normalizedEntry.final !== true || normalizedEntry.value === undefined || normalizedEntry.value === null) {
         continue;
       }
       const bindingPaths = this.resolveDocumentBindingPaths(normalizedEntry);
       if (bindingPaths.length === 0) {
-        diagnostics.missingBindingPath.push(name);
         continue;
       }
-
-      hasBindingMappings = true;
-      diagnostics.mapped.push(name);
-      bindingPaths.forEach((bindingPath) => {
-        const resolvedValue = this.resolveBindingValue(bindingPath, normalizedEntry.value);
-        if (
-          name === 'payment.firstDays' ||
-          name === 'payment.firstRatio' ||
-          name === 'payment.firstAmount' ||
-          name === 'payment.totalAmount' ||
-          name === 'payment.bankAccount' ||
-          name === 'service.endUser'
-        ) {
-          bindingSamples.push({
-            name,
-            bindingPath,
-            rawValue: normalizedEntry.value,
-            resolvedValue,
-          });
-        }
-        this.setBoundValue(dataPayload, bindingPath, normalizedEntry.value);
-      });
-      delete result[name];
+      for (const bindingPath of bindingPaths) {
+        this.setValueByPath(dataPayload, bindingPath, normalizedEntry.value);
+        hasBindingMappings = true;
+      }
     }
 
-    this.logDocumentRuntimeMappingDiagnostics({
-      executionId,
-      input,
-      existingData,
-      diagnostics,
-    });
-
-    if (!hasBindingMappings) {
-      return result;
+    if (hasBindingMappings) {
+      result.data = dataPayload;
     }
-
-    result.data = dataPayload;
     return result;
   }
 
-  private logDocumentRuntimeMappingDiagnostics(input: {
-    executionId?: string;
-    input: Record<string, unknown>;
-    existingData?: Record<string, unknown>;
-    diagnostics: {
-      totalEntries: number;
-      mapped: string[];
-      invalidEntry: string[];
-      missingValue: string[];
-      notFinal: string[];
-      missingBindingPath: string[];
-    };
-  }): void {
-    const { executionId, input: runtimeInput, existingData, diagnostics } = input;
-    if (diagnostics.totalEntries === 0) {
-      return;
+  private normalizeDocumentParamResolutionEntry(entry: unknown): {
+    final?: boolean;
+    value?: unknown;
+    bindingPath?: string;
+    bindingPaths?: string[];
+  } | null {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+      return null;
     }
 
-    if (diagnostics.mapped.length > 0) {
-      return;
-    }
+    const rec = entry as Record<string, unknown>;
+    const bindingPaths = Array.isArray(rec.bindingPaths)
+      ? rec.bindingPaths.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+      : undefined;
 
-    this.logger.warn(
-      `Document runtime payload resolved zero mapped fields${executionId ? ` for execution ${executionId}` : ''}: ${JSON.stringify(
-        {
-          totalEntries: diagnostics.totalEntries,
-          notFinal: diagnostics.notFinal,
-          missingValue: diagnostics.missingValue,
-          missingBindingPath: diagnostics.missingBindingPath,
-          invalidEntry: diagnostics.invalidEntry,
-          hasExistingData: Boolean(existingData && Object.keys(existingData).length > 0),
-          inputKeys: Object.keys(runtimeInput),
-        }
-      )}`
-    );
-  }
-
-  private normalizeDocumentParamResolutionEntry(
-    value: unknown
-  ): Record<string, unknown> | undefined {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) {
-      return undefined;
-    }
-
-    const entry = value as Record<string, unknown>;
     return {
-      ...entry,
-      ...(entry.template_binding === undefined && typeof entry.templateBinding === 'string'
-        ? { template_binding: entry.templateBinding }
-        : {}),
-      ...(entry.render_path === undefined &&
-      (typeof entry.renderPath === 'string' ||
-        (Array.isArray(entry.renderPath) &&
-          entry.renderPath.every((item) => typeof item === 'string')))
-        ? { render_path: entry.renderPath }
-        : {}),
+      final: Boolean(rec.final),
+      value: rec.value,
+      bindingPath: typeof rec.bindingPath === 'string' && rec.bindingPath.trim() ? rec.bindingPath.trim() : undefined,
+      bindingPaths: bindingPaths && bindingPaths.length > 0 ? bindingPaths : undefined,
     };
   }
 
-  private resolveDocumentBindingPaths(entry: Record<string, unknown>): string[] {
-    const rawBindingPaths =
-      typeof entry.template_binding === 'string' && entry.template_binding.trim()
-        ? [entry.template_binding.trim()]
-        : typeof entry.render_path === 'string' && entry.render_path.trim()
-          ? [entry.render_path.trim()]
-          : Array.isArray(entry.render_path)
-            ? entry.render_path
-                .filter((item): item is string => typeof item === 'string')
-                .map((item) => item.trim())
-                .filter((item) => item.length > 0)
-            : [];
-    if (rawBindingPaths.length === 0) {
-      return [];
+  private resolveDocumentBindingPaths(entry: {
+    bindingPath?: string;
+    bindingPaths?: string[];
+  }): string[] {
+    const paths = new Set<string>();
+    if (entry.bindingPath) {
+      paths.add(entry.bindingPath);
     }
-
-    return Array.from(
-      new Set(
-        rawBindingPaths
-          .map((bindingPath) => bindingPath.replace(/^data\./, '').trim())
-          .filter((bindingPath) => bindingPath.length > 0)
-      )
-    );
+    if (entry.bindingPaths) {
+      for (const path of entry.bindingPaths) {
+        paths.add(path);
+      }
+    }
+    return Array.from(paths);
   }
 
-  private setBoundValue(target: Record<string, unknown>, path: string, value: unknown): void {
-    const resolvedValue = this.resolveBindingValue(path, value);
-    if (resolvedValue === undefined || resolvedValue === null) {
+  private setValueByPath(target: Record<string, unknown>, pathStr: string, value: unknown): void {
+    const parts = pathStr.split('.').map((p) => p.trim()).filter(Boolean);
+    if (parts.length === 0) {
       return;
     }
 
-    const arrayPathMatch = path.match(/^(.*)\[\]\.(.+)$/);
-    if (arrayPathMatch) {
-      const [, rawArrayPath, rawItemPath] = arrayPathMatch;
-      const arrayPath = rawArrayPath.trim();
-      const itemPath = rawItemPath.trim();
-      if (!arrayPath || !itemPath || !Array.isArray(resolvedValue)) {
-        return;
+    let cursor: Record<string, unknown> = target;
+    for (let i = 0; i < parts.length - 1; i++) {
+      const part = parts[i];
+      const next = cursor[part];
+      if (!next || typeof next !== 'object' || Array.isArray(next)) {
+        cursor[part] = {};
       }
-      const list = this.ensureArrayPath(target, arrayPath);
-      resolvedValue.forEach((itemValue, index) => {
-        const existing = list[index];
-        if (!existing || typeof existing !== 'object' || Array.isArray(existing)) {
-          list[index] = {};
-        }
-        this.setNestedValue(list[index] as Record<string, unknown>, itemPath, itemValue);
-      });
-      return;
+      cursor = cursor[part] as Record<string, unknown>;
     }
 
-    this.setNestedValue(target, path, resolvedValue);
+    cursor[parts[parts.length - 1]] = value;
   }
 
-  private resolveBindingValue(path: string, value: unknown): unknown {
-    if (Array.isArray(value)) {
-      const normalized = value
-        .map((item) => this.resolveLocalizedBindingValue(path, item))
-        .filter((item) => item !== undefined && item !== null);
-      return normalized;
-    }
-
-    return this.resolveLocalizedBindingValue(path, value);
+  private asRecord(value: unknown): Record<string, unknown> | null {
+    return value && typeof value === 'object' && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : null;
   }
 
-  private resolveLocalizedBindingValue(path: string, value: unknown): unknown {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) {
-      return value;
-    }
-
-    const locale = this.extractBindingLocale(path);
-    if (!locale) {
-      return value;
-    }
-
-    const record = value as Record<string, unknown>;
-    const localeCandidates = locale === 'cn' ? ['cn', 'zh'] : ['jp', 'ja'];
-
-    for (const candidate of localeCandidates) {
-      if (Object.prototype.hasOwnProperty.call(record, candidate)) {
-        const localizedValue = record[candidate];
-        if (localizedValue !== undefined && localizedValue !== null) {
-          return localizedValue;
-        }
-      }
-    }
-
-    return undefined;
-  }
-
-  private extractBindingLocale(path: string): 'cn' | 'jp' | undefined {
-    const normalizedPath = path.trim();
-    if (/_cn$/i.test(normalizedPath) || /_zh$/i.test(normalizedPath)) {
-      return 'cn';
-    }
-    if (/_jp$/i.test(normalizedPath) || /_ja$/i.test(normalizedPath)) {
-      return 'jp';
-    }
-    return undefined;
-  }
-
-  private setNestedValue(target: Record<string, unknown>, path: string, value: unknown): void {
-    const segments = path
-      .split('.')
-      .map((segment) => segment.trim())
-      .filter((segment) => segment.length > 0);
-    if (segments.length === 0) {
-      return;
-    }
-
-    let current: Record<string, unknown> = target;
-    for (const segment of segments.slice(0, -1)) {
-      const existing = current[segment];
-      if (!existing || typeof existing !== 'object' || Array.isArray(existing)) {
-        current[segment] = {};
-      }
-      current = current[segment] as Record<string, unknown>;
-    }
-
-    current[segments[segments.length - 1]] = value;
-  }
-
-  private ensureArrayPath(target: Record<string, unknown>, path: string): unknown[] {
-    const segments = path
-      .split('.')
-      .map((segment) => segment.trim())
-      .filter((segment) => segment.length > 0);
-    if (segments.length === 0) {
-      return [];
-    }
-
-    let current: Record<string, unknown> = target;
-    for (const segment of segments.slice(0, -1)) {
-      const existing = current[segment];
-      if (!existing || typeof existing !== 'object' || Array.isArray(existing)) {
-        current[segment] = {};
-      }
-      current = current[segment] as Record<string, unknown>;
-    }
-
-    const leafKey = segments[segments.length - 1];
-    const existingLeaf = current[leafKey];
-    if (!Array.isArray(existingLeaf)) {
-      current[leafKey] = [];
-    }
-    return current[leafKey] as unknown[];
-  }
-
-  private asRecord(value: unknown): Record<string, unknown> | undefined {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) {
-      return undefined;
-    }
-    return value as Record<string, unknown>;
-  }
-
-  buildPolicyContext(execution: Record<string, unknown>): PolicyContext {
+  private buildPolicyContext(execution: Record<string, unknown>): PolicyContext {
     return {
-      riskLevel: (execution.riskLevel as 'L0' | 'L1' | 'L2' | 'L3' | undefined) || 'L0',
-      requiresApproval: Boolean(execution.requiresApproval),
+      riskLevel: (execution.riskLevel as PolicyContext['riskLevel']) || 'L0',
+      requiresApproval: (execution.requiresApproval as boolean) || false,
     };
   }
 }

@@ -13,8 +13,11 @@ import { StreamEventType } from '../react-engine/interfaces';
 import { ReActEngineService } from '../react-engine/react-engine.service';
 import type { ChatRequestDTO } from './chat.dto';
 import { ChatExecutionStreamService } from './chat-execution-stream.service';
+import { DeterministicTaskExecutionService } from './deterministic-task-execution.service';
+import { SkillCacheService } from '../planner/skill/skill-cache.service';
 import type { ChatUserContext, WaitingInputSemantic } from './chat.types';
 import { ChatWaitingInputService } from './chat-waiting-input.service';
+import type { DeterministicPlanNodeV1 } from '@ops/backend-deterministic-plan';
 
 @Injectable()
 export class ChatOrchestratorService {
@@ -26,7 +29,9 @@ export class ChatOrchestratorService {
     private readonly plannerService: PlannerService,
     private readonly promptDebugSettingsService: PromptDebugSettingsService,
     private readonly waitingInputService: ChatWaitingInputService,
-    private readonly executionStreamService: ChatExecutionStreamService
+    private readonly executionStreamService: ChatExecutionStreamService,
+    private readonly deterministicTaskExecutionService?: DeterministicTaskExecutionService,
+    private readonly skillCacheService?: SkillCacheService,
   ) {}
 
   async buildTaskModeContext(
@@ -250,6 +255,66 @@ export class ChatOrchestratorService {
       authToken,
       traceId,
     };
+
+    if (this.deterministicTaskExecutionService?.shouldRouteToDeterministicPlan(body.message)) {
+      yield {
+        type: StreamEventType.THOUGHT,
+        content: '正在获取用户可用 Skill 列表并进行确定性多步骤任务拆分规划...',
+      };
+
+      const availableSkills = (await this.skillCacheService?.loadAvailableSkills(authToken, traceId)) || [];
+
+      const result = await this.deterministicTaskExecutionService.executeDeterministicTask(
+        body.message,
+        context.userId,
+        {
+          authToken,
+          user: { userId: context.userId, userRoles: context.userRoles },
+          availableSkills,
+        },
+      );
+
+      if (result.success && result.executionId) {
+        yield {
+          type: StreamEventType.THOUGHT,
+          content: `已成功冻结 ${result.planDraft?.nodes?.length || 0} 步骤执行计划 (ID: ${result.executionId})，控制面已按拓扑顺序调度运行。`,
+        };
+
+        const nodeTitles = this.formatDeterministicPlanNodes(result.planDraft?.nodes || []);
+        yield {
+          type: StreamEventType.THOUGHT,
+          content: `已为你生成静态任务计划：\n\n${nodeTitles}\n\n执行单 ID: \`${result.executionId}\`。正在跟踪流程执行状态...\n`,
+          data: {
+            executionId: result.executionId,
+            status: 'running',
+            deterministicPlan: {
+              objective: result.planDraft?.objective,
+              nodes: result.planDraft?.nodes || [],
+              finalOutputs: result.planDraft?.finalOutputs || [],
+            },
+          },
+        };
+
+        yield* this.executionStreamService.observeExecution(
+          result.executionId,
+          authToken,
+          user,
+        );
+        return;
+      } else {
+        yield {
+          type: StreamEventType.ERROR,
+          content: `任务规划/创建失败 [${result.errorCode || 'UNKNOWN_ERROR'}]: ${result.errorMessage || '无法拆分该任务'}`,
+          data: {
+            code: result.errorCode || 'UNKNOWN_ERROR',
+            errorMessage: result.errorMessage || '无法拆分该任务',
+            status: 'failed',
+          },
+        };
+        return;
+      }
+    }
+
     const matchPhase = await this.plannerService.matchSkillPhase(plannerInput);
 
     if (matchPhase.matchedSkill) {
@@ -544,6 +609,23 @@ export class ChatOrchestratorService {
       semantic: planDraft.semantic,
       usage: planDraft.usage,
     };
+  }
+
+  private formatDeterministicPlanNodes(nodes: DeterministicPlanNodeV1[]): string {
+    if (!Array.isArray(nodes) || nodes.length === 0) {
+      return '暂无计划节点详情';
+    }
+
+    return nodes
+      .sort((a, b) => a.sequence - b.sequence)
+      .map((node) => {
+        if (node.kind === 'skill') {
+          return `${node.sequence}. ${node.title} - Skill: ${node.skillId}@${node.skillVersion} (${node.runtimeType})`;
+        }
+
+        return `${node.sequence}. ${node.title} - LLM: ${node.operationId}, template: ${node.promptTemplateId}@${node.promptTemplateVersion}`;
+      })
+      .join('\n');
   }
 
   private buildExecutionPromptDebug(

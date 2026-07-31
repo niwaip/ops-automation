@@ -118,6 +118,47 @@ describe('CapabilityReleaseTemporalSchemaService', () => {
     });
   });
 
+  it('preserves temporal input enums and uses the first candidate for smoke input fallback', () => {
+    const { service } = createService();
+
+    const schema = (service as any).buildTemporalParamsSchema({
+      inputParams: {
+        topic: {
+          type: 'string',
+          description: '搜索类别',
+          required: false,
+          defaultValue: 'general',
+          enum: ['general', ' news ', 'finance', 'general'],
+          exampleValue: 'news',
+        },
+      },
+    });
+
+    expect(schema).toEqual({
+      properties: {
+        topic: expect.objectContaining({
+          type: 'string',
+          required: false,
+          default: 'general',
+          enum: ['general', 'news', 'finance'],
+        }),
+      },
+      required: [],
+    });
+
+    expect(
+      (service as any).buildSuggestedInputFromSchema({
+        properties: {
+          topic: {
+            type: 'string',
+            default: 'other',
+            enum: ['general', 'news', 'finance'],
+          },
+        },
+      })
+    ).toEqual({ topic: 'general' });
+  });
+
   it('prefers temporal workflow input defaults when building deploy smoke input', () => {
     const { service } = createService();
 

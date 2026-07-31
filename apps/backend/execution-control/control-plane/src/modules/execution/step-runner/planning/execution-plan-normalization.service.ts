@@ -423,7 +423,8 @@ export class ExecutionPlanNormalizationService {
     }
   ): PlanDraftLike {
     const skillName =
-      this.readNonEmptyString(planDraft.skill_match?.skill_name, resolvedSkillId) || resolvedSkillId;
+      this.readNonEmptyString(planDraft.skill_match?.skill_name, resolvedSkillId) ||
+      resolvedSkillId;
 
     return {
       ...planDraft,
@@ -441,7 +442,8 @@ export class ExecutionPlanNormalizationService {
             ? planDraft.skill_match.confidence
             : 1,
         match_reason:
-          this.readNonEmptyString(planDraft.skill_match?.match_reason) || 'explicit_skill_selection',
+          this.readNonEmptyString(planDraft.skill_match?.match_reason) ||
+          'explicit_skill_selection',
       },
       steps: [
         {
@@ -521,8 +523,7 @@ export class ExecutionPlanNormalizationService {
     return {
       ...input.planDraft,
       planner_mode: 'browser_loop_workflow',
-      runtime_source_type:
-        this.readNonEmptyString(input.runtimeSourceType) || 'browser_recording',
+      runtime_source_type: this.readNonEmptyString(input.runtimeSourceType) || 'browser_recording',
       loop_workflow: loopPartition.loopPlan,
       skill_match: {
         skill_id: input.resolvedSkillId,
@@ -768,6 +769,9 @@ export class ExecutionPlanNormalizationService {
       if (!this.executionInputResolutionService.hasMeaningfulSubmittedInputValue(value)) {
         return item;
       }
+      if (!this.isRequiredInputValueAllowed(item, value)) {
+        return item;
+      }
 
       if (item.needs_confirmation && source !== 'user_input') {
         return {
@@ -829,6 +833,13 @@ export class ExecutionPlanNormalizationService {
         items: riskItems.length > 0 ? riskItems : ['no_material_risk_detected'],
       },
     };
+  }
+
+  private isRequiredInputValueAllowed(item: ExecutionRequiredInput, value: unknown): boolean {
+    if (!Array.isArray(item.enum) || item.enum.length === 0) {
+      return true;
+    }
+    return (typeof value === 'string' || typeof value === 'number') && item.enum.includes(value);
   }
 
   private resolveSemanticGroupFieldNames(

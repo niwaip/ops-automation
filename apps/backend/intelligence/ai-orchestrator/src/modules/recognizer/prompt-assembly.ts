@@ -57,12 +57,10 @@ function buildStaticContractSection(): string {
     '2. 类型转换与规范化：根据参数定义的 type (如 number, date, string, boolean)，将自然语言表述转换为对应标准数据类型（例如 "10条" 提取为数字 10；日期表述转化为标准日期；枚举表述转化为对应 Schema 枚举 Key）。',
     '3. 依据要求：只提取在用户输入或上下文中具有明确语义依据的参数。禁止根据常见业务惯例、行业默认值、模板示例、历史经验或通常应该如此来脑补任何参数。缺少依据的字段直接省略，不要猜测或伪造无关的默认占位符。不要为了让任务继续执行而伪造占位值（如（待补充）、N/A、TBD、0、空数组）。',
     '4. 缺失字段处理：如果用户要求“直接生成”“端对端”“不要追问”，但当前输入仍缺少关键字段，仍然只返回已确认字段；缺失字段交由后续多轮问询补齐。抽取英文或混合语言句子时，只保留字段本身的值，不要把 is、are、in bilingual layout、contract、please generate 等说明性残句带入字段值。',
-    '5. 输出格式：返回纯 JSON 对象，顶层只保留本轮新识别或被用户明确修正的参数键值。不要输出 params、confidence、field_confidences、uncertain_fields、notes、explanation。如果本轮没有任何新增或更正的参数，返回空对象 {}。',
-
+    '5. 枚举字段：只能返回 Schema enum 中的一个精确值。用户没有明确表达可映射的枚举含义时省略该字段；禁止把完整任务、搜索词或自然语言片段复制到枚举字段。默认值由运行时补齐，不要自行输出默认值。',
+    '6. 输出格式：返回纯 JSON 对象，顶层只保留本轮新识别或被用户明确修正的参数键值。不要输出 params、confidence、field_confidences、uncertain_fields、notes、explanation。如果本轮没有任何新增或更正的参数，返回空对象 {}。',
   ].join('\n');
 }
-
-
 
 function buildSkillKnowledgeSection(
   templateName: string,
@@ -191,12 +189,9 @@ function formatParamLine(
       ? `；语义提示：${schema.extractionHints.join('、')}`
       : '';
   const exampleStr =
-    schema.exampleValue !== undefined
-      ? `；示例: ${JSON.stringify(schema.exampleValue)}`
-      : '';
+    schema.exampleValue !== undefined ? `；示例: ${JSON.stringify(schema.exampleValue)}` : '';
   return `- ${name}${displayNameStr}: ${schema.type}${schema.description ? ` - ${schema.description}` : ''}${defaultStr}${enumStr}${exampleStr}${hintStr}${semanticRoleStr}${semanticHintsStr}`;
 }
-
 
 function truncateText(value: string, maxChars: number, suffix: string): string {
   return value.length > maxChars ? `${value.slice(0, maxChars)}${suffix}` : value;

@@ -49,32 +49,47 @@ ensure_pnpm() {
 }
 
 install_workspace_deps() {
-  log "Refreshing workspace dependency directories"
-  rm -rf \
-    "$WORKSPACE_ROOT/node_modules" \
-    "$WORKSPACE_ROOT/apps/backend/core/platform/node_modules" \
-    "$WORKSPACE_ROOT/apps/backend/execution-control/control-plane/node_modules" \
-    2>/dev/null || true
-
   log "Installing workspace dependencies"
-  (
-    cd "$WORKSPACE_ROOT"
-    pnpm install --no-frozen-lockfile
-  )
+  local max_retries=3
+  local attempt=0
+
+  pushd "$WORKSPACE_ROOT" > /dev/null
+  until pnpm install --no-frozen-lockfile --shamefully-hoist; do
+    attempt=$((attempt + 1))
+    if [ "$attempt" -ge "$max_retries" ]; then
+      log "ERROR: pnpm install failed after $max_retries attempts"
+      # Sleep a bit in case another container is still writing node_modules
+      sleep 5
+      log "Final attempt with --force flag..."
+      if pnpm install --no-frozen-lockfile --shamefully-hoist --force; then
+        popd > /dev/null
+        return 0
+      else
+        local rc=$?
+        popd > /dev/null
+        return $rc
+      fi
+    fi
+    log "pnpm install failed (attempt $attempt/$max_retries), retrying in 5s..."
+    sleep 5
+  done
+  popd > /dev/null
 }
 
 main() {
   ensure_workspace_root
   mkdir -p "$STAMP_DIR"
 
-  # pnpm must be available regardless of dependency cache state
+  # Acquire exclusive lock FIRST, before any shared-state mutation.
+  # ensure_pnpm (corepack activate) and pnpm install both write to shared
+  # node_modules/.pnpm and must never race with another container.
+  exec 9>"$LOCK_FILE"
+  flock 9
+
   ensure_pnpm
 
   local current_fingerprint
   current_fingerprint="$(compute_fingerprint)"
-
-  exec 9>"$LOCK_FILE"
-  flock 9
 
   local previous_fingerprint=""
   if [[ -f "$STAMP_FILE" ]]; then
@@ -86,9 +101,33 @@ main() {
     exit 0
   fi
 
-  install_workspace_deps
-  printf '%s\n' "$current_fingerprint" > "$STAMP_FILE"
-  log "Workspace dependencies bootstrapped"
+  if ! install_workspace_deps; then
+    log "FATAL: pnpm install failed. Skipping stamp file to force retry on next start."
+    exit 1
+  fi
+
+  # Verify critical tooling was actually installed.
+  # The pnpm install can exit 0 yet leave packages missing (e.g. typescript)
+  # if node_modules/.pnpm existed but was incomplete.
+  if [[ ! -x "$WORKSPACE_ROOT/node_modules/.bin/tsc" ]]; then
+    if [[ -n "${BOOTSTRAP_RETRY:-}" ]]; then
+      log "FATAL: tsc still missing after retry — giving up"
+      exit 1
+    fi
+    log "FATAL: tsc binary missing after pnpm install — stale node_modules detected"
+    log "Removing node_modules and retrying..."
+    rm -rf "$WORKSPACE_ROOT/node_modules"
+    BOOTSTRAP_RETRY=1 exec "$0" "$@"
+  fi
+
+  # Only write stamp file if node_modules actually exists after install
+  if [[ -d "$WORKSPACE_ROOT/node_modules/.pnpm" ]]; then
+    printf '%s\n' "$current_fingerprint" > "$STAMP_FILE"
+    log "Workspace dependencies bootstrapped"
+  else
+    log "FATAL: node_modules/.pnpm not found after install, stamp file not updated"
+    exit 1
+  fi
 }
 
 main "$@"

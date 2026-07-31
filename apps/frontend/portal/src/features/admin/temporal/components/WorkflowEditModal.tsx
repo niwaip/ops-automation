@@ -1068,6 +1068,7 @@ export const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
         validateModalVisible={validateModalVisible}
         onCloseValidateModal={() => setValidateModalVisible(false)}
         validationResult={validationResult}
+        workflowDsl={workflowDsl}
         codeModalVisible={codeModalVisible}
         onCloseCodeModal={() => setCodeModalVisible(false)}
         currentWorkflowDisplayName={currentWorkflowDisplayName}

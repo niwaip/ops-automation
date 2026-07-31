@@ -6,6 +6,7 @@ import {
   Form,
   Input,
   InputNumber,
+  Select,
   Space,
   Spin,
   Switch,
@@ -37,6 +38,20 @@ interface ExecutionCreateSchemaFieldsCardProps {
 
 const renderInputField = (field: SchemaField) => {
   const normalizedType = field.type.toLowerCase();
+
+  if (Array.isArray(field.enum) && field.enum.length > 0) {
+    return (
+      <Select
+        style={{ width: '100%' }}
+        allowClear
+        placeholder={field.description || `请选择 ${field.name}`}
+        options={field.enum.map((value) => ({
+          label: String(value),
+          value,
+        }))}
+      />
+    );
+  }
 
   if (normalizedType === 'number' || normalizedType === 'integer') {
     return <InputNumber style={{ width: '100%' }} placeholder={`请输入 ${field.name}`} />;

@@ -1449,6 +1449,8 @@ async def jsonTransform(input_data: Dict[str, Any]) -> Dict[str, Any]:
     drop_null = bool(input_data.get("dropNullFields"))
     
     def _resolve_json_path(obj: Any, path: str) -> Any:
+        if path == "$":
+            return obj  # Root selector: return the entire object
         if not path.startswith("$."):
             return None
         parts = [p for p in path[2:].split(".") if p]

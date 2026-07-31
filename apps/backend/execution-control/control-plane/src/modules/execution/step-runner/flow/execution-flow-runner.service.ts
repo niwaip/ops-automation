@@ -91,7 +91,7 @@ export class ExecutionFlowRunnerService {
 
       if (!nextStep) {
         this.logger.log(`No more pending steps for execution ${executionId}`);
-        if (execution.status === EXECUTION_STATUS.RUNNING) {
+        if (!isTerminalExecutionStatus(execution.status)) {
           await hooks.completeActivePhasesOnExecutionSuccess(executionId, runtimeSessionId);
           await hooks.updateStatus(executionId, EXECUTION_STATUS.SUCCEEDED);
           this.logger.log(`Execution ${executionId} marked as succeeded`);
@@ -151,6 +151,20 @@ export class ExecutionFlowRunnerService {
       }
 
       if (nextStep.type === 'system') {
+        if (nextStep.action === 'finish') {
+          this.logger.log(
+            `Finish step ${nextStep.id} for execution ${executionId}; completing execution`
+          );
+          await hooks.completeActivePhasesOnExecutionSuccess(executionId, runtimeSessionId);
+          await hooks.updateStatus(executionId, EXECUTION_STATUS.SUCCEEDED);
+          await hooks.closeRuntimeSessionQuietly(
+            runtimeSessionId,
+            executionId,
+            'execution_finished'
+          );
+          return;
+        }
+
         this.logger.log(
           `Executing system step for execution ${executionId}, step ${nextStep.id} (action: ${nextStep.action})`
         );

@@ -167,7 +167,7 @@ const config = {
       "value": "prisma-client-js"
     },
     "output": {
-      "value": "/app/generated/prisma",
+      "value": "/workspace/apps/backend/capabilities/document-domain/report/generated/prisma",
       "fromEnvVar": null
     },
     "config": {
@@ -181,7 +181,7 @@ const config = {
       }
     ],
     "previewFeatures": [],
-    "sourceFilePath": "/app/prisma/schema.prisma",
+    "sourceFilePath": "/workspace/apps/backend/capabilities/document-domain/report/prisma/schema.prisma",
     "isCustomOutput": true
   },
   "relativeEnvPaths": {
@@ -203,8 +203,8 @@ const config = {
       }
     }
   },
-  "inlineSchema": "generator client {\n  provider = \"prisma-client-js\"\n  output   = \"../generated/prisma\"\n}\n\ndatasource db {\n  provider = \"postgresql\"\n  url      = env(\"DATABASE_URL\")\n}\n\nmodel ReportTemplate {\n  id                 String   @id(map: \"PK_f85e16e6beea41a2b3a3350b84e\") @default(dbgenerated(\"uuid_generate_v4()\")) @db.Uuid\n  name               String   @db.VarChar(255)\n  format             String   @db.VarChar(20)\n  templateFile       String?  @map(\"template_file\") @db.VarChar(500)\n  sections           Json\n  globalConfig       Json?    @map(\"global_config\")\n  aiConfig           Json?    @map(\"ai_config\")\n  notificationConfig Json?    @map(\"notification_config\")\n  createdBy          String?  @map(\"created_by\") @db.VarChar(255)\n  createdAt          DateTime @default(now()) @map(\"created_at\") @db.Timestamp(6)\n  updatedAt          DateTime @default(now()) @updatedAt @map(\"updated_at\") @db.Timestamp(6)\n  reports            Report[]\n\n  @@map(\"report_templates\")\n}\n\nmodel Report {\n  id                String         @id(map: \"PK_d9013193989303580053c0b5ef6\") @default(dbgenerated(\"uuid_generate_v4()\")) @db.Uuid\n  templateId        String         @map(\"template_id\") @db.Uuid\n  sessionId         String         @map(\"session_id\") @db.VarChar(255)\n  status            String         @default(\"pending\") @db.VarChar(20)\n  resultFile        String?        @map(\"result_file\") @db.VarChar(500)\n  aiAnalysis        Json?          @map(\"ai_analysis\")\n  validationResults Json?          @map(\"validation_results\")\n  notifications     Json?\n  error             String?        @db.Text\n  createdAt         DateTime       @default(now()) @map(\"created_at\") @db.Timestamp(6)\n  completedAt       DateTime?      @map(\"completed_at\") @db.Timestamp(6)\n  template          ReportTemplate @relation(fields: [templateId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: \"FK_6f8e618c3d55635fdbbc6cbe01c\")\n\n  @@map(\"reports\")\n}\n",
-  "inlineSchemaHash": "ae630d94a664b047a1b0bfc4ae56e8d93e77b0d51e96b1afa094abcda2536fc9",
+  "inlineSchema": "generator client {\n  provider = \"prisma-client-js\"\n  output   = \"../generated/prisma\"\n}\n\ndatasource db {\n  provider = \"postgresql\"\n  url      = env(\"DATABASE_URL\")\n}\n\nmodel ReportTemplate {\n  id                 String   @id(map: \"PK_f85e16e6beea41a2b3a3350b84e\") @default(dbgenerated(\"gen_random_uuid()\")) @db.Uuid\n  name               String   @db.VarChar(255)\n  format             String   @db.VarChar(20)\n  templateFile       String?  @map(\"template_file\") @db.VarChar(500)\n  sections           Json\n  globalConfig       Json?    @map(\"global_config\")\n  aiConfig           Json?    @map(\"ai_config\")\n  notificationConfig Json?    @map(\"notification_config\")\n  createdBy          String?  @map(\"created_by\") @db.VarChar(255)\n  createdAt          DateTime @default(now()) @map(\"created_at\") @db.Timestamp(6)\n  updatedAt          DateTime @default(now()) @updatedAt @map(\"updated_at\") @db.Timestamp(6)\n  reports            Report[]\n\n  @@map(\"report_templates\")\n}\n\nmodel Report {\n  id                String         @id(map: \"PK_d9013193989303580053c0b5ef6\") @default(dbgenerated(\"gen_random_uuid()\")) @db.Uuid\n  templateId        String         @map(\"template_id\") @db.Uuid\n  sessionId         String         @map(\"session_id\") @db.VarChar(255)\n  status            String         @default(\"pending\") @db.VarChar(20)\n  resultFile        String?        @map(\"result_file\") @db.VarChar(500)\n  aiAnalysis        Json?          @map(\"ai_analysis\")\n  validationResults Json?          @map(\"validation_results\")\n  notifications     Json?\n  error             String?        @db.Text\n  createdAt         DateTime       @default(now()) @map(\"created_at\") @db.Timestamp(6)\n  completedAt       DateTime?      @map(\"completed_at\") @db.Timestamp(6)\n  template          ReportTemplate @relation(fields: [templateId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: \"FK_6f8e618c3d55635fdbbc6cbe01c\")\n\n  @@map(\"reports\")\n}\n",
+  "inlineSchemaHash": "99f91d8c22e613882f18da10ba2bb5b716752cfb18a14227264736f552fe1d1b",
   "copyEngine": true
 }
 config.dirname = '/'

@@ -1202,6 +1202,31 @@ export class ModelService implements OnModuleInit {
   }
 
   /**
+   * Delete a provider config
+   */
+  async deleteProviderConfig(id: string): Promise<boolean> {
+    const exists = this.providers.has(id);
+    if (exists) {
+      this.providers.delete(id);
+      this.providerApiKeyReferences.delete(id);
+      this.providerApiKeys.delete(id);
+
+      for (const [modelId, model] of this.models) {
+        if (model.providerConfigId === id) {
+          this.models.set(modelId, {
+            ...model,
+            providerConfigId: undefined,
+          });
+        }
+      }
+
+      await this.persistModels();
+      return true;
+    }
+    return false;
+  }
+
+  /**
    * Get client for a model (supports UUID, model name, or 'default')
    */
   getClient(id: string): LLMClient | null {

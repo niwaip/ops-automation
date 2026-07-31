@@ -1,4 +1,4 @@
-import { Input, InputNumber, Switch } from 'antd';
+import { Input, InputNumber, Select, Switch } from 'antd';
 
 export interface RequiredInputField {
   name: string;
@@ -11,6 +11,7 @@ export interface RequiredInputField {
   missing: boolean;
   source: 'user_input' | 'default' | 'unresolved';
   needs_confirmation?: boolean;
+  enum?: Array<string | number>;
 }
 
 export const renderRequiredInputField = (
@@ -39,6 +40,18 @@ export const renderRequiredInputField = (
   if (isJsonLike) {
     return (
       <Input.TextArea rows={4} placeholder={options?.jsonPlaceholder || '请输入 JSON 字符串'} />
+    );
+  }
+
+  if (Array.isArray(field.enum) && field.enum.length > 0) {
+    return (
+      <Select style={{ width: '100%' }} allowClear>
+        {field.enum.map((val) => (
+          <Select.Option key={String(val)} value={val}>
+            {String(val)}
+          </Select.Option>
+        ))}
+      </Select>
     );
   }
 

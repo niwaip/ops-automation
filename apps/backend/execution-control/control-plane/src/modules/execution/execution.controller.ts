@@ -98,6 +98,22 @@ export class ExecutionController {
     return this.executionService.getPhases(id, req.user);
   }
 
+  @Get(':id/plan')
+  @ApiOperation({ summary: 'Get frozen execution plan by execution ID' })
+  @ApiResponse({ status: 200, description: 'Frozen plan details' })
+  @ApiResponse({ status: 404, description: 'Plan or execution not found' })
+  async getPlan(@Param('id') id: string, @Req() req: AuthenticatedRequest): Promise<any> {
+    return this.executionService.getPlan(id, req.user);
+  }
+
+  @Get(':id/artifacts')
+  @ApiOperation({ summary: 'Get execution business artifacts' })
+  @ApiResponse({ status: 200, description: 'List of execution artifacts' })
+  @ApiResponse({ status: 404, description: 'Execution not found' })
+  async getArtifacts(@Param('id') id: string, @Req() req: AuthenticatedRequest): Promise<any[]> {
+    return this.executionService.getArtifacts(id, req.user);
+  }
+
   @Post(':id/phases/progress')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Update workflow activity progress for an execution' })
@@ -201,7 +217,24 @@ export class ExecutionController {
     res.setHeader('X-Accel-Buffering', 'no');
 
     const subscription = this.executionService.subscribeToEvents(id, (event) => {
-      res.write(`data: ${JSON.stringify(event)}\n\n`);
+      const frame = `data: ${JSON.stringify(event)}\n\n`;
+      const newStatus =
+        event.eventType === 'execution.status_changed' &&
+        event.payload &&
+        typeof event.payload === 'object'
+          ? (event.payload as Record<string, unknown>).newStatus
+          : undefined;
+      if (
+        newStatus === 'succeeded' ||
+        newStatus === 'failed' ||
+        newStatus === 'cancelled' ||
+        newStatus === 'rolled_back'
+      ) {
+        res.end(frame);
+        return;
+      }
+
+      res.write(frame);
     });
 
     res.on('close', () => {

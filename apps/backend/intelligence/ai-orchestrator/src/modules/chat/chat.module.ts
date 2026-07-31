@@ -13,6 +13,7 @@ import { ChatMediaService } from './chat-media.service';
 import { ChatOrchestratorService } from './chat-orchestrator.service';
 import { ChatResultNormalizerService } from './chat-result-normalizer.service';
 import { ChatWaitingInputService } from './chat-waiting-input.service';
+import { DeterministicTaskExecutionService } from './deterministic-task-execution.service';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { ChatWaitingInputService } from './chat-waiting-input.service';
     ChatOrchestratorService,
     ChatConversationService,
     ChatMediaService,
+    DeterministicTaskExecutionService,
   ],
 })
 export class ChatModule {}

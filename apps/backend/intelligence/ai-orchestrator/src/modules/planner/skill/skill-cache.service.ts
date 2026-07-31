@@ -51,11 +51,41 @@ export class SkillCacheService {
     }
 
     try {
-      const response = await axios.get<SkillListResponse>(`${this.authServiceUrl}/skills`, {
-        headers: this.buildRequestHeaders(authToken, traceId),
-      });
+      let rawSkills: any[] = [];
+      try {
+        const catalogRes = await axios.get(`${this.authServiceUrl}/internal/builtin-skills/catalog`, {
+          headers: this.buildRequestHeaders(authToken, traceId),
+        });
+        const catalogData = catalogRes.data as any;
+        if (Array.isArray(catalogData?.capabilities) && catalogData.capabilities.length > 0) {
+          rawSkills = catalogData.capabilities.map((cap: any) => ({
+            id: cap.capabilityRef?.id,
+            skillId: cap.capabilityRef?.id,
+            skillName: cap.displayName,
+            name: cap.displayName,
+            description: cap.description,
+            category: cap.category,
+            executionType: cap.runtimeType,
+            executableVersion: cap.capabilityRef?.version || '1.0.0',
+            version: cap.capabilityRef?.version || '1.0.0',
+            source: cap.capabilityRef?.source,
+            supportsArtifact: cap.supportsArtifact,
+            paramsSchema: cap.inputSchema,
+            outputSchema: cap.outputSchema,
+            runtimeHints: cap.runtimeHints,
+          }));
+        }
+      } catch (err: any) {
+        this.logger.debug(`Unified catalog endpoint unavailable, falling back to /skills: ${err.message}`);
+      }
 
-      const rawSkills = Array.isArray(response.data.skills) ? response.data.skills : [];
+      if (rawSkills.length === 0) {
+        const response = await axios.get<SkillListResponse>(`${this.authServiceUrl}/skills`, {
+          headers: this.buildRequestHeaders(authToken, traceId),
+        });
+        rawSkills = Array.isArray(response.data.skills) ? response.data.skills : [];
+      }
+
       const normalizedSkills = rawSkills
         .map((item) => this.mapRawSkillDefinition(item))
         .filter((item) => item.skillId && item.skillName);
@@ -95,6 +125,41 @@ export class SkillCacheService {
     }
 
     try {
+      if (trimmedSkillId.startsWith('platform.')) {
+        const resolveRes = await axios.post(`${this.authServiceUrl}/internal/builtin-skills/resolve`, {
+          capabilityKey: trimmedSkillId,
+          action: 'discover',
+        }, {
+          headers: this.buildRequestHeaders(authToken, traceId),
+        });
+        const data = resolveRes.data as any;
+        if (data?.found && data?.capabilityView) {
+          const cap = data.capabilityView;
+          const mappedSkill = this.mapRawSkillDefinition({
+            id: cap.capabilityRef?.id,
+            skillId: cap.capabilityRef?.id,
+            skillName: cap.displayName,
+            name: cap.displayName,
+            description: cap.description,
+            category: cap.category,
+            executionType: cap.runtimeType,
+            executableVersion: cap.capabilityRef?.version || '1.0.0',
+            version: cap.capabilityRef?.version || '1.0.0',
+            source: cap.capabilityRef?.source,
+            supportsArtifact: cap.supportsArtifact,
+            paramsSchema: cap.inputSchema,
+            outputSchema: cap.outputSchema,
+            runtimeHints: cap.runtimeHints,
+          });
+          this.setCacheValue(
+            this.skillByIdCache,
+            this.buildSkillCacheKey(authCacheKey, trimmedSkillId),
+            mappedSkill
+          );
+          return mappedSkill;
+        }
+      }
+
       const response = await axios.get<Record<string, unknown>>(
         `${this.authServiceUrl}/skills/${trimmedSkillId}`,
         {
@@ -129,7 +194,7 @@ export class SkillCacheService {
   ): AvailableSkillDefinition['paramsSchema'] {
     const properties = Object.fromEntries(
       Object.entries(schema?.properties || {}).map(([name, value]) => {
-        const property = value || {};
+        const property = (value || {}) as any;
         return [
           name,
           {
@@ -153,7 +218,7 @@ export class SkillCacheService {
             ...(typeof property.groupLabel === 'string' ? { groupLabel: property.groupLabel } : {}),
             ...(typeof property.renderPath === 'string' ||
             (Array.isArray(property.renderPath) &&
-              property.renderPath.every((item) => typeof item === 'string'))
+              property.renderPath.every((item: unknown) => typeof item === 'string'))
               ? { renderPath: property.renderPath }
               : {}),
             ...(typeof property.previewBlocking === 'boolean'
@@ -270,11 +335,50 @@ export class SkillCacheService {
       sourceType
     );
 
+    const publishedSkillId = String(item.id || item.skillId || '');
+
+    const publishedReleaseVersion =
+      typeof item.publishedReleaseVersion === 'number'
+        ? item.publishedReleaseVersion
+        : typeof item.publishedReleaseVersion === 'string'
+          ? Number(item.publishedReleaseVersion)
+          : undefined;
+
+    const executableVersion =
+      typeof item.executableVersion === 'string'
+        ? item.executableVersion
+        : typeof item.publishedVersion === 'string'
+          ? item.publishedVersion
+          : typeof item.version === 'string'
+            ? item.version
+            : Number.isFinite(publishedReleaseVersion)
+              ? String(publishedReleaseVersion)
+              : typeof (runtimeMetadata as any)?.version === 'string'
+                ? (runtimeMetadata as any).version
+                : undefined;
+
+    const outputParams =
+      (item.outputParams as Record<string, unknown>) ||
+      (runtimeMetadata?.outputParams as Record<string, unknown>) ||
+      (item.outputSchema as Record<string, unknown>);
+
     return {
       skillId: String(item.id || item.skillId || ''),
+      publishedSkillId,
+      executableVersion,
+      version: executableVersion,
+      publishedVersion: executableVersion,
+      isPublished: typeof item.isPublished === 'boolean' ? item.isPublished : true,
+      publishedReleaseId: typeof item.publishedReleaseId === 'string' ? item.publishedReleaseId : undefined,
+      publishedReleaseVersion,
+      publishedReleaseStatus: typeof item.publishedReleaseStatus === 'string' ? item.publishedReleaseStatus : undefined,
+      publishedDeploymentStatus: typeof item.publishedDeploymentStatus === 'string' ? item.publishedDeploymentStatus : undefined,
       skillName: String(item.name || item.skillName || ''),
       description: typeof item.description === 'string' ? item.description : undefined,
       triggerKeywords: Array.isArray(item.triggerKeywords) ? item.triggerKeywords.map(String) : [],
+      outputParams,
+      publishedSourceType:
+        typeof item.publishedSourceType === 'string' ? item.publishedSourceType : undefined,
       paramsSchema: this.hydrateParamsSchemaRenderPaths(
         this.normalizeParamsSchema(
           (item.paramsSchema as AvailableSkillDefinition['paramsSchema']) || {
@@ -325,10 +429,6 @@ export class SkillCacheService {
       apiEndpoints,
       goal: typeof item.goal === 'string' ? item.goal : undefined,
       expectedResult: typeof item.expectedResult === 'string' ? item.expectedResult : undefined,
-      outputParams:
-        typeof item.outputParams === 'object' && item.outputParams
-          ? (item.outputParams as Record<string, unknown>)
-          : undefined,
     };
   }
 

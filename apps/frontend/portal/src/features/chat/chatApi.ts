@@ -83,20 +83,27 @@ export function streamChat(
   onError?: (error: Error) => void,
   onComplete?: () => void
 ): () => void {
-  const streamHandle = coreChatApi.stream(
-    browserStreamingTransport,
-    useAuthStore.getState().accessToken,
-    request,
-    (event) => onEvent(event as StreamEvent)
-  );
+  let isAborted = false;
+  let activeAbortFn: (() => void) | null = null;
 
-  // 异步执行流式请求
   void (async () => {
     try {
+      const freshToken = await ensureFreshAccessToken();
+      if (isAborted) return;
+
+      const token = freshToken || useAuthStore.getState().accessToken;
+      const streamHandle = coreChatApi.stream(
+        browserStreamingTransport,
+        token,
+        request,
+        (event) => onEvent(event as StreamEvent)
+      );
+
+      activeAbortFn = () => streamHandle.abort();
+
       await streamHandle.promise;
       onComplete?.();
     } catch (error) {
-      // 如果是中止错误，不触发 onError
       if (error instanceof Error && error.name === 'AbortError') {
         console.log('Request aborted by user');
         return;
@@ -105,9 +112,11 @@ export function streamChat(
     }
   })();
 
-  // 返回中止函数
   return () => {
-    streamHandle.abort();
+    isAborted = true;
+    if (activeAbortFn) {
+      activeAbortFn();
+    }
   };
 }
 

@@ -79,13 +79,15 @@ export const hasTerminalTaskOutcome = (message: ChatMessage): boolean => {
   }
 
   const executionStatus = message.metadata?.executionStatus?.trim();
-  if (!executionStatus || !terminalExecutionStatuses.has(executionStatus)) {
+  if (executionStatus && !terminalExecutionStatuses.has(executionStatus)) {
     return false;
   }
 
   const normalizedResult = message.metadata?.normalizedResult;
   return Boolean(
-    message.metadata?.finalResult?.trim() ||
+    message.metadata?.taskStatus === 'completed' ||
+      message.metadata?.taskStatus === 'failed' ||
+      message.metadata?.finalResult?.trim() ||
       message.metadata?.errorMessage?.trim() ||
       message.metadata?.failureReason?.trim() ||
       message.metadata?.hasBusinessResult ||

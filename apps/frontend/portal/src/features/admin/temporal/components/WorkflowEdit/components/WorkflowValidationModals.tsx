@@ -1,6 +1,6 @@
 import React from 'react';
 import { Modal, Alert, Card, Space, Typography, Button, Tag, Input, message } from 'antd';
-import { CodeOutlined, ExperimentOutlined } from '@ant-design/icons';
+import { CodeOutlined, CopyOutlined, ExperimentOutlined } from '@ant-design/icons';
 
 const { Text } = Typography;
 
@@ -13,6 +13,7 @@ export interface WorkflowValidationModalsProps {
     errors: string[];
     warnings: string[];
   } | null;
+  workflowDsl?: any;
 
   codeModalVisible: boolean;
   onCloseCodeModal: () => void;
@@ -45,6 +46,7 @@ export const WorkflowValidationModals: React.FC<WorkflowValidationModalsProps> =
   validateModalVisible,
   onCloseValidateModal,
   validationResult,
+  workflowDsl,
   codeModalVisible,
   onCloseCodeModal,
   currentWorkflowDisplayName,
@@ -60,57 +62,125 @@ export const WorkflowValidationModals: React.FC<WorkflowValidationModalsProps> =
   realValidationLeafPaths,
   onApplySuggestedResponsePath,
 }) => {
+  const dslJsonString = React.useMemo(() => {
+    if (!workflowDsl) return '';
+    try {
+      return JSON.stringify(workflowDsl, null, 2);
+    } catch {
+      return String(workflowDsl);
+    }
+  }, [workflowDsl]);
+
   return (
     <>
       <Modal
         title="验证工作流 DSL"
         open={validateModalVisible}
         onCancel={onCloseValidateModal}
-        footer={[<Button key="close" onClick={onCloseValidateModal}>关闭</Button>]}
-        width={700}
+        footer={[
+          <Button
+            key="copy"
+            icon={<CopyOutlined />}
+            onClick={() => {
+              void navigator.clipboard.writeText(dslJsonString);
+              void message.success('DSL 已复制到剪贴板');
+            }}
+            disabled={!dslJsonString}
+          >
+            复制 DSL
+          </Button>,
+          <Button key="close" onClick={onCloseValidateModal}>
+            关闭
+          </Button>,
+        ]}
+        width={800}
       >
-        {validationResult ? (
-          <Space direction="vertical" style={{ width: '100%' }}>
-            <Alert
-              type={validationResult.isValid ? 'success' : 'error'}
-              message={validationResult.isValid ? '验证通过' : '验证失败'}
-              showIcon
-            />
-            <Card>
-              <Text>
-                <strong>评分:</strong> {validationResult.score}/100
-              </Text>
+        <Space direction="vertical" style={{ width: '100%' }}>
+          {validationResult ? (
+            <>
+              <Alert
+                type={validationResult.isValid ? 'success' : 'error'}
+                message={validationResult.isValid ? '验证通过' : '验证失败'}
+                showIcon
+              />
+              <Card size="small">
+                <Text>
+                  <strong>评分:</strong> {validationResult.score}/100
+                </Text>
+              </Card>
+              {validationResult.errors.length > 0 && (
+                <Alert
+                  type="error"
+                  message="错误"
+                  description={
+                    <ul>
+                      {validationResult.errors.map((e, i) => (
+                        <li key={i}>{e}</li>
+                      ))}
+                    </ul>
+                  }
+                />
+              )}
+              {validationResult.warnings.length > 0 && (
+                <Alert
+                  type="warning"
+                  message="警告"
+                  description={
+                    <ul>
+                      {validationResult.warnings.map((w, i) => (
+                        <li key={i}>{w}</li>
+                      ))}
+                    </ul>
+                  }
+                />
+              )}
+            </>
+          ) : (
+            <Alert type="info" message="点击验证按钮开始验证，下方为当前待验证的 Workflow DSL 配置" />
+          )}
+
+          {dslJsonString && (
+            <Card
+              size="small"
+              title={
+                <Space>
+                  <CodeOutlined />
+                  <Text strong>Workflow DSL (JSON)</Text>
+                </Space>
+              }
+              extra={
+                <Button
+                  type="link"
+                  size="small"
+                  icon={<CopyOutlined />}
+                  onClick={() => {
+                    void navigator.clipboard.writeText(dslJsonString);
+                    void message.success('DSL 已复制到剪贴板');
+                  }}
+                >
+                  复制
+                </Button>
+              }
+            >
+              <pre
+                style={{
+                  maxHeight: 360,
+                  overflowY: 'auto',
+                  background: 'var(--bg-secondary)',
+                  color: 'var(--text-primary)',
+                  border: '1px solid var(--border-color)',
+                  padding: 12,
+                  borderRadius: 6,
+                  fontSize: 12,
+                  lineHeight: 1.5,
+                  margin: 0,
+                }}
+              >
+                {dslJsonString}
+              </pre>
             </Card>
-            {validationResult.errors.length > 0 && (
-              <Alert
-                type="error"
-                message="错误"
-                description={
-                  <ul>
-                    {validationResult.errors.map((e, i) => (
-                      <li key={i}>{e}</li>
-                    ))}
-                  </ul>
-                }
-              />
-            )}
-            {validationResult.warnings.length > 0 && (
-              <Alert
-                type="warning"
-                message="警告"
-                description={
-                  <ul>
-                    {validationResult.warnings.map((w, i) => (
-                      <li key={i}>{w}</li>
-                    ))}
-                  </ul>
-                }
-              />
-            )}
-          </Space>
-        ) : (
-          <Alert type="info" message="点击验证按钮开始验证" />
-        )}
+          )}
+        </Space>
       </Modal>
 
       <Modal

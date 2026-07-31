@@ -1,0 +1,16 @@
+{
+  "workflowVersion": "v1",
+  "engine": "domain-handler",
+  "handlerKey": "platform.notification.internal-message",
+  "steps": [
+    {
+      "stepId": "send_notification",
+      "action": "send_internal_message",
+      "inputMapping": {
+        "recipientId": "$.input.recipientId",
+        "message": "$.input.message",
+        "title": "$.input.title"
+      }
+    }
+  ]
+}

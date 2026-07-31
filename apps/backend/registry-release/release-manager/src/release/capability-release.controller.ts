@@ -9,6 +9,8 @@ import {
   Query,
   Request,
   Res,
+  InternalServerErrorException,
+  BadRequestException,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { ApiBody, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -111,7 +113,18 @@ export class CapabilityReleaseController {
   @Post('runtime/execute')
   @Public()
   async executeCapabilityRuntime(@Body() body: ExecuteCapabilityRuntimeDTO, @Request() req: any) {
-    return this.capabilityReleaseService.executeCapabilityRuntime(body, req.user?.id);
+    try {
+      return await this.capabilityReleaseService.executeCapabilityRuntime(body, req.user?.id);
+    } catch (err: any) {
+      if (err instanceof BadRequestException) throw err;
+      const message = err?.message || 'Unknown error executing capability runtime';
+      throw new InternalServerErrorException({
+        status: 'failed',
+        success: false,
+        error: message,
+        capabilityId: body.capabilityId || body.publishedSkillId,
+      });
+    }
   }
 
   @Get('runtime/skills/:skillId/context')

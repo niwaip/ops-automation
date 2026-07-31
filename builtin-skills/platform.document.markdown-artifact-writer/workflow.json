@@ -1,0 +1,15 @@
+{
+  "workflowVersion": "v1",
+  "engine": "domain-handler",
+  "handlerKey": "document.markdown-artifact-writer",
+  "steps": [
+    {
+      "stepId": "write_markdown",
+      "action": "write_artifact",
+      "inputMapping": {
+        "content": "$.input.content",
+        "fileName": "$.input.fileName"
+      }
+    }
+  ]
+}

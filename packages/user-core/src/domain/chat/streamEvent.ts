@@ -276,7 +276,7 @@ const resolveTaskStatus = (
   mode?: 'chat' | 'task',
   data?: Record<string, unknown>
 ): NonNullable<NonNullable<ChatMessage['metadata']>['taskStatus']> | undefined => {
-  const executionStatus = asString(data?.status);
+  const executionStatus = asString(data?.status) || asString(data?.taskStatus);
   if (mode === 'task' && executionStatus) {
     switch (executionStatus) {
       case 'waiting_input':
@@ -331,18 +331,35 @@ const isTerminalTaskResult = (
 
   const executionId = asString(data?.executionId);
   const executionStatus = asString(data?.status);
+  const taskStatus = asString(data?.taskStatus);
+  const terminalStatuses = new Set([
+    'succeeded',
+    'completed',
+    'failed',
+    'cancelled',
+    'rolled_back',
+    'terminated',
+  ]);
 
-  if (!executionId) {
+  // ReAct chat streams can complete without creating a control-plane execution.
+  // In that case RESULT carries the protocol-level taskStatus as the terminal signal.
+  if (taskStatus && terminalStatuses.has(taskStatus)) {
+    return true;
+  }
+
+  if (executionId && executionStatus) {
+    return terminalStatuses.has(executionStatus);
+  }
+
+  const nonTerminalStatuses = new Set(['draft', 'queued', 'running', 'paused']);
+  if (executionStatus && nonTerminalStatuses.has(executionStatus)) {
+    return false;
+  }
+  if (taskStatus && nonTerminalStatuses.has(taskStatus)) {
     return false;
   }
 
-  return (
-    executionStatus === 'succeeded' ||
-    executionStatus === 'completed' ||
-    executionStatus === 'failed' ||
-    executionStatus === 'cancelled' ||
-    executionStatus === 'rolled_back'
-  );
+  return true;
 };
 
 const buildContentParts = (
@@ -422,14 +439,22 @@ export const reduceChatStreamEvent = ({
   const normalizedResult = normalizeNormalizedResult(data?.normalizedResult);
   const contentText = event.content;
   const progressLog = mode === 'task' ? buildTaskProgressLog(event, data, normalizedResult) : undefined;
+  const resolvedTaskStatus = resolveTaskStatus(event.type, mode, data);
+  const isExplicitCompleted =
+    resolvedTaskStatus === CHAT_TASK_STATUS.COMPLETED ||
+    data?.taskStatus === 'completed' ||
+    data?.taskStatus === 'succeeded' ||
+    data?.status === 'succeeded' ||
+    data?.status === 'completed';
+
   const inferredFailureReason =
-    event.type === StreamEventTypeValue.RESULT
+    !isExplicitCompleted && event.type === StreamEventTypeValue.RESULT
       ? inferFailureReason(normalizedResult?.structuredData) ||
         inferFailureReason(normalizedResult?.rawResult) ||
         inferFailureReason(data?.result) ||
         inferFailureReason(data)
       : undefined;
-  const resolvedTaskStatus = resolveTaskStatus(event.type, mode, data);
+
   const taskStatus =
     mode === 'task' && inferredFailureReason ? CHAT_TASK_STATUS.FAILED : resolvedTaskStatus;
   const terminalTaskResult = event.type === StreamEventTypeValue.RESULT && isTerminalTaskResult(mode, data);

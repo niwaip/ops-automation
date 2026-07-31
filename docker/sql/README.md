@@ -30,6 +30,22 @@ This script:
 - ensures `pgcrypto` and `uuid-ossp` extensions exist
 - applies the platform baseline migration
 - applies the shared incremental SQL files
+- validates that platform and control-plane use the same shared Prisma schema
+
+The development Compose files run the same idempotent migration flow once in
+`workspace-deps-init` before starting application services. Individual services
+must not run `prisma db push` against the shared `public` schema during startup;
+restarting an application container must never rewrite the database contract.
+
+For databases historically created by `db push`, the migration flow first checks
+the expected baseline tables and column types. Only after that guard succeeds
+does it record the existing platform migrations as applied; it never resets or
+drops the schema to manufacture migration history.
+
+After migration, a second guard verifies the execution, phase, plan, artifact,
+and scheduler tables plus their critical columns. Application services are not
+started when this contract is incomplete, so schema damage fails at startup
+instead of surfacing later as a ReAct fallback.
 
 ### Import current seed data
 
@@ -71,6 +87,7 @@ docker/sql/exports/platform-initial-data-<timestamp>.sql
 - `apps/backend/execution-control/control-plane/prisma/migrations/20260515143000_add_execution_phases/migration.sql`
 - `apps/backend/execution-control/control-plane/prisma/migrations/20260516140000_add_execution_phase_steps/migration.sql`
 - `apps/backend/execution-control/control-plane/prisma/migrations/20260625000000_add_scheduler/migration.sql`
+- `apps/backend/execution-control/control-plane/prisma/migrations/20260728120000_add_deterministic_execution_plan/migration.sql`
 
 ### Placeholder migrations
 

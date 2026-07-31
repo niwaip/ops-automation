@@ -126,8 +126,10 @@ export class AnalyzerService {
   ): Promise<{ content: string; confidence?: number; tokens_used?: number }> {
     try {
       // Get available models
-      const modelsResponse = await axios.get(`${this.aiOrchestratorUrl}/ai/models`);
-      const models = modelsResponse.data.models;
+      const modelsResponse = await axios.get<{ models: Array<{ id: string; status: string }> }>(
+        `${this.aiOrchestratorUrl}/ai/models`
+      );
+      const models = modelsResponse.data?.models || [];
 
       if (!models || models.length === 0) {
         throw new Error('No AI models available');
@@ -145,7 +147,7 @@ export class AnalyzerService {
       }
 
       // Test/call the model
-      const testResponse = await axios.post(
+      const testResponse = await axios.post<{ success: boolean; response?: string; error?: string }>(
         `${this.aiOrchestratorUrl}/ai/models/${modelId}/test`,
         { prompt },
         {
@@ -153,12 +155,13 @@ export class AnalyzerService {
         }
       );
 
-      if (!testResponse.data.success) {
-        throw new Error(testResponse.data.error || 'AI call failed');
+      const testData = testResponse.data;
+      if (!testData.success) {
+        throw new Error(testData.error || 'AI call failed');
       }
 
       return {
-        content: testResponse.data.response,
+        content: testData.response || '',
         tokens_used: Math.ceil(prompt.length / 4), // Approximate
       };
     } catch (error) {

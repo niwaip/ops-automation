@@ -19,7 +19,10 @@ import {
   normalizeAiDraftStepInput,
   normalizeDraftInputParams,
 } from '../src/modules/temporal-workflow/temporal-workflow-draft.normalizers';
-import { repairCommonDraftPlanIssues } from '../src/modules/temporal-workflow/temporal-workflow-draft-plan.helpers';
+import {
+  repairCommonDraftPlanIssues,
+  validateAiWorkflowDraftPlan,
+} from '../src/modules/temporal-workflow/temporal-workflow-draft-plan.helpers';
 import { TemporalWorkflowNormalizationService } from '../src/modules/temporal-workflow/temporal-workflow-normalization.service';
 import { pickFirstNonEmptyString } from '../src/modules/temporal-workflow/temporal-workflow-json.utils';
 import { TemporalWorkflowSessionService } from '../src/modules/temporal-workflow/temporal-workflow-session.service';
@@ -818,6 +821,14 @@ describe('TemporalWorkflowAiDraftService', () => {
               required: true,
               defaultValue: '',
             },
+            topic: {
+              description: '搜索类别',
+              required: false,
+              defaultValue: 'general',
+              enum: ['general', 'news', 'finance'],
+              type: 'string',
+              exampleValue: 'news',
+            },
           },
           outputParams: {
             result: {
@@ -884,7 +895,16 @@ describe('TemporalWorkflowAiDraftService', () => {
     );
     expect(draft.activityDsl.activities[0].fn).toBe('httpRequest');
     expect(draft.activityDsl.activities[0].handler).toBe('api');
+    expect(draft.workflowDsl.inputParams?.topic).toEqual(
+      expect.objectContaining({
+        defaultValue: 'general',
+        enum: ['general', 'news', 'finance'],
+        exampleValue: 'news',
+      })
+    );
     expect(mockedAxios.post).toHaveBeenCalled();
+    const promptPayload = mockedAxios.post.mock.calls[0]?.[1] as any;
+    expect(String(promptPayload?.prompt || '')).toContain('必须在对应 inputParams 参数上输出 enum 数组');
   });
 
   it('materializes weather formatted AI draft with complete structuredTransform config', async () => {
@@ -1697,6 +1717,8 @@ describe('TemporalWorkflowAiDraftService', () => {
         lang: {
           description: '语言',
           defaultValue: 'zh',
+          enum: ['zh', ' en ', 'zh'],
+          exampleValue: 'en',
         },
       },
       steps: [
@@ -1750,11 +1772,63 @@ describe('TemporalWorkflowAiDraftService', () => {
         description: '语言',
         required: false,
         defaultValue: 'zh',
+        enum: ['zh', 'en'],
         source: 'merged',
         type: 'string',
-        exampleValue: 'sample_lang',
+        exampleValue: 'en',
       },
     });
+  });
+
+  it('rejects enum defaults and examples outside the declared candidates', () => {
+    const issues = validateAiWorkflowDraftPlan(
+      {
+        inputParams: {
+          topic: {
+            description: '搜索类别',
+            required: false,
+            defaultValue: 'other',
+            enum: ['general', 'news', 'finance'],
+            type: 'string',
+            exampleValue: 'everything',
+          },
+        },
+        steps: [
+          {
+            id: 'step_1',
+            name: '搜索',
+            type: 'activity',
+            activityRef: 'builtin:httpRequest',
+            input: {
+              __httpRequest: {
+                urlTemplate: 'https://example.com/search',
+              },
+            },
+          },
+        ],
+      },
+      [
+        {
+          ref: 'builtin:httpRequest',
+          name: 'HTTP 请求',
+          fn: 'httpRequest',
+          timeout: '30s',
+          handler: 'api',
+          config: {},
+        },
+      ],
+      {
+        pickFirstNonEmptyString: (...values) => pickFirstNonEmptyString(...values) || '',
+        buildWorkflowSemanticHint: (...values) => values.filter(Boolean).join(' '),
+      }
+    );
+
+    expect(issues).toEqual(
+      expect.arrayContaining([
+        '输入参数 topic 的 defaultValue 必须属于 enum。',
+        '输入参数 topic 的 exampleValue 必须属于 enum。',
+      ])
+    );
   });
 
   it('resolves httpRequest -> aiStructuredTransform -> structuredTransform sequentially from observed samples', async () => {

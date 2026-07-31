@@ -373,15 +373,21 @@
 }
 
 .user-chat-input-toolbar {
-  flex: 1;
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
   padding: 8px 12px;
   border-top: 1px solid rgba(148, 163, 184, 0.12);
   background: rgba(255, 255, 255, 0.28);
-  flex-wrap: wrap;
-  overflow-x: visible;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.user-chat-input-toolbar::-webkit-scrollbar {
+  display: none;
 }
 
 [data-theme="dark"] .user-chat-input-toolbar {
@@ -390,12 +396,12 @@
 }
 
 .user-chat-input-toolbar-spacer {
-  flex: 1;
-  min-width: 12px;
+  flex: 1 1 auto;
+  min-width: 8px;
 }
 
 .user-chat-input-toolbar > * {
-  min-width: 0;
+  flex-shrink: 0;
 }
 
 .user-chat-input-controls {

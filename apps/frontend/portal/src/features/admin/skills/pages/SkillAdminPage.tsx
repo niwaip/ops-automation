@@ -63,7 +63,6 @@ import { executionFlowApi } from '@/api/flows';
 import { SkillAccessRequestReviewTab } from '@/features/admin/skills/components/SkillAccessRequestReviewTab';
 import type { ColumnsType } from 'antd/es/table';
 import {
-  PageTitleBlock,
   OverviewStatGrid,
   ListSectionHeader,
 } from '@/components/page/PageScaffold';
@@ -80,6 +79,47 @@ type SkillParamFormItem = {
   required?: boolean;
   defaultValue?: string;
   extractionPrompt?: string;
+};
+
+const BUILTIN_SKILL_NAMES = new Set([
+  'markdown_artifact_writer',
+  'general_document_generator',
+  'system_status_checker',
+  'platform.document.markdown-artifact-writer',
+  'platform.notification.internal-message',
+]);
+
+const isBuiltinSkill = (skill: SkillConfigDTO): boolean => {
+  const id = (skill.id || '').toLowerCase();
+  const name = (skill.name || '').toLowerCase();
+  const sourceType = (skill.publishedSourceType || '').toLowerCase();
+
+  if (BUILTIN_SKILL_NAMES.has(id) || BUILTIN_SKILL_NAMES.has(name)) {
+    return true;
+  }
+
+  if (
+    id.startsWith('platform.') ||
+    id.startsWith('builtin.') ||
+    id.startsWith('system.') ||
+    name.startsWith('platform.') ||
+    name.startsWith('builtin.') ||
+    name.startsWith('system.')
+  ) {
+    return true;
+  }
+
+  if (
+    sourceType === 'builtin' ||
+    sourceType === 'builtin_workflow' ||
+    sourceType === 'system' ||
+    sourceType === 'default' ||
+    sourceType.includes('builtin')
+  ) {
+    return true;
+  }
+
+  return false;
 };
 
 const schemaToFormParams = (
@@ -222,6 +262,9 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [searchText, setSearchText] = useState(searchParams.get('q') || '');
+  const [activeTabKey, setActiveTabKey] = useState<'builtin' | 'custom' | 'all'>(
+    (searchParams.get('tab') as 'builtin' | 'custom' | 'all') || 'builtin'
+  );
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [permissionModalVisible, setPermissionModalVisible] = useState(false);
@@ -473,6 +516,11 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
     const keyword = searchParams.get('q') || '';
     setSearchText(keyword);
 
+    const tabParam = searchParams.get('tab');
+    if (tabParam === 'builtin' || tabParam === 'custom' || tabParam === 'all') {
+      setActiveTabKey(tabParam);
+    }
+
     const skillId = searchParams.get('id');
     if (skillId && skillsQuery.data?.skills) {
       const skill = skillsQuery.data.skills.find((s) => s.id === skillId);
@@ -657,19 +705,44 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
     });
   };
 
-  // Filter skills by search text
-  const filteredSkills = skillsQuery.data?.skills?.filter((skill) => {
-    const keyword = searchText.toLowerCase();
-    return (
-      skill.name.toLowerCase().includes(keyword) ||
-      (skill.description || '').toLowerCase().includes(keyword) ||
-      skill.triggerKeywords?.some((triggerKeyword) =>
-        triggerKeyword.toLowerCase().includes(keyword)
-      ) ||
-      skill.tools?.some((toolName) => toolName.toLowerCase().includes(keyword)) ||
-      skill.effectiveTools?.some((toolName) => toolName.toLowerCase().includes(keyword))
-    );
-  });
+  // Filter skills by search text & tab
+  const allSkills = skillsQuery.data?.skills || [];
+
+  const builtinSkillsCount = useMemo(
+    () => allSkills.filter(isBuiltinSkill).length,
+    [allSkills]
+  );
+
+  const customSkillsCount = useMemo(
+    () => allSkills.filter((s) => !isBuiltinSkill(s)).length,
+    [allSkills]
+  );
+
+  const filteredSkills = useMemo(() => {
+    const keyword = searchText.toLowerCase().trim();
+    return allSkills.filter((skill) => {
+      if (!keyword) return true;
+      return (
+        skill.name.toLowerCase().includes(keyword) ||
+        (skill.description || '').toLowerCase().includes(keyword) ||
+        skill.triggerKeywords?.some((triggerKeyword) =>
+          triggerKeyword.toLowerCase().includes(keyword)
+        ) ||
+        skill.tools?.some((toolName) => toolName.toLowerCase().includes(keyword)) ||
+        skill.effectiveTools?.some((toolName) => toolName.toLowerCase().includes(keyword))
+      );
+    });
+  }, [allSkills, searchText]);
+
+  const displayedSkills = useMemo(() => {
+    if (activeTabKey === 'builtin') {
+      return filteredSkills.filter(isBuiltinSkill);
+    }
+    if (activeTabKey === 'custom') {
+      return filteredSkills.filter((s) => !isBuiltinSkill(s));
+    }
+    return filteredSkills;
+  }, [filteredSkills, activeTabKey]);
   const validationProgressMeta = getValidationProgressMeta(
     validationResult ? '验证完成' : validationStage,
     Boolean(validatingSkillId),
@@ -1122,10 +1195,10 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
   }
 
   const statItems = useMemo(() => {
-    const skills = skillsQuery.data?.skills || [];
-    const total = skills.length;
-    const published = skills.filter((s) => s.isPublished).length;
-    const active = skills.filter((s) => s.isActive).length;
+    const total = allSkills.length;
+    const builtin = builtinSkillsCount;
+    const custom = customSkillsCount;
+    const published = allSkills.filter((s) => s.isPublished).length;
 
     return [
       {
@@ -1136,29 +1209,31 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
         color: 'var(--primary-color)',
       },
       {
+        key: 'builtin',
+        label: '内置 Skill',
+        value: builtin,
+        icon: <ThunderboltOutlined style={{ color: '#10b981' }} />,
+        color: '#10b981',
+      },
+      {
+        key: 'custom',
+        label: '自定义 Skill',
+        value: custom,
+        icon: <ApiOutlined style={{ color: '#8b5cf6' }} />,
+        color: '#8b5cf6',
+      },
+      {
         key: 'published',
         label: '已发布',
         value: published,
         icon: <RocketOutlined style={{ color: 'var(--success-color)' }} />,
         color: 'var(--success-color)',
       },
-      {
-        key: 'active',
-        label: '启用中',
-        value: active,
-        icon: <CheckCircleOutlined style={{ color: 'var(--processing-color)' }} />,
-        color: 'var(--processing-color)',
-      },
     ];
-  }, [skillsQuery.data]);
+  }, [allSkills, builtinSkillsCount, customSkillsCount]);
 
   return (
-    <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px' }}>
-      <PageTitleBlock
-        title={t('admin:skillManagement')}
-        subtitle="管理系统核心能力定义、执行流程与公开状态"
-      />
-
+    <div style={{ width: '100%', padding: '0 24px' }}>
       <OverviewStatGrid items={statItems} />
 
       <Card
@@ -1202,7 +1277,7 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
           }
           extra={
             <Space wrap size={12}>
-              <Text type="secondary">当前显示 {filteredSkills?.length || 0} 条</Text>
+              <Text type="secondary">当前显示 {displayedSkills.length} 条</Text>
               <Button
                 size="large"
                 icon={<FileTextOutlined />}
@@ -1240,9 +1315,77 @@ const SkillAdminPage: React.FC<SkillAdminPageProps> = ({ embedded, initialSkillI
           }
         />
 
+        <Tabs
+          activeKey={activeTabKey}
+          onChange={(key) => {
+            const nextTab = key as 'builtin' | 'custom' | 'all';
+            setActiveTabKey(nextTab);
+            setSearchParams(
+              (prev) => {
+                const next = new URLSearchParams(prev);
+                next.set('tab', nextTab);
+                return next;
+              },
+              { replace: true }
+            );
+          }}
+          items={[
+            {
+              key: 'builtin',
+              label: (
+                <Space>
+                  <ThunderboltOutlined />
+                  <span>内置 Skill</span>
+                  <Badge
+                    count={builtinSkillsCount}
+                    overflowCount={999}
+                    style={{
+                      backgroundColor: activeTabKey === 'builtin' ? '#10b981' : 'var(--text-light)',
+                    }}
+                  />
+                </Space>
+              ),
+            },
+            {
+              key: 'custom',
+              label: (
+                <Space>
+                  <ApiOutlined />
+                  <span>自定义 Skill</span>
+                  <Badge
+                    count={customSkillsCount}
+                    overflowCount={999}
+                    style={{
+                      backgroundColor: activeTabKey === 'custom' ? '#8b5cf6' : 'var(--text-light)',
+                    }}
+                  />
+                </Space>
+              ),
+            },
+            {
+              key: 'all',
+              label: (
+                <Space>
+                  <OrderedListOutlined />
+                  <span>全部 Skill</span>
+                  <Badge
+                    count={allSkills.length}
+                    overflowCount={999}
+                    style={{
+                      backgroundColor:
+                        activeTabKey === 'all' ? 'var(--primary-color)' : 'var(--text-light)',
+                    }}
+                  />
+                </Space>
+              ),
+            },
+          ]}
+          style={{ marginBottom: 16 }}
+        />
+
         <Table
           columns={columns}
-          dataSource={filteredSkills || []}
+          dataSource={displayedSkills}
           rowKey="id"
           loading={skillsQuery.isLoading}
           scroll={{ x: 1200 }}

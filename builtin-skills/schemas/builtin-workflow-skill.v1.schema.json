@@ -1,0 +1,100 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BuiltinWorkflowSkillManifest",
+  "type": "object",
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "properties": {
+    "apiVersion": {
+      "type": "string",
+      "enum": ["platform.ops/v1alpha1", "platform.ops/v1"]
+    },
+    "kind": {
+      "type": "string",
+      "const": "BuiltinWorkflowSkill"
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["key", "displayName", "owner"],
+      "properties": {
+        "key": {
+          "type": "string",
+          "pattern": "^platform\\.[a-z0-9_-]+\\.[a-z0-9_-]+$"
+        },
+        "displayName": { "type": "string" },
+        "description": { "type": "string" },
+        "owner": { "type": "string" },
+        "labels": { "type": "object" }
+      }
+    },
+    "spec": {
+      "type": "object",
+      "required": ["definitionVersion", "lifecycle", "defaultAccess", "contracts", "runtime"],
+      "properties": {
+        "definitionVersion": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "lifecycle": {
+          "type": "string",
+          "enum": ["experimental", "stable", "deprecated"]
+        },
+        "defaultAccess": {
+          "type": "object",
+          "required": ["mode"],
+          "properties": {
+            "mode": {
+              "type": "string",
+              "enum": ["authenticated", "restricted", "public"]
+            }
+          }
+        },
+        "planner": {
+          "type": "object",
+          "required": ["enabled", "runtimeType"],
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "triggerKeywords": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "matchSummary": { "type": "string" },
+            "runtimeType": { "type": "string" },
+            "supportsArtifact": { "type": "boolean" }
+          }
+        },
+        "contracts": {
+          "type": "object",
+          "required": ["input", "output"],
+          "properties": {
+            "input": { "type": "object" },
+            "output": { "type": "object" }
+          }
+        },
+        "workflow": {
+          "type": "object",
+          "required": ["engine"],
+          "properties": {
+            "engine": {
+              "type": "string",
+              "enum": ["platform-sequential", "temporal", "domain-handler"]
+            },
+            "definitionRef": { "type": "string" }
+          }
+        },
+        "runtime": {
+          "type": "object",
+          "required": ["adapterRoute", "handlerKey"],
+          "properties": {
+            "adapterRoute": { "type": "string" },
+            "handlerKey": { "type": "string" },
+            "idempotency": {
+              "type": "string",
+              "enum": ["required", "optional", "disabled"]
+            },
+            "timeoutSeconds": { "type": "number" }
+          }
+        }
+      }
+    }
+  }
+}

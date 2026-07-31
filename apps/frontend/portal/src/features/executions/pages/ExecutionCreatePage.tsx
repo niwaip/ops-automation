@@ -55,6 +55,7 @@ type SchemaField = {
   description?: string;
   required: boolean;
   defaultValue?: unknown;
+  enum?: Array<string | number>;
 };
 
 type PublishedSkillOption = {
@@ -237,6 +238,7 @@ const getSchemaFields = (schema?: SkillParamsSchema): SchemaField[] => {
     description: config?.description,
     required: requiredFields.has(name) || Boolean(config?.required),
     defaultValue: config?.default,
+    enum: config?.enum,
   }));
 };
 
@@ -264,6 +266,20 @@ const getInitialInputValues = (fields: SchemaField[]): Record<string, unknown> =
 
 const renderInputField = (field: SchemaField) => {
   const normalizedType = field.type.toLowerCase();
+
+  if (Array.isArray(field.enum) && field.enum.length > 0) {
+    return (
+      <Select
+        style={{ width: '100%' }}
+        allowClear
+        placeholder={field.description || `请选择 ${field.name}`}
+        options={field.enum.map((value) => ({
+          label: String(value),
+          value,
+        }))}
+      />
+    );
+  }
 
   if (normalizedType === 'number' || normalizedType === 'integer') {
     return <InputNumber style={{ width: '100%' }} placeholder={`请输入 ${field.name}`} />;

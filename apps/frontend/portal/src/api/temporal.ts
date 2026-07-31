@@ -72,6 +72,7 @@ export interface WorkflowInputParamDefinition {
   description?: string;
   required?: boolean;
   defaultValue?: string;
+  enum?: Array<string | number>;
   localizedDefaultValue?: WorkflowLocalizedValueMap;
   localizedVariants?: string[];
   source?: WorkflowInputParamSource;

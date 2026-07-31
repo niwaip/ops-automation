@@ -21,6 +21,9 @@ const asString = (value: unknown): string | undefined =>
 const firstNonEmptyString = (...values: Array<string | undefined>): string | undefined =>
   values.find((value): value is string => typeof value === 'string' && value.trim().length > 0);
 
+const normalizeArtifactUrl = (value: string | undefined): string | undefined =>
+  value?.replace(/^(\/public)?\/renders\//i, '/api/renders/');
+
 const tryParseJsonString = (value: unknown): unknown => {
   if (typeof value !== 'string') {
     return undefined;
@@ -216,6 +219,11 @@ const collectLegacyArtifacts = (value: unknown): WorkflowResultArtifact[] => {
       asString(record.download_url)
     );
     const url = firstNonEmptyString(asString(record.url), asString(record.fileUrl));
+    const artifactType = firstNonEmptyString(
+      asString(record.artifactType),
+      asString(record.artifact_type),
+      asString(record.type)
+    );
     const name = firstNonEmptyString(
       asString(record.name),
       asString(record.fileName),
@@ -224,11 +232,12 @@ const collectLegacyArtifacts = (value: unknown): WorkflowResultArtifact[] => {
 
     if (downloadUrl || url) {
       artifacts.push({
-        type: downloadUrl ? 'file' : 'url',
+        type: artifactType || (downloadUrl ? 'file' : 'url'),
+        artifactType,
         name,
         label: name,
-        downloadUrl: downloadUrl || undefined,
-        url: url || undefined,
+        downloadUrl: normalizeArtifactUrl(downloadUrl),
+        url: normalizeArtifactUrl(url),
         mimeType: asString(record.mimeType) || asString(record.mime_type),
         path: asString(record.path),
       });
@@ -257,18 +266,26 @@ const normalizeArtifacts = (value: WorkflowResultArtifact[]): WorkflowResultArti
     const artifact: WorkflowResultArtifact = {
       type:
         asString(record.type) ||
+        asString(record.artifactType) ||
+        asString(record.artifact_type) ||
         (firstNonEmptyString(asString(record.downloadUrl), asString(record.url))
           ? 'file'
           : 'artifact'),
+      artifactType: firstNonEmptyString(
+        asString(record.artifactType),
+        asString(record.artifact_type),
+        asString(record.type)
+      ),
       name: firstNonEmptyString(asString(record.name), asString(record.label)),
       label: firstNonEmptyString(asString(record.label), asString(record.name)),
-      downloadUrl: asString(record.downloadUrl),
-      url: asString(record.url),
+      downloadUrl: normalizeArtifactUrl(asString(record.downloadUrl)),
+      url: normalizeArtifactUrl(asString(record.url)),
       path: asString(record.path),
       mimeType: firstNonEmptyString(asString(record.mimeType), asString(record.mime_type)),
     };
 
-    const dedupeKey = `${artifact.type}|${artifact.downloadUrl || artifact.url || artifact.path || ''}|${artifact.name || ''}`;
+    const artifactLocation = artifact.downloadUrl || artifact.url || artifact.path;
+    const dedupeKey = artifactLocation || `${artifact.type}|${artifact.name || ''}`;
     if (seen.has(dedupeKey)) {
       return;
     }
@@ -280,8 +297,74 @@ const normalizeArtifacts = (value: WorkflowResultArtifact[]): WorkflowResultArti
   return artifacts;
 };
 
+const artifactDownloadPriority = (artifact: WorkflowResultArtifact): number => {
+  const url = firstNonEmptyString(artifact.downloadUrl, artifact.url) || '';
+  const name = artifact.name || artifact.label || '';
+  const mimeType = artifact.mimeType || '';
+  const artifactType = artifact.artifactType || artifact.type || '';
+
+  if (
+    mimeType === 'text/markdown' ||
+    /\.md(?:$|[?#])/i.test(name) ||
+    /\.md(?:$|[?#])/i.test(url)
+  ) {
+    return 400;
+  }
+  if (/search_result|source|reference/i.test(artifactType)) {
+    return 0;
+  }
+  if (artifact.downloadUrl || /\/renders\//i.test(url) || /document|file/i.test(artifactType)) {
+    return 300;
+  }
+  if (/application\/(pdf|json)|text\/plain/i.test(mimeType)) {
+    return 200;
+  }
+  return 100;
+};
+
+const isReferenceArtifact = (artifact: WorkflowResultArtifact): boolean => {
+  const artifactType = artifact.artifactType || artifact.type || '';
+  const url = firstNonEmptyString(artifact.downloadUrl, artifact.url) || '';
+
+  return (
+    /search_result|source|reference/i.test(artifactType) ||
+    (artifactType === 'url' && !/\/renders\//i.test(url))
+  );
+};
+
+const isDeliverableArtifact = (artifact: WorkflowResultArtifact): boolean => {
+  if (isReferenceArtifact(artifact)) {
+    return false;
+  }
+
+  const artifactType = artifact.artifactType || artifact.type || '';
+  const mimeType = artifact.mimeType || '';
+  const url = firstNonEmptyString(artifact.downloadUrl, artifact.url) || '';
+  const name = artifact.name || artifact.label || '';
+
+  return Boolean(
+    (artifact.downloadUrl && (
+      /\/renders\//i.test(url) ||
+      /\.(?:md|pdf|docx?|xlsx?|csv|json|txt|zip)(?:$|[?#])/i.test(url)
+    )) ||
+    /document|file|report|export|attachment/i.test(artifactType) ||
+    /\/renders\//i.test(url) ||
+    /\.(?:md|pdf|docx?|xlsx?|csv|json|txt|zip)(?:$|[?#])/i.test(name) ||
+    /\.(?:md|pdf|docx?|xlsx?|csv|json|txt|zip)(?:$|[?#])/i.test(url) ||
+    /^(?:text\/markdown|text\/plain|application\/(?:pdf|json|zip|vnd\.))/i.test(mimeType)
+  );
+};
+
+export const selectExecutionDeliverableArtifacts = (
+  artifacts: WorkflowResultArtifact[]
+): WorkflowResultArtifact[] => {
+  return [...artifacts]
+    .filter(isDeliverableArtifact)
+    .sort((left, right) => artifactDownloadPriority(right) - artifactDownloadPriority(left));
+};
+
 const pickArtifactUrl = (artifacts: WorkflowResultArtifact[]): string | undefined =>
-  artifacts
+  selectExecutionDeliverableArtifacts(artifacts)
     .map((item) => firstNonEmptyString(item.downloadUrl, item.url))
     .find((item): item is string => Boolean(item));
 

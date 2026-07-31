@@ -247,21 +247,27 @@ export class ProxyController {
       res.status(result.status).json(result.data);
     } catch (error) {
       const durationMs = Date.now() - startTime;
+      const errorStatus =
+        error instanceof HttpException
+          ? error.getStatus()
+          : HttpStatus.INTERNAL_SERVER_ERROR;
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
 
       // Log failed API call
       await this.auditService.logApiCall(
         req.user?.id,
         method,
         `/${serviceName}${targetPath}`,
-        (error as HttpException).getStatus() || HttpStatus.INTERNAL_SERVER_ERROR,
+        errorStatus,
         req.ip || 'unknown',
         durationMs,
         method !== 'GET' ? (body as Record<string, unknown>) : undefined,
-        { error: (error as HttpException).message }
+        { error: errorMessage }
       );
 
       this.logger.error(
-        `Proxy error: ${serviceName} ${method} ${targetPath} - ${(error as Error).message}`
+        `Proxy error: ${serviceName} ${method} ${targetPath} - ${errorMessage}`
       );
 
       if (error instanceof HttpException) {

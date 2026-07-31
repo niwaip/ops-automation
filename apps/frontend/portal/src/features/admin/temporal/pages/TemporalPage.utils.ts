@@ -227,6 +227,24 @@ export const normalizeWorkflowInputParamMap = (
       if (!key) {
         return acc;
       }
+      const enumValues = Array.isArray(value?.enum)
+        ? Array.from(
+            new Map(
+              value.enum
+                .map((item) =>
+                  typeof item === 'string'
+                    ? item.trim()
+                    : typeof item === 'number' && Number.isFinite(item)
+                      ? item
+                      : undefined
+                )
+                .filter(
+                  (item): item is string | number => item !== undefined && item !== ''
+                )
+                .map((item) => [`${typeof item}:${String(item)}`, item])
+            ).values()
+          )
+        : undefined;
       acc[key] = {
         description: typeof value?.description === 'string' ? value.description : '',
         required: value?.required === true,
@@ -234,6 +252,7 @@ export const normalizeWorkflowInputParamMap = (
           value?.defaultValue === undefined || value?.defaultValue === null
             ? ''
             : String(value.defaultValue),
+        enum: enumValues && enumValues.length > 0 ? enumValues : undefined,
         source: value?.source,
         type: value?.type,
         exampleValue: value?.exampleValue,
@@ -315,6 +334,7 @@ export const mergeWorkflowInputParamMaps = (
       description: preferredValue.description || fallbackValue.description || '',
       required: preferredValue.required ?? fallbackValue.required ?? false,
       defaultValue: preferredValue.defaultValue ?? fallbackValue.defaultValue ?? '',
+      enum: preferredValue.enum ?? fallbackValue.enum,
       source: preferredValue.source ?? fallbackValue.source,
       type: preferredValue.type ?? fallbackValue.type,
       exampleValue: preferredValue.exampleValue ?? fallbackValue.exampleValue,

@@ -23,6 +23,7 @@ export interface ExecutionRequiredInput {
   name: string;
   type: string;
   description?: string;
+  enum?: Array<string | number>;
   required: boolean;
   required_mode?: ExecutionParamRequiredMode;
   value?: unknown;
@@ -42,6 +43,7 @@ export interface ExecutionRequiredInput {
 
 export interface ExecutionParamResolutionEntry {
   type: string;
+  enum?: Array<string | number>;
   required: boolean;
   value?: unknown;
   source: ExecutionParamSource;
@@ -97,6 +99,7 @@ export interface WorkflowResultNextAction {
 
 export interface WorkflowResultArtifact {
   type?: string;
+  artifactType?: string;
   name?: string;
   label?: string;
   downloadUrl?: string;
@@ -218,6 +221,23 @@ export class CreateExecutionDto {
   })
   @IsObject()
   input: Record<string, unknown>;
+
+  @ApiProperty({
+    description: 'Execution mode',
+    example: 'single_skill',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  executionMode?: 'single_skill' | 'deterministic_plan';
+
+  @ApiProperty({
+    description: 'Deterministic plan draft v1 for multi-step task execution',
+    required: false,
+  })
+  @IsOptional()
+  @IsObject()
+  deterministicPlan?: Record<string, unknown>;
 
   @ApiProperty({ description: 'Idempotency key for deduplication', required: false })
   @IsOptional()

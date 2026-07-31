@@ -136,3 +136,7 @@ apps/backend/governance/identity-access/src/**/*.js.map
 packages/backend-contracts/**/*.js.map
 packages/backend-contracts/**/*.d.ts.map
 .docker-workspace-bootstrap.lock
+
+# Rendered output files
+apps/backend/capabilities/document-domain/public/renders/*
+

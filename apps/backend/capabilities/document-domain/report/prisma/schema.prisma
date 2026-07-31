@@ -9,7 +9,7 @@ datasource db {
 }
 
 model ReportTemplate {
-  id                 String   @id(map: "PK_f85e16e6beea41a2b3a3350b84e") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id                 String   @id(map: "PK_f85e16e6beea41a2b3a3350b84e") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name               String   @db.VarChar(255)
   format             String   @db.VarChar(20)
   templateFile       String?  @map("template_file") @db.VarChar(500)
@@ -26,7 +26,7 @@ model ReportTemplate {
 }
 
 model Report {
-  id                String         @id(map: "PK_d9013193989303580053c0b5ef6") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id                String         @id(map: "PK_d9013193989303580053c0b5ef6") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   templateId        String         @map("template_id") @db.Uuid
   sessionId         String         @map("session_id") @db.VarChar(255)
   status            String         @default("pending") @db.VarChar(20)

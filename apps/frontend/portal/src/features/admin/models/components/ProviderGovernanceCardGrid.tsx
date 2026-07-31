@@ -57,7 +57,10 @@ const getProviderAccent = (provider: string) => {
   }
 };
 
-const getProviderMonogram = (providerName: string) => {
+const getProviderMonogram = (providerName?: string) => {
+  if (!providerName || typeof providerName !== 'string') {
+    return 'AI';
+  }
   const sanitized = providerName.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '').trim();
   if (!sanitized) {
     return 'AI';
@@ -143,9 +146,10 @@ const ProviderGovernanceCardGrid: React.FC<ProviderGovernanceCardGridProps> = ({
   return (
     <Row gutter={[16, 16]}>
       {items.map(({ providerConfig, summary }) => {
-        const providerLabel = providerNames[providerConfig.provider] || providerConfig.provider;
-        const accent = getProviderAccent(providerConfig.provider);
-        const isSelected = selectedProvider === providerConfig.provider;
+        const rawProviderKey = providerConfig.provider || (providerConfig as any).type || (providerConfig as any).name || 'AI';
+        const providerLabel = providerNames[rawProviderKey] || rawProviderKey;
+        const accent = getProviderAccent(rawProviderKey);
+        const isSelected = selectedProvider === rawProviderKey;
         const defaultScopes = summary?.defaultScopes || [];
         const metricBackground = token.colorFillAlter;
 
@@ -154,7 +158,7 @@ const ProviderGovernanceCardGrid: React.FC<ProviderGovernanceCardGridProps> = ({
             <Card
               loading={loading}
               hoverable
-              onClick={() => onSelectProvider(providerConfig.provider)}
+              onClick={() => onSelectProvider(rawProviderKey)}
               styles={{ body: { padding: 16 } }}
               style={{
                 borderRadius: 20,

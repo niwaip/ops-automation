@@ -163,6 +163,9 @@ export interface CapabilityVisibleSkill {
   triggerKeywords: string[];
   paramsSchema: ParamsSchema;
   executionType: 'document' | 'flow' | 'query';
+  version?: string;
+  publishedSkillId?: string;
+  executableVersion?: string;
   templateId?: string;
   carboneSkillId?: string;
   carboneTemplateId?: string;
@@ -379,6 +382,16 @@ export interface AvailableSkillDefinition {
   triggerKeywords: string[];
   paramsSchema: ParamsSchema;
   executionType?: 'document' | 'flow' | 'query';
+  publishedSkillId?: string;
+  executableVersion?: string;
+  version?: string;
+  publishedVersion?: string;
+  isPublished?: boolean;
+  publishedReleaseId?: string;
+  publishedReleaseVersion?: number;
+  publishedReleaseStatus?: string;
+  publishedDeploymentStatus?: string;
+  publishedSourceType?: string;
   templateId?: string;
   carboneSkillId?: string;
   carboneTemplateId?: string;

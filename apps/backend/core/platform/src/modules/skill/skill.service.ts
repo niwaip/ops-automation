@@ -99,6 +99,44 @@ const DEFAULT_SKILLS: CreateSkillDTO[] = [
       },
     ],
   },
+  {
+    name: 'markdown_artifact_writer',
+    description: 'Markdown 文档写入技能 - 将结构化 Markdown 写入受控文件产物',
+    triggerKeywords: ['生成 md 文件', '输出 Markdown', '写入 md', '保存 Markdown', '输出 md', '生成md'],
+    paramsSchema: {
+      properties: {
+        content: {
+          type: 'string',
+          description: 'Markdown 正文内容',
+          required: true,
+        },
+        fileName: {
+          type: 'string',
+          description: '目标文件名',
+          required: false,
+        },
+      },
+      required: ['content'],
+    },
+    tools: ['document_render'],
+    apiEndpoints: {
+      runtimeMetadata: {
+        runtimeType: 'document_markdown_writer',
+        templateFormat: 'markdown',
+        supportsArtifact: true,
+        outputParams: {
+          artifact: 'artifact_ref',
+        },
+      },
+    },
+    executionFlow: [
+      {
+        id: 'step1',
+        name: '写入 Markdown 文件',
+        type: 'document_markdown_writer',
+      },
+    ],
+  },
 ];
 
 @Injectable()
@@ -159,14 +197,16 @@ export class SkillService implements OnModuleInit {
         });
 
         if (!existing) {
-          await this.createSkill(skill);
+          const created = await this.createSkill(skill);
           this.logStructured('log', 'default_skill_created', {
             skillName: skill.name,
+            skillId: created.id,
             triggerKeywordCount: skill.triggerKeywords.length,
             declaredTools: this.skillToolBindingService.normalizeToolNames(skill.tools),
             flowTools: this.skillToolBindingService.extractToolNamesFromExecutionFlow(
               skill.executionFlow as any[]
             ),
+            note: 'Run provision-default-skills CLI to create release records',
           });
         } else {
           const shouldSyncParams =
@@ -193,12 +233,24 @@ export class SkillService implements OnModuleInit {
               syncedFields: ['paramsSchema', 'triggerKeywords', 'executionFlowTemplateIds'],
             });
           }
+
+          const existingRelease = await this.prisma.$queryRawUnsafe<any[]>(
+            `SELECT id FROM capability_releases WHERE (published_skill_id = $1::uuid OR source_id = $1::uuid) AND archived_at IS NULL LIMIT 1`,
+            existing.id
+          );
+          if (!existingRelease || existingRelease.length === 0) {
+            this.logStructured('warn', 'default_skill_missing_release', {
+              skillName: skill.name,
+              skillId: existing.id,
+              note: 'Run provision-default-skills CLI to create release records',
+            });
+          }
         }
       } catch (error) {
         const validation = await this.skillToolBindingService
           .buildSkillToolValidation(skill)
           .catch(() => null);
-        this.logStructured('error', 'default_skill_ensure_failed', {
+        this.logStructured('error', 'default_skill_load_failed', {
           skillName: skill.name,
           declaredTools: this.skillToolBindingService.normalizeToolNames(skill.tools),
           flowTools: this.skillToolBindingService.extractToolNamesFromExecutionFlow(
@@ -673,4 +725,5 @@ export class SkillService implements OnModuleInit {
         })
     );
   }
+
 }

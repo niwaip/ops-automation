@@ -145,4 +145,48 @@ export class ExecutionQueryService {
       pageSize,
     };
   }
+
+  async getPlan(id: string, requester?: RequestUserContext): Promise<any> {
+    const execution = await this.prisma.execution.findUnique({
+      where: { id },
+    });
+
+    if (!execution) {
+      throw new NotFoundException(`Execution ${id} not found`);
+    }
+
+    ensureExecutionPermission(execution.createdBy, requester);
+
+    const plan = await this.prisma.executionPlan.findUnique({
+      where: { executionId: id },
+    });
+
+    if (!plan) {
+      throw new NotFoundException(`Plan for execution ${id} not found`);
+    }
+
+    return plan;
+  }
+
+  async getArtifacts(id: string, requester?: RequestUserContext): Promise<any[]> {
+    const execution = await this.prisma.execution.findUnique({
+      where: { id },
+    });
+
+    if (!execution) {
+      throw new NotFoundException(`Execution ${id} not found`);
+    }
+
+    ensureExecutionPermission(execution.createdBy, requester);
+
+    const artifacts = await this.prisma.executionArtifact.findMany({
+      where: { executionId: id },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return artifacts.map((art) => ({
+      ...art,
+      sizeBytes: art.sizeBytes !== null && art.sizeBytes !== undefined ? Number(art.sizeBytes) : null,
+    }));
+  }
 }

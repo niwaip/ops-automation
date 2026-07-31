@@ -186,4 +186,60 @@ describe('ToolExecutor', () => {
     expect(result.code).toBe('missing_params');
     expect(result.code).not.toBe('tool_requires_approval');
   });
+
+  it('finishes normally with system capabilities when no external skill is matched', async () => {
+    const executor = new ToolExecutor();
+    executor.registerTool({
+      name: 'flow_execute',
+      description: '执行流程',
+      category: 'flow',
+      parameters: {
+        type: 'object',
+        properties: {},
+        required: [],
+      },
+      validateParams: () => ({ valid: true, missing: [] }),
+      execute: async () => ({
+        success: false,
+        output: 'should not execute without a matched skill',
+      }),
+    });
+    const flowVisibleTool = baseContext.capabilitySnapshot!.visibleTools[0]!;
+    const context: ExecutionContext = {
+      ...baseContext,
+      originalUserInput: '搜索最新的 AI 新闻',
+      allowedToolNames: ['flow_execute'],
+      selectedSkillToolNames: undefined,
+      skill: undefined,
+      availableSkills: [
+        {
+          skillId: 'platform.document.markdown-artifact-writer',
+          skillName: 'Markdown 文件生成',
+          description: '将内容保存为 Markdown 文件',
+          triggerKeywords: ['markdown'],
+          paramsSchema: {
+            properties: {},
+            required: [],
+          },
+        },
+      ],
+      capabilitySnapshot: {
+        ...baseContext.capabilitySnapshot!,
+        selectedSkillId: undefined,
+        skillScopedToolNames: [],
+        visibleTools: [flowVisibleTool],
+        visibleSkills: [],
+      },
+    };
+
+    const result = await executor.executeTool('flow_execute', {}, context);
+
+    expect(result.success).toBe(true);
+    expect(result.code).toBe('capability_not_matched');
+    expect(result.severity).toBe('info');
+    expect(result.data?.taskComplete).toBe(true);
+    expect(result.data?.capabilityMatched).toBe(false);
+    expect(result.output).toContain('实时搜索能力');
+    expect(result.output).toContain('Markdown 文件生成');
+  });
 });

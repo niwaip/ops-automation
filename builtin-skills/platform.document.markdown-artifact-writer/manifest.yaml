@@ -1,0 +1,79 @@
+apiVersion: platform.ops/v1alpha1
+kind: BuiltinWorkflowSkill
+metadata:
+  key: platform.document.markdown-artifact-writer
+  displayName: 内置 Markdown 文件生成
+  description: 将 Markdown 内容写入受控存储并返回 ArtifactRef 产物引用
+  owner: platform-document
+  labels:
+    category: artifact
+    domain: document
+spec:
+  definitionVersion: 1.0.1
+  lifecycle: stable
+  defaultAccess:
+    mode: authenticated
+  planner:
+    enabled: true
+    triggerKeywords:
+      - 生成md文件
+      - 输出Markdown文件
+      - 保存Markdown
+      - 生成Markdown
+      - 输出md文件
+    matchSummary: 将 Markdown 文本保存为可下载文件
+    runtimeType: artifact
+    supportsArtifact: true
+  contracts:
+    input:
+      schemaRef: inline
+      schema:
+        type: object
+        additionalProperties: false
+        required: [content]
+        properties:
+          content:
+            type: string
+            minLength: 1
+            maxLength: 2097152
+          fileName:
+            type: string
+            maxLength: 120
+    output:
+      schemaRef: inline
+      schema:
+        type: object
+        required: [artifact, artifacts]
+        properties:
+          artifact:
+            type: object
+            required: [type, name, url, mimeType, metadata]
+            properties:
+              type: { type: string }
+              id: { type: string }
+              name: { type: string }
+              url: { type: string }
+              mimeType: { type: string }
+              sizeBytes: { type: number }
+              metadata: { type: object }
+          artifacts:
+            type: array
+            minItems: 1
+  workflow:
+    engine: domain-handler
+    definitionRef: workflow.json
+  runtime:
+    adapterRoute: builtin:workflow
+    handlerKey: document.markdown-artifact-writer
+    idempotency: required
+    timeoutSeconds: 30
+    retryPolicy:
+      maximumAttempts: 2
+  migration:
+    minimumPlatformVersion: 4.0.0
+    contractCompatibility: backward
+  smokeTest:
+    inputRef: fixtures/smoke-input.json
+    assertions:
+      - output.artifact.mimeType startsWith text/markdown
+      - output.artifact.metadata.sha256 exists

@@ -1,0 +1,11 @@
+{
+  "capabilityKey": "platform.notification.internal-message",
+  "definitionVersion": "1.0.0",
+  "definitionDigest": "sha256:18591b95cfd5ad4c149d51c732de69f3050e63c0e3f269fee796a25c69eb3f29",
+  "fileHashes": {
+    "manifest.yaml": "sha256:77a75e3edcdbfbd05d3ee448d3db0df2b79ebccbb93bc67edcdd652fbb6b7bf6",
+    "workflow.json": "sha256:3d4c82b9a706b3a093a388b0a1dcdbcfdfb690edcd6e7dce2e2ebae9d13db9b9",
+    "fixtures/smoke-input.json": "sha256:506e9b4d8c6b65f7c32bf234dfa1a8ecb819f71c4fa4e6e65a443a6d4d12c8a1"
+  },
+  "createdAt": "2026-07-29T14:48:37.000Z"
+}

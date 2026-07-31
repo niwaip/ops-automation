@@ -1,5 +1,17 @@
 import React from 'react';
-import { Card, Space, Tag, Tabs, Typography, Collapse, Tooltip, Checkbox, Input, Button } from 'antd';
+import {
+  Card,
+  Space,
+  Tag,
+  Tabs,
+  Typography,
+  Collapse,
+  Tooltip,
+  Checkbox,
+  Input,
+  Button,
+  Select,
+} from 'antd';
 import type { WorkflowDsl, WorkflowInputParamDefinition } from '@/api/temporal';
 import type { GroupedWorkflowInputParams } from '../utils/workflowEditHelpers';
 
@@ -161,7 +173,25 @@ export const WorkflowInputParamsSection: React.FC<WorkflowInputParamsSectionProp
             width: '100%',
           }}
         >
-          {normalizedLocalizedVariants.length > 0 ? (
+          {Array.isArray(param.enum) && param.enum.length > 0 ? (
+            <Select
+              value={param.defaultValue || undefined}
+              allowClear
+              onChange={(value) =>
+                updateSingleWorkflowInputParam(key, {
+                  ...param,
+                  defaultValue: value === undefined ? '' : String(value),
+                })
+              }
+              options={param.enum.map((value) => ({
+                label: String(value),
+                value: String(value),
+              }))}
+              placeholder="选择默认值"
+              size="small"
+              style={{ width: '100%' }}
+            />
+          ) : normalizedLocalizedVariants.length > 0 ? (
             normalizedLocalizedVariants.map((lang) => (
               <Input
                 key={`${key}-${lang}`}

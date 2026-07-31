@@ -184,6 +184,8 @@ const ExecutionNonBrowserDetailSections: React.FC<ExecutionDetailSectionsProps> 
           title: text.inputOutput,
           input: text.input,
           result: text.result,
+          resultArtifacts: isEnglish ? 'Result artifacts' : '结果文件',
+          sourceLinks: isEnglish ? 'Source links' : '来源链接',
           temporalExecutionLink: isEnglish ? 'Open Temporal Execution' : '打开 Temporal 执行链路',
           noInput: isEnglish ? 'No input' : '暂无输入内容',
           noStructuredResult: isEnglish ? 'No structured result' : '暂无结构化结果',

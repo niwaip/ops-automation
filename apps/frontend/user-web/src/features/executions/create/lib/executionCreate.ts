@@ -7,6 +7,7 @@ export type SchemaField = {
   description?: string;
   required: boolean;
   defaultValue?: unknown;
+  enum?: Array<string | number>;
 };
 
 export type ExecutionMode = 'immediate' | 'schedule';
@@ -145,6 +146,7 @@ export const getSchemaFields = (schema?: SkillParamsSchema): SchemaField[] => {
     description: config?.description,
     required: requiredFields.has(name) || Boolean(config?.required),
     defaultValue: config?.default,
+    enum: config?.enum,
   }));
 };
 

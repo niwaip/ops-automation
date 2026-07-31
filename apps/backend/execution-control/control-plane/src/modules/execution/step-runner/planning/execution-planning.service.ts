@@ -24,6 +24,24 @@ export class ExecutionPlanningService {
     private readonly executionPlanNormalizationService: ExecutionPlanNormalizationService
   ) {}
 
+  private normalizePublishedVersion(value: unknown): string | undefined {
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value.trim();
+    }
+
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return String(value);
+    }
+
+    return undefined;
+  }
+
+  private normalizePublishedStatus(value: unknown): string | undefined {
+    return typeof value === 'string' && value.trim().length > 0
+      ? value.trim().toLowerCase()
+      : undefined;
+  }
+
   private buildAuthServiceHeaders(
     authToken?: string,
     requester?: { id: string; role?: string }
@@ -40,6 +58,7 @@ export class ExecutionPlanningService {
       requester.id.trim().length > 0
     ) {
       return {
+        'X-Internal-Secret': this.internalApiSharedSecret,
         'X-Internal-Auth': this.internalApiSharedSecret,
         'X-User-Id': requester.id,
         'X-User-Role': requester.role || 'employee',
@@ -51,19 +70,83 @@ export class ExecutionPlanningService {
 
   async assertSkillAccessibleByUser(
     skillId: string,
+    skillVersion?: string,
     authToken?: string,
     requester?: { id: string; role?: string }
-  ): Promise<void> {
+  ): Promise<{
+    id: string;
+    publishedReleaseVersion?: string;
+    publishedReleaseStatus?: string;
+    publishedDeploymentStatus?: string;
+    definitionDigest?: string;
+    handlerKey?: string;
+    adapterRoute?: string;
+  }> {
     const headers = this.buildAuthServiceHeaders(authToken, requester);
     if (!headers) {
       throw new BadRequestException('Unable to verify skill permission');
     }
 
+    if (skillId.startsWith('platform.')) {
+      try {
+        const resolveRes = await axios.post(
+          `${this.authServiceUrl}/internal/builtin-skills/resolve`,
+          {
+            capabilityKey: skillId,
+            definitionVersion: skillVersion,
+            action: 'execute',
+          },
+          { headers, timeout: 10000 }
+        );
+        const data = resolveRes.data as any;
+        if (!data?.found) {
+          throw new BadRequestException(`Builtin skill '${skillId}' not found: ${data?.reason}`);
+        }
+        if (!data?.isHealthy) {
+          throw new BadRequestException(`Builtin skill '${skillId}' deployment is not healthy: ${data?.reason}`);
+        }
+        if (!data?.authorized) {
+          throw new ForbiddenException(`Builtin skill '${skillId}' access denied: ${data?.reason}`);
+        }
+        return {
+          id: data.capabilityKey,
+          publishedReleaseVersion: data.definitionVersion,
+          publishedReleaseStatus: 'published',
+          publishedDeploymentStatus: data.deploymentStatus,
+          definitionDigest: data.definitionDigest,
+          handlerKey: data.manifest?.spec?.runtime?.handlerKey,
+          adapterRoute: data.manifest?.spec?.runtime?.adapterRoute,
+        };
+      } catch (err: any) {
+        if (err instanceof ForbiddenException || err instanceof BadRequestException) throw err;
+        this.logger.warn(`Builtin skill resolve failed for ${skillId}: ${err.message}`);
+        throw new BadRequestException(`Unable to verify builtin skill permission for ${skillId}`);
+      }
+    }
+
     try {
-      await axios.get(`${this.authServiceUrl}/skills/${skillId}`, {
+      const response = await axios.get<{
+        id: string;
+        publishedReleaseVersion?: string | number | null;
+        publishedReleaseStatus?: string | null;
+        publishedDeploymentStatus?: string | null;
+      }>(`${this.authServiceUrl}/skills/${skillId}`, {
         headers,
         timeout: 10000,
       });
+
+      return {
+        id: response.data.id,
+        publishedReleaseVersion: this.normalizePublishedVersion(
+          response.data.publishedReleaseVersion,
+        ),
+        publishedReleaseStatus: this.normalizePublishedStatus(
+          response.data.publishedReleaseStatus,
+        ),
+        publishedDeploymentStatus: this.normalizePublishedStatus(
+          response.data.publishedDeploymentStatus,
+        ),
+      };
     } catch (error) {
       const status =
         typeof error === 'object' && error !== null && 'response' in error
@@ -290,7 +373,7 @@ export class ExecutionPlanningService {
             ON css.id = cr.current_source_snapshot_id
           LEFT JOIN temporal_workflows tw
             ON tw.id = cr.source_id
-          WHERE cr.published_skill_id = $1::uuid
+          WHERE cr.published_skill_id::text = $1
           ORDER BY
             CASE WHEN cr.archived_at IS NULL THEN 0 ELSE 1 END,
             cr.updated_at DESC
@@ -449,7 +532,7 @@ export class ExecutionPlanningService {
         `
           SELECT config
           FROM templates
-          WHERE id = $1::uuid
+          WHERE id::text = $1
           LIMIT 1
         `,
         templateId

@@ -305,6 +305,24 @@ export const normalizeWorkflowInputParamMap = (
           : Array.isArray(value?.renderPath)
             ? value.renderPath.map((item) => String(item || '').trim()).filter(Boolean)
             : undefined;
+      const enumValues = Array.isArray(value?.enum)
+        ? Array.from(
+            new Map(
+              value.enum
+                .map((item) =>
+                  typeof item === 'string'
+                    ? item.trim()
+                    : typeof item === 'number' && Number.isFinite(item)
+                      ? item
+                      : undefined
+                )
+                .filter(
+                  (item): item is string | number => item !== undefined && item !== ''
+                )
+                .map((item) => [`${typeof item}:${String(item)}`, item])
+            ).values()
+          )
+        : undefined;
       acc[key] = {
         description: typeof value?.description === 'string' ? value.description : '',
         required: value?.required === true,
@@ -312,6 +330,7 @@ export const normalizeWorkflowInputParamMap = (
           value?.defaultValue === undefined || value?.defaultValue === null
             ? ''
             : String(value.defaultValue),
+        enum: enumValues && enumValues.length > 0 ? enumValues : undefined,
         localizedDefaultValue:
           localizedDefaultValue && Object.keys(localizedDefaultValue).length > 0
             ? localizedDefaultValue

@@ -76,7 +76,7 @@ services:
     image: ${DOCKER_REGISTRY:-}node:20-bullseye
     container_name: ops-control-plane
     working_dir: /app
-    command: sh -c "npm config set registry https://registry.npmjs.org && npm install --legacy-peer-deps && npx prisma generate && npm run dev"
+    command: sh -c "npm config set registry https://registry.npmjs.org && npm install --legacy-peer-deps && pnpm exec prisma generate && npm run dev"
     environment:
       NODE_ENV: development
       DOCKER_ENV: true

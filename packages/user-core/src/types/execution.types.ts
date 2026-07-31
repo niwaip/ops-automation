@@ -31,6 +31,7 @@ export interface WorkflowResultNextAction {
 
 export interface WorkflowResultArtifact {
   type?: string;
+  artifactType?: string;
   name?: string;
   label?: string;
   downloadUrl?: string;

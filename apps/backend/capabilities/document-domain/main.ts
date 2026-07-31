@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { join } from 'path';
+import * as fs from 'fs';
 import { AppModule } from './app.module';
 import { getPublicHost } from './config/service-endpoints';
 
@@ -9,6 +10,7 @@ async function bootstrap() {
   const express = require('express') as {
     json: (options: { limit: string }) => any;
     urlencoded: (options: { extended: boolean; limit: string }) => any;
+    static: (root: string, options?: Record<string, unknown>) => any;
   };
 
   // Office add-in 会携带大体积 base64 文档与完整参数 JSON，需放宽 body 限制
@@ -16,6 +18,24 @@ async function bootstrap() {
   app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
   app.useStaticAssets(join(process.cwd(), 'public'));
+
+  // Mount the renders directory so artifact download URLs work.
+  const storageRenderDir =
+    process.env.STORAGE_RENDER_DIR ||
+    join(process.cwd(), '..', '..', '..', 'var', 'outputs', 'document-engine', 'renders');
+  const publicRenderDir = join(process.cwd(), 'public', 'renders');
+
+  [publicRenderDir, storageRenderDir].forEach((dir) => {
+    try {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      app.use('/renders', express.static(dir));
+      app.use('/api/renders', express.static(dir));
+    } catch (e) {
+      console.warn(`Failed to mount render dir ${dir}:`, e);
+    }
+  });
 
   const config = new DocumentBuilder()
     .setTitle('Document Domain API')

@@ -9,6 +9,7 @@ export interface RequiredInputField {
   missing: boolean;
   source: 'user_input' | 'default' | 'unresolved';
   needs_confirmation?: boolean;
+  enum?: Array<string | number>;
 }
 
 export const normalizeRequiredInputValues = (

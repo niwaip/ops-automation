@@ -56,8 +56,38 @@ describe('ChatOrchestratorService', () => {
       controlPlaneClient,
       reactEngineService,
       plannerService,
+      promptDebugSettingsService,
       waitingInputService,
       executionStreamService,
+    };
+  };
+
+  const createDeterministicService = () => {
+    const base = createService();
+    const deterministicTaskExecutionService = {
+      shouldRouteToDeterministicPlan: jest.fn().mockReturnValue(true),
+      executeDeterministicTask: jest.fn(),
+    };
+    const skillCacheService = {
+      loadAvailableSkills: jest.fn().mockResolvedValue([]),
+    };
+
+    const service = new ChatOrchestratorService(
+      base.controlPlaneClient as unknown as ControlPlaneClient,
+      base.reactEngineService as any,
+      base.plannerService as any,
+      base.promptDebugSettingsService as any,
+      base.waitingInputService as any,
+      base.executionStreamService as any,
+      deterministicTaskExecutionService as any,
+      skillCacheService as any
+    );
+
+    return {
+      ...base,
+      service,
+      deterministicTaskExecutionService,
+      skillCacheService,
     };
   };
 
@@ -291,5 +321,77 @@ describe('ChatOrchestratorService', () => {
         content: '请补充甲方名称',
       },
     ]);
+  });
+
+  it('observes deterministic execution with auth token and user context', async () => {
+    const {
+      service,
+      deterministicTaskExecutionService,
+      executionStreamService,
+    } = createDeterministicService();
+
+    deterministicTaskExecutionService.executeDeterministicTask.mockResolvedValue({
+      success: true,
+      executionId: 'execution-det-1',
+      planDraft: {
+        objective: '生成 AI 新闻 Markdown',
+        nodes: [
+          {
+            nodeId: 'search',
+            sequence: 1,
+            title: '搜索新闻',
+            kind: 'skill',
+            skillId: 'skill-search',
+            skillVersion: '1',
+            runtimeType: 'workflow',
+            dependsOn: [],
+            inputBindings: {},
+            outputContract: { results: 'news_item_list' },
+            failurePolicy: 'abort',
+          },
+        ],
+        finalOutputs: [],
+      },
+    });
+    executionStreamService.observeExecution.mockImplementation(
+      createAsyncGenerator([
+        {
+          type: StreamEventType.RESULT,
+          content: '任务完成',
+          data: {
+            executionId: 'execution-det-1',
+            status: 'succeeded',
+          },
+        },
+      ])
+    );
+
+    const events: Array<{ type: StreamEventType; content: string }> = [];
+    for await (const event of service.handleTaskMode(
+      {
+        message: '搜索 最新的人工智能 的新闻 并且对结果进行总结，最终输出md文件',
+        sessionId: 'session-det-1',
+      },
+      {
+        sessionId: 'session-det-1',
+        userId: 'user-det-1',
+        userRoles: ['employee'],
+        traceId: 'trace-det-1',
+        history: [],
+      },
+      'Bearer token-det-1'
+    )) {
+      events.push(event);
+    }
+
+    expect(executionStreamService.observeExecution).toHaveBeenCalledWith(
+      'execution-det-1',
+      'Bearer token-det-1',
+      {
+        userId: 'user-det-1',
+        userRoles: ['employee'],
+      }
+    );
+    expect(events.some((event) => event.type === StreamEventType.THOUGHT && event.content.includes('Skill: skill-search@1'))).toBe(true);
   });
 });

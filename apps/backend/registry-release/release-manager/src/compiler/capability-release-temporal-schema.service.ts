@@ -167,10 +167,18 @@ export class CapabilityReleaseTemporalSchemaService {
         );
       const displayName = this.resolveTemporalParamDisplayName(key, definition, description);
       const renderPath = this.resolveTemporalWorkflowRenderPath(definition, workflowPolicy);
+      const enumValues = this.normalizeTemporalParamEnum(definition.enum);
+      const effectiveDefaultValue =
+        enumValues &&
+        normalizedDefaultValue !== undefined &&
+        !enumValues.includes(normalizedDefaultValue as string | number)
+          ? undefined
+          : normalizedDefaultValue;
 
       properties[key] = {
         type: inferredType,
         description,
+        ...(enumValues ? { enum: enumValues } : {}),
         ...(displayName ? { displayName } : {}),
         ...(typeof definition.groupLabel === 'string' && definition.groupLabel.trim()
           ? { groupLabel: definition.groupLabel.trim() }
@@ -189,8 +197,8 @@ export class CapabilityReleaseTemporalSchemaService {
           : {}),
         ...(renderPath ? { renderPath } : {}),
         required: isRequired,
-        ...(!isRequired && normalizedDefaultValue !== undefined
-          ? { default: normalizedDefaultValue }
+        ...(!isRequired && effectiveDefaultValue !== undefined
+          ? { default: effectiveDefaultValue }
           : {}),
         extractionPrompt: description,
       };
@@ -337,6 +345,7 @@ export class CapabilityReleaseTemporalSchemaService {
       const definition =
         rawValue && typeof rawValue === 'object' ? (rawValue as Record<string, unknown>) : {};
       const type = typeof definition.type === 'string' ? definition.type : 'string';
+      const enumValues = this.normalizeTemporalParamEnum(definition.enum);
       const valueCandidate =
         definition.default !== undefined && definition.default !== ''
           ? definition.default
@@ -346,8 +355,19 @@ export class CapabilityReleaseTemporalSchemaService {
               ? definition.exampleValue
               : undefined;
 
-      if (valueCandidate !== undefined) {
+      if (
+        valueCandidate !== undefined &&
+        (!enumValues ||
+          enumValues.includes(
+            this.normalizeCapabilityDefaultValue(valueCandidate) as string | number
+          ))
+      ) {
         acc[key] = this.normalizeSmokeInputValue(key, valueCandidate, type);
+        return acc;
+      }
+
+      if (enumValues?.[0] !== undefined) {
+        acc[key] = enumValues[0];
         return acc;
       }
 
@@ -646,6 +666,32 @@ export class CapabilityReleaseTemporalSchemaService {
       return Number(normalized);
     }
     return normalized;
+  }
+
+  private normalizeTemporalParamEnum(value: unknown): Array<string | number> | undefined {
+    if (!Array.isArray(value)) {
+      return undefined;
+    }
+    const seen = new Set<string>();
+    const normalized: Array<string | number> = [];
+    value.forEach((item) => {
+      const candidate =
+        typeof item === 'string'
+          ? item.trim()
+          : typeof item === 'number' && Number.isFinite(item)
+            ? item
+            : undefined;
+      if (candidate === undefined || candidate === '') {
+        return;
+      }
+      const identity = `${typeof candidate}:${String(candidate)}`;
+      if (seen.has(identity)) {
+        return;
+      }
+      seen.add(identity);
+      normalized.push(candidate);
+    });
+    return normalized.length > 0 ? normalized : undefined;
   }
 
   private inferTemporalParamType(

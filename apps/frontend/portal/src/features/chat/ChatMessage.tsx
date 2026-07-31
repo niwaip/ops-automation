@@ -111,13 +111,15 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
   const taskParts = useMemo(() => resolveTaskParts(message.contentParts), [message.contentParts]);
   const rawContent = isStreaming && streamingContent ? streamingContent : message.content;
   const taskStatus =
-    resolveTaskStatusFromExecutionStatus(
-      typeof message.metadata?.executionStatus === 'string'
-        ? message.metadata.executionStatus
-        : undefined
-    ) ||
-    message.metadata?.taskStatus ||
-    taskParts.taskStatus;
+    (message.metadata?.taskStatus === 'completed' || message.metadata?.taskStatus === 'failed')
+      ? message.metadata.taskStatus
+      : resolveTaskStatusFromExecutionStatus(
+          typeof message.metadata?.executionStatus === 'string'
+            ? message.metadata.executionStatus
+            : undefined
+        ) ||
+        message.metadata?.taskStatus ||
+        taskParts.taskStatus;
   const isWaitingInput = isTaskMode && taskStatus === 'waiting_input';
   const isPendingApproval = isTaskMode && taskStatus === 'pending_approval';
   const finalResult = message.metadata?.finalResult?.trim();
@@ -333,7 +335,8 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
       !isWaitingInput &&
       !isPendingApproval &&
       !shouldShowErrorCard &&
-      !shouldShowTakeoverCard
+      !shouldShowTakeoverCard &&
+      !outcomeFinalResult
   );
 
   useEffect(() => {

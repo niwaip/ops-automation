@@ -1189,13 +1189,14 @@ const ExecutionListPage: React.FC = () => {
                               type="link"
                               icon={<DownloadOutlined />}
                               style={{ paddingInline: 0 }}
-                              onClick={() =>
-                                window.open(
-                                  extractExecutionDownloadUrl(selectedExecution),
-                                  '_blank',
-                                  'noopener,noreferrer'
-                                )
-                              }
+                              onClick={() => {
+                                const targetUrl = replaceLocalhostWithCurrentHost(
+                                  extractExecutionDownloadUrl(selectedExecution)
+                                );
+                                if (targetUrl) {
+                                  window.open(targetUrl, '_blank', 'noopener,noreferrer');
+                                }
+                              }}
                             >
                               下载结果
                             </Button>

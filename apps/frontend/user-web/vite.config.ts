@@ -63,14 +63,15 @@ const resolveAppRootEntry = (): string => path.resolve(__dirname, '.');
 
 export default defineConfig({
   plugins: [react()],
+  assetsInclude: ['**/*.md'],
   optimizeDeps: {
     exclude: ['@ops/user-core', '@ops/backend-ai-chat-protocol', '@ops/backend-execution-core'],
     esbuildOptions: {
-      preserveSymlinks: true,
+      preserveSymlinks: false,
     },
   },
   resolve: {
-    preserveSymlinks: true,
+    preserveSymlinks: false,
     alias: {
       '@': path.resolve(__dirname, './src'),
       '@chat-web': resolveChatWebEntry(),
@@ -168,6 +169,16 @@ export default defineConfig({
           3007,
           ['AI_ORCHESTRATOR_HOST'],
           ['AI_ORCHESTRATOR_PORT']
+        ),
+        changeOrigin: true,
+        rewrite: (requestPath) => requestPath.replace(/^\/api/, ''),
+      },
+      '/api/renders': {
+        target: getProxyTarget(
+          'ops-carbone-engine',
+          3009,
+          ['CARBONE_ENGINE_HOST'],
+          ['CARBONE_ENGINE_PORT', 'CARBONE_PORT']
         ),
         changeOrigin: true,
         rewrite: (requestPath) => requestPath.replace(/^\/api/, ''),

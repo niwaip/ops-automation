@@ -121,19 +121,33 @@ export class ReleaseRuntimeBindingService {
   }
 
   async getReleaseByPublishedSkillOrThrow(skillId: string): Promise<CapabilityReleaseDTO> {
+    const trimmedId = (skillId || '').trim();
+    if (!trimmedId) {
+      throw new Error('Skill ID cannot be empty');
+    }
+
+    // Use text-based comparisons throughout to avoid PG ::uuid cast failures
+    // when skillId is a non-UUID string (e.g. skill name). Cast uuid columns to
+    // text for comparison; match source_name both exactly and by LIKE.
+    const likePattern = `%${trimmedId}%`;
     const releaseRows = await this.prisma.$queryRawUnsafe<any[]>(
       `SELECT *
        FROM capability_releases
-       WHERE published_skill_id = $1::uuid
+       WHERE published_skill_id::text = $1
+          OR id::text = $1
+          OR source_id::text = $1
+          OR source_name = $1
+          OR source_name ILIKE $2
        ORDER BY
          CASE WHEN archived_at IS NULL THEN 0 ELSE 1 END,
          updated_at DESC
        LIMIT 1`,
-      skillId
+      trimmedId,
+      likePattern,
     );
 
     if (!releaseRows[0]) {
-      throw new Error('未找到与该 Skill 绑定的 Capability');
+      throw new Error(`未找到与该 Skill (${trimmedId}) 绑定的 Capability`);
     }
 
     return mapCapabilityRelease(releaseRows[0]);

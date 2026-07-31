@@ -818,6 +818,92 @@ describe('TemporalWorkflowCodegenService', () => {
     );
   });
 
+  it('includes enum no-revalidation rule in AI codegen prompt', () => {
+    const { codegenService } = createService();
+
+    const prompt = (codegenService as any).buildWorkflowCodePrompt(
+      {
+        name: 'enum 参数工作流',
+        workflowClassName: 'EnumWorkflow',
+        workflowDefnName: 'enum 参数工作流',
+        taskQueue: 'SKILL_TASK_QUEUE',
+        inputParams: {
+          topic: {
+            required: false,
+            defaultValue: 'general',
+            description: '搜索分类',
+            enum: ['general', 'news', 'finance'],
+          },
+        },
+        steps: [],
+      },
+      { activities: [] },
+      undefined
+    );
+
+    expect(prompt).toContain('enum 参数禁止二次校验');
+    expect(prompt).toContain('topic');
+    expect(prompt).toContain('general');
+  });
+
+  it('strips forbidden enum whitelist check (two-line form) from generated Python code', () => {
+    const { codegenService } = createService();
+
+    const before = [
+      'async def run(self, params: dict):',
+      '    topic = params.get("topic", "general")',
+      "    if topic not in ['general', 'news', 'finance']:",
+      "        raise ApplicationError(\"topic 必须是 ['general', 'news', 'finance'] 之一，当前值: \" + str(topic), non_retryable=True)",
+      '    return self._build_workflow_result(topic)',
+      '',
+    ].join('\n');
+
+    const { code, stripped } = (codegenService as any).stripForbiddenEnumChecks(before);
+
+    expect(stripped).toBe(true);
+    expect(code).not.toContain('必须是');
+    expect(code).not.toContain('ApplicationError');
+    expect(code).toContain('topic = params.get("topic", "general")');
+    expect(code).toContain('return self._build_workflow_result(topic)');
+  });
+
+  it('strips forbidden enum whitelist check (one-line form) from generated Python code', () => {
+    const { codegenService } = createService();
+
+    const before = [
+      'async def run(self, params: dict):',
+      '    topic = params.get("topic", "general")',
+      "    if topic not in ['general', 'news', 'finance']: raise ApplicationError(\"topic 必须是 ['general', 'news', 'finance'] 之一\", non_retryable=True)",
+      '    return self._build_workflow_result(topic)',
+      '',
+    ].join('\n');
+
+    const { code, stripped } = (codegenService as any).stripForbiddenEnumChecks(before);
+
+    expect(stripped).toBe(true);
+    expect(code).not.toContain('必须是');
+    expect(code).not.toContain('ApplicationError');
+  });
+
+  it('does not strip HTTP status code check that happens to use `not in`', () => {
+    const { codegenService } = createService();
+
+    const before = [
+      'async def run(self, params: dict):',
+      '    status = resp.status_code',
+      '    if status not in [200, 201, 204]:',
+      '        raise ApplicationError(f"HTTP {status} 请求失败", non_retryable=True)',
+      '    return self._build_workflow_result(status)',
+      '',
+    ].join('\n');
+
+    const { code, stripped } = (codegenService as any).stripForbiddenEnumChecks(before);
+
+    expect(stripped).toBe(false);
+    expect(code).toContain('if status not in [200, 201, 204]');
+    expect(code).toContain('raise ApplicationError');
+  });
+
   it('detects missing WorkflowResultEnvelope fields in generated code', () => {
     const { codegenService } = createService();
 

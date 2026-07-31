@@ -6,6 +6,7 @@ import { buildStructuredTransformPlaceholderKeys } from './temporal-workflow-dra
 import {
   buildGenericAiDraftSampleValue,
   extractAiDraftSampleValuesFromReferenceUrl,
+  normalizeWorkflowInputParamEnum,
 } from './temporal-workflow-draft.normalizers';
 import type {
   AiDraftActivityResource,
@@ -31,6 +32,40 @@ export function validateAiWorkflowDraftPlan(
     issues.push('必须至少生成一个步骤。');
     return issues;
   }
+
+  Object.entries(plan.inputParams || {}).forEach(([paramName, definition]) => {
+    const rawEnum = (definition as { enum?: unknown } | undefined)?.enum;
+    if (rawEnum === undefined) {
+      return;
+    }
+    const enumValues = normalizeWorkflowInputParamEnum(rawEnum);
+    if (!enumValues) {
+      issues.push(`输入参数 ${paramName} 的 enum 必须是非空的字符串或数字数组。`);
+      return;
+    }
+    const declaredType = String(definition?.type || '').trim();
+    const incompatibleValues = enumValues.filter((value) =>
+      declaredType === 'number' ? typeof value !== 'number' : typeof value !== 'string'
+    );
+    if (declaredType && incompatibleValues.length > 0) {
+      issues.push(`输入参数 ${paramName} 的 enum 值类型必须与 type=${declaredType} 一致。`);
+    }
+    const defaultValue = definition?.defaultValue;
+    if (
+      defaultValue !== undefined &&
+      defaultValue !== '' &&
+      !enumValues.includes(defaultValue as string | number)
+    ) {
+      issues.push(`输入参数 ${paramName} 的 defaultValue 必须属于 enum。`);
+    }
+    const exampleValue = definition?.exampleValue;
+    if (
+      exampleValue !== undefined &&
+      !enumValues.includes(exampleValue as string | number)
+    ) {
+      issues.push(`输入参数 ${paramName} 的 exampleValue 必须属于 enum。`);
+    }
+  });
 
   steps.forEach((step, index) => {
     const stepName = deps.pickFirstNonEmptyString(step?.name) || `步骤 ${index + 1}`;
@@ -277,6 +312,18 @@ export function repairCommonDraftPlanIssues(
       }))
     : [];
   const warnings = Array.isArray(plan.warnings) ? [...plan.warnings] : [];
+  const inputParams = plan.inputParams
+    ? Object.entries(plan.inputParams).reduce<
+        NonNullable<AiWorkflowDraftPlan['inputParams']>
+      >((acc, [key, definition]) => {
+        const enumValues = normalizeWorkflowInputParamEnum(definition?.enum);
+        acc[key] = {
+          ...definition,
+          ...(enumValues ? { enum: enumValues } : {}),
+        };
+        return acc;
+      }, {})
+    : undefined;
   const runtimeInputKeys = new Set(Object.keys(plan.inputParams || {}));
 
   for (let index = 0; index < steps.length; index += 1) {
@@ -467,6 +514,7 @@ export function repairCommonDraftPlanIssues(
 
   return {
     ...plan,
+    inputParams,
     steps,
     warnings,
   };
@@ -501,6 +549,11 @@ export function buildAiDraftResolutionSampleInputs(
     const defaultValue = support.pickFirstNonEmptyString(config?.defaultValue);
     if (defaultValue) {
       result[key] = defaultValue;
+      return;
+    }
+    const enumValues = normalizeWorkflowInputParamEnum(config?.enum);
+    if (enumValues?.[0] !== undefined) {
+      result[key] = enumValues[0];
       return;
     }
     if (inferredReferenceSamples[key] !== undefined) {

@@ -1,4 +1,4 @@
-import { Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { Injectable, ServiceUnavailableException, Optional } from '@nestjs/common';
 import { ERROR_CODES } from '@ops/backend-error-codes';
 import { BrowserRuntimeAdapter } from './browser-runtime.adapter';
 import { CapabilityRuntimeAdapter } from './capability-runtime.adapter';
@@ -10,34 +10,48 @@ import {
   RuntimeStepInvokeRequest,
 } from './runtime-adapter.interface';
 import { WorkflowRuntimeAdapter } from './workflow-runtime.adapter';
+import { BuiltinWorkflowRuntimeAdapter } from './builtin-workflow-runtime.adapter';
 
 @Injectable()
 export class RuntimeAdapterRegistry {
   private readonly adapters: RuntimeAdapter[];
   private readonly adaptersByRouteKey = new Map<RuntimeAdapterRouteKey, RuntimeAdapter>();
+  private readonly builtinWorkflowRuntimeAdapter: BuiltinWorkflowRuntimeAdapter;
 
   constructor(
     browserRuntimeAdapter: BrowserRuntimeAdapter,
     capabilityRuntimeAdapter: CapabilityRuntimeAdapter,
     documentRuntimeAdapter: DocumentRuntimeAdapter,
-    workflowRuntimeAdapter: WorkflowRuntimeAdapter
+    workflowRuntimeAdapter: WorkflowRuntimeAdapter,
+    @Optional() builtinWorkflowRuntimeAdapter?: BuiltinWorkflowRuntimeAdapter,
   ) {
+    this.builtinWorkflowRuntimeAdapter = builtinWorkflowRuntimeAdapter || new BuiltinWorkflowRuntimeAdapter();
     this.adapters = [
       browserRuntimeAdapter,
       capabilityRuntimeAdapter,
       documentRuntimeAdapter,
       workflowRuntimeAdapter,
     ];
+    if (builtinWorkflowRuntimeAdapter) {
+      this.adapters.unshift(builtinWorkflowRuntimeAdapter);
+    }
     this.registerAdapters(this.adapters);
   }
 
   resolve(request: RuntimeStepInvokeRequest): RuntimeAdapter {
+    // 1. Builtin Skill priority check
+    if (this.builtinWorkflowRuntimeAdapter.supports(request)) {
+      return this.builtinWorkflowRuntimeAdapter;
+    }
+
+    // 2. Direct routeKey match
     const routeKey = buildRuntimeAdapterRouteKey(request.runtimeType, request.capabilityType);
     const directMatch = this.adaptersByRouteKey.get(routeKey);
     if (directMatch) {
       return directMatch;
     }
 
+    // 3. Fallback candidate supports check
     const adapter = this.adapters.find((candidate) => candidate.supports(request));
     if (!adapter) {
       throw new ServiceUnavailableException({

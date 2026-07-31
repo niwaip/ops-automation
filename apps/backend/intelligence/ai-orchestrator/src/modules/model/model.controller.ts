@@ -143,6 +143,13 @@ export class ModelController {
     }
   }
 
+  @Delete('providers/:id')
+  @ApiOperation({ summary: 'Delete a provider config' })
+  async deleteProviderConfig(@Param('id') id: string): Promise<{ success: boolean }> {
+    await this.modelService.deleteProviderConfig(id);
+    return { success: true };
+  }
+
   @Post('providers/:id/health')
   @ApiOperation({ summary: 'Check health of a specific provider' })
   async checkProviderHealth(

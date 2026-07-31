@@ -279,7 +279,7 @@ export function UserChatComposer(props: UserChatComposerProps) {
           <Select
             size="small"
             className={styles['user-chat-input-model-select']}
-            style={{ minWidth: 188 }}
+            style={{ width: 140 }}
             value={selectedModel}
             placeholder="模型策略"
             onChange={onModelChange}
@@ -304,7 +304,7 @@ export function UserChatComposer(props: UserChatComposerProps) {
               size="small"
               value={speechLanguage}
               onChange={setSpeechLanguage}
-              style={{ width: 92 }}
+              style={{ width: 84 }}
               options={SPEECH_LANGUAGE_OPTIONS}
               disabled={disabled || isTranscribing || isListening || !speechSupported}
               className={styles['user-chat-input-language-select']}

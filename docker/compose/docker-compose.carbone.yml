@@ -17,10 +17,11 @@ services:
     environment:
       - NODE_ENV=production
       - NPM_CONFIG_REGISTRY=https://registry.npmmirror.com
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-ops}:${POSTGRES_PASSWORD:-ops_secret}@postgres:5432/${POSTGRES_DB:-ops}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-ops}:${POSTGRES_PASSWORD:-ops_secret}@postgres:5432/${POSTGRES_DB:-ops}?schema=document_engine
       - PORT=3009
       - TEMPLATES_DIR=/workspace/apps/backend/var/templates/document-engine
       - OUTPUTS_DIR=/workspace/apps/backend/var/outputs/document-engine
+      - STORAGE_RENDER_DIR=/workspace/apps/backend/var/outputs/document-engine/renders
       - LIBREOFFICE_PATH=/usr/bin/soffice
       - TMP_DIR=/tmp/carbone-preview
       - AI_ORCHESTRATOR_URL=http://ai-orchestrator:3007
@@ -49,10 +50,11 @@ services:
     environment:
       - NODE_ENV=development
       - NPM_CONFIG_REGISTRY=https://registry.npmmirror.com
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-ops}:${POSTGRES_PASSWORD:-ops_secret}@postgres:5432/${POSTGRES_DB:-ops}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-ops}:${POSTGRES_PASSWORD:-ops_secret}@postgres:5432/${POSTGRES_DB:-ops}?schema=document_engine
       - PORT=3009
       - TEMPLATES_DIR=/workspace/apps/backend/var/templates/document-engine
       - OUTPUTS_DIR=/workspace/apps/backend/var/outputs/document-engine
+      - STORAGE_RENDER_DIR=/workspace/apps/backend/var/outputs/document-engine/renders
     ports:
       - "3010:3009"
     volumes:

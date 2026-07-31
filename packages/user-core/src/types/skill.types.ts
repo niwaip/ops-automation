@@ -3,6 +3,7 @@ export interface SkillParamProperty {
   description: string;
   required?: boolean;
   default?: string | number | boolean | Record<string, unknown>;
+  enum?: Array<string | number>;
   extractionPrompt?: string;
 }
 

@@ -17,8 +17,12 @@ export interface SkillRuntimeMetadata {
   paramCollectionGuidance?: string;
   validationRules?: string;
   goal?: string;
-  expectedResult?: string;
   outputParams?: Record<string, unknown>;
+  runtimeType?: string;
+  templateFormat?: string;
+  supportsArtifact?: boolean;
+  producesArtifact?: boolean;
+  expectedResult?: string;
   sourceType?: 'execution_flow_template' | 'temporal_workflow' | string;
   skillGuideMarkdown?: string;
   dataExampleJson?: Record<string, unknown> | string;

@@ -15,9 +15,14 @@ import {
   ParamValueService,
 } from './params';
 import { SkillCacheService, SkillMatcherService } from './skill';
+import { PlanRouteClassifierService } from './routing/plan-route-classifier.service';
+import { CapabilityCandidateSelectorService } from './candidate-selection/capability-candidate-selector.service';
+import { DeterministicPlanGeneratorService } from './deterministic/deterministic-plan-generator.service';
+import { DeterministicPlanController } from './deterministic/deterministic-plan.controller';
 
 @Module({
   imports: [RecognizerModule, ModelModule],
+  controllers: [DeterministicPlanController],
   providers: [
     PlannerService,
     PlannerMatchPhaseService,
@@ -33,7 +38,16 @@ import { SkillCacheService, SkillMatcherService } from './skill';
     ParamValueService,
     ParamRequiredInputPresentationService,
     ParamRecognizerService,
+    PlanRouteClassifierService,
+    CapabilityCandidateSelectorService,
+    DeterministicPlanGeneratorService,
   ],
-  exports: [PlannerService],
+  exports: [
+    PlannerService,
+    PlanRouteClassifierService,
+    CapabilityCandidateSelectorService,
+    DeterministicPlanGeneratorService,
+    SkillCacheService,
+  ],
 })
 export class PlannerModule {}

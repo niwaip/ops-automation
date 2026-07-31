@@ -106,6 +106,7 @@ describe('ExecutionPlanningService', () => {
       expect(mockedAxios.get).toHaveBeenCalledWith(expect.stringContaining('/skills/skill-1'), {
         headers: {
           'X-Internal-Auth': 'internal-secret',
+          'X-Internal-Secret': 'internal-secret',
           'X-User-Id': 'user-1',
           'X-User-Role': 'admin',
         },

@@ -18,6 +18,7 @@ export interface SkillParamsSchema {
       description: string;
       required?: boolean;
       default?: string | number | boolean;
+      enum?: Array<string | number>;
       extractionPrompt?: string;
     }
   >;

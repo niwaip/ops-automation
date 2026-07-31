@@ -229,6 +229,7 @@ export interface RecognizeParamsDTO {
         description?: string;
         extractionPrompt?: string;
         default?: string | number | boolean;
+        enum?: Array<string | number>;
         semanticRole?: string;
         extractionHints?: string[];
         displayName?: string;
@@ -416,6 +417,7 @@ export interface RequiredInputDTO {
   missing_reason?: 'missing' | 'low_confidence' | 'overall_low_confidence' | 'partial_group';
   confirmation_threshold?: number;
   preview_blocking?: boolean;
+  enum?: Array<string | number>;
 }
 
 export interface RiskSummaryDTO {

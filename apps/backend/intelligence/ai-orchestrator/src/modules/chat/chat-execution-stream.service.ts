@@ -135,6 +135,18 @@ export class ChatExecutionStreamService {
       }
     } catch (error: any) {
       this.logger.error(`Error observing execution ${executionId}`, error);
+      const latestEvent = await this.buildLatestExecutionStateEvent(
+        executionId,
+        authToken,
+        user
+      );
+      if (latestEvent) {
+        this.logger.log(
+          `Recovered execution ${executionId} state after stream interruption`
+        );
+        yield latestEvent;
+        return;
+      }
       yield {
         type: StreamEventType.ERROR,
         content: `观察执行进度时出错: ${error.message}`,
@@ -253,6 +265,7 @@ export class ChatExecutionStreamService {
       const execution = await this.controlPlaneClient.getExecution<{
         id: string;
         status: string;
+        executionMode?: string;
         runtimeType?: string;
         runtime_type?: string;
         result?: unknown;
@@ -320,7 +333,11 @@ export class ChatExecutionStreamService {
           // both event.content AND the data fields that the frontend prioritizes.
           let effectiveAiSummary: string | undefined;
 
-          if (hasSummarizationIntent || isSearchOrDataResult) {
+          const shouldGeneratePresentationSummary =
+            execution.executionMode !== 'deterministic_plan' &&
+            (hasSummarizationIntent || isSearchOrDataResult);
+
+          if (shouldGeneratePresentationSummary) {
             const aiResult = await this.generateAiSummary(
               objective || '对工具执行结果进行总结',
               rawResult,
@@ -402,12 +419,15 @@ export class ChatExecutionStreamService {
           }
         );
         return {
-          type: StreamEventType.ERROR,
-          content: failureReason,
+          type: StreamEventType.RESULT,
+          content: `❌ 任务执行失败\n\n原因：${failureReason}\n\n执行单 ID: ${executionId}`,
           data: {
             executionId,
-            status,
+            status: 'failed',
             failureReason,
+            hasBusinessResult: false,
+            chatSummary: `❌ 任务执行失败\n\n原因：${failureReason}`,
+            summaryFormat: 'markdown',
             usage: execution.usage,
           },
         };

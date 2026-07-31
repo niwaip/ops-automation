@@ -15,6 +15,8 @@ import { ExecutionStepService } from '../step-runner/steps/execution-step.servic
 import { ExecutionPlanNormalizationService } from '../step-runner/planning/execution-plan-normalization.service';
 import { ExecutionPlanningService } from '../step-runner/planning/execution-planning.service';
 import { buildPlannedExecutionSteps } from '../step-runner/planning/execution-plan-step.builder';
+import { DeterministicPlanFreezeService } from '../plan-runtime/deterministic-plan-freeze.service';
+import { DeterministicPlanSchedulerService } from '../plan-runtime/deterministic-plan-scheduler.service';
 
 interface RuntimeDefaultResolution {
   input: Record<string, unknown>;
@@ -73,7 +75,9 @@ export class ExecutionCreateService {
     private readonly executionPlanningService: ExecutionPlanningService,
     private readonly executionPlanNormalizationService: ExecutionPlanNormalizationService,
     private readonly executionInputResolutionService: ExecutionInputResolutionService,
-    private readonly executionStepService: ExecutionStepService
+    private readonly executionStepService: ExecutionStepService,
+    private readonly planFreezeService?: DeterministicPlanFreezeService,
+    private readonly planSchedulerService?: DeterministicPlanSchedulerService,
   ) {}
 
   async create(
@@ -82,6 +86,10 @@ export class ExecutionCreateService {
     hooks: ExecutionCreateHooks,
     options?: { authToken?: string }
   ): Promise<ExecutionDto> {
+    if (dto.executionMode === 'deterministic_plan') {
+      return this.createDeterministicExecution(userId, dto, hooks, options);
+    }
+
     const resolvedSkillId = dto.capabilityId || dto.skillId;
     const resolvedSkillVersion = dto.capabilityVersion || dto.skillVersion;
 
@@ -89,7 +97,7 @@ export class ExecutionCreateService {
       throw new BadRequestException('skillId or capabilityId is required');
     }
 
-    await this.executionPlanningService.assertSkillAccessibleByUser(resolvedSkillId, options?.authToken, {
+    await this.executionPlanningService.assertSkillAccessibleByUser(resolvedSkillId, resolvedSkillVersion, options?.authToken, {
       id: userId,
       role: 'employee',
     });
@@ -345,5 +353,99 @@ export class ExecutionCreateService {
       bootstrapUrl,
       plannerStepCount: planDraft?.steps.length || 0,
     });
+  }
+
+  private async createDeterministicExecution(
+    userId: string,
+    dto: CreateExecutionDto,
+    hooks: ExecutionCreateHooks,
+    options?: { authToken?: string },
+  ): Promise<ExecutionDto> {
+    if (!dto.deterministicPlan) {
+      throw new BadRequestException('deterministicPlan is required when executionMode is deterministic_plan');
+    }
+
+    const planDraft = dto.deterministicPlan as any;
+
+    // Check accessibility and exact version matching for all Skill nodes in the plan
+    if (Array.isArray(planDraft.nodes)) {
+      for (const node of planDraft.nodes) {
+        if (node.kind === 'skill' && node.skillId) {
+          if (!node.skillVersion) {
+            throw new BadRequestException(`Skill node '${node.nodeId || node.skillId}' is missing mandatory skillVersion`);
+          }
+
+          const skillDescriptor = await this.executionPlanningService.assertSkillAccessibleByUser(
+            node.skillId,
+            node.skillVersion,
+            options?.authToken,
+            { id: userId, role: 'employee' },
+          );
+
+          if (
+            skillDescriptor.publishedReleaseVersion &&
+            String(skillDescriptor.publishedReleaseVersion).trim() !== String(node.skillVersion).trim()
+          ) {
+            throw new BadRequestException(
+              `Skill node '${node.nodeId || node.skillId}' version mismatch: submitted '${node.skillVersion}', but published executable version is '${skillDescriptor.publishedReleaseVersion}'`,
+            );
+          }
+
+          if (skillDescriptor.publishedReleaseStatus !== 'published') {
+            throw new BadRequestException(
+              `Skill node '${node.nodeId || node.skillId}' is not published (status=${skillDescriptor.publishedReleaseStatus || 'null'})`,
+            );
+          }
+
+          if (skillDescriptor.publishedDeploymentStatus !== 'deployed' && skillDescriptor.publishedDeploymentStatus !== 'healthy') {
+            throw new BadRequestException(
+              `Skill node '${node.nodeId || node.skillId}' deployment is not active (status=${skillDescriptor.publishedDeploymentStatus || 'null'})`,
+            );
+          }
+
+          // Freeze metadata digest, handlerKey, and adapterRoute into node metadata
+          if (!node.metadata) node.metadata = {};
+          node.metadata.definitionDigest = skillDescriptor.definitionDigest;
+          node.metadata.handlerKey = skillDescriptor.handlerKey;
+          node.metadata.adapterRoute = skillDescriptor.adapterRoute;
+        }
+      }
+    }
+
+    let createdExecutionId = '';
+
+    await this.prisma.$transaction(async (tx) => {
+      const created = await tx.execution.create({
+        data: {
+          createdBy: userId,
+          executionMode: 'deterministic_plan',
+          status: EXECUTION_STATUS.QUEUED,
+          runtimeType: 'plan',
+          inputJson: (dto.input as any) || {},
+          normalizedInputJson: (dto.input as any) || {},
+        },
+      });
+
+      createdExecutionId = created.id;
+
+      if (this.planFreezeService) {
+        await this.planFreezeService.freezeAndPersistPlan(createdExecutionId, planDraft, tx);
+      }
+    });
+
+    await hooks.emitEvent(createdExecutionId, EXECUTION_EVENT_TYPE.EXECUTION_CREATED, {
+      executionMode: 'deterministic_plan',
+      planDraft,
+    });
+
+    if (this.planSchedulerService) {
+      setTimeout(() => {
+        this.planSchedulerService?.advanceExecution(createdExecutionId).catch((err) => {
+          this.logger.error(`Error advancing deterministic execution ${createdExecutionId}:`, err);
+        });
+      }, 0);
+    }
+
+    return hooks.getExecutionDto(createdExecutionId);
   }
 }

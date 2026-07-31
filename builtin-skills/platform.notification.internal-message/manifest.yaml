@@ -1,0 +1,66 @@
+apiVersion: platform.ops/v1alpha1
+kind: BuiltinWorkflowSkill
+metadata:
+  key: platform.notification.internal-message
+  displayName: 内置系统内部通知
+  description: 发送平台内部消息通知给指定用户或角色
+  owner: platform-notification
+  labels:
+    category: notification
+    domain: platform
+spec:
+  definitionVersion: 1.0.0
+  lifecycle: stable
+  defaultAccess:
+    mode: authenticated
+  planner:
+    enabled: true
+    triggerKeywords:
+      - 发送站内信
+      - 发送系统通知
+      - 内部消息通知
+    matchSummary: 发送内部消息通知给系统用户
+    runtimeType: workflow
+    supportsArtifact: false
+  contracts:
+    input:
+      schemaRef: inline
+      schema:
+        type: object
+        additionalProperties: false
+        required: [recipientId, message]
+        properties:
+          recipientId:
+            type: string
+            minLength: 1
+          message:
+            type: string
+            minLength: 1
+            maxLength: 4096
+          title:
+            type: string
+            maxLength: 200
+    output:
+      schemaRef: inline
+      schema:
+        type: object
+        required: [notificationId, deliveredAt]
+        properties:
+          notificationId: { type: string }
+          deliveredAt: { type: string }
+  workflow:
+    engine: domain-handler
+    definitionRef: workflow.json
+  runtime:
+    adapterRoute: builtin:workflow
+    handlerKey: platform.notification.internal-message
+    idempotency: required
+    timeoutSeconds: 15
+  migration:
+    minimumPlatformVersion: 4.0.0
+    contractCompatibility: backward
+  smokeTest:
+    inputRef: fixtures/smoke-input.json
+    assertions:
+      - output.notificationId exists
+      - output.deliveredAt exists

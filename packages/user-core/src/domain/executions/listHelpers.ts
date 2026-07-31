@@ -147,11 +147,11 @@ export const extractDownloadUrl = (result: unknown): string | undefined => {
 
 export const extractExecutionDownloadUrl = (record: ExecutionDto): string | undefined => {
   const normalizedResult = resolveExecutionNormalizedResult(record);
-  if (normalizedResult?.downloadUrl) {
-    return normalizedResult.downloadUrl;
+  const rawUrl = normalizedResult?.downloadUrl || extractDownloadUrl(record.resultJson || record.result || undefined);
+  if (typeof rawUrl === 'string' && rawUrl.trim()) {
+    return rawUrl.trim().replace(/^(\/public)?\/renders\//i, '/api/renders/');
   }
-
-  return extractDownloadUrl(record.resultJson || record.result || undefined);
+  return undefined;
 };
 
 export const buildAiResumeDraft = (

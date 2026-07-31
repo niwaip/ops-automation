@@ -12,6 +12,7 @@ import { PlannerModule } from './modules/planner';
 import { DebugSettingsModule } from './modules/debug-settings/debug-settings.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { OrchestrationModule } from './modules/orchestration/orchestration.module';
+import { LlmOperationModule } from './modules/llm-operation/llm-operation.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { OrchestrationModule } from './modules/orchestration/orchestration.modul
     DebugSettingsModule,
     ChatModule,
     OrchestrationModule,
+    LlmOperationModule,
   ],
 })
 export class AppModule {}

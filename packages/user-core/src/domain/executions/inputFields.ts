@@ -13,6 +13,7 @@ export interface RequiredInputField {
   display_name?: string;
   group_label?: string;
   value?: unknown;
+  enum?: Array<string | number>;
 }
 
 const JSON_LIKE_INPUT_TYPES = new Set(['object', 'json', 'array']);
@@ -112,6 +113,7 @@ export const getExecutionWaitingInputFields = (
           typeof candidate.display_name === 'string' ? candidate.display_name : undefined,
         group_label: typeof candidate.group_label === 'string' ? candidate.group_label : undefined,
         value: candidate.value,
+        enum: Array.isArray(candidate.enum) ? (candidate.enum as Array<string | number>) : undefined,
       },
     ];
   });

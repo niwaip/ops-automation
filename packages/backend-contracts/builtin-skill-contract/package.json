@@ -1,0 +1,25 @@
+{
+  "name": "@ops/backend-builtin-skill-contract",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "description": "Shared built-in skill contracts and interfaces",
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    }
+  },
+  "files": [
+    "src",
+    "index.js",
+    "index.d.ts",
+    "tsconfig.json"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  }
+}

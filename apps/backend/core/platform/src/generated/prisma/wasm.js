@@ -355,15 +355,19 @@ exports.Prisma.ExecutionScalarFieldEnum = {
   status: 'status',
   runtimeType: 'runtimeType',
   riskLevel: 'riskLevel',
+  executionMode: 'executionMode',
   inputJson: 'inputJson',
   normalizedInputJson: 'normalizedInputJson',
   resultJson: 'resultJson',
   failureReason: 'failureReason',
   failureCode: 'failureCode',
   currentStepId: 'currentStepId',
+  currentPhaseKey: 'currentPhaseKey',
+  currentPhaseStatus: 'currentPhaseStatus',
   requiresApproval: 'requiresApproval',
   approvalStatus: 'approvalStatus',
   takeoverRequired: 'takeoverRequired',
+  takeoverStatus: 'takeoverStatus',
   takeoverReason: 'takeoverReason',
   triggerType: 'triggerType',
   scheduleId: 'scheduleId',
@@ -409,10 +413,117 @@ exports.Prisma.ExecutionStepScalarFieldEnum = {
   retryCount: 'retryCount',
   snapshotId: 'snapshotId',
   takeoverTriggered: 'takeoverTriggered',
+  planNodeId: 'planNodeId',
+  nodeKind: 'nodeKind',
+  capabilityId: 'capabilityId',
+  capabilityVersion: 'capabilityVersion',
+  dependsOnJson: 'dependsOnJson',
+  inputBindingsJson: 'inputBindingsJson',
+  outputContractJson: 'outputContractJson',
+  resolvedInputJson: 'resolvedInputJson',
+  idempotencyKey: 'idempotencyKey',
+  leaseOwner: 'leaseOwner',
+  leaseExpiresAt: 'leaseExpiresAt',
   startedAt: 'startedAt',
   endedAt: 'endedAt',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
+};
+
+exports.Prisma.ExecutionPlanScalarFieldEnum = {
+  id: 'id',
+  executionId: 'executionId',
+  schemaVersion: 'schemaVersion',
+  plannerVersion: 'plannerVersion',
+  catalogVersion: 'catalogVersion',
+  planType: 'planType',
+  status: 'status',
+  objective: 'objective',
+  planJson: 'planJson',
+  validationJson: 'validationJson',
+  planHash: 'planHash',
+  createdAt: 'createdAt',
+  frozenAt: 'frozenAt'
+};
+
+exports.Prisma.ExecutionArtifactScalarFieldEnum = {
+  id: 'id',
+  executionId: 'executionId',
+  producerStepId: 'producerStepId',
+  producerNodeId: 'producerNodeId',
+  artifactType: 'artifactType',
+  externalArtifactId: 'externalArtifactId',
+  name: 'name',
+  url: 'url',
+  mimeType: 'mimeType',
+  sizeBytes: 'sizeBytes',
+  sha256: 'sha256',
+  metadataJson: 'metadataJson',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.ExecutionPhaseScalarFieldEnum = {
+  id: 'id',
+  executionId: 'executionId',
+  phaseKey: 'phaseKey',
+  phaseName: 'phaseName',
+  phaseType: 'phaseType',
+  status: 'status',
+  attempt: 'attempt',
+  runtimeSessionId: 'runtimeSessionId',
+  inputJson: 'inputJson',
+  outputJson: 'outputJson',
+  precheckJson: 'precheckJson',
+  postcheckJson: 'postcheckJson',
+  recoveryDecisionJson: 'recoveryDecisionJson',
+  errorCode: 'errorCode',
+  errorMessage: 'errorMessage',
+  startedAt: 'startedAt',
+  completedAt: 'completedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.ExecutionPhaseArtifactScalarFieldEnum = {
+  id: 'id',
+  phaseId: 'phaseId',
+  artifactType: 'artifactType',
+  snapshotId: 'snapshotId',
+  pageUrl: 'pageUrl',
+  pageFingerprint: 'pageFingerprint',
+  payloadJson: 'payloadJson',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.ExecutionTakeoverScalarFieldEnum = {
+  id: 'id',
+  executionId: 'executionId',
+  phaseId: 'phaseId',
+  runtimeSessionId: 'runtimeSessionId',
+  status: 'status',
+  reason: 'reason',
+  requestedBy: 'requestedBy',
+  resolvedBy: 'resolvedBy',
+  resolutionNote: 'resolutionNote',
+  createdAt: 'createdAt',
+  resolvedAt: 'resolvedAt'
+};
+
+exports.Prisma.ExecutionPhaseStepScalarFieldEnum = {
+  id: 'id',
+  phaseId: 'phaseId',
+  stepIndex: 'stepIndex',
+  stepId: 'stepId',
+  action: 'action',
+  status: 'status',
+  inputJson: 'inputJson',
+  outputJson: 'outputJson',
+  errorMessage: 'errorMessage',
+  errorCode: 'errorCode',
+  snapshotId: 'snapshotId',
+  startedAt: 'startedAt',
+  endedAt: 'endedAt',
+  createdAt: 'createdAt'
 };
 
 exports.Prisma.ExecutionEventScalarFieldEnum = {
@@ -488,6 +599,198 @@ exports.Prisma.SkillScheduleScalarFieldEnum = {
   createdBy: 'createdBy',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
+};
+
+exports.Prisma.BuiltinSkillScalarFieldEnum = {
+  id: 'id',
+  capabilityKey: 'capabilityKey',
+  displayName: 'displayName',
+  description: 'description',
+  owner: 'owner',
+  category: 'category',
+  defaultAccess: 'defaultAccess',
+  lifecycle: 'lifecycle',
+  isEnabled: 'isEnabled',
+  activeVersionId: 'activeVersionId',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.BuiltinSkillVersionScalarFieldEnum = {
+  id: 'id',
+  builtinSkillId: 'builtinSkillId',
+  definitionVersion: 'definitionVersion',
+  apiVersion: 'apiVersion',
+  definitionDigest: 'definitionDigest',
+  manifestJson: 'manifestJson',
+  workflowJson: 'workflowJson',
+  runtimeBuild: 'runtimeBuild',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.BuiltinSkillDeploymentScalarFieldEnum = {
+  id: 'id',
+  builtinSkillVersionId: 'builtinSkillVersionId',
+  environment: 'environment',
+  status: 'status',
+  runtimeBuild: 'runtimeBuild',
+  deployedAt: 'deployedAt',
+  smokeTestStatus: 'smokeTestStatus',
+  smokeTestDigest: 'smokeTestDigest',
+  failureCode: 'failureCode'
+};
+
+exports.Prisma.BuiltinSkillPermissionOverrideScalarFieldEnum = {
+  id: 'id',
+  builtinSkillId: 'builtinSkillId',
+  orgId: 'orgId',
+  principalType: 'principalType',
+  principalId: 'principalId',
+  effect: 'effect',
+  reason: 'reason',
+  createdBy: 'createdBy',
+  createdAt: 'createdAt',
+  expiresAt: 'expiresAt'
+};
+
+exports.Prisma.BuiltinSkillAuditEventScalarFieldEnum = {
+  id: 'id',
+  builtinSkillId: 'builtinSkillId',
+  action: 'action',
+  versionId: 'versionId',
+  operator: 'operator',
+  payload: 'payload',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.CapabilityReleaseScalarFieldEnum = {
+  id: 'id',
+  sourceType: 'sourceType',
+  sourceId: 'sourceId',
+  sourceName: 'sourceName',
+  sourceStatus: 'sourceStatus',
+  releaseVersion: 'releaseVersion',
+  status: 'status',
+  approvalStatus: 'approvalStatus',
+  deploymentStatus: 'deploymentStatus',
+  currentSourceSnapshotId: 'currentSourceSnapshotId',
+  currentBuildId: 'currentBuildId',
+  latestSuccessfulBuildId: 'latestSuccessfulBuildId',
+  latestValidationId: 'latestValidationId',
+  latestSuccessfulValidationId: 'latestSuccessfulValidationId',
+  currentSkillDraftId: 'currentSkillDraftId',
+  publishedSkillId: 'publishedSkillId',
+  lastDeploymentId: 'lastDeploymentId',
+  rollbackOfReleaseId: 'rollbackOfReleaseId',
+  createdBy: 'createdBy',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  archivedAt: 'archivedAt'
+};
+
+exports.Prisma.CapabilitySourceSnapshotScalarFieldEnum = {
+  id: 'id',
+  releaseId: 'releaseId',
+  snapshotVersion: 'snapshotVersion',
+  sourceType: 'sourceType',
+  sourceId: 'sourceId',
+  sourcePayloadJson: 'sourcePayloadJson',
+  summary: 'summary',
+  createdBy: 'createdBy',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.CapabilityBuildScalarFieldEnum = {
+  id: 'id',
+  releaseId: 'releaseId',
+  sourceSnapshotId: 'sourceSnapshotId',
+  buildType: 'buildType',
+  modelId: 'modelId',
+  promptVersion: 'promptVersion',
+  promptSnapshot: 'promptSnapshot',
+  inputSnapshotJson: 'inputSnapshotJson',
+  generatedCode: 'generatedCode',
+  generatedConfigJson: 'generatedConfigJson',
+  logsJson: 'logsJson',
+  diffSummary: 'diffSummary',
+  status: 'status',
+  errorSummary: 'errorSummary',
+  startedAt: 'startedAt',
+  finishedAt: 'finishedAt',
+  createdBy: 'createdBy',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.CapabilityValidationScalarFieldEnum = {
+  id: 'id',
+  releaseId: 'releaseId',
+  buildId: 'buildId',
+  validationType: 'validationType',
+  inputSnapshotJson: 'inputSnapshotJson',
+  resultSnapshotJson: 'resultSnapshotJson',
+  logsJson: 'logsJson',
+  score: 'score',
+  success: 'success',
+  errorSummary: 'errorSummary',
+  startedAt: 'startedAt',
+  finishedAt: 'finishedAt',
+  createdBy: 'createdBy',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.SkillDraftScalarFieldEnum = {
+  id: 'id',
+  releaseId: 'releaseId',
+  generatedFromBuildId: 'generatedFromBuildId',
+  generatedFromValidationId: 'generatedFromValidationId',
+  sourceType: 'sourceType',
+  name: 'name',
+  description: 'description',
+  triggerKeywords: 'triggerKeywords',
+  paramsSchema: 'paramsSchema',
+  executionFlowTemplateIds: 'executionFlowTemplateIds',
+  tools: 'tools',
+  apiEndpoints: 'apiEndpoints',
+  draftPayloadJson: 'draftPayloadJson',
+  status: 'status',
+  createdBy: 'createdBy',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.DeploymentRecordScalarFieldEnum = {
+  id: 'id',
+  releaseId: 'releaseId',
+  publishedSkillId: 'publishedSkillId',
+  environment: 'environment',
+  runtimeType: 'runtimeType',
+  artifactUri: 'artifactUri',
+  artifactHash: 'artifactHash',
+  workerVersion: 'workerVersion',
+  reloadStrategy: 'reloadStrategy',
+  requestPayloadJson: 'requestPayloadJson',
+  resultSnapshotJson: 'resultSnapshotJson',
+  logsJson: 'logsJson',
+  status: 'status',
+  success: 'success',
+  smokeValidationId: 'smokeValidationId',
+  rollbackTargetReleaseId: 'rollbackTargetReleaseId',
+  startedAt: 'startedAt',
+  finishedAt: 'finishedAt',
+  createdBy: 'createdBy',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.ReleaseAuditEventScalarFieldEnum = {
+  id: 'id',
+  releaseId: 'releaseId',
+  eventType: 'eventType',
+  actorId: 'actorId',
+  actorName: 'actorName',
+  success: 'success',
+  summary: 'summary',
+  detailsJson: 'detailsJson',
+  createdAt: 'createdAt'
 };
 
 exports.Prisma.SortOrder = {
@@ -566,11 +869,29 @@ exports.Prisma.ModelName = {
   Execution: 'Execution',
   RuntimeSession: 'RuntimeSession',
   ExecutionStep: 'ExecutionStep',
+  ExecutionPlan: 'ExecutionPlan',
+  ExecutionArtifact: 'ExecutionArtifact',
+  ExecutionPhase: 'ExecutionPhase',
+  ExecutionPhaseArtifact: 'ExecutionPhaseArtifact',
+  ExecutionTakeover: 'ExecutionTakeover',
+  ExecutionPhaseStep: 'ExecutionPhaseStep',
   ExecutionEvent: 'ExecutionEvent',
   AuditLog: 'AuditLog',
   Activity: 'Activity',
   TemporalWorkflow: 'TemporalWorkflow',
-  SkillSchedule: 'SkillSchedule'
+  SkillSchedule: 'SkillSchedule',
+  BuiltinSkill: 'BuiltinSkill',
+  BuiltinSkillVersion: 'BuiltinSkillVersion',
+  BuiltinSkillDeployment: 'BuiltinSkillDeployment',
+  BuiltinSkillPermissionOverride: 'BuiltinSkillPermissionOverride',
+  BuiltinSkillAuditEvent: 'BuiltinSkillAuditEvent',
+  CapabilityRelease: 'CapabilityRelease',
+  CapabilitySourceSnapshot: 'CapabilitySourceSnapshot',
+  CapabilityBuild: 'CapabilityBuild',
+  CapabilityValidation: 'CapabilityValidation',
+  SkillDraft: 'SkillDraft',
+  DeploymentRecord: 'DeploymentRecord',
+  ReleaseAuditEvent: 'ReleaseAuditEvent'
 };
 
 /**

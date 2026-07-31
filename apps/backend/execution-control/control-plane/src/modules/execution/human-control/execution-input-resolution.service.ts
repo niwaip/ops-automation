@@ -214,6 +214,7 @@ export class ExecutionInputResolutionService {
           item.required_mode || (item.required ? 'always' : 'optional');
         acc[item.name] = {
           type: item.type || 'string',
+          ...(Array.isArray(item.enum) && item.enum.length > 0 ? { enum: item.enum } : {}),
           required: Boolean(item.required),
           value: item.value,
           source: item.source || 'unresolved',
@@ -252,6 +253,7 @@ export class ExecutionInputResolutionService {
       ([name, entry]) => ({
         name,
         type: entry.type || 'string',
+        ...(Array.isArray(entry.enum) && entry.enum.length > 0 ? { enum: entry.enum } : {}),
         ...(entry.description ? { description: entry.description } : {}),
         ...(entry.display_name ? { display_name: entry.display_name } : {}),
         ...(entry.group_label ? { group_label: entry.group_label } : {}),

@@ -20,6 +20,27 @@ x-common-node-service: &common-node-service
 
 services:
   # ============================================
+  # Workspace Dependencies Init (must complete before other services)
+  # ============================================
+  workspace-deps-init:
+    image: ${DOCKER_REGISTRY:-}node:20-bullseye
+    container_name: ops-workspace-init
+    working_dir: /workspace
+    command: >
+      sh -c "bash /workspace/docker/scripts/bootstrap-workspace-deps.sh
+      && bash /workspace/docker/scripts/apply-latest-db-schema-in-container.sh"
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ops}:${POSTGRES_PASSWORD:-ops_secret}@postgres:5432/${POSTGRES_DB:-ops}?connection_limit=${PRISMA_CONNECTION_LIMIT:-5}
+    volumes:
+      - ${PROJECT_ROOT:-..}:/workspace
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - ops-network
+
+  # ============================================
   # Infrastructure Services
   # ============================================
   postgres:
@@ -80,9 +101,10 @@ services:
     command: >
       sh -c "bash /workspace/docker/scripts/bootstrap-workspace-deps.sh
       && pnpm --filter @ops/platform run build
-      && rm -rf /workspace/apps/backend/core/platform/dist/generated
-      && mkdir -p /workspace/apps/backend/core/platform/dist/generated
+      && rm -rf /workspace/apps/backend/core/platform/dist/generated /workspace/apps/backend/core/platform/dist/src/generated
+      && mkdir -p /workspace/apps/backend/core/platform/dist/generated /workspace/apps/backend/core/platform/dist/src/generated
       && cp -R /workspace/apps/backend/core/platform/src/generated/prisma /workspace/apps/backend/core/platform/dist/generated/prisma
+      && cp -R /workspace/apps/backend/core/platform/src/generated/prisma /workspace/apps/backend/core/platform/dist/src/generated/prisma
       && pnpm --filter @ops/platform run start"
     ports:
       - "${PLATFORM_PORT:-3001}:${PLATFORM_PORT:-3001}"
@@ -92,6 +114,8 @@ services:
       # rmdir'd, which previously caused `EBUSY: rmdir '/workspace/node_modules'`.
       - ${PROJECT_ROOT:-..}:/workspace
     depends_on:
+      workspace-deps-init:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       redis:
@@ -121,7 +145,7 @@ services:
   control-plane:
     <<: *common-node-service
     container_name: ops-control-plane
-    command: sh -c "npm config set registry https://registry.npmjs.org && npm install --legacy-peer-deps && npx prisma generate && npm run build && rm -rf /app/dist/generated && mkdir -p /app/dist/generated && cp -R /app/src/generated/prisma /app/dist/generated/prisma && npm run start"
+    command: sh -c "npm config set registry https://registry.npmmirror.com && npm install --legacy-peer-deps && npx prisma generate && npm run build && mkdir -p /app/dist/generated /app/dist/app/src/generated && cp -R /app/src/generated/prisma /app/dist/generated/prisma && cp -R /app/src/generated/prisma /app/dist/app/src/generated/prisma && npm run start"
     environment:
       <<: *common-env
       DOCKER_ENV: true
@@ -131,6 +155,8 @@ services:
       INTERNAL_API_SHARED_SECRET: ${INTERNAL_API_SHARED_SECRET:-ops_internal_shared_secret_change_me}
       AUTH_SERVICE_URL: http://${PLATFORM_SERVICE_HOST:-platform}:${PLATFORM_PORT:-3001}
       AI_ORCHESTRATOR_URL: http://${AI_ORCHESTRATOR_HOST:-ai-orchestrator}:${AI_ORCHESTRATOR_PORT:-3007}
+      CARBONE_SERVICE_URL: http://${CARBONE_ENGINE_HOST:-carbone-engine}:${CARBONE_ENGINE_PORT:-3009}
+      LLM_OPERATION_TIMEOUT_MS: ${LLM_OPERATION_TIMEOUT_MS:-180000}
       SESSION_BROKER_URL: http://${SESSION_BROKER_HOST:-session-broker}:${SESSION_BROKER_PORT:-3002}
       PROXY_TIMEOUT_DEFAULT_MS: ${PROXY_TIMEOUT_DEFAULT_MS:-60000}
       PROXY_TIMEOUT_PLATFORM_MS: ${PROXY_TIMEOUT_PLATFORM_MS:-60000}
@@ -139,13 +165,17 @@ services:
       PROXY_TIMEOUT_SESSION_MS: ${PROXY_TIMEOUT_SESSION_MS:-60000}
       PROXY_TIMEOUT_AI_MS: ${PROXY_TIMEOUT_AI_MS:-60000}
       PROXY_TIMEOUT_WORKER_MS: ${PROXY_TIMEOUT_WORKER_MS:-60000}
+      DEBUG_RUNTIME_OUTPUT: ${DEBUG_RUNTIME_OUTPUT:-false}
     ports:
       - "${CONTROL_PLANE_PORT:-3003}:${CONTROL_PLANE_PORT:-3003}"
     volumes:
       - ${PROJECT_ROOT:-..}/apps/backend/execution-control/control-plane:/app
       - ${PROJECT_ROOT:-..}/packages/backend-contracts:/packages/backend-contracts
+      - ${PROJECT_ROOT:-..}/tsconfig.base.json:/tsconfig.base.json:ro
       - control_plane_node_modules:/app/node_modules
     depends_on:
+      workspace-deps-init:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       redis:
@@ -201,12 +231,13 @@ services:
       sh -c "npm config set registry https://registry.npmmirror.com
       && npm install --legacy-peer-deps --include=dev
       && npx prisma generate
+      && npx prisma db push
       && npm run build
       && npm run start"
     environment:
       <<: *common-env
       NODE_ENV: development
-      DATABASE_URL: postgresql://${POSTGRES_USER:-ops}:${POSTGRES_PASSWORD:-ops_secret}@postgres:5432/${POSTGRES_DB:-ops}?schema=public&connection_limit=${PRISMA_CONNECTION_LIMIT:-5}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ops}:${POSTGRES_PASSWORD:-ops_secret}@postgres:5432/${POSTGRES_DB:-ops}?schema=browser_templates&connection_limit=${PRISMA_CONNECTION_LIMIT:-5}
       DB_HOST: postgres
       DB_PORT: 5432
       DB_USERNAME: ${POSTGRES_USER:-ops}
@@ -279,7 +310,7 @@ services:
       sh -c "npm config set registry https://registry.npmmirror.com
       && rm -rf /app/node_modules/* /app/node_modules/.[!.]* /app/node_modules/..?* 2>/dev/null || true
       && npm install --legacy-peer-deps
-      && npx prisma generate
+      && npx prisma@5.22.0 generate
       && npm run dev"
     environment:
       <<: *common-env
@@ -303,6 +334,8 @@ services:
       - "${AI_ORCHESTRATOR_PORT:-3007}:${AI_ORCHESTRATOR_PORT:-3007}"
     volumes:
       - ${PROJECT_ROOT:-..}/apps/backend/intelligence/ai-orchestrator:/app
+      - ${PROJECT_ROOT:-..}/packages/backend-contracts:/packages/backend-contracts
+      - ${PROJECT_ROOT:-..}/tsconfig.base.json:/tsconfig.base.json:ro
       - ai_orchestrator_node_modules:/app/node_modules
       - ${PROJECT_ROOT:-..}/apps/backend/var/cache/ai-orchestrator:/app/data
     depends_on:
@@ -319,7 +352,8 @@ services:
     command: >
       sh -c "npm install -g pnpm@8.12.0 && pnpm config set registry https://registry.npmmirror.com && pnpm config set ignore-scripts true && pnpm install --no-frozen-lockfile
       && pnpm add -D @types/express-serve-static-core
-      && npx prisma generate
+      && pnpm exec prisma generate
+      && pnpm exec prisma db push
       && npm run build
       && rm -rf /app/dist/generated
       && mkdir -p /app/dist/generated
@@ -327,6 +361,7 @@ services:
       && npm run start"
     environment:
       <<: *common-env
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ops}:${POSTGRES_PASSWORD:-ops_secret}@postgres:5432/${POSTGRES_DB:-ops}?schema=reports&connection_limit=${PRISMA_CONNECTION_LIMIT:-5}
       PORT: ${REPORT_PORT:-3008}
       AI_ORCHESTRATOR_URL: http://${AI_ORCHESTRATOR_HOST:-ai-orchestrator}:${AI_ORCHESTRATOR_PORT:-3007}
       SESSION_BROKER_URL: http://${SESSION_BROKER_HOST:-session-broker}:${SESSION_BROKER_PORT:-3002}
@@ -347,8 +382,36 @@ services:
         condition: service_started
       session-broker:
         condition: service_started
-    profiles:
-      - report
+
+  # ============================================
+  # Carbone Engine (Document Domain - Studio API)
+  # ============================================
+  carbone-engine:
+    <<: *common-node-service
+    container_name: carbone-engine
+    working_dir: /app
+    command: >
+      sh -c "npm config set registry https://registry.npmmirror.com
+      && npm install --legacy-peer-deps
+      && npx prisma db push --schema template/prisma/schema.prisma
+      && npm run dev"
+    environment:
+      <<: *common-env
+      DOCKER_ENV: true
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ops}:${POSTGRES_PASSWORD:-ops_secret}@postgres:5432/${POSTGRES_DB:-ops}?schema=document_engine&connection_limit=${PRISMA_CONNECTION_LIMIT:-5}
+      PORT: ${CARBONE_ENGINE_PORT:-3009}
+      TEMPLATES_DIR: /workspace/apps/backend/var/templates/document-engine
+      OUTPUTS_DIR: /workspace/apps/backend/var/outputs/document-engine
+      STORAGE_RENDER_DIR: /workspace/apps/backend/var/outputs/document-engine/renders
+    ports:
+      - "${CARBONE_ENGINE_PORT:-3009}:${CARBONE_ENGINE_PORT:-3009}"
+    volumes:
+      - ${PROJECT_ROOT:-..}/apps/backend/capabilities/document-domain:/app
+      - ${PROJECT_ROOT:-..}/packages/backend-contracts:/packages/backend-contracts
+      - carbone_engine_node_modules:/app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   # ============================================
   # Frontend
@@ -381,6 +444,7 @@ services:
       - platform
       - browser-worker
       - browser-template
+      - carbone-engine
 
   user-web:
     <<: *common-node-service
@@ -435,6 +499,77 @@ services:
     networks:
       - ops-network
 
+  # ============================================
+  # Temporal Server & UI & Sandbox Worker
+  # ============================================
+  temporal:
+    image: ${DOCKER_REGISTRY:-}temporalio/auto-setup:1.22.0
+    container_name: ops-temporal
+    ports:
+      - "7233:7233"
+      - "7234:7234"
+      - "7235:7235"
+      - "7236:7236"
+    environment:
+      - DB=postgresql
+      - POSTGRES_SEEDS=postgres
+      - DB_PORT=5432
+      - POSTGRES_USER=${POSTGRES_USER:-ops}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-ops_secret}
+      - POSTGRES_PWD=${POSTGRES_PASSWORD:-ops_secret}
+      - POSTGRES_DB=temporal
+      - DYNAMIC_CONFIG_FILE_PATH=/etc/temporal/dynamic_config.yaml
+    volumes:
+      - temporal_data:/var/lib/postgresql/data
+      - ../temporal/dynamic_config.yaml:/etc/temporal/dynamic_config.yaml:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - ops-network
+
+  temporal-ui:
+    image: ${DOCKER_REGISTRY:-}temporalio/ui:2.20.0
+    container_name: ops-temporal-ui
+    ports:
+      - "8088:8080"
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CORS_ORIGINS=http://${HOST_IP:-localhost}:8088,http://${HOST_IP:-localhost}:${PORTAL_PORT:-5173}
+    depends_on:
+      - temporal
+    networks:
+      - ops-network
+
+  sandbox-worker:
+    build:
+      context: ../..
+      dockerfile: docker/temporal/Dockerfile
+      args:
+        SANDBOX_WORKER_PROJECT_PATH: ${SANDBOX_WORKER_PROJECT_PATH:-apps/backend/runtimes/sandbox-worker}
+    container_name: ops-sandbox-worker
+    restart: unless-stopped
+    working_dir: /workspace/apps/backend/runtimes/sandbox-worker
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_NAMESPACE=default
+      - AUTH_SERVICE_URL=http://${PLATFORM_SERVICE_HOST:-platform}:${PLATFORM_PORT:-3001}
+      - AI_ORCHESTRATOR_URL=http://${AI_ORCHESTRATOR_HOST:-ai-orchestrator}:${AI_ORCHESTRATOR_PORT:-3007}
+      - SANDBOX_WORKER_TASK_QUEUE=sandbox-worker-task-queue
+      - ACTIVITY_VALIDATION_TASK_QUEUE=activity-validation-task-queue
+      - SANDBOX_HTTP_PORT=8090
+      - CARBONE_SERVICE_URL=http://${CARBONE_ENGINE_HOST:-carbone-engine}:${CARBONE_ENGINE_PORT:-3009}
+      - CARBONE_EXTERNAL_URL=http://${HOST_IP:-localhost}:${CARBONE_ENGINE_PORT:-3009}
+    ports:
+      - "8090:8090"
+    volumes:
+      - ${PROJECT_ROOT:-..}:/workspace
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - temporal
+    networks:
+      - ops-network
+
 volumes:
   postgres_data:
     driver: local
@@ -450,6 +585,8 @@ volumes:
   user_web_node_modules:
   report_runtime_node_modules:
   report_files:
+  carbone_engine_node_modules:
+  temporal_data:
 
 networks:
   ops-network:

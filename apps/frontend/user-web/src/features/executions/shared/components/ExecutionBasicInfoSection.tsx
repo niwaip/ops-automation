@@ -35,6 +35,8 @@ const ExecutionBasicInfoSection: React.FC<ExecutionBasicInfoSectionProps> = ({
   isBrowserExecution,
   onOpenDetailPage,
 }) => {
+  const downloadUrl = replaceLocalhostWithCurrentHost(extractExecutionDownloadUrl(execution));
+
   return (
     <Descriptions column={1} size="small" bordered>
       <Descriptions.Item label="ID">{execution.id}</Descriptions.Item>
@@ -97,18 +99,12 @@ const ExecutionBasicInfoSection: React.FC<ExecutionBasicInfoSectionProps> = ({
       <Descriptions.Item label="失败原因">{execution.failureReason || '-'}</Descriptions.Item>
       {!isBrowserExecution ? (
         <Descriptions.Item label="下载地址">
-          {extractExecutionDownloadUrl(execution) ? (
+          {downloadUrl ? (
             <Button
               type="link"
               icon={<DownloadOutlined />}
               style={{ paddingInline: 0 }}
-              onClick={() =>
-                window.open(
-                  extractExecutionDownloadUrl(execution),
-                  '_blank',
-                  'noopener,noreferrer'
-                )
-              }
+              onClick={() => window.open(downloadUrl, '_blank', 'noopener,noreferrer')}
             >
               下载结果
             </Button>

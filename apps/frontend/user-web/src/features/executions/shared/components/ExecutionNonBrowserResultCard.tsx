@@ -4,15 +4,23 @@ import ExecutionDetailSectionCard from '@/features/executions/detail/components/
 import ExecutionLinkButton from '@/features/executions/shared/components/ExecutionLinkButton';
 import ExecutionPayloadContent from '@/features/executions/shared/components/ExecutionPayloadContent';
 import ExecutionResultHeader from '@/features/executions/shared/components/ExecutionResultHeader';
+import {
+  selectExecutionDeliverableArtifacts,
+  selectExecutionReferenceArtifacts,
+} from '@ops/user-core';
 import { replaceLocalhostWithCurrentHost } from '@/shared/utils/publicUrl';
 
 const { Text } = Typography;
 
 interface ResultArtifact {
+  type?: string;
+  artifactType?: string;
   label?: string;
   name?: string;
   downloadUrl?: string;
   url?: string;
+  path?: string;
+  mimeType?: string;
 }
 
 interface ExecutionNormalizedResultView {
@@ -27,6 +35,8 @@ interface ExecutionNonBrowserResultCardLabels {
   title: string;
   input: string;
   result: string;
+  resultArtifacts: string;
+  sourceLinks: string;
   temporalExecutionLink: string;
   noInput: string;
   noStructuredResult: string;
@@ -54,6 +64,11 @@ const ExecutionNonBrowserResultCard: React.FC<ExecutionNonBrowserResultCardProps
   effectiveResultJson,
   labels,
 }) => {
+  const deliverableArtifacts = selectExecutionDeliverableArtifacts(
+    normalizedResult?.artifacts || []
+  );
+  const referenceArtifacts = selectExecutionReferenceArtifacts(normalizedResult?.artifacts || []);
+
   return (
     <ExecutionDetailSectionCard title={labels.title} style={{ marginBottom: 16 }}>
       <div style={{ marginBottom: 16 }}>
@@ -80,20 +95,43 @@ const ExecutionNonBrowserResultCard: React.FC<ExecutionNonBrowserResultCardProps
                   treatSingleResultFieldAsMarkdown={shouldRenderPrimaryAsMarkdown}
                 />
               ) : null}
-              {normalizedResult.artifacts.length > 0 ? (
-                <Space wrap>
-                  {normalizedResult.artifacts.map((artifact, index) => {
-                    const href = replaceLocalhostWithCurrentHost(artifact.downloadUrl || artifact.url);
-                    if (!href) {
-                      return null;
-                    }
-                    return (
-                      <ExecutionLinkButton key={`${href}-${index}`} href={href}>
-                        {artifact.label || artifact.name || `${labels.result} ${index + 1}`}
-                      </ExecutionLinkButton>
-                    );
-                  })}
-                </Space>
+              {deliverableArtifacts.length > 0 ? (
+                <div>
+                  <Text strong>{`${labels.resultArtifacts}:`}</Text>
+                  <Space wrap style={{ marginLeft: 8 }}>
+                    {deliverableArtifacts.map((artifact, index) => {
+                      const href = replaceLocalhostWithCurrentHost(
+                        artifact.downloadUrl || artifact.url
+                      );
+                      if (!href) {
+                        return null;
+                      }
+                      return (
+                        <ExecutionLinkButton key={`${href}-${index}`} href={href}>
+                          {artifact.label || artifact.name || `${labels.result} ${index + 1}`}
+                        </ExecutionLinkButton>
+                      );
+                    })}
+                  </Space>
+                </div>
+              ) : null}
+              {referenceArtifacts.length > 0 ? (
+                <div>
+                  <Text strong>{`${labels.sourceLinks}:`}</Text>
+                  <Space wrap style={{ marginLeft: 8 }}>
+                    {referenceArtifacts.map((artifact, index) => {
+                      const href = replaceLocalhostWithCurrentHost(artifact.url);
+                      if (!href) {
+                        return null;
+                      }
+                      return (
+                        <ExecutionLinkButton key={`${href}-${index}`} href={href}>
+                          {artifact.label || artifact.name || `${labels.sourceLinks} ${index + 1}`}
+                        </ExecutionLinkButton>
+                      );
+                    })}
+                  </Space>
+                </div>
               ) : null}
               {normalizedResult.temporalLink ? (() => {
                 const temporalHref = replaceLocalhostWithCurrentHost(normalizedResult.temporalLink);

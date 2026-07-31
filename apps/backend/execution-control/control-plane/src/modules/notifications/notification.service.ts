@@ -15,6 +15,7 @@ import {
 
 type NotificationResultArtifact = {
   type?: string;
+  artifactType?: string;
   name?: string;
   label?: string;
   downloadUrl?: string;
@@ -161,6 +162,7 @@ export class NotificationService {
       };
       artifacts?: Array<{
         type?: string;
+        artifactType?: string;
         name?: string;
         label?: string;
         downloadUrl?: string;
@@ -181,6 +183,7 @@ export class NotificationService {
       .slice(0, 3)
       .map((artifact) => ({
         type: artifact.type,
+        artifactType: artifact.artifactType,
         name: artifact.name,
         label: artifact.label,
         downloadUrl: artifact.downloadUrl,

@@ -12,6 +12,9 @@ function resolveMimeType(format: string): string | undefined {
       return 'application/pdf';
     case 'html':
       return 'text/html';
+    case 'md':
+    case 'markdown':
+      return 'text/markdown';
     default:
       return undefined;
   }

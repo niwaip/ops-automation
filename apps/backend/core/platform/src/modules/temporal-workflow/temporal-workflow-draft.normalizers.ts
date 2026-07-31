@@ -209,6 +209,34 @@ function buildDefaultDraftInputDescription(key: string): string {
   return `${normalized} 参数`;
 }
 
+export function normalizeWorkflowInputParamEnum(
+  value: unknown
+): Array<string | number> | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  const seen = new Set<string>();
+  const normalized: Array<string | number> = [];
+  value.forEach((item) => {
+    const candidate =
+      typeof item === 'string'
+        ? item.trim()
+        : typeof item === 'number' && Number.isFinite(item)
+          ? item
+          : undefined;
+    if (candidate === undefined || candidate === '') {
+      return;
+    }
+    const identity = `${typeof candidate}:${String(candidate)}`;
+    if (seen.has(identity)) {
+      return;
+    }
+    seen.add(identity);
+    normalized.push(candidate);
+  });
+  return normalized.length > 0 ? normalized : undefined;
+}
+
 function isValidTemplateToken(key: string): boolean {
   return /^[A-Za-z_][A-Za-z0-9_]*$/.test(String(key || '').trim());
 }
@@ -341,10 +369,12 @@ function mergeDraftInputParamsWithStepPlaceholders(args: {
     if (!key) {
       return;
     }
+    const enumValues = normalizeWorkflowInputParamEnum(value?.enum);
     merged[key] = {
       description: pickFirstNonEmptyString(value?.description),
       required: value?.required,
       defaultValue: value?.defaultValue ?? '',
+      ...(enumValues ? { enum: enumValues } : {}),
       localizedDefaultValue:
         value?.localizedDefaultValue && Object.keys(value.localizedDefaultValue).length > 0
           ? value.localizedDefaultValue
@@ -448,6 +478,7 @@ export function normalizeDraftInputParams(args: {
   return entries.reduce<Record<string, WorkflowInputParamDefinition>>((acc, [key, value]) => {
     const normalizedKey = String(key).trim();
     const defaultValue = value?.defaultValue ?? '';
+    const enumValues = normalizeWorkflowInputParamEnum(value?.enum);
     const localizedDefaultValue =
       value?.localizedDefaultValue && Object.keys(value.localizedDefaultValue).length > 0
         ? value.localizedDefaultValue
@@ -456,14 +487,17 @@ export function normalizeDraftInputParams(args: {
       pickFirstNonEmptyString(value?.description) ||
       buildDefaultDraftInputDescription(normalizedKey);
     const exampleValue =
-      value?.exampleValue !== undefined
+      value?.exampleValue !== undefined &&
+      (!enumValues || enumValues.includes(value.exampleValue as string | number))
         ? value.exampleValue
-        : buildGenericAiDraftSampleValue({
-            key: normalizedKey,
-            description,
-            referenceUrl,
-            buildWorkflowSemanticHint,
-          });
+        : enumValues?.[0] !== undefined
+          ? enumValues[0]
+          : buildGenericAiDraftSampleValue({
+              key: normalizedKey,
+              description,
+              referenceUrl,
+              buildWorkflowSemanticHint,
+            });
     acc[String(key).trim()] = {
       description,
       required:
@@ -471,6 +505,7 @@ export function normalizeDraftInputParams(args: {
           ? !String(defaultValue).trim() && !localizedDefaultValue
           : value.required !== false,
       defaultValue,
+      ...(enumValues ? { enum: enumValues } : {}),
       localizedDefaultValue,
       source: value?.source,
       type:

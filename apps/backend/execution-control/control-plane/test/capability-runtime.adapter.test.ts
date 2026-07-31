@@ -167,6 +167,69 @@ describe('CapabilityRuntimeAdapter', () => {
     });
   });
 
+  it('surfaces searchResults from businessData.searchResults envelope (WebSearchWorkflow)', async () => {
+    // WebSearchWorkflow returns a presentation envelope with searchResults
+    // nested under result.businessData.searchResults. The adapter must surface
+    // it to the top level so the downstream output-contract validator
+    // (which expects `searchResults`) can find it.
+    mockedAxios.post.mockResolvedValue({
+      data: {
+        success: true,
+        releaseId: 'release-1',
+        capabilityId: 'skill-1',
+        publishedSkillId: 'skill-1',
+        runtime: 'temporal_workflow',
+        logs: [],
+        output: {
+          execution: { status: 'success', workflowName: 'WebSearchWorkflow' },
+          trigger: { type: 'manual' },
+          result: {
+            resultType: 'web_search',
+            title: '搜索结果: AI',
+            summary: '为您找到 2 条相关搜索结果',
+            businessData: {
+              query: 'AI',
+              topic: 'news',
+              maxResults: 10,
+              searchResults: [
+                { title: 'AI news 1', url: 'https://example.com/1' },
+                { title: 'AI news 2', url: 'https://example.com/2' },
+              ],
+              responseMetadata: { responseTime: 250, queryEcho: 'AI' },
+              totalResults: 2,
+            },
+          },
+          artifacts: [],
+          presentation: {},
+        },
+      },
+    } as any);
+
+    const adapter = new CapabilityRuntimeAdapter();
+    const result = await adapter.invokeStep({
+      requestId: 'request-search',
+      executionId: 'execution-search',
+      stepId: 'step-search',
+      runtimeType: 'custom',
+      runtimeSessionId: 'runtime-search',
+      publishedSkillId: 'skill-1',
+      capabilityType: 'skill.runtime',
+      action: 'execute',
+      input: { query: 'AI', topic: 'news' },
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.output?.searchResults).toEqual([
+      { title: 'AI news 1', url: 'https://example.com/1' },
+      { title: 'AI news 2', url: 'https://example.com/2' },
+    ]);
+    // Other businessData fields (e.g. responseMetadata, an object) must also
+    // surface to the top level — the output contract declares them and the
+    // downstream validator looks for them at the top level.
+    expect(result.output?.responseMetadata).toEqual({ responseTime: 250, queryEcho: 'AI' });
+    expect(result.output?.totalResults).toBe(2);
+  });
+
   it('maps capability runtime takeover signals into takeover_required status', async () => {
     mockedAxios.post.mockResolvedValue({
       data: {

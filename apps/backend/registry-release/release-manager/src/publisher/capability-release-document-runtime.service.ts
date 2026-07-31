@@ -112,6 +112,79 @@ export class CapabilityReleaseDocumentRuntimeService {
       ) ||
       {};
     const renderInput = this.resolveDocumentRenderInput(input, sourceTemplate);
+    const releaseRuntimeType =
+      typeof (release as unknown as Record<string, unknown>).runtimeType === 'string'
+        ? String((release as unknown as Record<string, unknown>).runtimeType)
+        : undefined;
+    const inputContent = this.pickFirstNonEmptyString(
+      input?.content,
+      input?.markdown,
+      renderInput.data.content,
+      renderInput.data.markdown
+    );
+    const inputFileName = this.pickFirstNonEmptyString(
+      input?.fileName,
+      input?.file_name,
+      renderInput.data.fileName,
+      renderInput.data.file_name
+    );
+
+    const runtimeMeta = (snapshot?.sourcePayload as any)?.runtimeMetadata as
+      { runtimeType?: string; templateFormat?: string } | undefined;
+    const markdownDetected =
+      releaseRuntimeType === 'document_markdown_writer' ||
+      runtimeMeta?.runtimeType === 'document_markdown_writer' ||
+      runtimeMeta?.templateFormat === 'markdown' ||
+      (snapshot?.sourcePayload as any)?.templateFormat === 'markdown';
+
+    if (markdownDetected) {
+      const targetPublishedSkillId = skillId || (release as any).sourceId || (release as any).publishedSkillId || release.id;
+      const idempotencyKey = typeof input?.idempotencyKey === 'string'
+        ? input.idempotencyKey
+        : `${release.id}:${inputFileName || 'summary.md'}`;
+
+      const markdownUrl = `${getCarboneServiceUrl()}/document/markdown-artifact/create`;
+      try {
+        const mdRes = await axios.post(markdownUrl, {
+          content: inputContent || '',
+          fileName: inputFileName || 'summary.md',
+          skillId,
+          publishedSkillId: targetPublishedSkillId,
+          idempotencyKey,
+        }, { timeout: 30000 });
+        const mdData = mdRes.data as { artifact?: { url?: string; id: string; name: string; type: string; mimeType: string; sizeBytes: number } };
+        return {
+          releaseId: release.id,
+          capabilityId: skillId,
+          publishedSkillId: targetPublishedSkillId,
+          runtime: 'document',
+          success: true,
+          status: 'completed',
+          output: {
+            artifact: mdData.artifact,
+            artifacts: mdData.artifact ? [mdData.artifact] : [],
+            downloadUrl: mdData.artifact?.url,
+          },
+          result: {
+            artifact: mdData.artifact,
+            artifacts: mdData.artifact ? [mdData.artifact] : [],
+          },
+          logs: ['[DocumentRuntime] Written Markdown artifact successfully'],
+        };
+      } catch (mdErr: any) {
+        return {
+          releaseId: release.id,
+          capabilityId: skillId,
+          publishedSkillId: targetPublishedSkillId,
+          runtime: 'document',
+          success: false,
+          status: 'failed',
+          logs: [`[DocumentRuntime] Markdown artifact creation failed: ${mdErr.message}`],
+          error: mdErr.message,
+        };
+      }
+    }
+
     const renderRequest = await this.resolveDocumentRenderRequest(skillId, renderInput);
     const resolvedTemplateId = renderRequest.templateId || renderInput.templateId;
     const resolvedSkillId = renderRequest.skillId || renderInput.skillId;

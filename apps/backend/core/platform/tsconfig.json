@@ -23,7 +23,8 @@
       "@/*": ["src/*"],
       "@ops/identity-access": ["../../governance/identity-access/dist"],
       "@ops/organization": ["../../governance/organization/dist"],
-      "@ops/release-manager/*": ["../../registry-release/release-manager/dist/*/index.d.ts"]
+      "@ops/release-manager/*": ["../../registry-release/release-manager/dist/*/index.d.ts"],
+      "@ops/backend-builtin-skill-contract": ["../../../../packages/backend-contracts/builtin-skill-contract/index.d.ts"]
     }
   },
   "include": ["src/**/*"],

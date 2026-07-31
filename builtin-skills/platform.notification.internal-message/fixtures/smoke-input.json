@@ -1,0 +1,5 @@
+{
+  "recipientId": "system-admin-user",
+  "title": "Smoke Test Notification",
+  "message": "This is a smoke test internal notification from builtin skill provision."
+}

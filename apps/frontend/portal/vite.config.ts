@@ -24,7 +24,7 @@ const getProxyTarget = (
 const getCarboneProxyTarget = () => {
   const host =
     readEnv('CARBONE_ENGINE_HOST') ||
-    (process.env.DOCKER_ENV ? 'host.docker.internal' : 'localhost');
+    (process.env.DOCKER_ENV ? 'carbone-engine' : 'localhost');
   const port = readEnv('CARBONE_ENGINE_PORT', 'CARBONE_PORT') || '3009';
   return `http://${host}:${port}`;
 };
@@ -70,14 +70,15 @@ const resolveAppRootEntry = (): string => path.resolve(__dirname, '.');
 
 export default defineConfig({
   plugins: [react()],
+  assetsInclude: ['**/*.md'],
   optimizeDeps: {
     exclude: ['@ops/user-core', '@ops/backend-ai-chat-protocol', '@ops/backend-execution-core'],
     esbuildOptions: {
-      preserveSymlinks: true,
+      preserveSymlinks: false,
     },
   },
   resolve: {
-    preserveSymlinks: true,
+    preserveSymlinks: false,
     alias: {
       '@': path.resolve(__dirname, './src'),
       '@chat-web': resolveChatWebEntry(),
@@ -130,6 +131,16 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
       '/api/users': {
+        target: getProxyTarget('ops-platform', 3001, ['PLATFORM_HOST'], ['PLATFORM_PORT']),
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+      '/api/activities': {
+        target: getProxyTarget('ops-platform', 3001, ['PLATFORM_HOST'], ['PLATFORM_PORT']),
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+      '/api/temporal-workflows': {
         target: getProxyTarget('ops-platform', 3001, ['PLATFORM_HOST'], ['PLATFORM_PORT']),
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
@@ -236,6 +247,19 @@ export default defineConfig({
         target: getCarboneProxyTarget(),
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/carbone/, '/studio'),
+        configure: (proxy) => {
+          proxy.on('error', (err, _req, res) => {
+            if (res && !res.headersSent) {
+              res.writeHead(502, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'Carbone engine unavailable' }));
+            }
+          });
+        },
+      },
+      '/api/renders': {
+        target: getCarboneProxyTarget(),
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
       },
       '/api/flows': {
         target: getProxyTarget('ops-platform', 3001, ['PLATFORM_HOST'], ['PLATFORM_PORT']),

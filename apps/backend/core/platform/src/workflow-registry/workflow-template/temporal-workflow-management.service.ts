@@ -116,6 +116,10 @@ export class TemporalWorkflowManagementService {
             normalizedActivityDsl
           )
         : undefined;
+      const isCodeChanged =
+        data.generatedCode !== undefined &&
+        data.generatedCode !== existing.generatedCode;
+
       const updatePayload: Prisma.TemporalWorkflowUpdateInput = {
         ...(data.name !== undefined && {
           name: this.workflowNormalizationService.normalizeName(data.name),
@@ -136,12 +140,14 @@ export class TemporalWorkflowManagementService {
                 : null,
               artifactVersion:
                 this.workflowArtifactService.getCurrentArtifactVersion(existing) +
-                (data.generatedCode ? 1 : 0),
+                (isCodeChanged && data.generatedCode ? 1 : 0),
               generatedCode: data.generatedCode || null,
-              validatedAt: null,
-              validationResultJson: Prisma.JsonNull,
-              validationScore: 0,
-              validationStatus: data.generatedCode ? 'generated' : 'draft',
+              ...(isCodeChanged && {
+                validatedAt: null,
+                validationResultJson: Prisma.JsonNull,
+                validationScore: 0,
+                validationStatus: data.generatedCode ? 'generated' : 'draft',
+              }),
             }
           : {}),
       };

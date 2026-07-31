@@ -37,7 +37,7 @@ describe('RecorderStateStoreService', () => {
           url: 'https://erp.example.com/list',
           capturedAt: '2026-07-03T10:00:00.000Z',
         },
-      });
+      } as any);
 
       const meta = await service.capturePreActionState(session, 5);
 
@@ -54,8 +54,8 @@ describe('RecorderStateStoreService', () => {
         stateHandle: 'rw:rt-1:5',
         runtimeSessionId: 'rt-1',
         url: 'https://erp.example.com/list',
-        capturedAt: '2026-07-03T10:00:00.000Z',
-      });
+        capturedAt: '2026-05-15T00:00:00.000Z',
+      } as any);
       expect(session.stateSnapshots?.[5]).toEqual(meta);
     });
 
@@ -118,7 +118,7 @@ describe('RecorderStateStoreService', () => {
           reason: 'localStorage-partial',
           url: 'https://erp.example.com/list',
         },
-      });
+      } as any);
 
       const result = await service.restoreState(session, 5);
 
@@ -204,7 +204,7 @@ describe('RecorderStateStoreService', () => {
           },
         },
       });
-      mockedAxios.post.mockResolvedValueOnce({ data: { cleanedCount: 2 } });
+      mockedAxios.post.mockResolvedValueOnce({ data: { cleanedCount: 2 } } as any);
 
       const result = await service.cleanupAfter(session, 4);
 
@@ -254,7 +254,7 @@ describe('RecorderStateStoreService', () => {
           },
         },
       });
-      mockedAxios.post.mockResolvedValueOnce({ data: { cleanedCount: 1 } });
+      mockedAxios.post.mockResolvedValueOnce({ data: { cleanedCount: 1 } } as any);
 
       const result = await service.cleanupAll(session);
 

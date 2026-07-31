@@ -263,6 +263,14 @@ export class ExecutionService {
     return this.executionQueryService.getPhases(id, requester);
   }
 
+  async getPlan(id: string, requester?: RequestUserContext) {
+    return this.executionQueryService.getPlan(id, requester);
+  }
+
+  async getArtifacts(id: string, requester?: RequestUserContext) {
+    return this.executionQueryService.getArtifacts(id, requester);
+  }
+
   async updateWorkflowActivityProgress(
     executionId: string,
     dto: UpdateWorkflowActivityProgressDto,

@@ -158,7 +158,7 @@ export class BranchAnalysisService {
         }),
       ]);
     } catch (error) {
-      const axiosError = axios.isAxiosError(error) ? error : undefined;
+      const axiosError = (error as any)?.response ? (error as any) : undefined;
       // #region debug-point approvals-export-500:load-context-failed
       this.reportDebugEvent(
         'B',
