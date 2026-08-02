@@ -165,6 +165,12 @@ export interface CreateSkillDTO {
   apiEndpoints?: {
     runtimeMetadata?: SkillRuntimeMetadata;
   };
+  /**
+   * Authoritative output JSON Schema (§6.3 / §9.3). Set by the capability
+   * release pipeline at publish time; the control plane treats
+   * `skill_configs.output_schema` as the custom-skill output contract.
+   */
+  outputSchema?: Record<string, unknown>;
 }
 
 /**
@@ -191,6 +197,7 @@ export interface SkillConfigDto {
   publishedReleaseStatus?: string | null;
   publishedDeploymentStatus?: string | null;
   publishedSourceType?: string | null;
+  outputSchema?: Record<string, unknown>;
 }
 
 export type SkillAccessStatus = 'authorized' | 'requested' | 'unauthorized';

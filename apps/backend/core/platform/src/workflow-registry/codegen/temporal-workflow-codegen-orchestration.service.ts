@@ -39,7 +39,8 @@ export class TemporalWorkflowCodegenOrchestrationService {
   ): Promise<WorkflowCodegenResult> {
     const enrichedActivityDsl = await this.workflowSupportService.createEnrichedActivityDsl(
       workflowDsl,
-      activityDsl
+      activityDsl,
+      onProgress
     );
 
     if (typeof onProgress === 'function') {
@@ -67,7 +68,8 @@ export class TemporalWorkflowCodegenOrchestrationService {
   ): Promise<WorkflowCodegenResult> {
     const enrichedActivityDsl = await this.workflowSupportService.createEnrichedActivityDsl(
       workflowDsl,
-      activityDsl
+      activityDsl,
+      onLog
     );
 
     return this.codegenService.generateWorkflowCodeStreaming(

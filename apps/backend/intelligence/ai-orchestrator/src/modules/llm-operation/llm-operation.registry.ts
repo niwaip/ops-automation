@@ -1,3 +1,4 @@
+import { jsonSchemaValidator } from '@ops/backend-runtime-capability-contract';
 import type { LlmOperationIdV1 } from '@ops/backend-deterministic-plan';
 
 export interface LlmOperationTemplate {
@@ -8,11 +9,13 @@ export interface LlmOperationTemplate {
   temperature: number;
   maxInputTokens: number;
   maxOutputTokens: number;
+  inputSchema?: Record<string, unknown>;
+  outputSchema?: Record<string, unknown>;
   buildPrompt: (input: Record<string, any>) => { systemPrompt: string; userPrompt: string };
   parseAndValidateOutput: (rawText: string) => Record<string, any>;
 }
 
-export const LLM_OPERATION_TEMPLATES: Record<LlmOperationIdV1, LlmOperationTemplate> = {
+export const LLM_OPERATION_TEMPLATES: { [K in LlmOperationIdV1]: LlmOperationTemplate } = {
   summarize_list: {
     operationId: 'summarize_list',
     promptTemplateId: 'news-summary',
@@ -21,6 +24,20 @@ export const LLM_OPERATION_TEMPLATES: Record<LlmOperationIdV1, LlmOperationTempl
     temperature: 0,
     maxInputTokens: 4000,
     maxOutputTokens: 2000,
+    inputSchema: {
+      type: 'object',
+      required: ['items'],
+      properties: {
+        items: { type: 'array' },
+      },
+    },
+    outputSchema: {
+      type: 'object',
+      required: ['markdown_content'],
+      properties: {
+        markdown_content: { type: 'string' },
+      },
+    },
     buildPrompt: (input: Record<string, any>) => {
       const items = Array.isArray(input.items) ? input.items : [input.items || ''];
       const textBlock = items.map((item: any, idx: number) => {
@@ -45,7 +62,12 @@ export const LLM_OPERATION_TEMPLATES: Record<LlmOperationIdV1, LlmOperationTempl
       if (!markdownContent) {
         throw new Error("Missing mandatory 'markdown_content' field in LLM operation output JSON");
       }
-      return { markdown_content: String(markdownContent) };
+      const res = { markdown_content: String(markdownContent) };
+      const val = jsonSchemaValidator.validate(res, LLM_OPERATION_TEMPLATES.summarize_list.outputSchema!);
+      if (!val.valid) {
+        throw new Error(`OUTPUT_SCHEMA_VIOLATION: ${val.errors?.map(e => e.message).join(', ')}`);
+      }
+      return res;
     },
   },
 
@@ -57,6 +79,20 @@ export const LLM_OPERATION_TEMPLATES: Record<LlmOperationIdV1, LlmOperationTempl
     temperature: 0,
     maxInputTokens: 4000,
     maxOutputTokens: 2000,
+    inputSchema: {
+      type: 'object',
+      required: ['content'],
+      properties: {
+        content: { type: 'string' },
+      },
+    },
+    outputSchema: {
+      type: 'object',
+      required: ['markdown_content'],
+      properties: {
+        markdown_content: { type: 'string' },
+      },
+    },
     buildPrompt: (input: Record<string, any>) => {
       const content = typeof input.content === 'string' ? input.content : JSON.stringify(input.content || '');
       return {
@@ -71,7 +107,12 @@ export const LLM_OPERATION_TEMPLATES: Record<LlmOperationIdV1, LlmOperationTempl
       if (!markdownContent) {
         throw new Error("Missing mandatory 'markdown_content' field in LLM operation output JSON");
       }
-      return { markdown_content: String(markdownContent) };
+      const res = { markdown_content: String(markdownContent) };
+      const val = jsonSchemaValidator.validate(res, LLM_OPERATION_TEMPLATES.rewrite_to_markdown.outputSchema!);
+      if (!val.valid) {
+        throw new Error(`OUTPUT_SCHEMA_VIOLATION: ${val.errors?.map(e => e.message).join(', ')}`);
+      }
+      return res;
     },
   },
 
@@ -83,6 +124,20 @@ export const LLM_OPERATION_TEMPLATES: Record<LlmOperationIdV1, LlmOperationTempl
     temperature: 0,
     maxInputTokens: 4000,
     maxOutputTokens: 1000,
+    inputSchema: {
+      type: 'object',
+      required: ['text'],
+      properties: {
+        text: { type: 'string' },
+      },
+    },
+    outputSchema: {
+      type: 'object',
+      required: ['summary'],
+      properties: {
+        summary: { type: 'string' },
+      },
+    },
     buildPrompt: (input: Record<string, any>) => {
       const text = String(input.text || '');
       return {
@@ -95,7 +150,12 @@ export const LLM_OPERATION_TEMPLATES: Record<LlmOperationIdV1, LlmOperationTempl
       if (!json.summary) {
         throw new Error("Missing mandatory 'summary' field in LLM operation output JSON");
       }
-      return { summary: String(json.summary) };
+      const res = { summary: String(json.summary) };
+      const val = jsonSchemaValidator.validate(res, LLM_OPERATION_TEMPLATES.summarize_text.outputSchema!);
+      if (!val.valid) {
+        throw new Error(`OUTPUT_SCHEMA_VIOLATION: ${val.errors?.map(e => e.message).join(', ')}`);
+      }
+      return res;
     },
   },
 
@@ -107,6 +167,20 @@ export const LLM_OPERATION_TEMPLATES: Record<LlmOperationIdV1, LlmOperationTempl
     temperature: 0,
     maxInputTokens: 4000,
     maxOutputTokens: 1500,
+    inputSchema: {
+      type: 'object',
+      required: ['text'],
+      properties: {
+        text: { type: 'string' },
+      },
+    },
+    outputSchema: {
+      type: 'object',
+      required: ['fields'],
+      properties: {
+        fields: { type: 'object' },
+      },
+    },
     buildPrompt: (input: Record<string, any>) => {
       const text = String(input.text || '');
       return {
@@ -119,7 +193,12 @@ export const LLM_OPERATION_TEMPLATES: Record<LlmOperationIdV1, LlmOperationTempl
       if (!json.fields) {
         throw new Error("Missing mandatory 'fields' field in LLM operation output JSON");
       }
-      return { fields: json.fields };
+      const res = { fields: json.fields };
+      const val = jsonSchemaValidator.validate(res, LLM_OPERATION_TEMPLATES.extract_structured_fields.outputSchema!);
+      if (!val.valid) {
+        throw new Error(`OUTPUT_SCHEMA_VIOLATION: ${val.errors?.map(e => e.message).join(', ')}`);
+      }
+      return res;
     },
   },
 
@@ -131,6 +210,21 @@ export const LLM_OPERATION_TEMPLATES: Record<LlmOperationIdV1, LlmOperationTempl
     temperature: 0,
     maxInputTokens: 2000,
     maxOutputTokens: 500,
+    inputSchema: {
+      type: 'object',
+      required: ['text'],
+      properties: {
+        text: { type: 'string' },
+      },
+    },
+    outputSchema: {
+      type: 'object',
+      required: ['label'],
+      properties: {
+        label: { type: 'string' },
+        confidence: { type: 'number' },
+      },
+    },
     buildPrompt: (input: Record<string, any>) => {
       const text = String(input.text || '');
       return {
@@ -143,7 +237,12 @@ export const LLM_OPERATION_TEMPLATES: Record<LlmOperationIdV1, LlmOperationTempl
       if (!json.label) {
         throw new Error("Missing mandatory 'label' field in LLM operation output JSON");
       }
-      return { label: String(json.label), confidence: Number(json.confidence || 1.0) };
+      const res = { label: String(json.label), confidence: Number(json.confidence || 1.0) };
+      const val = jsonSchemaValidator.validate(res, LLM_OPERATION_TEMPLATES.classify_intent_label.outputSchema!);
+      if (!val.valid) {
+        throw new Error(`OUTPUT_SCHEMA_VIOLATION: ${val.errors?.map(e => e.message).join(', ')}`);
+      }
+      return res;
     },
   },
 
@@ -155,6 +254,20 @@ export const LLM_OPERATION_TEMPLATES: Record<LlmOperationIdV1, LlmOperationTempl
     temperature: 0,
     maxInputTokens: 4000,
     maxOutputTokens: 2000,
+    inputSchema: {
+      type: 'object',
+      required: ['sources'],
+      properties: {
+        sources: { type: 'array' },
+      },
+    },
+    outputSchema: {
+      type: 'object',
+      required: ['markdown_content'],
+      properties: {
+        markdown_content: { type: 'string' },
+      },
+    },
     buildPrompt: (input: Record<string, any>) => {
       const sources = Array.isArray(input.sources) ? input.sources : [input.sources || ''];
       return {
@@ -168,7 +281,12 @@ export const LLM_OPERATION_TEMPLATES: Record<LlmOperationIdV1, LlmOperationTempl
       if (!markdownContent) {
         throw new Error("Missing mandatory 'markdown_content' field in LLM operation output JSON");
       }
-      return { markdown_content: String(markdownContent) };
+      const res = { markdown_content: String(markdownContent) };
+      const val = jsonSchemaValidator.validate(res, LLM_OPERATION_TEMPLATES.merge_multi_source_notes.outputSchema!);
+      if (!val.valid) {
+        throw new Error(`OUTPUT_SCHEMA_VIOLATION: ${val.errors?.map(e => e.message).join(', ')}`);
+      }
+      return res;
     },
   },
 };

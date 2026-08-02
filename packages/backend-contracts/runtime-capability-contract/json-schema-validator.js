@@ -1,0 +1,125 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.jsonSchemaValidator = void 0;
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+let AjvConstructor;
+try {
+    // Try loading Ajv 2020 draft constructor (v8+)
+    AjvConstructor = require('ajv/dist/2020');
+}
+catch {
+    // Fallback to standard Ajv constructor
+    AjvConstructor = require('ajv');
+}
+class JsonSchemaValidatorService {
+    constructor() {
+        this.inputValidatorsCache = new Map();
+        this.outputValidatorsCache = new Map();
+        // Input validator allows applying default values (useDefaults: true)
+        this.inputAjv = new AjvConstructor({
+            allErrors: true,
+            useDefaults: true,
+            coerceTypes: false,
+            strict: false,
+        });
+        // Output validator is STRICT and PURE: ZERO default mutations (useDefaults: false)
+        this.outputAjv = new AjvConstructor({
+            allErrors: true,
+            useDefaults: false,
+            coerceTypes: false,
+            strict: false,
+        });
+    }
+    /**
+     * Validate arbitrary target output data strictly without side effects / default value mutations.
+     */
+    validateOutput(data, schema) {
+        return this.executeValidation(data, schema, this.outputAjv, this.outputValidatorsCache);
+    }
+    /**
+     * Validate input data, allowing input default value population (useDefaults: true).
+     */
+    validateInput(data, schema) {
+        return this.executeValidation(data, schema, this.inputAjv, this.inputValidatorsCache);
+    }
+    /**
+     * Default validation entry point (defaults to strict output validation without side effects).
+     */
+    validate(data, schema) {
+        return this.validateOutput(data, schema);
+    }
+    executeValidation(data, schema, ajvInstance, cacheMap) {
+        if (!schema || Object.keys(schema).length === 0) {
+            return { valid: true };
+        }
+        try {
+            const cacheKey = JSON.stringify(schema);
+            let validateFn = cacheMap.get(cacheKey);
+            if (!validateFn) {
+                // Strip or resolve $schema if it contains unhandled meta-schema URIs
+                const cleanSchema = { ...schema };
+                if (typeof cleanSchema['$schema'] === 'string' && cleanSchema['$schema'].includes('2020-12')) {
+                    delete cleanSchema['$schema'];
+                }
+                validateFn = ajvInstance.compile(cleanSchema);
+                cacheMap.set(cacheKey, validateFn);
+            }
+            const valid = Boolean(validateFn(data));
+            if (valid) {
+                return { valid: true };
+            }
+            const rawErrors = validateFn.errors || [];
+            const errors = rawErrors.map((err) => ({
+                path: err.instancePath || err.dataPath || '/',
+                message: err.message || 'Schema validation error',
+                keyword: err.keyword,
+                params: err.params,
+            }));
+            return {
+                valid: false,
+                errors,
+            };
+        }
+        catch (err) {
+            return {
+                valid: false,
+                errors: [
+                    {
+                        path: '/',
+                        message: `JSON Schema compilation or validation threw error: ${err.message}`,
+                        keyword: 'compilation',
+                    },
+                ],
+            };
+        }
+    }
+    /**
+     * Extract data from a runtime result envelope using a simplified JSON path (e.g. '$.result.businessData', '$.data', '$.result').
+     */
+    extractDataByPath(envelope, dataPath) {
+        if (!dataPath || dataPath === '$' || dataPath === '$.') {
+            return envelope;
+        }
+        if (envelope === null || typeof envelope !== 'object') {
+            return envelope;
+        }
+        const normalizedPath = dataPath.startsWith('$.')
+            ? dataPath.slice(2)
+            : dataPath.startsWith('$')
+                ? dataPath.slice(1)
+                : dataPath;
+        if (!normalizedPath)
+            return envelope;
+        const segments = normalizedPath.split('.').filter(Boolean);
+        let current = envelope;
+        for (const segment of segments) {
+            if (current === null || typeof current !== 'object') {
+                return undefined;
+            }
+            current = current[segment];
+        }
+        return current;
+    }
+}
+exports.jsonSchemaValidator = new JsonSchemaValidatorService();
+//# sourceMappingURL=json-schema-validator.js.map

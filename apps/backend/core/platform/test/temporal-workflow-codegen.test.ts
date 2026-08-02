@@ -2,6 +2,7 @@ import axios from 'axios';
 import { TemporalWorkflowActivityResolutionService } from '../src/modules/temporal-workflow/temporal-workflow-activity-resolution.service';
 import { TemporalWorkflowBrowserDraftService } from '../src/modules/temporal-workflow/browser-bridge/temporal-workflow-browser-draft.service';
 import { TemporalWorkflowCodegenService } from '../src/modules/temporal-workflow/temporal-workflow-codegen.service';
+import { ActivityCodegenService } from '../src/modules/temporal-workflow/temporal-activity-codegen.service';
 import { TemporalWorkflowService } from '../src/modules/temporal-workflow/temporal-workflow.service';
 import { TemporalWorkflowArtifactService } from '../src/workflow-registry/workflow-template/temporal-workflow-artifact.service';
 import { TemporalWorkflowConfigOrchestrationService } from '../src/workflow-registry/workflow-template/temporal-workflow-config-orchestration.service';
@@ -96,12 +97,14 @@ describe('TemporalWorkflowCodegenService', () => {
       workflowNormalizationService,
       workflowArtifactService
     );
+    const activityCodegenService = new ActivityCodegenService();
     const workflowSupportService = new TemporalWorkflowSupportService(
       builtinRegistry,
       aiDraftService,
       activityResolutionService,
       workflowConfigService,
-      workflowNormalizationService
+      workflowNormalizationService,
+      activityCodegenService
     );
     const workflowDraftOrchestrationService = new TemporalWorkflowDraftOrchestrationService(
       aiDraftService,
@@ -157,6 +160,7 @@ describe('TemporalWorkflowCodegenService', () => {
       workflowTemplateService,
       workflowArtifactService,
       workflowSupportService,
+      activityCodegenService,
     };
   };
 
@@ -709,6 +713,438 @@ describe('TemporalWorkflowCodegenService', () => {
     expect(result.code).toContain('"textTemplate": str(config.get("textTemplate", "") or "")');
   });
 
+  it('generates compiler-sealed Result Builder from v2Output identity fields (single step)', async () => {
+    const { service } = createService();
+
+    const result = await service.generateWorkflowCode(
+      {
+        name: '天气查询工作流',
+        workflowClassName: 'WeatherWorkflow',
+        workflowDefnName: '天气查询工作流',
+        taskQueue: 'SKILL_TASK_QUEUE',
+        inputParams: {
+          city: {
+            required: true,
+            description: '城市名',
+          },
+        },
+        steps: [
+          {
+            id: 'step_1',
+            name: '查询天气接口',
+            type: 'activity',
+            activityRef: 'builtin:httpRequest',
+            activityName: 'httpRequest',
+            startToCloseTimeout: '45s',
+            input: {
+              __httpRequest: {
+                method: 'GET',
+                urlTemplate: 'https://api.weather.example.com/current',
+                queryTemplate: {
+                  city: '{city}',
+                },
+                responseMode: 'body',
+                timeout: 20,
+              },
+            },
+          },
+        ],
+        v2Output: {
+          fields: {
+            temp: {
+              type: 'number',
+              required: true,
+              source: { step: 'step_1', path: '$.temperature' },
+            },
+          },
+        },
+      },
+      {
+        activities: [],
+      }
+    );
+
+    expect(result.success).toBe(true);
+    // v2 Result Builder: per-field extraction from the declared source step + JSON path
+    expect(result.code).toContain(
+      'def _build_workflow_result(cls, step_results: Dict[str, Any]) -> Dict[str, Any]:'
+    );
+    expect(result.code).toContain(
+      '"temp": cls._extract_v2_path(step_results.get("step_1"), "$.temperature"),'
+    );
+    expect(result.code).toContain(
+      'cls._assert_required_path(step_results.get("step_1"), "$.temperature", "temp")'
+    );
+    expect(result.code).toContain('"businessData": business_data,');
+    expect(result.code).not.toContain('"businessData": raw_result,');
+    // call site passes the step result dict instead of the raw passthrough
+    expect(result.code).toContain(
+      'return self._build_workflow_result({\n            "step_1": normalized_result,\n        })'
+    );
+    // legacy envelope raw_result unwrap is gone
+    expect(result.code).not.toContain('business_data = raw_result');
+  });
+
+  it('applies length expression in compiler-sealed Result Builder', async () => {
+    const { service } = createService();
+
+    const result = await service.generateWorkflowCode(
+      {
+        name: '搜索统计工作流',
+        workflowClassName: 'SearchStatsWorkflow',
+        workflowDefnName: '搜索统计工作流',
+        taskQueue: 'SKILL_TASK_QUEUE',
+        steps: [
+          {
+            id: 'step_search',
+            name: '执行搜索',
+            type: 'activity',
+            activityRef: 'builtin:httpRequest',
+            activityName: 'httpRequest',
+            input: {
+              __httpRequest: {
+                method: 'GET',
+                urlTemplate: 'https://api.example.com/search',
+                responseMode: 'body',
+              },
+            },
+          },
+        ],
+        v2Output: {
+          fields: {
+            totalResults: {
+              type: 'integer',
+              required: true,
+              source: {
+                expression: {
+                  kind: 'length',
+                  source: { step: 'step_search', path: '$.results' },
+                },
+              },
+            },
+          },
+        },
+      },
+      {
+        activities: [],
+      }
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.code).toContain(
+      '"totalResults": len(cls._extract_v2_path(step_results.get("step_search"), "$.results") or []),'
+    );
+    expect(result.code).toContain(
+      'cls._assert_required_path(step_results.get("step_search"), "$.results", "totalResults")'
+    );
+    // expression.source takes precedence over field.source
+    expect(result.code).toContain('"step_search": normalized_result,');
+  });
+
+  it('generates runtime pre-execution assertions for required v2Output fields (§8.3)', async () => {
+    const { service } = createService();
+
+    const result = await service.generateWorkflowCode(
+      {
+        name: '字段守护工作流',
+        workflowClassName: 'FieldGuardWorkflow',
+        workflowDefnName: '字段守护工作流',
+        taskQueue: 'SKILL_TASK_QUEUE',
+        steps: [
+          {
+            id: 'step_1',
+            name: '读取文件',
+            type: 'activity',
+            activityRef: 'builtin:fileRead',
+            activityName: 'fileRead',
+            input: {
+              __fileRead: {
+                path: '/tmp/a.txt',
+              },
+            },
+          },
+        ],
+        v2Output: {
+          fields: {
+            content: {
+              type: 'string',
+              required: true,
+              source: { step: 'step_1', path: '$.content' },
+            },
+          },
+        },
+      },
+      {
+        activities: [],
+      }
+    );
+
+    expect(result.success).toBe(true);
+    // 运行前断言：必填路径缺失 → ApplicationError（非重试），仍由编译器生成
+    expect(result.code).toContain(
+      'raise ApplicationError(f"缺少必填输出字段 \'{field_name}\'（路径 {path}）", non_retryable=True)'
+    );
+    expect(result.code).toContain(
+      'cls._assert_required_path(step_results.get("step_1"), "$.content", "content")'
+    );
+  });
+
+  it('fails closed at compile time on unresolvable v2Output fields (unknown source step §8.2 rule 3)', async () => {
+    const { service } = createService();
+
+    const result = await service.generateWorkflowCode(
+      {
+        name: '字段守护工作流',
+        workflowClassName: 'FieldGuardWorkflow',
+        workflowDefnName: '字段守护工作流',
+        taskQueue: 'SKILL_TASK_QUEUE',
+        steps: [
+          {
+            id: 'step_1',
+            name: '读取文件',
+            type: 'activity',
+            activityRef: 'builtin:fileRead',
+            activityName: 'fileRead',
+            input: {
+              __fileRead: {
+                path: '/tmp/a.txt',
+              },
+            },
+          },
+        ],
+        v2Output: {
+          fields: {
+            content: {
+              type: 'string',
+              required: true,
+              source: { step: 'step_1', path: '$.content' },
+            },
+            mystery: {
+              type: 'string',
+              source: { step: 'step_404', path: '$.x' },
+            },
+          },
+        },
+      },
+      {
+        activities: [],
+      }
+    );
+
+    // 未知 source step → 编译失败，不产出任何代码（无运行时 _missing_output_field 兜底）
+    expect(result.success).toBe(false);
+    expect(result.code).toBeUndefined();
+    expect(result.error).toContain('mystery');
+    expect(result.error).toContain('step_404');
+  });
+
+  it('compiles string_format expressions as str(extract) (§8.1)', async () => {
+    const { service } = createService();
+
+    const result = await service.generateWorkflowCode(
+      {
+        name: '字符串格式化工作流',
+        workflowClassName: 'StringFormatWorkflow',
+        workflowDefnName: '字符串格式化工作流',
+        taskQueue: 'SKILL_TASK_QUEUE',
+        steps: [
+          {
+            id: 'step_1',
+            name: '读取文件',
+            type: 'activity',
+            activityRef: 'builtin:fileRead',
+            activityName: 'fileRead',
+            input: {
+              __fileRead: {
+                path: '/tmp/a.txt',
+              },
+            },
+          },
+        ],
+        v2Output: {
+          fields: {
+            rawText: {
+              type: 'string',
+              source: {
+                expression: { kind: 'string_format', source: { step: 'step_1', path: '$.content' } },
+              },
+            },
+          },
+        },
+      },
+      {
+        activities: [],
+      }
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.code).toContain(
+      '"rawText": str(cls._extract_v2_path(step_results.get("step_1"), "$.content")),'
+    );
+  });
+
+  describe('normalizeV2Output (§8.2 — expression.source precedence + schemaRef)', () => {
+    const dsl = (fields: Record<string, any>) => ({
+      name: '表达式来源工作流',
+      taskQueue: 'SKILL_TASK_QUEUE',
+      steps: [
+        {
+          id: 'step_1',
+          name: '读取文件',
+          type: 'activity' as const,
+          activityRef: 'builtin:fileRead',
+          activityName: 'fileRead',
+          input: { __fileRead: { path: '/tmp/a.txt' } },
+        },
+      ],
+      v2Output: { fields },
+    });
+
+    it('accepts expression-only source and normalizes its path', async () => {
+      const { workflowNormalizationService } = createService();
+      const result = await workflowNormalizationService.normalizeWorkflowDsl(
+        dsl({
+          count: {
+            type: 'integer',
+            required: true,
+            source: {
+              expression: { kind: 'length', source: { step: 'step_1', path: 'results' } },
+            },
+          },
+        })
+      );
+      expect(result.v2Output?.fields?.count).toMatchObject({
+        source: {
+          expression: { kind: 'length', source: { step: 'step_1', path: '$.results' } },
+        },
+      });
+    });
+
+    it('rejects expression-only source with unknown step (§8.2 rule 3)', async () => {
+      const { workflowNormalizationService } = createService();
+      await expect(
+        workflowNormalizationService.normalizeWorkflowDsl(
+          dsl({
+            count: {
+              type: 'integer',
+              source: { expression: { kind: 'length', source: { step: 'step_404', path: '$.x' } } },
+            },
+          })
+        )
+      ).rejects.toMatchObject({
+        response: expect.objectContaining({ message: expect.stringContaining('step_404') }),
+      });
+    });
+
+    it('rejects non-string schemaRef', async () => {
+      const { workflowNormalizationService } = createService();
+      await expect(
+        workflowNormalizationService.normalizeWorkflowDsl({
+          ...dsl({
+            count: { type: 'integer', source: { step: 'step_1', path: '$.x' } },
+          }),
+          v2Output: {
+            schemaRef: 42 as unknown as string, // 运行时防御：类型不允许但非法数据可能来自外部
+            fields: { count: { type: 'integer', source: { step: 'step_1', path: '$.x' } } },
+          },
+        })
+      ).rejects.toMatchObject({
+        response: expect.objectContaining({ message: expect.stringContaining('schemaRef') }),
+      });
+    });
+  });
+
+  it('extracts v2Output fields from multiple source steps (http -> transform pipeline)', async () => {
+    const { service } = createService();
+
+    const result = await service.generateWorkflowCode(
+      {
+        name: '天气结构化工作流',
+        workflowClassName: 'WeatherStructuredWorkflow',
+        workflowDefnName: '天气结构化工作流',
+        taskQueue: 'SKILL_TASK_QUEUE',
+        inputParams: {
+          city: {
+            required: true,
+            description: '城市名',
+          },
+        },
+        steps: [
+          {
+            id: 'step_http',
+            name: '查询天气接口',
+            type: 'activity',
+            activityRef: 'builtin:httpRequest',
+            activityName: 'httpRequest',
+            startToCloseTimeout: '45s',
+            input: {
+              __httpRequest: {
+                method: 'GET',
+                urlTemplate: 'https://wttr.in/{city}',
+                queryTemplate: {
+                  format: 'j1',
+                },
+                responseMode: 'bodyMap',
+                responseFieldMappings: {
+                  weatherText: 'current_condition.0.lang_zh.0.value',
+                  temperatureC: 'current_condition.0.temp_C',
+                },
+              },
+            },
+          },
+          {
+            id: 'step_transform',
+            name: '整理天气结果',
+            type: 'activity',
+            activityRef: 'builtin:structuredTransform',
+            activityName: 'structuredTransform',
+            startToCloseTimeout: '90s',
+            input: {
+              __structuredTransform: {
+                contentType: 'json',
+                instructionTemplate: '把天气结果整理为最终 JSON，保留 weatherText 和 temperatureC',
+                outputMode: 'json',
+                outputSchema: {
+                  weatherText: 'string',
+                  temperatureC: 'string',
+                },
+              },
+            },
+          },
+        ],
+        v2Output: {
+          fields: {
+            weatherText: {
+              type: 'string',
+              required: true,
+              source: { step: 'step_transform', path: '$.weatherText' },
+            },
+            rawTemperature: {
+              type: 'string',
+              source: { step: 'step_http', path: '$.temperatureC' },
+            },
+          },
+        },
+      },
+      {
+        activities: [],
+      }
+    );
+
+    expect(result.success).toBe(true);
+    // 两个源步骤都被提取到同一 business_data
+    expect(result.code).toContain(
+      '"weatherText": cls._extract_v2_path(step_results.get("step_transform"), "$.weatherText"),'
+    );
+    expect(result.code).toContain(
+      '"rawTemperature": cls._extract_v2_path(step_results.get("step_http"), "$.temperatureC"),'
+    );
+    // 调用点把两个步骤的结果变量一并传入 Result Builder
+    expect(result.code).toContain(
+      'return self._build_workflow_result({\n            "step_http": http_result,\n            "step_transform": normalized_result,\n        })'
+    );
+  });
+
   it('streams progress logs for deterministic workflow code generation', async () => {
     const { service } = createService();
     const logs: string[] = [];
@@ -1080,5 +1516,560 @@ class AiWorkflow:
     expect(result.generationMode).toBe('deterministic');
     expect(result.code).toContain('BUILTIN_CONFIG');
     expect(result.code).toContain('workflow.sleep(timedelta(seconds=duration_seconds))');
+  });
+
+  it('generates universal linear workflow code for 3-step HTTP → Transform → DocumentRender chain', async () => {
+    const { service } = createService();
+
+    const result = await service.generateWorkflowCode(
+      {
+        name: '多步文档工作流',
+        workflowClassName: 'MultiStepDocWorkflow',
+        workflowDefnName: '多步文档工作流',
+        taskQueue: 'SKILL_TASK_QUEUE',
+        inputParams: {
+          city: { required: true, description: '城市名' },
+          fileName: { required: true, description: '文件名' },
+        },
+        steps: [
+          {
+            id: 'step_1',
+            name: '查询天气接口',
+            type: 'activity',
+            activityRef: 'builtin:httpRequest',
+            activityName: 'httpRequest',
+            startToCloseTimeout: '45s',
+            input: {
+              __httpRequest: {
+                method: 'GET',
+                urlTemplate: 'https://wttr.in/{city}',
+                queryTemplate: { format: 'j1' },
+                responseMode: 'body',
+              },
+            },
+          },
+          {
+            id: 'step_2',
+            name: '整理天气结果',
+            type: 'activity',
+            activityRef: 'builtin:structuredTransform',
+            activityName: 'structuredTransform',
+            startToCloseTimeout: '90s',
+            input: {
+              __structuredTransform: {
+                contentType: 'json',
+                instructionTemplate: '把天气结果整理为最终 JSON，保留温度和天气文本',
+                outputMode: 'json',
+                outputSchema: { weatherText: 'string', temperatureC: 'string' },
+              },
+            },
+          },
+          {
+            id: 'step_3',
+            name: '渲染文档',
+            type: 'activity',
+            activityRef: 'builtin:documentRender',
+            activityName: 'documentRender',
+            startToCloseTimeout: '120s',
+            input: {
+              templateId: 'weather-report',
+              data: { weather: '{{step_2}}' },
+            },
+          },
+        ],
+      },
+      {
+        activities: [],
+      }
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.generationMode).toBe('deterministic');
+    // universal builder markers: per-step kind dispatch + runtime input resolver
+    expect(result.code).toContain('STEP_KINDS = ["http","transform","generic"]');
+    expect(result.code).toContain('STEP_CONFIGS = [');
+    expect(result.code).toContain('_resolve_step_input');
+    // all 3 activity blocks inlined (httpRequest / structuredTransform / documentRender)
+    expect(result.code).toContain('async def httpRequest(');
+    expect(result.code).toContain('async def structuredTransform(');
+    expect(result.code).toContain('async def documentRender(');
+    // sequential execution with per-step variables
+    expect(result.code).toContain('raw_result_0 = await workflow.execute_activity(');
+    expect(result.code).toContain('raw_result_1 = await workflow.execute_activity(');
+    expect(result.code).toContain('raw_result_2 = await workflow.execute_activity(');
+    expect(result.code).toContain('step_results["step_1"] = step_result_0');
+    expect(result.code).toContain('step_results["step_3"] = step_result_2');
+    // step result normalization (http body + transform inner result)
+    expect(result.code).toContain('_normalize_step_result');
+    expect(result.code).toContain('return raw_result.get("result") if isinstance(raw_result, dict) and "result" in raw_result else raw_result');
+    // result builder return
+    expect(result.code).toContain('return self._build_workflow_result(step_results)');
+  });
+
+  it('generates universal linear workflow code for 2-step heterogeneous fileRead → emailSend chain', async () => {
+    const { service } = createService();
+
+    const result = await service.generateWorkflowCode(
+      {
+        name: '文件通知工作流',
+        workflowClassName: 'FileNotifyWorkflow',
+        workflowDefnName: '文件通知工作流',
+        taskQueue: 'SKILL_TASK_QUEUE',
+        inputParams: {
+          filePath: { required: true, description: '文件路径' },
+          toEmail: { required: true, description: '收件人' },
+        },
+        steps: [
+          {
+            id: 'step_1',
+            name: '读取文件',
+            type: 'activity',
+            activityRef: 'builtin:fileRead',
+            activityName: 'fileRead',
+            startToCloseTimeout: '60s',
+            input: {
+              __fileRead: {
+                protocol: 'local',
+                path: '{filePath}',
+                encoding: 'utf-8',
+                returnMode: 'text',
+              },
+            },
+          },
+          {
+            id: 'step_2',
+            name: '发送邮件',
+            type: 'activity',
+            activityRef: 'builtin:emailSend',
+            activityName: 'emailSend',
+            startToCloseTimeout: '60s',
+            input: {
+              __emailSend: {
+                to: '{toEmail}',
+                subject: '文件内容通知',
+                content: '{{step_1.content}}',
+              },
+            },
+          },
+        ],
+      },
+      {
+        activities: [],
+      }
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.generationMode).toBe('deterministic');
+    expect(result.code).toContain('STEP_KINDS = ["generic","generic"]');
+    expect(result.code).toContain('async def fileRead(');
+    expect(result.code).toContain('async def emailSend(');
+    expect(result.code).toContain('raw_result_0 = await workflow.execute_activity(');
+    expect(result.code).toContain('raw_result_1 = await workflow.execute_activity(');
+    // cross-step template ref kept in compiled config, resolved at runtime
+    expect(result.code).toContain('"content": "{{step_1.content}}"');
+    expect(result.code).toContain('"path": "{filePath}"');
+    expect(result.code).toContain('return self._build_workflow_result(step_results)');
+  });
+
+  it('fills generatedCode via per-activity AI codegen during enrichment', async () => {
+    const { workflowSupportService, activityCodegenService } = createService();
+    jest
+      .spyOn(activityCodegenService, 'generateCode')
+      .mockResolvedValue({ success: true, code: 'async def searchKeyword(input_data):\n    return {"result": "ok"}\n' } as any);
+
+    const workflowDsl = {
+      name: '自定义搜索工作流',
+      workflowClassName: 'CustomSearchWorkflow',
+      workflowDefnName: '自定义搜索工作流',
+      taskQueue: 'SKILL_TASK_QUEUE',
+      inputParams: { keyword: { required: true, description: '关键词' } },
+      steps: [
+        {
+          id: 'step_1',
+          name: '搜索关键词',
+          type: 'activity',
+          activityName: '搜索关键词',
+          startToCloseTimeout: '60s',
+        },
+      ],
+    };
+    const activityDsl = {
+      activities: [
+        {
+          name: '搜索关键词',
+          fn: 'searchKeyword',
+          timeout: '60s',
+          handler: 'api',
+          config: { searchUrl: '{keyword}' },
+        },
+      ],
+    };
+
+    const enriched = await workflowSupportService.createEnrichedActivityDsl(
+      workflowDsl as any,
+      activityDsl as any
+    );
+
+    expect(activityCodegenService.generateCode).toHaveBeenCalledTimes(1);
+    expect(activityCodegenService.generateCode).toHaveBeenCalledWith(
+      expect.objectContaining({ name: '搜索关键词', fn: 'searchKeyword', handler: 'api' })
+    );
+    expect(enriched.activities[0].generatedCode).toContain('async def searchKeyword');
+  });
+
+  it('keeps generatedCode undefined when per-activity AI codegen fails, so deterministic builder falls back to null', async () => {
+    const { workflowSupportService, activityCodegenService, builtinRegistry, workflowConfigService, workflowNormalizationService } =
+      createService();
+    jest
+      .spyOn(activityCodegenService, 'generateCode')
+      .mockResolvedValue({ success: false, error: 'AI 服务不可用' } as any);
+
+    const workflowDsl = {
+      name: '自定义两步工作流',
+      workflowClassName: 'CustomTwoStepWorkflow',
+      workflowDefnName: '自定义两步工作流',
+      taskQueue: 'SKILL_TASK_QUEUE',
+      inputParams: { keyword: { required: true, description: '关键词' } },
+      steps: [
+        {
+          id: 'step_1',
+          name: '搜索关键词',
+          type: 'activity',
+          activityName: '搜索关键词',
+          startToCloseTimeout: '60s',
+        },
+        {
+          id: 'step_2',
+          name: '生成摘要',
+          type: 'activity',
+          activityName: '生成摘要',
+          startToCloseTimeout: '60s',
+        },
+      ],
+    };
+    const activityDsl = {
+      activities: [
+        {
+          name: '搜索关键词',
+          fn: 'searchKeyword',
+          timeout: '60s',
+          handler: 'api',
+          config: { searchUrl: '{keyword}' },
+        },
+        {
+          name: '生成摘要',
+          fn: 'summarizeResult',
+          timeout: '60s',
+          handler: 'api',
+          config: {},
+        },
+      ],
+    };
+
+    const enriched = await workflowSupportService.createEnrichedActivityDsl(
+      workflowDsl as any,
+      activityDsl as any
+    );
+    expect(enriched.activities[0].generatedCode).toBeUndefined();
+
+    const code = buildDeterministicWorkflowCodeForWorkflow(workflowDsl as any, enriched as any, {
+      builtinActivityRegistry: builtinRegistry,
+      workflowConfigService,
+      workflowNormalizationService,
+    });
+    expect(code).toBeNull();
+  });
+
+  it('builds a simplified glue-only prompt when all activity code is already generated', () => {
+    const { codegenService } = createService();
+    const workflowDsl = {
+      name: '胶水工作流',
+      workflowClassName: 'GlueWorkflow',
+      workflowDefnName: '胶水工作流',
+      taskQueue: 'SKILL_TASK_QUEUE',
+      steps: [{ id: 'step_1', name: '步骤一', type: 'activity', activityName: '活动一' }],
+    };
+    const activityDsl = {
+      activities: [
+        {
+          name: '活动一',
+          fn: 'customActivity',
+          timeout: '60s',
+          generatedCode: 'async def customActivity(input_data):\n    return {"result": "ok"}\n',
+        },
+      ],
+    };
+
+    const promptGlue = (codegenService as any).buildWorkflowCodePrompt(
+      workflowDsl,
+      activityDsl,
+      undefined,
+      true
+    );
+    expect(promptGlue).toContain('你的唯一任务是编写 Workflow 胶水代码');
+    expect(promptGlue).toContain('仅编写 Workflow 胶水代码');
+    expect(promptGlue).toContain('严禁修改已有 Activity 代码');
+    expect(promptGlue).not.toContain('尚未实现，请根据 DSL 生成一个标准的 @activity.defn 实现');
+    // 胶水模式下规则 1 被替换为「原样保留已有代码」
+    expect(promptGlue).not.toContain('你的输出必须包含所有 Activity 的实现代码（已有的或新生成的）');
+
+    const promptFull = (codegenService as any).buildWorkflowCodePrompt(
+      workflowDsl,
+      activityDsl,
+      undefined,
+      false
+    );
+    expect(promptFull).toContain('你的输出必须包含所有 Activity 的实现代码');
+    expect(promptFull).not.toContain('你的唯一任务是编写 Workflow 胶水代码');
+  });
+
+  it('passes Gate 1 static analysis for universal linear builder output', async () => {
+    const { service, codegenService } = createService();
+
+    const workflowDsl = {
+      name: '文件通知工作流',
+      workflowClassName: 'FileNotifyWorkflow',
+      workflowDefnName: '文件通知工作流',
+      taskQueue: 'SKILL_TASK_QUEUE',
+      inputParams: {
+        filePath: { required: true, description: '文件路径' },
+        toEmail: { required: true, description: '收件人' },
+      },
+      steps: [
+        {
+          id: 'step_1',
+          name: '读取文件',
+          type: 'activity',
+          activityRef: 'builtin:fileRead',
+          activityName: 'fileRead',
+          startToCloseTimeout: '60s',
+          input: {
+            __fileRead: {
+              protocol: 'local',
+              path: '{filePath}',
+              encoding: 'utf-8',
+              returnMode: 'text',
+            },
+          },
+        },
+        {
+          id: 'step_2',
+          name: '发送邮件',
+          type: 'activity',
+          activityRef: 'builtin:emailSend',
+          activityName: 'emailSend',
+          startToCloseTimeout: '60s',
+          input: {
+            __emailSend: {
+              to: '{toEmail}',
+              subject: '文件内容通知',
+              content: '{{step_1.content}}',
+            },
+          },
+        },
+      ],
+    };
+    const result = await service.generateWorkflowCode(workflowDsl as any, { activities: [] });
+    expect(result.success).toBe(true);
+    expect(result.generationMode).toBe('deterministic');
+
+    const gate1 = (codegenService as any).validateGeneratedPythonCodeGate1(
+      result.code,
+      workflowDsl as any
+    );
+    expect(gate1.success).toBe(true);
+    expect(gate1.violations).toHaveLength(0);
+  });
+
+  describe('Gate 1 AST static analysis (§10.2)', () => {
+    const ENVELOPE_CLASS = `
+from temporalio import workflow
+from temporalio.exceptions import ApplicationError
+
+@workflow.defn(name="Gate1Workflow")
+class Gate1Workflow:
+    @classmethod
+    def _build_workflow_result(cls, raw_result):
+        return {
+            "execution": {"status": "success"},
+            "trigger": {"type": "manual"},
+            "result": {"resultType": "generic", "title": "ok", "summary": "ok", "businessData": raw_result},
+            "artifacts": [],
+            "presentation": {"preferAiSummary": True, "preferStructuredView": False, "summaryFormat": "plain_text", "detailFormat": "plain_text"},
+        }
+`;
+
+    const gate1 = (code: string, workflowDsl?: any) => {
+      const { codegenService } = createService();
+      return (codegenService as any).validateGeneratedPythonCodeGate1(code, workflowDsl);
+    };
+
+    it('passes valid envelope-based workflow code', () => {
+      const result = gate1(
+        `${ENVELOPE_CLASS}
+    async def run(self, params: dict):
+        return self._build_workflow_result({"value": 1})
+`
+      );
+      expect(result.success).toBe(true);
+      expect(result.violations).toHaveLength(0);
+    });
+
+    it('rejects workflow.unsafe in workflow code (AST is authoritative, not regex)', () => {
+      const result = gate1(
+        `${ENVELOPE_CLASS}
+    async def run(self, params: dict):
+        if workflow.unsafe.is_replaying():
+            return self._build_workflow_result({"value": 1})
+        return self._build_workflow_result({"value": 2})
+`
+      );
+      expect(result.success).toBe(false);
+      expect(result.violations.some((v: any) => v.code === 'WORKFLOW_UNSAFE')).toBe(true);
+    });
+
+    it('rejects network calls in workflow code but allows them inside @activity.defn', () => {
+      const networkInRun = gate1(
+        `${ENVELOPE_CLASS}
+    async def run(self, params: dict):
+        response = requests.get("https://example.com")
+        return self._build_workflow_result(response.json())
+`
+      );
+      expect(networkInRun.success).toBe(false);
+      expect(networkInRun.violations.some((v: any) => v.code === 'WORKFLOW_NETWORK')).toBe(true);
+
+      const networkInActivity = gate1(`
+import requests
+
+from temporalio import activity, workflow
+from temporalio.exceptions import ApplicationError
+
+@activity.defn(name="fetchActivity")
+async def fetch_activity(input_data: dict) -> dict:
+    response = requests.get("https://example.com", timeout=10)
+    return response.json()
+
+${ENVELOPE_CLASS}
+    async def run(self, params: dict):
+        result = await workflow.execute_activity(fetch_activity, params, start_to_close_timeout=timedelta(seconds=30))
+        return self._build_workflow_result(result)
+`
+      );
+      expect(networkInActivity.success).toBe(true);
+    });
+
+    it('rejects system time and random usage in workflow code', () => {
+      const timeInRun = gate1(
+        `${ENVELOPE_CLASS}
+    async def run(self, params: dict):
+        time.sleep(1)
+        return self._build_workflow_result({"value": random.randint(1, 10)})
+`
+      );
+      expect(timeInRun.success).toBe(false);
+      const codes = timeInRun.violations.map((v: any) => v.code);
+      expect(codes).toContain('WORKFLOW_NON_DETERMINISTIC');
+    });
+
+    it('rejects file system access in workflow code', () => {
+      const result = gate1(
+        `${ENVELOPE_CLASS}
+    async def run(self, params: dict):
+        with open("/tmp/out.txt", "w") as f:
+            f.write("x")
+        return self._build_workflow_result({"value": 1})
+`
+      );
+      expect(result.success).toBe(false);
+      expect(result.violations.some((v: any) => v.code === 'WORKFLOW_FILE_IO')).toBe(true);
+    });
+
+    it('rejects imports outside the whitelist', () => {
+      const result = gate1(`
+import flask
+
+${ENVELOPE_CLASS}
+    async def run(self, params: dict):
+        return self._build_workflow_result({"value": 1})
+`);
+      expect(result.success).toBe(false);
+      expect(result.violations.some((v: any) => v.code === 'IMPORT_BANNED')).toBe(true);
+    });
+
+    it('rejects run() that does not return through Result Builder or envelope', () => {
+      const result = gate1(`
+${ENVELOPE_CLASS}
+    async def run(self, params: dict):
+        return {"summary": "done"}
+`);
+      expect(result.success).toBe(false);
+      expect(result.violations.some((v: any) => v.code === 'RETURN_NOT_ENVELOPE')).toBe(true);
+    });
+
+    it('rejects invalid Python syntax with SYNTAX_ERROR', () => {
+      const result = gate1(`
+${ENVELOPE_CLASS}
+    async def run(self, params: dict):
+        broken =
+`);
+      expect(result.success).toBe(false);
+      expect(result.violations.some((v: any) => v.code === 'SYNTAX_ERROR')).toBe(true);
+    });
+
+    it('enforces v2Output required fields are mapped in the Result Builder', () => {
+      const dsl = {
+        v2Output: {
+          fields: {
+            temp: { type: 'number', required: true, source: { step: 'step_1', path: '$.temperature' } },
+          },
+        },
+      };
+      const missingMapping = gate1(
+        `${ENVELOPE_CLASS}
+    async def run(self, params: dict):
+        return self._build_workflow_result({"value": 1})
+`,
+        dsl
+      );
+      expect(missingMapping.success).toBe(false);
+      expect(missingMapping.violations.some((v: any) => v.code === 'MISSING_V2_OUTPUT_FIELD')).toBe(true);
+
+      const mapped = gate1(`
+from temporalio import workflow
+from temporalio.exceptions import ApplicationError
+
+@workflow.defn(name="V2Workflow")
+class V2Workflow:
+    @classmethod
+    def _build_workflow_result(cls, step_results):
+        business_data = {"temp": step_results.get("step_1", {}).get("temperature")}
+        return {
+            "execution": {"status": "success"},
+            "trigger": {"type": "manual"},
+            "result": {"resultType": "generic", "title": "ok", "summary": "ok", "businessData": business_data},
+            "artifacts": [],
+            "presentation": {"preferAiSummary": True, "preferStructuredView": False, "summaryFormat": "plain_text", "detailFormat": "plain_text"},
+        }
+
+    async def run(self, params: dict):
+        return self._build_workflow_result({})
+`,
+        dsl
+      );
+      expect(mapped.success).toBe(true);
+    });
+
+    it('repair context maps error codes to actionable guidance', () => {
+      const { codegenService } = createService();
+      const context = (codegenService as any).buildAstGate1RepairContext([
+        { line: 5, code: 'WORKFLOW_NETWORK', message: "Workflow 代码禁止使用 'requests.post'" },
+        { line: 9, code: 'WORKFLOW_NON_DETERMINISTIC', message: 'Workflow 代码禁止使用 time.sleep' },
+      ]);
+      expect(context).toContain('Gate 1 静态分析');
+      expect(context).toContain('requests.post');
+      expect(context).toContain('time.sleep');
+      expect(context).toContain('封装在 @activity.defn 装饰的 Activity 函数中');
+    });
   });
 });

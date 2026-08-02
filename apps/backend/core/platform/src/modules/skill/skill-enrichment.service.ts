@@ -575,6 +575,18 @@ export class SkillEnrichmentService {
         : undefined,
       isActive: skill.isActive,
       configStatus: skill.configStatus || skill.config_status || undefined,
+      // Authoritative output schema (§6.3/§10.1): carry skill_configs.output_schema
+      // through the DTO so the Skill Cache → Planner candidate set sees the
+      // real contract instead of legacy outputParams projections. Empty
+      // schemas are surfaced as undefined so consumers can distinguish
+      // "no schema" from a schema-less projection.
+      outputSchema:
+        skill.outputSchema &&
+        typeof skill.outputSchema === 'object' &&
+        !Array.isArray(skill.outputSchema) &&
+        Object.keys(skill.outputSchema).length > 0
+          ? (skill.outputSchema as Record<string, unknown>)
+          : undefined,
       isPublished: Boolean(publication),
       publishedReleaseId: publication?.releaseId || null,
       publishedReleaseVersion: publication?.releaseVersion || null,

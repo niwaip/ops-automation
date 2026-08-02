@@ -316,6 +316,9 @@ model SkillConfig {
   description       String?  @db.VarChar(500)
   triggerKeywords   Json     @default("[]") @map("trigger_keywords")
   paramsSchema      Json     @default("{}") @map("params_schema")
+  outputSchema      Json     @default("{}") @map("output_schema")
+  candidateSchemaJson Json?  @map("candidate_schema_json")
+  candidateSchemaGeneratedAt DateTime? @map("candidate_schema_generated_at") @db.Timestamptz
   templateId        String?  @map("template_id") @db.VarChar(255)
   carboneTemplateId String?  @map("carbone_template_id") @db.VarChar(255)
   carboneSkillId    String?  @map("carbone_skill_id") @db.VarChar(255)
@@ -555,6 +558,8 @@ model ExecutionStep {
   dependsOnJson       Json?       @map("depends_on_json")
   inputBindingsJson   Json?       @map("input_bindings_json")
   outputContractJson  Json?       @map("output_contract_json")
+  outputSchemaJson    Json?       @map("output_schema_json")
+  inputSchemaJson     Json?       @map("input_schema_json")
   resolvedInputJson   Json?       @map("resolved_input_json")
   idempotencyKey      String?     @map("idempotency_key") @db.VarChar(255)
   leaseOwner          String?     @map("lease_owner") @db.VarChar(255)
@@ -847,6 +852,7 @@ model BuiltinSkillVersion {
   manifestJson      Json     @map("manifest_json")
   workflowJson      Json     @default("{}") @map("workflow_json")
   runtimeBuild      String?  @map("runtime_build") @db.VarChar(255)
+  attestationId     String?  @map("attestation_id") @db.VarChar(36)
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   builtinSkill      BuiltinSkill @relation(fields: [builtinSkillId], references: [id], onDelete: Cascade)
@@ -964,6 +970,7 @@ model CapabilityBuild {
   generatedConfigJson Json?     @map("generated_config_json")
   logsJson            Json      @default("[]") @map("logs_json")
   diffSummary         String?   @map("diff_summary") @db.Text
+  buildDiffJson       Json?     @map("build_diff_json")
   status              String    @db.VarChar(32)
   errorSummary        String?   @map("error_summary") @db.Text
   startedAt           DateTime? @map("started_at") @db.Timestamptz
@@ -993,6 +1000,38 @@ model CapabilityValidation {
 
   @@index([releaseId, createdAt(sort: Desc)])
   @@map("capability_validations")
+}
+
+model CapabilityFixture {
+  id                 String   @id @default(uuid()) @db.Uuid
+  releaseId          String   @map("release_id") @db.Uuid
+  buildId            String?  @map("build_id") @db.Uuid
+  name               String?  @db.VarChar(255)
+  fixtureType        String   @map("fixture_type") @db.VarChar(32) // input | output | negative
+  inputJson          Json     @map("input_json")
+  expectedOutputJson Json?    @map("expected_output_json")
+  isNegative         Boolean  @default(false) @map("is_negative")
+  errorContains      String?  @map("error_contains") @db.VarChar(255)
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([releaseId, fixtureType])
+  @@map("capability_fixtures")
+}
+
+model CapabilityAttestation {
+  id                  String   @id @default(uuid()) @db.Uuid
+  releaseId           String   @map("release_id") @db.Uuid
+  buildId             String   @map("build_id") @db.Uuid
+  sourceDigest        String   @map("source_digest") @db.VarChar(128)
+  contractDigest      String   @map("contract_digest") @db.VarChar(128)
+  generatedCodeDigest String   @map("generated_code_digest") @db.VarChar(128)
+  fixtureDigest       String?  @map("fixture_digest") @db.VarChar(128)
+  validatorVersion     String   @map("validator_version") @db.VarChar(32)
+  gateResultsJson     Json     @default("{}") @map("gate_results_json")
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([releaseId, createdAt(sort: Desc)])
+  @@map("capability_attestations")
 }
 
 model SkillDraft {

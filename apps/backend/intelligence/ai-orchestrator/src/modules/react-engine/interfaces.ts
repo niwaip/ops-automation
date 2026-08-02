@@ -403,6 +403,9 @@ export interface AvailableSkillDefinition {
   goal?: string;
   expectedResult?: string;
   outputParams?: Record<string, unknown>;
+  outputSchema?: Record<string, unknown>;
+  contractRef?: string;
+  contractDigest?: string;
   effectiveTools?: string[];
   usage?: LLMUsage;
 }

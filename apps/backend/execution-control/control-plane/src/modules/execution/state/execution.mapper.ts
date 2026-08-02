@@ -201,6 +201,10 @@ export const mapExecutionToDto = (execution: Record<string, unknown>): Execution
     status: execution.status as ExecutionStatus,
     runtimeType: execution.runtimeType as string | null,
     riskLevel: execution.riskLevel as 'L0' | 'L1' | 'L2' | 'L3' | null,
+    executionMode: (execution.executionMode || execution.execution_mode) as
+      | 'single_skill'
+      | 'deterministic_plan'
+      | null,
     currentStepId: execution.currentStepId as string | null,
     runtimeSessionId: (execution.runtimeSessionId || execution.runtime_session_id) as string | null,
     currentPhaseKey: (execution.currentPhaseKey || execution.current_phase_key) as string | null,

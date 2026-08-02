@@ -21,7 +21,7 @@ export type ValueTypeV1 =
 export type ValueBindingV1 =
   | { source: 'literal'; value: unknown }
   | { source: 'user_input'; path: string }
-  | { source: 'node_output'; nodeId: string; fromNodeId?: string; path?: string; outputPath?: string }
+  | { source: 'node_output'; nodeId: string; fromNodeId?: string; path?: string; outputPath?: string; expectedType?: ValueTypeV1 }
   | { source: 'runtime_default'; key: string };
 
 export interface PlanNodeBaseV1 {
@@ -31,6 +31,8 @@ export interface PlanNodeBaseV1 {
   dependsOn: string[];
   inputBindings: Record<string, ValueBindingV1>;
   outputContract: Record<string, ValueTypeV1>;
+  contractRef?: string;
+  contractDigest?: string;
   failurePolicy: 'abort';
 }
 
@@ -135,6 +137,8 @@ export function canonicalizePlan(plan: DeterministicPlanDraftV1): Record<string,
         outputContract: sortObjectKeys(node.outputContract),
         failurePolicy: node.failurePolicy,
       };
+      if (node.contractRef) canonicalNode.contractRef = node.contractRef;
+      if (node.contractDigest) canonicalNode.contractDigest = node.contractDigest;
 
       if (node.kind === 'skill') {
         canonicalNode.skillId = node.skillId;

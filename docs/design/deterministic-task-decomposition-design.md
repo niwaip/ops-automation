@@ -2308,21 +2308,22 @@ model ExecutionArtifact {
 
 ### 47.5 迁移文件与执行机制
 
-Control Plane 当前迁移不是统一由 `prisma migrate deploy` 自动执行。仓库中的实际机制是：
+单一权威迁移序列（#70 合并后）：
 
-1. 在 `apps/backend/execution-control/control-plane/prisma/migrations/` 保存增量 SQL。
-2. 在 `docker/scripts/apply-latest-db-schema.sh` 的 `CONTROL_PLANE_INCREMENTAL_SQL_FILES` 中显式登记。
-3. 脚本通过 `./docker/start-smart.sh` 进入 Compose，并使用 PostgreSQL `psql` 执行。
+1. 平台与 Control Plane 共享同一个 PostgreSQL 数据库，`schema.prisma` 两份镜像字节相同（`docker/scripts/apply-latest-db-schema-in-container.sh` 以 `cmp -s` 强制校验）。
+2. 全部迁移集中在唯一权威目录 `apps/backend/core/platform/prisma/migrations/`，由 `prisma migrate deploy --schema apps/backend/core/platform/prisma/schema.prisma` 自动执行（含 P3005 旧库无历史时的 baseline 校验 + `migrate resolve --applied` 收养路径）。
+3. Control Plane 不再维护独立迁移目录；其历史迁移（`20260609000000_add_execution_phases`、`20260609010000_add_execution_phase_steps`、`20260625000000_add_scheduler`、`20260728120000_add_deterministic_execution_plan`、`20260731110000_add_execution_step_output_schema_json`、`20260801120000_add_execution_step_input_schema_json`）已并入该序列；UUID id 默认值漂移由 `20260802000000_fix_uuid_id_defaults` 统一修复。
 
-因此本功能必须同时提交：
+因此本功能的新增表/列迁移必须提交为：
 
 ```text
-apps/backend/execution-control/control-plane/prisma/migrations/
-  <timestamp>_add_deterministic_execution_plan/migration.sql
+apps/backend/core/platform/prisma/migrations/
+  <timestamp>_<name>/migration.sql
 
-apps/backend/execution-control/control-plane/prisma/schema.prisma
+apps/backend/core/platform/prisma/schema.prisma
+apps/backend/execution-control/control-plane/prisma/schema.prisma   （镜像同步）
 
-docker/scripts/apply-latest-db-schema.sh
+docker/scripts/apply-latest-db-schema-in-container.sh
 ```
 
 迁移 SQL 必须：

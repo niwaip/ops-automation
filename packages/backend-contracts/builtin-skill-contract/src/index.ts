@@ -24,10 +24,15 @@ export interface ExecutableCapabilityView {
   runtimeType: string;
   inputSchema: Record<string, unknown>;
   outputSchema: Record<string, unknown>;
+  contractDigest?: string;
+  contractRef?: string;
   runtimeHints?: Record<string, unknown>;
   accessStatus: 'authorized' | 'unauthorized';
   lifecycle?: BuiltinSkillLifecycle;
   supportsArtifact?: boolean;
+  publishedReleaseStatus?: string;
+  publishedDeploymentStatus?: string;
+  publishedReleaseVersion?: string;
 }
 
 export interface BuiltinSkillManifestMetadata {

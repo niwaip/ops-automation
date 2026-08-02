@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { CapabilityRuntimeAdapter } from '../src/modules/execution/adapters/capability-runtime.adapter';
+import { OutputNormalizerService } from '../src/modules/execution/plan-runtime/output-normalizer.service';
 
 jest.mock('axios');
 
@@ -25,7 +26,7 @@ describe('CapabilityRuntimeAdapter', () => {
       },
     } as any);
 
-    const adapter = new CapabilityRuntimeAdapter();
+    const adapter = new CapabilityRuntimeAdapter(new OutputNormalizerService());
     await adapter.invokeStep({
       requestId: 'request-metadata-1',
       executionId: 'execution-metadata-1',
@@ -64,7 +65,8 @@ describe('CapabilityRuntimeAdapter', () => {
           executionStepName: '10. click',
           executionStepIndex: 10,
         },
-      }
+      },
+      { timeout: 300000 }
     );
   });
 
@@ -120,7 +122,7 @@ describe('CapabilityRuntimeAdapter', () => {
       },
     } as any);
 
-    const adapter = new CapabilityRuntimeAdapter();
+    const adapter = new CapabilityRuntimeAdapter(new OutputNormalizerService());
     const result = await adapter.invokeStep({
       requestId: 'request-1',
       executionId: 'execution-1',
@@ -205,7 +207,7 @@ describe('CapabilityRuntimeAdapter', () => {
       },
     } as any);
 
-    const adapter = new CapabilityRuntimeAdapter();
+    const adapter = new CapabilityRuntimeAdapter(new OutputNormalizerService());
     const result = await adapter.invokeStep({
       requestId: 'request-search',
       executionId: 'execution-search',
@@ -250,7 +252,7 @@ describe('CapabilityRuntimeAdapter', () => {
       },
     } as any);
 
-    const adapter = new CapabilityRuntimeAdapter();
+    const adapter = new CapabilityRuntimeAdapter(new OutputNormalizerService());
     const result = await adapter.invokeStep({
       requestId: 'request-2',
       executionId: 'execution-2',

@@ -208,7 +208,7 @@ const config = {
       "value": "prisma-client-js"
     },
     "output": {
-      "value": "/app/src/generated/prisma",
+      "value": "/workspace/apps/backend/intelligence/ai-orchestrator/src/generated/prisma",
       "fromEnvVar": null
     },
     "config": {
@@ -222,7 +222,7 @@ const config = {
       }
     ],
     "previewFeatures": [],
-    "sourceFilePath": "/app/prisma/schema.prisma",
+    "sourceFilePath": "/workspace/apps/backend/intelligence/ai-orchestrator/prisma/schema.prisma",
     "isCustomOutput": true
   },
   "relativeEnvPaths": {

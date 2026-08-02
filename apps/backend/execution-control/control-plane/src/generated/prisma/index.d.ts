@@ -219,6 +219,16 @@ export type CapabilityBuild = $Result.DefaultSelection<Prisma.$CapabilityBuildPa
  */
 export type CapabilityValidation = $Result.DefaultSelection<Prisma.$CapabilityValidationPayload>
 /**
+ * Model CapabilityFixture
+ * 
+ */
+export type CapabilityFixture = $Result.DefaultSelection<Prisma.$CapabilityFixturePayload>
+/**
+ * Model CapabilityAttestation
+ * 
+ */
+export type CapabilityAttestation = $Result.DefaultSelection<Prisma.$CapabilityAttestationPayload>
+/**
  * Model SkillDraft
  * 
  */
@@ -826,6 +836,26 @@ export class PrismaClient<
   get capabilityValidation(): Prisma.CapabilityValidationDelegate<ExtArgs>;
 
   /**
+   * `prisma.capabilityFixture`: Exposes CRUD operations for the **CapabilityFixture** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more CapabilityFixtures
+    * const capabilityFixtures = await prisma.capabilityFixture.findMany()
+    * ```
+    */
+  get capabilityFixture(): Prisma.CapabilityFixtureDelegate<ExtArgs>;
+
+  /**
+   * `prisma.capabilityAttestation`: Exposes CRUD operations for the **CapabilityAttestation** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more CapabilityAttestations
+    * const capabilityAttestations = await prisma.capabilityAttestation.findMany()
+    * ```
+    */
+  get capabilityAttestation(): Prisma.CapabilityAttestationDelegate<ExtArgs>;
+
+  /**
    * `prisma.skillDraft`: Exposes CRUD operations for the **SkillDraft** model.
     * Example usage:
     * ```ts
@@ -1336,6 +1366,8 @@ export namespace Prisma {
     CapabilitySourceSnapshot: 'CapabilitySourceSnapshot',
     CapabilityBuild: 'CapabilityBuild',
     CapabilityValidation: 'CapabilityValidation',
+    CapabilityFixture: 'CapabilityFixture',
+    CapabilityAttestation: 'CapabilityAttestation',
     SkillDraft: 'SkillDraft',
     DeploymentRecord: 'DeploymentRecord',
     ReleaseAuditEvent: 'ReleaseAuditEvent'
@@ -1354,7 +1386,7 @@ export namespace Prisma {
 
   export type TypeMap<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, ClientOptions = {}> = {
     meta: {
-      modelProps: "user" | "role" | "userRole" | "organization" | "department" | "team" | "orgMembership" | "teamMembership" | "orgRoleBinding" | "identityProviderConfig" | "executionFlowTemplate" | "skillConfig" | "skillPermission" | "skillAccessRequest" | "toolCatalog" | "skillToolBinding" | "chatSession" | "chatMessage" | "execution" | "runtimeSession" | "executionStep" | "executionPlan" | "executionArtifact" | "executionPhase" | "executionPhaseArtifact" | "executionTakeover" | "executionPhaseStep" | "executionEvent" | "auditLog" | "activity" | "temporalWorkflow" | "skillSchedule" | "builtinSkill" | "builtinSkillVersion" | "builtinSkillDeployment" | "builtinSkillPermissionOverride" | "builtinSkillAuditEvent" | "capabilityRelease" | "capabilitySourceSnapshot" | "capabilityBuild" | "capabilityValidation" | "skillDraft" | "deploymentRecord" | "releaseAuditEvent"
+      modelProps: "user" | "role" | "userRole" | "organization" | "department" | "team" | "orgMembership" | "teamMembership" | "orgRoleBinding" | "identityProviderConfig" | "executionFlowTemplate" | "skillConfig" | "skillPermission" | "skillAccessRequest" | "toolCatalog" | "skillToolBinding" | "chatSession" | "chatMessage" | "execution" | "runtimeSession" | "executionStep" | "executionPlan" | "executionArtifact" | "executionPhase" | "executionPhaseArtifact" | "executionTakeover" | "executionPhaseStep" | "executionEvent" | "auditLog" | "activity" | "temporalWorkflow" | "skillSchedule" | "builtinSkill" | "builtinSkillVersion" | "builtinSkillDeployment" | "builtinSkillPermissionOverride" | "builtinSkillAuditEvent" | "capabilityRelease" | "capabilitySourceSnapshot" | "capabilityBuild" | "capabilityValidation" | "capabilityFixture" | "capabilityAttestation" | "skillDraft" | "deploymentRecord" | "releaseAuditEvent"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -4225,6 +4257,146 @@ export namespace Prisma {
           count: {
             args: Prisma.CapabilityValidationCountArgs<ExtArgs>
             result: $Utils.Optional<CapabilityValidationCountAggregateOutputType> | number
+          }
+        }
+      }
+      CapabilityFixture: {
+        payload: Prisma.$CapabilityFixturePayload<ExtArgs>
+        fields: Prisma.CapabilityFixtureFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.CapabilityFixtureFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CapabilityFixturePayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.CapabilityFixtureFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CapabilityFixturePayload>
+          }
+          findFirst: {
+            args: Prisma.CapabilityFixtureFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CapabilityFixturePayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.CapabilityFixtureFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CapabilityFixturePayload>
+          }
+          findMany: {
+            args: Prisma.CapabilityFixtureFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CapabilityFixturePayload>[]
+          }
+          create: {
+            args: Prisma.CapabilityFixtureCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CapabilityFixturePayload>
+          }
+          createMany: {
+            args: Prisma.CapabilityFixtureCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.CapabilityFixtureCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CapabilityFixturePayload>[]
+          }
+          delete: {
+            args: Prisma.CapabilityFixtureDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CapabilityFixturePayload>
+          }
+          update: {
+            args: Prisma.CapabilityFixtureUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CapabilityFixturePayload>
+          }
+          deleteMany: {
+            args: Prisma.CapabilityFixtureDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.CapabilityFixtureUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.CapabilityFixtureUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CapabilityFixturePayload>
+          }
+          aggregate: {
+            args: Prisma.CapabilityFixtureAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateCapabilityFixture>
+          }
+          groupBy: {
+            args: Prisma.CapabilityFixtureGroupByArgs<ExtArgs>
+            result: $Utils.Optional<CapabilityFixtureGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.CapabilityFixtureCountArgs<ExtArgs>
+            result: $Utils.Optional<CapabilityFixtureCountAggregateOutputType> | number
+          }
+        }
+      }
+      CapabilityAttestation: {
+        payload: Prisma.$CapabilityAttestationPayload<ExtArgs>
+        fields: Prisma.CapabilityAttestationFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.CapabilityAttestationFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CapabilityAttestationPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.CapabilityAttestationFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CapabilityAttestationPayload>
+          }
+          findFirst: {
+            args: Prisma.CapabilityAttestationFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CapabilityAttestationPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.CapabilityAttestationFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CapabilityAttestationPayload>
+          }
+          findMany: {
+            args: Prisma.CapabilityAttestationFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CapabilityAttestationPayload>[]
+          }
+          create: {
+            args: Prisma.CapabilityAttestationCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CapabilityAttestationPayload>
+          }
+          createMany: {
+            args: Prisma.CapabilityAttestationCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.CapabilityAttestationCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CapabilityAttestationPayload>[]
+          }
+          delete: {
+            args: Prisma.CapabilityAttestationDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CapabilityAttestationPayload>
+          }
+          update: {
+            args: Prisma.CapabilityAttestationUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CapabilityAttestationPayload>
+          }
+          deleteMany: {
+            args: Prisma.CapabilityAttestationDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.CapabilityAttestationUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.CapabilityAttestationUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CapabilityAttestationPayload>
+          }
+          aggregate: {
+            args: Prisma.CapabilityAttestationAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateCapabilityAttestation>
+          }
+          groupBy: {
+            args: Prisma.CapabilityAttestationGroupByArgs<ExtArgs>
+            result: $Utils.Optional<CapabilityAttestationGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.CapabilityAttestationCountArgs<ExtArgs>
+            result: $Utils.Optional<CapabilityAttestationCountAggregateOutputType> | number
           }
         }
       }
@@ -16713,6 +16885,7 @@ export namespace Prisma {
     id: string | null
     name: string | null
     description: string | null
+    candidateSchemaGeneratedAt: Date | null
     templateId: string | null
     carboneTemplateId: string | null
     carboneSkillId: string | null
@@ -16726,6 +16899,7 @@ export namespace Prisma {
     id: string | null
     name: string | null
     description: string | null
+    candidateSchemaGeneratedAt: Date | null
     templateId: string | null
     carboneTemplateId: string | null
     carboneSkillId: string | null
@@ -16741,6 +16915,9 @@ export namespace Prisma {
     description: number
     triggerKeywords: number
     paramsSchema: number
+    outputSchema: number
+    candidateSchemaJson: number
+    candidateSchemaGeneratedAt: number
     templateId: number
     carboneTemplateId: number
     carboneSkillId: number
@@ -16761,6 +16938,7 @@ export namespace Prisma {
     id?: true
     name?: true
     description?: true
+    candidateSchemaGeneratedAt?: true
     templateId?: true
     carboneTemplateId?: true
     carboneSkillId?: true
@@ -16774,6 +16952,7 @@ export namespace Prisma {
     id?: true
     name?: true
     description?: true
+    candidateSchemaGeneratedAt?: true
     templateId?: true
     carboneTemplateId?: true
     carboneSkillId?: true
@@ -16789,6 +16968,9 @@ export namespace Prisma {
     description?: true
     triggerKeywords?: true
     paramsSchema?: true
+    outputSchema?: true
+    candidateSchemaJson?: true
+    candidateSchemaGeneratedAt?: true
     templateId?: true
     carboneTemplateId?: true
     carboneSkillId?: true
@@ -16882,6 +17064,9 @@ export namespace Prisma {
     description: string | null
     triggerKeywords: JsonValue
     paramsSchema: JsonValue
+    outputSchema: JsonValue
+    candidateSchemaJson: JsonValue | null
+    candidateSchemaGeneratedAt: Date | null
     templateId: string | null
     carboneTemplateId: string | null
     carboneSkillId: string | null
@@ -16919,6 +17104,9 @@ export namespace Prisma {
     description?: boolean
     triggerKeywords?: boolean
     paramsSchema?: boolean
+    outputSchema?: boolean
+    candidateSchemaJson?: boolean
+    candidateSchemaGeneratedAt?: boolean
     templateId?: boolean
     carboneTemplateId?: boolean
     carboneSkillId?: boolean
@@ -16943,6 +17131,9 @@ export namespace Prisma {
     description?: boolean
     triggerKeywords?: boolean
     paramsSchema?: boolean
+    outputSchema?: boolean
+    candidateSchemaJson?: boolean
+    candidateSchemaGeneratedAt?: boolean
     templateId?: boolean
     carboneTemplateId?: boolean
     carboneSkillId?: boolean
@@ -16963,6 +17154,9 @@ export namespace Prisma {
     description?: boolean
     triggerKeywords?: boolean
     paramsSchema?: boolean
+    outputSchema?: boolean
+    candidateSchemaJson?: boolean
+    candidateSchemaGeneratedAt?: boolean
     templateId?: boolean
     carboneTemplateId?: boolean
     carboneSkillId?: boolean
@@ -16998,6 +17192,9 @@ export namespace Prisma {
       description: string | null
       triggerKeywords: Prisma.JsonValue
       paramsSchema: Prisma.JsonValue
+      outputSchema: Prisma.JsonValue
+      candidateSchemaJson: Prisma.JsonValue | null
+      candidateSchemaGeneratedAt: Date | null
       templateId: string | null
       carboneTemplateId: string | null
       carboneSkillId: string | null
@@ -17411,6 +17608,9 @@ export namespace Prisma {
     readonly description: FieldRef<"SkillConfig", 'String'>
     readonly triggerKeywords: FieldRef<"SkillConfig", 'Json'>
     readonly paramsSchema: FieldRef<"SkillConfig", 'Json'>
+    readonly outputSchema: FieldRef<"SkillConfig", 'Json'>
+    readonly candidateSchemaJson: FieldRef<"SkillConfig", 'Json'>
+    readonly candidateSchemaGeneratedAt: FieldRef<"SkillConfig", 'DateTime'>
     readonly templateId: FieldRef<"SkillConfig", 'String'>
     readonly carboneTemplateId: FieldRef<"SkillConfig", 'String'>
     readonly carboneSkillId: FieldRef<"SkillConfig", 'String'>
@@ -26142,6 +26342,8 @@ export namespace Prisma {
     dependsOnJson: number
     inputBindingsJson: number
     outputContractJson: number
+    outputSchemaJson: number
+    inputSchemaJson: number
     resolvedInputJson: number
     idempotencyKey: number
     leaseOwner: number
@@ -26240,6 +26442,8 @@ export namespace Prisma {
     dependsOnJson?: true
     inputBindingsJson?: true
     outputContractJson?: true
+    outputSchemaJson?: true
+    inputSchemaJson?: true
     resolvedInputJson?: true
     idempotencyKey?: true
     leaseOwner?: true
@@ -26361,6 +26565,8 @@ export namespace Prisma {
     dependsOnJson: JsonValue | null
     inputBindingsJson: JsonValue | null
     outputContractJson: JsonValue | null
+    outputSchemaJson: JsonValue | null
+    inputSchemaJson: JsonValue | null
     resolvedInputJson: JsonValue | null
     idempotencyKey: string | null
     leaseOwner: string | null
@@ -26414,6 +26620,8 @@ export namespace Prisma {
     dependsOnJson?: boolean
     inputBindingsJson?: boolean
     outputContractJson?: boolean
+    outputSchemaJson?: boolean
+    inputSchemaJson?: boolean
     resolvedInputJson?: boolean
     idempotencyKey?: boolean
     leaseOwner?: boolean
@@ -26449,6 +26657,8 @@ export namespace Prisma {
     dependsOnJson?: boolean
     inputBindingsJson?: boolean
     outputContractJson?: boolean
+    outputSchemaJson?: boolean
+    inputSchemaJson?: boolean
     resolvedInputJson?: boolean
     idempotencyKey?: boolean
     leaseOwner?: boolean
@@ -26484,6 +26694,8 @@ export namespace Prisma {
     dependsOnJson?: boolean
     inputBindingsJson?: boolean
     outputContractJson?: boolean
+    outputSchemaJson?: boolean
+    inputSchemaJson?: boolean
     resolvedInputJson?: boolean
     idempotencyKey?: boolean
     leaseOwner?: boolean
@@ -26530,6 +26742,8 @@ export namespace Prisma {
       dependsOnJson: Prisma.JsonValue | null
       inputBindingsJson: Prisma.JsonValue | null
       outputContractJson: Prisma.JsonValue | null
+      outputSchemaJson: Prisma.JsonValue | null
+      inputSchemaJson: Prisma.JsonValue | null
       resolvedInputJson: Prisma.JsonValue | null
       idempotencyKey: string | null
       leaseOwner: string | null
@@ -26955,6 +27169,8 @@ export namespace Prisma {
     readonly dependsOnJson: FieldRef<"ExecutionStep", 'Json'>
     readonly inputBindingsJson: FieldRef<"ExecutionStep", 'Json'>
     readonly outputContractJson: FieldRef<"ExecutionStep", 'Json'>
+    readonly outputSchemaJson: FieldRef<"ExecutionStep", 'Json'>
+    readonly inputSchemaJson: FieldRef<"ExecutionStep", 'Json'>
     readonly resolvedInputJson: FieldRef<"ExecutionStep", 'Json'>
     readonly idempotencyKey: FieldRef<"ExecutionStep", 'String'>
     readonly leaseOwner: FieldRef<"ExecutionStep", 'String'>
@@ -39609,6 +39825,7 @@ export namespace Prisma {
     apiVersion: string | null
     definitionDigest: string | null
     runtimeBuild: string | null
+    attestationId: string | null
     createdAt: Date | null
   }
 
@@ -39619,6 +39836,7 @@ export namespace Prisma {
     apiVersion: string | null
     definitionDigest: string | null
     runtimeBuild: string | null
+    attestationId: string | null
     createdAt: Date | null
   }
 
@@ -39631,6 +39849,7 @@ export namespace Prisma {
     manifestJson: number
     workflowJson: number
     runtimeBuild: number
+    attestationId: number
     createdAt: number
     _all: number
   }
@@ -39643,6 +39862,7 @@ export namespace Prisma {
     apiVersion?: true
     definitionDigest?: true
     runtimeBuild?: true
+    attestationId?: true
     createdAt?: true
   }
 
@@ -39653,6 +39873,7 @@ export namespace Prisma {
     apiVersion?: true
     definitionDigest?: true
     runtimeBuild?: true
+    attestationId?: true
     createdAt?: true
   }
 
@@ -39665,6 +39886,7 @@ export namespace Prisma {
     manifestJson?: true
     workflowJson?: true
     runtimeBuild?: true
+    attestationId?: true
     createdAt?: true
     _all?: true
   }
@@ -39750,6 +39972,7 @@ export namespace Prisma {
     manifestJson: JsonValue
     workflowJson: JsonValue
     runtimeBuild: string | null
+    attestationId: string | null
     createdAt: Date
     _count: BuiltinSkillVersionCountAggregateOutputType | null
     _min: BuiltinSkillVersionMinAggregateOutputType | null
@@ -39779,6 +40002,7 @@ export namespace Prisma {
     manifestJson?: boolean
     workflowJson?: boolean
     runtimeBuild?: boolean
+    attestationId?: boolean
     createdAt?: boolean
     builtinSkill?: boolean | BuiltinSkillDefaultArgs<ExtArgs>
     deployments?: boolean | BuiltinSkillVersion$deploymentsArgs<ExtArgs>
@@ -39794,6 +40018,7 @@ export namespace Prisma {
     manifestJson?: boolean
     workflowJson?: boolean
     runtimeBuild?: boolean
+    attestationId?: boolean
     createdAt?: boolean
     builtinSkill?: boolean | BuiltinSkillDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["builtinSkillVersion"]>
@@ -39807,6 +40032,7 @@ export namespace Prisma {
     manifestJson?: boolean
     workflowJson?: boolean
     runtimeBuild?: boolean
+    attestationId?: boolean
     createdAt?: boolean
   }
 
@@ -39834,6 +40060,7 @@ export namespace Prisma {
       manifestJson: Prisma.JsonValue
       workflowJson: Prisma.JsonValue
       runtimeBuild: string | null
+      attestationId: string | null
       createdAt: Date
     }, ExtArgs["result"]["builtinSkillVersion"]>
     composites: {}
@@ -40238,6 +40465,7 @@ export namespace Prisma {
     readonly manifestJson: FieldRef<"BuiltinSkillVersion", 'Json'>
     readonly workflowJson: FieldRef<"BuiltinSkillVersion", 'Json'>
     readonly runtimeBuild: FieldRef<"BuiltinSkillVersion", 'String'>
+    readonly attestationId: FieldRef<"BuiltinSkillVersion", 'String'>
     readonly createdAt: FieldRef<"BuiltinSkillVersion", 'DateTime'>
   }
     
@@ -45649,6 +45877,7 @@ export namespace Prisma {
     generatedConfigJson: number
     logsJson: number
     diffSummary: number
+    buildDiffJson: number
     status: number
     errorSummary: number
     startedAt: number
@@ -45708,6 +45937,7 @@ export namespace Prisma {
     generatedConfigJson?: true
     logsJson?: true
     diffSummary?: true
+    buildDiffJson?: true
     status?: true
     errorSummary?: true
     startedAt?: true
@@ -45802,6 +46032,7 @@ export namespace Prisma {
     generatedConfigJson: JsonValue | null
     logsJson: JsonValue
     diffSummary: string | null
+    buildDiffJson: JsonValue | null
     status: string
     errorSummary: string | null
     startedAt: Date | null
@@ -45840,6 +46071,7 @@ export namespace Prisma {
     generatedConfigJson?: boolean
     logsJson?: boolean
     diffSummary?: boolean
+    buildDiffJson?: boolean
     status?: boolean
     errorSummary?: boolean
     startedAt?: boolean
@@ -45861,6 +46093,7 @@ export namespace Prisma {
     generatedConfigJson?: boolean
     logsJson?: boolean
     diffSummary?: boolean
+    buildDiffJson?: boolean
     status?: boolean
     errorSummary?: boolean
     startedAt?: boolean
@@ -45882,6 +46115,7 @@ export namespace Prisma {
     generatedConfigJson?: boolean
     logsJson?: boolean
     diffSummary?: boolean
+    buildDiffJson?: boolean
     status?: boolean
     errorSummary?: boolean
     startedAt?: boolean
@@ -45907,6 +46141,7 @@ export namespace Prisma {
       generatedConfigJson: Prisma.JsonValue | null
       logsJson: Prisma.JsonValue
       diffSummary: string | null
+      buildDiffJson: Prisma.JsonValue | null
       status: string
       errorSummary: string | null
       startedAt: Date | null
@@ -46318,6 +46553,7 @@ export namespace Prisma {
     readonly generatedConfigJson: FieldRef<"CapabilityBuild", 'Json'>
     readonly logsJson: FieldRef<"CapabilityBuild", 'Json'>
     readonly diffSummary: FieldRef<"CapabilityBuild", 'String'>
+    readonly buildDiffJson: FieldRef<"CapabilityBuild", 'Json'>
     readonly status: FieldRef<"CapabilityBuild", 'String'>
     readonly errorSummary: FieldRef<"CapabilityBuild", 'String'>
     readonly startedAt: FieldRef<"CapabilityBuild", 'DateTime'>
@@ -47617,6 +47853,1870 @@ export namespace Prisma {
      * Select specific fields to fetch from the CapabilityValidation
      */
     select?: CapabilityValidationSelect<ExtArgs> | null
+  }
+
+
+  /**
+   * Model CapabilityFixture
+   */
+
+  export type AggregateCapabilityFixture = {
+    _count: CapabilityFixtureCountAggregateOutputType | null
+    _min: CapabilityFixtureMinAggregateOutputType | null
+    _max: CapabilityFixtureMaxAggregateOutputType | null
+  }
+
+  export type CapabilityFixtureMinAggregateOutputType = {
+    id: string | null
+    releaseId: string | null
+    buildId: string | null
+    name: string | null
+    fixtureType: string | null
+    isNegative: boolean | null
+    errorContains: string | null
+    createdAt: Date | null
+  }
+
+  export type CapabilityFixtureMaxAggregateOutputType = {
+    id: string | null
+    releaseId: string | null
+    buildId: string | null
+    name: string | null
+    fixtureType: string | null
+    isNegative: boolean | null
+    errorContains: string | null
+    createdAt: Date | null
+  }
+
+  export type CapabilityFixtureCountAggregateOutputType = {
+    id: number
+    releaseId: number
+    buildId: number
+    name: number
+    fixtureType: number
+    inputJson: number
+    expectedOutputJson: number
+    isNegative: number
+    errorContains: number
+    createdAt: number
+    _all: number
+  }
+
+
+  export type CapabilityFixtureMinAggregateInputType = {
+    id?: true
+    releaseId?: true
+    buildId?: true
+    name?: true
+    fixtureType?: true
+    isNegative?: true
+    errorContains?: true
+    createdAt?: true
+  }
+
+  export type CapabilityFixtureMaxAggregateInputType = {
+    id?: true
+    releaseId?: true
+    buildId?: true
+    name?: true
+    fixtureType?: true
+    isNegative?: true
+    errorContains?: true
+    createdAt?: true
+  }
+
+  export type CapabilityFixtureCountAggregateInputType = {
+    id?: true
+    releaseId?: true
+    buildId?: true
+    name?: true
+    fixtureType?: true
+    inputJson?: true
+    expectedOutputJson?: true
+    isNegative?: true
+    errorContains?: true
+    createdAt?: true
+    _all?: true
+  }
+
+  export type CapabilityFixtureAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which CapabilityFixture to aggregate.
+     */
+    where?: CapabilityFixtureWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CapabilityFixtures to fetch.
+     */
+    orderBy?: CapabilityFixtureOrderByWithRelationInput | CapabilityFixtureOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: CapabilityFixtureWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CapabilityFixtures from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CapabilityFixtures.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned CapabilityFixtures
+    **/
+    _count?: true | CapabilityFixtureCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: CapabilityFixtureMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: CapabilityFixtureMaxAggregateInputType
+  }
+
+  export type GetCapabilityFixtureAggregateType<T extends CapabilityFixtureAggregateArgs> = {
+        [P in keyof T & keyof AggregateCapabilityFixture]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateCapabilityFixture[P]>
+      : GetScalarType<T[P], AggregateCapabilityFixture[P]>
+  }
+
+
+
+
+  export type CapabilityFixtureGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: CapabilityFixtureWhereInput
+    orderBy?: CapabilityFixtureOrderByWithAggregationInput | CapabilityFixtureOrderByWithAggregationInput[]
+    by: CapabilityFixtureScalarFieldEnum[] | CapabilityFixtureScalarFieldEnum
+    having?: CapabilityFixtureScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: CapabilityFixtureCountAggregateInputType | true
+    _min?: CapabilityFixtureMinAggregateInputType
+    _max?: CapabilityFixtureMaxAggregateInputType
+  }
+
+  export type CapabilityFixtureGroupByOutputType = {
+    id: string
+    releaseId: string
+    buildId: string | null
+    name: string | null
+    fixtureType: string
+    inputJson: JsonValue
+    expectedOutputJson: JsonValue | null
+    isNegative: boolean
+    errorContains: string | null
+    createdAt: Date
+    _count: CapabilityFixtureCountAggregateOutputType | null
+    _min: CapabilityFixtureMinAggregateOutputType | null
+    _max: CapabilityFixtureMaxAggregateOutputType | null
+  }
+
+  type GetCapabilityFixtureGroupByPayload<T extends CapabilityFixtureGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<CapabilityFixtureGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof CapabilityFixtureGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], CapabilityFixtureGroupByOutputType[P]>
+            : GetScalarType<T[P], CapabilityFixtureGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type CapabilityFixtureSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    releaseId?: boolean
+    buildId?: boolean
+    name?: boolean
+    fixtureType?: boolean
+    inputJson?: boolean
+    expectedOutputJson?: boolean
+    isNegative?: boolean
+    errorContains?: boolean
+    createdAt?: boolean
+  }, ExtArgs["result"]["capabilityFixture"]>
+
+  export type CapabilityFixtureSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    releaseId?: boolean
+    buildId?: boolean
+    name?: boolean
+    fixtureType?: boolean
+    inputJson?: boolean
+    expectedOutputJson?: boolean
+    isNegative?: boolean
+    errorContains?: boolean
+    createdAt?: boolean
+  }, ExtArgs["result"]["capabilityFixture"]>
+
+  export type CapabilityFixtureSelectScalar = {
+    id?: boolean
+    releaseId?: boolean
+    buildId?: boolean
+    name?: boolean
+    fixtureType?: boolean
+    inputJson?: boolean
+    expectedOutputJson?: boolean
+    isNegative?: boolean
+    errorContains?: boolean
+    createdAt?: boolean
+  }
+
+
+  export type $CapabilityFixturePayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "CapabilityFixture"
+    objects: {}
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      releaseId: string
+      buildId: string | null
+      name: string | null
+      fixtureType: string
+      inputJson: Prisma.JsonValue
+      expectedOutputJson: Prisma.JsonValue | null
+      isNegative: boolean
+      errorContains: string | null
+      createdAt: Date
+    }, ExtArgs["result"]["capabilityFixture"]>
+    composites: {}
+  }
+
+  type CapabilityFixtureGetPayload<S extends boolean | null | undefined | CapabilityFixtureDefaultArgs> = $Result.GetResult<Prisma.$CapabilityFixturePayload, S>
+
+  type CapabilityFixtureCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<CapabilityFixtureFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: CapabilityFixtureCountAggregateInputType | true
+    }
+
+  export interface CapabilityFixtureDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['CapabilityFixture'], meta: { name: 'CapabilityFixture' } }
+    /**
+     * Find zero or one CapabilityFixture that matches the filter.
+     * @param {CapabilityFixtureFindUniqueArgs} args - Arguments to find a CapabilityFixture
+     * @example
+     * // Get one CapabilityFixture
+     * const capabilityFixture = await prisma.capabilityFixture.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends CapabilityFixtureFindUniqueArgs>(args: SelectSubset<T, CapabilityFixtureFindUniqueArgs<ExtArgs>>): Prisma__CapabilityFixtureClient<$Result.GetResult<Prisma.$CapabilityFixturePayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+
+    /**
+     * Find one CapabilityFixture that matches the filter or throw an error with `error.code='P2025'` 
+     * if no matches were found.
+     * @param {CapabilityFixtureFindUniqueOrThrowArgs} args - Arguments to find a CapabilityFixture
+     * @example
+     * // Get one CapabilityFixture
+     * const capabilityFixture = await prisma.capabilityFixture.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends CapabilityFixtureFindUniqueOrThrowArgs>(args: SelectSubset<T, CapabilityFixtureFindUniqueOrThrowArgs<ExtArgs>>): Prisma__CapabilityFixtureClient<$Result.GetResult<Prisma.$CapabilityFixturePayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+
+    /**
+     * Find the first CapabilityFixture that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CapabilityFixtureFindFirstArgs} args - Arguments to find a CapabilityFixture
+     * @example
+     * // Get one CapabilityFixture
+     * const capabilityFixture = await prisma.capabilityFixture.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends CapabilityFixtureFindFirstArgs>(args?: SelectSubset<T, CapabilityFixtureFindFirstArgs<ExtArgs>>): Prisma__CapabilityFixtureClient<$Result.GetResult<Prisma.$CapabilityFixturePayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+
+    /**
+     * Find the first CapabilityFixture that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CapabilityFixtureFindFirstOrThrowArgs} args - Arguments to find a CapabilityFixture
+     * @example
+     * // Get one CapabilityFixture
+     * const capabilityFixture = await prisma.capabilityFixture.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends CapabilityFixtureFindFirstOrThrowArgs>(args?: SelectSubset<T, CapabilityFixtureFindFirstOrThrowArgs<ExtArgs>>): Prisma__CapabilityFixtureClient<$Result.GetResult<Prisma.$CapabilityFixturePayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+
+    /**
+     * Find zero or more CapabilityFixtures that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CapabilityFixtureFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all CapabilityFixtures
+     * const capabilityFixtures = await prisma.capabilityFixture.findMany()
+     * 
+     * // Get first 10 CapabilityFixtures
+     * const capabilityFixtures = await prisma.capabilityFixture.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const capabilityFixtureWithIdOnly = await prisma.capabilityFixture.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends CapabilityFixtureFindManyArgs>(args?: SelectSubset<T, CapabilityFixtureFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CapabilityFixturePayload<ExtArgs>, T, "findMany">>
+
+    /**
+     * Create a CapabilityFixture.
+     * @param {CapabilityFixtureCreateArgs} args - Arguments to create a CapabilityFixture.
+     * @example
+     * // Create one CapabilityFixture
+     * const CapabilityFixture = await prisma.capabilityFixture.create({
+     *   data: {
+     *     // ... data to create a CapabilityFixture
+     *   }
+     * })
+     * 
+     */
+    create<T extends CapabilityFixtureCreateArgs>(args: SelectSubset<T, CapabilityFixtureCreateArgs<ExtArgs>>): Prisma__CapabilityFixtureClient<$Result.GetResult<Prisma.$CapabilityFixturePayload<ExtArgs>, T, "create">, never, ExtArgs>
+
+    /**
+     * Create many CapabilityFixtures.
+     * @param {CapabilityFixtureCreateManyArgs} args - Arguments to create many CapabilityFixtures.
+     * @example
+     * // Create many CapabilityFixtures
+     * const capabilityFixture = await prisma.capabilityFixture.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends CapabilityFixtureCreateManyArgs>(args?: SelectSubset<T, CapabilityFixtureCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many CapabilityFixtures and returns the data saved in the database.
+     * @param {CapabilityFixtureCreateManyAndReturnArgs} args - Arguments to create many CapabilityFixtures.
+     * @example
+     * // Create many CapabilityFixtures
+     * const capabilityFixture = await prisma.capabilityFixture.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many CapabilityFixtures and only return the `id`
+     * const capabilityFixtureWithIdOnly = await prisma.capabilityFixture.createManyAndReturn({ 
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends CapabilityFixtureCreateManyAndReturnArgs>(args?: SelectSubset<T, CapabilityFixtureCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CapabilityFixturePayload<ExtArgs>, T, "createManyAndReturn">>
+
+    /**
+     * Delete a CapabilityFixture.
+     * @param {CapabilityFixtureDeleteArgs} args - Arguments to delete one CapabilityFixture.
+     * @example
+     * // Delete one CapabilityFixture
+     * const CapabilityFixture = await prisma.capabilityFixture.delete({
+     *   where: {
+     *     // ... filter to delete one CapabilityFixture
+     *   }
+     * })
+     * 
+     */
+    delete<T extends CapabilityFixtureDeleteArgs>(args: SelectSubset<T, CapabilityFixtureDeleteArgs<ExtArgs>>): Prisma__CapabilityFixtureClient<$Result.GetResult<Prisma.$CapabilityFixturePayload<ExtArgs>, T, "delete">, never, ExtArgs>
+
+    /**
+     * Update one CapabilityFixture.
+     * @param {CapabilityFixtureUpdateArgs} args - Arguments to update one CapabilityFixture.
+     * @example
+     * // Update one CapabilityFixture
+     * const capabilityFixture = await prisma.capabilityFixture.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends CapabilityFixtureUpdateArgs>(args: SelectSubset<T, CapabilityFixtureUpdateArgs<ExtArgs>>): Prisma__CapabilityFixtureClient<$Result.GetResult<Prisma.$CapabilityFixturePayload<ExtArgs>, T, "update">, never, ExtArgs>
+
+    /**
+     * Delete zero or more CapabilityFixtures.
+     * @param {CapabilityFixtureDeleteManyArgs} args - Arguments to filter CapabilityFixtures to delete.
+     * @example
+     * // Delete a few CapabilityFixtures
+     * const { count } = await prisma.capabilityFixture.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends CapabilityFixtureDeleteManyArgs>(args?: SelectSubset<T, CapabilityFixtureDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more CapabilityFixtures.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CapabilityFixtureUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many CapabilityFixtures
+     * const capabilityFixture = await prisma.capabilityFixture.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends CapabilityFixtureUpdateManyArgs>(args: SelectSubset<T, CapabilityFixtureUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one CapabilityFixture.
+     * @param {CapabilityFixtureUpsertArgs} args - Arguments to update or create a CapabilityFixture.
+     * @example
+     * // Update or create a CapabilityFixture
+     * const capabilityFixture = await prisma.capabilityFixture.upsert({
+     *   create: {
+     *     // ... data to create a CapabilityFixture
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the CapabilityFixture we want to update
+     *   }
+     * })
+     */
+    upsert<T extends CapabilityFixtureUpsertArgs>(args: SelectSubset<T, CapabilityFixtureUpsertArgs<ExtArgs>>): Prisma__CapabilityFixtureClient<$Result.GetResult<Prisma.$CapabilityFixturePayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+
+
+    /**
+     * Count the number of CapabilityFixtures.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CapabilityFixtureCountArgs} args - Arguments to filter CapabilityFixtures to count.
+     * @example
+     * // Count the number of CapabilityFixtures
+     * const count = await prisma.capabilityFixture.count({
+     *   where: {
+     *     // ... the filter for the CapabilityFixtures we want to count
+     *   }
+     * })
+    **/
+    count<T extends CapabilityFixtureCountArgs>(
+      args?: Subset<T, CapabilityFixtureCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], CapabilityFixtureCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a CapabilityFixture.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CapabilityFixtureAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends CapabilityFixtureAggregateArgs>(args: Subset<T, CapabilityFixtureAggregateArgs>): Prisma.PrismaPromise<GetCapabilityFixtureAggregateType<T>>
+
+    /**
+     * Group by CapabilityFixture.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CapabilityFixtureGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends CapabilityFixtureGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: CapabilityFixtureGroupByArgs['orderBy'] }
+        : { orderBy?: CapabilityFixtureGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, CapabilityFixtureGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetCapabilityFixtureGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the CapabilityFixture model
+   */
+  readonly fields: CapabilityFixtureFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for CapabilityFixture.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__CapabilityFixtureClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the CapabilityFixture model
+   */ 
+  interface CapabilityFixtureFieldRefs {
+    readonly id: FieldRef<"CapabilityFixture", 'String'>
+    readonly releaseId: FieldRef<"CapabilityFixture", 'String'>
+    readonly buildId: FieldRef<"CapabilityFixture", 'String'>
+    readonly name: FieldRef<"CapabilityFixture", 'String'>
+    readonly fixtureType: FieldRef<"CapabilityFixture", 'String'>
+    readonly inputJson: FieldRef<"CapabilityFixture", 'Json'>
+    readonly expectedOutputJson: FieldRef<"CapabilityFixture", 'Json'>
+    readonly isNegative: FieldRef<"CapabilityFixture", 'Boolean'>
+    readonly errorContains: FieldRef<"CapabilityFixture", 'String'>
+    readonly createdAt: FieldRef<"CapabilityFixture", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * CapabilityFixture findUnique
+   */
+  export type CapabilityFixtureFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CapabilityFixture
+     */
+    select?: CapabilityFixtureSelect<ExtArgs> | null
+    /**
+     * Filter, which CapabilityFixture to fetch.
+     */
+    where: CapabilityFixtureWhereUniqueInput
+  }
+
+  /**
+   * CapabilityFixture findUniqueOrThrow
+   */
+  export type CapabilityFixtureFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CapabilityFixture
+     */
+    select?: CapabilityFixtureSelect<ExtArgs> | null
+    /**
+     * Filter, which CapabilityFixture to fetch.
+     */
+    where: CapabilityFixtureWhereUniqueInput
+  }
+
+  /**
+   * CapabilityFixture findFirst
+   */
+  export type CapabilityFixtureFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CapabilityFixture
+     */
+    select?: CapabilityFixtureSelect<ExtArgs> | null
+    /**
+     * Filter, which CapabilityFixture to fetch.
+     */
+    where?: CapabilityFixtureWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CapabilityFixtures to fetch.
+     */
+    orderBy?: CapabilityFixtureOrderByWithRelationInput | CapabilityFixtureOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for CapabilityFixtures.
+     */
+    cursor?: CapabilityFixtureWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CapabilityFixtures from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CapabilityFixtures.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of CapabilityFixtures.
+     */
+    distinct?: CapabilityFixtureScalarFieldEnum | CapabilityFixtureScalarFieldEnum[]
+  }
+
+  /**
+   * CapabilityFixture findFirstOrThrow
+   */
+  export type CapabilityFixtureFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CapabilityFixture
+     */
+    select?: CapabilityFixtureSelect<ExtArgs> | null
+    /**
+     * Filter, which CapabilityFixture to fetch.
+     */
+    where?: CapabilityFixtureWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CapabilityFixtures to fetch.
+     */
+    orderBy?: CapabilityFixtureOrderByWithRelationInput | CapabilityFixtureOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for CapabilityFixtures.
+     */
+    cursor?: CapabilityFixtureWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CapabilityFixtures from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CapabilityFixtures.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of CapabilityFixtures.
+     */
+    distinct?: CapabilityFixtureScalarFieldEnum | CapabilityFixtureScalarFieldEnum[]
+  }
+
+  /**
+   * CapabilityFixture findMany
+   */
+  export type CapabilityFixtureFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CapabilityFixture
+     */
+    select?: CapabilityFixtureSelect<ExtArgs> | null
+    /**
+     * Filter, which CapabilityFixtures to fetch.
+     */
+    where?: CapabilityFixtureWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CapabilityFixtures to fetch.
+     */
+    orderBy?: CapabilityFixtureOrderByWithRelationInput | CapabilityFixtureOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing CapabilityFixtures.
+     */
+    cursor?: CapabilityFixtureWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CapabilityFixtures from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CapabilityFixtures.
+     */
+    skip?: number
+    distinct?: CapabilityFixtureScalarFieldEnum | CapabilityFixtureScalarFieldEnum[]
+  }
+
+  /**
+   * CapabilityFixture create
+   */
+  export type CapabilityFixtureCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CapabilityFixture
+     */
+    select?: CapabilityFixtureSelect<ExtArgs> | null
+    /**
+     * The data needed to create a CapabilityFixture.
+     */
+    data: XOR<CapabilityFixtureCreateInput, CapabilityFixtureUncheckedCreateInput>
+  }
+
+  /**
+   * CapabilityFixture createMany
+   */
+  export type CapabilityFixtureCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many CapabilityFixtures.
+     */
+    data: CapabilityFixtureCreateManyInput | CapabilityFixtureCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * CapabilityFixture createManyAndReturn
+   */
+  export type CapabilityFixtureCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CapabilityFixture
+     */
+    select?: CapabilityFixtureSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * The data used to create many CapabilityFixtures.
+     */
+    data: CapabilityFixtureCreateManyInput | CapabilityFixtureCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * CapabilityFixture update
+   */
+  export type CapabilityFixtureUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CapabilityFixture
+     */
+    select?: CapabilityFixtureSelect<ExtArgs> | null
+    /**
+     * The data needed to update a CapabilityFixture.
+     */
+    data: XOR<CapabilityFixtureUpdateInput, CapabilityFixtureUncheckedUpdateInput>
+    /**
+     * Choose, which CapabilityFixture to update.
+     */
+    where: CapabilityFixtureWhereUniqueInput
+  }
+
+  /**
+   * CapabilityFixture updateMany
+   */
+  export type CapabilityFixtureUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update CapabilityFixtures.
+     */
+    data: XOR<CapabilityFixtureUpdateManyMutationInput, CapabilityFixtureUncheckedUpdateManyInput>
+    /**
+     * Filter which CapabilityFixtures to update
+     */
+    where?: CapabilityFixtureWhereInput
+  }
+
+  /**
+   * CapabilityFixture upsert
+   */
+  export type CapabilityFixtureUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CapabilityFixture
+     */
+    select?: CapabilityFixtureSelect<ExtArgs> | null
+    /**
+     * The filter to search for the CapabilityFixture to update in case it exists.
+     */
+    where: CapabilityFixtureWhereUniqueInput
+    /**
+     * In case the CapabilityFixture found by the `where` argument doesn't exist, create a new CapabilityFixture with this data.
+     */
+    create: XOR<CapabilityFixtureCreateInput, CapabilityFixtureUncheckedCreateInput>
+    /**
+     * In case the CapabilityFixture was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<CapabilityFixtureUpdateInput, CapabilityFixtureUncheckedUpdateInput>
+  }
+
+  /**
+   * CapabilityFixture delete
+   */
+  export type CapabilityFixtureDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CapabilityFixture
+     */
+    select?: CapabilityFixtureSelect<ExtArgs> | null
+    /**
+     * Filter which CapabilityFixture to delete.
+     */
+    where: CapabilityFixtureWhereUniqueInput
+  }
+
+  /**
+   * CapabilityFixture deleteMany
+   */
+  export type CapabilityFixtureDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which CapabilityFixtures to delete
+     */
+    where?: CapabilityFixtureWhereInput
+  }
+
+  /**
+   * CapabilityFixture without action
+   */
+  export type CapabilityFixtureDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CapabilityFixture
+     */
+    select?: CapabilityFixtureSelect<ExtArgs> | null
+  }
+
+
+  /**
+   * Model CapabilityAttestation
+   */
+
+  export type AggregateCapabilityAttestation = {
+    _count: CapabilityAttestationCountAggregateOutputType | null
+    _min: CapabilityAttestationMinAggregateOutputType | null
+    _max: CapabilityAttestationMaxAggregateOutputType | null
+  }
+
+  export type CapabilityAttestationMinAggregateOutputType = {
+    id: string | null
+    releaseId: string | null
+    buildId: string | null
+    sourceDigest: string | null
+    contractDigest: string | null
+    generatedCodeDigest: string | null
+    fixtureDigest: string | null
+    validatorVersion: string | null
+    createdAt: Date | null
+  }
+
+  export type CapabilityAttestationMaxAggregateOutputType = {
+    id: string | null
+    releaseId: string | null
+    buildId: string | null
+    sourceDigest: string | null
+    contractDigest: string | null
+    generatedCodeDigest: string | null
+    fixtureDigest: string | null
+    validatorVersion: string | null
+    createdAt: Date | null
+  }
+
+  export type CapabilityAttestationCountAggregateOutputType = {
+    id: number
+    releaseId: number
+    buildId: number
+    sourceDigest: number
+    contractDigest: number
+    generatedCodeDigest: number
+    fixtureDigest: number
+    validatorVersion: number
+    gateResultsJson: number
+    createdAt: number
+    _all: number
+  }
+
+
+  export type CapabilityAttestationMinAggregateInputType = {
+    id?: true
+    releaseId?: true
+    buildId?: true
+    sourceDigest?: true
+    contractDigest?: true
+    generatedCodeDigest?: true
+    fixtureDigest?: true
+    validatorVersion?: true
+    createdAt?: true
+  }
+
+  export type CapabilityAttestationMaxAggregateInputType = {
+    id?: true
+    releaseId?: true
+    buildId?: true
+    sourceDigest?: true
+    contractDigest?: true
+    generatedCodeDigest?: true
+    fixtureDigest?: true
+    validatorVersion?: true
+    createdAt?: true
+  }
+
+  export type CapabilityAttestationCountAggregateInputType = {
+    id?: true
+    releaseId?: true
+    buildId?: true
+    sourceDigest?: true
+    contractDigest?: true
+    generatedCodeDigest?: true
+    fixtureDigest?: true
+    validatorVersion?: true
+    gateResultsJson?: true
+    createdAt?: true
+    _all?: true
+  }
+
+  export type CapabilityAttestationAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which CapabilityAttestation to aggregate.
+     */
+    where?: CapabilityAttestationWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CapabilityAttestations to fetch.
+     */
+    orderBy?: CapabilityAttestationOrderByWithRelationInput | CapabilityAttestationOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: CapabilityAttestationWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CapabilityAttestations from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CapabilityAttestations.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned CapabilityAttestations
+    **/
+    _count?: true | CapabilityAttestationCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: CapabilityAttestationMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: CapabilityAttestationMaxAggregateInputType
+  }
+
+  export type GetCapabilityAttestationAggregateType<T extends CapabilityAttestationAggregateArgs> = {
+        [P in keyof T & keyof AggregateCapabilityAttestation]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateCapabilityAttestation[P]>
+      : GetScalarType<T[P], AggregateCapabilityAttestation[P]>
+  }
+
+
+
+
+  export type CapabilityAttestationGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: CapabilityAttestationWhereInput
+    orderBy?: CapabilityAttestationOrderByWithAggregationInput | CapabilityAttestationOrderByWithAggregationInput[]
+    by: CapabilityAttestationScalarFieldEnum[] | CapabilityAttestationScalarFieldEnum
+    having?: CapabilityAttestationScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: CapabilityAttestationCountAggregateInputType | true
+    _min?: CapabilityAttestationMinAggregateInputType
+    _max?: CapabilityAttestationMaxAggregateInputType
+  }
+
+  export type CapabilityAttestationGroupByOutputType = {
+    id: string
+    releaseId: string
+    buildId: string
+    sourceDigest: string
+    contractDigest: string
+    generatedCodeDigest: string
+    fixtureDigest: string | null
+    validatorVersion: string
+    gateResultsJson: JsonValue
+    createdAt: Date
+    _count: CapabilityAttestationCountAggregateOutputType | null
+    _min: CapabilityAttestationMinAggregateOutputType | null
+    _max: CapabilityAttestationMaxAggregateOutputType | null
+  }
+
+  type GetCapabilityAttestationGroupByPayload<T extends CapabilityAttestationGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<CapabilityAttestationGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof CapabilityAttestationGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], CapabilityAttestationGroupByOutputType[P]>
+            : GetScalarType<T[P], CapabilityAttestationGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type CapabilityAttestationSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    releaseId?: boolean
+    buildId?: boolean
+    sourceDigest?: boolean
+    contractDigest?: boolean
+    generatedCodeDigest?: boolean
+    fixtureDigest?: boolean
+    validatorVersion?: boolean
+    gateResultsJson?: boolean
+    createdAt?: boolean
+  }, ExtArgs["result"]["capabilityAttestation"]>
+
+  export type CapabilityAttestationSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    releaseId?: boolean
+    buildId?: boolean
+    sourceDigest?: boolean
+    contractDigest?: boolean
+    generatedCodeDigest?: boolean
+    fixtureDigest?: boolean
+    validatorVersion?: boolean
+    gateResultsJson?: boolean
+    createdAt?: boolean
+  }, ExtArgs["result"]["capabilityAttestation"]>
+
+  export type CapabilityAttestationSelectScalar = {
+    id?: boolean
+    releaseId?: boolean
+    buildId?: boolean
+    sourceDigest?: boolean
+    contractDigest?: boolean
+    generatedCodeDigest?: boolean
+    fixtureDigest?: boolean
+    validatorVersion?: boolean
+    gateResultsJson?: boolean
+    createdAt?: boolean
+  }
+
+
+  export type $CapabilityAttestationPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "CapabilityAttestation"
+    objects: {}
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      releaseId: string
+      buildId: string
+      sourceDigest: string
+      contractDigest: string
+      generatedCodeDigest: string
+      fixtureDigest: string | null
+      validatorVersion: string
+      gateResultsJson: Prisma.JsonValue
+      createdAt: Date
+    }, ExtArgs["result"]["capabilityAttestation"]>
+    composites: {}
+  }
+
+  type CapabilityAttestationGetPayload<S extends boolean | null | undefined | CapabilityAttestationDefaultArgs> = $Result.GetResult<Prisma.$CapabilityAttestationPayload, S>
+
+  type CapabilityAttestationCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<CapabilityAttestationFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: CapabilityAttestationCountAggregateInputType | true
+    }
+
+  export interface CapabilityAttestationDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['CapabilityAttestation'], meta: { name: 'CapabilityAttestation' } }
+    /**
+     * Find zero or one CapabilityAttestation that matches the filter.
+     * @param {CapabilityAttestationFindUniqueArgs} args - Arguments to find a CapabilityAttestation
+     * @example
+     * // Get one CapabilityAttestation
+     * const capabilityAttestation = await prisma.capabilityAttestation.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends CapabilityAttestationFindUniqueArgs>(args: SelectSubset<T, CapabilityAttestationFindUniqueArgs<ExtArgs>>): Prisma__CapabilityAttestationClient<$Result.GetResult<Prisma.$CapabilityAttestationPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+
+    /**
+     * Find one CapabilityAttestation that matches the filter or throw an error with `error.code='P2025'` 
+     * if no matches were found.
+     * @param {CapabilityAttestationFindUniqueOrThrowArgs} args - Arguments to find a CapabilityAttestation
+     * @example
+     * // Get one CapabilityAttestation
+     * const capabilityAttestation = await prisma.capabilityAttestation.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends CapabilityAttestationFindUniqueOrThrowArgs>(args: SelectSubset<T, CapabilityAttestationFindUniqueOrThrowArgs<ExtArgs>>): Prisma__CapabilityAttestationClient<$Result.GetResult<Prisma.$CapabilityAttestationPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+
+    /**
+     * Find the first CapabilityAttestation that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CapabilityAttestationFindFirstArgs} args - Arguments to find a CapabilityAttestation
+     * @example
+     * // Get one CapabilityAttestation
+     * const capabilityAttestation = await prisma.capabilityAttestation.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends CapabilityAttestationFindFirstArgs>(args?: SelectSubset<T, CapabilityAttestationFindFirstArgs<ExtArgs>>): Prisma__CapabilityAttestationClient<$Result.GetResult<Prisma.$CapabilityAttestationPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+
+    /**
+     * Find the first CapabilityAttestation that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CapabilityAttestationFindFirstOrThrowArgs} args - Arguments to find a CapabilityAttestation
+     * @example
+     * // Get one CapabilityAttestation
+     * const capabilityAttestation = await prisma.capabilityAttestation.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends CapabilityAttestationFindFirstOrThrowArgs>(args?: SelectSubset<T, CapabilityAttestationFindFirstOrThrowArgs<ExtArgs>>): Prisma__CapabilityAttestationClient<$Result.GetResult<Prisma.$CapabilityAttestationPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+
+    /**
+     * Find zero or more CapabilityAttestations that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CapabilityAttestationFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all CapabilityAttestations
+     * const capabilityAttestations = await prisma.capabilityAttestation.findMany()
+     * 
+     * // Get first 10 CapabilityAttestations
+     * const capabilityAttestations = await prisma.capabilityAttestation.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const capabilityAttestationWithIdOnly = await prisma.capabilityAttestation.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends CapabilityAttestationFindManyArgs>(args?: SelectSubset<T, CapabilityAttestationFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CapabilityAttestationPayload<ExtArgs>, T, "findMany">>
+
+    /**
+     * Create a CapabilityAttestation.
+     * @param {CapabilityAttestationCreateArgs} args - Arguments to create a CapabilityAttestation.
+     * @example
+     * // Create one CapabilityAttestation
+     * const CapabilityAttestation = await prisma.capabilityAttestation.create({
+     *   data: {
+     *     // ... data to create a CapabilityAttestation
+     *   }
+     * })
+     * 
+     */
+    create<T extends CapabilityAttestationCreateArgs>(args: SelectSubset<T, CapabilityAttestationCreateArgs<ExtArgs>>): Prisma__CapabilityAttestationClient<$Result.GetResult<Prisma.$CapabilityAttestationPayload<ExtArgs>, T, "create">, never, ExtArgs>
+
+    /**
+     * Create many CapabilityAttestations.
+     * @param {CapabilityAttestationCreateManyArgs} args - Arguments to create many CapabilityAttestations.
+     * @example
+     * // Create many CapabilityAttestations
+     * const capabilityAttestation = await prisma.capabilityAttestation.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends CapabilityAttestationCreateManyArgs>(args?: SelectSubset<T, CapabilityAttestationCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many CapabilityAttestations and returns the data saved in the database.
+     * @param {CapabilityAttestationCreateManyAndReturnArgs} args - Arguments to create many CapabilityAttestations.
+     * @example
+     * // Create many CapabilityAttestations
+     * const capabilityAttestation = await prisma.capabilityAttestation.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many CapabilityAttestations and only return the `id`
+     * const capabilityAttestationWithIdOnly = await prisma.capabilityAttestation.createManyAndReturn({ 
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends CapabilityAttestationCreateManyAndReturnArgs>(args?: SelectSubset<T, CapabilityAttestationCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CapabilityAttestationPayload<ExtArgs>, T, "createManyAndReturn">>
+
+    /**
+     * Delete a CapabilityAttestation.
+     * @param {CapabilityAttestationDeleteArgs} args - Arguments to delete one CapabilityAttestation.
+     * @example
+     * // Delete one CapabilityAttestation
+     * const CapabilityAttestation = await prisma.capabilityAttestation.delete({
+     *   where: {
+     *     // ... filter to delete one CapabilityAttestation
+     *   }
+     * })
+     * 
+     */
+    delete<T extends CapabilityAttestationDeleteArgs>(args: SelectSubset<T, CapabilityAttestationDeleteArgs<ExtArgs>>): Prisma__CapabilityAttestationClient<$Result.GetResult<Prisma.$CapabilityAttestationPayload<ExtArgs>, T, "delete">, never, ExtArgs>
+
+    /**
+     * Update one CapabilityAttestation.
+     * @param {CapabilityAttestationUpdateArgs} args - Arguments to update one CapabilityAttestation.
+     * @example
+     * // Update one CapabilityAttestation
+     * const capabilityAttestation = await prisma.capabilityAttestation.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends CapabilityAttestationUpdateArgs>(args: SelectSubset<T, CapabilityAttestationUpdateArgs<ExtArgs>>): Prisma__CapabilityAttestationClient<$Result.GetResult<Prisma.$CapabilityAttestationPayload<ExtArgs>, T, "update">, never, ExtArgs>
+
+    /**
+     * Delete zero or more CapabilityAttestations.
+     * @param {CapabilityAttestationDeleteManyArgs} args - Arguments to filter CapabilityAttestations to delete.
+     * @example
+     * // Delete a few CapabilityAttestations
+     * const { count } = await prisma.capabilityAttestation.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends CapabilityAttestationDeleteManyArgs>(args?: SelectSubset<T, CapabilityAttestationDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more CapabilityAttestations.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CapabilityAttestationUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many CapabilityAttestations
+     * const capabilityAttestation = await prisma.capabilityAttestation.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends CapabilityAttestationUpdateManyArgs>(args: SelectSubset<T, CapabilityAttestationUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one CapabilityAttestation.
+     * @param {CapabilityAttestationUpsertArgs} args - Arguments to update or create a CapabilityAttestation.
+     * @example
+     * // Update or create a CapabilityAttestation
+     * const capabilityAttestation = await prisma.capabilityAttestation.upsert({
+     *   create: {
+     *     // ... data to create a CapabilityAttestation
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the CapabilityAttestation we want to update
+     *   }
+     * })
+     */
+    upsert<T extends CapabilityAttestationUpsertArgs>(args: SelectSubset<T, CapabilityAttestationUpsertArgs<ExtArgs>>): Prisma__CapabilityAttestationClient<$Result.GetResult<Prisma.$CapabilityAttestationPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+
+
+    /**
+     * Count the number of CapabilityAttestations.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CapabilityAttestationCountArgs} args - Arguments to filter CapabilityAttestations to count.
+     * @example
+     * // Count the number of CapabilityAttestations
+     * const count = await prisma.capabilityAttestation.count({
+     *   where: {
+     *     // ... the filter for the CapabilityAttestations we want to count
+     *   }
+     * })
+    **/
+    count<T extends CapabilityAttestationCountArgs>(
+      args?: Subset<T, CapabilityAttestationCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], CapabilityAttestationCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a CapabilityAttestation.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CapabilityAttestationAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends CapabilityAttestationAggregateArgs>(args: Subset<T, CapabilityAttestationAggregateArgs>): Prisma.PrismaPromise<GetCapabilityAttestationAggregateType<T>>
+
+    /**
+     * Group by CapabilityAttestation.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CapabilityAttestationGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends CapabilityAttestationGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: CapabilityAttestationGroupByArgs['orderBy'] }
+        : { orderBy?: CapabilityAttestationGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, CapabilityAttestationGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetCapabilityAttestationGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the CapabilityAttestation model
+   */
+  readonly fields: CapabilityAttestationFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for CapabilityAttestation.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__CapabilityAttestationClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the CapabilityAttestation model
+   */ 
+  interface CapabilityAttestationFieldRefs {
+    readonly id: FieldRef<"CapabilityAttestation", 'String'>
+    readonly releaseId: FieldRef<"CapabilityAttestation", 'String'>
+    readonly buildId: FieldRef<"CapabilityAttestation", 'String'>
+    readonly sourceDigest: FieldRef<"CapabilityAttestation", 'String'>
+    readonly contractDigest: FieldRef<"CapabilityAttestation", 'String'>
+    readonly generatedCodeDigest: FieldRef<"CapabilityAttestation", 'String'>
+    readonly fixtureDigest: FieldRef<"CapabilityAttestation", 'String'>
+    readonly validatorVersion: FieldRef<"CapabilityAttestation", 'String'>
+    readonly gateResultsJson: FieldRef<"CapabilityAttestation", 'Json'>
+    readonly createdAt: FieldRef<"CapabilityAttestation", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * CapabilityAttestation findUnique
+   */
+  export type CapabilityAttestationFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CapabilityAttestation
+     */
+    select?: CapabilityAttestationSelect<ExtArgs> | null
+    /**
+     * Filter, which CapabilityAttestation to fetch.
+     */
+    where: CapabilityAttestationWhereUniqueInput
+  }
+
+  /**
+   * CapabilityAttestation findUniqueOrThrow
+   */
+  export type CapabilityAttestationFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CapabilityAttestation
+     */
+    select?: CapabilityAttestationSelect<ExtArgs> | null
+    /**
+     * Filter, which CapabilityAttestation to fetch.
+     */
+    where: CapabilityAttestationWhereUniqueInput
+  }
+
+  /**
+   * CapabilityAttestation findFirst
+   */
+  export type CapabilityAttestationFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CapabilityAttestation
+     */
+    select?: CapabilityAttestationSelect<ExtArgs> | null
+    /**
+     * Filter, which CapabilityAttestation to fetch.
+     */
+    where?: CapabilityAttestationWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CapabilityAttestations to fetch.
+     */
+    orderBy?: CapabilityAttestationOrderByWithRelationInput | CapabilityAttestationOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for CapabilityAttestations.
+     */
+    cursor?: CapabilityAttestationWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CapabilityAttestations from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CapabilityAttestations.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of CapabilityAttestations.
+     */
+    distinct?: CapabilityAttestationScalarFieldEnum | CapabilityAttestationScalarFieldEnum[]
+  }
+
+  /**
+   * CapabilityAttestation findFirstOrThrow
+   */
+  export type CapabilityAttestationFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CapabilityAttestation
+     */
+    select?: CapabilityAttestationSelect<ExtArgs> | null
+    /**
+     * Filter, which CapabilityAttestation to fetch.
+     */
+    where?: CapabilityAttestationWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CapabilityAttestations to fetch.
+     */
+    orderBy?: CapabilityAttestationOrderByWithRelationInput | CapabilityAttestationOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for CapabilityAttestations.
+     */
+    cursor?: CapabilityAttestationWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CapabilityAttestations from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CapabilityAttestations.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of CapabilityAttestations.
+     */
+    distinct?: CapabilityAttestationScalarFieldEnum | CapabilityAttestationScalarFieldEnum[]
+  }
+
+  /**
+   * CapabilityAttestation findMany
+   */
+  export type CapabilityAttestationFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CapabilityAttestation
+     */
+    select?: CapabilityAttestationSelect<ExtArgs> | null
+    /**
+     * Filter, which CapabilityAttestations to fetch.
+     */
+    where?: CapabilityAttestationWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CapabilityAttestations to fetch.
+     */
+    orderBy?: CapabilityAttestationOrderByWithRelationInput | CapabilityAttestationOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing CapabilityAttestations.
+     */
+    cursor?: CapabilityAttestationWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CapabilityAttestations from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CapabilityAttestations.
+     */
+    skip?: number
+    distinct?: CapabilityAttestationScalarFieldEnum | CapabilityAttestationScalarFieldEnum[]
+  }
+
+  /**
+   * CapabilityAttestation create
+   */
+  export type CapabilityAttestationCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CapabilityAttestation
+     */
+    select?: CapabilityAttestationSelect<ExtArgs> | null
+    /**
+     * The data needed to create a CapabilityAttestation.
+     */
+    data: XOR<CapabilityAttestationCreateInput, CapabilityAttestationUncheckedCreateInput>
+  }
+
+  /**
+   * CapabilityAttestation createMany
+   */
+  export type CapabilityAttestationCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many CapabilityAttestations.
+     */
+    data: CapabilityAttestationCreateManyInput | CapabilityAttestationCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * CapabilityAttestation createManyAndReturn
+   */
+  export type CapabilityAttestationCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CapabilityAttestation
+     */
+    select?: CapabilityAttestationSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * The data used to create many CapabilityAttestations.
+     */
+    data: CapabilityAttestationCreateManyInput | CapabilityAttestationCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * CapabilityAttestation update
+   */
+  export type CapabilityAttestationUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CapabilityAttestation
+     */
+    select?: CapabilityAttestationSelect<ExtArgs> | null
+    /**
+     * The data needed to update a CapabilityAttestation.
+     */
+    data: XOR<CapabilityAttestationUpdateInput, CapabilityAttestationUncheckedUpdateInput>
+    /**
+     * Choose, which CapabilityAttestation to update.
+     */
+    where: CapabilityAttestationWhereUniqueInput
+  }
+
+  /**
+   * CapabilityAttestation updateMany
+   */
+  export type CapabilityAttestationUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update CapabilityAttestations.
+     */
+    data: XOR<CapabilityAttestationUpdateManyMutationInput, CapabilityAttestationUncheckedUpdateManyInput>
+    /**
+     * Filter which CapabilityAttestations to update
+     */
+    where?: CapabilityAttestationWhereInput
+  }
+
+  /**
+   * CapabilityAttestation upsert
+   */
+  export type CapabilityAttestationUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CapabilityAttestation
+     */
+    select?: CapabilityAttestationSelect<ExtArgs> | null
+    /**
+     * The filter to search for the CapabilityAttestation to update in case it exists.
+     */
+    where: CapabilityAttestationWhereUniqueInput
+    /**
+     * In case the CapabilityAttestation found by the `where` argument doesn't exist, create a new CapabilityAttestation with this data.
+     */
+    create: XOR<CapabilityAttestationCreateInput, CapabilityAttestationUncheckedCreateInput>
+    /**
+     * In case the CapabilityAttestation was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<CapabilityAttestationUpdateInput, CapabilityAttestationUncheckedUpdateInput>
+  }
+
+  /**
+   * CapabilityAttestation delete
+   */
+  export type CapabilityAttestationDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CapabilityAttestation
+     */
+    select?: CapabilityAttestationSelect<ExtArgs> | null
+    /**
+     * Filter which CapabilityAttestation to delete.
+     */
+    where: CapabilityAttestationWhereUniqueInput
+  }
+
+  /**
+   * CapabilityAttestation deleteMany
+   */
+  export type CapabilityAttestationDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which CapabilityAttestations to delete
+     */
+    where?: CapabilityAttestationWhereInput
+  }
+
+  /**
+   * CapabilityAttestation without action
+   */
+  export type CapabilityAttestationDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CapabilityAttestation
+     */
+    select?: CapabilityAttestationSelect<ExtArgs> | null
   }
 
 
@@ -50777,6 +52877,9 @@ export namespace Prisma {
     description: 'description',
     triggerKeywords: 'triggerKeywords',
     paramsSchema: 'paramsSchema',
+    outputSchema: 'outputSchema',
+    candidateSchemaJson: 'candidateSchemaJson',
+    candidateSchemaGeneratedAt: 'candidateSchemaGeneratedAt',
     templateId: 'templateId',
     carboneTemplateId: 'carboneTemplateId',
     carboneSkillId: 'carboneSkillId',
@@ -50958,6 +53061,8 @@ export namespace Prisma {
     dependsOnJson: 'dependsOnJson',
     inputBindingsJson: 'inputBindingsJson',
     outputContractJson: 'outputContractJson',
+    outputSchemaJson: 'outputSchemaJson',
+    inputSchemaJson: 'inputSchemaJson',
     resolvedInputJson: 'resolvedInputJson',
     idempotencyKey: 'idempotencyKey',
     leaseOwner: 'leaseOwner',
@@ -51202,6 +53307,7 @@ export namespace Prisma {
     manifestJson: 'manifestJson',
     workflowJson: 'workflowJson',
     runtimeBuild: 'runtimeBuild',
+    attestationId: 'attestationId',
     createdAt: 'createdAt'
   };
 
@@ -51308,6 +53414,7 @@ export namespace Prisma {
     generatedConfigJson: 'generatedConfigJson',
     logsJson: 'logsJson',
     diffSummary: 'diffSummary',
+    buildDiffJson: 'buildDiffJson',
     status: 'status',
     errorSummary: 'errorSummary',
     startedAt: 'startedAt',
@@ -51337,6 +53444,38 @@ export namespace Prisma {
   };
 
   export type CapabilityValidationScalarFieldEnum = (typeof CapabilityValidationScalarFieldEnum)[keyof typeof CapabilityValidationScalarFieldEnum]
+
+
+  export const CapabilityFixtureScalarFieldEnum: {
+    id: 'id',
+    releaseId: 'releaseId',
+    buildId: 'buildId',
+    name: 'name',
+    fixtureType: 'fixtureType',
+    inputJson: 'inputJson',
+    expectedOutputJson: 'expectedOutputJson',
+    isNegative: 'isNegative',
+    errorContains: 'errorContains',
+    createdAt: 'createdAt'
+  };
+
+  export type CapabilityFixtureScalarFieldEnum = (typeof CapabilityFixtureScalarFieldEnum)[keyof typeof CapabilityFixtureScalarFieldEnum]
+
+
+  export const CapabilityAttestationScalarFieldEnum: {
+    id: 'id',
+    releaseId: 'releaseId',
+    buildId: 'buildId',
+    sourceDigest: 'sourceDigest',
+    contractDigest: 'contractDigest',
+    generatedCodeDigest: 'generatedCodeDigest',
+    fixtureDigest: 'fixtureDigest',
+    validatorVersion: 'validatorVersion',
+    gateResultsJson: 'gateResultsJson',
+    createdAt: 'createdAt'
+  };
+
+  export type CapabilityAttestationScalarFieldEnum = (typeof CapabilityAttestationScalarFieldEnum)[keyof typeof CapabilityAttestationScalarFieldEnum]
 
 
   export const SkillDraftScalarFieldEnum: {
@@ -52559,6 +54698,9 @@ export namespace Prisma {
     description?: StringNullableFilter<"SkillConfig"> | string | null
     triggerKeywords?: JsonFilter<"SkillConfig">
     paramsSchema?: JsonFilter<"SkillConfig">
+    outputSchema?: JsonFilter<"SkillConfig">
+    candidateSchemaJson?: JsonNullableFilter<"SkillConfig">
+    candidateSchemaGeneratedAt?: DateTimeNullableFilter<"SkillConfig"> | Date | string | null
     templateId?: StringNullableFilter<"SkillConfig"> | string | null
     carboneTemplateId?: StringNullableFilter<"SkillConfig"> | string | null
     carboneSkillId?: StringNullableFilter<"SkillConfig"> | string | null
@@ -52582,6 +54724,9 @@ export namespace Prisma {
     description?: SortOrderInput | SortOrder
     triggerKeywords?: SortOrder
     paramsSchema?: SortOrder
+    outputSchema?: SortOrder
+    candidateSchemaJson?: SortOrderInput | SortOrder
+    candidateSchemaGeneratedAt?: SortOrderInput | SortOrder
     templateId?: SortOrderInput | SortOrder
     carboneTemplateId?: SortOrderInput | SortOrder
     carboneSkillId?: SortOrderInput | SortOrder
@@ -52608,6 +54753,9 @@ export namespace Prisma {
     description?: StringNullableFilter<"SkillConfig"> | string | null
     triggerKeywords?: JsonFilter<"SkillConfig">
     paramsSchema?: JsonFilter<"SkillConfig">
+    outputSchema?: JsonFilter<"SkillConfig">
+    candidateSchemaJson?: JsonNullableFilter<"SkillConfig">
+    candidateSchemaGeneratedAt?: DateTimeNullableFilter<"SkillConfig"> | Date | string | null
     templateId?: StringNullableFilter<"SkillConfig"> | string | null
     carboneTemplateId?: StringNullableFilter<"SkillConfig"> | string | null
     carboneSkillId?: StringNullableFilter<"SkillConfig"> | string | null
@@ -52631,6 +54779,9 @@ export namespace Prisma {
     description?: SortOrderInput | SortOrder
     triggerKeywords?: SortOrder
     paramsSchema?: SortOrder
+    outputSchema?: SortOrder
+    candidateSchemaJson?: SortOrderInput | SortOrder
+    candidateSchemaGeneratedAt?: SortOrderInput | SortOrder
     templateId?: SortOrderInput | SortOrder
     carboneTemplateId?: SortOrderInput | SortOrder
     carboneSkillId?: SortOrderInput | SortOrder
@@ -52657,6 +54808,9 @@ export namespace Prisma {
     description?: StringNullableWithAggregatesFilter<"SkillConfig"> | string | null
     triggerKeywords?: JsonWithAggregatesFilter<"SkillConfig">
     paramsSchema?: JsonWithAggregatesFilter<"SkillConfig">
+    outputSchema?: JsonWithAggregatesFilter<"SkillConfig">
+    candidateSchemaJson?: JsonNullableWithAggregatesFilter<"SkillConfig">
+    candidateSchemaGeneratedAt?: DateTimeNullableWithAggregatesFilter<"SkillConfig"> | Date | string | null
     templateId?: StringNullableWithAggregatesFilter<"SkillConfig"> | string | null
     carboneTemplateId?: StringNullableWithAggregatesFilter<"SkillConfig"> | string | null
     carboneSkillId?: StringNullableWithAggregatesFilter<"SkillConfig"> | string | null
@@ -53427,6 +55581,8 @@ export namespace Prisma {
     dependsOnJson?: JsonNullableFilter<"ExecutionStep">
     inputBindingsJson?: JsonNullableFilter<"ExecutionStep">
     outputContractJson?: JsonNullableFilter<"ExecutionStep">
+    outputSchemaJson?: JsonNullableFilter<"ExecutionStep">
+    inputSchemaJson?: JsonNullableFilter<"ExecutionStep">
     resolvedInputJson?: JsonNullableFilter<"ExecutionStep">
     idempotencyKey?: StringNullableFilter<"ExecutionStep"> | string | null
     leaseOwner?: StringNullableFilter<"ExecutionStep"> | string | null
@@ -53462,6 +55618,8 @@ export namespace Prisma {
     dependsOnJson?: SortOrderInput | SortOrder
     inputBindingsJson?: SortOrderInput | SortOrder
     outputContractJson?: SortOrderInput | SortOrder
+    outputSchemaJson?: SortOrderInput | SortOrder
+    inputSchemaJson?: SortOrderInput | SortOrder
     resolvedInputJson?: SortOrderInput | SortOrder
     idempotencyKey?: SortOrderInput | SortOrder
     leaseOwner?: SortOrderInput | SortOrder
@@ -53502,6 +55660,8 @@ export namespace Prisma {
     dependsOnJson?: JsonNullableFilter<"ExecutionStep">
     inputBindingsJson?: JsonNullableFilter<"ExecutionStep">
     outputContractJson?: JsonNullableFilter<"ExecutionStep">
+    outputSchemaJson?: JsonNullableFilter<"ExecutionStep">
+    inputSchemaJson?: JsonNullableFilter<"ExecutionStep">
     resolvedInputJson?: JsonNullableFilter<"ExecutionStep">
     idempotencyKey?: StringNullableFilter<"ExecutionStep"> | string | null
     leaseOwner?: StringNullableFilter<"ExecutionStep"> | string | null
@@ -53537,6 +55697,8 @@ export namespace Prisma {
     dependsOnJson?: SortOrderInput | SortOrder
     inputBindingsJson?: SortOrderInput | SortOrder
     outputContractJson?: SortOrderInput | SortOrder
+    outputSchemaJson?: SortOrderInput | SortOrder
+    inputSchemaJson?: SortOrderInput | SortOrder
     resolvedInputJson?: SortOrderInput | SortOrder
     idempotencyKey?: SortOrderInput | SortOrder
     leaseOwner?: SortOrderInput | SortOrder
@@ -53579,6 +55741,8 @@ export namespace Prisma {
     dependsOnJson?: JsonNullableWithAggregatesFilter<"ExecutionStep">
     inputBindingsJson?: JsonNullableWithAggregatesFilter<"ExecutionStep">
     outputContractJson?: JsonNullableWithAggregatesFilter<"ExecutionStep">
+    outputSchemaJson?: JsonNullableWithAggregatesFilter<"ExecutionStep">
+    inputSchemaJson?: JsonNullableWithAggregatesFilter<"ExecutionStep">
     resolvedInputJson?: JsonNullableWithAggregatesFilter<"ExecutionStep">
     idempotencyKey?: StringNullableWithAggregatesFilter<"ExecutionStep"> | string | null
     leaseOwner?: StringNullableWithAggregatesFilter<"ExecutionStep"> | string | null
@@ -54728,6 +56892,7 @@ export namespace Prisma {
     manifestJson?: JsonFilter<"BuiltinSkillVersion">
     workflowJson?: JsonFilter<"BuiltinSkillVersion">
     runtimeBuild?: StringNullableFilter<"BuiltinSkillVersion"> | string | null
+    attestationId?: StringNullableFilter<"BuiltinSkillVersion"> | string | null
     createdAt?: DateTimeFilter<"BuiltinSkillVersion"> | Date | string
     builtinSkill?: XOR<BuiltinSkillRelationFilter, BuiltinSkillWhereInput>
     deployments?: BuiltinSkillDeploymentListRelationFilter
@@ -54742,6 +56907,7 @@ export namespace Prisma {
     manifestJson?: SortOrder
     workflowJson?: SortOrder
     runtimeBuild?: SortOrderInput | SortOrder
+    attestationId?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     builtinSkill?: BuiltinSkillOrderByWithRelationInput
     deployments?: BuiltinSkillDeploymentOrderByRelationAggregateInput
@@ -54761,6 +56927,7 @@ export namespace Prisma {
     manifestJson?: JsonFilter<"BuiltinSkillVersion">
     workflowJson?: JsonFilter<"BuiltinSkillVersion">
     runtimeBuild?: StringNullableFilter<"BuiltinSkillVersion"> | string | null
+    attestationId?: StringNullableFilter<"BuiltinSkillVersion"> | string | null
     createdAt?: DateTimeFilter<"BuiltinSkillVersion"> | Date | string
     builtinSkill?: XOR<BuiltinSkillRelationFilter, BuiltinSkillWhereInput>
     deployments?: BuiltinSkillDeploymentListRelationFilter
@@ -54775,6 +56942,7 @@ export namespace Prisma {
     manifestJson?: SortOrder
     workflowJson?: SortOrder
     runtimeBuild?: SortOrderInput | SortOrder
+    attestationId?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     _count?: BuiltinSkillVersionCountOrderByAggregateInput
     _max?: BuiltinSkillVersionMaxOrderByAggregateInput
@@ -54793,6 +56961,7 @@ export namespace Prisma {
     manifestJson?: JsonWithAggregatesFilter<"BuiltinSkillVersion">
     workflowJson?: JsonWithAggregatesFilter<"BuiltinSkillVersion">
     runtimeBuild?: StringNullableWithAggregatesFilter<"BuiltinSkillVersion"> | string | null
+    attestationId?: StringNullableWithAggregatesFilter<"BuiltinSkillVersion"> | string | null
     createdAt?: DateTimeWithAggregatesFilter<"BuiltinSkillVersion"> | Date | string
   }
 
@@ -55246,6 +57415,7 @@ export namespace Prisma {
     generatedConfigJson?: JsonNullableFilter<"CapabilityBuild">
     logsJson?: JsonFilter<"CapabilityBuild">
     diffSummary?: StringNullableFilter<"CapabilityBuild"> | string | null
+    buildDiffJson?: JsonNullableFilter<"CapabilityBuild">
     status?: StringFilter<"CapabilityBuild"> | string
     errorSummary?: StringNullableFilter<"CapabilityBuild"> | string | null
     startedAt?: DateTimeNullableFilter<"CapabilityBuild"> | Date | string | null
@@ -55267,6 +57437,7 @@ export namespace Prisma {
     generatedConfigJson?: SortOrderInput | SortOrder
     logsJson?: SortOrder
     diffSummary?: SortOrderInput | SortOrder
+    buildDiffJson?: SortOrderInput | SortOrder
     status?: SortOrder
     errorSummary?: SortOrderInput | SortOrder
     startedAt?: SortOrderInput | SortOrder
@@ -55291,6 +57462,7 @@ export namespace Prisma {
     generatedConfigJson?: JsonNullableFilter<"CapabilityBuild">
     logsJson?: JsonFilter<"CapabilityBuild">
     diffSummary?: StringNullableFilter<"CapabilityBuild"> | string | null
+    buildDiffJson?: JsonNullableFilter<"CapabilityBuild">
     status?: StringFilter<"CapabilityBuild"> | string
     errorSummary?: StringNullableFilter<"CapabilityBuild"> | string | null
     startedAt?: DateTimeNullableFilter<"CapabilityBuild"> | Date | string | null
@@ -55312,6 +57484,7 @@ export namespace Prisma {
     generatedConfigJson?: SortOrderInput | SortOrder
     logsJson?: SortOrder
     diffSummary?: SortOrderInput | SortOrder
+    buildDiffJson?: SortOrderInput | SortOrder
     status?: SortOrder
     errorSummary?: SortOrderInput | SortOrder
     startedAt?: SortOrderInput | SortOrder
@@ -55339,6 +57512,7 @@ export namespace Prisma {
     generatedConfigJson?: JsonNullableWithAggregatesFilter<"CapabilityBuild">
     logsJson?: JsonWithAggregatesFilter<"CapabilityBuild">
     diffSummary?: StringNullableWithAggregatesFilter<"CapabilityBuild"> | string | null
+    buildDiffJson?: JsonNullableWithAggregatesFilter<"CapabilityBuild">
     status?: StringWithAggregatesFilter<"CapabilityBuild"> | string
     errorSummary?: StringNullableWithAggregatesFilter<"CapabilityBuild"> | string | null
     startedAt?: DateTimeNullableWithAggregatesFilter<"CapabilityBuild"> | Date | string | null
@@ -55444,6 +57618,160 @@ export namespace Prisma {
     finishedAt?: DateTimeNullableWithAggregatesFilter<"CapabilityValidation"> | Date | string | null
     createdBy?: UuidNullableWithAggregatesFilter<"CapabilityValidation"> | string | null
     createdAt?: DateTimeWithAggregatesFilter<"CapabilityValidation"> | Date | string
+  }
+
+  export type CapabilityFixtureWhereInput = {
+    AND?: CapabilityFixtureWhereInput | CapabilityFixtureWhereInput[]
+    OR?: CapabilityFixtureWhereInput[]
+    NOT?: CapabilityFixtureWhereInput | CapabilityFixtureWhereInput[]
+    id?: UuidFilter<"CapabilityFixture"> | string
+    releaseId?: UuidFilter<"CapabilityFixture"> | string
+    buildId?: UuidNullableFilter<"CapabilityFixture"> | string | null
+    name?: StringNullableFilter<"CapabilityFixture"> | string | null
+    fixtureType?: StringFilter<"CapabilityFixture"> | string
+    inputJson?: JsonFilter<"CapabilityFixture">
+    expectedOutputJson?: JsonNullableFilter<"CapabilityFixture">
+    isNegative?: BoolFilter<"CapabilityFixture"> | boolean
+    errorContains?: StringNullableFilter<"CapabilityFixture"> | string | null
+    createdAt?: DateTimeFilter<"CapabilityFixture"> | Date | string
+  }
+
+  export type CapabilityFixtureOrderByWithRelationInput = {
+    id?: SortOrder
+    releaseId?: SortOrder
+    buildId?: SortOrderInput | SortOrder
+    name?: SortOrderInput | SortOrder
+    fixtureType?: SortOrder
+    inputJson?: SortOrder
+    expectedOutputJson?: SortOrderInput | SortOrder
+    isNegative?: SortOrder
+    errorContains?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type CapabilityFixtureWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: CapabilityFixtureWhereInput | CapabilityFixtureWhereInput[]
+    OR?: CapabilityFixtureWhereInput[]
+    NOT?: CapabilityFixtureWhereInput | CapabilityFixtureWhereInput[]
+    releaseId?: UuidFilter<"CapabilityFixture"> | string
+    buildId?: UuidNullableFilter<"CapabilityFixture"> | string | null
+    name?: StringNullableFilter<"CapabilityFixture"> | string | null
+    fixtureType?: StringFilter<"CapabilityFixture"> | string
+    inputJson?: JsonFilter<"CapabilityFixture">
+    expectedOutputJson?: JsonNullableFilter<"CapabilityFixture">
+    isNegative?: BoolFilter<"CapabilityFixture"> | boolean
+    errorContains?: StringNullableFilter<"CapabilityFixture"> | string | null
+    createdAt?: DateTimeFilter<"CapabilityFixture"> | Date | string
+  }, "id">
+
+  export type CapabilityFixtureOrderByWithAggregationInput = {
+    id?: SortOrder
+    releaseId?: SortOrder
+    buildId?: SortOrderInput | SortOrder
+    name?: SortOrderInput | SortOrder
+    fixtureType?: SortOrder
+    inputJson?: SortOrder
+    expectedOutputJson?: SortOrderInput | SortOrder
+    isNegative?: SortOrder
+    errorContains?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    _count?: CapabilityFixtureCountOrderByAggregateInput
+    _max?: CapabilityFixtureMaxOrderByAggregateInput
+    _min?: CapabilityFixtureMinOrderByAggregateInput
+  }
+
+  export type CapabilityFixtureScalarWhereWithAggregatesInput = {
+    AND?: CapabilityFixtureScalarWhereWithAggregatesInput | CapabilityFixtureScalarWhereWithAggregatesInput[]
+    OR?: CapabilityFixtureScalarWhereWithAggregatesInput[]
+    NOT?: CapabilityFixtureScalarWhereWithAggregatesInput | CapabilityFixtureScalarWhereWithAggregatesInput[]
+    id?: UuidWithAggregatesFilter<"CapabilityFixture"> | string
+    releaseId?: UuidWithAggregatesFilter<"CapabilityFixture"> | string
+    buildId?: UuidNullableWithAggregatesFilter<"CapabilityFixture"> | string | null
+    name?: StringNullableWithAggregatesFilter<"CapabilityFixture"> | string | null
+    fixtureType?: StringWithAggregatesFilter<"CapabilityFixture"> | string
+    inputJson?: JsonWithAggregatesFilter<"CapabilityFixture">
+    expectedOutputJson?: JsonNullableWithAggregatesFilter<"CapabilityFixture">
+    isNegative?: BoolWithAggregatesFilter<"CapabilityFixture"> | boolean
+    errorContains?: StringNullableWithAggregatesFilter<"CapabilityFixture"> | string | null
+    createdAt?: DateTimeWithAggregatesFilter<"CapabilityFixture"> | Date | string
+  }
+
+  export type CapabilityAttestationWhereInput = {
+    AND?: CapabilityAttestationWhereInput | CapabilityAttestationWhereInput[]
+    OR?: CapabilityAttestationWhereInput[]
+    NOT?: CapabilityAttestationWhereInput | CapabilityAttestationWhereInput[]
+    id?: UuidFilter<"CapabilityAttestation"> | string
+    releaseId?: UuidFilter<"CapabilityAttestation"> | string
+    buildId?: UuidFilter<"CapabilityAttestation"> | string
+    sourceDigest?: StringFilter<"CapabilityAttestation"> | string
+    contractDigest?: StringFilter<"CapabilityAttestation"> | string
+    generatedCodeDigest?: StringFilter<"CapabilityAttestation"> | string
+    fixtureDigest?: StringNullableFilter<"CapabilityAttestation"> | string | null
+    validatorVersion?: StringFilter<"CapabilityAttestation"> | string
+    gateResultsJson?: JsonFilter<"CapabilityAttestation">
+    createdAt?: DateTimeFilter<"CapabilityAttestation"> | Date | string
+  }
+
+  export type CapabilityAttestationOrderByWithRelationInput = {
+    id?: SortOrder
+    releaseId?: SortOrder
+    buildId?: SortOrder
+    sourceDigest?: SortOrder
+    contractDigest?: SortOrder
+    generatedCodeDigest?: SortOrder
+    fixtureDigest?: SortOrderInput | SortOrder
+    validatorVersion?: SortOrder
+    gateResultsJson?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type CapabilityAttestationWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: CapabilityAttestationWhereInput | CapabilityAttestationWhereInput[]
+    OR?: CapabilityAttestationWhereInput[]
+    NOT?: CapabilityAttestationWhereInput | CapabilityAttestationWhereInput[]
+    releaseId?: UuidFilter<"CapabilityAttestation"> | string
+    buildId?: UuidFilter<"CapabilityAttestation"> | string
+    sourceDigest?: StringFilter<"CapabilityAttestation"> | string
+    contractDigest?: StringFilter<"CapabilityAttestation"> | string
+    generatedCodeDigest?: StringFilter<"CapabilityAttestation"> | string
+    fixtureDigest?: StringNullableFilter<"CapabilityAttestation"> | string | null
+    validatorVersion?: StringFilter<"CapabilityAttestation"> | string
+    gateResultsJson?: JsonFilter<"CapabilityAttestation">
+    createdAt?: DateTimeFilter<"CapabilityAttestation"> | Date | string
+  }, "id">
+
+  export type CapabilityAttestationOrderByWithAggregationInput = {
+    id?: SortOrder
+    releaseId?: SortOrder
+    buildId?: SortOrder
+    sourceDigest?: SortOrder
+    contractDigest?: SortOrder
+    generatedCodeDigest?: SortOrder
+    fixtureDigest?: SortOrderInput | SortOrder
+    validatorVersion?: SortOrder
+    gateResultsJson?: SortOrder
+    createdAt?: SortOrder
+    _count?: CapabilityAttestationCountOrderByAggregateInput
+    _max?: CapabilityAttestationMaxOrderByAggregateInput
+    _min?: CapabilityAttestationMinOrderByAggregateInput
+  }
+
+  export type CapabilityAttestationScalarWhereWithAggregatesInput = {
+    AND?: CapabilityAttestationScalarWhereWithAggregatesInput | CapabilityAttestationScalarWhereWithAggregatesInput[]
+    OR?: CapabilityAttestationScalarWhereWithAggregatesInput[]
+    NOT?: CapabilityAttestationScalarWhereWithAggregatesInput | CapabilityAttestationScalarWhereWithAggregatesInput[]
+    id?: UuidWithAggregatesFilter<"CapabilityAttestation"> | string
+    releaseId?: UuidWithAggregatesFilter<"CapabilityAttestation"> | string
+    buildId?: UuidWithAggregatesFilter<"CapabilityAttestation"> | string
+    sourceDigest?: StringWithAggregatesFilter<"CapabilityAttestation"> | string
+    contractDigest?: StringWithAggregatesFilter<"CapabilityAttestation"> | string
+    generatedCodeDigest?: StringWithAggregatesFilter<"CapabilityAttestation"> | string
+    fixtureDigest?: StringNullableWithAggregatesFilter<"CapabilityAttestation"> | string | null
+    validatorVersion?: StringWithAggregatesFilter<"CapabilityAttestation"> | string
+    gateResultsJson?: JsonWithAggregatesFilter<"CapabilityAttestation">
+    createdAt?: DateTimeWithAggregatesFilter<"CapabilityAttestation"> | Date | string
   }
 
   export type SkillDraftWhereInput = {
@@ -56799,6 +59127,9 @@ export namespace Prisma {
     description?: string | null
     triggerKeywords?: JsonNullValueInput | InputJsonValue
     paramsSchema?: JsonNullValueInput | InputJsonValue
+    outputSchema?: JsonNullValueInput | InputJsonValue
+    candidateSchemaJson?: NullableJsonNullValueInput | InputJsonValue
+    candidateSchemaGeneratedAt?: Date | string | null
     templateId?: string | null
     carboneTemplateId?: string | null
     carboneSkillId?: string | null
@@ -56822,6 +59153,9 @@ export namespace Prisma {
     description?: string | null
     triggerKeywords?: JsonNullValueInput | InputJsonValue
     paramsSchema?: JsonNullValueInput | InputJsonValue
+    outputSchema?: JsonNullValueInput | InputJsonValue
+    candidateSchemaJson?: NullableJsonNullValueInput | InputJsonValue
+    candidateSchemaGeneratedAt?: Date | string | null
     templateId?: string | null
     carboneTemplateId?: string | null
     carboneSkillId?: string | null
@@ -56845,6 +59179,9 @@ export namespace Prisma {
     description?: NullableStringFieldUpdateOperationsInput | string | null
     triggerKeywords?: JsonNullValueInput | InputJsonValue
     paramsSchema?: JsonNullValueInput | InputJsonValue
+    outputSchema?: JsonNullValueInput | InputJsonValue
+    candidateSchemaJson?: NullableJsonNullValueInput | InputJsonValue
+    candidateSchemaGeneratedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     templateId?: NullableStringFieldUpdateOperationsInput | string | null
     carboneTemplateId?: NullableStringFieldUpdateOperationsInput | string | null
     carboneSkillId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -56868,6 +59205,9 @@ export namespace Prisma {
     description?: NullableStringFieldUpdateOperationsInput | string | null
     triggerKeywords?: JsonNullValueInput | InputJsonValue
     paramsSchema?: JsonNullValueInput | InputJsonValue
+    outputSchema?: JsonNullValueInput | InputJsonValue
+    candidateSchemaJson?: NullableJsonNullValueInput | InputJsonValue
+    candidateSchemaGeneratedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     templateId?: NullableStringFieldUpdateOperationsInput | string | null
     carboneTemplateId?: NullableStringFieldUpdateOperationsInput | string | null
     carboneSkillId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -56891,6 +59231,9 @@ export namespace Prisma {
     description?: string | null
     triggerKeywords?: JsonNullValueInput | InputJsonValue
     paramsSchema?: JsonNullValueInput | InputJsonValue
+    outputSchema?: JsonNullValueInput | InputJsonValue
+    candidateSchemaJson?: NullableJsonNullValueInput | InputJsonValue
+    candidateSchemaGeneratedAt?: Date | string | null
     templateId?: string | null
     carboneTemplateId?: string | null
     carboneSkillId?: string | null
@@ -56911,6 +59254,9 @@ export namespace Prisma {
     description?: NullableStringFieldUpdateOperationsInput | string | null
     triggerKeywords?: JsonNullValueInput | InputJsonValue
     paramsSchema?: JsonNullValueInput | InputJsonValue
+    outputSchema?: JsonNullValueInput | InputJsonValue
+    candidateSchemaJson?: NullableJsonNullValueInput | InputJsonValue
+    candidateSchemaGeneratedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     templateId?: NullableStringFieldUpdateOperationsInput | string | null
     carboneTemplateId?: NullableStringFieldUpdateOperationsInput | string | null
     carboneSkillId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -56931,6 +59277,9 @@ export namespace Prisma {
     description?: NullableStringFieldUpdateOperationsInput | string | null
     triggerKeywords?: JsonNullValueInput | InputJsonValue
     paramsSchema?: JsonNullValueInput | InputJsonValue
+    outputSchema?: JsonNullValueInput | InputJsonValue
+    candidateSchemaJson?: NullableJsonNullValueInput | InputJsonValue
+    candidateSchemaGeneratedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     templateId?: NullableStringFieldUpdateOperationsInput | string | null
     carboneTemplateId?: NullableStringFieldUpdateOperationsInput | string | null
     carboneSkillId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -57803,6 +60152,8 @@ export namespace Prisma {
     dependsOnJson?: NullableJsonNullValueInput | InputJsonValue
     inputBindingsJson?: NullableJsonNullValueInput | InputJsonValue
     outputContractJson?: NullableJsonNullValueInput | InputJsonValue
+    outputSchemaJson?: NullableJsonNullValueInput | InputJsonValue
+    inputSchemaJson?: NullableJsonNullValueInput | InputJsonValue
     resolvedInputJson?: NullableJsonNullValueInput | InputJsonValue
     idempotencyKey?: string | null
     leaseOwner?: string | null
@@ -57838,6 +60189,8 @@ export namespace Prisma {
     dependsOnJson?: NullableJsonNullValueInput | InputJsonValue
     inputBindingsJson?: NullableJsonNullValueInput | InputJsonValue
     outputContractJson?: NullableJsonNullValueInput | InputJsonValue
+    outputSchemaJson?: NullableJsonNullValueInput | InputJsonValue
+    inputSchemaJson?: NullableJsonNullValueInput | InputJsonValue
     resolvedInputJson?: NullableJsonNullValueInput | InputJsonValue
     idempotencyKey?: string | null
     leaseOwner?: string | null
@@ -57871,6 +60224,8 @@ export namespace Prisma {
     dependsOnJson?: NullableJsonNullValueInput | InputJsonValue
     inputBindingsJson?: NullableJsonNullValueInput | InputJsonValue
     outputContractJson?: NullableJsonNullValueInput | InputJsonValue
+    outputSchemaJson?: NullableJsonNullValueInput | InputJsonValue
+    inputSchemaJson?: NullableJsonNullValueInput | InputJsonValue
     resolvedInputJson?: NullableJsonNullValueInput | InputJsonValue
     idempotencyKey?: NullableStringFieldUpdateOperationsInput | string | null
     leaseOwner?: NullableStringFieldUpdateOperationsInput | string | null
@@ -57906,6 +60261,8 @@ export namespace Prisma {
     dependsOnJson?: NullableJsonNullValueInput | InputJsonValue
     inputBindingsJson?: NullableJsonNullValueInput | InputJsonValue
     outputContractJson?: NullableJsonNullValueInput | InputJsonValue
+    outputSchemaJson?: NullableJsonNullValueInput | InputJsonValue
+    inputSchemaJson?: NullableJsonNullValueInput | InputJsonValue
     resolvedInputJson?: NullableJsonNullValueInput | InputJsonValue
     idempotencyKey?: NullableStringFieldUpdateOperationsInput | string | null
     leaseOwner?: NullableStringFieldUpdateOperationsInput | string | null
@@ -57940,6 +60297,8 @@ export namespace Prisma {
     dependsOnJson?: NullableJsonNullValueInput | InputJsonValue
     inputBindingsJson?: NullableJsonNullValueInput | InputJsonValue
     outputContractJson?: NullableJsonNullValueInput | InputJsonValue
+    outputSchemaJson?: NullableJsonNullValueInput | InputJsonValue
+    inputSchemaJson?: NullableJsonNullValueInput | InputJsonValue
     resolvedInputJson?: NullableJsonNullValueInput | InputJsonValue
     idempotencyKey?: string | null
     leaseOwner?: string | null
@@ -57973,6 +60332,8 @@ export namespace Prisma {
     dependsOnJson?: NullableJsonNullValueInput | InputJsonValue
     inputBindingsJson?: NullableJsonNullValueInput | InputJsonValue
     outputContractJson?: NullableJsonNullValueInput | InputJsonValue
+    outputSchemaJson?: NullableJsonNullValueInput | InputJsonValue
+    inputSchemaJson?: NullableJsonNullValueInput | InputJsonValue
     resolvedInputJson?: NullableJsonNullValueInput | InputJsonValue
     idempotencyKey?: NullableStringFieldUpdateOperationsInput | string | null
     leaseOwner?: NullableStringFieldUpdateOperationsInput | string | null
@@ -58007,6 +60368,8 @@ export namespace Prisma {
     dependsOnJson?: NullableJsonNullValueInput | InputJsonValue
     inputBindingsJson?: NullableJsonNullValueInput | InputJsonValue
     outputContractJson?: NullableJsonNullValueInput | InputJsonValue
+    outputSchemaJson?: NullableJsonNullValueInput | InputJsonValue
+    inputSchemaJson?: NullableJsonNullValueInput | InputJsonValue
     resolvedInputJson?: NullableJsonNullValueInput | InputJsonValue
     idempotencyKey?: NullableStringFieldUpdateOperationsInput | string | null
     leaseOwner?: NullableStringFieldUpdateOperationsInput | string | null
@@ -59343,6 +61706,7 @@ export namespace Prisma {
     manifestJson: JsonNullValueInput | InputJsonValue
     workflowJson?: JsonNullValueInput | InputJsonValue
     runtimeBuild?: string | null
+    attestationId?: string | null
     createdAt?: Date | string
     builtinSkill: BuiltinSkillCreateNestedOneWithoutVersionsInput
     deployments?: BuiltinSkillDeploymentCreateNestedManyWithoutBuiltinSkillVersionInput
@@ -59357,6 +61721,7 @@ export namespace Prisma {
     manifestJson: JsonNullValueInput | InputJsonValue
     workflowJson?: JsonNullValueInput | InputJsonValue
     runtimeBuild?: string | null
+    attestationId?: string | null
     createdAt?: Date | string
     deployments?: BuiltinSkillDeploymentUncheckedCreateNestedManyWithoutBuiltinSkillVersionInput
   }
@@ -59369,6 +61734,7 @@ export namespace Prisma {
     manifestJson?: JsonNullValueInput | InputJsonValue
     workflowJson?: JsonNullValueInput | InputJsonValue
     runtimeBuild?: NullableStringFieldUpdateOperationsInput | string | null
+    attestationId?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     builtinSkill?: BuiltinSkillUpdateOneRequiredWithoutVersionsNestedInput
     deployments?: BuiltinSkillDeploymentUpdateManyWithoutBuiltinSkillVersionNestedInput
@@ -59383,6 +61749,7 @@ export namespace Prisma {
     manifestJson?: JsonNullValueInput | InputJsonValue
     workflowJson?: JsonNullValueInput | InputJsonValue
     runtimeBuild?: NullableStringFieldUpdateOperationsInput | string | null
+    attestationId?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     deployments?: BuiltinSkillDeploymentUncheckedUpdateManyWithoutBuiltinSkillVersionNestedInput
   }
@@ -59396,6 +61763,7 @@ export namespace Prisma {
     manifestJson: JsonNullValueInput | InputJsonValue
     workflowJson?: JsonNullValueInput | InputJsonValue
     runtimeBuild?: string | null
+    attestationId?: string | null
     createdAt?: Date | string
   }
 
@@ -59407,6 +61775,7 @@ export namespace Prisma {
     manifestJson?: JsonNullValueInput | InputJsonValue
     workflowJson?: JsonNullValueInput | InputJsonValue
     runtimeBuild?: NullableStringFieldUpdateOperationsInput | string | null
+    attestationId?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
@@ -59419,6 +61788,7 @@ export namespace Prisma {
     manifestJson?: JsonNullValueInput | InputJsonValue
     workflowJson?: JsonNullValueInput | InputJsonValue
     runtimeBuild?: NullableStringFieldUpdateOperationsInput | string | null
+    attestationId?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
@@ -59936,6 +62306,7 @@ export namespace Prisma {
     generatedConfigJson?: NullableJsonNullValueInput | InputJsonValue
     logsJson?: JsonNullValueInput | InputJsonValue
     diffSummary?: string | null
+    buildDiffJson?: NullableJsonNullValueInput | InputJsonValue
     status: string
     errorSummary?: string | null
     startedAt?: Date | string | null
@@ -59957,6 +62328,7 @@ export namespace Prisma {
     generatedConfigJson?: NullableJsonNullValueInput | InputJsonValue
     logsJson?: JsonNullValueInput | InputJsonValue
     diffSummary?: string | null
+    buildDiffJson?: NullableJsonNullValueInput | InputJsonValue
     status: string
     errorSummary?: string | null
     startedAt?: Date | string | null
@@ -59978,6 +62350,7 @@ export namespace Prisma {
     generatedConfigJson?: NullableJsonNullValueInput | InputJsonValue
     logsJson?: JsonNullValueInput | InputJsonValue
     diffSummary?: NullableStringFieldUpdateOperationsInput | string | null
+    buildDiffJson?: NullableJsonNullValueInput | InputJsonValue
     status?: StringFieldUpdateOperationsInput | string
     errorSummary?: NullableStringFieldUpdateOperationsInput | string | null
     startedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -59999,6 +62372,7 @@ export namespace Prisma {
     generatedConfigJson?: NullableJsonNullValueInput | InputJsonValue
     logsJson?: JsonNullValueInput | InputJsonValue
     diffSummary?: NullableStringFieldUpdateOperationsInput | string | null
+    buildDiffJson?: NullableJsonNullValueInput | InputJsonValue
     status?: StringFieldUpdateOperationsInput | string
     errorSummary?: NullableStringFieldUpdateOperationsInput | string | null
     startedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -60020,6 +62394,7 @@ export namespace Prisma {
     generatedConfigJson?: NullableJsonNullValueInput | InputJsonValue
     logsJson?: JsonNullValueInput | InputJsonValue
     diffSummary?: string | null
+    buildDiffJson?: NullableJsonNullValueInput | InputJsonValue
     status: string
     errorSummary?: string | null
     startedAt?: Date | string | null
@@ -60041,6 +62416,7 @@ export namespace Prisma {
     generatedConfigJson?: NullableJsonNullValueInput | InputJsonValue
     logsJson?: JsonNullValueInput | InputJsonValue
     diffSummary?: NullableStringFieldUpdateOperationsInput | string | null
+    buildDiffJson?: NullableJsonNullValueInput | InputJsonValue
     status?: StringFieldUpdateOperationsInput | string
     errorSummary?: NullableStringFieldUpdateOperationsInput | string | null
     startedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -60062,6 +62438,7 @@ export namespace Prisma {
     generatedConfigJson?: NullableJsonNullValueInput | InputJsonValue
     logsJson?: JsonNullValueInput | InputJsonValue
     diffSummary?: NullableStringFieldUpdateOperationsInput | string | null
+    buildDiffJson?: NullableJsonNullValueInput | InputJsonValue
     status?: StringFieldUpdateOperationsInput | string
     errorSummary?: NullableStringFieldUpdateOperationsInput | string | null
     startedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -60186,6 +62563,188 @@ export namespace Prisma {
     startedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     finishedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdBy?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CapabilityFixtureCreateInput = {
+    id?: string
+    releaseId: string
+    buildId?: string | null
+    name?: string | null
+    fixtureType: string
+    inputJson: JsonNullValueInput | InputJsonValue
+    expectedOutputJson?: NullableJsonNullValueInput | InputJsonValue
+    isNegative?: boolean
+    errorContains?: string | null
+    createdAt?: Date | string
+  }
+
+  export type CapabilityFixtureUncheckedCreateInput = {
+    id?: string
+    releaseId: string
+    buildId?: string | null
+    name?: string | null
+    fixtureType: string
+    inputJson: JsonNullValueInput | InputJsonValue
+    expectedOutputJson?: NullableJsonNullValueInput | InputJsonValue
+    isNegative?: boolean
+    errorContains?: string | null
+    createdAt?: Date | string
+  }
+
+  export type CapabilityFixtureUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    releaseId?: StringFieldUpdateOperationsInput | string
+    buildId?: NullableStringFieldUpdateOperationsInput | string | null
+    name?: NullableStringFieldUpdateOperationsInput | string | null
+    fixtureType?: StringFieldUpdateOperationsInput | string
+    inputJson?: JsonNullValueInput | InputJsonValue
+    expectedOutputJson?: NullableJsonNullValueInput | InputJsonValue
+    isNegative?: BoolFieldUpdateOperationsInput | boolean
+    errorContains?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CapabilityFixtureUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    releaseId?: StringFieldUpdateOperationsInput | string
+    buildId?: NullableStringFieldUpdateOperationsInput | string | null
+    name?: NullableStringFieldUpdateOperationsInput | string | null
+    fixtureType?: StringFieldUpdateOperationsInput | string
+    inputJson?: JsonNullValueInput | InputJsonValue
+    expectedOutputJson?: NullableJsonNullValueInput | InputJsonValue
+    isNegative?: BoolFieldUpdateOperationsInput | boolean
+    errorContains?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CapabilityFixtureCreateManyInput = {
+    id?: string
+    releaseId: string
+    buildId?: string | null
+    name?: string | null
+    fixtureType: string
+    inputJson: JsonNullValueInput | InputJsonValue
+    expectedOutputJson?: NullableJsonNullValueInput | InputJsonValue
+    isNegative?: boolean
+    errorContains?: string | null
+    createdAt?: Date | string
+  }
+
+  export type CapabilityFixtureUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    releaseId?: StringFieldUpdateOperationsInput | string
+    buildId?: NullableStringFieldUpdateOperationsInput | string | null
+    name?: NullableStringFieldUpdateOperationsInput | string | null
+    fixtureType?: StringFieldUpdateOperationsInput | string
+    inputJson?: JsonNullValueInput | InputJsonValue
+    expectedOutputJson?: NullableJsonNullValueInput | InputJsonValue
+    isNegative?: BoolFieldUpdateOperationsInput | boolean
+    errorContains?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CapabilityFixtureUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    releaseId?: StringFieldUpdateOperationsInput | string
+    buildId?: NullableStringFieldUpdateOperationsInput | string | null
+    name?: NullableStringFieldUpdateOperationsInput | string | null
+    fixtureType?: StringFieldUpdateOperationsInput | string
+    inputJson?: JsonNullValueInput | InputJsonValue
+    expectedOutputJson?: NullableJsonNullValueInput | InputJsonValue
+    isNegative?: BoolFieldUpdateOperationsInput | boolean
+    errorContains?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CapabilityAttestationCreateInput = {
+    id?: string
+    releaseId: string
+    buildId: string
+    sourceDigest: string
+    contractDigest: string
+    generatedCodeDigest: string
+    fixtureDigest?: string | null
+    validatorVersion: string
+    gateResultsJson?: JsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+  }
+
+  export type CapabilityAttestationUncheckedCreateInput = {
+    id?: string
+    releaseId: string
+    buildId: string
+    sourceDigest: string
+    contractDigest: string
+    generatedCodeDigest: string
+    fixtureDigest?: string | null
+    validatorVersion: string
+    gateResultsJson?: JsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+  }
+
+  export type CapabilityAttestationUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    releaseId?: StringFieldUpdateOperationsInput | string
+    buildId?: StringFieldUpdateOperationsInput | string
+    sourceDigest?: StringFieldUpdateOperationsInput | string
+    contractDigest?: StringFieldUpdateOperationsInput | string
+    generatedCodeDigest?: StringFieldUpdateOperationsInput | string
+    fixtureDigest?: NullableStringFieldUpdateOperationsInput | string | null
+    validatorVersion?: StringFieldUpdateOperationsInput | string
+    gateResultsJson?: JsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CapabilityAttestationUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    releaseId?: StringFieldUpdateOperationsInput | string
+    buildId?: StringFieldUpdateOperationsInput | string
+    sourceDigest?: StringFieldUpdateOperationsInput | string
+    contractDigest?: StringFieldUpdateOperationsInput | string
+    generatedCodeDigest?: StringFieldUpdateOperationsInput | string
+    fixtureDigest?: NullableStringFieldUpdateOperationsInput | string | null
+    validatorVersion?: StringFieldUpdateOperationsInput | string
+    gateResultsJson?: JsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CapabilityAttestationCreateManyInput = {
+    id?: string
+    releaseId: string
+    buildId: string
+    sourceDigest: string
+    contractDigest: string
+    generatedCodeDigest: string
+    fixtureDigest?: string | null
+    validatorVersion: string
+    gateResultsJson?: JsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+  }
+
+  export type CapabilityAttestationUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    releaseId?: StringFieldUpdateOperationsInput | string
+    buildId?: StringFieldUpdateOperationsInput | string
+    sourceDigest?: StringFieldUpdateOperationsInput | string
+    contractDigest?: StringFieldUpdateOperationsInput | string
+    generatedCodeDigest?: StringFieldUpdateOperationsInput | string
+    fixtureDigest?: NullableStringFieldUpdateOperationsInput | string | null
+    validatorVersion?: StringFieldUpdateOperationsInput | string
+    gateResultsJson?: JsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CapabilityAttestationUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    releaseId?: StringFieldUpdateOperationsInput | string
+    buildId?: StringFieldUpdateOperationsInput | string
+    sourceDigest?: StringFieldUpdateOperationsInput | string
+    contractDigest?: StringFieldUpdateOperationsInput | string
+    generatedCodeDigest?: StringFieldUpdateOperationsInput | string
+    fixtureDigest?: NullableStringFieldUpdateOperationsInput | string | null
+    validatorVersion?: StringFieldUpdateOperationsInput | string
+    gateResultsJson?: JsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
@@ -61564,6 +64123,9 @@ export namespace Prisma {
     description?: SortOrder
     triggerKeywords?: SortOrder
     paramsSchema?: SortOrder
+    outputSchema?: SortOrder
+    candidateSchemaJson?: SortOrder
+    candidateSchemaGeneratedAt?: SortOrder
     templateId?: SortOrder
     carboneTemplateId?: SortOrder
     carboneSkillId?: SortOrder
@@ -61582,6 +64144,7 @@ export namespace Prisma {
     id?: SortOrder
     name?: SortOrder
     description?: SortOrder
+    candidateSchemaGeneratedAt?: SortOrder
     templateId?: SortOrder
     carboneTemplateId?: SortOrder
     carboneSkillId?: SortOrder
@@ -61595,6 +64158,7 @@ export namespace Prisma {
     id?: SortOrder
     name?: SortOrder
     description?: SortOrder
+    candidateSchemaGeneratedAt?: SortOrder
     templateId?: SortOrder
     carboneTemplateId?: SortOrder
     carboneSkillId?: SortOrder
@@ -62077,6 +64641,8 @@ export namespace Prisma {
     dependsOnJson?: SortOrder
     inputBindingsJson?: SortOrder
     outputContractJson?: SortOrder
+    outputSchemaJson?: SortOrder
+    inputSchemaJson?: SortOrder
     resolvedInputJson?: SortOrder
     idempotencyKey?: SortOrder
     leaseOwner?: SortOrder
@@ -62859,6 +65425,7 @@ export namespace Prisma {
     manifestJson?: SortOrder
     workflowJson?: SortOrder
     runtimeBuild?: SortOrder
+    attestationId?: SortOrder
     createdAt?: SortOrder
   }
 
@@ -62869,6 +65436,7 @@ export namespace Prisma {
     apiVersion?: SortOrder
     definitionDigest?: SortOrder
     runtimeBuild?: SortOrder
+    attestationId?: SortOrder
     createdAt?: SortOrder
   }
 
@@ -62879,6 +65447,7 @@ export namespace Prisma {
     apiVersion?: SortOrder
     definitionDigest?: SortOrder
     runtimeBuild?: SortOrder
+    attestationId?: SortOrder
     createdAt?: SortOrder
   }
 
@@ -63133,6 +65702,7 @@ export namespace Prisma {
     generatedConfigJson?: SortOrder
     logsJson?: SortOrder
     diffSummary?: SortOrder
+    buildDiffJson?: SortOrder
     status?: SortOrder
     errorSummary?: SortOrder
     startedAt?: SortOrder
@@ -63228,6 +65798,78 @@ export namespace Prisma {
 
   export type CapabilityValidationSumOrderByAggregateInput = {
     score?: SortOrder
+  }
+
+  export type CapabilityFixtureCountOrderByAggregateInput = {
+    id?: SortOrder
+    releaseId?: SortOrder
+    buildId?: SortOrder
+    name?: SortOrder
+    fixtureType?: SortOrder
+    inputJson?: SortOrder
+    expectedOutputJson?: SortOrder
+    isNegative?: SortOrder
+    errorContains?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type CapabilityFixtureMaxOrderByAggregateInput = {
+    id?: SortOrder
+    releaseId?: SortOrder
+    buildId?: SortOrder
+    name?: SortOrder
+    fixtureType?: SortOrder
+    isNegative?: SortOrder
+    errorContains?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type CapabilityFixtureMinOrderByAggregateInput = {
+    id?: SortOrder
+    releaseId?: SortOrder
+    buildId?: SortOrder
+    name?: SortOrder
+    fixtureType?: SortOrder
+    isNegative?: SortOrder
+    errorContains?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type CapabilityAttestationCountOrderByAggregateInput = {
+    id?: SortOrder
+    releaseId?: SortOrder
+    buildId?: SortOrder
+    sourceDigest?: SortOrder
+    contractDigest?: SortOrder
+    generatedCodeDigest?: SortOrder
+    fixtureDigest?: SortOrder
+    validatorVersion?: SortOrder
+    gateResultsJson?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type CapabilityAttestationMaxOrderByAggregateInput = {
+    id?: SortOrder
+    releaseId?: SortOrder
+    buildId?: SortOrder
+    sourceDigest?: SortOrder
+    contractDigest?: SortOrder
+    generatedCodeDigest?: SortOrder
+    fixtureDigest?: SortOrder
+    validatorVersion?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type CapabilityAttestationMinOrderByAggregateInput = {
+    id?: SortOrder
+    releaseId?: SortOrder
+    buildId?: SortOrder
+    sourceDigest?: SortOrder
+    contractDigest?: SortOrder
+    generatedCodeDigest?: SortOrder
+    fixtureDigest?: SortOrder
+    validatorVersion?: SortOrder
+    createdAt?: SortOrder
   }
 
   export type SkillDraftCountOrderByAggregateInput = {
@@ -68882,6 +71524,9 @@ export namespace Prisma {
     description?: string | null
     triggerKeywords?: JsonNullValueInput | InputJsonValue
     paramsSchema?: JsonNullValueInput | InputJsonValue
+    outputSchema?: JsonNullValueInput | InputJsonValue
+    candidateSchemaJson?: NullableJsonNullValueInput | InputJsonValue
+    candidateSchemaGeneratedAt?: Date | string | null
     templateId?: string | null
     carboneTemplateId?: string | null
     carboneSkillId?: string | null
@@ -68904,6 +71549,9 @@ export namespace Prisma {
     description?: string | null
     triggerKeywords?: JsonNullValueInput | InputJsonValue
     paramsSchema?: JsonNullValueInput | InputJsonValue
+    outputSchema?: JsonNullValueInput | InputJsonValue
+    candidateSchemaJson?: NullableJsonNullValueInput | InputJsonValue
+    candidateSchemaGeneratedAt?: Date | string | null
     templateId?: string | null
     carboneTemplateId?: string | null
     carboneSkillId?: string | null
@@ -68971,6 +71619,9 @@ export namespace Prisma {
     description?: NullableStringFieldUpdateOperationsInput | string | null
     triggerKeywords?: JsonNullValueInput | InputJsonValue
     paramsSchema?: JsonNullValueInput | InputJsonValue
+    outputSchema?: JsonNullValueInput | InputJsonValue
+    candidateSchemaJson?: NullableJsonNullValueInput | InputJsonValue
+    candidateSchemaGeneratedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     templateId?: NullableStringFieldUpdateOperationsInput | string | null
     carboneTemplateId?: NullableStringFieldUpdateOperationsInput | string | null
     carboneSkillId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -68993,6 +71644,9 @@ export namespace Prisma {
     description?: NullableStringFieldUpdateOperationsInput | string | null
     triggerKeywords?: JsonNullValueInput | InputJsonValue
     paramsSchema?: JsonNullValueInput | InputJsonValue
+    outputSchema?: JsonNullValueInput | InputJsonValue
+    candidateSchemaJson?: NullableJsonNullValueInput | InputJsonValue
+    candidateSchemaGeneratedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     templateId?: NullableStringFieldUpdateOperationsInput | string | null
     carboneTemplateId?: NullableStringFieldUpdateOperationsInput | string | null
     carboneSkillId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -69050,6 +71704,9 @@ export namespace Prisma {
     description?: string | null
     triggerKeywords?: JsonNullValueInput | InputJsonValue
     paramsSchema?: JsonNullValueInput | InputJsonValue
+    outputSchema?: JsonNullValueInput | InputJsonValue
+    candidateSchemaJson?: NullableJsonNullValueInput | InputJsonValue
+    candidateSchemaGeneratedAt?: Date | string | null
     templateId?: string | null
     carboneTemplateId?: string | null
     carboneSkillId?: string | null
@@ -69072,6 +71729,9 @@ export namespace Prisma {
     description?: string | null
     triggerKeywords?: JsonNullValueInput | InputJsonValue
     paramsSchema?: JsonNullValueInput | InputJsonValue
+    outputSchema?: JsonNullValueInput | InputJsonValue
+    candidateSchemaJson?: NullableJsonNullValueInput | InputJsonValue
+    candidateSchemaGeneratedAt?: Date | string | null
     templateId?: string | null
     carboneTemplateId?: string | null
     carboneSkillId?: string | null
@@ -69208,6 +71868,9 @@ export namespace Prisma {
     description?: NullableStringFieldUpdateOperationsInput | string | null
     triggerKeywords?: JsonNullValueInput | InputJsonValue
     paramsSchema?: JsonNullValueInput | InputJsonValue
+    outputSchema?: JsonNullValueInput | InputJsonValue
+    candidateSchemaJson?: NullableJsonNullValueInput | InputJsonValue
+    candidateSchemaGeneratedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     templateId?: NullableStringFieldUpdateOperationsInput | string | null
     carboneTemplateId?: NullableStringFieldUpdateOperationsInput | string | null
     carboneSkillId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -69230,6 +71893,9 @@ export namespace Prisma {
     description?: NullableStringFieldUpdateOperationsInput | string | null
     triggerKeywords?: JsonNullValueInput | InputJsonValue
     paramsSchema?: JsonNullValueInput | InputJsonValue
+    outputSchema?: JsonNullValueInput | InputJsonValue
+    candidateSchemaJson?: NullableJsonNullValueInput | InputJsonValue
+    candidateSchemaGeneratedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     templateId?: NullableStringFieldUpdateOperationsInput | string | null
     carboneTemplateId?: NullableStringFieldUpdateOperationsInput | string | null
     carboneSkillId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -69362,6 +72028,9 @@ export namespace Prisma {
     description?: string | null
     triggerKeywords?: JsonNullValueInput | InputJsonValue
     paramsSchema?: JsonNullValueInput | InputJsonValue
+    outputSchema?: JsonNullValueInput | InputJsonValue
+    candidateSchemaJson?: NullableJsonNullValueInput | InputJsonValue
+    candidateSchemaGeneratedAt?: Date | string | null
     templateId?: string | null
     carboneTemplateId?: string | null
     carboneSkillId?: string | null
@@ -69384,6 +72053,9 @@ export namespace Prisma {
     description?: string | null
     triggerKeywords?: JsonNullValueInput | InputJsonValue
     paramsSchema?: JsonNullValueInput | InputJsonValue
+    outputSchema?: JsonNullValueInput | InputJsonValue
+    candidateSchemaJson?: NullableJsonNullValueInput | InputJsonValue
+    candidateSchemaGeneratedAt?: Date | string | null
     templateId?: string | null
     carboneTemplateId?: string | null
     carboneSkillId?: string | null
@@ -69422,6 +72094,9 @@ export namespace Prisma {
     description?: NullableStringFieldUpdateOperationsInput | string | null
     triggerKeywords?: JsonNullValueInput | InputJsonValue
     paramsSchema?: JsonNullValueInput | InputJsonValue
+    outputSchema?: JsonNullValueInput | InputJsonValue
+    candidateSchemaJson?: NullableJsonNullValueInput | InputJsonValue
+    candidateSchemaGeneratedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     templateId?: NullableStringFieldUpdateOperationsInput | string | null
     carboneTemplateId?: NullableStringFieldUpdateOperationsInput | string | null
     carboneSkillId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -69444,6 +72119,9 @@ export namespace Prisma {
     description?: NullableStringFieldUpdateOperationsInput | string | null
     triggerKeywords?: JsonNullValueInput | InputJsonValue
     paramsSchema?: JsonNullValueInput | InputJsonValue
+    outputSchema?: JsonNullValueInput | InputJsonValue
+    candidateSchemaJson?: NullableJsonNullValueInput | InputJsonValue
+    candidateSchemaGeneratedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     templateId?: NullableStringFieldUpdateOperationsInput | string | null
     carboneTemplateId?: NullableStringFieldUpdateOperationsInput | string | null
     carboneSkillId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -69697,6 +72375,8 @@ export namespace Prisma {
     dependsOnJson?: NullableJsonNullValueInput | InputJsonValue
     inputBindingsJson?: NullableJsonNullValueInput | InputJsonValue
     outputContractJson?: NullableJsonNullValueInput | InputJsonValue
+    outputSchemaJson?: NullableJsonNullValueInput | InputJsonValue
+    inputSchemaJson?: NullableJsonNullValueInput | InputJsonValue
     resolvedInputJson?: NullableJsonNullValueInput | InputJsonValue
     idempotencyKey?: string | null
     leaseOwner?: string | null
@@ -69730,6 +72410,8 @@ export namespace Prisma {
     dependsOnJson?: NullableJsonNullValueInput | InputJsonValue
     inputBindingsJson?: NullableJsonNullValueInput | InputJsonValue
     outputContractJson?: NullableJsonNullValueInput | InputJsonValue
+    outputSchemaJson?: NullableJsonNullValueInput | InputJsonValue
+    inputSchemaJson?: NullableJsonNullValueInput | InputJsonValue
     resolvedInputJson?: NullableJsonNullValueInput | InputJsonValue
     idempotencyKey?: string | null
     leaseOwner?: string | null
@@ -70038,6 +72720,8 @@ export namespace Prisma {
     dependsOnJson?: JsonNullableFilter<"ExecutionStep">
     inputBindingsJson?: JsonNullableFilter<"ExecutionStep">
     outputContractJson?: JsonNullableFilter<"ExecutionStep">
+    outputSchemaJson?: JsonNullableFilter<"ExecutionStep">
+    inputSchemaJson?: JsonNullableFilter<"ExecutionStep">
     resolvedInputJson?: JsonNullableFilter<"ExecutionStep">
     idempotencyKey?: StringNullableFilter<"ExecutionStep"> | string | null
     leaseOwner?: StringNullableFilter<"ExecutionStep"> | string | null
@@ -71948,6 +74632,7 @@ export namespace Prisma {
     manifestJson: JsonNullValueInput | InputJsonValue
     workflowJson?: JsonNullValueInput | InputJsonValue
     runtimeBuild?: string | null
+    attestationId?: string | null
     createdAt?: Date | string
     deployments?: BuiltinSkillDeploymentCreateNestedManyWithoutBuiltinSkillVersionInput
   }
@@ -71960,6 +74645,7 @@ export namespace Prisma {
     manifestJson: JsonNullValueInput | InputJsonValue
     workflowJson?: JsonNullValueInput | InputJsonValue
     runtimeBuild?: string | null
+    attestationId?: string | null
     createdAt?: Date | string
     deployments?: BuiltinSkillDeploymentUncheckedCreateNestedManyWithoutBuiltinSkillVersionInput
   }
@@ -72064,6 +74750,7 @@ export namespace Prisma {
     manifestJson?: JsonFilter<"BuiltinSkillVersion">
     workflowJson?: JsonFilter<"BuiltinSkillVersion">
     runtimeBuild?: StringNullableFilter<"BuiltinSkillVersion"> | string | null
+    attestationId?: StringNullableFilter<"BuiltinSkillVersion"> | string | null
     createdAt?: DateTimeFilter<"BuiltinSkillVersion"> | Date | string
   }
 
@@ -72283,6 +74970,7 @@ export namespace Prisma {
     manifestJson: JsonNullValueInput | InputJsonValue
     workflowJson?: JsonNullValueInput | InputJsonValue
     runtimeBuild?: string | null
+    attestationId?: string | null
     createdAt?: Date | string
     builtinSkill: BuiltinSkillCreateNestedOneWithoutVersionsInput
   }
@@ -72296,6 +74984,7 @@ export namespace Prisma {
     manifestJson: JsonNullValueInput | InputJsonValue
     workflowJson?: JsonNullValueInput | InputJsonValue
     runtimeBuild?: string | null
+    attestationId?: string | null
     createdAt?: Date | string
   }
 
@@ -72323,6 +75012,7 @@ export namespace Prisma {
     manifestJson?: JsonNullValueInput | InputJsonValue
     workflowJson?: JsonNullValueInput | InputJsonValue
     runtimeBuild?: NullableStringFieldUpdateOperationsInput | string | null
+    attestationId?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     builtinSkill?: BuiltinSkillUpdateOneRequiredWithoutVersionsNestedInput
   }
@@ -72336,6 +75026,7 @@ export namespace Prisma {
     manifestJson?: JsonNullValueInput | InputJsonValue
     workflowJson?: JsonNullValueInput | InputJsonValue
     runtimeBuild?: NullableStringFieldUpdateOperationsInput | string | null
+    attestationId?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
@@ -73602,6 +76293,8 @@ export namespace Prisma {
     dependsOnJson?: NullableJsonNullValueInput | InputJsonValue
     inputBindingsJson?: NullableJsonNullValueInput | InputJsonValue
     outputContractJson?: NullableJsonNullValueInput | InputJsonValue
+    outputSchemaJson?: NullableJsonNullValueInput | InputJsonValue
+    inputSchemaJson?: NullableJsonNullValueInput | InputJsonValue
     resolvedInputJson?: NullableJsonNullValueInput | InputJsonValue
     idempotencyKey?: string | null
     leaseOwner?: string | null
@@ -73712,6 +76405,8 @@ export namespace Prisma {
     dependsOnJson?: NullableJsonNullValueInput | InputJsonValue
     inputBindingsJson?: NullableJsonNullValueInput | InputJsonValue
     outputContractJson?: NullableJsonNullValueInput | InputJsonValue
+    outputSchemaJson?: NullableJsonNullValueInput | InputJsonValue
+    inputSchemaJson?: NullableJsonNullValueInput | InputJsonValue
     resolvedInputJson?: NullableJsonNullValueInput | InputJsonValue
     idempotencyKey?: NullableStringFieldUpdateOperationsInput | string | null
     leaseOwner?: NullableStringFieldUpdateOperationsInput | string | null
@@ -73745,6 +76440,8 @@ export namespace Prisma {
     dependsOnJson?: NullableJsonNullValueInput | InputJsonValue
     inputBindingsJson?: NullableJsonNullValueInput | InputJsonValue
     outputContractJson?: NullableJsonNullValueInput | InputJsonValue
+    outputSchemaJson?: NullableJsonNullValueInput | InputJsonValue
+    inputSchemaJson?: NullableJsonNullValueInput | InputJsonValue
     resolvedInputJson?: NullableJsonNullValueInput | InputJsonValue
     idempotencyKey?: NullableStringFieldUpdateOperationsInput | string | null
     leaseOwner?: NullableStringFieldUpdateOperationsInput | string | null
@@ -73778,6 +76475,8 @@ export namespace Prisma {
     dependsOnJson?: NullableJsonNullValueInput | InputJsonValue
     inputBindingsJson?: NullableJsonNullValueInput | InputJsonValue
     outputContractJson?: NullableJsonNullValueInput | InputJsonValue
+    outputSchemaJson?: NullableJsonNullValueInput | InputJsonValue
+    inputSchemaJson?: NullableJsonNullValueInput | InputJsonValue
     resolvedInputJson?: NullableJsonNullValueInput | InputJsonValue
     idempotencyKey?: NullableStringFieldUpdateOperationsInput | string | null
     leaseOwner?: NullableStringFieldUpdateOperationsInput | string | null
@@ -74189,6 +76888,7 @@ export namespace Prisma {
     manifestJson: JsonNullValueInput | InputJsonValue
     workflowJson?: JsonNullValueInput | InputJsonValue
     runtimeBuild?: string | null
+    attestationId?: string | null
     createdAt?: Date | string
   }
 
@@ -74221,6 +76921,7 @@ export namespace Prisma {
     manifestJson?: JsonNullValueInput | InputJsonValue
     workflowJson?: JsonNullValueInput | InputJsonValue
     runtimeBuild?: NullableStringFieldUpdateOperationsInput | string | null
+    attestationId?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     deployments?: BuiltinSkillDeploymentUpdateManyWithoutBuiltinSkillVersionNestedInput
   }
@@ -74233,6 +76934,7 @@ export namespace Prisma {
     manifestJson?: JsonNullValueInput | InputJsonValue
     workflowJson?: JsonNullValueInput | InputJsonValue
     runtimeBuild?: NullableStringFieldUpdateOperationsInput | string | null
+    attestationId?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     deployments?: BuiltinSkillDeploymentUncheckedUpdateManyWithoutBuiltinSkillVersionNestedInput
   }
@@ -74245,6 +76947,7 @@ export namespace Prisma {
     manifestJson?: JsonNullValueInput | InputJsonValue
     workflowJson?: JsonNullValueInput | InputJsonValue
     runtimeBuild?: NullableStringFieldUpdateOperationsInput | string | null
+    attestationId?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
@@ -74572,6 +77275,14 @@ export namespace Prisma {
      * @deprecated Use CapabilityValidationDefaultArgs instead
      */
     export type CapabilityValidationArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = CapabilityValidationDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use CapabilityFixtureDefaultArgs instead
+     */
+    export type CapabilityFixtureArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = CapabilityFixtureDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use CapabilityAttestationDefaultArgs instead
+     */
+    export type CapabilityAttestationArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = CapabilityAttestationDefaultArgs<ExtArgs>
     /**
      * @deprecated Use SkillDraftDefaultArgs instead
      */

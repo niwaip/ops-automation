@@ -13,11 +13,46 @@ export interface ExecuteLlmOperationDto {
   input: Record<string, any>;
 }
 
+/**
+ * Machine-readable operation definition (functions stripped) exposed so the
+ * control plane can freeze the authoritative input/output schemas at plan
+ * freeze time — see docs/design/unified-capability-contract-and-validation-design.md §6.4.
+ */
+export interface LlmOperationDefinitionV1 {
+  operationId: LlmOperationIdV1;
+  promptTemplateId: string;
+  version: string;
+  modelPolicyId: string;
+  temperature: number;
+  maxInputTokens: number;
+  maxOutputTokens: number;
+  inputSchema: Record<string, unknown> | null;
+  outputSchema: Record<string, unknown> | null;
+}
+
 @Injectable()
 export class LlmOperationService {
   private readonly logger = new Logger(LlmOperationService.name);
 
   constructor(private readonly modelService: ModelService) {}
+
+  public getOperationDefinition(operationId: string): LlmOperationDefinitionV1 {
+    const template = LLM_OPERATION_TEMPLATES[operationId as LlmOperationIdV1];
+    if (!template) {
+      throw new BadRequestException(`LLM operation '${operationId}' is not registered`);
+    }
+    return {
+      operationId: template.operationId,
+      promptTemplateId: template.promptTemplateId,
+      version: template.version,
+      modelPolicyId: template.modelPolicyId,
+      temperature: template.temperature,
+      maxInputTokens: template.maxInputTokens,
+      maxOutputTokens: template.maxOutputTokens,
+      inputSchema: template.inputSchema || null,
+      outputSchema: template.outputSchema || null,
+    };
+  }
 
   public async executeOperation(dto: ExecuteLlmOperationDto): Promise<{
     success: boolean;

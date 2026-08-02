@@ -99,3 +99,6 @@ export interface RuntimePhaseInvokeResult {
     requiresTakeover?: boolean;
     takeoverReason?: string;
 }
+export * from './capability-contract-v2';
+export * from './json-schema-validator';
+//# sourceMappingURL=index.d.ts.map

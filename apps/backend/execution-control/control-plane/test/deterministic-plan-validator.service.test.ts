@@ -181,4 +181,101 @@ describe('DeterministicPlanValidatorService', () => {
     expect(result.valid).toBe(false);
     expect(result.errors.some((e) => e.code === ERROR_CODES.FINAL_OUTPUT_UNSATISFIED)).toBe(true);
   });
+
+  describe('edge type compatibility (§15.3 item 4)', () => {
+    it('passes subtype-compatible edges (markdown_content upstream satisfies string expectation)', () => {
+      const plan: DeterministicPlanDraftV1 = JSON.parse(JSON.stringify(valid3NodePlan));
+      plan.nodes[2].inputBindings.content = {
+        source: 'node_output',
+        nodeId: 'summarize_news',
+        outputPath: 'markdown_content',
+        expectedType: 'string',
+      };
+      const result = validator.validatePlan(plan);
+      expect(result.valid).toBe(true);
+      expect(result.errors.some((e) => e.code === ERROR_CODES.EDGE_TYPE_INCOMPATIBLE)).toBe(false);
+    });
+
+    it('passes json container escape hatch (json upstream satisfies news_item_list expectation)', () => {
+      const plan: DeterministicPlanDraftV1 = JSON.parse(JSON.stringify(valid3NodePlan));
+      plan.nodes[0].outputContract = { results: 'json' };
+      plan.nodes[1].inputBindings.items = {
+        source: 'node_output',
+        nodeId: 'search_ai_news',
+        outputPath: 'results',
+        expectedType: 'news_item_list',
+      };
+      const result = validator.validatePlan(plan);
+      expect(result.valid).toBe(true);
+    });
+
+    it('rejects number→string edges', () => {
+      const plan: DeterministicPlanDraftV1 = JSON.parse(JSON.stringify(valid3NodePlan));
+      plan.nodes[0].outputContract = { results: 'number' };
+      plan.nodes[1].inputBindings.items = {
+        source: 'node_output',
+        nodeId: 'search_ai_news',
+        outputPath: 'results',
+        expectedType: 'string',
+      };
+      const result = validator.validatePlan(plan);
+      expect(result.valid).toBe(false);
+      expect(result.errors.some((e) => e.code === ERROR_CODES.EDGE_TYPE_INCOMPATIBLE)).toBe(true);
+    });
+
+    it('rejects string→number edges', () => {
+      const plan: DeterministicPlanDraftV1 = JSON.parse(JSON.stringify(valid3NodePlan));
+      plan.nodes[0].outputContract = { results: 'string' };
+      plan.nodes[1].inputBindings.items = {
+        source: 'node_output',
+        nodeId: 'search_ai_news',
+        outputPath: 'results',
+        expectedType: 'number',
+      };
+      const result = validator.validatePlan(plan);
+      expect(result.valid).toBe(false);
+      expect(result.errors.some((e) => e.code === ERROR_CODES.EDGE_TYPE_INCOMPATIBLE)).toBe(true);
+    });
+
+    it('rejects boolean→string edges', () => {
+      const plan: DeterministicPlanDraftV1 = JSON.parse(JSON.stringify(valid3NodePlan));
+      plan.nodes[0].outputContract = { results: 'boolean' };
+      plan.nodes[1].inputBindings.items = {
+        source: 'node_output',
+        nodeId: 'search_ai_news',
+        outputPath: 'results',
+        expectedType: 'string',
+      };
+      const result = validator.validatePlan(plan);
+      expect(result.valid).toBe(false);
+      expect(result.errors.some((e) => e.code === ERROR_CODES.EDGE_TYPE_INCOMPATIBLE)).toBe(true);
+    });
+
+    it('emits a warning (not an error) when expectedType is omitted', () => {
+      const result = validator.validatePlan(valid3NodePlan);
+      expect(result.valid).toBe(true);
+      expect(result.warnings).toBeDefined();
+      expect(result.warnings!.length).toBeGreaterThan(0);
+      expect(result.warnings!.some((w) => w.includes('without expectedType'))).toBe(true);
+    });
+
+    it('does not warn when every node_output binding declares expectedType', () => {
+      const plan: DeterministicPlanDraftV1 = JSON.parse(JSON.stringify(valid3NodePlan));
+      plan.nodes[1].inputBindings.items = {
+        source: 'node_output',
+        nodeId: 'search_ai_news',
+        outputPath: 'results',
+        expectedType: 'news_item_list',
+      };
+      plan.nodes[2].inputBindings.content = {
+        source: 'node_output',
+        nodeId: 'summarize_news',
+        outputPath: 'markdown_content',
+        expectedType: 'markdown_content',
+      };
+      const result = validator.validatePlan(plan);
+      expect(result.valid).toBe(true);
+      expect(result.warnings).toBeUndefined();
+    });
+  });
 });

@@ -207,4 +207,92 @@ describe('DeterministicNodeInputResolverService', () => {
 
     expect(resolved.query).toBe('AI 新闻');
   });
+
+  describe('§9.2 source distinction — user input is never rewritten', () => {
+    it('throws INPUT_SCHEMA_VIOLATION for an illegal enum value from user input (rule 4)', async () => {
+      mockSchemaRow({
+        topic: { type: 'string', enum: ['general', 'news', 'finance'], defaultValue: 'general' },
+      });
+
+      await expect(
+        resolver.resolveInputs(
+          'exec-1',
+          { topic: { source: 'user_input', path: 'topic' } },
+          { topic: '最新的AI新闻' },
+          'tavily_search',
+        ),
+      ).rejects.toMatchObject({
+        code: 'INPUT_SCHEMA_VIOLATION',
+        message: expect.stringContaining("field 'topic'"),
+      });
+    });
+
+    it('keeps a legal enum value from user input untouched', async () => {
+      mockSchemaRow({
+        topic: { type: 'string', enum: ['general', 'news', 'finance'], defaultValue: 'general' },
+      });
+
+      const resolved = await resolver.resolveInputs(
+        'exec-1',
+        { topic: { source: 'user_input', path: 'topic' } },
+        { topic: 'finance' },
+        'tavily_search',
+      );
+
+      expect(resolved.topic).toBe('finance');
+    });
+
+    it('does not treat an absent user input value as a violation (required is the validator\u2019s job)', async () => {
+      mockSchemaRow({
+        topic: { type: 'string', enum: ['general', 'news', 'finance'], defaultValue: 'general' },
+      });
+
+      const resolved = await resolver.resolveInputs(
+        'exec-1',
+        { topic: { source: 'user_input', path: 'missing' } },
+        {},
+        'tavily_search',
+      );
+
+      expect(resolved.topic).toBeUndefined();
+    });
+
+    it('never rewrites node_output data that does not match the enum', async () => {
+      mockSchemaRow({
+        topic: { type: 'string', enum: ['general', 'news', 'finance'], defaultValue: 'general' },
+      });
+      prismaMock.executionStep.findMany.mockResolvedValueOnce([
+        {
+          planNodeId: 'upstream-node',
+          status: 'succeeded',
+          outputJson: { result: { topic: '自定义内容' } },
+        },
+      ]);
+
+      const resolved = await resolver.resolveInputs(
+        'exec-1',
+        { topic: { source: 'node_output', nodeId: 'upstream-node', path: 'result.topic' } },
+        {},
+        'tavily_search',
+      );
+
+      // Data passes through untouched; schema conformance is the contract validator's call.
+      expect(resolved.topic).toBe('自定义内容');
+    });
+
+    it('still degrades planner literal bindings to the default (rule 2)', async () => {
+      mockSchemaRow({
+        topic: { type: 'string', enum: ['general', 'news', 'finance'], defaultValue: 'general' },
+      });
+
+      const resolved = await resolver.resolveInputs(
+        'exec-1',
+        { topic: { source: 'literal', value: 'AI' } },
+        {},
+        'tavily_search',
+      );
+
+      expect(resolved.topic).toBe('general');
+    });
+  });
 });

@@ -1,3 +1,13 @@
+-- 20260802000000_fix_uuid_id_defaults
+-- Single authoritative fix for UUID defaults drift: tables created by
+-- hand-written baseline SQL (20260608_init_platform_baseline) declare
+-- "id" UUID with no DEFAULT, while schema.prisma declares @default(uuid()).
+-- This migration aligns every public uuid id column with the schema default,
+-- exactly like the former manual-sql/20260704_repair_uuid_id_defaults.sql.
+--
+-- Idempotent by construction: only columns whose default is NULL are touched,
+-- so re-running (e.g. on an already-repaired database) is a no-op.
+
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 DO $$

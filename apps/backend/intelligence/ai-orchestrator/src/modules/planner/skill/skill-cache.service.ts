@@ -52,13 +52,14 @@ export class SkillCacheService {
 
     try {
       let rawSkills: any[] = [];
+      let catalogSkills: any[] = [];
       try {
         const catalogRes = await axios.get(`${this.authServiceUrl}/internal/builtin-skills/catalog`, {
           headers: this.buildRequestHeaders(authToken, traceId),
         });
         const catalogData = catalogRes.data as any;
-        if (Array.isArray(catalogData?.capabilities) && catalogData.capabilities.length > 0) {
-          rawSkills = catalogData.capabilities.map((cap: any) => ({
+        if (Array.isArray(catalogData?.capabilities)) {
+          catalogSkills = catalogData.capabilities.map((cap: any) => ({
             id: cap.capabilityRef?.id,
             skillId: cap.capabilityRef?.id,
             skillName: cap.displayName,
@@ -72,19 +73,44 @@ export class SkillCacheService {
             supportsArtifact: cap.supportsArtifact,
             paramsSchema: cap.inputSchema,
             outputSchema: cap.outputSchema,
+            contractRef: cap.contractRef,
+            contractDigest: cap.contractDigest,
             runtimeHints: cap.runtimeHints,
+            // Carry release/deployment status from the catalog projection so the
+            // candidate selector can verify published + deployed without a second
+            // DB hop. Without this, the selector falls back to "unknown" and
+            // wrongly skips legitimate skills.
+            publishedReleaseStatus: cap.publishedReleaseStatus,
+            publishedDeploymentStatus: cap.publishedDeploymentStatus,
           }));
         }
       } catch (err: any) {
         this.logger.debug(`Unified catalog endpoint unavailable, falling back to /skills: ${err.message}`);
       }
 
-      if (rawSkills.length === 0) {
+      // Fetch the legacy /skills endpoint unconditionally and merge with the catalog
+      // so that legacy custom skills (e.g. the published web-search capability whose
+      // catalog projection lags behind) stay visible. Earlier code only consulted
+      // /skills when the catalog was empty, which caused legacy skills to silently
+      // disappear once any built-in skill entered the catalog.
+      let legacySkills: any[] = [];
+      try {
         const response = await axios.get<SkillListResponse>(`${this.authServiceUrl}/skills`, {
           headers: this.buildRequestHeaders(authToken, traceId),
         });
-        rawSkills = Array.isArray(response.data.skills) ? response.data.skills : [];
+        legacySkills = Array.isArray(response.data.skills) ? response.data.skills : [];
+      } catch (err: any) {
+        this.logger.debug(`/skills endpoint unavailable while merging legacy list: ${err.message}`);
       }
+
+      const merged = new Map<string, any>();
+      for (const skill of [...catalogSkills, ...legacySkills]) {
+        if (!skill) continue;
+        const key = skill.id || skill.skillId || skill.skillName;
+        if (!key) continue;
+        if (!merged.has(key)) merged.set(key, skill);
+      }
+      rawSkills = Array.from(merged.values());
 
       const normalizedSkills = rawSkills
         .map((item) => this.mapRawSkillDefinition(item))
@@ -149,7 +175,11 @@ export class SkillCacheService {
             supportsArtifact: cap.supportsArtifact,
             paramsSchema: cap.inputSchema,
             outputSchema: cap.outputSchema,
+            contractRef: cap.contractRef,
+            contractDigest: cap.contractDigest,
             runtimeHints: cap.runtimeHints,
+            publishedReleaseStatus: cap.publishedReleaseStatus,
+            publishedDeploymentStatus: cap.publishedDeploymentStatus,
           });
           this.setCacheValue(
             this.skillByIdCache,
@@ -377,6 +407,9 @@ export class SkillCacheService {
       description: typeof item.description === 'string' ? item.description : undefined,
       triggerKeywords: Array.isArray(item.triggerKeywords) ? item.triggerKeywords.map(String) : [],
       outputParams,
+      outputSchema: typeof item.outputSchema === 'object' && item.outputSchema ? (item.outputSchema as Record<string, unknown>) : undefined,
+      contractRef: typeof item.contractRef === 'string' ? item.contractRef : undefined,
+      contractDigest: typeof item.contractDigest === 'string' ? item.contractDigest : undefined,
       publishedSourceType:
         typeof item.publishedSourceType === 'string' ? item.publishedSourceType : undefined,
       paramsSchema: this.hydrateParamsSchemaRenderPaths(

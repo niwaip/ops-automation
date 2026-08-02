@@ -44,6 +44,7 @@ export declare const EXECUTION_EVENT_TYPE: {
     readonly EXECUTION_INPUT_SUBMITTED: "execution.input_submitted";
     readonly EXECUTION_PARTIAL_INPUT_SUBMITTED: "execution.partial_input_submitted";
     readonly EXECUTION_CANCELLED: "execution.cancelled";
+    readonly EXECUTION_LEGACY_GRACE_REJECTED: "execution.legacy_grace.rejected";
     readonly RUNTIME_SKIPPED: "runtime.skipped";
     readonly RUNTIME_ALLOCATED: "runtime.allocated";
     readonly STEP_CREATED: "step.created";
@@ -55,7 +56,7 @@ export declare const EXECUTION_EVENT_TYPE: {
     readonly STEPS_SKIPPED: "steps.skipped";
 };
 export type ExecutionEventType = (typeof EXECUTION_EVENT_TYPE)[keyof typeof EXECUTION_EVENT_TYPE];
-export declare const EXECUTION_EVENT_TYPE_VALUES: ("execution.created" | "execution.plan.generated" | "execution.steps.planned" | "execution.status_changed" | "execution.takeover_requested" | "execution.resumed" | "execution.approved" | "execution.rejected" | "execution.input_submitted" | "execution.partial_input_submitted" | "execution.cancelled" | "runtime.skipped" | "runtime.allocated" | "step.created" | "step.started" | "step.succeeded" | "step.failed" | "step.waiting_input" | "step.skipped" | "steps.skipped")[];
+export declare const EXECUTION_EVENT_TYPE_VALUES: ("execution.created" | "execution.plan.generated" | "execution.steps.planned" | "execution.status_changed" | "execution.takeover_requested" | "execution.resumed" | "execution.approved" | "execution.rejected" | "execution.input_submitted" | "execution.partial_input_submitted" | "execution.cancelled" | "execution.legacy_grace.rejected" | "runtime.skipped" | "runtime.allocated" | "step.created" | "step.started" | "step.succeeded" | "step.failed" | "step.waiting_input" | "step.skipped" | "steps.skipped")[];
 export declare function isTerminalExecutionStatus(status: string): status is ExecutionStatus;
 export type ExecutionSemanticMode = 'field_level' | 'complex_document';
 export interface ExecutionSemanticGroup {
@@ -85,3 +86,4 @@ export interface ExecutionSemantic {
         reasonCodes: string[];
     };
 }
+//# sourceMappingURL=index.d.ts.map

@@ -24,3 +24,4 @@ export interface ReleaseManifest {
     runtimeRequirements?: Record<string, unknown>;
     policy?: Record<string, unknown>;
 }
+//# sourceMappingURL=index.d.ts.map

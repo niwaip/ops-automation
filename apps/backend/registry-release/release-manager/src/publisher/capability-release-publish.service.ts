@@ -1,11 +1,15 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { CapabilityReleaseRecorderBridgeCompilerService } from '../compiler/capability-release-recorder-bridge-compiler.service';
 import { BrowserRecordingExecutionPlanValidatorService } from '../validator/browser-recording-execution-plan-validator.service';
 import { CAPABILITY_RELEASE_ERROR_CODE } from '../capability-release.constants';
+import type { ReleaseManagerPrismaPort } from '../platform-runtime.ports';
+import { RELEASE_MANAGER_PRISMA } from '../platform-runtime.tokens';
 import { CapabilityReleaseSkillPublisherService } from './capability-release-skill-publisher.service';
 import { CapabilityReleasePublishWriterService } from './capability-release-publish-writer.service';
 import { CapabilityReleasePublishValidatorService } from '../validator/capability-release-publish-validator.service';
+import { CapabilityAttestationService } from '../attestation/capability-attestation.service';
+import { CapabilityFixtureService } from '../fixture/capability-fixture.service';
 import {
   ApproveCapabilityReleaseDTO,
   BridgeRecorderExportDTO,
@@ -72,12 +76,17 @@ export interface CapabilityReleasePublishAccessors {
 
 @Injectable()
 export class CapabilityReleasePublishService {
+  private readonly logger = new Logger(CapabilityReleasePublishService.name);
+
   constructor(
     private readonly capabilityReleaseRecorderBridgeCompilerService: CapabilityReleaseRecorderBridgeCompilerService,
     private readonly browserRecordingExecutionPlanValidatorService: BrowserRecordingExecutionPlanValidatorService,
     private readonly capabilityReleasePublishValidatorService: CapabilityReleasePublishValidatorService,
     private readonly capabilityReleasePublishWriterService: CapabilityReleasePublishWriterService,
-    private readonly capabilityReleaseSkillPublisherService: CapabilityReleaseSkillPublisherService
+    private readonly capabilityReleaseSkillPublisherService: CapabilityReleaseSkillPublisherService,
+    @Inject(RELEASE_MANAGER_PRISMA) private readonly prisma: ReleaseManagerPrismaPort,
+    private readonly capabilityAttestationService: CapabilityAttestationService,
+    private readonly capabilityFixtureService: CapabilityFixtureService
   ) {}
 
   async bridgeRecorderExport(
@@ -343,7 +352,7 @@ export class CapabilityReleasePublishService {
     const snapshot = ['browser_recording', 'temporal_workflow'].includes(release.sourceType)
       ? await accessors.getCurrentSnapshotOrThrow(release)
       : undefined;
-    const { normalizedDraftPayload, blocker } =
+    const { normalizedDraftPayload, blocker, compatibility, lint } =
       await this.capabilityReleasePublishValidatorService.validatePublishDraft(
         release,
         draft,
@@ -364,6 +373,76 @@ export class CapabilityReleasePublishService {
         message: blocker.message,
         ...blocker.details,
       });
+    }
+
+    // §10.3 hard gate: publish is blocked until the fixture set is complete
+    // (≥1 input, ≥1 runtime output, ≥1 negative fixture). An incomplete
+    // fixture set cannot be published as a contract-guaranteed capability.
+    const fixtureResult = await this.capabilityFixtureService.validateFixturesExist(id);
+    if (!fixtureResult.valid) {
+      await accessors.insertAuditEvent(
+        id,
+        'fixture_validation_failed',
+        userId,
+        false,
+        `发布被 Fixture 门禁拦截: ${fixtureResult.errors.join('; ')}`,
+        { errors: fixtureResult.errors }
+      );
+      throw createBadRequestException({
+        code: this.capabilityFixtureService.errorCode,
+        message: `Capability 缺少必要 Fixture，无法发布: ${fixtureResult.errors.join('; ')}`,
+        errors: fixtureResult.errors,
+      });
+    }
+
+    // Persist the compatibility diff onto the release's build (§15.4 item 5)
+    // so operators can audit why the publish was/wasn't blocked.
+    if (compatibility) {
+      const buildId = release.currentBuildId || release.latestSuccessfulBuildId;
+      if (buildId) {
+        await this.prisma
+          .$executeRawUnsafe(
+            `UPDATE capability_builds
+             SET build_diff_json = $2::jsonb, updated_at = now()
+             WHERE id = $1::uuid`,
+            buildId,
+            JSON.stringify(compatibility)
+          )
+          .catch(() => undefined);
+      }
+    }
+
+    // Gate 5 (§10.6): record the release-validation attestation so activation
+    // can require a proof of validation. The attestation is part of the
+    // publish artifact — a version whose attestation cannot be built can never
+    // pass the activation gate, so the publish itself is BLOCKED on failure.
+    // The error is logged and recorded as an audit event (fix ⑨) before
+    // throwing so operators can see exactly why the publish was blocked.
+    const buildId = release.currentBuildId || release.latestSuccessfulBuildId;
+    if (buildId) {
+      try {
+        await this.capabilityAttestationService.buildAttestation(
+          release.id,
+          buildId,
+          lint
+        );
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        this.logger.error(`Attestation build failed for release ${release.id}: ${message}`);
+        await accessors.insertAuditEvent(
+          id,
+          'attestation_failed',
+          userId,
+          false,
+          `发布 Attestation 生成失败，发布被阻断: ${message}`,
+          { buildId, error: message }
+        );
+        throw createBadRequestException({
+          code: CAPABILITY_RELEASE_ERROR_CODE.ATTESTATION_FAILED,
+          message: `发布 Attestation 生成失败，发布被阻断: ${message}`,
+          buildId,
+        });
+      }
     }
 
     const { publishedSkillId, previousPublishedSkillIdDeactivated } =

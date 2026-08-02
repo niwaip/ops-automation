@@ -1,4 +1,5 @@
 import {
+  deriveV2OutputFromOutputParams,
   normalizeAiDraftStepInput,
   normalizeDraftInputParams,
   normalizeDraftOutputParams,
@@ -158,6 +159,8 @@ export function createTemporalWorkflowAiDraftSupport(
       normalizeDraftOutputParams(outputParams, (...values) =>
         deps.pickFirstNonEmptyString(...values)
       ),
+    deriveV2OutputFromOutputParams: ({ outputParams, steps }) =>
+      deriveV2OutputFromOutputParams({ outputParams, steps }),
     normalizeAiDraftStepInput: (
       rawInput,
       activityRef,

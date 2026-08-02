@@ -35,7 +35,11 @@ import { CapabilityReleaseTemporalSchemaService } from '../compiler/capability-r
 import { BrowserRecordingActionPolicyService } from '../validator/browser-recording-action-policy.service';
 import { BrowserRecordingExecutionPlanValidatorService } from '../validator/browser-recording-execution-plan-validator.service';
 import { CapabilityReleasePublishValidatorService } from '../validator/capability-release-publish-validator.service';
+import { SchemaCompatibilityService } from '../validator/schema-compatibility.service';
+import { ContractLintService } from '../validator/contract-lint.service';
 import { CapabilityReleaseAssistService } from '../capability-release-assist.service';
+import { CapabilityAttestationService } from '../attestation/capability-attestation.service';
+import { CapabilityFixtureService } from '../fixture/capability-fixture.service';
 import { CapabilityReleaseAuditService } from '../audit/capability-release-audit.service';
 import { CapabilityReleaseBrowserRuntimeExecutorService } from '../publisher/capability-release-browser-runtime-executor.service';
 import { CapabilityReleaseBrowserRuntimeLoopExecutorService } from '../publisher/capability-release-browser-runtime-loop-executor.service';
@@ -102,6 +106,8 @@ import { CapabilityReleaseService } from './capability-release.service';
     CapabilityReleaseRecorderBridgeCompilerService,
     BrowserRecordingActionPolicyService,
     BrowserRecordingExecutionPlanValidatorService,
+    SchemaCompatibilityService,
+    ContractLintService,
     CapabilityReleasePublishValidatorService,
     CapabilityReleaseAssistService,
     CapabilityReleaseAuditService,
@@ -115,6 +121,8 @@ import { CapabilityReleaseService } from './capability-release.service';
     CapabilityReleaseBrowserRuntimeResultService,
     CapabilityReleaseBrowserRuntimeService,
     CapabilityReleaseDocumentRuntimeService,
+    CapabilityAttestationService,
+    CapabilityFixtureService,
     CapabilityReleasePublishService,
     CapabilityReleaseSkillPublisherService,
     CapabilityReleasePublishWriterService,

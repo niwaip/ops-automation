@@ -189,6 +189,48 @@ export class BuiltinSkillRegistryService {
       throw new NotFoundException(`Version '${versionStr}' for skill '${skill.capabilityKey}' not found`);
     }
 
+    // Gate 5 (§10.6): "Activation 只能指向具有有效验证凭证的版本" — activation
+    // is a HARD gate. A version without an attestation, or whose attestation
+    // row no longer exists, must never become the active version; publishing
+    // such a version is itself blocked by the publish gate, so this only
+    // rejects versions that bypassed or predate the attestation pipeline.
+    if (version.attestationId) {
+      const attestation = await this.prisma.capabilityAttestation.findFirst({
+        where: { id: version.attestationId },
+      });
+      if (!attestation) {
+        this.logger.error(
+          `Activating version ${version.definitionVersion} of skill ${skill.capabilityKey} blocked — ` +
+            `attestation ${version.attestationId} no longer exists`
+        );
+        await this.auditService.logEvent({
+          builtinSkillId: skill.id,
+          action: 'activate_version_blocked',
+          versionId: version.id,
+          payload: { versionStr, reason: 'attestation_missing', attestationId: version.attestationId },
+        });
+        throw new BadRequestException(
+          `Activation blocked: version ${version.definitionVersion} of skill ${skill.capabilityKey} ` +
+            `references attestation ${version.attestationId} which no longer exists (§10.6)`
+        );
+      }
+    } else {
+      this.logger.error(
+        `Activating version ${version.definitionVersion} of skill ${skill.capabilityKey} blocked — ` +
+          `version carries no attestation (§10.6)`
+      );
+      await this.auditService.logEvent({
+        builtinSkillId: skill.id,
+        action: 'activate_version_blocked',
+        versionId: version.id,
+        payload: { versionStr, reason: 'no_attestation' },
+      });
+      throw new BadRequestException(
+        `Activation blocked: version ${version.definitionVersion} of skill ${skill.capabilityKey} ` +
+          `has no validation attestation (§10.6)`
+      );
+    }
+
     const updatedSkill = await this.prisma.builtinSkill.update({
       where: { id: skill.id },
       data: {

@@ -295,6 +295,13 @@ export class ExecutionDto {
   @IsOptional()
   riskLevel?: 'L0' | 'L1' | 'L2' | 'L3' | null;
 
+  @ApiProperty({
+    description: 'Execution mode: single_skill (legacy) or deterministic_plan (multi-step)',
+    required: false,
+  })
+  @IsOptional()
+  executionMode?: 'single_skill' | 'deterministic_plan' | null;
+
   @ApiProperty({ required: false })
   @IsOptional()
   currentStepId?: string | null;

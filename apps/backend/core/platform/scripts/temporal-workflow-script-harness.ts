@@ -1,6 +1,7 @@
 import { TemporalWorkflowActivityResolutionService } from '../src/modules/temporal-workflow/temporal-workflow-activity-resolution.service';
 import { TemporalWorkflowBrowserDraftService } from '../src/modules/temporal-workflow/browser-bridge/temporal-workflow-browser-draft.service';
 import { TemporalWorkflowCodegenService } from '../src/modules/temporal-workflow/temporal-workflow-codegen.service';
+import { ActivityCodegenService } from '../src/modules/temporal-workflow/temporal-activity-codegen.service';
 import { TemporalWorkflowArtifactService } from '../src/workflow-registry/workflow-template/temporal-workflow-artifact.service';
 import { TemporalWorkflowConfigOrchestrationService } from '../src/workflow-registry/workflow-template/temporal-workflow-config-orchestration.service';
 import { TemporalWorkflowConfigService } from '../src/workflow-registry/workflow-template/temporal-workflow-config.service';
@@ -76,12 +77,14 @@ export const createTemporalWorkflowScriptService = (): TemporalWorkflowService =
     workflowNormalizationService,
     workflowArtifactService
   );
+  const activityCodegenService = new ActivityCodegenService();
   const workflowSupportService = new TemporalWorkflowSupportService(
     builtinRegistry,
     aiDraftService,
     activityResolutionService,
     workflowConfigService,
-    workflowNormalizationService
+    workflowNormalizationService,
+    activityCodegenService
   );
   const workflowDraftOrchestrationService = new TemporalWorkflowDraftOrchestrationService(
     aiDraftService,

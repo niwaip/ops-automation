@@ -62,6 +62,7 @@ export const EXECUTION_EVENT_TYPE = {
   EXECUTION_INPUT_SUBMITTED: 'execution.input_submitted',
   EXECUTION_PARTIAL_INPUT_SUBMITTED: 'execution.partial_input_submitted',
   EXECUTION_CANCELLED: 'execution.cancelled',
+  EXECUTION_LEGACY_GRACE_REJECTED: 'execution.legacy_grace.rejected',
   RUNTIME_SKIPPED: 'runtime.skipped',
   RUNTIME_ALLOCATED: 'runtime.allocated',
   STEP_CREATED: 'step.created',

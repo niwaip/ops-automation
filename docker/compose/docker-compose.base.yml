@@ -98,6 +98,7 @@ services:
       AI_ORCHESTRATOR_URL: http://${AI_ORCHESTRATOR_HOST:-ai-orchestrator}:${AI_ORCHESTRATOR_PORT:-3007}
       SANDBOX_WORKER_URL: http://sandbox-worker:8090
       ACTIVITY_VALIDATION_AGENT_URL: http://sandbox-worker:8090
+      CARBONE_SERVICE_URL: http://${CARBONE_ENGINE_HOST:-carbone-engine}:${CARBONE_ENGINE_PORT:-3009}
     command: >
       sh -c "bash /workspace/docker/scripts/bootstrap-workspace-deps.sh
       && pnpm --filter @ops/platform run build
@@ -165,7 +166,6 @@ services:
       PROXY_TIMEOUT_SESSION_MS: ${PROXY_TIMEOUT_SESSION_MS:-60000}
       PROXY_TIMEOUT_AI_MS: ${PROXY_TIMEOUT_AI_MS:-60000}
       PROXY_TIMEOUT_WORKER_MS: ${PROXY_TIMEOUT_WORKER_MS:-60000}
-      DEBUG_RUNTIME_OUTPUT: ${DEBUG_RUNTIME_OUTPUT:-false}
     ports:
       - "${CONTROL_PLANE_PORT:-3003}:${CONTROL_PLANE_PORT:-3003}"
     volumes:
@@ -403,6 +403,7 @@ services:
       TEMPLATES_DIR: /workspace/apps/backend/var/templates/document-engine
       OUTPUTS_DIR: /workspace/apps/backend/var/outputs/document-engine
       STORAGE_RENDER_DIR: /workspace/apps/backend/var/outputs/document-engine/renders
+      CARBONE_EXTERNAL_URL: http://${HOST_IP:-localhost}:${CARBONE_ENGINE_PORT:-3009}
     ports:
       - "${CARBONE_ENGINE_PORT:-3009}:${CARBONE_ENGINE_PORT:-3009}"
     volumes:

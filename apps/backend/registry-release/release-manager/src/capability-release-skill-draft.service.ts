@@ -82,6 +82,7 @@ export class CapabilityReleaseSkillDraftService {
 
     const finalDescription =
       description.length > 500 ? description.slice(0, 497) + '...' : description;
+    const outputSchema = this.extractOutputSchema(payload);
 
     if (release.sourceType === 'browser_recording') {
       const browserExecutionFlow =
@@ -115,6 +116,7 @@ export class CapabilityReleaseSkillDraftService {
         executionFlow: browserExecutionFlow,
         tools,
         apiEndpoints,
+        outputSchema,
         validationId: validation.id,
       };
     }
@@ -128,6 +130,7 @@ export class CapabilityReleaseSkillDraftService {
         paramsSchema: paramsSchema || { properties: {}, required: [] },
         executionFlowTemplateIds: release.sourceId ? [release.sourceId] : [],
         tools: ['skill_match', 'flow_execute'],
+        outputSchema,
         apiEndpoints: {
           runtimeMetadata: {
             ...preservedRuntimeMetadata,
@@ -167,6 +170,7 @@ export class CapabilityReleaseSkillDraftService {
       paramsSchema: paramsSchema || { properties: {}, required: [] },
       executionFlowTemplateIds: release.sourceId ? [release.sourceId] : [],
       tools: ['skill_match', 'flow_execute'],
+      outputSchema,
       apiEndpoints: {
         runtimeMetadata: {
           ...temporalRuntimeMetadata,
@@ -495,6 +499,28 @@ export class CapabilityReleaseSkillDraftService {
   private extractSourceName(payload: Record<string, unknown>): string | null {
     const name = payload.name;
     return typeof name === 'string' && name.trim() ? name.trim() : null;
+  }
+
+  /**
+   * Declarative output schema from the source payload — same lookup order as
+   * schema-compatibility.service (fix ①): `contracts.output.schema` →
+   * `manifest.spec.contracts.output.schema` → top-level `outputSchema`.
+   * Carried into the skill draft so `skill_configs.output_schema` is saved
+   * at publish time (the authoritative custom-skill output contract §6.3).
+   */
+  private extractOutputSchema(payload: Record<string, unknown>): Record<string, unknown> | undefined {
+    const contracts =
+      (payload.contracts as Record<string, unknown>) ||
+      (payload.manifest as any)?.spec?.contracts ||
+      {};
+    const output =
+      (contracts?.output as Record<string, unknown>) ||
+      (payload.outputSchema as Record<string, unknown>);
+    const schema = (output as any)?.schema ?? output;
+    if (schema && typeof schema === 'object' && !Array.isArray(schema) && Object.keys(schema).length > 0) {
+      return schema as Record<string, unknown>;
+    }
+    return undefined;
   }
 
   private pickFirstNonEmptyString(...values: unknown[]): string | undefined {

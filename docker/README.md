@@ -92,6 +92,20 @@ cp env/.env.example .env
 
 _注：建议优先通过 `pnpm` 触发，如 `pnpm docker:v4:validate`。_
 
+## 开发提示
+
+### browser-worker 源码变更后必须重建容器
+
+`docker-compose.full.yml` 里的 `browser-worker` 走的是 `corepack pnpm exec nest build && node dist/main.js` 路径，
+**未启用 `--watch`**。修改 `apps/backend/runtimes/browser-worker/src/**` 后需要手动重建容器：
+
+```bash
+./docker/start-smart.sh docker-compose.full.yml up -d --force-recreate --no-deps browser-worker
+```
+
+_原因：`nest-cli.json` 的 `deleteOutDir: true` + `tsconfig.tsbuildinfo` 增量缓存会导致 watch 模式反复删除
+`dist/` 后找不到入口文件。_
+
 ## 服务端口参考
 
 | 服务            | 端口 | 说明              |

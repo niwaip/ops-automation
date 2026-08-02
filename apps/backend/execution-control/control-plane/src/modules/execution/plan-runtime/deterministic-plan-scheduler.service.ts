@@ -6,6 +6,13 @@ import { LlmOperationRuntimeAdapter } from '../adapters/llm-operation-runtime.ad
 import { ExecutionStreamService } from '../lifecycle/execution-stream.service';
 import { RuntimeExecutionOrchestrator } from '../step-runner/runtime/runtime-execution.orchestrator';
 import { DeterministicPlanDraftV1, ValueBindingV1, computePlanHash } from '@ops/backend-deterministic-plan';
+import { jsonSchemaValidator } from '@ops/backend-runtime-capability-contract';
+import { ContractViolationError } from './contract-violation.error';
+import { LegacyOutputAdapterService } from './legacy-output-adapter.service';
+import { CapabilityContractCatalogService } from './capability-contract-catalog.service';
+import { OutputNormalizerService } from './output-normalizer.service';
+import { GracePolicyService } from './grace-policy.service';
+import { ERROR_CODES } from '@ops/backend-error-codes';
 
 @Injectable()
 export class DeterministicPlanSchedulerService {
@@ -18,6 +25,10 @@ export class DeterministicPlanSchedulerService {
     private readonly llmAdapter: LlmOperationRuntimeAdapter,
     private readonly orchestrator: RuntimeExecutionOrchestrator,
     private readonly eventPublisher: ExecutionStreamService,
+    private readonly legacyOutputAdapter: LegacyOutputAdapterService,
+    private readonly contractCatalog: CapabilityContractCatalogService,
+    private readonly outputNormalizer: OutputNormalizerService,
+    private readonly gracePolicy: GracePolicyService,
   ) {}
 
   /**
@@ -37,6 +48,38 @@ export class DeterministicPlanSchedulerService {
     }
 
     if (execution.status === 'succeeded' || execution.status === 'failed' || execution.status === 'cancelled') {
+      return;
+    }
+
+    // Legacy grace period gate (§17.1): after the grace deadline, never-started
+    // executions that would run on legacy contract semantics are rejected
+    // before any further progress. Already-started executions are protected.
+    // Fix ⑩: only LEGACY plans (nodes without authoritative contractRef)
+    // are subject to the gate — V2 frozen plans are exempt, so a legacy
+    // migration deadline can never reject an authoritative-contract execution.
+    if (this.isLegacyPlan(execution) && this.gracePolicy.shouldReject(execution.status)) {
+      this.logger.warn(
+        `Execution ${executionId} rejected by legacy grace policy (status=${execution.status}, grace expired)`,
+      );
+      await this.prisma.execution.update({
+        where: { id: executionId },
+        data: {
+          status: 'failed',
+          failureReason: 'Legacy grace period expired — execution rejected before start',
+          failureCode: 'LEGACY_GRACE_EXPIRED',
+          endedAt: new Date(),
+        },
+      });
+      await this.eventPublisher.createEvent(
+        executionId,
+        'execution.legacy_grace.rejected',
+        {
+          oldStatus: execution.status,
+          newStatus: 'failed',
+          failureCode: 'LEGACY_GRACE_EXPIRED',
+          failureReason: 'Legacy grace period expired — execution rejected before start',
+        },
+      );
       return;
     }
 
@@ -181,6 +224,10 @@ export class DeterministicPlanSchedulerService {
     });
 
     try {
+      // P2 digest re-check: if the frozen contract changed in the catalog since
+      // freeze, refuse to start the step (design doc §15.3-5 acceptance).
+      await this.verifyFrozenContractDigest(execution, step);
+
       if (step.nodeKind === 'llm_operation') {
         await this.runLlmStep(execution, step, resolvedInput);
       } else {
@@ -191,6 +238,9 @@ export class DeterministicPlanSchedulerService {
       await this.advanceExecution(execution.id);
     } catch (error: any) {
       const errMsg = error instanceof Error ? error.message : 'Node execution failed';
+      // Structured contract-violation context (design doc §12.1) flows into events
+      // so downstream consumers get stable codes + machine-readable context.
+      const errContext = error instanceof ContractViolationError ? error.context : undefined;
       this.logger.error(`Step ${planNodeId} failed for execution ${execution.id}: ${errMsg}`);
 
       await this.prisma.executionStep.update({
@@ -219,7 +269,7 @@ export class DeterministicPlanSchedulerService {
       await this.eventPublisher.createEvent(
         execution.id,
         'execution.node.failed' as any,
-        { planNodeId, errorMessage: errMsg },
+        { planNodeId, errorMessage: errMsg, errorCode: error.code, errorContext: errContext },
         { stepId },
       );
       await this.eventPublisher.createEvent(
@@ -230,6 +280,8 @@ export class DeterministicPlanSchedulerService {
           planNodeId,
           error: errMsg,
           errorMessage: errMsg,
+          errorCode: error.code,
+          errorContext: errContext,
           phaseStatus: 'failed',
         },
         { stepId },
@@ -248,7 +300,119 @@ export class DeterministicPlanSchedulerService {
     }
   }
 
+  /**
+   * Verifies the frozen contract digest still matches the catalog at step
+   * start (design doc §15.3-5 / §9.3). Steps frozen before digest support
+   * (legacy) are skipped. Transient catalog lookup failure only logs — the
+   * frozen plan is still internally consistent — while a digest MISMATCH
+   * rejects the start because the capability contract changed after freeze.
+   */
+  private async verifyFrozenContractDigest(execution: any, step: any): Promise<void> {
+    const frozenMeta = (step.outputContractJson?._frozenMetadata) || {};
+    const frozenDigest = frozenMeta.contractDigest;
+    if (!frozenDigest) {
+      return;
+    }
+    // Version-precise re-resolution (fix ③ + ④): a frozen step binds the
+    // EXACT capability version pinned at freeze — the drift check re-resolves
+    // that same version, never silently the active one (publishing a new
+    // version must not reject steps bound to an immutable older version).
+    const node: Record<string, unknown> = {
+      kind: step.nodeKind,
+      nodeId: step.planNodeId,
+      skillId: step.capabilityId,
+      capabilityKey: step.capabilityId,
+      operationId: step.capabilityId,
+    };
+    if (step.capabilityVersion) {
+      node.skillVersion = step.capabilityVersion;
+      node.promptTemplateVersion = step.capabilityVersion;
+    }
+    const contract = await this.contractCatalog.tryResolveContract(this.prisma, node);
+    if (!contract?.outputSchema) {
+      // Fail-closed (§15.3-5 / §9.3): this step was frozen WITH a pinned
+      // contract digest — the catalog must still resolve that exact version
+      // at step start. An unresolvable contract here means the frozen plan
+      // cannot bind its authority anymore, so the step must not run against
+      // an unverifiable contract. (Steps frozen before digest support never
+      // reach this point — they return above without a frozenDigest.)
+      this.logger.error(
+        `Contract re-resolution unavailable for node '${step.planNodeId}' despite frozen digest ${frozenDigest} — refusing to start the step`,
+      );
+      throw new ContractViolationError(
+        ERROR_CODES.CAPABILITY_CONTRACT_NOT_FOUND,
+        `CAPABILITY_CONTRACT_NOT_FOUND for node '${step.planNodeId}': the frozen contract (digest ${frozenDigest}) can no longer be resolved in the catalog; re-create the task to re-freeze with a resolvable contract`,
+        {
+          executionId: execution.id,
+          nodeId: step.planNodeId,
+          capabilityId: step.capabilityId,
+          capabilityVersion: step.capabilityVersion,
+          contractDigest: frozenDigest,
+          contractCheckMode: 'schema',
+        },
+      );
+    }
+    // Same shared contract-envelope semantics as the freeze-time digest (fix
+    // ④) — covers input + output contracts and metadata, not just the output
+    // schema, so input-contract drift is detected too.
+    const currentDigest = this.contractCatalog.computeContractDigest(node, contract);
+    if (currentDigest !== frozenDigest) {
+      this.logger.error(
+        `Frozen contract digest mismatch for node '${step.planNodeId}': frozen ${frozenDigest} vs catalog ${currentDigest}`,
+      );
+      throw new ContractViolationError(
+        ERROR_CODES.CAPABILITY_CONTRACT_DIGEST_MISMATCH,
+        `CAPABILITY_CONTRACT_DIGEST_MISMATCH for node '${step.planNodeId}': the capability contract changed in the catalog after plan freeze; re-create the task to re-freeze with the current contract`,
+        {
+          executionId: execution.id,
+          nodeId: step.planNodeId,
+          capabilityId: step.capabilityId,
+          capabilityVersion: step.capabilityVersion,
+          contractDigest: frozenDigest,
+          contractCheckMode: 'schema',
+        },
+      );
+    }
+  }
+
+  /**
+   * Runtime input validation (design doc §11.1): when an authoritative input
+   * schema was frozen with the plan, the resolved input must satisfy it before
+   * the capability call. Missing input schemas (custom skills) are skipped.
+   */
+  private validateInputContract(step: any, input: Record<string, any>, executionId: string): void {
+    const inputSchema = step.inputSchemaJson;
+    if (!inputSchema || typeof inputSchema !== 'object' || Object.keys(inputSchema).length === 0) {
+      return;
+    }
+    // apiKey is scheduler-injected transport/credential metadata (not part of
+    // the capability input contract) — exclude it from contract validation so
+    // closed-object schemas (additionalProperties: false) don't reject it.
+    const { apiKey: _apiKey, ...contractInput } = input;
+    const validation = jsonSchemaValidator.validate(contractInput || {}, inputSchema);
+    if (!validation.valid) {
+      const firstError = validation.errors?.[0] as any;
+      const errMsgs = validation.errors
+        ?.map((e: any) => `${e.path}${e.keyword ? ` (${e.keyword})` : ''}: ${e.message}`)
+        .join('; ');
+      throw new ContractViolationError(
+        ERROR_CODES.INPUT_SCHEMA_VIOLATION,
+        `INPUT_SCHEMA_VIOLATION for node '${step.planNodeId || step.id}': ${errMsgs}`,
+        {
+          executionId,
+          nodeId: step.planNodeId || step.id,
+          capabilityId: step.capabilityId,
+          capabilityVersion: step.capabilityVersion,
+          contractCheckMode: 'schema',
+          instancePath: firstError?.path,
+          keyword: firstError?.keyword,
+        },
+      );
+    }
+  }
+
   private async runLlmStep(execution: any, step: any, resolvedInput: Record<string, any>): Promise<void> {
+    this.validateInputContract(step, resolvedInput, execution.id);
     const contractMeta = step.outputContractJson || {};
     const result = await this.llmAdapter.executeOperation({
       executionId: execution.id,
@@ -264,13 +428,13 @@ export class DeterministicPlanSchedulerService {
       throw new Error(result.errorMessage || `LLM Operation '${step.capabilityId}' returned failure`);
     }
 
-    this.validateOutputContract(step, result.output || {});
+    const normalizedOutput = this.validateOutputContract(step, result.output || {}, execution.id);
 
     await this.prisma.executionStep.update({
       where: { id: step.id },
       data: {
         status: 'succeeded',
-        outputJson: result.output as any,
+        outputJson: normalizedOutput as any,
         endedAt: new Date(),
         leaseExpiresAt: null,
       },
@@ -281,7 +445,7 @@ export class DeterministicPlanSchedulerService {
       'execution.node.succeeded' as any,
       {
         planNodeId: step.planNodeId,
-        output: result.output,
+        output: normalizedOutput,
       },
       { stepId: step.id },
     );
@@ -291,7 +455,7 @@ export class DeterministicPlanSchedulerService {
       {
         stepId: step.id,
         planNodeId: step.planNodeId,
-        result: result.output,
+        result: normalizedOutput,
       },
       { stepId: step.id },
     );
@@ -319,6 +483,7 @@ export class DeterministicPlanSchedulerService {
   }
 
   private async runSkillStep(execution: any, step: any, resolvedInput: Record<string, any>): Promise<void> {
+    this.validateInputContract(step, resolvedInput, execution.id);
     const capabilityId = step.capabilityId;
     const capabilityVersion = step.capabilityVersion;
 
@@ -375,8 +540,11 @@ export class DeterministicPlanSchedulerService {
       throw new Error(errMsg);
     }
 
-    const outputJson = (result.output || {}) as Record<string, any>;
-    this.validateOutputContract(step, outputJson);
+    const outputJson = this.validateOutputContract(
+      step,
+      (result.output || {}) as Record<string, any>,
+      execution.id,
+    );
 
     await this.prisma.executionStep.update({
       where: { id: step.id },
@@ -490,6 +658,22 @@ export class DeterministicPlanSchedulerService {
       return;
     }
 
+    // Resolve each final output target from its producer step so downstream
+    // consumers (chat layer, REST API) can surface the actual content instead
+    // of only artifact metadata. Earlier code dropped this entirely and stored
+    // only `{ artifacts: [] }`, which forced chat into re-running an LLM
+    // "summary" against nothing and producing fabricated content.
+    const finalOutputs = await this.resolveFinalOutputs(
+      execution.id,
+      planDraft,
+      checkResult.artifacts || [],
+    );
+
+    // Surface the resolved body/summary at the top level so the chat result
+    // normalizer can render it without triggering another LLM call.
+    const topLevelBody = this.pickTopLevelBody(finalOutputs);
+    const topLevelTitle = this.pickTopLevelTitle(finalOutputs, planDraft);
+
     await this.prisma.execution.update({
       where: { id: execution.id },
       data: {
@@ -497,6 +681,9 @@ export class DeterministicPlanSchedulerService {
         endedAt: new Date(),
         resultJson: {
           artifacts: checkResult.artifacts || [],
+          finalOutputs,
+          ...(topLevelBody ? { body: topLevelBody, summary: topLevelBody } : {}),
+          ...(topLevelTitle ? { title: topLevelTitle } : {}),
         } as any,
       },
     });
@@ -512,167 +699,161 @@ export class DeterministicPlanSchedulerService {
     this.logger.log(`Execution ${execution.id} successfully completed all deterministic plan steps.`);
   }
 
-  private validateOutputContract(step: any, output: Record<string, any>): void {
-    const contract = step.outputContractJson;
-    if (!contract || typeof contract !== 'object') return;
-
-    for (const expectedKey of Object.keys(contract)) {
-      if (this.isOutputContractMetadataField(expectedKey)) continue;
-      let val = output ? output[expectedKey] : undefined;
-
-      // Automatically map common search/data aliases if specific expectedKey is not directly present
-      if ((val === undefined || val === null) && output && typeof output === 'object') {
-        const nestedResult =
-          output['result'] && typeof output['result'] === 'object'
-            ? output['result'] as Record<string, any>
-            : undefined;
-        const businessData =
-          nestedResult?.businessData && typeof nestedResult.businessData === 'object'
-            ? nestedResult.businessData as Record<string, any>
-            : output['businessData'] && typeof output['businessData'] === 'object'
-              ? output['businessData'] as Record<string, any>
-              : undefined;
-        if (expectedKey === 'searchResults' && (output['results'] || output['news_item_list'] || output['data'] || nestedResult?.results || businessData?.results || businessData?.searchResults)) {
-          val = output['results'] || output['news_item_list'] || output['data'] || nestedResult?.results || businessData?.results || businessData?.searchResults;
-          output['searchResults'] = val;
-        } else if (expectedKey === 'results' && (output['searchResults'] || output['news_item_list'] || output['data'])) {
-          val = output['searchResults'] || output['news_item_list'] || output['data'];
-          output['results'] = val;
-        } else if (expectedKey === 'news_item_list' && (output['results'] || output['searchResults'] || output['data'])) {
-          val = output['results'] || output['searchResults'] || output['data'];
-          output['news_item_list'] = val;
-        } else if (businessData && businessData[expectedKey] !== undefined && businessData[expectedKey] !== null) {
-          // Generic fallback: workflows nest business data fields under
-          // result.businessData.<field> (see WebSearchWorkflow._build_workflow_result).
-          // Surface them to the top level so we don't need a per-field alias table.
-          val = businessData[expectedKey];
-          output[expectedKey] = val;
-        }
-      }
-
-      if (val === undefined || val === null) {
-        throw new Error(
-          `Runtime output contract violation for node '${step.planNodeId || step.id}': missing expected output field '${expectedKey}'`,
-        );
-      }
-
-      // Deep type contract validations - generic type checks
-      if (expectedKey === 'results' || expectedKey === 'news_item_list' || expectedKey === 'searchResults') {
-        if (!Array.isArray(val)) {
-          if (typeof val === 'string' || (typeof val === 'object' && val !== null)) {
-            // Accept string or object representation of search results
-          } else {
-            throw new Error(
-              `Runtime output contract violation for node '${step.planNodeId || step.id}': field '${expectedKey}' must be an Array or Object, got ${typeof val}`,
-            );
-          }
-        }
-        continue;
-      }
-
-      if (expectedKey === 'markdown_content') {
-        if (typeof val !== 'string') {
-          throw new Error(
-            `Runtime output contract violation for node '${step.planNodeId || step.id}': field 'markdown_content' must be a string, got ${typeof val}`,
-          );
-        }
-        if (val.trim().length === 0) {
-          throw new Error(
-            `Runtime output contract violation for node '${step.planNodeId || step.id}': field 'markdown_content' must be a non-empty string`,
-          );
-        }
-        continue;
-      }
-
-      if (expectedKey === 'downloadUrl') {
-        if (typeof val !== 'string') {
-          throw new Error(
-            `Runtime output contract violation for node '${step.planNodeId || step.id}': field 'downloadUrl' must be a string, got ${typeof val}`,
-          );
-        }
-        if (!val.startsWith('/') && !val.startsWith('http://') && !val.startsWith('https://')) {
-          throw new Error(
-            `Runtime output contract violation for node '${step.planNodeId || step.id}': field 'downloadUrl' must be a valid URL (starts with /, http://, or https://)`,
-          );
-        }
-        continue;
-      }
-
-      if (expectedKey === 'artifact_ref' || expectedKey === 'artifact') {
-        if (typeof val !== 'object' || val === null) {
-          throw new Error(
-            `Runtime output contract violation for node '${step.planNodeId || step.id}': field '${expectedKey}' must be an object (ArtifactRef), got ${typeof val}`,
-          );
-        }
-        if (!val.url || typeof val.url !== 'string') {
-          throw new Error(
-            `Runtime output contract violation for node '${step.planNodeId || step.id}': field '${expectedKey}.url' is required and must be a string`,
-          );
-        }
-        if (!val.name || typeof val.name !== 'string') {
-          throw new Error(
-            `Runtime output contract violation for node '${step.planNodeId || step.id}': field '${expectedKey}.name' is required and must be a string`,
-          );
-        }
-        if (!val.mimeType || typeof val.mimeType !== 'string') {
-          throw new Error(
-            `Runtime output contract violation for node '${step.planNodeId || step.id}': field '${expectedKey}.mimeType' is required and must be a string`,
-          );
-        }
-        // Validate MIME type format
-        if (!/^[a-z]+\/[a-z0-9\-\+\.]+(;\s*charset=[a-zA-Z0-9\-]+)?$/.test(val.mimeType)) {
-          throw new Error(
-            `Runtime output contract violation for node '${step.planNodeId || step.id}': field '${expectedKey}.mimeType' has invalid format: '${val.mimeType}'`,
-          );
-        }
-        continue;
-      }
-
-      if (expectedKey === 'artifacts') {
-        if (!Array.isArray(val)) {
-          throw new Error(
-            `Runtime output contract violation for node '${step.planNodeId || step.id}': field 'artifacts' must be an Array, got ${typeof val}`,
-          );
-        }
-        if (val.length === 0) {
-          throw new Error(
-            `Runtime output contract violation for node '${step.planNodeId || step.id}': field 'artifacts' must be a non-empty Array when declared in output contract`,
-          );
-        }
-        const invalidArtifact = val.find(art => !art || typeof art !== 'object' || !art.url || typeof art.url !== 'string' || !art.name || !art.mimeType);
-        if (invalidArtifact) {
-          throw new Error(
-            `Runtime output contract violation for node '${step.planNodeId || step.id}': field 'artifacts' items must be valid ArtifactRef objects with url, name, and mimeType`,
-          );
-        }
-        continue;
-      }
-
-      // Generic type-aware checks based on the value type
-      // Note: contract[expectedKey] === 'string' is the most common fallback
-      // (extractSchemaSummary defaults unknown object-valued params to 'string'),
-      // so we tolerate non-string runtime values here. The presence check above
-      // is what really guards against missing outputs; the type tag is only a
-      // descriptive hint that schemas can't always express precisely.
-      if (contract[expectedKey] === 'object' && (typeof val !== 'object' || val === null || Array.isArray(val))) {
-        throw new Error(
-          `Runtime output contract violation for node '${step.planNodeId || step.id}': field '${expectedKey}' expected object, got ${typeof val}`,
-        );
-      }
+  private async resolveFinalOutputs(
+    executionId: string,
+    planDraft: DeterministicPlanDraftV1,
+    artifacts: any[],
+  ): Promise<Array<Record<string, any>>> {
+    const outputs: Array<Record<string, any>> = [];
+    if (!Array.isArray(planDraft.finalOutputs) || planDraft.finalOutputs.length === 0) {
+      return outputs;
     }
+
+    const steps = await this.prisma.executionStep.findMany({
+      where: { executionId, status: 'succeeded' },
+    });
+    const stepByNode = new Map<string, any>();
+    for (const step of steps) {
+      if (step.planNodeId) stepByNode.set(step.planNodeId, step);
+    }
+
+    for (const req of planDraft.finalOutputs) {
+      const step = stepByNode.get(req.fromNodeId);
+      if (!step) continue;
+      const outputData = (step.outputJson as Record<string, any>) || {};
+      const value = outputData[req.fromNodeOutput];
+
+      const matchedArtifact = artifacts.find(
+        (art: any) => art.producerNodeId === req.fromNodeId || art.producerStepId === step.id,
+      );
+
+      outputs.push({
+        targetField: req.targetField,
+        fromNodeId: req.fromNodeId,
+        fromNodeOutput: req.fromNodeOutput,
+        expectedType: req.expectedType,
+        mimeType: req.mimeType,
+        isArtifact: Boolean(req.isArtifact),
+        value,
+        artifact: matchedArtifact,
+      });
+    }
+
+    return outputs;
   }
 
-  private isOutputContractMetadataField(fieldName: string): boolean {
-    return [
-      'runtimeType',
-      'executionRuntimeType',
-      'promptTemplateId',
-      'promptTemplateVersion',
-      'modelPolicyId',
-      'temperature',
-      'maxInputTokens',
-      'maxOutputTokens',
-      '_frozenMetadata',
-    ].includes(fieldName);
+  private pickTopLevelBody(finalOutputs: Array<Record<string, any>>): string | undefined {
+    const priorityKeys = ['markdown_content', 'summary', 'body', 'content', 'text'];
+    for (const key of priorityKeys) {
+      const match = finalOutputs.find((o) => typeof o.value === 'string' && o.value.length > 0);
+      if (!match) continue;
+      if (typeof match.value !== 'string') continue;
+      if (priorityKeys.includes(String(match.fromNodeOutput)) || priorityKeys.includes(String(match.targetField))) {
+        return match.value;
+      }
+    }
+    // Fallback: any non-artifact string value, longest first.
+    const stringCandidates = finalOutputs
+      .filter((o) => typeof o.value === 'string' && o.value.length > 0 && !o.isArtifact)
+      .sort((a, b) => (b.value as string).length - (a.value as string).length);
+    return stringCandidates[0]?.value;
+  }
+
+  private pickTopLevelTitle(
+    finalOutputs: Array<Record<string, any>>,
+    planDraft: DeterministicPlanDraftV1,
+  ): string | undefined {
+    const titled = finalOutputs.find((o) => typeof o.value === 'string' && o.value.length > 0 && o.isArtifact);
+    if (titled?.artifact?.name) return titled.artifact.name;
+    if (planDraft?.objective) return planDraft.objective;
+    return undefined;
+  }
+
+  private validateOutputContract(step: any, output: Record<string, any>, executionId: string): Record<string, any> {
+    const contract = step.outputContractJson;
+    // Authoritative schema is frozen at plan freeze time only (design doc §6.3/§9.3).
+    // Planner self-reported schemas are never trusted at runtime.
+    const outputSchema = step.outputSchemaJson;
+    const dataPath = step.dataPath || contract?.dataPath;
+    const frozenMeta = (contract && typeof contract === 'object' ? contract._frozenMetadata : null) || {};
+    const nodeId = step.planNodeId || step.id;
+
+    // Unified output normalization (§15.3 item 6): searchResults synthesis +
+    // businessData surfacing always; the legacy alias closure only for the
+    // keys the contract declares (so strict V2 schemas never see newly
+    // synthesized keys). The normalized output is what callers persist.
+    const contractKeys =
+      contract && typeof contract === 'object' && !Array.isArray(contract)
+        ? Object.keys(contract)
+        : [];
+
+    // V2 contract mode (see docs/design/unified-capability-contract-and-validation-design.md
+    // §3.5 / §17.3): when an authoritative output schema is frozen with the
+    // plan (resolved from the capability catalog at freeze time), the JSON
+    // Schema is the SOLE runtime arbiter. Legacy capabilities without an
+    // authoritative schema are delegated to the Legacy Output Adapter (§7.2 /
+    // §17.3). Field names the planner declared but the schema does not (LLM
+    // hallucination) are intentionally not enforced here — the schema is the
+    // contract, and closed-object semantics (`additionalProperties: false`)
+    // still catch genuine producer drift with a precise instance path.
+    if (outputSchema && typeof outputSchema === 'object' && Object.keys(outputSchema).length > 0) {
+      // Validate EXACTLY what the workflow returned (extracted payload, else
+      // the raw output) — never the normalized copy, whose synthesized keys
+      // would trip `additionalProperties: false` on flat outputs.
+      // falsy-safe：extractDataByPath 仅在路径缺失时返回 undefined，合法的
+      // falsy 业务值（0 / false / '' / []）必须原样保留，不能整体回退到 raw output。
+      const extractedData = jsonSchemaValidator.extractDataByPath(output, dataPath || '$.result.businessData');
+      const schemaTarget = extractedData === undefined ? output : extractedData;
+      const schemaValidation = jsonSchemaValidator.validate(schemaTarget, outputSchema);
+      if (!schemaValidation.valid) {
+        const errMsgs = schemaValidation.errors
+          ?.map((e: any) => `${e.path}${e.keyword ? ` (${e.keyword})` : ''}: ${e.message}`)
+          .join('; ');
+        const firstError = schemaValidation.errors?.[0] as any;
+        throw new ContractViolationError(
+          ERROR_CODES.OUTPUT_SCHEMA_VIOLATION,
+          `OUTPUT_SCHEMA_VIOLATION for node '${nodeId}': ${errMsgs}`,
+          {
+            executionId,
+            nodeId,
+            capabilityId: step.capabilityId,
+            capabilityVersion: step.capabilityVersion,
+            contractDigest: frozenMeta.contractDigest,
+            contractCheckMode: 'schema',
+            instancePath: firstError?.path,
+            keyword: firstError?.keyword,
+          },
+        );
+      }
+      // Persist the normalized output for downstream node_output resolution.
+      // The schema IS the contract: only its declared property names are
+      // eligible for alias materialization (§15.3 item 6).
+      const schemaProps = Object.keys((outputSchema as any).properties || {});
+      return this.outputNormalizer.normalize(output, schemaProps) || {};
+    }
+
+    // V1 legacy: delegate all heuristic compatibility logic to the adapter.
+    const normalizedOutput = this.outputNormalizer.normalize(output, contractKeys) || {};
+    this.legacyOutputAdapter.validateV1Contract(step, normalizedOutput, {
+      executionId,
+      nodeId,
+      capabilityId: step.capabilityId,
+      capabilityVersion: step.capabilityVersion,
+    });
+    return normalizedOutput;
+  }
+
+  /**
+   * Legacy vs V2 classification for the grace gate (fix ⑩).
+   *
+   * A frozen plan is V2 when EVERY node carries an authoritative `contractRef`
+   * (attached at freeze time, §9.3). Plans with no frozen plan, no nodes, or
+   * any node lacking a contractRef are treated as legacy — they are the only
+   * executions the legacy grace deadline may reject.
+   */
+  private isLegacyPlan(execution: any): boolean {
+    const nodes = (execution?.plan?.planJson as any)?.nodes;
+    if (!Array.isArray(nodes) || nodes.length === 0) return true;
+    return nodes.some((node: any) => !node?.contractRef);
   }
 }

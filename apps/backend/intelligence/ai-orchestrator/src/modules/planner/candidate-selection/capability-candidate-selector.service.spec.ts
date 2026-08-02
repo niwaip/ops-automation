@@ -143,4 +143,67 @@ describe('CapabilityCandidateSelectorService', () => {
 
     expect(result.skillCards).toHaveLength(0);
   });
+
+  it('excludes custom skills WITHOUT an authoritative output schema (P0 §15.1)', () => {
+    const result = service.selectCandidates('搜索新闻', [
+      {
+        id: 'schema-less-skill',
+        name: '无 Schema 能力',
+        description: '缺少输出 Schema 的自定义能力',
+        executionType: 'query',
+        paramsSchema: { properties: { query: { type: 'string' } } },
+        isPublished: true,
+        publishedReleaseVersion: 2,
+        publishedReleaseStatus: 'published',
+        publishedDeploymentStatus: 'deployed',
+        // no outputSchema, no outputParams, no runtimeMetadata.outputParams
+      },
+    ]);
+
+    expect(result.skillCards).toHaveLength(0);
+  });
+
+  it('accepts custom skills carrying the authoritative outputSchema from the enriched DTO', () => {
+    const result = service.selectCandidates('搜索新闻', [
+      {
+        id: 'schema-full-skill',
+        name: '有 Schema 能力',
+        description: '携带权威输出 Schema',
+        executionType: 'query',
+        paramsSchema: { properties: { query: { type: 'string' } } },
+        outputSchema: {
+          type: 'object',
+          additionalProperties: false,
+          properties: { results: { type: 'array' } },
+        },
+        isPublished: true,
+        publishedReleaseVersion: 3,
+        publishedReleaseStatus: 'published',
+        publishedDeploymentStatus: 'deployed',
+      },
+    ]);
+
+    expect(result.skillCards).toHaveLength(1);
+    // The authoritative DTO schema is preferred over legacy projections
+    expect(result.skillCards[0]!.outputs).toEqual({
+      results: 'news_item_list',
+    });
+  });
+
+  it('keeps builtin skills without a local output schema (catalog resolves at freeze)', () => {
+    const result = service.selectCandidates('生成文档', [
+      {
+        id: 'platform.document.markdown-artifact-writer',
+        name: '文档写入',
+        description: 'builtin 能力',
+        executionType: 'flow',
+        isPublished: true,
+        publishedReleaseVersion: 1,
+        publishedReleaseStatus: 'published',
+        publishedDeploymentStatus: 'deployed',
+      },
+    ]);
+
+    expect(result.skillCards).toHaveLength(1);
+  });
 });

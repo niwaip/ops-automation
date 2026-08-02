@@ -148,9 +148,24 @@ export class BuiltinSkillProvisioningService {
             throw new Error('Smoke test execution failed output contract: sizeBytes must be > 0');
           }
 
-          // Download artifact and re-compute SHA-256 from raw bytes
+          // Download artifact and re-compute SHA-256 from raw bytes.
+          // Resolve relative URLs (e.g. `/renders/xxx.md`) or CARBONE_EXTERNAL_URL
+          // (which may point to host localhost from inside the docker network)
+          // back to CARBONE_SERVICE_URL so the smoke test reaches the actual
+          // carbone-engine container regardless of how artifact.url was built.
           try {
-            const dl = await axios.get<ArrayBuffer>(artifact.url, { responseType: 'arraybuffer', timeout: 15000 });
+            const baseUrl =
+              process.env.CARBONE_SERVICE_URL || 'http://carbone-engine:3009';
+            let downloadUrl = artifact.url;
+            if (
+              !/^https?:\/\//i.test(downloadUrl) ||
+              downloadUrl.includes('localhost') ||
+              downloadUrl.includes('127.0.0.1')
+            ) {
+              const path = downloadUrl.replace(/^https?:\/\/[^/]+/, '');
+              downloadUrl = `${baseUrl.replace(/\/+$/, '')}${path}`;
+            }
+            const dl = await axios.get<ArrayBuffer>(downloadUrl, { responseType: 'arraybuffer', timeout: 15000 });
             const rawBytes = Buffer.from(dl.data);
             const computedSha256 = crypto.createHash('sha256').update(rawBytes).digest('hex');
             if (computedSha256 !== artifact.metadata.sha256) {

@@ -22,12 +22,50 @@ const SENSITIVE_PATTERNS = [
   /\$\{[A-Z0-9_]*(API[_-]?KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL)[A-Z0-9_]*\}/i,
 ];
 
+/**
+ * Edge type compatibility table (§15.3 item 4).
+ *
+ * `SUBTYPE_COMPAT[upstream]` is the set of expected types the declared upstream
+ * output type can satisfy. `json` is the container escape hatch (any value can
+ * be treated as JSON); `string` ↔ `markdown_content` are interchangeable.
+ */
+const SUBTYPE_COMPAT: Record<ValueTypeV1, ReadonlySet<ValueTypeV1>> = {
+  string: new Set(['string', 'markdown_content', 'json']),
+  number: new Set(['number', 'json']),
+  boolean: new Set(['boolean', 'json']),
+  json: new Set([
+    'string',
+    'number',
+    'boolean',
+    'json',
+    'text_list',
+    'news_item_list',
+    'markdown_content',
+    'artifact_ref',
+  ]),
+  text_list: new Set(['text_list', 'json']),
+  news_item_list: new Set(['news_item_list', 'json']),
+  markdown_content: new Set(['markdown_content', 'string', 'json']),
+  artifact_ref: new Set(['artifact_ref', 'json']),
+};
+
 @Injectable()
 export class DeterministicPlanValidatorService {
   private readonly logger = new Logger(DeterministicPlanValidatorService.name);
 
+  /**
+   * Whether an upstream declared output type can satisfy the expected type.
+   * Public so the freeze service's catalog-level edge pass reuses the same
+   * compatibility authority (§15.3 item 4).
+   */
+  public isTypeCompatible(upstream: ValueTypeV1, expected: ValueTypeV1): boolean {
+    const compat = SUBTYPE_COMPAT[upstream];
+    return compat ? compat.has(expected) : false;
+  }
+
   public validatePlan(plan: DeterministicPlanDraftV1): PlanValidationResultV1 {
     const errors: PlanValidationErrorV1[] = [];
+    const warnings: string[] = [];
 
     // 1. Schema version check
     if (plan.schemaVersion !== 'deterministic-plan/v1') {
@@ -111,7 +149,7 @@ export class DeterministicPlanValidatorService {
 
     // 5. Input Binding & Type Compatibility check
     for (const node of plan.nodes) {
-      this.validateNodeBindings(node, nodeMap, errors);
+      this.validateNodeBindings(node, nodeMap, errors, warnings);
     }
 
     // 6. Final Outputs Coverage check
@@ -120,10 +158,79 @@ export class DeterministicPlanValidatorService {
     // 7. Sensitive data scanning
     this.scanSensitiveData(plan, errors);
 
+    // 8. Freshness gate: when the user request asks for live/external data, the
+    // plan MUST include at least one upstream node that produces results from
+    // outside the LLM (i.e. a skill with non-empty node_output bindings feeding
+    // the summarizer, never a literal-only outline). This prevents the failure
+    // mode where an LLM is asked to summarize from a planner-authored outline
+    // and hallucinates content presented as if it came from a real fetch.
+    this.validateExternalDataSources(plan, errors);
+
     return {
       valid: errors.length === 0,
       errors,
+      ...(warnings.length > 0 ? { warnings } : {}),
     };
+  }
+
+  private validateExternalDataSources(
+    plan: DeterministicPlanDraftV1,
+    errors: PlanValidationErrorV1[],
+  ): void {
+    const freshnessPattern =
+      /查询|搜索|最新|新闻|实时|行情|股价|股票|天气|温度|今天|此刻|现在|当前|fetch|search|news|stock|price|weather|today|now|latest|current/i;
+    const objective = plan.objective || plan.originalRequest || '';
+    if (!freshnessPattern.test(objective)) {
+      return;
+    }
+
+    const skillNodes = plan.nodes.filter((n) => n.kind === 'skill');
+    const llmNodes = plan.nodes.filter((n) => n.kind === 'llm_operation');
+    if (llmNodes.length === 0) {
+      return;
+    }
+
+    const nodeMap = new Map(plan.nodes.map((n) => [n.nodeId, n]));
+    const offends: string[] = [];
+
+    for (const llm of llmNodes) {
+      const bindings = llm.inputBindings || {};
+      const bindingEntries = Object.entries(bindings);
+      if (bindingEntries.length === 0) continue;
+
+      const hasUpstreamData = bindingEntries.some(([, binding]) => {
+        if (!binding || typeof binding !== 'object') return false;
+        const b = binding as { source?: string; nodeId?: string; fromNodeId?: string };
+        if (b.source !== 'node_output') return false;
+        const upstreamId = b.nodeId || b.fromNodeId || '';
+        const upstream = nodeMap.get(upstreamId);
+        if (!upstream) return false;
+        return upstream.kind === 'skill' && skillNodes.some((s) => s.nodeId === upstream.nodeId);
+      });
+
+      if (!hasUpstreamData) {
+        offends.push(llm.nodeId);
+      }
+    }
+
+    if (offends.length === 0) {
+      return;
+    }
+
+    const offendingList = offends.join(', ');
+    const skillCount = skillNodes.length;
+    const hint = skillCount === 0
+      ? 'Plan must include at least one skill node that fetches external data (e.g. web search).'
+      : `Plan must feed '${offendingList}' from an upstream skill output rather than literal-only inputs.`;
+
+    errors.push({
+      code: ERROR_CODES.PLAN_NODE_CAPABILITY_MISSING,
+      message:
+        `Freshness-required request detected in objective "${objective}". ` +
+        `LLM operation(s) [${offendingList}] have no upstream skill node feeding them. ` +
+        hint,
+      nodeId: offendingList,
+    });
   }
 
   private calculateMaxDepth(
@@ -165,6 +272,7 @@ export class DeterministicPlanValidatorService {
     node: DeterministicPlanNodeV1,
     nodeMap: Map<string, DeterministicPlanNodeV1>,
     errors: PlanValidationErrorV1[],
+    warnings: string[],
   ): void {
     if (!node.inputBindings) return;
 
@@ -203,6 +311,20 @@ export class DeterministicPlanValidatorService {
             errors.push({
               code: ERROR_CODES.INPUT_TYPE_MISMATCH,
               message: `Node '${node.nodeId}' field '${fieldName}' binds output path '${outPath}' which is not declared in node '${fromNode.nodeId}' output contract`,
+              nodeId: node.nodeId,
+              field: fieldName,
+            });
+          } else if (!binding.expectedType) {
+            // Backward-compatible: planners may omit expectedType. Type
+            // compatibility is then unenforced at planner level (the freeze
+            // service's catalog-level pass may still assert it from schemas).
+            warnings.push(
+              `Node '${node.nodeId}' field '${fieldName}' binds upstream output '${outPath}' without expectedType — edge type compatibility is not enforced`,
+            );
+          } else if (!this.isTypeCompatible(upstreamOutputType, binding.expectedType)) {
+            errors.push({
+              code: ERROR_CODES.EDGE_TYPE_INCOMPATIBLE,
+              message: `Node '${node.nodeId}' field '${fieldName}' expects type '${binding.expectedType}', but producer node '${fromNode.nodeId}' output path '${outPath}' provides '${upstreamOutputType}'`,
               nodeId: node.nodeId,
               field: fieldName,
             });

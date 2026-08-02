@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BuiltinActivityRegistry } from './builtin-activity.registry';
 import { resolveSingleWorkflowInputRenderPath } from './temporal-workflow-template.helpers';
@@ -6,6 +6,8 @@ import type {
   ActivityDsl,
   TemporalWorkflowSourceContext,
   WorkflowDsl,
+  WorkflowDslV2Field,
+  WorkflowDslV2Output,
   WorkflowInputParamDefinition,
   WorkflowInputParamType,
   WorkflowInputPolicy,
@@ -17,6 +19,8 @@ import type {
 
 @Injectable()
 export class TemporalWorkflowNormalizationService {
+  private readonly logger = new Logger(TemporalWorkflowNormalizationService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly builtinActivityRegistry: BuiltinActivityRegistry
@@ -69,6 +73,7 @@ export class TemporalWorkflowNormalizationService {
       normalized.sourceContext
     );
     const finalName = this.normalizeName(workflowName || normalized.name || '未命名工作流');
+    const normalizedV2Output = this.normalizeV2Output(normalized.v2Output, normalizedSteps);
     return {
       ...normalized,
       name: finalName,
@@ -77,6 +82,92 @@ export class TemporalWorkflowNormalizationService {
       ...(normalizedInputParams ? { inputParams: normalizedInputParams } : {}),
       ...(normalizedInputPolicy ? { inputPolicy: normalizedInputPolicy } : {}),
       steps: normalizedSteps,
+      ...(normalizedV2Output ? { v2Output: normalizedV2Output } : {}),
+    };
+  }
+
+  /**
+   * Normalizes and validates the DSL v2Output declaration (design doc §8.2
+   * rules 2/3): every field must carry a source (step + JSON path) — resolving
+   * `expression.source` first, which takes precedence over the field-level
+   * `source` (§8.1) — the source step must exist in the workflow, and paths are
+   * canonicalized to the `$.` prefix form (`a.b` → `$.a.b`, bare `$` stays).
+   * Unresolvable fields fail closed at compile time, matching the codegen
+   * builder's own fail-closed throw (no `_missing_output_field` runtime path).
+   */
+  private normalizeV2Output(
+    v2Output: WorkflowDslV2Output | undefined,
+    steps: WorkflowStep[]
+  ): WorkflowDslV2Output | undefined {
+    if (
+      !v2Output ||
+      typeof v2Output !== 'object' ||
+      !v2Output.fields ||
+      typeof v2Output.fields !== 'object' ||
+      Array.isArray(v2Output.fields)
+    ) {
+      return v2Output;
+    }
+    if (
+      v2Output.schemaRef !== undefined &&
+      (typeof v2Output.schemaRef !== 'string' || !String(v2Output.schemaRef).trim())
+    ) {
+      throw new BadRequestException('workflowDsl.v2Output.schemaRef 必须是非空字符串（契约 schema 引用）');
+    }
+    const stepIds = new Set((steps || []).map((step) => String(step?.id || '').trim()));
+    const fields: Record<string, WorkflowDslV2Field> = {};
+    for (const [rawFieldName, rawSpec] of Object.entries(v2Output.fields)) {
+      const fieldName = String(rawFieldName || '').trim();
+      const spec =
+        rawSpec && typeof rawSpec === 'object' && !Array.isArray(rawSpec)
+          ? (rawSpec as Record<string, any>)
+          : {};
+      const source = spec.source && typeof spec.source === 'object' ? spec.source : {};
+      const expression =
+        source.expression && typeof source.expression === 'object' ? source.expression : {};
+      const expressionSource =
+        expression.source && typeof expression.source === 'object' ? expression.source : undefined;
+      // expression.source takes precedence over field.source (§8.1: length /
+      // identity / string_format fields declare their own source inside the
+      // expression). The codegen builder resolves the same way.
+      const effectiveSource = expressionSource ?? source;
+      const stepId = String(effectiveSource.step || '').trim();
+      const rawPath = String(effectiveSource.path || '').trim();
+      if (!fieldName || !stepId || !rawPath) {
+        throw new BadRequestException(
+          `workflowDsl.v2Output.${fieldName || '*'} 缺少 source.step 或 source.path（§8.2 rule 2）`
+        );
+      }
+      if (!stepIds.has(stepId)) {
+        throw new BadRequestException(
+          `workflowDsl.v2Output.${fieldName} 的 source.step "${stepId}" 不存在于工作流步骤中（§8.2 rule 3）`
+        );
+      }
+      const normalizePath = (path: string) =>
+        path === '$' ? '$' : path.startsWith('$.') ? path : `$.${path}`;
+      fields[fieldName] = expressionSource
+        ? ({
+            ...spec,
+            source: {
+              ...source,
+              expression: {
+                ...expression,
+                source: { ...expressionSource, step: stepId, path: normalizePath(rawPath) },
+              },
+            },
+          } as WorkflowDslV2Field)
+        : ({
+            ...spec,
+            source: {
+              ...source,
+              step: stepId,
+              path: normalizePath(rawPath),
+            },
+          } as WorkflowDslV2Field);
+    }
+    return {
+      ...v2Output,
+      fields,
     };
   }
 

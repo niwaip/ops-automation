@@ -333,6 +333,7 @@ export class SkillService implements OnModuleInit {
         executionFlow: (dto.executionFlow || []) as any,
         tools: dto.tools || [],
         isActive: true,
+        outputSchema: (dto.outputSchema ?? undefined) as any,
       },
     });
 
@@ -397,6 +398,7 @@ export class SkillService implements OnModuleInit {
         executionFlow: (dto.executionFlow ?? (current.executionFlow as any[]) ?? []) as any,
         tools: dto.tools ?? ((current.tools as string[]) || []),
         apiEndpoints: (dto.apiEndpoints ?? current.apiEndpoints) as any,
+        outputSchema: (dto.outputSchema ?? current.outputSchema) as Record<string, unknown> | undefined,
       };
 
       const toolValidation =
@@ -419,6 +421,7 @@ export class SkillService implements OnModuleInit {
           apiEndpoints: dto.apiEndpoints as any,
           executionFlow: (dto.executionFlow || []) as any,
           tools: dto.tools,
+          outputSchema: (dto.outputSchema ?? undefined) as any,
         },
       });
 

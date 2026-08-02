@@ -49,10 +49,16 @@ import { DeterministicNodeInputResolverService } from './plan-runtime/determinis
 import { DeterministicFinalOutputService } from './plan-runtime/deterministic-final-output.service';
 import { DeterministicPlanSchedulerService } from './plan-runtime/deterministic-plan-scheduler.service';
 import { DeterministicPlanRecoveryService } from './plan-runtime/deterministic-plan-recovery.service';
+import { LegacyOutputAdapterService } from './plan-runtime/legacy-output-adapter.service';
+import { CapabilityContractCatalogService } from './plan-runtime/capability-contract-catalog.service';
+import { OutputNormalizerService } from './plan-runtime/output-normalizer.service';
+import { GracePolicyService } from './plan-runtime/grace-policy.service';
+import { VersionRetentionService } from './plan-runtime/version-retention.service';
+import { BackfillModule } from './backfill/backfill.module';
 import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, BackfillModule],
   controllers: [ExecutionController],
   providers: [
     BrowserPhaseRecoveryPlanner,
@@ -70,6 +76,11 @@ import { PrismaModule } from '../prisma/prisma.module';
     DeterministicFinalOutputService,
     DeterministicPlanSchedulerService,
     DeterministicPlanRecoveryService,
+    LegacyOutputAdapterService,
+    CapabilityContractCatalogService,
+    OutputNormalizerService,
+    GracePolicyService,
+    VersionRetentionService,
     ExecutionService,
     ExecutionCreateService,
     ExecutionApprovalService,

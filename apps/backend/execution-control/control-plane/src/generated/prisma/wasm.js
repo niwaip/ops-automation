@@ -266,6 +266,9 @@ exports.Prisma.SkillConfigScalarFieldEnum = {
   description: 'description',
   triggerKeywords: 'triggerKeywords',
   paramsSchema: 'paramsSchema',
+  outputSchema: 'outputSchema',
+  candidateSchemaJson: 'candidateSchemaJson',
+  candidateSchemaGeneratedAt: 'candidateSchemaGeneratedAt',
   templateId: 'templateId',
   carboneTemplateId: 'carboneTemplateId',
   carboneSkillId: 'carboneSkillId',
@@ -420,6 +423,8 @@ exports.Prisma.ExecutionStepScalarFieldEnum = {
   dependsOnJson: 'dependsOnJson',
   inputBindingsJson: 'inputBindingsJson',
   outputContractJson: 'outputContractJson',
+  outputSchemaJson: 'outputSchemaJson',
+  inputSchemaJson: 'inputSchemaJson',
   resolvedInputJson: 'resolvedInputJson',
   idempotencyKey: 'idempotencyKey',
   leaseOwner: 'leaseOwner',
@@ -625,6 +630,7 @@ exports.Prisma.BuiltinSkillVersionScalarFieldEnum = {
   manifestJson: 'manifestJson',
   workflowJson: 'workflowJson',
   runtimeBuild: 'runtimeBuild',
+  attestationId: 'attestationId',
   createdAt: 'createdAt'
 };
 
@@ -713,6 +719,7 @@ exports.Prisma.CapabilityBuildScalarFieldEnum = {
   generatedConfigJson: 'generatedConfigJson',
   logsJson: 'logsJson',
   diffSummary: 'diffSummary',
+  buildDiffJson: 'buildDiffJson',
   status: 'status',
   errorSummary: 'errorSummary',
   startedAt: 'startedAt',
@@ -735,6 +742,32 @@ exports.Prisma.CapabilityValidationScalarFieldEnum = {
   startedAt: 'startedAt',
   finishedAt: 'finishedAt',
   createdBy: 'createdBy',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.CapabilityFixtureScalarFieldEnum = {
+  id: 'id',
+  releaseId: 'releaseId',
+  buildId: 'buildId',
+  name: 'name',
+  fixtureType: 'fixtureType',
+  inputJson: 'inputJson',
+  expectedOutputJson: 'expectedOutputJson',
+  isNegative: 'isNegative',
+  errorContains: 'errorContains',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.CapabilityAttestationScalarFieldEnum = {
+  id: 'id',
+  releaseId: 'releaseId',
+  buildId: 'buildId',
+  sourceDigest: 'sourceDigest',
+  contractDigest: 'contractDigest',
+  generatedCodeDigest: 'generatedCodeDigest',
+  fixtureDigest: 'fixtureDigest',
+  validatorVersion: 'validatorVersion',
+  gateResultsJson: 'gateResultsJson',
   createdAt: 'createdAt'
 };
 
@@ -889,6 +922,8 @@ exports.Prisma.ModelName = {
   CapabilitySourceSnapshot: 'CapabilitySourceSnapshot',
   CapabilityBuild: 'CapabilityBuild',
   CapabilityValidation: 'CapabilityValidation',
+  CapabilityFixture: 'CapabilityFixture',
+  CapabilityAttestation: 'CapabilityAttestation',
   SkillDraft: 'SkillDraft',
   DeploymentRecord: 'DeploymentRecord',
   ReleaseAuditEvent: 'ReleaseAuditEvent'

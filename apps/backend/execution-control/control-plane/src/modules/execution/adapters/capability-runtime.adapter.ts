@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import { getAuthServiceUrl } from '../../../config/service-endpoints';
+import { OutputNormalizerService } from '../plan-runtime/output-normalizer.service';
 import {
   ArtifactRef,
   SnapshotRef,
@@ -58,6 +59,8 @@ export class CapabilityRuntimeAdapter implements RuntimeAdapter {
   readonly routeKeys = [buildRuntimeAdapterRouteKey('custom', 'skill.runtime')] as const;
   private readonly authServiceUrl = getAuthServiceUrl();
 
+  constructor(private readonly outputNormalizer: OutputNormalizerService) {}
+
   supports(request: RuntimeStepInvokeRequest): boolean {
     return request.capabilityType === 'skill.runtime';
   }
@@ -97,23 +100,9 @@ export class CapabilityRuntimeAdapter implements RuntimeAdapter {
     }
 
     const runtimeResult = response.data;
-    if (process.env.DEBUG_RUNTIME_OUTPUT === 'true') {
-      this.logger.warn(
-        `runtimeResult raw: success=${runtimeResult.success}, status=${runtimeResult.status}, outputKeys=${runtimeResult.output && typeof runtimeResult.output === 'object' ? Object.keys(runtimeResult.output) : 'n/a'}`
-      );
-      this.logger.warn(
-        `runtimeResult.output preview: ${JSON.stringify(runtimeResult.output).slice(0, 1200)}`
-      );
-    }
-    const output = this.normalizeOutput(
+    const output = this.outputNormalizer.normalize(
       runtimeResult.output || runtimeResult.result || undefined
     );
-    if (process.env.DEBUG_RUNTIME_OUTPUT === 'true') {
-      this.logger.warn(
-        `normalizeOutput result keys: ${output && typeof output === 'object' ? Object.keys(output) : 'n/a'}`
-      );
-      this.logger.warn(`normalizeOutput preview: ${JSON.stringify(output).slice(0, 1200)}`);
-    }
     const artifacts = this.extractArtifacts(runtimeResult);
     const snapshot = this.extractSnapshot(artifacts);
     const requiresTakeover =
@@ -143,63 +132,8 @@ export class CapabilityRuntimeAdapter implements RuntimeAdapter {
     };
   }
 
-  /**
-   * Published Skills may keep a presentation-oriented result envelope internally,
-   * while deterministic plans require stable, top-level contract fields.
-   *
-   * Strategy: surface every field declared on `result.businessData` (and the
-   * legacy search aliases) onto the top level so downstream output-contract
-   * validation can find them regardless of where the workflow nested them.
-   * The searchResults alias chain stays first so existing alias lookups
-   * (results/news_item_list/data) still behave the same.
-   */
-  private normalizeOutput(
-    output: Record<string, unknown> | null | undefined
-  ): Record<string, unknown> | undefined {
-    if (!output || typeof output !== 'object' || Array.isArray(output)) {
-      return output || undefined;
-    }
-
-    const normalized = { ...output };
-
-    const nestedResult = this.asRecord(normalized.result);
-    const businessData =
-      this.asRecord(nestedResult?.businessData) ||
-      this.asRecord(normalized.businessData);
-
-    // Legacy search aliases: top-level results/news_item_list/data first, then
-    // nested result.results, then businessData.results, then businessData.searchResults.
-    const searchResults =
-      normalized.results ??
-      normalized.news_item_list ??
-      normalized.data ??
-      nestedResult?.results ??
-      businessData?.results ??
-      businessData?.searchResults;
-    if (searchResults !== undefined && searchResults !== null) {
-      normalized.searchResults ??= searchResults;
-    }
-
-    // Generic fallback: surface any field declared on businessData onto the
-    // top level when the workflow envelope nests it there. Avoids a hardcoded
-    // per-field alias table that drifts as plans declare new output fields
-    // (e.g. responseMetadata, totalResults, query).
-    if (businessData) {
-      for (const [key, value] of Object.entries(businessData)) {
-        if (normalized[key] === undefined && value !== undefined && value !== null) {
-          normalized[key] = value;
-        }
-      }
-    }
-
-    return normalized;
-  }
-
-  private asRecord(value: unknown): Record<string, unknown> | undefined {
-    return value && typeof value === 'object' && !Array.isArray(value)
-      ? (value as Record<string, unknown>)
-      : undefined;
-  }
+  // Output alias/normalization (searchResults synthesis + businessData
+  // surfacing) moved to OutputNormalizerService — the single authority.
 
   private extractArtifacts(
     runtimeResult: CapabilityRuntimeExecuteResult

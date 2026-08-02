@@ -31,6 +31,10 @@ import { BrowserRecordingActionPolicyService } from '../../../registry-release/r
 import {
   CapabilityReleasePublishValidatorService,
 } from '../../../registry-release/release-manager/src/validator/capability-release-publish-validator.service';
+import { SchemaCompatibilityService } from '../../../registry-release/release-manager/src/validator/schema-compatibility.service';
+import { ContractLintService } from '../../../registry-release/release-manager/src/validator/contract-lint.service';
+import { CapabilityAttestationService } from '../../../registry-release/release-manager/src/attestation/capability-attestation.service';
+import { CapabilityFixtureService } from '../../../registry-release/release-manager/src/fixture/capability-fixture.service';
 import {
   CapabilityReleaseBrowserRuntimeExecutorService,
 } from '../../../registry-release/release-manager/src/publisher/capability-release-browser-runtime-executor.service';
@@ -278,16 +282,20 @@ describe('CapabilityReleaseService', () => {
       runtimeService,
       browserRecordingService,
       skillDraftService,
-      temporalSchemaService
+      temporalSchemaService,
+      new ContractLintService()
     );
     const recorderBridgeCompilerService = new CapabilityReleaseRecorderBridgeCompilerService(
       browserRecordingFlowNormalizerService
     );
     const publishValidatorService = new CapabilityReleasePublishValidatorService(
       skillService as any,
+      prisma as any,
       browserRecordingFlowNormalizerService,
       browserRecordingExecutionPlanValidatorService as any,
-      temporalSchemaService
+      temporalSchemaService,
+      new SchemaCompatibilityService(),
+      new ContractLintService()
     );
     const publishWriterService = new CapabilityReleasePublishWriterService(prisma as any);
     const skillPublisherService = new CapabilityReleaseSkillPublisherService(
@@ -316,7 +324,10 @@ describe('CapabilityReleaseService', () => {
       browserRecordingExecutionPlanValidatorService as any,
       publishValidatorService,
       publishWriterService,
-      skillPublisherService
+      skillPublisherService,
+      prisma as any,
+      new CapabilityAttestationService(prisma as any),
+      new CapabilityFixtureService(prisma as any)
     );
     const manifestService = new CapabilityReleaseManifestService();
 
@@ -1413,6 +1424,7 @@ describe('CapabilityReleaseService', () => {
         description: 'desc',
         tools: ['api_call'],
         executionFlowTemplateIds: ['tpl-1'],
+        outputSchema: { type: 'object', properties: { result: { type: 'string' } } },
       },
     });
     jest.spyOn(releaseFacadeContextService as any, 'insertAuditEvent').mockResolvedValue(undefined);
@@ -1474,6 +1486,11 @@ describe('CapabilityReleaseService', () => {
         name: '技术服务合同渲染技能',
         description: 'desc',
         tools: [],
+        outputSchema: {
+          type: 'object',
+          properties: { contractText: { type: 'string' } },
+          required: ['contractText'],
+        },
       },
     });
     jest.spyOn(releaseFacadeContextService as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
@@ -1565,11 +1582,21 @@ describe('CapabilityReleaseService', () => {
           },
         ],
         executionFlowTemplateIds: [],
+        outputSchema: { type: 'object', properties: { result: { type: 'string' } } },
       },
     });
     jest.spyOn(releaseFacadeContextService as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({ id: 'snapshot-1', payload: {} });
     jest.spyOn(releaseFacadeContextService as any, 'insertAuditEvent').mockResolvedValue(undefined);
-    prisma.$queryRawUnsafe.mockResolvedValue([]);
+    // §10.3 fixture gate: a publish must clear with a complete fixture set
+    prisma.$queryRawUnsafe.mockImplementation((sql: string) =>
+      sql.includes('capability_fixtures')
+        ? Promise.resolve([
+            { fixture_type: 'input', count: 1 },
+            { fixture_type: 'output', count: 1 },
+            { fixture_type: 'negative', count: 1 },
+          ])
+        : Promise.resolve([])
+    );
     skillService.validateSkillToolsPayload.mockResolvedValue({
       isValid: true,
       declaredTools: ['skill_match', 'browser_step'],
@@ -1608,6 +1635,147 @@ describe('CapabilityReleaseService', () => {
       release: expect.objectContaining({ id: 'release-browser-1' }),
       publishedSkillId: 'skill-browser-1',
     });
+  });
+
+  it('blocks publishing when the §10.3 fixture set is incomplete (hard gate)', async () => {
+    const { service, skillService, prisma, releaseFacadeContextService } = createService();
+
+    jest.spyOn(releaseFacadeContextService as any, 'getReleaseOrThrow').mockResolvedValue({
+      id: 'release-no-fixtures-1',
+      approvalStatus: 'approved',
+      status: 'approved',
+      sourceType: 'browser_recording',
+      sourceName: 'Browser Skill',
+      currentSkillDraftId: 'draft-no-fixtures-1',
+      publishedSkillId: null,
+    });
+    jest.spyOn(releaseFacadeContextService as any, 'getSkillDraftOrThrow').mockResolvedValue({
+      id: 'draft-no-fixtures-1',
+      tools: [],
+      executionFlowTemplateIds: [],
+      draftPayload: {
+        name: 'No Fixtures Skill',
+        description: 'desc',
+        tools: [],
+        outputSchema: { type: 'object', properties: { result: { type: 'string' } } },
+      },
+    });
+    jest.spyOn(releaseFacadeContextService as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
+      id: 'snapshot-1',
+      payload: {},
+    });
+    const auditSpy = jest
+      .spyOn(releaseFacadeContextService as any, 'insertAuditEvent')
+      .mockResolvedValue(undefined);
+    prisma.$queryRawUnsafe.mockResolvedValue([]); // no fixtures stored yet
+    skillService.validateSkillToolsPayload.mockResolvedValue({
+      isValid: true,
+      declaredTools: [],
+      inferredTools: [],
+      effectiveTools: [],
+      missingTools: [],
+      disabledTools: [],
+      forbiddenSkillTools: [],
+      undeclaredFlowTools: [],
+      messages: [],
+    });
+
+    await expect(service.publishSkill('release-no-fixtures-1', {}, 'user-1')).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: 'fixture_validation_failed',
+        message: expect.stringContaining('缺少必要 Fixture'),
+      }),
+    });
+    expect(auditSpy).toHaveBeenCalledWith(
+      'release-no-fixtures-1',
+      'fixture_validation_failed',
+      'user-1',
+      false,
+      expect.stringContaining('Fixture 门禁'),
+      expect.objectContaining({ errors: expect.any(Array) })
+    );
+    expect(skillService.createSkill).not.toHaveBeenCalled();
+  });
+
+  it('blocks the publish and records an attestation_failed audit event when Gate 5 attestation fails (§10.6)', async () => {
+    const { service, skillService, prisma, releaseFacadeContextService } = createService();
+
+    jest.spyOn(releaseFacadeContextService as any, 'getReleaseOrThrow').mockResolvedValue({
+      id: 'release-attest-fail-1',
+      approvalStatus: 'approved',
+      status: 'approved',
+      sourceType: 'browser_recording',
+      sourceName: 'Attestation Skill',
+      currentSkillDraftId: 'draft-attest-fail-1',
+      currentBuildId: 'build-attest-1',
+      publishedSkillId: null,
+    });
+    jest.spyOn(releaseFacadeContextService as any, 'getSkillDraftOrThrow').mockResolvedValue({
+      id: 'draft-attest-fail-1',
+      tools: [],
+      executionFlowTemplateIds: [],
+      draftPayload: {
+        name: 'Attestation Skill',
+        description: 'desc',
+        tools: [],
+        outputSchema: { type: 'object', properties: { result: { type: 'string' } } },
+      },
+    });
+    jest.spyOn(releaseFacadeContextService as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
+      id: 'snapshot-1',
+      payload: {},
+    });
+    const auditSpy = jest
+      .spyOn(releaseFacadeContextService as any, 'insertAuditEvent')
+      .mockResolvedValue(undefined);
+    // §10.3 fixture gate: a publish must clear with a complete fixture set
+    prisma.$queryRawUnsafe.mockImplementation((sql: string) =>
+      sql.includes('capability_fixtures')
+        ? Promise.resolve([
+            { fixture_type: 'input', count: 1 },
+            { fixture_type: 'output', count: 1 },
+            { fixture_type: 'negative', count: 1 },
+          ])
+        : Promise.resolve([])
+    );
+    // §15.4 item 5: the compatibility diff is persisted onto the build before Gate 5
+    prisma.$executeRawUnsafe.mockResolvedValue(undefined);
+    skillService.validateSkillToolsPayload.mockResolvedValue({
+      isValid: true,
+      declaredTools: [],
+      inferredTools: [],
+      effectiveTools: [],
+      missingTools: [],
+      disabledTools: [],
+      forbiddenSkillTools: [],
+      undeclaredFlowTools: [],
+      messages: [],
+    });
+    skillService.createSkill.mockResolvedValue({ id: 'skill-attest-1' });
+    // Gate 5 (§10.6) is a HARD gate: a failing attestation blocks the publish.
+    // The failure is recorded as an audit event (fix ⑨) before the block.
+    jest
+      .spyOn(CapabilityAttestationService.prototype, 'buildAttestation')
+      .mockRejectedValue(new Error('boom'));
+
+    await expect(
+      service.publishSkill('release-attest-fail-1', {}, 'user-1')
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: 'attestation_failed',
+        message: expect.stringContaining('boom'),
+      }),
+    });
+    expect(skillService.createSkill).not.toHaveBeenCalled();
+    // The failure is recorded as an audit event before blocking the publish
+    expect(auditSpy).toHaveBeenCalledWith(
+      'release-attest-fail-1',
+      'attestation_failed',
+      'user-1',
+      false,
+      expect.stringContaining('发布被阻断'),
+      expect.objectContaining({ buildId: 'build-attest-1', error: 'boom' })
+    );
   });
 
   it('rejects publishing when release approval is pending', async () => {
@@ -1801,6 +1969,231 @@ describe('CapabilityReleaseService', () => {
       release: expect.objectContaining({ id: 'release-browser-validate-1' }),
       validation: expect.objectContaining({ id: 'validation-1' }),
     });
+  });
+
+  it('applies the Gate 2 output schema check on the streaming sandbox path (fix ⑦)', async () => {
+    const { service, activityService, releaseFacadeContextService } = createService();
+
+    jest.spyOn(releaseFacadeContextService as any, 'getReleaseOrThrow').mockResolvedValue({
+      id: 'release-stream-gate2-1',
+      sourceType: 'temporal_workflow',
+      status: 'validating',
+    });
+    jest.spyOn(releaseFacadeContextService as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
+      id: 'snapshot-1',
+      sourcePayload: {
+        workflowDsl: {},
+        activityDsl: {},
+        contracts: {
+          output: {
+            schema: {
+              type: 'object',
+              additionalProperties: true,
+              properties: { topic: { type: 'string', enum: ['news'] } },
+            },
+          },
+        },
+      },
+    });
+    jest
+      .spyOn(releaseFacadeContextService as any, 'resolveTemporalExecutableBuildOrThrow')
+      .mockResolvedValue({ id: 'build-1', generatedCode: 'PYTHON_CODE' });
+    jest.spyOn(releaseFacadeContextService as any, 'insertAuditEvent').mockResolvedValue(undefined);
+    jest.spyOn(releaseFacadeContextService as any, 'getValidationOrThrow').mockResolvedValue({
+      id: 'validation-1',
+      success: false,
+      score: 40,
+    });
+    jest
+      .spyOn((service as any).capabilityReleaseBuildValidationService, 'createValidationRecord')
+      .mockResolvedValue('validation-1');
+    const finishSpy = jest
+      .spyOn((service as any).capabilityReleaseBuildValidationService, 'finishValidation')
+      .mockResolvedValue(undefined);
+    (activityService as any).validateWorkflowRealStreaming = jest.fn().mockResolvedValue({
+      success: true,
+      score: 100,
+      result: { businessData: { topic: 'ghost' } },
+      error: null,
+      traceback: null,
+      logs: [],
+    });
+
+    const events: Array<{ event: string; payload: Record<string, unknown> }> = [];
+    await service.validateSandboxStream(
+      'release-stream-gate2-1',
+      { fn: 'main', input: {} },
+      'user-1',
+      undefined,
+      (event, payload) => events.push({ event, payload })
+    );
+
+    // The runtime passed, but Gate 2 rejects the enum-violating businessData
+    // — the stream path must fail the validation exactly like validateSandbox.
+    expect(finishSpy).toHaveBeenCalledWith(
+      'validation-1',
+      'release-stream-gate2-1',
+      'validation_failed',
+      false,
+      40,
+      expect.arrayContaining([expect.stringContaining('[Gate 2 Output Schema Violation]')]),
+      expect.objectContaining({
+        result: expect.objectContaining({ businessData: { topic: 'ghost' } }),
+      }),
+      expect.stringContaining('OUTPUT_SCHEMA_VIOLATION')
+    );
+    expect(
+      events.some(
+        (e) => e.event === 'log' && String(e.payload.message).includes('Gate 2 Output Schema Violation')
+      )
+    ).toBe(true);
+  });
+
+  it('Gate 2 honors the contract dataPath instead of the hardcoded envelope path (fix ⑤)', async () => {
+    const { service, activityService, releaseFacadeContextService } = createService();
+
+    jest.spyOn(releaseFacadeContextService as any, 'getReleaseOrThrow').mockResolvedValue({
+      id: 'release-stream-gate2-datapath-1',
+      sourceType: 'temporal_workflow',
+      status: 'validating',
+    });
+    jest.spyOn(releaseFacadeContextService as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
+      id: 'snapshot-1',
+      sourcePayload: {
+        workflowDsl: {},
+        activityDsl: {},
+        contracts: {
+          output: {
+            dataPath: '$.data', // 契约声明业务数据在 $.data，而不是默认 envelope 路径
+            schema: {
+              type: 'object',
+              additionalProperties: true,
+              properties: { topic: { type: 'string', enum: ['news'] } },
+            },
+          },
+        },
+      },
+    });
+    jest
+      .spyOn(releaseFacadeContextService as any, 'resolveTemporalExecutableBuildOrThrow')
+      .mockResolvedValue({ id: 'build-1', generatedCode: 'PYTHON_CODE' });
+    jest.spyOn(releaseFacadeContextService as any, 'insertAuditEvent').mockResolvedValue(undefined);
+    jest.spyOn(releaseFacadeContextService as any, 'getValidationOrThrow').mockResolvedValue({
+      id: 'validation-1',
+      success: false,
+      score: 40,
+    });
+    jest
+      .spyOn((service as any).capabilityReleaseBuildValidationService, 'createValidationRecord')
+      .mockResolvedValue('validation-1');
+    const finishSpy = jest
+      .spyOn((service as any).capabilityReleaseBuildValidationService, 'finishValidation')
+      .mockResolvedValue(undefined);
+    (activityService as any).validateWorkflowRealStreaming = jest.fn().mockResolvedValue({
+      success: true,
+      score: 100,
+      // 若用硬编码 $.result.businessData → 提取 undefined → 回退整个 result
+      // → {result,error,traceback,fn} 对 {properties:{topic}} 不违规（additionalProperties 默认 true）
+      // → Gate 2 放行；用契约 dataPath $.data → {topic:'ghost'} 违反 enum → 阻断。
+      result: { data: { topic: 'ghost' } },
+      error: null,
+      traceback: null,
+      logs: [],
+    });
+
+    const events: Array<{ event: string; payload: Record<string, unknown> }> = [];
+    await service.validateSandboxStream(
+      'release-stream-gate2-datapath-1',
+      { fn: 'main', input: {} },
+      'user-1',
+      undefined,
+      (event, payload) => events.push({ event, payload })
+    );
+
+    expect(finishSpy).toHaveBeenCalledWith(
+      'validation-1',
+      'release-stream-gate2-datapath-1',
+      'validation_failed',
+      false,
+      40,
+      expect.arrayContaining([expect.stringContaining('[Gate 2 Output Schema Violation]')]),
+      expect.objectContaining({
+        result: expect.objectContaining({ data: expect.objectContaining({ topic: 'ghost' }) }),
+      }),
+      expect.stringContaining('OUTPUT_SCHEMA_VIOLATION')
+    );
+  });
+
+  it('Gate 2 keeps legitimate falsy businessData (0) instead of falling back to the whole result (fix ⑤)', async () => {
+    const { service, activityService, releaseFacadeContextService } = createService();
+
+    jest.spyOn(releaseFacadeContextService as any, 'getReleaseOrThrow').mockResolvedValue({
+      id: 'release-stream-gate2-falsy-1',
+      sourceType: 'temporal_workflow',
+      status: 'validating',
+    });
+    jest.spyOn(releaseFacadeContextService as any, 'getCurrentSnapshotOrThrow').mockResolvedValue({
+      id: 'snapshot-1',
+      sourcePayload: {
+        workflowDsl: {},
+        activityDsl: {},
+        contracts: {
+          output: {
+            schema: { type: 'integer' },
+          },
+        },
+      },
+    });
+    jest
+      .spyOn(releaseFacadeContextService as any, 'resolveTemporalExecutableBuildOrThrow')
+      .mockResolvedValue({ id: 'build-1', generatedCode: 'PYTHON_CODE' });
+    jest.spyOn(releaseFacadeContextService as any, 'insertAuditEvent').mockResolvedValue(undefined);
+    jest.spyOn(releaseFacadeContextService as any, 'getValidationOrThrow').mockResolvedValue({
+      id: 'validation-2',
+      success: false,
+      score: 40,
+    });
+    jest
+      .spyOn((service as any).capabilityReleaseBuildValidationService, 'createValidationRecord')
+      .mockResolvedValue('validation-2');
+    const finishSpy = jest
+      .spyOn((service as any).capabilityReleaseBuildValidationService, 'finishValidation')
+      .mockResolvedValue(undefined);
+    (activityService as any).validateWorkflowRealStreaming = jest.fn().mockResolvedValue({
+      success: true,
+      score: 100,
+      // 旧代码 `extracted || resultSnapshot`：0 触发整体回退 → 用 envelope(object)
+      // 校验 {type: integer} 误报违规；falsy-safe 后直接校验业务值 0 → Gate 2 通过。
+      result: { businessData: 0 },
+      error: null,
+      traceback: null,
+      logs: [],
+    });
+
+    const events: Array<{ event: string; payload: Record<string, unknown> }> = [];
+    await service.validateSandboxStream(
+      'release-stream-gate2-falsy-1',
+      { fn: 'main', input: {} },
+      'user-1',
+      undefined,
+      (event, payload) => events.push({ event, payload })
+    );
+
+    expect(finishSpy).toHaveBeenCalledWith(
+      'validation-2',
+      'release-stream-gate2-falsy-1',
+      'draft_ready',
+      true,
+      100,
+      expect.any(Array),
+      expect.objectContaining({
+        result: expect.objectContaining({ businessData: 0 }),
+      }),
+      null
+    );
+    expect(
+      events.some((e) => e.event === 'log' && String(e.payload.message).includes('Gate 2'))
+    ).toBe(false);
   });
 
   it('returns runtime tool policies from tool catalog metadata', async () => {

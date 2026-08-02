@@ -2,6 +2,7 @@ import axios from 'axios';
 import { TemporalWorkflowActivityResolutionService } from '../src/modules/temporal-workflow/temporal-workflow-activity-resolution.service';
 import { TemporalWorkflowBrowserDraftService } from '../src/modules/temporal-workflow/browser-bridge/temporal-workflow-browser-draft.service';
 import { TemporalWorkflowCodegenService } from '../src/modules/temporal-workflow/temporal-workflow-codegen.service';
+import { ActivityCodegenService } from '../src/modules/temporal-workflow/temporal-activity-codegen.service';
 import { TemporalWorkflowService } from '../src/modules/temporal-workflow/temporal-workflow.service';
 import { TemporalWorkflowArtifactService } from '../src/workflow-registry/workflow-template/temporal-workflow-artifact.service';
 import { TemporalWorkflowConfigOrchestrationService } from '../src/workflow-registry/workflow-template/temporal-workflow-config-orchestration.service';
@@ -15,6 +16,7 @@ import { buildDeterministicWorkflowCodeForWorkflow } from '../src/modules/tempor
 import { TemporalWorkflowAiDraftService } from '../src/modules/temporal-workflow/temporal-workflow-draft.service';
 import {
   buildGenericAiDraftSampleValue,
+  deriveV2OutputFromOutputParams,
   inferWorkflowInputParamType,
   normalizeAiDraftStepInput,
   normalizeDraftInputParams,
@@ -37,7 +39,11 @@ import { TemporalWorkflowValidationService } from '../src/modules/temporal-workf
 import { TemporalWorkflowArtifactValidationService } from '../src/workflow-registry/validation/temporal-workflow-artifact-validation.service';
 import { TemporalWorkflowDslValidationService } from '../src/workflow-registry/validation/temporal-workflow-dsl-validation.service';
 import { TemporalWorkflowCodegenOrchestrationService } from '../src/workflow-registry/codegen/temporal-workflow-codegen-orchestration.service';
-import { BuiltinActivityRegistry } from '../src/modules/temporal-workflow/builtin-activity.registry';
+import {
+  BuiltinActivityRegistry,
+  HTTP_REQUEST_STEP_CONFIG_KEY,
+  STRUCTURED_TRANSFORM_STEP_CONFIG_KEY,
+} from '../src/modules/temporal-workflow/builtin-activity.registry';
 
 jest.mock('axios');
 
@@ -61,7 +67,7 @@ describe('TemporalWorkflowAiDraftService', () => {
       activity: {
         findUnique: jest.fn(),
         findFirst: jest.fn(),
-        findMany: jest.fn(),
+        findMany: jest.fn().mockResolvedValue([]),
       },
       user: {
         findFirst: jest.fn(),
@@ -99,12 +105,14 @@ describe('TemporalWorkflowAiDraftService', () => {
       workflowNormalizationService,
       workflowArtifactService
     );
+    const activityCodegenService = new ActivityCodegenService();
     const workflowSupportService = new TemporalWorkflowSupportService(
       builtinRegistry,
       aiDraftService,
       activityResolutionService,
       workflowConfigService,
-      workflowNormalizationService
+      workflowNormalizationService,
+      activityCodegenService
     );
     const workflowDraftOrchestrationService = new TemporalWorkflowDraftOrchestrationService(
       aiDraftService,
@@ -217,11 +225,8 @@ describe('TemporalWorkflowAiDraftService', () => {
     const { service, codegenService } = createService();
 
     jest
-      .spyOn(codegenService as any, 'precompileGeneratedPython')
-      .mockReturnValue({ success: true });
-    jest
-      .spyOn(codegenService as any, 'validateGeneratedWorkflowOutputContract')
-      .mockReturnValue({ success: true });
+      .spyOn(codegenService as any, 'runPythonAstGateCheck')
+      .mockReturnValue({ success: true, errors: [] });
     mockedAxios.post.mockResolvedValue({
       data: {
         result: [
@@ -320,11 +325,8 @@ describe('TemporalWorkflowAiDraftService', () => {
       .spyOn(workflowSupportService, 'buildDeterministicWorkflowCode')
       .mockReturnValue('DETERMINISTIC_CODE');
     jest
-      .spyOn(codegenService as any, 'precompileGeneratedPython')
-      .mockReturnValue({ success: true });
-    jest
-      .spyOn(codegenService as any, 'validateGeneratedWorkflowOutputContract')
-      .mockReturnValue({ success: true });
+      .spyOn(codegenService as any, 'runPythonAstGateCheck')
+      .mockReturnValue({ success: true, errors: [] });
     mockedAxios.post.mockResolvedValue({
       data: {
         result: [
@@ -376,13 +378,16 @@ describe('TemporalWorkflowAiDraftService', () => {
     const { service, codegenService, workflowSupportService } = createService();
 
     jest.spyOn(workflowSupportService, 'buildDeterministicWorkflowCode').mockReturnValue(null);
-    jest.spyOn(codegenService as any, 'precompileGeneratedPython').mockReturnValue({
+    jest.spyOn(codegenService as any, 'runPythonAstGateCheck').mockReturnValue({
       success: false,
-      error: 'SyntaxError: invalid syntax (generated_workflow.py, line 1)',
+      errors: [
+        {
+          line: 1,
+          code: 'SYNTAX_ERROR',
+          message: 'SyntaxError: invalid syntax (generated_workflow.py, line 1)',
+        },
+      ],
     });
-    jest
-      .spyOn(codegenService as any, 'validateGeneratedWorkflowOutputContract')
-      .mockReturnValue({ success: true });
     mockedAxios.post.mockResolvedValue({
       data: {
         result: [
@@ -426,28 +431,32 @@ describe('TemporalWorkflowAiDraftService', () => {
     );
 
     expect(result.success).toBe(false);
-    expect(result.error).toContain('未通过 Python 编译预检查');
+    expect(result.error).toContain('未通过 Gate 1 静态分析');
     expect(result.error).toContain('SyntaxError: invalid syntax');
     expect(result.autoRetried).toBe(true);
     expect(result.attempts).toBe(2);
   });
 
-  it('retries once with compile feedback when first AI code fails precompile', async () => {
+  it('retries once with compile feedback when first AI code fails Gate 1', async () => {
     const { service, codegenService, workflowSupportService } = createService();
 
     jest.spyOn(workflowSupportService, 'buildDeterministicWorkflowCode').mockReturnValue(null);
     jest
-      .spyOn(codegenService as any, 'precompileGeneratedPython')
+      .spyOn(codegenService as any, 'runPythonAstGateCheck')
       .mockReturnValueOnce({
         success: false,
-        error: 'SyntaxError: invalid syntax (generated_workflow.py, line 1)',
+        errors: [
+          {
+            line: 1,
+            code: 'SYNTAX_ERROR',
+            message: 'SyntaxError: invalid syntax (generated_workflow.py, line 1)',
+          },
+        ],
       })
       .mockReturnValueOnce({
         success: true,
+        errors: [],
       });
-    jest
-      .spyOn(codegenService as any, 'validateGeneratedWorkflowOutputContract')
-      .mockReturnValue({ success: true });
     mockedAxios.post
       .mockResolvedValueOnce({
         data: {
@@ -511,7 +520,7 @@ describe('TemporalWorkflowAiDraftService', () => {
     expect(result.autoRetried).toBe(true);
     expect(result.attempts).toBe(2);
     const secondPromptPayload = mockedAxios.post.mock.calls[1]?.[1] as any;
-    expect(String(secondPromptPayload?.prompt || '')).toContain('未通过 Python 编译预检查');
+    expect(String(secondPromptPayload?.prompt || '')).toContain('未通过 Gate 1 静态分析');
     expect(String(secondPromptPayload?.prompt || '')).toContain('SyntaxError: invalid syntax');
   });
 
@@ -520,8 +529,8 @@ describe('TemporalWorkflowAiDraftService', () => {
 
     jest.spyOn(workflowSupportService, 'buildDeterministicWorkflowCode').mockReturnValue(null);
     jest
-      .spyOn(codegenService as any, 'precompileGeneratedPython')
-      .mockReturnValue({ success: true });
+      .spyOn(codegenService as any, 'runPythonAstGateCheck')
+      .mockReturnValue({ success: true, errors: [] });
     mockedAxios.post.mockResolvedValue({
       data: {
         result: [
@@ -578,11 +587,21 @@ describe('TemporalWorkflowAiDraftService', () => {
 
     jest.spyOn(workflowSupportService, 'buildDeterministicWorkflowCode').mockReturnValue(null);
     jest
-      .spyOn(codegenService as any, 'precompileGeneratedPython')
-      .mockReturnValue({ success: true });
-    jest
-      .spyOn(codegenService as any, 'validateGeneratedWorkflowOutputContract')
-      .mockReturnValue({ success: true });
+      .spyOn(codegenService as any, 'runPythonAstGateCheck')
+      .mockReturnValueOnce({
+        success: false,
+        errors: [
+          {
+            line: 9,
+            code: 'WORKFLOW_SDK_API',
+            message: "Workflow 代码禁止使用 'activity.RetryPolicy'（外部副作用/非确定性操作必须封装在 @activity.defn Activity 中）。",
+          },
+        ],
+      })
+      .mockReturnValueOnce({
+        success: true,
+        errors: [],
+      });
     mockedAxios.post
       .mockResolvedValueOnce({
         data: {
@@ -652,7 +671,7 @@ describe('TemporalWorkflowAiDraftService', () => {
     expect(result.attempts).toBe(2);
     expect(result.code).not.toContain('activity.RetryPolicy');
     const secondPromptPayload = mockedAxios.post.mock.calls[1]?.[1] as any;
-    expect(String(secondPromptPayload?.prompt || '')).toContain('违反 Temporal Python SDK 约束');
+    expect(String(secondPromptPayload?.prompt || '')).toContain('RetryPolicy 属于 temporalio.common');
     expect(String(secondPromptPayload?.prompt || '')).toContain('activity.RetryPolicy');
   });
 
@@ -661,11 +680,21 @@ describe('TemporalWorkflowAiDraftService', () => {
 
     jest.spyOn(workflowSupportService, 'buildDeterministicWorkflowCode').mockReturnValue(null);
     jest
-      .spyOn(codegenService as any, 'precompileGeneratedPython')
-      .mockReturnValue({ success: true });
-    jest
-      .spyOn(codegenService as any, 'validateGeneratedWorkflowOutputContract')
-      .mockReturnValue({ success: true });
+      .spyOn(codegenService as any, 'runPythonAstGateCheck')
+      .mockReturnValueOnce({
+        success: false,
+        errors: [
+          {
+            line: 6,
+            code: 'WORKFLOW_UNSAFE',
+            message: "Workflow 代码禁止使用 'workflow.unsafe.is_replaying'（外部副作用/非确定性操作必须封装在 @activity.defn Activity 中）。",
+          },
+        ],
+      })
+      .mockReturnValueOnce({
+        success: true,
+        errors: [],
+      });
     mockedAxios.post
       .mockResolvedValueOnce({
         data: {
@@ -727,11 +756,9 @@ describe('TemporalWorkflowAiDraftService', () => {
     expect(result.code).not.toContain('workflow.unsafe');
     const secondPromptPayload = mockedAxios.post.mock.calls[1]?.[1] as any;
     expect(String(secondPromptPayload?.prompt || '')).toContain('workflow.unsafe');
-    expect(String(secondPromptPayload?.prompt || '')).toContain('违反 Temporal Python SDK 约束');
-    expect(String(secondPromptPayload?.prompt || '')).toContain('删除所有 `workflow.unsafe`');
-    expect(String(secondPromptPayload?.prompt || '')).toContain(
-      '不要为了“历史回放安全”手动判断 replay'
-    );
+    expect(String(secondPromptPayload?.prompt || '')).toContain('未通过 Gate 1 静态分析');
+    expect(String(secondPromptPayload?.prompt || '')).toContain('删除 workflow.unsafe');
+    expect(String(secondPromptPayload?.prompt || '')).toContain('不要手动判断 is_replaying');
   });
 
   it('optimizes builtin httpRequest into bodyMap when AI returns multi-field mappings', async () => {
@@ -2182,8 +2209,8 @@ describe('TemporalWorkflowAiDraftService', () => {
 
     jest.spyOn(workflowSupportService, 'buildDeterministicWorkflowCode').mockReturnValue(null);
     jest
-      .spyOn(codegenService as any, 'precompileGeneratedPython')
-      .mockReturnValue({ success: true });
+      .spyOn(codegenService as any, 'runPythonAstGateCheck')
+      .mockReturnValue({ success: true, errors: [] });
     mockedAxios.post.mockResolvedValue({
       data: {
         result: [
@@ -2244,5 +2271,239 @@ describe('TemporalWorkflowAiDraftService', () => {
     expect(String(promptPayload?.prompt || '')).toContain('【已确认的内置步骤约束（请重复遵守）】');
     expect(String(promptPayload?.prompt || '')).toContain('这是 builtin:structuredTransform 步骤');
     expect(String(promptPayload?.prompt || '')).toContain('最终返回必须是纯文本');
+  });
+
+  describe('deriveV2OutputFromOutputParams (P1-C §8.3)', () => {
+  const transformStep = (overrides: Record<string, any> = {}) => ({
+    id: 'step_1',
+    name: '整理结果',
+    type: 'activity' as const,
+    activityRef: 'builtin:structuredTransform',
+    activityName: 'structuredTransform',
+    input: {
+      [STRUCTURED_TRANSFORM_STEP_CONFIG_KEY]: {
+        contentType: 'json',
+        outputMode: 'json',
+        outputSchema: { summary: 'string', temperature: 'number' },
+        ...overrides,
+      },
+    },
+  });
+
+  it('derives fields for transform JSON outputSchema keys with $. paths', () => {
+    const v2Output = deriveV2OutputFromOutputParams({
+      outputParams: {
+        summary: { description: '摘要', sourceStep: 'step_1' },
+        temperature: { sourceStep: 'step_1' },
+        mystery: { sourceStep: 'step_1' }, // not in outputSchema → skipped
+      },
+      steps: [transformStep()],
+    });
+    expect(v2Output).toBeDefined();
+    expect(Object.keys(v2Output!.fields!)).toEqual(['summary', 'temperature']);
+    expect(v2Output!.fields!.summary).toEqual({
+      type: 'string',
+      required: false,
+      source: { step: 'step_1', path: '$.summary' },
+      description: '摘要',
+    });
+    expect(v2Output!.fields!.temperature.type).toBe('number');
+  });
+
+  it('derives a scalar $ path for text-mode transform steps', () => {
+    const v2Output = deriveV2OutputFromOutputParams({
+      outputParams: { text: { sourceStep: 'step_1' } },
+      steps: [transformStep({ outputMode: 'text' })],
+    });
+    expect(v2Output!.fields!.text).toEqual({
+      type: 'string',
+      required: false,
+      source: { step: 'step_1', path: '$' },
+    });
+  });
+
+  it('derives httpRequest envelope keys only in full mode and bodyMap keys in bodyMap mode', () => {
+    const httpStep = (responseMode: string, responseFieldMappings: Record<string, any> = {}) => ({
+      id: 'step_1',
+      name: '请求接口',
+      type: 'activity' as const,
+      activityRef: 'builtin:httpRequest',
+      activityName: 'httpRequest',
+      input: {
+        [HTTP_REQUEST_STEP_CONFIG_KEY]: {
+          responseMode,
+          responseFieldMappings,
+        },
+      },
+    });
+    const fullMode = deriveV2OutputFromOutputParams({
+      outputParams: { body: { sourceStep: 'step_1' }, statusCode: { sourceStep: 'step_1' }, mystery: { sourceStep: 'step_1' } },
+      steps: [httpStep('full')],
+    });
+    expect(Object.keys(fullMode!.fields!)).toEqual(['body', 'statusCode']);
+    expect(fullMode!.fields!.body.source).toEqual({ step: 'step_1', path: '$.body' });
+
+    const bodyMapMode = deriveV2OutputFromOutputParams({
+      outputParams: { temperature: { sourceStep: 'step_1' }, mystery: { sourceStep: 'step_1' } },
+      steps: [httpStep('bodyMap', { temperature: '$.current.temp' })],
+    });
+    expect(Object.keys(bodyMapMode!.fields!)).toEqual(['temperature']);
+
+    const defaultBodyMode = deriveV2OutputFromOutputParams({
+      outputParams: { result: { sourceStep: 'step_1' } },
+      steps: [httpStep('body')],
+    });
+    expect(defaultBodyMode).toBeUndefined();
+  });
+
+  it('skips unknown steps, missing sourceStep, and empty outputParams', () => {
+    const customStep = {
+      id: 'step_1',
+      name: '自定义步骤',
+      type: 'activity' as const,
+      activityRef: 'custom:abc',
+      activityName: 'custom',
+      input: {},
+    };
+    expect(
+      deriveV2OutputFromOutputParams({
+        outputParams: { result: { sourceStep: 'step_1' } },
+        steps: [customStep],
+      })
+    ).toBeUndefined();
+    expect(
+      deriveV2OutputFromOutputParams({
+        outputParams: { result: { sourceStep: 'step_404' } },
+        steps: [transformStep()],
+      })
+    ).toBeUndefined();
+    expect(deriveV2OutputFromOutputParams({ outputParams: {}, steps: [transformStep()] })).toBeUndefined();
+    expect(deriveV2OutputFromOutputParams({ steps: [transformStep()] })).toBeUndefined();
+  });
+
+  it('flows through generateAiWorkflowDraft into workflowDsl.v2Output (compiler-sealed)', async () => {
+    const { service } = createService();
+
+    mockedAxios.post.mockResolvedValue({
+      data: {
+        result: JSON.stringify({
+          workflowName: '天气结果整理工作流',
+          workflowDescription: '根据城市查询并整理天气',
+          workflowClassName: 'WeatherStructuredWorkflow',
+          workflowDefnName: '天气结果整理工作流',
+          taskQueue: 'SKILL_TASK_QUEUE',
+          inputParams: {
+            city: { description: '城市名', required: true, defaultValue: '' },
+          },
+          outputParams: {
+            temperature: { description: '当前温度', sourceStep: 'step_1' },
+            summary: { description: '天气摘要', sourceStep: 'step_1' },
+            mystery: { sourceStep: 'step_1' },
+          },
+          steps: [
+            {
+              id: 'step_1',
+              name: '整理天气结果',
+              type: 'activity',
+              activityRef: 'builtin:structuredTransform',
+              activityName: 'structuredTransform',
+              startToCloseTimeout: '90s',
+              input: {
+                [STRUCTURED_TRANSFORM_STEP_CONFIG_KEY]: {
+                  contentType: 'json',
+                  contentTemplate: '{content}',
+                  instructionTemplate: '整理天气',
+                  outputMode: 'json',
+                  outputSchema: { temperature: 'number', summary: 'string' },
+                },
+              },
+            },
+          ],
+          activities: [
+            {
+              activityRef: 'builtin:structuredTransform',
+              name: '结构化转换',
+              timeout: '90s',
+              retryPolicy: { maxRetries: 2, backoffMs: 1000 },
+              config: {},
+            },
+          ],
+        }),
+      },
+    } as any);
+
+    const draft = await service.generateAiWorkflowDraft({
+      description: '创建一个整理天气结果的工作流',
+    });
+
+    expect(draft.workflowDsl.v2Output).toBeDefined();
+    expect(Object.keys(draft.workflowDsl.v2Output!.fields!)).toEqual(['temperature', 'summary']);
+    expect(draft.workflowDsl.v2Output!.fields!.temperature).toMatchObject({
+      type: 'number',
+      required: false,
+      source: { step: 'step_1', path: '$.temperature' },
+    });
+    expect(draft.workflowDsl.v2Output!.fields!.summary).toMatchObject({
+      type: 'string',
+      required: false,
+      source: { step: 'step_1', path: '$.summary' },
+    });
+    // AI-declared but unprovable field must NOT leak into the sealed output
+    expect(draft.workflowDsl.v2Output!.fields!.mystery).toBeUndefined();
+  });
+
+  it('does not seal v2Output when the AI declared no outputParams (legacy fallback preserved)', async () => {
+    const { service } = createService();
+
+    mockedAxios.post.mockResolvedValue({
+      data: {
+        result: JSON.stringify({
+          workflowName: '无输出声明工作流',
+          workflowDescription: '没有声明输出参数',
+          workflowClassName: 'NoOutputWorkflow',
+          workflowDefnName: '无输出声明工作流',
+          taskQueue: 'SKILL_TASK_QUEUE',
+          inputParams: {},
+          steps: [
+            {
+              id: 'step_1',
+              name: '整理结果',
+              type: 'activity',
+              activityRef: 'builtin:structuredTransform',
+              activityName: 'structuredTransform',
+              startToCloseTimeout: '90s',
+              input: {
+                [STRUCTURED_TRANSFORM_STEP_CONFIG_KEY]: {
+                  contentType: 'json',
+                  contentTemplate: '{content}',
+                  instructionTemplate: '整理结果',
+                  outputMode: 'json',
+                  outputSchema: { result: 'string' },
+                },
+              },
+            },
+          ],
+          activities: [
+            {
+              activityRef: 'builtin:structuredTransform',
+              name: '结构化转换',
+              timeout: '90s',
+              retryPolicy: { maxRetries: 2, backoffMs: 1000 },
+              config: {},
+            },
+          ],
+        }),
+      },
+    } as any);
+
+    const draft = await service.generateAiWorkflowDraft({
+      description: '创建一个不声明输出的工作流',
+    });
+
+    expect(draft.workflowDsl.v2Output).toBeUndefined();
+    expect(draft.workflowDsl.outputParams).toEqual({
+      result: { description: '工作流输出结果', sourceStep: 'step_1' },
+    });
+  });
   });
 });

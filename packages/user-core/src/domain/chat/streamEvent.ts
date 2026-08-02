@@ -476,8 +476,9 @@ export const reduceChatStreamEvent = ({
     }
   } else if (event.type === StreamEventTypeValue.RESULT && mode === 'chat') {
       nextAccumulatedContent = contentText;
+  } else if (event.type === StreamEventTypeValue.ERROR) {
+    nextAccumulatedContent = contentText;
   } else if (
-    event.type === StreamEventTypeValue.ERROR ||
     event.type === StreamEventTypeValue.WAITING_INPUT ||
     event.type === StreamEventTypeValue.PENDING_APPROVAL ||
     event.type === StreamEventTypeValue.HUMAN_CONTROL

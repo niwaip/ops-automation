@@ -53,6 +53,10 @@ function canonicalizePlan(plan) {
             outputContract: sortObjectKeys(node.outputContract),
             failurePolicy: node.failurePolicy,
         };
+        if (node.contractRef)
+            canonicalNode.contractRef = node.contractRef;
+        if (node.contractDigest)
+            canonicalNode.contractDigest = node.contractDigest;
         if (node.kind === 'skill') {
             canonicalNode.skillId = node.skillId;
             canonicalNode.skillVersion = node.skillVersion;

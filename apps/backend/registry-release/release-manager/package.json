@@ -19,6 +19,7 @@
     "@nestjs/passport": "^10.0.3",
     "@nestjs/swagger": "^7.4.2",
     "@ops/backend-release-manifest": "file:../../../../packages/backend-contracts/release-manifest",
+    "@ops/backend-runtime-capability-contract": "file:../../../../packages/backend-contracts/runtime-capability-contract",
     "@ops/identity-access": "workspace:*",
     "@ops/organization": "workspace:*",
     "@ops/skill-registry": "workspace:*",

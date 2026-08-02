@@ -13,4 +13,8 @@ export const CAPABILITY_RELEASE_ERROR_CODE = {
   ROLLBACK_TARGET_SAME_RELEASE: 'rollback_target_same_release',
   ROLLBACK_SOURCE_IDENTIFIER_MISSING: 'rollback_source_identifier_missing',
   ROLLBACK_TARGET_RELEASE_NOT_FOUND: 'rollback_target_release_not_found',
+  SCHEMA_BREAKING_CHANGE: 'schema_breaking_change',
+  CONTRACT_LINT_FAILED: 'contract_lint_failed',
+  FIXTURE_VALIDATION_FAILED: 'fixture_validation_failed',
+  ATTESTATION_FAILED: 'attestation_failed',
 } as const;

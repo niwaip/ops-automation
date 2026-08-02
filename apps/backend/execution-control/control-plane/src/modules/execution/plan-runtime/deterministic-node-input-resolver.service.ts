@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ValueBindingV1 } from '@ops/backend-deterministic-plan';
+import { ERROR_CODES } from '@ops/backend-error-codes';
 
 interface SkillParamSchemaField {
   enum?: Array<string | number>;
@@ -31,6 +32,11 @@ export class DeterministicNodeInputResolverService {
     capabilityId?: string,
   ): Promise<Record<string, any>> {
     const resolvedInput: Record<string, any> = {};
+    // Per-field binding source, so §9.2 enum handling can distinguish
+    // planner-generated literals (rewritable) from user-direct input
+    // (never rewritten — INPUT_SCHEMA_VIOLATION) and upstream data
+    // (never rewritten — the contract validator decides).
+    const valueSources: Record<string, string> = {};
 
     if (!inputBindings) {
       return resolvedInput;
@@ -65,10 +71,12 @@ export class DeterministicNodeInputResolverService {
             throw err;
           }
           resolvedInput[field] = binding.value;
+          valueSources[field] = 'literal';
           break;
 
         case 'user_input':
           resolvedInput[field] = this.getValueByPath(executionInputJson, binding.path);
+          valueSources[field] = 'user_input';
           break;
 
         case 'node_output': {
@@ -77,6 +85,7 @@ export class DeterministicNodeInputResolverService {
           if (upstreamOutput) {
             const outPath = binding.path || binding.outputPath || '';
             resolvedInput[field] = this.getValueByPath(upstreamOutput, outPath);
+            valueSources[field] = 'node_output';
           } else {
             this.logger.warn(
               `Upstream node '${targetNodeId}' output not found for step in execution ${executionId}`,
@@ -95,7 +104,7 @@ export class DeterministicNodeInputResolverService {
     }
 
     if (capabilityId) {
-      await this.applySkillSchemaConstraints(resolvedInput, capabilityId);
+      await this.applySkillSchemaConstraints(resolvedInput, capabilityId, valueSources);
     }
 
     return resolvedInput;
@@ -103,11 +112,23 @@ export class DeterministicNodeInputResolverService {
 
   /**
    * Loads the skill's paramsSchema and applies enum + default constraints to resolvedInput.
-   * Mutates resolvedInput in place. Never throws — schema load failures fall back to warn + skip.
+   * Mutates resolvedInput in place. §9.2 decision tree:
+   *
+   * - `literal` (planner-generated): illegal enum + valid default → default;
+   *   illegal + no default → drop the field (rule 2 degrade semantics).
+   * - `user_input` (user-direct): NEVER rewritten. An illegal value the user
+   *   typed surfaces as INPUT_SCHEMA_VIOLATION at beforeCapabilityCall
+   *   (rule 4). A merely absent value is left alone — `required` enforcement
+   *   is the JSON Schema validator's job.
+   * - `node_output` (upstream runtime data): never rewritten — the unified
+   *   input contract validator decides schema conformance.
+   *
+   * Schema load failures fall back to warn + skip (fail-open on infra).
    */
   private async applySkillSchemaConstraints(
     resolvedInput: Record<string, any>,
     capabilityId: string,
+    sources: Record<string, string> = {},
   ): Promise<void> {
     let schema: Record<string, SkillParamSchemaField> | undefined;
     try {
@@ -140,6 +161,22 @@ export class DeterministicNodeInputResolverService {
         continue;
       }
 
+      const source = sources[fieldName];
+      if (source === 'user_input') {
+        // §9.2 rule 4: never rewrite user-direct input. A present-but-illegal
+        // value is a hard violation; an absent value is not (required is the
+        // JSON Schema validator's concern).
+        if (currentValue === undefined) {
+          continue;
+        }
+        this.throwInputSchemaViolation(fieldName, currentValue, capabilityId);
+      }
+      if (source === 'node_output') {
+        // Upstream runtime data is not a planner literal — no rewrite. The
+        // unified input contract validator decides conformance.
+        continue;
+      }
+
       const defaultValue = this.normalizeScalarDefault(fieldSchema.defaultValue);
       if (this.isEnumValueAllowed(defaultValue, enumValues)) {
         resolvedInput[fieldName] = defaultValue;
@@ -153,6 +190,14 @@ export class DeterministicNodeInputResolverService {
         );
       }
     }
+  }
+
+  private throwInputSchemaViolation(fieldName: string, value: unknown, capabilityId: string): never {
+    const err: any = new Error(
+      `INPUT_SCHEMA_VIOLATION: user-supplied value for field '${fieldName}' is not among the allowed enum values of capability '${capabilityId}' (got ${JSON.stringify(value)})`,
+    );
+    err.code = ERROR_CODES.INPUT_SCHEMA_VIOLATION;
+    throw err;
   }
 
   /**

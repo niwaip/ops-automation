@@ -150,6 +150,10 @@ export interface TemporalWorkflowAiDraftSupport {
   normalizeDraftOutputParams(
     outputParams?: Record<string, { description?: string; sourceStep?: string }>
   ): WorkflowDsl['outputParams'];
+  deriveV2OutputFromOutputParams(args: {
+    outputParams?: Record<string, { description?: string; sourceStep?: string }>;
+    steps: WorkflowStep[];
+  }): WorkflowDsl['v2Output'];
   normalizeAiDraftStepInput(
     rawInput: Record<string, any>,
     activityRef: string,
@@ -794,6 +798,23 @@ export class TemporalWorkflowAiDraftService {
         'AI 生成工作流'
     );
     const taskQueue = support.normalizeTaskQueue(plan.taskQueue || 'SKILL_TASK_QUEUE');
+    // P1-C: derive the compiler-side v2Output (design doc §8.3) from the
+    // AI-declared outputParams only — the AI never authors the Result Builder
+    // mapping itself. Skipped entirely when the AI declared no outputParams
+    // (the normalizeDraftOutputParams fallback keeps legacy behavior).
+    const declaredOutputParams =
+      plan.outputParams &&
+      typeof plan.outputParams === 'object' &&
+      !Array.isArray(plan.outputParams) &&
+      Object.keys(plan.outputParams).length > 0
+        ? (plan.outputParams as Record<string, { description?: string; sourceStep?: string }>)
+        : undefined;
+    const derivedV2Output = declaredOutputParams
+      ? support.deriveV2OutputFromOutputParams({
+          outputParams: declaredOutputParams,
+          steps,
+        })
+      : undefined;
     const workflowDsl = await support.normalizeWorkflowDsl(
       {
         name: workflowName,
@@ -813,6 +834,7 @@ export class TemporalWorkflowAiDraftService {
         },
         inputParams: support.normalizeDraftInputParams(plan.inputParams, steps, referenceUrl),
         outputParams: support.normalizeDraftOutputParams(plan.outputParams),
+        ...(derivedV2Output ? { v2Output: derivedV2Output } : {}),
         extraPrompt: [
           support.pickFirstNonEmptyString(plan.extraPrompt),
           referenceUrl ? `参考 URL: ${referenceUrl}` : '',

@@ -12,6 +12,7 @@ export type ValueBindingV1 = {
     fromNodeId?: string;
     path?: string;
     outputPath?: string;
+    expectedType?: ValueTypeV1;
 } | {
     source: 'runtime_default';
     key: string;
@@ -23,6 +24,8 @@ export interface PlanNodeBaseV1 {
     dependsOn: string[];
     inputBindings: Record<string, ValueBindingV1>;
     outputContract: Record<string, ValueTypeV1>;
+    contractRef?: string;
+    contractDigest?: string;
     failurePolicy: 'abort';
 }
 export interface SkillPlanNodeV1 extends PlanNodeBaseV1 {

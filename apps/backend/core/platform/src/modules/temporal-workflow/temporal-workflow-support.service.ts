@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { ActivityCodegenService } from './temporal-activity-codegen.service';
 import {
   BuiltinActivityDefinition,
   BuiltinActivityRegistry,
@@ -48,7 +49,8 @@ export class TemporalWorkflowSupportService {
     private readonly aiDraftService: TemporalWorkflowAiDraftService,
     private readonly activityResolutionService: TemporalWorkflowActivityResolutionService,
     private readonly workflowConfigService: TemporalWorkflowConfigService,
-    private readonly workflowNormalizationService: TemporalWorkflowNormalizationService
+    private readonly workflowNormalizationService: TemporalWorkflowNormalizationService,
+    private readonly activityCodegenService: ActivityCodegenService
   ) {}
 
   createAiDraftSupport(): TemporalWorkflowAiDraftSupport {
@@ -233,7 +235,8 @@ export class TemporalWorkflowSupportService {
 
   async createEnrichedActivityDsl(
     workflowDsl: WorkflowDsl,
-    activityDsl: ActivityDsl
+    activityDsl: ActivityDsl,
+    onProgress?: (log: string) => void
   ): Promise<ActivityDsl> {
     const activities = await collectEnrichedActivities({
       workflowDsl,
@@ -242,6 +245,8 @@ export class TemporalWorkflowSupportService {
       createActivityResolutionSupport: () => this.createActivityResolutionSupport(),
       buildDeterministicActivityCode: (activityDef) =>
         this.buildDeterministicActivityCode(activityDef),
+      activityCodegenService: this.activityCodegenService,
+      onProgress,
     });
 
     return { activities };

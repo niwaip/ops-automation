@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { BuiltinSkillPermissionService } from '../permissions/builtin-skill-permission.service';
 import { ExecutableCapabilityView } from '@ops/backend-builtin-skill-contract';
+import { computeContractDigest } from '@ops/backend-runtime-capability-contract';
 
 @Injectable()
 export class BuiltinSkillCatalogProjectionService {
@@ -48,6 +49,7 @@ export class BuiltinSkillCatalogProjectionService {
       const plannerSpec = manifest?.spec?.planner;
       const inputContract = manifest?.spec?.contracts?.input?.schema || {};
       const outputContract = manifest?.spec?.contracts?.output?.schema || {};
+      const digest = activeVersion.definitionDigest;
 
       views.push({
         capabilityRef: {
@@ -61,6 +63,8 @@ export class BuiltinSkillCatalogProjectionService {
         runtimeType: plannerSpec?.runtimeType || 'workflow',
         inputSchema: inputContract,
         outputSchema: outputContract,
+        contractDigest: digest,
+        contractRef: `capability://${skill.capabilityKey}/${activeVersion.definitionVersion}`,
         accessStatus: 'authorized',
         lifecycle: (skill.lifecycle as any) || 'stable',
         supportsArtifact: plannerSpec?.supportsArtifact || false,
@@ -72,11 +76,39 @@ export class BuiltinSkillCatalogProjectionService {
       });
     }
 
-    // 2. Published Skills from SkillConfig (for legacy & standard skills)
+    // 2. Published Skills from SkillConfig (for legacy & standard skills).
+    // The Prisma schema does not declare a back-relation from SkillConfig to
+    // CapabilityRelease, so we pre-resolve the set of skill IDs that have at
+    // least one healthy deployment record via raw SQL and use that as a hard
+    // filter. Earlier code only filtered on skill_config.configStatus='published',
+    // which let stale or never-deployed skills slip into the catalog while
+    // shadowing actually-deployed skills like the web search capability.
+    const healthyDeploymentRows = await this.prisma.$queryRaw<
+      Array<{ published_skill_id: string; release_version: number | string }>
+    >`
+      SELECT DISTINCT cr.published_skill_id, cr.release_version
+      FROM capability_releases cr
+      INNER JOIN deployment_records dr ON dr.release_id = cr.id
+      WHERE cr.status = 'published'
+        AND cr.deployment_status IN ('deployed', 'succeeded', 'completed')
+        AND dr.status IN ('deployed', 'succeeded', 'completed')
+        AND dr.success = true
+        AND cr.published_skill_id IS NOT NULL
+    `;
+    const healthySkillIds = new Set(
+      healthyDeploymentRows
+        .map((row) => row.published_skill_id)
+        .filter((id): id is string => typeof id === 'string' && id.length > 0)
+    );
+
     const publishedSkills = await this.prisma.skillConfig.findMany({
       where: {
+        id: { in: Array.from(healthySkillIds) },
         isActive: true,
-        configStatus: 'published',
+        // Accept both legacy 'valid' and newer 'published' so existing rows keep
+        // working. The CapabilityRelease+DeploymentRecord filter above is the
+        // authoritative gate; this field is just a sanity check.
+        configStatus: { in: ['published', 'valid'] },
       },
       include: {
         permissions: true,
@@ -84,6 +116,11 @@ export class BuiltinSkillCatalogProjectionService {
     });
 
     for (const published of publishedSkills) {
+      // Defense-in-depth: even though the `id: { in: ... }` filter pre-narrows
+      // to healthy releases, we double-check so partially-corrupt rows cannot
+      // slip through if Prisma's relation cache is stale.
+      if (!healthySkillIds.has(published.id)) continue;
+
       // If it's the legacy alias 'markdown_artifact_writer' and we already have builtin 'platform.document.markdown-artifact-writer', skip
       if (published.name === 'markdown_artifact_writer') {
         const hasBuiltin = views.some(v => v.capabilityRef.id === 'platform.document.markdown-artifact-writer');
@@ -96,21 +133,61 @@ export class BuiltinSkillCatalogProjectionService {
         if (!isPermitted) continue;
       }
 
+      const pubInput = (published.paramsSchema as Record<string, unknown>) || {};
+      const pubOutput = (published.outputSchema as Record<string, unknown>) || {
+        type: 'object',
+        properties: {},
+        additionalProperties: true,
+      };
+      const pubDigest = computeContractDigest({
+        apiVersion: 'ops-automation/v2',
+        kind: 'Capability',
+        metadata: {
+          id: published.id,
+          version: '1.0.0',
+          sourceType: 'published_skill',
+        },
+        contracts: {
+          input: { schema: pubInput },
+          output: { schema: pubOutput },
+        },
+        runtime: { type: published.name === 'markdown_artifact_writer' ? 'artifact' : 'workflow' },
+      });
+
+const release = healthyDeploymentRows.find(
+        (r: { published_skill_id: string; release_version: number | string }) =>
+          r.published_skill_id === published.id,
+      );
+      // Use the actual release_version from the CapabilityRelease row. Earlier
+      // code hardcoded '1.0.0' here which caused downstream version-mismatch
+      // validation failures because the real value (often just '1') is what the
+      // control-plane's /resolve endpoint returns.
+      const releaseVersion = release?.release_version != null
+        ? String(release.release_version)
+        : '1.0.0';
+
       views.push({
         capabilityRef: {
           source: 'published_skill',
           id: published.id,
-          version: '1.0.0',
+          version: releaseVersion,
         },
         displayName: published.name,
         description: published.description || undefined,
         category: 'workflow',
         runtimeType: published.name === 'markdown_artifact_writer' ? 'artifact' : 'workflow',
-        inputSchema: (published.paramsSchema as Record<string, unknown>) || {},
-        outputSchema: {},
+        inputSchema: pubInput,
+        outputSchema: pubOutput,
+        contractDigest: pubDigest,
+        contractRef: `capability://${published.id}/${releaseVersion}`,
         accessStatus: 'authorized',
         lifecycle: 'stable',
         supportsArtifact: published.name === 'markdown_artifact_writer',
+        // Surface release/deployment status so downstream candidate selectors can
+        // verify this entry without a second hop to the CapabilityRelease table.
+        publishedReleaseStatus: release ? 'published' : undefined,
+        publishedDeploymentStatus: release ? 'deployed' : undefined,
+        publishedReleaseVersion: releaseVersion,
       });
     }
 

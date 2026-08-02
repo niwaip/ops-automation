@@ -1,4 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { ERROR_CODES } from '@ops/backend-error-codes';
 import { ModelService } from '../../model/model.service';
 import { CapabilityCandidateSelectorService } from '../candidate-selection/capability-candidate-selector.service';
 import { LLM_OPERATION_TEMPLATES } from '../../llm-operation/llm-operation.registry';
@@ -94,6 +95,12 @@ export class DeterministicPlanGeneratorService {
    - "node_output": 依赖上游节点的输出路径
 6. 禁止把 apiKey、token、secret、password、authorization 等凭据字段写入 inputBindings；这些字段由 Skill 发布配置或运行时默认值处理。
 7. 只输出纯 JSON 格式，严禁附带 Markdown 解释。
+8. 【关键】禁止在节点 JSON 中声明 outputContract 字段——它由规划器根据可信来源自动派生：skill 节点取自候选卡片声明的 outputs（搜索类 Skill 通常为 "searchResults"/"results"），llm_operation 节点恒为 { markdown_content: "markdown_content" }。LLM 声明的 outputContract 一律被丢弃，无法影响最终计划。
+9. 【关键】finalOutputs[i].expectedType 必须与上游节点实际输出字段的系统类型标签一致。合法取值为：
+   - "artifact_ref"：文件产物节点（supportsArtifactOutput=true 的 skill）
+   - "markdown_content"：llm_operation 汇总节点
+   - "news_item_list"：搜索节点的列表类结果
+   严禁使用 "text"、"string"、"content"、"data" 等非系统定义类型标签。
 
 【候选 Skill 能力卡片】:
 ${JSON.stringify(skillCards, null, 2)}
@@ -101,7 +108,60 @@ ${JSON.stringify(skillCards, null, 2)}
 【候选 LLM 操作卡片】:
 ${JSON.stringify(llmOperationCards, null, 2)}
 
-【目标输出 JSON Schema 示例】:
+【目标输出 JSON Schema 示例 A：搜索 + 汇总（纯文本摘要，不生成文件）】:
+{
+  "schemaVersion": "deterministic-plan/v1",
+  "plannerVersion": "v1",
+  "catalogVersion": "v1",
+  "planType": "sequential",
+  "objective": "搜索最新股票情报并汇总",
+  "originalRequest": "查询最新的股票情报然后进行总结",
+  "status": "draft",
+  "nodes": [
+    {
+      "nodeId": "search_stock_step",
+      "sequence": 1,
+      "title": "搜索股票情报",
+      "kind": "skill",
+      "skillId": "<PUBLISHED_SKILL_ID_FROM_CARDS>",
+      "skillVersion": "<EXECUTABLE_VERSION_FROM_CARDS>",
+      "runtimeType": "workflow",
+      "dependsOn": [],
+      "inputBindings": {
+        "query": { "source": "literal", "value": "最新股票行情情报" }
+      },
+      "failurePolicy": "abort"
+    },
+    {
+      "nodeId": "summarize_stocks",
+      "sequence": 2,
+      "title": "汇总股票情报",
+      "kind": "llm_operation",
+      "operationId": "summarize_list",
+      "promptTemplateId": "news-summary",
+      "promptTemplateVersion": "1",
+      "modelPolicyId": "task-default",
+      "temperature": 0,
+      "maxInputTokens": 4000,
+      "maxOutputTokens": 2000,
+      "dependsOn": ["search_stock_step"],
+      "inputBindings": {
+        "items": { "source": "node_output", "nodeId": "search_stock_step", "path": "results" }
+      },
+      "failurePolicy": "abort"
+    }
+  ],
+  "finalOutputs": [
+    {
+      "targetField": "markdown_content",
+      "fromNodeId": "summarize_stocks",
+      "fromNodeOutput": "markdown_content",
+      "expectedType": "markdown_content"
+    }
+  ]
+}
+
+【目标输出 JSON Schema 示例 B：搜索 + 汇总 + 生成文件】:
 {
   "schemaVersion": "deterministic-plan/v1",
   "plannerVersion": "v1",
@@ -123,9 +183,6 @@ ${JSON.stringify(llmOperationCards, null, 2)}
       "inputBindings": {
         "query": { "source": "literal", "value": "..." }
       },
-      "outputContract": {
-        "results": "news_item_list"
-      },
       "failurePolicy": "abort"
     },
     {
@@ -144,9 +201,6 @@ ${JSON.stringify(llmOperationCards, null, 2)}
       "inputBindings": {
         "items": { "source": "node_output", "nodeId": "search_step", "path": "results" }
       },
-      "outputContract": {
-        "markdown_content": "markdown_content"
-      },
       "failurePolicy": "abort"
     },
     {
@@ -161,9 +215,6 @@ ${JSON.stringify(llmOperationCards, null, 2)}
       "inputBindings": {
         "content": { "source": "node_output", "nodeId": "summarize_step", "path": "markdown_content" },
         "fileName": { "source": "literal", "value": "result.md" }
-      },
-      "outputContract": {
-        "artifact": "artifact_ref"
       },
       "failurePolicy": "abort"
     }
@@ -253,7 +304,7 @@ ${JSON.stringify(llmOperationCards, null, 2)}
           if (card.supportsArtifactOutput) {
             (node as any).supportsArtifact = true;
           }
-          this.normalizeSkillOutputContract(node);
+          this.normalizeSkillOutputContract(node, card);
           this.removeSensitiveInputBindings(node.inputBindings);
           this.validateAndNormalizeInputBindingEnums(node.inputBindings, card);
         } else if (node.kind === 'llm_operation') {
@@ -268,9 +319,27 @@ ${JSON.stringify(llmOperationCards, null, 2)}
             node.maxInputTokens = tmpl.maxInputTokens;
             node.maxOutputTokens = tmpl.maxOutputTokens;
           }
+          // Normalize llm_operation outputContract: only allow well-known output field names.
+          // LLMs frequently hallucinate field names like "summary", "content", "text" for
+          // what should always be "markdown_content".
+          this.normalizeLlmOperationOutputContract(node);
         }
       }
     }
+
+    // After normalizing all node outputContracts, align finalOutputs.expectedType so that
+    // it always matches the actual declared type in the producer node's outputContract.
+    // This prevents the FINAL_OUTPUT_UNSATISFIED type-mismatch error at validation time.
+    this.alignFinalOutputsExpectedType(parsed);
+
+    // Align node_output inputBinding paths to the actual key present in the upstream
+    // node's (already-normalized) outputContract.
+    // Background: different search Skills register their output field under different names
+    // ("results", "searchResults", "news_item_list"). The LLM learns from the example in
+    // the system prompt that the path is "results", but after normalizeSkillOutputContract()
+    // the actual key may be "searchResults". Without this alignment the static validator
+    // raises INPUT_TYPE_MISMATCH because binding.path doesn't exist in outputContract.
+    this.alignInputBindingPaths(parsed);
 
     if (requiresArtifactOutput) {
       this.assertPlanProducesArtifact(parsed, skillCards);
@@ -279,14 +348,149 @@ ${JSON.stringify(llmOperationCards, null, 2)}
     return parsed as DeterministicPlanDraftV1;
   }
 
-  private normalizeSkillOutputContract(node: any): void {
-    if (!node.outputContract || typeof node.outputContract !== 'object') {
+  /**
+   * Derive a Skill node's outputContract from the trusted candidate card's
+   * declared `outputs` (fix ⑤). The LLM's own outputContract declaration is
+   * DISCARDED — it can only hallucinate field names (e.g. `{"data": "string"}`
+   * for a search skill that actually declares `{searchResults,
+   * responseMetadata}`), which then fail runtime contract validation as
+   * `missing expected output field '<hallucinated>'` even though the workflow
+   * returned valid data under its real field names. The card is the only
+   * trusted source for both field names and type tags.
+   */
+  private normalizeSkillOutputContract(node: any, card: any): void {
+    if (!card?.outputs || typeof card.outputs !== 'object') {
+      // Fail closed: the candidate card does not declare any authoritative
+      // outputs, so any LLM-declared `outputContract` (e.g. `{data: "string"}`)
+      // is unverifiable and would almost certainly fail the runtime contract
+      // validator. Reject the plan with a clear error instead of silently
+      // accepting a hallucinated contract.
+      const llmFields =
+        node.outputContract && typeof node.outputContract === 'object'
+          ? Object.keys(node.outputContract)
+          : [];
+      if (llmFields.length > 0) {
+        const err: any = new Error(
+          `Planner generated outputContract ${JSON.stringify(node.outputContract)} for skill '${node.skillId || node.nodeId}' but the candidate card declares no outputs. ` +
+            `Either the skill is missing outputSchema in the registry or the LLM hallucinated fields. ` +
+            `Refusing to freeze the plan so the runtime does not silently fail on a phantom contract.`,
+        );
+        err.code = 'PLANNER_OUTPUT_INVALID';
+        throw err;
+      }
       return;
     }
 
-    for (const fieldName of Object.keys(node.outputContract)) {
+    // Derived exclusively from the card — the LLM's type tags are untrusted.
+    const canonical: Record<string, string> = {};
+    for (const [fieldName, declaredType] of Object.entries(card.outputs)) {
+      canonical[fieldName] = typeof declaredType === 'string' ? declaredType : 'string';
+    }
+
+    // Backward-compat: the search-alias type tag is what downstream consumers
+    // (e.g. the scheduler's alias map) key off, so keep normalizing it.
+    for (const fieldName of Object.keys(canonical)) {
       if (['searchResults', 'results', 'news_item_list'].includes(fieldName)) {
-        node.outputContract[fieldName] = 'news_item_list';
+        canonical[fieldName] = 'news_item_list';
+      }
+    }
+
+    node.outputContract = canonical;
+  }
+
+  /**
+   * Derive an llm_operation node's outputContract (fix ⑤). The LLM's own
+   * declaration is DISCARDED — an llm_operation node always exposes exactly
+   * `{ markdown_content: "markdown_content" }` in this system. LLMs commonly
+   * hallucinate field names like "summary", "content", "text", "result"; any
+   * such declaration would fail FINAL_OUTPUT_UNSATISFIED validation later.
+   */
+  private normalizeLlmOperationOutputContract(node: any): void {
+    const contract = node.outputContract;
+    if (contract && typeof contract === 'object') {
+      const unexpected = Object.keys(contract).filter((key) => key !== 'markdown_content');
+      if (unexpected.length > 0) {
+        this.logger.warn(
+          `llm_operation node '${node.nodeId}' declared outputContract field(s) ${unexpected.join(', ')} — ` +
+            `ignoring LLM-declared outputContract (fix ⑤, derived contract used instead)`,
+        );
+      }
+    }
+    node.outputContract = { markdown_content: 'markdown_content' };
+  }
+
+  /**
+   * Align node_output inputBinding paths to the actual key present in the upstream
+   * node's (already-normalized) outputContract.
+   *
+   * Problem: Different search Skills register their result field under different names
+   * ("searchResults", "results", "news_item_list"). After normalizeSkillOutputContract()
+   * the outputContract key reflects the real field name from the Skill's outputParams.
+   * The LLM, however, always writes binding.path = "results" (from the system-prompt
+   * example). When the real key is "searchResults", the static validator raises
+   * INPUT_TYPE_MISMATCH because outputContract["results"] is undefined.
+   *
+   * Strategy: after all outputContracts are finalized, walk every node_output binding.
+   * If its path is not found in the upstream outputContract but belongs to the
+   * well-known search-alias set, replace it with the alias key that actually exists.
+   */
+  private alignInputBindingPaths(parsed: any): void {
+    if (!Array.isArray(parsed.nodes)) return;
+    const nodeById = new Map<string, any>(parsed.nodes.map((n: any) => [n.nodeId, n]));
+    const SEARCH_ALIASES = new Set(['results', 'searchResults', 'news_item_list']);
+
+    for (const node of parsed.nodes) {
+      if (!node.inputBindings || typeof node.inputBindings !== 'object') continue;
+
+      for (const [fieldName, binding] of Object.entries(node.inputBindings) as [string, any][]) {
+        if (!binding || binding.source !== 'node_output') continue;
+
+        const upstreamId = binding.nodeId || binding.fromNodeId || '';
+        const upstreamNode = nodeById.get(upstreamId);
+        if (!upstreamNode?.outputContract || typeof upstreamNode.outputContract !== 'object') continue;
+
+        const outPath: string = binding.path || binding.outputPath || '';
+        // Path is already correct — nothing to do.
+        if (upstreamNode.outputContract[outPath] !== undefined) continue;
+
+        // Path is a known search-result alias but the upstream contract uses a different one.
+        if (SEARCH_ALIASES.has(outPath)) {
+          const realKey = Object.keys(upstreamNode.outputContract).find((k) => SEARCH_ALIASES.has(k));
+          if (realKey) {
+            this.logger.warn(
+              `Aligning inputBinding path '${outPath}' → '${realKey}' ` +
+              `for field '${fieldName}' in node '${node.nodeId}' ` +
+              `(upstream node '${upstreamId}' declares '${realKey}', not '${outPath}')`,
+            );
+            binding.path = realKey;
+          }
+        }
+      }
+    }
+  }
+
+  private alignFinalOutputsExpectedType(parsed: any): void {
+    if (!Array.isArray(parsed.nodes) || !Array.isArray(parsed.finalOutputs)) {
+      return;
+    }
+
+    const nodeById = new Map<string, any>(parsed.nodes.map((n: any) => [n.nodeId, n]));
+
+    for (const output of parsed.finalOutputs) {
+      if (!output || typeof output !== 'object') continue;
+
+      const producerNode = nodeById.get(output.fromNodeId);
+      if (!producerNode || !producerNode.outputContract) continue;
+
+      const declaredType = producerNode.outputContract[output.fromNodeOutput];
+      if (typeof declaredType !== 'string') continue;
+
+      if (output.expectedType !== declaredType) {
+        this.logger.warn(
+          `finalOutput '${output.targetField}' expectedType '${output.expectedType}' ` +
+          `mismatches node '${output.fromNodeId}' declared type '${declaredType}' — auto-aligning`,
+        );
+        output.expectedType = declaredType;
       }
     }
   }
@@ -374,7 +578,7 @@ ${JSON.stringify(llmOperationCards, null, 2)}
         continue;
       }
 
-      // LLM 输出了非法 enum literal。优先用 defaultValue 顶上，无 default 则丢弃。
+      // LLM 输出了非法 enum literal。按设计规范 §9.2 决策树：优先用 defaultValue 顶上；无 default 则拒绝冻结并抛出 INVALID_ENUM_LITERAL。
       const defaultValue = decoded.defaultValue;
       if (defaultValue !== undefined && enumValues.includes(defaultValue)) {
         this.logger.warn(
@@ -382,10 +586,14 @@ ${JSON.stringify(llmOperationCards, null, 2)}
         );
         binding.value = defaultValue;
       } else {
-        this.logger.warn(
-          `Plan inputBindings.${fieldName} literal '${rawValue}' not in enum [${enumValues.join(',')}] and no valid defaultValue; dropping binding (skill ${card.id})`,
-        );
-        delete inputBindings[fieldName];
+        const msg = `Plan inputBindings.${fieldName} literal '${rawValue}' is invalid for enum [${enumValues.join(',')}] and has no default value`;
+        this.logger.error(msg);
+        throw new BadRequestException({
+          code: ERROR_CODES.INVALID_ENUM_LITERAL,
+          message: msg,
+          nodeId: card.id,
+          field: fieldName,
+        });
       }
     }
   }

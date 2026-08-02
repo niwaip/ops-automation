@@ -11,6 +11,7 @@
 - 浏览器录制模块概要：[browser-recorder-module-overview.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/browser-recorder-module-overview.md)
 - 浏览器模板生成与发布桥接概要：[browser-template-generation-and-release-bridge-overview.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/browser-template-generation-and-release-bridge-overview.md)
 - 确定性多步骤任务拆分方案：[deterministic-task-decomposition-design.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/deterministic-task-decomposition-design.md)
+- 统一多步骤能力契约、AI 代码生成与验证门禁设计：[unified-capability-contract-and-validation-design.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/unified-capability-contract-and-validation-design.md)
 - 平台内置工作流 Skill 独立化设计：[builtin-workflow-skill-platform-design.md](file:///Users/chain/Documents/MyProject/ops-automation/docs/design/builtin-workflow-skill-platform-design.md)
 
 ## 补充资料

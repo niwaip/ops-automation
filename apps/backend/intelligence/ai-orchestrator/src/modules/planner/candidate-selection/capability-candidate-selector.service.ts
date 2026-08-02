@@ -122,13 +122,38 @@ export class CapabilityCandidateSelectorService {
         continue;
       }
 
+      // P0 hard rule (§15.1): a custom skill without an authoritative output
+      // schema must NEVER enter the deterministic candidate set. Publishing
+      // now writes skill_configs.output_schema (fix ①), so a custom skill
+      // that reaches here without one is a schema-less capability.
+      if (!isBuiltin) {
+        const authoritativeOutput =
+          skill.outputSchema ||
+          skill.outputParams ||
+          skill.runtimeHints?.outputParams ||
+          skill.apiEndpoints?.runtimeMetadata?.outputParams;
+        if (
+          !authoritativeOutput ||
+          typeof authoritativeOutput !== 'object' ||
+          Array.isArray(authoritativeOutput) ||
+          Object.keys(authoritativeOutput).length === 0
+        ) {
+          this.logger.warn(
+            `Skipping skill ${skillId}: no output schema declared — 无输出 Schema 不能进入确定性候选集 (P0).`,
+          );
+          continue;
+        }
+      }
+
       const summary = (skill.description || skill.skillName || skill.name || '').substring(0, 200);
       const inputSchema = skill.paramsSchema || skill.inputSchema || skill.params;
+      // The enriched DTO's outputSchema is the authoritative contract when
+      // present; legacy projections are only fallbacks for older sources.
       const outputSchema =
+        skill.outputSchema ||
         skill.outputParams ||
         skill.runtimeHints?.outputParams ||
-        skill.apiEndpoints?.runtimeMetadata?.outputParams ||
-        skill.outputSchema;
+        skill.apiEndpoints?.runtimeMetadata?.outputParams;
       const runtimeMetadata = skill.apiEndpoints?.runtimeMetadata;
 
       const runtimeType = this.mapExecutionTypeToRuntimeType(
@@ -205,7 +230,12 @@ export class CapabilityCandidateSelectorService {
   }
 
   private extractSchemaSummary(schema: any): Record<string, string> {
-    if (!schema || typeof schema !== 'object') return { data: 'string' };
+    // Return an empty object when the schema is absent or not an object.
+    // Callers (normalizeSkillOutputContract) treat an empty outputs map as
+    // "no declared outputs" and leave the node's outputContract untouched.
+    // DO NOT fall back to { data: 'string' } — that phantom field would
+    // propagate into the outputContract and cause runtime missing-field errors.
+    if (!schema || typeof schema !== 'object') return {};
     const props = schema.properties || schema;
     const res: Record<string, string> = {};
 
@@ -250,7 +280,10 @@ export class CapabilityCandidateSelectorService {
         }
       }
     }
-    return Object.keys(res).length > 0 ? res : { data: 'string' };
+    // Return the parsed result as-is (may be empty).
+    // An empty map signals "no declared outputs" to callers; it must NOT be
+    // replaced with { data: 'string' } which would create a phantom field.
+    return res;
   }
 
   /**

@@ -4,6 +4,8 @@ import {
 } from './builtin-activity.registry';
 import type {
   WorkflowDsl,
+  WorkflowDslV2Field,
+  WorkflowDslV2Output,
   WorkflowInputParamDefinition,
   WorkflowInputParamType,
   WorkflowStep,
@@ -549,6 +551,163 @@ export function normalizeDraftOutputParams(
     },
     {}
   );
+}
+
+function inferV2OutputFieldType(schemaHint: unknown): string {
+  const hint = String(schemaHint || '').toLowerCase();
+  if (/(number|int|float|double|decimal)/.test(hint)) {
+    return 'number';
+  }
+  if (/(bool|boolean)/.test(hint)) {
+    return 'boolean';
+  }
+  if (/(array|list|\[\])/.test(hint)) {
+    return 'array';
+  }
+  if (/(object|map|dict)/.test(hint)) {
+    return 'object';
+  }
+  return 'string';
+}
+
+/**
+ * P1-C: compiler-side v2Output producer (design doc §8.3). The AI draft plan's
+ * `outputParams` declare the workflow's final output fields (key → sourceStep),
+ * but the AI must NOT author the Result Builder mapping — so this function
+ * deterministically derives `WorkflowDslV2Output` from outputParams by mapping
+ * each declared field to a provable JSON path in its source step's normalized
+ * result (as produced by the deterministic builders):
+ *
+ * - structuredTransform / aiStructuredTransform (JSON mode): `$.{key}` when the
+ *   field name is declared in the step's outputSchema (the activity guarantees
+ *   every outputSchema key exists in the result dict);
+ * - structuredTransform / aiStructuredTransform (text mode): `$` (the rendered
+ *   text scalar);
+ * - httpRequest (responseMode bodyMap): `$.{key}` for declared mapping keys;
+ * - httpRequest (responseMode full): `$.{key}` for known envelope keys.
+ *
+ * Fields without a provable path are skipped — no guessing, so legacy behavior
+ * is preserved whenever the shape is unknown. Derived fields are `required:
+ * false` on purpose: for AI-draft workflows the transform may legitimately
+ * yield `None` for a declared key, and fail-fast assertions (P1-A) are only
+ * safe for authoritative skill contracts.
+ */
+export function deriveV2OutputFromOutputParams(args: {
+  outputParams?: Record<string, { description?: string; sourceStep?: string }>;
+  steps: WorkflowStep[];
+}): WorkflowDslV2Output | undefined {
+  const { outputParams, steps } = args;
+  const entries = Object.entries(outputParams || {}).filter(([key]) => String(key || '').trim());
+  if (entries.length === 0) {
+    return undefined;
+  }
+  const stepsById = new Map<string, WorkflowStep>();
+  for (const step of steps || []) {
+    const stepId = String(step?.id || '').trim();
+    if (stepId) {
+      stepsById.set(stepId, step);
+    }
+  }
+
+  const fields: Record<string, WorkflowDslV2Field> = {};
+  for (const [rawKey, rawSpec] of entries) {
+    const fieldName = String(rawKey || '').trim();
+    const sourceStepId = String(rawSpec?.sourceStep || '').trim();
+    const sourceStep = stepsById.get(sourceStepId);
+    if (!fieldName || !sourceStep) {
+      continue;
+    }
+    const description = String(rawSpec?.description || '').trim() || undefined;
+    const activityRef = String(sourceStep.activityRef || '').trim();
+    const stepInput =
+      sourceStep.input && typeof sourceStep.input === 'object' && !Array.isArray(sourceStep.input)
+        ? (sourceStep.input as Record<string, any>)
+        : {};
+
+    if (
+      activityRef === 'builtin:structuredTransform' ||
+      activityRef === 'builtin:aiStructuredTransform'
+    ) {
+      const config =
+        stepInput[STRUCTURED_TRANSFORM_STEP_CONFIG_KEY] &&
+        typeof stepInput[STRUCTURED_TRANSFORM_STEP_CONFIG_KEY] === 'object' &&
+        !Array.isArray(stepInput[STRUCTURED_TRANSFORM_STEP_CONFIG_KEY])
+          ? (stepInput[STRUCTURED_TRANSFORM_STEP_CONFIG_KEY] as Record<string, any>)
+          : {};
+      const outputMode = String(config.outputMode || '').trim().toLowerCase() || 'json';
+      if (outputMode === 'text') {
+        fields[fieldName] = {
+          type: 'string',
+          required: false,
+          source: { step: sourceStepId, path: '$' },
+          ...(description ? { description } : {}),
+        };
+        continue;
+      }
+      const outputSchema =
+        config.outputSchema && typeof config.outputSchema === 'object' && !Array.isArray(config.outputSchema)
+          ? (config.outputSchema as Record<string, any>)
+          : {};
+      if (Object.prototype.hasOwnProperty.call(outputSchema, fieldName)) {
+        fields[fieldName] = {
+          type: inferV2OutputFieldType(outputSchema[fieldName]),
+          required: false,
+          source: { step: sourceStepId, path: `$.${fieldName}` },
+          ...(description ? { description } : {}),
+        };
+      }
+      continue;
+    }
+
+    if (activityRef === 'builtin:httpRequest') {
+      const config =
+        stepInput[HTTP_REQUEST_STEP_CONFIG_KEY] &&
+        typeof stepInput[HTTP_REQUEST_STEP_CONFIG_KEY] === 'object' &&
+        !Array.isArray(stepInput[HTTP_REQUEST_STEP_CONFIG_KEY])
+          ? (stepInput[HTTP_REQUEST_STEP_CONFIG_KEY] as Record<string, any>)
+          : {};
+      const responseMode = String(config.responseMode || '').trim().toLowerCase() || 'body';
+      let provablePath: string | undefined;
+      if (responseMode === 'bodymap') {
+        const mappings =
+          config.responseFieldMappings &&
+          typeof config.responseFieldMappings === 'object' &&
+          !Array.isArray(config.responseFieldMappings)
+            ? (config.responseFieldMappings as Record<string, any>)
+            : {};
+        if (Object.prototype.hasOwnProperty.call(mappings, fieldName)) {
+          provablePath = `$.${fieldName}`;
+        }
+      } else if (responseMode === 'full') {
+        const knownEnvelopeKeys = new Set([
+          'body',
+          'text',
+          'statusCode',
+          'headers',
+          'status',
+          'ok',
+          'method',
+          'url',
+        ]);
+        if (knownEnvelopeKeys.has(fieldName)) {
+          provablePath = `$.${fieldName}`;
+        }
+      }
+      if (provablePath) {
+        fields[fieldName] = {
+          type: fieldName === 'body' || fieldName === 'text' ? 'string' : undefined,
+          required: false,
+          source: { step: sourceStepId, path: provablePath },
+          ...(description ? { description } : {}),
+        };
+      }
+    }
+  }
+
+  if (Object.keys(fields).length === 0) {
+    return undefined;
+  }
+  return { fields };
 }
 
 function inferStructuredTransformOutputMode(

@@ -78,16 +78,23 @@ docker/sql/exports/platform-initial-data-<timestamp>.sql
 
 ## Current migration sources
 
-### Platform baseline
+### Single authoritative migration sequence (#70 merge)
 
-- `apps/backend/core/platform/prisma/migrations/20260608_init_platform_baseline/migration.sql`
+The platform and execution-control packages share one PostgreSQL database
+and one canonical `schema.prisma` (mirrored byte-for-byte in both packages).
+All schema changes live in ONE authoritative sequence:
 
-### Shared incremental SQL
+- `apps/backend/core/platform/prisma/migrations/`
 
-- `apps/backend/execution-control/control-plane/prisma/migrations/20260515143000_add_execution_phases/migration.sql`
-- `apps/backend/execution-control/control-plane/prisma/migrations/20260516140000_add_execution_phase_steps/migration.sql`
-- `apps/backend/execution-control/control-plane/prisma/migrations/20260625000000_add_scheduler/migration.sql`
-- `apps/backend/execution-control/control-plane/prisma/migrations/20260728120000_add_deterministic_execution_plan/migration.sql`
+Applied via `prisma migrate deploy --schema apps/backend/core/platform/prisma/schema.prisma`
+(`docker/scripts/apply-latest-db-schema-in-container.sh`). The former
+control-plane incremental SQL list and the manual UUID-defaults repair were
+folded into this sequence (`20260609000000_add_execution_phases` /
+`20260609010000_add_execution_phase_steps` / `20260625000000_add_scheduler` /
+`20260728120000_add_deterministic_execution_plan` /
+`20260731110000_add_execution_step_output_schema_json` /
+`20260801120000_add_execution_step_input_schema_json` /
+`20260802000000_fix_uuid_id_defaults`).
 
 ### Placeholder migrations
 

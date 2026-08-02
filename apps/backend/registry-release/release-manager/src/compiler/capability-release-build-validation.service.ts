@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
+import { jsonSchemaValidator } from '@ops/backend-runtime-capability-contract';
 import type {
   ReleaseManagerExecutionFlowValidationFacadePort,
   ReleaseManagerPrismaPort,
@@ -14,6 +15,7 @@ import { CapabilityReleaseBrowserRecordingService } from './capability-release-b
 import { CapabilityReleaseRuntimeService } from '../publisher/capability-release-runtime.service';
 import { CapabilityReleaseSkillDraftService } from '../capability-release-skill-draft.service';
 import { CapabilityReleaseTemporalSchemaService } from './capability-release-temporal-schema.service';
+import { ContractLintService, ContractLintResult } from '../validator/contract-lint.service';
 import {
   CapabilityBuildDTO,
   CapabilityBuildType,
@@ -61,8 +63,30 @@ export class CapabilityReleaseBuildValidationService {
     private readonly capabilityReleaseRuntimeService: CapabilityReleaseRuntimeService,
     private readonly capabilityReleaseBrowserRecordingService: CapabilityReleaseBrowserRecordingService,
     private readonly capabilityReleaseSkillDraftService: CapabilityReleaseSkillDraftService,
-    private readonly capabilityReleaseTemporalSchemaService: CapabilityReleaseTemporalSchemaService
+    private readonly capabilityReleaseTemporalSchemaService: CapabilityReleaseTemporalSchemaService,
+    private readonly contractLintService: ContractLintService
   ) {}
+
+  /**
+   * Gate 0 — Contract Lint (§10.1) at BUILD time, before codegen. Lints the
+   * raw source snapshot's declarative contract when one is present; returns
+   * undefined for payloads without declarative contracts (build proceeds —
+   * the publish-time Gate 0 blocks schema-less publishes per P0 §15.1).
+   */
+  private runGate0ContractLint(
+    release: CapabilityReleaseDTO,
+    snapshot: CapabilitySourceSnapshotDTO
+  ): ContractLintResult | undefined {
+    const payload = (snapshot.sourcePayload as Record<string, unknown>) || {};
+    const hasDeclarativeContent =
+      payload.contracts ||
+      payload.outputSchema ||
+      (payload.manifest && typeof payload.manifest === 'object');
+    if (!hasDeclarativeContent) {
+      return undefined;
+    }
+    return this.contractLintService.lintContract(payload);
+  }
 
   async build(
     id: string,
@@ -111,6 +135,20 @@ export class CapabilityReleaseBuildValidationService {
 
       logs.push(`[${new Date().toISOString()}] 开始构建，类型: ${buildType}`);
       logs.push(`[${new Date().toISOString()}] 模型: ${modelId}`);
+
+      // Gate 0 — Contract Lint (§10.1): "失败时禁止进入代码生成". The lint
+      // must run BEFORE any codegen/artifact binding, not at publish time when
+      // codegen + sandbox have already executed. Raw payloads that declare no
+      // contract cannot be linted here (best-effort skip); the publish-time
+      // gate enforces the P0 "no schema → no publish" rule instead.
+      const gate0Lint = this.runGate0ContractLint(release, snapshot);
+      if (gate0Lint && !gate0Lint.passed) {
+        throw new Error(
+          `CONTRACT_LINT_FAILED: 契约 Contract Lint 未通过，禁止进入代码生成: ${gate0Lint.errors
+            .map((e) => `${e.rule}@${e.path}: ${e.message}`)
+            .join('; ')}`
+        );
+      }
 
       if (release.sourceType === 'temporal_workflow') {
         logs.push(
@@ -256,6 +294,19 @@ export class CapabilityReleaseBuildValidationService {
 
       pushLog(`[${new Date().toISOString()}] 开始构建，类型: ${buildType}`);
       pushLog(`[${new Date().toISOString()}] 模型: ${modelId}`);
+
+      // Gate 0 — Contract Lint (§10.1) before any codegen/artifact binding.
+      const gate0Lint = this.runGate0ContractLint(release, snapshot);
+      if (gate0Lint && !gate0Lint.passed) {
+        pushLog(`[${new Date().toISOString()}] CONTRACT_LINT_FAILED: 契约 Lint 未通过，禁止进入代码生成`);
+        const lintErrors = gate0Lint.errors.map((e) => `${e.rule}@${e.path}: ${e.message}`).join('; ');
+        onEvent('error', {
+          message: `CONTRACT_LINT_FAILED: ${lintErrors}`,
+          releaseId: id,
+          buildId,
+        });
+        throw new Error(`CONTRACT_LINT_FAILED: ${lintErrors}`);
+      }
 
       if (release.sourceType === 'temporal_workflow') {
         onEvent('status', { phase: 'loading_workflow_artifact', buildId });
@@ -607,6 +658,19 @@ export class CapabilityReleaseBuildValidationService {
         throw new Error('模板/浏览器能力缺少可用模板标识，无法执行 Sandbox 校验');
       }
 
+      // Gate 2 Output Schema Validation
+      if (success && resultSnapshot) {
+        const gate2 = this.applyGate2OutputSchemaValidation(snapshot, resultSnapshot, score);
+        success = gate2.success;
+        score = gate2.score;
+        if (gate2.errorSummary) {
+          errorSummary = gate2.errorSummary;
+          logs.push(
+            `[Gate 2 Output Schema Violation] ${gate2.errorSummary.replace('OUTPUT_SCHEMA_VIOLATION: ', '')}`
+          );
+        }
+      }
+
       await this.finishValidation(
         validationId,
         id,
@@ -778,6 +842,22 @@ export class CapabilityReleaseBuildValidationService {
         errorSummary = validation.warnings?.[0] || null;
       } else {
         throw new Error('模板/浏览器能力缺少可用模板标识，无法执行 Sandbox 校验');
+      }
+
+      // Gate 2 Output Schema Validation (stream path — mirrors validateSandbox)
+      if (success && resultSnapshot) {
+        const gate2 = this.applyGate2OutputSchemaValidation(snapshot, resultSnapshot, score);
+        success = gate2.success;
+        score = gate2.score;
+        if (gate2.errorSummary) {
+          errorSummary = gate2.errorSummary;
+          const logLine = `[Gate 2 Output Schema Violation] ${gate2.errorSummary.replace(
+            'OUTPUT_SCHEMA_VIOLATION: ',
+            ''
+          )}`;
+          logs.push(logLine);
+          onEvent('log', { message: logLine });
+        }
       }
 
       await this.finishValidation(
@@ -1167,6 +1247,64 @@ export class CapabilityReleaseBuildValidationService {
       score,
       errors,
       warnings,
+    };
+  }
+
+  /**
+   * Gate 2 (output schema conformance) — when the release declares an
+   * authoritative output schema (`contracts.output.schema` or top-level
+   * `outputSchema`), the sandbox result must validate against it. A violation
+   * fails the validation with an OUTPUT_SCHEMA_VIOLATION summary. Shared by
+   * the synchronous and streaming sandbox paths so both gates stay identical.
+   */
+  private applyGate2OutputSchemaValidation(
+    snapshot: CapabilitySourceSnapshotDTO,
+    resultSnapshot: Record<string, unknown>,
+    score: number
+  ): { success: boolean; score: number; errorSummary: string | null } {
+    const payload = (snapshot?.sourcePayload as Record<string, unknown>) || {};
+    const contracts =
+      (payload?.contracts as Record<string, unknown>) ||
+      (payload?.manifest as any)?.spec?.contracts;
+    const outputContract = (contracts?.output as Record<string, unknown>) || {};
+    const outputSchema =
+      outputContract?.schema || (payload?.outputSchema as Record<string, unknown>);
+    if (
+      !outputSchema ||
+      typeof outputSchema !== 'object' ||
+      Object.keys(outputSchema).length === 0
+    ) {
+      return { success: true, score, errorSummary: null };
+    }
+    // 契约 dataPath 优先（§7.1：迁移期根 $.result.businessData、目标期根 $.data，
+    // 均相对验证 agent 返回的 workflow 返回值解析）；未声明时保留 legacy 默认
+    // resultSnapshot 坐标的 $.result.businessData 语义。
+    // falsy-safe：extractDataByPath 仅在路径缺失时返回 undefined，合法的 falsy
+    // 业务值（0 / false / '' / []）必须原样保留，不能整体回退到整个 result。
+    const contractDataPath =
+      typeof outputContract?.dataPath === 'string' && outputContract.dataPath.trim()
+        ? outputContract.dataPath.trim()
+        : undefined;
+    const workflowResult =
+      resultSnapshot && typeof resultSnapshot === 'object' ? resultSnapshot.result : undefined;
+    const extractedBusinessData = contractDataPath
+      ? jsonSchemaValidator.extractDataByPath(workflowResult, contractDataPath)
+      : jsonSchemaValidator.extractDataByPath(resultSnapshot, '$.result.businessData');
+    const businessData = extractedBusinessData === undefined ? resultSnapshot : extractedBusinessData;
+    const validationResult = jsonSchemaValidator.validate(
+      businessData,
+      outputSchema as Record<string, unknown>
+    );
+    if (validationResult.valid) {
+      return { success: true, score, errorSummary: null };
+    }
+    const schemaErrStr = validationResult.errors
+      ?.map((e: { path: string; message: string }) => `${e.path}: ${e.message}`)
+      .join('; ');
+    return {
+      success: false,
+      score: Math.min(score, 40),
+      errorSummary: `OUTPUT_SCHEMA_VIOLATION: ${schemaErrStr}`,
     };
   }
 

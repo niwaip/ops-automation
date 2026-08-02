@@ -149,6 +149,31 @@ export interface WorkflowInputPolicy {
   params: Record<string, WorkflowParamPolicy>;
 }
 
+export interface WorkflowDslV2FieldSource {
+  step?: string;
+  path?: string;
+  expression?: {
+    kind: 'length' | 'identity' | 'string_format';
+    source?: {
+      step?: string;
+      path?: string;
+    };
+  };
+}
+
+export interface WorkflowDslV2Field {
+  type?: string;
+  required?: boolean;
+  source?: WorkflowDslV2FieldSource;
+  description?: string;
+}
+
+export interface WorkflowDslV2Output {
+  schemaRef?: string;
+  dataPath?: string;
+  fields?: Record<string, WorkflowDslV2Field>;
+}
+
 export interface WorkflowDsl {
   name: string;
   workflowClassName?: string;
@@ -159,6 +184,7 @@ export interface WorkflowDsl {
   inputParams?: Record<string, WorkflowInputParamDefinition>;
   inputPolicy?: WorkflowInputPolicy;
   outputParams?: Record<string, { description?: string; sourceStep?: string }>;
+  v2Output?: WorkflowDslV2Output;
   extraPrompt?: string;
   workflowExecutionTimeout?: string;
   workflowRunTimeout?: string;

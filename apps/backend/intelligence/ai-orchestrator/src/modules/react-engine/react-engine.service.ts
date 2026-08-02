@@ -696,8 +696,22 @@ export class ReActEngineService {
           if (fallbackSwitched) {
             continue;
           }
-          state.isWaitingForUserInput = true;
-          state.observation = recoveryAction.message || state.observation;
+          yield {
+            type: StreamEventType.ERROR,
+            content:
+              state.lastToolResult?.output ||
+              recoveryAction.message ||
+              `模型 ${config.modelId} 未初始化且无可用切面模型`,
+            data: {
+              code: state.lastToolResult?.code || 'model_not_initialized',
+              severity: 'error',
+              taskStatus: 'failed',
+              meta: state.lastToolResult?.meta,
+              promptDebug: this.buildPromptDebugPayload(state, context),
+            },
+          };
+          state.isFinished = true;
+          break;
         }
       }
 

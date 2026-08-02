@@ -239,7 +239,8 @@ describe('DeterministicPlanGeneratorService', () => {
         userRequest: '查询最新的AI新闻 并且进行总结',
         availableSkills: [{ id: 'skill-search' }],
       });
-      expect(plan.nodes[0].inputBindings.topic).toEqual({
+      const targetNode = plan.nodes[0] as any;
+      expect(targetNode.inputBindings.topic).toEqual({
         source: 'literal',
         value: 'general',
       });
@@ -251,14 +252,15 @@ describe('DeterministicPlanGeneratorService', () => {
         userRequest: '查询最新新闻',
         availableSkills: [{ id: 'skill-search' }],
       });
-      expect(plan.nodes[0].inputBindings.topic).toEqual({
+      const targetNode = plan.nodes[0] as any;
+      expect(targetNode.inputBindings.topic).toEqual({
         source: 'literal',
         value: 'news',
       });
     });
 
-    it('drops binding when literal not in enum and no defaultValue available', async () => {
-      // 没有 default 时，丢弃 binding 比传非法值更安全
+    it('rejects freezing when literal not in enum and no defaultValue available (INVALID_ENUM_LITERAL)', async () => {
+      // 没有 default 时，拒绝冻结并抛出 INVALID_ENUM_LITERAL 异常
       const content = JSON.stringify({
         schemaVersion: 'deterministic-plan/v1',
         plannerVersion: 'v1',
@@ -310,11 +312,12 @@ describe('DeterministicPlanGeneratorService', () => {
       };
       const service = new DeterministicPlanGeneratorService(modelService as any, candidateSelector as any);
 
-      const plan = await service.generatePlan({
-        userRequest: '搜索',
-        availableSkills: [{ id: 'skill-search' }],
-      });
-      expect(plan.nodes[0].inputBindings.topic).toBeUndefined();
+      await expect(
+        service.generatePlan({
+          userRequest: '搜索',
+          availableSkills: [{ id: 'skill-search' }],
+        })
+      ).rejects.toThrow();
     });
 
     it('leaves non-literal bindings (e.g. node_output) untouched', async () => {
@@ -350,11 +353,433 @@ describe('DeterministicPlanGeneratorService', () => {
         userRequest: '搜索',
         availableSkills: [{ id: 'skill-search' }],
       });
-      expect(plan.nodes[0].inputBindings.topic).toEqual({
+      const targetNode = plan.nodes[0] as any;
+      expect(targetNode.inputBindings.topic).toEqual({
         source: 'node_output',
         nodeId: 'prev',
         outputKey: 'topic',
       });
     });
   });
+
+  describe('outputContract reconciliation against trusted candidate card outputs', () => {
+    const buildContractPlanContent = (llmContract: Record<string, string>) =>
+      JSON.stringify({
+        schemaVersion: 'deterministic-plan/v1',
+        plannerVersion: 'v1',
+        catalogVersion: 'v1',
+        planType: 'single',
+        objective: '检索股票情报并总结',
+        originalRequest: '',
+        status: 'draft',
+        nodes: [
+          {
+            nodeId: 'search_stocks',
+            sequence: 1,
+            title: '检索股票情报',
+            kind: 'skill',
+            skillId: 'skill-search-stocks',
+            skillVersion: '1',
+            runtimeType: 'workflow',
+            dependsOn: [],
+            inputBindings: {
+              query: { source: 'literal', value: '股票情报 最新资讯' },
+              topic: { source: 'literal', value: 'finance' },
+              max_results: { source: 'literal', value: 10 },
+            },
+            outputContract: llmContract,
+            failurePolicy: 'abort',
+          },
+        ],
+        finalOutputs: [
+          {
+            targetField: 'data',
+            fromNodeId: 'search_stocks',
+            fromNodeOutput: 'data',
+            expectedType: 'string',
+          },
+        ],
+      });
+
+    const createContractService = (content: string) => {
+      const modelService = {
+        getPreferredDefaultModel: jest.fn().mockReturnValue({ id: 'model-1', name: 'test-model' }),
+        callModel: jest.fn().mockResolvedValue({ content }),
+      };
+      const candidateSelector = {
+        selectCandidates: jest.fn().mockReturnValue({
+          skillCards: [
+            {
+              id: 'skill-search-stocks',
+              kind: 'skill',
+              summary: '网页信息检索',
+              goals: ['workflow', '网页信息检索'],
+              inputs: {
+                query: 'string',
+                topic: 'string[enum=general,news,finance][default=general]',
+                max_results: 'number',
+              },
+              outputs: {
+                searchResults: 'news_item_list',
+                responseMetadata: 'string',
+              },
+              category: 'workflow',
+              publishedSkillId: 'skill-search-stocks',
+              executableVersion: '1',
+            },
+          ],
+          llmOperationCards: [],
+        }),
+      };
+      return new DeterministicPlanGeneratorService(modelService as any, candidateSelector as any);
+    };
+
+    it('drops hallucinated outputContract field names and uses card-declared fields', async () => {
+      // Regression: LLM wrote outputContract: {"data":"string"} for a search
+      // skill whose card declares {searchResults, responseMetadata}. Without
+      // reconciliation the runtime validator threw
+      // "missing expected output field 'data'" because the workflow produced
+      // searchResults/responseMetadata, not "data".
+      const service = createContractService(
+        buildContractPlanContent({ data: 'string' })
+      );
+      const plan = await service.generatePlan({
+        userRequest: '查询 最新的股票情报 然后进行总结',
+        availableSkills: [{ id: 'skill-search-stocks' }],
+      });
+
+      const contract = (plan.nodes[0] as any).outputContract;
+      expect(Object.keys(contract).sort()).toEqual(['responseMetadata', 'searchResults']);
+      expect(contract.searchResults).toBe('news_item_list');
+      expect(contract.responseMetadata).toBe('string');
+      // The hallucinated field must be dropped — otherwise the runtime
+      // validator still tries to satisfy it and throws.
+      expect(contract.data).toBeUndefined();
+    });
+
+    it('discards LLM type tags and uses the card-declared types (fix ⑤)', async () => {
+      const service = createContractService(
+        buildContractPlanContent({
+          searchResults: 'news_item_list',
+          responseMetadata: 'object', // LLM type tag conflicts with the card's 'string'
+        })
+      );
+      const plan = await service.generatePlan({
+        userRequest: '查询股票情报',
+        availableSkills: [{ id: 'skill-search-stocks' }],
+      });
+
+      const contract = (plan.nodes[0] as any).outputContract;
+      // searchResults is always normalized to news_item_list (alias chain);
+      // responseMetadata uses the CARD's 'string' tag — the LLM's 'object'
+      // tag is untrusted (fix ⑤) and would otherwise claim a type the
+      // workflow does not produce.
+      expect(contract.searchResults).toBe('news_item_list');
+      expect(contract.responseMetadata).toBe('string');
+    });
+
+    it('derives the whole contract from the card even when the LLM matches every field (fix ⑤)', async () => {
+      const service = createContractService(
+        buildContractPlanContent({
+          searchResults: 'news_item_list',
+          responseMetadata: 'string',
+        })
+      );
+      const plan = await service.generatePlan({
+        userRequest: '查询股票情报',
+        availableSkills: [{ id: 'skill-search-stocks' }],
+      });
+
+      const contract = (plan.nodes[0] as any).outputContract;
+      expect(contract).toEqual({
+        searchResults: 'news_item_list',
+        responseMetadata: 'string',
+      });
+    });
+
+    it('populates outputContract from card outputs when LLM omits it entirely', async () => {
+      const content = JSON.stringify({
+        schemaVersion: 'deterministic-plan/v1',
+        plannerVersion: 'v1',
+        catalogVersion: 'v1',
+        planType: 'single',
+        objective: '检索股票情报',
+        originalRequest: '',
+        status: 'draft',
+        nodes: [
+          {
+            nodeId: 'search_stocks',
+            sequence: 1,
+            title: '检索股票情报',
+            kind: 'skill',
+            skillId: 'skill-search-stocks',
+            skillVersion: '1',
+            runtimeType: 'workflow',
+            dependsOn: [],
+            inputBindings: {
+              query: { source: 'literal', value: '股票情报' },
+              topic: { source: 'literal', value: 'finance' },
+            },
+            failurePolicy: 'abort',
+          },
+        ],
+        finalOutputs: [],
+      });
+      const service = createContractService(content);
+      const plan = await service.generatePlan({
+        userRequest: '查询股票情报',
+        availableSkills: [{ id: 'skill-search-stocks' }],
+      });
+
+      const contract = (plan.nodes[0] as any).outputContract;
+      expect(Object.keys(contract).sort()).toEqual(['responseMetadata', 'searchResults']);
+    });
+  });
+
+  // ── Regression tests for bug reports ────────────────────────────────────────
+
+  describe('Bug regression: FINAL_OUTPUT_UNSATISFIED — finalOutputs.expectedType mismatch', () => {
+    /**
+     * Reproduces the first failure:
+     * LLM generates finalOutputs[0].expectedType = "text" but the
+     * summarize_stocks node declares outputContract.markdown_content = "markdown_content".
+     * alignFinalOutputsExpectedType() must auto-correct the mismatch so the static
+     * validator no longer raises FINAL_OUTPUT_UNSATISFIED.
+     */
+    it('auto-aligns finalOutputs.expectedType="text" to "markdown_content" when node declares markdown_content', async () => {
+      const content = JSON.stringify({
+        schemaVersion: 'deterministic-plan/v1',
+        plannerVersion: 'v1',
+        catalogVersion: 'v1',
+        planType: 'sequential',
+        objective: '查询股票情报并汇总',
+        originalRequest: '',
+        status: 'draft',
+        nodes: [
+          {
+            nodeId: 'search_stock_step',
+            sequence: 1,
+            title: '搜索股票情报',
+            kind: 'skill',
+            skillId: 'skill-internal-id',
+            skillVersion: '3',
+            runtimeType: 'workflow',
+            dependsOn: [],
+            inputBindings: { query: { source: 'literal', value: '最新股票情报' } },
+            outputContract: { results: 'news_item_list' },
+            failurePolicy: 'abort',
+          },
+          {
+            nodeId: 'summarize_stocks',
+            sequence: 2,
+            title: '汇总股票情报',
+            kind: 'llm_operation',
+            operationId: 'summarize_list',
+            dependsOn: ['search_stock_step'],
+            inputBindings: {
+              items: { source: 'node_output', nodeId: 'search_stock_step', path: 'results' },
+            },
+            // LLM hallucination: wrong field name in outputContract
+            outputContract: { markdown_content: 'markdown_content' },
+            failurePolicy: 'abort',
+          },
+        ],
+        finalOutputs: [
+          {
+            targetField: 'markdown_content',
+            fromNodeId: 'summarize_stocks',
+            fromNodeOutput: 'markdown_content',
+            // BUG: LLM wrote "text" instead of "markdown_content"
+            expectedType: 'text',
+          },
+        ],
+      });
+
+      const service = createService(content);
+      const plan = await service.generatePlan({
+        userRequest: '查询 最新的股票情报 然后进行总结',
+        availableSkills: [],
+      });
+
+      // After auto-alignment, expectedType must match the node's declared type.
+      expect(plan.finalOutputs).toHaveLength(1);
+      expect(plan.finalOutputs[0]!.expectedType).toBe('markdown_content');
+    });
+  });
+
+  describe('Bug regression: missing expected output field "data" — llm_operation outputContract hallucination', () => {
+    /**
+     * Reproduces the second failure:
+     * LLM generates an llm_operation node with outputContract = { data: "string" }.
+     * normalizeLlmOperationOutputContract() must remap this to
+     * { markdown_content: "markdown_content" } so the runtime scheduler
+     * never looks for a "data" field that the workflow doesn't return.
+     */
+    it('remaps llm_operation outputContract hallucinated field to markdown_content', async () => {
+      const content = JSON.stringify({
+        schemaVersion: 'deterministic-plan/v1',
+        plannerVersion: 'v1',
+        catalogVersion: 'v1',
+        planType: 'sequential',
+        objective: '查询股票情报并汇总',
+        originalRequest: '',
+        status: 'draft',
+        nodes: [
+          {
+            nodeId: 'search_stock_step',
+            sequence: 1,
+            title: '搜索股票情报',
+            kind: 'skill',
+            skillId: 'skill-internal-id',
+            skillVersion: '3',
+            runtimeType: 'workflow',
+            dependsOn: [],
+            inputBindings: { query: { source: 'literal', value: '最新股票情报' } },
+            outputContract: { results: 'news_item_list' },
+            failurePolicy: 'abort',
+          },
+          {
+            nodeId: 'summarize_stocks',
+            sequence: 2,
+            title: '汇总股票情报',
+            kind: 'llm_operation',
+            operationId: 'summarize_list',
+            dependsOn: ['search_stock_step'],
+            inputBindings: {
+              items: { source: 'node_output', nodeId: 'search_stock_step', path: 'results' },
+            },
+            // BUG: LLM hallucinated "data" instead of "markdown_content"
+            outputContract: { data: 'string' },
+            failurePolicy: 'abort',
+          },
+        ],
+        finalOutputs: [
+          {
+            targetField: 'markdown_content',
+            fromNodeId: 'summarize_stocks',
+            fromNodeOutput: 'markdown_content',
+            expectedType: 'markdown_content',
+          },
+        ],
+      });
+
+      const service = createService(content);
+      const plan = await service.generatePlan({
+        userRequest: '查询 最新的股票情报 然后进行总结',
+        availableSkills: [],
+      });
+
+      const summarizeNode = plan.nodes.find((n: any) => n.nodeId === 'summarize_stocks') as any;
+      expect(summarizeNode.outputContract).toEqual({ markdown_content: 'markdown_content' });
+      // finalOutputs should also be aligned
+      expect(plan.finalOutputs).toHaveLength(1);
+      expect(plan.finalOutputs[0]!.expectedType).toBe('markdown_content');
+    });
+  });
+
+  describe('Bug regression: INPUT_TYPE_MISMATCH — inputBinding path does not match upstream outputContract key', () => {
+    /**
+     * Reproduces the third failure:
+     * LLM writes inputBindings.items.path = "results" (from the system-prompt example),
+     * but the search Skill's card.outputs uses "searchResults" as the field key.
+     * After normalizeSkillOutputContract() the upstream outputContract becomes
+     * { searchResults: "news_item_list" }, so outputContract["results"] is undefined.
+     * alignInputBindingPaths() must rewrite binding.path to "searchResults".
+     */
+    it('auto-corrects binding path "results" → "searchResults" when upstream outputContract uses searchResults', async () => {
+      // Simulate a search skill whose outputParams declares "searchResults", not "results".
+      const searchSkillCard = {
+        id: 'skill-search-finance',
+        kind: 'skill',
+        summary: 'Search financial news',
+        goals: ['api', 'search'],
+        inputs: { query: 'string' },
+        outputs: { searchResults: 'news_item_list', responseMetadata: 'object' },
+        category: 'api',
+        publishedSkillId: 'skill-search-finance',
+        executableVersion: '2',
+      };
+
+      const content = JSON.stringify({
+        schemaVersion: 'deterministic-plan/v1',
+        plannerVersion: 'v1',
+        catalogVersion: 'v1',
+        planType: 'sequential',
+        objective: '查询财经股票信息并总结',
+        originalRequest: '',
+        status: 'draft',
+        nodes: [
+          {
+            nodeId: 'search_stock_info',
+            sequence: 1,
+            title: '搜索财经股票信息',
+            kind: 'skill',
+            skillId: 'skill-search-finance',
+            skillVersion: '2',
+            runtimeType: 'api',
+            dependsOn: [],
+            inputBindings: { query: { source: 'literal', value: '最新财经股票' } },
+            // LLM wrote "results" but the real card declares "searchResults"
+            outputContract: { results: 'news_item_list' },
+            failurePolicy: 'abort',
+          },
+          {
+            nodeId: 'summarize_stock_info',
+            sequence: 2,
+            title: '汇总股票情报',
+            kind: 'llm_operation',
+            operationId: 'summarize_list',
+            dependsOn: ['search_stock_info'],
+            inputBindings: {
+              // LLM wrote path = "results" (from prompt example) — should be aligned to "searchResults"
+              items: { source: 'node_output', nodeId: 'search_stock_info', path: 'results' },
+            },
+            outputContract: { markdown_content: 'markdown_content' },
+            failurePolicy: 'abort',
+          },
+        ],
+        finalOutputs: [
+          {
+            targetField: 'markdown_content',
+            fromNodeId: 'summarize_stock_info',
+            fromNodeOutput: 'markdown_content',
+            expectedType: 'markdown_content',
+          },
+        ],
+      });
+
+      const modelService = {
+        getPreferredDefaultModel: jest.fn().mockReturnValue({ id: 'model-1', name: 'test-model' }),
+        callModel: jest.fn().mockResolvedValue({ content }),
+      };
+      const candidateSelector = {
+        selectCandidates: jest.fn().mockReturnValue({
+          skillCards: [searchSkillCard],
+          llmOperationCards: [],
+        }),
+      };
+      const service = new DeterministicPlanGeneratorService(
+        modelService as any,
+        candidateSelector as any,
+      );
+
+
+      const plan = await service.generatePlan({
+        userRequest: '查询 最新的财经 股票信息 然后总结',
+        availableSkills: [],
+      });
+
+      // The search node's outputContract should be canonical (from card.outputs).
+      const searchNode = plan.nodes.find((n: any) => n.nodeId === 'search_stock_info') as any;
+      expect(Object.keys(searchNode.outputContract)).toContain('searchResults');
+      expect(Object.keys(searchNode.outputContract)).not.toContain('results');
+
+      // The summarize node's binding.path must be aligned to 'searchResults'.
+      const summarizeNode = plan.nodes.find((n: any) => n.nodeId === 'summarize_stock_info') as any;
+      expect(summarizeNode.inputBindings.items.path).toBe('searchResults');
+    });
+  });
 });
+
+
+

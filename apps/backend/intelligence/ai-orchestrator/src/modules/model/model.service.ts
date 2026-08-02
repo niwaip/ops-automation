@@ -20,10 +20,33 @@ import { OpenAICompatibleClient } from '../../client/openai-compatible';
 import { AnthropicMessagesClient } from '../../client/anthropic-messages';
 import { LLMClient, PromptCachingConfig } from '../../client/llm-client';
 
-// Persistence file paths
-const DEFAULT_DATA_DIR =
-  process.env.NODE_ENV === 'test' ? path.join(process.cwd(), '.tmp', 'ai-models') : '/app/data';
-const DATA_DIR = process.env.AI_MODELS_DATA_DIR || DEFAULT_DATA_DIR;
+// Persistence file paths. Resolution order:
+//   1. AI_MODELS_DATA_DIR env var (explicit override, used by docker-compose.full.yml)
+//   2. <repo>/apps/backend/var/cache/ai-orchestrator (walked from process.cwd())
+//   3. /app/data (legacy fallback when the package is mounted at /app)
+// The previous hardcoded `/app/data` caused silent data loss in stacks where the
+// container's working_dir is /workspace rather than /app, because the volume mount
+// only exposed the cache directory under the workspace path.
+const resolveDefaultDataDir = (): string => {
+  if (process.env.NODE_ENV === 'test') {
+    return path.join(process.cwd(), '.tmp', 'ai-models');
+  }
+  // Walk up from cwd until we find the monorepo root that owns apps/backend.
+  let cursor = process.cwd();
+  for (let depth = 0; depth < 6; depth += 1) {
+    const candidate = path.join(cursor, 'apps', 'backend', 'var', 'cache', 'ai-orchestrator');
+    if (cursor === path.dirname(cursor)) break; // reached filesystem root
+    // Prefer the first monorepo-shaped path that actually exists on disk.
+    if (fs.existsSync(path.join(cursor, 'apps', 'backend'))) {
+      return candidate;
+    }
+    cursor = path.dirname(cursor);
+  }
+  // Fall back to the legacy /app/data path which still works for stacks that
+  // bind-mount /workspace/.../cache → /app/data (e.g. docker-compose.base.yml).
+  return '/app/data';
+};
+const DATA_DIR = process.env.AI_MODELS_DATA_DIR || resolveDefaultDataDir();
 const MODELS_FILE = path.join(DATA_DIR, 'ai-models.json');
 const API_KEYS_FILE = path.join(DATA_DIR, 'ai-api-keys.json');
 const PROVIDERS_FILE = path.join(DATA_DIR, 'ai-providers.json');

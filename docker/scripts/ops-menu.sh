@@ -25,13 +25,7 @@ LEGACY_COMPAT_COMPOSES=(
 
 PLATFORM_BASELINE_MIGRATION="20260608_init_platform_baseline"
 PLATFORM_SCHEMA="./prisma/schema.prisma"
-CONTROL_PLANE_INCREMENTAL_SQL_FILES=(
-  "$REPO_ROOT/apps/backend/execution-control/control-plane/prisma/migrations/20260515143000_add_execution_phases/migration.sql"
-  "$REPO_ROOT/apps/backend/execution-control/control-plane/prisma/migrations/20260516140000_add_execution_phase_steps/migration.sql"
-  "$REPO_ROOT/apps/backend/execution-control/control-plane/prisma/migrations/20260625000000_add_scheduler/migration.sql"
-)
 BROWSER_TEMPLATE_REPAIR_SQL="$REPO_ROOT/apps/backend/capabilities/browser-domain/templates/prisma/manual-sql/20260608_rebuild_templates_current_schema.sql"
-PLATFORM_UUID_DEFAULT_REPAIR_SQL="$REPO_ROOT/apps/backend/core/platform/prisma/manual-sql/20260704_repair_uuid_id_defaults.sql"
 LEGACY_SQL_FILES=(
   "$REPO_ROOT/docker/sql/migrations/001_init.sql"
   "$REPO_ROOT/docker/sql/seed.sql"
@@ -318,7 +312,8 @@ start_core() {
 
 apply_shared_domain_schema_repairs() {
   log "Applying shared domain schema repair SQL..."
-  apply_sql_file "$PLATFORM_UUID_DEFAULT_REPAIR_SQL"
+  # UUID id defaults are now fixed by the authoritative migration
+  # 20260802000000_fix_uuid_id_defaults — no manual repair needed here.
   apply_sql_file "$BROWSER_TEMPLATE_REPAIR_SQL"
 }
 
@@ -348,12 +343,7 @@ print_migration_inventory() {
   printf '\n=== Database Migration Inventory ===\n'
 
   printf '\n[Current schema entrypoints]\n'
-  printf '  - Platform baseline: %s\n' "$REPO_ROOT/apps/backend/core/platform/prisma/migrations/${PLATFORM_BASELINE_MIGRATION}/migration.sql"
-  local sql_file
-  for sql_file in "${CONTROL_PLANE_INCREMENTAL_SQL_FILES[@]}"; do
-    printf '  - Shared incremental SQL: %s\n' "$sql_file"
-  done
-  printf '  - Shared platform repair SQL: %s\n' "$PLATFORM_UUID_DEFAULT_REPAIR_SQL"
+  printf '  - Single authoritative migration sequence: %s\n' "$REPO_ROOT/apps/backend/core/platform/prisma/migrations"
   printf '  - Shared domain repair SQL: %s\n' "$BROWSER_TEMPLATE_REPAIR_SQL"
 
   printf '\n[Placeholder migrations not applied automatically]\n'

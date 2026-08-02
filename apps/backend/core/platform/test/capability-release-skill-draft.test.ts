@@ -263,3 +263,83 @@ describe('CapabilityReleaseSkillDraftService', () => {
   });
 
 });
+
+describe('CapabilityReleaseSkillDraftService — outputSchema propagation (fix ①)', () => {
+  const createService = () => {
+    const browserRecordingService = {
+      normalizeExecutionFlow: jest.fn(),
+      mergeToolsWithExecutionFlow: jest.fn(),
+    };
+    const temporalSchemaService = new CapabilityReleaseTemporalSchemaService();
+    return new CapabilityReleaseSkillDraftService(browserRecordingService as any, temporalSchemaService);
+  };
+
+  it('carries the release output contract into the draft payload (contracts.output.schema)', () => {
+    const service = createService();
+    const payload = (service as any).buildSkillDraftPayload(
+      { sourceType: 'temporal_workflow', sourceId: 'wf-1', releaseVersion: 1 },
+      {
+        sourcePayload: {
+          name: 'wf',
+          workflowDsl: {},
+          paramsSchema: { properties: { q: { type: 'string' } }, required: [] },
+          contracts: {
+            output: {
+              schema: { type: 'object', properties: { result: { type: 'string' } }, required: ['result'] },
+            },
+          },
+        },
+      },
+      { id: 'v1' }
+    );
+
+    expect(payload.outputSchema).toEqual({
+      type: 'object',
+      properties: { result: { type: 'string' } },
+      required: ['result'],
+    });
+  });
+
+  it('falls back to manifest.spec.contracts.output.schema, then top-level outputSchema', () => {
+    const service = createService();
+    const manifest = (service as any).buildSkillDraftPayload(
+      { sourceType: 'temporal_workflow', sourceId: 'wf-2', releaseVersion: 2 },
+      {
+        sourcePayload: {
+          name: 'wf2',
+          workflowDsl: {},
+          manifest: {
+            spec: {
+              contracts: { output: { schema: { type: 'object', properties: { fromManifest: { type: 'string' } } } } },
+            },
+          },
+        },
+      },
+      { id: 'v2' }
+    );
+    expect(manifest.outputSchema).toEqual({ type: 'object', properties: { fromManifest: { type: 'string' } } });
+
+    const topLevel = (service as any).buildSkillDraftPayload(
+      { sourceType: 'temporal_workflow', sourceId: 'wf-3', releaseVersion: 3 },
+      {
+        sourcePayload: {
+          name: 'wf3',
+          workflowDsl: {},
+          outputSchema: { type: 'object', properties: { fromTop: { type: 'string' } } },
+        },
+      },
+      { id: 'v3' }
+    );
+    expect(topLevel.outputSchema).toEqual({ type: 'object', properties: { fromTop: { type: 'string' } } });
+  });
+
+  it('omits outputSchema when the source payload declares none (draft stays minimal)', () => {
+    const service = createService();
+    const payload = (service as any).buildSkillDraftPayload(
+      { sourceType: 'temporal_workflow', sourceId: 'wf-4', releaseVersion: 4 },
+      { sourcePayload: { name: 'wf4', workflowDsl: {} } },
+      { id: 'v4' }
+    );
+    expect(payload.outputSchema).toBeUndefined();
+  });
+});

@@ -1,3 +1,8 @@
+import {
+  buildV2OutputResultBuilderLines,
+  buildV2StepResultsArgument,
+  hasV2OutputFields,
+} from './temporal-workflow-result-builder.helpers';
 import type {
   ActivityDefinition,
   ActivityDsl,
@@ -44,12 +49,7 @@ function resolveWorkflowResultType(activityFn: string): string {
   }
 }
 
-function buildWorkflowResultSupportLines(args: {
-  resultType: string;
-  title: string;
-  preferAiSummary?: boolean;
-}): string[] {
-  const { resultType, title, preferAiSummary = true } = args;
+function buildSharedResultSupportLines(): string[] {
   return [
     '    @staticmethod',
     '    def _extract_summary(value: Any) -> str | None:',
@@ -115,6 +115,16 @@ function buildWorkflowResultSupportLines(args: {
     '                    queue.append(item)',
     '        return artifacts',
     '',
+  ];
+}
+
+function buildLegacyWorkflowResultBuilderLines(args: {
+  resultType: string;
+  title: string;
+  preferAiSummary: boolean;
+}): string[] {
+  const { resultType, title, preferAiSummary } = args;
+  return [
     '    @classmethod',
     '    def _build_workflow_result(cls, raw_result: Any) -> Dict[str, Any]:',
     '        business_data = raw_result',
@@ -152,6 +162,46 @@ function buildWorkflowResultSupportLines(args: {
     '        }',
     '',
   ];
+}
+
+export function buildWorkflowResultSupportLines(args: {
+  resultType: string;
+  title: string;
+  preferAiSummary?: boolean;
+  v2Output?: WorkflowDsl['v2Output'];
+  validV2StepIds?: string[];
+}): string[] {
+  const { resultType, title, preferAiSummary = true, v2Output, validV2StepIds } = args;
+  const sharedLines = buildSharedResultSupportLines();
+  if (!hasV2OutputFields(v2Output)) {
+    return [...sharedLines, ...buildLegacyWorkflowResultBuilderLines({ resultType, title, preferAiSummary })];
+  }
+  return [
+    ...sharedLines,
+    ...buildV2OutputResultBuilderLines({
+      v2Output: v2Output as NonNullable<WorkflowDsl['v2Output']>,
+      validStepIds: validV2StepIds || [],
+      resultType,
+      title,
+      preferAiSummary,
+    }),
+  ];
+}
+
+/**
+ * Builds the call-site return line passing each source step's result variable
+ * into `_build_workflow_result(...)`; without v2Output the legacy single-value
+ * passthrough is kept byte-for-byte.
+ */
+function buildV2WorkflowResultReturnLine(
+  v2Output: WorkflowDsl['v2Output'] | undefined,
+  stepToVar: Record<string, string>,
+  legacyArg: string
+): string {
+  if (!hasV2OutputFields(v2Output)) {
+    return `        return self._build_workflow_result(${legacyArg})`;
+  }
+  return `        return self._build_workflow_result(${buildV2StepResultsArgument(stepToVar)})`;
 }
 
 export function buildFixedBrowserPhaseWorkflowCode(args: {
@@ -194,6 +244,8 @@ export function buildFixedBrowserPhaseWorkflowCode(args: {
   const workflowResultSupportLines = buildWorkflowResultSupportLines({
     resultType: 'generic',
     title: workflowDisplayName,
+    v2Output: workflowDsl.v2Output,
+    validV2StepIds: browserActivityPairs.map((pair) => pair.step.id),
   });
   const browserLoopDraft =
     workflowDsl.sourceContext?.sourceType === 'browser_template' &&
@@ -446,13 +498,20 @@ export function buildFixedBrowserPhaseWorkflowCode(args: {
     '            shared_activity_input["initialUrl"] = self._normalize(normalized_params.get("initialUrl"))',
     '        phase_results: List[Dict[str, Any]] = []',
     ...(browserLoopExecutionLines || phaseExecutionLines),
-    '        return self._build_workflow_result({',
-    '            "runtimeSessionId": runtime_session_id,',
-    '            "backend": backend,',
-    '            "phaseResults": phase_results,',
-    ...(browserLoopDraft ? ['            "loopState": loop_state,'] : []),
-    '            "result": phase_results[-1]["result"] if phase_results else None,',
-    '        })',
+    ...(hasV2OutputFields(workflowDsl.v2Output)
+      ? [
+          // v2: 编译器密封输出 — 按 phase 的 stepId 汇总全部步骤结果交给 Result Builder 逐字段提取
+          '        return self._build_workflow_result({entry["stepId"]: entry["result"] for entry in phase_results})',
+        ]
+      : [
+          '        return self._build_workflow_result({',
+          '            "runtimeSessionId": runtime_session_id,',
+          '            "backend": backend,',
+          '            "phaseResults": phase_results,',
+          ...(browserLoopDraft ? ['            "loopState": loop_state,'] : []),
+          '            "result": phase_results[-1]["result"] if phase_results else None,',
+          '        })',
+        ]),
     '',
   ].join('\n');
 }
@@ -499,6 +558,8 @@ export function buildFixedHttpRequestWorkflowCode(args: {
   const workflowResultSupportLines = buildWorkflowResultSupportLines({
     resultType: 'generic',
     title: workflowDisplayName,
+    v2Output: workflowDsl.v2Output,
+    validV2StepIds: [step.id],
   });
 
   return [
@@ -618,7 +679,7 @@ export function buildFixedHttpRequestWorkflowCode(args: {
     ...executeActivityTimeoutLines,
     '        )',
     '        normalized_result = self._normalize_result(result, normalized_params)',
-    '        return self._build_workflow_result(normalized_result)',
+    buildV2WorkflowResultReturnLine(workflowDsl.v2Output, { [step.id]: 'normalized_result' }, 'normalized_result'),
     '',
   ].join('\n');
 }
@@ -667,6 +728,8 @@ export function buildFixedStructuredTransformWorkflowCode(args: {
   const workflowResultSupportLines = buildWorkflowResultSupportLines({
     resultType: 'generic',
     title: workflowDisplayName,
+    v2Output: workflowDsl.v2Output,
+    validV2StepIds: [step.id],
   });
 
   return [
@@ -746,7 +809,7 @@ export function buildFixedStructuredTransformWorkflowCode(args: {
     ...executeActivityTimeoutLines,
     '        )',
     '        normalized_result = result.get("result") if isinstance(result, dict) and "result" in result else result',
-    '        return self._build_workflow_result(normalized_result)',
+    buildV2WorkflowResultReturnLine(workflowDsl.v2Output, { [step.id]: 'normalized_result' }, 'normalized_result'),
     '',
   ].join('\n');
 }
@@ -816,6 +879,8 @@ export function buildFixedHttpRequestStructuredTransformWorkflowCode(args: {
   const workflowResultSupportLines = buildWorkflowResultSupportLines({
     resultType: 'generic',
     title: workflowDisplayName,
+    v2Output: workflowDsl.v2Output,
+    validV2StepIds: [httpStep.id, transformStep.id],
   });
 
   return [
@@ -1005,7 +1070,11 @@ export function buildFixedHttpRequestStructuredTransformWorkflowCode(args: {
     ...transformExecuteActivityTimeoutLines,
     '        )',
     '        normalized_result = transform_result.get("result") if isinstance(transform_result, dict) and "result" in transform_result else transform_result',
-    '        return self._build_workflow_result(normalized_result)',
+    buildV2WorkflowResultReturnLine(
+      workflowDsl.v2Output,
+      { [httpStep.id]: 'http_result', [transformStep.id]: 'normalized_result' },
+      'normalized_result'
+    ),
     '',
   ].join('\n');
 }
@@ -1046,6 +1115,8 @@ export function buildFixedBuiltinWorkflowCode(args: {
   const workflowResultSupportLines = buildWorkflowResultSupportLines({
     resultType: resolveWorkflowResultType(activityDef.fn),
     title: workflowDisplayName,
+    v2Output: workflowDsl.v2Output,
+    validV2StepIds: [step.id],
   });
 
   const isWaitDelay = activityDef.fn === 'waitDelay';
@@ -1148,7 +1219,7 @@ export function buildFixedBuiltinWorkflowCode(args: {
     '        self._validate_required_params(normalized_params)',
     '        activity_input = self._build_activity_input(normalized_params)',
     ...executeLines,
-    '        return self._build_workflow_result(result)',
+    buildV2WorkflowResultReturnLine(workflowDsl.v2Output, { [step.id]: 'result' }, 'result'),
     '',
   ].join('\n');
 }

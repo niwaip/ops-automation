@@ -1,3 +1,8 @@
+import {
+  buildV2OutputResultBuilderLines,
+  buildV2StepResultsArgument,
+  hasV2OutputFields,
+} from './temporal-workflow-result-builder.helpers';
 import type {
   ActivityDsl,
   WorkflowDsl,
@@ -34,7 +39,7 @@ function resolveWorkflowDisplayName(workflowDsl: WorkflowDsl, workflowClassName:
   return workflowDsl.workflowDefnName?.trim() || workflowDsl.name || workflowClassName;
 }
 
-function buildWorkflowResultSupportLines(title: string): string[] {
+function buildSharedDocumentResultSupportLines(): string[] {
   return [
     '    @staticmethod',
     '    def _extract_summary(value: Any) -> str | None:',
@@ -100,6 +105,11 @@ function buildWorkflowResultSupportLines(title: string): string[] {
     '                    queue.append(item)',
     '        return artifacts',
     '',
+  ];
+}
+
+function buildLegacyDocumentWorkflowResultBuilderLines(title: string): string[] {
+  return [
     '    @classmethod',
     '    def _build_workflow_result(cls, raw_result: Any) -> Dict[str, Any]:',
     '        summary = cls._extract_summary(raw_result)',
@@ -125,6 +135,27 @@ function buildWorkflowResultSupportLines(title: string): string[] {
     '            },',
     '        }',
     '',
+  ];
+}
+
+function buildWorkflowResultSupportLines(args: {
+  title: string;
+  v2Output?: WorkflowDsl['v2Output'];
+  validV2StepIds?: string[];
+}): string[] {
+  const { title, v2Output, validV2StepIds } = args;
+  const sharedLines = buildSharedDocumentResultSupportLines();
+  if (!hasV2OutputFields(v2Output)) {
+    return [...sharedLines, ...buildLegacyDocumentWorkflowResultBuilderLines(title)];
+  }
+  return [
+    ...sharedLines,
+    ...buildV2OutputResultBuilderLines({
+      v2Output: v2Output as NonNullable<WorkflowDsl['v2Output']>,
+      validStepIds: validV2StepIds || [],
+      resultType: 'document',
+      title,
+    }),
   ];
 }
 
@@ -260,7 +291,11 @@ export function buildFixedDocumentRenderWorkflowCode(args: {
     })
     .map(([key]) => key)
     .filter((key) => !String(key).includes('{#') && !String(key).includes('{/'));
-  const workflowResultSupportLines = buildWorkflowResultSupportLines(workflowDisplayName);
+  const workflowResultSupportLines = buildWorkflowResultSupportLines({
+    title: workflowDisplayName,
+    v2Output: workflowDsl.v2Output,
+    validV2StepIds: [step.id],
+  });
 
   return [
     'import json',
@@ -341,7 +376,9 @@ export function buildFixedDocumentRenderWorkflowCode(args: {
     '            activity_input,',
     ...executeActivityTimeoutLines,
     '        )',
-    '        return self._build_workflow_result(result)',
+    hasV2OutputFields(workflowDsl.v2Output)
+      ? `        return self._build_workflow_result(${buildV2StepResultsArgument({ [step.id]: 'result' })})`
+      : '        return self._build_workflow_result(result)',
     '',
   ].join('\n');
 }
