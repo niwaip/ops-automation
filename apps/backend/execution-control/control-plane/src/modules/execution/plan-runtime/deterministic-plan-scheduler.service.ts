@@ -211,11 +211,12 @@ export class DeterministicPlanSchedulerService {
     );
 
     if (!resolvedInput.apiKey) {
-      const defaultApiKey =
-        process.env.TAVILY_API_KEY ||
-        process.env.SEARCH_API_KEY ||
-        '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';
-      resolvedInput.apiKey = defaultApiKey;
+      // Fall back to env only; the workflow artifact's own default key is
+      // applied at runtime by the workflow when no apiKey binding is present.
+      const defaultApiKey = process.env.TAVILY_API_KEY || process.env.SEARCH_API_KEY;
+      if (defaultApiKey) {
+        resolvedInput.apiKey = defaultApiKey;
+      }
     }
 
     await this.prisma.executionStep.update({
