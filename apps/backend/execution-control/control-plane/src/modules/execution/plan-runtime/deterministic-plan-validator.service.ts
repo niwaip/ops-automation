@@ -393,23 +393,10 @@ export class DeterministicPlanValidatorService {
           field: req.targetField,
         });
       } else if (req.isArtifact || req.expectedType === 'artifact_ref') {
-        const pNode = producerNode as any;
-        const isArtifactProducer =
-          pNode.kind === 'skill' &&
-          (pNode.runtimeType === 'artifact' ||
-            pNode.runtimeType === 'document' ||
-            pNode.runtimeType === 'document_markdown_writer' ||
-            pNode.executionRuntimeType === 'document_markdown_writer' ||
-            pNode.supportsArtifact === true ||
-            pNode.skillId === 'platform.document.markdown-artifact-writer' ||
-            pNode.capabilityKey === 'platform.document.markdown-artifact-writer' ||
-            pNode.capabilityKey === 'markdown_artifact_writer' ||
-            pNode.skillName === 'markdown_artifact_writer' ||
-            (typeof pNode.skillId === 'string' && pNode.skillId.startsWith('platform.')) ||
-            pNode.nodeId === 'write_md_file' ||
-            (typeof pNode.nodeId === 'string' && (pNode.nodeId.includes('md') || pNode.nodeId.includes('writer') || pNode.nodeId.includes('artifact'))));
-
-        if (!isArtifactProducer) {
+        // Artifact capability is a contract property, not a Skill ID/name
+        // convention. The exact output field and its artifact_ref type were
+        // already proven above; only executable Skill nodes may publish files.
+        if (producerNode.kind !== 'skill') {
           errors.push({
             code: ERROR_CODES.FINAL_OUTPUT_UNSATISFIED,
             message: `Final output field '${req.targetField}' requires an artifact-producing Skill node`,

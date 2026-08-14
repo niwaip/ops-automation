@@ -33,6 +33,7 @@ import {
 import { TemporalWorkflowValidationFacadeService } from '../src/modules/temporal-workflow/temporal-workflow-validation-facade.service';
 import { TemporalWorkflowValidationService } from '../src/modules/temporal-workflow/temporal-workflow-validation.service';
 import { TemporalWorkflowArtifactValidationService } from '../src/workflow-registry/validation/temporal-workflow-artifact-validation.service';
+import { TemporalWorkflowValidationContractService } from '../src/workflow-registry/validation/temporal-workflow-validation-contract.service';
 import { TemporalWorkflowDslValidationService } from '../src/workflow-registry/validation/temporal-workflow-dsl-validation.service';
 import { TemporalWorkflowCodegenOrchestrationService } from '../src/workflow-registry/codegen/temporal-workflow-codegen-orchestration.service';
 import { BuiltinActivityRegistry } from '../src/modules/temporal-workflow/builtin-activity.registry';
@@ -123,7 +124,8 @@ describe('TemporalWorkflowBrowserDraftService', () => {
     const workflowArtifactValidationService = new TemporalWorkflowArtifactValidationService(
       prisma as any,
       validationFacade,
-      workflowArtifactService
+      workflowArtifactService,
+      new TemporalWorkflowValidationContractService()
     );
     const workflowDslValidationService = new TemporalWorkflowDslValidationService(
       workflowSupportService
@@ -132,7 +134,8 @@ describe('TemporalWorkflowBrowserDraftService', () => {
       prisma as any,
       codegenService,
       workflowArtifactService,
-      workflowSupportService
+      workflowSupportService,
+      workflowNormalizationService
     );
     const service = new TemporalWorkflowService(
       workflowCodegenOrchestrationService,

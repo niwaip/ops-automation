@@ -4,6 +4,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { toTemporalWorkflowDto } from '../../modules/temporal-workflow/temporal-workflow-dto.helpers';
 import { parseJson } from '../../modules/temporal-workflow/temporal-workflow-json.utils';
 import { TemporalWorkflowCodegenService } from '../../modules/temporal-workflow/temporal-workflow-codegen.service';
+import { TemporalWorkflowNormalizationService } from '../../modules/temporal-workflow/temporal-workflow-normalization.service';
 import { TemporalWorkflowSupportService } from '../../modules/temporal-workflow/temporal-workflow-support.service';
 import type {
   ActivityDsl,
@@ -27,10 +28,25 @@ export class TemporalWorkflowCodegenOrchestrationService {
     private readonly prisma: PrismaService,
     private readonly codegenService: TemporalWorkflowCodegenService,
     private readonly workflowArtifactService: TemporalWorkflowArtifactService,
-    private readonly workflowSupportService: TemporalWorkflowSupportService
+    private readonly workflowSupportService: TemporalWorkflowSupportService,
+    private readonly workflowNormalizationService: TemporalWorkflowNormalizationService
   ) {}
 
-  async generateWorkflowCode(
+  private async normalizeCodegenInput(
+    workflowDsl: WorkflowDsl,
+    activityDsl: ActivityDsl
+  ): Promise<{ workflowDsl: WorkflowDsl; activityDsl: ActivityDsl }> {
+    const normalizedActivityDsl = this.workflowNormalizationService.normalizeActivityDsl(activityDsl);
+    const normalizedWorkflowDsl = await this.workflowNormalizationService.normalizeWorkflowDsl(
+      workflowDsl,
+      workflowDsl.name,
+      workflowDsl.taskQueue,
+      normalizedActivityDsl
+    );
+    return { workflowDsl: normalizedWorkflowDsl, activityDsl: normalizedActivityDsl };
+  }
+
+  private async generateNormalizedWorkflowCode(
     workflowDsl: WorkflowDsl,
     activityDsl: ActivityDsl,
     errorContext?: string,
@@ -59,6 +75,30 @@ export class TemporalWorkflowCodegenOrchestrationService {
     );
   }
 
+  async generateWorkflowCode(
+    workflowDsl: WorkflowDsl,
+    activityDsl: ActivityDsl,
+    errorContext?: string,
+    forceAiGeneration = false,
+    onProgress?: (log: string) => void
+  ): Promise<WorkflowCodegenResult> {
+    try {
+      const normalized = await this.normalizeCodegenInput(workflowDsl, activityDsl);
+      return this.generateNormalizedWorkflowCode(
+        normalized.workflowDsl,
+        normalized.activityDsl,
+        errorContext,
+        forceAiGeneration,
+        onProgress
+      );
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error?.message || 'Workflow DSL 规范化失败',
+      };
+    }
+  }
+
   async generateWorkflowCodeStreaming(
     workflowDsl: WorkflowDsl,
     activityDsl: ActivityDsl,
@@ -66,20 +106,27 @@ export class TemporalWorkflowCodegenOrchestrationService {
     forceAiGeneration: boolean | undefined,
     onLog: (log: string) => void
   ): Promise<WorkflowCodegenResult> {
-    const enrichedActivityDsl = await this.workflowSupportService.createEnrichedActivityDsl(
-      workflowDsl,
-      activityDsl,
-      onLog
-    );
+    try {
+      const normalized = await this.normalizeCodegenInput(workflowDsl, activityDsl);
+      const enrichedActivityDsl = await this.workflowSupportService.createEnrichedActivityDsl(
+        normalized.workflowDsl,
+        normalized.activityDsl,
+        onLog
+      );
 
-    return this.codegenService.generateWorkflowCodeStreaming(
-      workflowDsl,
-      enrichedActivityDsl,
-      errorContext,
-      forceAiGeneration,
-      this.workflowSupportService.createCodegenSupport(),
-      onLog
-    );
+      return this.codegenService.generateWorkflowCodeStreaming(
+        normalized.workflowDsl,
+        enrichedActivityDsl,
+        errorContext,
+        forceAiGeneration,
+        this.workflowSupportService.createCodegenSupport(),
+        onLog
+      );
+    } catch (error: any) {
+      const message = error?.message || 'Workflow DSL 规范化失败';
+      onLog(`[${new Date().toISOString()}] ${message}`);
+      return { success: false, error: message };
+    }
   }
 
   async generateAndSaveWorkflowCode(
@@ -107,9 +154,10 @@ export class TemporalWorkflowCodegenOrchestrationService {
       throw new BadRequestException('当前 Workflow 缺少完整 DSL，无法生成代码');
     }
 
-    const result = await this.generateWorkflowCode(
-      workflowDsl,
-      activityDsl,
+    const normalized = await this.normalizeCodegenInput(workflowDsl, activityDsl);
+    const result = await this.generateNormalizedWorkflowCode(
+      normalized.workflowDsl,
+      normalized.activityDsl,
       errorContext,
       forceAiGeneration
     );
@@ -123,6 +171,10 @@ export class TemporalWorkflowCodegenOrchestrationService {
         artifactHash: this.workflowArtifactService.computeArtifactHash(result.code),
         artifactVersion: this.workflowArtifactService.getCurrentArtifactVersion(existing) + 1,
         generatedCode: result.code,
+        workflowDsl: normalized.workflowDsl as any,
+        activityDsl: normalized.activityDsl as any,
+        deployedAt: null,
+        isActive: false,
         validatedAt: null,
         validationResultJson: Prisma.JsonNull,
         validationScore: 0,

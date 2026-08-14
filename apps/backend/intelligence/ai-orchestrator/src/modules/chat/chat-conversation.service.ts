@@ -428,6 +428,27 @@ export class ChatConversationService {
     if (data?.result !== undefined) {
       metadata.finalResultData = data.result;
     }
+    const normalizedResult = this.asRecord(data?.normalizedResult);
+    if (normalizedResult) {
+      metadata.normalizedResult = normalizedResult;
+      const structuredData = normalizedResult.structuredData;
+      if (structuredData !== undefined) {
+        metadata.finalResultData = structuredData;
+      }
+    } else if (data?.businessData !== undefined) {
+      metadata.finalResultData = data.businessData;
+    }
+    const resultType = this.asString(data?.resultType);
+    if (resultType) {
+      metadata.resultType = resultType;
+    }
+    const resultTitle = this.asString(data?.resultTitle) || this.asString(data?.title);
+    if (resultTitle) {
+      metadata.resultTitle = resultTitle;
+    }
+    if (Array.isArray(data?.artifacts)) {
+      metadata.artifacts = data.artifacts;
+    }
     if (Array.isArray(data?.missingInputs)) {
       metadata.missingInputs = data.missingInputs;
     }

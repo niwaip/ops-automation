@@ -218,6 +218,13 @@ export interface RecognizeParamsDTO {
   template_id: string;
   user_input: string;
   modelId?: string;
+  fallbackMode?: 'basic' | 'none';
+  /**
+   * `schema_only` keeps the LLM's semantic extraction authoritative and only
+   * applies deterministic schema validation. `semantic_augmentation` retains
+   * the legacy document-field completion helpers for document templates.
+   */
+  postProcessMode?: 'schema_only' | 'semantic_augmentation';
   context?: Record<string, unknown>;
   guide_context?: DocumentGuideContext;
   // 允许直接传入 params_schema，避免需要预先注册模版

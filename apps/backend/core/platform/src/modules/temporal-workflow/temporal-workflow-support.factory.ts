@@ -216,11 +216,16 @@ export function createTemporalWorkflowCodegenSupport(
   buildDeterministicWorkflowCode: (
     workflowDsl: WorkflowDsl,
     activityDsl: ActivityDsl
-  ) => string | null
+  ) => string | null,
+  diagnoseDeterministicMiss?: (
+    workflowDsl: WorkflowDsl,
+    activityDsl: ActivityDsl
+  ) => { code: string; message: string }
 ): TemporalWorkflowCodegenSupport {
   return {
     buildDeterministicWorkflowCode: (workflowDsl, activityDsl) =>
       buildDeterministicWorkflowCode(workflowDsl, activityDsl),
+    diagnoseDeterministicMiss,
   };
 }
 

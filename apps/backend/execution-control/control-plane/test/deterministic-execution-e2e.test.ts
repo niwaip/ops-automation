@@ -1,5 +1,6 @@
 process.env.DATABASE_URL = process.env.DATABASE_URL || 'postgresql://ops:ops_secret@localhost:5432/ops';
 
+import axios from 'axios';
 import { PrismaService } from '../src/modules/prisma/prisma.service';
 import { DeterministicPlanValidatorService } from '../src/modules/execution/plan-runtime/deterministic-plan-validator.service';
 import { DeterministicPlanFreezeService } from '../src/modules/execution/plan-runtime/deterministic-plan-freeze.service';
@@ -8,6 +9,9 @@ import { LegacyOutputAdapterService } from '../src/modules/execution/plan-runtim
 import { CapabilityContractCatalogService } from '../src/modules/execution/plan-runtime/capability-contract-catalog.service';
 import { OutputNormalizerService } from '../src/modules/execution/plan-runtime/output-normalizer.service';
 import { GracePolicyService } from '../src/modules/execution/plan-runtime/grace-policy.service';
+
+jest.mock('axios');
+const mockAxios = axios as jest.Mocked<typeof axios>;
 import { DeterministicNodeInputResolverService } from '../src/modules/execution/plan-runtime/deterministic-node-input-resolver.service';
 import { DeterministicFinalOutputService } from '../src/modules/execution/plan-runtime/deterministic-final-output.service';
 import { LlmOperationRuntimeAdapter } from '../src/modules/execution/adapters/llm-operation-runtime.adapter';
@@ -171,7 +175,39 @@ describe('Deterministic Plan Execution E2E Test', () => {
     prisma = new PrismaService();
     validator = new DeterministicPlanValidatorService();
     const catalog = new CapabilityContractCatalogService();
-    freezeService = new DeterministicPlanFreezeService(prisma, validator, catalog);
+    const attestationClient = {
+      hasValidAttestation: jest.fn().mockResolvedValue(true),
+      hasValidAttestationForVersion: jest.fn().mockResolvedValue(true),
+    };
+    freezeService = new DeterministicPlanFreezeService(prisma, validator, catalog, attestationClient as any);
+
+    // Mock axios for llm_operation catalog and attestation calls
+    mockAxios.get.mockImplementation(async (url: string) => {
+      if (url.includes('/operations/catalog/')) {
+        return {
+          data: {
+            capabilityRef: { id: 'summarize_list', version: 'v1', digest: 'test-digest' },
+            inputSchema: { type: 'object', properties: { items: { type: 'array' } } },
+            outputSchema: { type: 'object', properties: { summaryText: { type: 'string' } } },
+          },
+          status: 200,
+          statusText: 'OK',
+          headers: {},
+          config: {} as any,
+        } as any;
+      }
+      if (url.includes('/operations/attestations/')) {
+        return {
+          data: { valid: true },
+          status: 200,
+          statusText: 'OK',
+          headers: {},
+          config: {} as any,
+        } as any;
+      }
+      throw new Error(`Unexpected axios GET: ${url}`);
+    });
+
     await applyMigrations(prisma);
 
     // Seed a builtin_skill + builtin_skill_version row so the PINNED

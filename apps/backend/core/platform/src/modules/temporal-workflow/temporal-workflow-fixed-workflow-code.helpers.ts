@@ -845,7 +845,7 @@ export function buildFixedHttpRequestStructuredTransformWorkflowCode(args: {
   }
 
   const transformInstructionTemplate = String(transformConfig.instructionTemplate || '').trim();
-  if (!transformInstructionTemplate) {
+  if (transformActivityDef.fn === 'aiStructuredTransform' && !transformInstructionTemplate) {
     return null;
   }
   const normalizedTransformConfig = {

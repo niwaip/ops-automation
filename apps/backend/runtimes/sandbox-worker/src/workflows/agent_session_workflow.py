@@ -1,6 +1,6 @@
 import asyncio
 from datetime import timedelta
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 from temporalio import workflow
 from temporalio.common import RetryPolicy
@@ -26,10 +26,13 @@ class AgentSessionWorkflow:
         self._has_pending_execution = False
         self._pending_signal: Optional[ExecutionSignalInput] = None
         self._execution_complete = asyncio.Event()
-        self._result: Optional[Dict[str, object]] = None
+        # Temporal's JSON payload converter cannot materialize nested JSON into
+        # the concrete `object` type. Activity results are recursive JSON values,
+        # so the durable query contract must explicitly allow Any at the leaves.
+        self._result: Optional[Dict[str, Any]] = None
 
     @workflow.run
-    async def run(self, session_id: str) -> Dict[str, object]:
+    async def run(self, session_id: str) -> Dict[str, Any]:
         self._state.session_id = session_id
         workflow.logger.info(f'AgentSessionWorkflow started: {session_id}')
 
@@ -81,11 +84,11 @@ class AgentSessionWorkflow:
         workflow.logger.info(f'Received execute_code signal for: {signal.activity_id}')
 
     @workflow.query
-    def get_result(self) -> Optional[Dict[str, object]]:
+    def get_result(self) -> Optional[Dict[str, Any]]:
         return self._result
 
     @workflow.query
-    def get_state(self) -> Dict[str, object]:
+    def get_state(self) -> Dict[str, Any]:
         return {
             'session_id': self._state.session_id,
             'execution_count': self._state.execution_count,

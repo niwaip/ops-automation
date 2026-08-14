@@ -81,6 +81,23 @@ describe('PlannerService document semantic bypass toggle', () => {
     outputParams: undefined,
   });
 
+  it('does not classify a Temporal workflow as a document merely because it has template ids', () => {
+    jest.resetModules();
+    const { PlanSemanticService } = require('./plan');
+    const service = new PlanSemanticService();
+
+    expect(
+      service.isDocumentTask({
+        executionType: 'document',
+        executionFlowTemplateIds: ['temporal-workflow-template'],
+        apiEndpoints: {
+          runtimeMetadata: { sourceType: 'temporal_workflow' },
+        },
+        paramsSchema: { properties: {} },
+      } as any)
+    ).toBe(false);
+  });
+
   it('falls back to field-level required_inputs when semantic grouping is disabled', async () => {
     const originalValue = process.env.DOCUMENT_SEMANTIC_SUBAGENT_ENABLED;
     process.env.DOCUMENT_SEMANTIC_SUBAGENT_ENABLED = 'false';

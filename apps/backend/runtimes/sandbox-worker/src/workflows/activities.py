@@ -1,7 +1,25 @@
 import traceback
+import re
 from typing import Any, Dict
 
 from temporalio import activity
+
+
+_SENSITIVE_KEY = re.compile(
+    r'api[-_]?key|token|secret|password|authorization|cookie',
+    re.IGNORECASE,
+)
+
+
+def _redact_sensitive_values(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {
+            key: '[REDACTED]' if _SENSITIVE_KEY.search(str(key)) else _redact_sensitive_values(item)
+            for key, item in value.items()
+        }
+    if isinstance(value, list):
+        return [_redact_sensitive_values(item) for item in value]
+    return value
 
 
 @activity.defn
@@ -22,7 +40,7 @@ async def execute_code_activity(
     attempt = validation_attempt or activity.info().attempt
     activity.logger.info(f'Starting code execution for: {activity_id}, attempt={attempt}')
     activity.logger.info(f'Function: {fn_name}')
-    activity.logger.info(f'Input: {input_data}')
+    activity.logger.info(f'Input: {_redact_sensitive_values(input_data)}')
 
     from sandbox_executor import execute_in_sandbox
 

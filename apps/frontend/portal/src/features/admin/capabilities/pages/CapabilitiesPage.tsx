@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Form } from 'antd';
 import { useSearchParams } from 'react-router-dom';
-import type { TemporalWorkflowDTO } from '@/api/temporal';
+import type { CapabilitySourceType } from '@/api/capabilities';
 import { ListSectionHeader } from '@/components/page/PageScaffold';
 import { CreateCapabilityReleaseWizardModal } from './Capabilities/CreateCapabilityReleaseWizardModal';
 import { CapabilityDetailDrawer } from './Capabilities/CapabilityDetailDrawer';
@@ -76,39 +76,58 @@ export const CapabilitiesPage: React.FC<CapabilitiesPageProps> = ({ mode = 'mana
   const flowOptions = mutations.executionFlowOptionsQuery.data?.templates || [];
 
   const createSourceOptions = useMemo(() => {
-    if (createSourceType === 'temporal_workflow') {
-      return temporalWorkflowOptions
-        .filter(
-          (workflow: TemporalWorkflowDTO) =>
-            workflow.validationStatus === 'validated' && Boolean(workflow.generatedCode?.trim())
-        )
-        .map((workflow: TemporalWorkflowDTO) => ({
-          label: workflow.name || `Workflow ${workflow.id.slice(0, 8)}`,
-          value: workflow.id,
-          description: workflow.description,
-        }));
+    const publishedSourceIds = new Set<string>();
+    for (const rel of releases) {
+      if (rel.sourceId && (rel.publishedSkillId || rel.status === 'published' || rel.deploymentStatus === 'deployed')) {
+        publishedSourceIds.add(rel.sourceId);
+      }
     }
-    if (createSourceType === 'execution_flow_template') {
-      return flowOptions.map((template) => ({
-        label: template.name || `Template ${template.id.slice(0, 8)}`,
-        value: template.id,
-        description: template.description || template.goal,
-      }));
+
+    const options: Array<{
+      label: string;
+      value: string;
+      sourceType: CapabilitySourceType;
+      sourceName: string;
+      description?: string;
+    }> = [];
+
+    // 1. Temporal Workflows (编排型 & 浏览器录制型)
+    for (const wf of temporalWorkflowOptions) {
+      if (publishedSourceIds.has(wf.id)) continue;
+      const isBrowser = wf.sourceContext?.sourceType === 'browser_template';
+      if (isBrowser) {
+        options.push({
+          label: `[浏览器录制] ${wf.name || `Browser Workflow ${wf.id.slice(0, 8)}`}`,
+          value: wf.id,
+          sourceType: 'browser_recording',
+          sourceName: wf.name || `Browser Workflow ${wf.id.slice(0, 8)}`,
+          description: wf.description || undefined,
+        });
+      } else if (wf.validationStatus === 'validated' && Boolean(wf.generatedCode?.trim())) {
+        options.push({
+          label: `[编排型] ${wf.name || `Workflow ${wf.id.slice(0, 8)}`}`,
+          value: wf.id,
+          sourceType: 'temporal_workflow',
+          sourceName: wf.name || `Workflow ${wf.id.slice(0, 8)}`,
+          description: wf.description || undefined,
+        });
+      }
     }
-    if (createSourceType === 'browser_recording') {
-      return temporalWorkflowOptions
-        .filter(
-          (workflow: TemporalWorkflowDTO) =>
-            workflow.sourceContext?.sourceType === 'browser_template'
-        )
-        .map((workflow: TemporalWorkflowDTO) => ({
-          label: workflow.name || `Browser Workflow ${workflow.id.slice(0, 8)}`,
-          value: workflow.id,
-          description: workflow.description,
-        }));
+
+    // 2. Execution Flow Templates (模版型)
+    for (const tpl of flowOptions) {
+      if (publishedSourceIds.has(tpl.id)) continue;
+      options.push({
+        label: `[模版型] ${tpl.name || `Template ${tpl.id.slice(0, 8)}`}`,
+        value: tpl.id,
+        sourceType: 'execution_flow_template',
+        sourceName: tpl.name || `Template ${tpl.id.slice(0, 8)}`,
+        description: tpl.description || tpl.goal || undefined,
+      });
     }
-    return [];
-  }, [createSourceType, flowOptions, temporalWorkflowOptions]);
+
+    return options;
+  }, [releases, flowOptions, temporalWorkflowOptions]);
 
   const temporalWorkflowMap = useMemo(
     () => new Map(temporalWorkflowOptions.map((wf) => [wf.id, wf])),

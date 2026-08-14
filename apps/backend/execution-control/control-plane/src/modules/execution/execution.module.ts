@@ -54,6 +54,7 @@ import { CapabilityContractCatalogService } from './plan-runtime/capability-cont
 import { OutputNormalizerService } from './plan-runtime/output-normalizer.service';
 import { GracePolicyService } from './plan-runtime/grace-policy.service';
 import { VersionRetentionService } from './plan-runtime/version-retention.service';
+import { LlmOperationAttestationClient } from './plan-runtime/llm-operation-attestation.client';
 import { BackfillModule } from './backfill/backfill.module';
 import { PrismaModule } from '../prisma/prisma.module';
 
@@ -81,6 +82,7 @@ import { PrismaModule } from '../prisma/prisma.module';
     OutputNormalizerService,
     GracePolicyService,
     VersionRetentionService,
+    LlmOperationAttestationClient,
     ExecutionService,
     ExecutionCreateService,
     ExecutionApprovalService,

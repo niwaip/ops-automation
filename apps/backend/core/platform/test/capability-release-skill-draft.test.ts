@@ -37,6 +37,22 @@ describe('CapabilityReleaseSkillDraftService', () => {
 
     return { service, prisma, browserRecordingService, temporalSchemaService };
   };
+
+  it('emits standards-compliant Temporal input JSON Schema with required only at object level', () => {
+    const { temporalSchemaService } = createService();
+    const schema = temporalSchemaService.buildTemporalParamsSchema({
+      inputParams: {
+        query: { type: 'string', required: true, description: '搜索词' },
+        topic: { type: 'string', required: false, defaultValue: 'general' },
+      },
+    });
+
+    expect(schema.required).toEqual(['query']);
+    expect((schema.properties as any).query).not.toHaveProperty('required');
+    expect((schema.properties as any).topic).not.toHaveProperty('required');
+    expect((schema.properties as any).topic.default).toBe('general');
+  });
+
   it('preserves document runtime mapping metadata when building execution flow skill drafts', () => {
     const { service } = createService();
 
@@ -341,5 +357,54 @@ describe('CapabilityReleaseSkillDraftService — outputSchema propagation (fix �
       { id: 'v4' }
     );
     expect(payload.outputSchema).toBeUndefined();
+  });
+
+  it('seals legacy outputParams using observed runtime types and required fields', () => {
+    const service = createService();
+    const payload = (service as any).buildSkillDraftPayload(
+      { sourceType: 'temporal_workflow', sourceId: 'wf-search', releaseVersion: 1 },
+      {
+        sourcePayload: {
+          name: 'search',
+          workflowDsl: {},
+          outputParams: {
+            searchResults: { description: '搜索结果数组' },
+            responseMetadata: { description: '响应元数据' },
+          },
+        },
+      },
+      {
+        id: 'validation-search',
+        resultSnapshot: {
+          result: {
+            result: {
+              result: {
+                businessData: {
+                  searchResults: [],
+                  responseMetadata: { responseTime: 10 },
+                },
+              },
+            },
+          },
+        },
+      }
+    );
+
+    expect(payload.outputSchema).toEqual({
+      type: 'object',
+      properties: {
+        searchResults: {
+          type: 'array',
+          items: { type: 'object' },
+          description: '搜索结果数组',
+        },
+        responseMetadata: {
+          type: 'object',
+          description: '响应元数据',
+        },
+      },
+      required: ['searchResults', 'responseMetadata'],
+      additionalProperties: false,
+    });
   });
 });

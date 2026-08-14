@@ -162,7 +162,7 @@ export interface CapabilityVisibleSkill {
   description?: string;
   triggerKeywords: string[];
   paramsSchema: ParamsSchema;
-  executionType: 'document' | 'flow' | 'query';
+  executionType: 'document' | 'flow' | 'query' | 'artifact';
   version?: string;
   publishedSkillId?: string;
   executableVersion?: string;
@@ -381,7 +381,9 @@ export interface AvailableSkillDefinition {
   description?: string;
   triggerKeywords: string[];
   paramsSchema: ParamsSchema;
-  executionType?: 'document' | 'flow' | 'query';
+  executionType?: 'document' | 'flow' | 'query' | 'artifact';
+  source?: string;
+  supportsArtifact?: boolean;
   publishedSkillId?: string;
   executableVersion?: string;
   version?: string;

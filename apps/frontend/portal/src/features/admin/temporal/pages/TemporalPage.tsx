@@ -11,24 +11,25 @@ import {
   message,
   Tooltip,
   Badge,
-  Form,
+  Upload,
 } from 'antd';
 import {
   SearchOutlined,
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
-  PlayCircleOutlined,
   ReloadOutlined,
   RobotOutlined,
   InfoCircleOutlined,
   CodeOutlined,
   FolderOpenOutlined,
   CheckCircleOutlined,
+  DownloadOutlined,
+  UploadOutlined,
 } from '@ant-design/icons';
+import type { UploadProps } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { useNavigate } from 'react-router-dom';
 import {
   temporalWorkflowApi,
   TemporalWorkflowDTO,
@@ -71,22 +72,18 @@ const getArtifactStatusMeta = (status?: string) => {
 const TemporalPage: React.FC = () => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
 
   const [searchText, setSearchText] = useState('');
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingWorkflow, setEditingWorkflow] = useState<TemporalWorkflowDTO | null>(null);
-  const [draftWorkflowDsl, setDraftWorkflowDsl] = useState<
-    Pick<TemplateWorkflowDraft, 'name' | 'description' | 'taskQueue' | 'workflowDsl' | 'activityDsl'> | null
-  >(null);
+  const [draftWorkflowDsl, setDraftWorkflowDsl] = useState<Pick<
+    TemplateWorkflowDraft,
+    'name' | 'description' | 'taskQueue' | 'workflowDsl' | 'activityDsl'
+  > | null>(null);
   const [openTemplatePickerOnEditOpen, setOpenTemplatePickerOnEditOpen] = useState(false);
 
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [selectedWorkflow, setSelectedWorkflow] = useState<TemporalWorkflowDTO | null>(null);
-
-  const [executionModalVisible, setExecutionModalVisible] = useState(false);
-  const [executingWorkflow, setExecutingWorkflow] = useState<TemporalWorkflowDTO | null>(null);
-  const [executionParams, setExecutionParams] = useState<any>({});
 
   const [aiDraftDrawerVisible, setAiDraftDrawerVisible] = useState(false);
 
@@ -132,6 +129,17 @@ const TemporalPage: React.FC = () => {
     }
   );
 
+  const importMutation = useMutation((file: File) => temporalWorkflowApi.importBundle(file), {
+    onSuccess: (result) => {
+      message.success(`已导入“${result.workflow.name}”，请完成真实验证后再发布`);
+      queryClient.invalidateQueries(['temporal']);
+      queryClient.invalidateQueries(['temporal-options']);
+    },
+    onError: (error: Error) => {
+      message.error(error.message || '工作流包导入失败');
+    },
+  });
+
   const filteredWorkflows = useMemo(() => {
     const keyword = searchText.trim().toLowerCase();
     if (!keyword) return workflowsQuery.data || [];
@@ -154,8 +162,8 @@ const TemporalPage: React.FC = () => {
     },
     {
       key: 'active',
-      label: '已启用',
-      value: workflowsQuery.data?.filter((w) => w.isActive).length || 0,
+      label: '已发布',
+      value: workflowsQuery.data?.filter((w) => Boolean(w.deployedAt)).length || 0,
       icon: <CheckCircleOutlined style={{ color: 'var(--success-color)' }} />,
       color: 'var(--success-color)',
     },
@@ -208,14 +216,33 @@ const TemporalPage: React.FC = () => {
       onOk: () => deleteMutation.mutate(id),
     });
 
-  const handleSaveWorkflow = async (data: {
-    workflowDsl: any;
-    activityDsl: any;
-    name: string;
-    description: string;
-    taskQueue?: string;
-    generatedCode?: string;
-  }) => {
+  const handleExport = async (workflow: TemporalWorkflowDTO) => {
+    try {
+      const bundle = await temporalWorkflowApi.exportBundle(workflow.id);
+      const safeName = workflow.name.replace(/[^a-zA-Z0-9\u4e00-\u9fff_-]+/g, '-');
+      const url = URL.createObjectURL(bundle);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `${safeName || 'temporal-workflow'}.tar.gz`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      message.success('工作流包导出成功');
+    } catch (error: any) {
+      message.error(error?.message || '工作流包导出失败');
+    }
+  };
+
+  const handleImport: UploadProps['beforeUpload'] = (file) => {
+    importMutation.mutate(file as File);
+    return false;
+  };
+
+  const handleSaveWorkflow = async (
+    data: CreateTemporalWorkflowDTO,
+    workflowId?: string
+  ): Promise<TemporalWorkflowDTO> => {
     const payload = {
       name: data.name,
       description: data.description,
@@ -227,28 +254,10 @@ const TemporalPage: React.FC = () => {
       activityDsl: data.activityDsl,
       generatedCode: data.generatedCode,
     };
-    if (editingWorkflow) {
-      updateMutation.mutate({ id: editingWorkflow.id, data: payload });
-    } else {
-      createMutation.mutate(payload);
-    }
-  };
-
-  const handleCreateExecutionFromWorkflow = async () => {
-    if (!executingWorkflow) return;
-    const skillId = (executingWorkflow.workflowDsl as any)?.skillId || executingWorkflow.id;
-    try {
-      const execution = await executionApi.create({
-        skillId,
-        runtimeType: 'browser',
-        input: {},
-      });
-      message.success('已创建执行记录，正在跳转执行详情');
-      setExecutionModalVisible(false);
-      navigate(`/executions/${execution.id}`);
-    } catch (error: any) {
-      message.error('触发执行失败');
-    }
+    const persistedWorkflowId = workflowId || editingWorkflow?.id;
+    return persistedWorkflowId
+      ? updateMutation.mutateAsync({ id: persistedWorkflowId, data: payload })
+      : createMutation.mutateAsync(payload);
   };
 
   const openAiDraftModal = () => {
@@ -342,30 +351,26 @@ const TemporalPage: React.FC = () => {
     {
       title: centerTitle('状态'),
       key: 'status',
-      width: 72,
+      width: 88,
       align: 'center',
-      render: (_, r) => (
-        <Tag color={r.isActive ? 'green' : 'default'}>{r.isActive ? '启用' : '禁用'}</Tag>
-      ),
+      render: (_, r) => {
+        if (!r.deployedAt) {
+          return <Tag>未发布</Tag>;
+        }
+        return (
+          <Tag color={r.isActive ? 'green' : 'orange'}>
+            {r.isActive ? '已发布' : '已停用'}
+          </Tag>
+        );
+      },
     },
     {
       title: centerTitle(t('common:actions')),
       key: 'actions',
-      width: 200,
+      width: 260,
       align: 'center',
       render: (_, r) => (
         <Space size="small">
-          <Button
-            type="text"
-            size="small"
-            icon={<PlayCircleOutlined />}
-            onClick={() => {
-              setExecutingWorkflow(r);
-              setExecutionParams({});
-              setExecutionModalVisible(true);
-            }}
-            title="触发执行"
-          />
           <Button
             type="text"
             size="small"
@@ -379,6 +384,13 @@ const TemporalPage: React.FC = () => {
             icon={<CodeOutlined />}
             onClick={() => handleViewDetail(r)}
             title="查看详情"
+          />
+          <Button
+            type="text"
+            size="small"
+            icon={<DownloadOutlined />}
+            onClick={() => handleExport(r)}
+            title="导出完整工作流包"
           />
           <Button
             type="text"
@@ -474,6 +486,21 @@ const TemporalPage: React.FC = () => {
               >
                 刷新
               </Button>
+              <Upload
+                accept=".tar.gz,.tgz,application/gzip"
+                beforeUpload={handleImport}
+                showUploadList={false}
+                disabled={importMutation.isLoading}
+              >
+                <Button
+                  size="middle"
+                  icon={<UploadOutlined />}
+                  loading={importMutation.isLoading}
+                  className="btn-pill"
+                >
+                  导入工作流包
+                </Button>
+              </Upload>
               <Button
                 size="middle"
                 icon={<RobotOutlined />}
@@ -512,28 +539,6 @@ const TemporalPage: React.FC = () => {
           pagination={{ showSizeChanger: true, showTotal: (total) => `共 ${total} 条` }}
         />
       </Card>
-
-      <Modal
-        title="触发执行"
-        open={executionModalVisible}
-        onOk={handleCreateExecutionFromWorkflow}
-        onCancel={() => setExecutionModalVisible(false)}
-      >
-        <Form layout="vertical">
-          <Form.Item label="执行参数 (JSON)">
-            <Input.TextArea
-              value={JSON.stringify(executionParams, null, 2)}
-              onChange={(e) => {
-                try {
-                  setExecutionParams(JSON.parse(e.target.value));
-                } catch (err) {}
-              }}
-              autoSize={{ minRows: 4, maxRows: 10 }}
-              style={{ fontFamily: 'monospace', fontSize: 12 }}
-            />
-          </Form.Item>
-        </Form>
-      </Modal>
 
       <Modal
         title="工作流详情"

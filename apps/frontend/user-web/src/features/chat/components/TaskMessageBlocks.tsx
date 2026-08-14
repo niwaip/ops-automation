@@ -1,15 +1,18 @@
 import { Button, Space } from 'antd';
 import type { ChatMessage, ChatProgressLog } from '@ops/user-core';
+import {
+  isCompletionOnlyResultText,
+  resolveChatOutcomePresentation,
+  resolveWaitingInputDisplayLabel,
+} from '@ops/user-core';
 import { findDeeplinkByLabel, resolveTaskParts } from '@chat-web/lib/contentParts';
 import SharedTaskOutcomeCard from '@chat-web/components/TaskOutcomeCard';
 import SharedTaskProgressCard from '@chat-web/components/TaskProgressCard';
-import { resolveWaitingInputDisplayLabel } from '@ops/user-core';
 import {
   getMessageStatusLabel,
   resolveMessageTaskStatus,
   type ChatTaskStatus,
 } from '../lib/taskStatus';
-import { toStructuredResultText } from '../lib/messageDisplay';
 
 import styles from '../pages/ChatPage.module.css';
 
@@ -33,13 +36,15 @@ export const hasTaskOutcomeContent = (message: ChatMessage): boolean => {
   const errorMessage = message.metadata?.errorMessage?.trim();
   const failureReason = message.metadata?.failureReason?.trim();
   const resultTitle = message.metadata?.resultTitle?.trim();
-  const normalizedSummary = message.metadata?.normalizedResult?.summary?.trim();
-  const normalizedDetail = message.metadata?.normalizedResult?.detailText?.trim();
-  const structuredResult = toStructuredResultText(
-    message.metadata?.normalizedResult?.structuredData ??
-      message.metadata?.finalResultData ??
-      taskParts.structuredResultData
-  );
+  const presentation = resolveChatOutcomePresentation({
+    finalResult,
+    finalSummary,
+    normalizedResult: message.metadata?.normalizedResult,
+    rawResult: message.metadata?.finalResultData ?? taskParts.structuredResultData,
+  });
+  const normalizedSummary = presentation.normalizedResult?.summary?.trim();
+  const normalizedDetail = presentation.normalizedResult?.detailText?.trim();
+  const structuredResult = presentation.structuredText;
   const partDownloadUrl =
     findDeeplinkByLabel(taskParts.deeplinks, /下载|download/i) || taskParts.deeplinks[0]?.url;
   const partDetailUrl = findDeeplinkByLabel(taskParts.deeplinks, /详情|detail|执行/i);
@@ -91,33 +96,31 @@ export function TaskOutcomeBlock({
   const errorMessage = message.metadata?.errorMessage?.trim();
   const failureReason = message.metadata?.failureReason?.trim();
   const resultTitle = message.metadata?.resultTitle?.trim();
-  const normalizedSummary = message.metadata?.normalizedResult?.summary?.trim();
-  const normalizedDetail = message.metadata?.normalizedResult?.detailText?.trim();
-  const structuredResult = toStructuredResultText(
-    message.metadata?.normalizedResult?.structuredData ??
-      message.metadata?.finalResultData ??
-      taskParts.structuredResultData
-  );
+  const presentation = resolveChatOutcomePresentation({
+    finalResult,
+    finalSummary,
+    normalizedResult: message.metadata?.normalizedResult,
+    rawResult: message.metadata?.finalResultData ?? taskParts.structuredResultData,
+  });
+  const normalizedSummary = presentation.normalizedResult?.summary?.trim();
+  const normalizedDetail = presentation.normalizedResult?.detailText?.trim();
+  const structuredResult = presentation.structuredText;
   const partDownloadUrl =
     findDeeplinkByLabel(taskParts.deeplinks, /下载|download/i) || taskParts.deeplinks[0]?.url;
   const partDetailUrl = findDeeplinkByLabel(taskParts.deeplinks, /详情|detail|执行/i);
-  const primaryStructuredResult =
-    status === 'completed' && structuredResult && structuredResult !== errorMessage
-      ? structuredResult
-      : null;
-  const displayFinalResult =
-    status === 'completed'
-      ? finalResult ||
-        finalSummary ||
-        normalizedSummary ||
-        primaryStructuredResult ||
-        normalizedDetail ||
-        undefined
-      : undefined;
+  const displayFinalResult = status === 'completed' ? presentation.primaryText : undefined;
+  const isRedundantCompletionText = (value?: string) =>
+    isCompletionOnlyResultText(value, presentation.normalizedResult?.title);
   const supplementalResult =
-    displayFinalResult && finalResult && finalResult !== displayFinalResult
+    displayFinalResult &&
+    finalResult &&
+    finalResult !== displayFinalResult &&
+    !isRedundantCompletionText(finalResult)
       ? finalResult
-      : displayFinalResult && normalizedDetail && normalizedDetail !== displayFinalResult
+      : displayFinalResult &&
+          normalizedDetail &&
+          normalizedDetail !== displayFinalResult &&
+          !isRedundantCompletionText(normalizedDetail)
         ? normalizedDetail
         : null;
   const missingInputs = (message.metadata?.missingInputs || []) as {
@@ -183,7 +186,7 @@ export function TaskOutcomeBlock({
         errorMessage={errorMessage}
         failureReason={failureReason}
         finalResult={displayFinalResult}
-        hasBusinessResult={message.metadata?.hasBusinessResult}
+        hasBusinessResult={presentation.hasBusinessResult || message.metadata?.hasBusinessResult}
         shouldShowStructuredResult={Boolean(
           structuredResult &&
             displayFinalResult &&

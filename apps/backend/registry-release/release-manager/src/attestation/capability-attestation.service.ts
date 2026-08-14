@@ -87,8 +87,9 @@ export class CapabilityAttestationService {
       ),
       this.prisma.$queryRawUnsafe<Array<{ input_json: unknown; expected_output_json: unknown | null; is_negative: boolean; name: string | null }>>(
         `SELECT input_json, expected_output_json, is_negative, name FROM capability_fixtures
-         WHERE release_id = $1::uuid`,
-        releaseId
+         WHERE release_id = $1::uuid AND build_id = $2::uuid`,
+        releaseId,
+        buildId
       ),
     ]);
 

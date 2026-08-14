@@ -4,6 +4,7 @@ import { getAuthServiceUrl } from '../../../config/service-endpoints';
 import { TRACE_ID_HEADER } from '../../../common/trace.util';
 import { AvailableSkillDefinition, SkillMatchResult } from '../../react-engine/interfaces';
 import { SkillCacheService } from './skill-cache.service';
+import { getSkillMatchMinConfidence, isAcceptedSkillMatch } from './skill-match-policy';
 
 @Injectable()
 export class SkillMatcherService {
@@ -71,8 +72,12 @@ export class SkillMatcherService {
           }
         );
 
+        if (!response.data.match) {
+          return this.acceptFallbackMatch(input.userInput, input.availableSkills);
+        }
+
         const matchedSkill = this.hydrateMatchedSkill(response.data.match, input.availableSkills);
-        if (matchedSkill?.confidence && matchedSkill.confidence > 0) {
+        if (matchedSkill && isAcceptedSkillMatch(matchedSkill.confidence)) {
           if (
             matchedSkill.apiEndpoints?.runtimeMetadata?.sourceType === 'document' &&
             (!matchedSkill.executionFlow || matchedSkill.executionFlow.length === 0)
@@ -81,13 +86,18 @@ export class SkillMatcherService {
           }
           return matchedSkill;
         }
+        this.logger.log(
+          `Rejected low-confidence skill match '${matchedSkill?.skillName || 'unknown'}' (${matchedSkill?.confidence ?? 'missing'}); minimum is ${getSkillMatchMinConfidence()}`
+        );
+        return this.acceptFallbackMatch(input.userInput, input.availableSkills);
       } catch (error) {
         const message = error instanceof Error ? error.message : 'unknown';
         this.logger.warn(`Planner skill match API failed: ${message}`);
+        return this.acceptFallbackMatch(input.userInput, input.availableSkills);
       }
     }
 
-    return this.fallbackSkillMatch(input.userInput, input.availableSkills);
+    return null;
   }
 
   fallbackSkillMatch(
@@ -122,7 +132,7 @@ export class SkillMatcherService {
       matchedKeywords: bestSkill.triggerKeywords.filter(
         (keyword) => keyword && normalizedInput.includes(keyword.toLowerCase())
       ),
-      confidence: Math.min(0.9, 0.4 + bestScore * 0.1),
+      confidence: Math.min(0.95, 0.8 + bestScore * 0.1),
       collectedParams: {},
       missingParams: bestSkill.paramsSchema.required || [],
       paramsSchema: bestSkill.paramsSchema,
@@ -143,6 +153,14 @@ export class SkillMatcherService {
       expectedResult: bestSkill.expectedResult,
       outputParams: bestSkill.outputParams,
     };
+  }
+
+  private acceptFallbackMatch(
+    userInput: string,
+    availableSkills: AvailableSkillDefinition[]
+  ): SkillMatchResult | null {
+    const fallback = this.fallbackSkillMatch(userInput, availableSkills);
+    return fallback && isAcceptedSkillMatch(fallback.confidence) ? fallback : null;
   }
 
   hydrateMatchedSkill(

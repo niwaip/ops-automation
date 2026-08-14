@@ -5,6 +5,16 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { parseJson } from '../../modules/temporal-workflow/temporal-workflow-json.utils';
 import type { TemporalWorkflowValidationStatus } from '../../modules/temporal-workflow/temporal-workflow.types';
 
+export type TemporalWorkflowArtifactValidationBinding = {
+  artifactHash: string | null;
+  artifactVersion: number;
+  evidenceArtifactHash: string | null;
+  evidenceArtifactVersion: number | null;
+  hasGeneratedCode: boolean;
+  isCurrent: boolean;
+  validationSuccess: boolean | undefined;
+};
+
 @Injectable()
 export class TemporalWorkflowArtifactService {
   private readonly logger = new Logger(TemporalWorkflowArtifactService.name);
@@ -76,11 +86,61 @@ export class TemporalWorkflowArtifactService {
     return `sha256:${createHash('sha256').update(code).digest('hex')}`;
   }
 
+  inspectValidationBinding(
+    workflow: Pick<
+      TemporalWorkflow,
+      | 'artifactHash'
+      | 'artifactVersion'
+      | 'generatedCode'
+      | 'validatedAt'
+      | 'validationResultJson'
+      | 'validationStatus'
+    >
+  ): TemporalWorkflowArtifactValidationBinding {
+    const generatedCode = typeof workflow.generatedCode === 'string' ? workflow.generatedCode : '';
+    const hasGeneratedCode = generatedCode.trim().length > 0;
+    const artifactHash = hasGeneratedCode ? this.computeArtifactHash(generatedCode) : null;
+    const artifactVersion = this.getCurrentArtifactVersion(workflow);
+    const validationResult =
+      parseJson<Record<string, unknown>>(workflow.validationResultJson) || {};
+    const validationSuccess =
+      typeof validationResult.success === 'boolean' ? validationResult.success : undefined;
+    const evidenceArtifactHash =
+      typeof validationResult.artifactHash === 'string'
+        ? validationResult.artifactHash
+        : null;
+    const evidenceArtifactVersion =
+      typeof validationResult.artifactVersion === 'number' &&
+      Number.isInteger(validationResult.artifactVersion)
+        ? validationResult.artifactVersion
+        : null;
+
+    return {
+      artifactHash,
+      artifactVersion,
+      evidenceArtifactHash,
+      evidenceArtifactVersion,
+      hasGeneratedCode,
+      isCurrent: Boolean(
+        hasGeneratedCode &&
+          artifactVersion > 0 &&
+          workflow.artifactHash === artifactHash &&
+          workflow.validationStatus === 'validated' &&
+          workflow.validatedAt &&
+          validationSuccess === true &&
+          evidenceArtifactHash === artifactHash &&
+          evidenceArtifactVersion === artifactVersion
+      ),
+      validationSuccess,
+    };
+  }
+
   private buildLegacyArtifactMetadataPatch(
     workflow: TemporalWorkflow
   ): Prisma.TemporalWorkflowUpdateInput | null {
     const generatedCode =
-      typeof workflow.generatedCode === 'string' ? workflow.generatedCode.trim() : '';
+      typeof workflow.generatedCode === 'string' ? workflow.generatedCode : '';
+    const hasGeneratedCode = generatedCode.trim().length > 0;
     const validationResult =
       parseJson<Record<string, unknown>>(workflow.validationResultJson) || {};
     const validationSuccess =
@@ -95,32 +155,52 @@ export class TemporalWorkflowArtifactService {
         : '';
     const hasValidatedAt = Boolean((workflow as any).validatedAt);
 
-    const derivedArtifactVersion = generatedCode ? Math.max(persistedArtifactVersion, 1) : 0;
-    const derivedArtifactHash = generatedCode ? this.computeArtifactHash(generatedCode) : null;
+    const derivedArtifactVersion = hasGeneratedCode ? Math.max(persistedArtifactVersion, 1) : 0;
+    // Artifact identity is always computed from the exact persisted bytes. Trimming here makes
+    // validation evidence describe a different artifact whenever generated code ends in a newline.
+    const derivedArtifactHash = hasGeneratedCode ? this.computeArtifactHash(generatedCode) : null;
+    const evidenceArtifactHash =
+      typeof validationResult.artifactHash === 'string'
+        ? validationResult.artifactHash
+        : null;
+    const evidenceArtifactVersion =
+      typeof validationResult.artifactVersion === 'number' &&
+      Number.isInteger(validationResult.artifactVersion)
+        ? validationResult.artifactVersion
+        : null;
+    const isLegacySuccessfulEvidence =
+      validationSuccess === true &&
+      evidenceArtifactHash === null &&
+      evidenceArtifactVersion === null;
+    const isCurrentSuccessfulEvidence =
+      validationSuccess === true &&
+      (isLegacySuccessfulEvidence ||
+        (evidenceArtifactHash === derivedArtifactHash &&
+          evidenceArtifactVersion === derivedArtifactVersion));
     const derivedValidationStatus: TemporalWorkflowValidationStatus =
-      validationSuccess === true || hasValidatedAt
+      isCurrentSuccessfulEvidence
         ? 'validated'
         : validationSuccess === false
           ? 'failed'
-          : generatedCode
+          : hasGeneratedCode
             ? 'generated'
             : 'draft';
     const derivedValidationScore =
-      validationScore !== undefined
+      derivedValidationStatus === 'validated' && validationScore !== undefined
         ? validationScore
-        : validationSuccess === true
+        : derivedValidationStatus === 'validated'
           ? 100
-          : generatedCode
-            ? persistedValidationScore
+          : derivedValidationStatus === 'failed' && validationScore !== undefined
+            ? validationScore
             : 0;
 
     const patch: Prisma.TemporalWorkflowUpdateInput = {};
 
-    if (generatedCode && persistedArtifactVersion <= 0) {
+    if (hasGeneratedCode && persistedArtifactVersion <= 0) {
       patch.artifactVersion = derivedArtifactVersion as any;
     }
     if (
-      generatedCode &&
+      hasGeneratedCode &&
       (!workflow.artifactHash || workflow.artifactHash !== derivedArtifactHash)
     ) {
       patch.artifactHash = derivedArtifactHash as any;
@@ -133,6 +213,19 @@ export class TemporalWorkflowArtifactService {
     }
     if (derivedValidationStatus === 'validated' && !hasValidatedAt) {
       patch.validatedAt = workflow.updatedAt || new Date();
+    }
+    if (derivedValidationStatus !== 'validated' && hasValidatedAt) {
+      patch.validatedAt = null;
+    }
+    if (isLegacySuccessfulEvidence && derivedArtifactHash) {
+      patch.validationResultJson = {
+        ...validationResult,
+        artifactHash: derivedArtifactHash,
+        artifactVersion: derivedArtifactVersion,
+      } as any;
+    }
+    if (!(workflow as any).deployedAt && Boolean((workflow as any).isActive)) {
+      patch.isActive = false;
     }
 
     return Object.keys(patch).length > 0 ? patch : null;

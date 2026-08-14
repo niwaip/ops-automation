@@ -70,7 +70,12 @@ export class CapabilityReleasePublishValidatorService {
     // declarative contract at all is a P0 violation (§15.1): a schema-less
     // capability must never be published, so the gate fails closed instead of
     // silently skipping the lint.
-    const contractForLint = this.extractContractForLint(release, draft, snapshot);
+    const contractForLint = this.extractContractForLint(
+      release,
+      draft,
+      normalizedDraftPayload,
+      snapshot
+    );
     if (!contractForLint) {
       return {
         normalizedDraftTools,
@@ -128,6 +133,7 @@ export class CapabilityReleasePublishValidatorService {
     const compatibility = await this.checkOutputSchemaCompatibility(
       release,
       draft,
+      normalizedDraftPayload,
       snapshot
     );
     if (compatibility && !compatibility.compatible) {
@@ -193,24 +199,44 @@ export class CapabilityReleasePublishValidatorService {
   }
 
   /**
-   * Extracts the contract payload that Contract Lint validates. Prefers the
-   * source snapshot when IT declares a contract; otherwise falls back to the
-   * derived Skill draft payload (which post-fix-① always carries the
-   * authoritative `outputSchema`). Returns undefined only when NEITHER
-   * declares any contract — which the caller treats as a P0 schema-less
-   * publish and blocks.
+   * Extracts the contract payload that Contract Lint validates. The normalized
+   * draft is the exact artifact that will be persisted, so it is authoritative.
+   * Source snapshots are only legacy fallback evidence. Returns undefined when
+   * neither source declares a contract, which blocks schema-less publishing.
    */
   private extractContractForLint(
     release: CapabilityReleaseDTO,
     draft: SkillDraftDTO,
+    normalizedDraftPayload: Record<string, unknown>,
     snapshot?: CapabilitySourceSnapshotDTO
   ): Record<string, unknown> | undefined {
+    // The normalized draft is the exact immutable artifact being published.
+    // Source snapshots are authoring evidence and may contain weaker inferred
+    // contracts (for example outputParams without an explicit type), so they
+    // must never override the publish artifact's authoritative schema.
+    if (this.hasDeclarativeContract(normalizedDraftPayload)) {
+      return normalizedDraftPayload;
+    }
     const snapshotPayload = (snapshot?.sourcePayload as Record<string, unknown>) || {};
     if (this.hasDeclarativeContract(snapshotPayload)) {
       return snapshotPayload;
     }
     const draftPayload = (draft.draftPayload as Record<string, unknown>) || {};
-    return this.hasDeclarativeContract(draftPayload) ? draftPayload : undefined;
+    if (this.hasDeclarativeContract(draftPayload)) {
+      return draftPayload;
+    }
+
+    const outputSchema =
+      this.extractOutputSchemaFromPayload(snapshotPayload) ||
+      this.extractOutputSchemaFromPayload(draftPayload);
+    if (outputSchema) {
+      return {
+        ...draftPayload,
+        outputSchema,
+      };
+    }
+
+    return undefined;
   }
 
   private hasDeclarativeContract(payload: Record<string, unknown>): boolean {
@@ -219,6 +245,64 @@ export class CapabilityReleasePublishValidatorService {
         payload.outputSchema ||
         (payload.manifest && typeof payload.manifest === 'object')
     );
+  }
+
+  private extractOutputSchemaFromPayload(
+    payload: Record<string, unknown>
+  ): Record<string, unknown> | undefined {
+    if (!payload || typeof payload !== 'object') return undefined;
+
+    const contracts =
+      (payload.contracts as Record<string, unknown>) ||
+      (payload.manifest as any)?.spec?.contracts ||
+      {};
+    const output =
+      (contracts?.output as Record<string, unknown>) ||
+      (payload.outputSchema as Record<string, unknown>);
+    const schema = (output as any)?.schema ?? output;
+    if (
+      schema &&
+      typeof schema === 'object' &&
+      !Array.isArray(schema) &&
+      Object.keys(schema).length > 0
+    ) {
+      return schema as Record<string, unknown>;
+    }
+
+    const outputParams =
+      (payload.outputParams as Record<string, unknown>) ||
+      (payload.apiEndpoints as any)?.runtimeMetadata?.outputParams ||
+      (payload.runtimeMetadata as any)?.outputParams;
+
+    if (outputParams && typeof outputParams === 'object' && Object.keys(outputParams).length > 0) {
+      const properties: Record<string, unknown> = {};
+      for (const [key, val] of Object.entries(outputParams)) {
+        const paramDef =
+          typeof val === 'object' && val !== null ? (val as Record<string, unknown>) : {};
+        const description =
+          typeof paramDef.description === 'string'
+            ? paramDef.description
+            : `Output field ${key}`;
+        const inferredType = /结果数组|列表|results?/i.test(`${key} ${description}`)
+          ? 'array'
+          : /metadata|元数据/i.test(`${key} ${description}`)
+            ? 'object'
+            : 'string';
+        properties[key] = {
+          type: typeof paramDef.type === 'string' ? paramDef.type : inferredType,
+          ...(inferredType === 'array' ? { items: { type: 'object' } } : {}),
+          description,
+        };
+      }
+      return {
+        type: 'object',
+        properties,
+        required: Object.keys(properties),
+        additionalProperties: false,
+      };
+    }
+
+    return undefined;
   }
 
   /**
@@ -230,28 +314,63 @@ export class CapabilityReleasePublishValidatorService {
   private async checkOutputSchemaCompatibility(
     release: CapabilityReleaseDTO,
     draft: SkillDraftDTO,
+    normalizedDraftPayload: Record<string, unknown>,
     snapshot?: CapabilitySourceSnapshotDTO
   ): Promise<SchemaDiffResult | undefined> {
-    const payload =
-      (snapshot?.sourcePayload as Record<string, unknown>) ||
-      (draft.draftPayload as Record<string, unknown>) ||
-      {};
-    const newSchema = this.schemaCompatibilityService.extractOutputSchema(payload);
+    const snapshotPayload = (snapshot?.sourcePayload as Record<string, unknown>) || {};
+    const draftPayload = (draft.draftPayload as Record<string, unknown>) || {};
+    const newSchema =
+      this.schemaCompatibilityService.extractOutputSchema(normalizedDraftPayload) ||
+      this.schemaCompatibilityService.extractOutputSchema(draftPayload) ||
+      this.schemaCompatibilityService.extractOutputSchema(snapshotPayload);
     if (!newSchema) return undefined;
 
-    const mode = this.schemaCompatibilityService.resolveCompatibility(payload);
+    const mode = this.schemaCompatibilityService.resolveCompatibility({
+      ...snapshotPayload,
+      ...draftPayload,
+      ...normalizedDraftPayload,
+    });
     if (mode === 'none') return undefined;
 
-    const skillName = draft.name || release.sourceName;
-    if (!skillName) return undefined;
+    const rows = release.sourceId
+      ? await this.prisma
+          .$queryRawUnsafe<Array<{ output_schema: unknown }>>(
+            `SELECT sc.output_schema
+               FROM capability_releases cr
+               JOIN skill_configs sc ON sc.id = cr.published_skill_id
+              WHERE cr.source_type = $1
+                AND cr.source_id = $2::uuid
+                AND cr.published_skill_id IS NOT NULL
+              ORDER BY CASE WHEN cr.id = $3::uuid THEN 0 ELSE 1 END,
+                       cr.updated_at DESC
+              LIMIT 1`,
+            release.sourceType,
+            release.sourceId,
+            release.id
+          )
+          .catch(() => [])
+      : [];
 
-    const rows = await this.prisma
+    // Legacy releases may not carry a stable sourceId. Exact-name lookup is a
+    // fallback only; deterministic ordering avoids selecting an arbitrary row.
+    const skillName = draft.name || release.sourceName;
+    const legacyRows =
+      rows.length === 0 && skillName
+        ? await this.prisma
       .$queryRawUnsafe<Array<{ output_schema: unknown }>>(
-        `SELECT output_schema FROM skill_configs WHERE name = $1 LIMIT 1`,
-        skillName
-      )
-      .catch(() => []);
-    const oldSchema = (rows?.[0]?.output_schema ?? null) as Record<string, unknown> | null;
+            `SELECT output_schema
+               FROM skill_configs
+              WHERE name = $1
+              ORDER BY is_active DESC, updated_at DESC
+              LIMIT 1`,
+            skillName
+          )
+          .catch(() => [])
+        : [];
+    const oldSchema = (rows[0]?.output_schema ?? legacyRows[0]?.output_schema ?? null) as Record<
+      string,
+      unknown
+    > | null;
 
     return this.schemaCompatibilityService.compareOutputSchemas(oldSchema, newSchema, mode);
   }

@@ -424,4 +424,67 @@ describe('ChatConversationService', () => {
       }
     );
   });
+
+  it('persists the normalized result contract for completed task history', async () => {
+    const { service, sessionService } = createService();
+    sessionService.appendChatMessages.mockResolvedValue({
+      session: {
+        id: 'task-session-result',
+        status: 'active',
+        createdAt: '2026-08-12T00:00:00.000Z',
+        updatedAt: '2026-08-12T00:00:01.000Z',
+      },
+      history: [],
+    });
+    const businessData = {
+      date: '2026-08-12',
+      morning: { tempC: '26' },
+      noon: { tempC: '28' },
+      evening: { tempC: '27' },
+    };
+    const normalizedResult = {
+      title: 'weather_query_workflow',
+      structuredData: businessData,
+      hasBusinessResult: true,
+      artifacts: [],
+      envelope: {
+        result: { title: 'weather_query_workflow', businessData },
+        presentation: { preferAiSummary: true },
+      },
+    };
+
+    await service.persistTaskConversation({
+      sessionId: 'task-session-result',
+      userContent: '上海的天气怎么样',
+      terminalEvent: {
+        type: StreamEventType.RESULT,
+        content: '上海今日天气已查询。',
+        data: {
+          executionId: 'exec-weather',
+          status: 'succeeded',
+          result: { result: { businessData } },
+          normalizedResult,
+          resultType: 'generic',
+          resultTitle: 'weather_query_workflow',
+          hasBusinessResult: true,
+        },
+      } as any,
+    });
+
+    expect(sessionService.appendChatMessages).toHaveBeenCalledWith(
+      'task-session-result',
+      expect.arrayContaining([
+        expect.objectContaining({
+          role: 'assistant',
+          metadata: expect.objectContaining({
+            normalizedResult,
+            finalResultData: businessData,
+            resultType: 'generic',
+            resultTitle: 'weather_query_workflow',
+          }),
+        }),
+      ]),
+      expect.any(Object)
+    );
+  });
 });

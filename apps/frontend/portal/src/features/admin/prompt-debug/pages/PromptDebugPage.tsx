@@ -516,6 +516,19 @@ const buildTimelineItems = (
     .slice()
     .sort((left, right) => left.stepIndex - right.stepIndex)
     .forEach((step) => {
+      const stepOutputObj =
+        step.output && typeof step.output === 'object' && !Array.isArray(step.output)
+          ? (step.output as Record<string, unknown>)
+          : {};
+      const stepPromptDebug = (stepOutputObj.__promptDebug || stepOutputObj.promptDebug) as
+        | {
+            systemPrompt?: string;
+            userPrompt?: string;
+            llmResponseText?: string;
+            modelId?: string;
+          }
+        | undefined;
+
       items.push({
         color: step.status === 'failed' ? 'red' : step.status === 'succeeded' ? 'green' : 'blue',
         children: (
@@ -534,6 +547,9 @@ const buildTimelineItems = (
                 {renderSummaryChips([
                   { label: '开始', value: formatDateTime(step.startedAt), color: 'blue' },
                   { label: '结束', value: formatDateTime(step.endedAt), color: 'default' },
+                  ...(stepPromptDebug?.modelId
+                    ? [{ label: '模型', value: stepPromptDebug.modelId, color: 'purple' }]
+                    : []),
                 ])}
                 {step.errorMessage ? (
                   <Text
@@ -555,6 +571,13 @@ const buildTimelineItems = (
               { label: 'Step', value: step },
               { label: 'Input', value: step.input || {} },
               { label: 'Output', value: step.output || {} },
+              ...(stepPromptDebug
+                ? [
+                    { label: 'LLM Operation System Prompt', value: stepPromptDebug.systemPrompt || '' },
+                    { label: 'LLM Operation User Prompt', value: stepPromptDebug.userPrompt || '' },
+                    { label: 'LLM Operation 回复', value: stepPromptDebug.llmResponseText || '' },
+                  ]
+                : []),
               { label: 'Target', value: step.target || {} },
               { label: 'Error', value: step.errorMessage || '' },
             ])}
@@ -1112,6 +1135,9 @@ const PromptDebugPage: React.FC = () => {
                         )}
                         {item.promptDebug.debugSource
                           ? renderTag(getDebugSourceLabel(item.promptDebug.debugSource))
+                          : null}
+                        {(item.promptDebug.llmCalls?.length ?? 0) > 1
+                          ? renderTag(`${item.promptDebug.llmCalls!.length} 个 LLM 节点`, 'purple')
                           : null}
                       </Space>
                       <Text strong style={{ wordBreak: 'break-all' }}>

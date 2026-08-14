@@ -1,6 +1,10 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { createHash } from 'node:crypto';
-import { CapabilityTestFixtureV2, canonicalizeValue } from '@ops/backend-runtime-capability-contract';
+import {
+  CapabilityTestFixtureV2,
+  canonicalizeValue,
+  jsonSchemaValidator,
+} from '@ops/backend-runtime-capability-contract';
 import { CAPABILITY_RELEASE_ERROR_CODE } from '../capability-release.constants';
 import type { ReleaseManagerPrismaPort } from '../platform-runtime.ports';
 import { RELEASE_MANAGER_PRISMA } from '../platform-runtime.tokens';
@@ -24,6 +28,15 @@ export interface FixtureValidationResult {
   valid: boolean;
   errors: string[];
 }
+
+export interface FixtureMaterializationResult extends FixtureValidationResult {
+  created: boolean;
+}
+
+type ValidationEvidenceRow = {
+  input_snapshot_json: unknown;
+  result_snapshot_json: unknown;
+};
 
 /**
  * §10.3 — Fixture infrastructure.
@@ -66,7 +79,11 @@ export class CapabilityFixtureService {
         releaseId,
         buildId ?? null,
         fixture.name ?? null,
-        fixture.isNegativeFixture ? 'negative' : fixture.expectedOutput ? 'output' : 'input',
+        fixture.isNegativeFixture
+          ? 'negative'
+          : fixture.expectedOutput !== undefined
+            ? 'output'
+            : 'input',
         JSON.stringify(fixture.input ?? {}),
         fixture.expectedOutput ? JSON.stringify(fixture.expectedOutput) : null,
         fixture.isNegativeFixture === true,
@@ -78,6 +95,25 @@ export class CapabilityFixtureService {
       `Stored ${stored.length} fixture(s) for release ${releaseId}`
     );
     return stored;
+  }
+
+  /**
+   * Replace the Fixture Bundle for one immutable build. Release-wide fixture
+   * accumulation is unsafe because samples from an older contract could make a
+   * newer build appear publishable.
+   */
+  public async replaceFixturesForBuild(
+    releaseId: string,
+    buildId: string,
+    fixtures: CapabilityTestFixtureV2[]
+  ): Promise<StoredCapabilityFixture[]> {
+    await this.prisma.$executeRawUnsafe(
+      `DELETE FROM capability_fixtures
+       WHERE release_id = $1::uuid AND build_id = $2::uuid`,
+      releaseId,
+      buildId
+    );
+    return this.storeFixtures(releaseId, fixtures, buildId);
   }
 
   /**
@@ -94,12 +130,18 @@ export class CapabilityFixtureService {
    * §10.3 gate: a release is fixture-complete only when it has at least one
    * input fixture, one output fixture and one negative fixture.
    */
-  public async validateFixturesExist(releaseId: string): Promise<FixtureValidationResult> {
+  public async validateFixturesExist(
+    releaseId: string,
+    buildId?: string
+  ): Promise<FixtureValidationResult> {
     const rows = await this.prisma.$queryRawUnsafe<Array<{ fixture_type: string; count: number }>>(
       `SELECT fixture_type, COUNT(*)::int AS count
-       FROM capability_fixtures WHERE release_id = $1::uuid
+       FROM capability_fixtures
+       WHERE release_id = $1::uuid
+         AND ($2::uuid IS NULL OR build_id = $2::uuid)
        GROUP BY fixture_type`,
-      releaseId
+      releaseId,
+      buildId ?? null
     );
     const counts: Record<string, number> = {};
     for (const row of rows) counts[row.fixture_type] = row.count;
@@ -118,6 +160,120 @@ export class CapabilityFixtureService {
   }
 
   /**
+   * Materialize the §10.3 three-piece Fixture Bundle from the latest successful
+   * runtime validation of the exact build. The contract stays authoritative:
+   * validation evidence proposes samples, but samples are persisted only when
+   * both input and runtime output conform to the draft schemas.
+   */
+  public async ensureFixturesForBuild(args: {
+    releaseId: string;
+    buildId: string;
+    draftPayload: Record<string, unknown>;
+  }): Promise<FixtureMaterializationResult> {
+    const existing = await this.validateFixturesExist(args.releaseId, args.buildId);
+    if (existing.valid) {
+      return { ...existing, created: false };
+    }
+
+    const rows = await this.prisma.$queryRawUnsafe<ValidationEvidenceRow[]>(
+      `SELECT input_snapshot_json, result_snapshot_json
+       FROM capability_validations
+       WHERE release_id = $1::uuid
+         AND build_id = $2::uuid
+         AND success = true
+         AND result_snapshot_json IS NOT NULL
+       ORDER BY
+         CASE validation_type WHEN 'sandbox' THEN 0 WHEN 'post_deploy_smoke' THEN 1 ELSE 2 END,
+         created_at DESC
+       LIMIT 1`,
+      args.releaseId,
+      args.buildId
+    );
+    const evidence = rows[0];
+    if (!evidence) {
+      return {
+        valid: false,
+        created: false,
+        errors: ['当前 Build 没有成功的运行时验证证据，无法生成 Fixture Bundle'],
+      };
+    }
+
+    const inputSchema = this.extractInputSchema(args.draftPayload);
+    const outputSchema = this.extractOutputSchema(args.draftPayload);
+    if (!inputSchema || !outputSchema) {
+      return {
+        valid: false,
+        created: false,
+        errors: ['当前 Skill 草案缺少 input/output Schema，无法校验并生成 Fixture Bundle'],
+      };
+    }
+
+    const resultSnapshot = this.asRecord(evidence.result_snapshot_json) || {};
+    const rawInput =
+      this.findNestedRecord(resultSnapshot, 'input') ||
+      this.asRecord(evidence.input_snapshot_json) ||
+      {};
+    const input = this.normalizeFixtureInput(
+      this.projectToSchemaProperties(rawInput, inputSchema),
+      inputSchema
+    );
+    const rawOutput = this.extractRuntimeOutput(resultSnapshot);
+    if (!rawOutput) {
+      return {
+        valid: false,
+        created: false,
+        errors: ['成功验证记录中没有可识别的运行时业务输出，无法生成输出 Fixture'],
+      };
+    }
+    // Output contracts are closed and authoritative. Validate the exact runtime
+    // business payload instead of projecting away undeclared fields; otherwise
+    // `additionalProperties: false` can never detect producer drift.
+    const expectedOutput = rawOutput;
+
+    const inputValidation = jsonSchemaValidator.validateInput(input, inputSchema);
+    const outputValidation = jsonSchemaValidator.validateOutput(expectedOutput, outputSchema);
+    const errors: string[] = [];
+    if (!inputValidation.valid) {
+      errors.push(`有效输入 Fixture 不符合 input schema: ${this.firstValidationError(inputValidation)}`);
+    }
+    if (!outputValidation.valid) {
+      errors.push(
+        `有效运行时输出 Fixture 不符合 output schema: ${this.firstValidationError(outputValidation)}`
+      );
+    }
+    if (errors.length > 0) {
+      return { valid: false, created: false, errors };
+    }
+
+    const negativeSuggestion = this.generateNegativeFixtureSuggestion(outputSchema);
+    const negativeValidation = jsonSchemaValidator.validateOutput(
+      negativeSuggestion.expectedOutput,
+      outputSchema
+    );
+    if (negativeValidation.valid) {
+      return {
+        valid: false,
+        created: false,
+        errors: ['当前 output schema 没有可用于证明 Validator 拒绝行为的约束，无法生成有效负例 Fixture'],
+      };
+    }
+    const fixtures: CapabilityTestFixtureV2[] = [
+      { name: 'valid-input: runtime-validation', input },
+      {
+        name: 'valid-output: runtime-validation',
+        input,
+        expectedOutput,
+      },
+      {
+        ...negativeSuggestion,
+        input,
+      },
+    ];
+    await this.replaceFixturesForBuild(args.releaseId, args.buildId, fixtures);
+    return { valid: true, created: true, errors: [] };
+  }
+
+  /**
    * Suggest a negative fixture from the output schema: a payload that removes
    * a required field (or sets a wrong type) so the output validator must
    * reject it. Used to seed the authoring flow — the author still confirms it.
@@ -129,27 +285,130 @@ export class CapabilityFixtureService {
     const properties = (schema.properties ?? {}) as Record<string, unknown>;
     const required = (schema.required ?? []) as string[];
 
-    let input: Record<string, unknown> = {};
+    let invalidOutput: Record<string, unknown> = {};
     if (required.length > 0) {
       // drop the first required field → guaranteed invalid
       const kept = required.slice(1);
-      input = Object.fromEntries(kept.map((name) => [name, this.sampleValue(properties[name])]));
+      invalidOutput = Object.fromEntries(
+        kept.map((name) => [name, this.sampleValue(properties[name])])
+      );
     } else if (Object.keys(properties).length > 0) {
       // no required fields: use a wrong type for the first property
       const firstName = Object.keys(properties)[0];
       const prop = properties[firstName] as Record<string, unknown>;
-      input = { [firstName]: this.wrongTypeValue(prop) };
+      invalidOutput = { [firstName]: this.wrongTypeValue(prop) };
     }
 
     return {
       name: `negative: violates ${required.length > 0 ? `required ${required[0]}` : 'output schema'}`,
-      input,
+      input: {},
+      expectedOutput: invalidOutput,
       isNegativeFixture: true,
     };
   }
 
   /** The error code release-manager surfaces when fixtures are incomplete */
   public readonly errorCode = CAPABILITY_RELEASE_ERROR_CODE.FIXTURE_VALIDATION_FAILED;
+
+  private extractInputSchema(payload: Record<string, unknown>): Record<string, unknown> | null {
+    const contracts = this.asRecord(payload.contracts) || {};
+    const inputContract = this.asRecord(contracts.input) || {};
+    return (
+      this.asRecord(inputContract.schema) ||
+      this.asRecord(payload.paramsSchema) ||
+      null
+    );
+  }
+
+  private extractOutputSchema(payload: Record<string, unknown>): Record<string, unknown> | null {
+    const contracts = this.asRecord(payload.contracts) || {};
+    const outputContract = this.asRecord(contracts.output) || {};
+    return (
+      this.asRecord(outputContract.schema) ||
+      this.asRecord(payload.outputSchema) ||
+      null
+    );
+  }
+
+  private extractRuntimeOutput(snapshot: Record<string, unknown>): Record<string, unknown> | null {
+    let current: unknown = snapshot;
+    for (let depth = 0; depth < 8; depth += 1) {
+      const record = this.asRecord(current);
+      if (!record) return null;
+      const businessData = this.asRecord(record.businessData);
+      if (businessData) return businessData;
+      const data = this.asRecord(record.data);
+      if (data) return data;
+      if (record.result === undefined) return record;
+      current = record.result;
+    }
+    return this.asRecord(current);
+  }
+
+  private findNestedRecord(
+    snapshot: Record<string, unknown>,
+    key: string
+  ): Record<string, unknown> | null {
+    let current: unknown = snapshot;
+    for (let depth = 0; depth < 5; depth += 1) {
+      const record = this.asRecord(current);
+      if (!record) return null;
+      const candidate = this.asRecord(record[key]);
+      if (candidate) return candidate;
+      if (record.result === undefined) return null;
+      current = record.result;
+    }
+    return null;
+  }
+
+  private projectToSchemaProperties(
+    value: Record<string, unknown>,
+    schema: Record<string, unknown>
+  ): Record<string, unknown> {
+    const properties = this.asRecord(schema.properties);
+    if (!properties || Object.keys(properties).length === 0) return { ...value };
+    return Object.keys(properties).reduce<Record<string, unknown>>((acc, key) => {
+      if (value[key] !== undefined) acc[key] = value[key];
+      return acc;
+    }, {});
+  }
+
+  private normalizeFixtureInput(
+    input: Record<string, unknown>,
+    schema: Record<string, unknown>
+  ): Record<string, unknown> {
+    const properties = this.asRecord(schema.properties) || {};
+    return Object.entries(input).reduce<Record<string, unknown>>((acc, [key, value]) => {
+      const propertySchema = this.asRecord(properties[key]) || {};
+      const type = propertySchema.type;
+      let normalized = value;
+      if ((type === 'number' || type === 'integer') && typeof value === 'string') {
+        const parsed = Number(value);
+        if (Number.isFinite(parsed)) normalized = parsed;
+      } else if (type === 'boolean' && typeof value === 'string') {
+        if (value.toLowerCase() === 'true') normalized = true;
+        if (value.toLowerCase() === 'false') normalized = false;
+      }
+      if (/(api[-_]?key|token|secret|password|authorization|cookie)/i.test(key)) {
+        normalized = /api[-_]?key/i.test(key) ? 'fixture-api-key-redacted' : 'fixture-secret-redacted';
+      }
+      acc[key] = normalized;
+      return acc;
+    }, {});
+  }
+
+  private firstValidationError(result: {
+    errors?: Array<{ path?: string; message?: string }>;
+  }): string {
+    const error = result.errors?.[0];
+    return error ? `${error.path || '/'}: ${error.message || 'invalid value'}` : 'unknown';
+  }
+
+  private asRecord(value: unknown): Record<string, unknown> | null {
+    return value && typeof value === 'object' && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : null;
+  }
 
   private sampleValue(propSchema: unknown): unknown {
     if (typeof propSchema !== 'object' || propSchema === null) return null;

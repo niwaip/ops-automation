@@ -22,6 +22,7 @@ import {
   RoutingMeta,
   PromptAssemblyMeta,
   PromptDebugPayload,
+  PromptDebugLLMCall,
   DecisionContext,
   LLMCallDetail,
 } from './interfaces';
@@ -861,33 +862,37 @@ export class ReActEngineService {
     );
     const userPrompt = renderPromptSections(userSections);
     this.setPromptAssemblyMeta(state, systemSections, userSections);
-    state.promptDebug = this.canExposePromptDebug(context)
-      ? {
-          debugSource: 'react-engine',
-          systemPrompt,
-          userPrompt,
-          systemPromptSectionKeys: systemSections.map((section) => section.key),
-          systemPromptSectionSources: systemSections.map((section) => section.source),
-          userPromptSectionKeys: userSections.map((section) => section.key),
-          userPromptSectionSources: userSections.map((section) => section.source),
-          modelId: config.modelId,
-          llmRequestMessages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt },
-          ],
-          llmCalls: [
-            {
-              stage: 'react-engine',
-              label: 'ReAct 推理',
-              modelId: config.modelId,
-              requestMessages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: userPrompt },
-              ],
-            },
-          ],
-        }
-      : undefined;
+    if (this.canExposePromptDebug(context)) {
+      const prevCalls = Array.isArray(state.promptDebug?.llmCalls)
+        ? state.promptDebug.llmCalls
+        : [];
+      const newCall: PromptDebugLLMCall = {
+        stage: 'react-engine',
+        label: `ReAct 推理 #${state.iteration + 1}`,
+        modelId: config.modelId,
+        requestMessages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+      };
+      state.promptDebug = {
+        debugSource: 'react-engine',
+        systemPrompt,
+        userPrompt,
+        systemPromptSectionKeys: systemSections.map((section) => section.key),
+        systemPromptSectionSources: systemSections.map((section) => section.source),
+        userPromptSectionKeys: userSections.map((section) => section.key),
+        userPromptSectionSources: userSections.map((section) => section.source),
+        modelId: config.modelId,
+        llmRequestMessages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        llmCalls: [...prevCalls, newCall],
+      };
+    } else {
+      state.promptDebug = undefined;
+    }
     this.logger.debug(
       `${this.tracePrefix(context)}Prompt assembly: ` +
         `system=${state.promptAssembly?.systemPromptSectionKeys?.join(',') || 'none'} ` +

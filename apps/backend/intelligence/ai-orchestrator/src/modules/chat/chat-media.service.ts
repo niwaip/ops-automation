@@ -23,6 +23,33 @@ export class ChatMediaService {
 
   constructor(private readonly modelService: ModelService) {}
 
+  /**
+   * Hydrate upload references from the server-side store. Client-provided
+   * content is never trusted; task execution receives the canonical bytes that
+   * were accepted by the upload endpoint.
+   */
+  resolveUploadedFiles(files?: ChatUploadedFileDTO[]): ChatUploadedFileDTO[] {
+    return (files || []).map((file) => {
+      const storedFile = this.fileStore.get(file.fileId);
+      if (!storedFile) {
+        return {
+          fileId: file.fileId,
+          fileName: file.fileName,
+          mimeType: file.mimeType,
+          size: file.size,
+        };
+      }
+
+      return {
+        fileId: file.fileId,
+        fileName: storedFile.fileName,
+        mimeType: storedFile.mimeType,
+        size: storedFile.size,
+        content: storedFile.content,
+      };
+    });
+  }
+
   async buildMessageContent(
     message: string,
     files?: ChatUploadedFileDTO[]

@@ -1,0 +1,465 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { LlmOperationRegistryService } from '../registry/llm-operation-registry.service';
+import { LlmOperationError, LLM_OPERATION_ERROR_CODES } from '../registry/errors';
+import { ModelService } from '../../model/model.service';
+import { PromptRendererService } from './prompt-renderer.service';
+import { InputValidatorService } from './input-validator.service';
+import { ToolCallGuardService } from './tool-call-guard.service';
+import { OutputValidatorService } from './output-validator.service';
+import { BudgetEnforcerService } from './budget-enforcer.service';
+import { LlmOperationAuditService } from '../audit/llm-operation-audit.service';
+import type { ExecuteLlmOperationV2Request, LlmOperationV2Result } from './v2-runtime-types';
+import type { LlmOperationVersionRecord, LegacyLlmOperationVersion, LlmOperationRecord } from '../registry/types';
+import { LLM_OPERATION_TEMPLATES } from '../llm-operation.registry';
+import { PromptDebugSettingsService } from '../../debug-settings/prompt-debug-settings.service';
+import { createHash } from 'crypto';
+
+@Injectable()
+export class LlmOperationV2RuntimeService {
+  private readonly promptDebugSettingsService: PromptDebugSettingsService =
+    new PromptDebugSettingsService();
+
+  constructor(
+    private readonly registry: LlmOperationRegistryService,
+    private readonly modelService: ModelService,
+    private readonly promptRenderer: PromptRendererService,
+    private readonly inputValidator: InputValidatorService,
+    private readonly toolCallGuard: ToolCallGuardService,
+    private readonly outputValidator: OutputValidatorService,
+    private readonly budgetEnforcer: BudgetEnforcerService,
+    private readonly auditService: LlmOperationAuditService,
+    private readonly logger: Logger,
+  ) {}
+
+  private computeDigest(data: unknown): string {
+    const str = typeof data === 'string' ? data : JSON.stringify(data);
+    return createHash('sha256').update(str).digest('hex').slice(0, 32);
+  }
+
+  public async execute(request: ExecuteLlmOperationV2Request): Promise<LlmOperationV2Result> {
+    const startTime = Date.now();
+
+    try {
+      return await this.executeInternal(request, startTime, false);
+    } catch (err: any) {
+      const latencyMs = Date.now() - startTime;
+
+      if (err instanceof LlmOperationError) {
+        const details = err.details as Record<string, any> | undefined;
+        return {
+          success: false,
+          operationRef: {
+            id: request.operationId,
+            version: details?.version || 'unknown',
+            digest: details?.digest || 'unknown',
+          },
+          source: details?.source || 'legacy_registry',
+          usage: {},
+          metadata: {
+            provider: details?.provider || 'unknown',
+            requestedModel: details?.requestedModel || 'unknown',
+            repairAttempts: details?.repairAttempts || 0,
+            latencyMs,
+            schemaValidated: false,
+            toolCallDetected: false,
+          },
+          errorCode: err.code,
+          errorMessage: err.message,
+        };
+      }
+
+      throw err;
+    }
+  }
+
+  /** Executes an exact, non-active candidate version for the eval sandbox only. */
+  public async executeForEvaluation(
+    request: ExecuteLlmOperationV2Request,
+  ): Promise<LlmOperationV2Result> {
+    const startTime = Date.now();
+    return this.executeInternal(request, startTime, true);
+  }
+
+  private async executeInternal(
+    request: ExecuteLlmOperationV2Request,
+    startTime: number,
+    allowUnapprovedExactVersion: boolean,
+  ): Promise<LlmOperationV2Result> {
+    const environment = request.environment ?? 'production';
+
+    let resolved: {
+      source: 'database' | 'legacy_registry';
+      version: LlmOperationVersionRecord | LegacyLlmOperationVersion;
+      operation: LlmOperationRecord | null;
+    };
+
+    if (request.operationVersion) {
+      const exactVersion = await this.registry.resolveExactVersion(
+        request.operationId,
+        request.operationVersion,
+      );
+      if (!exactVersion) {
+        throw new LlmOperationError(
+          LLM_OPERATION_ERROR_CODES.VERSION_NOT_FOUND,
+          `Operation '${request.operationId}' version '${request.operationVersion}' not found`,
+          { operationId: request.operationId, version: request.operationVersion }
+        );
+      }
+      if (
+        !allowUnapprovedExactVersion &&
+        !['approved', 'deprecated'].includes(exactVersion.state)
+      ) {
+        throw new LlmOperationError(
+          LLM_OPERATION_ERROR_CODES.INVALID_STATE_TRANSITION,
+          `Operation '${request.operationId}' version '${request.operationVersion}' is not executable in state '${exactVersion.state}'`,
+          {
+            operationId: request.operationId,
+            version: request.operationVersion,
+            state: exactVersion.state,
+          },
+        );
+      }
+      resolved = { source: 'database' as const, version: exactVersion, operation: null };
+    } else {
+      if (environment === 'production') {
+        throw new LlmOperationError(
+          LLM_OPERATION_ERROR_CODES.VERSION_NOT_FOUND,
+          `Operation '${request.operationId}' must pin operationVersion in production — runtime dynamic resolution is forbidden`,
+        );
+      }
+      resolved = await this.registry.resolveActiveVersion(request.operationId, environment);
+    }
+
+    const version = resolved.version;
+
+    if (resolved.source === 'legacy_registry') {
+      this.logger.warn(
+        `LLM_OPERATION_LEGACY_REGISTRY_FALLBACK: ${request.operationId} not found in DB, falling back to legacy registry`,
+      );
+    }
+
+    if (request.operationDigest && request.operationDigest !== version.operationDigest) {
+      throw new LlmOperationError(
+        LLM_OPERATION_ERROR_CODES.DIGEST_MISMATCH,
+        `Operation digest mismatch: expected ${request.operationDigest}, got ${version.operationDigest}`,
+        {
+          version: version.version,
+          digest: version.operationDigest,
+          source: resolved.source,
+        },
+      );
+    }
+
+    if (request.contractDigest && request.contractDigest !== version.contractDigest) {
+      throw new LlmOperationError(
+        LLM_OPERATION_ERROR_CODES.DIGEST_MISMATCH,
+        `Contract digest mismatch: expected ${request.contractDigest}, got ${version.contractDigest}`,
+        {
+          version: version.version,
+          digest: version.contractDigest,
+          source: resolved.source,
+        },
+      );
+    }
+
+    const completedInvocation = await this.auditService.findCompletedByIdempotencyKey(
+      version.id,
+      request.idempotencyKey,
+    );
+    if (completedInvocation?.resultJson) {
+      const replayed = completedInvocation.resultJson as unknown as LlmOperationV2Result;
+      return {
+        ...replayed,
+        metadata: { ...replayed.metadata, idempotentReplay: true },
+      };
+    }
+
+    const manifest = version.manifestJson as Record<string, unknown>;
+    const executionPolicy = (manifest.executionPolicy as Record<string, unknown>) ?? {};
+    const tools = executionPolicy.tools as string | undefined;
+
+    if (tools !== 'disabled') {
+      throw new LlmOperationError(
+        LLM_OPERATION_ERROR_CODES.INVALID_OPERATION_CONFIG,
+        `executionPolicy.tools must be 'disabled' for V2 runtime (got: ${tools || 'undefined'})`,
+        {
+          version: version.version,
+          digest: version.operationDigest,
+          source: resolved.source,
+        },
+      );
+    }
+
+    const inputSchema = (manifest.inputSchema as Record<string, unknown>) ?? null;
+    const outputSchema = (manifest.outputSchema as Record<string, unknown>) ?? null;
+    const temperature = (manifest.temperature as number) ?? 0;
+    const maxInputTokens = (manifest.maxInputTokens as number) ?? 4000;
+    const maxOutputTokens = (manifest.maxOutputTokens as number) ?? 2000;
+    const timeoutMs = (manifest.timeoutMs as number) ?? 30000;
+    const repair = (manifest.repair as Record<string, unknown>) ?? {};
+    const maxRepairAttempts = (repair.maxAttempts as number) ?? 1;
+
+    try {
+      this.inputValidator.validate(request.input, inputSchema);
+    } catch (err: any) {
+      throw new LlmOperationError(err.code || 'INPUT_SCHEMA_VIOLATION', err.message, {
+        version: version.version,
+        digest: version.operationDigest,
+        source: resolved.source,
+      });
+    }
+
+    try {
+      this.budgetEnforcer.preflightInput(request.input, maxInputTokens);
+    } catch (err: any) {
+      throw new LlmOperationError(err.code || 'BUDGET_EXCEEDED', err.message, {
+        version: version.version,
+        digest: version.operationDigest,
+        source: resolved.source,
+      });
+    }
+
+    let systemPrompt: string;
+    let userPrompt: string;
+
+    if (resolved.source === 'database') {
+      const rendered = this.promptRenderer.renderManifestPrompt(manifest, request.input);
+      systemPrompt = rendered.systemPrompt;
+      userPrompt = rendered.userPrompt;
+    } else {
+      const template = LLM_OPERATION_TEMPLATES[
+        request.operationId as keyof typeof LLM_OPERATION_TEMPLATES
+      ];
+      if (!template) {
+        throw new LlmOperationError(LLM_OPERATION_ERROR_CODES.NOT_FOUND, `Operation not found: ${request.operationId}`);
+      }
+      const built = template.buildPrompt(request.input);
+      systemPrompt = built.systemPrompt;
+      userPrompt = built.userPrompt;
+    }
+
+    const activeModel = this.modelService.getPreferredDefaultModel({ mode: 'task' });
+    if (!activeModel) {
+      throw new Error('No active AI model configured for task operations');
+    }
+
+    const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;
+    this.logger.log(`Executing V2 LLM operation '${request.operationId}' with model '${activeModel.name}'`);
+
+    let repairAttempts = 0;
+    let lastRawContent = '';
+    let lastResponse: any;
+
+    try {
+      lastResponse = await this.modelService.callModel(activeModel.id, fullPrompt, 'reasoning');
+      lastRawContent = lastResponse.content;
+    } catch (callErr: any) {
+      const latencyMs = Date.now() - startTime;
+      return this.buildErrorResult(
+        request,
+        resolved.source,
+        version,
+        'MODEL_CALL_FAILED',
+        callErr.message,
+        repairAttempts,
+        latencyMs,
+        activeModel,
+      );
+    }
+
+    try {
+      this.toolCallGuard.assertNoToolCall(lastResponse);
+    } catch (toolError: any) {
+      const latencyMs = Date.now() - startTime;
+      return this.buildErrorResult(
+        request,
+        resolved.source,
+        version,
+        toolError.code || LLM_OPERATION_ERROR_CODES.TOOL_CALL_FORBIDDEN,
+        toolError.message,
+        repairAttempts,
+        latencyMs,
+        activeModel,
+      );
+    }
+
+    let parsed: { data: Record<string, unknown>; schemaValidated: boolean } | undefined;
+
+    try {
+      parsed = this.outputValidator.parseAndValidate(lastRawContent, outputSchema);
+    } catch (firstErr: any) {
+      if (maxRepairAttempts <= 0) {
+        const latencyMs = Date.now() - startTime;
+        return this.buildErrorResult(
+          request,
+          resolved.source,
+          version,
+          firstErr.code || 'OUTPUT_VALIDATION_FAILED',
+          firstErr.message,
+          repairAttempts,
+          latencyMs,
+          activeModel,
+        );
+      }
+
+      const repairPrompt = this.outputValidator.buildRepairPrompt(systemPrompt, lastRawContent);
+
+      for (let attempt = 0; attempt < maxRepairAttempts; attempt++) {
+        repairAttempts++;
+        this.logger.warn(`Repair attempt ${repairAttempts} for operation '${request.operationId}'`);
+
+        try {
+          lastResponse = await this.modelService.callModel(activeModel.id, repairPrompt, 'reasoning');
+          lastRawContent = lastResponse.content;
+          this.toolCallGuard.assertNoToolCall(lastResponse);
+
+          parsed = this.outputValidator.parseAndValidate(lastRawContent, outputSchema);
+          break;
+        } catch (repairErr: any) {
+          if (attempt === maxRepairAttempts - 1) {
+            const latencyMs = Date.now() - startTime;
+            return this.buildErrorResult(
+              request,
+              resolved.source,
+              version,
+              'REPAIR_EXHAUSTED',
+              `Repair exhausted after ${repairAttempts} attempts: ${repairErr.message}`,
+              repairAttempts,
+              latencyMs,
+              activeModel,
+            );
+          }
+        }
+      }
+    }
+
+    const latencyMs = Date.now() - startTime;
+    const usage = lastResponse?.usage || {};
+
+    this.budgetEnforcer.assertOutputWithinBudget(
+      { outputTokens: usage.output_tokens || usage.completion_tokens },
+      maxOutputTokens,
+    );
+    this.budgetEnforcer.assertLatencyWithinBudget(latencyMs, timeoutMs);
+
+    if (!parsed) {
+      throw new Error('Parsed output is undefined - this should never happen');
+    }
+
+    const result: LlmOperationV2Result = {
+      success: true,
+      operationRef: {
+        id: request.operationId,
+        version: version.version,
+        digest: version.operationDigest,
+      },
+      source: resolved.source,
+      data: parsed.data,
+      usage: {
+        inputTokens: usage.input_tokens || usage.prompt_tokens,
+        outputTokens: usage.output_tokens || usage.completion_tokens,
+        totalTokens: usage.total_tokens,
+      },
+      metadata: {
+        provider: activeModel.provider,
+        requestedModel: activeModel.name,
+        resolvedModel: activeModel.name,
+        finishReason: lastResponse?.finish_reason,
+        repairAttempts,
+        latencyMs,
+        schemaValidated: parsed.schemaValidated,
+        toolCallDetected: false,
+      },
+      ...(this.promptDebugSettingsService.isPromptDebugEnabled()
+        ? {
+            promptDebug: {
+              systemPrompt,
+              userPrompt,
+              modelId: activeModel.id,
+              llmResponseText: lastRawContent,
+              repairAttempts,
+            },
+          }
+        : {}),
+    };
+
+    await this.auditService
+      .recordInvocation({
+        versionId: version.id,
+        executionId: request.executionId,
+        stepId: request.stepId,
+        provider: activeModel.provider,
+        requestedModel: activeModel.name,
+        resolvedModel: activeModel.name,
+        inputDigest: this.computeDigest(request.input),
+        outputDigest: this.computeDigest(parsed.data),
+        idempotencyKey: request.idempotencyKey,
+        resultJson: result as unknown as Record<string, unknown>,
+        tokenUsage: result.usage,
+        latencyMs,
+        repairAttempts,
+        parseAttempts: 1,
+        validationResult: 'passed',
+        finishReason: lastResponse?.finish_reason,
+        actor: request.actor ?? 'system',
+        environment: request.environment ?? 'production',
+        startedAt: new Date(startTime),
+        completedAt: new Date(),
+      })
+      .catch(() => undefined);
+
+    return result;
+  }
+
+  private buildErrorResult(
+    request: ExecuteLlmOperationV2Request,
+    source: 'database' | 'legacy_registry',
+    version: LlmOperationVersionRecord | LegacyLlmOperationVersion,
+    errorCode: string,
+    errorMessage: string,
+    repairAttempts: number,
+    latencyMs: number,
+    model: any,
+  ): LlmOperationV2Result {
+    const result: LlmOperationV2Result = {
+      success: false,
+      operationRef: {
+        id: request.operationId,
+        version: version.version,
+        digest: version.operationDigest,
+      },
+      source,
+      usage: {},
+      metadata: {
+        provider: model?.provider || 'unknown',
+        requestedModel: model?.name || 'unknown',
+        repairAttempts,
+        latencyMs,
+        schemaValidated: false,
+        toolCallDetected: false,
+      },
+      errorCode,
+      errorMessage,
+    };
+
+    this.auditService
+      .recordInvocation({
+        versionId: version.id,
+        executionId: request.executionId,
+        stepId: request.stepId,
+        provider: model?.provider || 'unknown',
+        requestedModel: model?.name || 'unknown',
+        repairAttempts,
+        parseAttempts: 1,
+        validationResult: 'failed',
+        errorCode,
+        actor: request.actor ?? 'system',
+        environment: request.environment ?? 'production',
+        startedAt: new Date(Date.now() - latencyMs),
+        completedAt: new Date(),
+      })
+      .catch(() => undefined);
+
+    return result;
+  }
+}

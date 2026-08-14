@@ -337,6 +337,73 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
     });
   });
 
+  it('normalizes workflow defaults to their declared JSON Schema scalar type', async () => {
+    const skill: AvailableSkillDefinition = {
+      skillId: 'typed-default-query',
+      skillName: 'typedDefaultQuery',
+      description: 'Query with a typed limit',
+      triggerKeywords: ['query'],
+      paramsSchema: {
+        properties: {
+          limit: { type: 'integer', description: 'Maximum result count' } as any,
+        },
+        required: [],
+      },
+      templateId: 'typed-default-query',
+      carboneTemplateId: undefined,
+      carboneSkillId: undefined,
+      executionFlowTemplateIds: [],
+      executionFlow: [],
+      apiEndpoints: {
+        runtimeMetadata: {
+          sourceType: 'temporal_workflow',
+          workflowInputPolicy: {
+            params: {
+              limit: { enabled: true, requiredMode: 'optional', defaultValue: '10' },
+            },
+          },
+        },
+      } as any,
+      goal: 'Query',
+      expectedResult: 'Results',
+      outputParams: undefined,
+    };
+    const match: SkillMatchResult = {
+      skillId: skill.skillId,
+      skillName: skill.skillName,
+      matchedKeywords: ['query'],
+      confidence: 0.9,
+      collectedParams: {},
+      missingParams: [],
+      paramsSchema: skill.paramsSchema,
+      executionFlowTemplateIds: [],
+      executionFlow: [],
+      apiEndpoints: skill.apiEndpoints,
+      matchReason: 'test',
+      goal: skill.goal,
+      expectedResult: skill.expectedResult,
+      outputParams: undefined,
+    };
+
+    jest.spyOn(plannerMatchPhaseService as any, 'loadAvailableSkills').mockResolvedValue([skill]);
+    jest.spyOn(plannerMatchPhaseService as any, 'matchSkill').mockResolvedValue(match);
+    jest.spyOn(recognizerService, 'recognizeParams').mockResolvedValue({
+      params: {},
+      confidence: 0.9,
+    });
+
+    const plan = await service.generatePlan({
+      request: { user_input: 'query', user_id: 'u1', modelId: 'selected-model-id' } as any,
+      userId: 'u1',
+      authToken: 'Bearer test',
+      traceId: 'trace-typed-default',
+    });
+
+    expect(plan.required_inputs.find((item) => item.name === 'limit')).toEqual(
+      expect.objectContaining({ value: 10, source: 'workflow_default' })
+    );
+  });
+
   it('does not treat empty placeholder defaults as meaningful optional values', async () => {
     const skill: AvailableSkillDefinition = {
       skillId: 'generic-query',
@@ -2195,7 +2262,8 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
     expect(first).toHaveLength(1);
     expect(second).toHaveLength(1);
     expect(first[0].paramsSchema.required).toEqual(['subject']);
-    expect(axiosGet).toHaveBeenCalledTimes(1);
+    // First load queries unified catalog plus legacy /skills; second load is cached.
+    expect(axiosGet).toHaveBeenCalledTimes(2);
     expect(axiosGet.mock.calls.filter(([url]) => String(url).endsWith('/skills'))).toHaveLength(1);
     expect(
       axiosGet.mock.calls.filter(([url]) => String(url).endsWith('/flows/flow-1'))
@@ -2268,6 +2336,24 @@ describe('PlannerService - required inputs without hardcoded defaults', () => {
       carboneTemplateId: 'carbone-tpl-1',
     });
     expect(matched?.paramsSchema.required).toEqual(['subject']);
+  });
+
+  it('preserves builtin artifact catalog metadata during Skill cache normalization', () => {
+    const mapped = (skillCacheService as any).mapRawSkillDefinition({
+      id: 'platform.document.markdown-artifact-writer',
+      name: '内置 Markdown 文件生成',
+      executionType: 'artifact',
+      source: 'builtin_skill',
+      supportsArtifact: true,
+      paramsSchema: { properties: {}, required: [] },
+      outputSchema: { properties: { artifact: { valueType: 'artifact_ref' } } },
+    });
+
+    expect(mapped).toMatchObject({
+      executionType: 'artifact',
+      source: 'builtin_skill',
+      supportsArtifact: true,
+    });
   });
 
   it('normalizes skill params schema without introducing linked flow fields', () => {

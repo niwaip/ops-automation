@@ -550,6 +550,25 @@ export class ContractLintService {
     if (schema && typeof schema === 'object' && !Array.isArray(schema) && Object.keys(schema).length > 0) {
       return schema;
     }
+    const outputParams =
+      (contract.outputParams as Record<string, unknown>) ||
+      (contract.apiEndpoints as any)?.runtimeMetadata?.outputParams ||
+      (contract.runtimeMetadata as any)?.outputParams;
+    if (outputParams && typeof outputParams === 'object' && Object.keys(outputParams).length > 0) {
+      const properties: Record<string, unknown> = {};
+      for (const [key, val] of Object.entries(outputParams)) {
+        const paramDef =
+          typeof val === 'object' && val !== null ? (val as Record<string, unknown>) : {};
+        properties[key] = {
+          type: typeof paramDef.type === 'string' ? paramDef.type : 'string',
+          description: typeof paramDef.description === 'string' ? paramDef.description : `Output field ${key}`,
+        };
+      }
+      return {
+        type: 'object',
+        properties,
+      };
+    }
     return null;
   }
 

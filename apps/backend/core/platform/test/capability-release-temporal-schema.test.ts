@@ -319,6 +319,26 @@ describe('CapabilityReleaseTemporalSchemaService', () => {
     expect(schema.properties.timeout).toEqual(expect.objectContaining({ default: 30 }));
   });
 
+  it('coerces legacy numeric-string defaults to the declared number type', () => {
+    const { service } = createService();
+
+    const schema = (service as any).buildTemporalParamsSchema({
+      inputParams: {
+        maxResults: {
+          type: 'number',
+          description: '最大搜索结果数',
+          required: false,
+          defaultValue: '5',
+        },
+      },
+    });
+
+    expect(schema.properties.maxResults).toEqual(
+      expect.objectContaining({ type: 'number', default: 5 }),
+    );
+    expect(typeof schema.properties.maxResults.default).toBe('number');
+  });
+
   it('keeps L1 presentation metadata in published temporal params schema without leaking policy fields', () => {
     const { service } = createService();
 

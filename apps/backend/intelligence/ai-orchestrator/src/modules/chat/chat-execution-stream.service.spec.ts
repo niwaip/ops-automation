@@ -5,6 +5,7 @@ import {
 } from '../../client/control-plane.contracts';
 import { StreamEventType } from '../react-engine/interfaces';
 import { ChatExecutionStreamService } from './chat-execution-stream.service';
+import { ChatResultNormalizerService } from './chat-result-normalizer.service';
 
 describe('ChatExecutionStreamService', () => {
   const createService = () => {
@@ -75,12 +76,17 @@ describe('ChatExecutionStreamService', () => {
       }
     );
     expect(event).toEqual({
-      type: StreamEventType.ERROR,
-      content: 'Failed to allocate runtime session: Request failed with status code 400',
+      type: StreamEventType.RESULT,
+      content:
+        '❌ 任务执行失败\n\n原因：Failed to allocate runtime session: Request failed with status code 400\n\n执行单 ID: execution-failed-1',
       data: {
         executionId: 'execution-failed-1',
         status: CONTROL_PLANE_EXECUTION_STATUS.FAILED,
         failureReason: 'Failed to allocate runtime session: Request failed with status code 400',
+        hasBusinessResult: false,
+        chatSummary:
+          '❌ 任务执行失败\n\n原因：Failed to allocate runtime session: Request failed with status code 400',
+        summaryFormat: 'markdown',
         usage: undefined,
       },
     });
@@ -204,5 +210,135 @@ describe('ChatExecutionStreamService', () => {
         takeoverReason: '需要人工处理 MFA 验证',
       },
     });
+  });
+
+  it('honors preferAiSummary for any standard business result envelope', async () => {
+    const controlPlaneClient = {
+      getExecution: jest
+        .fn()
+        .mockResolvedValueOnce({
+          id: 'execution-weather',
+          status: CONTROL_PLANE_EXECUTION_STATUS.SUCCEEDED,
+        })
+        .mockResolvedValueOnce({
+          id: 'execution-weather',
+          status: CONTROL_PLANE_EXECUTION_STATUS.SUCCEEDED,
+          runtimeType: 'custom',
+          normalizedInput: { objective: '上海的天气怎么样' },
+          resultJson: {
+            execution: { status: 'success' },
+            result: {
+              resultType: 'generic',
+              title: 'weather_query_workflow',
+              businessData: {
+                date: '2026-08-12',
+                noon: { tempC: '28' },
+              },
+            },
+            presentation: { preferAiSummary: true },
+          },
+        }),
+      streamExecutionEvents: jest.fn(),
+    };
+    const waitingInputService = {
+      buildControlPlaneRequestOptions: jest.fn(() => ({})),
+      loadWaitingInputDetails: jest.fn(),
+      extractExecutionSemantic: jest.fn(),
+      formatWaitingInputMessage: jest.fn(),
+    };
+    const chatCompletion = jest.fn().mockResolvedValue({
+      content: '上海今日中午 28°C。',
+    });
+    const modelService = {
+      getPreferredDefaultModel: jest.fn(() => ({ id: 'model-1', name: 'model-1' })),
+      getClient: jest.fn(() => ({ chatCompletion })),
+      stripThinkingTags: jest.fn((content: string) =>
+        content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim()
+      ),
+    };
+    const service = new ChatExecutionStreamService(
+      controlPlaneClient as any,
+      waitingInputService as any,
+      new ChatResultNormalizerService(),
+      modelService as any
+    );
+
+    const event = await service.buildLatestExecutionStateEvent('execution-weather');
+
+    expect(chatCompletion).toHaveBeenCalledTimes(1);
+    expect(event).toEqual(
+      expect.objectContaining({
+        type: StreamEventType.RESULT,
+        content: '上海今日中午 28°C。',
+        data: expect.objectContaining({
+          hasBusinessResult: true,
+          chatSummary: '上海今日中午 28°C。',
+          normalizedResult: expect.objectContaining({
+            summary: '上海今日中午 28°C。',
+            structuredData: {
+              date: '2026-08-12',
+              noon: { tempC: '28' },
+            },
+          }),
+        }),
+      })
+    );
+  });
+
+  it('removes model reasoning blocks from contract presentation summaries', async () => {
+    const controlPlaneClient = {
+      getExecution: jest
+        .fn()
+        .mockResolvedValueOnce({
+          id: 'execution-generic',
+          status: CONTROL_PLANE_EXECUTION_STATUS.SUCCEEDED,
+        })
+        .mockResolvedValueOnce({
+          id: 'execution-generic',
+          status: CONTROL_PLANE_EXECUTION_STATUS.SUCCEEDED,
+          normalizedInput: { objective: '展示执行结果' },
+          resultJson: {
+            execution: { status: 'success' },
+            result: {
+              title: 'generic_workflow',
+              businessData: { value: 42 },
+            },
+            presentation: { preferAiSummary: true },
+          },
+        }),
+      streamExecutionEvents: jest.fn(),
+    };
+    const waitingInputService = {
+      buildControlPlaneRequestOptions: jest.fn(() => ({})),
+      loadWaitingInputDetails: jest.fn(),
+      extractExecutionSemantic: jest.fn(),
+      formatWaitingInputMessage: jest.fn(),
+    };
+    const chatCompletion = jest.fn().mockResolvedValue({
+      content: '<think>内部推理不得展示</think>业务结果为 42。',
+    });
+    const modelService = {
+      getPreferredDefaultModel: jest.fn(() => ({ id: 'model-1', name: 'model-1' })),
+      getClient: jest.fn(() => ({ chatCompletion })),
+      stripThinkingTags: jest.fn((content: string) =>
+        content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim()
+      ),
+    };
+    const service = new ChatExecutionStreamService(
+      controlPlaneClient as any,
+      waitingInputService as any,
+      new ChatResultNormalizerService(),
+      modelService as any
+    );
+
+    const event = await service.buildLatestExecutionStateEvent('execution-generic');
+
+    expect(event?.content).toBe('业务结果为 42。');
+    expect(event?.data).toEqual(
+      expect.objectContaining({
+        chatSummary: '业务结果为 42。',
+        normalizedResult: expect.objectContaining({ summary: '业务结果为 42。' }),
+      })
+    );
   });
 });

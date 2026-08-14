@@ -1,0 +1,131 @@
+apiVersion: platform.ops/v1alpha1
+kind: BuiltinWorkflowSkill
+metadata:
+  key: platform.document.pdf-content-extractor
+  displayName: 内置 PDF 内容提取
+  description: 从 PDF 文本层确定性提取分页文本与元数据，不执行 OCR 或内容总结
+  owner: platform-document
+  labels:
+    category: extraction
+    domain: document
+    format: pdf
+spec:
+  definitionVersion: 1.0.0
+  lifecycle: experimental
+  defaultAccess:
+    mode: authenticated
+  planner:
+    enabled: true
+    triggerKeywords:
+      - 解析PDF
+      - 提取PDF内容
+      - 读取PDF文本
+      - PDF转文本
+    matchSummary: 从 PDF 文本层提取全文、分页文本和文档元数据
+    runtimeType: workflow
+    supportsArtifact: false
+  contracts:
+    input:
+      schemaRef: inline
+      schema:
+        type: object
+        additionalProperties: false
+        required: [fileBase64]
+        properties:
+          fileBase64:
+            type: string
+            contentEncoding: base64
+            minLength: 8
+            maxLength: 13981020
+          fileName:
+            type: string
+            maxLength: 255
+          password:
+            type: string
+            maxLength: 256
+            writeOnly: true
+          maxPages:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+          maxCharacters:
+            type: integer
+            minimum: 1
+            maximum: 1000000
+            default: 200000
+          includePages:
+            type: boolean
+            default: true
+    output:
+      schemaRef: inline
+      schema:
+        type: object
+        additionalProperties: false
+        x-primary-output: text
+        required:
+          - text
+          - pages
+          - metadata
+          - pageCount
+          - extractedPageCount
+          - characterCount
+          - truncated
+          - warnings
+          - extraction
+        properties:
+          text:
+            type: string
+          pages:
+            type: array
+            items:
+              type: object
+              additionalProperties: false
+              required: [pageNumber, text, characterCount]
+              properties:
+                pageNumber: { type: integer, minimum: 1 }
+                text: { type: string }
+                characterCount: { type: integer, minimum: 0 }
+          metadata:
+            type: object
+          pageCount:
+            type: integer
+            minimum: 0
+          extractedPageCount:
+            type: integer
+            minimum: 0
+          characterCount:
+            type: integer
+            minimum: 0
+          truncated:
+            type: boolean
+          warnings:
+            type: array
+            items: { type: string }
+          extraction:
+            type: object
+            additionalProperties: false
+            required: [format, method, ocrUsed]
+            properties:
+              format: { type: string, const: pdf }
+              method: { type: string, const: embedded_text }
+              ocrUsed: { type: boolean, const: false }
+  workflow:
+    engine: domain-handler
+    definitionRef: workflow.json
+  runtime:
+    adapterRoute: builtin:workflow
+    handlerKey: document.content-extractor.pdf
+    idempotency: disabled
+    timeoutSeconds: 30
+    retryPolicy:
+      maximumAttempts: 1
+  migration:
+    minimumPlatformVersion: 4.0.0
+    contractCompatibility: backward
+  smokeTest:
+    inputRef: fixtures/smoke-input.json
+    assertions:
+      - output.pageCount equals 2
+      - output.text contains Builtin PDF Content Extractor
+      - output.extraction.ocrUsed equals false

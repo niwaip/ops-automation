@@ -88,6 +88,82 @@ describe('RecognizerService model routing', () => {
     expect(result.params).toEqual({ username: 'alice' });
   });
 
+  it('keeps LLM extraction authoritative for non-document skills and rejects invalid integers', async () => {
+    const requestedModelId = 'requested-model-id';
+    const requestedClient = {
+      chatCompletion: jest.fn().mockResolvedValue({
+        content: JSON.stringify({
+          type: 'weibo',
+          limit: '微博热点',
+          time_start: '微博热点',
+        }),
+        usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+      }),
+    };
+
+    modelService.resolveModelId.mockResolvedValue(requestedModelId);
+    modelService.getClient.mockImplementation((id: string) =>
+      id === requestedModelId ? requestedClient : null
+    );
+
+    const result = await service.recognizeParams({
+      template_id: 'hotboard-skill',
+      user_input: '查询微博热点',
+      modelId: requestedModelId,
+      fallbackMode: 'none',
+      postProcessMode: 'schema_only',
+      params_schema: {
+        properties: {
+          type: {
+            type: 'string',
+            description: '热榜平台标识，微博对应 weibo',
+          },
+          keyword: {
+            type: 'string',
+            description: '仅搜索模式使用的关键词',
+          },
+          limit: { type: 'integer' },
+          time_start: { type: 'integer' },
+        },
+        required: ['type'],
+      },
+    });
+
+    expect(result.params).toEqual({ type: 'weibo' });
+    expect(result.field_confidences).toEqual({ type: 0.8 });
+  });
+
+  it('uses the final valid JSON object when provider reasoning also contains JSON', async () => {
+    const requestedModelId = 'requested-model-id';
+    const requestedClient = {
+      chatCompletion: jest.fn().mockResolvedValue({
+        content:
+          '<think>映射结果应为：\n{\n  "type": "weibo"\n}\n</think>\n\n{"type":"weibo"}',
+        usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+      }),
+    };
+    modelService.resolveModelId.mockResolvedValue(requestedModelId);
+    modelService.getClient.mockImplementation((id: string) =>
+      id === requestedModelId ? requestedClient : null
+    );
+
+    const result = await service.recognizeParams({
+      template_id: 'hotboard-skill',
+      user_input: '查询微博热点，并且进行总结',
+      modelId: requestedModelId,
+      fallbackMode: 'none',
+      postProcessMode: 'schema_only',
+      params_schema: {
+        properties: {
+          type: { type: 'string', description: '热榜平台标识，微博对应 weibo' },
+        },
+        required: ['type'],
+      },
+    });
+
+    expect(result.params).toEqual({ type: 'weibo' });
+  });
+
   it('normalizes scalar array values and supplements single-row document arrays from user input', async () => {
     const requestedModelId = 'requested-model-id';
     const requestedClient = {

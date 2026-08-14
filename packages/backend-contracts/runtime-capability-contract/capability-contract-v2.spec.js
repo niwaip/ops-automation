@@ -91,6 +91,21 @@ describe('CapabilityContractV2 & JsonSchemaValidator', () => {
                 responseMetadata: { count: 2 },
             });
         });
+        it('should sanitize invalid property-level boolean required attributes into standard object required array', () => {
+            const invalidPropertyRequiredSchema = {
+                type: 'object',
+                properties: {
+                    query: { type: 'string', required: true },
+                    topic: { type: 'string', required: false },
+                    apiKey: { type: 'string', required: true },
+                },
+            };
+            const inputData = { query: 'hello', apiKey: 'secret' };
+            const res = index_1.jsonSchemaValidator.validateInput(inputData, invalidPropertyRequiredSchema);
+            expect(res.valid).toBe(true);
+            const missingRequiredRes = index_1.jsonSchemaValidator.validateInput({ query: 'hello' }, invalidPropertyRequiredSchema);
+            expect(missingRequiredRes.valid).toBe(false);
+        });
     });
 });
 //# sourceMappingURL=capability-contract-v2.spec.js.map

@@ -58,6 +58,14 @@ export type RealValidationAction =
   | { type: 'OPEN'; payload?: Record<string, string> }
   | { type: 'APPEND_LOG'; payload: string }
   | { type: 'SET_RESULT'; payload: WorkflowRealValidationResult }
+  | {
+      type: 'RESTORE';
+      payload: {
+        result: WorkflowRealValidationResult;
+        logs: string[];
+        inputParams: Record<string, string>;
+      };
+    }
   | { type: 'SET_INPUT_PARAMS'; payload: Record<string, string> }
   | { type: 'CLOSE' };
 
@@ -111,6 +119,14 @@ const realValidationReducer = (
         ...state,
         isStreaming: false,
         result: action.payload,
+      };
+    case 'RESTORE':
+      return {
+        visible: false,
+        isStreaming: false,
+        logs: action.payload.logs,
+        result: action.payload.result,
+        inputParams: action.payload.inputParams,
       };
     case 'SET_INPUT_PARAMS':
       return {
@@ -208,9 +224,6 @@ export const useWorkflowEditState = (_props?: UseWorkflowEditStateProps) => {
   const [isGeneratedCodeStale, setIsGeneratedCodeStale] = useState(false);
   const [forceAiGeneration, setForceAiGeneration] = useState(false);
   const [codeModalVisible, setCodeModalVisible] = useState(false);
-  const [creatingExecutionWorkflowId, setCreatingExecutionWorkflowId] = useState<string | null>(
-    null
-  );
   const [realValidationInputParams, setRealValidationInputParams] = useState<
     Record<string, string>
   >({});
@@ -285,8 +298,6 @@ export const useWorkflowEditState = (_props?: UseWorkflowEditStateProps) => {
     setForceAiGeneration,
     codeModalVisible,
     setCodeModalVisible,
-    creatingExecutionWorkflowId,
-    setCreatingExecutionWorkflowId,
     realValidationInputParams,
     setRealValidationInputParams,
     didInitializeCodeSignatureRef,

@@ -22,6 +22,7 @@ import {
 import { JwtAuthGuard, Public, Roles, RolesGuard } from '@ops/identity-access';
 import { Response } from 'express';
 import { SkillService } from './skill.service';
+import { BuiltinSkillRegistryService } from '../builtin-skill/registry/builtin-skill-registry.service';
 import {
   CreateSkillDTO,
   SkillConfigDto,
@@ -36,7 +37,10 @@ import {
 @Controller('skills')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class SkillController {
-  constructor(private readonly skillService: SkillService) {}
+  constructor(
+    private readonly skillService: SkillService,
+    private readonly builtinSkillRegistryService: BuiltinSkillRegistryService
+  ) {}
 
   /**
    * 获取所有角色列表（仅管理员，用于权限分配）
@@ -47,6 +51,17 @@ export class SkillController {
   async listRoles(): Promise<{ roles: { id: string; name: string }[] }> {
     const roles = await this.skillService.listRoles();
     return { roles };
+  }
+
+  /**
+   * Full built-in registry inventory for the administration UI.
+   * Unlike the runtime catalog this includes disabled and unhealthy entries.
+   */
+  @Get('builtin-inventory')
+  @Roles('admin')
+  async listBuiltinSkillInventory() {
+    const skills = await this.builtinSkillRegistryService.listSkillInventory();
+    return { skills };
   }
 
   /**

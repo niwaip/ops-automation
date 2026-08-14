@@ -47,8 +47,8 @@ export const CreateCapabilityReleaseWizardModal: React.FC<CreateCapabilityReleas
   wizardReleaseId,
   wizardRelease,
   createForm,
-  createSourceType,
-  SOURCE_TYPE_OPTIONS,
+  createSourceType: _createSourceType,
+  SOURCE_TYPE_OPTIONS: _SOURCE_TYPE_OPTIONS,
   isCreateSourceLoading,
   createSourceOptions,
   handleCreate,
@@ -115,14 +115,33 @@ export const CreateCapabilityReleaseWizardModal: React.FC<CreateCapabilityReleas
           <Space direction="vertical" size="middle" style={{ width: '100%' }}>
             <Card size="small" title="基础信息" style={{ borderRadius: 12 }}>
               <Form form={createForm} layout="vertical">
-                <Form.Item name="sourceType" label="能力类型" rules={[{ required: true, message: '请选择能力类型' }]}>
-                  <Select options={SOURCE_TYPE_OPTIONS} />
+                <Form.Item name="sourceType" hidden>
+                  <Input />
                 </Form.Item>
-                {createSourceType && (
-                  <Form.Item name="sourceId" label="选择源">
-                    <Select allowClear showSearch loading={isCreateSourceLoading} options={createSourceOptions} />
-                  </Form.Item>
-                )}
+                <Form.Item
+                  name="sourceId"
+                  label="选择源"
+                  rules={[{ required: true, message: '请选择源' }]}
+                >
+                  <Select
+                    allowClear
+                    showSearch
+                    loading={isCreateSourceLoading}
+                    options={createSourceOptions}
+                    placeholder="选择要初始化的源（已自动过滤已发布的源）"
+                    optionFilterProp="label"
+                    onChange={(value, option: any) => {
+                      if (option?.sourceType) {
+                        createForm.setFieldValue('sourceType', option.sourceType);
+                      } else if (!value) {
+                        createForm.setFieldValue('sourceType', undefined);
+                      }
+                      if (option?.sourceName && !createForm.getFieldValue('sourceName')) {
+                        createForm.setFieldValue('sourceName', option.sourceName);
+                      }
+                    }}
+                  />
+                </Form.Item>
                 <Form.Item name="sourceName" label="显示名称">
                   <Input placeholder="可选。若不填，系统会自动从已选源推断" />
                 </Form.Item>

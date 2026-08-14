@@ -908,7 +908,7 @@ const config = {
       "value": "prisma-client-js"
     },
     "output": {
-      "value": "/workspace/apps/backend/execution-control/control-plane/src/generated/prisma",
+      "value": "/app/src/generated/prisma",
       "fromEnvVar": null
     },
     "config": {
@@ -922,7 +922,7 @@ const config = {
       }
     ],
     "previewFeatures": [],
-    "sourceFilePath": "/workspace/apps/backend/execution-control/control-plane/prisma/schema.prisma",
+    "sourceFilePath": "/app/prisma/schema.prisma",
     "isCustomOutput": true
   },
   "relativeEnvPaths": {

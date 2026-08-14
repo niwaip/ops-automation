@@ -6,9 +6,7 @@ import type {
 
 type PickFirstNonEmptyString = (...values: unknown[]) => string | undefined;
 
-export function formatActivityResources(
-  activityResources: AiDraftActivityResource[]
-): string {
+export function formatActivityResources(activityResources: AiDraftActivityResource[]): string {
   const builtin = activityResources.filter((item) => item.ref.startsWith('builtin:'));
   const custom = activityResources.filter((item) => !item.ref.startsWith('builtin:'));
 
@@ -43,7 +41,14 @@ export function buildAnalyzeAiWorkflowDraftPrompt(args: {
   skillFileContent?: string;
   skillFileType?: string;
 }): string {
-  const { description, referenceUrl, referenceExcerpt, activityResources, skillFileContent, skillFileType } = args;
+  const {
+    description,
+    referenceUrl,
+    referenceExcerpt,
+    activityResources,
+    skillFileContent,
+    skillFileType,
+  } = args;
 
   return [
     '【区域 A: ROLE & CONSTRAINTS】',
@@ -60,9 +65,13 @@ export function buildAnalyzeAiWorkflowDraftPrompt(args: {
     '   - 严禁在 urlTemplate 或 queryTemplate 中包含 Markdown 反引号 (`) 或多余空格。',
     '5. 【参数化与声明规则】：只有动态输入才在 template 中使用 {param} 占位符。常量作为常量存入 config。workflow.inputParams 声明运行时输入。如果步骤模板出现了 {param} 占位符，inputParams 必须补齐定义。',
     '5.1 【枚举强约束】：如果用户说明、技能文件或参考资料明确出现“仅允许”“可选值”“枚举值”等固定候选集合，必须在对应 inputParams 参数上输出 enum 数组；不得只把候选值写入 description。defaultValue 和 exampleValue 若非空，必须属于 enum。没有固定候选集合时必须省略 enum。',
+    '5.2 【类型与格式】：整数必须声明 type=integer；Unix 毫秒时间戳同时声明 format=unix-milliseconds，Unix 秒时间戳声明 format=unix-seconds；exampleValue 只用于提示，不能作为默认值。',
+    '5.3 【验证场景】：如果接口存在默认/历史/搜索等互斥调用模式，必须输出 validation.scenarios，每个场景明确 parameters 与 requiredParameters，禁止把所有模式参数混在一次验证中。',
+    '5.4 【业务断言】：必须输出 validation.assertions。断言只能使用逻辑业务字段 field + 字段内相对路径 fieldPath，禁止填写 result/result/businessData 等运行时信封路径。operator 只允许 exists、nonEmpty、equals、notEquals、minItems、min、max；数组非空使用 minItems=1，数值下限使用 min，必填/存在使用 exists（禁止使用 required）。',
+    '5.5 【输出绑定】：outputParams 的每个字段必须声明 sourceStep、sourcePath、type 和 required。sourcePath 是来源步骤归一化结果内的 JSONPath，例如 $.list。业务输出应按 list、market、update_time 等字段拆分，禁止把完整对象无差别包装成名为 result 的字段。',
     '6. 不要生成 script 执行代码，不要包含 shell 命令。',
     '7. workflowClassName 使用 Python 类名风格，以 Workflow 结尾。taskQueue 默认使用 SKILL_TASK_QUEUE。',
-    '8. documentRender 只用于 Office 模版渲染，不能用于通用数据提取。提取转换优先使用 builtin:structuredTransform。AI 理解/分类才使用 builtin:aiStructuredTransform。',
+    '8. documentRender 只用于 Office 模版渲染，不能用于通用数据提取。提取转换优先使用 builtin:structuredTransform。Workflow 只承载需要 Activity 的工具与外部 I/O；AI 理解/分类/摘要/归纳属于独立 llm_operation，由控制面直接执行，禁止生成 builtin:llmOperation 或 builtin:aiStructuredTransform。',
     '',
     '【区域 B: CONTEXT】',
     formatActivityResources(activityResources),
@@ -110,10 +119,32 @@ export function buildAnalyzeAiWorkflowDraftPrompt(args: {
             exampleValue: 'option_a',
           },
         },
+        validation: {
+          scenarios: [
+            {
+              id: 'default',
+              label: '默认模式',
+              parameters: ['enumConstrainedParam'],
+              requiredParameters: ['enumConstrainedParam'],
+            },
+          ],
+          assertions: [
+            {
+              field: 'items',
+              fieldPath: '$',
+              operator: 'minItems',
+              value: 1,
+              message: '业务结果列表不能为空',
+            },
+          ],
+        },
         outputParams: {
-          result: {
-            description: '输出说明',
+          items: {
+            description: '业务列表',
             sourceStep: 'step_1',
+            sourcePath: '$.items',
+            type: 'array',
+            required: true,
           },
         },
         extraPrompt: '给后续 AI 代码生成的补充说明',
@@ -181,9 +212,10 @@ export function buildRepairAiWorkflowDraftPlanPrompt(args: {
     '5. builtin:structuredTransform 的 contentTemplate 默认应为 {content}。',
     '6. 如果目标是格式化文本、ASCII、类似 wttr.in 风格，则 builtin:structuredTransform.outputMode 必须为 text，并优先修复为 textTemplate 或 fieldMappings，不要默认改成 AI 转换。',
     '7. 如果目标是结构化 JSON，则 builtin:structuredTransform.outputMode 必须为 json，并提供非空 outputSchema。',
-    '8. 如果存在 builtin:aiStructuredTransform，必须确保 __structuredTransform 至少包含 contentType、contentTemplate、instructionTemplate、outputMode、outputSchema、contextTemplate。',
+    '8. 如果目标包含 AI 语义操作，不得把它修复为任何 Activity；只保留 Workflow 的工具/I/O 步骤，由上层确定性计划单独组合 llm_operation。禁止生成 builtin:llmOperation 和 builtin:aiStructuredTransform。',
     '9. 继续沿用已经正确的 inputParams/outputParams/steps/activityRef，不要发明新的未注册 activityRef。',
     '10. 如果 inputParams 参数声明了固定候选集合，必须保留或修复 enum 数组；defaultValue 和 exampleValue 若非空，必须属于 enum，不得把枚举约束降级为 description 文本。',
+    '11. outputParams 必须按业务字段拆分并声明 sourceStep/sourcePath/type/required；validation.assertions 只能用 field + fieldPath 引用这些字段，不能依赖 result/result/businessData 信封层级。',
     '',
     '【区域 B: CONTEXT】',
     formatActivityResources(activityResources),
@@ -243,7 +275,8 @@ export function buildAnalyzeAiWorkflowRefinementPrompt(args: {
     '     “taskQueue”: “队列名”,',
     '     “steps”: [{ “id”: “step_1”, “name”: “步骤名”, “type”: “activity”, “activityRef”: “builtin:...”, “input”: { ... } }],',
     '     “inputParams”: { “paramName”: { “description”: “描述”, “required”: true, “defaultValue”: “”, “enum”: [“option_a”, “option_b”], “source”: “declared”, “type”: “string”, “exampleValue”: “option_a” } },',
-    '     “outputParams”: { “result”: { “description”: “描述”, “sourceStep”: “step_1” } },',
+    '     “outputParams”: { “items”: { “description”: “业务列表”, “sourceStep”: “step_1”, “sourcePath”: “$.items”, “type”: “array”, “required”: true } },',
+    '     “validation”: { “assertions”: [{ “field”: “items”, “fieldPath”: “$”, “operator”: “minItems”, “value”: 1 }] },',
     '     “activities”: [{ “activityRef”: “...”, “config”: { ... } }],',
     '     “warnings”: [“注意点1”]',
     '   }',
@@ -253,10 +286,13 @@ export function buildAnalyzeAiWorkflowRefinementPrompt(args: {
     '6. `__httpRequest` 和 `__structuredTransform` 是步骤内部配置，不允许写入 workflow 级别的 inputParams，也不允许暴露为 workflow runtime 参数。',
     '6.1 inputParams 可以携带 source/type/exampleValue 元数据；如果步骤模板中存在未声明的 {param} 占位符，必须补齐参数定义，且不得把占位符改写成字面量。',
     '6.2 如果改进要求或现有参数说明包含固定候选集合，必须在对应 inputParams 参数上输出 enum 数组；不得只写入 description。defaultValue 和 exampleValue 若非空，必须属于 enum；没有固定候选集合时必须省略 enum。',
+    '6.3 整数使用 type=integer；Unix 时间戳必须同时声明 format=unix-milliseconds 或 unix-seconds。exampleValue 仅用于界面提示。',
+    '6.4 多种互斥调用模式必须写入 validation.scenarios；真实验证关键结果条件写入 validation.assertions，不得只验证“未抛异常”。断言使用 outputParams 字段名作为 field，并使用字段内相对 fieldPath，禁止写运行时信封绝对路径。',
+    '6.5 outputParams 必须按业务字段拆分，每个字段声明 sourceStep、sourcePath、type、required；不要用单个 result 字段包装整个响应。',
     '7. 严禁在模板字段中包含 Markdown 反引号 (`) 或多余空格。',
     '8. 如果某一步使用 builtin:structuredTransform，必须完整输出 contentType、contentTemplate、outputMode、outputSchema、contextTemplate、fieldMappings、textTemplate；其中 contentTemplate 默认为 {content}。',
     '9. 如果用户要求”格式化输出””ASCII 文本””类似 wttr.in”，builtin:structuredTransform.outputMode 必须为 text，并优先产出 textTemplate。',
-    '10. 只有在用户明确要求 AI 语义理解、摘要、归纳、模糊分类或难以用固定规则表达时，才使用 builtin:aiStructuredTransform，此时必须输出 instructionTemplate。',
+    '10. AI 语义操作（语义理解、摘要、归纳、模糊分类等）不是 Activity。禁止引用 builtin:llmOperation 或 builtin:aiStructuredTransform；模型步骤由控制面按冻结的 llm_operation 版本直接执行。',
     '',
     '【区域 B: CONTEXT】',
     formatActivityResources(activityResources),
@@ -283,7 +319,6 @@ export function buildAiDraftStepSampleKey(
   // when two steps happen to share the same (possibly empty) id.
   return `step_${index + 1}`;
 }
-
 
 export function buildStructuredTransformPlaceholderKeys(
   sampleInputs: Record<string, any>,

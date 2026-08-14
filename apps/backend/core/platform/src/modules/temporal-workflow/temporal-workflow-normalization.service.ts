@@ -9,6 +9,7 @@ import type {
   WorkflowDslV2Field,
   WorkflowDslV2Output,
   WorkflowInputParamDefinition,
+  WorkflowInputParamFormat,
   WorkflowInputParamType,
   WorkflowInputPolicy,
   WorkflowLocalizedValueMap,
@@ -61,19 +62,23 @@ export class TemporalWorkflowNormalizationService {
     const normalizedSteps = await Promise.all(
       (normalized.steps || []).map((step) => this.normalizeWorkflowStep(step, activityDsl))
     );
-    const normalizedInputParams =
+    const rawInputParams =
       normalized.inputParams &&
       typeof normalized.inputParams === 'object' &&
       !Array.isArray(normalized.inputParams)
         ? normalized.inputParams
         : undefined;
+    const normalizedInputParams = this.normalizeWorkflowInputParams(rawInputParams);
     const normalizedInputPolicy = await this.normalizeWorkflowInputPolicy(
       normalized.inputPolicy,
       normalizedInputParams,
       normalized.sourceContext
     );
     const finalName = this.normalizeName(workflowName || normalized.name || '未命名工作流');
-    const normalizedV2Output = this.normalizeV2Output(normalized.v2Output, normalizedSteps);
+    const migratedV2Output =
+      normalized.v2Output ||
+      this.deriveV2OutputFromLegacyOutputParams(normalized.outputParams, normalizedSteps);
+    const normalizedV2Output = this.normalizeV2Output(migratedV2Output, normalizedSteps);
     return {
       ...normalized,
       name: finalName,
@@ -84,6 +89,54 @@ export class TemporalWorkflowNormalizationService {
       steps: normalizedSteps,
       ...(normalizedV2Output ? { v2Output: normalizedV2Output } : {}),
     };
+  }
+
+  private normalizeWorkflowInputParams(
+    inputParams: Record<string, WorkflowInputParamDefinition> | undefined
+  ): Record<string, WorkflowInputParamDefinition> | undefined {
+    if (!inputParams) return undefined;
+    return Object.entries(inputParams).reduce<Record<string, WorkflowInputParamDefinition>>(
+      (acc, [rawKey, definition]) => {
+        const key = String(rawKey || '').trim();
+        if (!key) return acc;
+        const rawType = String(definition?.type || '').trim().toLowerCase();
+        const type: WorkflowInputParamType = /^(int|integer|int32|int64|long)$/.test(rawType)
+          ? 'integer'
+          : rawType === 'number'
+            ? 'number'
+            : rawType === 'boolean' || rawType === 'bool'
+              ? 'boolean'
+              : rawType === 'date'
+                ? 'date'
+                : 'string';
+        const declaredFormat = String(definition?.format || '').trim() as WorkflowInputParamFormat;
+        const supportedFormats = new Set<WorkflowInputParamFormat>([
+          'date',
+          'date-time',
+          'unix-seconds',
+          'unix-milliseconds',
+        ]);
+        const hint = `${key} ${definition?.description || ''}`.toLowerCase();
+        const inferredFormat: WorkflowInputParamFormat | undefined =
+          /毫秒|milliseconds?|epoch\s*ms|unix\s*ms/.test(hint)
+            ? 'unix-milliseconds'
+            : /秒级时间戳|unix\s*seconds?|epoch\s*seconds?/.test(hint)
+              ? 'unix-seconds'
+              : type === 'date'
+                ? /时间|time|datetime/.test(hint)
+                  ? 'date-time'
+                  : 'date'
+                : undefined;
+        const format = supportedFormats.has(declaredFormat) ? declaredFormat : inferredFormat;
+        acc[key] = {
+          ...definition,
+          type,
+          ...(format ? { format } : {}),
+        };
+        return acc;
+      },
+      {}
+    );
   }
 
   /**
@@ -169,6 +222,60 @@ export class TemporalWorkflowNormalizationService {
       ...v2Output,
       fields,
     };
+  }
+
+  /**
+   * Migrate only unambiguous legacy output declarations. A field is safe to
+   * seal when every outputParam explicitly names its producer step; otherwise
+   * the legacy result builder is kept and the author must choose a source.
+   */
+  private deriveV2OutputFromLegacyOutputParams(
+    outputParams: WorkflowDsl['outputParams'],
+    steps: WorkflowStep[]
+  ): WorkflowDslV2Output | undefined {
+    const entries = Object.entries(outputParams || {});
+    if (
+      entries.length === 0 ||
+      entries.some(([, definition]) => !String(definition?.sourceStep || '').trim())
+    ) {
+      return undefined;
+    }
+
+    const stepsById = new Map(
+      steps.map((step) => [String(step.id || '').trim(), step] as const)
+    );
+    const fields = entries.reduce<Record<string, WorkflowDslV2Field>>(
+      (acc, [fieldName, definition]) => {
+        const sourceStep = String(definition.sourceStep || '').trim();
+        const step = stepsById.get(sourceStep);
+        if (!step) return acc;
+        const activityRef = String(step.activityRef || '').toLowerCase();
+        const activityName = String(step.activityName || '').toLowerCase();
+        const isStructuredTransform =
+          activityRef.includes('jsontransform') ||
+          activityRef.includes('structuredtransform') ||
+          activityName.includes('json 转换') ||
+          activityName.includes('结构化转换');
+        const description = String(definition.description || '').trim();
+        acc[fieldName] = {
+          required: true,
+          description: description || `Workflow 输出字段 ${fieldName}`,
+          source: {
+            step: sourceStep,
+            path: isStructuredTransform ? `$.result.${fieldName}` : `$.${fieldName}`,
+          },
+        };
+        return acc;
+      },
+      {}
+    );
+
+    return Object.keys(fields).length === entries.length
+      ? {
+          dataPath: '$.result.businessData',
+          fields,
+        }
+      : undefined;
   }
 
   buildDefaultWorkflowInputPolicyParams(

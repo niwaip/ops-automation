@@ -6,12 +6,14 @@ import {
   ValueBindingV1,
   ValueTypeV1,
   computePlanHash,
+  projectOutputSchemaV1,
 } from '@ops/backend-deterministic-plan';
 import { DeterministicPlanValidatorService } from './deterministic-plan-validator.service';
 import {
   CapabilityContractCatalogService,
   ResolvedCapabilityContract,
 } from './capability-contract-catalog.service';
+import { LlmOperationAttestationClient } from './llm-operation-attestation.client';
 import { ERROR_CODES } from '@ops/backend-error-codes';
 
 /**
@@ -36,6 +38,7 @@ export class DeterministicPlanFreezeService {
     private readonly prisma: PrismaService,
     private readonly validator: DeterministicPlanValidatorService,
     private readonly catalog: CapabilityContractCatalogService,
+    private readonly attestationClient: LlmOperationAttestationClient,
   ) {}
 
   /**
@@ -46,16 +49,6 @@ export class DeterministicPlanFreezeService {
     planDraft: DeterministicPlanDraftV1,
     txPrisma?: any,
   ): Promise<{ planId: string; planHash: string }> {
-    const validationResult = this.validator.validatePlan(planDraft);
-    if (!validationResult.valid) {
-      this.logger.error(`Plan validation failed for execution ${executionId}:`, validationResult.errors);
-      throw new BadRequestException({
-        code: validationResult.errors[0]?.code || ERROR_CODES.PLAN_SCHEMA_INVALID,
-        message: `Deterministic plan validation failed: ${validationResult.errors[0]?.message}`,
-        details: validationResult.errors,
-      });
-    }
-
     const frozenAt = new Date();
     const client = txPrisma || this.prisma;
 
@@ -70,7 +63,56 @@ export class DeterministicPlanFreezeService {
       resolvedOutputSchemas[node.nodeId] = contract.outputSchema as Record<string, unknown>;
       resolvedInputSchemas[node.nodeId] = contract.inputSchema;
       contractCompatMap.set(node.nodeId, contract.contractCompatibility ?? 'backward');
+      this.applyAuthoritativeContract(node, contract);
       this.attachContractRefAndDigest(node, contract);
+
+      // Phase 2-γ — freeze-time gates for llm_operation nodes
+      if (node.kind === 'llm_operation') {
+        // 4.2.1 Enforce operationVersion must exist
+        const operationVersion = (node as any).operationVersion;
+        if (!operationVersion) {
+          throw new BadRequestException({
+            code: ERROR_CODES.LLM_OPERATION_VERSION_NOT_FOUND,
+            message: `LLM operation node '${node.nodeId}' has no authoritative operationVersion`,
+            details: { nodeId: node.nodeId, operationId: (node as any).operationId },
+          });
+        }
+
+        // 4.2.2 Enforce attestation check
+        const operationId = (node as any).operationId;
+        const version = operationVersion;
+        try {
+          const hasValidAttestation = await this.attestationClient.hasValidAttestationForVersion(
+            operationId,
+            version,
+          );
+          if (!hasValidAttestation) {
+            throw new BadRequestException({
+              code: ERROR_CODES.LLM_OPERATION_ATTESTATION_INVALID,
+              message: `LLM operation '${operationId}' version '${version}' has no valid attestation — cannot freeze`,
+              details: { nodeId: node.nodeId, operationId, version },
+            });
+          }
+        } catch (error: any) {
+          // Fail-closed: network errors reject the freeze
+          throw new BadRequestException({
+            code: ERROR_CODES.LLM_OPERATION_ATTESTATION_INVALID,
+            message: `LLM operation '${operationId}' version '${version}' attestation check failed: ${error.message}`,
+            details: { nodeId: node.nodeId, operationId, version, error: error.message },
+          });
+        }
+      }
+    }
+
+    this.alignFinalOutputsToAuthoritativeContracts(planDraft);
+    const validationResult = this.validator.validatePlan(planDraft);
+    if (!validationResult.valid) {
+      this.logger.error(`Plan validation failed for execution ${executionId}:`, validationResult.errors);
+      throw new BadRequestException({
+        code: validationResult.errors[0]?.code || ERROR_CODES.PLAN_SCHEMA_INVALID,
+        message: `Deterministic plan validation failed: ${validationResult.errors[0]?.message}`,
+        details: validationResult.errors,
+      });
     }
 
     // 1.5 Edge contract composition validation (§10.4, §15.3 item 4) —
@@ -131,7 +173,7 @@ export class DeterministicPlanFreezeService {
         inputSchemaRef: inputSchema
           ? `capability://${node.kind === 'skill' ? 'skill' : 'llm_operation'}/${
               node.kind === 'skill' ? (node as any).skillId : (node as any).operationId
-            }/${node.kind === 'skill' ? (node as any).skillVersion || 'v1' : (node as any).promptTemplateVersion || '1'}/input`
+            }/${node.kind === 'skill' ? (node as any).skillVersion || 'v1' : (node as any).operationVersion}/input`
           : null,
         legacy: false,
         contractCheckMode: 'schema' as const,
@@ -147,7 +189,9 @@ export class DeterministicPlanFreezeService {
           planNodeId: node.nodeId,
           nodeKind: node.kind,
           capabilityId: node.kind === 'skill' ? (node as any).skillId : (node as any).operationId,
-          capabilityVersion: node.kind === 'skill' ? (node as any).skillVersion : (node as any).promptTemplateVersion,
+          capabilityVersion: node.kind === 'skill'
+          ? (node as any).skillVersion
+          : ((node as any).operationVersion || (node as any).promptTemplateVersion || '1'),
           dependsOnJson: node.dependsOn as any,
           inputBindingsJson: ((node.inputBindings as any) || {}) as any,
           outputContractJson: {
@@ -156,6 +200,9 @@ export class DeterministicPlanFreezeService {
               ? {
                   promptTemplateId: (node as any).promptTemplateId,
                   promptTemplateVersion: (node as any).promptTemplateVersion,
+                  operationVersion: (node as any).operationVersion || (node as any).promptTemplateVersion || '1',
+                  operationDigest: (node as any).operationDigest,
+                  contractDigest: node.contractDigest,
                   modelPolicyId: (node as any).modelPolicyId,
                   temperature: (node as any).temperature,
                   maxInputTokens: (node as any).maxInputTokens,
@@ -554,8 +601,53 @@ export class DeterministicPlanFreezeService {
     const ref =
       node.kind === 'skill'
         ? `capability://skill/${(node as any).skillId}/${(node as any).skillVersion || 'v1'}/output`
-        : `capability://llm_operation/${(node as any).operationId}/${(node as any).promptTemplateVersion || '1'}/output`;
+        : `capability://llm_operation/${(node as any).operationId}/${(node as any).operationVersion || (node as any).promptTemplateVersion || '1'}/output`;
     node.contractRef = ref;
     node.contractDigest = this.catalog.computeContractDigest(node, contract);
+  }
+
+  /**
+   * Replaces every planner-authored contract field with catalog authority.
+   * In particular, an LLM cannot pin a stale version/digest or invent an
+   * output field that changes the scheduler's runtime validation.
+   */
+  private applyAuthoritativeContract(
+    node: DeterministicPlanDraftV1['nodes'][number],
+    contract: ResolvedCapabilityContract,
+  ): void {
+    node.outputContract = this.schemaToOutputContract(contract.outputSchema);
+
+    if (node.kind !== 'llm_operation') return;
+    const ref = contract.capabilityRef;
+    if (!ref || ref.id !== node.operationId) {
+      throw new BadRequestException({
+        code: ERROR_CODES.CAPABILITY_CONTRACT_NOT_FOUND,
+        message: `Catalog did not return an authoritative reference for LLM operation '${node.operationId}'`,
+        details: { nodeId: node.nodeId, operationId: node.operationId },
+      });
+    }
+
+    node.operationVersion = ref.version;
+    node.operationDigest = ref.digest;
+    // Kept only for V1 readers. It mirrors the operation version and is not
+    // independently caller-controllable.
+    node.promptTemplateVersion = ref.version;
+  }
+
+  private schemaToOutputContract(
+    schema: Record<string, unknown> | null,
+  ): Record<string, ValueTypeV1> {
+    return projectOutputSchemaV1(schema).outputContract;
+  }
+
+  private alignFinalOutputsToAuthoritativeContracts(plan: DeterministicPlanDraftV1): void {
+    const nodeById = new Map(plan.nodes.map((node) => [node.nodeId, node]));
+    for (const finalOutput of plan.finalOutputs) {
+      const producer = nodeById.get(finalOutput.fromNodeId);
+      const authoritativeType = producer?.outputContract?.[finalOutput.fromNodeOutput];
+      if (authoritativeType) {
+        finalOutput.expectedType = authoritativeType;
+      }
+    }
   }
 }

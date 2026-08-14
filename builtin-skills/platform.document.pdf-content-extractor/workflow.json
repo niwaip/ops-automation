@@ -1,0 +1,19 @@
+{
+  "workflowVersion": "v1",
+  "engine": "domain-handler",
+  "handlerKey": "document.content-extractor.pdf",
+  "steps": [
+    {
+      "stepId": "extract_pdf_text",
+      "action": "extract_embedded_text",
+      "inputMapping": {
+        "fileBase64": "$.input.fileBase64",
+        "fileName": "$.input.fileName",
+        "password": "$.input.password",
+        "maxPages": "$.input.maxPages",
+        "maxCharacters": "$.input.maxCharacters",
+        "includePages": "$.input.includePages"
+      }
+    }
+  ]
+}

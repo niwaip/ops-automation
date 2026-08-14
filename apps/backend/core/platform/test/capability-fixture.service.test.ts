@@ -85,7 +85,8 @@ describe('CapabilityFixtureService (§10.3)', () => {
       properties: { query: { type: 'string' } },
     });
     expect(suggestion.isNegativeFixture).toBe(true);
-    expect(suggestion.input).not.toHaveProperty('query');
+    expect(suggestion.input).toEqual({});
+    expect(suggestion.expectedOutput).not.toHaveProperty('query');
     expect(suggestion.name).toContain('negative');
   });
 
@@ -96,6 +97,180 @@ describe('CapabilityFixtureService (§10.3)', () => {
       properties: { count: { type: 'number' } },
     });
     expect(suggestion.isNegativeFixture).toBe(true);
-    expect(suggestion.input).toEqual({ count: 'not-a-number' });
+    expect(suggestion.input).toEqual({});
+    expect(suggestion.expectedOutput).toEqual({ count: 'not-a-number' });
+  });
+
+  it('materializes input, runtime output and negative fixtures for the exact build', async () => {
+    const queryRaw = jest.fn(async (sql: string, ..._args: unknown[]) => {
+      if (sql.includes('GROUP BY fixture_type')) return [];
+      if (sql.includes('FROM capability_validations')) {
+        return [
+          {
+            input_snapshot_json: null,
+            result_snapshot_json: {
+              input: { query: 'AI news', apiKey: 'tvly-secret', max_results: '5' },
+              result: {
+                result: {
+                  result: {
+                    businessData: {
+                      searchResults: [],
+                      responseMetadata: { responseTime: 10 },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        ];
+      }
+      if (sql.includes('INSERT INTO capability_fixtures')) return [];
+      return [];
+    });
+    const executeRaw = jest.fn().mockResolvedValue(1);
+    const service = new CapabilityFixtureService({
+      $queryRawUnsafe: queryRaw,
+      $executeRawUnsafe: executeRaw,
+    } as never);
+
+    const result = await service.ensureFixturesForBuild({
+      releaseId: 'release-1',
+      buildId: 'build-1',
+      draftPayload: {
+        paramsSchema: {
+          type: 'object',
+          required: ['query', 'apiKey'],
+          properties: {
+            query: { type: 'string' },
+            apiKey: { type: 'string' },
+            max_results: { type: 'integer' },
+          },
+        },
+        outputSchema: {
+          type: 'object',
+          required: ['searchResults', 'responseMetadata'],
+          additionalProperties: false,
+          properties: {
+            searchResults: { type: 'array' },
+            responseMetadata: { type: 'object' },
+          },
+        },
+      },
+    });
+
+    expect(result).toEqual({ valid: true, created: true, errors: [] });
+    expect(executeRaw).toHaveBeenCalledWith(
+      expect.stringContaining('DELETE FROM capability_fixtures'),
+      'release-1',
+      'build-1'
+    );
+    const inserts = queryRaw.mock.calls.filter(([sql]) =>
+      String(sql).includes('INSERT INTO capability_fixtures')
+    );
+    expect(inserts).toHaveLength(3);
+    expect(inserts.map((call) => call[4])).toEqual(['input', 'output', 'negative']);
+    expect(JSON.parse(String(inserts[0][5]))).toEqual({
+      query: 'AI news',
+      apiKey: 'fixture-api-key-redacted',
+      max_results: 5,
+    });
+    expect(JSON.parse(String(inserts[2][6]))).not.toHaveProperty('searchResults');
+  });
+
+  it('does not persist fixtures when observed runtime output violates the draft contract', async () => {
+    const queryRaw = jest.fn(async (sql: string, ..._args: unknown[]) => {
+      if (sql.includes('GROUP BY fixture_type')) return [];
+      if (sql.includes('FROM capability_validations')) {
+        return [
+          {
+            input_snapshot_json: { query: 'AI news' },
+            result_snapshot_json: {
+              result: { result: { businessData: { searchResults: [] } } },
+            },
+          },
+        ];
+      }
+      return [];
+    });
+    const executeRaw = jest.fn().mockResolvedValue(1);
+    const service = new CapabilityFixtureService({
+      $queryRawUnsafe: queryRaw,
+      $executeRawUnsafe: executeRaw,
+    } as never);
+
+    const result = await service.ensureFixturesForBuild({
+      releaseId: 'release-1',
+      buildId: 'build-1',
+      draftPayload: {
+        paramsSchema: {
+          type: 'object',
+          required: ['query'],
+          properties: { query: { type: 'string' } },
+        },
+        outputSchema: {
+          type: 'object',
+          required: ['searchResults', 'responseMetadata'],
+          properties: {
+            searchResults: { type: 'array' },
+            responseMetadata: { type: 'object' },
+          },
+        },
+      },
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.errors.join(' ')).toContain('responseMetadata');
+    expect(executeRaw).not.toHaveBeenCalled();
+  });
+
+  it('does not hide undeclared runtime output fields from a closed output contract', async () => {
+    const queryRaw = jest.fn(async (sql: string, ..._args: unknown[]) => {
+      if (sql.includes('GROUP BY fixture_type')) return [];
+      if (sql.includes('FROM capability_validations')) {
+        return [
+          {
+            input_snapshot_json: { query: 'AI news' },
+            result_snapshot_json: {
+              result: {
+                result: {
+                  businessData: {
+                    searchResults: [],
+                    responseTime: 10,
+                  },
+                },
+              },
+            },
+          },
+        ];
+      }
+      return [];
+    });
+    const executeRaw = jest.fn().mockResolvedValue(1);
+    const service = new CapabilityFixtureService({
+      $queryRawUnsafe: queryRaw,
+      $executeRawUnsafe: executeRaw,
+    } as never);
+
+    const result = await service.ensureFixturesForBuild({
+      releaseId: 'release-1',
+      buildId: 'build-1',
+      draftPayload: {
+        paramsSchema: {
+          type: 'object',
+          required: ['query'],
+          properties: { query: { type: 'string' } },
+        },
+        outputSchema: {
+          type: 'object',
+          required: ['searchResults'],
+          additionalProperties: false,
+          properties: { searchResults: { type: 'array' } },
+        },
+      },
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.errors.join(' ')).toContain('additional properties');
+    expect(executeRaw).not.toHaveBeenCalled();
   });
 });

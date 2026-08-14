@@ -33,6 +33,7 @@ import {
 import { TemporalWorkflowValidationFacadeService } from '../src/modules/temporal-workflow/temporal-workflow-validation-facade.service';
 import { TemporalWorkflowValidationService } from '../src/modules/temporal-workflow/temporal-workflow-validation.service';
 import { TemporalWorkflowArtifactValidationService } from '../src/workflow-registry/validation/temporal-workflow-artifact-validation.service';
+import { TemporalWorkflowValidationContractService } from '../src/workflow-registry/validation/temporal-workflow-validation-contract.service';
 import { TemporalWorkflowDslValidationService } from '../src/workflow-registry/validation/temporal-workflow-dsl-validation.service';
 import { TemporalWorkflowCodegenOrchestrationService } from '../src/workflow-registry/codegen/temporal-workflow-codegen-orchestration.service';
 import { BuiltinActivityRegistry } from '../src/modules/temporal-workflow/builtin-activity.registry';
@@ -123,7 +124,8 @@ describe('TemporalWorkflowCodegenService', () => {
     const workflowArtifactValidationService = new TemporalWorkflowArtifactValidationService(
       prisma as any,
       validationFacade,
-      workflowArtifactService
+      workflowArtifactService,
+      new TemporalWorkflowValidationContractService()
     );
     const workflowDslValidationService = new TemporalWorkflowDslValidationService(
       workflowSupportService
@@ -132,7 +134,8 @@ describe('TemporalWorkflowCodegenService', () => {
       prisma as any,
       codegenService,
       workflowArtifactService,
-      workflowSupportService
+      workflowSupportService,
+      workflowNormalizationService
     );
     const service = new TemporalWorkflowService(
       workflowCodegenOrchestrationService,
@@ -1052,6 +1055,82 @@ describe('TemporalWorkflowCodegenService', () => {
         response: expect.objectContaining({ message: expect.stringContaining('schemaRef') }),
       });
     });
+
+    it('migrates unambiguous legacy outputParams to a sealed v2 result builder', async () => {
+      const { workflowNormalizationService } = createService();
+      const result = await workflowNormalizationService.normalizeWorkflowDsl({
+        name: 'Web Search',
+        taskQueue: 'web-search-task-queue',
+        steps: [
+          {
+            id: 'step_2',
+            name: '提取搜索结果',
+            type: 'activity',
+            activityRef: 'builtin:jsonTransform',
+            activityName: 'JSON 转换',
+            input: {},
+          },
+        ],
+        outputParams: {
+          searchResults: { sourceStep: 'step_2', description: '搜索结果数组' },
+          responseMetadata: { sourceStep: 'step_2', description: '响应元数据' },
+        },
+      });
+
+      expect(result.v2Output).toEqual({
+        dataPath: '$.result.businessData',
+        fields: {
+          searchResults: {
+            required: true,
+            description: '搜索结果数组',
+            source: { step: 'step_2', path: '$.result.searchResults' },
+          },
+          responseMetadata: {
+            required: true,
+            description: '响应元数据',
+            source: { step: 'step_2', path: '$.result.responseMetadata' },
+          },
+        },
+      });
+    });
+  });
+
+  it('normalizes legacy outputParams before code generation and emits a sealed result builder', async () => {
+    const { service } = createService();
+    const result = await service.generateWorkflowCode(
+      {
+        name: 'Web Search',
+        workflowClassName: 'WebSearchWorkflow',
+        taskQueue: 'web-search-task-queue',
+        steps: [
+          {
+            id: 'step_1',
+            name: '搜索网页',
+            type: 'activity',
+            activityRef: 'builtin:httpRequest',
+            activityName: 'httpRequest',
+            input: {
+              __httpRequest: {
+                method: 'POST',
+                urlTemplate: 'https://api.example.com/search',
+                responseMode: 'body',
+              },
+            },
+          },
+        ],
+        outputParams: {
+          searchResults: { sourceStep: 'step_1', description: '搜索结果' },
+        },
+      },
+      { activities: [] }
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.code).toContain('_extract_v2_path');
+    expect(result.code).toContain(
+      '"searchResults": cls._extract_v2_path(step_results.get("step_1"), "$.searchResults"),'
+    );
+    expect(result.code).not.toContain('business_data = raw_result');
   });
 
   it('extracts v2Output fields from multiple source steps (http -> transform pipeline)', async () => {
@@ -2070,6 +2149,143 @@ class V2Workflow:
       expect(context).toContain('requests.post');
       expect(context).toContain('time.sleep');
       expect(context).toContain('封装在 @activity.defn 装饰的 Activity 函数中');
+    });
+  });
+
+  describe('WorkflowSkeletonCompiler', () => {
+    it('compiles multi-step custom activity workflow deterministically when activity generatedCode is present', () => {
+      const { workflowConfigService, workflowNormalizationService } = createService();
+      const builtinActivityRegistry = new BuiltinActivityRegistry();
+      const { WorkflowSkeletonCompiler } = require('../src/modules/temporal-workflow/workflow-skeleton-compiler');
+      const compiler = new WorkflowSkeletonCompiler(
+        builtinActivityRegistry,
+        workflowConfigService,
+        workflowNormalizationService
+      );
+
+      const workflowDsl = {
+        name: 'WebSearchSummaryWorkflow',
+        taskQueue: 'SKILL_TASK_QUEUE',
+        inputParams: {
+          query: { required: true, defaultValue: '' },
+          topic: { required: false, defaultValue: 'general' },
+        },
+        steps: [
+          {
+            id: 'search_step',
+            type: 'activity',
+            activityName: 'webSearch',
+            input: { query: '{query}', topic: '{topic}' },
+            startToCloseTimeout: '5m',
+          },
+          {
+            id: 'summary_step',
+            type: 'activity',
+            activityName: 'summarize',
+            input: { content: '{{search_step.searchResults}}', context: '{{search_step.responseMetadata}}' },
+            startToCloseTimeout: '3m',
+          },
+        ],
+        v2Output: {
+          fields: {
+            searchResults: { required: true, source: { step: 'search_step', path: 'searchResults' } },
+            responseMetadata: { required: true, source: { step: 'search_step', path: 'responseMetadata' } },
+            summary: { required: false, source: { step: 'summary_step', path: 'result' } },
+          },
+        },
+      };
+
+      const activityDsl = {
+        activities: [
+          {
+            name: 'webSearch',
+            fn: 'webSearch',
+            timeout: '5m',
+            handler: 'api' as const,
+            config: {},
+            generatedCode: `from temporalio import activity\n@activity.defn(name="webSearch")\nasync def webSearch(input_data: dict) -> dict:\n    return {"status": "success", "searchResults": [], "responseMetadata": {}}`,
+          },
+          {
+            name: 'summarize',
+            fn: 'summarize',
+            timeout: '3m',
+            handler: 'api' as const,
+            config: {},
+            generatedCode: `from temporalio import activity\n@activity.defn(name="summarize")\nasync def summarize(input_data: dict) -> dict:\n    return {"status": "success", "result": "Summary ok"}`,
+          },
+        ],
+      };
+
+      const result = compiler.compile(workflowDsl as any, activityDsl as any);
+      expect(result.success).toBe(true);
+      expect(result.code).toContain('class WebSearchSummaryWorkflowWorkflow:');
+      expect(result.code).toContain('_assert_required_path');
+      expect(result.code).toContain('searchResults');
+      expect(result.code).toContain('responseMetadata');
+    });
+
+    it('resolves $result and $.result paths correctly in v2Output and step input templates', () => {
+      const { workflowConfigService, workflowNormalizationService } = createService();
+      const builtinActivityRegistry = new BuiltinActivityRegistry();
+      const { WorkflowSkeletonCompiler } = require('../src/modules/temporal-workflow/workflow-skeleton-compiler');
+      const compiler = new WorkflowSkeletonCompiler(
+        builtinActivityRegistry,
+        workflowConfigService,
+        workflowNormalizationService
+      );
+
+      const workflowDsl = {
+        name: 'ResultPathWorkflow',
+        taskQueue: 'SKILL_TASK_QUEUE',
+        inputParams: {},
+        steps: [
+          {
+            id: 'step_1',
+            type: 'activity',
+            activityName: 'fetchData',
+            input: {},
+            startToCloseTimeout: '1m',
+          },
+          {
+            id: 'step_2',
+            type: 'activity',
+            activityName: 'processData',
+            input: { content: '{$result}' },
+            startToCloseTimeout: '1m',
+          },
+        ],
+        v2Output: {
+          fields: {
+            data: { required: true, source: { step: 'step_1', path: '$.result' } },
+            finalResult: { required: true, source: { step: 'step_2', path: '$result' } },
+          },
+        },
+      };
+
+      const activityDsl = {
+        activities: [
+          {
+            name: 'fetchData',
+            fn: 'fetchData',
+            timeout: '1m',
+            handler: 'api' as const,
+            config: {},
+            generatedCode: `from temporalio import activity\n@activity.defn(name="fetchData")\nasync def fetchData(input_data: dict) -> dict:\n    return {"status": "success", "data": "hello"}`,
+          },
+          {
+            name: 'processData',
+            fn: 'processData',
+            timeout: '1m',
+            handler: 'api' as const,
+            config: {},
+            generatedCode: `from temporalio import activity\n@activity.defn(name="processData")\nasync def processData(input_data: dict) -> dict:\n    return {"status": "success", "result": "processed"}`,
+          },
+        ],
+      };
+
+      const result = compiler.compile(workflowDsl as any, activityDsl as any);
+      expect(result.success).toBe(true);
+      expect(result.code).toContain('cls._extract_v2_path');
     });
   });
 });

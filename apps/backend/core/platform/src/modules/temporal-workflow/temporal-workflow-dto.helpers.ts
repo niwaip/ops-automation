@@ -19,12 +19,15 @@ export function toTemporalWorkflowDto(workflow: TemporalWorkflow): TemporalWorkf
   const activityDsl = parseJson<ActivityDsl>(workflow.activityDsl) || { activities: [] };
   const extractedSourceTemplate = extractSourceTemplate(workflowDsl, activityDsl);
   const extractedSourceContext = extractSourceContext(workflowDsl, activityDsl);
+  const validationResult =
+    parseJson<Record<string, unknown>>(workflow.validationResultJson) || null;
   return {
     ...workflow,
     workflowDsl: workflowDsl as any,
     activityDsl: activityDsl as any,
     sourceTemplate: extractedSourceTemplate,
     sourceContext: extractedSourceContext,
+    validationResult,
   };
 }
 

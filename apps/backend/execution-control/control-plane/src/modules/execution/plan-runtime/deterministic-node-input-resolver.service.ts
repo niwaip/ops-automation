@@ -84,7 +84,11 @@ export class DeterministicNodeInputResolverService {
           const upstreamOutput = stepOutputMap.get(targetNodeId);
           if (upstreamOutput) {
             const outPath = binding.path || binding.outputPath || '';
-            resolvedInput[field] = this.getValueByPath(upstreamOutput, outPath);
+            const upstreamValue = this.getValueByPath(upstreamOutput, outPath);
+            resolvedInput[field] =
+              binding.transform === 'extract_unique_array'
+                ? this.extractUniqueArray(upstreamValue, field, targetNodeId)
+                : upstreamValue;
             valueSources[field] = 'node_output';
           } else {
             this.logger.warn(
@@ -108,6 +112,34 @@ export class DeterministicNodeInputResolverService {
     }
 
     return resolvedInput;
+  }
+
+  private extractUniqueArray(value: unknown, field: string, producerNodeId: string): unknown[] {
+    if (Array.isArray(value)) return value;
+
+    const matches: Array<{ path: string; value: unknown[] }> = [];
+    const visit = (current: unknown, path: string, depth: number): void => {
+      if (depth > 12 || current === null || current === undefined) return;
+      if (Array.isArray(current)) {
+        matches.push({ path, value: current });
+        return;
+      }
+      if (typeof current !== 'object') return;
+      for (const [key, child] of Object.entries(current as Record<string, unknown>)) {
+        visit(child, path ? `${path}.${key}` : key, depth + 1);
+      }
+    };
+    visit(value, '', 0);
+
+    if (matches.length === 1) return matches[0]!.value;
+
+    const err: any = new Error(
+      matches.length === 0
+        ? `INPUT_SCHEMA_VIOLATION: binding for field '${field}' could not find an array in output from node '${producerNodeId}'`
+        : `INPUT_SCHEMA_VIOLATION: binding for field '${field}' found multiple arrays in output from node '${producerNodeId}' (${matches.map((match) => match.path).join(', ')})`,
+    );
+    err.code = ERROR_CODES.INPUT_SCHEMA_VIOLATION;
+    throw err;
   }
 
   /**

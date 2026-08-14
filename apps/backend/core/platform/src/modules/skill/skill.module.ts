@@ -16,6 +16,7 @@ import { SkillEnrichmentService } from './skill-enrichment.service';
 import { SkillValidationService } from './skill-validation.service';
 import { SkillAccessService } from './skill-access.service';
 import { SkillMatcherService } from './skill-matcher.service';
+import { BuiltinSkillModule } from '../builtin-skill/builtin-skill.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { SkillMatcherService } from './skill-matcher.service';
       signOptions: { expiresIn: '15m' },
     }),
     ExecutionFlowModule,
+    BuiltinSkillModule,
   ],
   controllers: [SkillController, ToolCatalogController],
   providers: [

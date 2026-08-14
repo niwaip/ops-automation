@@ -1,11 +1,11 @@
 {
   "capabilityKey": "platform.document.markdown-artifact-writer",
-  "definitionVersion": "1.0.1",
-  "definitionDigest": "sha256:552ee28f483f131ee27f4e150580130c8e4a825d3e2fbbe9750d0d07ebe5b319",
+  "definitionVersion": "1.0.2",
+  "definitionDigest": "sha256:9342c12c0aa150d2fa1c5bfcc6f7638c47486ad94bcc60d5653cbecd74d8eb52",
   "fileHashes": {
-    "manifest.yaml": "sha256:88a75e3edcdbfbd05d3ee448d3db0df2b79ebccbb93bc67edcdd652fbb6b7bf6",
-    "workflow.json": "sha256:4d4c82b9a706b3a093a388b0a1dcdbcfdfb690edcd6e7dce2e2ebae9d13db9b9",
-    "fixtures/smoke-input.json": "sha256:606e9b4d8c6b65f7c32bf234dfa1a8ecb819f71c4fa4e6e65a443a6d4d12c8a1"
+    "manifest.yaml": "sha256:6a3004a6cd395dc0219acd30e62dc37c59cecc5a5984e520f4e2009a77369d4e",
+    "workflow.json": "sha256:c5f396a83ecdec47fb66346e5ef98040aad4cc56a2d24c57aeb7a02b93a084e5",
+    "fixtures/smoke-input.json": "sha256:4411291cc760ddfb17b356ea066f82eb4bc8d39a3607818ddacc131c100fc782"
   },
   "createdAt": "2026-07-29T14:48:37.000Z"
 }

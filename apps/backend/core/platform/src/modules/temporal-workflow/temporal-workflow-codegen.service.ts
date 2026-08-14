@@ -5,10 +5,15 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { getAiOrchestratorUrl } from '../../config/service-endpoints';
+import { buildV2OutputResultBuilderLines } from './temporal-workflow-result-builder.helpers';
 import type { ActivityDsl, WorkflowDsl } from './temporal-workflow.types';
 
 export interface TemporalWorkflowCodegenSupport {
   buildDeterministicWorkflowCode(workflowDsl: WorkflowDsl, activityDsl: ActivityDsl): string | null;
+  diagnoseDeterministicMiss?(
+    workflowDsl: WorkflowDsl,
+    activityDsl: ActivityDsl
+  ): { code: string; message: string };
 }
 
 export interface PythonGate1Violation {
@@ -420,7 +425,12 @@ export class TemporalWorkflowCodegenService {
     }
 
     try {
-      pushLog('未命中固定模板编译路径，进入 AI 生成');
+      const miss = support.diagnoseDeterministicMiss?.(workflowDsl, activityDsl);
+      pushLog(
+        miss
+          ? `确定性骨架未命中 [${miss.code}]: ${miss.message}，进入受约束 AI 生成`
+          : '未命中固定模板编译路径，进入 AI 生成'
+      );
       const aiGeneration = await this.generateWorkflowCodeViaAi(
         workflowDsl,
         activityDsl,
@@ -786,6 +796,26 @@ export class TemporalWorkflowCodegenService {
 
     if (activityCodeAlreadyGenerated) {
       lines.push('【本次任务范围】：仅编写 Workflow 胶水代码。Activity 实现已全部提供，不要重复生成或改写。');
+    }
+
+    if (workflowDsl.v2Output?.fields) {
+      try {
+        const validStepIds = (workflowDsl.steps || []).map((s) => s.id);
+        const v2BuilderLines = buildV2OutputResultBuilderLines({
+          v2Output: workflowDsl.v2Output,
+          validStepIds,
+          resultType: 'generic',
+          title: workflowDisplayName,
+        });
+        lines.push('');
+        lines.push('【强契约 Result Builder 必须原样包含】：');
+        lines.push('此工作流已由 DSL v2Output 声明输出契约。以下由编译器生成的 _build_workflow_result 函数，你必须【原样包含】在 Workflow 类中，严禁修改、删除或简化其中的任何断言：');
+        lines.push('--- 编译器生成 Result Builder 开始 ---');
+        v2BuilderLines.forEach((line) => lines.push(line));
+        lines.push('--- 编译器生成 Result Builder 结束 ---');
+      } catch {
+        // Compile check ignore, Gate 1 will handle if invalid
+      }
     }
 
     lines.push('');

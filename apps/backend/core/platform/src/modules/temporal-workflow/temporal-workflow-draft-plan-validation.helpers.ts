@@ -25,6 +25,8 @@ export function validateAiWorkflowDraftPlan(
     return issues;
   }
 
+  const workflowVersion = extractWorkflowVersion(plan);
+
   steps.forEach((step, index) => {
     const stepName = deps.pickFirstNonEmptyString(step?.name) || `步骤 ${index + 1}`;
     const activityRef = deps.pickFirstNonEmptyString(step?.activityRef);
@@ -37,9 +39,25 @@ export function validateAiWorkflowDraftPlan(
       issues.push(`${stepName} 缺少 activityRef。`);
       return;
     }
+    if (activityRef === 'llmOperationActivity' || activityRef === 'builtin:llmOperation') {
+      issues.push(
+        `${stepName} 把 LLM Operation 声明成了 Temporal Activity。模型能力必须作为独立 llm_operation 计划节点由控制面直接执行，不能嵌入 Workflow。`
+      );
+      return;
+    }
     if (!knownActivityRefs.has(activityRef)) {
       issues.push(`${stepName} 使用了未注册的 activityRef: ${activityRef}。`);
       return;
+    }
+
+    if (activityRef === 'builtin:aiStructuredTransform') {
+      const allowLegacy = isLegacyWorkflowVersion(workflowVersion);
+      if (!allowLegacy) {
+        issues.push(
+          `${stepName} 使用了已弃用的 builtin:aiStructuredTransform。新任务必须由控制面使用独立 llm_operation 计划节点，不能迁移为另一种 Activity。参见 three-capability-types-and-llm-operation-implementation-plan.md §10.3。`
+        );
+        return;
+      }
     }
 
     if (activityRef === 'builtin:httpRequest') {
@@ -512,4 +530,39 @@ function hasUsableContextTemplate(value: unknown): boolean {
     return Object.keys(value as Record<string, unknown>).length > 0;
   }
   return false;
+}
+
+function extractWorkflowVersion(plan: AiWorkflowDraftPlan): string {
+  const anyPlan = plan as any;
+  return (
+    anyPlan?.version ||
+    anyPlan?.workflowVersion ||
+    anyPlan?.skillVersion ||
+    anyPlan?.planVersion ||
+    'unknown'
+  );
+}
+
+function isLegacyWorkflowVersion(version: string): boolean {
+  // Phase 3-γ: Strict version gate - only explicitly legacy versions allow aiStructuredTransform
+  // Any undefined / unknown / empty string → treat as new version (reject aiStructuredTransform)
+  // Legacy versions can be specified via OPS_LEGACY_WORKFLOW_VERSIONS env var (comma-separated)
+  const legacyVersionsFromEnv = (process.env.OPS_LEGACY_WORKFLOW_VERSIONS ?? 'v1,v2,v3')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const normalizedVersion = String(version || '').trim().toLowerCase();
+
+  if (
+    !normalizedVersion ||
+    normalizedVersion === 'unknown' ||
+    normalizedVersion === 'undefined' ||
+    normalizedVersion === 'null'
+  ) {
+    // Default to rejecting aiStructuredTransform for unknown/undefined versions
+    return false;
+  }
+
+  return legacyVersionsFromEnv.some((legacy) => normalizedVersion.startsWith(legacy.toLowerCase()));
 }

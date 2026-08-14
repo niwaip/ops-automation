@@ -7,6 +7,7 @@ import asyncio
 import types
 import ssl
 import inspect
+import time
 
 # Set SSL certificates
 os.environ['SSL_CERT_FILE'] = 'CERT_FILE_PATH'
@@ -225,55 +226,59 @@ class MockRequests:
         ))
 
     def get(self, url, headers=None, timeout=None, **kwargs):
-        try:
-            url = self._append_params(url, kwargs.get('params'))
-            parsed = urllib.parse.urlsplit(url)
-            normalized_url = urllib.parse.urlunsplit((
-                parsed.scheme,
-                parsed.netloc.encode('idna').decode('ascii'),
-                urllib.parse.quote(parsed.path, safe='/%'),
-                urllib.parse.quote(parsed.query, safe='=&%/:,+-._~'),
-                parsed.fragment,
-            ))
-            req = urllib.request.Request(normalized_url, headers=headers or {})
-            with urllib.request.urlopen(req, timeout=timeout or 30, context=_ssl_context) as r:
-                return MockResponse(r.status, r.read(), dict(r.headers), url=normalized_url, exceptions_source=self)
-        except urllib.error.HTTPError as e:
-            body = e.read() if e.fp else b''
-            response_headers = dict(e.headers) if e.headers else {}
-            return MockResponse(e.code, body, response_headers, url=normalized_url, reason=str(e), exceptions_source=self)
-        except Exception as e:
-            raise self.RequestException(str(e))
+        url = self._append_params(url, kwargs.get('params'))
+        parsed = urllib.parse.urlsplit(url)
+        normalized_url = urllib.parse.urlunsplit((
+            parsed.scheme,
+            parsed.netloc.encode('idna').decode('ascii'),
+            urllib.parse.quote(parsed.path, safe='/%'),
+            urllib.parse.quote(parsed.query, safe='=&%/:,+-._~'),
+            parsed.fragment,
+        ))
+        for attempt in range(3):
+            try:
+                req = urllib.request.Request(normalized_url, headers=headers or {})
+                with urllib.request.urlopen(req, timeout=timeout or 30, context=_ssl_context) as r:
+                    return MockResponse(r.status, r.read(), dict(r.headers), url=normalized_url, exceptions_source=self)
+            except urllib.error.HTTPError as e:
+                body = e.read() if e.fp else b''
+                response_headers = dict(e.headers) if e.headers else {}
+                return MockResponse(e.code, body, response_headers, url=normalized_url, reason=str(e), exceptions_source=self)
+            except (urllib.error.URLError, TimeoutError, OSError) as e:
+                if attempt >= 2:
+                    raise self.ConnectionError(str(e))
+                time.sleep(0.25 * (2 ** attempt))
 
     def post(self, url, data=None, json_data=None, headers=None, timeout=None, **kwargs):
-        try:
-            request_json = json_data if json_data is not None else kwargs.get('json')
-            request_headers = dict(headers or {})
-            url = self._append_params(url, kwargs.get('params'))
-            if request_json is not None:
-                body = json.dumps(request_json).encode('utf-8')
-                request_headers.setdefault('Content-Type', 'application/json')
-            else:
-                body = data.encode('utf-8') if isinstance(data, str) else data
-            parsed = urllib.parse.urlsplit(url)
-            normalized_url = urllib.parse.urlunsplit((
-                parsed.scheme,
-                parsed.netloc.encode('idna').decode('ascii'),
-                urllib.parse.quote(parsed.path, safe='/%'),
-                urllib.parse.quote(parsed.query, safe='=&%/:,+-._~'),
-                parsed.fragment,
-            ))
-            req = urllib.request.Request(normalized_url, data=body, headers=request_headers, method='POST')
-            with urllib.request.urlopen(req, timeout=timeout or 30, context=_ssl_context) as r:
-                return MockResponse(r.status, r.read(), dict(r.headers), url=normalized_url, exceptions_source=self)
-        except urllib.error.HTTPError as e:
-            body = e.read() if e.fp else b''
-            response_headers = dict(e.headers) if e.headers else {}
-            return MockResponse(e.code, body, response_headers, url=normalized_url, reason=str(e), exceptions_source=self)
-        except urllib.error.URLError as e:
-            raise self.ConnectionError(str(e))
-        except Exception as e:
-            raise self.RequestException(str(e))
+        request_json = json_data if json_data is not None else kwargs.get('json')
+        request_headers = dict(headers or {})
+        url = self._append_params(url, kwargs.get('params'))
+        if request_json is not None:
+            body = json.dumps(request_json).encode('utf-8')
+            request_headers.setdefault('Content-Type', 'application/json')
+        else:
+            body = data.encode('utf-8') if isinstance(data, str) else data
+        parsed = urllib.parse.urlsplit(url)
+        normalized_url = urllib.parse.urlunsplit((
+            parsed.scheme,
+            parsed.netloc.encode('idna').decode('ascii'),
+            urllib.parse.quote(parsed.path, safe='/%'),
+            urllib.parse.quote(parsed.query, safe='=&%/:,+-._~'),
+            parsed.fragment,
+        ))
+        for attempt in range(3):
+            try:
+                req = urllib.request.Request(normalized_url, data=body, headers=request_headers, method='POST')
+                with urllib.request.urlopen(req, timeout=timeout or 30, context=_ssl_context) as r:
+                    return MockResponse(r.status, r.read(), dict(r.headers), url=normalized_url, exceptions_source=self)
+            except urllib.error.HTTPError as e:
+                body_bytes = e.read() if e.fp else b''
+                response_headers = dict(e.headers) if e.headers else {}
+                return MockResponse(e.code, body_bytes, response_headers, url=normalized_url, reason=str(e), exceptions_source=self)
+            except (urllib.error.URLError, TimeoutError, OSError) as e:
+                if attempt >= 2:
+                    raise self.ConnectionError(str(e))
+                time.sleep(0.25 * (2 ** attempt))
 
 mock_requests = MockRequests()
 sys.modules['temporalio'] = mock_temporalio

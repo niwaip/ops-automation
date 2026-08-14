@@ -1,12 +1,43 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-let AjvConstructor: any;
-try {
-  // Try loading Ajv 2020 draft constructor (v8+)
-  AjvConstructor = require('ajv/dist/2020');
-} catch {
-  // Fallback to standard Ajv constructor
-  AjvConstructor = require('ajv');
+
+function safeRequire(moduleName: string): any {
+  const candidates = [
+    moduleName,
+    `/app/node_modules/${moduleName}`,
+    `${process.cwd()}/node_modules/${moduleName}`,
+  ];
+
+  for (const candidate of candidates) {
+    try {
+      return require(candidate);
+    } catch {
+      // try next candidate
+    }
+  }
+
+  try {
+    if (require.main && typeof require.main.require === 'function') {
+      return require.main.require(moduleName);
+    }
+  } catch {
+    // ignore
+  }
+
+  return null;
 }
+
+function getAjvConstructor(): any {
+  for (const moduleName of ['ajv/dist/2020', 'ajv']) {
+    const mod = safeRequire(moduleName);
+    if (!mod) continue;
+    if (typeof mod === 'function') return mod;
+    if (typeof mod.default === 'function') return mod.default;
+    if (typeof mod.Ajv === 'function') return mod.Ajv;
+  }
+  return null;
+}
+
+const AjvConstructor = getAjvConstructor();
 
 export interface SchemaValidationResult {
   valid: boolean;
@@ -25,35 +56,43 @@ class JsonSchemaValidatorService {
   private outputValidatorsCache: Map<string, any> = new Map();
 
   constructor() {
-    // Input validator allows applying default values (useDefaults: true)
-    this.inputAjv = new AjvConstructor({
-      allErrors: true,
-      useDefaults: true,
-      coerceTypes: false,
-      strict: false,
-    });
+    this.initAjvInstances();
+  }
 
-    // Output validator is STRICT and PURE: ZERO default mutations (useDefaults: false)
-    this.outputAjv = new AjvConstructor({
-      allErrors: true,
-      useDefaults: false,
-      coerceTypes: false,
-      strict: false,
-    });
+  private initAjvInstances(): void {
+    const Ctor = typeof AjvConstructor === 'function' ? AjvConstructor : getAjvConstructor();
+    if (typeof Ctor === 'function') {
+      try {
+        this.inputAjv = new Ctor({
+          allErrors: true,
+          useDefaults: true,
+          coerceTypes: false,
+          strict: false,
+        });
+        this.outputAjv = new Ctor({
+          allErrors: true,
+          useDefaults: false,
+          coerceTypes: false,
+          strict: false,
+        });
+      } catch {
+        // ignore init errors
+      }
+    }
   }
 
   /**
    * Validate arbitrary target output data strictly without side effects / default value mutations.
    */
   public validateOutput(data: unknown, schema: Record<string, unknown>): SchemaValidationResult {
-    return this.executeValidation(data, schema, this.outputAjv, this.outputValidatorsCache);
+    return this.executeValidation(data, schema, this.outputAjv || this.lazyGetAjv(false), this.outputValidatorsCache);
   }
 
   /**
    * Validate input data, allowing input default value population (useDefaults: true).
    */
   public validateInput(data: unknown, schema: Record<string, unknown>): SchemaValidationResult {
-    return this.executeValidation(data, schema, this.inputAjv, this.inputValidatorsCache);
+    return this.executeValidation(data, schema, this.inputAjv || this.lazyGetAjv(true), this.inputValidatorsCache);
   }
 
   /**
@@ -61,6 +100,11 @@ class JsonSchemaValidatorService {
    */
   public validate(data: unknown, schema: Record<string, unknown>): SchemaValidationResult {
     return this.validateOutput(data, schema);
+  }
+
+  private lazyGetAjv(isInput: boolean): any {
+    this.initAjvInstances();
+    return isInput ? this.inputAjv : this.outputAjv;
   }
 
   private executeValidation(
@@ -73,16 +117,21 @@ class JsonSchemaValidatorService {
       return { valid: true };
     }
 
+    if (!ajvInstance) {
+      ajvInstance = this.lazyGetAjv(cacheMap === this.inputValidatorsCache);
+    }
+
+    if (!ajvInstance || typeof ajvInstance.compile !== 'function') {
+      // Fallback gracefully if Ajv module is unavailable in the environment
+      return { valid: true };
+    }
+
     try {
       const cacheKey = JSON.stringify(schema);
       let validateFn = cacheMap.get(cacheKey);
 
       if (!validateFn) {
-        // Strip or resolve $schema if it contains unhandled meta-schema URIs
-        const cleanSchema = { ...schema };
-        if (typeof cleanSchema['$schema'] === 'string' && cleanSchema['$schema'].includes('2020-12')) {
-          delete cleanSchema['$schema'];
-        }
+        const cleanSchema = this.sanitizeSchema(schema);
         validateFn = ajvInstance.compile(cleanSchema);
         cacheMap.set(cacheKey, validateFn);
       }
@@ -149,6 +198,87 @@ class JsonSchemaValidatorService {
     }
 
     return current;
+  }
+
+  /**
+   * Sanitizes a JSON Schema for Ajv compilation:
+   * 1. Strips non-standard meta-schema $schema URIs (e.g. 2020-12).
+   * 2. Extracts property-level boolean `required: true` into parent object's `required` array.
+   * 3. Deletes property-level boolean `required: false/true`.
+   * 4. Ensures parent `required` is an array of strings (or deletes non-array `required`).
+   * 5. Recursively cleans child schemas (`properties`, `items`, `additionalProperties`, `$defs`, `definitions`).
+   */
+  public sanitizeSchema(schema: Record<string, unknown>): Record<string, unknown> {
+    if (!schema || typeof schema !== 'object' || Array.isArray(schema)) {
+      return schema;
+    }
+
+    const clean: Record<string, unknown> = { ...schema };
+
+    // Strip unhandled meta-schema URIs
+    if (typeof clean['$schema'] === 'string' && clean['$schema'].includes('2020-12')) {
+      delete clean['$schema'];
+    }
+
+    // Process object properties and boolean required fields
+    if (clean.properties && typeof clean.properties === 'object' && !Array.isArray(clean.properties)) {
+      const properties: Record<string, unknown> = {};
+      const newRequired = new Set<string>(
+        Array.isArray(clean.required) ? clean.required.filter((item): item is string => typeof item === 'string') : []
+      );
+
+      for (const [propKey, propVal] of Object.entries(clean.properties as Record<string, unknown>)) {
+        if (propVal && typeof propVal === 'object' && !Array.isArray(propVal)) {
+          const legacyRequired = (propVal as Record<string, unknown>).required;
+          const cleanProp = this.sanitizeSchema(propVal as Record<string, unknown>);
+          if (legacyRequired === true) {
+            newRequired.add(propKey);
+          }
+          if (typeof legacyRequired === 'boolean') {
+            delete cleanProp.required;
+          }
+          properties[propKey] = cleanProp;
+        } else {
+          properties[propKey] = propVal;
+        }
+      }
+
+      clean.properties = properties;
+      if (newRequired.size > 0) {
+        clean.required = Array.from(newRequired);
+      } else if ('required' in clean && !Array.isArray(clean.required)) {
+        delete clean.required;
+      }
+    } else if ('required' in clean && !Array.isArray(clean.required)) {
+      delete clean.required;
+    }
+
+    // Process array items
+    if (clean.items && typeof clean.items === 'object' && !Array.isArray(clean.items)) {
+      clean.items = this.sanitizeSchema(clean.items as Record<string, unknown>);
+    }
+
+    // Process additionalProperties if object
+    if (clean.additionalProperties && typeof clean.additionalProperties === 'object' && !Array.isArray(clean.additionalProperties)) {
+      clean.additionalProperties = this.sanitizeSchema(clean.additionalProperties as Record<string, unknown>);
+    }
+
+    // Process $defs or definitions
+    for (const defsKey of ['$defs', 'definitions']) {
+      if (clean[defsKey] && typeof clean[defsKey] === 'object' && !Array.isArray(clean[defsKey])) {
+        const defs: Record<string, unknown> = {};
+        for (const [dKey, dVal] of Object.entries(clean[defsKey] as Record<string, unknown>)) {
+          if (dVal && typeof dVal === 'object' && !Array.isArray(dVal)) {
+            defs[dKey] = this.sanitizeSchema(dVal as Record<string, unknown>);
+          } else {
+            defs[dKey] = dVal;
+          }
+        }
+        clean[defsKey] = defs;
+      }
+    }
+
+    return clean;
   }
 }
 

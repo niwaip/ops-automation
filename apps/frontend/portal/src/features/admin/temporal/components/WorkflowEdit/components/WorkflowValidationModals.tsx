@@ -1,6 +1,7 @@
 import React from 'react';
-import { Modal, Alert, Card, Space, Typography, Button, Tag, Input, message } from 'antd';
+import { Modal, Alert, Card, Space, Typography, Button, message } from 'antd';
 import { CodeOutlined, CopyOutlined, ExperimentOutlined } from '@ant-design/icons';
+import { WorkflowValidationInputFields } from './WorkflowValidationInputFields';
 
 const { Text } = Typography;
 
@@ -247,24 +248,13 @@ export const WorkflowValidationModals: React.FC<WorkflowValidationModalsProps> =
               {Object.keys(realValidationInputParams).length > 0 ? (
                 <>
                   <Text strong>输入参数（请填写参数值）：</Text>
-                  <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    {Object.entries(realValidationInputParams).map(([key, value]) => (
-                      <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <Tag color="blue">{key}</Tag>
-                        <Input
-                          placeholder={`请输入 ${key}`}
-                          value={value}
-                          onChange={(e) =>
-                            setRealValidationInputParams((prev) => ({
-                              ...prev,
-                              [key]: e.target.value,
-                            }))
-                          }
-                          style={{ width: 160 }}
-                          size="small"
-                        />
-                      </div>
-                    ))}
+                  <div style={{ marginTop: 8 }}>
+                    <WorkflowValidationInputFields
+                      definitions={workflowDsl?.inputParams}
+                      scenarios={workflowDsl?.validation?.scenarios}
+                      values={realValidationInputParams}
+                      onChange={setRealValidationInputParams}
+                    />
                   </div>
                 </>
               ) : (

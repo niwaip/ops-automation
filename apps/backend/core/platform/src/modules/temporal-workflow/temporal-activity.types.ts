@@ -38,3 +38,17 @@ export interface ActivityExecutionOptions {
   retryPolicy?: { maxRetries: number; backoffMs?: number };
   preferSandboxStreaming?: boolean;
 }
+
+export interface ActivityDeprecation {
+  status: 'legacy' | 'experimental' | 'beta' | 'stable';
+  migrateTo?: string;
+  migrationPlan?: string;
+  fallbackFlag?: string;
+  fallbackEventCode?: string;
+  canBeUsedInNewWorkflows: boolean;
+}
+
+export interface ActivityDefinitionWithDeprecation {
+  deprecation?: ActivityDeprecation;
+  requiresAttestation?: boolean;
+}

@@ -167,18 +167,18 @@ export class ChatResultNormalizerService {
       return documentSummary;
     }
 
+    if (result.structuredData !== undefined && result.structuredData !== null) {
+      return `任务已完成，返回结果如下：\n\n${this.safeJsonStringify(result.structuredData)}${
+        executionId ? `\n\n执行单 ID: ${executionId}` : ''
+      }`;
+    }
+
     if (result.title && result.artifacts.length > 0) {
       return `${result.title}已生成，可下载查看。`;
     }
 
     if (result.title) {
       return `${result.title}已完成。`;
-    }
-
-    if (result.structuredData !== undefined && result.structuredData !== null) {
-      return `任务已完成，返回结果如下：\n\n${this.safeJsonStringify(result.structuredData)}${
-        executionId ? `\n\n执行单 ID: ${executionId}` : ''
-      }`;
     }
 
     if (result.artifacts.length > 0) {
@@ -717,7 +717,7 @@ export class ChatResultNormalizerService {
       normalized.summary ||
       normalized.body ||
       (typeof normalized.rawResult === 'string' ? normalized.rawResult : '') ||
-      '任务已完成';
+      this.formatForChat(normalized, executionId);
 
     return {
       _version: '1' as const,

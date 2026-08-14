@@ -3,7 +3,12 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import axios from 'axios';
-import { BuiltinSkillManifest, computeCanonicalDigest, BuiltinSkillHandlerResult } from '@ops/backend-builtin-skill-contract';
+import {
+  BuiltinSkillManifest,
+  BuiltinSkillHandlerResult,
+  canonicalizeObject,
+  computeCanonicalDigest,
+} from '@ops/backend-builtin-skill-contract';
 import { BuiltinSkillRegistryService } from '../registry/builtin-skill-registry.service';
 import { BuiltinSkillAuditService } from '../audit/builtin-skill-audit.service';
 
@@ -13,7 +18,7 @@ export class BuiltinSkillProvisioningService {
 
   constructor(
     private readonly registryService: BuiltinSkillRegistryService,
-    private readonly auditService: BuiltinSkillAuditService,
+    private readonly auditService: BuiltinSkillAuditService
   ) {}
 
   public computeDigest(manifestContent: string, bundleDir: string): string {
@@ -43,13 +48,19 @@ export class BuiltinSkillProvisioningService {
     return computeCanonicalDigest(manifest);
   }
 
+  private computeContentDigest(content: string): string {
+    return `sha256:${crypto.createHash('sha256').update(content, 'utf8').digest('hex')}`;
+  }
+
   public validateManifest(manifestJson: any): BuiltinSkillManifest {
     if (!manifestJson || typeof manifestJson !== 'object') {
       throw new BadRequestException('Invalid BuiltinSkillManifest: must be an object');
     }
     const m = manifestJson as BuiltinSkillManifest;
     if (m.kind !== 'BuiltinWorkflowSkill' || !m.metadata?.key || !m.spec?.definitionVersion) {
-      throw new BadRequestException('Invalid BuiltinSkillManifest: missing required fields (kind, metadata.key, spec.definitionVersion)');
+      throw new BadRequestException(
+        'Invalid BuiltinSkillManifest: missing required fields (kind, metadata.key, spec.definitionVersion)'
+      );
     }
     return m;
   }
@@ -63,7 +74,9 @@ export class BuiltinSkillProvisioningService {
     const manifestPath = path.join(resolvedDir, 'manifest.yaml');
 
     if (!fs.existsSync(manifestPath)) {
-      throw new BadRequestException(`Builtin skill bundle missing manifest.yaml at '${manifestPath}'`);
+      throw new BadRequestException(
+        `Builtin skill bundle missing manifest.yaml at '${manifestPath}'`
+      );
     }
 
     const manifestContent = fs.readFileSync(manifestPath, 'utf8');
@@ -75,19 +88,30 @@ export class BuiltinSkillProvisioningService {
 
     const lockPath = path.join(resolvedDir, 'bundle-lock.json');
     if (!fs.existsSync(lockPath)) {
-      throw new BadRequestException(`Builtin skill bundle missing bundle-lock.json at '${lockPath}'`);
+      throw new BadRequestException(
+        `Builtin skill bundle missing bundle-lock.json at '${lockPath}'`
+      );
     }
 
     try {
       const lockJson = JSON.parse(fs.readFileSync(lockPath, 'utf8'));
       if (lockJson.capabilityKey && lockJson.capabilityKey !== manifest.metadata.key) {
-        throw new BadRequestException(`Bundle lock capabilityKey mismatch: expected '${manifest.metadata.key}', got '${lockJson.capabilityKey}'`);
+        throw new BadRequestException(
+          `Bundle lock capabilityKey mismatch: expected '${manifest.metadata.key}', got '${lockJson.capabilityKey}'`
+        );
       }
-      if (lockJson.definitionVersion && lockJson.definitionVersion !== manifest.spec.definitionVersion) {
-        throw new BadRequestException(`Bundle lock definitionVersion mismatch: expected '${manifest.spec.definitionVersion}', got '${lockJson.definitionVersion}'`);
+      if (
+        lockJson.definitionVersion &&
+        lockJson.definitionVersion !== manifest.spec.definitionVersion
+      ) {
+        throw new BadRequestException(
+          `Bundle lock definitionVersion mismatch: expected '${manifest.spec.definitionVersion}', got '${lockJson.definitionVersion}'`
+        );
       }
       if (lockJson.definitionDigest && lockJson.definitionDigest !== digest) {
-        throw new BadRequestException(`Bundle lock definitionDigest mismatch: expected '${digest}', got '${lockJson.definitionDigest}'`);
+        throw new BadRequestException(
+          `Bundle lock definitionDigest mismatch: expected '${digest}', got '${lockJson.definitionDigest}'`
+        );
       }
     } catch (err: any) {
       if (err instanceof BadRequestException) throw err;
@@ -95,13 +119,16 @@ export class BuiltinSkillProvisioningService {
       throw new BadRequestException(`Invalid bundle-lock.json in ${bundleDir}: ${err.message}`);
     }
 
-    this.logger.log(`Provisioning builtin skill '${manifest.metadata.key}' v${manifest.spec.definitionVersion} (digest: ${digest})`);
+    this.logger.log(
+      `Provisioning builtin skill '${manifest.metadata.key}' v${manifest.spec.definitionVersion} (digest: ${digest})`
+    );
 
     const { skill, version } = await this.registryService.upsertSkillFromManifest(manifest, digest);
 
     // Strict Smoke Test Verification & Real Handler Fixture Execution
     let smokePassed = true;
     let smokeError: string | null = null;
+    let smokeFixtureDigest: string | undefined;
 
     const smokeInputRef = manifest.spec.smokeTest?.inputRef || 'fixtures/smoke-input.json';
     const smokeInputPath = path.join(resolvedDir, smokeInputRef);
@@ -112,16 +139,23 @@ export class BuiltinSkillProvisioningService {
     } else {
       try {
         const smokeInputContent = fs.readFileSync(smokeInputPath, 'utf8');
+        smokeFixtureDigest = this.computeContentDigest(smokeInputContent);
         const smokeInput = JSON.parse(smokeInputContent);
         if (!smokeInput || typeof smokeInput !== 'object') {
           throw new Error('Smoke input fixture must be a valid non-empty JSON object');
         }
 
         // Contract validation: verify required fields
-        const requiredFields = manifest.spec.contracts?.input?.schema?.required as string[] | undefined;
+        const requiredFields = manifest.spec.contracts?.input?.schema?.required as
+          | string[]
+          | undefined;
         if (Array.isArray(requiredFields)) {
           for (const field of requiredFields) {
-            if (smokeInput[field] === undefined || smokeInput[field] === null || smokeInput[field] === '') {
+            if (
+              smokeInput[field] === undefined ||
+              smokeInput[field] === null ||
+              smokeInput[field] === ''
+            ) {
               throw new Error(`Smoke test input missing required contract field: '${field}'`);
             }
           }
@@ -130,7 +164,11 @@ export class BuiltinSkillProvisioningService {
         // Execute real handler logic during smoke test to verify execution + output contract + idempotency
         const handlerKey = manifest.spec.runtime.handlerKey;
         const smokeIdempotencyKey = `smoke-${manifest.metadata.key}-${Date.now()}`;
-        const smokeResult = await this.executeSmokeHandler(handlerKey, smokeInput, smokeIdempotencyKey);
+        const smokeResult = await this.executeSmokeHandler(
+          handlerKey,
+          smokeInput,
+          smokeIdempotencyKey
+        );
 
         // Verify output contract
         if (!smokeResult || typeof smokeResult !== 'object') {
@@ -142,7 +180,9 @@ export class BuiltinSkillProvisioningService {
           const handlerOutput = (smokeResult as any).output || smokeResult;
           const artifact = handlerOutput.artifact;
           if (!artifact || typeof artifact.url !== 'string' || !artifact.metadata?.sha256) {
-            throw new Error('Smoke test execution failed output contract: missing valid artifact.url or metadata.sha256');
+            throw new Error(
+              'Smoke test execution failed output contract: missing valid artifact.url or metadata.sha256'
+            );
           }
           if (typeof artifact.sizeBytes !== 'number' || artifact.sizeBytes <= 0) {
             throw new Error('Smoke test execution failed output contract: sizeBytes must be > 0');
@@ -154,8 +194,7 @@ export class BuiltinSkillProvisioningService {
           // back to CARBONE_SERVICE_URL so the smoke test reaches the actual
           // carbone-engine container regardless of how artifact.url was built.
           try {
-            const baseUrl =
-              process.env.CARBONE_SERVICE_URL || 'http://carbone-engine:3009';
+            const baseUrl = process.env.CARBONE_SERVICE_URL || 'http://carbone-engine:3009';
             let downloadUrl = artifact.url;
             if (
               !/^https?:\/\//i.test(downloadUrl) ||
@@ -165,35 +204,65 @@ export class BuiltinSkillProvisioningService {
               const path = downloadUrl.replace(/^https?:\/\/[^/]+/, '');
               downloadUrl = `${baseUrl.replace(/\/+$/, '')}${path}`;
             }
-            const dl = await axios.get<ArrayBuffer>(downloadUrl, { responseType: 'arraybuffer', timeout: 15000 });
+            const dl = await axios.get<ArrayBuffer>(downloadUrl, {
+              responseType: 'arraybuffer',
+              timeout: 15000,
+            });
             const rawBytes = Buffer.from(dl.data);
             const computedSha256 = crypto.createHash('sha256').update(rawBytes).digest('hex');
             if (computedSha256 !== artifact.metadata.sha256) {
               throw new Error(
-                `Smoke test SHA-256 mismatch: computed ${computedSha256}, handler returned ${artifact.metadata.sha256} (size=${rawBytes.length})`,
+                `Smoke test SHA-256 mismatch: computed ${computedSha256}, handler returned ${artifact.metadata.sha256} (size=${rawBytes.length})`
               );
             }
             if (rawBytes.length !== artifact.sizeBytes) {
               throw new Error(
-                `Smoke test size mismatch: downloaded ${rawBytes.length} bytes, handler reported ${artifact.sizeBytes}`,
+                `Smoke test size mismatch: downloaded ${rawBytes.length} bytes, handler reported ${artifact.sizeBytes}`
               );
             }
           } catch (dlErr: any) {
-            throw new Error(
-              `Smoke test artifact download/verification failed: ${dlErr.message}`,
-            );
+            throw new Error(`Smoke test artifact download/verification failed: ${dlErr.message}`);
           }
 
           // Idempotency check: run 2nd time with SAME idempotency key and verify identical output
-          const secondResult = await this.executeSmokeHandler(handlerKey, smokeInput, smokeIdempotencyKey);
+          const secondResult = await this.executeSmokeHandler(
+            handlerKey,
+            smokeInput,
+            smokeIdempotencyKey
+          );
           const secondOutput = (secondResult as any)?.output || secondResult;
           const secondArtifact = secondOutput?.artifact;
-          if (!secondArtifact || secondArtifact.url !== artifact.url || secondArtifact.metadata?.sha256 !== artifact.metadata?.sha256) {
-            throw new Error('Smoke test idempotency verification failed: second run produced different artifact url or sha256');
+          if (
+            !secondArtifact ||
+            secondArtifact.url !== artifact.url ||
+            secondArtifact.metadata?.sha256 !== artifact.metadata?.sha256
+          ) {
+            throw new Error(
+              'Smoke test idempotency verification failed: second run produced different artifact url or sha256'
+            );
           }
         }
 
-        this.logger.log(`Smoke test contract, real handler execution, and idempotency verification passed for ${manifest.metadata.key}: ${smokeInputPath}`);
+        if (handlerKey === 'document.content-extractor.pdf') {
+          const handlerOutput = (smokeResult as any).output || smokeResult;
+          if (
+            typeof handlerOutput.text !== 'string' ||
+            !handlerOutput.text.includes('Builtin PDF Content Extractor') ||
+            handlerOutput.pageCount !== 2 ||
+            handlerOutput.extractedPageCount !== 2 ||
+            !Array.isArray(handlerOutput.pages) ||
+            handlerOutput.pages.length !== 2 ||
+            handlerOutput.extraction?.format !== 'pdf' ||
+            handlerOutput.extraction?.method !== 'embedded_text' ||
+            handlerOutput.extraction?.ocrUsed !== false
+          ) {
+            throw new Error('Smoke test execution failed PDF extraction output contract');
+          }
+        }
+
+        this.logger.log(
+          `Smoke test contract, real handler execution, and idempotency verification passed for ${manifest.metadata.key}: ${smokeInputPath}`
+        );
       } catch (err: any) {
         smokePassed = false;
         smokeError = `Smoke test failed: ${err.message}`;
@@ -214,14 +283,34 @@ export class BuiltinSkillProvisioningService {
         builtinSkillId: skill.id,
         action: 'provision_failed',
         versionId: version.id,
-        payload: { environment, definitionVersion: version.definitionVersion, digest, error: smokeError },
+        payload: {
+          environment,
+          definitionVersion: version.definitionVersion,
+          digest,
+          error: smokeError,
+        },
       });
 
       throw new BadRequestException(`Builtin skill provision failed smoke test: ${smokeError}`);
     }
 
-    await this.registryService.markDeployment({
+    const workflowPath = path.join(resolvedDir, 'workflow.json');
+    const runtimeSource = fs.existsSync(workflowPath)
+      ? fs.readFileSync(workflowPath, 'utf8')
+      : manifest.spec.runtime.handlerKey;
+    const attestedVersion = await this.registryService.attestVersion({
+      builtinSkillId: skill.id,
       builtinSkillVersionId: version.id,
+      sourceDigest: digest,
+      contractDigest: this.computeContentDigest(
+        JSON.stringify(canonicalizeObject(manifest.spec.contracts))
+      ),
+      runtimeDigest: this.computeContentDigest(runtimeSource),
+      fixtureDigest: smokeFixtureDigest,
+    });
+
+    await this.registryService.markDeployment({
+      builtinSkillVersionId: attestedVersion.id,
       environment,
       status: 'healthy',
       smokeTestStatus: 'passed',
@@ -231,14 +320,18 @@ export class BuiltinSkillProvisioningService {
     await this.auditService.logEvent({
       builtinSkillId: skill.id,
       action: 'provision_passed',
-      versionId: version.id,
-      payload: { environment, definitionVersion: version.definitionVersion, digest },
+      versionId: attestedVersion.id,
+      payload: { environment, definitionVersion: attestedVersion.definitionVersion, digest },
     });
 
-    return { skill, version, digest };
+    return { skill, version: attestedVersion, digest };
   }
 
-  private async executeSmokeHandler(handlerKey: string, input: Record<string, unknown>, idempotencyKeyOverride?: string): Promise<any> {
+  private async executeSmokeHandler(
+    handlerKey: string,
+    input: Record<string, unknown>,
+    idempotencyKeyOverride?: string
+  ): Promise<any> {
     if (handlerKey === 'document.markdown-artifact-writer') {
       const domainUrl = process.env.CARBONE_SERVICE_URL || 'http://localhost:3009';
       const smokeExecutionId = idempotencyKeyOverride || 'smoke-' + Date.now();
@@ -252,7 +345,33 @@ export class BuiltinSkillProvisioningService {
           idempotencyKey: smokeExecutionId,
           input,
         },
-        { timeout: 15000 },
+        { timeout: 15000 }
+      );
+      return response.data as BuiltinSkillHandlerResult;
+    }
+
+    const documentExtractorEndpoints: Record<string, { capabilityKey: string; endpoint: string }> =
+      {
+        'document.content-extractor.pdf': {
+          capabilityKey: 'platform.document.pdf-content-extractor',
+          endpoint: '/internal/document/content-extractors/pdf/invoke',
+        },
+      };
+    const extractor = documentExtractorEndpoints[handlerKey];
+    if (extractor) {
+      const domainUrl = process.env.CARBONE_SERVICE_URL || 'http://localhost:3009';
+      const smokeExecutionId = idempotencyKeyOverride || 'smoke-' + Date.now();
+      const response = await axios.post(
+        `${domainUrl}${extractor.endpoint}`,
+        {
+          executionId: smokeExecutionId,
+          stepId: 'smoke-step',
+          capabilityKey: extractor.capabilityKey,
+          definitionVersion: '0.0.0-smoke',
+          idempotencyKey: smokeExecutionId,
+          input,
+        },
+        { timeout: 30000 }
       );
       return response.data as BuiltinSkillHandlerResult;
     }

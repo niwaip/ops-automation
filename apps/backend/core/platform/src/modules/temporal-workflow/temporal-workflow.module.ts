@@ -18,6 +18,7 @@ import { TemporalWorkflowValidationHttpService } from './temporal-workflow-valid
 import { TemporalWorkflowValidationService } from './temporal-workflow-validation.service';
 import { TemporalWorkflowValidationFacadeService } from './temporal-workflow-validation-facade.service';
 import { TemporalWorkflowArtifactValidationService } from '../../workflow-registry/validation/temporal-workflow-artifact-validation.service';
+import { TemporalWorkflowValidationContractService } from '../../workflow-registry/validation/temporal-workflow-validation-contract.service';
 import { TemporalWorkflowDslValidationService } from '../../workflow-registry/validation/temporal-workflow-dsl-validation.service';
 import { TemporalWorkflowActivityResolutionService } from './temporal-workflow-activity-resolution.service';
 import { TemporalWorkflowNormalizationService } from './temporal-workflow-normalization.service';
@@ -34,6 +35,12 @@ import { ActivityCodegenService } from './temporal-activity-codegen.service';
 import { ActivityExecutionService } from './runtime-bridge/temporal-activity-execution.service';
 import { ActivityRuntimeController } from './runtime-bridge/activity-runtime.controller';
 import { BuiltinActivityRegistry } from './builtin-activity.registry';
+import { TemporalWorkflowBundleService } from './temporal-workflow-bundle.service';
+import { WorkflowSkeletonCompiler } from './workflow-skeleton-compiler';
+import { ActivityPluginController } from './activity-plugin/activity-plugin.controller';
+import { ActivityPluginProbeService } from './activity-plugin/activity-plugin-probe.service';
+import { ActivityPluginRegistryService } from './activity-plugin/activity-plugin-registry.service';
+import { ActivityPluginSpecValidatorService } from './activity-plugin/activity-plugin-spec-validator.service';
 
 @Module({
   imports: [
@@ -43,7 +50,12 @@ import { BuiltinActivityRegistry } from './builtin-activity.registry';
       signOptions: { expiresIn: '15m' },
     }),
   ],
-  controllers: [TemporalWorkflowController, ActivityController, ActivityRuntimeController],
+  controllers: [
+    TemporalWorkflowController,
+    ActivityController,
+    ActivityRuntimeController,
+    ActivityPluginController,
+  ],
   providers: [
     TemporalWorkflowService,
     TemporalWorkflowArtifactService,
@@ -60,6 +72,7 @@ import { BuiltinActivityRegistry } from './builtin-activity.registry';
     TemporalWorkflowValidationService,
     TemporalWorkflowValidationFacadeService,
     TemporalWorkflowArtifactValidationService,
+    TemporalWorkflowValidationContractService,
     TemporalWorkflowDslValidationService,
     TemporalWorkflowActivityResolutionService,
     TemporalWorkflowConfigService,
@@ -75,6 +88,11 @@ import { BuiltinActivityRegistry } from './builtin-activity.registry';
     ActivityExecutionService,
     ActivityService,
     BuiltinActivityRegistry,
+    TemporalWorkflowBundleService,
+    WorkflowSkeletonCompiler,
+    ActivityPluginRegistryService,
+    ActivityPluginSpecValidatorService,
+    ActivityPluginProbeService,
   ],
   exports: [
     TemporalWorkflowService,
@@ -92,6 +110,7 @@ import { BuiltinActivityRegistry } from './builtin-activity.registry';
     TemporalWorkflowValidationService,
     TemporalWorkflowValidationFacadeService,
     TemporalWorkflowArtifactValidationService,
+    TemporalWorkflowValidationContractService,
     TemporalWorkflowDslValidationService,
     TemporalWorkflowActivityResolutionService,
     TemporalWorkflowConfigService,
@@ -107,6 +126,11 @@ import { BuiltinActivityRegistry } from './builtin-activity.registry';
     ActivityExecutionService,
     ActivityService,
     BuiltinActivityRegistry,
+    TemporalWorkflowBundleService,
+    WorkflowSkeletonCompiler,
+    ActivityPluginRegistryService,
+    ActivityPluginSpecValidatorService,
+    ActivityPluginProbeService,
   ],
 })
 export class TemporalWorkflowModule {}

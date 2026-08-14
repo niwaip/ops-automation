@@ -1,5 +1,21 @@
 export type LlmOperationIdV1 = 'summarize_text' | 'summarize_list' | 'extract_structured_fields' | 'rewrite_to_markdown' | 'classify_intent_label' | 'merge_multi_source_notes';
 export type ValueTypeV1 = 'string' | 'number' | 'boolean' | 'json' | 'text_list' | 'news_item_list' | 'markdown_content' | 'artifact_ref';
+export interface ProjectedOutputContractV1 {
+    outputContract: Record<string, ValueTypeV1>;
+    primaryOutput?: string;
+}
+/**
+ * Projects an authoritative JSON Schema into the small semantic type system
+ * used by deterministic plans. Field names remain physical output paths;
+ * semantic types such as `artifact_ref` never become field names.
+ *
+ * Capability authors should prefer `valueType` / `x-value-type` and
+ * `primaryOutput` / `x-primary-output`. Structural and legacy-name inference
+ * only preserves compatibility for already-published contracts.
+ */
+export declare function projectOutputSchemaV1(schema: unknown): ProjectedOutputContractV1;
+/** Resolves a physical output field without guessing by object key order. */
+export declare function resolvePrimaryOutputFieldV1(projection: ProjectedOutputContractV1, expectedType?: ValueTypeV1): string | undefined;
 export type ValueBindingV1 = {
     source: 'literal';
     value: unknown;
@@ -13,6 +29,7 @@ export type ValueBindingV1 = {
     path?: string;
     outputPath?: string;
     expectedType?: ValueTypeV1;
+    transform?: 'extract_unique_array';
 } | {
     source: 'runtime_default';
     key: string;
@@ -40,12 +57,15 @@ export interface SkillPlanNodeV1 extends PlanNodeBaseV1 {
 export interface LlmOperationPlanNodeV1 extends PlanNodeBaseV1 {
     kind: 'llm_operation';
     operationId: LlmOperationIdV1;
-    promptTemplateId: string;
-    promptTemplateVersion: string;
-    modelPolicyId: string;
-    temperature: 0;
-    maxInputTokens: number;
-    maxOutputTokens: number;
+    operationVersion: string;
+    operationDigest: string;
+    contractDigest: string;
+    promptTemplateId?: string;
+    promptTemplateVersion?: string;
+    modelPolicyId?: string;
+    temperature?: number;
+    maxInputTokens?: number;
+    maxOutputTokens?: number;
 }
 export type DeterministicPlanNodeV1 = SkillPlanNodeV1 | LlmOperationPlanNodeV1;
 export interface FinalOutputRequirementV1 {
@@ -94,6 +114,8 @@ export interface CompactCapabilityCardV1 {
     goals: string[];
     inputs: Record<string, string>;
     outputs: Record<string, string>;
+    /** Physical field name selected by the authoritative output schema. */
+    primaryOutput?: string;
     category?: SkillPlanNodeV1['runtimeType'];
     /** Actual execution runtime type (e.g. 'document_markdown_writer'). When absent, category/runtimeType is used for dispatch. */
     executionRuntimeType?: string;

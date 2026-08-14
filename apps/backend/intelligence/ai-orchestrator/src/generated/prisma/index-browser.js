@@ -196,6 +196,142 @@ exports.Prisma.ExecutionEventScalarFieldEnum = {
   createdAt: 'createdAt'
 };
 
+exports.Prisma.LlmOperationScalarFieldEnum = {
+  id: 'id',
+  operationKey: 'operationKey',
+  displayName: 'displayName',
+  description: 'description',
+  owner: 'owner',
+  status: 'status',
+  source: 'source',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.LlmOperationVersionScalarFieldEnum = {
+  id: 'id',
+  operationId: 'operationId',
+  version: 'version',
+  state: 'state',
+  manifestJson: 'manifestJson',
+  operationDigest: 'operationDigest',
+  contractDigest: 'contractDigest',
+  changeSummary: 'changeSummary',
+  source: 'source',
+  approvedBy: 'approvedBy',
+  approvedAt: 'approvedAt',
+  createdBy: 'createdBy',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.LlmOperationActivationScalarFieldEnum = {
+  id: 'id',
+  operationId: 'operationId',
+  versionId: 'versionId',
+  environment: 'environment',
+  label: 'label',
+  activatedBy: 'activatedBy',
+  reason: 'reason',
+  rolloutPercent: 'rolloutPercent',
+  activatedAt: 'activatedAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.LlmOperationActivationEventScalarFieldEnum = {
+  id: 'id',
+  operationId: 'operationId',
+  previousVersionId: 'previousVersionId',
+  newVersionId: 'newVersionId',
+  environment: 'environment',
+  action: 'action',
+  actor: 'actor',
+  reason: 'reason',
+  metadataJson: 'metadataJson',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.LlmOperationEvalSuiteScalarFieldEnum = {
+  id: 'id',
+  operationId: 'operationId',
+  versionId: 'versionId',
+  name: 'name',
+  description: 'description',
+  suiteDigest: 'suiteDigest',
+  createdBy: 'createdBy',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.LlmOperationEvalCaseScalarFieldEnum = {
+  id: 'id',
+  suiteId: 'suiteId',
+  name: 'name',
+  inputJson: 'inputJson',
+  expectedJson: 'expectedJson',
+  isNegative: 'isNegative',
+  errorContains: 'errorContains',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.LlmOperationEvalRunScalarFieldEnum = {
+  id: 'id',
+  versionId: 'versionId',
+  suiteId: 'suiteId',
+  modelPolicySnapshot: 'modelPolicySnapshot',
+  resultsJson: 'resultsJson',
+  metricsJson: 'metricsJson',
+  baselineVersionId: 'baselineVersionId',
+  executedBy: 'executedBy',
+  startedAt: 'startedAt',
+  completedAt: 'completedAt'
+};
+
+exports.Prisma.LlmOperationInvocationScalarFieldEnum = {
+  id: 'id',
+  versionId: 'versionId',
+  executionId: 'executionId',
+  stepId: 'stepId',
+  tenantId: 'tenantId',
+  provider: 'provider',
+  requestedModel: 'requestedModel',
+  resolvedModel: 'resolvedModel',
+  inputDigest: 'inputDigest',
+  outputDigest: 'outputDigest',
+  idempotencyKey: 'idempotencyKey',
+  resultJson: 'resultJson',
+  inputStorageRef: 'inputStorageRef',
+  outputStorageRef: 'outputStorageRef',
+  tokenUsageJson: 'tokenUsageJson',
+  latencyMs: 'latencyMs',
+  estimatedCost: 'estimatedCost',
+  parseAttempts: 'parseAttempts',
+  repairAttempts: 'repairAttempts',
+  validationResult: 'validationResult',
+  finishReason: 'finishReason',
+  errorCode: 'errorCode',
+  actor: 'actor',
+  environment: 'environment',
+  startedAt: 'startedAt',
+  completedAt: 'completedAt'
+};
+
+exports.Prisma.LlmOperationAttestationScalarFieldEnum = {
+  id: 'id',
+  operationId: 'operationId',
+  versionId: 'versionId',
+  operationDigest: 'operationDigest',
+  contractDigest: 'contractDigest',
+  evalSuiteDigest: 'evalSuiteDigest',
+  validatorVersion: 'validatorVersion',
+  schemaTests: 'schemaTests',
+  offlineEvals: 'offlineEvals',
+  liveEvals: 'liveEvals',
+  securityEvals: 'securityEvals',
+  gateResultsJson: 'gateResultsJson',
+  createdBy: 'createdBy',
+  createdAt: 'createdAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -203,6 +339,10 @@ exports.Prisma.SortOrder = {
 
 exports.Prisma.NullableJsonNullValueInput = {
   DbNull: Prisma.DbNull,
+  JsonNull: Prisma.JsonNull
+};
+
+exports.Prisma.JsonNullValueInput = {
   JsonNull: Prisma.JsonNull
 };
 
@@ -227,7 +367,16 @@ exports.Prisma.ModelName = {
   Execution: 'Execution',
   ExecutionStep: 'ExecutionStep',
   RuntimeSession: 'RuntimeSession',
-  ExecutionEvent: 'ExecutionEvent'
+  ExecutionEvent: 'ExecutionEvent',
+  LlmOperation: 'LlmOperation',
+  LlmOperationVersion: 'LlmOperationVersion',
+  LlmOperationActivation: 'LlmOperationActivation',
+  LlmOperationActivationEvent: 'LlmOperationActivationEvent',
+  LlmOperationEvalSuite: 'LlmOperationEvalSuite',
+  LlmOperationEvalCase: 'LlmOperationEvalCase',
+  LlmOperationEvalRun: 'LlmOperationEvalRun',
+  LlmOperationInvocation: 'LlmOperationInvocation',
+  LlmOperationAttestation: 'LlmOperationAttestation'
 };
 
 /**

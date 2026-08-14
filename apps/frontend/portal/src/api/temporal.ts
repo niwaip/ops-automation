@@ -46,7 +46,8 @@ export type WorkflowInputParamSource =
   | 'inferred_from_reference_url'
   | 'merged';
 
-export type WorkflowInputParamType = 'string' | 'number' | 'boolean' | 'date';
+export type WorkflowInputParamType = 'string' | 'number' | 'integer' | 'boolean' | 'date';
+export type WorkflowInputParamFormat = 'date' | 'date-time' | 'unix-seconds' | 'unix-milliseconds';
 export type WorkflowLocalizedValueMap = Record<string, string | number | boolean>;
 export type WorkflowParamRequiredMode = 'always' | 'conditional' | 'optional' | 'system_required';
 export type WorkflowPolicyDefaultValue = string | number | boolean | WorkflowLocalizedValueMap;
@@ -77,6 +78,7 @@ export interface WorkflowInputParamDefinition {
   localizedVariants?: string[];
   source?: WorkflowInputParamSource;
   type?: WorkflowInputParamType;
+  format?: WorkflowInputParamFormat;
   exampleValue?: string | number | boolean;
   displayName?: string;
   groupLabel?: string;
@@ -84,6 +86,29 @@ export interface WorkflowInputParamDefinition {
   arrayPath?: string;
   fieldName?: string;
   renderPath?: string | string[];
+}
+
+export interface WorkflowValidationScenario {
+  id: string;
+  label: string;
+  description?: string;
+  parameters: string[];
+  requiredParameters?: string[];
+}
+
+export interface WorkflowValidationAssertion {
+  field?: string;
+  fieldPath?: string;
+  path?: string;
+  operator: 'exists' | 'nonEmpty' | 'equals' | 'notEquals' | 'minItems' | 'min' | 'max';
+  value?: string | number | boolean;
+  message?: string;
+  scenarioIds?: string[];
+}
+
+export interface WorkflowValidationContract {
+  scenarios?: WorkflowValidationScenario[];
+  assertions?: WorkflowValidationAssertion[];
 }
 
 export interface WorkflowDsl {
@@ -99,6 +124,7 @@ export interface WorkflowDsl {
   inputParams?: Record<string, WorkflowInputParamDefinition>;
   // Workflow-level parameter policy derived from or overriding inputParams
   inputPolicy?: WorkflowInputPolicy;
+  validation?: WorkflowValidationContract;
   // Output parameters - defaults to last step's output, can be customized
   outputParams?: Record<string, { description?: string; sourceStep?: string }>;
   // Extra guidance for AI code generation
@@ -185,6 +211,7 @@ export interface TemporalWorkflowDTO {
   validationStatus?: 'draft' | 'generated' | 'validated' | 'failed' | string;
   validationScore?: number;
   validatedAt?: string | null;
+  validationResult?: Record<string, unknown> | null;
   isActive: boolean;
   deployedAt: string | null;
   createdAt: string;
@@ -213,6 +240,7 @@ export interface CreateTemporalWorkflowDTO {
   workflowDsl: WorkflowDsl;
   activityDsl: ActivityDsl;
   generatedCode?: string;
+  isActive?: boolean;
 }
 
 export interface UpdateTemporalWorkflowDTO {
@@ -269,6 +297,29 @@ export interface GenerateAndSaveWorkflowCodeResult {
 export interface ValidateSavedArtifactResult {
   workflow: TemporalWorkflowDTO;
   validation: WorkflowRealValidationResult;
+}
+
+export interface TemporalWorkflowBundleManifest {
+  format: 'ops-temporal-workflow-bundle';
+  formatVersion: '1.0';
+  exportedAt: string;
+  contractDigest: string;
+  source: {
+    workflowId: string;
+    artifactVersion: number;
+    artifactHash: string;
+    validationStatus: string;
+    deployedAt: string | null;
+  };
+  workflow: { name: string; description: string | null; taskQueue: string };
+}
+
+export interface TemporalWorkflowBundleImportResult {
+  workflow: TemporalWorkflowDTO;
+  manifest: TemporalWorkflowBundleManifest;
+  staticValidation: TemporalValidationResult;
+  requiresRuntimeValidation: true;
+  nextAction: 'validate_saved_artifact';
 }
 
 export interface HttpRequestOptimizeResult {
@@ -364,7 +415,6 @@ export interface GenerateAiWorkflowDraftSessionDTO extends GenerateAiWorkflowDra
   title?: string;
 }
 
-
 export interface RefineAiWorkflowDraftDTO {
   currentWorkflowDsl: WorkflowDsl;
   currentActivityDsl: ActivityDsl;
@@ -432,6 +482,20 @@ export const temporalWorkflowApi = {
     return apiClient.post<TemporalWorkflowDTO>(`/temporal/${id}/deploy`);
   },
 
+  exportBundle: async (id: string): Promise<Blob> => {
+    return apiClient.get<Blob>(`/temporal/${id}/export`, { responseType: 'blob' });
+  },
+
+  importBundle: async (file: File, name?: string): Promise<TemporalWorkflowBundleImportResult> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (name?.trim()) formData.append('name', name.trim());
+    return apiClient.post<TemporalWorkflowBundleImportResult>('/temporal/import', formData, {
+      headers: { 'Content-Type': undefined },
+      timeout: 120000,
+    });
+  },
+
   validate: async (
     workflowDsl: WorkflowDsl,
     activityDsl: ActivityDsl
@@ -447,11 +511,15 @@ export const temporalWorkflowApi = {
     activityDsl: ActivityDsl,
     errorContext?: string
   ): Promise<WorkflowCodeResult> => {
-    return apiClient.post<WorkflowCodeResult>('/temporal/generate-code', {
-      workflowDsl,
-      activityDsl,
-      errorContext,
-    });
+    return apiClient.post<WorkflowCodeResult>(
+      '/temporal/generate-code',
+      {
+        workflowDsl,
+        activityDsl,
+        errorContext,
+      },
+      { timeout: AI_DRAFT_REQUEST_TIMEOUT_MS }
+    );
   },
 
   generateAndSave: async (
@@ -460,7 +528,8 @@ export const temporalWorkflowApi = {
   ): Promise<GenerateAndSaveWorkflowCodeResult> => {
     return apiClient.post<GenerateAndSaveWorkflowCodeResult>(
       `/temporal/${id}/generate-and-save`,
-      data
+      data,
+      { timeout: AI_DRAFT_REQUEST_TIMEOUT_MS }
     );
   },
 

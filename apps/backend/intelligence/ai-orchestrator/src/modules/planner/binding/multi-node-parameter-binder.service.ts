@@ -1,0 +1,315 @@
+import { Injectable, Logger, Optional } from '@nestjs/common';
+import type {
+  ValueBindingV1,
+  RequiredUserInputV1,
+  CompactCapabilityCardV1,
+} from '@ops/backend-deterministic-plan';
+import type { PromptDebugLLMCall } from '../../../interfaces';
+import { RecognizerService } from '../../recognizer/recognizer.service';
+import { NodeOutputBindingResolverService } from './node-output-binding-resolver.service';
+import type { TopologyNodeV1 } from '../topology/deterministic-topology.types';
+
+interface RawInputSchemaSnapshot {
+  required?: string[];
+  defaults?: Record<string, unknown>;
+  properties?: Record<string, Record<string, unknown>>;
+}
+
+export interface ParameterBindingResult {
+  nodeBindings: Record<string, Record<string, ValueBindingV1>>;
+  planInputs: Record<string, Record<string, unknown>>;
+  requiredUserInputs: RequiredUserInputV1[];
+  llmCalls?: PromptDebugLLMCall[];
+  notes?: string[];
+}
+
+@Injectable()
+export class MultiNodeParameterBinderService {
+  private readonly logger = new Logger(MultiNodeParameterBinderService.name);
+
+  constructor(
+    private readonly outputResolver: NodeOutputBindingResolverService,
+    @Optional() private readonly recognizerService?: RecognizerService,
+  ) {}
+
+  public async bindParameters(
+    userRequest: string,
+    nodes: TopologyNodeV1[],
+    capabilityMap: Map<string, CompactCapabilityCardV1>,
+    originalInputSchema?: Record<string, RawInputSchemaSnapshot>,
+    systemInputs?: Record<string, unknown>,
+  ): Promise<ParameterBindingResult> {
+    const nodeBindings: Record<string, Record<string, ValueBindingV1>> = {};
+    const planInputs: Record<string, Record<string, unknown>> = {};
+    const requiredUserInputs: RequiredUserInputV1[] = [];
+    const llmCalls: PromptDebugLLMCall[] = [];
+    const notes: string[] = [];
+
+    for (const node of nodes) {
+      const card = capabilityMap.get(node.capabilityKey);
+      const compressedInputs = (card?.inputs as Record<string, string>) || {};
+      const bindings: Record<string, ValueBindingV1> = {};
+      const nodeInputs: Record<string, unknown> = {};
+      const rawSchema =
+        originalInputSchema?.[node.capabilityKey] ||
+        ((card as any)?._rawInputSchema as RawInputSchemaSnapshot | undefined);
+      const requiredFields = new Set(
+        Array.isArray(rawSchema?.required) ? rawSchema!.required : [],
+      );
+
+      nodeBindings[node.ref] = bindings;
+      planInputs[node.ref] = nodeInputs;
+
+      const unresolvedFields: string[] = [];
+      for (const paramName of Object.keys(compressedInputs)) {
+        if (this.isSensitiveFieldName(paramName)) continue;
+        if (systemInputs && Object.prototype.hasOwnProperty.call(systemInputs, paramName)) {
+          const systemValue = systemInputs[paramName];
+          const rawProperty = rawSchema?.properties?.[paramName] || { type: 'string' };
+          const normalized = this.normalizeBySchema(systemValue, rawProperty);
+          if (normalized !== undefined) {
+            nodeInputs[paramName] = normalized;
+            bindings[paramName] = { source: 'user_input', path: paramName };
+            continue;
+          }
+        }
+        const upstreamBinding = this.resolveUpstreamBinding(
+          paramName,
+          node,
+          nodes,
+          capabilityMap,
+        );
+        if (upstreamBinding) {
+          bindings[paramName] = upstreamBinding;
+        } else {
+          unresolvedFields.push(paramName);
+        }
+      }
+
+      const recognizerProperties = this.buildRecognizerProperties(
+        unresolvedFields,
+        compressedInputs,
+        rawSchema,
+      );
+      let recognizedParams: Record<string, unknown> = {};
+
+      if (Object.keys(recognizerProperties).length > 0) {
+        if (this.recognizerService) {
+          const recognized = await this.recognizerService.recognizeParams({
+            template_id: card?.displayName || card?.id || node.capabilityKey,
+            user_input: userRequest,
+            fallbackMode: 'none',
+            postProcessMode: 'schema_only',
+            context: {
+              skill_name: card?.displayName || card?.id || node.capabilityKey,
+              skill_description: card?.summary || '',
+              node_ref: node.ref,
+            },
+            params_schema: {
+              properties: recognizerProperties as any,
+              required: unresolvedFields.filter((field) => requiredFields.has(field)),
+            },
+          });
+          recognizedParams = recognized.params || {};
+          llmCalls.push(...(recognized.debug?.llmCalls || []));
+          notes.push(...(recognized.debug?.notes || []));
+        } else {
+          notes.push(
+            `Node '${node.ref}' parameter recognizer is unavailable; no fixed-rule extraction was attempted.`,
+          );
+        }
+      }
+
+      for (const paramName of unresolvedFields) {
+        const property = recognizerProperties[paramName] || { type: 'string' };
+        const schemaSummary = compressedInputs[paramName] || 'string';
+        const recognizedHasValue = Object.prototype.hasOwnProperty.call(
+          recognizedParams,
+          paramName,
+        );
+
+        if (recognizedHasValue) {
+          const normalized = this.normalizeBySchema(recognizedParams[paramName], property);
+          if (normalized !== undefined) {
+            nodeInputs[paramName] = normalized;
+            bindings[paramName] = { source: 'literal', value: normalized } as ValueBindingV1;
+            continue;
+          }
+          this.logger.warn(
+            `Ignoring LLM-recognized value for '${node.ref}.${paramName}' because it violates the selected Skill schema.`,
+          );
+        }
+
+        const rawDefault = rawSchema?.defaults?.[paramName];
+        const summaryDefault = this.decodeSummaryDefault(schemaSummary);
+        const defaultCandidate = rawDefault !== undefined ? rawDefault : summaryDefault;
+        const normalizedDefault = this.normalizeBySchema(defaultCandidate, property);
+        if (normalizedDefault !== undefined) {
+          nodeInputs[paramName] = normalizedDefault;
+          bindings[paramName] = {
+            source: 'literal',
+            value: normalizedDefault,
+          } as ValueBindingV1;
+          continue;
+        }
+
+        if (!requiredFields.has(paramName)) continue;
+
+        const inputPath = `planInputs.${node.ref}.${paramName}`;
+        const nodeId = `${node.ref}_${card?.displayName || 'step'}`;
+        requiredUserInputs.push({
+          targetField: paramName,
+          nodeId,
+          prompt: `请输入 ${card?.displayName || node.ref} 的 ${paramName} 参数`,
+          name: `${node.ref}.${paramName}`,
+          inputPath,
+          type: this.resolveDeclaredType(property, schemaSummary),
+          description:
+            typeof property.description === 'string'
+              ? property.description
+              : `请输入 ${card?.displayName || node.ref} 的 ${paramName} 参数`,
+          missing: true,
+        } as RequiredUserInputV1);
+      }
+    }
+
+    return {
+      nodeBindings,
+      planInputs,
+      requiredUserInputs,
+      ...(llmCalls.length > 0 ? { llmCalls } : {}),
+      ...(notes.length > 0 ? { notes } : {}),
+    };
+  }
+
+  private resolveUpstreamBinding(
+    paramName: string,
+    node: TopologyNodeV1,
+    nodes: TopologyNodeV1[],
+    capabilityMap: Map<string, CompactCapabilityCardV1>,
+  ): ValueBindingV1 | undefined {
+    for (const depRef of node.dependsOn) {
+      const depNode = nodes.find((candidate) => candidate.ref === depRef);
+      const depCard = capabilityMap.get(depNode?.capabilityKey || '');
+      const depOutputs = (depCard?.outputs as any)?.properties
+        ? ((depCard?.outputs as any).properties as Record<string, unknown>)
+        : (depCard?.outputs as Record<string, unknown>) || {};
+      const binding = this.outputResolver.resolveNodeOutputBinding(
+        depRef,
+        depOutputs,
+        paramName,
+      );
+      if (binding) return binding;
+    }
+    return undefined;
+  }
+
+  private buildRecognizerProperties(
+    unresolvedFields: string[],
+    compressedInputs: Record<string, string>,
+    rawSchema?: RawInputSchemaSnapshot,
+  ): Record<string, Record<string, unknown>> {
+    const properties: Record<string, Record<string, unknown>> = {};
+    for (const field of unresolvedFields) {
+      const rawProperty = rawSchema?.properties?.[field];
+      if (rawProperty) {
+        properties[field] = { ...rawProperty };
+        continue;
+      }
+      const summary = compressedInputs[field] || 'string';
+      properties[field] = {
+        type: summary.split('[')[0] || 'string',
+        ...this.decodeSummaryEnum(summary),
+      };
+    }
+    return properties;
+  }
+
+  private normalizeBySchema(
+    value: unknown,
+    property: Record<string, unknown>,
+  ): unknown {
+    if (value === undefined || value === null) return undefined;
+    const type = String(property.type || 'string').toLowerCase();
+    let normalized: unknown;
+
+    if (type === 'number' || type === 'integer') {
+      if (typeof value === 'number') {
+        normalized = value;
+      } else if (typeof value === 'string' && value.trim() !== '') {
+        normalized = Number(value.trim());
+      }
+      if (typeof normalized !== 'number' || !Number.isFinite(normalized)) return undefined;
+      if (type === 'integer' && !Number.isInteger(normalized)) return undefined;
+    } else if (type === 'boolean') {
+      if (typeof value === 'boolean') normalized = value;
+      else if (typeof value === 'string' && /^(true|false)$/i.test(value.trim())) {
+        normalized = value.trim().toLowerCase() === 'true';
+      } else return undefined;
+    } else if (type === 'array') {
+      normalized = Array.isArray(value) ? value : this.parseJsonValue(value, Array.isArray);
+      if (!Array.isArray(normalized)) return undefined;
+    } else if (type === 'object' || type === 'json') {
+      normalized =
+        value && typeof value === 'object' && !Array.isArray(value)
+          ? value
+          : this.parseJsonValue(
+              value,
+              (candidate) => Boolean(candidate && typeof candidate === 'object' && !Array.isArray(candidate)),
+            );
+      if (!normalized || typeof normalized !== 'object' || Array.isArray(normalized)) return undefined;
+    } else {
+      if (typeof value === 'string') normalized = value.trim();
+      else if (typeof value === 'number' || typeof value === 'boolean') normalized = String(value);
+      else return undefined;
+      if (normalized === '') return undefined;
+    }
+
+    const enumValues = Array.isArray(property.enum) ? property.enum : undefined;
+    if (enumValues && enumValues.length > 0 && !enumValues.includes(normalized as never)) {
+      return undefined;
+    }
+    return normalized;
+  }
+
+  private parseJsonValue(
+    value: unknown,
+    predicate: (candidate: unknown) => boolean,
+  ): unknown {
+    if (typeof value !== 'string') return undefined;
+    try {
+      const parsed = JSON.parse(value);
+      return predicate(parsed) ? parsed : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  private decodeSummaryEnum(summary: string): { enum?: Array<string | number> } {
+    const match = summary.match(/\[enum=([^\]]*)\]/);
+    if (!match?.[1]) return {};
+    return {
+      enum: match[1]
+        .split(',')
+        .map((token) => token.trim())
+        .filter(Boolean)
+        .map((token) => (/^-?\d+(\.\d+)?$/.test(token) ? Number(token) : token)),
+    };
+  }
+
+  private decodeSummaryDefault(summary: string): unknown {
+    const match = summary.match(/\[default=([^\]]*)\]/);
+    return match?.[1]?.trim() || undefined;
+  }
+
+  private resolveDeclaredType(
+    property: Record<string, unknown>,
+    summary: string,
+  ): string {
+    return String(property.type || summary.split('[')[0] || 'string');
+  }
+
+  private isSensitiveFieldName(fieldName: string): boolean {
+    return /api[_-]?key|token|secret|password|credential|authorization/i.test(fieldName);
+  }
+}

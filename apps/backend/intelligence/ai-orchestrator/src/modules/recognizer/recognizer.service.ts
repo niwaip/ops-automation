@@ -154,6 +154,14 @@ export class RecognizerService {
     // Prefer the caller-selected model so planner/debug traces match the chat UI choice.
     const runtime = await this.resolveModelRuntime(dto.modelId);
     if (!runtime) {
+      if (dto.fallbackMode === 'none') {
+        this.logger.warn('No AI client available and deterministic fallback is disabled');
+        return {
+          params: {},
+          confidence: 0,
+          debug: { notes: ['recognizer 未找到可用模型，且调用方禁止固定规则回退。'] },
+        };
+      }
       this.logger.warn('No AI client available, using basic pattern matching');
       return {
         ...this.basicPatternMatching(dto.user_input, properties),
@@ -189,7 +197,12 @@ export class RecognizerService {
           responseText: response.content,
         },
       ];
-      const result = this.parseAIResponse(response.content, propertiesWithRequired, dto.user_input);
+      const result = this.parseAIResponse(
+        response.content,
+        propertiesWithRequired,
+        dto.user_input,
+        dto.postProcessMode !== 'schema_only'
+      );
       return {
         ...result,
         usage: response.usage,
@@ -199,6 +212,17 @@ export class RecognizerService {
       };
     } catch (error) {
       this.logger.error(`AI call failed: ${error}`);
+      if (dto.fallbackMode === 'none') {
+        return {
+          params: {},
+          confidence: 0,
+          debug: {
+            notes: [
+              `recognizer 模型调用失败，且调用方禁止固定规则回退: ${error instanceof Error ? error.message : String(error)}`,
+            ],
+          },
+        };
+      }
       // Fallback to basic pattern matching on AI failures
       return {
         ...this.basicPatternMatching(dto.user_input, propertiesWithRequired),
@@ -233,12 +257,17 @@ export class RecognizerService {
   private parseAIResponse(
     response: string,
     properties: Record<string, ParamSchemaProperty>,
-    userInput: string
+    userInput: string,
+    enableSemanticAugmentation: boolean
   ): RecognizeParamsResponseDTO {
     try {
       const jsonCandidate = this.extractJsonCandidate(response);
       if (!jsonCandidate) {
-        return this.buildPostProcessedEmptyResponse(properties, userInput);
+        return this.buildPostProcessedEmptyResponse(
+          properties,
+          userInput,
+          enableSemanticAugmentation
+        );
       }
 
       const parsed = JSON.parse(jsonCandidate);
@@ -266,7 +295,8 @@ export class RecognizerService {
       const postProcessed = this.postProcessRecognizedParams(
         validatedParams,
         properties,
-        userInput
+        userInput,
+        enableSemanticAugmentation
       );
 
       return {
@@ -282,7 +312,11 @@ export class RecognizerService {
         ),
       };
     } catch {
-      return this.buildPostProcessedEmptyResponse(properties, userInput);
+      return this.buildPostProcessedEmptyResponse(
+        properties,
+        userInput,
+        enableSemanticAugmentation
+      );
     }
   }
 
@@ -399,23 +433,68 @@ export class RecognizerService {
   private extractJsonCandidate(response: string): string | undefined {
     const fencedMatch = response.match(/```(?:json)?\s*([\s\S]*?)```/i);
     if (fencedMatch?.[1]?.trim()) {
-      return fencedMatch[1].trim();
+      const fenced = fencedMatch[1].trim();
+      try {
+        JSON.parse(fenced);
+        return fenced;
+      } catch {
+        // Continue with balanced-object scanning. Some providers include
+        // reasoning or multiple objects around an otherwise valid JSON body.
+      }
     }
 
-    const start = response.indexOf('{');
-    const end = response.lastIndexOf('}');
-    if (start >= 0 && end > start) {
-      return response.slice(start, end + 1);
+    const candidates: string[] = [];
+    let start = -1;
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+
+    for (let index = 0; index < response.length; index += 1) {
+      const char = response[index]!;
+      if (inString) {
+        if (escaped) escaped = false;
+        else if (char === '\\') escaped = true;
+        else if (char === '"') inString = false;
+        continue;
+      }
+      if (char === '"') {
+        inString = true;
+        continue;
+      }
+      if (char === '{') {
+        if (depth === 0) start = index;
+        depth += 1;
+        continue;
+      }
+      if (char === '}' && depth > 0) {
+        depth -= 1;
+        if (depth === 0 && start >= 0) {
+          const candidate = response.slice(start, index + 1);
+          try {
+            JSON.parse(candidate);
+            candidates.push(candidate);
+          } catch {
+            // Ignore malformed candidates and continue scanning later objects.
+          }
+          start = -1;
+        }
+      }
     }
 
-    return undefined;
+    return candidates.at(-1);
   }
 
   private buildPostProcessedEmptyResponse(
     properties: Record<string, ParamSchemaProperty>,
-    userInput: string
+    userInput: string,
+    enableSemanticAugmentation = true
   ): RecognizeParamsResponseDTO {
-    const postProcessed = this.postProcessRecognizedParams({}, properties, userInput);
+    const postProcessed = this.postProcessRecognizedParams(
+      {},
+      properties,
+      userInput,
+      enableSemanticAugmentation
+    );
     return {
       params: postProcessed.params,
       confidence: 0,
@@ -502,6 +581,8 @@ export class RecognizerService {
         return typeof value === 'string';
       case 'number':
         return typeof value === 'number' && !isNaN(value);
+      case 'integer':
+        return typeof value === 'number' && Number.isInteger(value);
       case 'boolean':
         return typeof value === 'boolean';
       case 'date':
@@ -548,7 +629,8 @@ export class RecognizerService {
   private postProcessRecognizedParams(
     params: Record<string, unknown>,
     properties: Record<string, ParamSchemaProperty>,
-    userInput: string
+    userInput: string,
+    enableSemanticAugmentation = true
   ): {
     params: Record<string, unknown>;
     supplementedFieldSources: Map<string, 'explicit' | 'semantic'>;
@@ -590,18 +672,20 @@ export class RecognizerService {
       }
     }
 
-    this.reconcileExplicitPatternParams(
-      normalizedParams,
-      properties,
-      userInput,
-      supplementedFieldSources
-    );
-    this.supplementMissingSemanticParams(
-      normalizedParams,
-      properties,
-      userInput,
-      supplementedFieldSources
-    );
+    if (enableSemanticAugmentation) {
+      this.reconcileExplicitPatternParams(
+        normalizedParams,
+        properties,
+        userInput,
+        supplementedFieldSources
+      );
+      this.supplementMissingSemanticParams(
+        normalizedParams,
+        properties,
+        userInput,
+        supplementedFieldSources
+      );
+    }
     return {
       params: normalizedParams,
       supplementedFieldSources,

@@ -118,6 +118,9 @@ export class ModelRouterService {
     ) {
       return matchedExecutionType;
     }
+    if (matchedExecutionType === 'artifact') {
+      return 'document';
+    }
 
     const normalizedInput = (context?.userInput || '').toLowerCase();
     if (
@@ -143,7 +146,7 @@ export class ModelRouterService {
   private matchExecutionTypeFromSkills(
     userInput: string | undefined,
     skills: AvailableSkillDefinition[]
-  ): 'document' | 'flow' | 'query' | undefined {
+  ): AvailableSkillDefinition['executionType'] {
     if (!userInput) {
       return skills.length === 1 ? skills[0]?.executionType : undefined;
     }
